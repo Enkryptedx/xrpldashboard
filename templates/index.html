@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>XRPL AMM Scanner</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 2em auto; padding: 0 1em; color: #222; }
+    h1 { margin-bottom: 0.2em; }
+    h2 { margin-top: 2em; font-size: 1.15em; color: #444; }
+    .timestamp { background: #fff8d6; border-left: 4px solid #d4a017;
+                 padding: 0.6em 0.9em; font-size: 1.05em; margin: 0.5em 0 1.2em; }
+    .timestamp strong { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .meta { color: #555; font-size: 0.9em; margin-bottom: 1.5em; }
+    .meta div { margin: 0.15em 0; }
+    .filter-row { margin: 1em 0 0.6em; }
+    .filter-row input { font-size: 1em; padding: 0.45em 0.7em; width: 280px;
+                        border: 1px solid #ccc; border-radius: 4px; }
+    .filter-row .hint { color: #888; font-size: 0.85em; margin-left: 0.6em; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    th, td { padding: 0.5em 0.7em; border-bottom: 1px solid #e3e3e3; }
+    th { text-align: left; background: #f4f4f4; font-size: 0.85em;
+         text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .total { font-weight: 600; background: #f9f9f9; }
+    .footnote { color: #777; font-size: 0.85em; }
+    .missing { background: #fdecec; border-left: 4px solid #c0392b;
+               padding: 0.6em 0.9em; margin-top: 1em; }
+    .missing h3 { margin: 0 0 0.4em; font-size: 1em; }
+    .missing ul { margin: 0; padding-left: 1.2em; }
+    .error { background: #fdecec; border: 1px solid #c0392b;
+             padding: 1em; border-radius: 4px; }
+    .lookup-card { background: #eaf4ff; border-left: 4px solid #2c7be5;
+                   padding: 0.9em 1.1em; margin: 1em 0 1.5em; border-radius: 4px; }
+    .lookup-card h3 { margin: 0 0 0.5em; font-size: 1em; color: #2c7be5; }
+    .lookup-card .grid { display: grid; grid-template-columns: 160px 1fr;
+                         gap: 0.25em 1em; font-size: 0.95em; }
+    .lookup-card .grid .label { color: #666; }
+    .lookup-card .grid .val { font-variant-numeric: tabular-nums; }
+    .lookup-card .clear { font-size: 0.85em; margin-left: 0.7em; }
+    .lookup-error { background: #fff4e0; border-left: 4px solid #e08e00;
+                    padding: 0.7em 0.9em; margin: 1em 0; border-radius: 4px;
+                    color: #6b4500; }
+    .lookup-form { background: #f7f7f7; padding: 1em 1.1em; border-radius: 4px;
+                   margin-top: 0.4em; }
+    .lookup-form .row { display: flex; flex-wrap: wrap; gap: 0.6em;
+                        align-items: center; margin-top: 0.5em; }
+    .lookup-form input { font-size: 0.95em; padding: 0.4em 0.6em;
+                         border: 1px solid #ccc; border-radius: 4px;
+                         font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .lookup-form input[name=currency] { width: 200px; }
+    .lookup-form input[name=issuer]   { width: 360px; }
+    .lookup-form button { font-size: 0.95em; padding: 0.45em 1em;
+                          background: #2c7be5; color: #fff; border: 0;
+                          border-radius: 4px; cursor: pointer; }
+    .lookup-form button:hover { background: #1e63c4; }
+    .lookup-form .help { color: #777; font-size: 0.85em; margin-top: 0.6em; }
+  </style>
+</head>
+<body>
+
+  <h1>XRPL AMM Scanner</h1>
+  <div class="timestamp">
+    Last scanned: <strong>{{ timestamp_str }}</strong>
+    &nbsp;&middot;&nbsp; reload to re-query the ledger
+  </div>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% else %}
+
+    <div class="meta">
+      <div>Node: {{ node }}</div>
+      <div>Ledger index: {{ "{:,}".format(ledger) }}</div>
+      <div>Active pools: {{ pools|length }} &nbsp;&middot;&nbsp;
+           Total TVL (approx): <strong>{{ fmt_money(total_tvl_usd) }}</strong></div>
+    </div>
+
+    {% if lookup_result %}
+      <div class="lookup-card">
+        <h3>
+          Lookup result: {{ lookup_result.pair }}
+          <a class="clear" href="/">[clear]</a>
+        </h3>
+        <div class="grid">
+          <div class="label">AMM account:</div>
+          <div class="val">{{ lookup_result.amm_account }}</div>
+          <div class="label">XRP reserves:</div>
+          <div class="val">{{ fmt_num(lookup_result.xrp_amount) }}</div>
+          <div class="label">Token reserves:</div>
+          <div class="val">{{ fmt_num(lookup_result.token_amount) }}</div>
+          <div class="label">Trading fee:</div>
+          <div class="val">{{ "%.3f"|format(lookup_result.fee_pct) }}%</div>
+          <div class="label">TVL (USD):</div>
+          <div class="val">
+            {{ fmt_money(lookup_result.total_tvl_usd) }}{% if not lookup_result.usd_peg_known %}*{% endif %}
+          </div>
+          <div class="label">Implied price:</div>
+          <div class="val">{{ "%.6f"|format(lookup_result.implied_price) }}</div>
+        </div>
+        {% if not lookup_result.usd_peg_known %}
+          <div class="footnote" style="margin-top: 0.5em;">
+            * TVL estimated (token has no known USD peg, so XRP-side value is doubled)
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if lookup_error %}
+      <div class="lookup-error">
+        {{ lookup_error }}
+        <a href="/" style="margin-left: 0.4em;">[clear]</a>
+      </div>
+    {% endif %}
+
+    <div class="filter-row">
+      <input type="text" id="pool-filter" placeholder="Find a pool (e.g. SOLO, RLUSD)" autocomplete="off">
+      <span class="hint">filters the table below</span>
+    </div>
+
+    <table id="pool-table">
+      <thead>
+        <tr>
+          <th>Pool</th>
+          <th class="num">XRP Reserves</th>
+          <th class="num">Token Reserves</th>
+          <th class="num">Fee</th>
+          <th class="num">TVL (USD)</th>
+          <th class="num">Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pools %}
+          <tr class="pool-row" data-name="{{ p.pair|lower }}">
+            <td>{{ p.pair }}</td>
+            <td class="num">{{ fmt_num(p.xrp_amount) }}</td>
+            <td class="num">{{ fmt_num(p.token_amount) }}</td>
+            <td class="num">{{ "%.3f"|format(p.fee_pct) }}%</td>
+            <td class="num">
+              {{ fmt_money(p.total_tvl_usd) }}{% if not p.usd_peg_known %}*{% endif %}
+            </td>
+            <td class="num">{{ "%.4f"|format(p.implied_price) }}</td>
+          </tr>
+        {% endfor %}
+        <tr class="total">
+          <td>Total ({{ pools|length }} pools)</td>
+          <td colspan="3"></td>
+          <td class="num">{{ fmt_money(total_tvl_usd) }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if pools|selectattr('usd_peg_known', 'equalto', false)|list %}
+      <div class="footnote">* TVL estimated (non-stable token, doubled XRP value)</div>
+    {% endif %}
+
+    {% if missing %}
+      <div class="missing">
+        <h3>Pools not found on ledger</h3>
+        <ul>
+          {% for m in missing %}
+            <li>{{ m.pair }} &mdash; {{ m.error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <h2>Look up any pool</h2>
+    <form class="lookup-form" action="/lookup" method="get">
+      <div>Query an XRP/<em>token</em> AMM pool by issuer.</div>
+      <div class="row">
+        <input type="text" name="currency" placeholder="Currency (3-letter or 40-char hex)" value="{{ lookup_currency }}" required>
+        <input type="text" name="issuer" placeholder="Issuer r-address" value="{{ lookup_issuer }}" required>
+        <button type="submit">Query AMM</button>
+      </div>
+      <div class="help">
+        Examples: currency <code>USD</code>, issuer <code>rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B</code> (Bitstamp USD).
+        Or hex: <code>524C555344000000000000000000000000000000</code>, <code>rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De</code> (RLUSD).
+      </div>
+    </form>
+
+    <script>
+      (function () {
+        const filter = document.getElementById('pool-filter');
+        const rows = document.querySelectorAll('#pool-table tbody tr.pool-row');
+        const totalRow = document.querySelector('#pool-table tbody tr.total');
+        if (!filter) return;
+        filter.addEventListener('input', function () {
+          const q = filter.value.trim().toLowerCase();
+          rows.forEach(function (row) {
+            const name = row.dataset.name || '';
+            row.style.display = name.includes(q) ? '' : 'none';
+          });
+          if (totalRow) totalRow.style.display = q ? 'none' : '';
+        });
+      })();
+    </script>
+
+  {% endif %}
+
+</body>
+</html>

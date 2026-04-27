@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual envs
+venv/
+.venv/
+
+# Env / secrets
+.env
+.env.local
+
+# Logs
+*.log
+
+# Local cache / scan output (prophylactic — none currently in repo)
+amm_pools.json
+*.cache.json
+scan_output/
+data/
+
+# DBs
+*.sqlite
+*.sqlite3
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
