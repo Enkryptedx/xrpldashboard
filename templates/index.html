@@ -61,6 +61,7 @@
              color: #777; font-size: 0.85em; line-height: 1.5; }
     footer a { color: #555; }
     footer .legal { margin-top: 0.6em; }
+    .cache-note { color: #888; font-size: 0.85em; }
   </style>
 </head>
 <body>
@@ -68,7 +69,11 @@
   <h1>xrpldashboard</h1>
   <div class="timestamp">
     Last scanned: <strong>{{ timestamp_str }}</strong>
-    &nbsp;&middot;&nbsp; reload to re-query the ledger
+    {% if cached_age and cached_age > 0 %}
+      <span class="cache-note">&nbsp;&middot;&nbsp; served from cache, {{ "%.0f"|format(cached_age) }}s old</span>
+    {% else %}
+      &nbsp;&middot;&nbsp; fresh scan
+    {% endif %}
   </div>
 
   <div class="intro">

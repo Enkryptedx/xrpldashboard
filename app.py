@@ -8,7 +8,7 @@ from amm_scan_pools import (
     fetch_pool,
     fmt_money,
     fmt_num,
-    scan_all_pools,
+    scan_all_pools_cached,
 )
 
 app = Flask(__name__)
@@ -17,11 +17,13 @@ app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
 
 def _render_dashboard(lookup_result=None, lookup_error=None,
                       lookup_currency="", lookup_issuer=""):
-    data = scan_all_pools()
+    data = scan_all_pools_cached()
     timestamp_str = data["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
+    cached_age = data.get("cached_age_seconds", 0.0)
     return render_template(
         "index.html",
         timestamp_str=timestamp_str,
+        cached_age=cached_age,
         lookup_result=lookup_result,
         lookup_error=lookup_error,
         lookup_currency=lookup_currency,

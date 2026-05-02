@@ -6,11 +6,23 @@ Queries multiple real XRPL AMM pools and displays them in a ranked table.
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo, LedgerCurrent
 from datetime import datetime, timezone
+import os
 import sys
+import threading
+import time
 
 
 XRPL_NODE = "https://s1.ripple.com:51234"
 XRP_USD_PRICE = 1.44
+
+# Server-side cache for scan results. Without this, every visitor triggers a
+# fresh round of N XRPL queries — at scale that's expensive (hosting bills,
+# rate limits, slow page loads). Cache TTL is the trade-off between data
+# freshness and load: at 60s the ledger advances ~12 ledgers, balances
+# barely move, and the page still feels live. Tunable via env var.
+SCAN_CACHE_TTL_SECONDS = int(os.environ.get("SCAN_CACHE_TTL_SECONDS", "60"))
+_cache_lock = threading.Lock()
+_cache_state = {"data": None, "fetched_at": 0.0}
 
 KNOWN_TOKENS = [
     # --- Stablecoins (USD-pegged) ---
@@ -270,6 +282,40 @@ def scan_all_pools():
         "missing": missing,
         "total_tvl_usd": total_tvl_all,
     }
+
+
+def scan_all_pools_cached(ttl_seconds=None):
+    """
+    Server-side cached wrapper around scan_all_pools().
+
+    Multiple concurrent requests share one scan result for `ttl_seconds`.
+    First request after expiry triggers a fresh scan; everyone else gets
+    the cached result. Thread-safe (gunicorn runs multi-worker / multi-thread).
+
+    Returns the same dict shape as scan_all_pools(), with one extra key:
+    "cached_age_seconds" — how stale the data is (0 if just refreshed).
+    """
+    ttl = ttl_seconds if ttl_seconds is not None else SCAN_CACHE_TTL_SECONDS
+    now = time.time()
+
+    with _cache_lock:
+        cached = _cache_state["data"]
+        fetched_at = _cache_state["fetched_at"]
+        age = now - fetched_at
+
+        if cached is not None and age < ttl:
+            # Return cached result with age annotation.
+            result = dict(cached)
+            result["cached_age_seconds"] = round(age, 1)
+            return result
+
+        # Cache miss or expired — refresh.
+        fresh = scan_all_pools()
+        _cache_state["data"] = fresh
+        _cache_state["fetched_at"] = now
+        result = dict(fresh)
+        result["cached_age_seconds"] = 0.0
+        return result
 
 
 def main():
