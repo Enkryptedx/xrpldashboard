@@ -1,0 +1,46 @@
+# Render.com infrastructure-as-code config for xrpldashboard.
+# Render reads this file when you connect the repo and provisions
+# the service automatically. Push to git → Render redeploys.
+#
+# Plan: starter ($7/mo) keeps the service warm 24/7 (the free tier
+# sleeps after 15 min of inactivity, which kills a "live dashboard").
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: xrpldashboard
+    runtime: python
+    plan: starter
+
+    # Build: install pinned dependencies.
+    buildCommand: pip install -r requirements.txt
+
+    # Run: gunicorn binds to Render's $PORT, 2 workers, 60s timeout.
+    # 2 workers handles concurrent visitors well at this scale; bump if
+    # CPU saturates. Threads=4 lets each worker handle several
+    # blocked-on-XRPL requests in parallel without spawning more processes.
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60 --access-logfile -
+
+    # Health check — Render hits this URL to verify the service is up
+    # before routing traffic. /healthz returns 200 without doing an
+    # XRPL scan, so it's fast and won't false-fail during XRPL outages.
+    healthCheckPath: /healthz
+
+    # Pin Python version. 3.14 is brand new and not yet on Render;
+    # 3.12 is the current stable default and works fine for our deps.
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+
+      # Cache TTL for XRPL scans. 60s = data is at most 60s stale,
+      # XRPL gets one scan per minute regardless of traffic.
+      - key: SCAN_CACHE_TTL_SECONDS
+        value: "60"
+
+      # Production = no debug mode.
+      - key: FLASK_DEBUG
+        value: "0"
+
+    # Auto-deploy on every push to the connected branch.
+    autoDeploy: true

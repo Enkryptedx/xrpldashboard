@@ -1,4 +1,10 @@
-"""Flask app: render live XRPL AMM scan results at localhost:5001."""
+"""Flask app: render live XRPL AMM scan results.
+
+Local dev:    python app.py  (binds 127.0.0.1:5001)
+Production:   gunicorn app:app  (PORT from env, set by host)
+"""
+
+import os
 
 from flask import Flask, render_template, request
 
@@ -73,5 +79,14 @@ def lookup():
     )
 
 
+@app.route("/healthz")
+def healthz():
+    """Lightweight health endpoint for uptime monitors. No XRPL call, no scan."""
+    return {"status": "ok"}, 200
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001, debug=True)
+    # Local dev only. Production uses gunicorn (see Procfile / render.yaml).
+    port = int(os.environ.get("PORT", "5001"))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    app.run(host="127.0.0.1", port=port, debug=debug)
