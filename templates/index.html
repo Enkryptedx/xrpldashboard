@@ -57,6 +57,10 @@
                           border-radius: 4px; cursor: pointer; }
     .lookup-form button:hover { background: #1e63c4; }
     .lookup-form .help { color: #777; font-size: 0.85em; margin-top: 0.6em; }
+    footer { margin-top: 3em; padding: 1.5em 0 1em; border-top: 1px solid #e3e3e3;
+             color: #777; font-size: 0.85em; line-height: 1.5; }
+    footer a { color: #555; }
+    footer .legal { margin-top: 0.6em; }
   </style>
 </head>
 <body>
@@ -207,6 +211,28 @@
     </script>
 
   {% endif %}
+
+  <footer>
+    <div>
+      xrpldashboard — public-good analytics for the XRP Ledger.
+      Free for retail users, forever.
+    </div>
+    <div class="legal">
+      Data shown is for educational and informational purposes only.
+      Not financial advice. Numbers are pulled live from the XRP Ledger
+      and may be cached briefly; verify against
+      <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a>
+      or
+      <a href="https://bithomp.com" target="_blank" rel="noopener noreferrer">Bithomp</a>
+      for additional information.
+    </div>
+    <div class="legal">
+      Source code:
+      <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a>
+      &middot;
+      Contact: <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
+    </div>
+  </footer>
 
 </body>
 </html>
