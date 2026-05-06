@@ -1,0 +1,1530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>xrpldashboard · wallet preview (network mock)</title>
+
+  <style>
+    /* ---------- Design tokens ---------- */
+    :root {
+      --bg: #0a0e27;
+      --bg-card: #141832;
+      --bg-card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+      --text: #e6e9f2;
+      --text-2: #8090b0;
+      --text-3: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-soft:    linear-gradient(135deg, rgba(34,211,238,0.18) 0%, rgba(59,130,246,0.18) 100%);
+
+      --fs-2xs: 0.69rem;
+      --fs-xs:  0.78rem;
+      --fs-sm:  0.875rem;
+      --fs-base:1rem;
+      --fs-md:  1.125rem;
+      --fs-lg:  1.4rem;
+      --fs-xl:  1.85rem;
+      --fs-2xl: 2.6rem;
+
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: var(--fs-base); line-height: 1.5; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.10), transparent 45%),
+        radial-gradient(circle at 90% 5%, rgba(168,85,247,0.07), transparent 40%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 2.2em 1.5em 3em; }
+
+    /* ---------- Header ---------- */
+    header { display: flex; justify-content: space-between; align-items: baseline;
+             margin-bottom: 1.6em; gap: 1em; flex-wrap: wrap; }
+    .brand { display: flex; align-items: baseline; gap: 0.7em; }
+    h1 { font-size: var(--fs-lg); margin: 0; font-weight: 700; letter-spacing: -0.025em;
+         background: var(--grad-primary); -webkit-background-clip: text;
+         background-clip: text; -webkit-text-fill-color: transparent; }
+    .preview-badge { font-size: var(--fs-2xs); color: var(--purple);
+                     border: 1px solid var(--purple); padding: 0.2em 0.55em;
+                     border-radius: 3px; text-transform: uppercase;
+                     letter-spacing: 0.1em; font-weight: 600; }
+    .header-meta { display: flex; align-items: center; gap: 1em;
+                   font-size: var(--fs-xs); color: var(--text-2); }
+    .header-meta a { color: var(--text-2); text-decoration: none; }
+    .header-meta a:hover { color: var(--cyan); }
+
+    /* ---------- Cards (shared) ---------- */
+    .card { background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.25em 1.4em; }
+    .card-label { font-size: var(--fs-2xs); text-transform: uppercase;
+                  letter-spacing: 0.1em; color: var(--text-2); font-weight: 600; }
+    .card-value { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600;
+                  margin: 0.3em 0 0.2em; line-height: 1.05; letter-spacing: -0.025em;
+                  color: var(--text); }
+    .card-sub { font-size: var(--fs-xs); color: var(--text-2); }
+    .card-sub .delta-up { color: var(--success); font-weight: 600; }
+    .card-sub .delta-flat { color: var(--text-2); }
+
+    .section-head { display: flex; justify-content: space-between; align-items: baseline;
+                    margin: 0 0 0.8em; }
+    .section-head h2 { font-size: var(--fs-md); font-weight: 600; margin: 0;
+                       color: var(--text); letter-spacing: -0.015em; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--text-3); }
+
+    /* ---------- KPI strip ---------- */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 1em; margin-bottom: 1.2em; }
+    .kpi { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
+    .kpi-text { min-width: 0; }
+    .kpi-text .card-label { display: block; margin-bottom: 0.2em; }
+    .kpi-text .card-value { font-size: var(--fs-lg); margin: 0; }
+    .kpi-icon { width: 44px; height: 44px; border-radius: 11px;
+                background: var(--grad-primary); display: flex;
+                align-items: center; justify-content: center; flex-shrink: 0;
+                box-shadow: 0 8px 24px rgba(34,211,238,0.18); color: white; }
+    .kpi-icon svg { width: 22px; height: 22px; stroke: white; stroke-width: 2;
+                    fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Row 2: identity + reserve gauge + activity ---------- */
+    .row-2 { display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* identity card */
+    .identity-card { position: relative; overflow: hidden;
+                     border: 1px solid var(--border-strong);
+                     display: flex; flex-direction: column; }
+    .identity-card::before { content: ""; position: absolute; inset: 0;
+                             background: var(--grad-primary); opacity: 0.07;
+                             pointer-events: none; }
+    .identity-top { position: relative; }
+    .identity-greeting { font-size: var(--fs-xs); color: var(--text-2);
+                         text-transform: uppercase; letter-spacing: 0.1em;
+                         font-weight: 600; margin-bottom: 0.5em; }
+    .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
+                         flex-wrap: wrap; }
+    .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+                     color: var(--text); letter-spacing: -0.01em;
+                     word-break: break-all; line-height: 1.3; }
+    .identity-label { display: inline-block; font-size: var(--fs-2xs);
+                      color: var(--cyan); border: 1px solid rgba(34,211,238,0.4);
+                      padding: 2px 8px; border-radius: 4px; font-weight: 600;
+                      letter-spacing: 0.06em; text-transform: uppercase;
+                      margin-top: 0.55em; }
+    .balance-block { position: relative; margin-top: auto;
+                     padding-top: 0.9em; border-top: 1px solid var(--border); }
+    .balance-big { font-family: var(--mono); font-size: var(--fs-2xl); font-weight: 600;
+                   letter-spacing: -0.025em; line-height: 1.05;
+                   background: var(--grad-primary); -webkit-background-clip: text;
+                   background-clip: text; -webkit-text-fill-color: transparent;
+                   margin: 0.1em 0 0.15em; }
+    .balance-sub { font-size: var(--fs-xs); color: var(--text-2);
+                   font-family: var(--mono); }
+    .balance-sub strong { color: var(--text); }
+
+    /* ---------- Wallet QR (scannable identity) ---------- */
+    .qr-host { display: inline-flex; vertical-align: middle;
+               width: 96px; height: 96px;
+               padding: 6px; border-radius: 12px;
+               background: rgba(255,255,255,0.04);
+               border: 1px solid var(--border-strong);
+               box-shadow: 0 4px 18px rgba(34,211,238,0.08);
+               transition: transform 0.2s ease, box-shadow 0.2s ease;
+               cursor: pointer; }
+    .qr-host:hover { transform: scale(1.04);
+                     box-shadow: 0 6px 26px rgba(34,211,238,0.22); }
+    .qr-host svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .qr-host[data-loading="1"] { background: rgba(255,255,255,0.02); }
+
+    /* ---------- Counterparty Network ---------- */
+    .cp-wrap { position: relative; flex: 1;
+               display: flex; flex-direction: column;
+               margin: 0.9em 0 0.5em; gap: 0.6em; }
+    .cp-head { display: flex; justify-content: space-between; align-items: center;
+               gap: 1em; flex-wrap: wrap; }
+    .cp-tag { display: inline-flex; align-items: center; gap: 0.45em;
+              font-size: var(--fs-2xs); font-weight: 600;
+              text-transform: uppercase; letter-spacing: 0.1em;
+              color: var(--cyan); }
+    .cp-tag .dot { width: 7px; height: 7px; border-radius: 50%;
+                   background: var(--cyan);
+                   box-shadow: 0 0 0 0 rgba(34,211,238,0.5);
+                   animation: cpTagDot 1.8s infinite; }
+    @keyframes cpTagDot {
+      0%   { box-shadow: 0 0 0 0 rgba(34,211,238,0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(34,211,238,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); }
+    }
+    .cp-meta { font-size: var(--fs-2xs); color: var(--text-3);
+               text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .cp-svg-wrap { position: relative; width: 100%;
+                   background:
+                     radial-gradient(ellipse at 50% 45%,
+                       rgba(34,211,238,0.08) 0%,
+                       rgba(59,130,246,0.04) 40%,
+                       rgba(0,0,0,0) 70%);
+                   border: 1px solid var(--border);
+                   border-radius: 10px;
+                   overflow: hidden; padding: 4px;
+                   perspective: 900px; perspective-origin: 50% 30%; }
+    .cp-svg-wrap::after { content: ""; position: absolute; inset: 0;
+                          pointer-events: none;
+                          background: linear-gradient(180deg,
+                            rgba(0,0,0,0.18) 0%,
+                            rgba(0,0,0,0) 40%,
+                            rgba(0,0,0,0) 65%,
+                            rgba(0,0,0,0.10) 100%); }
+    .cp-svg { width: 100%; height: auto; display: block; overflow: visible;
+              aspect-ratio: 540 / 340;
+              transform: rotateX(11deg) translateZ(0);
+              transform-origin: center 55%; }
+    .cp-edge { transition: opacity 0.4s ease; }
+    .cp-edge-2 { opacity: 0; transition: opacity 0.6s ease; }
+    .cp-node-g { cursor: pointer; transition: transform 0.2s ease; transform-origin: center; transform-box: fill-box; }
+    .cp-node-g:hover .cp-node-halo { opacity: 1; }
+    .cp-node-halo { opacity: 0; transition: opacity 0.2s ease; }
+    .cp-label { font-family: var(--sys); font-size: 9px; font-weight: 700;
+                fill: var(--text); letter-spacing: 0.04em;
+                text-transform: uppercase; pointer-events: none; }
+    .cp-pct   { font-family: var(--mono); font-size: 9px; font-weight: 600;
+                fill: var(--text-2); pointer-events: none; }
+    .cp-you   { font-family: var(--mono); font-size: 9px; font-weight: 700;
+                fill: #fff; letter-spacing: 0.1em; }
+    .cp-ambient circle { animation: cpTwinkle 3.6s ease-in-out infinite; }
+    @keyframes cpTwinkle {
+      0%, 100% { opacity: var(--baseOp, 0.18); }
+      50%      { opacity: calc(var(--baseOp, 0.18) * 2.4); }
+    }
+    .cp-glyph-legend { display: flex; flex-wrap: wrap;
+                       gap: 0.4em 1.1em; padding: 0.55em 0.2em 0.1em;
+                       border-top: 1px dashed var(--border);
+                       margin-top: 0.4em;
+                       transition: opacity 0.25s ease, max-height 0.3s ease; }
+    .cp-glyph-legend.is-hidden { display: none; }
+    .cp-leg { display: inline-flex; align-items: center; gap: 0.45em;
+              font-size: var(--fs-2xs); color: var(--text-2);
+              text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .cp-leg-glyph { width: 14px; height: 14px; flex-shrink: 0; display: block; }
+    .cp-leg-count { font-family: var(--mono); color: var(--text);
+                    margin-left: 0.15em; font-weight: 700;
+                    letter-spacing: -0.02em; }
+
+    /* ----- detail panel (shown on node click) ----- */
+    .cp-detail { display: none; padding: 0.6em 0.2em 0.2em;
+                 border-top: 1px dashed var(--border);
+                 margin-top: 0.4em; }
+    .cp-detail.is-open { display: block; animation: cpDetailIn 0.25s ease; }
+    @keyframes cpDetailIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .cp-detail-head { display: flex; align-items: center; gap: 0.6em;
+                      margin-bottom: 0.7em; flex-wrap: wrap; }
+    .cp-detail-glyph { width: 22px; height: 22px; flex-shrink: 0; display: block; }
+    .cp-detail-name { font-weight: 700; font-size: var(--fs-sm); color: var(--text);
+                      letter-spacing: -0.01em; margin-right: 0.2em; }
+    .cp-detail-type { font-size: var(--fs-2xs); color: var(--cyan);
+                      border: 1px solid rgba(34,211,238,0.4);
+                      padding: 2px 7px; border-radius: 4px; font-weight: 600;
+                      text-transform: uppercase; letter-spacing: 0.08em; }
+    .cp-detail-type[data-t="amm"]    { color: #c084fc; border-color: rgba(168,85,247,0.45); }
+    .cp-detail-type[data-t="issuer"] { color: #93c5fd; border-color: rgba(103,163,241,0.45); }
+    .cp-detail-type[data-t="peer"]   { color: var(--text-2); border-color: rgba(140,160,200,0.45); }
+    .cp-detail-pct  { font-family: var(--mono); font-size: var(--fs-2xs);
+                      color: var(--text-2); font-weight: 600;
+                      letter-spacing: -0.02em; }
+    .cp-detail-close { margin-left: auto; background: transparent; border: 0;
+                       color: var(--text-3); font-size: 1.2em; line-height: 1;
+                       cursor: pointer; padding: 0 6px; }
+    .cp-detail-close:hover { color: var(--cyan); }
+    .cp-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr);
+                      gap: 0.5em; }
+    .cp-detail-tile { background: var(--bg-card-2); border-radius: 9px;
+                      padding: 0.55em 0.7em; min-width: 0; }
+    .cp-detail-tile .k { font-size: var(--fs-2xs); color: var(--text-3);
+                         text-transform: uppercase; letter-spacing: 0.08em;
+                         font-weight: 600; display: block; }
+    .cp-detail-tile .v { font-family: var(--mono); font-size: var(--fs-sm);
+                         color: var(--text); font-weight: 600; margin-top: 0.15em;
+                         display: block; word-break: break-all; line-height: 1.3; }
+    .cp-detail-foot { margin-top: 0.7em; display: flex; gap: 0.5em; flex-wrap: wrap; }
+    .cp-detail-action { font-size: var(--fs-xs); color: var(--cyan);
+                        border: 1px solid rgba(34,211,238,0.4);
+                        padding: 0.4em 0.85em; border-radius: 6px;
+                        background: rgba(34,211,238,0.05);
+                        font-weight: 600; cursor: pointer;
+                        text-decoration: none; display: inline-block; }
+    .cp-detail-action:hover { background: rgba(34,211,238,0.12); }
+
+    /* selection state on the SVG */
+    .cp-node-g { transition: opacity 0.3s ease; }
+    .cp-edge { transition: opacity 0.3s ease; }
+    .cp-svg.is-selecting .cp-node-g:not([data-active="1"]) { opacity: 0.22; }
+    .cp-svg.is-selecting .cp-edge:not([data-active="1"]) { opacity: 0.18; }
+    .cp-svg.is-selecting .cp-edge-2 { opacity: 0.18; }
+    .cp-svg.is-selecting .cp-labels text:not([data-active="1"]) { opacity: 0.25; }
+    .cp-node-g[data-selected="1"] .cp-node-halo { opacity: 1; }
+    .cp-node-g { cursor: pointer; }
+    .cp-glyph-legend.is-hidden { display: none; }
+    @media (max-width: 540px) {
+      .cp-detail-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .cp-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                gap: 0.55em; padding-top: 0.4em; }
+    .cp-stat  { background: var(--bg-card-2); border-radius: 9px;
+                padding: 0.55em 0.7em; }
+    .cp-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                  text-transform: uppercase; letter-spacing: 0.08em;
+                  font-weight: 600; display: block; }
+    .cp-stat .v { font-family: var(--mono); font-size: var(--fs-sm);
+                  color: var(--text); font-weight: 600; margin-top: 0.15em;
+                  display: block; }
+
+    /* reserve gauge */
+    .gauge-card { display: flex; flex-direction: column; align-items: center;
+                  text-align: center; min-height: 220px; }
+    .gauge-card .card-label { align-self: flex-start; }
+    .gauge-wrap { position: relative; width: 100%; max-width: 200px;
+                  margin: 0.6em auto 0.4em; }
+    .gauge-svg { width: 100%; display: block; }
+    .gauge-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 10;
+                   stroke-linecap: round; }
+    .gauge-fill  { fill: none; stroke: url(#gaugeGrad); stroke-width: 10;
+                   stroke-linecap: round;
+                   stroke-dasharray: 0 251;
+                   animation: gaugeIn 1.2s cubic-bezier(0.2,0.8,0.2,1) 0.2s forwards; }
+    @keyframes gaugeIn { to { stroke-dasharray: var(--gauge-target, 0) 251; } }
+    .gauge-center { position: absolute; left: 0; right: 0; bottom: 18%;
+                    text-align: center; }
+    .gauge-pct { font-family: var(--mono); font-size: 1.7rem; font-weight: 700;
+                 color: var(--text); letter-spacing: -0.025em; line-height: 1; }
+    .gauge-caption { font-size: var(--fs-2xs); text-transform: uppercase;
+                     letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
+                     margin-top: 0.3em; }
+    .gauge-end-labels { display: flex; justify-content: space-between;
+                        width: 100%; max-width: 200px; margin: -0.2em auto 0;
+                        font-size: 0.65rem; color: var(--text-3);
+                        font-family: var(--mono); }
+    .gauge-foot { font-size: var(--fs-xs); color: var(--text-2);
+                  margin-top: auto; padding-top: 0.7em; line-height: 1.5; }
+    .gauge-foot strong { color: var(--text); font-family: var(--mono); }
+
+    /* activity card */
+    .activity-card { display: flex; flex-direction: column; min-height: 220px; }
+    .activity-card .card-label { margin-bottom: 0.6em; }
+    .activity-pulse { display: inline-flex; align-items: center; gap: 0.45em;
+                      font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em;
+                      text-transform: uppercase; color: var(--success);
+                      margin-bottom: 0.7em; }
+    .activity-pulse .dot { width: 7px; height: 7px; border-radius: 50%;
+                           background: var(--success);
+                           box-shadow: 0 0 0 0 rgba(34,197,94,0.5);
+                           animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .activity-line { font-size: var(--fs-sm); color: var(--text);
+                     line-height: 1.55; margin: 0; }
+    .activity-stats { display: grid; grid-template-columns: repeat(2, 1fr);
+                      gap: 0.7em; margin-top: auto; padding-top: 1em;
+                      border-top: 1px solid var(--border); }
+    .activity-stat { background: var(--bg-card-2); border-radius: 9px;
+                     padding: 0.7em 0.85em; }
+    .activity-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                        text-transform: uppercase; letter-spacing: 0.08em;
+                        font-weight: 600; }
+    .activity-stat .v { font-family: var(--mono); font-size: var(--fs-md);
+                        font-weight: 600; color: var(--text); margin-top: 0.2em; }
+
+    /* ---------- Row 3: holdings + amm charts ---------- */
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* holdings */
+    .holding-row { display: grid; grid-template-columns: 1.1fr 2fr 1fr;
+                   gap: 0.8em; align-items: center;
+                   padding: 0.55em 0; }
+    .holding-row + .holding-row { border-top: 1px solid var(--border); }
+    .holding-name { font-weight: 600; font-size: var(--fs-sm); color: var(--text); }
+    .holding-issuer { font-size: var(--fs-2xs); color: var(--text-3);
+                      margin-top: 0.15em; font-family: var(--mono); }
+    .holding-bar { height: 6px; background: rgba(255,255,255,0.05);
+                   border-radius: 100px; overflow: hidden; }
+    .holding-bar-fill { height: 100%; background: var(--grad-primary); border-radius: 100px;
+                        width: 0;
+                        animation: barFill 0.85s cubic-bezier(0.2,0.8,0.2,1) forwards;
+                        animation-delay: calc(var(--i, 0) * 70ms); }
+    @keyframes barFill { to { width: var(--target-w, 0%); } }
+    .holding-bal { font-family: var(--mono); font-weight: 600; color: var(--text);
+                   font-size: var(--fs-sm); text-align: right; white-space: nowrap; }
+
+    details.show-more { margin-top: 0.7em; }
+    details.show-more > summary { cursor: pointer; list-style: none;
+                                  color: var(--text-2); font-size: var(--fs-xs);
+                                  padding: 0.5em 0.85em; border-radius: 7px;
+                                  border: 1px dashed var(--border-strong); }
+    details.show-more > summary:hover { color: var(--cyan); }
+    details.show-more[open] > summary { margin-bottom: 0.6em; }
+    details.show-more > summary::-webkit-details-marker { display: none; }
+    details.show-more > summary::before { content: "▸ "; color: var(--text-3); }
+    details.show-more[open] > summary::before { content: "▾ "; }
+    table.compact { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    table.compact th { text-align: left; font-size: var(--fs-2xs);
+                       text-transform: uppercase; letter-spacing: 0.08em;
+                       color: var(--text-3); font-weight: 600;
+                       padding: 0.5em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td { padding: 0.55em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td.mono { font-family: var(--mono); }
+
+    /* amm vertical bars */
+    .amm-chart { display: grid; grid-template-columns: repeat(5, 1fr);
+                 gap: 0.7em; align-items: end; height: 180px;
+                 margin: 0.6em 0 1em; padding: 0 0.2em; }
+    .amm-bar-col { display: flex; flex-direction: column; align-items: center;
+                   gap: 0.4em; height: 100%; justify-content: flex-end; }
+    .amm-bar-track { position: relative; width: 100%; max-width: 36px;
+                     flex: 1; display: flex; align-items: flex-end; }
+    .amm-bar { width: 100%; background: var(--grad-primary); border-radius: 6px 6px 0 0;
+               position: relative; height: 0;
+               animation: barGrow 1s cubic-bezier(0.2,0.8,0.2,1) forwards;
+               animation-delay: calc(var(--i, 0) * 80ms); }
+    @keyframes barGrow { to { height: var(--target-h, 0%); } }
+    .amm-bar-val { position: absolute; top: -1.4em; left: 50%; transform: translateX(-50%);
+                   font-family: var(--mono); font-size: 0.7rem; color: var(--text);
+                   font-weight: 600; white-space: nowrap; }
+    .amm-bar-label { font-size: var(--fs-2xs); color: var(--text-2);
+                     font-weight: 600; text-align: center; line-height: 1.2;
+                     letter-spacing: -0.01em; }
+    .amm-bar-fee { font-size: 0.62rem; color: var(--text-3); font-family: var(--mono);
+                   margin-top: 0.1em; }
+    .amm-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                      gap: 0.5em; padding-top: 0.9em;
+                      border-top: 1px solid var(--border); }
+    .amm-mini { display: flex; flex-direction: column; gap: 0.15em; }
+    .amm-mini .k { font-size: var(--fs-2xs); color: var(--text-3);
+                   text-transform: uppercase; letter-spacing: 0.08em;
+                   font-weight: 600; }
+    .amm-mini .v { font-family: var(--mono); font-size: var(--fs-sm);
+                   color: var(--text); font-weight: 600; }
+
+    /* ---------- Footer ---------- */
+    footer { margin-top: 2.5em; padding-top: 1.5em; border-top: 1px solid var(--border);
+             color: var(--text-3); font-size: var(--fs-xs); line-height: 1.65; }
+
+    /* ---------- Mobile ---------- */
+    @media (max-width: 980px) {
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .row-2 { grid-template-columns: 1fr; }
+      .row-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+      h1 { font-size: var(--fs-md); }
+      .balance-big { font-size: var(--fs-xl); }
+      .wrap { padding: 1.5em 1em 2em; }
+      .amm-chart { gap: 0.4em; }
+      .amm-bar-label { font-size: 0.6rem; }
+      .amm-mini-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="brand">
+        <h1>xrpldashboard</h1>
+        <span class="preview-badge">wallet · network mock</span>
+      </div>
+      <div class="header-meta">
+        <a href="/v2">← back to v2</a>
+      </div>
+    </header>
+
+    {# ========== KPI strip ========== #}
+    <section class="kpi-strip">
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Total XRP</span>
+          <div class="card-value">12,847</div>
+          <div class="card-sub"><span class="delta-up">99.8%</span> available</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 7v6l8 5 8-5V7l-8-5z"/><path d="M4 7l8 5 8-5"/><path d="M12 12v10"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Reserve locked</span>
+          <div class="card-value">23.4</div>
+          <div class="card-sub">XRP · 0.18% of balance</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">AMM positions</span>
+          <div class="card-value">5</div>
+          <div class="card-sub">pools providing liquidity</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Trustlines</span>
+          <div class="card-value">39</div>
+          <div class="card-sub">tokens held</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h10"/></svg>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 2: identity + reserve gauge + activity ========== #}
+    <section class="row-2">
+
+      <div class="card identity-card">
+        <div class="identity-top">
+          <div class="identity-greeting">Wallet</div>
+          <div class="identity-addr-row">
+            <span class="identity-addr">rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ</span>
+            <span class="qr-host" data-qr="rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ"
+                  title="Scan to view this wallet"></span>
+          </div>
+          <span class="identity-label">Sample wallet</span>
+        </div>
+
+        {# ---- Counterparty Network (entities the wallet has touched) ---- #}
+        <div class="cp-wrap" aria-hidden="true">
+          <div class="cp-head">
+            <span class="cp-tag"><span class="dot"></span> Live · Counterparty Network</span>
+            <span class="cp-meta">8 entities · 90 days</span>
+          </div>
+          <div class="cp-svg-wrap">
+            <svg class="cp-svg" viewBox="0 0 540 340" data-cp>
+              <defs>
+                <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"  stop-color="#3b82f6" stop-opacity="0.15"/>
+                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0.9"/>
+                </linearGradient>
+                <linearGradient id="edgeGrad2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"  stop-color="rgba(168,85,247,0.0)"/>
+                  <stop offset="50%" stop-color="rgba(168,85,247,0.45)"/>
+                  <stop offset="100%" stop-color="rgba(34,211,238,0.0)"/>
+                </linearGradient>
+                <linearGradient id="nodeGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"  stop-color="#22d3ee"/>
+                  <stop offset="100%" stop-color="#3b82f6"/>
+                </linearGradient>
+                <linearGradient id="ammGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"  stop-color="#a855f7"/>
+                  <stop offset="100%" stop-color="#3b82f6"/>
+                </linearGradient>
+                <linearGradient id="issuerGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"  stop-color="#22d3ee"/>
+                  <stop offset="100%" stop-color="#a855f7"/>
+                </linearGradient>
+                <radialGradient id="centerHalo" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stop-color="#22d3ee" stop-opacity="0.55"/>
+                  <stop offset="55%"  stop-color="#3b82f6" stop-opacity="0.18"/>
+                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="nodeHalo" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stop-color="#22d3ee" stop-opacity="0.45"/>
+                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="cpGlow" x="-200%" y="-200%" width="500%" height="500%">
+                  <feGaussianBlur stdDeviation="2.2"/>
+                </filter>
+                <filter id="cpSoftGlow" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="0.8" result="b"/>
+                  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="cpStarGlow" x="-200%" y="-200%" width="500%" height="500%">
+                  <feGaussianBlur stdDeviation="0.4"/>
+                </filter>
+              </defs>
+
+              {# Layer 1: ambient backdrop (faint micro-stars — built in JS) #}
+              <g class="cp-ambient"></g>
+
+              {# Layer 2: concentric reference rings #}
+              <circle cx="270" cy="170" r="130" fill="none"
+                      stroke="rgba(255,255,255,0.05)" stroke-width="0.6"
+                      stroke-dasharray="2 4"/>
+              <circle cx="270" cy="170" r="80" fill="none"
+                      stroke="rgba(255,255,255,0.03)" stroke-width="0.5"
+                      stroke-dasharray="2 4"/>
+
+              {# Layer 3: sonar ripples emanating from wallet center — 3 staggered waves #}
+              <g class="cp-sonar">
+                <circle cx="270" cy="170" r="20" fill="none"
+                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
+                  <animate attributeName="r" from="20" to="180"
+                           dur="5s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-opacity" from="0.55" to="0"
+                           dur="5s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-width" from="1" to="0.2"
+                           dur="5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="270" cy="170" r="20" fill="none"
+                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
+                  <animate attributeName="r" from="20" to="180"
+                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-opacity" from="0.55" to="0"
+                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-width" from="1" to="0.2"
+                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="270" cy="170" r="20" fill="none"
+                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
+                  <animate attributeName="r" from="20" to="180"
+                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-opacity" from="0.55" to="0"
+                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-width" from="1" to="0.2"
+                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
+                </circle>
+              </g>
+
+              {# Layer 4: secondary "constellation" edges — counterparty↔counterparty #}
+              <g class="cp-edges-secondary"></g>
+
+              {# Layer 5: primary edges (curved) + comet-tail pulses + outer nodes #}
+              <g class="cp-edges"></g>
+              <g class="cp-pulses"></g>
+
+              {# Layer 6: center wallet node #}
+              <circle cx="270" cy="170" r="36" fill="url(#centerHalo)">
+                <animate attributeName="r"        values="32;42;32" dur="3.4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity"  values="0.55;1;0.55"  dur="3.4s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="270" cy="170" r="16" fill="rgba(20,24,50,0.95)"
+                      stroke="url(#nodeGrad)" stroke-width="1.5" filter="url(#cpSoftGlow)"/>
+              <circle cx="270" cy="170" r="9" fill="url(#nodeGrad)"/>
+              <text x="270" y="194" text-anchor="middle" class="cp-you">YOU</text>
+
+              {# Layer 7: outer nodes (with type-specific glyphs) + labels #}
+              <g class="cp-nodes"></g>
+              <g class="cp-labels"></g>
+            </svg>
+          </div>
+          <div class="cp-glyph-legend">
+            <span class="cp-leg">
+              <svg class="cp-leg-glyph" viewBox="0 0 14 14" aria-hidden="true">
+                <polygon points="7,1.5 12,4.5 12,9.5 7,12.5 2,9.5 2,4.5"
+                         fill="rgba(20,24,50,0.95)" stroke="#22d3ee"
+                         stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+              Exchange <span class="cp-leg-count">3</span>
+            </span>
+            <span class="cp-leg">
+              <svg class="cp-leg-glyph" viewBox="0 0 14 14" aria-hidden="true">
+                <polygon points="7,1.5 12.5,7 7,12.5 1.5,7"
+                         fill="rgba(20,24,50,0.95)" stroke="#a855f7"
+                         stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+              AMM <span class="cp-leg-count">2</span>
+            </span>
+            <span class="cp-leg">
+              <svg class="cp-leg-glyph" viewBox="0 0 14 14" aria-hidden="true">
+                <rect x="2" y="2" width="10" height="10" rx="2" ry="2"
+                      fill="rgba(20,24,50,0.95)" stroke="#67a3f1" stroke-width="1.4"/>
+              </svg>
+              Issuer <span class="cp-leg-count">2</span>
+            </span>
+            <span class="cp-leg">
+              <svg class="cp-leg-glyph" viewBox="0 0 14 14" aria-hidden="true">
+                <circle cx="7" cy="7" r="5" fill="rgba(20,24,50,0.95)"
+                        stroke="rgba(140,160,200,0.85)" stroke-width="1.4"/>
+              </svg>
+              Peer <span class="cp-leg-count">1</span>
+            </span>
+          </div>
+
+          <div class="cp-detail" data-cp-detail aria-live="polite"></div>
+
+          <div class="cp-stats">
+            <div class="cp-stat"><span class="k">Entities</span><span class="v">8</span></div>
+            <div class="cp-stat"><span class="k">Active 30d</span><span class="v">6 / 8</span></div>
+            <div class="cp-stat"><span class="k">Top counterparty</span><span class="v">Gatehub · 38%</span></div>
+            <div class="cp-stat"><span class="k">90d txs</span><span class="v">312</span></div>
+          </div>
+        </div>
+
+        <div class="balance-block">
+          <div class="balance-big">12,847.36 XRP</div>
+          <div class="balance-sub">
+            <strong>12,823.96</strong> available · <strong>23.40</strong> reserved
+          </div>
+        </div>
+      </div>
+
+      <div class="card gauge-card">
+        <span class="card-label">Reserve usage</span>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 120">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#22d3ee"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+            </defs>
+            {# half-circle arc, r=80, length ~ pi*80 ~ 251 #}
+            <path class="gauge-track"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+            <path class="gauge-fill"
+                  style="--gauge-target: 0.45;"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct">0.18%</div>
+            <div class="gauge-caption">of balance locked</div>
+          </div>
+        </div>
+        <div class="gauge-end-labels">
+          <span>0%</span><span>100%</span>
+        </div>
+        <div class="gauge-foot">
+          10 XRP base + 44 owned objects × 0.2 XRP = <strong>23.4 XRP</strong> reserved.
+          Reserved XRP can't be sent.
+        </div>
+      </div>
+
+      <div class="card activity-card">
+        <span class="card-label">Activity</span>
+        <div class="activity-pulse"><span class="dot"></span> Recently active</div>
+        <p class="activity-line">
+          Last on-chain activity was within the past day. This account is active.
+        </p>
+        <div class="activity-stats">
+          <div class="activity-stat">
+            <div class="k">Owned objects</div>
+            <div class="v">44</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Last seen</div>
+            <div class="v">~3h ago</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">AMM positions</div>
+            <div class="v">5</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Trustlines</div>
+            <div class="v">39</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 3: holdings + AMM allocation ========== #}
+    <section class="row-3">
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.5em;">
+          <h2>Token holdings</h2>
+          <span class="meta">top 5 of 39</span>
+        </div>
+
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">RLUSD</div>
+            <div class="holding-issuer">rMxCKbE…hpEEHs</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 100%; --i: 0;"></div></div>
+          <div class="holding-bal">8,420.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USD.GH</div>
+            <div class="holding-issuer">rhub8VR…vhi8wD</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 62%; --i: 1;"></div></div>
+          <div class="holding-bal">5,210.43</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USDC</div>
+            <div class="holding-issuer">rcEGREd…oxBdSV</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 47%; --i: 2;"></div></div>
+          <div class="holding-bal">3,945.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">SOLO</div>
+            <div class="holding-issuer">rsoLo2S…Ghj1Px</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 38%; --i: 3;"></div></div>
+          <div class="holding-bal">14,200.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">CORE</div>
+            <div class="holding-issuer">rcoreNy…aaaaaa</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 22%; --i: 4;"></div></div>
+          <div class="holding-bal">1,142,055</div>
+        </div>
+
+        <details class="show-more">
+          <summary>Show all 39 trustlines</summary>
+          <table class="compact">
+            <thead>
+              <tr><th>Token</th><th>Issuer</th><th style="text-align:right;">Balance</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>XAH</td><td class="mono" style="color: var(--text-2);">rxAHb1…CDeFGh</td><td class="mono" style="text-align:right;">8,920.00</td></tr>
+              <tr><td>XSGD</td><td class="mono" style="color: var(--text-2);">rxsgD9R…7tQwXv</td><td class="mono" style="text-align:right;">2,000.00</td></tr>
+              <tr><td>FLR</td><td class="mono" style="color: var(--text-2);">rflar98…aabbcc</td><td class="mono" style="text-align:right;">412.50</td></tr>
+              <tr><td>EUR.GH</td><td class="mono" style="color: var(--text-2);">rhub8VR…vhi8wD</td><td class="mono" style="text-align:right;">340.21</td></tr>
+              <tr><td colspan="3" style="color: var(--text-3); text-align: center; padding: 0.9em;">… 30 more rows in real version …</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.3em;">
+          <h2>AMM allocation</h2>
+          <span class="meta">XRP committed per pool</span>
+        </div>
+
+        <div class="amm-chart">
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 24%; --i: 0;">
+                <span class="amm-bar-val">1,247</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>RLUSD</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 7%; --i: 1;">
+                <span class="amm-bar-val">342</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USD.GH</div>
+            <div class="amm-bar-fee">0.50%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 56%; --i: 2;">
+                <span class="amm-bar-val">2,890</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>SOLO</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 2%; --i: 3;">
+                <span class="amm-bar-val">98</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USDC</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 100%; --i: 4;">
+                <span class="amm-bar-val">5,100</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>CORE</div>
+            <div class="amm-bar-fee">1.00%</div>
+          </div>
+        </div>
+
+        <div class="amm-mini-stats">
+          <div class="amm-mini"><span class="k">Total LP</span><span class="v">9,677 XRP</span></div>
+          <div class="amm-mini"><span class="k">Avg fee</span><span class="v">0.48%</span></div>
+          <div class="amm-mini"><span class="k">Largest</span><span class="v">XRP/CORE</span></div>
+          <div class="amm-mini"><span class="k">Smallest</span><span class="v">XRP/USDC</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <footer>
+      Wallet preview · mock data only — no live XRPL calls.
+      Real version will call <code style="color: var(--cyan);">wallet_explainer.explain_wallet_cached(address)</code>.
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script>
+    /* Stylised wallet QR — scannable identity.
+       Encodes the XRPL address so a phone scan opens it in any wallet app.
+       Visual: cyan→blue gradient, rounded data dots, custom finder corners,
+       XRP "X" mark at center inside a white halo. Uses H-level error
+       correction (~30% redundancy) so the center logo doesn't break scanning.
+       The QR is naturally unique per wallet — every address produces a
+       different bit pattern. */
+    (function () {
+      function buildQR(addr) {
+        if (typeof qrcode !== 'function') return '<!-- QR lib missing -->';
+        var data = addr; // plain address — most universal for wallet scanners
+        var qr = qrcode(0, 'H');
+        qr.addData(data);
+        qr.make();
+        var n = qr.getModuleCount();
+        var SIZE = 100;
+        var cell = SIZE / n;
+        var dotR = cell * 0.42;
+
+        function isFinder(r, c) {
+          return (r < 7 && c < 7) ||
+                 (r < 7 && c >= n - 7) ||
+                 (r >= n - 7 && c < 7);
+        }
+
+        // Clear circular zone for center logo (~22% of width).
+        var cx0 = SIZE / 2, cy0 = SIZE / 2;
+        var clearR = SIZE * 0.13;
+
+        var dots = '';
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            if (!qr.isDark(r, c)) continue;
+            if (isFinder(r, c)) continue;
+            var x = (c + 0.5) * cell;
+            var y = (r + 0.5) * cell;
+            var dx = x - cx0, dy = y - cy0;
+            if (Math.sqrt(dx * dx + dy * dy) < clearR) continue;
+            dots += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) +
+                    '" r="' + dotR.toFixed(2) + '" fill="url(#qrGrad)"/>';
+          }
+        }
+
+        function finderAt(or, oc) {
+          var x = oc * cell, y = or * cell;
+          var w = 7 * cell;
+          var sw = cell;
+          // outer rounded square (stroke), inner filled square (gradient)
+          return '' +
+            '<rect x="' + (x + sw / 2).toFixed(2) +
+                '" y="' + (y + sw / 2).toFixed(2) +
+                '" width="' + (w - sw).toFixed(2) +
+                '" height="' + (w - sw).toFixed(2) +
+                '" rx="' + (cell * 1.6).toFixed(2) +
+                '" fill="none" stroke="url(#qrGrad)" stroke-width="' + sw.toFixed(2) + '"/>' +
+            '<rect x="' + (x + 2 * cell).toFixed(2) +
+                '" y="' + (y + 2 * cell).toFixed(2) +
+                '" width="' + (3 * cell).toFixed(2) +
+                '" height="' + (3 * cell).toFixed(2) +
+                '" rx="' + (cell * 0.8).toFixed(2) +
+                '" fill="url(#qrGrad)"/>';
+        }
+        var finders = finderAt(0, 0) + finderAt(0, n - 7) + finderAt(n - 7, 0);
+
+        // XRP "X" mark in the center clear zone, on a soft halo disc.
+        var logoR = clearR * 0.95;
+        var armEnd = logoR * 0.55;
+        var xStroke = cell * 1.6;
+        var logo =
+          '<circle cx="' + cx0 + '" cy="' + cy0 + '" r="' + logoR.toFixed(2) +
+            '" fill="rgba(20,24,50,0.92)" stroke="rgba(34,211,238,0.55)" stroke-width="0.6"/>' +
+          '<g stroke="url(#qrGrad)" stroke-width="' + xStroke.toFixed(2) +
+            '" stroke-linecap="round" fill="none">' +
+            '<line x1="' + (cx0 - armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 + armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+            '<line x1="' + (cx0 + armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 - armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+          '</g>';
+
+        return [
+          '<svg viewBox="0 0 ' + SIZE + ' ' + SIZE + '">',
+            '<defs>',
+              '<linearGradient id="qrGrad" x1="0" y1="0" x2="1" y2="1">',
+                '<stop offset="0%"  stop-color="#22d3ee"/>',
+                '<stop offset="100%" stop-color="#3b82f6"/>',
+              '</linearGradient>',
+            '</defs>',
+            dots,
+            finders,
+            logo,
+          '</svg>'
+        ].join('');
+      }
+
+      function renderAll() {
+        document.querySelectorAll('[data-qr]').forEach(function (host) {
+          var addr = host.dataset.qr || '';
+          if (!addr) return;
+          host.innerHTML = buildQR(addr);
+          host.removeAttribute('data-loading');
+        });
+      }
+
+      if (typeof qrcode === 'function') {
+        renderAll();
+      } else {
+        document.querySelectorAll('[data-qr]').forEach(function (h) {
+          h.setAttribute('data-loading', '1');
+        });
+        // qrcode lib loads as a separate <script>; if we ran first, retry once it's there
+        var tries = 0;
+        var iv = setInterval(function () {
+          tries++;
+          if (typeof qrcode === 'function') { clearInterval(iv); renderAll(); }
+          else if (tries > 40) { clearInterval(iv); }
+        }, 50);
+      }
+    })();
+
+    /* Counterparty Network — radial graph of entities the wallet has
+       interacted with on the XRPL. Layered visual:
+         - ambient backdrop (faint micro-stars)
+         - sonar ripples emanating from center (declared in markup)
+         - constellation edges between related counterparties (faint Bezier)
+         - primary curved Bezier edges from wallet → each counterparty
+         - comet-tail pulses traveling those edges
+         - outer nodes with type-specific glyphs (hex/diamond/rounded-sq/circle)
+         - center wallet node
+       Nodes carry a "type": exchange, amm, issuer, or peer. Glyph shape
+       reflects type; gradient fill reflects category. All values mocked. */
+    (function () {
+      var SVGNS = 'http://www.w3.org/2000/svg';
+      var svg = document.querySelector('[data-cp]');
+      if (!svg) return;
+
+      var cx = 270, cy = 170, ringR = 130;
+
+      var nodes = [
+        { name: 'Gatehub UK',     ang: -90,  w: 1.00, pct: 38, type: 'exchange',
+          labelDy: -22, anchor: 'middle',
+          detail: {
+            address: 'rGateHubUKxxxx...y3Z9',
+            country: 'United Kingdom',
+            txCount: 119,
+            volumeIn:  '4,820 XRP',
+            volumeOut: '1,210 XRP',
+            lastSeen: '~2h ago',
+            action: 'View 119 txs'
+          }
+        },
+        { name: 'Sologenic',      ang: -45,  w: 0.55, pct: 12, type: 'issuer',
+          labelDy: -14, labelDx: 14, anchor: 'start',
+          detail: {
+            token: 'SOLO',
+            yourBal: '14,200',
+            issuerRating: 'A',
+            issuedCount: '4 tokens',
+            trustlineSince: '2024-08-12',
+            lastSeen: '~3h ago',
+            action: 'View issuer profile'
+          }
+        },
+        { name: 'Bitstamp EU',    ang:   0,  w: 0.50, pct: 14, type: 'exchange',
+          labelDy:   4, labelDx: 20, anchor: 'start',
+          detail: {
+            address: 'rBitstampxxxx...kQ4t',
+            country: 'Luxembourg',
+            txCount: 44,
+            volumeIn:  '2,180 XRP',
+            volumeOut: '380 XRP',
+            lastSeen: '~6h ago',
+            action: 'View 44 txs'
+          }
+        },
+        { name: 'AMM · XRP/SOLO', ang:  45,  w: 0.70, pct: 10, type: 'amm',
+          labelDy:  20, labelDx: 14, anchor: 'start',
+          detail: {
+            pair: 'XRP / SOLO',
+            yourLp: '2,890 XRP',
+            sharePct: '0.18%',
+            poolTvl: '1.6M XRP',
+            feeTier: '0.30%',
+            feesEarned: '12.42 XRP',
+            action: 'View pool'
+          }
+        },
+        { name: 'Unknown',        ang:  90,  w: 0.30, pct:  4, type: 'peer',
+          labelDy:  22, anchor: 'middle',
+          detail: {
+            address: 'rN8x4kP9wQ7tF3...mLp7Z',
+            txCount: 6,
+            firstSeen: '2025-11-04',
+            lastSeen: '~5d ago',
+            action: 'Label this address'
+          }
+        },
+        { name: 'Bitso MX',       ang: 135,  w: 0.60, pct:  8, type: 'exchange',
+          labelDy:  20, labelDx: -14, anchor: 'end',
+          detail: {
+            address: 'rBitsoMxxxxx...vF2R',
+            country: 'Mexico',
+            txCount: 25,
+            volumeIn:  '1,420 XRP',
+            volumeOut: '92 XRP',
+            lastSeen: '~1d ago',
+            action: 'View 25 txs'
+          }
+        },
+        { name: 'AMM · XRP/CORE', ang: 180,  w: 0.45, pct:  8, type: 'amm',
+          labelDy:   4, labelDx: -20, anchor: 'end',
+          detail: {
+            pair: 'XRP / CORE',
+            yourLp: '5,100 XRP',
+            sharePct: '0.85%',
+            poolTvl: '600K XRP',
+            feeTier: '1.00%',
+            feesEarned: '38.91 XRP',
+            action: 'View pool'
+          }
+        },
+        { name: 'Ripple',         ang: -135, w: 0.50, pct:  6, type: 'issuer',
+          labelDy: -14, labelDx: -14, anchor: 'end',
+          detail: {
+            token: 'RLUSD',
+            yourBal: '8,420.00',
+            issuerRating: 'AAA',
+            issuedCount: '1 token',
+            trustlineSince: '2026-01-08',
+            lastSeen: '~4h ago',
+            action: 'View issuer profile'
+          }
+        }
+      ];
+
+      var ambientG    = svg.querySelector('.cp-ambient');
+      var secondaryG  = svg.querySelector('.cp-edges-secondary');
+      var edgesG      = svg.querySelector('.cp-edges');
+      var nodesG      = svg.querySelector('.cp-nodes');
+      var labelsG     = svg.querySelector('.cp-labels');
+      var pulsesG     = svg.querySelector('.cp-pulses');
+
+      function el(tag, attrs, parent) {
+        var n = document.createElementNS(SVGNS, tag);
+        for (var k in attrs) if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+        if (parent) parent.appendChild(n);
+        return n;
+      }
+
+      // ---------- Ambient backdrop (faint scattered stars) ----------
+      // Seeded pseudo-random so the layout is stable across reloads.
+      var seed = 1337;
+      function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+      var STAR_COUNT = 60;
+      for (var s = 0; s < STAR_COUNT; s++) {
+        var sx = 8 + rnd() * 524;
+        var sy = 8 + rnd() * 324;
+        // skip stars too close to the center wallet — would clutter
+        var ddx = sx - cx, ddy = sy - cy;
+        if (Math.sqrt(ddx * ddx + ddy * ddy) < 50) continue;
+        var sr = 0.4 + rnd() * 0.8;
+        var op = 0.10 + rnd() * 0.18;
+        var star = el('circle', {
+          cx: sx.toFixed(1), cy: sy.toFixed(1), r: sr.toFixed(2),
+          fill: rnd() < 0.25 ? '#a855f7' : '#22d3ee',
+          filter: 'url(#cpStarGlow)'
+        }, ambientG);
+        star.style.setProperty('--baseOp', op.toFixed(2));
+        star.style.opacity = op.toFixed(2);
+        star.style.animationDelay = (rnd() * 4).toFixed(2) + 's';
+      }
+
+      // ---------- Build curved Bezier edge for each node ----------
+      function bezierEdge(x, y, bow) {
+        // Quadratic Bezier; control point offset perpendicular to the line.
+        var mx = (cx + x) / 2, my = (cy + y) / 2;
+        var dx = x - cx, dy = y - cy;
+        var len = Math.sqrt(dx * dx + dy * dy) || 1;
+        // perpendicular (rotated 90° clockwise) — gives all edges a uniform swirl
+        var px = -dy / len, py = dx / len;
+        var ctlX = mx + px * bow;
+        var ctlY = my + py * bow;
+        return 'M' + cx + ',' + cy +
+               ' Q' + ctlX.toFixed(2) + ',' + ctlY.toFixed(2) +
+               ' '  + x.toFixed(2)    + ',' + y.toFixed(2);
+      }
+
+      nodes.forEach(function (node, i) {
+        var rad = node.ang * Math.PI / 180;
+        var x = cx + ringR * Math.cos(rad);
+        var y = cy + ringR * Math.sin(rad);
+        node.x = x; node.y = y;
+
+        var edgeId = 'cp-edge-' + i;
+        var bow = 18; // curve magnitude in px (uniform clockwise swirl)
+        var path = el('path', {
+          id: edgeId,
+          d: bezierEdge(x, y, bow),
+          fill: 'none',
+          stroke: (node.type === 'peer') ? 'rgba(120,140,180,0.32)' : 'url(#edgeGrad)',
+          'stroke-width': (0.6 + node.w * 2.4).toFixed(2),
+          'stroke-linecap': 'round',
+          opacity: 0,
+          class: 'cp-edge'
+        }, edgesG);
+        node.edgePath = path;
+        node.edgeId = edgeId;
+        setTimeout(function () { path.setAttribute('opacity', '1'); }, 200 + i * 90);
+      });
+
+      // ---------- Constellation edges (counterparty ↔ counterparty) ----------
+      function constellationEdge(a, b) {
+        var n1 = nodes[a], n2 = nodes[b];
+        var mx = (n1.x + n2.x) / 2, my = (n1.y + n2.y) / 2;
+        // bow outward from wallet center
+        var dxC = mx - cx, dyC = my - cy;
+        var len = Math.sqrt(dxC * dxC + dyC * dyC) || 1;
+        var bowOut = 24;
+        var ctlX = mx + (dxC / len) * bowOut;
+        var ctlY = my + (dyC / len) * bowOut;
+        var path = el('path', {
+          d: 'M' + n1.x.toFixed(2) + ',' + n1.y.toFixed(2) +
+             ' Q' + ctlX.toFixed(2) + ',' + ctlY.toFixed(2) +
+             ' '  + n2.x.toFixed(2) + ',' + n2.y.toFixed(2),
+          fill: 'none',
+          stroke: 'url(#edgeGrad2)',
+          'stroke-width': '0.9',
+          'stroke-dasharray': '2 4',
+          class: 'cp-edge-2'
+        }, secondaryG);
+        setTimeout(function () { path.style.opacity = '0.55'; }, 1200);
+      }
+      // (idx pairs based on node array above)
+      // Gatehub(0) ↔ Bitstamp(2), Sologenic(1) ↔ AMM·SOLO(3), Ripple(7) ↔ Gatehub(0)
+      constellationEdge(0, 2);
+      constellationEdge(1, 3);
+      constellationEdge(7, 0);
+
+      // ---------- Type-specific node glyphs ----------
+      // hex: exchange · diamond: amm · rounded square: issuer · circle: peer
+      function hexPolygon(r) {
+        var pts = [];
+        for (var k = 0; k < 6; k++) {
+          var a = (k * 60 - 90) * Math.PI / 180;
+          pts.push((r * Math.cos(a)).toFixed(2) + ',' + (r * Math.sin(a)).toFixed(2));
+        }
+        return pts.join(' ');
+      }
+      function diamondPolygon(r) {
+        return '0,' + (-r) + ' ' + r + ',0 ' + '0,' + r + ' ' + (-r) + ',0';
+      }
+
+      var typeStroke = {
+        exchange: 'url(#nodeGrad)',
+        amm:      'url(#ammGrad)',
+        issuer:   'url(#issuerGrad)',
+        peer:     'rgba(140,160,200,0.45)'
+      };
+      var typeFill = {
+        exchange: 'url(#nodeGrad)',
+        amm:      'url(#ammGrad)',
+        issuer:   'url(#issuerGrad)',
+        peer:     'rgba(140,160,200,0.55)'
+      };
+
+      nodes.forEach(function (node, idx) {
+        var nodeR = (node.type === 'peer') ? 5.5 : (8 + node.w * 4);
+        var g = el('g', {
+          class: 'cp-node-g',
+          'data-idx': idx,
+          transform: 'translate(' + node.x.toFixed(2) + ' ' + node.y.toFixed(2) + ')'
+        }, nodesG);
+        node.gEl = g;
+
+        // halo (hover only)
+        el('circle', { class: 'cp-node-halo', r: nodeR + 8, fill: 'url(#nodeHalo)' }, g);
+
+        var stroke = typeStroke[node.type];
+        var fill   = typeFill[node.type];
+        var outerFill = 'rgba(20,24,50,0.95)';
+        var swOuter = (node.type === 'peer') ? 1 : 1.4;
+
+        if (node.type === 'exchange') {
+          // hexagon outer + smaller hex core
+          el('polygon', {
+            points: hexPolygon(nodeR),
+            fill: outerFill, stroke: stroke, 'stroke-width': swOuter,
+            'stroke-linejoin': 'round'
+          }, g);
+          el('polygon', {
+            points: hexPolygon(nodeR - 4),
+            fill: fill
+          }, g);
+        } else if (node.type === 'amm') {
+          // diamond outer + smaller diamond core
+          el('polygon', {
+            points: diamondPolygon(nodeR + 0.5),
+            fill: outerFill, stroke: stroke, 'stroke-width': swOuter,
+            'stroke-linejoin': 'round'
+          }, g);
+          el('polygon', {
+            points: diamondPolygon(nodeR - 4),
+            fill: fill
+          }, g);
+        } else if (node.type === 'issuer') {
+          // rounded square
+          el('rect', {
+            x: (-nodeR).toFixed(2), y: (-nodeR).toFixed(2),
+            width: (nodeR * 2).toFixed(2), height: (nodeR * 2).toFixed(2),
+            rx: 2.5, ry: 2.5,
+            fill: outerFill, stroke: stroke, 'stroke-width': swOuter
+          }, g);
+          el('rect', {
+            x: (-(nodeR - 4)).toFixed(2), y: (-(nodeR - 4)).toFixed(2),
+            width: ((nodeR - 4) * 2).toFixed(2), height: ((nodeR - 4) * 2).toFixed(2),
+            rx: 1.5, ry: 1.5,
+            fill: fill
+          }, g);
+        } else {
+          // peer (circle)
+          el('circle', {
+            r: nodeR, fill: outerFill, stroke: stroke, 'stroke-width': swOuter
+          }, g);
+          el('circle', { r: nodeR - 3, fill: fill }, g);
+        }
+
+        // gentle breathing on the heaviest counterparty
+        if (node.type !== 'peer' && node.w > 0.8) {
+          var ring = el('circle', {
+            r: (nodeR + 3).toFixed(2),
+            fill: 'none', stroke: stroke, 'stroke-width': '0.6',
+            opacity: '0.55'
+          }, g);
+          el('animate', {
+            attributeName: 'r',
+            values: (nodeR + 3) + ';' + (nodeR + 8) + ';' + (nodeR + 3),
+            dur: '2.6s', repeatCount: 'indefinite'
+          }, ring);
+          el('animate', {
+            attributeName: 'opacity',
+            values: '0.55;0;0.55',
+            dur: '2.6s', repeatCount: 'indefinite'
+          }, ring);
+        }
+
+        // labels (known nodes only — peers stay anonymous)
+        node.labelEls = [];
+        if (node.type !== 'peer') {
+          var lx = node.x + (node.labelDx || 0);
+          var ly = node.y + node.labelDy;
+          var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: 'cp-label' }, labelsG);
+          nameLabel.textContent = node.name;
+          var pctLabel = el('text', { x: lx, y: ly + 11, 'text-anchor': node.anchor || 'middle', class: 'cp-pct' }, labelsG);
+          pctLabel.textContent = node.pct + '%';
+          node.labelEls = [nameLabel, pctLabel];
+        }
+      });
+
+      // ---------- Comet-tail pulses on top edges ----------
+      // For each chosen edge, spawn a head + a few trailing particles with
+      // staggered begin offsets — gives a fading comet effect along the path.
+      var pulseEdges = nodes
+        .map(function (n, i) { return { n: n, i: i }; })
+        .sort(function (a, b) { return b.n.w - a.n.w; })
+        .slice(0, 5);
+      var TRAIL_LEN = 5;
+      pulseEdges.forEach(function (item, k) {
+        var n = item.n;
+        var dur = (1.9 + (1 - n.w) * 1.3).toFixed(2);
+        var direction = (k % 2 === 0) ? '0;1' : '1;0';
+        var baseColor = (n.type === 'peer') ? 'rgba(140,160,200,0.85)'
+                                            : '#22d3ee';
+
+        for (var t = 0; t < TRAIL_LEN; t++) {
+          var falloff = 1 - (t / TRAIL_LEN);
+          var rDot = (n.type === 'peer' ? 1.6 : 2.6) * falloff + 0.4;
+          var op   = (0.20 + 0.75 * falloff).toFixed(2);
+          var dot = el('circle', {
+            r: rDot.toFixed(2),
+            fill: baseColor,
+            opacity: op,
+            filter: t === 0 ? 'url(#cpGlow)' : 'url(#cpStarGlow)'
+          }, pulsesG);
+          // stagger: tail particles begin slightly earlier so they appear behind the head
+          var begin = (k * 0.35 + t * 0.06).toFixed(3);
+          var motion = el('animateMotion', {
+            dur: dur + 's',
+            repeatCount: 'indefinite',
+            begin: begin + 's',
+            keyPoints: direction,
+            keyTimes: '0;1',
+            calcMode: 'linear'
+          }, dot);
+          el('mpath', { href: '#' + n.edgeId }, motion);
+        }
+      });
+
+      // ---------- Click-to-detail interaction ----------
+      var detailEl = document.querySelector('[data-cp-detail]');
+      var legendEl = document.querySelector('.cp-glyph-legend');
+      var selectedIdx = null;
+
+      var typeLabel = {
+        exchange: 'Exchange', amm: 'AMM Pool', issuer: 'Issuer', peer: 'Unknown peer'
+      };
+
+      function buildGlyph(type) {
+        if (type === 'exchange') {
+          return '<svg class="cp-detail-glyph" viewBox="0 0 14 14" aria-hidden="true">'
+               + '<polygon points="7,1.5 12,4.5 12,9.5 7,12.5 2,9.5 2,4.5"'
+               + ' fill="rgba(20,24,50,0.95)" stroke="#22d3ee"'
+               + ' stroke-width="1.4" stroke-linejoin="round"/></svg>';
+        }
+        if (type === 'amm') {
+          return '<svg class="cp-detail-glyph" viewBox="0 0 14 14" aria-hidden="true">'
+               + '<polygon points="7,1.5 12.5,7 7,12.5 1.5,7"'
+               + ' fill="rgba(20,24,50,0.95)" stroke="#a855f7"'
+               + ' stroke-width="1.4" stroke-linejoin="round"/></svg>';
+        }
+        if (type === 'issuer') {
+          return '<svg class="cp-detail-glyph" viewBox="0 0 14 14" aria-hidden="true">'
+               + '<rect x="2" y="2" width="10" height="10" rx="2" ry="2"'
+               + ' fill="rgba(20,24,50,0.95)" stroke="#67a3f1" stroke-width="1.4"/></svg>';
+        }
+        return '<svg class="cp-detail-glyph" viewBox="0 0 14 14" aria-hidden="true">'
+             + '<circle cx="7" cy="7" r="5" fill="rgba(20,24,50,0.95)"'
+             + ' stroke="rgba(140,160,200,0.85)" stroke-width="1.4"/></svg>';
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function tilesGrid(items) {
+        var html = '<div class="cp-detail-grid">';
+        items.forEach(function (it) {
+          html += '<div class="cp-detail-tile"><span class="k">' + escapeHtml(it[0])
+                + '</span><span class="v">' + escapeHtml(it[1]) + '</span></div>';
+        });
+        html += '</div>';
+        return html;
+      }
+
+      function detailTiles(node) {
+        var d = node.detail || {};
+        if (node.type === 'exchange') {
+          return [
+            ['Country', d.country], ['90d txs', d.txCount], ['Last seen', d.lastSeen],
+            ['Volume in', d.volumeIn], ['Volume out', d.volumeOut], ['Address', d.address]
+          ];
+        }
+        if (node.type === 'amm') {
+          return [
+            ['Pair', d.pair], ['Your LP', d.yourLp], ['Pool TVL', d.poolTvl],
+            ['Share', d.sharePct], ['Fee tier', d.feeTier], ['Fees earned', d.feesEarned]
+          ];
+        }
+        if (node.type === 'issuer') {
+          return [
+            ['Token', d.token], ['Your balance', d.yourBal], ['Rating', d.issuerRating],
+            ['Tokens issued', d.issuedCount], ['Trustline since', d.trustlineSince], ['Last seen', d.lastSeen]
+          ];
+        }
+        return [
+          ['Address', d.address], ['90d txs', d.txCount],
+          ['First seen', d.firstSeen], ['Last seen', d.lastSeen]
+        ];
+      }
+
+      function buildDetail(node) {
+        var html = '<div class="cp-detail-head">'
+                 + buildGlyph(node.type)
+                 + '<span class="cp-detail-name">' + escapeHtml(node.name) + '</span>'
+                 + '<span class="cp-detail-type" data-t="' + node.type + '">'
+                 + escapeHtml(typeLabel[node.type]) + '</span>'
+                 + '<span class="cp-detail-pct">' + node.pct + '% of flow</span>'
+                 + '<button type="button" class="cp-detail-close" data-cp-close aria-label="Close">×</button>'
+                 + '</div>'
+                 + tilesGrid(detailTiles(node))
+                 + '<div class="cp-detail-foot">'
+                 + '<button type="button" class="cp-detail-action">'
+                 + escapeHtml((node.detail && node.detail.action) || 'View details')
+                 + '</button></div>';
+        detailEl.innerHTML = html;
+      }
+
+      function selectNode(idx) {
+        if (selectedIdx === idx) { clearSelection(); return; }
+        clearSelection(true);
+        selectedIdx = idx;
+        var node = nodes[idx];
+
+        node.gEl.setAttribute('data-active', '1');
+        node.gEl.setAttribute('data-selected', '1');
+        if (node.edgePath) node.edgePath.setAttribute('data-active', '1');
+        node.labelEls.forEach(function (lbl) { lbl.setAttribute('data-active', '1'); });
+
+        svg.classList.add('is-selecting');
+        if (legendEl) legendEl.classList.add('is-hidden');
+        buildDetail(node);
+        detailEl.classList.add('is-open');
+      }
+
+      function clearSelection(silent) {
+        nodes.forEach(function (n) {
+          if (n.gEl) {
+            n.gEl.removeAttribute('data-active');
+            n.gEl.removeAttribute('data-selected');
+          }
+          if (n.edgePath) n.edgePath.removeAttribute('data-active');
+          (n.labelEls || []).forEach(function (lbl) { lbl.removeAttribute('data-active'); });
+        });
+        svg.classList.remove('is-selecting');
+        selectedIdx = null;
+        if (!silent) {
+          detailEl.classList.remove('is-open');
+          detailEl.innerHTML = '';
+          if (legendEl) legendEl.classList.remove('is-hidden');
+        }
+      }
+
+      nodes.forEach(function (node, idx) {
+        if (!node.gEl) return;
+        node.gEl.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          selectNode(idx);
+        });
+      });
+
+      detailEl.addEventListener('click', function (ev) {
+        if (ev.target.closest('[data-cp-close]')) {
+          clearSelection();
+        }
+      });
+
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && selectedIdx !== null) clearSelection();
+      });
+    })();
+  </script>
+</body>
+</html>

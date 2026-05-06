@@ -20,10 +20,23 @@ amm_pools.json
 scan_output/
 data/
 
+# Runtime state — generated, not source of truth
+amm_index.json
+amm_index_incremental.json
+amm_scan_state.json
+xrpl_stream_state.json
+amm_rank_state.json
+amm_ranked.json
+
 # DBs
 *.sqlite
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
+
+# Private partner call notes
+partner_conversations.md
 
 # OS
 .DS_Store

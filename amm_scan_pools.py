@@ -6,6 +6,7 @@ Queries multiple real XRPL AMM pools and displays them in a ranked table.
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo, LedgerCurrent
 from datetime import datetime, timezone
+import json
 import os
 import sys
 import threading
@@ -15,138 +16,51 @@ import time
 XRPL_NODE = "https://s1.ripple.com:51234"
 XRP_USD_PRICE = 1.44
 
+# Curated XRP/token AMM pool list now lives in token_names.json so it can
+# be edited (and contributed to via PR) without touching code. See
+# TOKEN_NAMES.md for the contribution flow.
+TOKEN_NAMES_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "token_names.json"
+)
+
+# Categories whose tokens we treat as USD-pegged for TVL math. Anything
+# outside this set returns usd_peg=None and TVL is shown as "estimated"
+# in the UI.
+USD_PEGGED_CATEGORIES = {"stablecoin"}
+
 # Server-side cache for scan results. Without this, every visitor triggers a
 # fresh round of N XRPL queries — at scale that's expensive (hosting bills,
 # rate limits, slow page loads). Cache TTL is the trade-off between data
-# freshness and load: at 60s the ledger advances ~12 ledgers, balances
-# barely move, and the page still feels live. Tunable via env var.
-SCAN_CACHE_TTL_SECONDS = int(os.environ.get("SCAN_CACHE_TTL_SECONDS", "60"))
+# freshness and load: at 30s the ledger advances ~8 ledgers, balances
+# barely move, and the page feels live. Tunable via env var.
+SCAN_CACHE_TTL_SECONDS = int(os.environ.get("SCAN_CACHE_TTL_SECONDS", "30"))
 _cache_lock = threading.Lock()
 _cache_state = {"data": None, "fetched_at": 0.0}
 
-KNOWN_TOKENS = [
-    # --- Stablecoins (USD-pegged) ---
-    {
-        "name": "RLUSD",
-        "currency": "524C555344000000000000000000000000000000",
-        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
-        "usd_peg": 1.00,
-    },
-    {
-        "name": "USDC",
-        "currency": "5553444300000000000000000000000000000000",
-        "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
-        "usd_peg": 1.00,
-    },
-    {
-        "name": "USD.Bitstamp",
-        "currency": "USD",
-        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
-        "usd_peg": 1.00,
-    },
-    {
-        "name": "USD.Gatehub",
-        "currency": "USD",
-        "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
-        "usd_peg": 1.00,
-    },
-    # --- Fiat (non-USD) ---
-    {
-        "name": "EUR.Gatehub",
-        "currency": "EUR",
-        "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
-        "usd_peg": None,
-    },
-    # --- Wrapped majors ---
-    {
-        "name": "BTC.Bitstamp",
-        "currency": "BTC",
-        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
-        "usd_peg": None,
-    },
-    {
-        "name": "BTC.Gatehub",
-        "currency": "BTC",
-        "issuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
-        "usd_peg": None,
-    },
-    {
-        "name": "ETH.Gatehub",
-        "currency": "ETH",
-        "issuer": "rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h",
-        "usd_peg": None,
-    },
-    # --- Native XRPL utility tokens ---
-    {
-        "name": "SOLO",
-        "currency": "534F4C4F00000000000000000000000000000000",
-        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
-        "usd_peg": None,
-    },
-    {
-        "name": "CSC",
-        "currency": "CSC",
-        "issuer": "rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr",
-        "usd_peg": None,
-    },
-    {
-        "name": "CORE",
-        "currency": "434F524500000000000000000000000000000000",
-        "issuer": "rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D",
-        "usd_peg": None,
-    },
-    {
-        "name": "ELS",
-        "currency": "ELS",
-        "issuer": "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg",
-        "usd_peg": None,
-    },
-    {
-        "name": "XPM",
-        "currency": "XPM",
-        "issuer": "rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa",
-        "usd_peg": None,
-    },
-    {
-        # currency hex spells "Equilibrium", display name is short form
-        "name": "EQ",
-        "currency": "457175696C69627269756D000000000000000000",
-        "issuer": "rpakCr61Q92abPXJnVboKENmpKssWyHpwu",
-        "usd_peg": None,
-    },
-    {
-        "name": "RPR",
-        "currency": "RPR",
-        "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
-        "usd_peg": None,
-    },
-    # --- Memecoins with real AMM TVL ---
-    {
-        "name": "XRdoge",
-        "currency": "5852646F67650000000000000000000000000000",
-        "issuer": "rLqUC2eCPohYvJCEBJ77eCCqVL2uEiczjA",
-        "usd_peg": None,
-    },
-    {
-        # lowercase "scrap" intentional
-        "name": "scrap",
-        "currency": "7363726170000000000000000000000000000000",
-        "issuer": "rGHtYnnigyuaHehWGfAdoEhkoirkGNdZzo",
-        "usd_peg": None,
-    },
-    {
-        "name": "PHNIX",
-        "currency": "50484E4958000000000000000000000000000000",
-        "issuer": "rDFXbW2ZZCG5WgPtqwNiA2xZokLMm9ivmN",
-        "usd_peg": None,
-    },
-    {
-        "name": "BERT",
-        "currency": "4245525400000000000000000000000000000000",
-        "issuer": "rpwAnF1mMZRszxdinETFHwzGQiPgsv3jHR",
-        "usd_peg": None,
-    },
-]
+def _load_known_tokens():
+    try:
+        with open(TOKEN_NAMES_PATH) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"WARN: could not load {TOKEN_NAMES_PATH}: {e}", file=sys.stderr)
+        return []
+    tokens = []
+    for entry in data.values():
+        if not isinstance(entry, dict):
+            continue
+        category = entry.get("category")
+        usd_peg = 1.00 if category in USD_PEGGED_CATEGORIES else None
+        tokens.append({
+            "name": entry["currency_display"],
+            "currency": entry["currency_hex"],
+            "issuer": entry["issuer"],
+            "usd_peg": usd_peg,
+            "category": category,
+        })
+    return tokens
+
+
+KNOWN_TOKENS = _load_known_tokens()
 
 
 def drops_to_xrp(drops):

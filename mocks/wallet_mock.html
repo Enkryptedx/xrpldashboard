@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>xrpldashboard · wallet preview (mock)</title>
+
+  <style>
+    /* ---------- Design tokens ---------- */
+    :root {
+      --bg: #0a0e27;
+      --bg-card: #141832;
+      --bg-card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+      --text: #e6e9f2;
+      --text-2: #8090b0;
+      --text-3: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-soft:    linear-gradient(135deg, rgba(34,211,238,0.18) 0%, rgba(59,130,246,0.18) 100%);
+
+      --fs-2xs: 0.69rem;
+      --fs-xs:  0.78rem;
+      --fs-sm:  0.875rem;
+      --fs-base:1rem;
+      --fs-md:  1.125rem;
+      --fs-lg:  1.4rem;
+      --fs-xl:  1.85rem;
+      --fs-2xl: 2.6rem;
+
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: var(--fs-base); line-height: 1.5; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.10), transparent 45%),
+        radial-gradient(circle at 90% 5%, rgba(168,85,247,0.07), transparent 40%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 2.2em 1.5em 3em; }
+
+    /* ---------- Header ---------- */
+    header { display: flex; justify-content: space-between; align-items: baseline;
+             margin-bottom: 1.6em; gap: 1em; flex-wrap: wrap; }
+    .brand { display: flex; align-items: baseline; gap: 0.7em; }
+    h1 { font-size: var(--fs-lg); margin: 0; font-weight: 700; letter-spacing: -0.025em;
+         background: var(--grad-primary); -webkit-background-clip: text;
+         background-clip: text; -webkit-text-fill-color: transparent; }
+    .preview-badge { font-size: var(--fs-2xs); color: var(--purple);
+                     border: 1px solid var(--purple); padding: 0.2em 0.55em;
+                     border-radius: 3px; text-transform: uppercase;
+                     letter-spacing: 0.1em; font-weight: 600; }
+    .header-meta { display: flex; align-items: center; gap: 1em;
+                   font-size: var(--fs-xs); color: var(--text-2); }
+    .header-meta a { color: var(--text-2); text-decoration: none; }
+    .header-meta a:hover { color: var(--cyan); }
+
+    /* ---------- Cards (shared) ---------- */
+    .card { background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.25em 1.4em; }
+    .card-label { font-size: var(--fs-2xs); text-transform: uppercase;
+                  letter-spacing: 0.1em; color: var(--text-2); font-weight: 600; }
+    .card-value { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600;
+                  margin: 0.3em 0 0.2em; line-height: 1.05; letter-spacing: -0.025em;
+                  color: var(--text); }
+    .card-sub { font-size: var(--fs-xs); color: var(--text-2); }
+    .card-sub .delta-up { color: var(--success); font-weight: 600; }
+    .card-sub .delta-flat { color: var(--text-2); }
+
+    .section-head { display: flex; justify-content: space-between; align-items: baseline;
+                    margin: 0 0 0.8em; }
+    .section-head h2 { font-size: var(--fs-md); font-weight: 600; margin: 0;
+                       color: var(--text); letter-spacing: -0.015em; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--text-3); }
+
+    /* ---------- KPI strip ---------- */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 1em; margin-bottom: 1.2em; }
+    .kpi { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
+    .kpi-text { min-width: 0; }
+    .kpi-text .card-label { display: block; margin-bottom: 0.2em; }
+    .kpi-text .card-value { font-size: var(--fs-lg); margin: 0; }
+    .kpi-icon { width: 44px; height: 44px; border-radius: 11px;
+                background: var(--grad-primary); display: flex;
+                align-items: center; justify-content: center; flex-shrink: 0;
+                box-shadow: 0 8px 24px rgba(34,211,238,0.18); color: white; }
+    .kpi-icon svg { width: 22px; height: 22px; stroke: white; stroke-width: 2;
+                    fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Row 2: identity + reserve gauge + activity ---------- */
+    .row-2 { display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* identity card */
+    .identity-card { position: relative; overflow: hidden;
+                     border: 1px solid var(--border-strong);
+                     display: flex; flex-direction: column; }
+    .identity-card::before { content: ""; position: absolute; inset: 0;
+                             background: var(--grad-primary); opacity: 0.07;
+                             pointer-events: none; }
+    .identity-top { position: relative; }
+    .identity-greeting { font-size: var(--fs-xs); color: var(--text-2);
+                         text-transform: uppercase; letter-spacing: 0.1em;
+                         font-weight: 600; margin-bottom: 0.5em; }
+    .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
+                         flex-wrap: wrap; }
+    .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+                     color: var(--text); letter-spacing: -0.01em;
+                     word-break: break-all; line-height: 1.3; }
+    .identity-label { display: inline-block; font-size: var(--fs-2xs);
+                      color: var(--cyan); border: 1px solid rgba(34,211,238,0.4);
+                      padding: 2px 8px; border-radius: 4px; font-weight: 600;
+                      letter-spacing: 0.06em; text-transform: uppercase;
+                      margin-top: 0.55em; }
+    .balance-block { position: relative; margin-top: auto;
+                     padding-top: 0.9em; border-top: 1px solid var(--border); }
+    .balance-big { font-family: var(--mono); font-size: var(--fs-2xl); font-weight: 600;
+                   letter-spacing: -0.025em; line-height: 1.05;
+                   background: var(--grad-primary); -webkit-background-clip: text;
+                   background-clip: text; -webkit-text-fill-color: transparent;
+                   margin: 0.1em 0 0.15em; }
+    .balance-sub { font-size: var(--fs-xs); color: var(--text-2);
+                   font-family: var(--mono); }
+    .balance-sub strong { color: var(--text); }
+
+    /* ---------- Wallet QR (scannable identity) ---------- */
+    .qr-host { display: inline-flex; vertical-align: middle;
+               width: 96px; height: 96px;
+               padding: 6px; border-radius: 12px;
+               background: rgba(255,255,255,0.04);
+               border: 1px solid var(--border-strong);
+               box-shadow: 0 4px 18px rgba(34,211,238,0.08);
+               transition: transform 0.2s ease, box-shadow 0.2s ease;
+               cursor: pointer; }
+    .qr-host:hover { transform: scale(1.04);
+                     box-shadow: 0 6px 26px rgba(34,211,238,0.22); }
+    .qr-host svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .qr-host[data-loading="1"] { background: rgba(255,255,255,0.02); }
+
+    /* ---------- Wallet Pulse (live activity heartbeat) ---------- */
+    .pulse-wrap { position: relative; flex: 1;
+                  display: flex; flex-direction: column;
+                  margin: 0.9em 0 0.5em; gap: 0.6em; }
+    .pulse-head { display: flex; justify-content: space-between; align-items: center;
+                  gap: 1em; flex-wrap: wrap; }
+    .pulse-tag { display: inline-flex; align-items: center; gap: 0.45em;
+                 font-size: var(--fs-2xs); font-weight: 600;
+                 text-transform: uppercase; letter-spacing: 0.1em;
+                 color: var(--cyan); }
+    .pulse-tag .dot { width: 7px; height: 7px; border-radius: 50%;
+                      background: var(--cyan);
+                      box-shadow: 0 0 0 0 rgba(34,211,238,0.5);
+                      animation: pulseTagDot 1.8s infinite; }
+    @keyframes pulseTagDot {
+      0%   { box-shadow: 0 0 0 0 rgba(34,211,238,0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(34,211,238,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); }
+    }
+    .pulse-meta { font-size: var(--fs-2xs); color: var(--text-3);
+                  text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .pulse-svg-wrap { position: relative; width: 100%;
+                      background: linear-gradient(180deg,
+                        rgba(34,211,238,0.05) 0%, rgba(0,0,0,0) 100%);
+                      border: 1px solid var(--border);
+                      border-radius: 10px;
+                      overflow: hidden; padding: 8px 4px 4px; }
+    .pulse-svg { width: 100%; height: 150px; display: block; overflow: visible; }
+    .pulse-line { transition: stroke-dashoffset 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s; }
+    .pulse-area { transition: opacity 1s ease 1s; }
+    .pulse-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                   gap: 0.55em; padding-top: 0.4em; }
+    .pulse-stat { background: var(--bg-card-2); border-radius: 9px;
+                  padding: 0.55em 0.7em; }
+    .pulse-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                     text-transform: uppercase; letter-spacing: 0.08em;
+                     font-weight: 600; display: block; }
+    .pulse-stat .v { font-family: var(--mono); font-size: var(--fs-sm);
+                     color: var(--text); font-weight: 600; margin-top: 0.15em;
+                     display: block; }
+
+    /* reserve gauge */
+    .gauge-card { display: flex; flex-direction: column; align-items: center;
+                  text-align: center; min-height: 220px; }
+    .gauge-card .card-label { align-self: flex-start; }
+    .gauge-wrap { position: relative; width: 100%; max-width: 200px;
+                  margin: 0.6em auto 0.4em; }
+    .gauge-svg { width: 100%; display: block; }
+    .gauge-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 10;
+                   stroke-linecap: round; }
+    .gauge-fill  { fill: none; stroke: url(#gaugeGrad); stroke-width: 10;
+                   stroke-linecap: round;
+                   stroke-dasharray: 0 251;
+                   animation: gaugeIn 1.2s cubic-bezier(0.2,0.8,0.2,1) 0.2s forwards; }
+    @keyframes gaugeIn { to { stroke-dasharray: var(--gauge-target, 0) 251; } }
+    .gauge-center { position: absolute; left: 0; right: 0; bottom: 18%;
+                    text-align: center; }
+    .gauge-pct { font-family: var(--mono); font-size: 1.7rem; font-weight: 700;
+                 color: var(--text); letter-spacing: -0.025em; line-height: 1; }
+    .gauge-caption { font-size: var(--fs-2xs); text-transform: uppercase;
+                     letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
+                     margin-top: 0.3em; }
+    .gauge-end-labels { display: flex; justify-content: space-between;
+                        width: 100%; max-width: 200px; margin: -0.2em auto 0;
+                        font-size: 0.65rem; color: var(--text-3);
+                        font-family: var(--mono); }
+    .gauge-foot { font-size: var(--fs-xs); color: var(--text-2);
+                  margin-top: auto; padding-top: 0.7em; line-height: 1.5; }
+    .gauge-foot strong { color: var(--text); font-family: var(--mono); }
+
+    /* activity card */
+    .activity-card { display: flex; flex-direction: column; min-height: 220px; }
+    .activity-card .card-label { margin-bottom: 0.6em; }
+    .activity-pulse { display: inline-flex; align-items: center; gap: 0.45em;
+                      font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em;
+                      text-transform: uppercase; color: var(--success);
+                      margin-bottom: 0.7em; }
+    .activity-pulse .dot { width: 7px; height: 7px; border-radius: 50%;
+                           background: var(--success);
+                           box-shadow: 0 0 0 0 rgba(34,197,94,0.5);
+                           animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .activity-line { font-size: var(--fs-sm); color: var(--text);
+                     line-height: 1.55; margin: 0; }
+    .activity-stats { display: grid; grid-template-columns: repeat(2, 1fr);
+                      gap: 0.7em; margin-top: auto; padding-top: 1em;
+                      border-top: 1px solid var(--border); }
+    .activity-stat { background: var(--bg-card-2); border-radius: 9px;
+                     padding: 0.7em 0.85em; }
+    .activity-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                        text-transform: uppercase; letter-spacing: 0.08em;
+                        font-weight: 600; }
+    .activity-stat .v { font-family: var(--mono); font-size: var(--fs-md);
+                        font-weight: 600; color: var(--text); margin-top: 0.2em; }
+
+    /* ---------- Row 3: holdings + amm charts ---------- */
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* holdings */
+    .holding-row { display: grid; grid-template-columns: 1.1fr 2fr 1fr;
+                   gap: 0.8em; align-items: center;
+                   padding: 0.55em 0; }
+    .holding-row + .holding-row { border-top: 1px solid var(--border); }
+    .holding-name { font-weight: 600; font-size: var(--fs-sm); color: var(--text); }
+    .holding-issuer { font-size: var(--fs-2xs); color: var(--text-3);
+                      margin-top: 0.15em; font-family: var(--mono); }
+    .holding-bar { height: 6px; background: rgba(255,255,255,0.05);
+                   border-radius: 100px; overflow: hidden; }
+    .holding-bar-fill { height: 100%; background: var(--grad-primary); border-radius: 100px;
+                        width: 0;
+                        animation: barFill 0.85s cubic-bezier(0.2,0.8,0.2,1) forwards;
+                        animation-delay: calc(var(--i, 0) * 70ms); }
+    @keyframes barFill { to { width: var(--target-w, 0%); } }
+    .holding-bal { font-family: var(--mono); font-weight: 600; color: var(--text);
+                   font-size: var(--fs-sm); text-align: right; white-space: nowrap; }
+
+    details.show-more { margin-top: 0.7em; }
+    details.show-more > summary { cursor: pointer; list-style: none;
+                                  color: var(--text-2); font-size: var(--fs-xs);
+                                  padding: 0.5em 0.85em; border-radius: 7px;
+                                  border: 1px dashed var(--border-strong); }
+    details.show-more > summary:hover { color: var(--cyan); }
+    details.show-more[open] > summary { margin-bottom: 0.6em; }
+    details.show-more > summary::-webkit-details-marker { display: none; }
+    details.show-more > summary::before { content: "▸ "; color: var(--text-3); }
+    details.show-more[open] > summary::before { content: "▾ "; }
+    table.compact { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    table.compact th { text-align: left; font-size: var(--fs-2xs);
+                       text-transform: uppercase; letter-spacing: 0.08em;
+                       color: var(--text-3); font-weight: 600;
+                       padding: 0.5em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td { padding: 0.55em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td.mono { font-family: var(--mono); }
+
+    /* amm vertical bars */
+    .amm-chart { display: grid; grid-template-columns: repeat(5, 1fr);
+                 gap: 0.7em; align-items: end; height: 180px;
+                 margin: 0.6em 0 1em; padding: 0 0.2em; }
+    .amm-bar-col { display: flex; flex-direction: column; align-items: center;
+                   gap: 0.4em; height: 100%; justify-content: flex-end; }
+    .amm-bar-track { position: relative; width: 100%; max-width: 36px;
+                     flex: 1; display: flex; align-items: flex-end; }
+    .amm-bar { width: 100%; background: var(--grad-primary); border-radius: 6px 6px 0 0;
+               position: relative; height: 0;
+               animation: barGrow 1s cubic-bezier(0.2,0.8,0.2,1) forwards;
+               animation-delay: calc(var(--i, 0) * 80ms); }
+    @keyframes barGrow { to { height: var(--target-h, 0%); } }
+    .amm-bar-val { position: absolute; top: -1.4em; left: 50%; transform: translateX(-50%);
+                   font-family: var(--mono); font-size: 0.7rem; color: var(--text);
+                   font-weight: 600; white-space: nowrap; }
+    .amm-bar-label { font-size: var(--fs-2xs); color: var(--text-2);
+                     font-weight: 600; text-align: center; line-height: 1.2;
+                     letter-spacing: -0.01em; }
+    .amm-bar-fee { font-size: 0.62rem; color: var(--text-3); font-family: var(--mono);
+                   margin-top: 0.1em; }
+    .amm-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                      gap: 0.5em; padding-top: 0.9em;
+                      border-top: 1px solid var(--border); }
+    .amm-mini { display: flex; flex-direction: column; gap: 0.15em; }
+    .amm-mini .k { font-size: var(--fs-2xs); color: var(--text-3);
+                   text-transform: uppercase; letter-spacing: 0.08em;
+                   font-weight: 600; }
+    .amm-mini .v { font-family: var(--mono); font-size: var(--fs-sm);
+                   color: var(--text); font-weight: 600; }
+
+    /* ---------- Footer ---------- */
+    footer { margin-top: 2.5em; padding-top: 1.5em; border-top: 1px solid var(--border);
+             color: var(--text-3); font-size: var(--fs-xs); line-height: 1.65; }
+
+    /* ---------- Mobile ---------- */
+    @media (max-width: 980px) {
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .row-2 { grid-template-columns: 1fr; }
+      .row-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+      h1 { font-size: var(--fs-md); }
+      .balance-big { font-size: var(--fs-xl); }
+      .wrap { padding: 1.5em 1em 2em; }
+      .amm-chart { gap: 0.4em; }
+      .amm-bar-label { font-size: 0.6rem; }
+      .amm-mini-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="brand">
+        <h1>xrpldashboard</h1>
+        <span class="preview-badge">wallet · mock</span>
+      </div>
+      <div class="header-meta">
+        <a href="/v2">← back to v2</a>
+      </div>
+    </header>
+
+    {# ========== KPI strip ========== #}
+    <section class="kpi-strip">
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Total XRP</span>
+          <div class="card-value">12,847</div>
+          <div class="card-sub"><span class="delta-up">99.8%</span> available</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 7v6l8 5 8-5V7l-8-5z"/><path d="M4 7l8 5 8-5"/><path d="M12 12v10"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Reserve locked</span>
+          <div class="card-value">23.4</div>
+          <div class="card-sub">XRP · 0.18% of balance</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">AMM positions</span>
+          <div class="card-value">5</div>
+          <div class="card-sub">pools providing liquidity</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Trustlines</span>
+          <div class="card-value">39</div>
+          <div class="card-sub">tokens held</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h10"/></svg>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 2: identity + reserve gauge + activity ========== #}
+    <section class="row-2">
+
+      <div class="card identity-card">
+        <div class="identity-top">
+          <div class="identity-greeting">Wallet</div>
+          <div class="identity-addr-row">
+            <span class="identity-addr">rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ</span>
+            <span class="qr-host" data-qr="rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ"
+                  title="Scan to view this wallet"></span>
+          </div>
+          <span class="identity-label">Sample wallet</span>
+        </div>
+
+        {# ---- Wallet Pulse (on-chain activity heartbeat) ---- #}
+        <div class="pulse-wrap" aria-hidden="true">
+          <div class="pulse-head">
+            <span class="pulse-tag"><span class="dot"></span> Live · Wallet Pulse</span>
+            <span class="pulse-meta">Last 30 days</span>
+          </div>
+          <div class="pulse-svg-wrap">
+            <svg class="pulse-svg" viewBox="0 0 600 180" preserveAspectRatio="none" data-pulse>
+              <defs>
+                <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.45"/>
+                  <stop offset="55%" stop-color="#22d3ee"/>
+                  <stop offset="100%" stop-color="#3b82f6"/>
+                </linearGradient>
+                <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.22"/>
+                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+                </linearGradient>
+                <filter id="pulseDotGlow" x="-200%" y="-200%" width="500%" height="500%">
+                  <feGaussianBlur stdDeviation="1.6"/>
+                </filter>
+              </defs>
+
+              {# baseline grid #}
+              <line x1="0" y1="140" x2="600" y2="140"
+                    stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="2 4"/>
+              <line x1="0" y1="80"  x2="600" y2="80"
+                    stroke="rgba(255,255,255,0.03)" stroke-width="0.5" stroke-dasharray="2 4"/>
+              <line x1="0" y1="30"  x2="600" y2="30"
+                    stroke="rgba(255,255,255,0.03)" stroke-width="0.5" stroke-dasharray="2 4"/>
+
+              {# per-day ambient bars (built in JS) #}
+              <g class="pulse-bars"></g>
+              {# area fill below the line #}
+              <path class="pulse-area" fill="url(#pulseFill)" opacity="0"/>
+              {# the ECG line itself #}
+              <path class="pulse-line" fill="none" stroke="url(#pulseGrad)"
+                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              {# pulsing endpoint dot (positioned in JS) #}
+              <circle class="pulse-dot" r="3.5" fill="#22d3ee" filter="url(#pulseDotGlow)">
+                <animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+          </div>
+          <div class="pulse-stats">
+            <div class="pulse-stat"><span class="k">30d txs</span><span class="v">167</span></div>
+            <div class="pulse-stat"><span class="k">Active</span><span class="v">21/30 days</span></div>
+            <div class="pulse-stat"><span class="k">Peak</span><span class="v">24 · day 20</span></div>
+            <div class="pulse-stat"><span class="k">Last seen</span><span class="v">~3h ago</span></div>
+          </div>
+        </div>
+
+        <div class="balance-block">
+          <div class="balance-big">12,847.36 XRP</div>
+          <div class="balance-sub">
+            <strong>12,823.96</strong> available · <strong>23.40</strong> reserved
+          </div>
+        </div>
+      </div>
+
+      <div class="card gauge-card">
+        <span class="card-label">Reserve usage</span>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 120">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#22d3ee"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+            </defs>
+            {# half-circle arc, r=80, length ~ pi*80 ~ 251 #}
+            <path class="gauge-track"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+            <path class="gauge-fill"
+                  style="--gauge-target: 0.45;"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct">0.18%</div>
+            <div class="gauge-caption">of balance locked</div>
+          </div>
+        </div>
+        <div class="gauge-end-labels">
+          <span>0%</span><span>100%</span>
+        </div>
+        <div class="gauge-foot">
+          10 XRP base + 44 owned objects × 0.2 XRP = <strong>23.4 XRP</strong> reserved.
+          Reserved XRP can't be sent.
+        </div>
+      </div>
+
+      <div class="card activity-card">
+        <span class="card-label">Activity</span>
+        <div class="activity-pulse"><span class="dot"></span> Recently active</div>
+        <p class="activity-line">
+          Last on-chain activity was within the past day. This account is active.
+        </p>
+        <div class="activity-stats">
+          <div class="activity-stat">
+            <div class="k">Owned objects</div>
+            <div class="v">44</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Last seen</div>
+            <div class="v">~3h ago</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">AMM positions</div>
+            <div class="v">5</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Trustlines</div>
+            <div class="v">39</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 3: holdings + AMM allocation ========== #}
+    <section class="row-3">
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.5em;">
+          <h2>Token holdings</h2>
+          <span class="meta">top 5 of 39</span>
+        </div>
+
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">RLUSD</div>
+            <div class="holding-issuer">rMxCKbE…hpEEHs</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 100%; --i: 0;"></div></div>
+          <div class="holding-bal">8,420.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USD.GH</div>
+            <div class="holding-issuer">rhub8VR…vhi8wD</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 62%; --i: 1;"></div></div>
+          <div class="holding-bal">5,210.43</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USDC</div>
+            <div class="holding-issuer">rcEGREd…oxBdSV</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 47%; --i: 2;"></div></div>
+          <div class="holding-bal">3,945.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">SOLO</div>
+            <div class="holding-issuer">rsoLo2S…Ghj1Px</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 38%; --i: 3;"></div></div>
+          <div class="holding-bal">14,200.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">CORE</div>
+            <div class="holding-issuer">rcoreNy…aaaaaa</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 22%; --i: 4;"></div></div>
+          <div class="holding-bal">1,142,055</div>
+        </div>
+
+        <details class="show-more">
+          <summary>Show all 39 trustlines</summary>
+          <table class="compact">
+            <thead>
+              <tr><th>Token</th><th>Issuer</th><th style="text-align:right;">Balance</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>XAH</td><td class="mono" style="color: var(--text-2);">rxAHb1…CDeFGh</td><td class="mono" style="text-align:right;">8,920.00</td></tr>
+              <tr><td>XSGD</td><td class="mono" style="color: var(--text-2);">rxsgD9R…7tQwXv</td><td class="mono" style="text-align:right;">2,000.00</td></tr>
+              <tr><td>FLR</td><td class="mono" style="color: var(--text-2);">rflar98…aabbcc</td><td class="mono" style="text-align:right;">412.50</td></tr>
+              <tr><td>EUR.GH</td><td class="mono" style="color: var(--text-2);">rhub8VR…vhi8wD</td><td class="mono" style="text-align:right;">340.21</td></tr>
+              <tr><td colspan="3" style="color: var(--text-3); text-align: center; padding: 0.9em;">… 30 more rows in real version …</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.3em;">
+          <h2>AMM allocation</h2>
+          <span class="meta">XRP committed per pool</span>
+        </div>
+
+        <div class="amm-chart">
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 24%; --i: 0;">
+                <span class="amm-bar-val">1,247</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>RLUSD</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 7%; --i: 1;">
+                <span class="amm-bar-val">342</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USD.GH</div>
+            <div class="amm-bar-fee">0.50%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 56%; --i: 2;">
+                <span class="amm-bar-val">2,890</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>SOLO</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 2%; --i: 3;">
+                <span class="amm-bar-val">98</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USDC</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 100%; --i: 4;">
+                <span class="amm-bar-val">5,100</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>CORE</div>
+            <div class="amm-bar-fee">1.00%</div>
+          </div>
+        </div>
+
+        <div class="amm-mini-stats">
+          <div class="amm-mini"><span class="k">Total LP</span><span class="v">9,677 XRP</span></div>
+          <div class="amm-mini"><span class="k">Avg fee</span><span class="v">0.48%</span></div>
+          <div class="amm-mini"><span class="k">Largest</span><span class="v">XRP/CORE</span></div>
+          <div class="amm-mini"><span class="k">Smallest</span><span class="v">XRP/USDC</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <footer>
+      Wallet preview · mock data only — no live XRPL calls.
+      Real version will call <code style="color: var(--cyan);">wallet_explainer.explain_wallet_cached(address)</code>.
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script>
+    /* Stylised wallet QR — scannable identity.
+       Encodes the XRPL address so a phone scan opens it in any wallet app.
+       Visual: cyan→blue gradient, rounded data dots, custom finder corners,
+       XRP "X" mark at center inside a white halo. Uses H-level error
+       correction (~30% redundancy) so the center logo doesn't break scanning.
+       The QR is naturally unique per wallet — every address produces a
+       different bit pattern. */
+    (function () {
+      function buildQR(addr) {
+        if (typeof qrcode !== 'function') return '<!-- QR lib missing -->';
+        var data = addr; // plain address — most universal for wallet scanners
+        var qr = qrcode(0, 'H');
+        qr.addData(data);
+        qr.make();
+        var n = qr.getModuleCount();
+        var SIZE = 100;
+        var cell = SIZE / n;
+        var dotR = cell * 0.42;
+
+        function isFinder(r, c) {
+          return (r < 7 && c < 7) ||
+                 (r < 7 && c >= n - 7) ||
+                 (r >= n - 7 && c < 7);
+        }
+
+        // Clear circular zone for center logo (~22% of width).
+        var cx0 = SIZE / 2, cy0 = SIZE / 2;
+        var clearR = SIZE * 0.13;
+
+        var dots = '';
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            if (!qr.isDark(r, c)) continue;
+            if (isFinder(r, c)) continue;
+            var x = (c + 0.5) * cell;
+            var y = (r + 0.5) * cell;
+            var dx = x - cx0, dy = y - cy0;
+            if (Math.sqrt(dx * dx + dy * dy) < clearR) continue;
+            dots += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) +
+                    '" r="' + dotR.toFixed(2) + '" fill="url(#qrGrad)"/>';
+          }
+        }
+
+        function finderAt(or, oc) {
+          var x = oc * cell, y = or * cell;
+          var w = 7 * cell;
+          var sw = cell;
+          // outer rounded square (stroke), inner filled square (gradient)
+          return '' +
+            '<rect x="' + (x + sw / 2).toFixed(2) +
+                '" y="' + (y + sw / 2).toFixed(2) +
+                '" width="' + (w - sw).toFixed(2) +
+                '" height="' + (w - sw).toFixed(2) +
+                '" rx="' + (cell * 1.6).toFixed(2) +
+                '" fill="none" stroke="url(#qrGrad)" stroke-width="' + sw.toFixed(2) + '"/>' +
+            '<rect x="' + (x + 2 * cell).toFixed(2) +
+                '" y="' + (y + 2 * cell).toFixed(2) +
+                '" width="' + (3 * cell).toFixed(2) +
+                '" height="' + (3 * cell).toFixed(2) +
+                '" rx="' + (cell * 0.8).toFixed(2) +
+                '" fill="url(#qrGrad)"/>';
+        }
+        var finders = finderAt(0, 0) + finderAt(0, n - 7) + finderAt(n - 7, 0);
+
+        // XRP "X" mark in the center clear zone, on a soft halo disc.
+        var logoR = clearR * 0.95;
+        var armEnd = logoR * 0.55;
+        var xStroke = cell * 1.6;
+        var logo =
+          '<circle cx="' + cx0 + '" cy="' + cy0 + '" r="' + logoR.toFixed(2) +
+            '" fill="rgba(20,24,50,0.92)" stroke="rgba(34,211,238,0.55)" stroke-width="0.6"/>' +
+          '<g stroke="url(#qrGrad)" stroke-width="' + xStroke.toFixed(2) +
+            '" stroke-linecap="round" fill="none">' +
+            '<line x1="' + (cx0 - armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 + armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+            '<line x1="' + (cx0 + armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 - armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+          '</g>';
+
+        return [
+          '<svg viewBox="0 0 ' + SIZE + ' ' + SIZE + '">',
+            '<defs>',
+              '<linearGradient id="qrGrad" x1="0" y1="0" x2="1" y2="1">',
+                '<stop offset="0%"  stop-color="#22d3ee"/>',
+                '<stop offset="100%" stop-color="#3b82f6"/>',
+              '</linearGradient>',
+            '</defs>',
+            dots,
+            finders,
+            logo,
+          '</svg>'
+        ].join('');
+      }
+
+      function renderAll() {
+        document.querySelectorAll('[data-qr]').forEach(function (host) {
+          var addr = host.dataset.qr || '';
+          if (!addr) return;
+          host.innerHTML = buildQR(addr);
+          host.removeAttribute('data-loading');
+        });
+      }
+
+      if (typeof qrcode === 'function') {
+        renderAll();
+      } else {
+        document.querySelectorAll('[data-qr]').forEach(function (h) {
+          h.setAttribute('data-loading', '1');
+        });
+        // qrcode lib loads as a separate <script>; if we ran first, retry once it's there
+        var tries = 0;
+        var iv = setInterval(function () {
+          tries++;
+          if (typeof qrcode === 'function') { clearInterval(iv); renderAll(); }
+          else if (tries > 40) { clearInterval(iv); }
+        }, 50);
+      }
+    })();
+
+    /* Wallet Pulse — ECG-style timeline of last 30 days of on-chain activity.
+       Each day produces a heartbeat-shaped segment whose R-peak height is
+       scaled to the day's tx count. Faint vertical bars in the background
+       show daily volume at-a-glance. The end of the trace pulses to indicate
+       "this is live data." All values mocked for now. */
+    (function () {
+      var data = [0,2,5,0,0,1,8,12,4,0,0,6,3,9,14,2,0,0,18,24,7,1,0,5,11,4,0,6,9,16];
+      var W = 600, H = 180, baseline = 140, maxH = 116;
+      var svg = document.querySelector('[data-pulse]');
+      if (!svg) return;
+      var dayW = W / data.length;
+      var maxCount = Math.max.apply(Math, data) || 1;
+
+      var SVGNS = 'http://www.w3.org/2000/svg';
+      var barsG = svg.querySelector('.pulse-bars');
+      data.forEach(function (count, i) {
+        if (count === 0) return;
+        var h = (count / maxCount) * maxH;
+        var rect = document.createElementNS(SVGNS, 'rect');
+        rect.setAttribute('x', (i * dayW + dayW * 0.36).toFixed(2));
+        rect.setAttribute('y', (baseline - h).toFixed(2));
+        rect.setAttribute('width', (dayW * 0.28).toFixed(2));
+        rect.setAttribute('height', h.toFixed(2));
+        rect.setAttribute('rx', '1');
+        rect.setAttribute('fill', 'rgba(34,211,238,0.10)');
+        barsG.appendChild(rect);
+      });
+
+      var d = 'M0,' + baseline;
+      data.forEach(function (count, i) {
+        var x = i * dayW;
+        var spikeH = (count / maxCount) * maxH;
+        d += ' L' + (x + dayW * 0.20).toFixed(2) + ',' + baseline;
+        if (count > 0) {
+          d += ' L' + (x + dayW * 0.32).toFixed(2) + ',' + (baseline + 5);
+          d += ' L' + (x + dayW * 0.50).toFixed(2) + ',' + (baseline - spikeH).toFixed(2);
+          d += ' L' + (x + dayW * 0.62).toFixed(2) + ',' + (baseline + 6);
+        }
+        d += ' L' + (x + dayW * 0.80).toFixed(2) + ',' + baseline;
+        d += ' L' + ((i + 1) * dayW).toFixed(2) + ',' + baseline;
+      });
+
+      var line = svg.querySelector('.pulse-line');
+      line.setAttribute('d', d);
+      var area = svg.querySelector('.pulse-area');
+      area.setAttribute('d', d + ' L' + W + ',' + baseline + ' L0,' + baseline + ' Z');
+
+      // Animate the line draw.
+      var len = line.getTotalLength();
+      line.style.strokeDasharray = len;
+      line.style.strokeDashoffset = len;
+      requestAnimationFrame(function () {
+        // force the browser to commit the initial offset before transitioning
+        line.getBoundingClientRect();
+        line.style.strokeDashoffset = '0';
+        area.style.opacity = '1';
+      });
+
+      // Pulsing dot at the end of the trace.
+      var dot = svg.querySelector('.pulse-dot');
+      dot.setAttribute('cx', (W - 1).toFixed(2));
+      dot.setAttribute('cy', baseline);
+    })();
+  </script>
+</body>
+</html>

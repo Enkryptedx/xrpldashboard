@@ -70,8 +70,7 @@ Free for retail users, forever.
 
 ## License
 
-*(TBD — likely MIT or Apache 2.0 once the project goes public. For now,
-all rights reserved by the author.)*
+MIT — see [LICENSE](./LICENSE). Free to fork, modify, and self-host.
 
 ## Disclaimer
 

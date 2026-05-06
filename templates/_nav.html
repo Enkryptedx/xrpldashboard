@@ -1,0 +1,17 @@
+{# Shared site nav — used by every page that doesn't have a custom header.
+   The pulsing live-ledger chip is rendered by _liveness_chip.html (which
+   carries its own CSS and JS, so it's self-contained). _alive.html
+   injects subtle site-wide motion (ambient gradient drift + hover lifts). #}
+{% include "_alive.html" %}
+<div class="top">
+  <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
+  <div class="nav">
+    <a href="/">dashboard</a>
+    <a href="/pools">pools</a>
+    <a href="/whales">whales</a>
+    <a href="/tokens">tokens</a>
+    <a href="/health">health</a>
+    <a href="/about">about</a>
+    {% include "_liveness_chip.html" %}
+  </div>
+</div>

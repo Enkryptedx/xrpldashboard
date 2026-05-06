@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ data.display }} · token · xrpldashboard</title>
+  {% set meta_title = data.display ~ " · token · xrpldashboard" %}
+  {% set meta_description = data.display ~ " on the XRP Ledger — issuer, holders, and recent activity. Independent on-chain data, not exchange-listed prices." %}
+  {% include "_head_meta.html" %}
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --purple: #c084fc;
+      --pink: #ec4899;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --fs-2xs: 0.7rem;
+      --fs-xs: 0.78rem;
+      --fs-sm: 0.88rem;
+      --fs-md: 1.05rem;
+      --fs-lg: 1.4rem;
+      --fs-xl: 1.85rem;
+      --fs-2xl: 2.4rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    .crumb { color: var(--text-3, var(--dim)); font-size: var(--fs-xs);
+             margin-bottom: 0.5em; }
+    .crumb a { color: var(--muted); }
+
+    /* hero card */
+    .hero { position: relative; overflow: hidden; padding: 1.6em 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-primary); opacity: 0.07;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero-eyebrow { font-size: var(--fs-xs); color: var(--muted);
+                    text-transform: uppercase; letter-spacing: 0.1em;
+                    font-weight: 600; margin-bottom: 0.4em; }
+    .hero-name { display: flex; align-items: baseline; gap: 0.7em;
+                 flex-wrap: wrap; margin-bottom: 0.4em; }
+    .hero-name h1 { font-size: var(--fs-2xl); margin: 0; font-weight: 700;
+                    letter-spacing: -0.02em;
+                    background: var(--grad-primary); -webkit-background-clip: text;
+                    background-clip: text; color: transparent; }
+    .hero-name h1.unlabeled { background: none; color: var(--muted);
+                              font-family: var(--mono); font-size: var(--fs-xl); }
+    .cat-badge { display: inline-block; padding: 3px 10px; border-radius: 999px;
+                 font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.05em;
+                 text-transform: uppercase; }
+    .cat-stablecoin     { background: rgba(34,197,94,0.12);  color: var(--green); }
+    .cat-fiat           { background: rgba(34,197,94,0.10);  color: var(--green); }
+    .cat-wrapped_major  { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .cat-native_utility { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .cat-memecoin       { background: rgba(236,72,153,0.12); color: var(--pink); }
+    .cat-unlabeled      { background: rgba(128,144,176,0.10); color: var(--muted); }
+    .hero-meta { color: var(--muted); font-size: var(--fs-sm); margin-top: 0.4em; }
+    .hero-meta .iss { font-family: var(--mono); color: var(--text); }
+    .hero-tag { display: inline-flex; align-items: center; gap: 0.45em;
+                font-size: var(--fs-2xs); color: var(--cyan);
+                text-transform: uppercase; letter-spacing: 0.06em;
+                font-weight: 600; }
+    .hero-tag .dot { width: 7px; height: 7px; border-radius: 999px;
+                     background: var(--cyan); animation: dotPulse 1.8s ease-in-out infinite; }
+    @keyframes dotPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+    /* KPI strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 0.8em; margin-bottom: 1em; }
+    .kpi { background: var(--card); border: 1px solid var(--border);
+           border-radius: 10px; padding: 0.95em 1em; }
+    .kpi .l { font-size: var(--fs-2xs); color: var(--muted);
+              text-transform: uppercase; letter-spacing: 0.08em;
+              font-weight: 600; margin-bottom: 0.35em; }
+    .kpi .v { font-family: var(--mono); font-size: var(--fs-lg); color: var(--text);
+              font-weight: 600; letter-spacing: -0.01em; }
+    .kpi .sub { font-size: var(--fs-2xs); color: var(--dim); margin-top: 0.25em; }
+
+    /* card base */
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.2em 1.4em; margin-bottom: 1em; }
+    .card h2 { font-size: var(--fs-md); margin: 0 0 0.5em; font-weight: 600;
+               letter-spacing: -0.01em; }
+    .section-head { display: flex; align-items: baseline;
+                    justify-content: space-between; gap: 1em; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--muted); }
+
+    /* sparkline card */
+    .sparkline-svg { width: 100%; height: 140px; display: block;
+                     margin: 0.4em 0 0.6em; }
+    .spark-axis { display: flex; justify-content: space-between;
+                  font-family: var(--mono); font-size: var(--fs-2xs);
+                  color: var(--dim); }
+
+    /* AMM pools list */
+    .pool-row { display: grid;
+                grid-template-columns: 1.2fr 1fr 0.7fr 0.7fr;
+                gap: 0.8em; align-items: center;
+                padding: 0.6em 0; }
+    .pool-row + .pool-row { border-top: 1px solid var(--border); }
+    .pool-pair { font-weight: 600; color: var(--text); font-size: var(--fs-sm); }
+    .pool-pair .other { color: var(--cyan); }
+    .pool-acct { font-family: var(--mono); font-size: var(--fs-xs);
+                 color: var(--muted); }
+    .pool-fee { font-family: var(--mono); font-size: var(--fs-xs);
+                color: var(--text); text-align: right; }
+    .pool-lp { font-family: var(--mono); font-size: var(--fs-xs);
+               color: var(--text-2, var(--muted)); text-align: right;
+               white-space: nowrap; }
+
+    /* link-out card */
+    .links { display: flex; flex-wrap: wrap; gap: 0.5em; }
+    .link-pill { display: inline-flex; align-items: center; gap: 0.45em;
+                 padding: 0.4em 0.85em; border-radius: 999px;
+                 background: rgba(255,255,255,0.04);
+                 border: 1px solid var(--border);
+                 color: var(--text); font-size: var(--fs-xs); font-weight: 500; }
+    .link-pill:hover { border-color: rgba(34,211,238,0.4); color: var(--cyan);
+                       text-decoration: none; }
+
+    .empty { background: var(--card); border: 1px dashed var(--border);
+             border-radius: 10px; padding: 22px 18px; text-align: center;
+             color: var(--muted); font-size: var(--fs-sm); }
+    .empty .big { color: var(--text); font-size: var(--fs-md);
+                  margin-bottom: 0.4em; font-weight: 600; }
+
+    .error-banner { background: rgba(244,114,114,0.08);
+                    border: 1px solid rgba(244,114,114,0.3);
+                    color: #f87171; padding: 0.9em 1.1em; border-radius: 10px;
+                    margin-bottom: 1em; font-size: var(--fs-sm); }
+
+    footer { margin-top: 2.5em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: var(--fs-xs); }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 980px) {
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .pool-row  { grid-template-columns: 1.2fr 0.7fr 0.7fr;
+                   grid-template-areas: "pair fee lp" "acct acct acct"; }
+      .pool-pair { grid-area: pair; }
+      .pool-acct { grid-area: acct; }
+      .pool-fee  { grid-area: fee; }
+      .pool-lp   { grid-area: lp; }
+    }
+    @media (max-width: 540px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+      .hero-name h1 { font-size: var(--fs-xl); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <div class="crumb"><a href="/tokens">← back to tokens</a></div>
+
+  {% if data.error %}
+  <div class="error-banner">{{ data.error }}</div>
+  {% endif %}
+
+  {# ========== Hero ========== #}
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Token detail</div>
+      <div class="hero-name">
+        <h1{% if not data.labeled %} class="unlabeled"{% endif %}>{{ data.display }}</h1>
+        {% if data.category %}
+          <span class="cat-badge cat-{{ data.category }}">{{ data.category|replace("_"," ") }}</span>
+        {% else %}
+          <span class="cat-badge cat-unlabeled">unlabeled</span>
+        {% endif %}
+      </div>
+      <div class="hero-meta">
+        Issued by <span class="iss">{{ data.issuer_short }}</span>
+        {% if data.currency_decoded and data.currency_decoded != data.display %}
+          · raw code <span class="iss">{{ data.currency_decoded }}</span>
+        {% endif %}
+      </div>
+      <div class="hero-meta" style="margin-top:0.7em;">
+        <span class="hero-tag"><span class="dot"></span> Live · counts pulled from volumes.db</span>
+      </div>
+    </div>
+  </div>
+
+  {# ========== KPI strip ========== #}
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="l">Trades · 24h</div>
+      <div class="v">{{ "{:,}".format(data.trades_24h) }}</div>
+      <div class="sub">on-ledger token events</div>
+    </div>
+    <div class="kpi">
+      <div class="l">Trades · 7d</div>
+      <div class="v">{{ "{:,}".format(data.trades_7d) }}</div>
+      <div class="sub">past week, hourly buckets</div>
+    </div>
+    <div class="kpi">
+      <div class="l">Trades · all time</div>
+      <div class="v">{{ "{:,}".format(data.trades_all) }}</div>
+      <div class="sub">since watcher start</div>
+    </div>
+    <div class="kpi">
+      <div class="l">AMM pools</div>
+      <div class="v">{{ data.pool_count }}</div>
+      <div class="sub">{% if data.last_seen_age %}last seen {{ data.last_seen_age }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+
+  {# ========== Sparkline ========== #}
+  <div class="card">
+    <div class="section-head">
+      <h2>Trade activity · last 7 days</h2>
+      <span class="meta">hourly buckets · {{ data.hours_active }}h active</span>
+    </div>
+    {% if data.trades_7d > 0 %}
+      {% set max_val = data.sparkline | max %}
+      <svg class="sparkline-svg" viewBox="0 0 600 140" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="sparkLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"  stop-color="#22d3ee"/>
+            <stop offset="100%" stop-color="#3b82f6"/>
+          </linearGradient>
+          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="120" x2="600" y2="120"
+              stroke="rgba(255,255,255,0.06)" stroke-width="0.5"
+              stroke-dasharray="2 4"/>
+        {% set hours = data.sparkline | length %}
+        {% set bar_w = 600 / hours %}
+        {% set max_h = 110 %}
+        {% for c in data.sparkline %}
+          {% if c > 0 %}
+            {% set h = (c / max_val) * max_h %}
+            <rect x="{{ "%.2f"|format(loop.index0 * bar_w) }}"
+                  y="{{ "%.2f"|format(120 - h) }}"
+                  width="{{ "%.2f"|format(bar_w * 0.8) }}"
+                  height="{{ "%.2f"|format(h) }}"
+                  rx="1" ry="1"
+                  fill="url(#sparkLine)" opacity="0.85"/>
+          {% endif %}
+        {% endfor %}
+      </svg>
+      <div class="spark-axis">
+        <span>7 days ago</span>
+        <span>now</span>
+      </div>
+    {% else %}
+      <div class="empty" style="margin-top:0.5em;">
+        <div class="big">No trade activity in the last 7 days.</div>
+        <div>Either this token isn't being traded, or the watcher hasn't picked it up yet. Check <a href="/health">/health</a>.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  {# ========== AMM pools containing this token ========== #}
+  <div class="card">
+    <div class="section-head">
+      <h2>AMM pools holding this token</h2>
+      <span class="meta">{{ data.pool_count }} pool{{ '' if data.pool_count == 1 else 's' }}</span>
+    </div>
+    {% if data.pools %}
+      {% for p in data.pools[:20] %}
+      <div class="pool-row">
+        <div class="pool-pair">
+          {{ data.display }} <span style="color: var(--muted);">/</span>
+          <span class="other">{{ p.other_display }}</span>
+          {% if p.other_issuer_short %}
+            <span class="pool-acct" style="margin-left:0.4em;">{{ p.other_issuer_short }}</span>
+          {% endif %}
+        </div>
+        <div class="pool-acct">{{ p.account_short }}</div>
+        <div class="pool-fee">{{ "%.2f"|format(p.fee_pct) }}%</div>
+        <div class="pool-lp">
+          {% if p.lp_balance %}
+            {{ "{:,.0f}".format(p.lp_balance|float) }} LP
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% if data.pools|length > 20 %}
+        <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
+          Showing top 20 of {{ data.pools|length }} pools by LP balance.
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="empty" style="margin-top:0.4em;">
+        <div class="big">No AMM pools indexed for this token.</div>
+        <div>This token isn't in any indexed AMM pool. It may still trade on the order book — see XRPSCAN for the full DEX.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  {# ========== Link-outs ========== #}
+  <div class="card">
+    <h2>Cross-check on other explorers</h2>
+    <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.7em;">
+      We link out so you can verify these numbers against another reading.
+      Linking out for verification strengthens trust — see <a href="/about">about</a>.
+    </p>
+    <div class="links">
+      <a class="link-pill" href="https://xrpscan.com/account/{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
+        XRPSCAN · issuer
+      </a>
+      <a class="link-pill" href="https://bithomp.com/explorer/{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
+        Bithomp · issuer
+      </a>
+      <a class="link-pill" href="https://xrpl.to/token/{{ data.currency_raw }}.{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
+        xrpl.to · token page
+      </a>
+      {% if data.source_url %}
+      <a class="link-pill" href="{{ data.source_url }}" target="_blank" rel="noopener noreferrer">
+        Label source
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <footer>
+    Token detail · counts from <code style="color: var(--cyan);">volumes.db</code>,
+    pool list from <code style="color: var(--cyan);">amm_index.json</code>.
+    {% if data.cached_age_seconds is defined %}cached {{ "%.0f"|format(data.cached_age_seconds) }}s ago.{% endif %}
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/tokens">all tokens</a>
+    · <a href="mailto:contact@xrpldashboard.com">contact</a>
+    · <a href="/">dashboard</a>
+  </footer>
+
+</div>
+</body>
+</html>

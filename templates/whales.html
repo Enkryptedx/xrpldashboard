@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>whales · xrpldashboard</title>
+  {% set meta_title = "whales · xrpldashboard" %}
+  {% set meta_description = "Live tracker of large XRP transfers — every payment over 500,000 XRP, with the wallets behind them named where we know them." %}
+  {% include "_head_meta.html" %}
+  <meta http-equiv="refresh" content="60">
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px 16px 48px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    h1 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 700;
+         letter-spacing: -0.01em; }
+    .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 14px;
+            max-width: 640px; }
+
+    /* Whale banner — wide thin strip showing a whale gliding across calm water */
+    .whale-banner {
+      position: relative; width: 100%; height: 78px;
+      margin-bottom: 18px; border-radius: 10px; overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(10,14,39,0) 0%, rgba(34,211,238,0.05) 55%, rgba(59,130,246,0.10) 100%);
+      border: 1px solid var(--border);
+    }
+    .whale-banner canvas { width: 100%; height: 100%; display: block; }
+
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .stat  { background: var(--card); border: 1px solid var(--border);
+             border-radius: 8px; padding: 8px 12px; min-width: 100px; }
+    .stat .n { font-family: var(--mono); font-size: 1.05rem; color: var(--text); }
+    .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
+               letter-spacing: 0.05em; margin-top: 2px; }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .pill { display: inline-block; padding: 5px 11px; border-radius: 999px;
+            border: 1px solid var(--border); background: transparent;
+            color: var(--muted); font-size: 0.78rem; }
+    .pill:hover { color: var(--text); border-color: rgba(255,255,255,0.18);
+                  text-decoration: none; }
+    .pill.active { background: rgba(34,211,238,0.12); color: var(--cyan);
+                   border-color: rgba(34,211,238,0.4); }
+
+    .event { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+    .event-top { display: flex; justify-content: space-between; align-items: center;
+                 gap: 10px; margin-bottom: 6px; }
+    .event-meta { display: flex; gap: 8px; align-items: center; font-size: 0.78rem;
+                  color: var(--muted); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px;
+             font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+             text-transform: uppercase; }
+    .badge.large_xfer { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .badge.tagged     { background: rgba(34,211,238,0.15); color: var(--cyan); }
+    .badge.trustset   { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .event-link { font-family: var(--mono); font-size: 0.75rem; color: var(--dim); }
+
+    .event-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                  margin: 6px 0; }
+    .addr { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+    .addr .label { display: inline-block; background: rgba(34,211,238,0.1);
+                   color: var(--cyan); padding: 1px 7px; border-radius: 4px;
+                   margin-right: 6px; font-family: var(--sys); font-size: 0.75rem;
+                   font-weight: 600; }
+    .arrow { color: var(--dim); }
+    .amount { font-family: var(--mono); font-size: 0.95rem; color: var(--text);
+              font-weight: 600; margin-top: 2px; }
+
+    .empty { background: var(--card); border: 1px dashed var(--border);
+             border-radius: 10px; padding: 24px 18px; text-align: center;
+             color: var(--muted); }
+    .empty .big { color: var(--text); font-size: 1.05rem; margin-bottom: 6px; }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-left: 3px solid var(--cyan); border-radius: 6px;
+               padding: 12px 16px; margin: 16px 0; color: var(--muted);
+               font-size: 0.88rem; }
+    .callout p { margin: 0 0 6px; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .footer { color: var(--dim); font-size: 0.78rem; margin-top: 28px;
+              padding-top: 16px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>Whale watch</h1>
+  <p class="lede">
+    Large XRP transfers and any activity by accounts we recognize.
+    Pulled live from the ledger. The watchlist is hand-curated and
+    public — see <a href="/about">about</a> for sourcing.
+  </p>
+
+  <div class="whale-banner" aria-hidden="true">
+    <canvas id="whale-strip"></canvas>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="n">{{ "{:,}".format(type_counts._total) }}</div>
+      <div class="l">total events</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ "{:,}".format(type_counts.large_xfer) }}</div>
+      <div class="l">large XRP</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ "{:,}".format(type_counts.tagged) }}</div>
+      <div class="l">tagged</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ "{:,}".format(type_counts.trustset) }}</div>
+      <div class="l">trustlines</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ "{:,}".format(named_accounts_count) }}</div>
+      <div class="l">watchlist size</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <a class="pill {% if not filter_type %}active{% endif %}" href="/whales">all</a>
+    <a class="pill {% if filter_type == 'large_xfer' %}active{% endif %}"
+       href="/whales?type=large_xfer">large XRP (≥{{ "{:,}".format(threshold_xrp) }})</a>
+    <a class="pill {% if filter_type == 'tagged' %}active{% endif %}"
+       href="/whales?type=tagged">tagged</a>
+    <a class="pill {% if filter_type == 'trustset' %}active{% endif %}"
+       href="/whales?type=trustset">trustlines</a>
+  </div>
+
+  {% if events %}
+    {% for e in events %}
+    <div class="event">
+      <div class="event-top">
+        <div class="event-meta">
+          <span class="badge {{ e.type }}">{{ e.type_display }}</span>
+          <span>{{ e.age }} ago</span>
+          <span class="event-link">ledger {{ e.ledger }}</span>
+        </div>
+        {% if e.xrpscan_url %}
+        <a href="{{ e.xrpscan_url }}" target="_blank" rel="noopener"
+           class="event-link">{{ e.tx_hash_short }} ↗</a>
+        {% endif %}
+      </div>
+      <div class="event-flow">
+        <span class="addr">
+          {% if e.from_label %}<span class="label">{{ e.from_label }}</span>{% endif %}
+          {{ e.from_addr_short or "—" }}
+        </span>
+        <span class="arrow">→</span>
+        <span class="addr">
+          {% if e.to_label %}<span class="label">{{ e.to_label }}</span>{% endif %}
+          {{ e.to_addr_short or "—" }}
+        </span>
+      </div>
+      <div class="amount">{{ e.amount_display }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <div class="big">No events to show yet.</div>
+      <div>
+        {% if filter_type %}
+          Nothing of type <code>{{ filter_type }}</code> in the database.
+          Try <a href="/whales">all events</a>.
+        {% else %}
+          The live watcher is running but hasn't logged any events that
+          meet the criteria yet. Check <a href="/health">/health</a> for
+          watcher status.
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="callout">
+    <p>
+      <strong>How this works:</strong> a long-running process subscribes to
+      every validated XRPL transaction and records two things — XRP
+      transfers ≥{{ "{:,}".format(threshold_xrp) }} XRP, and any transaction
+      that touches an address on our public watchlist.
+    </p>
+    <p>
+      The watchlist currently has {{ named_accounts_count }} entries, all
+      sourced from first-party disclosures (e.g. Ripple's
+      <code>xrp-ledger.toml</code>). We don't include addresses tagged only
+      by third parties.
+    </p>
+  </div>
+
+  <div class="footer">
+    auto-refresh 60s · click any tx to verify on XRPSCAN.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/about">how this is sourced</a> ·
+    <a href="/">back to dashboard</a>
+  </div>
+
+</div>
+<script>
+  // Whale-watch banner v2 — proper humpback silhouette swims mostly below
+  // the surface. When it reaches the centre it rises, breaks the waterline,
+  // and blows a particle-based water spout. Then submerges and continues.
+  // Rendering order: whale → underwater overlay → spout → waterline waves.
+  // Pure canvas, no deps, retina-aware, respects prefers-reduced-motion.
+  (function () {
+    var canvas = document.getElementById('whale-strip');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    function fitCanvas() {
+      var rect = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width  = Math.max(1, Math.round(rect.width  * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    fitCanvas();
+    window.addEventListener('resize', fitCanvas);
+
+    var reduced   = window.matchMedia &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var startTime = performance.now();
+    var lastNow   = startTime;
+    var crossMs   = 22000;   // ms for whale to cross the banner
+    var spoutFired = false;
+    var particles  = [];
+
+    function createSpout(bx, by, now) {
+      for (var i = 0; i < 26; i++) {
+        var ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
+        var spd = 58 + Math.random() * 48;
+        particles.push({
+          x: bx + (Math.random() - 0.5) * 5,
+          y: by,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          life: 1500 + Math.random() * 500,
+          born: now,
+          sz: 1.0 + Math.random() * 1.5
+        });
+      }
+    }
+
+    // Proper humpback silhouette — bezier body, dorsal fin, fluke, pec fin.
+    // Faces RIGHT (head +X, tail −X). Origin = body centre.
+    function drawHumpback(x, y) {
+      var L = 48, BH = 13;
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Main body
+      ctx.fillStyle = '#0e7a96';
+      ctx.beginPath();
+      ctx.moveTo( L * 0.88, -BH * 0.12);
+      ctx.bezierCurveTo( L * 0.96, -BH * 0.55,  L * 0.70, -BH * 0.95,  L * 0.28, -BH);
+      ctx.bezierCurveTo( L * 0.00, -BH,         -L * 0.32, -BH * 0.92, -L * 0.58, -BH * 0.52);
+      ctx.bezierCurveTo(-L * 0.70, -BH * 0.32,  -L * 0.80, -BH * 0.14, -L * 0.88,  0);
+      // Fluke
+      ctx.bezierCurveTo(-L * 1.02, -BH * 0.20, -L * 1.26, -BH * 0.78, -L * 1.28, -BH * 0.84);
+      ctx.bezierCurveTo(-L * 1.24, -BH * 0.48, -L * 1.06, -BH * 0.06, -L * 0.98,  BH * 0.05);
+      ctx.bezierCurveTo(-L * 1.06,  BH * 0.06, -L * 1.24,  BH * 0.48, -L * 1.28,  BH * 0.84);
+      ctx.bezierCurveTo(-L * 1.26,  BH * 0.78, -L * 1.02,  BH * 0.20, -L * 0.88,  0);
+      // Belly
+      ctx.bezierCurveTo(-L * 0.60,  BH * 0.72, -L * 0.08,  BH * 0.88,  L * 0.32,  BH * 0.84);
+      ctx.bezierCurveTo( L * 0.62,  BH * 0.76,  L * 0.84,  BH * 0.50,  L * 0.88,  BH * 0.12);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dorsal fin — classic humpback: small, hooked rearward
+      ctx.beginPath();
+      ctx.moveTo(-L * 0.22, -BH * 0.95);
+      ctx.bezierCurveTo(-L * 0.25, -BH * 1.65, -L * 0.32, -BH * 2.15, -L * 0.38, -BH * 2.0);
+      ctx.bezierCurveTo(-L * 0.44, -BH * 1.72, -L * 0.47, -BH * 1.20, -L * 0.51, -BH * 0.92);
+      ctx.closePath();
+      ctx.fill();
+
+      // Pectoral fin (long — humpback's signature)
+      ctx.fillStyle = '#0a5e78';
+      ctx.beginPath();
+      ctx.moveTo( L * 0.36,  BH * 0.28);
+      ctx.bezierCurveTo( L * 0.14,  BH * 1.52, -L * 0.02,  BH * 1.80, -L * 0.10,  BH * 1.68);
+      ctx.bezierCurveTo(-L * 0.04,  BH * 1.10,  L * 0.12,  BH * 0.50,  L * 0.36,  BH * 0.28);
+      ctx.closePath();
+      ctx.fill();
+
+      // Eye
+      ctx.fillStyle = 'rgba(190, 230, 255, 0.70)';
+      ctx.beginPath();
+      ctx.arc(L * 0.61, -BH * 0.06, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function surfaceWaveY(x, waterY, waveFreq, waveAmp, wavePhase) {
+      return waterY + Math.sin(x * waveFreq + wavePhase) * waveAmp;
+    }
+
+    function frame(now) {
+      var dt = Math.min(50, now - lastNow) / 1000;
+      lastNow = now;
+
+      var rect   = canvas.getBoundingClientRect();
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      var t         = (now - startTime) / 1000;
+      var waterY    = H * 0.50;
+      var waveFreq  = 0.020;
+      var waveAmp   = 3.2;
+      var wavePhase = t * 1.25;
+
+      // Whale horizontal — slow drift, looping
+      var cycle  = (t / (crossMs / 1000)) % 1;
+      var whaleX = -110 + cycle * (W + 220);
+
+      // Surface factor: peaks in centre of banner so breach is always centred
+      var normX    = Math.max(0, Math.min(1, whaleX / W));
+      var sf       = Math.max(0, Math.sin(normX * Math.PI));
+      var sfSmooth = sf * sf * (3 - 2 * sf);   // smoothstep
+
+      // Vertical: deep when sfSmooth=0, rises to breach when sfSmooth=1
+      var deepOff    = 22, surfaceOff = 5;
+      var wY = waterY + deepOff - sfSmooth * (deepOff - surfaceOff)
+                      + Math.sin(t * 1.5) * 1.5;   // gentle bob
+
+      // Fire spout once when whale is near peak of breach
+      if (sfSmooth > 0.90 && !spoutFired) {
+        spoutFired = true;
+        createSpout(whaleX + 48 * 0.62, wY - 13 * 0.88, now);
+      }
+      if (sfSmooth < 0.35) spoutFired = false;
+
+      // ── 1. Whale (drawn first — water overlay goes on top)
+      drawHumpback(whaleX, wY);
+
+      // ── 2. Underwater overlay — dark gradient below the waterline so the
+      //       whale body reads as a submerged silhouette
+      var uwGrad = ctx.createLinearGradient(0, waterY, 0, H);
+      uwGrad.addColorStop(0,   'rgba(10, 14, 39, 0.46)');
+      uwGrad.addColorStop(0.5, 'rgba(10, 14, 39, 0.62)');
+      uwGrad.addColorStop(1,   'rgba(10, 14, 39, 0.74)');
+      ctx.fillStyle = uwGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, surfaceWaveY(0, waterY, waveFreq, waveAmp, wavePhase));
+      for (var x = 0; x <= W; x += 4) {
+        ctx.lineTo(x, surfaceWaveY(x, waterY, waveFreq, waveAmp, wavePhase));
+      }
+      ctx.lineTo(W, H + 5);
+      ctx.lineTo(0, H + 5);
+      ctx.closePath();
+      ctx.fill();
+
+      // ── 3. Spout particles (above water — drawn before wave highlights
+      //       so they pop in front of everything)
+      for (var i = particles.length - 1; i >= 0; i--) {
+        var p = particles[i];
+        var age = now - p.born;
+        if (age > p.life) { particles.splice(i, 1); continue; }
+        p.x  += p.vx * dt;
+        p.y  += p.vy * dt;
+        p.vy += 80 * dt;    // gravity pulls particles back down
+        var a = Math.max(0, 1 - age / p.life) * (age < 140 ? age / 140 : 1);
+        ctx.fillStyle = 'rgba(210, 240, 255, ' + (a * 0.9) + ')';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ── 4. Waterline wave highlights (drawn last, always on top)
+      for (var w = 0; w < 3; w++) {
+        ctx.strokeStyle = 'rgba(34,211,238,' + (0.30 - w * 0.07) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        var f2 = waveFreq + w * 0.006, p2 = wavePhase + w * 0.75;
+        var a2 = waveAmp - w * 0.5, y2 = waterY + w * 4;
+        for (var x2 = 0; x2 <= W; x2 += 4) {
+          var yw = y2 + Math.sin(x2 * f2 + p2) * a2;
+          if (x2 === 0) ctx.moveTo(x2, yw); else ctx.lineTo(x2, yw);
+        }
+        ctx.stroke();
+      }
+
+      if (!reduced) requestAnimationFrame(frame);
+    }
+
+    if (reduced) {
+      // Static: whale at surface mid-banner, one wave line
+      var r0 = canvas.getBoundingClientRect();
+      var W0 = r0.width, H0 = r0.height, wY0 = H0 * 0.50;
+      drawHumpback(W0 * 0.42, wY0 + 8);
+      ctx.strokeStyle = 'rgba(34,211,238,0.30)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var x0 = 0; x0 <= W0; x0 += 4) {
+        var yw0 = wY0 + Math.sin(x0 * 0.020) * 3.2;
+        if (x0 === 0) ctx.moveTo(x0, yw0); else ctx.lineTo(x0, yw0);
+      }
+      ctx.stroke();
+    } else {
+      requestAnimationFrame(frame);
+    }
+  })();
+</script>
+</body>
+</html>

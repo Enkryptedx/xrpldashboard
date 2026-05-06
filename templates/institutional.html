@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>institutional · xrpldashboard</title>
+  {% set meta_title = "institutional · xrpldashboard" %}
+  {% set meta_description = "Institutional access to xrpldashboard's underlying XRPL datasets — partnership tier for funds, exchanges, and infrastructure teams. Contact for details." %}
+  {% include "_head_meta.html" %}
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 28px; }
+    .brand { font-weight: 600; font-size: 1.1rem; letter-spacing: -0.01em; }
+    .brand a { color: var(--text); text-decoration: none; }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 16px; font-size: 0.9rem;
+             text-decoration: none; }
+    .nav a:hover { color: var(--text); }
+
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 28px;
+            max-width: 620px; }
+
+    h2 { font-size: 1.2rem; margin: 32px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .cta-row { margin: 28px 0 12px; }
+    .cta {
+      display: inline-block;
+      background: var(--cyan);
+      color: #0a0e27;
+      font-weight: 600;
+      font-size: 0.98rem;
+      padding: 12px 22px;
+      border-radius: 8px;
+      text-decoration: none;
+      letter-spacing: -0.005em;
+    }
+    .cta:hover { background: #5ee0f0; text-decoration: none; }
+    .contact-note { color: var(--muted); font-size: 0.9rem; margin: 8px 0 0;
+                    max-width: 560px; }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
+    <div class="nav">
+      <a href="/">dashboard</a>
+      <a href="/pools">pools</a>
+      <a href="/whales">whales</a>
+      <a href="/tokens">tokens</a>
+      <a href="/health">health</a>
+    </div>
+  </div>
+
+  <h1>xrpldashboard institutional</h1>
+  <p class="lede">
+    Tooling for teams that watch the XRP Ledger as a job — exchanges,
+    funds, custody platforms, compliance desks, ETF issuers.
+  </p>
+
+  <p>
+    The retail dashboard is free forever. The institutional product is
+    what funds it.
+  </p>
+
+  <h2>Why this exists</h2>
+  <p>
+    Anyone can index the XRP Ledger — the data is public. We&rsquo;re the
+    only ones doing the editorial layer at scale: hand-curated wallet
+    identities, classified tokens, plain-language event explanations.
+    Your compliance team doesn&rsquo;t read a hex address — it reads
+    &ldquo;Bitstamp cold wallet moved $5M to Bitso hot wallet.&rdquo;
+  </p>
+  <p>
+    Editorial coverage delivered via API. That&rsquo;s the product.
+    Webhook alerts, historical depth, custom integrations — those are
+    how it ships.
+  </p>
+
+  <h2>How we&rsquo;re building it</h2>
+  <p>
+    We&rsquo;re building this around real conversations with launch
+    partners. Your needs shape what gets prioritized first. Pricing
+    reflects actual partner agreements once we&rsquo;ve signed the
+    first few.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>What this is for:</strong> teams whose data-tools budget
+      runs $5k–50k/yr and who wish there were an XRPL-native option
+      written for humans.
+    </p>
+  </div>
+
+  <div class="cta-row">
+    <a class="cta"
+       href="mailto:contact@xrpldashboard.com?subject=Launch%20partner%20interest&body=Hi%20Charlie%2C%0A%0ACompany%3A%0AUse%20case%3A%0ACurrent%20XRPL%20data%20tooling%3A%0AApproximate%20budget%20range%3A%0A%0A">Become
+       a launch partner →</a>
+    <p class="contact-note">
+      Charlie reads every message personally. Reply time is usually
+      within a day. Founders prefer direct email over forms.
+    </p>
+  </div>
+
+  <div class="footer">
+    xrpldashboard is independent and not affiliated with Ripple Labs,
+    the XRPL Foundation, or any exchange. Built with Python, Flask,
+    and the public XRPL.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/about">about</a> ·
+    <a href="mailto:contact@xrpldashboard.com">contact</a> ·
+    <a href="/">back to dashboard</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>health · xrpldashboard</title>
+  {% set meta_title = "health · xrpldashboard" %}
+  {% set meta_description = "Operational status for xrpldashboard's background workers — bootstrap scanner, live transaction watcher, and ledger heartbeat. Public on purpose." %}
+  {% include "_head_meta.html" %}
+  <meta http-equiv="refresh" content="60">
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 64px; }
+
+    /* shared top nav (matches _nav.html) */
+    .top { display: flex; align-items: center; justify-content: space-between;
+           margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    /* hero status banner */
+    .status-hero {
+      position: relative; overflow: hidden;
+      padding: 1.4em 1.6em;
+      border-radius: 14px;
+      background: var(--card);
+      border: 1px solid var(--border-strong);
+      margin-bottom: 1em;
+    }
+    .status-hero::before {
+      content: ""; position: absolute; inset: 0;
+      pointer-events: none; opacity: 0.08;
+    }
+    .status-hero.ok::before {
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+    }
+    .status-hero.deg::before {
+      background: linear-gradient(135deg, var(--amber), var(--red));
+    }
+    .status-hero-inner { position: relative; display: flex;
+                         align-items: center; gap: 1em; }
+
+    /* EKG / heartbeat strip — real-time pulse synced to XRPL ledger close rate.
+       Fires a QRS complex once per ledger close (~3.5s on healthy network).
+       Color is bound to the overall health state. */
+    .status-ekg {
+      position: relative; margin-top: 1em;
+      width: 100%; height: 56px; display: block;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.18), rgba(0,0,0,0.05) 12%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 75%, rgba(0,0,0,0.05) 88%, rgba(0,0,0,0.18));
+    }
+    .status-ekg-meta {
+      position: relative;
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-top: 0.5em;
+      font-family: var(--mono); font-size: 0.72rem;
+      color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .status-ekg-meta .bpm { color: var(--text-2); font-weight: 600; }
+    .status-ekg-meta .bpm.deg { color: var(--amber); }
+    .status-bigdot {
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      box-shadow: 0 0 0 0 currentColor;
+      animation: bigpulse 2s ease-in-out infinite;
+    }
+    .status-hero.ok  .status-bigdot { background: var(--green); color: rgba(34,197,94,0.5); }
+    .status-hero.deg .status-bigdot { background: var(--amber); color: rgba(245,158,11,0.5); }
+    @keyframes bigpulse {
+      0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 0.95; }
+      50%     { box-shadow: 0 0 0 8px transparent; opacity: 1; }
+    }
+    .status-headline {
+      font-size: 1.45rem; font-weight: 700; margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .status-sub {
+      color: var(--muted); font-size: 0.88rem; margin-top: 0.2em;
+    }
+
+    /* normie cards */
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1em 1.2em; margin-bottom: 0.8em;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 0.9em 1em;
+            align-items: center;
+            transition: border-color 0.18s, background 0.18s; }
+    .card:hover { border-color: var(--border-strong); background: var(--card-2); }
+
+    .dot { width: 11px; height: 11px; border-radius: 50%;
+           flex-shrink: 0; box-shadow: 0 0 0 0 currentColor;
+           animation: pulse 2s ease-in-out infinite; }
+    .dot.ok   { background: var(--green); color: rgba(34,197,94,0.45); }
+    .dot.warn { background: var(--amber); color: rgba(245,158,11,0.45); }
+    .dot.err  { background: var(--red);   color: rgba(239,68,68,0.45); animation: pulse-fast 1s ease-in-out infinite; }
+    .dot.idle { background: var(--dim); animation: none; }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 0.95; }
+      50%     { box-shadow: 0 0 0 5px transparent; opacity: 1; }
+    }
+    @keyframes pulse-fast {
+      0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 0.95; }
+      50%     { box-shadow: 0 0 0 6px transparent; opacity: 1; }
+    }
+
+    .card-body .title {
+      font-weight: 600; font-size: 0.98rem; color: var(--text);
+      letter-spacing: -0.005em;
+    }
+    .card-body .desc {
+      color: var(--muted); font-size: 0.85rem; margin-top: 0.18em;
+      line-height: 1.5;
+    }
+    .card-state {
+      font-family: var(--mono); font-size: 0.78rem; color: var(--muted);
+      text-align: right; white-space: nowrap;
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    }
+    .card-state.ok   { color: var(--green); }
+    .card-state.warn { color: var(--amber); }
+    .card-state.err  { color: var(--red); }
+    .card-state.idle { color: var(--dim); }
+
+    /* technical details toggle */
+    details.tech-details {
+      margin-top: 1.4em;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+    }
+    details.tech-details > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.9em 1.2em;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; color: var(--muted); font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      user-select: none;
+    }
+    details.tech-details > summary::-webkit-details-marker { display: none; }
+    details.tech-details > summary::after {
+      content: "▾"; color: var(--dim); transition: transform 0.18s;
+    }
+    details.tech-details[open] > summary::after { transform: rotate(180deg); }
+    details.tech-details > summary:hover { color: var(--text); }
+    .tech-body { padding: 0 1.2em 1.2em; }
+    .tech-section { padding-top: 1em; border-top: 1px solid var(--border); }
+    .tech-section:first-child { padding-top: 0; border-top: none; }
+    .tech-section h3 {
+      font-size: 0.78rem; color: var(--dim); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0.6em 0 0.5em;
+    }
+    .tech-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 4px 0; gap: 12px;
+    }
+    .tech-row .k { color: var(--muted); font-size: 0.85rem; }
+    .tech-row .v { font-family: var(--mono); font-size: 0.85rem; color: var(--text);
+                   text-align: right; word-break: break-all; }
+    .tech-row .v.dim { color: var(--dim); }
+    .log {
+      background: #0d1228; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      font-family: var(--mono); font-size: 0.74rem; color: var(--muted);
+      white-space: pre-wrap; overflow-x: auto;
+      margin-top: 0.4em;
+    }
+
+    .footer {
+      color: var(--dim); font-size: 0.78rem;
+      margin-top: 2em; padding-top: 1.2em;
+      border-top: 1px solid var(--border);
+      text-align: center; line-height: 1.7;
+    }
+    .footer a { color: var(--muted); }
+
+    @media (max-width: 540px) {
+      .card { grid-template-columns: auto 1fr; }
+      .card-state { grid-column: 1 / -1; text-align: left; padding-left: 24px;
+                     margin-top: -0.4em; }
+      .status-hero-inner { flex-direction: column; align-items: flex-start; }
+      .status-headline { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  {% set network_ok = pulse and not pulse.error and pulse.status == 'operating_normally' %}
+  {% set everything_ok = overall == "ok" and network_ok %}
+
+  {# ========== Status hero ========== #}
+  <div class="status-hero {{ 'ok' if network_ok else 'deg' }}">
+    <div class="status-hero-inner">
+      <span class="status-bigdot"></span>
+      <div>
+        <div class="status-headline">
+          {% if everything_ok %}All systems normal
+          {% elif network_ok %}Network healthy
+          {% elif overall == "ok" and pulse and pulse.status == 'running_hot' %}Network running hot
+          {% elif overall == "ok" %}Mostly normal
+          {% else %}Service status
+          {% endif %}
+        </div>
+        <div class="status-sub">
+          XRPL network health and dashboard infrastructure · refreshes every 60 s
+        </div>
+      </div>
+    </div>
+
+    <canvas id="ekg" class="status-ekg"
+            data-state="{{ 'ok' if network_ok else 'deg' }}"
+            data-base-interval="{{ '%.2f'|format(pulse.avg_close_seconds or 3.5) if pulse and not pulse.error else '3.5' }}"
+            data-load="{{ pulse.load_factor if pulse and not pulse.error else 1 }}"></canvas>
+    <div class="status-ekg-meta">
+      <span>Heartbeat · scales with network load</span>
+      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm">— bpm</span>
+    </div>
+  </div>
+
+  {# ========== Card 1: XRPL Network ========== #}
+  {% if pulse and not pulse.error %}
+    {% set net_ok = pulse.status == 'operating_normally' %}
+    <div class="card">
+      <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"></span>
+      <div class="card-body">
+        <div class="title">XRPL network</div>
+        <div class="desc">
+          {% if net_ok %}
+            The XRP Ledger is healthy. New ledgers are being closed every
+            {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} seconds — exactly as expected.
+            Validators are in agreement.
+          {% elif pulse.status == 'running_hot' %}
+            The ledger is busy. Transactions are still confirming, but fees may be slightly higher than usual.
+          {% elif pulse.status == 'congested' %}
+            The network is congested. Transactions are confirming more slowly and fees are elevated.
+          {% else %}
+            {{ pulse.status_text }}
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-state {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','congested'] else 'err') }}">
+        {{ pulse.status.replace('_',' ') }}
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <span class="dot idle"></span>
+      <div class="card-body">
+        <div class="title">XRPL network</div>
+        <div class="desc">Live network pulse is currently unavailable.</div>
+      </div>
+      <div class="card-state idle">unknown</div>
+    </div>
+  {% endif %}
+
+  {# ========== Card 2: Pool tracker ========== #}
+  {% set pool_state = 'ok' if (scan.finished or scan.alive) else 'idle' %}
+  <div class="card">
+    <span class="dot {{ pool_state }}"></span>
+    <div class="card-body">
+      <div class="title">Pool tracker</div>
+      <div class="desc">
+        {% if scan.finished %}
+          Catalogue of XRPL automated market makers is up to date —
+          tracking <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+          AMM pools across the ledger.
+        {% elif scan.alive %}
+          Currently building the AMM catalogue —
+          {{ "{:,}".format(scan.pages) }} ledger pages scanned at {{ scan.rate or "—" }} pages/sec.
+        {% else %}
+          Pool tracker not yet enabled in production. Showing local snapshot{% if scan.snapshot_at %} from {{ scan.snapshot_at }}{% endif %} —
+          tracking <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+          AMM pools at the time of capture.
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-state {{ pool_state }}">
+      {% if scan.finished %}ready{% elif scan.alive %}building{% else %}snapshot{% endif %}
+    </div>
+  </div>
+
+  {# ========== Card 3: Whale + token watcher ========== #}
+  {% set stream_state = 'ok' if stream.alive else 'idle' %}
+  <div class="card">
+    <span class="dot {{ stream_state }}"></span>
+    <div class="card-body">
+      <div class="title">Live activity feed</div>
+      <div class="desc">
+        {% if stream.alive %}
+          Watching every transaction on the XRP Ledger in real time.
+          Since startup we've logged
+          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> large transfers and
+          <strong>{{ "{:,}".format(stream.token_events) }}</strong> token trades.
+          Last update {{ stream.log_age }} ago.
+        {% else %}
+          Live activity feed not yet enabled in production. Coming soon — meanwhile the
+          page shows a snapshot of
+          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> whale transfers and
+          <strong>{{ "{:,}".format(stream.token_events) }}</strong> token trades captured
+          by the local indexer.
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-state {{ stream_state }}">
+      {% if stream.alive %}streaming{% else %}coming soon{% endif %}
+    </div>
+  </div>
+
+  {# ========== Card 4: Database ========== #}
+  <div class="card">
+    <span class="dot ok"></span>
+    <div class="card-body">
+      <div class="title">Stored data</div>
+      <div class="desc">
+        Historical activity is being saved to disk so charts and rankings
+        survive restarts.
+        <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+        events recorded ·
+        <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+        token volume entries.
+      </div>
+    </div>
+    <div class="card-state ok">healthy</div>
+  </div>
+
+  {# ========== Technical details (collapsed by default) ========== #}
+  <details class="tech-details">
+    <summary>Show technical details</summary>
+    <div class="tech-body">
+
+      <div class="tech-section">
+        <h3>XRPL network (live pulse)</h3>
+        {% if pulse and not pulse.error %}
+        <div class="tech-row"><span class="k">ledger index</span><span class="v">{{ "{:,}".format(pulse.ledger_index) }}</span></div>
+        <div class="tech-row"><span class="k">avg close time</span><span class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">last close age</span><span class="v">{{ pulse.last_close_age_seconds or 0 }}s</span></div>
+        <div class="tech-row"><span class="k">validation quorum</span><span class="v">{{ pulse.validation_quorum }}</span></div>
+        <div class="tech-row"><span class="k">load factor</span><span class="v">{{ pulse.load_factor }}×</span></div>
+        <div class="tech-row"><span class="k">status_text</span><span class="v dim">{{ pulse.status_text }}</span></div>
+        {% else %}
+        <div class="tech-row"><span class="k">pulse</span><span class="v dim">{{ pulse.error if pulse else "not loaded" }}</span></div>
+        {% endif %}
+      </div>
+
+      <div class="tech-section">
+        <h3>Pool tracker (bootstrap scan)</h3>
+        <div class="tech-row"><span class="k">uptime</span><span class="v">{{ scan.uptime }}</span></div>
+        <div class="tech-row"><span class="k">pages scanned</span><span class="v">{{ "{:,}".format(scan.pages) }}</span></div>
+        <div class="tech-row"><span class="k">objects walked</span><span class="v">{{ "{:,}".format(scan.objects_scanned) }}</span></div>
+        <div class="tech-row"><span class="k">amms in index</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
+        <div class="tech-row"><span class="k">scan rate</span><span class="v">{{ scan.rate }} pages/s</span></div>
+        <div class="tech-row"><span class="k">ledger snapshot</span><span class="v dim">{{ scan.ledger_index }}</span></div>
+        <div class="tech-row"><span class="k">log last write</span><span class="v">{{ scan.log_age }} ago</span></div>
+      </div>
+
+      <div class="tech-section">
+        <h3>Live watcher (stream)</h3>
+        <div class="tech-row"><span class="k">uptime</span><span class="v">{{ stream.uptime }}</span></div>
+        <div class="tech-row"><span class="k">txns observed</span><span class="v">{{ "{:,}".format(stream.txns_seen) }}</span></div>
+        <div class="tech-row"><span class="k">amm creates</span><span class="v">{{ stream.amm_creates }}</span></div>
+        <div class="tech-row"><span class="k">whale events</span><span class="v">{{ stream.whale_events }}</span></div>
+        <div class="tech-row"><span class="k">token events</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
+        <div class="tech-row"><span class="k">new tokens (since restart)</span><span class="v">{{ stream.new_tokens }}</span></div>
+        <div class="tech-row"><span class="k">seen-tokens index</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
+        <div class="tech-row"><span class="k">last ledger</span><span class="v dim">{{ stream.last_ledger }}</span></div>
+        <div class="tech-row"><span class="k">log last write</span><span class="v">{{ stream.log_age }} ago</span></div>
+      </div>
+
+      <div class="tech-section">
+        <h3>Data substrate</h3>
+        <div class="tech-row"><span class="k">events.db rows</span><span class="v">{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</span></div>
+        <div class="tech-row"><span class="k">volumes.db rows</span><span class="v">{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</span></div>
+      </div>
+
+      <div class="tech-section">
+        <h3>Watcher log · last 8 lines</h3>
+        <div class="log">{% for line in recent_log %}<div>{{ line }}</div>{% endfor %}</div>
+      </div>
+
+    </div>
+  </details>
+
+  <div class="footer">
+    Public on purpose · trust positioning means we publish real metrics about real infrastructure.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/">dashboard</a> ·
+    <a href="/pools">pools</a> ·
+    <a href="/whales">whales</a> ·
+    <a href="/tokens">tokens</a> ·
+    <a href="/about">about</a>
+  </div>
+
+</div>
+
+<script>
+  // ---------- EKG / heartbeat strip ----------
+  // Real-time horizontal trace, scrolls right→left like a medical monitor.
+  // Fires a QRS spike once per ledger close (interval from server pulse).
+  // Color is bound to overall status; degraded state uses an amber palette
+  // and a slightly irregular rhythm so the "off" feeling reads visually.
+  (function () {
+    var canvas = document.getElementById('ekg');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+
+    var state = canvas.dataset.state || 'ok';
+    var baseInterval = parseFloat(canvas.dataset.baseInterval) || 3.5;
+    var loadFactor = parseFloat(canvas.dataset.load) || 1;
+    var prefersReduced = window.matchMedia &&
+                         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var bpmEl = document.getElementById('ekg-bpm');
+
+    // Map XRPL load_factor → heartbeat interval (seconds per beat).
+    //   load 1   → ~base   (calm: ~15 bpm at 3.9s ledgers)
+    //   load 2   → base/2  (~30 bpm)
+    //   load 4   → base/3  (~45 bpm)
+    //   load 16  → base/6  (~90 bpm)
+    //   load 256 → base/8  (~120 bpm, capped)
+    function intervalForLoad(load) {
+      if (!isFinite(load) || load < 1) load = 1;
+      var divisor = 1 + Math.log2(load) * 0.5;  // logarithmic ramp
+      divisor = Math.min(divisor, 8);           // cap top end
+      return baseInterval / divisor;
+    }
+    var interval = intervalForLoad(loadFactor);
+
+    function renderBpm() {
+      if (!bpmEl) return;
+      var bpm = 60 / interval;
+      bpmEl.textContent = bpm.toFixed(1) + ' bpm  ·  load ' + loadFactor + '×';
+    }
+    renderBpm();
+
+    // Poll the same /api/ledger-tip endpoint the liveness chip uses, so the
+    // heartbeat rate updates without a full page reload.
+    setInterval(function () {
+      fetch('/api/ledger-tip', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j) return;
+          if (j.load_factor) loadFactor = j.load_factor;
+          if (j.avg_close_seconds) baseInterval = j.avg_close_seconds;
+          interval = intervalForLoad(loadFactor);
+          if (j.status) {
+            state = (j.status === 'operating_normally') ? 'ok' : 'deg';
+            palette = paletteFor(state);
+          }
+          renderBpm();
+        }).catch(function () {});
+    }, 30000);
+
+    function paletteFor(s) {
+      return s === 'ok'
+        ? { line: 'rgba(34,197,94,0.95)',  glow: 'rgba(34,197,94,0.45)',  base: 'rgba(34,197,94,0.18)' }
+        : { line: 'rgba(245,158,11,0.95)', glow: 'rgba(245,158,11,0.45)', base: 'rgba(245,158,11,0.18)' };
+    }
+    var palette = paletteFor(state);
+
+    function resize() {
+      var rect = canvas.getBoundingClientRect();
+      canvas.width  = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Trace buffer — one sample per pixel column. Scrolls left each frame.
+    var SAMPLES = [];
+    var maxSamples = 0;
+    function ensureBuffer() {
+      var w = canvas.clientWidth;
+      if (SAMPLES.length !== w) {
+        SAMPLES = new Array(w).fill(0);
+        maxSamples = w;
+      }
+    }
+
+    // Build a small QRS waveform at given fractional position (0..1) within
+    // the spike length. Returns deflection in [-1, 1] (positive = upward on screen).
+    function qrs(t) {
+      // t expected in [0, 1]
+      if (t < 0 || t > 1) return 0;
+      // Sequence: tiny P bump, sharp Q dip, big R spike, S dip, T bump.
+      if (t < 0.18) return Math.sin(t / 0.18 * Math.PI) * 0.12;       // P
+      if (t < 0.28) return -Math.sin((t - 0.18) / 0.10 * Math.PI) * 0.35; // Q
+      if (t < 0.40) return Math.sin((t - 0.28) / 0.12 * Math.PI) * 1.0;   // R
+      if (t < 0.50) return -Math.sin((t - 0.40) / 0.10 * Math.PI) * 0.45; // S
+      if (t < 0.78) return Math.sin((t - 0.50) / 0.28 * Math.PI) * 0.22;  // T
+      return 0;
+    }
+
+    var pxPerSec = 60;             // horizontal scroll speed
+    var spikeDuration = 0.55;      // seconds per QRS
+    var lastT = performance.now();
+    var beatT = 0;                 // time elapsed within current beat cycle
+    var inSpike = false;
+    var spikeStart = 0;
+
+    function frame(now) {
+      var dt = (now - lastT) / 1000;  // seconds
+      lastT = now;
+      if (prefersReduced) dt = 0;
+
+      ensureBuffer();
+      var w = canvas.clientWidth;
+      var h = canvas.clientHeight;
+      var midY = h / 2;
+      var amp = h * 0.42;
+
+      // Advance beat clock; on degraded state add small jitter to the interval.
+      beatT += dt;
+      var thisInterval = interval;
+      if (state === 'deg') thisInterval = interval * (0.85 + Math.random() * 0.4);
+      if (beatT >= thisInterval) {
+        beatT = 0;
+        inSpike = true;
+        spikeStart = 0;
+      }
+
+      // Push new samples on the right based on dt and pxPerSec.
+      var newCols = Math.max(1, Math.round(dt * pxPerSec));
+      for (var i = 0; i < newCols; i++) {
+        var sample;
+        if (inSpike) {
+          spikeStart += 1 / pxPerSec;
+          var u = spikeStart / spikeDuration;
+          if (u >= 1) { inSpike = false; sample = 0; }
+          else        { sample = qrs(u); }
+        } else {
+          // Tiny baseline noise so the line breathes slightly.
+          sample = (Math.random() - 0.5) * 0.02;
+        }
+        SAMPLES.shift();
+        SAMPLES.push(sample);
+      }
+
+      // Render.
+      ctx.clearRect(0, 0, w, h);
+
+      // Faint baseline.
+      ctx.strokeStyle = palette.base;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, midY);
+      ctx.lineTo(w, midY);
+      ctx.stroke();
+
+      // Glow pass.
+      ctx.shadowColor = palette.glow;
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = palette.line;
+      ctx.lineWidth = 1.6;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (var x = 0; x < SAMPLES.length; x++) {
+        var y = midY - SAMPLES[x] * amp;
+        if (x === 0) ctx.moveTo(x, y);
+        else         ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Bright "now" head — small dot at the right edge of the trace.
+      var head = SAMPLES[SAMPLES.length - 1] || 0;
+      var hx = w - 1;
+      var hy = midY - head * amp;
+      ctx.fillStyle = palette.line;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+</script>
+
+</body>
+</html>

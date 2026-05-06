@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pools · xrpldashboard</title>
+  {% set meta_title = "pools · xrpldashboard" %}
+  {% set meta_description = "Every AMM pool on the XRP Ledger, ranked by total value locked. See where liquidity actually sits and which pairs are deep enough to trade." %}
+  {% include "_head_meta.html" %}
+  <meta http-equiv="refresh" content="120">
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --red: #ef4444;
+      --purple: #c084fc;
+      --pink: #ec4899;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    h1 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 700;
+         letter-spacing: -0.01em; }
+    .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 16px;
+            max-width: 720px; }
+
+    /* Hero with sloshing liquid-pool flask on the right */
+    .pool-hero { display: grid; grid-template-columns: 1fr 64px;
+                 gap: 1.4em; align-items: center; margin-bottom: 14px; }
+    .pool-hero .lede { margin-bottom: 0; }
+    .pool-flask { position: relative; width: 64px; height: 64px;
+                  justify-self: end; }
+    .pool-flask canvas { width: 100%; height: 100%; display: block;
+                         background: transparent; }
+    .pool-flask-cap {
+      position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em;
+      font-weight: 600; white-space: nowrap;
+    }
+    @media (max-width: 540px) {
+      .pool-hero { grid-template-columns: 1fr; }
+      .pool-flask { justify-self: center; width: 52px; height: 52px;
+                    margin-bottom: 8px; }
+    }
+
+    .indexed-banner {
+      background: linear-gradient(90deg, rgba(34,211,238,0.10), rgba(59,130,246,0.05));
+      border: 1px solid rgba(34,211,238,0.25);
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px;
+    }
+    .indexed-banner .big {
+      font-family: var(--mono); font-size: 1.5rem; color: var(--cyan);
+      font-weight: 700; letter-spacing: -0.01em;
+    }
+    .indexed-banner .label { color: var(--text); font-size: 0.95rem; }
+    .indexed-banner .sub { color: var(--muted); font-size: 0.82rem;
+                           margin-left: auto; }
+    .indexed-banner .pulse-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan); margin-right: 6px;
+      animation: bp 1.6s ease-in-out infinite;
+    }
+    @keyframes bp { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .stat  { background: var(--card); border: 1px solid var(--border);
+             border-radius: 8px; padding: 8px 12px; min-width: 130px; }
+    .stat .n { font-family: var(--mono); font-size: 1.05rem; color: var(--text); }
+    .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
+               letter-spacing: 0.05em; margin-top: 2px; }
+
+    h2 { font-size: 1.05rem; margin: 22px 0 10px; font-weight: 600;
+         letter-spacing: -0.005em; }
+    h2 .sub { color: var(--muted); font-weight: 400; font-size: 0.85rem;
+              margin-left: 8px; }
+
+    /* Top 10 hero strip — compact rows, accent treatment */
+    .top10 { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .hero-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 100px 110px 130px;
+      gap: 10px; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .hero-row.r1 { border-left-color: #fbbf24; }
+    .hero-row.r2 { border-left-color: #d6a14f; }
+    .hero-row.r3 { border-left-color: #b8860b; }
+    .hero-row .rank { font-family: var(--mono); color: var(--dim);
+                      font-size: 0.85rem; text-align: right; }
+    .hero-row .pair { color: var(--text); font-weight: 600;
+                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hero-row .fee  { font-family: var(--mono); color: var(--muted);
+                      font-size: 0.85rem; text-align: right; }
+    .hero-row .reserves { font-family: var(--mono); color: var(--muted);
+                          font-size: 0.78rem; text-align: right; }
+    .hero-row .tvl  { font-family: var(--mono); font-size: 0.95rem;
+                      color: var(--text); text-align: right; font-weight: 600; }
+    .hero-row .tvl .stat-pill { display: block; font-weight: 400;
+                                font-size: 0.65rem; color: var(--muted);
+                                margin-top: 2px; }
+
+    /* Tier filter pills */
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+    .pill { display: inline-block; padding: 5px 11px; border-radius: 999px;
+            border: 1px solid var(--border); background: transparent;
+            color: var(--muted); font-size: 0.78rem; }
+    .pill:hover { color: var(--text); border-color: rgba(255,255,255,0.18);
+                  text-decoration: none; }
+    .pill.active { background: rgba(34,211,238,0.12); color: var(--cyan);
+                   border-color: rgba(34,211,238,0.4); }
+
+    /* Search input */
+    .search-bar { display: flex; align-items: center; gap: 10px;
+                  margin: 6px 0 10px; flex-wrap: wrap; }
+    .search-bar input {
+      flex: 1; min-width: 220px; max-width: 420px;
+      font-family: var(--mono); font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 7px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .search-bar input::placeholder { color: var(--dim); }
+    .search-bar input:focus { border-color: rgba(34,211,238,0.5); }
+    .search-stats { color: var(--muted); font-size: 0.78rem; font-family: var(--mono); }
+    .search-empty { display: none; color: var(--muted); font-size: 0.85rem;
+                    text-align: center; padding: 18px;
+                    background: var(--card); border: 1px dashed var(--border);
+                    border-radius: 8px; margin-top: 4px; }
+    .search-empty.visible { display: block; }
+
+    /* Compact table */
+    .row {
+      display: grid;
+      grid-template-columns: 36px 1fr 80px 110px 120px;
+      gap: 10px; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 14px; margin-bottom: 4px;
+    }
+    .row .rank { font-family: var(--mono); color: var(--dim); font-size: 0.82rem;
+                 text-align: right; }
+    .row .pair-block { display: flex; flex-direction: column; gap: 2px;
+                       min-width: 0; }
+    .row .pair { color: var(--text); font-weight: 500; font-size: 0.92rem;
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .acct { color: var(--dim); font-family: var(--mono); font-size: 0.7rem;
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .fee  { font-family: var(--mono); color: var(--muted);
+                 font-size: 0.82rem; text-align: right; }
+    .row .reserves { font-family: var(--mono); color: var(--muted);
+                     font-size: 0.74rem; text-align: right;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .tvl  { font-family: var(--mono); font-size: 0.88rem;
+                 color: var(--text); text-align: right; }
+    .row .tvl .status { display: block; font-size: 0.62rem;
+                        text-transform: uppercase; letter-spacing: 0.06em;
+                        margin-top: 1px; }
+
+    /* TVL status colors */
+    .status-exact { color: var(--green); }
+    .status-estimated { color: var(--amber); }
+    .status-non_xrp_pair { color: var(--dim); }
+    .status-error { color: var(--red); }
+    .row .tvl.is-non_xrp_pair { color: var(--dim); }
+    .row .tvl.is-error { color: var(--red); }
+
+    .empty { background: var(--card); border: 1px dashed var(--border);
+             border-radius: 10px; padding: 24px 18px; text-align: center;
+             color: var(--muted); }
+    .empty .big { color: var(--text); font-size: 1.05rem; margin-bottom: 6px; }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-left: 3px solid var(--cyan); border-radius: 6px;
+               padding: 12px 16px; margin: 18px 0; color: var(--muted);
+               font-size: 0.86rem; }
+    .callout p { margin: 0 0 6px; }
+    .callout p:last-child { margin-bottom: 0; }
+    code { font-family: var(--mono); font-size: 0.9em; background: rgba(255,255,255,0.05);
+           padding: 1px 5px; border-radius: 3px; }
+
+    .footer { color: var(--dim); font-size: 0.78rem; margin-top: 28px;
+              padding-top: 16px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+
+    @media (max-width: 700px) {
+      .hero-row { grid-template-columns: 28px 1fr 130px;
+                  grid-template-areas:
+                    "rank pair tvl"
+                    ".    sub  sub"; }
+      .hero-row .rank { grid-area: rank; }
+      .hero-row .pair { grid-area: pair; }
+      .hero-row .tvl  { grid-area: tvl; text-align: right; }
+      .hero-row .fee, .hero-row .reserves { display: none; }
+      .row { grid-template-columns: 30px 1fr 110px;
+             grid-template-areas:
+               "rank pair tvl"
+               ".    acct acct"; }
+      .row .rank { grid-area: rank; }
+      .row .pair-block { grid-area: pair; }
+      .row .tvl { grid-area: tvl; }
+      .row .fee, .row .reserves { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <div class="pool-hero">
+    <div>
+      <h1>AMM pools</h1>
+      <p class="lede">
+        Every AMM pool we&rsquo;ve indexed from the XRP Ledger, ranked by total
+        value locked. XRP-paired pools are sized in USD using the XRP price;
+        pools with a USD-pegged token (stablecoin/fiat) are exact, others are
+        best-effort estimates. See <a href="/about">about</a> for sourcing.
+      </p>
+    </div>
+    <div class="pool-flask" aria-hidden="true">
+      <canvas id="pool-flask" width="160" height="160"></canvas>
+      <div class="pool-flask-cap">POOL</div>
+    </div>
+  </div>
+
+  <div class="indexed-banner">
+    <span class="pulse-dot"></span>
+    <span class="big">{{ "{:,}".format(indexed_count) }}</span>
+    <span class="label">pools tracked · top 100 shown by default{% if rank_in_progress %} · ranking in progress{% endif %}</span>
+    <span class="sub">
+      Most XRPL pools have negligible TVL — switch to <em>all</em> below to see the long tail.
+      ({{ ranked_count }} ranked{% if not rank_finished %} so far{% endif %})
+    </span>
+  </div>
+
+  {% if rows %}
+  <div class="stats">
+    <div class="stat">
+      <div class="n">{{ fmt_money(total_tvl_usd) }}</div>
+      <div class="l">total TVL (XRP-paired)</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ ranked_count }}</div>
+      <div class="l">pools priced</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ rows|selectattr("tvl_status","equalto","exact")|list|length }}</div>
+      <div class="l">exact TVL</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ rows|selectattr("tvl_status","equalto","estimated")|list|length }}</div>
+      <div class="l">estimated</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if top10 %}
+  <h2>Top 10 by TVL <span class="sub">across all tracked pools</span></h2>
+  <div class="top10">
+    {% for p in top10 %}
+    <div class="hero-row{% if loop.index == 1 %} r1{% elif loop.index == 2 %} r2{% elif loop.index == 3 %} r3{% endif %}">
+      <div class="rank">{{ loop.index }}</div>
+      <div class="pair">{{ p.pair }}</div>
+      <div class="fee">{{ "%.3f"|format(p.fee_pct) }}%</div>
+      <div class="reserves">
+        {{ "{:,.0f}".format(p.amount_a or 0) }}<br>
+        {{ "{:,.0f}".format(p.amount_b or 0) }}
+      </div>
+      <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
+        {% if p.tvl_usd is not none %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
+        <span class="stat-pill status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h2>Browse all <span class="sub">search &amp; filter</span></h2>
+  <div class="search-bar">
+    <input type="search" id="pool-search" placeholder="Search pair (e.g. USDC, RLUSD, SOLO)…" autocomplete="off" spellcheck="false" />
+    <span class="search-stats" id="pool-search-stats"></span>
+  </div>
+  <div class="filters">
+    <a class="pill {% if tier == '100' %}active{% endif %}" href="/pools?tier=100">top 100</a>
+    <a class="pill {% if tier == '500' %}active{% endif %}" href="/pools?tier=500">top 500</a>
+    <a class="pill {% if tier == 'all' %}active{% endif %}" href="/pools?tier=all">all ({{ ranked_count }})</a>
+  </div>
+  <div class="search-empty" id="pool-search-empty">No pools match that search. Try fewer letters, or switch tier to <a href="/pools?tier=all">all</a>.</div>
+
+  {% if rows %}
+    {% for p in rows %}
+    <div class="row">
+      <div class="rank">{{ loop.index }}</div>
+      <div class="pair-block">
+        <div class="pair">{{ p.pair }}</div>
+        <div class="acct">{{ p.amm_account }}</div>
+      </div>
+      <div class="fee">{{ "%.3f"|format(p.fee_pct or 0) }}%</div>
+      <div class="reserves">
+        {% if p.amount_a is not none and p.amount_b is not none %}
+          {{ "{:,.0f}".format(p.amount_a) }} /
+          {{ "{:,.0f}".format(p.amount_b) }}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
+        {% if p.tvl_usd is not none %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
+        <span class="status status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <div class="big">No ranked pools yet.</div>
+      <div>
+        The bootstrap scan has indexed {{ "{:,}".format(indexed_count) }}
+        AMMs but ranking hasn't run yet. Run
+        <code>python rank_amms.py</code> to populate this view.
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="callout">
+    <p>
+      <strong>Why TVL has different statuses:</strong> XRP-paired pools
+      with a USD-pegged token (stablecoin or fiat-backed) get an
+      <span class="status-exact">exact</span> TVL. XRP-paired pools whose
+      token has no peg get an <span class="status-estimated">estimated</span>
+      TVL — 2&times; the XRP-side value, since AMM curves balance 50/50.
+      Token-token pools (no XRP side) are tagged
+      <span class="status-non_xrp_pair">non&nbsp;xrp&nbsp;pair</span> and
+      sink to the bottom — we&rsquo;ll price them once a derived token
+      price feed exists.
+    </p>
+    <p>
+      <strong>Catalog is still expanding.</strong> A bootstrap scan walks
+      the ledger by object ID, so the indexed list grows as the scan
+      progresses. The {{ "{:,}".format(indexed_count) }} you see above is
+      the current count — it goes up over time, not down.
+    </p>
+  </div>
+
+  <div class="footer">
+    auto-refresh 120s · ranks pulled live from the XRP Ledger.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/">dashboard</a> · <a href="/about">about</a> ·
+    <a href="mailto:contact@xrpldashboard.com">contact</a>
+  </div>
+
+</div>
+<script>
+  // Client-side filter for the browse table. Matches against pair name and
+  // AMM account text — typing "USDC" hides every row that doesn't include
+  // that string. Filter applies on top of the server-side tier filter.
+  (function () {
+    var input = document.getElementById('pool-search');
+    var stats = document.getElementById('pool-search-stats');
+    var empty = document.getElementById('pool-search-empty');
+    if (!input) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.row'));
+    function apply() {
+      var q = input.value.trim().toLowerCase();
+      var visible = 0;
+      rows.forEach(function (r) {
+        if (!q) {
+          r.style.display = '';
+          visible++;
+          return;
+        }
+        var text = r.textContent.toLowerCase();
+        var match = text.indexOf(q) !== -1;
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (!q) {
+        stats.textContent = '';
+      } else {
+        stats.textContent = visible + ' match' + (visible === 1 ? '' : 'es');
+      }
+      empty.classList.toggle('visible', !!q && visible === 0);
+    }
+    input.addEventListener('input', apply);
+  })();
+
+  // Sloshing AMM-pool flask in the page hero. A circular "beaker" filled
+  // with two stacked liquids — bottom layer (XRP-side cyan) and top layer
+  // (USD-side amber). The interface between them is a sine wave that
+  // gently sloshes back and forth. No deps. Respects reduced motion.
+  (function () {
+    var canvas = document.getElementById('pool-flask');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var W = canvas.width, H = canvas.height;
+    var cx = W / 2, cy = H / 2;
+    var R  = Math.min(W, H) * 0.46;
+    var startTime = performance.now();
+    var reduced = window.matchMedia &&
+                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function frame(now) {
+      ctx.clearRect(0, 0, W, H);
+      var t = (now - startTime) / 1000;
+
+      // Outer glass ring
+      ctx.lineWidth = R * 0.06;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Clip everything inside the beaker so the liquids stay contained
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, R - R * 0.04, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Interface line — a gentle sine wave sitting at vertical midpoint,
+      // tilted slightly by a slow-changing angle to sell the slosh.
+      var amp     = R * 0.08;
+      var freq    = 0.06;
+      var phase   = t * 1.6;
+      var tilt    = Math.sin(t * 0.8) * R * 0.05;
+      var midY    = cy + Math.sin(t * 0.5) * R * 0.04;
+
+      function ySurface(x) {
+        var rel = (x - cx) / R; // -1..1
+        return midY + Math.sin(x * freq + phase) * amp + rel * tilt;
+      }
+
+      // BOTTOM liquid (XRP — cyan)
+      ctx.beginPath();
+      ctx.moveTo(cx - R, cy + R);
+      for (var x = cx - R; x <= cx + R; x += 2) {
+        ctx.lineTo(x, ySurface(x));
+      }
+      ctx.lineTo(cx + R, cy + R);
+      ctx.closePath();
+      var bottom = ctx.createLinearGradient(0, midY, 0, cy + R);
+      bottom.addColorStop(0, '#22d3ee');
+      bottom.addColorStop(1, '#0e7490');
+      ctx.fillStyle = bottom;
+      ctx.fill();
+
+      // TOP liquid (USD-side — amber, semi-translucent)
+      ctx.beginPath();
+      ctx.moveTo(cx - R, cy - R);
+      ctx.lineTo(cx + R, cy - R);
+      for (var x2 = cx + R; x2 >= cx - R; x2 -= 2) {
+        ctx.lineTo(x2, ySurface(x2));
+      }
+      ctx.closePath();
+      var top = ctx.createLinearGradient(0, cy - R, 0, midY);
+      top.addColorStop(0, 'rgba(245, 158, 11, 0.85)');
+      top.addColorStop(1, 'rgba(245, 158, 11, 0.65)');
+      ctx.fillStyle = top;
+      ctx.fill();
+
+      // Surface highlight along the interface
+      ctx.beginPath();
+      for (var x3 = cx - R; x3 <= cx + R; x3 += 2) {
+        var ys = ySurface(x3);
+        if (x3 === cx - R) ctx.moveTo(x3, ys); else ctx.lineTo(x3, ys);
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Subtle inner-glass bevel
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.92, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (!reduced) requestAnimationFrame(frame);
+    }
+
+    if (reduced) {
+      // Static frame at a flattering moment in the cycle.
+      frame(startTime + 600);
+    } else {
+      requestAnimationFrame(frame);
+    }
+  })();
+</script>
+</body>
+</html>

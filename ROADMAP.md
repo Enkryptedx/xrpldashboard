@@ -25,11 +25,11 @@ xrpl.to, XRPLWin). What none of them do is unify the ledger-wide
 view in one editorial dashboard.
 
 What xrpldashboard owns:
-- Pure analytics, no DEX, no token. No conflict of interest.
 - Editorial voice — plain-language status, not raw data dumps.
 - Ledger-wide synthesis, not single-domain depth.
 - Honest handoffs — links out to XRPSCAN/Bithomp/etc. for
   drilldown the dashboard isn't built to do.
+- No conflict of interest (see Principles + What's NOT on the roadmap).
 
 ## Principles
 
@@ -39,6 +39,10 @@ What xrpldashboard owns:
 4. Editorial tone is part of the product. We have a voice.
 5. Trust > features. Never sensationalize. Never lie. Never hype.
 6. Mission-first. Funding model serves the mission, not vice versa.
+7. Open source. MIT-licensed, source on GitHub. Anyone can fork,
+   audit, or self-host.
+8. Transparent metrics. Public analytics dashboard — visitors can
+   see our usage numbers. Nothing to hide.
 
 ## Site structure
 
@@ -69,21 +73,38 @@ hand off for the truly granular detail.
 
 ## Build sequence
 
-### 1. Network pulse
+### 1. Network pulse — SHIPPED (live-data subset)
 Top of homepage, always visible. Network health in plain language.
-- Ledgers closed in 24h, avg close time, validator participation
-- Total transactions, active accounts, fees burned today
-- Plain-language status line ("XRPL is operating normally...")
+- ✅ Ledger index, last close age, avg close time, validator quorum,
+  load factor, base fee, owner reserves
+- ✅ Plain-language status line ("XRPL is operating normally...")
+- ✅ Cheap single-RPC implementation (`network_pulse.py`), 20s cache
+- ⏳ 24h aggregates (ledgers closed today, fees burned today, active
+  accounts) — depends on Step 2.5 (historical snapshot infra)
 - This is where the dashboard's voice is established. Spend real
   time on the editorial layer, not just the engineering.
 
 ### 2. DeFi state (refactor existing AMM page)
-- Total AMM TVL, % change vs yesterday
+- Total AMM TVL, % change vs yesterday (% change blocked on Step 2.5)
 - Biggest pool gainers/losers
 - Active pools, new pools today
+- **Index every AMM on-ledger** via background `ledger_data` scan.
+  Display tiered: Featured 19 (curated) → Top by TVL → All (toggle).
+  Architectural pick: in-process background scanner, requires bumping
+  Render to paid plan ($7/mo) so the dyno doesn't sleep mid-scan.
 - Reframe so this reads as "one panel of the dashboard," not
   "the AMM tracker with chrome." Visual hierarchy matters.
 - Link out to XPMarket for deposit/withdraw actions.
+
+### 2.5. Historical snapshot infrastructure (load-bearing)
+Without this, every panel is a snapshot with no "% change" or
+"24h ago" comparison. Step 1's 24h aggregates and Step 2's
+gainers/losers both depend on it. Schedule explicitly so it
+doesn't get skipped.
+- Cron / APScheduler job to snapshot pool / network / token state
+  every N minutes
+- Persistent store — file-based JSON to start, SQLite if it grows
+- Retention policy (24h rolling minimum, 30d for headline metrics)
 
 ### 3. Token economy basics
 - Top tokens by 24h volume, biggest gainers/losers
@@ -112,13 +133,19 @@ The differentiated panel. What competitors don't do well.
 - New AMMs, new tokens, network upgrades
 - Polish layer. Last priority.
 
-## Hidden infrastructure task
+## Pre-launch "impressive" gate
 
-Between steps 2 and 3, or in parallel: historical data infrastructure.
-- Cron jobs to snapshot pool/network/token state over time
-- Database or file-based persistence
-- Without this, every panel is a snapshot with no "% change"
-- Schedule this explicitly so it doesn't block step 3
+Site does not go live on the public domain until it clears this bar.
+Trust > features means launching half-built would burn the brand.
+
+- ✅ Network pulse panel live with editorial voice
+- ⏳ DeFi state refactor done, all-pools indexing live with tiered display
+- ⏳ Historical snapshot infra running for ≥1 week (so % change figures
+  are real, not zeros)
+- ⏳ At least one of: token economy panel OR whale watch panel shipped
+- ⏳ Plausible Analytics live with public stats page
+- ⏳ Soft-launch via Twitter / XRPL Discord with link asking for feedback
+- ⏳ Grant application drafted and ready to submit week of launch
 
 ## Funding model
 
@@ -132,6 +159,22 @@ Between steps 2 and 3, or in parallel: historical data infrastructure.
    - Whitelabel widgets, compliance exports, priority support
    - Never gate retail basics. Tier is *additional*, not gated.
 
+### Grant timing
+
+Apply with traction in hand, not on promises.
+
+- *Trigger to apply:* Steps 1–2 fully shipped, Step 2.5 (historical
+  snapshot infra) running for ≥2 weeks, public Plausible dashboard
+  showing real traffic.
+- *Targets:* Ripple's XRPL Grants Program (waves, $30k–$80k typical
+  for public-good infra), XRPL Foundation grants (smaller community
+  awards), public-good crypto grants where the fit is honest.
+- *Use of funds:* stipend so dev hours can be sustained, infra
+  upgrades (paid Render, KV store, monitoring), security audit,
+  optional design contractor for a polish pass.
+- *Commitment:* once accepted, public progress updates and a final
+  report. Don't apply unless ready to ship through to completion.
+
 ## What's NOT on the roadmap
 
 - A token. Never.
@@ -140,11 +183,29 @@ Between steps 2 and 3, or in parallel: historical data infrastructure.
 - Sponsored content disguised as analytics. Never.
 - Premium tier for retail users. Never.
 
-## Deferred / not yet started
+## Status snapshot
 
-- Git setup (whole project still has no version control)
-- Server-side scan caching
-- Live mode / auto-refresh
-- Render/Fly deployment
-- Domain connection to xrpldashboard.com
-- Plausible Analytics integration
+### Shipped
+- Git repo + GitHub at `Enkryptedx/xrpldashboard`
+- MIT LICENSE, README with mission and run instructions
+- Server-side cache (thread-safe, 30s TTL on AMM scan, 20s on pulse)
+- Live data ticker (page shows "cached Xs ago", auto-refreshes at 60s)
+- Render deployment config (`render.yaml`, `Procfile`)
+- Domain `xrpldashboard.com` purchased
+- Network Pulse panel (live single-RPC subset)
+- 19-pool curated AMM table with lookup form
+- `/v2` design preview (dark navy, donut chart, animated bars)
+
+### In flight / next up
+- Step 2: all-AMM background indexing + tiered display
+- Step 2.5: historical snapshot infrastructure
+- Plausible Analytics integration (with public stats page enabled)
+
+### Not started
+- Token economy panel (Step 3)
+- Whale watch panel (Step 4)
+- Institutional layer (Step 5)
+- Ecosystem feed (Step 6)
+- Section pages (`/network`, `/defi`, `/tokens`, `/whales`)
+- Detail pages (`/pool/<id>`, `/token/<id>`, `/account/<address>`)
+- Supporting pages (`/about`, `/learn`, eventually `/api`)

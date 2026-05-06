@@ -1,0 +1,121 @@
+{
+  "r9NpyVfLfUG8hatuCCHKzosyDtKnBdsEN3": {
+    "name": "Ripple Escrow #01",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml",
+    "_note": "Declared in Ripple's xrp-ledger.toml (XRPL first-party disclosure standard). Part of the monthly billion-XRP escrow release schedule."
+  },
+  "r9UUEXn3cx2seufBkDa8F86usfjWM6HiYp": {
+    "name": "Ripple Escrow #02",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rB3WNZc45gxzW31zxfXdkx8HusAhoqscPn": {
+    "name": "Ripple Escrow #03",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rDdXiA3M4mYTQ4cFpWkVXfc2UaAXCFWeCK": {
+    "name": "Ripple Escrow #04",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rKDvgGUsNPZxsgmoemfrgXPS2Not4co2op": {
+    "name": "Ripple Escrow #05",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rKwJaGmB5Hz24Qs2iyCaTdUuL1WsEXUWy5": {
+    "name": "Ripple Escrow #06",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rN8pqRwLYuuvY7pUHurybPC8P6rLqVsu6o": {
+    "name": "Ripple Escrow #07",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rNASJdZjY9dToHnNURi3HAUku3duPwbtD1": {
+    "name": "Ripple Escrow #08",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rU9qmGM4Y6WWDhiNzkwVKBwwatcoE7YL1T": {
+    "name": "Ripple Escrow #09",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rfWPPQBYqYmoFMdVnjzXCagJbz5uajSBXL": {
+    "name": "Ripple Escrow #10",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rh2EsAe2xVE71ZBjx7oEL2zpD4zmSs3sY9": {
+    "name": "Ripple Escrow #11",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rhEwsCWDCVxDiKxGJAKM6VuXC8EFtJP5gQ": {
+    "name": "Ripple Escrow #12",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rncKvRcdDq9hVJpdLdTcKoxsS3NSkXsvfM": {
+    "name": "Ripple Escrow #13",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rp6aTJmW3nq1aKt3Jmuz4DPRxksT5PBjpH": {
+    "name": "Ripple Escrow #14",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rsjFB8mPWqiZgPUaVh8XYqdfa59PE2d5LG": {
+    "name": "Ripple Escrow #15",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rw2hzLZgiQ9q62KCuaTWuFHWfiX7JWg3wY": {
+    "name": "Ripple Escrow #16",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rDqGA2GfveHypDguQ1KXrJzYymFZmKxEsF": {
+    "name": "Ripple Escrow #17",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rGKHDyj4L6pc7DzRB6LWCR4YfZfzXj2Bdh": {
+    "name": "Ripple Escrow #18",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rHGfmgv54kpc3QCZGRXEQKUhLPndbasbQr": {
+    "name": "Ripple Escrow #19",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rMhkqz3DeU7GUUJKGZofusbrTwZe6bDyb1": {
+    "name": "Ripple Escrow #20",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De": {
+    "name": "RLUSD Issuer (Ripple)",
+    "category": "ripple",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml",
+    "_note": "Issuer of RLUSD stablecoin. Declared by Ripple in its xrp-ledger.toml."
+  },
+  "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B": {
+    "name": "Bitstamp",
+    "category": "exchange",
+    "verified_via": "https://blog.bitstamp.net/post/bitstamp-eur-iou-services-on-xrp-ledger/",
+    "_note": "Bitstamp's XRPL IOU issuer (USD/EUR/BTC). Same address used as the operational hot wallet for Bitstamp's XRPL IOU services per their official blog post."
+  },
+  "rMYL6sN2z5os4RWLuT6HHDhJYpBACujzNa": {
+    "name": "XRPL Labs",
+    "category": "other",
+    "verified_via": "https://xrpl-labs.com/.well-known/xrp-ledger.toml",
+    "_note": "Declared in XRPL Labs' xrp-ledger.toml as a main-network account. XRPL Labs is the team behind the Xaman (formerly Xumm) wallet. The TOML does not specify the address's role; we only assert ownership."
+  }
+}

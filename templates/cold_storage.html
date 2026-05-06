@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cold storage · xrpldashboard</title>
+  {% set meta_title = "Cold storage · xrpldashboard" %}
+  {% set meta_description = "Where the big XRP balances actually live — Ripple's monthly-release escrows and verified exchange custody, with the schedule of upcoming unlocks." %}
+  {% include "_head_meta.html" %}
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --fs-2xs: 0.7rem;
+      --fs-xs: 0.78rem;
+      --fs-sm: 0.88rem;
+      --fs-md: 1.05rem;
+      --fs-lg: 1.4rem;
+      --fs-xl: 1.85rem;
+      --fs-2xl: 2.4rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    .hero { position: relative; overflow: hidden; padding: 1.6em 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-primary); opacity: 0.07;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero-eyebrow { font-size: var(--fs-xs); color: var(--muted);
+                    text-transform: uppercase; letter-spacing: 0.1em;
+                    font-weight: 600; margin-bottom: 0.4em; }
+    .hero-name h1 { font-size: var(--fs-2xl); margin: 0; font-weight: 700;
+                    letter-spacing: -0.02em;
+                    background: var(--grad-primary); -webkit-background-clip: text;
+                    background-clip: text; color: transparent; }
+    .hero-meta { color: var(--muted); font-size: var(--fs-sm); margin-top: 0.45em;
+                 max-width: 720px; }
+
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 0.8em; margin-bottom: 1em; }
+    .kpi { background: var(--card); border: 1px solid var(--border);
+           border-radius: 10px; padding: 0.95em 1em; }
+    .kpi .l { font-size: var(--fs-2xs); color: var(--muted);
+              text-transform: uppercase; letter-spacing: 0.08em;
+              font-weight: 600; margin-bottom: 0.35em; }
+    .kpi .v { font-family: var(--mono); font-size: var(--fs-lg); color: var(--text);
+              font-weight: 600; letter-spacing: -0.01em; }
+    .kpi .sub { font-size: var(--fs-2xs); color: var(--dim); margin-top: 0.25em; }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.2em 1.4em; margin-bottom: 1em; }
+    .card h2 { font-size: var(--fs-md); margin: 0 0 0.5em; font-weight: 600;
+               letter-spacing: -0.01em; }
+    .section-head { display: flex; align-items: baseline;
+                    justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--muted); }
+
+    .scope-note { font-size: var(--fs-xs); color: var(--muted); line-height: 1.6;
+                  padding: 0.8em 1em; border-left: 2px solid var(--cyan);
+                  background: rgba(34,211,238,0.04); border-radius: 0 6px 6px 0;
+                  margin-bottom: 0.8em; }
+
+    .esc-row { display: grid;
+               grid-template-columns: 1.6fr 1fr 1fr 0.8fr;
+               gap: 0.8em; align-items: center;
+               padding: 0.7em 0; }
+    .esc-row + .esc-row { border-top: 1px solid var(--border); }
+    .esc-row.head { color: var(--muted); font-size: var(--fs-2xs);
+                    text-transform: uppercase; letter-spacing: 0.08em;
+                    font-weight: 600; padding-bottom: 0.5em; border-bottom: 1px solid var(--border); }
+    .esc-name { font-weight: 600; color: var(--text); font-size: var(--fs-sm); }
+    .esc-name .sub { display: block; font-weight: 400; color: var(--muted);
+                     font-family: var(--mono); font-size: var(--fs-2xs); margin-top: 2px; }
+    .esc-bal { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text);
+               text-align: right; }
+    .esc-bal.empty-cell { color: var(--dim); }
+    .esc-bal.error-cell { color: var(--amber); }
+    .esc-bar-cell { padding: 0 0.4em; }
+    .esc-bar { height: 6px; background: rgba(255,255,255,0.04); border-radius: 3px;
+               overflow: hidden; }
+    .esc-bar-fill { height: 100%; background: var(--grad-primary); border-radius: 3px;
+                    width: 0; animation: barFill 1s cubic-bezier(0.2,0.8,0.2,1) forwards;
+                    animation-delay: calc(var(--i, 0) * 30ms); }
+    @keyframes barFill { to { width: var(--target-w, 0%); } }
+    .esc-link { font-family: var(--mono); font-size: var(--fs-2xs);
+                color: var(--muted); text-align: right; }
+    .esc-link a { color: var(--muted); }
+    .esc-link a:hover { color: var(--cyan); }
+
+    .links { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
+    .link-pill { display: inline-flex; align-items: center; gap: 0.45em;
+                 padding: 0.4em 0.85em; border-radius: 999px;
+                 background: rgba(255,255,255,0.04);
+                 border: 1px solid var(--border);
+                 color: var(--text); font-size: var(--fs-xs); font-weight: 500; }
+    .link-pill:hover { border-color: rgba(34,211,238,0.4); color: var(--cyan);
+                       text-decoration: none; }
+
+    footer { margin-top: 2.5em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: var(--fs-xs); }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 720px) {
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .esc-row { grid-template-columns: 1.4fr 1fr 0.6fr;
+                 grid-template-areas: "name bal link" "bar bar bar"; }
+      .esc-name { grid-area: name; }
+      .esc-bal { grid-area: bal; }
+      .esc-bar-cell { grid-area: bar; padding: 0; }
+      .esc-link { grid-area: link; }
+      .esc-row.head { display: none; }
+    }
+    @media (max-width: 480px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+      .hero-name h1 { font-size: var(--fs-xl); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Cold storage tracker</div>
+      <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} XRP locked</h1></div>
+      <div class="hero-meta">
+        Across {{ data.tracked_count }} addresses ·
+        largest: <strong style="color: var(--text);">{{ data.largest_name }}</strong>
+        ({{ "{:,.0f}".format(data.largest_xrp) }} XRP)
+        {% if data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
+          · cached {{ data.cached_age_seconds | round(0) | int }}s ago
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="l">Total locked</div>
+      <div class="v">{{ "{:,.0f}".format(data.total_xrp) }}</div>
+      <div class="sub">XRP across {{ data.tracked_count }} accounts</div>
+    </div>
+    <div class="kpi">
+      <div class="l">Largest holding</div>
+      <div class="v">{{ "{:,.0f}".format(data.largest_xrp) }}</div>
+      <div class="sub">{{ data.largest_name }}</div>
+    </div>
+    <div class="kpi">
+      <div class="l">Tracked addresses</div>
+      <div class="v">{{ data.tracked_count }}</div>
+      <div class="sub">{{ data.fetched_ok }} responding</div>
+    </div>
+    <div class="kpi">
+      <div class="l">Source</div>
+      <div class="v" style="font-size: var(--fs-md);">xrp-ledger.toml</div>
+      <div class="sub">first-party verified</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.4em;">
+      <h2>Per-account balances</h2>
+      <span class="meta">live · refreshes every 5 min</span>
+    </div>
+
+    <div class="scope-note">
+      {{ data.scope_note }}
+      Historical change tracking (24h / 7d deltas) will appear here once snapshots accumulate.
+    </div>
+
+    {% set max_bal = data.rows | map(attribute="balance_xrp") | reject("none") | list %}
+    {% set max_val = (max_bal | max) if max_bal else 1 %}
+
+    <div class="esc-row head">
+      <div>Account</div>
+      <div style="text-align: right;">Balance</div>
+      <div></div>
+      <div style="text-align: right;">Verify</div>
+    </div>
+
+    {% for r in data.rows %}
+      <div class="esc-row">
+        <div class="esc-name">
+          {{ r.name }}
+          <span class="sub">{{ r.address_short }}</span>
+        </div>
+        {% if r.error %}
+          <div class="esc-bal error-cell">— RPC error</div>
+          <div class="esc-bar-cell"></div>
+        {% elif r.balance_xrp == 0 %}
+          <div class="esc-bal empty-cell">0 XRP</div>
+          <div class="esc-bar-cell"><div class="esc-bar"></div></div>
+        {% else %}
+          {% set pct = (r.balance_xrp / max_val * 100) if max_val > 0 else 0 %}
+          <div class="esc-bal">{{ "{:,.0f}".format(r.balance_xrp) }} XRP</div>
+          <div class="esc-bar-cell">
+            <div class="esc-bar">
+              <div class="esc-bar-fill"
+                   style="--target-w: {{ "%.1f"|format(pct) }}%; --i: {{ loop.index0 }};"></div>
+            </div>
+          </div>
+        {% endif %}
+        <div class="esc-link">
+          <a href="https://xrpscan.com/account/{{ r.address }}" target="_blank" rel="noopener">XRPSCAN ↗</a>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="links" style="margin-top: 1em; padding-top: 0.8em; border-top: 1px solid var(--border);">
+      <a class="link-pill" href="https://ripple.com/.well-known/xrp-ledger.toml" target="_blank" rel="noopener">
+        xrp-ledger.toml ↗
+      </a>
+      <a class="link-pill" href="https://ripple.com/insights/q1-2024-xrp-markets-report/" target="_blank" rel="noopener">
+        Ripple escrow context ↗
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    Data: live <code style="color: var(--cyan);">account_info</code> against {{ data.tracked_count }}
+    Ripple-declared escrow accounts.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/about">about</a> ·
+    <a href="/">dashboard</a>
+  </footer>
+
+</div>
+</body>
+</html>

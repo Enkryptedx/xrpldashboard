@@ -2,242 +2,866 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>xrpldashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>xrpldashboard · the XRP Ledger, made legible</title>
+  {% set meta_title = "xrpldashboard · the XRP Ledger, made legible" %}
+  {% set meta_description = "Follow XRP whale moves, AMM pool TVL, token activity, and exchange cold storage on the XRP Ledger — without the blockchain jargon." %}
+  {% include "_head_meta.html" %}
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-           max-width: 980px; margin: 2em auto; padding: 0 1em; color: #222; }
-    h1 { margin-bottom: 0.2em; }
-    h2 { margin-top: 2em; font-size: 1.15em; color: #444; }
-    .timestamp { background: #fff8d6; border-left: 4px solid #d4a017;
-                 padding: 0.6em 0.9em; font-size: 1.05em; margin: 0.5em 0 1.2em; }
-    .timestamp strong { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-    .meta { color: #555; font-size: 0.9em; margin-bottom: 1.5em; }
-    .meta div { margin: 0.15em 0; }
-    .intro { color: #555; font-size: 0.95em; max-width: 720px;
-             line-height: 1.55; margin: 0.4em 0 1.3em; }
-    .filter-row { margin: 1em 0 0.6em; }
-    .filter-row input { font-size: 1em; padding: 0.45em 0.7em; width: 280px;
-                        border: 1px solid #ccc; border-radius: 4px; }
-    .filter-row .hint { color: #888; font-size: 0.85em; margin-left: 0.6em; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
-    th, td { padding: 0.5em 0.7em; border-bottom: 1px solid #e3e3e3; }
-    th { text-align: left; background: #f4f4f4; font-size: 0.85em;
-         text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
-    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .total { font-weight: 600; background: #f9f9f9; }
-    .footnote { color: #777; font-size: 0.85em; }
-    .missing { background: #fdecec; border-left: 4px solid #c0392b;
-               padding: 0.6em 0.9em; margin-top: 1em; }
-    .missing h3 { margin: 0 0 0.4em; font-size: 1em; }
-    .missing ul { margin: 0; padding-left: 1.2em; }
-    .error { background: #fdecec; border: 1px solid #c0392b;
-             padding: 1em; border-radius: 4px; }
-    .lookup-card { background: #eaf4ff; border-left: 4px solid #2c7be5;
-                   padding: 0.9em 1.1em; margin: 1em 0 1.5em; border-radius: 4px; }
-    .lookup-card h3 { margin: 0 0 0.5em; font-size: 1em; color: #2c7be5; }
-    .lookup-card .grid { display: grid; grid-template-columns: 160px 1fr;
-                         gap: 0.25em 1em; font-size: 0.95em; }
-    .lookup-card .grid .label { color: #666; }
-    .lookup-card .grid .val { font-variant-numeric: tabular-nums; }
-    .lookup-card .clear { font-size: 0.85em; margin-left: 0.7em; }
-    .lookup-error { background: #fff4e0; border-left: 4px solid #e08e00;
-                    padding: 0.7em 0.9em; margin: 1em 0; border-radius: 4px;
-                    color: #6b4500; }
-    .lookup-form { background: #f7f7f7; padding: 1em 1.1em; border-radius: 4px;
-                   margin-top: 0.4em; }
-    .lookup-form .row { display: flex; flex-wrap: wrap; gap: 0.6em;
-                        align-items: center; margin-top: 0.5em; }
-    .lookup-form input { font-size: 0.95em; padding: 0.4em 0.6em;
-                         border: 1px solid #ccc; border-radius: 4px;
-                         font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-    .lookup-form input[name=currency] { width: 200px; }
-    .lookup-form input[name=issuer]   { width: 360px; }
-    .lookup-form button { font-size: 0.95em; padding: 0.45em 1em;
-                          background: #2c7be5; color: #fff; border: 0;
-                          border-radius: 4px; cursor: pointer; }
-    .lookup-form button:hover { background: #1e63c4; }
-    .lookup-form .help { color: #777; font-size: 0.85em; margin-top: 0.6em; }
-    footer { margin-top: 3em; padding: 1.5em 0 1em; border-top: 1px solid #e3e3e3;
-             color: #777; font-size: 0.85em; line-height: 1.5; }
-    footer a { color: #555; }
-    footer .legal { margin-top: 0.6em; }
-    .cache-note { color: #888; font-size: 0.85em; }
+    /* ---------- Design tokens ---------- */
+    :root {
+      --bg: #0a0e27;
+      --bg-card: #141832;
+      --bg-card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+
+      --text: #e6e9f2;
+      --text-2: #8090b0;
+      --text-3: #5a6680;
+
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-hero:    linear-gradient(135deg, #22d3ee 0%, #3b82f6 50%, #a855f7 100%);
+
+      --fs-2xs: 0.69rem;
+      --fs-xs:  0.78rem;
+      --fs-sm:  0.875rem;
+      --fs-base:1rem;
+      --fs-md:  1.125rem;
+      --fs-lg:  1.4rem;
+      --fs-xl:  1.85rem;
+      --fs-2xl: 2.35rem;
+      --fs-3xl: 3.4rem;
+
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: var(--fs-base); line-height: 1.5; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.08), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(168,85,247,0.06), transparent 40%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 1.6em 1.5em 3em; }
+
+    /* ---------- Header ---------- */
+    header { display: flex; justify-content: space-between; align-items: center;
+             margin-bottom: 1.4em; gap: 1em; flex-wrap: wrap; }
+    .brand { display: flex; align-items: baseline; gap: 0.7em; }
+    .brand-link { text-decoration: none; }
+    .brand-link h1 { font-size: var(--fs-lg); margin: 0; font-weight: 700;
+                     letter-spacing: -0.025em; color: var(--text); }
+    .brand-link h1 .accent { background: var(--grad-primary);
+                             -webkit-background-clip: text; background-clip: text;
+                             -webkit-text-fill-color: transparent; }
+
+    nav.nav-strip { display: flex; gap: 1.2em; flex-wrap: wrap; }
+    nav.nav-strip a { color: var(--text-2); text-decoration: none;
+                      font-size: var(--fs-sm); font-weight: 500;
+                      transition: color 0.15s; }
+    nav.nav-strip a:hover { color: var(--cyan); }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: 1.6em 0 2.2em;
+            display: grid; grid-template-columns: 1fr 320px;
+            gap: 2em; align-items: center; }
+    .hero-text { min-width: 0; }
+    .hero-title { font-size: clamp(1.9rem, 5.5vw, 3.4rem); line-height: 1.05;
+                  letter-spacing: -0.035em; font-weight: 700; margin: 0 0 0.4em;
+                  background: var(--grad-hero);
+                  -webkit-background-clip: text; background-clip: text;
+                  -webkit-text-fill-color: transparent;
+                  max-width: 18ch; }
+    .hero-sub { font-size: var(--fs-md); color: var(--text-2); margin: 0;
+                max-width: 62ch; line-height: 1.55; }
+
+    /* Spinning globe. Pure canvas, no deps. Decorative — visualizes
+       XRP transactions arcing between random ledger nodes around a
+       slowly rotating sphere. Cosmetic, not literal. */
+    .hero-globe { position: relative; width: 320px; height: 320px;
+                  justify-self: end; }
+    .hero-globe canvas { width: 100%; height: 100%; display: block; }
+    .hero-globe::after {
+      content: ""; position: absolute; inset: 0; border-radius: 50%;
+      box-shadow: inset 0 0 80px rgba(34,211,238,0.08);
+      pointer-events: none;
+    }
+    .hero-globe-cap {
+      position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+      font-family: var(--mono); font-size: var(--fs-2xs); color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
+      white-space: nowrap;
+    }
+    .hero-meta { display: flex; gap: 1.4em; align-items: center;
+                 margin-top: 1.4em; flex-wrap: wrap;
+                 font-size: var(--fs-xs); color: var(--text-2); }
+    .live { display: inline-flex; align-items: center; gap: 0.45em;
+            text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+            color: var(--success); font-size: var(--fs-2xs); }
+    .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+                 box-shadow: 0 0 0 0 rgba(34,197,94,0.5); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .ticker { display: inline-flex; align-items: baseline; gap: 0.5em; }
+    .ticker .lbl { color: var(--text-3); text-transform: uppercase;
+                   letter-spacing: 0.08em; font-size: var(--fs-2xs);
+                   font-weight: 600; }
+    .ticker .num { font-family: var(--mono); color: var(--text);
+                   font-size: var(--fs-sm); font-weight: 600;
+                   transition: color 0.4s; }
+    .ticker .num.flash { color: var(--cyan); }
+    .ticker .sub { color: var(--text-3); font-size: var(--fs-2xs); }
+    .cached-meta { color: var(--text-3); font-size: var(--fs-2xs); }
+    .cached-meta a { color: var(--text-3); text-decoration: none; }
+    .cached-meta a:hover { color: var(--text-2); }
+
+    /* ---------- Cards (shared) ---------- */
+    .card { background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.25em 1.4em; }
+    .card-label { font-size: var(--fs-2xs); text-transform: uppercase;
+                  letter-spacing: 0.1em; color: var(--text-2); font-weight: 600; }
+    .card-value { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600;
+                  margin: 0.3em 0 0.2em; line-height: 1.05; letter-spacing: -0.025em;
+                  color: var(--text); }
+    .card-sub { font-size: var(--fs-sm); color: var(--text-2); }
+    .card-sub strong { color: var(--text); font-weight: 600; }
+
+    /* ---------- Row 1: primary hero (network status + wallet inspector) ---------- */
+    .row-primary { display: grid; grid-template-columns: 1.15fr 1fr;
+                   gap: 1em; margin-bottom: 1em; }
+    .card-tvl { border: 1px solid var(--border-strong); position: relative; overflow: hidden; }
+    .card-tvl::before { content: ""; position: absolute; inset: 0;
+                        background: var(--grad-primary); opacity: 0.08;
+                        pointer-events: none; }
+    .card-tvl .card-value { font-size: var(--fs-2xl);
+                            background: var(--grad-primary); -webkit-background-clip: text;
+                            background-clip: text; -webkit-text-fill-color: transparent; }
+    a.card-block { display: block; color: inherit; text-decoration: none;
+                   transition: border-color 0.18s, transform 0.18s; }
+    a.card-block:hover { border-color: var(--border-strong); }
+
+    /* Promoted wallet-inspector card (same look as a card-block, but bigger) */
+    .card-inspector { display: flex; flex-direction: column; height: 100%; }
+    .card-inspector .inspector-title {
+      font-size: var(--fs-md); font-weight: 600; color: var(--text);
+      margin: 0.35em 0 0.55em; letter-spacing: -0.015em;
+    }
+    .card-inspector .inspector-desc {
+      font-size: var(--fs-sm); color: var(--text-2); line-height: 1.55;
+      margin: 0 0 1em;
+    }
+    .card-inspector .wallet-form { margin-top: auto; }
+
+    /* ---------- Compact stats strip (where XRP is locked) ---------- */
+    .row-stats { display: grid; grid-template-columns: repeat(2, 1fr);
+                 gap: 0.7em; margin-bottom: 1.4em; }
+    .stat-pill {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.8em;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.7em 1em;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    a.stat-pill { color: inherit; text-decoration: none; }
+    a.stat-pill:hover { border-color: var(--border-strong); background: var(--bg-card-2); }
+    .stat-pill .stat-l {
+      font-size: var(--fs-2xs); color: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+    }
+    .stat-pill .stat-v {
+      font-family: var(--mono); font-size: var(--fs-md); font-weight: 600;
+      color: var(--text); letter-spacing: -0.01em;
+    }
+    .stat-pill .stat-sub {
+      font-size: var(--fs-2xs); color: var(--text-3); margin-top: 0.1em;
+    }
+
+    .card-status { position: relative; }
+    .status-pip { display: inline-flex; align-items: center; gap: 0.45em;
+                  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em;
+                  text-transform: uppercase; margin-bottom: 0.5em; }
+    .status-pip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-pip.status-operating_normally .dot { background: var(--success);
+                                                 animation: pulse 2s infinite; }
+    .status-pip.status-operating_normally { color: var(--success); }
+    .status-pip.status-running_hot .dot { background: var(--warning); }
+    .status-pip.status-running_hot { color: var(--warning); }
+    .status-pip.status-congested .dot,
+    .status-pip.status-degraded .dot { background: var(--danger);
+                                       animation: pulse 1s infinite; }
+    .status-pip.status-congested,
+    .status-pip.status-degraded { color: var(--danger); }
+    .status-pip.status-unknown .dot { background: var(--text-3); }
+    .status-pip.status-unknown { color: var(--text-3); }
+
+    .status-line { font-size: var(--fs-sm); color: var(--text); line-height: 1.55;
+                   margin: 0.3em 0 0.9em; }
+    .status-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4em 1em;
+                    font-size: var(--fs-xs); color: var(--text-2);
+                    border-top: 1px solid var(--border); padding-top: 0.75em; margin-top: 0.5em; }
+    .status-stats .k { color: var(--text-3); }
+    .status-stats .v { font-family: var(--mono); color: var(--text); }
+
+    /* ---------- Row 2: top pools (donut + list) ---------- */
+    .row-2 { margin-bottom: 1.6em; }
+    .section-head { display: flex; justify-content: space-between; align-items: baseline;
+                    margin: 0 0 0.9em; }
+    .section-head h2 { font-size: var(--fs-md); font-weight: 600; margin: 0;
+                       color: var(--text); letter-spacing: -0.015em; }
+    .section-head a { color: var(--cyan); text-decoration: none; font-size: var(--fs-sm); }
+    .section-head a:hover { text-decoration: underline; }
+
+    .row-2-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1em; }
+
+    .donut-card { display: flex; flex-direction: column; }
+    .donut-wrap { position: relative; flex: 1; display: flex;
+                  align-items: center; justify-content: center; padding: 0.4em 0; }
+    .donut { width: 180px; height: 180px; transform: rotate(-90deg); }
+    .donut-center { position: absolute; inset: 0; display: flex;
+                    flex-direction: column; align-items: center; justify-content: center;
+                    text-align: center; pointer-events: none; }
+    .donut-total-label { font-size: var(--fs-2xs); color: var(--text-3);
+                         text-transform: uppercase; letter-spacing: 0.1em;
+                         font-weight: 600; }
+    .donut-total-val { font-family: var(--mono); font-size: var(--fs-md);
+                       font-weight: 600; color: var(--text); margin-top: 0.1em; }
+    .donut-legend { font-size: var(--fs-xs); color: var(--text-2);
+                    margin-top: 0.7em; display: grid; gap: 0.3em; }
+    .donut-legend .lg-row { display: grid; grid-template-columns: 12px 1fr auto;
+                            gap: 0.5em; align-items: center; }
+    .donut-legend .swatch { width: 10px; height: 10px; border-radius: 2px; }
+    .donut-legend .lg-pct { font-family: var(--mono); color: var(--text); }
+
+    .pool-list { display: grid; gap: 0.55em; align-content: start; }
+    .pool-row { display: grid; grid-template-columns: 1.1fr 2fr 1.05fr 0.85fr;
+                gap: 0.8em; align-items: center;
+                background: var(--bg-card); border: 1px solid var(--border);
+                border-radius: 8px; padding: 0.85em 1.1em;
+                transition: border-color 0.18s, background 0.18s; }
+    .pool-row:hover { border-color: var(--border-strong); background: var(--bg-card-2); }
+    .pool-name { font-weight: 600; font-size: var(--fs-sm); color: var(--text); letter-spacing: -0.01em; }
+    .pool-bar-wrap { display: flex; align-items: center; gap: 0.7em; }
+    .pool-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.05);
+                border-radius: 100px; overflow: hidden; }
+    .pool-bar-fill { height: 100%; background: var(--grad-primary); border-radius: 100px;
+                     width: 0; animation: barFill 0.85s cubic-bezier(0.2,0.8,0.2,1) forwards;
+                     animation-delay: calc(var(--i, 0) * 90ms); }
+    @keyframes barFill { to { width: var(--target-w, 0%); } }
+    .pool-tvl { font-family: var(--mono); font-weight: 600; color: var(--text);
+                white-space: nowrap; font-size: var(--fs-sm); }
+    .pool-fee { font-family: var(--mono); color: var(--text-2);
+                font-size: var(--fs-xs); text-align: right; }
+    .pool-est { color: var(--text-3); font-size: var(--fs-2xs); margin-left: 0.3em;
+                text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ---------- Mosaic of subsystems ---------- */
+    .mosaic { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em;
+              margin-bottom: 1.6em; }
+    .mosaic .mini-pool-row {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 0.6em; align-items: baseline; padding: 0.4em 0;
+      border-bottom: 1px dashed var(--border); font-size: var(--fs-sm);
+    }
+    .mosaic .mini-pool-row:last-of-type { border-bottom: none; }
+    .mosaic .mini-pool-row .pair { color: var(--text); font-weight: 500;
+                                    overflow: hidden; text-overflow: ellipsis;
+                                    white-space: nowrap; }
+    .mosaic .mini-pool-row .tvl { font-family: var(--mono); color: var(--text-2);
+                                   font-size: var(--fs-xs); }
+    .mosaic .card { display: flex; flex-direction: column; min-height: 270px; }
+    .mosaic .card-title { font-size: var(--fs-md); font-weight: 600;
+                          color: var(--text); margin: 0.35em 0 0.7em;
+                          letter-spacing: -0.015em; }
+    .mosaic .card-link { color: var(--cyan); text-decoration: none;
+                         font-size: var(--fs-sm); margin-top: auto;
+                         padding-top: 0.8em; }
+    .mosaic .card-link:hover { text-decoration: underline; }
+    .mosaic .card-snapshot-note { font-size: var(--fs-xs); color: var(--text-3);
+                                  font-style: italic; margin: -0.4em 0 0.6em;
+                                  letter-spacing: 0.01em; }
+
+    .preview-row { display: grid; grid-template-columns: 1fr auto;
+                   gap: 0.6em; align-items: baseline; padding: 0.4em 0;
+                   border-bottom: 1px dashed var(--border);
+                   font-size: var(--fs-sm); }
+    .preview-row:last-of-type { border-bottom: none; }
+    .preview-row .left { min-width: 0; overflow: hidden;
+                         text-overflow: ellipsis; white-space: nowrap; }
+    .preview-row .left .primary { color: var(--text); font-weight: 500; }
+    .preview-row .left .secondary { color: var(--text-3);
+                                    font-size: var(--fs-xs); margin-top: 1px; }
+    .preview-row .right { color: var(--text-2); font-family: var(--mono);
+                          font-size: var(--fs-xs); white-space: nowrap; }
+    .preview-row .amt { color: var(--text); font-weight: 600;
+                        font-family: var(--mono); }
+
+    .preview-empty { color: var(--text-3); font-size: var(--fs-sm);
+                     padding: 0.6em 0; font-style: italic; }
+
+    /* Wallet lookup card */
+    .wallet-form { margin-top: 0.6em; display: flex; gap: 0.5em; flex-wrap: wrap; }
+    .wallet-form input {
+      flex: 1; min-width: 0; font-family: var(--mono);
+      font-size: var(--fs-sm); padding: 0.6em 0.8em;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border-strong); border-radius: 6px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .wallet-form input::placeholder { color: var(--text-3); }
+    .wallet-form input:focus { border-color: var(--cyan); }
+    .wallet-form button {
+      background: var(--grad-primary); color: #0a0e27;
+      border: none; border-radius: 6px; padding: 0.6em 1.1em;
+      font-weight: 600; font-size: var(--fs-sm); cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .wallet-form button:hover { opacity: 0.9; }
+    .wallet-form-hint { color: var(--text-3); font-size: var(--fs-xs);
+                        margin-top: 0.6em; }
+    .wallet-form-hint .err { color: var(--warning); }
+
+    .card-desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.55;
+                 margin: 0; }
+
+    /* ---------- Footer ---------- */
+    footer { margin-top: 2.5em; padding-top: 1.5em; border-top: 1px solid var(--border);
+             color: var(--text-3); font-size: var(--fs-xs); line-height: 1.65; }
+    footer a { color: var(--text-2); }
+    footer a:hover { color: var(--cyan); }
+
+    /* ---------- Mobile ---------- */
+    @media (max-width: 880px) {
+      .row-primary, .row-stats, .mosaic { grid-template-columns: 1fr; }
+      .row-2-grid { grid-template-columns: 1fr; }
+      .donut-card { max-width: 360px; margin: 0 auto; }
+      header { gap: 0.6em; }
+      nav.nav-strip { gap: 0.9em; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-globe { width: 240px; height: 240px; justify-self: center; }
+    }
+    @media (max-width: 540px) {
+      .pool-row { grid-template-columns: 1fr 1fr; gap: 0.5em; }
+      .pool-bar-wrap { grid-column: 1 / -1; order: 3; }
+      .card-tvl .card-value { font-size: var(--fs-xl); }
+      .wrap { padding: 1.2em 1em 2em; }
+      .hero-globe { width: 200px; height: 200px; }
+    }
   </style>
 </head>
 <body>
+  {% include "_alive.html" %}
+  <div class="wrap">
 
-  <h1>xrpldashboard</h1>
-  <div class="timestamp">
-    Last scanned: <strong>{{ timestamp_str }}</strong>
-    {% if cached_age and cached_age > 0 %}
-      <span class="cache-note">&nbsp;&middot;&nbsp; served from cache, {{ "%.0f"|format(cached_age) }}s old</span>
-    {% else %}
-      &nbsp;&middot;&nbsp; fresh scan
-    {% endif %}
-  </div>
+    <header>
+      <div class="brand">
+        <a href="/" class="brand-link"><h1>xrpl<span class="accent">dashboard</span></h1></a>
+      </div>
+      <nav class="nav-strip">
+        <a href="/pools">pools</a>
+        <a href="/whales">whales</a>
+        <a href="/tokens">tokens</a>
+        <a href="/health">health</a>
+        <a href="/about">about</a>
+        {% include "_liveness_chip.html" %}
+      </nav>
+    </header>
 
-  <div class="intro">
-    xrpldashboard — the dashboard for the XRP Ledger.
-    Currently showing AMM pool data. More panels (network health,
-    token economy, whale watch) coming soon. Built as public-good
-    infrastructure for the XRPL community — free for retail, forever.
-  </div>
-
-  {% if error %}
-    <div class="error">{{ error }}</div>
-  {% else %}
-
-    <div class="meta">
-      <div>Node: {{ node }}</div>
-      <div>Ledger index: {{ "{:,}".format(ledger) }}</div>
-      <div>Active pools: {{ pools|length }} &nbsp;&middot;&nbsp;
-           Total TVL (approx): <strong>{{ fmt_money(total_tvl_usd) }}</strong></div>
-    </div>
-
-    {% if lookup_result %}
-      <div class="lookup-card">
-        <h3>
-          Lookup result: {{ lookup_result.pair }}
-          <a class="clear" href="/">[clear]</a>
-        </h3>
-        <div class="grid">
-          <div class="label">AMM account:</div>
-          <div class="val">{{ lookup_result.amm_account }}</div>
-          <div class="label">XRP reserves:</div>
-          <div class="val">{{ fmt_num(lookup_result.xrp_amount) }}</div>
-          <div class="label">Token reserves:</div>
-          <div class="val">{{ fmt_num(lookup_result.token_amount) }}</div>
-          <div class="label">Trading fee:</div>
-          <div class="val">{{ "%.3f"|format(lookup_result.fee_pct) }}%</div>
-          <div class="label">TVL (USD):</div>
-          <div class="val">
-            {{ fmt_money(lookup_result.total_tvl_usd) }}{% if not lookup_result.usd_peg_known %}*{% endif %}
-          </div>
-          <div class="label">Implied price:</div>
-          <div class="val">{{ "%.6f"|format(lookup_result.implied_price) }}</div>
+    {# ========== HERO ========== #}
+    <section class="hero">
+      <div class="hero-text">
+        <h2 class="hero-title">The XRP Ledger,<br>made legible.</h2>
+        <p class="hero-sub">
+          Public-good analytics for the XRP Ledger. Live on-chain data,
+          plain-language explanations, no upsells, no token, no DEX. Free
+          for retail users — forever.
+        </p>
+        <div class="hero-meta">
+          <span class="live"><span class="dot"></span> Live</span>
+          {% if pulse and not pulse.error and pulse.ledger_index %}
+          <span class="ticker">
+            <span class="lbl">Ledger</span>
+            <span class="num" id="ledger-num"
+                  data-seed="{{ pulse.ledger_index }}"
+                  data-rate="{{ '%.2f'|format(pulse.avg_close_seconds or 3.5) }}">{{ "{:,}".format(pulse.ledger_index) }}</span>
+            <span class="sub">closing every {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }}s</span>
+          </span>
+          {% endif %}
+          <span class="cached-meta">
+            {{ timestamp_str }} · cached <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>s ago
+          </span>
         </div>
-        {% if not lookup_result.usd_peg_known %}
-          <div class="footnote" style="margin-top: 0.5em;">
-            * TVL estimated (token has no known USD peg, so XRP-side value is doubled)
+      </div>
+      <div class="hero-globe" aria-hidden="true">
+        <canvas id="xrpl-globe"></canvas>
+        <div class="hero-globe-cap">XRP · global ledger</div>
+      </div>
+    </section>
+
+    {# ========== ROW 1: primary — network status (left) + wallet inspector (right) ========== #}
+    <section class="row-primary">
+
+      <a href="/health" class="card-block">
+        {% if pulse and not pulse.error %}
+        <div class="card card-status">
+          <div class="card-label">Network status</div>
+          <div class="status-pip status-{{ pulse.status }}">
+            <span class="dot"></span>
+            {% if pulse.status == 'operating_normally' %}Operating normally
+            {% elif pulse.status == 'running_hot' %}Running hot
+            {% elif pulse.status == 'congested' %}Congested
+            {% elif pulse.status == 'degraded' %}Degraded
+            {% else %}Unknown{% endif %}
           </div>
+          <div class="status-line">{{ pulse.status_text }}</div>
+          <div class="status-stats">
+            <div class="k">Ledger</div><div class="v">{{ "{:,}".format(pulse.ledger_index) }}</div>
+            <div class="k">Avg close</div>
+            <div class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</div>
+            <div class="k">Quorum</div><div class="v">{{ pulse.validation_quorum }}</div>
+            <div class="k">Load</div><div class="v">{{ pulse.load_factor }}×</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="card card-status">
+          <div class="card-label">Network status</div>
+          <div class="status-pip status-unknown"><span class="dot"></span> Unavailable</div>
+          <div class="status-line">{{ pulse.error if pulse else "Pulse data not loaded." }}</div>
+        </div>
         {% endif %}
+      </a>
+
+      <div class="card card-inspector">
+        <div class="card-label">Look up an address</div>
+        <div class="inspector-title">Wallet inspector</div>
+        <p class="inspector-desc">
+          Paste any XRPL address to see balance, counterparties, and 30-day
+          activity — read live from the ledger. No login. No tracking.
+        </p>
+        <form class="wallet-form" id="wallet-form" autocomplete="off">
+          <input type="text" id="wallet-input"
+                 placeholder="rN8x4kP9wQ7tF3..."
+                 spellcheck="false" />
+          <button type="submit">Inspect →</button>
+        </form>
+        <div class="wallet-form-hint" id="wallet-form-hint">
+          XRPL addresses start with <code>r</code> and are 25-35 characters.
+        </div>
       </div>
-    {% endif %}
 
-    {% if lookup_error %}
-      <div class="lookup-error">
-        {{ lookup_error }}
-        <a href="/" style="margin-left: 0.4em;">[clear]</a>
+    </section>
+
+    {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}
+    <section class="row-stats">
+      {% if cold_storage and cold_storage.total_xrp %}
+      <a href="/cold-storage" class="stat-pill">
+        <div>
+          <div class="stat-l">Cold storage</div>
+          <div class="stat-sub">{{ cold_storage.tracked_count }} Ripple escrows · largest {{ cold_storage.largest_name }}</div>
+        </div>
+        <div class="stat-v">{{ "{:,.0f}".format(cold_storage.total_xrp / 1000000) }}M XRP</div>
+      </a>
+      {% else %}
+      <a href="/cold-storage" class="stat-pill">
+        <div>
+          <div class="stat-l">Cold storage</div>
+          <div class="stat-sub">Ripple escrows</div>
+        </div>
+        <div class="stat-v">view →</div>
+      </a>
+      {% endif %}
+      <a href="/pools" class="stat-pill">
+        <div>
+          <div class="stat-l">Locked in AMMs</div>
+          <div class="stat-sub">across {{ pools|length }} XRPL AMM pools</div>
+        </div>
+        <div class="stat-v">{{ fmt_money(total_tvl_usd) }}</div>
+      </a>
+    </section>
+
+    {# ========== Live mosaic: whales + tokens ========== #}
+    <section>
+      <div class="section-head">
+        <h2>Across the ledger</h2>
       </div>
-    {% endif %}
+      <div class="mosaic">
 
-    <div class="filter-row">
-      <input type="text" id="pool-filter" placeholder="Find a pool (e.g. SOLO, RLUSD)" autocomplete="off">
-      <span class="hint">filters the table below</span>
-    </div>
+        {# ---- Recent whales ---- #}
+        <div class="card">
+          <div class="card-label">Whale moves</div>
+          <div class="card-title">Recent large transfers</div>
+          {% if whales_snapshot_at %}
+          <div class="card-snapshot-note">snapshot · last updated {{ whales_snapshot_at }}</div>
+          {% endif %}
+          {% if recent_whales %}
+            {% for e in recent_whales %}
+            <div class="preview-row">
+              <div class="left">
+                <div class="primary"><span class="amt">{{ e.amount_display }}</span></div>
+                <div class="secondary">
+                  {{ e.from_label or e.from_addr_short }}
+                  → {{ e.to_label or e.to_addr_short }}
+                </div>
+              </div>
+              <div class="right">{{ e.age }} ago</div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="preview-empty">No whale events yet — watcher still warming up.</div>
+          {% endif %}
+          <a class="card-link" href="/whales">view all whale activity →</a>
+        </div>
 
-    <table id="pool-table">
-      <thead>
-        <tr>
-          <th>Pool</th>
-          <th class="num">XRP Reserves</th>
-          <th class="num">Token Reserves</th>
-          <th class="num">Fee</th>
-          <th class="num">TVL (USD)</th>
-          <th class="num">Price</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in pools %}
-          <tr class="pool-row" data-name="{{ p.pair|lower }}">
-            <td>{{ p.pair }}</td>
-            <td class="num">{{ fmt_num(p.xrp_amount) }}</td>
-            <td class="num">{{ fmt_num(p.token_amount) }}</td>
-            <td class="num">{{ "%.3f"|format(p.fee_pct) }}%</td>
-            <td class="num">
-              {{ fmt_money(p.total_tvl_usd) }}{% if not p.usd_peg_known %}*{% endif %}
-            </td>
-            <td class="num">{{ "%.4f"|format(p.implied_price) }}</td>
-          </tr>
-        {% endfor %}
-        <tr class="total">
-          <td>Total ({{ pools|length }} pools)</td>
-          <td colspan="3"></td>
-          <td class="num">{{ fmt_money(total_tvl_usd) }}</td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
+        {# ---- AMM activity (top pools by TVL) ---- #}
+        <div class="card">
+          <div class="card-label">AMM activity</div>
+          <div class="card-title">Top pools by TVL</div>
+          {% if top_pools %}
+            {% for p in top_pools[:5] %}
+            <div class="mini-pool-row">
+              <span class="pair">{{ p.pair }}</span>
+              <span class="tvl">{{ fmt_money(p.total_tvl_usd) }}{% if not p.usd_peg_known %}<span class="pool-est">est</span>{% endif %}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="preview-empty">No AMM pools loaded yet.</div>
+          {% endif %}
+          <a class="card-link" href="/pools">browse all {{ pools|length }} pools →</a>
+        </div>
 
-    {% if pools|selectattr('usd_peg_known', 'equalto', false)|list %}
-      <div class="footnote">* TVL estimated (non-stable token, doubled XRP value)</div>
-    {% endif %}
+        {# ---- Top tokens ---- #}
+        <div class="card">
+          <div class="card-label">Token activity</div>
+          <div class="card-title">Most-traded tokens</div>
+          {% if top_tokens %}
+            {% for t in top_tokens %}
+            <div class="preview-row">
+              <div class="left">
+                <div class="primary">{{ t.display }}</div>
+                <div class="secondary">{{ t.issuer_short }}</div>
+              </div>
+              <div class="right">{{ "{:,}".format(t.trades) }} trades</div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="preview-empty">No token activity recorded yet.</div>
+          {% endif %}
+          <a class="card-link" href="/tokens">browse all tokens →</a>
+        </div>
 
-    {% if missing %}
-      <div class="missing">
-        <h3>Pools not found on ledger</h3>
-        <ul>
-          {% for m in missing %}
-            <li>{{ m.pair }} &mdash; {{ m.error }}</li>
-          {% endfor %}
-        </ul>
       </div>
-    {% endif %}
+    </section>
 
-    <h2>Look up any pool</h2>
-    <form class="lookup-form" action="/lookup" method="get">
-      <div>Query an XRP/<em>token</em> AMM pool by issuer.</div>
-      <div class="row">
-        <input type="text" name="currency" placeholder="Currency (3-letter or 40-char hex)" value="{{ lookup_currency }}" required>
-        <input type="text" name="issuer" placeholder="Issuer r-address" value="{{ lookup_issuer }}" required>
-        <button type="submit">Query AMM</button>
+    <footer>
+      <div>
+        xrpldashboard — public-good analytics for the XRP Ledger.
+        Free for retail users, forever. Data pulled live from a public XRPL node.
       </div>
-      <div class="help">
-        Examples: currency <code>USD</code>, issuer <code>rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B</code> (Bitstamp USD).
-        Or hex: <code>524C555344000000000000000000000000000000</code>, <code>rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De</code> (RLUSD).
+      <div style="margin-top: 0.6em;">
+        <strong>Not financial advice.</strong> Information shown is for
+        educational purposes only and does not constitute financial,
+        investment, or tax advice. Do your own research before making
+        decisions about XRP or other digital assets.
       </div>
-    </form>
+      <div style="margin-top: 0.6em;">
+        Verify against
+        <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a> or
+        <a href="https://bithomp.com" target="_blank" rel="noopener noreferrer">Bithomp</a>.
+        Source:
+        <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a>
+        · <a href="/about">about</a>
+        · <a href="mailto:contact@xrpldashboard.com">contact</a>
+      </div>
+    </footer>
 
-    <script>
-      (function () {
-        const filter = document.getElementById('pool-filter');
-        const rows = document.querySelectorAll('#pool-table tbody tr.pool-row');
-        const totalRow = document.querySelector('#pool-table tbody tr.total');
-        if (!filter) return;
-        filter.addEventListener('input', function () {
-          const q = filter.value.trim().toLowerCase();
-          rows.forEach(function (row) {
-            const name = row.dataset.name || '';
-            row.style.display = name.includes(q) ? '' : 'none';
-          });
-          if (totalRow) totalRow.style.display = q ? 'none' : '';
+  </div>
+
+  <script>
+    // Cached-age ticker (auto-refreshes the page when stale).
+    (function () {
+      var el = document.getElementById('age-ticker');
+      if (!el) return;
+      var start = parseInt(el.dataset.age, 10) || 0;
+      var t0 = Date.now();
+      setInterval(function () {
+        var age = start + Math.floor((Date.now() - t0) / 1000);
+        el.textContent = age;
+        if (age >= 60 && document.visibilityState === 'visible') {
+          window.location.reload();
+        }
+      }, 1000);
+    })();
+
+    // Live ledger ticker. Server gives us the latest sequence + the network's
+    // average close time. We tick +1 every avg_close seconds so the page feels
+    // alive between server refreshes; the next page reload corrects drift.
+    (function () {
+      var el = document.getElementById('ledger-num');
+      if (!el) return;
+      var current = parseInt(el.dataset.seed, 10);
+      var rate = parseFloat(el.dataset.rate) || 3.5;
+      if (isNaN(current)) return;
+      var rateMs = Math.max(1500, Math.min(8000, rate * 1000));
+      setInterval(function () {
+        current += 1;
+        el.textContent = current.toLocaleString();
+        el.classList.add('flash');
+        setTimeout(function () { el.classList.remove('flash'); }, 380);
+      }, rateMs);
+    })();
+
+    // ---------- Spinning XRPL globe (decorative) ----------
+    // Wireframe sphere with rotating surface dots. Periodically launches
+    // arcing transaction sparks between two random surface points so the
+    // globe feels "alive". Pure canvas, no deps. Pauses if reduced motion.
+    (function () {
+      var canvas = document.getElementById('xrpl-globe');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1;
+
+      function resize() {
+        var rect = canvas.getBoundingClientRect();
+        canvas.width  = Math.floor(rect.width  * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // Surface points — random lat/lng spread, pseudo-clustered to look continent-y.
+      var POINTS = [];
+      for (var i = 0; i < 220; i++) {
+        // Bias slightly toward equatorial band so it doesn't look like uniform noise.
+        var lat = (Math.random() - 0.5) * Math.PI * 0.95;
+        var lng = Math.random() * Math.PI * 2;
+        POINTS.push({ lat: lat, lng: lng, w: 0.6 + Math.random() * 0.6 });
+      }
+
+      // Arcs — transaction sparks between two random surface points.
+      var ARCS = [];
+      function spawnArc() {
+        var a = POINTS[Math.floor(Math.random() * POINTS.length)];
+        var b = POINTS[Math.floor(Math.random() * POINTS.length)];
+        if (a === b) return;
+        ARCS.push({
+          a: a, b: b,
+          t: 0,
+          life: 0.9 + Math.random() * 0.6,
+          rgb: Math.random() < 0.7 ? '34,211,238' : '168,85,247'
         });
-      })();
-    </script>
+      }
 
-  {% endif %}
+      var rotation = 0;        // radians around Y axis
+      var speed = 0.0006;      // rad per ms
+      var lastT = performance.now();
+      var lastSpark = lastT;
+      var sparkEvery = 380;    // ms between sparks
 
-  <footer>
-    <div>
-      xrpldashboard — public-good analytics for the XRP Ledger.
-      Free for retail users, forever.
-    </div>
-    <div class="legal">
-      Data shown is for educational and informational purposes only.
-      Not financial advice. Numbers are pulled live from the XRP Ledger
-      and may be cached briefly; verify against
-      <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a>
-      or
-      <a href="https://bithomp.com" target="_blank" rel="noopener noreferrer">Bithomp</a>
-      for additional information.
-    </div>
-    <div class="legal">
-      Source code:
-      <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a>
-      &middot;
-      Contact: <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
-    </div>
-  </footer>
+      var prefersReduced = window.matchMedia &&
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduced) speed = 0;
 
+      function project(lat, lng) {
+        // Rotate around Y axis (lng += rotation), then orthographic-project.
+        var rl = lng + rotation;
+        var x = Math.cos(lat) * Math.sin(rl);
+        var y = Math.sin(lat);
+        var z = Math.cos(lat) * Math.cos(rl);
+        return { x: x, y: y, z: z };
+      }
+
+      function frame(now) {
+        var dt = now - lastT;
+        lastT = now;
+        rotation += speed * dt;
+
+        // Auto-spawn sparks.
+        if (now - lastSpark > sparkEvery) {
+          lastSpark = now;
+          if (!prefersReduced) spawnArc();
+        }
+
+        var w = canvas.clientWidth;
+        var h = canvas.clientHeight;
+        var cx = w / 2, cy = h / 2;
+        var R = Math.min(w, h) * 0.42;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Soft outer glow.
+        var glow = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R * 1.18);
+        glow.addColorStop(0, 'rgba(34,211,238,0.10)');
+        glow.addColorStop(1, 'rgba(34,211,238,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * 1.18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sphere fill (dark navy).
+        var sphereGrad = ctx.createRadialGradient(
+          cx - R * 0.35, cy - R * 0.35, R * 0.1,
+          cx, cy, R
+        );
+        sphereGrad.addColorStop(0, 'rgba(30, 50, 100, 0.55)');
+        sphereGrad.addColorStop(1, 'rgba(10, 14, 39, 0.95)');
+        ctx.fillStyle = sphereGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Latitude rings (every 30°).
+        ctx.strokeStyle = 'rgba(120, 150, 200, 0.10)';
+        ctx.lineWidth = 1;
+        for (var lat = -60; lat <= 60; lat += 30) {
+          var rad = lat * Math.PI / 180;
+          var ry = Math.sin(rad) * R;
+          var rx = Math.cos(rad) * R;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy + ry, rx, rx * 0.18, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Longitude meridians — rotate with the globe so motion is visible.
+        ctx.strokeStyle = 'rgba(120, 150, 200, 0.08)';
+        for (var k = 0; k < 8; k++) {
+          var meridian = (k / 8) * Math.PI * 2 + rotation;
+          ctx.beginPath();
+          var first = true;
+          for (var lat2 = -Math.PI / 2; lat2 <= Math.PI / 2; lat2 += 0.08) {
+            var p = project(lat2, meridian - rotation);
+            if (p.z >= -0.02) {
+              var px = cx + p.x * R;
+              var py = cy + p.y * R;
+              if (first) { ctx.moveTo(px, py); first = false; }
+              else       { ctx.lineTo(px, py); }
+            } else {
+              first = true;
+            }
+          }
+          ctx.stroke();
+        }
+
+        // Surface points.
+        for (var i = 0; i < POINTS.length; i++) {
+          var pt = POINTS[i];
+          var p = project(pt.lat, pt.lng);
+          if (p.z < 0) continue;  // hidden side
+          var px = cx + p.x * R;
+          var py = cy + p.y * R;
+          var alpha = 0.25 + p.z * 0.55;
+          var size = (0.9 + p.z * 1.2) * pt.w;
+          ctx.fillStyle = 'rgba(34, 211, 238, ' + alpha.toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.arc(px, py, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Arcs (transaction sparks). Project Bezier through 3D mid lifted by R*0.45.
+        for (var j = ARCS.length - 1; j >= 0; j--) {
+          var arc = ARCS[j];
+          arc.t += dt / 1000 / arc.life;
+          if (arc.t >= 1) { ARCS.splice(j, 1); continue; }
+
+          var pa = project(arc.a.lat, arc.a.lng);
+          var pb = project(arc.b.lat, arc.b.lng);
+          // Skip arcs entirely behind the globe.
+          if (pa.z < -0.4 && pb.z < -0.4) continue;
+
+          // Trail: sample 14 points along the arc, head at t.
+          ctx.lineCap = 'round';
+          for (var s = 0; s < 14; s++) {
+            var u1 = Math.max(0, arc.t - s * 0.04);
+            var u2 = Math.max(0, arc.t - (s + 1) * 0.04);
+            if (u1 === u2) continue;
+            var pt1 = bezierPoint(pa, pb, u1);
+            var pt2 = bezierPoint(pa, pb, u2);
+            var px1 = cx + pt1.x * R;
+            var py1 = cy + pt1.y * R;
+            var px2 = cx + pt2.x * R;
+            var py2 = cy + pt2.y * R;
+            var depth = Math.max(0, (pt1.z + pt2.z) / 2 + 0.4);
+            var alphaT = (1 - s / 14) * (1 - arc.t * 0.4) * Math.min(1, depth + 0.3);
+            ctx.strokeStyle = 'rgba(' + arc.rgb + ',' + alphaT.toFixed(3) + ')';
+            ctx.lineWidth = 1.4 - s * 0.07;
+            ctx.beginPath();
+            ctx.moveTo(px1, py1);
+            ctx.lineTo(px2, py2);
+            ctx.stroke();
+          }
+
+          // Head dot at current t.
+          var head = bezierPoint(pa, pb, arc.t);
+          var hx = cx + head.x * R;
+          var hy = cy + head.y * R;
+          var headAlpha = head.z >= -0.3 ? 1 : 0.3;
+          ctx.fillStyle = 'rgba(' + arc.rgb + ',' + headAlpha + ')';
+          ctx.beginPath();
+          ctx.arc(hx, hy, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      // Quadratic-ish path: lift midpoint outward from globe surface.
+      function bezierPoint(a, b, t) {
+        // Linear interpolate then lift toward the camera (outward in 3D).
+        var lx = a.x + (b.x - a.x) * t;
+        var ly = a.y + (b.y - a.y) * t;
+        var lz = a.z + (b.z - a.z) * t;
+        var lift = Math.sin(t * Math.PI) * 0.45;  // arc height
+        var len = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
+        return {
+          x: lx + (lx / len) * lift,
+          y: ly + (ly / len) * lift,
+          z: lz + (lz / len) * lift
+        };
+      }
+
+      requestAnimationFrame(frame);
+    })();
+
+    // Wallet lookup — basic XRPL address validation, redirect to /wallet/<addr>.
+    (function () {
+      var form = document.getElementById('wallet-form');
+      var input = document.getElementById('wallet-input');
+      var hint = document.getElementById('wallet-form-hint');
+      if (!form || !input || !hint) return;
+      var defaultHint = hint.innerHTML;
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var v = (input.value || '').trim();
+        if (!v) { input.focus(); return; }
+        if (v[0] !== 'r' || v.length < 25 || v.length > 35) {
+          hint.innerHTML = '<span class="err">That doesn\'t look like a valid XRPL address.</span>';
+          return;
+        }
+        hint.innerHTML = defaultHint;
+        window.location.href = '/wallet/' + encodeURIComponent(v);
+      });
+    })();
+  </script>
 </body>
 </html>

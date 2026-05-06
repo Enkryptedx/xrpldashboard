@@ -1,0 +1,141 @@
+{
+  "524C555344000000000000000000000000000000:rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De": {
+    "currency_hex": "524C555344000000000000000000000000000000",
+    "currency_display": "RLUSD",
+    "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
+    "category": "stablecoin",
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+  },
+  "5553444300000000000000000000000000000000:rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE": {
+    "currency_hex": "5553444300000000000000000000000000000000",
+    "currency_display": "USDC",
+    "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
+    "category": "stablecoin",
+    "verified_via": "https://www.circle.com/multi-chain-usdc/xrpl",
+    "_note": "Circle's official multi-chain USDC page lists this as the XRPL mainnet issuer (FAQ confirms 'native to the XRPL at this contract address')."
+  },
+  "USD:rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B": {
+    "currency_hex": "USD",
+    "currency_display": "USD.Bitstamp",
+    "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+    "category": "stablecoin",
+    "verified_via": "https://blog.bitstamp.net/post/bitstamp-eur-iou-services-on-xrp-ledger/",
+    "_note": "Bitstamp blog confirms this address as Bitstamp's XRPL IOU issuer (the post discusses EUR; on-chain data shows the same address issues USD/BTC/EUR IOUs)."
+  },
+  "USD:rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq": {
+    "currency_hex": "USD",
+    "currency_display": "USD.Gatehub",
+    "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "category": "stablecoin",
+    "verified_via": "TODO_curation_pass"
+  },
+  "EUR:rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq": {
+    "currency_hex": "EUR",
+    "currency_display": "EUR.Gatehub",
+    "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "category": "fiat",
+    "verified_via": "TODO_curation_pass"
+  },
+  "BTC:rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B": {
+    "currency_hex": "BTC",
+    "currency_display": "BTC.Bitstamp",
+    "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+    "category": "wrapped_major",
+    "verified_via": "https://blog.bitstamp.net/post/bitstamp-eur-iou-services-on-xrp-ledger/",
+    "_note": "Same Bitstamp issuer address as USD/EUR. Source establishes the address as Bitstamp-controlled."
+  },
+  "BTC:rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL": {
+    "currency_hex": "BTC",
+    "currency_display": "BTC.Gatehub",
+    "issuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
+    "category": "wrapped_major",
+    "verified_via": "TODO_curation_pass"
+  },
+  "ETH:rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h": {
+    "currency_hex": "ETH",
+    "currency_display": "ETH.Gatehub",
+    "issuer": "rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h",
+    "category": "wrapped_major",
+    "verified_via": "TODO_curation_pass"
+  },
+  "534F4C4F00000000000000000000000000000000:rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
+    "currency_hex": "534F4C4F00000000000000000000000000000000",
+    "currency_display": "SOLO",
+    "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
+    "category": "native_utility",
+    "verified_via": "https://medium.com/@txEcosystem/sologenic-solo-airdrop-distribution-complete-official-report-8e5d8594e43e",
+    "_note": "Sologenic's official airdrop distribution report names this address as the SOLO issuer (TrustLine instructions)."
+  },
+  "CSC:rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr": {
+    "currency_hex": "CSC",
+    "currency_display": "CSC",
+    "issuer": "rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr",
+    "category": "native_utility",
+    "verified_via": "TODO_curation_pass"
+  },
+  "434F524500000000000000000000000000000000:rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D": {
+    "currency_hex": "434F524500000000000000000000000000000000",
+    "currency_display": "CORE",
+    "issuer": "rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D",
+    "category": "native_utility",
+    "verified_via": "TODO_curation_pass"
+  },
+  "ELS:rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg": {
+    "currency_hex": "ELS",
+    "currency_display": "ELS",
+    "issuer": "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg",
+    "category": "native_utility",
+    "verified_via": "TODO_curation_pass"
+  },
+  "XPM:rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa": {
+    "currency_hex": "XPM",
+    "currency_display": "XPM",
+    "issuer": "rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa",
+    "category": "native_utility",
+    "verified_via": "TODO_curation_pass"
+  },
+  "457175696C69627269756D000000000000000000:rpakCr61Q92abPXJnVboKENmpKssWyHpwu": {
+    "currency_hex": "457175696C69627269756D000000000000000000",
+    "currency_display": "EQ",
+    "issuer": "rpakCr61Q92abPXJnVboKENmpKssWyHpwu",
+    "category": "native_utility",
+    "_note": "currency hex spells 'Equilibrium'; display name kept short",
+    "verified_via": "TODO_curation_pass"
+  },
+  "RPR:r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R": {
+    "currency_hex": "RPR",
+    "currency_display": "RPR",
+    "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
+    "category": "native_utility",
+    "verified_via": "TODO_curation_pass"
+  },
+  "5852646F67650000000000000000000000000000:rLqUC2eCPohYvJCEBJ77eCCqVL2uEiczjA": {
+    "currency_hex": "5852646F67650000000000000000000000000000",
+    "currency_display": "XRdoge",
+    "issuer": "rLqUC2eCPohYvJCEBJ77eCCqVL2uEiczjA",
+    "category": "memecoin",
+    "verified_via": "TODO_curation_pass"
+  },
+  "7363726170000000000000000000000000000000:rGHtYnnigyuaHehWGfAdoEhkoirkGNdZzo": {
+    "currency_hex": "7363726170000000000000000000000000000000",
+    "currency_display": "scrap",
+    "issuer": "rGHtYnnigyuaHehWGfAdoEhkoirkGNdZzo",
+    "category": "memecoin",
+    "_note": "lowercase intentional",
+    "verified_via": "TODO_curation_pass"
+  },
+  "50484E4958000000000000000000000000000000:rDFXbW2ZZCG5WgPtqwNiA2xZokLMm9ivmN": {
+    "currency_hex": "50484E4958000000000000000000000000000000",
+    "currency_display": "PHNIX",
+    "issuer": "rDFXbW2ZZCG5WgPtqwNiA2xZokLMm9ivmN",
+    "category": "memecoin",
+    "verified_via": "TODO_curation_pass"
+  },
+  "4245525400000000000000000000000000000000:rpwAnF1mMZRszxdinETFHwzGQiPgsv3jHR": {
+    "currency_hex": "4245525400000000000000000000000000000000",
+    "currency_display": "BERT",
+    "issuer": "rpwAnF1mMZRszxdinETFHwzGQiPgsv3jHR",
+    "category": "memecoin",
+    "verified_via": "TODO_curation_pass"
+  }
+}

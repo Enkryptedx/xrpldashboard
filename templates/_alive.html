@@ -1,0 +1,38 @@
+{# Site-wide subtle motion — included in every page (except /about) to give
+   each surface a quiet "alive" feel without being distracting. Two effects:
+     1. Slow-drifting ambient gradient overlay (32s loop)
+     2. Universal hover lift on cards, stat pills, and link blocks
+   Respects prefers-reduced-motion. #}
+<style>
+  body::before {
+    content: ""; position: fixed; inset: -15%; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(circle at 25% 25%, rgba(34,211,238,0.13), transparent 40%),
+      radial-gradient(circle at 75% 65%, rgba(168,85,247,0.10), transparent 40%);
+    animation: ambient-drift 18s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  body > * { position: relative; z-index: 1; }
+  @keyframes ambient-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(6%, -4%) scale(1.06); }
+    66%      { transform: translate(-5%, 5%) scale(0.96); }
+  }
+
+  .card, a.card-block, .stat-pill, .pool-row, .preview-row,
+  .esc-row, .whale-row, .token-row, .mosaic .card {
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  a.card-block:hover, .stat-pill:hover, .mosaic .card:hover,
+  .pool-row:hover, .esc-row:hover, .whale-row:hover, .token-row:hover {
+    transform: translateY(-2px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
+    .card, a.card-block, .stat-pill, .pool-row, .preview-row,
+    .esc-row, .whale-row, .token-row, .mosaic .card { transition: none; }
+    a.card-block:hover, .stat-pill:hover, .mosaic .card:hover,
+    .pool-row:hover, .esc-row:hover, .whale-row:hover, .token-row:hover { transform: none; }
+  }
+</style>

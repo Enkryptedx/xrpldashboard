@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>xrpldashboard · wallet preview (dna mock)</title>
+
+  <style>
+    /* ---------- Design tokens ---------- */
+    :root {
+      --bg: #0a0e27;
+      --bg-card: #141832;
+      --bg-card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+      --text: #e6e9f2;
+      --text-2: #8090b0;
+      --text-3: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-soft:    linear-gradient(135deg, rgba(34,211,238,0.18) 0%, rgba(59,130,246,0.18) 100%);
+
+      --fs-2xs: 0.69rem;
+      --fs-xs:  0.78rem;
+      --fs-sm:  0.875rem;
+      --fs-base:1rem;
+      --fs-md:  1.125rem;
+      --fs-lg:  1.4rem;
+      --fs-xl:  1.85rem;
+      --fs-2xl: 2.6rem;
+
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: var(--fs-base); line-height: 1.5; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.10), transparent 45%),
+        radial-gradient(circle at 90% 5%, rgba(168,85,247,0.07), transparent 40%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 2.2em 1.5em 3em; }
+
+    /* ---------- Header ---------- */
+    header { display: flex; justify-content: space-between; align-items: baseline;
+             margin-bottom: 1.6em; gap: 1em; flex-wrap: wrap; }
+    .brand { display: flex; align-items: baseline; gap: 0.7em; }
+    h1 { font-size: var(--fs-lg); margin: 0; font-weight: 700; letter-spacing: -0.025em;
+         background: var(--grad-primary); -webkit-background-clip: text;
+         background-clip: text; -webkit-text-fill-color: transparent; }
+    .preview-badge { font-size: var(--fs-2xs); color: var(--purple);
+                     border: 1px solid var(--purple); padding: 0.2em 0.55em;
+                     border-radius: 3px; text-transform: uppercase;
+                     letter-spacing: 0.1em; font-weight: 600; }
+    .header-meta { display: flex; align-items: center; gap: 1em;
+                   font-size: var(--fs-xs); color: var(--text-2); }
+    .header-meta a { color: var(--text-2); text-decoration: none; }
+    .header-meta a:hover { color: var(--cyan); }
+
+    /* ---------- Cards (shared) ---------- */
+    .card { background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.25em 1.4em; }
+    .card-label { font-size: var(--fs-2xs); text-transform: uppercase;
+                  letter-spacing: 0.1em; color: var(--text-2); font-weight: 600; }
+    .card-value { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600;
+                  margin: 0.3em 0 0.2em; line-height: 1.05; letter-spacing: -0.025em;
+                  color: var(--text); }
+    .card-sub { font-size: var(--fs-xs); color: var(--text-2); }
+    .card-sub .delta-up { color: var(--success); font-weight: 600; }
+    .card-sub .delta-flat { color: var(--text-2); }
+
+    .section-head { display: flex; justify-content: space-between; align-items: baseline;
+                    margin: 0 0 0.8em; }
+    .section-head h2 { font-size: var(--fs-md); font-weight: 600; margin: 0;
+                       color: var(--text); letter-spacing: -0.015em; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--text-3); }
+
+    /* ---------- KPI strip ---------- */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 1em; margin-bottom: 1.2em; }
+    .kpi { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
+    .kpi-text { min-width: 0; }
+    .kpi-text .card-label { display: block; margin-bottom: 0.2em; }
+    .kpi-text .card-value { font-size: var(--fs-lg); margin: 0; }
+    .kpi-icon { width: 44px; height: 44px; border-radius: 11px;
+                background: var(--grad-primary); display: flex;
+                align-items: center; justify-content: center; flex-shrink: 0;
+                box-shadow: 0 8px 24px rgba(34,211,238,0.18); color: white; }
+    .kpi-icon svg { width: 22px; height: 22px; stroke: white; stroke-width: 2;
+                    fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Row 2: identity + reserve gauge + activity ---------- */
+    .row-2 { display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* identity card */
+    .identity-card { position: relative; overflow: hidden;
+                     border: 1px solid var(--border-strong);
+                     display: flex; flex-direction: column; }
+    .identity-card::before { content: ""; position: absolute; inset: 0;
+                             background: var(--grad-primary); opacity: 0.07;
+                             pointer-events: none; }
+    .identity-top { position: relative; }
+    .identity-greeting { font-size: var(--fs-xs); color: var(--text-2);
+                         text-transform: uppercase; letter-spacing: 0.1em;
+                         font-weight: 600; margin-bottom: 0.5em; }
+    .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
+                         flex-wrap: wrap; }
+    .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+                     color: var(--text); letter-spacing: -0.01em;
+                     word-break: break-all; line-height: 1.3; }
+    .identity-label { display: inline-block; font-size: var(--fs-2xs);
+                      color: var(--cyan); border: 1px solid rgba(34,211,238,0.4);
+                      padding: 2px 8px; border-radius: 4px; font-weight: 600;
+                      letter-spacing: 0.06em; text-transform: uppercase;
+                      margin-top: 0.55em; }
+    .balance-block { position: relative; margin-top: auto;
+                     padding-top: 0.9em; border-top: 1px solid var(--border); }
+    .balance-big { font-family: var(--mono); font-size: var(--fs-2xl); font-weight: 600;
+                   letter-spacing: -0.025em; line-height: 1.05;
+                   background: var(--grad-primary); -webkit-background-clip: text;
+                   background-clip: text; -webkit-text-fill-color: transparent;
+                   margin: 0.1em 0 0.15em; }
+    .balance-sub { font-size: var(--fs-xs); color: var(--text-2);
+                   font-family: var(--mono); }
+    .balance-sub strong { color: var(--text); }
+
+    /* ---------- Wallet QR (scannable identity) ---------- */
+    .qr-host { display: inline-flex; vertical-align: middle;
+               width: 96px; height: 96px;
+               padding: 6px; border-radius: 12px;
+               background: rgba(255,255,255,0.04);
+               border: 1px solid var(--border-strong);
+               box-shadow: 0 4px 18px rgba(34,211,238,0.08);
+               transition: transform 0.2s ease, box-shadow 0.2s ease;
+               cursor: pointer; }
+    .qr-host:hover { transform: scale(1.04);
+                     box-shadow: 0 6px 26px rgba(34,211,238,0.22); }
+    .qr-host svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .qr-host[data-loading="1"] { background: rgba(255,255,255,0.02); }
+
+    /* ---------- Portfolio DNA (token-distribution helix) ---------- */
+    .dna-wrap { position: relative; flex: 1;
+                display: flex; flex-direction: column;
+                margin: 0.9em 0 0.5em; gap: 0.6em; }
+    .dna-head { display: flex; justify-content: space-between; align-items: center;
+                gap: 1em; flex-wrap: wrap; }
+    .dna-tag  { display: inline-flex; align-items: center; gap: 0.45em;
+                font-size: var(--fs-2xs); font-weight: 600;
+                text-transform: uppercase; letter-spacing: 0.1em;
+                color: var(--cyan); }
+    .dna-tag .dot { width: 7px; height: 7px; border-radius: 50%;
+                    background: var(--cyan);
+                    box-shadow: 0 0 0 0 rgba(34,211,238,0.5);
+                    animation: dnaTagDot 1.8s infinite; }
+    @keyframes dnaTagDot {
+      0%   { box-shadow: 0 0 0 0 rgba(34,211,238,0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(34,211,238,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); }
+    }
+    .dna-meta { font-size: var(--fs-2xs); color: var(--text-3);
+                text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .dna-svg-wrap { position: relative; width: 100%;
+                    background:
+                      radial-gradient(ellipse at 50% 50%,
+                        rgba(34,211,238,0.06) 0%, rgba(0,0,0,0) 65%);
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    overflow: hidden; padding: 6px 4px; }
+    .dna-svg  { width: 100%; height: auto; display: block; overflow: visible;
+                aspect-ratio: 600 / 200; }
+
+    .dna-legend { display: flex; gap: 1em; flex-wrap: wrap; padding: 0 0.2em; }
+    .dna-leg { display: inline-flex; align-items: center; gap: 0.45em;
+               font-size: var(--fs-2xs); color: var(--text-2);
+               text-transform: uppercase; letter-spacing: 0.08em;
+               font-weight: 600; }
+    .dna-leg .sw { width: 10px; height: 10px; border-radius: 3px;
+                   box-shadow: 0 0 6px currentColor; }
+
+    .dna-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 0.55em; padding-top: 0.4em; }
+    .dna-stat  { background: var(--bg-card-2); border-radius: 9px;
+                 padding: 0.55em 0.7em; }
+    .dna-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                   text-transform: uppercase; letter-spacing: 0.08em;
+                   font-weight: 600; display: block; }
+    .dna-stat .v { font-family: var(--mono); font-size: var(--fs-sm);
+                   color: var(--text); font-weight: 600; margin-top: 0.15em;
+                   display: block; }
+
+    /* reserve gauge */
+    .gauge-card { display: flex; flex-direction: column; align-items: center;
+                  text-align: center; min-height: 220px; }
+    .gauge-card .card-label { align-self: flex-start; }
+    .gauge-wrap { position: relative; width: 100%; max-width: 200px;
+                  margin: 0.6em auto 0.4em; }
+    .gauge-svg { width: 100%; display: block; }
+    .gauge-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 10;
+                   stroke-linecap: round; }
+    .gauge-fill  { fill: none; stroke: url(#gaugeGrad); stroke-width: 10;
+                   stroke-linecap: round;
+                   stroke-dasharray: 0 251;
+                   animation: gaugeIn 1.2s cubic-bezier(0.2,0.8,0.2,1) 0.2s forwards; }
+    @keyframes gaugeIn { to { stroke-dasharray: var(--gauge-target, 0) 251; } }
+    .gauge-center { position: absolute; left: 0; right: 0; bottom: 18%;
+                    text-align: center; }
+    .gauge-pct { font-family: var(--mono); font-size: 1.7rem; font-weight: 700;
+                 color: var(--text); letter-spacing: -0.025em; line-height: 1; }
+    .gauge-caption { font-size: var(--fs-2xs); text-transform: uppercase;
+                     letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
+                     margin-top: 0.3em; }
+    .gauge-end-labels { display: flex; justify-content: space-between;
+                        width: 100%; max-width: 200px; margin: -0.2em auto 0;
+                        font-size: 0.65rem; color: var(--text-3);
+                        font-family: var(--mono); }
+    .gauge-foot { font-size: var(--fs-xs); color: var(--text-2);
+                  margin-top: auto; padding-top: 0.7em; line-height: 1.5; }
+    .gauge-foot strong { color: var(--text); font-family: var(--mono); }
+
+    /* activity card */
+    .activity-card { display: flex; flex-direction: column; min-height: 220px; }
+    .activity-card .card-label { margin-bottom: 0.6em; }
+    .activity-pulse { display: inline-flex; align-items: center; gap: 0.45em;
+                      font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em;
+                      text-transform: uppercase; color: var(--success);
+                      margin-bottom: 0.7em; }
+    .activity-pulse .dot { width: 7px; height: 7px; border-radius: 50%;
+                           background: var(--success);
+                           box-shadow: 0 0 0 0 rgba(34,197,94,0.5);
+                           animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .activity-line { font-size: var(--fs-sm); color: var(--text);
+                     line-height: 1.55; margin: 0; }
+    .activity-stats { display: grid; grid-template-columns: repeat(2, 1fr);
+                      gap: 0.7em; margin-top: auto; padding-top: 1em;
+                      border-top: 1px solid var(--border); }
+    .activity-stat { background: var(--bg-card-2); border-radius: 9px;
+                     padding: 0.7em 0.85em; }
+    .activity-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
+                        text-transform: uppercase; letter-spacing: 0.08em;
+                        font-weight: 600; }
+    .activity-stat .v { font-family: var(--mono); font-size: var(--fs-md);
+                        font-weight: 600; color: var(--text); margin-top: 0.2em; }
+
+    /* ---------- Row 3: holdings + amm charts ---------- */
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr;
+             gap: 1em; margin-bottom: 1.2em; }
+
+    /* holdings */
+    .holding-row { display: grid; grid-template-columns: 1.1fr 2fr 1fr;
+                   gap: 0.8em; align-items: center;
+                   padding: 0.55em 0; }
+    .holding-row + .holding-row { border-top: 1px solid var(--border); }
+    .holding-name { font-weight: 600; font-size: var(--fs-sm); color: var(--text); }
+    .holding-issuer { font-size: var(--fs-2xs); color: var(--text-3);
+                      margin-top: 0.15em; font-family: var(--mono); }
+    .holding-bar { height: 6px; background: rgba(255,255,255,0.05);
+                   border-radius: 100px; overflow: hidden; }
+    .holding-bar-fill { height: 100%; background: var(--grad-primary); border-radius: 100px;
+                        width: 0;
+                        animation: barFill 0.85s cubic-bezier(0.2,0.8,0.2,1) forwards;
+                        animation-delay: calc(var(--i, 0) * 70ms); }
+    @keyframes barFill { to { width: var(--target-w, 0%); } }
+    .holding-bal { font-family: var(--mono); font-weight: 600; color: var(--text);
+                   font-size: var(--fs-sm); text-align: right; white-space: nowrap; }
+
+    details.show-more { margin-top: 0.7em; }
+    details.show-more > summary { cursor: pointer; list-style: none;
+                                  color: var(--text-2); font-size: var(--fs-xs);
+                                  padding: 0.5em 0.85em; border-radius: 7px;
+                                  border: 1px dashed var(--border-strong); }
+    details.show-more > summary:hover { color: var(--cyan); }
+    details.show-more[open] > summary { margin-bottom: 0.6em; }
+    details.show-more > summary::-webkit-details-marker { display: none; }
+    details.show-more > summary::before { content: "▸ "; color: var(--text-3); }
+    details.show-more[open] > summary::before { content: "▾ "; }
+    table.compact { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    table.compact th { text-align: left; font-size: var(--fs-2xs);
+                       text-transform: uppercase; letter-spacing: 0.08em;
+                       color: var(--text-3); font-weight: 600;
+                       padding: 0.5em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td { padding: 0.55em 0.4em; border-bottom: 1px solid var(--border); }
+    table.compact td.mono { font-family: var(--mono); }
+
+    /* amm vertical bars */
+    .amm-chart { display: grid; grid-template-columns: repeat(5, 1fr);
+                 gap: 0.7em; align-items: end; height: 180px;
+                 margin: 0.6em 0 1em; padding: 0 0.2em; }
+    .amm-bar-col { display: flex; flex-direction: column; align-items: center;
+                   gap: 0.4em; height: 100%; justify-content: flex-end; }
+    .amm-bar-track { position: relative; width: 100%; max-width: 36px;
+                     flex: 1; display: flex; align-items: flex-end; }
+    .amm-bar { width: 100%; background: var(--grad-primary); border-radius: 6px 6px 0 0;
+               position: relative; height: 0;
+               animation: barGrow 1s cubic-bezier(0.2,0.8,0.2,1) forwards;
+               animation-delay: calc(var(--i, 0) * 80ms); }
+    @keyframes barGrow { to { height: var(--target-h, 0%); } }
+    .amm-bar-val { position: absolute; top: -1.4em; left: 50%; transform: translateX(-50%);
+                   font-family: var(--mono); font-size: 0.7rem; color: var(--text);
+                   font-weight: 600; white-space: nowrap; }
+    .amm-bar-label { font-size: var(--fs-2xs); color: var(--text-2);
+                     font-weight: 600; text-align: center; line-height: 1.2;
+                     letter-spacing: -0.01em; }
+    .amm-bar-fee { font-size: 0.62rem; color: var(--text-3); font-family: var(--mono);
+                   margin-top: 0.1em; }
+    .amm-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr);
+                      gap: 0.5em; padding-top: 0.9em;
+                      border-top: 1px solid var(--border); }
+    .amm-mini { display: flex; flex-direction: column; gap: 0.15em; }
+    .amm-mini .k { font-size: var(--fs-2xs); color: var(--text-3);
+                   text-transform: uppercase; letter-spacing: 0.08em;
+                   font-weight: 600; }
+    .amm-mini .v { font-family: var(--mono); font-size: var(--fs-sm);
+                   color: var(--text); font-weight: 600; }
+
+    /* ---------- Footer ---------- */
+    footer { margin-top: 2.5em; padding-top: 1.5em; border-top: 1px solid var(--border);
+             color: var(--text-3); font-size: var(--fs-xs); line-height: 1.65; }
+
+    /* ---------- Mobile ---------- */
+    @media (max-width: 980px) {
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .row-2 { grid-template-columns: 1fr; }
+      .row-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+      h1 { font-size: var(--fs-md); }
+      .balance-big { font-size: var(--fs-xl); }
+      .wrap { padding: 1.5em 1em 2em; }
+      .amm-chart { gap: 0.4em; }
+      .amm-bar-label { font-size: 0.6rem; }
+      .amm-mini-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="brand">
+        <h1>xrpldashboard</h1>
+        <span class="preview-badge">wallet · dna mock</span>
+      </div>
+      <div class="header-meta">
+        <a href="/v2">← back to v2</a>
+      </div>
+    </header>
+
+    {# ========== KPI strip ========== #}
+    <section class="kpi-strip">
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Total XRP</span>
+          <div class="card-value">12,847</div>
+          <div class="card-sub"><span class="delta-up">99.8%</span> available</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 7v6l8 5 8-5V7l-8-5z"/><path d="M4 7l8 5 8-5"/><path d="M12 12v10"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Reserve locked</span>
+          <div class="card-value">23.4</div>
+          <div class="card-sub">XRP · 0.18% of balance</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">AMM positions</span>
+          <div class="card-value">5</div>
+          <div class="card-sub">pools providing liquidity</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/></svg>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-text">
+          <span class="card-label">Trustlines</span>
+          <div class="card-value">39</div>
+          <div class="card-sub">tokens held</div>
+        </div>
+        <div class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h10"/></svg>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 2: identity + reserve gauge + activity ========== #}
+    <section class="row-2">
+
+      <div class="card identity-card">
+        <div class="identity-top">
+          <div class="identity-greeting">Wallet</div>
+          <div class="identity-addr-row">
+            <span class="identity-addr">rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ</span>
+            <span class="qr-host" data-qr="rwietsevLFg8XSmG3bEZzFein1g8RBqWDZ"
+                  title="Scan to view this wallet"></span>
+          </div>
+          <span class="identity-label">Sample wallet</span>
+        </div>
+
+        {# ---- Portfolio DNA (token-distribution double helix) ---- #}
+        <div class="dna-wrap" aria-hidden="true">
+          <div class="dna-head">
+            <span class="dna-tag"><span class="dot"></span> Live · Portfolio DNA</span>
+            <span class="dna-meta">39 trustlines · token mix</span>
+          </div>
+          <div class="dna-svg-wrap">
+            <svg class="dna-svg" viewBox="0 0 600 200" preserveAspectRatio="none" data-dna>
+              <defs>
+                <linearGradient id="dnaStrand1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"  stop-color="#3b82f6" stop-opacity="0.5"/>
+                  <stop offset="50%" stop-color="#22d3ee"/>
+                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.5"/>
+                </linearGradient>
+                <linearGradient id="dnaStrand2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.5"/>
+                  <stop offset="50%" stop-color="#3b82f6"/>
+                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0.5"/>
+                </linearGradient>
+                <filter id="dnaGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="0.6" result="b"/>
+                  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              {# centerline grid hint #}
+              <line x1="0" y1="100" x2="600" y2="100"
+                    stroke="rgba(255,255,255,0.04)" stroke-width="0.5"
+                    stroke-dasharray="2 5"/>
+
+              {# rungs + strands rendered/animated by JS #}
+              <g class="dna-rungs"></g>
+              <path class="dna-strand-1" fill="none"
+                    stroke="url(#dnaStrand1)" stroke-width="2"
+                    stroke-linecap="round" filter="url(#dnaGlow)"/>
+              <path class="dna-strand-2" fill="none"
+                    stroke="url(#dnaStrand2)" stroke-width="2"
+                    stroke-linecap="round" filter="url(#dnaGlow)"/>
+              {# token labels #}
+              <g class="dna-labels"></g>
+            </svg>
+          </div>
+
+          <div class="dna-legend">
+            <span class="dna-leg" style="color: #22d3ee;"><span class="sw" style="background:#22d3ee;"></span> Stablecoins</span>
+            <span class="dna-leg" style="color: #3b82f6;"><span class="sw" style="background:#3b82f6;"></span> Native</span>
+            <span class="dna-leg" style="color: #a855f7;"><span class="sw" style="background:#a855f7;"></span> Exotic</span>
+            <span class="dna-leg" style="color: #5a6680;"><span class="sw" style="background:#5a6680;"></span> Long tail</span>
+          </div>
+
+          <div class="dna-stats">
+            <div class="dna-stat"><span class="k">Trustlines</span><span class="v">39</span></div>
+            <div class="dna-stat"><span class="k">Stable mix</span><span class="v">58%</span></div>
+            <div class="dna-stat"><span class="k">Dominant</span><span class="v">RLUSD</span></div>
+            <div class="dna-stat"><span class="k">Concentration</span><span class="v">HHI 0.31</span></div>
+          </div>
+        </div>
+
+        <div class="balance-block">
+          <div class="balance-big">12,847.36 XRP</div>
+          <div class="balance-sub">
+            <strong>12,823.96</strong> available · <strong>23.40</strong> reserved
+          </div>
+        </div>
+      </div>
+
+      <div class="card gauge-card">
+        <span class="card-label">Reserve usage</span>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 120">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#22d3ee"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+            </defs>
+            {# half-circle arc, r=80, length ~ pi*80 ~ 251 #}
+            <path class="gauge-track"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+            <path class="gauge-fill"
+                  style="--gauge-target: 0.45;"
+                  d="M 20 100 A 80 80 0 0 1 180 100" />
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct">0.18%</div>
+            <div class="gauge-caption">of balance locked</div>
+          </div>
+        </div>
+        <div class="gauge-end-labels">
+          <span>0%</span><span>100%</span>
+        </div>
+        <div class="gauge-foot">
+          10 XRP base + 44 owned objects × 0.2 XRP = <strong>23.4 XRP</strong> reserved.
+          Reserved XRP can't be sent.
+        </div>
+      </div>
+
+      <div class="card activity-card">
+        <span class="card-label">Activity</span>
+        <div class="activity-pulse"><span class="dot"></span> Recently active</div>
+        <p class="activity-line">
+          Last on-chain activity was within the past day. This account is active.
+        </p>
+        <div class="activity-stats">
+          <div class="activity-stat">
+            <div class="k">Owned objects</div>
+            <div class="v">44</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Last seen</div>
+            <div class="v">~3h ago</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">AMM positions</div>
+            <div class="v">5</div>
+          </div>
+          <div class="activity-stat">
+            <div class="k">Trustlines</div>
+            <div class="v">39</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    {# ========== Row 3: holdings + AMM allocation ========== #}
+    <section class="row-3">
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.5em;">
+          <h2>Token holdings</h2>
+          <span class="meta">top 5 of 39</span>
+        </div>
+
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">RLUSD</div>
+            <div class="holding-issuer">rMxCKbE…hpEEHs</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 100%; --i: 0;"></div></div>
+          <div class="holding-bal">8,420.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USD.GH</div>
+            <div class="holding-issuer">rhub8VR…vhi8wD</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 62%; --i: 1;"></div></div>
+          <div class="holding-bal">5,210.43</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">USDC</div>
+            <div class="holding-issuer">rcEGREd…oxBdSV</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 47%; --i: 2;"></div></div>
+          <div class="holding-bal">3,945.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">SOLO</div>
+            <div class="holding-issuer">rsoLo2S…Ghj1Px</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 38%; --i: 3;"></div></div>
+          <div class="holding-bal">14,200.00</div>
+        </div>
+        <div class="holding-row">
+          <div>
+            <div class="holding-name">CORE</div>
+            <div class="holding-issuer">rcoreNy…aaaaaa</div>
+          </div>
+          <div class="holding-bar"><div class="holding-bar-fill" style="--target-w: 22%; --i: 4;"></div></div>
+          <div class="holding-bal">1,142,055</div>
+        </div>
+
+        <details class="show-more">
+          <summary>Show all 39 trustlines</summary>
+          <table class="compact">
+            <thead>
+              <tr><th>Token</th><th>Issuer</th><th style="text-align:right;">Balance</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>XAH</td><td class="mono" style="color: var(--text-2);">rxAHb1…CDeFGh</td><td class="mono" style="text-align:right;">8,920.00</td></tr>
+              <tr><td>XSGD</td><td class="mono" style="color: var(--text-2);">rxsgD9R…7tQwXv</td><td class="mono" style="text-align:right;">2,000.00</td></tr>
+              <tr><td>FLR</td><td class="mono" style="color: var(--text-2);">rflar98…aabbcc</td><td class="mono" style="text-align:right;">412.50</td></tr>
+              <tr><td>EUR.GH</td><td class="mono" style="color: var(--text-2);">rhub8VR…vhi8wD</td><td class="mono" style="text-align:right;">340.21</td></tr>
+              <tr><td colspan="3" style="color: var(--text-3); text-align: center; padding: 0.9em;">… 30 more rows in real version …</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.3em;">
+          <h2>AMM allocation</h2>
+          <span class="meta">XRP committed per pool</span>
+        </div>
+
+        <div class="amm-chart">
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 24%; --i: 0;">
+                <span class="amm-bar-val">1,247</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>RLUSD</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 7%; --i: 1;">
+                <span class="amm-bar-val">342</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USD.GH</div>
+            <div class="amm-bar-fee">0.50%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 56%; --i: 2;">
+                <span class="amm-bar-val">2,890</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>SOLO</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 2%; --i: 3;">
+                <span class="amm-bar-val">98</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>USDC</div>
+            <div class="amm-bar-fee">0.30%</div>
+          </div>
+          <div class="amm-bar-col">
+            <div class="amm-bar-track">
+              <div class="amm-bar" style="--target-h: 100%; --i: 4;">
+                <span class="amm-bar-val">5,100</span>
+              </div>
+            </div>
+            <div class="amm-bar-label">XRP/<br>CORE</div>
+            <div class="amm-bar-fee">1.00%</div>
+          </div>
+        </div>
+
+        <div class="amm-mini-stats">
+          <div class="amm-mini"><span class="k">Total LP</span><span class="v">9,677 XRP</span></div>
+          <div class="amm-mini"><span class="k">Avg fee</span><span class="v">0.48%</span></div>
+          <div class="amm-mini"><span class="k">Largest</span><span class="v">XRP/CORE</span></div>
+          <div class="amm-mini"><span class="k">Smallest</span><span class="v">XRP/USDC</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <footer>
+      Wallet preview · mock data only — no live XRPL calls.
+      Real version will call <code style="color: var(--cyan);">wallet_explainer.explain_wallet_cached(address)</code>.
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script>
+    /* Stylised wallet QR — scannable identity.
+       Encodes the XRPL address so a phone scan opens it in any wallet app.
+       Visual: cyan→blue gradient, rounded data dots, custom finder corners,
+       XRP "X" mark at center inside a white halo. Uses H-level error
+       correction (~30% redundancy) so the center logo doesn't break scanning.
+       The QR is naturally unique per wallet — every address produces a
+       different bit pattern. */
+    (function () {
+      function buildQR(addr) {
+        if (typeof qrcode !== 'function') return '<!-- QR lib missing -->';
+        var data = addr; // plain address — most universal for wallet scanners
+        var qr = qrcode(0, 'H');
+        qr.addData(data);
+        qr.make();
+        var n = qr.getModuleCount();
+        var SIZE = 100;
+        var cell = SIZE / n;
+        var dotR = cell * 0.42;
+
+        function isFinder(r, c) {
+          return (r < 7 && c < 7) ||
+                 (r < 7 && c >= n - 7) ||
+                 (r >= n - 7 && c < 7);
+        }
+
+        // Clear circular zone for center logo (~22% of width).
+        var cx0 = SIZE / 2, cy0 = SIZE / 2;
+        var clearR = SIZE * 0.13;
+
+        var dots = '';
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            if (!qr.isDark(r, c)) continue;
+            if (isFinder(r, c)) continue;
+            var x = (c + 0.5) * cell;
+            var y = (r + 0.5) * cell;
+            var dx = x - cx0, dy = y - cy0;
+            if (Math.sqrt(dx * dx + dy * dy) < clearR) continue;
+            dots += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) +
+                    '" r="' + dotR.toFixed(2) + '" fill="url(#qrGrad)"/>';
+          }
+        }
+
+        function finderAt(or, oc) {
+          var x = oc * cell, y = or * cell;
+          var w = 7 * cell;
+          var sw = cell;
+          // outer rounded square (stroke), inner filled square (gradient)
+          return '' +
+            '<rect x="' + (x + sw / 2).toFixed(2) +
+                '" y="' + (y + sw / 2).toFixed(2) +
+                '" width="' + (w - sw).toFixed(2) +
+                '" height="' + (w - sw).toFixed(2) +
+                '" rx="' + (cell * 1.6).toFixed(2) +
+                '" fill="none" stroke="url(#qrGrad)" stroke-width="' + sw.toFixed(2) + '"/>' +
+            '<rect x="' + (x + 2 * cell).toFixed(2) +
+                '" y="' + (y + 2 * cell).toFixed(2) +
+                '" width="' + (3 * cell).toFixed(2) +
+                '" height="' + (3 * cell).toFixed(2) +
+                '" rx="' + (cell * 0.8).toFixed(2) +
+                '" fill="url(#qrGrad)"/>';
+        }
+        var finders = finderAt(0, 0) + finderAt(0, n - 7) + finderAt(n - 7, 0);
+
+        // XRP "X" mark in the center clear zone, on a soft halo disc.
+        var logoR = clearR * 0.95;
+        var armEnd = logoR * 0.55;
+        var xStroke = cell * 1.6;
+        var logo =
+          '<circle cx="' + cx0 + '" cy="' + cy0 + '" r="' + logoR.toFixed(2) +
+            '" fill="rgba(20,24,50,0.92)" stroke="rgba(34,211,238,0.55)" stroke-width="0.6"/>' +
+          '<g stroke="url(#qrGrad)" stroke-width="' + xStroke.toFixed(2) +
+            '" stroke-linecap="round" fill="none">' +
+            '<line x1="' + (cx0 - armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 + armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+            '<line x1="' + (cx0 + armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
+                 '" x2="' + (cx0 - armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
+          '</g>';
+
+        return [
+          '<svg viewBox="0 0 ' + SIZE + ' ' + SIZE + '">',
+            '<defs>',
+              '<linearGradient id="qrGrad" x1="0" y1="0" x2="1" y2="1">',
+                '<stop offset="0%"  stop-color="#22d3ee"/>',
+                '<stop offset="100%" stop-color="#3b82f6"/>',
+              '</linearGradient>',
+            '</defs>',
+            dots,
+            finders,
+            logo,
+          '</svg>'
+        ].join('');
+      }
+
+      function renderAll() {
+        document.querySelectorAll('[data-qr]').forEach(function (host) {
+          var addr = host.dataset.qr || '';
+          if (!addr) return;
+          host.innerHTML = buildQR(addr);
+          host.removeAttribute('data-loading');
+        });
+      }
+
+      if (typeof qrcode === 'function') {
+        renderAll();
+      } else {
+        document.querySelectorAll('[data-qr]').forEach(function (h) {
+          h.setAttribute('data-loading', '1');
+        });
+        // qrcode lib loads as a separate <script>; if we ran first, retry once it's there
+        var tries = 0;
+        var iv = setInterval(function () {
+          tries++;
+          if (typeof qrcode === 'function') { clearInterval(iv); renderAll(); }
+          else if (tries > 40) { clearInterval(iv); }
+        }, 50);
+      }
+    })();
+
+    /* Portfolio DNA — animated double helix where each rung is one trustline.
+       Two sine-wave strands cross, rungs draw between them. Rung color is
+       determined by token category (stablecoin / native / exotic / long-tail).
+       Rung thickness/opacity scales with that token's share of the portfolio.
+       The whole helix slowly rotates by sliding the sine phase, so it feels
+       like a living strand rather than a static chart. */
+    (function () {
+      var SVGNS = 'http://www.w3.org/2000/svg';
+      var svg = document.querySelector('[data-dna]');
+      if (!svg) return;
+
+      // Mock token list — top holdings + filler. Real version will use the
+      // explainer's holdings array.
+      var holdings = [
+        { sym: 'RLUSD',  cat: 'stable', w: 1.00 },
+        { sym: 'USD.GH', cat: 'stable', w: 0.62 },
+        { sym: 'XAH',    cat: 'native', w: 0.55 },
+        { sym: 'USDC',   cat: 'stable', w: 0.47 },
+        { sym: 'SOLO',   cat: 'native', w: 0.42 },
+        { sym: 'CORE',   cat: 'exotic', w: 0.30 },
+        { sym: 'XSGD',   cat: 'stable', w: 0.20 },
+        { sym: 'FLR',    cat: 'native', w: 0.16 },
+        { sym: 'EUR.GH', cat: 'stable', w: 0.12 }
+      ];
+      // Pad with 30 long-tail filler trustlines (small, dim) up to 39 total.
+      for (var k = 0; k < 30; k++) {
+        holdings.push({ sym: '', cat: 'tail', w: 0.04 + Math.random() * 0.06 });
+      }
+      var N = holdings.length;
+
+      var W = 600, H = 200, cy = 100, amp = 60;
+      var period = W / 2.4;          // ~2.4 full waves across the strand
+      var omega = 2 * Math.PI / period;
+
+      var catColor = {
+        stable: '#22d3ee',
+        native: '#3b82f6',
+        exotic: '#a855f7',
+        tail:   'rgba(120,140,180,0.55)'
+      };
+
+      var rungsG  = svg.querySelector('.dna-rungs');
+      var labelsG = svg.querySelector('.dna-labels');
+      var strand1 = svg.querySelector('.dna-strand-1');
+      var strand2 = svg.querySelector('.dna-strand-2');
+
+      // Build rung elements once; we'll just update y1/y2/opacity each frame.
+      // x positions: evenly spaced with margin.
+      var marginX = 22;
+      var stepX   = (W - marginX * 2) / (N - 1);
+      holdings.forEach(function (h, i) {
+        var x = marginX + i * stepX;
+        h.x = x;
+        var color = catColor[h.cat];
+        var ln = document.createElementNS(SVGNS, 'line');
+        ln.setAttribute('x1', x.toFixed(1));
+        ln.setAttribute('x2', x.toFixed(1));
+        ln.setAttribute('stroke', color);
+        ln.setAttribute('stroke-linecap', 'round');
+        ln.setAttribute('stroke-width', (1 + h.w * 2.5).toFixed(2));
+        rungsG.appendChild(ln);
+        h.line = ln;
+
+        // small base-pair "node" at each end (only for non-tail)
+        if (h.cat !== 'tail') {
+          var dotA = document.createElementNS(SVGNS, 'circle');
+          dotA.setAttribute('cx', x.toFixed(1));
+          dotA.setAttribute('r', (1.5 + h.w * 1.2).toFixed(2));
+          dotA.setAttribute('fill', color);
+          rungsG.appendChild(dotA);
+          h.dotA = dotA;
+
+          var dotB = document.createElementNS(SVGNS, 'circle');
+          dotB.setAttribute('cx', x.toFixed(1));
+          dotB.setAttribute('r', (1.5 + h.w * 1.2).toFixed(2));
+          dotB.setAttribute('fill', color);
+          rungsG.appendChild(dotB);
+          h.dotB = dotB;
+        }
+      });
+
+      // Top-5 labels under the helix.
+      var topFive = holdings.slice(0, 5);
+      topFive.forEach(function (h) {
+        var t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('x', h.x.toFixed(1));
+        t.setAttribute('y', (H - 6).toFixed(1));
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('font-family', 'ui-monospace, monospace');
+        t.setAttribute('font-size', '9');
+        t.setAttribute('font-weight', '700');
+        t.setAttribute('fill', catColor[h.cat]);
+        t.setAttribute('letter-spacing', '0.04em');
+        t.textContent = h.sym;
+        labelsG.appendChild(t);
+
+        // tick mark from rung area down to label
+        var tick = document.createElementNS(SVGNS, 'line');
+        tick.setAttribute('x1', h.x.toFixed(1));
+        tick.setAttribute('x2', h.x.toFixed(1));
+        tick.setAttribute('y1', (cy + amp + 6).toFixed(1));
+        tick.setAttribute('y2', (H - 18).toFixed(1));
+        tick.setAttribute('stroke', catColor[h.cat]);
+        tick.setAttribute('stroke-opacity', '0.4');
+        tick.setAttribute('stroke-width', '0.6');
+        tick.setAttribute('stroke-dasharray', '1 3');
+        labelsG.appendChild(tick);
+      });
+
+      // Build strand path samples — denser than rungs for smoothness.
+      var samples = 80;
+      var sampleXs = [];
+      for (var i = 0; i <= samples; i++) sampleXs.push((i / samples) * W);
+
+      function frame(t) {
+        var phase = t / 1100;       // helix rotation speed
+
+        // strands
+        var d1 = '', d2 = '';
+        for (var i = 0; i < sampleXs.length; i++) {
+          var x = sampleXs[i];
+          var theta = x * omega + phase;
+          var s = Math.sin(theta);
+          var y1 = cy + amp * s;
+          var y2 = cy - amp * s;
+          d1 += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y1.toFixed(2);
+          d2 += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y2.toFixed(2);
+        }
+        strand1.setAttribute('d', d1);
+        strand2.setAttribute('d', d2);
+
+        // rungs
+        for (var j = 0; j < holdings.length; j++) {
+          var h = holdings[j];
+          var th = h.x * omega + phase;
+          var s2 = Math.sin(th);
+          var topY = cy - amp * s2;
+          var botY = cy + amp * s2;
+          // depth fading: when strands cross (s ≈ 0) the rung is near zero —
+          // the visual collapse is what makes it read as 3D rotation.
+          var depth = Math.abs(s2);
+          var op = (h.cat === 'tail')
+            ? (0.10 + depth * 0.25).toFixed(2)
+            : (0.35 + depth * 0.55).toFixed(2);
+          h.line.setAttribute('y1', topY.toFixed(2));
+          h.line.setAttribute('y2', botY.toFixed(2));
+          h.line.setAttribute('opacity', op);
+          if (h.dotA) {
+            h.dotA.setAttribute('cy', topY.toFixed(2));
+            h.dotA.setAttribute('opacity', (0.55 + depth * 0.45).toFixed(2));
+          }
+          if (h.dotB) {
+            h.dotB.setAttribute('cy', botY.toFixed(2));
+            h.dotB.setAttribute('opacity', (0.55 + depth * 0.45).toFixed(2));
+          }
+        }
+
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

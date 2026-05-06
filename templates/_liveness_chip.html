@@ -1,0 +1,83 @@
+{# Live "ledger heartbeat" chip — pulsing dot + ledger # + age. Reusable
+   across both the shared nav (_nav.html) and pages with custom headers
+   (index.html, wallet.html). Pulls from {{ liveness }} in the template
+   context (injected by inject_liveness in app.py). The JS at the bottom
+   ticks the seconds counter every 1s and re-fetches /api/ledger-tip every 30s. #}
+<style>
+  .liveness-chip { display: inline-flex; align-items: center; gap: 0.5em;
+                   padding: 5px 10px 5px 9px; border-radius: 999px;
+                   background: rgba(255,255,255,0.04);
+                   border: 1px solid rgba(255,255,255,0.08);
+                   font-size: 0.72rem; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+                   color: #8090b0; white-space: nowrap;
+                   transition: border-color .25s, color .25s; }
+  .liveness-chip:hover { color: #e6e9f2; border-color: rgba(34,211,238,0.4);
+                         text-decoration: none; }
+  .liveness-chip b { color: #e6e9f2; font-weight: 600; }
+  .liveness-chip .dot { width: 7px; height: 7px; border-radius: 999px;
+                        background: #22d3ee;
+                        box-shadow: 0 0 0 0 rgba(34,211,238,0.5);
+                        animation: liveDot 2s ease-in-out infinite; }
+  .liveness-chip.deg .dot { background: #f59e0b;
+                             box-shadow: 0 0 0 0 rgba(245,158,11,0.5);
+                             animation-name: liveDotWarn; }
+  .liveness-chip.unk .dot { background: #5a6680; animation: none; box-shadow: none; }
+  @keyframes liveDot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.0); opacity: 0.85; }
+    50%     { box-shadow: 0 0 0 5px rgba(34,211,238,0); opacity: 1; }
+  }
+  @keyframes liveDotWarn {
+    0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0); opacity: 0.85; }
+    50%     { box-shadow: 0 0 0 5px rgba(245,158,11,0); opacity: 1; }
+  }
+  @media (max-width: 720px) { .liveness-chip { display: none; } }
+</style>
+
+{% if liveness and liveness.ledger_index %}
+<a class="liveness-chip{% if liveness.status == 'degraded' %} deg{% elif liveness.status == 'unknown' %} unk{% endif %}"
+   href="/health" id="livenessChip"
+   data-age-fetched-at="{{ liveness.fetched_at_unix }}"
+   data-age-base="{{ liveness.last_close_age_seconds or 0 }}"
+   title="{{ liveness.status_text or 'Live ledger heartbeat' }}">
+  <span class="dot"></span>
+  Ledger #<b id="livenessSeq">{{ liveness.ledger_index }}</b>
+  · <span id="livenessAge">{{ liveness.last_close_age_seconds or 0 }}s</span>
+</a>
+<script>
+(function () {
+  var chip = document.getElementById('livenessChip');
+  var seqEl = document.getElementById('livenessSeq');
+  var ageEl = document.getElementById('livenessAge');
+  if (!chip || !seqEl || !ageEl) return;
+  var fetchedAt = parseInt(chip.dataset.ageFetchedAt, 10);
+  var ageBase   = parseInt(chip.dataset.ageBase, 10) || 0;
+  function fmtAge(s) {
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s/60) + 'm';
+    return Math.floor(s/3600) + 'h';
+  }
+  function tick() {
+    var live = ageBase + (Math.floor(Date.now()/1000) - fetchedAt);
+    if (live < 0) live = 0;
+    ageEl.textContent = fmtAge(live);
+  }
+  tick();
+  setInterval(tick, 1000);
+  setInterval(function () {
+    fetch('/api/ledger-tip', {cache: 'no-store'}).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (j) {
+      if (!j || !j.ledger_index) return;
+      seqEl.textContent = j.ledger_index;
+      ageBase = j.last_close_age_seconds || 0;
+      fetchedAt = Math.floor(Date.now()/1000);
+      chip.classList.remove('deg', 'unk');
+      if (j.status === 'degraded') chip.classList.add('deg');
+      else if (j.status === 'unknown') chip.classList.add('unk');
+      if (j.status_text) chip.title = j.status_text;
+      tick();
+    }).catch(function () {});
+  }, 30000);
+})();
+</script>
+{% endif %}

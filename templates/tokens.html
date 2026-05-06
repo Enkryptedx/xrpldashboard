@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tokens · xrpldashboard</title>
+  {% set meta_title = "tokens · xrpldashboard" %}
+  {% set meta_description = "What's actually trading on the XRP Ledger right now — tokens ranked by recent activity, with stablecoins, memecoins, and project tokens labeled clearly." %}
+  {% include "_head_meta.html" %}
+  <meta http-equiv="refresh" content="60">
+
+  {# Plausible Analytics — uncomment after creating account at plausible.io
+     and confirming the domain. Public stats page should be enabled in
+     Plausible settings (Site Settings → Visibility → Make stats public).
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
+  #}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --purple: #c084fc;
+      --pink: #ec4899;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px 16px 48px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    h1 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 700;
+         letter-spacing: -0.01em; }
+    .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 20px;
+            max-width: 640px; }
+
+    /* Hero with spinning XRP coin on the right */
+    .token-hero { display: grid; grid-template-columns: 1fr 54px;
+                  gap: 1.4em; align-items: center; margin-bottom: 18px; }
+    .token-hero .lede { margin-bottom: 0; }
+    .token-coin { position: relative; width: 54px; height: 54px;
+                  justify-self: end; }
+    .token-coin canvas { width: 100%; height: 100%; display: block;
+                         background: transparent; }
+    .token-coin-cap {
+      position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em;
+      font-weight: 600; white-space: nowrap;
+    }
+    @media (max-width: 540px) {
+      .token-hero { grid-template-columns: 1fr; }
+      .token-coin { justify-self: center; width: 44px; height: 44px;
+                    margin-bottom: 8px; }
+    }
+
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .stat  { background: var(--card); border: 1px solid var(--border);
+             border-radius: 8px; padding: 8px 12px; min-width: 120px; }
+    .stat .n { font-family: var(--mono); font-size: 1.05rem; color: var(--text); }
+    .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
+               letter-spacing: 0.05em; margin-top: 2px; }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .pill { display: inline-block; padding: 5px 11px; border-radius: 999px;
+            border: 1px solid var(--border); background: transparent;
+            color: var(--muted); font-size: 0.78rem; }
+    .pill:hover { color: var(--text); border-color: rgba(255,255,255,0.18);
+                  text-decoration: none; }
+    .pill.active { background: rgba(34,211,238,0.12); color: var(--cyan);
+                   border-color: rgba(34,211,238,0.4); }
+
+    /* Search input */
+    .search-bar { display: flex; align-items: center; gap: 10px;
+                  margin: 6px 0 12px; flex-wrap: wrap; }
+    .search-bar input {
+      flex: 1; min-width: 220px; max-width: 420px;
+      font-family: var(--mono); font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 7px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .search-bar input::placeholder { color: var(--dim); }
+    .search-bar input:focus { border-color: rgba(34,211,238,0.5); }
+    .search-stats { color: var(--muted); font-size: 0.78rem; font-family: var(--mono); }
+    .search-empty { display: none; color: var(--muted); font-size: 0.85rem;
+                    text-align: center; padding: 18px;
+                    background: var(--card); border: 1px dashed var(--border);
+                    border-radius: 8px; margin-top: 4px; }
+    .search-empty.visible { display: block; }
+
+    .row { display: grid; grid-template-columns: 36px 1fr auto;
+           gap: 10px; align-items: center;
+           background: var(--card); border: 1px solid var(--border);
+           border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
+           text-decoration: none; color: inherit;
+           transition: border-color 0.12s, transform 0.12s; }
+    a.row:hover { border-color: rgba(34,211,238,0.4); transform: translateY(-1px); }
+    .rank { font-family: var(--mono); color: var(--dim); font-size: 0.85rem;
+            text-align: right; }
+    .name-block { display: flex; flex-direction: column; gap: 2px;
+                  min-width: 0; }
+    .name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .name .display { color: var(--text); font-weight: 600; font-size: 0.95rem;
+                     overflow: hidden; text-overflow: ellipsis; }
+    .name .display.unlabeled { color: var(--muted); font-family: var(--mono);
+                               font-weight: 500; font-size: 0.85rem; }
+    .iss { color: var(--dim); font-family: var(--mono); font-size: 0.74rem; }
+    .cat-badge { display: inline-block; padding: 1px 7px; border-radius: 999px;
+                 font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+                 text-transform: uppercase; }
+    .cat-stablecoin     { background: rgba(34,197,94,0.12);  color: var(--green); }
+    .cat-fiat           { background: rgba(34,197,94,0.10);  color: var(--green); }
+    .cat-wrapped_major  { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .cat-native_utility { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .cat-memecoin       { background: rgba(236,72,153,0.12); color: var(--pink); }
+
+    .trades { font-family: var(--mono); font-size: 0.95rem; color: var(--text);
+              text-align: right; font-weight: 600; }
+    .trades .sub { display: block; color: var(--dim); font-size: 0.7rem;
+                   font-weight: 400; margin-top: 1px; }
+
+    .empty { background: var(--card); border: 1px dashed var(--border);
+             border-radius: 10px; padding: 24px 18px; text-align: center;
+             color: var(--muted); }
+    .empty .big { color: var(--text); font-size: 1.05rem; margin-bottom: 6px; }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-left: 3px solid var(--cyan); border-radius: 6px;
+               padding: 12px 16px; margin: 16px 0; color: var(--muted);
+               font-size: 0.86rem; }
+    .callout p { margin: 0 0 6px; }
+    .callout p:last-child { margin-bottom: 0; }
+    code { font-family: var(--mono); font-size: 0.9em; background: rgba(255,255,255,0.05);
+           padding: 1px 5px; border-radius: 3px; }
+
+    .footer { color: var(--dim); font-size: 0.78rem; margin-top: 28px;
+              padding-top: 16px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <div class="token-hero">
+    <div>
+      <h1>Token activity</h1>
+      <p class="lede">
+        Top XRPL tokens by recent on-ledger trade count. Counts every token
+        Payment plus every AMM deposit/withdraw. Token names are hand-curated
+        where available — see <a href="/about">about</a> for sourcing.
+      </p>
+    </div>
+    <div class="token-coin" aria-hidden="true">
+      <canvas id="xrp-coin" width="280" height="280"></canvas>
+      <div class="token-coin-cap">XRP</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="n">{{ tokens|length }}</div>
+      <div class="l">tokens shown</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ labeled_count }}</div>
+      <div class="l">labeled</div>
+    </div>
+    <div class="stat">
+      <div class="n">{{ total_buckets }}</div>
+      <div class="l">hour buckets</div>
+    </div>
+    {% if earliest_iso %}
+    <div class="stat">
+      <div class="n" style="font-size: 0.85rem;">{{ earliest_iso }}</div>
+      <div class="l">first bucket</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="search-bar">
+    <input type="search" id="token-search" placeholder="Search token (e.g. RLUSD, SOLO, GiB)…" autocomplete="off" spellcheck="false" />
+    <span class="search-stats" id="token-search-stats"></span>
+  </div>
+  <div class="filters">
+    <a class="pill {% if range_key == '24h' %}active{% endif %}"
+       href="/tokens?range=24h">last 24h</a>
+    <a class="pill {% if range_key == '7d' %}active{% endif %}"
+       href="/tokens?range=7d">last 7d</a>
+    <a class="pill {% if range_key == 'all' %}active{% endif %}"
+       href="/tokens?range=all">all</a>
+  </div>
+  <div class="search-empty" id="token-search-empty">No tokens match that search. Try fewer letters, or switch range to <a href="/tokens?range=all">all</a>.</div>
+
+  {% if tokens %}
+    {% for t in tokens %}
+    <a class="row" href="/token/{{ t.currency_raw }}/{{ t.issuer }}">
+      <div class="rank">{{ t.rank }}</div>
+      <div class="name-block">
+        <div class="name">
+          <span class="display{% if not t.labeled %} unlabeled{% endif %}">{{ t.display }}</span>
+          {% if t.category %}
+            <span class="cat-badge cat-{{ t.category }}">{{ t.category|replace("_"," ") }}</span>
+          {% endif %}
+        </div>
+        <div class="iss">{{ t.issuer_short }}</div>
+      </div>
+      <div class="trades">
+        {{ "{:,}".format(t.trades) }}
+        <span class="sub">{{ t.hours_active }}h active</span>
+      </div>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <div class="big">No token activity recorded yet.</div>
+      <div>
+        The watcher tracks token Payments + AMM deposits/withdraws. Either
+        the watcher hasn't been running long enough, or no token activity
+        matched in the selected range. Check <a href="/health">/health</a>.
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="callout">
+    <p>
+      <strong>What "trades" means here:</strong> every on-ledger event that
+      moves a token — token Payments and AMM deposits/withdraws. It's a
+      raw activity count, not a USD volume.
+    </p>
+    <p>
+      <strong>Why some show as 40-char hex:</strong> XRPL allows tokens to
+      use a 160-bit currency code. We decode it to ASCII when possible;
+      when the bytes aren't text, we show truncated hex. Tokens we've
+      labeled appear with a friendly name + category — to add a label, see
+      <code>TOKEN_NAMES.md</code> in the repo.
+    </p>
+    <p>
+      <strong>XRP-equivalent volume</strong> isn't shown yet. That requires
+      a price feed derived from the AMM index, which is a later phase
+      (<code>token_prices.py</code>). Trade count alone is already
+      directionally useful.
+    </p>
+  </div>
+
+  <div class="footer">
+    auto-refresh 60s · counts pulled from <code>volumes.db</code> live.
+    <br><br>
+    <strong>Not financial advice.</strong> Information shown is for
+    educational purposes only and does not constitute financial,
+    investment, or tax advice. Do your own research before making
+    decisions about XRP or other digital assets.
+    <br><br>
+    <a href="/whales">whales</a> · <a href="/about">about</a> ·
+    <a href="mailto:contact@xrpldashboard.com">contact</a> ·
+    <a href="/">back to dashboard</a>
+  </div>
+
+</div>
+<script>
+  // Client-side filter for the token list. Matches against display name and
+  // issuer text (decoded ASCII or short address).
+  (function () {
+    var input = document.getElementById('token-search');
+    var stats = document.getElementById('token-search-stats');
+    var empty = document.getElementById('token-search-empty');
+    if (!input) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.row'));
+    function apply() {
+      var q = input.value.trim().toLowerCase();
+      var visible = 0;
+      rows.forEach(function (r) {
+        if (!q) {
+          r.style.display = '';
+          visible++;
+          return;
+        }
+        var text = r.textContent.toLowerCase();
+        var match = text.indexOf(q) !== -1;
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (!q) {
+        stats.textContent = '';
+      } else {
+        stats.textContent = visible + ' match' + (visible === 1 ? '' : 'es');
+      }
+      empty.classList.toggle('visible', !!q && visible === 0);
+    }
+    input.addEventListener('input', apply);
+  })();
+
+  // Spinning XRP coin in the page hero. Pure canvas, Y-axis rotation,
+  // ellipse squash via |cos(rot)|, X-mark logo painted on the face,
+  // specular shine sweep that tracks rotation. No deps. Respects reduced motion.
+  (function () {
+    var canvas = document.getElementById('xrp-coin');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var W = canvas.width, H = canvas.height;
+    var cx = W / 2, cy = H / 2;
+    var R = Math.min(W, H) * 0.42;
+    var rot = 0;
+    var reduced = window.matchMedia &&
+                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function drawXRPLogo(squashAbs, faceFront) {
+      // The XRP mark — two thick curved strokes that approach the center
+      // without touching. The top arc bows down toward center; the bottom
+      // arc bows up toward center; a small gap between their innermost
+      // points keeps them visually separate. The mark is wider than tall
+      // to match the official aspect ratio. Whole mark is scaled
+      // horizontally to match the coin's spin squash.
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(squashAbs, 1);
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = R * 0.13;
+      ctx.strokeStyle = faceFront
+        ? 'rgba(255, 255, 255, 0.96)'
+        : 'rgba(255, 255, 255, 0.62)';
+      var extX = R * 0.74;   // horizontal reach of each tail
+      var extY = R * 0.50;   // vertical reach of each tail
+      var gap  = R * 0.10;   // space between top arc's bottom and bottom arc's top
+      // Quadratic-bezier midpoint y = (controlY - endY) / 2.
+      // For top arc (ends at y = -extY) we want midpoint at y = -gap (above
+      // center) → controlY = -2*gap + extY. The result: top arc's lowest
+      // point sits ABOVE the origin by `gap`, so the two arcs never touch.
+      var topCtrlY = extY - 2 * gap;
+      // Top arc: upper-left tail → bow down toward center → upper-right tail
+      ctx.beginPath();
+      ctx.moveTo(-extX, -extY);
+      ctx.quadraticCurveTo(0, topCtrlY, extX, -extY);
+      ctx.stroke();
+      // Bottom arc: lower-left tail → bow up toward center → lower-right tail
+      ctx.beginPath();
+      ctx.moveTo(-extX, extY);
+      ctx.quadraticCurveTo(0, -topCtrlY, extX, extY);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+
+      var c = Math.cos(rot);
+      var s = Math.sin(rot);
+      var absC = Math.abs(c);
+      var faceFront = c >= 0;
+
+      // Coin edge ring (slightly lighter than the face — gives the spinning
+      // coin a visible silhouette at narrow tilts)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(Math.max(absC, 0.04), 1);
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(60, 60, 60, 0.85)';
+      ctx.fill();
+      ctx.restore();
+
+      // Coin face: pure black with a very subtle radial darkening at edges
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(Math.max(absC, 0.04), 1);
+      var face = ctx.createRadialGradient(0, 0, R * 0.1, 0, 0, R);
+      face.addColorStop(0,    '#1a1a1a');
+      face.addColorStop(0.7,  '#0a0a0a');
+      face.addColorStop(1,    '#000000');
+      ctx.fillStyle = face;
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular shine — sweeps across the face as rotation moves.
+      var shineX = s * R * 0.5;
+      var shine = ctx.createRadialGradient(shineX, -R * 0.35, 2, shineX, -R * 0.35, R * 0.95);
+      shine.addColorStop(0,   'rgba(255,255,255,0.18)');
+      shine.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+      shine.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = shine;
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner rim (subtle bevel)
+      ctx.lineWidth = R * 0.04;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.94, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // X mark on the face
+      drawXRPLogo(Math.max(absC, 0.04), faceFront);
+
+      if (!reduced) {
+        rot += 0.022;
+        requestAnimationFrame(frame);
+      }
+    }
+
+    if (reduced) {
+      // Single static frame at a flattering angle.
+      rot = 0.6;
+      frame();
+    } else {
+      requestAnimationFrame(frame);
+    }
+  })();
+</script>
+</body>
+</html>
