@@ -1697,17 +1697,21 @@
           }, ring);
         }
 
-        // labels (known nodes only — peers stay anonymous)
+        // labels — known entities show their full name; unknown peers show
+        // their short address (rXxxx…YyY) so the graph is readable instead of
+        // a row of mystery "!" badges. The amber badge still signals "new"
+        // independently; the label just answers "which one?".
         node.labelEls = [];
-        if (node.type !== 'peer') {
-          var lx = node.x + (node.labelDx || 0);
-          var ly = node.y + node.labelDy;
-          var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: 'cp-label' }, labelsG);
-          nameLabel.textContent = node.name;
-          var pctLabel = el('text', { x: lx, y: ly + 11, 'text-anchor': node.anchor || 'middle', class: 'cp-pct' }, labelsG);
-          pctLabel.textContent = node.pct + '%';
-          node.labelEls = [nameLabel, pctLabel];
-        }
+        var lx = node.x + (node.labelDx || 0);
+        var ly = node.y + node.labelDy;
+        var labelText = (node.type !== 'peer')
+          ? node.name
+          : (node.detail && node.detail.address) || node.name;
+        var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: 'cp-label' }, labelsG);
+        nameLabel.textContent = labelText;
+        var pctLabel = el('text', { x: lx, y: ly + 11, 'text-anchor': node.anchor || 'middle', class: 'cp-pct' }, labelsG);
+        pctLabel.textContent = node.pct + '%';
+        node.labelEls = [nameLabel, pctLabel];
 
       });
 
