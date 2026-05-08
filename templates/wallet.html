@@ -325,6 +325,24 @@
                          font-size: 6px; font-weight: 800;
                          pointer-events: none; }
 
+    /* Wallet-level "everything is new" banner. Replaces the per-node amber
+       badges when 100% of counterparties fire — at that point the per-node
+       flag is alarm-fatigue noise, and the real signal ("this wallet just
+       woke up") belongs at the wallet level, not on each peer. */
+    .cp-wallet-flag { display: none; margin: 0 0 0.6em 0;
+                      padding: 0.55em 0.8em; border-radius: 6px;
+                      background: rgba(251,191,36,0.08);
+                      border: 1px solid rgba(251,191,36,0.35);
+                      color: #fbbf24; font-size: var(--fs-xs);
+                      gap: 0.55em; align-items: center; line-height: 1.35; }
+    .cp-wallet-flag.is-visible { display: flex; }
+    .cp-wallet-flag-bang { display: inline-flex; width: 18px; height: 18px;
+                           border-radius: 50%; background: #fbbf24;
+                           color: #0a0e23; font-weight: 800;
+                           align-items: center; justify-content: center;
+                           font-family: var(--mono); flex-shrink: 0;
+                           font-size: 11px; }
+
     /* in-card "NEW" pill on the detail header */
     .cp-detail-new { font-size: var(--fs-2xs); color: #fbbf24;
                      border: 1px solid rgba(251,191,36,0.5);
@@ -873,6 +891,10 @@
           <div class="cp-head">
             <span class="cp-tag"><span class="dot"></span> Live · Counterparty Network</span>
             <span class="cp-meta">{{ data.nodes|length }} entities · {{ data.lookback_days }} days</span>
+          </div>
+          <div class="cp-wallet-flag" data-cp-wallet-flag aria-live="polite">
+            <span class="cp-wallet-flag-bang">!</span>
+            <span class="cp-wallet-flag-text">All counterparties first-seen in last 7 days — this wallet recently became active.</span>
           </div>
           <div class="cp-svg-wrap">
             <svg class="cp-svg" viewBox="0 0 540 340" data-cp>
@@ -1592,6 +1614,18 @@
         peer:     'rgba(140,160,200,0.55)'
       };
 
+      // If 100% of counterparties fire the new-peer flag, the per-node amber
+       // is alarm fatigue. Suppress per-node badges and surface a single
+       // wallet-level banner instead. Need >=2 nodes for the swap to be
+       // meaningful (1-of-1 isn't a "wallet woke up" pattern).
+      var allNewPeers = nodes.length >= 2 && nodes.every(function (n) {
+        return typeof n.firstSeenDays === 'number' && n.firstSeenDays <= 7;
+      });
+      if (allNewPeers) {
+        var flag = document.querySelector('[data-cp-wallet-flag]');
+        if (flag) flag.classList.add('is-visible');
+      }
+
       nodes.forEach(function (node, idx) {
         var nodeR = (node.type === 'peer') ? 5.5 : (8 + node.w * 4);
         var g = el('g', {
@@ -1659,7 +1693,7 @@
         // 7d picks out genuinely fresh entities relative to a typical wallet
         // tail. Outer pulsing ring + amber "!" disc draw the eye at-a-glance;
         // <title> gives a hover tooltip so the symbol isn't a mystery.
-        if (typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 7) {
+        if (!allNewPeers && typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 7) {
           el('circle', {
             class: 'cp-new-ring',
             r: (nodeR + 4).toFixed(2)
