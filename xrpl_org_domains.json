@@ -1,0 +1,19 @@
+{
+  "_about": "Curated list of organizations known to publish a valid `xrp-ledger.toml` at their domain. The toml is the cryptographic-grade proof: the org publishes the file at a domain they control, and anyone can fetch + verify. New orgs only get added here after manual confirmation that the file exists, parses, and contains an [[ACCOUNTS]] section listing real XRPL addresses.",
+  "_format": "domain → { default_category, _note }",
+  "domains": {
+    "ripple.com": {
+      "default_category": "ripple",
+      "_note": "Ripple's first-party toml. Source of the 20 monthly escrow wallets and the RLUSD issuer."
+    },
+    "xrpl-labs.com": {
+      "default_category": "other",
+      "_note": "XRPL Labs (Xaman/Xumm wallet team)."
+    }
+  },
+  "_known_failures": {
+    "sologenic.com": "Domain field set on SOLO issuer, but the toml URL returns HTML (no actual toml file). Manual SOLO entry stands.",
+    "xrplf.org": "Redirects to xrpl.org HTML page; no toml.",
+    "foundation.xrpl.org": "Redirects to xrpl.org HTML page; no toml."
+  }
+}

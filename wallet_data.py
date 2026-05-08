@@ -151,6 +151,131 @@ def _classify_address(address):
     return "peer", None
 
 
+def _self_info(address):
+    """Identity metadata for the focal wallet — name, category, and the
+    public attestation URL (e.g. xrp-ledger.toml). Surfaced in the WALLET
+    card as a verified badge so users can tell a curated/disclosed entity
+    apart from an arbitrary address. Returns all-None for unknown wallets."""
+    entry = _NAMED.get(address)
+    if not entry:
+        return {"name": None, "category": None, "verified_via": None}
+    return {
+        "name": entry.get("name"),
+        "category": entry.get("category"),
+        "verified_via": entry.get("verified_via"),
+    }
+
+
+def _amm_self_info(address):
+    """If `address` is an AMM pool account, return its pair label
+    ("XRP/RLUSD") so the wallet view can re-frame itself as a pool view.
+    Returns (False, None) for non-AMM addresses."""
+    amm = _AMM_BY_ACCOUNT.get(address)
+    if not amm:
+        return False, None
+    return True, _amm_pair_label(amm.get("Asset", {}), amm.get("Asset2", {}))
+
+
+def _compute_pool_flow(txs, amm_account):
+    """Walk already-fetched account_tx for an AMM and aggregate the signed
+    XRP balance change on its AccountRoot across recent swaps.
+
+    Only Payment / OfferCreate transactions count as swaps — AMMDeposit /
+    AMMWithdraw / AMMVote etc. also move the pool's XRP balance but they're
+    liquidity events, not trades, so they're excluded so flow numbers
+    match how other sites count "volume."
+
+    Returns (xrp_in_drops, xrp_out_drops, swap_count, last_swap_unix,
+             span_s, swaps, xrp_in_24h_drops, xrp_out_24h_drops,
+             swap_count_24h):
+      - xrp_in_drops / xrp_out_drops / swap_count: full sample totals.
+      - last_swap_unix: ledger time of the most recent swap.
+      - span_s: seconds between first and last swap in the sample.
+      - swaps: ordered list of {t, dir, size} dicts. Used by the Exact
+               reactor mode to replay real swap timing 1:1.
+      - xrp_in_24h_drops / xrp_out_24h_drops / swap_count_24h: same as
+        above but filtered to the last 86400 seconds of wall-clock. If
+        the sample doesn't reach back 24h, these are undercounts.
+
+    No new XRPL calls — reuses the txs the wallet pipeline already fetched.
+    """
+    xrp_in = 0
+    xrp_out = 0
+    count = 0
+    last_unix = None
+    earliest_unix = None
+    raw_events = []
+    for t in txs:
+        inner = _tx_envelope(t)
+        if inner.get("TransactionType") not in ("Payment", "OfferCreate"):
+            continue
+        ts = _ripple_to_unix(inner.get("date"))
+        meta = t.get("meta") or t.get("metaData") or {}
+        for node in meta.get("AffectedNodes", []) or []:
+            mod = node.get("ModifiedNode") or {}
+            if mod.get("LedgerEntryType") != "AccountRoot":
+                continue
+            ff = mod.get("FinalFields") or {}
+            if ff.get("Account") != amm_account:
+                continue
+            pf = mod.get("PreviousFields") or {}
+            prev_bal = pf.get("Balance")
+            new_bal = ff.get("Balance")
+            if not isinstance(prev_bal, str) or not isinstance(new_bal, str):
+                continue
+            try:
+                delta = int(new_bal) - int(prev_bal)
+            except ValueError:
+                continue
+            if delta > 0:
+                xrp_in += delta
+                raw_events.append((ts, "in", delta))
+            elif delta < 0:
+                xrp_out += -delta
+                raw_events.append((ts, "out", -delta))
+            else:
+                break
+            count += 1
+            if ts:
+                if last_unix is None or ts > last_unix:
+                    last_unix = ts
+                if earliest_unix is None or ts < earliest_unix:
+                    earliest_unix = ts
+            break
+    span = (last_unix - earliest_unix) if (last_unix and earliest_unix) else 0
+    if earliest_unix is not None:
+        swaps = [
+            {
+                "t": (ts - earliest_unix) if ts else 0,
+                "dir": d,
+                "size": s,
+            }
+            for ts, d, s in sorted(raw_events, key=lambda r: r[0] or 0)
+        ]
+    else:
+        swaps = []
+
+    # 24h aggregates — wall-clock window. Undercounted if the sample
+    # doesn't reach back that far.
+    cutoff = int(time.time()) - 86400
+    xrp_in_24h = 0
+    xrp_out_24h = 0
+    count_24h = 0
+    for ts, d, s in raw_events:
+        if not ts or ts < cutoff:
+            continue
+        if d == "in":
+            xrp_in_24h += s
+        else:
+            xrp_out_24h += s
+        count_24h += 1
+
+    return (
+        xrp_in, xrp_out, count, last_unix, span, swaps,
+        xrp_in_24h, xrp_out_24h, count_24h,
+    )
+
+
 def _ripple_to_unix(rt):
     if rt is None:
         return None
@@ -469,11 +594,11 @@ def _enrich_lp_holdings(holdings_lp):
     return enriched
 
 
-def _fetch_account_tx(client, address):
+def _fetch_account_tx(client, address, max_pages=MAX_TX_PAGES):
     """Paginated fetch of recent txs. Returns list of tx envelopes."""
     txs = []
     marker = None
-    for _ in range(MAX_TX_PAGES):
+    for _ in range(max_pages):
         kwargs = {"account": address, "limit": TX_PAGE_LIMIT, "forward": False}
         if marker is not None:
             kwargs["marker"] = marker
@@ -608,7 +733,13 @@ def _layout_nodes(counterparties, total_recent_txs):
         label_dy, label_dx, anchor = _label_pos(ang)
 
         detail = {
+            # `address` is the display-shortened form (rXxx…YyY) used inside
+            # the small detail-card tile. `addressFull` is the un-truncated
+            # XRPL address used as the click-through URL — needed because
+            # /wallet/<address> validates the address strictly and the
+            # ellipsis form would 404.
             "address": _short_addr(addr),
+            "addressFull": addr,
             "txCount": c["tx_count"],
             "lastSeen": _age_str(c["last_seen"]),
         }
@@ -652,12 +783,16 @@ def _layout_nodes(counterparties, total_recent_txs):
 
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     client = JsonRpcClient(XRPL_NODE)
+    is_amm, amm_pair = _amm_self_info(address)
     info = _fetch_account_info(client, address)
     if info is None:
         return {
             "error": "Account not found on the XRP Ledger.",
             "address": address,
             "address_short": _short_addr(address),
+            "self_info": _self_info(address),
+            "is_amm": is_amm,
+            "amm_pair": amm_pair,
             "balance_xrp": 0.0, "available_xrp": 0.0, "reserved_xrp": 0.0,
             "pct_locked": 0.0, "owner_count": 0, "trustline_count": 0,
             "tx_count_30d": 0, "active_days_30d": 0,
@@ -667,6 +802,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "holdings": [], "holdings_lp": [],
             "amm_positions": [], "amm_total_xrp": 0.0,
             "amm_24h_fees_xrp": 0.0, "amm_blended_apr": 0.0,
+            "pool_flow": None,
         }
     account_data = info.get("account_data", {})
     balance_drops = int(account_data.get("Balance", "0"))
@@ -681,7 +817,13 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     holdings = _build_holdings(lines)
     holdings_token = [h for h in holdings if not h["is_lp"]]
     holdings_lp = [h for h in holdings if h["is_lp"]]
-    amm_positions = _enrich_lp_holdings(holdings_lp)
+    # Skip the per-LP enrichment (AMMInfo + 5 paginated AccountTx per LP)
+    # when the focal address is itself an AMM pool — the wallet view
+    # renders a "Pool reserves" card instead of the AMM-allocation block,
+    # so the enrichment output is unused. Without this short-circuit a
+    # pool with N LP-bearing trustlines stalls the page for 5–25s on cold
+    # cache because each enrichment is sequentially expensive.
+    amm_positions = [] if is_amm else _enrich_lp_holdings(holdings_lp)
     amm_total_xrp = sum(p["my_xrp"] for p in amm_positions if p["my_xrp"] is not None)
     amm_24h_fees_xrp = sum(
         p["my_24h_fees_xrp"] for p in amm_positions if p["my_24h_fees_xrp"] is not None
@@ -690,7 +832,12 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         (amm_24h_fees_xrp * 365 / amm_total_xrp * 100) if amm_total_xrp > 0 else 0.0
     )
 
-    txs = _fetch_account_tx(client, address)
+    # AMM pool accounts have very high tx volume (every swap = a tx) and
+    # each AccountTx page is ~5s against a public node. Cap to a single
+    # page for AMM views — keeps the recent-swappers graph meaningful
+    # without paginating thousands of historic swaps. Regular wallets
+    # still get the full 5-page lookback for the 30-day pulse.
+    txs = _fetch_account_tx(client, address, max_pages=1 if is_amm else MAX_TX_PAGES)
     pulse = _build_pulse(txs, lookback_days)
     counterparties = _build_counterparty_graph(txs, address, lookback_days)
     total_recent_txs = sum(pulse)
@@ -708,10 +855,55 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         top = nodes[0]
         top_label = f"{top['name']} · {top['pct']}%"
 
+    # AMM-only: aggregate the recent flow direction so the pool widget
+    # can bias its slosh to match what's actually happening on-chain.
+    pool_flow = None
+    if is_amm:
+        (
+            xrp_in_drops, xrp_out_drops, swap_count, last_swap_unix,
+            span_s, swap_events,
+            xrp_in_24h_drops, xrp_out_24h_drops, swap_count_24h,
+        ) = _compute_pool_flow(txs, address)
+        # Token reserve = the largest non-LP holding (XRP-paired AMMs only
+        # hold their two assets, so this is the paired-token side).
+        token_holding = holdings_token[0] if holdings_token else None
+        token_reserve = abs(token_holding["balance"]) if token_holding else 0.0
+        token_label = token_holding["display"] if token_holding else "?"
+        # Implied price = token per 1 XRP (constant-product spot price).
+        current_price = (token_reserve / balance_xrp) if balance_xrp > 0 else 0.0
+        last_swap_age_s = (
+            int(time.time() - last_swap_unix) if last_swap_unix else None
+        )
+        # Convert swap drops → XRP for the JS replay, drop the size field
+        # if drops==0 (shouldn't happen, but defensive).
+        swaps_xrp = [
+            {"t": float(s["t"]), "dir": s["dir"], "size": s["size"] / 1_000_000}
+            for s in swap_events
+        ]
+        pool_flow = {
+            "xrp_in": xrp_in_drops / 1_000_000,
+            "xrp_out": xrp_out_drops / 1_000_000,
+            "swap_count": swap_count,
+            "xrp_in_24h": xrp_in_24h_drops / 1_000_000,
+            "xrp_out_24h": xrp_out_24h_drops / 1_000_000,
+            "swap_count_24h": swap_count_24h,
+            "volume_24h_xrp": (xrp_in_24h_drops + xrp_out_24h_drops) / 1_000_000,
+            "window_seconds": span_s,
+            "current_price": current_price,
+            "last_swap_age_s": last_swap_age_s,
+            "xrp_reserve": balance_xrp,
+            "token_reserve": token_reserve,
+            "token_label": token_label,
+            "swaps": swaps_xrp,
+        }
+
     return {
         "error": None,
         "address": address,
         "address_short": _short_addr(address),
+        "self_info": _self_info(address),
+        "is_amm": is_amm,
+        "amm_pair": amm_pair,
         "balance_xrp": balance_xrp,
         "available_xrp": available_xrp,
         "reserved_xrp": reserved_xrp,
@@ -732,6 +924,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "amm_total_xrp": amm_total_xrp,
         "amm_24h_fees_xrp": amm_24h_fees_xrp,
         "amm_blended_apr": amm_blended_apr,
+        "pool_flow": pool_flow,
     }
 
 

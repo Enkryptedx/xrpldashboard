@@ -80,21 +80,25 @@
     .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
               padding-top: 20px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
+
+    .snap-strip { display: grid; grid-template-columns: repeat(3, 1fr);
+                  gap: 10px; margin: 14px 0 6px; }
+    .snap-cell { background: rgba(34,211,238,0.04); border: 1px solid var(--border);
+                 border-radius: 8px; padding: 12px 14px; }
+    .snap-num  { font-family: var(--mono); font-size: 1.4rem; color: var(--text);
+                 font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .snap-lbl  { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+    .snap-foot { color: var(--dim); font-size: 0.82rem; margin-top: 8px; }
+    @media (max-width: 480px) {
+      .snap-strip { grid-template-columns: 1fr; }
+    }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
 
-  <div class="top">
-    <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
-    <div class="nav">
-      <a href="/">dashboard</a>
-      <a href="/pools">pools</a>
-      <a href="/whales">whales</a>
-      <a href="/tokens">tokens</a>
-      <a href="/health">health</a>
-    </div>
-  </div>
+  {% include "_nav.html" %}
 
   <h1>xrpldashboard institutional</h1>
   <p class="lede">
@@ -128,6 +132,34 @@
     reflects actual partner agreements once we&rsquo;ve signed the
     first few.
   </p>
+
+  {% if snapshot_meta %}
+  <h2>What we&rsquo;re already collecting</h2>
+  <p>
+    Daily ledger snapshots of our watchlist accounts and the largest
+    AMM pools — captured at a validated ledger and archived as a
+    permanent time series. Historical depth that institutional buyers
+    can&rsquo;t back-fill once they wish they&rsquo;d started.
+  </p>
+  <div class="snap-strip">
+    <div class="snap-cell">
+      <div class="snap-num">{{ snapshot_meta.days_collected }}</div>
+      <div class="snap-lbl">{{ "day" if snapshot_meta.days_collected == 1 else "days" }} of snapshots</div>
+    </div>
+    <div class="snap-cell">
+      <div class="snap-num">{{ snapshot_meta.accounts_tracked }}</div>
+      <div class="snap-lbl">watchlist accounts daily</div>
+    </div>
+    <div class="snap-cell">
+      <div class="snap-num">{{ snapshot_meta.pools_tracked }}</div>
+      <div class="snap-lbl">AMM pools daily</div>
+    </div>
+  </div>
+  <div class="snap-foot">
+    Collecting since {{ snapshot_meta.first_date }}. Raw snapshot
+    access available to launch partners on request.
+  </div>
+  {% endif %}
 
   <div class="callout">
     <p>
@@ -163,5 +195,6 @@
   </div>
 
 </div>
+{% include "_vibes_scripts.html" %}
 </body>
 </html>

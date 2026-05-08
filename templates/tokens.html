@@ -58,24 +58,78 @@
     .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 20px;
             max-width: 640px; }
 
-    /* Hero with spinning XRP coin on the right */
-    .token-hero { display: grid; grid-template-columns: 1fr 54px;
-                  gap: 1.4em; align-items: center; margin-bottom: 18px; }
+    .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
-    .token-coin { position: relative; width: 54px; height: 54px;
-                  justify-self: end; }
-    .token-coin canvas { width: 100%; height: 100%; display: block;
-                         background: transparent; }
-    .token-coin-cap {
-      position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
-      font-family: var(--mono); font-size: 0.58rem;
-      color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em;
-      font-weight: 600; white-space: nowrap;
+
+    /* Category-bars hero. Six vertical columns — one per token category —
+       each height proportional to that category's share of total trade
+       activity. Each column is segmented into the top tokens within the
+       category (largest at the bottom). Subtle on-load grow animation.
+       Inspired by EQ visualizers. No JS, server-rendered heights. */
+    .token-bars {
+      display: flex; align-items: stretch; gap: 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 14px 12px;
+      margin: 0 0 18px;
+      height: 220px; position: relative;
+    }
+    .token-bars::before {
+      content: "labeled tokens · by category";
+      position: absolute; top: 8px; right: 12px;
+      font-family: var(--mono); font-size: 0.62rem; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.14em;
+    }
+    .tb-col {
+      flex: 1 1 0; min-width: 0;
+      display: flex; flex-direction: column; align-items: stretch;
+      gap: 4px; min-height: 0;
+    }
+    .tb-head {
+      font-family: var(--mono); font-size: 0.62rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+      text-align: center; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; min-height: 0.9rem;
+    }
+    .tb-stack {
+      flex: 1 1 0; display: flex; flex-direction: column-reverse;
+      gap: 2px; min-height: 0; border-radius: 4px;
+      background: rgba(255,255,255,0.02);
+      overflow: hidden;
+    }
+    .tb-fill {
+      display: flex; flex-direction: column-reverse; gap: 2px;
+      width: 100%; min-height: 0;
+      animation: tbGrow 0.9s cubic-bezier(.2,.8,.2,1) both;
+      transform-origin: bottom;
+    }
+    @keyframes tbGrow {
+      from { transform: scaleY(0); opacity: 0; }
+      to   { transform: scaleY(1); opacity: 1; }
+    }
+    .tb-seg {
+      width: 100%; min-height: 2px;
+      background: rgba(var(--cat-rgb), 0.55);
+      border-radius: 1px;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .tb-seg:first-child { background: rgba(var(--cat-rgb), 0.85); }
+    .tb-seg:hover { background: rgba(var(--cat-rgb), 1.0); }
+    .tb-foot {
+      text-align: center; min-height: 1.5rem;
+    }
+    .tb-foot .num {
+      font-family: var(--mono); font-size: 0.78rem;
+      color: var(--text); font-weight: 600;
+    }
+    .tb-foot .pct {
+      font-family: var(--mono); font-size: 0.6rem;
+      color: rgba(var(--cat-rgb), 0.85); margin-left: 4px;
     }
     @media (max-width: 540px) {
-      .token-hero { grid-template-columns: 1fr; }
-      .token-coin { justify-self: center; width: 44px; height: 44px;
-                    margin-bottom: 8px; }
+      .token-bars { height: 180px; padding: 12px 8px 10px; gap: 4px; }
+      .tb-head { font-size: 0.55rem; }
+      .tb-foot .num { font-size: 0.7rem; }
+      .tb-foot .pct { display: none; }
     }
 
     .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -162,45 +216,96 @@
     .footer { color: var(--dim); font-size: 0.78rem; margin-top: 28px;
               padding-top: 16px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
+
+    {% from "_explainer.html" import explainer_css %}
+    {{ explainer_css() }}
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
 
+  {% from "_explainer.html" import explainer %}
+  {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
+  {{ freshness_badge_css() }}
   {% include "_nav.html" %}
 
   <div class="token-hero">
-    <div>
-      <h1>Token activity</h1>
-      <p class="lede">
-        Top XRPL tokens by recent on-ledger trade count. Counts every token
-        Payment plus every AMM deposit/withdraw. Token names are hand-curated
-        where available — see <a href="/about">about</a> for sourcing.
-      </p>
-    </div>
-    <div class="token-coin" aria-hidden="true">
-      <canvas id="xrp-coin" width="280" height="280"></canvas>
-      <div class="token-coin-cap">XRP</div>
-    </div>
+    <h1>Token activity{{ explainer(
+      "page",
+      "What this page tracks",
+      "Which XRP-Ledger tokens are getting traded right now. Each
+       'trade' is a single transaction that moves a token between two
+       wallets. We rank by number of trades, not by dollar amount —
+       so a popular token with lots of small trades can rank higher
+       than a sleepy one with a single whale-sized move.",
+      source="counts pulled from <code>volumes.db</code>"
+    ) }}</h1>
+    <p class="lede">
+      Top XRPL tokens by recent on-ledger trade count. Counts every token
+      Payment plus every AMM deposit/withdraw. Token names are hand-curated
+      where available — see <a href="/about">about</a> for sourcing.
+    </p>
+    {{ freshness_badge(data_age_label) }}
   </div>
 
+  {% if category_bars %}
+  {% set bar_max = category_bars|map(attribute='share_pct')|max %}
+  <div class="token-bars" aria-label="Activity by token category">
+    {% for cat in category_bars %}
+    <div class="tb-col" style="--cat-rgb: {{ cat.rgb }};"
+         title="{{ cat.label }} · {{ '{:,}'.format(cat.trades) }} trades · {{ cat.token_count }} token{{ '' if cat.token_count == 1 else 's' }}">
+      <div class="tb-head">{{ cat.label }}</div>
+      <div class="tb-stack">
+        <div class="tb-fill" style="height: {{ ((cat.share_pct / bar_max) * 100)|round(1) }}%;">
+          {% for seg in cat.segments %}
+          <div class="tb-seg" style="height: {{ seg.share_in_cat }}%;"
+               title="{{ seg.label }} · {{ '{:,}'.format(seg.trades) }} trades"></div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="tb-foot">
+        <span class="num">{{ '{:,}'.format(cat.trades) }}</span><span class="pct">{{ cat.share_pct }}%</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="stats">
-    <div class="stat">
+    <div class="stat vibes-spot">
       <div class="n">{{ tokens|length }}</div>
       <div class="l">tokens shown</div>
     </div>
-    <div class="stat">
+    <div class="stat vibes-spot">
       <div class="n">{{ labeled_count }}</div>
-      <div class="l">labeled</div>
+      <div class="l">labeled{{ explainer(
+        "labeled",
+        "What 'labeled' means",
+        "Anyone can create a token on the XRP Ledger, and the Ledger
+         only stores a short code (sometimes just a string of letters
+         and numbers). We keep a hand-checked list of the real names
+         for the well-known ones — labeled tokens show that real name
+         (RLUSD, Coreum, etc.). Unlabeled ones just show whatever the
+         Ledger had on file.",
+        source="<code>TOKEN_NAMES.md</code> in the public repo — open a PR to add one"
+      ) }}</div>
     </div>
-    <div class="stat">
+    <div class="stat vibes-spot">
       <div class="n">{{ total_buckets }}</div>
-      <div class="l">hour buckets</div>
+      <div class="l">hour buckets{{ explainer(
+        "buckets",
+        "What 'hour buckets' means",
+        "We tally each token's trades hour by hour rather than storing
+         every single transaction. This number is roughly 'how many
+         tokens were active in how many hours' — higher means more
+         tokens trading more often.",
+      ) }}</div>
     </div>
-    {% if earliest_iso %}
-    <div class="stat">
-      <div class="n" style="font-size: 0.85rem;">{{ earliest_iso }}</div>
-      <div class="l">first bucket</div>
+    {% if latest_iso %}
+    <div class="stat vibes-spot">
+      <div class="n" style="font-size: 0.85rem;">{{ latest_iso }}</div>
+      <div class="l">latest bucket</div>
     </div>
     {% endif %}
   </div>
@@ -221,7 +326,7 @@
 
   {% if tokens %}
     {% for t in tokens %}
-    <a class="row" href="/token/{{ t.currency_raw }}/{{ t.issuer }}">
+    <a class="row vibes-spot" href="/token/{{ t.currency_raw }}/{{ t.issuer }}">
       <div class="rank">{{ t.rank }}</div>
       <div class="name-block">
         <div class="name">
@@ -316,127 +421,9 @@
     }
     input.addEventListener('input', apply);
   })();
-
-  // Spinning XRP coin in the page hero. Pure canvas, Y-axis rotation,
-  // ellipse squash via |cos(rot)|, X-mark logo painted on the face,
-  // specular shine sweep that tracks rotation. No deps. Respects reduced motion.
-  (function () {
-    var canvas = document.getElementById('xrp-coin');
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    var W = canvas.width, H = canvas.height;
-    var cx = W / 2, cy = H / 2;
-    var R = Math.min(W, H) * 0.42;
-    var rot = 0;
-    var reduced = window.matchMedia &&
-                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    function drawXRPLogo(squashAbs, faceFront) {
-      // The XRP mark — two thick curved strokes that approach the center
-      // without touching. The top arc bows down toward center; the bottom
-      // arc bows up toward center; a small gap between their innermost
-      // points keeps them visually separate. The mark is wider than tall
-      // to match the official aspect ratio. Whole mark is scaled
-      // horizontally to match the coin's spin squash.
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(squashAbs, 1);
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = R * 0.13;
-      ctx.strokeStyle = faceFront
-        ? 'rgba(255, 255, 255, 0.96)'
-        : 'rgba(255, 255, 255, 0.62)';
-      var extX = R * 0.74;   // horizontal reach of each tail
-      var extY = R * 0.50;   // vertical reach of each tail
-      var gap  = R * 0.10;   // space between top arc's bottom and bottom arc's top
-      // Quadratic-bezier midpoint y = (controlY - endY) / 2.
-      // For top arc (ends at y = -extY) we want midpoint at y = -gap (above
-      // center) → controlY = -2*gap + extY. The result: top arc's lowest
-      // point sits ABOVE the origin by `gap`, so the two arcs never touch.
-      var topCtrlY = extY - 2 * gap;
-      // Top arc: upper-left tail → bow down toward center → upper-right tail
-      ctx.beginPath();
-      ctx.moveTo(-extX, -extY);
-      ctx.quadraticCurveTo(0, topCtrlY, extX, -extY);
-      ctx.stroke();
-      // Bottom arc: lower-left tail → bow up toward center → lower-right tail
-      ctx.beginPath();
-      ctx.moveTo(-extX, extY);
-      ctx.quadraticCurveTo(0, -topCtrlY, extX, extY);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function frame() {
-      ctx.clearRect(0, 0, W, H);
-
-      var c = Math.cos(rot);
-      var s = Math.sin(rot);
-      var absC = Math.abs(c);
-      var faceFront = c >= 0;
-
-      // Coin edge ring (slightly lighter than the face — gives the spinning
-      // coin a visible silhouette at narrow tilts)
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(Math.max(absC, 0.04), 1);
-      ctx.beginPath();
-      ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(60, 60, 60, 0.85)';
-      ctx.fill();
-      ctx.restore();
-
-      // Coin face: pure black with a very subtle radial darkening at edges
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(Math.max(absC, 0.04), 1);
-      var face = ctx.createRadialGradient(0, 0, R * 0.1, 0, 0, R);
-      face.addColorStop(0,    '#1a1a1a');
-      face.addColorStop(0.7,  '#0a0a0a');
-      face.addColorStop(1,    '#000000');
-      ctx.fillStyle = face;
-      ctx.beginPath();
-      ctx.arc(0, 0, R, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Specular shine — sweeps across the face as rotation moves.
-      var shineX = s * R * 0.5;
-      var shine = ctx.createRadialGradient(shineX, -R * 0.35, 2, shineX, -R * 0.35, R * 0.95);
-      shine.addColorStop(0,   'rgba(255,255,255,0.18)');
-      shine.addColorStop(0.4, 'rgba(255,255,255,0.05)');
-      shine.addColorStop(1,   'rgba(255,255,255,0)');
-      ctx.fillStyle = shine;
-      ctx.beginPath();
-      ctx.arc(0, 0, R, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Inner rim (subtle bevel)
-      ctx.lineWidth = R * 0.04;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
-      ctx.beginPath();
-      ctx.arc(0, 0, R * 0.94, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // X mark on the face
-      drawXRPLogo(Math.max(absC, 0.04), faceFront);
-
-      if (!reduced) {
-        rot += 0.022;
-        requestAnimationFrame(frame);
-      }
-    }
-
-    if (reduced) {
-      // Single static frame at a flattering angle.
-      rot = 0.6;
-      frame();
-    } else {
-      requestAnimationFrame(frame);
-    }
-  })();
 </script>
+{% include "_vibes_scripts.html" %}
+{% from "_explainer.html" import explainer_js %}
+{{ explainer_js() }}
 </body>
 </html>

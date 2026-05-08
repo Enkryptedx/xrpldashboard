@@ -31,6 +31,31 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_ts_idx   ON events(ts);
 CREATE INDEX IF NOT EXISTS events_type_idx ON events(type);
+
+-- tx_pulse — lightweight ring buffer of every successful Payment, used by
+-- the homepage globe to animate "the ledger". Pruned periodically by the
+-- stream worker to a fixed cap so it doesn't grow unbounded.
+CREATE TABLE IF NOT EXISTS tx_pulse (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts            INTEGER NOT NULL,
+  amount_drops  INTEGER,
+  currency      TEXT
+);
+CREATE INDEX IF NOT EXISTS tx_pulse_id_idx ON tx_pulse(id);
+
+-- amm_pool_events — per-AMM activity ring buffer feeding the live constellation
+-- on /pools. event_type ∈ {'deposit','withdraw','swap'}. Pruned by the stream
+-- worker to a fixed cap so growth stays bounded.
+CREATE TABLE IF NOT EXISTS amm_pool_events (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts            INTEGER NOT NULL,
+  amm_account   TEXT NOT NULL,
+  event_type    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS amm_pool_events_ts_idx
+  ON amm_pool_events(ts);
+CREATE INDEX IF NOT EXISTS amm_pool_events_account_ts_idx
+  ON amm_pool_events(amm_account, ts);
 """
 
 VOLUMES_SCHEMA = """

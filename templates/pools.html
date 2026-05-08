@@ -16,6 +16,8 @@
   #}
 
   <style>
+    {% from "_explainer.html" import explainer_css %}
+    {{ explainer_css() }}
     :root {
       --bg: #0a0e27;
       --card: #141832;
@@ -59,50 +61,32 @@
     .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 16px;
             max-width: 720px; }
 
-    /* Hero with sloshing liquid-pool flask on the right */
-    .pool-hero { display: grid; grid-template-columns: 1fr 64px;
-                 gap: 1.4em; align-items: center; margin-bottom: 14px; }
+    .pool-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+                 gap: 1.6em; align-items: start; margin-bottom: 22px; }
     .pool-hero .lede { margin-bottom: 0; }
-    .pool-flask { position: relative; width: 64px; height: 64px;
-                  justify-self: end; }
-    .pool-flask canvas { width: 100%; height: 100%; display: block;
-                         background: transparent; }
-    .pool-flask-cap {
-      position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
-      font-family: var(--mono); font-size: 0.58rem;
-      color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em;
-      font-weight: 600; white-space: nowrap;
-    }
-    @media (max-width: 540px) {
-      .pool-hero { grid-template-columns: 1fr; }
-      .pool-flask { justify-self: center; width: 52px; height: 52px;
-                    margin-bottom: 8px; }
+    .pool-hero .stats { margin: 0; }
+    @media (max-width: 720px) {
+      .pool-hero { grid-template-columns: 1fr; gap: 1.1em; }
     }
 
-    .indexed-banner {
-      background: linear-gradient(90deg, rgba(34,211,238,0.10), rgba(59,130,246,0.05));
-      border: 1px solid rgba(34,211,238,0.25);
-      border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
-      display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px;
+    .browse-meta {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px;
+      color: var(--muted); font-size: 0.82rem; margin: 0 0 10px;
     }
-    .indexed-banner .big {
-      font-family: var(--mono); font-size: 1.5rem; color: var(--cyan);
-      font-weight: 700; letter-spacing: -0.01em;
-    }
-    .indexed-banner .label { color: var(--text); font-size: 0.95rem; }
-    .indexed-banner .sub { color: var(--muted); font-size: 0.82rem;
-                           margin-left: auto; }
-    .indexed-banner .pulse-dot {
+    .browse-meta .pulse-dot {
       display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-      background: var(--cyan); margin-right: 6px;
-      animation: bp 1.6s ease-in-out infinite;
+      background: var(--cyan); margin-right: 4px;
+      animation: bp 1.6s ease-in-out infinite; vertical-align: 1px;
     }
+    .browse-meta .big { font-family: var(--mono); color: var(--cyan);
+                        font-weight: 600; }
     @keyframes bp { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr;
+             gap: 8px; margin-bottom: 18px; }
     .stat  { background: var(--card); border: 1px solid var(--border);
-             border-radius: 8px; padding: 8px 12px; min-width: 130px; }
-    .stat .n { font-family: var(--mono); font-size: 1.05rem; color: var(--text); }
+             border-radius: 8px; padding: 10px 12px; min-width: 0; }
+    .stat .n { font-family: var(--mono); font-size: 1.15rem; color: var(--text); }
     .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
                letter-spacing: 0.05em; margin-top: 2px; }
 
@@ -111,32 +95,188 @@
     h2 .sub { color: var(--muted); font-weight: 400; font-size: 0.85rem;
               margin-left: 8px; }
 
-    /* Top 10 hero strip — compact rows, accent treatment */
-    .top10 { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-    .hero-row {
-      display: grid;
-      grid-template-columns: 32px 1fr 100px 110px 130px;
-      gap: 10px; align-items: center;
-      background: var(--card); border: 1px solid var(--border);
-      border-left: 3px solid var(--cyan);
-      border-radius: 8px; padding: 10px 14px;
+    /* Top-10 chip strip — horizontal row of 10 equal-width tiles, each
+       showing the pool pair + dollar TVL. The proportional visual lives
+       in the ranked list below (share % per row). */
+    .tvl-treemap { display: grid; grid-template-columns: repeat(10, 1fr);
+                   gap: 4px; border-radius: 10px;
+                   margin: 8px 0 6px; }
+    .tvl-treemap .seg { display: flex; flex-direction: column; align-items: center;
+                        justify-content: center; text-align: center; gap: 4px;
+                        padding: 10px 6px; min-width: 0; overflow: hidden;
+                        background: rgba(34,211,238,0.08);
+                        border: 1px solid var(--border); border-radius: 8px;
+                        color: var(--text); text-decoration: none;
+                        transition: background 0.18s, border-color 0.18s; }
+    .tvl-treemap .seg:hover { background: rgba(34,211,238,0.18);
+                              border-color: rgba(34,211,238,0.4);
+                              text-decoration: none; }
+    .tvl-treemap .seg .seg-pair { font-weight: 600; font-size: 0.78rem;
+                                   white-space: nowrap; overflow: hidden;
+                                   text-overflow: ellipsis; max-width: 100%; }
+    .tvl-treemap .seg .seg-tvl  { font-family: var(--mono); font-size: 0.72rem;
+                                   color: var(--muted);
+                                   font-variant-numeric: tabular-nums; }
+    .tvl-caption { color: var(--muted); font-size: 0.88rem; margin: 0 0 18px; }
+
+    .row-link { display: block; color: inherit; text-decoration: none; }
+    .row-link:hover { text-decoration: none; }
+
+    .constellation {
+      position: relative;
+      width: 100%; height: 460px;
+      margin-bottom: 14px;
+      background:
+        radial-gradient(2px 2px at 12% 18%, rgba(255,255,255,0.6), transparent 50%),
+        radial-gradient(1px 1px at 26% 76%, rgba(255,255,255,0.45), transparent 50%),
+        radial-gradient(1.5px 1.5px at 48% 12%, rgba(255,255,255,0.5), transparent 50%),
+        radial-gradient(1px 1px at 64% 88%, rgba(255,255,255,0.4), transparent 50%),
+        radial-gradient(1.5px 1.5px at 82% 22%, rgba(255,255,255,0.5), transparent 50%),
+        radial-gradient(1px 1px at 92% 60%, rgba(255,255,255,0.35), transparent 50%),
+        radial-gradient(1px 1px at 6% 52%, rgba(255,255,255,0.4), transparent 50%),
+        radial-gradient(1px 1px at 36% 38%, rgba(255,255,255,0.3), transparent 50%),
+        radial-gradient(1.5px 1.5px at 70% 48%, rgba(255,255,255,0.45), transparent 50%),
+        radial-gradient(ellipse 60% 45% at 50% 50%, rgba(34,211,238,0.10), transparent 70%),
+        radial-gradient(ellipse 80% 60% at 30% 80%, rgba(192,132,252,0.06), transparent 70%),
+        radial-gradient(ellipse 70% 55% at 80% 20%, rgba(59,130,246,0.06), transparent 70%),
+        linear-gradient(180deg, #050818 0%, #0a0e27 100%);
+      border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden;
     }
-    .hero-row.r1 { border-left-color: #fbbf24; }
-    .hero-row.r2 { border-left-color: #d6a14f; }
-    .hero-row.r3 { border-left-color: #b8860b; }
-    .hero-row .rank { font-family: var(--mono); color: var(--dim);
-                      font-size: 0.85rem; text-align: right; }
-    .hero-row .pair { color: var(--text); font-weight: 600;
-                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hero-row .fee  { font-family: var(--mono); color: var(--muted);
-                      font-size: 0.85rem; text-align: right; }
-    .hero-row .reserves { font-family: var(--mono); color: var(--muted);
-                          font-size: 0.78rem; text-align: right; }
-    .hero-row .tvl  { font-family: var(--mono); font-size: 0.95rem;
-                      color: var(--text); text-align: right; font-weight: 600; }
-    .hero-row .tvl .stat-pill { display: block; font-weight: 400;
-                                font-size: 0.65rem; color: var(--muted);
-                                margin-top: 2px; }
+
+    .star-node {
+      position: absolute;
+      left: var(--cx); top: var(--cy);
+      transform: translate(-50%, -50%);
+      width: var(--g); height: var(--g);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: radial-gradient(circle,
+                    rgba(var(--rgb),0.45) 0%,
+                    rgba(var(--rgb),0.15) 35%,
+                    transparent 70%);
+      color: inherit; text-decoration: none;
+      transition: transform 0.18s, background 0.18s;
+      cursor: pointer;
+    }
+    .star-node::before {
+      content: ""; width: var(--c); height: var(--c);
+      border-radius: 50%;
+      background: rgba(var(--rgb),1);
+      box-shadow: 0 0 12px 1px rgba(var(--rgb),0.85),
+                  0 0 24px 4px rgba(var(--rgb),0.35);
+      z-index: 2;
+      animation: starvibe 2.4s ease-in-out infinite;
+      animation-delay: var(--pingd, 0s);
+    }
+    @keyframes starvibe {
+      0%, 100% { transform: translate(0, 0); }
+      20%      { transform: translate(0.4px, -0.3px); }
+      40%      { transform: translate(-0.3px, 0.4px); }
+      60%      { transform: translate(0.3px, 0.3px); }
+      80%      { transform: translate(-0.4px, -0.2px); }
+    }
+
+    .constellation .link-svg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .constellation .comet-in {
+      fill: rgba(34,211,238,0.95);
+      filter: drop-shadow(0 0 3px rgba(34,211,238,0.95))
+              drop-shadow(0 0 8px rgba(34,211,238,0.4));
+    }
+    .constellation .comet-out {
+      fill: rgba(245,158,11,0.95);
+      filter: drop-shadow(0 0 3px rgba(245,158,11,0.95))
+              drop-shadow(0 0 8px rgba(245,158,11,0.4));
+    }
+    .constellation .comet-tail-in,
+    .constellation .comet-tail-out {
+      stroke: none; fill: none;
+    }
+    .constellation .legend {
+      position: absolute; bottom: 10px; left: 14px;
+      display: flex; gap: 14px;
+      font-family: var(--mono); font-size: 0.6rem;
+      letter-spacing: 0.08em; color: var(--muted);
+      pointer-events: none; z-index: 6;
+    }
+    .constellation .legend .lg { display: inline-flex; align-items: center; gap: 5px; }
+    .constellation .legend .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .constellation .legend .dot.in  { background: rgba(34,211,238,1); box-shadow: 0 0 6px rgba(34,211,238,0.7); }
+    .constellation .legend .dot.out { background: rgba(245,158,11,1); box-shadow: 0 0 6px rgba(245,158,11,0.7); }
+    .constellation .legend .dot.swap { background: rgba(229,231,235,1); box-shadow: 0 0 6px rgba(229,231,235,0.7); }
+    .star-node:hover {
+      transform: translate(-50%, -50%) scale(1.15);
+      text-decoration: none; z-index: 5;
+    }
+    .star-node .s-label {
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      margin-top: 4px; padding: 3px 6px;
+      font-family: var(--mono); font-size: 0.66rem; line-height: 1.2;
+      color: var(--text); text-align: center; white-space: nowrap;
+      background: rgba(10,14,39,0.85);
+      border: 1px solid rgba(var(--rgb),0.4); border-radius: 4px;
+      pointer-events: none;
+    }
+    .star-node .s-label .l-pair { color: rgba(var(--rgb),0.95); font-weight: 600; }
+    .star-node .s-label .l-tvl  { color: var(--muted); font-size: 0.6rem; display: block; margin-top: 1px; }
+    .star-node .s-rank {
+      position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+      margin-bottom: 4px;
+      font-family: var(--mono); font-size: 0.6rem; font-weight: 700;
+      color: rgba(var(--rgb),0.95);
+      letter-spacing: 0.05em;
+      pointer-events: none;
+    }
+    .constellation .compass {
+      position: absolute; bottom: 10px; right: 14px;
+      font-family: var(--mono); font-size: 0.62rem;
+      color: rgba(34,211,238,0.55); letter-spacing: 0.12em;
+      pointer-events: none; z-index: 6;
+    }
+    .constellation .header-tag {
+      position: absolute; top: 10px; left: 14px;
+      font-family: var(--mono); font-size: 0.62rem;
+      color: rgba(34,211,238,0.55); letter-spacing: 0.12em;
+      pointer-events: none; z-index: 6;
+    }
+    .constellation .mode-toggle {
+      position: absolute; top: 8px; right: 12px;
+      display: inline-flex;
+      background: rgba(10,14,39,0.7);
+      border: 1px solid rgba(34,211,238,0.3);
+      border-radius: 4px;
+      font-family: var(--mono); font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      overflow: hidden;
+      z-index: 7;
+    }
+    .constellation .mt-btn {
+      background: transparent; color: rgba(34,211,238,0.55);
+      border: none; padding: 4px 10px; cursor: pointer;
+      font: inherit; letter-spacing: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .constellation .mt-btn:hover { color: var(--cyan); }
+    .constellation .mt-btn.active {
+      background: rgba(34,211,238,0.18);
+      color: var(--cyan);
+    }
+    .constellation .mt-btn[data-mode="sim"].active {
+      background: rgba(245,158,11,0.18);
+      color: rgba(245,158,11,1);
+      box-shadow: inset 0 0 0 1px rgba(245,158,11,0.45);
+    }
+    @media (max-width: 720px) {
+      .constellation { height: 360px; }
+      .star-node .s-label { font-size: 0.6rem; }
+      .star-node .s-rank { font-size: 0.55rem; }
+    }
 
     /* Tier filter pills */
     .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
@@ -175,6 +315,7 @@
       gap: 10px; align-items: center;
       background: var(--card); border: 1px solid var(--border);
       border-radius: 7px; padding: 8px 14px; margin-bottom: 4px;
+      transition: border-color 0.15s;
     }
     .row .rank { font-family: var(--mono); color: var(--dim); font-size: 0.82rem;
                  text-align: right; }
@@ -222,14 +363,9 @@
     .footer a { color: var(--muted); }
 
     @media (max-width: 700px) {
-      .hero-row { grid-template-columns: 28px 1fr 130px;
-                  grid-template-areas:
-                    "rank pair tvl"
-                    ".    sub  sub"; }
-      .hero-row .rank { grid-area: rank; }
-      .hero-row .pair { grid-area: pair; }
-      .hero-row .tvl  { grid-area: tvl; text-align: right; }
-      .hero-row .fee, .hero-row .reserves { display: none; }
+      .tvl-treemap { grid-template-columns: repeat(2, 1fr); }
+      .tvl-treemap .seg { flex-direction: row; justify-content: space-between;
+                          padding: 10px 14px; }
       .row { grid-template-columns: 30px 1fr 110px;
              grid-template-areas:
                "rank pair tvl"
@@ -240,15 +376,26 @@
       .row .fee, .row .reserves { display: none; }
     }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
 
   {% include "_nav.html" %}
+  {% from "_explainer.html" import explainer %}
 
   <div class="pool-hero">
     <div>
-      <h1>AMM pools</h1>
+      <h1>AMM pools{{ explainer(
+        "amm",
+        "What's an AMM pool",
+        "Think of it like a vending machine for swapping two tokens.
+         Anyone can drop both tokens in (this is called 'providing
+         liquidity') and earn a small fee every time someone uses it
+         to swap. The price you get depends on how much of each token
+         is sitting in the pool. TVL is the total dollar value parked
+         inside it right now.",
+      ) }}</h1>
       <p class="lede">
         Every AMM pool we&rsquo;ve indexed from the XRP Ledger, ranked by total
         value locked. XRP-paired pools are sized in USD using the XRP price;
@@ -256,65 +403,125 @@
         best-effort estimates. See <a href="/about">about</a> for sourcing.
       </p>
     </div>
-    <div class="pool-flask" aria-hidden="true">
-      <canvas id="pool-flask" width="160" height="160"></canvas>
-      <div class="pool-flask-cap">POOL</div>
+    {% if rows %}
+    <div class="stats">
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-format-money="1">{{ fmt_money(total_tvl_usd) }}</div>
+        <div class="l">total TVL (XRP-paired){{ explainer(
+          "tvl-xrp",
+          "Why XRP-paired only",
+          "We only count pools where one side is XRP, because XRP has a
+           live, well-known dollar price we can trust. Pools that pair
+           two other tokens (like RLUSD with USDC) are harder to price
+           honestly — we'd be guessing — so they don't count toward this
+           headline number.",
+        ) }}</div>
+      </div>
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ ranked_count }}" data-countup-decimals="0">{{ "{:,}".format(ranked_count) }}</div>
+        <div class="l">pools priced</div>
+      </div>
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
+        <div class="l">exact TVL{{ explainer(
+          "tvl-exact",
+          "Exact vs estimated TVL",
+          "Exact = we can convert this pool's value to dollars without
+           guessing (because one side is XRP or a dollar-pegged
+           stablecoin). Estimated = we had to figure out a price for one
+           of the tokens by looking at where else it's traded. Estimated
+           numbers are roughly right — treat them as a ballpark, not
+           precise.",
+        ) }}</div>
+      </div>
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
+        <div class="l">estimated</div>
+      </div>
     </div>
+    {% endif %}
   </div>
-
-  <div class="indexed-banner">
-    <span class="pulse-dot"></span>
-    <span class="big">{{ "{:,}".format(indexed_count) }}</span>
-    <span class="label">pools tracked · top 100 shown by default{% if rank_in_progress %} · ranking in progress{% endif %}</span>
-    <span class="sub">
-      Most XRPL pools have negligible TVL — switch to <em>all</em> below to see the long tail.
-      ({{ ranked_count }} ranked{% if not rank_finished %} so far{% endif %})
-    </span>
-  </div>
-
-  {% if rows %}
-  <div class="stats">
-    <div class="stat">
-      <div class="n">{{ fmt_money(total_tvl_usd) }}</div>
-      <div class="l">total TVL (XRP-paired)</div>
-    </div>
-    <div class="stat">
-      <div class="n">{{ ranked_count }}</div>
-      <div class="l">pools priced</div>
-    </div>
-    <div class="stat">
-      <div class="n">{{ rows|selectattr("tvl_status","equalto","exact")|list|length }}</div>
-      <div class="l">exact TVL</div>
-    </div>
-    <div class="stat">
-      <div class="n">{{ rows|selectattr("tvl_status","equalto","estimated")|list|length }}</div>
-      <div class="l">estimated</div>
-    </div>
-  </div>
-  {% endif %}
 
   {% if top10 %}
-  <h2>Top 10 by TVL <span class="sub">across all tracked pools</span></h2>
-  <div class="top10">
-    {% for p in top10 %}
-    <div class="hero-row{% if loop.index == 1 %} r1{% elif loop.index == 2 %} r2{% elif loop.index == 3 %} r3{% endif %}">
-      <div class="rank">{{ loop.index }}</div>
-      <div class="pair">{{ p.pair }}</div>
-      <div class="fee">{{ "%.3f"|format(p.fee_pct) }}%</div>
-      <div class="reserves">
-        {{ "{:,.0f}".format(p.amount_a or 0) }}<br>
-        {{ "{:,.0f}".format(p.amount_b or 0) }}
-      </div>
-      <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
-        {% if p.tvl_usd is not none %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
-        <span class="stat-pill status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
-      </div>
+  <h2>Top 10 by TVL <span class="sub">star size = pool TVL · comets fire on real on-chain events · click any star for the pool wallet</span></h2>
+  {% set max_share = top10[0].share_of_top10 or 1 %}
+  {% set positions = [
+     (50, 48),
+     (26, 28),
+     (74, 30),
+     (16, 70),
+     (84, 68),
+     (44, 14),
+     (60, 86),
+     (10, 50),
+     (90, 50),
+     (52, 88)
+  ] %}
+  <div class="constellation" id="constellation">
+    <span class="header-tag">SECTOR · TOP10.MAP</span>
+    <div class="mode-toggle" id="mode-toggle" role="group" aria-label="Constellation data mode">
+      <button type="button" class="mt-btn" data-mode="live" aria-pressed="false">LIVE</button>
+      <button type="button" class="mt-btn" data-mode="sim"  aria-pressed="false">SIM</button>
     </div>
+    <span class="compass" id="constellation-status">10 POOLS · STANDBY</span>
+    <span class="legend">
+      <span class="lg"><span class="dot in"></span>DEPOSIT</span>
+      <span class="lg"><span class="dot out"></span>WITHDRAW</span>
+      <span class="lg"><span class="dot swap"></span>SWAP</span>
+    </span>
+    {# Empty SVG container — comets are appended dynamically by the poll
+       script below in response to real on-chain AMM events. #}
+    <svg class="link-svg" preserveAspectRatio="none" viewBox="0 0 100 100"></svg>
+    {% for p in top10 %}
+    {% set share = p.share_of_top10 or 0 %}
+    {% set ratio = (share / max_share) ** 0.5 %}
+    {% set core = (6 + ratio * 16)|round(0)|int %}
+    {% set glow = (core * 3.2)|round(0)|int %}
+    {% set ping_dur = 3.5 %}
+    {% set ping_delay = (loop.index0 * 0.35)|round(2) %}
+    {% set pos = positions[loop.index0] %}
+    {% set rgb =
+       '251,191,36' if loop.index == 1 else
+       '214,214,214' if loop.index == 2 else
+       '184,134,11' if loop.index == 3 else
+       '34,211,238' %}
+    <a class="star-node{% if loop.index <= 3 %} r{{ loop.index }}{% endif %}"
+       href="/wallet/{{ p.amm_account }}"
+       data-amm="{{ p.amm_account }}"
+       data-cx="{{ pos[0] }}" data-cy="{{ pos[1] }}"
+       title="#{{ loop.index }} {{ p.pair }} — {{ fmt_money(p.tvl_usd) }} ({{ '%.1f'|format(share) }}% of top 10) · fee {{ '%.3f'|format(p.fee_pct or 0) }}%"
+       style="--cx: {{ pos[0] }}%; --cy: {{ pos[1] }}%; --c: {{ core }}px; --g: {{ glow }}px; --rgb: {{ rgb }}; --ping: {{ ping_dur }}s; --pingd: {{ ping_delay }}s;">
+      <span class="s-rank">#{{ loop.index }}</span>
+      <span class="s-label">
+        <span class="l-pair">{{ p.pair }}</span>
+        <span class="l-tvl">{{ fmt_money(p.tvl_usd) }}</span>
+      </span>
+    </a>
     {% endfor %}
   </div>
+
+  <h2>Share of top-10 TVL <span class="sub">quick visual recap</span></h2>
+  <div class="tvl-treemap">
+    {% for p in top10 %}
+    <a class="seg"
+       href="/wallet/{{ p.amm_account }}"
+       title="{{ p.pair }} — {{ fmt_money(p.tvl_usd) }} ({{ '%.1f'|format(p.share_of_top10) }}% of top 10)">
+      <span class="seg-pair">{{ p.pair }}</span>
+      <span class="seg-tvl">{{ fmt_money(p.tvl_usd) }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="tvl-caption">
+    Together: <strong>{{ fmt_money(top10_total_tvl) }}</strong>
+    — that&rsquo;s {{ "%.1f"|format(top10_share_of_all) }}% of all-pool TVL.
+  </p>
   {% endif %}
 
   <h2>Browse all <span class="sub">search &amp; filter</span></h2>
+  <div class="browse-meta">
+    <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> pools tracked · top 100 shown by default{% if rank_in_progress %} · ranking in progress{% endif %}</span>
+    <span>Most XRPL pools have negligible TVL — switch to <em>all</em> below to see the long tail. ({{ ranked_count }} ranked{% if not rank_finished %} so far{% endif %}){% if snapshot_age_label %} · TVL snapshot {{ snapshot_age_label }}{% endif %}</span>
+  </div>
   <div class="search-bar">
     <input type="search" id="pool-search" placeholder="Search pair (e.g. USDC, RLUSD, SOLO)…" autocomplete="off" spellcheck="false" />
     <span class="search-stats" id="pool-search-stats"></span>
@@ -328,6 +535,7 @@
 
   {% if rows %}
     {% for p in rows %}
+    <a class="row-link vibes-spot" href="/wallet/{{ p.amm_account }}">
     <div class="row">
       <div class="rank">{{ loop.index }}</div>
       <div class="pair-block">
@@ -345,9 +553,12 @@
       </div>
       <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
         {% if p.tvl_usd is not none %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
+        {% if p.tvl_status != 'estimated' %}
         <span class="status status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
+        {% endif %}
       </div>
     </div>
+    </a>
     {% endfor %}
   {% else %}
     <div class="empty">
@@ -394,6 +605,260 @@
 
 </div>
 <script>
+  // Live constellation comets — polls /api/pools/recent_events for real
+  // AMMDeposit / AMMWithdraw / Payment-through-AMM events touching the top-10
+  // pools and fires a comet (cyan inbound for deposit, amber outbound for
+  // withdraw, white pulse for swap) at the matching star. When the worker
+  // isn't running (e.g. production), the endpoint returns an empty list and
+  // the constellation simply stays in standby.
+  (function () {
+    var constellation = document.getElementById('constellation');
+    if (!constellation) return;
+    var svg = constellation.querySelector('.link-svg');
+    if (!svg) return;
+
+    var stars = {};
+    constellation.querySelectorAll('.star-node[data-amm]').forEach(function (el) {
+      var amm = el.getAttribute('data-amm');
+      if (amm) stars[amm] = el;
+    });
+    if (!Object.keys(stars).length) return;
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var POLL_MS = 3000;
+    var POLL_WINDOW_S = 5;
+    var seenIds = new Set();
+    var firstPoll = true;
+
+    function pickEdge(cx, cy) {
+      var jitter = function () { return (Math.random() - 0.5) * 30; };
+      var candidates = [
+        { x: -10, y: cy + jitter() },
+        { x: 110, y: cy + jitter() },
+        { x: cx + jitter(), y: -10 },
+        { x: cx + jitter(), y: 110 }
+      ];
+      var best = candidates[0], bestD = Infinity;
+      candidates.forEach(function (c) {
+        var d = Math.hypot(c.x - cx, c.y - cy);
+        if (d < bestD) { bestD = d; best = c; }
+      });
+      return best;
+    }
+
+    // SMIL anchored to the SVG's timeline-origin (page load) won't fire when
+    // appended later — t=0 is already in the past. Using begin="indefinite"
+    // and calling beginElement() after append anchors the animation to "now".
+    function makeAnimate(attr, values, keyTimes, dur) {
+      var a = document.createElementNS(SVG_NS, 'animate');
+      a.setAttribute('attributeName', attr);
+      a.setAttribute('values', values);
+      a.setAttribute('keyTimes', keyTimes);
+      a.setAttribute('dur', dur + 's');
+      a.setAttribute('begin', 'indefinite');
+      a.setAttribute('repeatCount', '1');
+      a.setAttribute('fill', 'freeze');
+      return a;
+    }
+    function startAnim(el) {
+      try { el.beginElement(); } catch (e) {}
+    }
+
+    function spawnImpactRing(cx, cy, rgbStr, beginAt, lifeSec) {
+      setTimeout(function () {
+        var ring = document.createElementNS(SVG_NS, 'circle');
+        ring.setAttribute('cx', cx);
+        ring.setAttribute('cy', cy);
+        ring.setAttribute('r', '0');
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', 'rgba(' + rgbStr + ',1)');
+        ring.setAttribute('stroke-width', '0');
+        ring.setAttribute('opacity', '0');
+        ring.setAttribute('style',
+          'filter: drop-shadow(0 0 3px rgba(' + rgbStr + ',0.9));');
+        var aR = makeAnimate('r',            '0;0.8;3',  '0;0.1;1', lifeSec);
+        var aS = makeAnimate('stroke-width', '0;1;0.15', '0;0.1;1', lifeSec);
+        var aO = makeAnimate('opacity',      '0;1;0',    '0;0.1;1', lifeSec);
+        ring.appendChild(aR);
+        ring.appendChild(aS);
+        ring.appendChild(aO);
+        svg.appendChild(ring);
+        startAnim(aR); startAnim(aS); startAnim(aO);
+        setTimeout(function () { ring.remove(); }, lifeSec * 1000 + 150);
+      }, beginAt * 1000);
+    }
+
+    function fireComet(starEl, eventType) {
+      var cx = parseFloat(starEl.getAttribute('data-cx'));
+      var cy = parseFloat(starEl.getAttribute('data-cy'));
+      if (isNaN(cx) || isNaN(cy)) return;
+
+      // Swap = directionless pulse only. We don't know which side of the pool
+      // gained vs. lost without parsing further metadata, so we don't fake it.
+      if (eventType === 'swap') {
+        spawnImpactRing(cx, cy, '229,231,235', 0, 0.4);
+        return;
+      }
+
+      var isOutbound = (eventType === 'withdraw');
+      var edge = pickEdge(cx, cy);
+      var fromX = isOutbound ? cx : edge.x;
+      var fromY = isOutbound ? cy : edge.y;
+      var toX   = isOutbound ? edge.x : cx;
+      var toY   = isOutbound ? edge.y : cy;
+      var rgbStr = isOutbound ? '245,158,11' : '34,211,238';
+      var dur = 1.4;
+
+      var pathId = 'cmt-' + Math.random().toString(36).slice(2, 9);
+      var path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('id', pathId);
+      path.setAttribute('d', 'M ' + fromX + ' ' + fromY + ' L ' + toX + ' ' + toY);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'none');
+      svg.appendChild(path);
+
+      var circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('r', '0.7');
+      circle.setAttribute('class', isOutbound ? 'comet-out' : 'comet-in');
+      circle.setAttribute('opacity', '0');
+
+      var motion = document.createElementNS(SVG_NS, 'animateMotion');
+      motion.setAttribute('dur', dur + 's');
+      motion.setAttribute('repeatCount', '1');
+      motion.setAttribute('fill', 'freeze');
+      motion.setAttribute('begin', 'indefinite');
+      var mpath = document.createElementNS(SVG_NS, 'mpath');
+      mpath.setAttribute('href', '#' + pathId);
+      motion.appendChild(mpath);
+      circle.appendChild(motion);
+      var op = makeAnimate('opacity', '0;1;1;0', '0;0.1;0.92;1', dur);
+      circle.appendChild(op);
+      svg.appendChild(circle);
+      startAnim(motion); startAnim(op);
+
+      // Impact ring fires at the star — at end of inbound, at start of outbound.
+      var ringBegin = isOutbound ? 0 : dur * 0.92;
+      spawnImpactRing(cx, cy, rgbStr, ringBegin, 0.22);
+
+      setTimeout(function () {
+        circle.remove();
+        path.remove();
+      }, (dur + 0.3) * 1000);
+    }
+
+    var statusEl = document.getElementById('constellation-status');
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = '10 POOLS · ' + text;
+    }
+
+    var mode = (function () {
+      try { return localStorage.getItem('xrpl_pools_mode') || 'live'; }
+      catch (e) { return 'live'; }
+    })();
+
+    var polling = false;
+    function poll() {
+      if (mode !== 'live') return;
+      if (polling || document.hidden) return;
+      polling = true;
+      fetch('/api/pools/recent_events?seconds=' + POLL_WINDOW_S, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || mode !== 'live') return;
+          var events = data.events || [];
+          var firedThisPoll = 0;
+          events.forEach(function (ev) {
+            if (seenIds.has(ev.id)) return;
+            seenIds.add(ev.id);
+            // On the very first poll, mark all pre-existing events as seen
+            // without firing — we don't want a flurry of stale comets on load.
+            if (firstPoll) return;
+            var star = stars[ev.amm_account];
+            if (!star) return;
+            firedThisPoll++;
+            setTimeout(function () { fireComet(star, ev.event_type); },
+                       Math.random() * 250);
+          });
+          if (firstPoll) {
+            firstPoll = false;
+            setStatus(events.length ? 'LIVE' : 'STANDBY');
+          } else if (firedThisPoll > 0) {
+            setStatus('LIVE');
+          }
+          if (seenIds.size > 1000) {
+            var arr = Array.from(seenIds).slice(-500);
+            seenIds.clear();
+            arr.forEach(function (id) { seenIds.add(id); });
+          }
+        })
+        .catch(function () { /* silent retry next tick */ })
+        .then(function () { polling = false; });
+    }
+
+    // Simulated mode — generates fake events so users can preview what the
+    // constellation looks like when liquidity is actively moving. Top-3 pools
+    // get heavier weighting and the swap > deposit > withdraw mix mirrors
+    // typical AMM activity. Toggle is amber-tinted so the demo state is
+    // never mistaken for real on-chain data.
+    var simTimer = null;
+    var starList = Array.prototype.slice.call(
+      constellation.querySelectorAll('.star-node[data-amm]')
+    );
+
+    function simTick() {
+      if (mode !== 'sim') return;
+      if (!document.hidden && starList.length) {
+        var idx = Math.random() < 0.55
+          ? Math.floor(Math.random() * Math.min(3, starList.length))
+          : Math.floor(Math.random() * starList.length);
+        var r = Math.random();
+        var et = r < 0.65 ? 'swap' : r < 0.85 ? 'deposit' : 'withdraw';
+        fireComet(starList[idx], et);
+      }
+      simTimer = setTimeout(simTick, 400 + Math.random() * 700);
+    }
+
+    function startSim() {
+      if (simTimer) clearTimeout(simTimer);
+      setStatus('SIMULATED');
+      simTimer = setTimeout(simTick, 200);
+    }
+
+    function stopSim() {
+      if (simTimer) { clearTimeout(simTimer); simTimer = null; }
+    }
+
+    function applyMode() {
+      document.querySelectorAll('#mode-toggle .mt-btn').forEach(function (b) {
+        var on = b.getAttribute('data-mode') === mode;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (mode === 'sim') {
+        startSim();
+      } else {
+        stopSim();
+        firstPoll = true;       // re-arm so toggling back doesn't dump stale events
+        setStatus('STANDBY');
+        poll();
+      }
+    }
+
+    document.querySelectorAll('#mode-toggle .mt-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var newMode = b.getAttribute('data-mode');
+        if (newMode === mode) return;
+        mode = newMode;
+        try { localStorage.setItem('xrpl_pools_mode', mode); } catch (e) {}
+        applyMode();
+      });
+    });
+
+    applyMode();
+    setInterval(poll, POLL_MS);
+  })();
+</script>
+<script>
   // Client-side filter for the browse table. Matches against pair name and
   // AMM account text — typing "USDC" hides every row that doesn't include
   // that string. Filter applies on top of the server-side tier filter.
@@ -426,110 +891,10 @@
     }
     input.addEventListener('input', apply);
   })();
-
-  // Sloshing AMM-pool flask in the page hero. A circular "beaker" filled
-  // with two stacked liquids — bottom layer (XRP-side cyan) and top layer
-  // (USD-side amber). The interface between them is a sine wave that
-  // gently sloshes back and forth. No deps. Respects reduced motion.
-  (function () {
-    var canvas = document.getElementById('pool-flask');
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    var W = canvas.width, H = canvas.height;
-    var cx = W / 2, cy = H / 2;
-    var R  = Math.min(W, H) * 0.46;
-    var startTime = performance.now();
-    var reduced = window.matchMedia &&
-                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    function frame(now) {
-      ctx.clearRect(0, 0, W, H);
-      var t = (now - startTime) / 1000;
-
-      // Outer glass ring
-      ctx.lineWidth = R * 0.06;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Clip everything inside the beaker so the liquids stay contained
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, R - R * 0.04, 0, Math.PI * 2);
-      ctx.clip();
-
-      // Interface line — a gentle sine wave sitting at vertical midpoint,
-      // tilted slightly by a slow-changing angle to sell the slosh.
-      var amp     = R * 0.08;
-      var freq    = 0.06;
-      var phase   = t * 1.6;
-      var tilt    = Math.sin(t * 0.8) * R * 0.05;
-      var midY    = cy + Math.sin(t * 0.5) * R * 0.04;
-
-      function ySurface(x) {
-        var rel = (x - cx) / R; // -1..1
-        return midY + Math.sin(x * freq + phase) * amp + rel * tilt;
-      }
-
-      // BOTTOM liquid (XRP — cyan)
-      ctx.beginPath();
-      ctx.moveTo(cx - R, cy + R);
-      for (var x = cx - R; x <= cx + R; x += 2) {
-        ctx.lineTo(x, ySurface(x));
-      }
-      ctx.lineTo(cx + R, cy + R);
-      ctx.closePath();
-      var bottom = ctx.createLinearGradient(0, midY, 0, cy + R);
-      bottom.addColorStop(0, '#22d3ee');
-      bottom.addColorStop(1, '#0e7490');
-      ctx.fillStyle = bottom;
-      ctx.fill();
-
-      // TOP liquid (USD-side — amber, semi-translucent)
-      ctx.beginPath();
-      ctx.moveTo(cx - R, cy - R);
-      ctx.lineTo(cx + R, cy - R);
-      for (var x2 = cx + R; x2 >= cx - R; x2 -= 2) {
-        ctx.lineTo(x2, ySurface(x2));
-      }
-      ctx.closePath();
-      var top = ctx.createLinearGradient(0, cy - R, 0, midY);
-      top.addColorStop(0, 'rgba(245, 158, 11, 0.85)');
-      top.addColorStop(1, 'rgba(245, 158, 11, 0.65)');
-      ctx.fillStyle = top;
-      ctx.fill();
-
-      // Surface highlight along the interface
-      ctx.beginPath();
-      for (var x3 = cx - R; x3 <= cx + R; x3 += 2) {
-        var ys = ySurface(x3);
-        if (x3 === cx - R) ctx.moveTo(x3, ys); else ctx.lineTo(x3, ys);
-      }
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.restore();
-
-      // Subtle inner-glass bevel
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, R * 0.92, 0, Math.PI * 2);
-      ctx.stroke();
-
-      if (!reduced) requestAnimationFrame(frame);
-    }
-
-    if (reduced) {
-      // Static frame at a flattering moment in the cycle.
-      frame(startTime + 600);
-    } else {
-      requestAnimationFrame(frame);
-    }
-  })();
 </script>
+
+{% include "_vibes_scripts.html" %}
+{% from "_explainer.html" import explainer_js %}
+{{ explainer_js() }}
 </body>
 </html>

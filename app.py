@@ -5,6 +5,7 @@ Production:   gunicorn app:app  (PORT from env, set by host)
 """
 
 import json
+import math
 import os
 import sqlite3
 import time
@@ -38,8 +39,9 @@ EVENTS_DB_PATH = os.path.join(HERE, "events.db")
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
+SNAPSHOT_DIR = os.path.join(HERE, "historical_snapshots")
 
-WHALE_XRP_THRESHOLD = 500_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
+WHALE_XRP_THRESHOLD = 50_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
 
 # Canonical production origin. Used for og:url / canonical / sitemap.xml.
 # Override with SITE_URL env var if a preview deploy needs a different host.
@@ -71,43 +73,86 @@ def inject_site_url():
     return {"site_url": SITE_URL}
 
 
+# Allowlist of external origins our pages legitimately load. Keep narrow —
+# every entry is a trust decision. Plausible is allowlisted ahead of time
+# so uncommenting the analytics tag in templates needs no header change.
+_CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://plausible.io"
+_CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
+_CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
+_CSP_IMG_SRC = "'self' data:"
+_CSP_CONNECT_SRC = "'self' https://plausible.io"
+
+_CSP_VALUE = "; ".join([
+    "default-src 'self'",
+    f"script-src {_CSP_SCRIPT_SRC}",
+    f"style-src {_CSP_STYLE_SRC}",
+    f"img-src {_CSP_IMG_SRC}",
+    f"font-src {_CSP_FONT_SRC}",
+    f"connect-src {_CSP_CONNECT_SRC}",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+])
+
+_PERMISSIONS_POLICY_VALUE = ", ".join([
+    "camera=()",
+    "microphone=()",
+    "geolocation=()",
+    "payment=()",
+    "usb=()",
+    "magnetometer=()",
+    "gyroscope=()",
+    "accelerometer=()",
+    "interest-cohort=()",
+])
+
+
 @app.after_request
 def apply_security_headers(response):
-    """Minimal security headers on every response.
-
-    Three headers chosen for real protection without breaking the site's
-    current inline-script + inline-style pattern:
+    """Browser-enforced security headers on every response.
 
     - X-Content-Type-Options: nosniff
-        Prevents browsers from MIME-sniffing a response away from its
-        declared Content-Type. Cheap, no compatibility risk.
+        Stops the browser MIME-sniffing a response away from its declared
+        Content-Type. Closes a class of "this image is actually JS" attacks.
 
-    - X-Frame-Options: DENY
-        Disallows the site being framed by any other origin. Mitigates
-        clickjacking. We never embed our own pages in frames.
+    - X-Frame-Options: DENY (+ CSP frame-ancestors 'none')
+        Disallows the site being framed. Mitigates clickjacking. We never
+        embed our own pages in frames.
 
     - Referrer-Policy: strict-origin-when-cross-origin
-        On same-origin nav, send the full referrer; on cross-origin,
-        only the origin (no path). Standard sensible default.
-
-    Deferred:
-
-    - Content-Security-Policy
-        A real CSP would forbid inline <script> and inline <style>, but
-        the templates rely on both (liveness chip polling, table sorts,
-        large embedded <style> blocks). Doing CSP correctly means moving
-        every inline script into /static/js/ and every inline style into
-        /static/css/, which is a pre-launch refactor we explicitly chose
-        to defer. Add CSP after the inline-asset move lands.
+        On same-origin nav, full referrer; cross-origin, origin only.
+        Outbound links to XRPSCAN/Bithomp also carry rel="noreferrer".
 
     - Strict-Transport-Security (HSTS)
-        Only meaningful once the site is served over HTTPS in production.
-        Add it in app.py once the Render deploy + custom domain are live.
+        Forces HTTPS for two years on every visitor's browser. Browsers
+        ignore HSTS over HTTP, so this header is inert in local dev.
+
+    - Content-Security-Policy
+        Allowlists the exact external origins we load (jsdelivr, plausible).
+        'unsafe-inline' is required because templates carry large embedded
+        <style> and <script> blocks; tightening to nonces is a future move.
+        Even with 'unsafe-inline', CSP still blocks loading scripts/styles
+        from non-allowlisted origins — i.e. an injected <script src="evil">
+        is rejected, which is the highest-impact protection here.
+
+    - Permissions-Policy
+        Explicitly disables features we never use (camera, microphone,
+        geolocation, payment, USB, motion sensors, FLoC interest-cohort).
+        Even if compromised JS asks for them, the browser refuses.
     """
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault(
         "Referrer-Policy", "strict-origin-when-cross-origin"
+    )
+    response.headers.setdefault(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+    )
+    response.headers.setdefault("Content-Security-Policy", _CSP_VALUE)
+    response.headers.setdefault(
+        "Permissions-Policy", _PERMISSIONS_POLICY_VALUE
     )
     return response
 
@@ -184,6 +229,74 @@ def _whales_snapshot_label():
         return None
 
 
+def _format_age_seconds(age):
+    """Friendly 'X ago' label from a non-negative integer seconds delta.
+    Returns None when age is None or negative (clock skew)."""
+    if age is None or age < 0:
+        return None
+    if age < 60:
+        return f"{age}s ago"
+    if age < 3600:
+        return f"{age // 60}m ago"
+    if age < 86400:
+        return f"{age // 3600}h ago"
+    return f"{age // 86400}d ago"
+
+
+def _events_db_age_seconds():
+    """Seconds since the most recent row in events. Prefers Postgres when
+    DATABASE_URL is set so the badge reflects what users actually see in
+    prod; falls back to local events.db. None on missing/empty/error."""
+    if db.pg_available():
+        try:
+            latest = db.read_max_event_ts()
+            if latest is not None:
+                return max(0, int(time.time()) - latest)
+        except Exception:
+            pass
+    if not os.path.exists(EVENTS_DB_PATH):
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+        try:
+            row = conn.execute("SELECT MAX(ts) FROM events").fetchone()
+        finally:
+            conn.close()
+        if not row or not row[0]:
+            return None
+        return max(0, int(time.time()) - int(row[0]))
+    except Exception:
+        return None
+
+
+def _volumes_db_age_seconds():
+    """Seconds since the most recent hourly bucket in token_volume. Prefers
+    Postgres; falls back to local volumes.db. None on missing/empty/error."""
+    if db.pg_available():
+        try:
+            latest_bucket = db.read_max_token_bucket()
+            if latest_bucket is not None:
+                return max(0, int(time.time()) - latest_bucket * 3600)
+        except Exception:
+            pass
+    if not os.path.exists(VOLUMES_DB_PATH):
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{VOLUMES_DB_PATH}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT MAX(hour_bucket) FROM token_volume"
+            ).fetchone()
+        finally:
+            conn.close()
+        if not row or row[0] is None:
+            return None
+        latest_ts = int(row[0]) * 3600
+        return max(0, int(time.time()) - latest_ts)
+    except Exception:
+        return None
+
+
 def _pools_snapshot_label():
     """Friendly date the AMM ranking last completed (from amm_rank_state.json).
     Used to label the pool tracker honestly when workers aren't live in prod.
@@ -252,6 +365,26 @@ def index():
     cached_age = data.get("cached_age_seconds", 0.0)
     _featured, _top_tier, _other, enriched = _tier_pools(data["pools"])
     tvl_shares = _compute_tvl_shares(enriched, top_n=5)
+
+    # Pull from the full ranked index so the homepage's headline AMM stat
+    # and Top-pools card match what /pools shows. Without this the homepage
+    # used the curated ~19-pool snapshot and visibly disagreed with /pools.
+    ranked_full = _safe_load_json(AMM_RANKED_PATH) or []
+    ranked_full = sorted(
+        ranked_full,
+        key=lambda r: (
+            0 if (r.get("tvl_usd") or 0) > 0 else 1,
+            -(r.get("tvl_usd") or 0),
+        ),
+    )
+    ranked_pool_count = len(ranked_full)
+    ranked_total_tvl_usd = sum(
+        (r.get("tvl_usd") or 0)
+        for r in ranked_full
+        if r.get("tvl_status") in ("exact", "estimated")
+    )
+    ranked_top5 = [r for r in ranked_full if (r.get("tvl_usd") or 0) > 0][:5]
+
     try:
         cold = fetch_cold_storage_cached()
     except Exception:
@@ -263,6 +396,9 @@ def index():
         pulse=pulse,
         top_pools=enriched[:5],
         tvl_shares=tvl_shares,
+        ranked_top5=ranked_top5,
+        ranked_pool_count=ranked_pool_count,
+        ranked_total_tvl_usd=ranked_total_tvl_usd,
         recent_whales=_recent_whale_events(limit=3),
         whales_snapshot_at=_whales_snapshot_label(),
         top_tokens=_top_tokens_recent(limit=5),
@@ -491,12 +627,20 @@ def _load_named_accounts_dict():
 
 
 def _load_token_names_dict():
-    """Build {(currency_hex, issuer): entry} for fast lookup."""
+    """Build {(currency_hex, issuer): entry} for fast lookup. Entries
+    still tagged `TODO_curation_pass` are excluded from the live render
+    per TOKEN_NAMES.md policy ("never publish a name we can't back to a
+    first-party source"). They stay in token_names.json as curation
+    history — when a `verified_via` lands, the entry goes live with no
+    code change."""
     raw = _safe_load_json(TOKEN_NAMES_PATH) or {}
     out = {}
     for entry in raw.values():
-        if isinstance(entry, dict):
-            out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("verified_via") == "TODO_curation_pass":
+            continue
+        out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
     return out
 
 
@@ -632,23 +776,52 @@ def whales():
     """
     filter_type = (request.args.get("type") or "").strip().lower()
     valid_types = {"large_xfer", "tagged", "trustset"}
-    where_clause = ""
-    params = []
-    if filter_type in valid_types:
-        where_clause = "WHERE type = ?"
-        params.append(filter_type)
-    else:
+    if filter_type not in valid_types:
         filter_type = ""
 
-    events = []
-    type_counts = {"large_xfer": 0, "tagged": 0, "trustset": 0, "_total": 0}
+    # Tier filter — applies only to large_xfer events; tagged/trustset bypass
+    # because the "who" makes them signal regardless of size.
+    tier_map = {
+        "1m":   ("≥1M XRP",   1_000_000 * 1_000_000),
+        "100k": ("≥100K XRP",   100_000 * 1_000_000),
+        "50k":  ("≥50K XRP",     50_000 * 1_000_000),
+    }
+    tier = (request.args.get("tier") or "1m").strip().lower()
+    if tier not in tier_map:
+        tier = "1m"
+    tier_label, tier_drops = tier_map[tier]
 
-    if os.path.exists(EVENTS_DB_PATH):
+    clauses = ["(type != 'large_xfer' OR amount_drops >= ?)"]
+    params = [tier_drops]
+    if filter_type:
+        clauses.append("type = ?")
+        params.append(filter_type)
+    where_clause = "WHERE " + " AND ".join(clauses)
+
+    events = []
+    radar_blips = []
+    type_counts = {"large_xfer": 0, "tagged": 0, "trustset": 0, "_total": 0}
+    rows = None
+
+    # Prefer Postgres (worker dual-writes); fall back to the local/committed
+    # SQLite snapshot on any error or when DATABASE_URL is unset.
+    if db.pg_available():
+        try:
+            type_counts = db.read_whale_type_counts(tier_drops)
+            rows = db.read_whale_events(tier_drops, filter_type or None)
+        except Exception:
+            rows = None
+            type_counts = {"large_xfer": 0, "tagged": 0, "trustset": 0, "_total": 0}
+
+    if rows is None and os.path.exists(EVENTS_DB_PATH):
         try:
             conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
             try:
                 for r in conn.execute(
-                    "SELECT type, COUNT(*) FROM events GROUP BY type"
+                    "SELECT type, COUNT(*) FROM events "
+                    "WHERE (type != 'large_xfer' OR amount_drops >= ?) "
+                    "GROUP BY type",
+                    (tier_drops,),
                 ):
                     if r[0] in type_counts:
                         type_counts[r[0]] = r[1]
@@ -661,19 +834,34 @@ def whales():
                 ).fetchall()
             finally:
                 conn.close()
-            named = _load_named_accounts_dict()
-            tokens = _load_token_names_dict()
-            events = [_resolve_event(r, named, tokens) for r in rows]
         except Exception:
-            events = []
+            rows = None
+
+    if rows:
+        named = _load_named_accounts_dict()
+        tokens = _load_token_names_dict()
+        events = [_resolve_event(r, named, tokens) for r in rows]
+        # Radar blips: log-scale magnitudes from raw rows (amount_drops
+        # at index 6) so 1M XRP ≈ 0.3 and 100M+ ≈ 1.0.
+        for r in rows[:30]:
+            drops = r[6]
+            if not isinstance(drops, int) or drops <= 0:
+                continue
+            xrp = drops / 1_000_000.0
+            mag = max(0.2, min(1.0, (math.log10(xrp + 10) - 5.0) / 3.0 + 0.4))
+            radar_blips.append({"mag": round(mag, 3), "kind": r[3] or "large_xfer"})
 
     return render_template(
         "whales.html",
         events=events,
         filter_type=filter_type,
+        tier=tier,
+        tier_label=tier_label,
         type_counts=type_counts,
         threshold_xrp=WHALE_XRP_THRESHOLD,
         named_accounts_count=len(_load_named_accounts_dict()),
+        radar_blips=radar_blips,
+        data_age_label=_format_age_seconds(_events_db_age_seconds()),
     )
 
 
@@ -688,16 +876,32 @@ def tokens():
     already a useful "what's people are touching" signal.
     """
     valid_ranges = {"24h": 24, "7d": 24 * 7, "all": None}
-    range_key = (request.args.get("range") or "all").strip().lower()
+    range_key = (request.args.get("range") or "24h").strip().lower()
     if range_key not in valid_ranges:
-        range_key = "all"
+        range_key = "24h"
     hours_back = valid_ranges[range_key]
 
-    rows = []
+    rows = None
     earliest_bucket = None
+    latest_bucket = None
     total_buckets = 0
 
-    if os.path.exists(VOLUMES_DB_PATH):
+    # Prefer Postgres (worker dual-writes); fall back to local volumes.db.
+    if db.pg_available():
+        try:
+            rows = db.read_token_volume_aggregates(
+                hours_back=hours_back, limit=50
+            )
+            stats = db.read_token_volume_bucket_stats()
+            earliest_bucket, latest_bucket, total_buckets = (
+                stats[0], stats[1], stats[2]
+            )
+        except Exception:
+            rows = None
+            earliest_bucket = latest_bucket = None
+            total_buckets = 0
+
+    if rows is None and os.path.exists(VOLUMES_DB_PATH):
         try:
             conn = sqlite3.connect(f"file:{VOLUMES_DB_PATH}?mode=ro", uri=True)
             try:
@@ -717,14 +921,19 @@ def tokens():
                     params,
                 ).fetchall()
                 stats = conn.execute(
-                    "SELECT MIN(hour_bucket), COUNT(DISTINCT hour_bucket) "
-                    "FROM token_volume"
+                    "SELECT MIN(hour_bucket), MAX(hour_bucket), "
+                    "COUNT(DISTINCT hour_bucket) FROM token_volume"
                 ).fetchone()
-                earliest_bucket, total_buckets = stats[0], stats[1]
+                earliest_bucket, latest_bucket, total_buckets = (
+                    stats[0], stats[1], stats[2]
+                )
             finally:
                 conn.close()
         except Exception:
-            pass
+            rows = []
+
+    if rows is None:
+        rows = []
 
     tokens_meta = _load_token_names_dict()
     enriched = []
@@ -756,14 +965,78 @@ def tokens():
         earliest_iso = datetime.fromtimestamp(
             earliest_bucket * 3600, tz=timezone.utc
         ).strftime("%Y-%m-%d %H:%M UTC")
+    latest_iso = None
+    if latest_bucket is not None:
+        latest_iso = datetime.fromtimestamp(
+            latest_bucket * 3600, tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M UTC")
+
+    # Category bars hero — group enriched tokens by category, compute share
+    # of total trade count per category, and expose top-N segments per bar.
+    # Order intentionally fixed so the hero layout is stable across page
+    # loads. "other" is unlabeled tokens (no curated category).
+    # Bars cover labeled categories only. Unlabeled tokens dominate raw
+    # trade volume on XRPL (memecoins issued by unknown accounts, etc.) and
+    # would visually flatten every labeled category to invisible slivers.
+    # The full list below the hero still includes unlabeled rows.
+    cat_order = [
+        ("stablecoin",     "stablecoins",  "34,197,94"),
+        ("fiat",           "fiat tokens",  "34,197,94"),
+        ("wrapped_major",  "wrapped",      "245,158,11"),
+        ("native_utility", "utility",      "34,211,238"),
+        ("memecoin",       "memecoins",    "236,72,153"),
+    ]
+    cat_groups = {key: [] for key, _, _ in cat_order}
+    for t in enriched:
+        if t["category"] in cat_groups:
+            cat_groups[t["category"]].append(t)
+    labeled_total = sum(
+        t["trades"] or 0 for t in enriched
+        if t["category"] in cat_groups
+    ) or 1
+    category_bars = []
+    for key, label, rgb in cat_order:
+        members = cat_groups[key]
+        cat_total = sum(t["trades"] or 0 for t in members)
+        if cat_total == 0:
+            continue
+        members_sorted = sorted(
+            members, key=lambda t: t["trades"] or 0, reverse=True
+        )
+        top = members_sorted[:5]
+        rest_total = sum(t["trades"] or 0 for t in members_sorted[5:])
+        segments = [
+            {"label": t["display"], "trades": t["trades"] or 0,
+             "share_in_cat": round(((t["trades"] or 0) / cat_total) * 100, 1)}
+            for t in top
+        ]
+        if rest_total > 0:
+            segments.append({
+                "label": f"+{len(members_sorted) - 5} more"
+                         if len(members_sorted) > 5 else "other",
+                "trades": rest_total,
+                "share_in_cat": round((rest_total / cat_total) * 100, 1),
+            })
+        category_bars.append({
+            "key": key,
+            "label": label,
+            "rgb": rgb,
+            "trades": cat_total,
+            "share_pct": round((cat_total / labeled_total) * 100, 1),
+            "token_count": len(members),
+            "segments": segments,
+        })
 
     return render_template(
         "tokens.html",
         tokens=enriched,
         earliest_iso=earliest_iso,
+        latest_iso=latest_iso,
         total_buckets=total_buckets,
         labeled_count=sum(1 for t in enriched if t["labeled"]),
         range_key=range_key,
+        category_bars=category_bars,
+        data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
     )
 
 
@@ -774,12 +1047,41 @@ def about():
     return render_template("about.html")
 
 
+def _historical_snapshot_meta():
+    """Scan historical_snapshots/ for first-snapshot date, day count, and
+    coverage from the latest snapshot. Returns None if nothing on disk yet —
+    template hides the section in that case rather than rendering "0 days".
+    Cheap enough to call per request (a directory listing + one file open)."""
+    try:
+        files = sorted(f for f in os.listdir(SNAPSHOT_DIR) if f.endswith(".json"))
+    except (FileNotFoundError, OSError):
+        return None
+    if not files:
+        return None
+    first_date = files[0].replace(".json", "")
+    latest_path = os.path.join(SNAPSHOT_DIR, files[-1])
+    try:
+        with open(latest_path) as f:
+            latest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return {
+        "first_date": first_date,
+        "days_collected": len(files),
+        "accounts_tracked": len(latest.get("accounts") or []),
+        "pools_tracked": len(latest.get("amm_pools") or []),
+    }
+
+
 @app.route("/institutional")
 def institutional():
     """Pre-launch institutional positioning page. Contact-only (no published
     prices) until launch-partner conversations produce real pricing data.
     Linked from /about, intentionally not in top nav."""
-    return render_template("institutional.html")
+    return render_template(
+        "institutional.html",
+        snapshot_meta=_historical_snapshot_meta(),
+    )
 
 
 def _rank_status_order(r):
@@ -809,15 +1111,24 @@ def pools():
     index = _safe_load_json(AMM_INDEX_PATH) or []
     state = _safe_load_json(AMM_RANK_STATE_PATH) or {}
 
-    # Defensive sort: rank_amms.py finalizes sort at the end of a run, but
-    # while ranking is in progress the file is in append order.
-    ranked = sorted(ranked, key=_rank_status_order)
+    # Strict TVL desc — header says "by TVL", so sort by TVL. Pools with no
+    # USD value (non_xrp_pair, error) sink to the bottom. Status pill on
+    # each row still surfaces exact-vs-estimated trust.
+    ranked = sorted(
+        ranked,
+        key=lambda r: (
+            0 if (r.get("tvl_usd") or 0) > 0 else 1,
+            -(r.get("tvl_usd") or 0),
+        ),
+    )
 
-    top10 = ranked[:10]
+    top10 = [r for r in ranked if (r.get("tvl_usd") or 0) > 0][:10]
     rows = ranked if limit is None else ranked[:limit]
 
     indexed_count = len(index) if isinstance(index, list) else 0
     ranked_count = len(ranked)
+    exact_count_all = sum(1 for r in ranked if r.get("tvl_status") == "exact")
+    estimated_count_all = sum(1 for r in ranked if r.get("tvl_status") == "estimated")
     rank_finished = state.get("finished_at") is not None
     rank_started = state.get("started_at") is not None
     rank_in_progress = rank_started and not rank_finished
@@ -830,6 +1141,32 @@ def pools():
         if r.get("tvl_status") in ("exact", "estimated")
     )
 
+    # Treemap-hero data: share-of-top-10 drives bar widths, share-of-all
+    # gives the concentration headline. Mutates top10 in place since the
+    # template iterates the same list.
+    top10_total_tvl = sum((p.get("tvl_usd") or 0) for p in top10)
+    for p in top10:
+        tvl = p.get("tvl_usd") or 0
+        p["share_of_top10"] = (tvl / top10_total_tvl * 100.0) if top10_total_tvl else 0
+    top10_share_of_all = (
+        (top10_total_tvl / total_tvl_usd * 100.0) if total_tvl_usd else 0
+    )
+
+    snapshot_age_label = None
+    try:
+        if os.path.exists(AMM_RANKED_PATH):
+            age = int(time.time() - os.path.getmtime(AMM_RANKED_PATH))
+            if age < 60:
+                snapshot_age_label = f"{age}s ago"
+            elif age < 3600:
+                snapshot_age_label = f"{age // 60}m ago"
+            elif age < 86400:
+                snapshot_age_label = f"{age // 3600}h ago"
+            else:
+                snapshot_age_label = f"{age // 86400}d ago"
+    except Exception:
+        pass
+
     return render_template(
         "pools.html",
         top10=top10,
@@ -837,9 +1174,14 @@ def pools():
         tier=tier,
         indexed_count=indexed_count,
         ranked_count=ranked_count,
+        exact_count_all=exact_count_all,
+        estimated_count_all=estimated_count_all,
         rank_finished=rank_finished,
         rank_in_progress=rank_in_progress,
         total_tvl_usd=total_tvl_usd,
+        top10_total_tvl=top10_total_tvl,
+        top10_share_of_all=top10_share_of_all,
+        snapshot_age_label=snapshot_age_label,
     )
 
 
@@ -866,20 +1208,11 @@ def wallet(address):
     integrity check — every metric is verifiable against XRPSCAN/Bithomp."""
     address = (address or "").strip()
     if not _is_xrpl_address(address):
-        return render_template(
-            "wallet.html",
-            data={
-                "error": "Not a valid XRPL address.",
-                "address": address,
-                "address_short": address[:12] + "…" if len(address) > 12 else address,
-                "balance_xrp": 0, "available_xrp": 0, "reserved_xrp": 0,
-                "pct_locked": 0, "owner_count": 0, "trustline_count": 0,
-                "tx_count_30d": 0, "active_days_30d": 0, "lookback_days": 30,
-                "last_seen": "—", "top_counterparty_label": "—",
-                "pulse": [0] * 30, "nodes": [], "tx_sample_size": 0,
-                "holdings": [], "holdings_lp": [],
-            },
-        ), 400
+        # Render the branded 404 instead of a zero-filled wallet view —
+        # zeros silently misrepresent a malformed/nonexistent address as
+        # an empty-but-valid wallet, which is misleading on a page that
+        # doubles as an integrity check.
+        return render_template("404.html"), 404
 
     data = fetch_wallet_data_cached(address)
     return render_template("wallet.html", data=data)
@@ -903,6 +1236,20 @@ def _is_valid_currency(s):
     return False
 
 
+def _resolve_display_label_to_hex(label, issuer):
+    """If `label` is a human display form (e.g. "RLUSD") for a verified
+    token at `issuer`, return its canonical currency_hex. Otherwise None.
+    Lets shareable URLs like /token/RLUSD/<issuer> redirect to the hex form."""
+    if not label or not issuer:
+        return None
+    for entry in _load_token_names_dict().values():
+        if entry.get("issuer") != issuer:
+            continue
+        if (entry.get("currency_display") or "").lower() == label.lower():
+            return entry.get("currency_hex")
+    return None
+
+
 @app.route("/token/<currency>/<issuer>")
 def token_detail(currency, issuer):
     """Token detail view — drilldown from /tokens. Shows trade activity
@@ -911,22 +1258,24 @@ def token_detail(currency, issuer):
     currency = (currency or "").strip()
     issuer = (issuer or "").strip()
 
-    if not _is_valid_currency(currency) or not _is_xrpl_address(issuer):
-        return render_template(
-            "token.html",
-            data={
-                "error": "Invalid token currency or issuer address.",
-                "currency_raw": currency, "issuer": issuer,
-                "issuer_short": issuer[:10] + "…" if len(issuer) > 10 else issuer,
-                "display": currency or "?", "category": None, "labeled": False,
-                "currency_decoded": None, "source_url": None,
-                "trades_all": 0, "trades_24h": 0, "trades_7d": 0,
-                "volume_all_xrp": 0.0, "hours_active": 0,
-                "first_seen_iso": None, "last_seen_iso": None, "last_seen_age": "—",
-                "sparkline": [0] * (24 * 7), "sparkline_hours": 24 * 7,
-                "pools": [], "pool_count": 0,
-            },
-        ), 400
+    if not _is_xrpl_address(issuer):
+        return render_template("404.html"), 404
+
+    if not _is_valid_currency(currency):
+        # Try resolving a human display label (e.g. "RLUSD") to its
+        # canonical hex code so shareable URLs don't dead-end at 404.
+        hex_match = _resolve_display_label_to_hex(currency, issuer)
+        if hex_match:
+            return redirect(
+                url_for("token_detail", currency=hex_match, issuer=issuer),
+                code=301,
+            )
+        # Render the branded 404 instead of a zero-filled token view.
+        # The previous stub rendering echoed the raw `currency` / `issuer`
+        # values into the page <title>, hero, and external explorer URLs —
+        # so malformed (or attacker-supplied) input was visibly reflected.
+        # Mirrors the /wallet/<address> handling.
+        return render_template("404.html"), 404
 
     data = fetch_token_data_cached(currency, issuer)
     return render_template("token.html", data=data)
@@ -956,6 +1305,58 @@ def api_ledger_tip():
         "load_factor": p.get("load_factor"),
         "avg_close_seconds": p.get("avg_close_seconds"),
     }
+
+
+@app.route("/api/pools/recent_events")
+def api_pools_recent_events():
+    """Recent per-pool AMM activity (deposit/withdraw/swap), polled by the
+    constellation on /pools to fire real comets at the matching star.
+
+    Reads the worker-written amm_pool_events ring buffer in events.db. In
+    production (no worker) this returns an empty list, so the constellation
+    stays in standby — honest by construction."""
+    try:
+        seconds = int(request.args.get("seconds", "10"))
+    except (TypeError, ValueError):
+        seconds = 10
+    seconds = max(1, min(seconds, 60))
+    cutoff = int(time.time()) - seconds
+
+    events = None
+
+    # Prefer Postgres so /pools comets fire in prod where the worker is
+    # remote; fall back to the local SQLite ring buffer otherwise.
+    if db.pg_available():
+        try:
+            events = db.read_recent_amm_pool_events(seconds)
+        except Exception:
+            events = None
+
+    if events is None and os.path.exists(EVENTS_DB_PATH):
+        try:
+            conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+            try:
+                rows = conn.execute(
+                    "SELECT id, ts, amm_account, event_type "
+                    "FROM amm_pool_events WHERE ts >= ? "
+                    "ORDER BY id ASC LIMIT 200",
+                    (cutoff,),
+                ).fetchall()
+                events = [
+                    {"id": r[0], "ts": r[1], "amm_account": r[2], "event_type": r[3]}
+                    for r in rows
+                ]
+            finally:
+                conn.close()
+        except sqlite3.OperationalError:
+            events = []  # table not yet created
+        except Exception:
+            events = []
+
+    if events is None:
+        events = []
+
+    return {"now": int(time.time()), "events": events}
 
 
 @app.route("/healthz")

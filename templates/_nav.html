@@ -1,17 +1,31 @@
 {# Shared site nav — used by every page that doesn't have a custom header.
    The pulsing live-ledger chip is rendered by _liveness_chip.html (which
    carries its own CSS and JS, so it's self-contained). _alive.html
-   injects subtle site-wide motion (ambient gradient drift + hover lifts). #}
+   injects subtle site-wide motion (ambient gradient drift + hover lifts).
+   Active-page highlighting derives from request.path. #}
 {% include "_alive.html" %}
+<style>
+  .nav a.active {
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(34,211,238,0.35);
+  }
+</style>
+{% set _p = request.path %}
+{% macro _nav_link(href, label, match=None) -%}
+  {% set m = match if match else [href] %}
+  {% set ns = namespace(active=false) %}
+  {% for prefix in m %}{% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}{% endfor %}
+  <a href="{{ href }}"{% if ns.active %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
 <div class="top">
   <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
   <div class="nav">
-    <a href="/">dashboard</a>
-    <a href="/pools">pools</a>
-    <a href="/whales">whales</a>
-    <a href="/tokens">tokens</a>
-    <a href="/health">health</a>
-    <a href="/about">about</a>
+    {{ _nav_link('/', 'dashboard', match=['/$']) }}
+    {{ _nav_link('/pools', 'pools') }}
+    {{ _nav_link('/whales', 'whales') }}
+    {{ _nav_link('/tokens', 'tokens', match=['/tokens', '/token/']) }}
+    {{ _nav_link('/health', 'health') }}
+    {{ _nav_link('/about', 'about') }}
     {% include "_liveness_chip.html" %}
   </div>
 </div>

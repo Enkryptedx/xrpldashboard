@@ -125,6 +125,19 @@
     .identity-greeting { font-size: var(--fs-xs); color: var(--text-2);
                          text-transform: uppercase; letter-spacing: 0.1em;
                          font-weight: 600; margin-bottom: 0.5em; }
+    .identity-name-row { display: flex; align-items: center; gap: 0.55em;
+                         flex-wrap: wrap; margin-bottom: 0.45em; }
+    .identity-name { font-size: 1.05rem; font-weight: 700; color: var(--text);
+                     letter-spacing: -0.01em; line-height: 1.2; }
+    .identity-verified { display: inline-flex; align-items: center; gap: 3px;
+                         font-size: var(--fs-2xs); font-weight: 600;
+                         color: #4ade80; border: 1px solid rgba(74,222,128,0.45);
+                         background: rgba(74,222,128,0.08);
+                         padding: 2px 7px; border-radius: 4px;
+                         letter-spacing: 0.04em; text-transform: uppercase;
+                         text-decoration: none; }
+    .identity-verified:hover { background: rgba(74,222,128,0.15);
+                               border-color: rgba(74,222,128,0.7); }
     .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
                          flex-wrap: wrap; }
     .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
@@ -135,6 +148,15 @@
                       padding: 2px 8px; border-radius: 4px; font-weight: 600;
                       letter-spacing: 0.06em; text-transform: uppercase;
                       margin-top: 0.55em; }
+    .identity-verify { display: inline-flex; align-items: center; gap: 0.3em;
+                       font-size: var(--fs-2xs); font-weight: 600;
+                       color: var(--cyan); text-decoration: none;
+                       padding: 2px 8px; border-radius: 4px;
+                       border: 1px solid rgba(34,211,238,0.4);
+                       letter-spacing: 0.04em; text-transform: uppercase;
+                       transition: background 0.15s, border-color 0.15s; }
+    .identity-verify:hover { background: rgba(34,211,238,0.12);
+                             border-color: rgba(34,211,238,0.7); }
     .balance-block { position: relative; margin-top: auto;
                      padding-top: 0.9em; border-top: 1px solid var(--border); }
     .balance-big { font-family: var(--mono); font-size: var(--fs-2xl); font-weight: 600;
@@ -337,6 +359,170 @@
     @media (max-width: 540px) {
       .cp-detail-grid { grid-template-columns: repeat(2, 1fr); }
     }
+    /* ---------- Pool Flow widget (AMM detail view) ---------- */
+    .pool-widget { margin: 0.4em 0 0.6em; }
+    .pool-head { display: flex; justify-content: space-between; align-items: center;
+                 gap: 1em; flex-wrap: wrap; margin-bottom: 0.5em; }
+    .pool-tag { display: inline-flex; align-items: center; gap: 0.45em;
+                font-size: var(--fs-2xs); font-weight: 600;
+                text-transform: uppercase; letter-spacing: 0.1em;
+                color: var(--cyan); }
+    .pool-tag .dot { width: 6px; height: 6px; border-radius: 50%;
+                     background: var(--cyan);
+                     box-shadow: 0 0 0 0 rgba(34,211,238,0.5);
+                     animation: poolDot 1.6s ease-in-out infinite; }
+    @keyframes poolDot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); opacity: 0.7; }
+      50%     { box-shadow: 0 0 0 5px rgba(34,211,238,0);  opacity: 1; }
+    }
+    .pool-meta { color: var(--muted); font-size: var(--fs-2xs);
+                 font-family: var(--mono); }
+    .pool-canvas-wrap {
+      position: relative;
+      width: 100%; aspect-ratio: 540 / 340;
+      background: radial-gradient(ellipse at 50% 40%, rgba(34,211,238,0.04), transparent 60%),
+                  rgba(10,14,39,0.55);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .pool-canvas-wrap::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 110%, rgba(0,0,0,0.45), transparent 55%);
+    }
+    .reactor-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; display: block;
+    }
+
+    /* Mode toggle pill (Reactor / Bowl) */
+    .pool-head-right { display: flex; align-items: center;
+                       gap: 0.9em; flex-wrap: wrap; }
+    .pool-mode-toggle {
+      display: inline-flex; align-items: center;
+      background: rgba(20,24,50,0.6);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+      font-family: var(--mono);
+    }
+    .pool-mode-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: var(--fs-2xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background 0.18s, color 0.18s;
+    }
+    .pool-mode-btn:hover { color: var(--text); }
+    .pool-mode-btn[data-active="1"] {
+      background: rgba(34,211,238,0.16);
+      color: var(--cyan);
+      box-shadow: 0 0 0 1px rgba(34,211,238,0.25) inset;
+    }
+
+    /* Expand-to-fullscreen button (top-right of canvas) */
+    .pool-expand {
+      position: absolute; top: 10px; right: 10px; z-index: 3;
+      width: 32px; height: 32px;
+      background: rgba(20,24,50,0.72);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--cyan);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 14px; line-height: 1;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+      padding: 0;
+    }
+    .pool-expand:hover {
+      background: rgba(34,211,238,0.18);
+      color: var(--text);
+      border-color: rgba(34,211,238,0.45);
+    }
+    .pool-widget:not(.is-fullscreen) .pool-expand::before { content: "⛶"; font-size: 18px; }
+    .pool-widget.is-fullscreen      .pool-expand::before { content: "✕"; font-size: 16px; }
+
+    body.pool-fullscreen-on { overflow: hidden; }
+    body.pool-fullscreen-on > *:not(.pool-widget.is-fullscreen) {
+      visibility: hidden;
+    }
+    .pool-widget.is-fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 9999 !important;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      display: block;
+      overflow: hidden;
+      visibility: visible;
+    }
+    /* In fullscreen: hide chrome, tuck toggle into top-right corner. */
+    .pool-widget.is-fullscreen .pool-tag,
+    .pool-widget.is-fullscreen .pool-meta,
+    .pool-widget.is-fullscreen .pool-flow-strip,
+    .pool-widget.is-fullscreen .pool-foot-note { display: none; }
+    .pool-widget.is-fullscreen .pool-head {
+      position: absolute;
+      top: 14px; right: 56px;
+      margin: 0;
+      z-index: 10;
+    }
+    .pool-widget.is-fullscreen .pool-head-right { gap: 0; }
+    .pool-widget.is-fullscreen .pool-mode-toggle {
+      background: rgba(20,24,50,0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .pool-widget.is-fullscreen .pool-mode-btn {
+      padding: 3px 10px;
+      font-size: 10px;
+    }
+    .pool-widget.is-fullscreen .pool-expand {
+      top: 14px; right: 14px;
+      width: 30px; height: 30px;
+      background: rgba(20,24,50,0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    /* Canvas fills viewport, preserving aspect ratio (letterboxed). */
+    .pool-widget.is-fullscreen .pool-canvas-wrap {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(100vw, calc(100vh * 540 / 340));
+      height: auto;
+      aspect-ratio: 540 / 340;
+      max-width: 100vw;
+      max-height: 100vh;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      background: var(--bg);
+    }
+    .pool-widget.is-fullscreen .pool-canvas-wrap::after { display: none; }
+    .pool-flow-strip { display: flex; flex-wrap: wrap; gap: 0.7em 1.2em;
+                       margin-top: 0.7em; align-items: center;
+                       font-family: var(--mono); font-size: var(--fs-2xs); }
+    .pf-arrow { color: var(--muted); }
+    .pf-in    { color: #22d3ee; }
+    .pf-out   { color: #f59e0b; }
+    .pf-net   { margin-left: auto; font-weight: 600;
+                padding: 3px 9px; border-radius: 999px;
+                border: 1px solid var(--border); background: rgba(20,24,50,0.6); }
+    .pf-net-in  { color: #22d3ee; border-color: rgba(34,211,238,0.35); }
+    .pf-net-out { color: #f59e0b; border-color: rgba(245,158,11,0.35); }
+    .pool-foot-note { color: var(--dim); font-size: var(--fs-2xs);
+                      margin-top: 0.5em; line-height: 1.55; }
+    .pool-foot-note code { font-family: var(--mono); color: var(--muted);
+                           background: rgba(255,255,255,0.04);
+                           padding: 1px 4px; border-radius: 3px; font-size: 0.92em; }
+
     /* ---------- Slim Wallet Pulse strip (secondary, paired with network) ---------- */
     .wp-wrap { margin-top: 0.7em; padding-top: 0.7em;
                border-top: 1px dashed var(--border); }
@@ -523,6 +709,7 @@
       .amm-mini-stats { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
   {% include "_alive.html" %}
@@ -531,7 +718,7 @@
     <header>
       <div class="brand">
         <h1><a href="/" style="color: inherit; text-decoration: none;">xrpldashboard</a></h1>
-        <span class="preview-badge">wallet · {{ data.address_short }}</span>
+        <span class="preview-badge">{% if data.is_amm %}AMM pool · {{ data.amm_pair }}{% else %}wallet · {{ data.address_short }}{% endif %}</span>
       </div>
       <div class="header-meta" style="display: flex; align-items: center; gap: 1em;">
         {% include "_liveness_chip.html" %}
@@ -595,15 +782,88 @@
 
       <div class="card identity-card">
         <div class="identity-top">
-          <div class="identity-greeting">Wallet</div>
+          <div class="identity-greeting">{% if data.is_amm %}AMM Pool{% else %}Wallet{% endif %}</div>
+          {% if data.is_amm %}
+            <div class="identity-name-row">
+              <span class="identity-name">{{ data.amm_pair }}</span>
+            </div>
+          {% elif data.self_info and data.self_info.name %}
+            <div class="identity-name-row">
+              <span class="identity-name">{{ data.self_info.name }}</span>
+              {% if data.self_info.verified_via %}
+                <a class="identity-verified" href="{{ data.self_info.verified_via }}"
+                   target="_blank" rel="noopener noreferrer"
+                   title="Identity attested via {{ data.self_info.verified_via }}">✓ verified</a>
+              {% endif %}
+            </div>
+          {% endif %}
           <div class="identity-addr-row">
             <span class="identity-addr">{{ data.address }}</span>
-            <span class="qr-host" data-qr="{{ data.address }}"
-                  title="Scan to view this wallet"></span>
+            <span class="qr-host" data-qr="{{ site_url }}/wallet/{{ data.address }}"
+                  title="Scan to open this wallet page"></span>
+            <a class="identity-verify"
+               href="https://xrpscan.com/account/{{ data.address }}"
+               target="_blank" rel="noopener noreferrer"
+               title="Verify this wallet's history on XRPSCAN">Verify on XRPSCAN ↗</a>
           </div>
           <span class="identity-label">Live · pulled from XRP Ledger</span>
         </div>
 
+        {% if data.is_amm %}
+        {# ---- Pool Flow widget (AMM detail view) ---- #}
+        <div class="pool-widget" data-pool data-mode="exact"
+             data-xrp-in="{{ data.pool_flow.xrp_in }}"
+             data-xrp-out="{{ data.pool_flow.xrp_out }}"
+             data-xrp-reserve="{{ data.pool_flow.xrp_reserve }}"
+             data-token-reserve="{{ data.pool_flow.token_reserve }}"
+             data-token-label="{{ data.pool_flow.token_label }}"
+             data-current-price="{{ data.pool_flow.current_price }}"
+             data-swap-count="{{ data.pool_flow.swap_count }}"
+             data-address-short="{{ data.address_short }}"
+             data-pair="{{ data.amm_pair }}">
+          <div class="pool-head">
+            <span class="pool-tag"><span class="dot"></span> Live · Pool Flow</span>
+            <div class="pool-head-right">
+              <div class="pool-mode-toggle" role="tablist" aria-label="Comet mode">
+                <button type="button" class="pool-mode-btn"
+                        data-mode="exact" data-active="1">Exact</button>
+                <button type="button" class="pool-mode-btn"
+                        data-mode="aggregated" data-active="0">Aggregated</button>
+              </div>
+              <span class="pool-meta">
+                {{ data.pool_flow.swap_count }} swap{{ '' if data.pool_flow.swap_count == 1 else 's' }}
+                {% if data.pool_flow.last_swap_age_s is not none %}
+                  · last
+                  {% set age = data.pool_flow.last_swap_age_s %}
+                  {% if age < 60 %}{{ age }}s
+                  {% elif age < 3600 %}{{ (age // 60) }}m
+                  {% elif age < 86400 %}~{{ (age // 3600) }}h
+                  {% else %}{{ (age // 86400) }}d{% endif %} ago
+                {% endif %}
+              </span>
+            </div>
+          </div>
+          <div class="pool-canvas-wrap">
+            <canvas class="reactor-canvas" width="1080" height="680" aria-hidden="true"></canvas>
+            <button type="button" class="pool-expand"
+                    aria-label="Expand to fullscreen"></button>
+          </div>
+          <script type="application/json" class="pool-swaps-data">{{ data.pool_flow.swaps | tojson }}</script>
+          <div class="pool-flow-strip">
+            <span class="pf-arrow pf-in">↑ {{ "{:,.0f}".format(data.pool_flow.xrp_in) }} XRP in</span>
+            <span class="pf-arrow pf-out">↓ {{ "{:,.0f}".format(data.pool_flow.xrp_out) }} XRP out</span>
+            {% set net = data.pool_flow.xrp_in - data.pool_flow.xrp_out %}
+            <span class="pf-net {% if net >= 0 %}pf-net-in{% else %}pf-net-out{% endif %}">
+              net {% if net >= 0 %}+{% endif %}{{ "{:,.0f}".format(net) }} XRP
+            </span>
+          </div>
+          <div class="pool-foot-note">
+            Pool reserves and price computed live from XRPL <code>account_info</code> +
+            <code>account_lines</code>. Flow direction aggregated from the most recent
+            {{ data.tx_sample_size }} on-chain swap{{ '' if data.tx_sample_size == 1 else 's' }} on the pool's account.
+          </div>
+        </div>
+        {% else %}
         {# ---- Counterparty Network (entities the wallet has touched) ---- #}
         <div class="cp-wrap" aria-hidden="true">
           <div class="cp-head">
@@ -712,7 +972,7 @@
               <circle cx="270" cy="170" r="16" fill="rgba(20,24,50,0.95)"
                       stroke="url(#nodeGrad)" stroke-width="1.5" filter="url(#cpSoftGlow)"/>
               <circle cx="270" cy="170" r="9" fill="url(#nodeGrad)"/>
-              <text x="270" y="194" text-anchor="middle" class="cp-you">YOU</text>
+              <text x="270" y="194" text-anchor="middle" class="cp-you">{% if data.is_amm %}AMM{% else %}YOU{% endif %}</text>
 
               {# Layer 7: outer nodes (with type-specific glyphs) + labels #}
               <g class="cp-nodes"></g>
@@ -776,7 +1036,9 @@
           {% endif %}
 
           <div class="cp-detail" data-cp-detail aria-live="polite"></div>
+        {% endif %}
 
+        {% if not data.is_amm %}
           {# ---- Slim Wallet Pulse strip (paired with network graph) ---- #}
           <div class="wp-wrap" aria-hidden="true">
             <div class="wp-head">
@@ -820,8 +1082,17 @@
             <div class="cp-stat"><span class="k">Top counterparty</span><span class="v">{{ data.top_counterparty_label }}</span></div>
             <div class="cp-stat"><span class="k">Last seen</span><span class="v">{{ data.last_seen }}</span></div>
           </div>
+        {% else %}
+          <div class="cp-stats">
+            <div class="cp-stat"><span class="k">Spot price</span><span class="v">1 XRP = {{ "%.4f"|format(data.pool_flow.current_price) }} {{ data.pool_flow.token_label }}</span></div>
+            <div class="cp-stat"><span class="k">XRP reserve</span><span class="v">{{ "{:,.0f}".format(data.pool_flow.xrp_reserve) }} XRP</span></div>
+            <div class="cp-stat"><span class="k">{{ data.pool_flow.token_label }} reserve</span><span class="v">{{ "{:,.0f}".format(data.pool_flow.token_reserve) }}</span></div>
+            <div class="cp-stat"><span class="k">Recent swaps</span><span class="v">{{ data.pool_flow.swap_count }}</span></div>
+          </div>
+        {% endif %}
         </div>
 
+        {% if not data.is_amm %}
         <div class="balance-block">
           <div class="balance-big">{{ "{:,.2f}".format(data.balance_xrp) }} XRP</div>
           <div class="balance-sub">
@@ -829,8 +1100,10 @@
             <strong>{{ "{:,.2f}".format(data.reserved_xrp) }}</strong> reserved
           </div>
         </div>
+        {% endif %}
       </div>
 
+      {% if not data.is_amm %}
       <div class="card gauge-card">
         <span class="card-label">Reserve usage</span>
         <div class="gauge-wrap">
@@ -862,6 +1135,7 @@
           Reserved XRP can't be sent.
         </div>
       </div>
+      {% endif %}
 
       <div class="card activity-card">
         <span class="card-label">Activity</span>
@@ -962,6 +1236,20 @@
         {% endif %}
       </div>
 
+      {% if data.is_amm %}
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.3em;">
+          <h2>Pool reserves</h2>
+          <span class="meta">{{ data.amm_pair }} · live from XRP Ledger</span>
+        </div>
+        <div style="color: var(--muted); font-size: var(--fs-sm); padding: 0.6em 0;">
+          This account <em>is</em> the AMM pool — its XRP balance and top
+          token holding above are the pool reserves. Detailed pool stats
+          (volume, fee history, LP count) are coming in a dedicated pool
+          view post-launch.
+        </div>
+      </div>
+      {% else %}
       <div class="card">
         <div class="section-head" style="margin-bottom: 0.3em;">
           <h2>AMM allocation</h2>
@@ -1033,6 +1321,7 @@
           </div>
         {% endif %}
       </div>
+      {% endif %}
 
     </section>
 
@@ -1053,19 +1342,22 @@
 
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"
+          integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz"
+          crossorigin="anonymous"></script>
   <script>
     /* Stylised wallet QR — scannable identity.
-       Encodes the XRPL address so a phone scan opens it in any wallet app.
-       Visual: cyan→blue gradient, rounded data dots, custom finder corners,
-       XRP "X" mark at center inside a white halo. Uses H-level error
-       correction (~30% redundancy) so the center logo doesn't break scanning.
-       The QR is naturally unique per wallet — every address produces a
-       different bit pattern. */
+       Encodes the canonical /wallet/<addr> URL so a phone scan opens this
+       same view, not a Send screen in a wallet app. Visual: cyan→blue
+       gradient, rounded data dots, custom finder corners, XRP "X" mark at
+       center inside a white halo. Uses H-level error correction (~30%
+       redundancy) so the center logo doesn't break scanning. The QR is
+       naturally unique per wallet — every address produces a different
+       bit pattern. */
     (function () {
       function buildQR(addr) {
         if (typeof qrcode !== 'function') return '<!-- QR lib missing -->';
-        var data = addr; // plain address — most universal for wallet scanners
+        var data = addr; // canonical wallet URL — scan opens the page, not Send
         var qr = qrcode(0, 'H');
         qr.addData(data);
         qr.make();
@@ -1269,34 +1561,6 @@
         setTimeout(function () { path.setAttribute('opacity', '1'); }, 200 + i * 90);
       });
 
-      // ---------- Constellation edges (counterparty ↔ counterparty) ----------
-      function constellationEdge(a, b) {
-        var n1 = nodes[a], n2 = nodes[b];
-        var mx = (n1.x + n2.x) / 2, my = (n1.y + n2.y) / 2;
-        // bow outward from wallet center
-        var dxC = mx - cx, dyC = my - cy;
-        var len = Math.sqrt(dxC * dxC + dyC * dyC) || 1;
-        var bowOut = 24;
-        var ctlX = mx + (dxC / len) * bowOut;
-        var ctlY = my + (dyC / len) * bowOut;
-        var path = el('path', {
-          d: 'M' + n1.x.toFixed(2) + ',' + n1.y.toFixed(2) +
-             ' Q' + ctlX.toFixed(2) + ',' + ctlY.toFixed(2) +
-             ' '  + n2.x.toFixed(2) + ',' + n2.y.toFixed(2),
-          fill: 'none',
-          stroke: 'url(#edgeGrad2)',
-          'stroke-width': '0.9',
-          'stroke-dasharray': '2 4',
-          class: 'cp-edge-2'
-        }, secondaryG);
-        setTimeout(function () { path.style.opacity = '0.55'; }, 1200);
-      }
-      // (idx pairs based on node array above)
-      // Gatehub(0) ↔ Bitstamp(2), Sologenic(1) ↔ AMM·SOLO(3), Ripple(7) ↔ Gatehub(0)
-      constellationEdge(0, 2);
-      constellationEdge(1, 3);
-      constellationEdge(7, 0);
-
       // ---------- Type-specific node glyphs ----------
       // hex: exchange · diamond: amm · rounded square: issuer · circle: peer
       function hexPolygon(r) {
@@ -1385,23 +1649,26 @@
           el('circle', { r: nodeR - 3, fill: fill }, g);
         }
 
-        // first-seen-recent (NEW) amber accents — security/integrity flag
-        // Outer pulsing ring draws the eye at-a-glance.
-        // Caution badge (amber circle + "!") at top-right of the node mirrors
-        // the pulse anomaly marker for visual consistency. Sits inside the
-        // node group so it never collides with the label.
-        if (typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 30) {
+        // first-seen-recent (NEW) amber accents — security/integrity flag.
+        // Threshold is 7 days, not the full 30d lookback: at the lookback
+        // boundary every counterparty fires, which makes the flag noise.
+        // 7d picks out genuinely fresh entities relative to a typical wallet
+        // tail. Outer pulsing ring + amber "!" disc draw the eye at-a-glance;
+        // <title> gives a hover tooltip so the symbol isn't a mystery.
+        if (typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 7) {
           el('circle', {
             class: 'cp-new-ring',
             r: (nodeR + 4).toFixed(2)
           }, g);
           var badgeOff = nodeR * 0.72;
           var badgeR   = 4.2;
-          el('circle', {
+          var disc = el('circle', {
             class: 'cp-new-badge-disc',
             cx: badgeOff.toFixed(2), cy: (-badgeOff).toFixed(2),
             r: badgeR
           }, g);
+          el('title', {}, disc).textContent =
+            'New counterparty — first seen ' + node.firstSeenDays + ' days ago';
           el('text', {
             class: 'cp-new-badge-bang',
             x: badgeOff.toFixed(2),
@@ -1522,8 +1789,11 @@
       }
 
       function tilesGrid(items) {
+        // Skip tiles whose value the backend didn't populate — better to omit
+        // than render literal "undefined" to the user.
         var html = '<div class="cp-detail-grid">';
         items.forEach(function (it) {
+          if (it[1] === undefined || it[1] === null || it[1] === '') return;
           html += '<div class="cp-detail-tile"><span class="k">' + escapeHtml(it[0])
                 + '</span><span class="v">' + escapeHtml(it[1]) + '</span></div>';
         });
@@ -1532,38 +1802,20 @@
       }
 
       function detailTiles(node) {
+        // The backend populates detail with: address, firstSeen, lastSeen,
+        // txCount. AMM / issuer-specific fields are not yet wired, so we
+        // surface only what's real — tilesGrid drops undefined values.
         var d = node.detail || {};
-        var tiles;
-        if (node.type === 'exchange') {
-          tiles = [
-            ['Country', d.country], ['90d txs', d.txCount], ['Last seen', d.lastSeen],
-            ['Volume in', d.volumeIn], ['Volume out', d.volumeOut], ['Address', d.address]
-          ];
-        } else if (node.type === 'amm') {
-          tiles = [
-            ['Pair', d.pair], ['Your LP', d.yourLp], ['Pool TVL', d.poolTvl],
-            ['Share', d.sharePct], ['Fee tier', d.feeTier], ['Fees earned', d.feesEarned]
-          ];
-        } else if (node.type === 'issuer') {
-          tiles = [
-            ['Token', d.token], ['Your balance', d.yourBal], ['Rating', d.issuerRating],
-            ['Tokens issued', d.issuedCount], ['Trustline since', d.trustlineSince], ['Last seen', d.lastSeen]
-          ];
-        } else {
-          tiles = [
-            ['Address', d.address], ['90d txs', d.txCount],
-            ['First seen', d.firstSeen], ['Last seen', d.lastSeen]
-          ];
-        }
-        // Promote "First seen" to first tile for flagged-as-new nodes (drops last to keep grid tidy)
-        if (typeof node.firstSeenDays === 'number' && d.firstSeen && node.type !== 'peer') {
-          tiles = [['First seen', d.firstSeen]].concat(tiles).slice(0, 6);
-        }
-        return tiles;
+        return [
+          ['Address',    d.address],
+          ['30d txs',    d.txCount],
+          ['First seen', d.firstSeen],
+          ['Last seen',  d.lastSeen]
+        ];
       }
 
       function buildDetail(node) {
-        var isNew = typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 30;
+        var isNew = typeof node.firstSeenDays === 'number' && node.firstSeenDays <= 7;
         var html = '<div class="cp-detail-head">'
                  + buildGlyph(node.type)
                  + '<span class="cp-detail-name">' + escapeHtml(node.name) + '</span>'
@@ -1575,12 +1827,11 @@
                  + '</div>'
                  + tilesGrid(detailTiles(node))
                  + '<div class="cp-detail-foot">'
-                 + '<button type="button" class="cp-detail-action' + (isNew ? ' cp-detail-action--alert' : '') + '">'
-                 + escapeHtml((node.detail && node.detail.action) || 'View details')
-                 + '</button>'
-                 + (isNew
-                    ? '<button type="button" class="cp-detail-action cp-detail-action--ghost">Not me?</button>'
-                      + '<button type="button" class="cp-detail-action cp-detail-action--ghost">Mark as mine</button>'
+                 + (node.detail && node.detail.addressFull
+                    ? '<a href="/wallet/' + encodeURIComponent(node.detail.addressFull)
+                      + '" class="cp-detail-action' + (isNew ? ' cp-detail-action--alert' : '') + '">'
+                      + escapeHtml((node.detail && node.detail.action) || 'View wallet')
+                      + '</a>'
                     : '')
                  + '</div>';
         detailEl.innerHTML = html;
@@ -1683,6 +1934,495 @@
         area.style.opacity = '1';
       });
     })();
+
+    // ============================================================
+    // Pool view toggle (Aggregated / Exact comets) + fullscreen expand.
+    // The same toggle pill works inside the fullscreen overlay —
+    // the widget is just position:fixed, so identity is preserved.
+    // ============================================================
+    (function () {
+      var widget = document.querySelector('.pool-widget[data-pool]');
+      if (!widget) return;
+      var btns = widget.querySelectorAll('.pool-mode-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function () {
+          var mode = this.dataset.mode;
+          if (!mode) return;
+          widget.dataset.mode = mode;
+          var all = widget.querySelectorAll('.pool-mode-btn');
+          for (var j = 0; j < all.length; j++) {
+            all[j].dataset.active =
+              (all[j].dataset.mode === mode) ? '1' : '0';
+          }
+        });
+      }
+
+      var expand = widget.querySelector('.pool-expand');
+      if (expand) {
+        // Capture original DOM position so we can restore on close.
+        // Portaling to <body> avoids ancestor stacking-context issues
+        // (transforms/filters elsewhere can trap position:fixed).
+        var origParent = widget.parentNode;
+        var origNext   = widget.nextSibling;
+
+        function setFullscreen(on) {
+          if (on) {
+            document.body.appendChild(widget);
+          } else if (origParent) {
+            origParent.insertBefore(widget, origNext);
+          }
+          widget.classList.toggle('is-fullscreen', on);
+          document.body.classList.toggle('pool-fullscreen-on', on);
+          expand.setAttribute('aria-label',
+            on ? 'Close fullscreen' : 'Expand to fullscreen');
+        }
+        expand.addEventListener('click', function () {
+          setFullscreen(!widget.classList.contains('is-fullscreen'));
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' &&
+              widget.classList.contains('is-fullscreen')) {
+            setFullscreen(false);
+          }
+        });
+      }
+    })();
+
+    // ============================================================
+    // Containment Reactor — Aggregated + Exact modes.
+    // Sci-fi HUD: corner brackets, tick ring, two counter-rotating
+    // particle rings (cyan XRP outer, amber paired-token inner),
+    // pulsing core with pair label + spot price, comet streaks
+    // crossing between rings.
+    //   • Aggregated: one comet every ~600ms, direction biased by
+    //     the recent net XRP flow (visual summary).
+    //   • Exact: one comet per real swap, replayed on a compressed
+    //     30–90s loop using actual on-chain timestamps + directions.
+    // Four corner readouts: pool addr, spot, reserve ratio bar, net.
+    // Respects prefers-reduced-motion.
+    // ============================================================
+    (function () {
+      var widget = document.querySelector('.pool-widget[data-pool]');
+      if (!widget) return;
+      var canvas = widget.querySelector('.reactor-canvas');
+      if (!canvas || !canvas.getContext) return;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // High-DPI + responsive canvas sizing. The HTML width/height
+      // attrs are only an initial fallback; the real backing-store
+      // dimensions are recomputed from the CSS box × devicePixelRatio
+      // so text + lines render crisp at any display size or zoom.
+      var W = canvas.width, H = canvas.height;
+      var cx = W / 2, cy = H / 2;
+      function sizeCanvas() {
+        var dpr  = Math.max(1, window.devicePixelRatio || 1);
+        var rect = canvas.getBoundingClientRect();
+        var cssW = Math.max(1, Math.round(rect.width));
+        var cssH = Math.max(1, Math.round(rect.height));
+        canvas.width  = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        W  = cssW;  H  = cssH;
+        cx = W / 2; cy = H / 2;
+        // Particle ring radii depend on canvas size — recompute.
+        if (typeof outerRing !== 'undefined') {
+          R_OUTER = Math.min(W, H) * 0.34;
+          R_INNER = Math.min(W, H) * 0.20;
+          for (var k = 0; k < outerRing.length; k++) {
+            outerRing[k].r = R_OUTER + (Math.random() - 0.5) * 10;
+          }
+          for (var m = 0; m < innerRing.length; m++) {
+            innerRing[m].r = R_INNER + (Math.random() - 0.5) * 10;
+          }
+        }
+      }
+
+      var xrpIn  = parseFloat(widget.dataset.xrpIn)  || 0;
+      var xrpOut = parseFloat(widget.dataset.xrpOut) || 0;
+      var xrpReserve   = parseFloat(widget.dataset.xrpReserve)   || 0;
+      var tokenReserve = parseFloat(widget.dataset.tokenReserve) || 0;
+      var tokenLabel   = widget.dataset.tokenLabel   || '?';
+      var pair         = widget.dataset.pair         || ('XRP/' + tokenLabel);
+      var price        = parseFloat(widget.dataset.currentPrice) || 0;
+      var swapCount    = parseInt(widget.dataset.swapCount, 10)  || 0;
+      var addrShort    = widget.dataset.addressShort || '';
+
+      var totalFlow = xrpIn + xrpOut;
+      var bias = totalFlow > 0 ? (xrpIn - xrpOut) / totalFlow : 0;
+      var net  = xrpIn - xrpOut;
+
+      // Real per-swap event list (in/out + offset seconds), embedded
+      // by Flask. Used by Exact mode to replay actual on-chain swaps.
+      var swaps = [];
+      try {
+        var swapsScript = widget.querySelector('script.pool-swaps-data');
+        if (swapsScript && swapsScript.textContent) {
+          var parsed = JSON.parse(swapsScript.textContent);
+          if (Array.isArray(parsed)) swaps = parsed;
+        }
+      } catch (e) { swaps = []; }
+
+      // Compress real swap span into a watchable loop: 30s min, 90s max.
+      var swapSpanS = (swaps.length > 1)
+        ? Math.max(1, swaps[swaps.length - 1].t - swaps[0].t)
+        : 0;
+      var EXACT_CYCLE_MS = swapSpanS > 0
+        ? Math.max(30000, Math.min(90000, swapSpanS * 1000))
+        : 30000;
+      var exactScale = swapSpanS > 0
+        ? (EXACT_CYCLE_MS / 1000) / swapSpanS
+        : 1;
+
+      var reduced = window.matchMedia &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var startTime = performance.now();
+      var exactCycleStart = startTime;
+      var exactNextIdx = 0;
+
+      // Ring radii scale to canvas. Outer = XRP, inner = paired token.
+      var R_OUTER = Math.min(W, H) * 0.34;
+      var R_INNER = Math.min(W, H) * 0.20;
+
+      function makeRing(n, radius, baseAngle, dir) {
+        var arr = [];
+        for (var i = 0; i < n; i++) {
+          arr.push({
+            a: (Math.PI * 2) * (i / n) + baseAngle,
+            speed: dir * (0.10 + Math.random() * 0.08),
+            r: radius + (Math.random() - 0.5) * 10,
+            size: 1.2 + Math.random() * 1.6,
+            alpha: 0.35 + Math.random() * 0.4,
+          });
+        }
+        return arr;
+      }
+      var outerRing = makeRing(56, R_OUTER, 0,    1);
+      var innerRing = makeRing(40, R_INNER, 0.2, -1);
+
+      // Now that rings exist, do the proper hi-DPI sizing pass and
+      // wire up resize / fullscreen-toggle re-sizes.
+      sizeCanvas();
+      var _resizeRaf = 0;
+      function scheduleResize() {
+        if (_resizeRaf) cancelAnimationFrame(_resizeRaf);
+        _resizeRaf = requestAnimationFrame(function () {
+          _resizeRaf = 0;
+          sizeCanvas();
+        });
+      }
+      window.addEventListener('resize', scheduleResize);
+      // Re-size when fullscreen toggles (the wrap box changes shape).
+      if (typeof MutationObserver !== 'undefined') {
+        new MutationObserver(scheduleResize).observe(widget, {
+          attributes: true,
+          attributeFilter: ['class'],
+        });
+      }
+
+      // Aggregated comet cadence: one every ~600ms, direction weighted
+      // by bias (xrpIn vs xrpOut). 'in' = comet flies inner→outer,
+      // representing XRP entering pool reserves; 'out' = outer→inner.
+      var comets = [];
+      var lastCometSpawn = 0;
+      var COMET_INTERVAL = 600;
+
+      function spawnComet(now, forcedDir) {
+        var dir;
+        if (forcedDir === 'in' || forcedDir === 'out') {
+          dir = forcedDir;
+        } else {
+          var inProb = (1 + bias) / 2;
+          dir = Math.random() < inProb ? 'in' : 'out';
+        }
+        var entry = Math.random() * Math.PI * 2;
+        var exit  = entry + Math.PI + (Math.random() - 0.5) * 0.7;
+        comets.push({
+          dir: dir,
+          entry: entry,
+          exit: exit,
+          start: now,
+          duration: 700 + Math.random() * 220,
+          ctrlX: cx + (Math.random() - 0.5) * 40,
+          ctrlY: cy + (Math.random() - 0.5) * 40,
+        });
+      }
+
+      function fmtCompact(n) {
+        if (!isFinite(n)) return '—';
+        var abs = Math.abs(n);
+        if (abs >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+        if (abs >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+        if (abs >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+        return n.toFixed(0);
+      }
+
+      function drawCornerBrackets(L) {
+        var pad = 24;
+        ctx.strokeStyle = 'rgba(34,211,238,0.55)';
+        ctx.lineWidth = 1.6;
+        var corners = [
+          [pad,      pad,      1,  1],
+          [W - pad,  pad,     -1,  1],
+          [pad,      H - pad,  1, -1],
+          [W - pad,  H - pad, -1, -1],
+        ];
+        for (var i = 0; i < 4; i++) {
+          var c = corners[i];
+          ctx.beginPath();
+          ctx.moveTo(c[0] + L * c[2], c[1]);
+          ctx.lineTo(c[0], c[1]);
+          ctx.lineTo(c[0], c[1] + L * c[3]);
+          ctx.stroke();
+        }
+      }
+
+      function drawTickRing(radius) {
+        ctx.strokeStyle = 'rgba(34,211,238,0.20)';
+        ctx.lineWidth = 1;
+        for (var i = 0; i < 60; i++) {
+          var ang = (i / 60) * Math.PI * 2;
+          var inner = i % 5 === 0 ? radius - 8 : radius - 3;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(ang) * inner,  cy + Math.sin(ang) * inner);
+          ctx.lineTo(cx + Math.cos(ang) * radius, cy + Math.sin(ang) * radius);
+          ctx.stroke();
+        }
+      }
+
+      function frame(now) {
+        var t = (now - startTime) / 1000;
+        ctx.clearRect(0, 0, W, H);
+
+        // ---- Outer HUD frame ----
+        drawCornerBrackets(28);
+        drawTickRing(Math.min(W, H) * 0.46);
+
+        // Faint guide rings flanking the particle rings.
+        ctx.strokeStyle = 'rgba(34,211,238,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R_OUTER + 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R_INNER - 16, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Radar sweep — short arc rotating ~6s period.
+        var sweepAng = (t * Math.PI * 2 / 6) % (Math.PI * 2);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(sweepAng);
+        var sweep = ctx.createLinearGradient(R_OUTER + 4, 0, R_OUTER + 32, 0);
+        sweep.addColorStop(0, 'rgba(34,211,238,0)');
+        sweep.addColorStop(1, 'rgba(34,211,238,0.55)');
+        ctx.strokeStyle = sweep;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, R_OUTER + 18, -0.55, 0.0);
+        ctx.stroke();
+        ctx.restore();
+
+        // ---- Particle rings ----
+        function drawRing(particles, color) {
+          ctx.fillStyle = color;
+          for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            if (!reduced) p.a += p.speed * 0.012;
+            var x = cx + Math.cos(p.a) * p.r;
+            var y = cy + Math.sin(p.a) * p.r;
+            ctx.globalAlpha = p.alpha;
+            ctx.beginPath();
+            ctx.arc(x, y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+        drawRing(outerRing, 'rgba(34,211,238,0.95)');
+        drawRing(innerRing, 'rgba(245,158,11,0.95)');
+
+        // ---- Comets ----
+        // Aggregated: timer-based cadence biased by net flow.
+        // Exact: replay real on-chain swaps on a compressed loop.
+        var mode = widget.dataset.mode || 'aggregated';
+        if (!reduced && mode === 'exact' && swaps.length > 0) {
+          var elapsed = now - exactCycleStart;
+          if (elapsed >= EXACT_CYCLE_MS) {
+            exactCycleStart = now;
+            exactNextIdx = 0;
+            elapsed = 0;
+          }
+          // Spawn every swap whose scaled timestamp has passed.
+          while (exactNextIdx < swaps.length) {
+            var ev = swaps[exactNextIdx];
+            var evMs = (ev.t - swaps[0].t) * 1000 * exactScale;
+            if (evMs <= elapsed) {
+              spawnComet(now, ev.dir);
+              exactNextIdx++;
+            } else {
+              break;
+            }
+          }
+        } else if (!reduced && now - lastCometSpawn > COMET_INTERVAL) {
+          spawnComet(now);
+          lastCometSpawn = now;
+        }
+        for (var ci = comets.length - 1; ci >= 0; ci--) {
+          var c = comets[ci];
+          var p1 = (now - c.start) / c.duration;
+          if (p1 >= 1) { comets.splice(ci, 1); continue; }
+          var srcR = c.dir === 'in' ? R_INNER : R_OUTER;
+          var dstR = c.dir === 'in' ? R_OUTER : R_INNER;
+          var sx = cx + Math.cos(c.entry) * srcR;
+          var sy = cy + Math.sin(c.entry) * srcR;
+          var ex = cx + Math.cos(c.exit)  * dstR;
+          var ey = cy + Math.sin(c.exit)  * dstR;
+          var col = c.dir === 'in'
+                  ? 'rgba(34,211,238,'
+                  : 'rgba(245,158,11,';
+          // Trail: 18 fading dots back along the bezier.
+          var trailN = 18;
+          for (var j = 0; j < trailN; j++) {
+            var tt = p1 - j * 0.020;
+            if (tt < 0) break;
+            var tm = 1 - tt;
+            var tx = tm * tm * sx + 2 * tm * tt * c.ctrlX + tt * tt * ex;
+            var ty = tm * tm * sy + 2 * tm * tt * c.ctrlY + tt * tt * ey;
+            var fade = 1 - j / trailN;
+            ctx.fillStyle = col + (0.85 * fade).toFixed(3) + ')';
+            ctx.beginPath();
+            ctx.arc(tx, ty, 2.6 - j * 0.10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // ---- Central pulsing core ----
+        var corePulse = 1 + 0.05 * Math.sin(t * 2.4);
+        var coreR = Math.min(W, H) * 0.085 * corePulse;
+
+        var coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 1.6);
+        coreGrad.addColorStop(0,   'rgba(34,211,238,0.70)');
+        coreGrad.addColorStop(0.4, 'rgba(59,130,246,0.45)');
+        coreGrad.addColorStop(1,   'rgba(10,14,39,0.0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreR * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreR * 0.55, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Pair label + total pool value in the core.
+        // AMM is constant-product 50/50 by value, so TVL in XRP terms
+        // is 2 × xrpReserve (the paired side equals XRP side by value).
+        var poolXrp = xrpReserve * 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,1.0)';
+        ctx.fillText(pair, cx, cy - 12);
+        ctx.font = '600 14px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(fmtCompact(poolXrp) + ' XRP in pool',
+                     cx, cy + 14);
+
+        // ---- Corner HUD readouts ----
+        // Inline view: round, restrained — keeps the visualization the
+        // hero. Fullscreen view: pops big with shadow halos so the data
+        // reads cleanly across a much larger canvas.
+        var isFs = widget.classList.contains('is-fullscreen');
+        var pad        = isFs ? 60 : 32;
+        var lbl        = isFs ? 26 : 6;
+        var sub        = isFs ? 22 : 5;
+        var subS       = isFs ? 18 : 5;
+        var bottomOff  = isFs ? 40 : 24;
+        var bottomBar  = isFs ? 30 : 18;
+        var barW       = isFs ? 360 : 220;
+        var barH       = isFs ? 10  : 6;
+        var lblWeight  = isFs ? '800' : '600';
+        var subWeight  = isFs ? '700' : '500';
+
+        ctx.save();
+        if (isFs) {
+          ctx.shadowColor = 'rgba(10,14,39,0.95)';
+          ctx.shadowBlur  = 10;
+        }
+
+        // TL: pool addr
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.font = lblWeight + ' ' + lbl + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(34,211,238,1.0)';
+        ctx.fillText('▸ POOL', pad, pad);
+        ctx.font = subWeight + ' ' + sub + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(addrShort, pad, pad + lbl + 4);
+
+        // TR: spot
+        ctx.textAlign = 'right';
+        ctx.font = lblWeight + ' ' + lbl + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(34,211,238,1.0)';
+        ctx.fillText('SPOT ◂', W - pad, pad);
+        ctx.font = subWeight + ' ' + sub + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(price.toFixed(4) + ' ' + tokenLabel, W - pad, pad + lbl + 4);
+
+        // BL: reserve ratio bar
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.font = lblWeight + ' ' + lbl + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(34,211,238,1.0)';
+        ctx.fillText('▸ RESERVES', pad, H - pad - bottomOff);
+
+        var tokUsd = price > 0 ? tokenReserve * price : tokenReserve;
+        var totalRes = xrpReserve + tokUsd;
+        var xrpFrac = totalRes > 0 ? xrpReserve / totalRes : 0.5;
+        var barX = pad, barY = H - pad - bottomBar;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = 'rgba(34,211,238,1.0)';
+        ctx.fillRect(barX, barY, barW * xrpFrac, barH);
+        ctx.fillStyle = 'rgba(245,158,11,1.0)';
+        ctx.fillRect(barX + barW * xrpFrac, barY, barW * (1 - xrpFrac), barH);
+        if (isFs) ctx.shadowBlur = 10;
+
+        ctx.textBaseline = 'top';
+        ctx.font = subWeight + ' ' + subS + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(fmtCompact(xrpReserve) + ' XRP  ·  '
+                     + fmtCompact(tokenReserve) + ' ' + tokenLabel,
+                     barX, barY + barH + 4);
+
+        // BR: net + swaps
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.font = lblWeight + ' ' + lbl + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(34,211,238,1.0)';
+        ctx.fillText('NET ◂', W - pad, H - pad - bottomOff);
+
+        var netStr = (net >= 0 ? '+' : '') + fmtCompact(net) + ' XRP';
+        ctx.textBaseline = 'top';
+        ctx.font = subWeight + ' ' + sub + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = net >= 0
+                     ? 'rgba(34,211,238,1.0)'
+                     : 'rgba(245,158,11,1.0)';
+        ctx.fillText(netStr + '  ·  ' + swapCount + ' swap'
+                     + (swapCount === 1 ? '' : 's'),
+                     W - pad, barY + barH + 4);
+
+        ctx.restore();
+
+        if (!reduced) requestAnimationFrame(frame);
+      }
+
+      if (reduced) frame(startTime + 600);
+      else requestAnimationFrame(frame);
+    })();
   </script>
+  {% include "_vibes_scripts.html" %}
 </body>
 </html>

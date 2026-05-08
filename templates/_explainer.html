@@ -1,0 +1,78 @@
+{# Reusable info-explainer chip. Renders a small "?" button that opens a
+   plain-language card inline. Uses native <details>/<summary> so it works
+   without JS on mobile, is keyboard-accessible, and has no modal trap.
+   Import explainer + explainer_css from this file; place explainer_css()
+   once inside the page <style> block, then call explainer(id, title,
+   body, source=None) anywhere a chip should appear. #}
+
+{% macro explainer(id, title, body, source=None) -%}
+<details class="explainer" id="exp-{{ id }}">
+  <summary class="explainer-summary" aria-label="Explain: {{ title }}"><span class="explainer-chip" aria-hidden="true">?</span></summary>
+  <div class="explainer-card" role="region" aria-label="{{ title }}">
+    <div class="explainer-title">{{ title }}</div>
+    <div class="explainer-body">{{ body }}</div>
+    {% if source %}<div class="explainer-source">{{ source|safe }}</div>{% endif %}
+  </div>
+</details>
+{%- endmacro %}
+
+{% macro explainer_css() -%}
+.explainer { display: inline-block; position: relative; vertical-align: middle;
+             margin-left: 6px; font-weight: normal; letter-spacing: normal;
+             text-transform: none; }
+.explainer-summary {
+  display: inline-block; cursor: pointer; padding: 4px;
+  margin: -4px; list-style: none; -webkit-tap-highlight-color: transparent;
+}
+.explainer-summary::-webkit-details-marker { display: none; }
+.explainer-summary::marker { content: ""; }
+.explainer-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid rgba(34,211,238,0.45); color: var(--cyan);
+  background: rgba(34,211,238,0.06); font-size: 0.78rem;
+  font-family: var(--mono); font-weight: 600;
+  user-select: none; line-height: 1; vertical-align: middle;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.explainer-summary:hover .explainer-chip { border-color: var(--cyan); color: var(--cyan); }
+.explainer[open] .explainer-chip { background: var(--cyan); color: #0a0e27;
+                                   border-color: var(--cyan); }
+.explainer-card {
+  position: absolute; top: 28px; left: -4px; z-index: 50;
+  background: var(--card); border: 1px solid var(--cyan);
+  border-radius: 8px; padding: 12px 14px;
+  width: 320px; max-width: calc(100vw - 32px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  font-size: 0.85rem; line-height: 1.5; color: var(--text);
+  font-weight: 400;
+}
+.explainer-title { font-weight: 600; margin-bottom: 6px; color: var(--cyan);
+                   font-size: 0.72rem; text-transform: uppercase;
+                   letter-spacing: 0.06em; }
+.explainer-body { color: var(--text); }
+.explainer-source { color: var(--muted); font-size: 0.75rem; margin-top: 8px;
+                    padding-top: 6px; border-top: 1px solid var(--border); }
+@media (max-width: 480px) {
+  .explainer-card { width: calc(100vw - 32px); left: -50px; }
+}
+{%- endmacro %}
+
+{% macro explainer_js() -%}
+<script>
+(function () {
+  document.addEventListener('click', function (e) {
+    var clicked = e.target.closest('.explainer');
+    document.querySelectorAll('details.explainer[open]').forEach(function (d) {
+      if (d !== clicked) d.removeAttribute('open');
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('details.explainer[open]').forEach(function (d) {
+      d.removeAttribute('open');
+    });
+  });
+})();
+</script>
+{%- endmacro %}

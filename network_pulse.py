@@ -151,7 +151,11 @@ def fetch_pulse():
 
 
 def fetch_pulse_cached(ttl_seconds=None):
-    """Cached wrapper around fetch_pulse(). Same dict shape + cached_age_seconds."""
+    """Cached wrapper around fetch_pulse(). Same dict shape + cached_age_seconds.
+
+    Never cache an errored pulse — a transient server_info hiccup at startup
+    would otherwise pin the /health page to "currently unavailable" for the
+    full TTL window even after the network recovers."""
     ttl = ttl_seconds if ttl_seconds is not None else PULSE_CACHE_TTL_SECONDS
     now = time.time()
 
@@ -166,8 +170,9 @@ def fetch_pulse_cached(ttl_seconds=None):
             return result
 
         fresh = fetch_pulse()
-        _cache_state["data"] = fresh
-        _cache_state["fetched_at"] = now
+        if not fresh.get("error"):
+            _cache_state["data"] = fresh
+            _cache_state["fetched_at"] = now
         result = dict(fresh)
         result["cached_age_seconds"] = 0.0
         return result

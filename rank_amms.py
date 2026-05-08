@@ -44,6 +44,7 @@ LOG_EVERY = 25
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INDEX_PATH   = os.path.join(HERE, "amm_index.json")
+INCREMENTAL_PATH = os.path.join(HERE, "amm_index_incremental.json")
 RANKED_PATH  = os.path.join(HERE, "amm_ranked.json")
 STATE_PATH   = os.path.join(HERE, "amm_rank_state.json")
 LOG_PATH     = os.path.join(HERE, "amm_rank.log")
@@ -224,6 +225,54 @@ def rank_one(client, amm_entry, pegs):
     }
 
 
+def _amount_to_asset_spec(amt):
+    """Convert an AMMCreate amount field into an AMMInfo Asset spec.
+    String drops -> {"currency": "XRP"}; dict -> {"currency", "issuer"}."""
+    if isinstance(amt, str):
+        return {"currency": "XRP"}
+    if isinstance(amt, dict) and amt.get("currency"):
+        spec = {"currency": amt["currency"]}
+        if amt.get("issuer"):
+            spec["issuer"] = amt["issuer"]
+        return spec
+    return None
+
+
+def _pair_key(asset, asset2):
+    """Order-independent dedup key for an AMM pair."""
+    def side(a):
+        return (a.get("currency"), a.get("issuer"))
+    return tuple(sorted([side(asset), side(asset2)]))
+
+
+def merge_incremental(index):
+    """Append new AMMs from amm_index_incremental.json (live AMMCreate
+    captures by xrpl_stream.py) into the bootstrap index, deduped by pair."""
+    incremental = load_json(INCREMENTAL_PATH, [])
+    if not incremental:
+        return index, 0
+    seen = {_pair_key(e.get("Asset", {}), e.get("Asset2", {})) for e in index}
+    added = 0
+    for entry in incremental:
+        a = _amount_to_asset_spec(entry.get("asset"))
+        b = _amount_to_asset_spec(entry.get("asset2"))
+        if not a or not b:
+            continue
+        key = _pair_key(a, b)
+        if key in seen:
+            continue
+        seen.add(key)
+        index.append({
+            "Account": None,
+            "Asset": a,
+            "Asset2": b,
+            "_source": "incremental",
+            "_tx_hash": entry.get("tx_hash"),
+        })
+        added += 1
+    return index, added
+
+
 def parse_args():
     args = {"limit": None, "rps": DEFAULT_RPS, "reset": False}
     a = sys.argv[1:]
@@ -255,6 +304,11 @@ def main():
     if index is None:
         log(f"FATAL: {INDEX_PATH} not found — run scan_all_amms.py first")
         return 1
+    bootstrap_count = len(index)
+    index, added = merge_incremental(index)
+    if added:
+        log(f"merged {added} live-captured AMM(s) from {os.path.basename(INCREMENTAL_PATH)} "
+            f"(bootstrap={bootstrap_count}, total={len(index)})")
     if args["limit"]:
         index = index[: args["limit"]]
         log(f"--limit {args['limit']} active · ranking first {len(index)} AMMs")

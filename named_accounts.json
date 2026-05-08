@@ -117,5 +117,17 @@
     "category": "other",
     "verified_via": "https://xrpl-labs.com/.well-known/xrp-ledger.toml",
     "_note": "Declared in XRPL Labs' xrp-ledger.toml as a main-network account. XRPL Labs is the team behind the Xaman (formerly Xumm) wallet. The TOML does not specify the address's role; we only assert ownership."
+  },
+  "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE": {
+    "name": "Circle (USDC issuer)",
+    "category": "issuer",
+    "verified_via": "https://www.circle.com/multi-chain-usdc/xrpl",
+    "_note": "Circle's official XRPL issuer for native USDC on the XRP Ledger. Source: Circle's multi-chain USDC product page lists this address as the canonical XRPL issuer."
+  },
+  "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
+    "name": "Sologenic (SOLO issuer)",
+    "category": "issuer",
+    "verified_via": "https://medium.com/@txEcosystem/sologenic-solo-airdrop-distribution-complete-official-report-8e5d8594e43e",
+    "_note": "Sologenic's official SOLO token issuer on the XRPL. Source: Sologenic's official airdrop distribution report on Medium identifies this address as the SOLO issuer. Vanity-prefixed (rsoLo...) confirms ownership intent."
   }
 }

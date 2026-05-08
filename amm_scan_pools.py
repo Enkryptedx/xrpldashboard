@@ -223,10 +223,14 @@ def scan_all_pools_cached(ttl_seconds=None):
             result["cached_age_seconds"] = round(age, 1)
             return result
 
-        # Cache miss or expired — refresh.
+        # Cache miss or expired — refresh. Skip caching on transient
+        # failures (LedgerCurrent timeout / all pools missing): caching a
+        # zero-pool result would pin the dashboard to "$0 locked in AMMs"
+        # for the full TTL window even after the network recovers.
         fresh = scan_all_pools()
-        _cache_state["data"] = fresh
-        _cache_state["fetched_at"] = now
+        if fresh.get("error") is None and fresh.get("pools"):
+            _cache_state["data"] = fresh
+            _cache_state["fetched_at"] = now
         result = dict(fresh)
         result["cached_age_seconds"] = 0.0
         return result

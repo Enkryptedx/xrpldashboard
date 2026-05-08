@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>whales · xrpldashboard</title>
   {% set meta_title = "whales · xrpldashboard" %}
-  {% set meta_description = "Live tracker of large XRP transfers — every payment over 500,000 XRP, with the wallets behind them named where we know them." %}
+  {% set meta_description = "Live tracker of large XRP transfers — every payment over 50,000 XRP, with the wallets behind them named where we know them." %}
   {% include "_head_meta.html" %}
   <meta http-equiv="refresh" content="60">
 
@@ -16,6 +16,8 @@
   #}
 
   <style>
+    {% from "_explainer.html" import explainer_css %}
+    {{ explainer_css() }}
     :root {
       --bg: #0a0e27;
       --card: #141832;
@@ -56,24 +58,51 @@
     .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 14px;
             max-width: 640px; }
 
-    /* Whale banner — wide thin strip showing a whale gliding across calm water */
-    .whale-banner {
-      position: relative; width: 100%; height: 78px;
-      margin-bottom: 18px; border-radius: 10px; overflow: hidden;
+    /* Whale radar — circular sonar scope, one blip per recent large move. */
+    .whale-radar {
+      position: relative; width: 100%; height: 320px;
+      margin-bottom: 18px; border-radius: 12px; overflow: hidden;
       background:
-        linear-gradient(180deg, rgba(10,14,39,0) 0%, rgba(34,211,238,0.05) 55%, rgba(59,130,246,0.10) 100%);
+        radial-gradient(circle at 50% 50%, rgba(34,211,238,0.08), transparent 60%),
+        linear-gradient(180deg, rgba(10,14,39,0.85), rgba(6,10,28,0.95));
       border: 1px solid var(--border);
     }
-    .whale-banner canvas { width: 100%; height: 100%; display: block; }
+    .whale-radar canvas { width: 100%; height: 100%; display: block; }
+    .whale-radar .hud-tl, .whale-radar .hud-tr,
+    .whale-radar .hud-bl, .whale-radar .hud-br {
+      position: absolute; font-family: var(--mono);
+      font-size: 0.68rem; color: rgba(34,211,238,0.75);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      pointer-events: none; line-height: 1.35;
+    }
+    .whale-radar .hud-tl { top: 12px; left: 14px; }
+    .whale-radar .hud-tr { top: 12px; right: 14px; text-align: right; }
+    .whale-radar .hud-bl { bottom: 12px; left: 14px; }
+    .whale-radar .hud-br { bottom: 12px; right: 14px; text-align: right; }
+    .whale-radar .hud-num { color: rgba(34,211,238,1); font-weight: 600; }
+    .whale-radar .hud-amber { color: rgba(245,158,11,0.95); font-weight: 600; }
+    @media (max-width: 480px) {
+      .whale-radar { height: 260px; }
+      .whale-radar .hud-tl, .whale-radar .hud-tr,
+      .whale-radar .hud-bl, .whale-radar .hud-br { font-size: 0.6rem; }
+    }
 
     .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .stat  { background: var(--card); border: 1px solid var(--border);
-             border-radius: 8px; padding: 8px 12px; min-width: 100px; }
+             border-radius: 8px; padding: 8px 12px; min-width: 100px;
+             text-decoration: none; color: inherit; display: block;
+             transition: border-color 0.15s, background 0.15s; }
+    a.stat:hover { border-color: var(--cyan); background: rgba(34,211,238,0.06); }
+    .stat.active { border-color: var(--cyan); background: rgba(34,211,238,0.10); }
     .stat .n { font-family: var(--mono); font-size: 1.05rem; color: var(--text); }
     .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
                letter-spacing: 0.05em; margin-top: 2px; }
 
-    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+               align-items: center; }
+    .filters:last-of-type { margin-bottom: 18px; }
+    .pill-label { color: var(--dim); font-size: 0.7rem; text-transform: uppercase;
+                  letter-spacing: 0.06em; margin-right: 4px; min-width: 32px; }
     .pill { display: inline-block; padding: 5px 11px; border-radius: 999px;
             border: 1px solid var(--border); background: transparent;
             color: var(--muted); font-size: 0.78rem; }
@@ -98,7 +127,9 @@
 
     .event-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
                   margin: 6px 0; }
-    .addr { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+    .addr { font-family: var(--mono); font-size: 0.82rem; color: var(--muted);
+            text-decoration: none; }
+    a.addr:hover { color: var(--cyan); }
     .addr .label { display: inline-block; background: rgba(34,211,238,0.1);
                    color: var(--cyan); padding: 1px 7px; border-radius: 4px;
                    margin-right: 6px; font-family: var(--sys); font-size: 0.75rem;
@@ -123,59 +154,114 @@
               padding-top: 16px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
 
   {% include "_nav.html" %}
+  {% from "_explainer.html" import explainer %}
+  {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
+  {{ freshness_badge_css() }}
 
-  <h1>Whale watch</h1>
+  <h1>Whale watch{{ explainer(
+    "whales",
+    "What counts as a whale event",
+    "Three kinds of moves get listed here: (1) really big XRP
+     transfers (the size cutoff is set just below), (2) anything
+     touching a wallet we recognize — exchanges, big projects, public
+     companies, and (3) when one of those recognized wallets starts
+     holding a brand-new token. Even small transactions show up if a
+     recognized wallet is involved, because they're often a clue
+     about what big players are doing.",
+  ) }}</h1>
   <p class="lede">
     Large XRP transfers and any activity by accounts we recognize.
-    Pulled live from the ledger. The watchlist is hand-curated and
-    public — see <a href="/about">about</a> for sourcing.
+    The watchlist is hand-curated and public — see
+    <a href="/about">about</a> for sourcing.
   </p>
+  {{ freshness_badge(data_age_label) }}
 
-  <div class="whale-banner" aria-hidden="true">
-    <canvas id="whale-strip"></canvas>
+  <div class="whale-radar" aria-hidden="true">
+    <canvas id="whale-radar-canvas"></canvas>
+    <div class="hud-tl">XRPL · whale scope<br><span class="hud-num">scan 360°</span></div>
+    <div class="hud-tr">range<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
+    <div class="hud-bl">contacts<br><span id="radar-contacts" class="hud-num">0</span></div>
+    <div class="hud-br">last ping<br><span id="radar-ping" class="hud-amber">—</span></div>
   </div>
+  <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>
 
   <div class="stats">
-    <div class="stat">
+    <a class="stat vibes-spot {% if not filter_type %}active{% endif %}"
+       href="/whales?tier={{ tier }}">
       <div class="n">{{ "{:,}".format(type_counts._total) }}</div>
       <div class="l">total events</div>
-    </div>
-    <div class="stat">
+    </a>
+    <a class="stat vibes-spot {% if filter_type == 'large_xfer' %}active{% endif %}"
+       href="/whales?tier={{ tier }}&amp;type=large_xfer">
       <div class="n">{{ "{:,}".format(type_counts.large_xfer) }}</div>
       <div class="l">large XRP</div>
-    </div>
-    <div class="stat">
+    </a>
+    <a class="stat vibes-spot {% if filter_type == 'tagged' %}active{% endif %}"
+       href="/whales?tier={{ tier }}&amp;type=tagged">
       <div class="n">{{ "{:,}".format(type_counts.tagged) }}</div>
       <div class="l">tagged</div>
-    </div>
-    <div class="stat">
+    </a>
+    <a class="stat vibes-spot {% if filter_type == 'trustset' %}active{% endif %}"
+       href="/whales?tier={{ tier }}&amp;type=trustset">
       <div class="n">{{ "{:,}".format(type_counts.trustset) }}</div>
       <div class="l">trustlines</div>
-    </div>
-    <div class="stat">
+    </a>
+    <div class="stat vibes-spot">
       <div class="n">{{ "{:,}".format(named_accounts_count) }}</div>
-      <div class="l">watchlist size</div>
+      <div class="l">watchlist size{{ explainer(
+        "watchlist",
+        "What's the watchlist",
+        "A list of XRP wallets we've identified by hand — major
+         exchanges (Bitstamp, Bitso, Bitrue), the Ripple co-founders,
+         big project treasuries. We figured out each one by
+         cross-checking what the wallet owner has publicly announced.
+         When one of these moves money it shows up here, even small
+         amounts, because it tells you what the big players are
+         doing.",
+      ) }}</div>
     </div>
   </div>
 
-  <div class="filters">
-    <a class="pill {% if not filter_type %}active{% endif %}" href="/whales">all</a>
+  <div class="filters" aria-label="Whale tier">
+    <span class="pill-label">size{{ explainer(
+      "tier",
+      "What 'size' tiers mean",
+      "Choose how big a transfer has to be to count. 1M XRP is the
+       classic 'whale' size — rare and almost always worth knowing
+       about. 100K is a good default for catching coordinated
+       activity. 50K shows everything we track, useful on quiet days.
+       Activity from recognized wallets shows up no matter what size
+       you pick.",
+    ) }}</span>
+    <a class="pill {% if tier == '1m' %}active{% endif %}"
+       href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">whales · ≥1M XRP</a>
+    <a class="pill {% if tier == '100k' %}active{% endif %}"
+       href="/whales?tier=100k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">large · ≥100K XRP</a>
+    <a class="pill {% if tier == '50k' %}active{% endif %}"
+       href="/whales?tier=50k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">all · ≥50K XRP</a>
+  </div>
+
+  <div class="filters" aria-label="Event type">
+    <span class="pill-label">type</span>
+    <a class="pill {% if not filter_type %}active{% endif %}"
+       href="/whales?tier={{ tier }}">all</a>
     <a class="pill {% if filter_type == 'large_xfer' %}active{% endif %}"
-       href="/whales?type=large_xfer">large XRP (≥{{ "{:,}".format(threshold_xrp) }})</a>
+       href="/whales?tier={{ tier }}&amp;type=large_xfer">large XRP</a>
     <a class="pill {% if filter_type == 'tagged' %}active{% endif %}"
-       href="/whales?type=tagged">tagged</a>
+       href="/whales?tier={{ tier }}&amp;type=tagged">tagged</a>
     <a class="pill {% if filter_type == 'trustset' %}active{% endif %}"
-       href="/whales?type=trustset">trustlines</a>
+       href="/whales?tier={{ tier }}&amp;type=trustset">trustlines</a>
   </div>
 
   {% if events %}
     {% for e in events %}
-    <div class="event">
+    <div class="event vibes-spot">
       <div class="event-top">
         <div class="event-meta">
           <span class="badge {{ e.type }}">{{ e.type_display }}</span>
@@ -188,15 +274,23 @@
         {% endif %}
       </div>
       <div class="event-flow">
-        <span class="addr">
-          {% if e.from_label %}<span class="label">{{ e.from_label }}</span>{% endif %}
-          {{ e.from_addr_short or "—" }}
-        </span>
+        {% if e.from_addr %}
+          <a class="addr" href="/wallet/{{ e.from_addr }}">
+            {% if e.from_label %}<span class="label">{{ e.from_label }}</span>{% endif %}
+            {{ e.from_addr_short }}
+          </a>
+        {% else %}
+          <span class="addr">—</span>
+        {% endif %}
         <span class="arrow">→</span>
-        <span class="addr">
-          {% if e.to_label %}<span class="label">{{ e.to_label }}</span>{% endif %}
-          {{ e.to_addr_short or "—" }}
-        </span>
+        {% if e.to_addr %}
+          <a class="addr" href="/wallet/{{ e.to_addr }}">
+            {% if e.to_label %}<span class="label">{{ e.to_label }}</span>{% endif %}
+            {{ e.to_addr_short }}
+          </a>
+        {% else %}
+          <span class="addr">—</span>
+        {% endif %}
       </div>
       <div class="amount">{{ e.amount_display }}</div>
     </div>
@@ -221,8 +315,15 @@
     <p>
       <strong>How this works:</strong> a long-running process subscribes to
       every validated XRPL transaction and records two things — XRP
-      transfers ≥{{ "{:,}".format(threshold_xrp) }} XRP, and any transaction
-      that touches an address on our public watchlist.
+      transfers ≥{{ "{:,}".format(threshold_xrp) }} XRP (the floor), and any
+      transaction that touches an address on our public watchlist.
+    </p>
+    <p>
+      The <strong>size pills</strong> above filter large XRP transfers by
+      magnitude — <em>whales</em> (≥1M XRP) is the strict definition;
+      <em>large</em> (≥100K) and <em>all</em> (≥50K) widen the lens. Tagged
+      and watchlisted activity always shows regardless of size, because the
+      <em>who</em> makes them signal.
     </p>
     <p>
       The watchlist currently has {{ named_accounts_count }} entries, all
@@ -246,211 +347,265 @@
 
 </div>
 <script>
-  // Whale-watch banner v2 — proper humpback silhouette swims mostly below
-  // the surface. When it reaches the centre it rises, breaks the waterline,
-  // and blows a particle-based water spout. Then submerges and continues.
-  // Rendering order: whale → underwater overlay → spout → waterline waves.
-  // Pure canvas, no deps, retina-aware, respects prefers-reduced-motion.
+  // Whale radar scope — circular HUD with rotating sweep arm + range rings.
+  // Each recent large_xfer event becomes a blip placed at a deterministic
+  // bearing (event index → angle) and a magnitude-derived range. Sweep arm
+  // illuminates blips as it passes; blips slowly decay. Real-event-driven,
+  // not random animation.
   (function () {
-    var canvas = document.getElementById('whale-strip');
+    var canvas = document.getElementById('whale-radar-canvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    function fitCanvas() {
+    var blipsRaw = [];
+    try {
+      var sc = document.getElementById('radar-blips-data');
+      if (sc && sc.textContent) {
+        var parsed = JSON.parse(sc.textContent);
+        if (Array.isArray(parsed)) blipsRaw = parsed;
+      }
+    } catch (e) { blipsRaw = []; }
+
+    var contactsEl = document.getElementById('radar-contacts');
+    var pingEl     = document.getElementById('radar-ping');
+
+    function fit() {
       var rect = canvas.getBoundingClientRect();
       var dpr = window.devicePixelRatio || 1;
       canvas.width  = Math.max(1, Math.round(rect.width  * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    fitCanvas();
-    window.addEventListener('resize', fitCanvas);
+    fit();
+    window.addEventListener('resize', fit);
 
-    var reduced   = window.matchMedia &&
-                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var startTime = performance.now();
-    var lastNow   = startTime;
-    var crossMs   = 22000;   // ms for whale to cross the banner
-    var spoutFired = false;
-    var particles  = [];
+    var reduced = window.matchMedia &&
+                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function createSpout(bx, by, now) {
-      for (var i = 0; i < 26; i++) {
-        var ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
-        var spd = 58 + Math.random() * 48;
-        particles.push({
-          x: bx + (Math.random() - 0.5) * 5,
-          y: by,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd,
-          life: 1500 + Math.random() * 500,
-          born: now,
-          sz: 1.0 + Math.random() * 1.5
+    var SWEEP_PERIOD_MS = 6000;
+    var BLIP_LIFE_MS    = SWEEP_PERIOD_MS * 1.6;
+    var BLIP_SPAWN_MS   = 1100;
+
+    // Pre-place every event on the scope. Bearing is deterministic from
+    // event index so the same scope replay is stable across frames; range
+    // shrinks with magnitude (big move = closer to centre = "approaching").
+    var SCOPE = [];
+    for (var i = 0; i < blipsRaw.length; i++) {
+      var ev   = blipsRaw[i];
+      var mag  = Math.max(0.2, Math.min(1.0, ev.mag || 0.4));
+      var ang  = (i * 137.5) * Math.PI / 180; // golden-angle scatter
+      var rRel = 0.95 - mag * 0.55;            // 0.4 (close) … 0.95 (far)
+      SCOPE.push({ angle: ang, rRel: rRel, mag: mag, kind: ev.kind });
+    }
+    if (SCOPE.length === 0) {
+      // Fallback — three decorative blips so the scope isn't empty when
+      // events.db has nothing matching the active filter.
+      for (var k = 0; k < 3; k++) {
+        SCOPE.push({
+          angle: (k * 137.5) * Math.PI / 180,
+          rRel:  0.55 + k * 0.12,
+          mag:   0.45,
+          kind:  'large_xfer'
         });
       }
     }
 
-    // Proper humpback silhouette — bezier body, dorsal fin, fluke, pec fin.
-    // Faces RIGHT (head +X, tail −X). Origin = body centre.
-    function drawHumpback(x, y) {
-      var L = 48, BH = 13;
-      ctx.save();
-      ctx.translate(x, y);
+    var activeBlips = [];
+    var spawnIdx    = 0;
+    var lastSpawnAt = 0;
+    var contactsSeen = 0;
 
-      // Main body
-      ctx.fillStyle = '#0e7a96';
-      ctx.beginPath();
-      ctx.moveTo( L * 0.88, -BH * 0.12);
-      ctx.bezierCurveTo( L * 0.96, -BH * 0.55,  L * 0.70, -BH * 0.95,  L * 0.28, -BH);
-      ctx.bezierCurveTo( L * 0.00, -BH,         -L * 0.32, -BH * 0.92, -L * 0.58, -BH * 0.52);
-      ctx.bezierCurveTo(-L * 0.70, -BH * 0.32,  -L * 0.80, -BH * 0.14, -L * 0.88,  0);
-      // Fluke
-      ctx.bezierCurveTo(-L * 1.02, -BH * 0.20, -L * 1.26, -BH * 0.78, -L * 1.28, -BH * 0.84);
-      ctx.bezierCurveTo(-L * 1.24, -BH * 0.48, -L * 1.06, -BH * 0.06, -L * 0.98,  BH * 0.05);
-      ctx.bezierCurveTo(-L * 1.06,  BH * 0.06, -L * 1.24,  BH * 0.48, -L * 1.28,  BH * 0.84);
-      ctx.bezierCurveTo(-L * 1.26,  BH * 0.78, -L * 1.02,  BH * 0.20, -L * 0.88,  0);
-      // Belly
-      ctx.bezierCurveTo(-L * 0.60,  BH * 0.72, -L * 0.08,  BH * 0.88,  L * 0.32,  BH * 0.84);
-      ctx.bezierCurveTo( L * 0.62,  BH * 0.76,  L * 0.84,  BH * 0.50,  L * 0.88,  BH * 0.12);
-      ctx.closePath();
-      ctx.fill();
-
-      // Dorsal fin — classic humpback: small, hooked rearward
-      ctx.beginPath();
-      ctx.moveTo(-L * 0.22, -BH * 0.95);
-      ctx.bezierCurveTo(-L * 0.25, -BH * 1.65, -L * 0.32, -BH * 2.15, -L * 0.38, -BH * 2.0);
-      ctx.bezierCurveTo(-L * 0.44, -BH * 1.72, -L * 0.47, -BH * 1.20, -L * 0.51, -BH * 0.92);
-      ctx.closePath();
-      ctx.fill();
-
-      // Pectoral fin (long — humpback's signature)
-      ctx.fillStyle = '#0a5e78';
-      ctx.beginPath();
-      ctx.moveTo( L * 0.36,  BH * 0.28);
-      ctx.bezierCurveTo( L * 0.14,  BH * 1.52, -L * 0.02,  BH * 1.80, -L * 0.10,  BH * 1.68);
-      ctx.bezierCurveTo(-L * 0.04,  BH * 1.10,  L * 0.12,  BH * 0.50,  L * 0.36,  BH * 0.28);
-      ctx.closePath();
-      ctx.fill();
-
-      // Eye
-      ctx.fillStyle = 'rgba(190, 230, 255, 0.70)';
-      ctx.beginPath();
-      ctx.arc(L * 0.61, -BH * 0.06, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
+    function spawnNext(now) {
+      var src = SCOPE[spawnIdx % SCOPE.length];
+      spawnIdx++;
+      activeBlips.push({
+        angle: src.angle,
+        rRel:  src.rRel,
+        mag:   src.mag,
+        kind:  src.kind,
+        born:  now,
+        litAt: 0
+      });
     }
 
-    function surfaceWaveY(x, waterY, waveFreq, waveAmp, wavePhase) {
-      return waterY + Math.sin(x * waveFreq + wavePhase) * waveAmp;
+    function fmtPing(b) {
+      var bearing = Math.round((b.angle * 180 / Math.PI) % 360);
+      if (bearing < 0) bearing += 360;
+      var range   = Math.round(b.rRel * 100);
+      return ('00' + bearing).slice(-3) + '° · ' + ('00' + range).slice(-2) + 'km';
     }
 
-    function frame(now) {
-      var dt = Math.min(50, now - lastNow) / 1000;
-      lastNow = now;
-
-      var rect   = canvas.getBoundingClientRect();
+    function drawScope(now) {
+      var rect = canvas.getBoundingClientRect();
       var W = rect.width, H = rect.height;
       ctx.clearRect(0, 0, W, H);
 
-      var t         = (now - startTime) / 1000;
-      var waterY    = H * 0.50;
-      var waveFreq  = 0.020;
-      var waveAmp   = 3.2;
-      var wavePhase = t * 1.25;
+      var cx = W / 2;
+      var cy = H / 2;
+      var R  = Math.min(W, H) * 0.42;
 
-      // Whale horizontal — slow drift, looping
-      var cycle  = (t / (crossMs / 1000)) % 1;
-      var whaleX = -110 + cycle * (W + 220);
-
-      // Surface factor: peaks in centre of banner so breach is always centred
-      var normX    = Math.max(0, Math.min(1, whaleX / W));
-      var sf       = Math.max(0, Math.sin(normX * Math.PI));
-      var sfSmooth = sf * sf * (3 - 2 * sf);   // smoothstep
-
-      // Vertical: deep when sfSmooth=0, rises to breach when sfSmooth=1
-      var deepOff    = 22, surfaceOff = 5;
-      var wY = waterY + deepOff - sfSmooth * (deepOff - surfaceOff)
-                      + Math.sin(t * 1.5) * 1.5;   // gentle bob
-
-      // Fire spout once when whale is near peak of breach
-      if (sfSmooth > 0.90 && !spoutFired) {
-        spoutFired = true;
-        createSpout(whaleX + 48 * 0.62, wY - 13 * 0.88, now);
-      }
-      if (sfSmooth < 0.35) spoutFired = false;
-
-      // ── 1. Whale (drawn first — water overlay goes on top)
-      drawHumpback(whaleX, wY);
-
-      // ── 2. Underwater overlay — dark gradient below the waterline so the
-      //       whale body reads as a submerged silhouette
-      var uwGrad = ctx.createLinearGradient(0, waterY, 0, H);
-      uwGrad.addColorStop(0,   'rgba(10, 14, 39, 0.46)');
-      uwGrad.addColorStop(0.5, 'rgba(10, 14, 39, 0.62)');
-      uwGrad.addColorStop(1,   'rgba(10, 14, 39, 0.74)');
-      ctx.fillStyle = uwGrad;
+      // Outer ring + range rings
+      ctx.strokeStyle = 'rgba(34,211,238,0.65)';
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(0, surfaceWaveY(0, waterY, waveFreq, waveAmp, wavePhase));
-      for (var x = 0; x <= W; x += 4) {
-        ctx.lineTo(x, surfaceWaveY(x, waterY, waveFreq, waveAmp, wavePhase));
-      }
-      ctx.lineTo(W, H + 5);
-      ctx.lineTo(0, H + 5);
-      ctx.closePath();
-      ctx.fill();
-
-      // ── 3. Spout particles (above water — drawn before wave highlights
-      //       so they pop in front of everything)
-      for (var i = particles.length - 1; i >= 0; i--) {
-        var p = particles[i];
-        var age = now - p.born;
-        if (age > p.life) { particles.splice(i, 1); continue; }
-        p.x  += p.vx * dt;
-        p.y  += p.vy * dt;
-        p.vy += 80 * dt;    // gravity pulls particles back down
-        var a = Math.max(0, 1 - age / p.life) * (age < 140 ? age / 140 : 1);
-        ctx.fillStyle = 'rgba(210, 240, 255, ' + (a * 0.9) + ')';
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(34,211,238,0.32)';
+      ctx.lineWidth = 1;
+      for (var rg = 1; rg <= 3; rg++) {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // ── 4. Waterline wave highlights (drawn last, always on top)
-      for (var w = 0; w < 3; w++) {
-        ctx.strokeStyle = 'rgba(34,211,238,' + (0.30 - w * 0.07) + ')';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        var f2 = waveFreq + w * 0.006, p2 = wavePhase + w * 0.75;
-        var a2 = waveAmp - w * 0.5, y2 = waterY + w * 4;
-        for (var x2 = 0; x2 <= W; x2 += 4) {
-          var yw = y2 + Math.sin(x2 * f2 + p2) * a2;
-          if (x2 === 0) ctx.moveTo(x2, yw); else ctx.lineTo(x2, yw);
-        }
+        ctx.arc(cx, cy, R * rg / 4, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      if (!reduced) requestAnimationFrame(frame);
-    }
-
-    if (reduced) {
-      // Static: whale at surface mid-banner, one wave line
-      var r0 = canvas.getBoundingClientRect();
-      var W0 = r0.width, H0 = r0.height, wY0 = H0 * 0.50;
-      drawHumpback(W0 * 0.42, wY0 + 8);
+      // Cross hairs
       ctx.strokeStyle = 'rgba(34,211,238,0.30)';
+      ctx.beginPath();
+      ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+      ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+      ctx.stroke();
+
+      // Bearing tick marks every 30°
+      ctx.strokeStyle = 'rgba(34,211,238,0.70)';
+      ctx.lineWidth = 1.2;
+      for (var t = 0; t < 12; t++) {
+        var a   = (t / 12) * Math.PI * 2 - Math.PI / 2;
+        var x1 = cx + Math.cos(a) * R;
+        var y1 = cy + Math.sin(a) * R;
+        var x2 = cx + Math.cos(a) * (R - 8);
+        var y2 = cy + Math.sin(a) * (R - 8);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      // Sweep arm — gradient from centre to edge, fading trail behind
+      var sweepAng = ((now / SWEEP_PERIOD_MS) % 1) * Math.PI * 2 - Math.PI / 2;
+      if (reduced) sweepAng = -Math.PI / 2; // freeze pointing up
+      var TRAIL = Math.PI / 2.2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      // trail wedge
+      var grad = ctx.createConicGradient ? ctx.createConicGradient(sweepAng - TRAIL, 0, 0) : null;
+      if (grad) {
+        grad.addColorStop(0.0, 'rgba(34,211,238,0)');
+        grad.addColorStop(TRAIL / (Math.PI * 2), 'rgba(34,211,238,0.42)');
+        grad.addColorStop(TRAIL / (Math.PI * 2) + 0.0001, 'rgba(34,211,238,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, R, sweepAng - TRAIL, sweepAng);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // arm itself — bright leading edge
+      ctx.strokeStyle = 'rgba(34,211,238,1)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(sweepAng) * R, Math.sin(sweepAng) * R);
+      ctx.stroke();
+      ctx.restore();
+
+      // Spawn next blip on cadence
+      if (!reduced && now - lastSpawnAt > BLIP_SPAWN_MS) {
+        spawnNext(now);
+        lastSpawnAt = now;
+      } else if (reduced && activeBlips.length === 0) {
+        // Reduced motion: place a small static set, no spawning loop.
+        for (var s = 0; s < Math.min(5, SCOPE.length); s++) {
+          activeBlips.push({
+            angle: SCOPE[s].angle, rRel: SCOPE[s].rRel,
+            mag: SCOPE[s].mag, kind: SCOPE[s].kind,
+            born: now, litAt: now
+          });
+        }
+      }
+
+      // Light blips that the sweep arm has crossed (within angular window)
+      function angleDelta(a, b) {
+        var d = ((a - b) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+        return d;
+      }
+
+      for (var bi = activeBlips.length - 1; bi >= 0; bi--) {
+        var b = activeBlips[bi];
+        var age = now - b.born;
+        if (age > BLIP_LIFE_MS) { activeBlips.splice(bi, 1); continue; }
+
+        // sweep illumination — when sweepAng has just passed b.angle
+        if (!b.litAt) {
+          var d = angleDelta(sweepAng, b.angle);
+          if (d >= 0 && d < 0.18) {
+            b.litAt = now;
+            contactsSeen++;
+            if (contactsEl) contactsEl.textContent = contactsSeen;
+            if (pingEl)     pingEl.textContent = fmtPing(b);
+          }
+        }
+
+        var bx = cx + Math.cos(b.angle) * (R * b.rRel);
+        var by = cy + Math.sin(b.angle) * (R * b.rRel);
+
+        var litAge = b.litAt ? (now - b.litAt) : 0;
+        var glow   = b.litAt ? Math.max(0, 1 - litAge / BLIP_LIFE_MS) : 0.30;
+        var rPx    = 2.6 + b.mag * 5.0;
+
+        // Pulse ring — single expanding circle on first contact (~600ms)
+        if (b.litAt && litAge < 600) {
+          var pulseT  = litAge / 600;
+          var pulseR  = rPx + pulseT * (8 + b.mag * 8);
+          ctx.strokeStyle = 'rgba(245,158,11,' + ((1 - pulseT) * 0.85).toFixed(3) + ')';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(bx, by, pulseR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Halo — amber when lit (alarm/contact), faint cyan when idle
+        var litColor = b.litAt ? '245,158,11' : '34,211,238';
+        if (glow > 0.05) {
+          var haloR = rPx * 5;
+          var halo = ctx.createRadialGradient(bx, by, 0, bx, by, haloR);
+          halo.addColorStop(0, 'rgba(' + litColor + ',' + (glow * 0.85).toFixed(3) + ')');
+          halo.addColorStop(1, 'rgba(' + litColor + ',0)');
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(bx, by, haloR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Core dot
+        var coreA = b.litAt ? (0.85 + glow * 0.15) : 0.55;
+        ctx.fillStyle = 'rgba(' + litColor + ',' + coreA.toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(bx, by, rPx, 0, Math.PI * 2);
+        ctx.fill();
+        // Thin outline for crisp edge against rings
+        ctx.strokeStyle = 'rgba(' + litColor + ',' + Math.min(1, coreA + 0.15).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Centre marker
+      ctx.fillStyle = 'rgba(245,158,11,0.95)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245,158,11,0.45)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      for (var x0 = 0; x0 <= W0; x0 += 4) {
-        var yw0 = wY0 + Math.sin(x0 * 0.020) * 3.2;
-        if (x0 === 0) ctx.moveTo(x0, yw0); else ctx.lineTo(x0, yw0);
-      }
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
       ctx.stroke();
-    } else {
-      requestAnimationFrame(frame);
+
+      if (!reduced) requestAnimationFrame(drawScope);
     }
+
+    requestAnimationFrame(drawScope);
   })();
 </script>
+{% include "_vibes_scripts.html" %}
+{% from "_explainer.html" import explainer_js %}
+{{ explainer_js() }}
 </body>
 </html>

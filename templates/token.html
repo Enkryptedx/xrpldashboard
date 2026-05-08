@@ -188,11 +188,14 @@
       .hero-name h1 { font-size: var(--fs-xl); }
     }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
 
   {% include "_nav.html" %}
+  {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
+  {{ freshness_badge_css() }}
 
   <div class="crumb"><a href="/tokens">← back to tokens</a></div>
 
@@ -219,7 +222,9 @@
         {% endif %}
       </div>
       <div class="hero-meta" style="margin-top:0.7em;">
-        <span class="hero-tag"><span class="dot"></span> Live · counts pulled from volumes.db</span>
+        {% if data.last_seen_age and data.last_seen_age != "—" %}
+          {{ freshness_badge(data.last_seen_age) }}
+        {% endif %}
       </div>
     </div>
   </div>
@@ -378,5 +383,6 @@
   </footer>
 
 </div>
+{% include "_vibes_scripts.html" %}
 </body>
 </html>

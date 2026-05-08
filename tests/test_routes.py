@@ -82,12 +82,15 @@ def test_wallet_valid_address_renders(client, known_wallet):
     assert "…" in body, "expected truncated address rendering somewhere on page"
 
 
-def test_wallet_invalid_address_400(client):
+def test_wallet_invalid_address_404(client):
+    """Malformed addresses render the branded 404, not a zero-filled wallet
+    view — zeros would silently misrepresent a bad address as an empty
+    wallet, which is misleading on a page that doubles as an integrity check."""
     r = client.get("/wallet/notARealAddress")
-    assert r.status_code == 400
+    assert r.status_code == 404
     body = r.data.decode()
-    # Even error pages keep the title shape and disclaimer
-    assert "wallet" in body.lower()
+    assert "404" in body
+    assert "isn't here" in body or "not found" in body.lower()
 
 
 def test_wallet_title_no_longer_says_hybrid_mock(client, known_wallet):
@@ -107,14 +110,20 @@ def test_token_valid_renders(client, known_token):
     assert "Not financial advice" in r.data.decode()
 
 
-def test_token_invalid_currency_400(client, known_wallet):
+def test_token_invalid_currency_404(client, known_wallet):
+    """Malformed currency renders the branded 404, not a zero-filled token
+    view. The old stub rendering echoed raw `currency`/`issuer` into the
+    page title, hero, and external explorer URLs — visible reflection of
+    attacker-supplied input. Mirrors the wallet route's invalid-input handling."""
     r = client.get(f"/token/!!!!/{known_wallet}")
-    assert r.status_code == 400
+    assert r.status_code == 404
+    assert "isn't here" in r.data.decode() or "not found" in r.data.decode().lower()
 
 
-def test_token_invalid_issuer_400(client):
+def test_token_invalid_issuer_404(client):
     r = client.get("/token/USD/notAnAddress")
-    assert r.status_code == 400
+    assert r.status_code == 404
+    assert "isn't here" in r.data.decode() or "not found" in r.data.decode().lower()
 
 
 def test_about_links_to_institutional(client):

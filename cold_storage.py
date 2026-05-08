@@ -121,6 +121,10 @@ def fetch_cold_storage():
 
 
 def fetch_cold_storage_cached(ttl=None):
+    """Cache successful fetches for `ttl` seconds. Never cache an
+    all-errored result — a transient network hiccup at startup would
+    otherwise pin a useless "0 XRP locked" view for the full TTL window
+    while the next request silently retries."""
     ttl = ttl if ttl is not None else CACHE_TTL
     now = time.time()
     with _cache_lock:
@@ -129,8 +133,9 @@ def fetch_cold_storage_cached(ttl=None):
             data["cached_age_seconds"] = round(now - _cache["fetched_at"], 1)
             return data
         fresh = fetch_cold_storage()
-        _cache["fetched_at"] = now
-        _cache["data"] = fresh
+        if fresh.get("fetched_ok", 0) > 0:
+            _cache["fetched_at"] = now
+            _cache["data"] = fresh
         result = dict(fresh)
         result["cached_age_seconds"] = 0.0
         return result
