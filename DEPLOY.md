@@ -33,7 +33,7 @@ and the modified ones (`app.py`, `amm_scan_pools.py`, `templates/index.html`)
 should all be visible. Then push if you haven't already:
 
 ```sh
-cd ~/Desktop/xrpl_test
+cd ~/xrpl_test
 git push origin main
 ```
 
@@ -178,10 +178,9 @@ you can rollback in **one click** from the Render dashboard. No data loss.
 
 ## Things deliberately NOT in this guide
 
-- **Database setup.** Not needed yet. The cached scan is in-memory; on
-  service restart, the cache rebuilds in 1–2s. When you add historical
-  tracking (snapshot pools every 15 min), you'll add a database — that's
-  a separate doc.
+- **Database setup (Postgres bridge).** See the Postgres bridge section
+  below — needed so the worker (Mac) and the web (Render) share live
+  whales/tokens/pools data. Free on Neon.
 - **CDN for static assets.** The page is small; Cloudflare's free CDN
   handles it. Optimize later if you start serving images/charts.
 - **Multi-region deployment.** Render Starter is single-region. Fine for
@@ -205,4 +204,79 @@ you can rollback in **one click** from the Render dashboard. No data loss.
 
 Scales as you grow. Render Standard ($25/mo) when you outgrow Starter.
 Plausible Plus ($19/mo) when you exceed 100k pageviews/month.
+
+---
+
+## Postgres bridge — making whales/tokens move in prod
+
+The XRPL workers (`xrpl_stream.py`, `amm_scan_pools.py`) only run on
+your Mac. The Flask web on Render can't see your local SQLite files,
+so without this bridge the prod `/whales` and `/tokens` panels show
+frozen data captured at the last snapshot commit. With it, the workers
+dual-write to a shared Postgres and the web reads from it live.
+
+The code is already wired (`db.py` + read-path wrappers in `app.py`,
+write-path mirrors in `xrpl_stream.py`). All gated on `DATABASE_URL`
+— if it's unset, behavior is identical to before. If it's set, both
+sides flip on. There's no migration step for existing data: prod will
+backfill organically as the worker ticks.
+
+**1) Create a Neon Postgres (free, ~5 min).**
+
+- Sign up at <https://neon.tech> (Google/GitHub login).
+- Create project: name it `xrpldashboard`, region us-east-2 (closest to
+  Render Oregon is "us-west-2" actually — pick whichever is closest to
+  your Render region in the Render dashboard).
+- Copy the connection string from the dashboard. It looks like:
+  `postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require`
+
+**2) Create the schema (one-shot).**
+
+```bash
+cd ~/xrpl_test
+DATABASE_URL='paste-the-neon-string-here' \
+  ./venv/bin/python -c 'from db import init_schema; init_schema()'
+```
+
+You should see no output and no error. (Re-running is safe — DDL is
+idempotent.)
+
+**3) Wire your local worker to dual-write.**
+
+Edit your launchd plist for `xrpl_stream.py` to add the env var. Or for
+a quick test, run the worker manually with the env set:
+
+```bash
+cd ~/xrpl_test
+DATABASE_URL='paste-the-neon-string-here' \
+  ./venv/bin/python xrpl_stream.py
+```
+
+Within a minute you should see rows appearing — verify with:
+
+```bash
+DATABASE_URL='...' ./venv/bin/python -c \
+  'import db; print(db.read_max_event_ts())'
+```
+
+Should print a recent unix timestamp.
+
+**4) Wire Render web.**
+
+In the Render dashboard → your web service → Environment → add:
+- Key: `DATABASE_URL`
+- Value: same Neon connection string
+
+Save. Render redeploys automatically. Hit `/whales` and `/tokens` —
+the freshness badge should now show seconds/minutes ago instead of
+hours.
+
+**Failure mode.** If Neon goes down or returns an error, the read paths
+silently fall back to whatever the local SQLite snapshot says (still
+the committed prod data). Workers keep writing to local SQLite first,
+then mirror to Postgres — a Neon outage never blocks the writer.
+
+**Cost.** Neon free tier covers our volume comfortably (whales: ~hundreds
+of rows/day; token_volume: hundreds of rows/day; amm_pool_events: capped
+at AMM_POOL_CAP_ROWS). When/if we outgrow free, ~$19/mo for Pro.
 Both are nice problems to have.

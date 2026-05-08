@@ -64,9 +64,12 @@ class TestSchemaDdl:
 
     def test_ddl_creates_events_table(self):
         # Light structural check — the migration story still owns this,
-        # but the DDL must at least name the tables we promise.
+        # but the DDL must at least name the tables we promise. Table
+        # names match the SQLite originals (singular `token_volume`,
+        # `amm_pool_events`) so the dual-write code is symmetrical.
         assert "CREATE TABLE IF NOT EXISTS events" in db.SCHEMA_DDL
-        assert "CREATE TABLE IF NOT EXISTS token_volumes" in db.SCHEMA_DDL
+        assert "CREATE TABLE IF NOT EXISTS token_volume" in db.SCHEMA_DDL
+        assert "CREATE TABLE IF NOT EXISTS amm_pool_events" in db.SCHEMA_DDL
 
 
 class TestDualReadFallback:
