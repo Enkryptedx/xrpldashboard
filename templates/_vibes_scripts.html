@@ -1,0 +1,93 @@
+{# Futuristic-tech vibes — body scripts. Include just before </body>.
+   All effects are feature-detected — pages without .stat-pill, [data-countup],
+   or .mosaic simply skip the relevant block, no errors. #}
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"
+        integrity="sha384-B2WBjDzEjJpYvhmi2UyEn7rektqkf5suS6sNoyyrf0EBAwBHdkiXxIlU0V5Ru2ed"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
+        integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"
+        integrity="sha384-Z3REaz79l2IaAZqJsSABtTbhjgOUYyV3p90XNnAPCSHg3EMTz1fouunq9WZRtj3d"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"
+        integrity="sha384-DsT1q/+aTIkNUICSMoPHLh8RDdgN2BaPm3ThHPGAuETCIdf1vPGwFsoMy/SrKZ7W"
+        crossorigin="anonymous"></script>
+<script>
+  (function () {
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Lenis smooth scroll (also drives ScrollTrigger if present)
+    if (window.Lenis && !reduced) {
+      var lenis = new Lenis({ duration: 1.05, smoothWheel: true });
+      function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+      requestAnimationFrame(raf);
+      if (window.ScrollTrigger && window.gsap) {
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+        gsap.ticker.lagSmoothing(0);
+      }
+    }
+
+    // Money formatter for CountUp
+    function fmtMoney(n) {
+      n = Number(n) || 0;
+      if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+      return '$' + n.toFixed(0);
+    }
+
+    // CountUp on viewport entry
+    var nodes = document.querySelectorAll('[data-countup]');
+    if (nodes.length && window.countUp) {
+      var CountUp = window.countUp.CountUp;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          io.unobserve(el);
+          var end = parseFloat(el.dataset.countup);
+          if (!isFinite(end)) return;
+          var decimals = parseInt(el.dataset.countupDecimals || '0', 10);
+          var prefix = el.dataset.countupPrefix || '';
+          var suffix = el.dataset.countupSuffix || '';
+          var formatMoney = el.dataset.countupFormatMoney === '1';
+          if (reduced) {
+            if (formatMoney) el.textContent = fmtMoney(end);
+            else el.textContent = prefix + end.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+            return;
+          }
+          var c = new CountUp(el, end, formatMoney
+            ? { duration: 1.6, useEasing: true, separator: ',', formattingFn: fmtMoney }
+            : { duration: 1.6, useEasing: true, separator: ',', decimalPlaces: decimals, prefix: prefix, suffix: suffix });
+          if (!c.error) c.start();
+        });
+      }, { threshold: 0.3 });
+      nodes.forEach(function (n) { io.observe(n); });
+    }
+
+    // Cursor-tracking spotlight on .stat-pill and .vibes-spot
+    if (!reduced) {
+      document.querySelectorAll('.stat-pill, .vibes-spot').forEach(function (card) {
+        card.addEventListener('mousemove', function (e) {
+          var r = card.getBoundingClientRect();
+          card.style.setProperty('--vx', (e.clientX - r.left) + 'px');
+          card.style.setProperty('--vy', (e.clientY - r.top) + 'px');
+        });
+      });
+    }
+
+    // GSAP ScrollTrigger reveals on common section-level selectors
+    if (window.gsap && window.ScrollTrigger && !reduced) {
+      gsap.registerPlugin(ScrollTrigger);
+      var revealSel = '.section-head, .mosaic > *, .row-stats > *, .stats > *';
+      gsap.utils.toArray(revealSel).forEach(function (el) {
+        gsap.from(el, {
+          y: 18, opacity: 0, duration: 0.7, ease: 'power2.out',
+          scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' }
+        });
+      });
+    }
+  })();
+</script>

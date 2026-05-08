@@ -75,16 +75,7 @@
 <body>
 <div class="wrap">
 
-  <div class="top">
-    <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
-    <div class="nav">
-      <a href="/">dashboard</a>
-      <a href="/pools">pools</a>
-      <a href="/whales">whales</a>
-      <a href="/tokens">tokens</a>
-      <a href="/health">health</a>
-    </div>
-  </div>
+  {% include "_nav.html" %}
 
   <h1>About xrpldashboard</h1>
   <p class="lede">
@@ -159,6 +150,17 @@
     weakens it.
   </p>
 
+  <h3>Methodology notes</h3>
+  <ul>
+    <li><strong>Whale movement</strong> — any single XRP transaction of
+      <strong>50,000 XRP or more</strong>. Smaller transfers don&rsquo;t
+      appear on <a href="/whales">/whales</a>.</li>
+    <li><strong>Token labels</strong> — only displayed when we can cite
+      a first-party source for the issuer (exchange page, project
+      <code>.toml</code>, etc.). Unverified issuers render unlabeled
+      rather than guessed.</li>
+  </ul>
+
   <div class="callout">
     <p>
       If we ever start depending on a third-party live-data source,
@@ -168,20 +170,15 @@
 
   <h2>How it&rsquo;s funded</h2>
   <p>
-    Hosting and infrastructure costs (currently single-digit dollars
-    per month) are covered out of pocket. As the project grows:
+    Hosting and infrastructure currently run a few dollars a month,
+    covered out of pocket. As the project grows we&rsquo;ll be applying
+    for XRPL ecosystem grants, and donations are welcome
+    (<a href="mailto:contact@xrpldashboard.com?subject=Donation">see contact email</a>).
+    Eventually a
+    paid <a href="/institutional"><strong>institutional tier</strong></a>
+    (API access, alerts, custom dashboards) will help fund the public
+    retail dashboard, which stays free forever.
   </p>
-  <ol>
-    <li>Apply for an <strong>XRPL Grant</strong> once the project
-      demonstrates real usage. Grant funding goes toward more robust
-      infrastructure: running our own rippled, improving uptime, adding
-      redundancy.</li>
-    <li>Eventually offer an opt-in
-      <a href="/institutional"><strong>institutional tier</strong></a>
-      (API access, alerts, custom dashboards) that funds the
-      public-good retail dashboard. The retail product remains free,
-      forever.</li>
-  </ol>
 
   <h2>Who&rsquo;s behind it</h2>
   <p>

@@ -1,0 +1,68 @@
+{# Futuristic-tech vibes — head bits.
+   Include in <head>, AFTER the page's own <style> block so the font
+   token override wins via cascade. Drop on a page by deleting the
+   include — every effect here is opt-in via include order. #}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css"
+      integrity="sha384-UoVLAkO5axeZ40F8A8xhhriZNUtKgmSG4Ue6MEi7Xv2KbKdwmOTcfhkeZuf09Rwh"
+      crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.min.css"
+      integrity="sha384-HYhuLi8gbUIFB7qI7h6aaSkOCl4lKe5iE8iCH1sil2VkcHpWxdcf8d8FO2v+x4ZX"
+      crossorigin="anonymous">
+<style>
+  /* Geist swap — overrides whatever the page declared earlier. */
+  :root {
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sys:  "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  html, body {
+    font-family: var(--sys);
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  /* Ambient drifting grid behind everything. Masked to fade at edges
+     so it never competes with content. */
+  body { position: relative; isolation: isolate; }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 100%);
+    animation: vibes-grid-drift 24s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes vibes-grid-drift {
+    from { background-position: 0 0, 0 0; }
+    to   { background-position: 48px 48px, 48px 48px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
+  }
+
+  /* Cursor-tracking spotlight on any element with .vibes-spot.
+     The :hover overlay also auto-applies to .stat-pill, .stat, .pill,
+     .row-link, .event, .stat-pill, etc. Pages opt in by adding the
+     class or relying on the auto-targets below. JS sets --vx/--vy. */
+  .vibes-spot,
+  .stat-pill {
+    position: relative; overflow: hidden;
+  }
+  .vibes-spot::before,
+  .stat-pill::before {
+    content: "";
+    position: absolute; inset: -1px;
+    border-radius: inherit;
+    background: radial-gradient(
+      320px circle at var(--vx, 50%) var(--vy, 50%),
+      rgba(34,211,238,0.13), transparent 55%);
+    opacity: 0; transition: opacity 0.25s;
+    pointer-events: none;
+  }
+  .vibes-spot:hover::before,
+  .stat-pill:hover::before { opacity: 1; }
+</style>

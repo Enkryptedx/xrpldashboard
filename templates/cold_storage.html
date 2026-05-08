@@ -157,6 +157,7 @@
       .hero-name h1 { font-size: var(--fs-xl); }
     }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
@@ -245,7 +246,7 @@
           </div>
         {% endif %}
         <div class="esc-link">
-          <a href="https://xrpscan.com/account/{{ r.address }}" target="_blank" rel="noopener">XRPSCAN ↗</a>
+          <a href="https://xrpscan.com/account/{{ r.address }}" target="_blank" rel="noopener noreferrer">XRPSCAN ↗</a>
         </div>
       </div>
     {% endfor %}
@@ -274,5 +275,6 @@
   </footer>
 
 </div>
+{% include "_vibes_scripts.html" %}
 </body>
 </html>

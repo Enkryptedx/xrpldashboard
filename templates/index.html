@@ -15,6 +15,8 @@
   #}
 
   <style>
+    {% from "_explainer.html" import explainer_css %}
+    {{ explainer_css() }}
     /* ---------- Design tokens ---------- */
     :root {
       --bg: #0a0e27;
@@ -182,10 +184,14 @@
       display: flex; align-items: center; justify-content: space-between; gap: 0.8em;
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 8px; padding: 0.7em 1em;
-      transition: border-color 0.18s, background 0.18s;
+      transition: border-color 0.18s, background 0.18s, transform 0.18s;
     }
     a.stat-pill { color: inherit; text-decoration: none; }
-    a.stat-pill:hover { border-color: var(--border-strong); background: var(--bg-card-2); }
+    a.stat-pill:hover {
+      border-color: rgba(34,211,238,0.35);
+      background: var(--bg-card-2);
+      transform: translateY(-1px);
+    }
     .stat-pill .stat-l {
       font-size: var(--fs-2xs); color: var(--text-2);
       text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
@@ -341,6 +347,8 @@
     .wallet-form-hint { color: var(--text-3); font-size: var(--fs-xs);
                         margin-top: 0.6em; }
     .wallet-form-hint .err { color: var(--warning); }
+    .wallet-form-safety { color: var(--text-3); font-size: var(--fs-xs);
+                          margin-top: 0.4em; opacity: 0.85; }
 
     .card-desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.55;
                  margin: 0; }
@@ -369,9 +377,17 @@
       .hero-globe { width: 200px; height: 200px; }
     }
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
   {% include "_alive.html" %}
+  <style>
+    .nav-strip a.active {
+      color: var(--cyan);
+      text-shadow: 0 0 10px rgba(34,211,238,0.35);
+    }
+  </style>
+  {% set _p = request.path %}
   <div class="wrap">
 
     <header>
@@ -379,14 +395,16 @@
         <a href="/" class="brand-link"><h1>xrpl<span class="accent">dashboard</span></h1></a>
       </div>
       <nav class="nav-strip">
-        <a href="/pools">pools</a>
-        <a href="/whales">whales</a>
-        <a href="/tokens">tokens</a>
-        <a href="/health">health</a>
-        <a href="/about">about</a>
+        <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>pools</a>
+        <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>whales</a>
+        <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>tokens</a>
+        <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>health</a>
+        <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>about</a>
         {% include "_liveness_chip.html" %}
       </nav>
     </header>
+
+    {% from "_explainer.html" import explainer %}
 
     {# ========== HERO ========== #}
     <section class="hero">
@@ -401,7 +419,14 @@
           <span class="live"><span class="dot"></span> Live</span>
           {% if pulse and not pulse.error and pulse.ledger_index %}
           <span class="ticker">
-            <span class="lbl">Ledger</span>
+            <span class="lbl">Ledger{{ explainer(
+              "ledger",
+              "What's a ledger sequence",
+              "The XRP network closes a new 'page' of transactions
+               every 3-4 seconds, and each page gets a number. This is
+               the latest page number we've seen. If the number stops
+               climbing, something is wrong with the network.",
+            ) }}</span>
             <span class="num" id="ledger-num"
                   data-seed="{{ pulse.ledger_index }}"
                   data-rate="{{ '%.2f'|format(pulse.avg_close_seconds or 3.5) }}">{{ "{:,}".format(pulse.ledger_index) }}</span>
@@ -424,7 +449,7 @@
 
       <a href="/health" class="card-block">
         {% if pulse and not pulse.error %}
-        <div class="card card-status">
+        <div class="card card-status vibes-spot">
           <div class="card-label">Network status</div>
           <div class="status-pip status-{{ pulse.status }}">
             <span class="dot"></span>
@@ -444,7 +469,7 @@
           </div>
         </div>
         {% else %}
-        <div class="card card-status">
+        <div class="card card-status vibes-spot">
           <div class="card-label">Network status</div>
           <div class="status-pip status-unknown"><span class="dot"></span> Unavailable</div>
           <div class="status-line">{{ pulse.error if pulse else "Pulse data not loaded." }}</div>
@@ -452,7 +477,7 @@
         {% endif %}
       </a>
 
-      <div class="card card-inspector">
+      <div class="card card-inspector vibes-spot">
         <div class="card-label">Look up an address</div>
         <div class="inspector-title">Wallet inspector</div>
         <p class="inspector-desc">
@@ -468,6 +493,9 @@
         <div class="wallet-form-hint" id="wallet-form-hint">
           XRPL addresses start with <code>r</code> and are 25-35 characters.
         </div>
+        <div class="wallet-form-safety">
+          We never ask for keys, seeds, or signatures — public address only.
+        </div>
       </div>
 
     </section>
@@ -480,7 +508,11 @@
           <div class="stat-l">Cold storage</div>
           <div class="stat-sub">{{ cold_storage.tracked_count }} Ripple escrows · largest {{ cold_storage.largest_name }}</div>
         </div>
-        <div class="stat-v">{{ "{:,.0f}".format(cold_storage.total_xrp / 1000000) }}M XRP</div>
+        {% if cold_storage.total_xrp >= 1000000000 %}
+        <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000000 }}" data-countup-decimals="2" data-countup-suffix="B XRP">{{ "%.2f"|format(cold_storage.total_xrp / 1000000000) }}B XRP</div>
+        {% else %}
+        <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000 }}" data-countup-decimals="0" data-countup-suffix="M XRP">{{ "{:,.0f}".format(cold_storage.total_xrp / 1000000) }}M XRP</div>
+        {% endif %}
       </a>
       {% else %}
       <a href="/cold-storage" class="stat-pill">
@@ -494,21 +526,28 @@
       <a href="/pools" class="stat-pill">
         <div>
           <div class="stat-l">Locked in AMMs</div>
-          <div class="stat-sub">across {{ pools|length }} XRPL AMM pools</div>
+          <div class="stat-sub">across {{ "{:,}".format(ranked_pool_count) }} XRPL AMM pools</div>
         </div>
-        <div class="stat-v">{{ fmt_money(total_tvl_usd) }}</div>
+        <div class="stat-v" data-countup="{{ ranked_total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-decimals="0" data-countup-format-money="1">{{ fmt_money(ranked_total_tvl_usd) }}</div>
       </a>
     </section>
 
     {# ========== Live mosaic: whales + tokens ========== #}
     <section>
       <div class="section-head">
-        <h2>Across the ledger</h2>
+        <h2>Across the ledger{{ explainer(
+          "mosaic",
+          "What this section shows",
+          "A live look at the two main things happening on the XRP
+           Ledger right now: big-money transfers (left) and token
+           trading (right). Both come straight from the network — no
+           middlemen. Click either side for the full page.",
+        ) }}</h2>
       </div>
       <div class="mosaic">
 
         {# ---- Recent whales ---- #}
-        <div class="card">
+        <div class="card vibes-spot">
           <div class="card-label">Whale moves</div>
           <div class="card-title">Recent large transfers</div>
           {% if whales_snapshot_at %}
@@ -534,24 +573,24 @@
         </div>
 
         {# ---- AMM activity (top pools by TVL) ---- #}
-        <div class="card">
+        <div class="card vibes-spot">
           <div class="card-label">AMM activity</div>
           <div class="card-title">Top pools by TVL</div>
-          {% if top_pools %}
-            {% for p in top_pools[:5] %}
+          {% if ranked_top5 %}
+            {% for p in ranked_top5 %}
             <div class="mini-pool-row">
               <span class="pair">{{ p.pair }}</span>
-              <span class="tvl">{{ fmt_money(p.total_tvl_usd) }}{% if not p.usd_peg_known %}<span class="pool-est">est</span>{% endif %}</span>
+              <span class="tvl">{{ fmt_money(p.tvl_usd) }}{% if p.tvl_status != 'exact' %}<span class="pool-est">est</span>{% endif %}</span>
             </div>
             {% endfor %}
           {% else %}
             <div class="preview-empty">No AMM pools loaded yet.</div>
           {% endif %}
-          <a class="card-link" href="/pools">browse all {{ pools|length }} pools →</a>
+          <a class="card-link" href="/pools">browse all {{ "{:,}".format(ranked_pool_count) }} pools →</a>
         </div>
 
         {# ---- Top tokens ---- #}
-        <div class="card">
+        <div class="card vibes-spot">
           <div class="card-label">Token activity</div>
           <div class="card-title">Most-traded tokens</div>
           {% if top_tokens %}
@@ -576,7 +615,9 @@
     <footer>
       <div>
         xrpldashboard — public-good analytics for the XRP Ledger.
-        Free for retail users, forever. Data pulled live from a public XRPL node.
+        Free for retail users, forever. Pool TVL refreshes from a public XRPL
+        node; whale and token panels read recent on-ledger activity captured
+        by our worker — real-time streaming for those panels is coming soon.
       </div>
       <div style="margin-top: 0.6em;">
         <strong>Not financial advice.</strong> Information shown is for
@@ -631,10 +672,10 @@
       }, rateMs);
     })();
 
-    // ---------- Spinning XRPL globe (decorative) ----------
-    // Wireframe sphere with rotating surface dots. Periodically launches
-    // arcing transaction sparks between two random surface points so the
-    // globe feels "alive". Pure canvas, no deps. Pauses if reduced motion.
+    // Spinning XRPL globe (decorative). Wireframe sphere with rotating
+    // surface dots; periodically launches arcing transaction sparks
+    // between two random surface points so the globe feels "alive".
+    // Pure canvas, no deps. Pauses if reduced motion.
     (function () {
       var canvas = document.getElementById('xrpl-globe');
       if (!canvas) return;
@@ -650,16 +691,13 @@
       resize();
       window.addEventListener('resize', resize);
 
-      // Surface points — random lat/lng spread, pseudo-clustered to look continent-y.
       var POINTS = [];
       for (var i = 0; i < 220; i++) {
-        // Bias slightly toward equatorial band so it doesn't look like uniform noise.
         var lat = (Math.random() - 0.5) * Math.PI * 0.95;
         var lng = Math.random() * Math.PI * 2;
         POINTS.push({ lat: lat, lng: lng, w: 0.6 + Math.random() * 0.6 });
       }
 
-      // Arcs — transaction sparks between two random surface points.
       var ARCS = [];
       function spawnArc() {
         var a = POINTS[Math.floor(Math.random() * POINTS.length)];
@@ -673,18 +711,17 @@
         });
       }
 
-      var rotation = 0;        // radians around Y axis
-      var speed = 0.0006;      // rad per ms
+      var rotation = 0;
+      var speed = 0.0006;
       var lastT = performance.now();
       var lastSpark = lastT;
-      var sparkEvery = 380;    // ms between sparks
+      var sparkEvery = 380;
 
       var prefersReduced = window.matchMedia &&
                            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (prefersReduced) speed = 0;
 
       function project(lat, lng) {
-        // Rotate around Y axis (lng += rotation), then orthographic-project.
         var rl = lng + rotation;
         var x = Math.cos(lat) * Math.sin(rl);
         var y = Math.sin(lat);
@@ -692,12 +729,24 @@
         return { x: x, y: y, z: z };
       }
 
+      function bezierPoint(a, b, t) {
+        var lx = a.x + (b.x - a.x) * t;
+        var ly = a.y + (b.y - a.y) * t;
+        var lz = a.z + (b.z - a.z) * t;
+        var lift = Math.sin(t * Math.PI) * 0.45;
+        var len = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
+        return {
+          x: lx + (lx / len) * lift,
+          y: ly + (ly / len) * lift,
+          z: lz + (lz / len) * lift
+        };
+      }
+
       function frame(now) {
         var dt = now - lastT;
         lastT = now;
         rotation += speed * dt;
 
-        // Auto-spawn sparks.
         if (now - lastSpark > sparkEvery) {
           lastSpark = now;
           if (!prefersReduced) spawnArc();
@@ -710,7 +759,6 @@
 
         ctx.clearRect(0, 0, w, h);
 
-        // Soft outer glow.
         var glow = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R * 1.18);
         glow.addColorStop(0, 'rgba(34,211,238,0.10)');
         glow.addColorStop(1, 'rgba(34,211,238,0)');
@@ -719,7 +767,6 @@
         ctx.arc(cx, cy, R * 1.18, 0, Math.PI * 2);
         ctx.fill();
 
-        // Sphere fill (dark navy).
         var sphereGrad = ctx.createRadialGradient(
           cx - R * 0.35, cy - R * 0.35, R * 0.1,
           cx, cy, R
@@ -731,7 +778,6 @@
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
         ctx.fill();
 
-        // Latitude rings (every 30°).
         ctx.strokeStyle = 'rgba(120, 150, 200, 0.10)';
         ctx.lineWidth = 1;
         for (var lat = -60; lat <= 60; lat += 30) {
@@ -743,7 +789,6 @@
           ctx.stroke();
         }
 
-        // Longitude meridians — rotate with the globe so motion is visible.
         ctx.strokeStyle = 'rgba(120, 150, 200, 0.08)';
         for (var k = 0; k < 8; k++) {
           var meridian = (k / 8) * Math.PI * 2 + rotation;
@@ -763,11 +808,10 @@
           ctx.stroke();
         }
 
-        // Surface points.
         for (var i = 0; i < POINTS.length; i++) {
           var pt = POINTS[i];
           var p = project(pt.lat, pt.lng);
-          if (p.z < 0) continue;  // hidden side
+          if (p.z < 0) continue;
           var px = cx + p.x * R;
           var py = cy + p.y * R;
           var alpha = 0.25 + p.z * 0.55;
@@ -778,7 +822,6 @@
           ctx.fill();
         }
 
-        // Arcs (transaction sparks). Project Bezier through 3D mid lifted by R*0.45.
         for (var j = ARCS.length - 1; j >= 0; j--) {
           var arc = ARCS[j];
           arc.t += dt / 1000 / arc.life;
@@ -786,10 +829,8 @@
 
           var pa = project(arc.a.lat, arc.a.lng);
           var pb = project(arc.b.lat, arc.b.lng);
-          // Skip arcs entirely behind the globe.
           if (pa.z < -0.4 && pb.z < -0.4) continue;
 
-          // Trail: sample 14 points along the arc, head at t.
           ctx.lineCap = 'round';
           for (var s = 0; s < 14; s++) {
             var u1 = Math.max(0, arc.t - s * 0.04);
@@ -811,7 +852,6 @@
             ctx.stroke();
           }
 
-          // Head dot at current t.
           var head = bezierPoint(pa, pb, arc.t);
           var hx = cx + head.x * R;
           var hy = cy + head.y * R;
@@ -825,24 +865,11 @@
         requestAnimationFrame(frame);
       }
 
-      // Quadratic-ish path: lift midpoint outward from globe surface.
-      function bezierPoint(a, b, t) {
-        // Linear interpolate then lift toward the camera (outward in 3D).
-        var lx = a.x + (b.x - a.x) * t;
-        var ly = a.y + (b.y - a.y) * t;
-        var lz = a.z + (b.z - a.z) * t;
-        var lift = Math.sin(t * Math.PI) * 0.45;  // arc height
-        var len = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
-        return {
-          x: lx + (lx / len) * lift,
-          y: ly + (ly / len) * lift,
-          z: lz + (lz / len) * lift
-        };
-      }
-
       requestAnimationFrame(frame);
     })();
 
+  </script>
+  <script>
     // Wallet lookup — basic XRPL address validation, redirect to /wallet/<addr>.
     (function () {
       var form = document.getElementById('wallet-form');
@@ -863,5 +890,9 @@
       });
     })();
   </script>
+
+  {% include "_vibes_scripts.html" %}
+  {% from "_explainer.html" import explainer_js %}
+  {{ explainer_js() }}
 </body>
 </html>
