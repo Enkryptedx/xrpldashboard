@@ -232,6 +232,10 @@
     .cp-label { font-family: var(--sys); font-size: 9px; font-weight: 700;
                 fill: var(--text); letter-spacing: 0.04em;
                 text-transform: uppercase; pointer-events: none; }
+    /* XRPL addresses are case-sensitive — preserve case for peer labels
+       (rXxxx…YyY). Entity names like "BITSTAMP" still uppercase normally. */
+    .cp-label.is-peer { text-transform: none; font-family: var(--mono);
+                        letter-spacing: 0; }
     .cp-pct   { font-family: var(--mono); font-size: 9px; font-weight: 600;
                 fill: var(--text-2); pointer-events: none; }
     .cp-you   { font-family: var(--mono); font-size: 9px; font-weight: 700;
@@ -1707,7 +1711,8 @@
         var labelText = (node.type !== 'peer')
           ? node.name
           : (node.detail && node.detail.address) || node.name;
-        var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: 'cp-label' }, labelsG);
+        var labelClass = 'cp-label' + (node.type === 'peer' ? ' is-peer' : '');
+        var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: labelClass }, labelsG);
         nameLabel.textContent = labelText;
         var pctLabel = el('text', { x: lx, y: ly + 11, 'text-anchor': node.anchor || 'middle', class: 'cp-pct' }, labelsG);
         pctLabel.textContent = node.pct + '%';
