@@ -97,7 +97,7 @@
 
     /* ---------- KPI strip ---------- */
     .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr);
-                 gap: 0.7em; margin-bottom: 0.8em; }
+                 gap: 0.45em; margin-bottom: 0.5em; }
     .kpi { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
     .kpi-text { min-width: 0; }
     .kpi-text .card-label { display: block; margin-bottom: 0.2em; }
@@ -111,7 +111,8 @@
 
     /* ---------- Row 2: identity + reserve gauge + activity ---------- */
     .row-2 { display: grid; grid-template-columns: 1.5fr 1fr 1fr;
-             gap: 0.7em; margin-bottom: 0.8em; align-items: start; }
+             gap: 0.45em; row-gap: 0.45em; margin-bottom: 0.5em;
+             align-items: start; }
 
     /* identity card */
     .identity-card { position: relative; overflow: hidden;
@@ -169,8 +170,8 @@
 
     /* ---------- Wallet QR (scannable identity) ---------- */
     .qr-host { display: inline-flex; vertical-align: middle;
-               width: 96px; height: 96px;
-               padding: 6px; border-radius: 12px;
+               width: 64px; height: 64px;
+               padding: 4px; border-radius: 9px;
                background: rgba(255,255,255,0.04);
                border: 1px solid var(--border-strong);
                box-shadow: 0 4px 18px rgba(34,211,238,0.08);
