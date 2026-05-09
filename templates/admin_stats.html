@@ -86,6 +86,13 @@
             text-transform: uppercase; }
     .pill.ok { background: rgba(34,197,94,0.14); color: var(--green); }
     .pill.warn { background: rgba(245,158,11,0.14); color: var(--amber); }
+
+    .legend { background: var(--card); border: 1px solid var(--border);
+              border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
+              color: var(--muted); font-size: 0.78rem; line-height: 1.55; }
+    .legend strong { color: var(--text); font-weight: 600; }
+    .stat .v .unit { font-family: var(--sys); font-size: 0.62em;
+                     color: var(--muted); margin-left: 6px; font-weight: 400; }
   </style>
 </head>
 <body>
@@ -98,31 +105,37 @@
       <span class="auto">auto-refreshes every 15s</span>
     </div>
 
+    <div class="legend">
+      Big number = <strong>different people</strong>.
+      Small number = total <strong>page loads</strong>
+      (one person clicking around 5 pages = 5 loads, but still just 1 person).
+    </div>
+
     <div class="grid">
       <div class="stat">
         <div class="lbl">right now</div>
-        <div class="v now">{{ "{:,}".format(rollups.now.uniques) }}</div>
-        <div class="sub2">{{ "{:,}".format(rollups.now.views) }} views · 5min</div>
+        <div class="v now">{{ "{:,}".format(rollups.now.uniques) }} <span class="unit">people</span></div>
+        <div class="sub2">{{ "{:,}".format(rollups.now.views) }} page loads · last 5 min</div>
       </div>
       <div class="stat">
         <div class="lbl">last hour</div>
-        <div class="v">{{ "{:,}".format(rollups.hour.uniques) }}</div>
-        <div class="sub2">{{ "{:,}".format(rollups.hour.views) }} views</div>
+        <div class="v">{{ "{:,}".format(rollups.hour.uniques) }} <span class="unit">people</span></div>
+        <div class="sub2">{{ "{:,}".format(rollups.hour.views) }} page loads</div>
       </div>
       <div class="stat">
-        <div class="lbl">last 24h</div>
-        <div class="v">{{ "{:,}".format(rollups.today.uniques) }}</div>
-        <div class="sub2">{{ "{:,}".format(rollups.today.views) }} views</div>
+        <div class="lbl">last 24 hours</div>
+        <div class="v">{{ "{:,}".format(rollups.today.uniques) }} <span class="unit">people</span></div>
+        <div class="sub2">{{ "{:,}".format(rollups.today.views) }} page loads</div>
       </div>
       <div class="stat">
         <div class="lbl">last 7 days</div>
-        <div class="v">{{ "{:,}".format(rollups.week.uniques) }}</div>
-        <div class="sub2">{{ "{:,}".format(rollups.week.views) }} views</div>
+        <div class="v">{{ "{:,}".format(rollups.week.uniques) }} <span class="unit">people</span></div>
+        <div class="sub2">{{ "{:,}".format(rollups.week.views) }} page loads</div>
       </div>
       <div class="stat">
         <div class="lbl">all time</div>
-        <div class="v">{{ "{:,}".format(rollups.all_time.uniques) }}</div>
-        <div class="sub2">{{ "{:,}".format(rollups.all_time.views) }} views</div>
+        <div class="v">{{ "{:,}".format(rollups.all_time.uniques) }} <span class="unit">people</span></div>
+        <div class="sub2">{{ "{:,}".format(rollups.all_time.views) }} page loads</div>
       </div>
     </div>
 
@@ -131,7 +144,7 @@
         <h2>Top pages · 24h</h2>
         {% if top_24h %}
         <table>
-          <tr><th>path</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          <tr><th>path</th><th class="num">page loads</th><th class="uniq">people</th></tr>
           {% for path, views, uniques in top_24h %}
           <tr>
             <td class="path">{{ path }}</td>
@@ -147,7 +160,7 @@
         <h2>Top pages · 7 days</h2>
         {% if top_7d %}
         <table>
-          <tr><th>path</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          <tr><th>path</th><th class="num">page loads</th><th class="uniq">people</th></tr>
           {% for path, views, uniques in top_7d %}
           <tr>
             <td class="path">{{ path }}</td>
@@ -165,7 +178,7 @@
         <h2>Countries · 24h</h2>
         {% if countries_24h %}
         <table>
-          <tr><th>country</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          <tr><th>country</th><th class="num">page loads</th><th class="uniq">people</th></tr>
           {% for ctry, views, uniques in countries_24h %}
           <tr>
             <td class="path">{{ ctry }}</td>
