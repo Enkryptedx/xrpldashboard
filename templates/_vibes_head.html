@@ -67,7 +67,9 @@
   .stat-pill:hover::before { opacity: 1; }
 
   /* When an explainer popover opens inside a spot/pill, escape the
-     overflow:hidden clip so the card is actually visible. */
+     overflow:hidden clip AND hoist the tile above later positioned
+     siblings (event rows, list items) that would otherwise paint
+     on top of the popover. */
   .vibes-spot:has(.explainer[open]),
-  .stat-pill:has(.explainer[open]) { overflow: visible; }
+  .stat-pill:has(.explainer[open]) { overflow: visible; z-index: 100; }
 </style>
