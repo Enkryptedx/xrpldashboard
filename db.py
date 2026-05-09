@@ -85,6 +85,24 @@ CREATE TABLE IF NOT EXISTS worker_heartbeat (
     last_ledger   BIGINT,
     extra         JSONB
 );
+
+CREATE TABLE IF NOT EXISTS amm_ranked_pools (
+    id          BIGSERIAL PRIMARY KEY,
+    amm_account TEXT,
+    pair        TEXT NOT NULL,
+    fee_pct     DOUBLE PRECISION,
+    fee_raw     INTEGER,
+    amount_a    DOUBLE PRECISION,
+    amount_b    DOUBLE PRECISION,
+    asset_a     JSONB,
+    asset_b     JSONB,
+    tvl_usd     DOUBLE PRECISION,
+    tvl_status  TEXT,
+    kind        TEXT,
+    snapshot_ts BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS amm_ranked_pools_tvl_idx
+    ON amm_ranked_pools (tvl_usd DESC NULLS LAST);
 """
 
 
@@ -297,6 +315,111 @@ def read_heartbeat(worker):
                     "last_ledger": row[2],
                     "extra": row[3],
                 }
+    except Exception:
+        return None
+
+
+def replace_amm_ranked_pools(rows):
+    """Atomically swap the entire amm_ranked_pools table for `rows`.
+
+    Mirrors the file-level snapshot semantics of amm_ranked.json: rank_amms.py
+    rewrites the whole file at each SAVE_EVERY checkpoint, so we do the same
+    here. Wrapped in a transaction so /pools readers never observe an empty
+    table mid-swap (Postgres READ COMMITTED keeps them on the prior snapshot
+    until COMMIT). Silent no-op when PG isn't configured.
+
+    `rows` is the in-memory ranked list (list of dicts in the same shape as
+    amm_ranked.json entries). Empty input is treated as "skip" rather than
+    "wipe" — it's almost always a bug to push 0 pools to prod.
+    """
+    if not rows:
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    snapshot_ts = int(time.time())
+    payload = [
+        (
+            r.get("amm_account"),
+            r.get("pair") or "?",
+            r.get("fee_pct"),
+            r.get("fee_raw"),
+            r.get("amount_a"),
+            r.get("amount_b"),
+            json.dumps(r.get("asset_a"), default=str) if r.get("asset_a") is not None else None,
+            json.dumps(r.get("asset_b"), default=str) if r.get("asset_b") is not None else None,
+            r.get("tvl_usd"),
+            r.get("tvl_status"),
+            r.get("kind"),
+            snapshot_ts,
+        )
+        for r in rows
+    ]
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM amm_ranked_pools")
+                cur.executemany(
+                    "INSERT INTO amm_ranked_pools "
+                    "(amm_account, pair, fee_pct, fee_raw, amount_a, amount_b, "
+                    " asset_a, asset_b, tvl_usd, tvl_status, kind, snapshot_ts) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, "
+                    " %s, %s, %s, %s)",
+                    payload,
+                )
+    except Exception:
+        _drop_writer_conn()
+
+
+def read_amm_ranked_pools():
+    """Return the ranked-pools snapshot as a list of dicts in the same shape
+    as amm_ranked.json — so app.py and templates don't care whether the
+    source was the file or Postgres. Returns [] when PG is unavailable or
+    the table is empty (caller falls back to the file)."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT amm_account, pair, fee_pct, fee_raw, "
+                    "       amount_a, amount_b, asset_a, asset_b, "
+                    "       tvl_usd, tvl_status, kind, snapshot_ts "
+                    "FROM amm_ranked_pools"
+                )
+                return [
+                    {
+                        "amm_account": r[0],
+                        "pair": r[1],
+                        "fee_pct": r[2],
+                        "fee_raw": r[3],
+                        "amount_a": r[4],
+                        "amount_b": r[5],
+                        "asset_a": r[6],
+                        "asset_b": r[7],
+                        "tvl_usd": r[8],
+                        "tvl_status": r[9],
+                        "kind": r[10],
+                        "_snapshot_ts": r[11],
+                    }
+                    for r in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def read_amm_snapshot_ts():
+    """Return the snapshot_ts of the most-recent amm_ranked_pools write
+    (all rows in a snapshot share the same ts), or None when empty/unavailable.
+    Used by /pools for the freshness label in lieu of file mtime."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MAX(snapshot_ts) FROM amm_ranked_pools")
+                row = cur.fetchone()
+                return int(row[0]) if row and row[0] is not None else None
     except Exception:
         return None
 

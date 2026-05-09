@@ -34,6 +34,8 @@ import os
 import sys
 import time
 
+import db
+
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRP_USD_PRICE = 1.44   # mirrors amm_scan_pools.py — single source of truth later
 DEFAULT_RPS = 5.0      # safe under public-node throttling
@@ -273,6 +275,30 @@ def merge_incremental(index):
     return index, added
 
 
+def _mirror_to_postgres(ranked, state, indexed_count):
+    """Push the current ranked snapshot + meta to Postgres so the prod
+    Flask web (Render) sees the same data the Mac just wrote to disk.
+
+    Silent no-op when DATABASE_URL isn't set; never raises (prod outage on
+    Neon must not block local ranking from making progress)."""
+    try:
+        db.replace_amm_ranked_pools(ranked)
+        db.write_heartbeat(
+            "amm_ranker",
+            txns_seen=len(ranked),
+            extra={
+                "indexed_count": indexed_count,
+                "started_at": state.get("started_at"),
+                "finished_at": state.get("finished_at"),
+                "cursor": state.get("cursor"),
+                "errors": state.get("errors"),
+                "skipped": state.get("skipped"),
+            },
+        )
+    except Exception as e:
+        log(f"  postgres mirror failed (non-fatal): {e}")
+
+
 def parse_args():
     args = {"limit": None, "rps": DEFAULT_RPS, "reset": False}
     a = sys.argv[1:]
@@ -370,6 +396,7 @@ def main():
         if state["cursor"] % SAVE_EVERY == 0 or state["cursor"] == len(index):
             save_json(RANKED_PATH, ranked)
             save_json(STATE_PATH, state)
+            _mirror_to_postgres(ranked, state, indexed_count=len(index))
 
         slept = time.time() - t0
         if slept < delay:
@@ -386,6 +413,7 @@ def main():
     state["finished_at"] = datetime.now(timezone.utc).isoformat()
     save_json(RANKED_PATH, ranked)
     save_json(STATE_PATH, state)
+    _mirror_to_postgres(ranked, state, indexed_count=len(index))
     log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']}")
     return 0
 

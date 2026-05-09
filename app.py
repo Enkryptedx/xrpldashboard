@@ -327,6 +327,56 @@ def _volumes_db_age_seconds():
         return None
 
 
+def _ranked_amm_snapshot():
+    """Single source of truth for AMM ranking data on /pools and the
+    homepage AMM card. Prefers Postgres (the Mac-hosted ranker dual-writes
+    its snapshot there so prod sees the same data the file does), falls
+    back to the local JSON files.
+
+    Returns (rows, meta) where rows is a list of dicts in the shape of
+    amm_ranked.json entries, and meta has keys: indexed_count,
+    started_at, finished_at, snapshot_ts, source ('postgres'|'file')."""
+    if db.pg_available():
+        try:
+            rows = db.read_amm_ranked_pools()
+        except Exception:
+            rows = []
+        if rows:
+            try:
+                hb = db.read_heartbeat("amm_ranker") or {}
+            except Exception:
+                hb = {}
+            extra = hb.get("extra") if isinstance(hb, dict) else None
+            extra = extra if isinstance(extra, dict) else {}
+            try:
+                snap_ts = db.read_amm_snapshot_ts()
+            except Exception:
+                snap_ts = None
+            return rows, {
+                "indexed_count": extra.get("indexed_count") or len(rows),
+                "started_at": extra.get("started_at"),
+                "finished_at": extra.get("finished_at"),
+                "snapshot_ts": snap_ts,
+                "source": "postgres",
+            }
+    rows = _safe_load_json(AMM_RANKED_PATH) or []
+    index = _safe_load_json(AMM_INDEX_PATH) or []
+    state = _safe_load_json(AMM_RANK_STATE_PATH) or {}
+    snap_ts = None
+    try:
+        if os.path.exists(AMM_RANKED_PATH):
+            snap_ts = int(os.path.getmtime(AMM_RANKED_PATH))
+    except Exception:
+        snap_ts = None
+    return rows, {
+        "indexed_count": len(index) if isinstance(index, list) else 0,
+        "started_at": state.get("started_at"),
+        "finished_at": state.get("finished_at"),
+        "snapshot_ts": snap_ts,
+        "source": "file",
+    }
+
+
 def _pools_snapshot_label():
     """Friendly date the AMM ranking last completed (from amm_rank_state.json).
     Used to label the pool tracker honestly when workers aren't live in prod.
@@ -399,7 +449,7 @@ def index():
     # Pull from the full ranked index so the homepage's headline AMM stat
     # and Top-pools card match what /pools shows. Without this the homepage
     # used the curated ~19-pool snapshot and visibly disagreed with /pools.
-    ranked_full = _safe_load_json(AMM_RANKED_PATH) or []
+    ranked_full, _ranked_meta = _ranked_amm_snapshot()
     ranked_full = sorted(
         ranked_full,
         key=lambda r: (
@@ -1170,9 +1220,7 @@ def pools():
         tier = "100"
     limit = valid_tiers[tier]
 
-    ranked = _safe_load_json(AMM_RANKED_PATH) or []
-    index = _safe_load_json(AMM_INDEX_PATH) or []
-    state = _safe_load_json(AMM_RANK_STATE_PATH) or {}
+    ranked, meta = _ranked_amm_snapshot()
 
     # Strict TVL desc — header says "by TVL", so sort by TVL. Pools with no
     # USD value (non_xrp_pair, error) sink to the bottom. Status pill on
@@ -1188,12 +1236,12 @@ def pools():
     top10 = [r for r in ranked if (r.get("tvl_usd") or 0) > 0][:10]
     rows = ranked if limit is None else ranked[:limit]
 
-    indexed_count = len(index) if isinstance(index, list) else 0
+    indexed_count = meta.get("indexed_count") or 0
     ranked_count = len(ranked)
     exact_count_all = sum(1 for r in ranked if r.get("tvl_status") == "exact")
     estimated_count_all = sum(1 for r in ranked if r.get("tvl_status") == "estimated")
-    rank_finished = state.get("finished_at") is not None
-    rank_started = state.get("started_at") is not None
+    rank_finished = meta.get("finished_at") is not None
+    rank_started = meta.get("started_at") is not None
     rank_in_progress = rank_started and not rank_finished
 
     # Aggregate: total TVL across exact + estimated only (non_xrp_pair has
@@ -1217,8 +1265,9 @@ def pools():
 
     snapshot_age_label = None
     try:
-        if os.path.exists(AMM_RANKED_PATH):
-            age = int(time.time() - os.path.getmtime(AMM_RANKED_PATH))
+        snap_ts = meta.get("snapshot_ts")
+        if snap_ts:
+            age = max(0, int(time.time()) - int(snap_ts))
             if age < 60:
                 snapshot_age_label = f"{age}s ago"
             elif age < 3600:
