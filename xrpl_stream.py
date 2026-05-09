@@ -565,7 +565,14 @@ def run_session(state):
             "xrpl_stream",
             txns_seen=state.get("txns_seen"),
             last_ledger=state.get("last_ledger_index"),
-            extra={"event": "session_start"},
+            extra={
+                "event": "session_start",
+                "started_at": state.get("started_at"),
+                "amm_creates_seen": state.get("amm_creates_seen", 0),
+                "whale_events_seen": state.get("whale_events_seen", 0),
+                "token_events_seen": state.get("token_events_seen", 0),
+                "new_tokens_seen": state.get("new_tokens_seen", 0),
+            },
         )
 
         last_msg_at = [time.time()]
@@ -630,7 +637,14 @@ def run_session(state):
                         "xrpl_stream",
                         txns_seen=state.get("txns_seen"),
                         last_ledger=state.get("last_ledger_index"),
-                        extra={"rate_tx_s": round(rate, 2)},
+                        extra={
+                            "rate_tx_s": round(rate, 2),
+                            "started_at": state.get("started_at"),
+                            "amm_creates_seen": state.get("amm_creates_seen", 0),
+                            "whale_events_seen": state.get("whale_events_seen", 0),
+                            "token_events_seen": state.get("token_events_seen", 0),
+                            "new_tokens_seen": state.get("new_tokens_seen", 0),
+                        },
                     )
                     last_heartbeat = now
                     txns_at_last_heartbeat = state["txns_seen"]

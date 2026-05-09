@@ -378,9 +378,10 @@ def _ranked_amm_snapshot():
 
 
 def _pools_snapshot_label():
-    """Friendly date the AMM ranking last completed (from amm_rank_state.json).
-    Used to label the pool tracker honestly when workers aren't live in prod.
-    Falls back to amm_scan_state started_at, then None."""
+    """Friendly date the AMM ranking last completed. Tries local rank/scan
+    state first (Mac), then falls back to the ranker's heartbeat in Postgres
+    (Render)."""
+    candidates = []
     for path, key in (
         (AMM_RANK_STATE_PATH, "finished_at"),
         (AMM_RANK_STATE_PATH, "started_at"),
@@ -390,8 +391,22 @@ def _pools_snapshot_label():
         try:
             d = _safe_load_json(path) or {}
             iso = d.get(key)
-            if not iso:
-                continue
+            if iso:
+                candidates.append(iso)
+        except Exception:
+            continue
+    try:
+        hb = db.read_heartbeat("amm_ranker") or {}
+        extra = hb.get("extra") if isinstance(hb, dict) else None
+        if isinstance(extra, dict):
+            for key in ("finished_at", "started_at"):
+                iso = extra.get(key)
+                if iso:
+                    candidates.append(iso)
+    except Exception:
+        pass
+    for iso in candidates:
+        try:
             dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
             return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
         except Exception:
@@ -644,27 +659,37 @@ def health():
     scan_state = _safe_load_json(SCAN_STATE_PATH) or {}
     stream_state = _safe_load_json(STREAM_STATE_PATH) or {}
 
-    scan_started = scan_state.get("started_at")
-    scan_finished = scan_state.get("finished_at")
+    # Cross-machine truth: workers on the Mac dual-write heartbeats + ranked
+    # snapshots to Neon, so prod (Render) — which has none of the Mac's JSON
+    # files — can still report real state. Local file reads stay authoritative
+    # on the Mac itself; PG reads only fill gaps.
+    pg_hb = db.read_heartbeat("xrpl_stream")
+    pg_hb_age = (int(time.time()) - pg_hb["ts"]) if pg_hb else None
+    pg_hb_extra = (pg_hb.get("extra") if isinstance(pg_hb, dict) else None) or {}
+
+    ranker_hb = db.read_heartbeat("amm_ranker")
+    ranker_hb_age = (int(time.time()) - ranker_hb["ts"]) if ranker_hb else None
+    ranker_hb_extra = (ranker_hb.get("extra") if isinstance(ranker_hb, dict) else None) or {}
+
+    scan_started = scan_state.get("started_at") or ranker_hb_extra.get("started_at")
+    scan_finished = scan_state.get("finished_at") or ranker_hb_extra.get("finished_at")
     scan_uptime = _iso_to_age_seconds(scan_started)
     scan_pages = scan_state.get("pages", 0)
     scan_rate = round(scan_pages / scan_uptime, 2) if scan_uptime else None
     scan_log_age = _file_age_seconds(SCAN_LOG_PATH)
 
-    stream_started = stream_state.get("started_at")
+    stream_started = stream_state.get("started_at") or pg_hb_extra.get("started_at")
     stream_uptime = _iso_to_age_seconds(stream_started)
     stream_log_age = _file_age_seconds(STREAM_LOG_PATH)
 
-    # Cross-machine truth: the worker stamps a heartbeat row in Neon every
-    # ~5min, so prod (Render) — which doesn't have access to the Mac's log
-    # files — can still know whether the worker is alive. Local file-mtime
-    # check stays as the authoritative signal on the Mac itself.
-    pg_hb = db.read_heartbeat("xrpl_stream")
-    pg_hb_age = (int(time.time()) - pg_hb["ts"]) if pg_hb else None
-
     # Liveness: scanner log should tick every ~30s, watcher every ~60s.
     # Conservative thresholds: 5 min and 10 min before flagging stale.
-    scan_alive = scan_finished is None and (scan_log_age or 999) < 300
+    scan_alive_local = scan_finished is None and (scan_log_age or 999) < 300
+    # Ranker cron is every 4h; treat the catalogue as "up to date" whenever
+    # the ranker has stamped a heartbeat in the last 6h.
+    ranker_alive_remote = ranker_hb_age is not None and ranker_hb_age < 21600
+    scan_alive = scan_alive_local or ranker_alive_remote
+
     stream_alive_local = (stream_log_age or 999) < 600
     # Trust the freshest signal we have. If the local log is missing/stale
     # but Neon shows a recent heartbeat, the worker IS alive — just on a
@@ -674,8 +699,16 @@ def health():
     stream_alive = stream_alive_local or stream_alive_remote
 
     amm_index = _safe_load_json(AMM_INDEX_PATH) or []
+    amms_in_index = len(amm_index) if isinstance(amm_index, list) and amm_index \
+        else ranker_hb_extra.get("indexed_count")
 
-    overall = "ok" if (scan_alive or scan_finished) and stream_alive else "degraded"
+    # Pool tracker is "finished" (catalogue available) whenever the ranker
+    # has produced a snapshot — even if this host has no local scan state.
+    pool_finished = scan_finished is not None or (
+        ranker_hb is not None and (amms_in_index or 0) > 0
+    )
+
+    overall = "ok" if (scan_alive or pool_finished) and stream_alive else "degraded"
 
     # Status code is the contract for uptime monitors (UptimeRobot etc.) —
     # keyword-matching the HTML body is fragile. Body stays informative for
@@ -690,26 +723,26 @@ def health():
         pulse=pulse,
         scan={
             "alive": scan_alive,
-            "finished": scan_finished is not None,
+            "finished": pool_finished,
             "uptime": _humanize_seconds(scan_uptime),
             "pages": scan_pages,
             "objects_scanned": scan_state.get("raw_objects_scanned", 0),
             "rate": scan_rate,
             "ledger_index": scan_state.get("ledger_index"),
-            "log_age": _humanize_seconds(scan_log_age),
-            "amms_in_index": len(amm_index) if isinstance(amm_index, list) else None,
+            "log_age": _humanize_seconds(scan_log_age if scan_log_age is not None else ranker_hb_age),
+            "amms_in_index": amms_in_index,
             "snapshot_at": _pools_snapshot_label(),
         },
         stream={
             "alive": stream_alive,
             "uptime": _humanize_seconds(stream_uptime),
-            "txns_seen": stream_state.get("txns_seen", 0),
-            "amm_creates": stream_state.get("amm_creates_seen", 0),
-            "whale_events": stream_state.get("whale_events_seen", 0),
-            "token_events": stream_state.get("token_events_seen", 0),
-            "new_tokens": stream_state.get("new_tokens_seen", 0),
-            "last_ledger": stream_state.get("last_ledger_index"),
-            "log_age": _humanize_seconds(stream_log_age),
+            "txns_seen": stream_state.get("txns_seen") or (pg_hb.get("txns_seen") if pg_hb else 0) or 0,
+            "amm_creates": stream_state.get("amm_creates_seen") or pg_hb_extra.get("amm_creates_seen", 0) or 0,
+            "whale_events": stream_state.get("whale_events_seen") or pg_hb_extra.get("whale_events_seen", 0) or 0,
+            "token_events": stream_state.get("token_events_seen") or pg_hb_extra.get("token_events_seen", 0) or 0,
+            "new_tokens": stream_state.get("new_tokens_seen") or pg_hb_extra.get("new_tokens_seen", 0) or 0,
+            "last_ledger": stream_state.get("last_ledger_index") or (pg_hb.get("last_ledger") if pg_hb else None),
+            "log_age": _humanize_seconds(stream_log_age if stream_log_age is not None else pg_hb_age),
             "seen_tokens_count": len(stream_state.get("seen_tokens", []) or []),
         },
         substrate={
