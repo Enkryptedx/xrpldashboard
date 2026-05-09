@@ -187,6 +187,67 @@ def apply_security_headers(response):
     return response
 
 
+# Paths excluded from page_view logging — assets, healthchecks, JSON APIs,
+# the admin surface itself, and crawler probes. Anything not in this set
+# (and returning HTML) gets one row in page_views per hit.
+_PAGEVIEW_SKIP_PREFIXES = (
+    "/static/",
+    "/healthz",
+    "/api/",
+    "/admin/",
+    "/og/",
+)
+_PAGEVIEW_SKIP_EXACT = {
+    "/favicon.ico", "/robots.txt", "/sitemap.xml",
+    "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png",
+}
+
+
+def _visitor_hash(ip, ua):
+    """Stable per-day fingerprint for unique-visitor counting. We hash so
+    /admin/stats never shows raw IPs (the page is private to Charlie, but
+    not storing PII in the DB at all is the cleaner default). Day-bucketed
+    so the same person counts as one unique per day."""
+    import hashlib
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    raw = f"{ip or '?'}|{ua or '?'}|{day}".encode("utf-8", "replace")
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+@app.before_request
+def _log_page_view():
+    """Best-effort page-view logger feeding /admin/stats. Inline insert
+    via the cached writer connection — fast at our request volume, and
+    swallows every exception so a Postgres hiccup never breaks a page."""
+    try:
+        path = request.path or "/"
+        if path in _PAGEVIEW_SKIP_EXACT:
+            return
+        for prefix in _PAGEVIEW_SKIP_PREFIXES:
+            if path.startswith(prefix):
+                return
+        if request.method != "GET":
+            return
+        if not db.pg_available():
+            return
+        ip = request.remote_addr or ""
+        ua = (request.user_agent.string or "")[:300] if request.user_agent else None
+        ref = (request.referrer or "")[:300] or None
+        country = request.headers.get("CF-IPCountry") \
+            or request.headers.get("X-Vercel-IP-Country") \
+            or request.headers.get("X-Country-Code")
+        db.log_page_view(
+            path=path[:300],
+            visitor_hash=_visitor_hash(ip, ua),
+            referrer=ref,
+            user_agent=ua,
+            country=country,
+        )
+    except Exception:
+        # Logging must never break a page render.
+        pass
+
+
 @app.context_processor
 def inject_liveness():
     """Make a slim ledger-heartbeat dict available to every template via
@@ -1556,6 +1617,71 @@ def sitemap_xml():
         + "\n</urlset>\n"
     )
     return Response(body, mimetype="application/xml")
+
+
+@app.route("/admin/stats")
+def admin_stats():
+    """Private real-time visitor analytics, gated by ADMIN_STATS_KEY.
+    The token comes via ?key= query param. Wrong/missing key returns 404
+    (not 401) so the route's existence stays unadvertised to scanners."""
+    expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip()
+    provided = (request.args.get("key") or "").strip()
+    if not expected or not provided or provided != expected:
+        return render_template("404.html"), 404
+
+    rollups = db.read_page_view_stats()
+    top_24h = db.read_top_pages(24 * 60 * 60, limit=15)
+    top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15)
+    countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10)
+    recent = db.read_recent_page_views(limit=100)
+
+    now = int(time.time())
+    recent_view = []
+    for r in recent:
+        recent_view.append({
+            "age": _humanize_seconds(now - r["ts"]),
+            "path": r["path"],
+            "country": r["country"] or "?",
+            "ua_short": _short_ua(r.get("user_agent")),
+            "referrer": r["referrer"],
+        })
+
+    return render_template(
+        "admin_stats.html",
+        rollups=rollups,
+        top_24h=top_24h,
+        top_7d=top_7d,
+        countries_24h=countries_24h,
+        recent=recent_view,
+        key=provided,
+        pg_ok=db.pg_available(),
+    )
+
+
+def _short_ua(ua):
+    """Best-effort browser/OS label from a User-Agent string. We don't ship
+    a UA-parser dep; this just pattern-matches the common shapes so the
+    recent-visits feed reads at a glance instead of a 200-char blob."""
+    if not ua:
+        return "?"
+    s = ua
+    browser = "?"
+    for token in ("Edg/", "OPR/", "Chrome/", "Firefox/", "Safari/"):
+        if token in s:
+            browser = token.rstrip("/")
+            if browser == "Safari" and "Chrome" in s:
+                continue
+            break
+    os_ = "?"
+    for needle, label in (
+        ("iPhone", "iPhone"), ("iPad", "iPad"),
+        ("Android", "Android"), ("Macintosh", "Mac"),
+        ("Windows", "Windows"), ("Linux", "Linux"),
+    ):
+        if needle in s:
+            os_ = label
+            break
+    return f"{browser} · {os_}"
 
 
 @app.errorhandler(404)

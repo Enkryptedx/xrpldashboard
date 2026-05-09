@@ -103,6 +103,21 @@ CREATE TABLE IF NOT EXISTS amm_ranked_pools (
 );
 CREATE INDEX IF NOT EXISTS amm_ranked_pools_tvl_idx
     ON amm_ranked_pools (tvl_usd DESC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS page_views (
+    id            BIGSERIAL PRIMARY KEY,
+    ts            BIGINT NOT NULL,
+    path          TEXT NOT NULL,
+    visitor_hash  TEXT,
+    referrer      TEXT,
+    user_agent    TEXT,
+    country       TEXT
+);
+CREATE INDEX IF NOT EXISTS page_views_ts_idx ON page_views (ts DESC);
+CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
+    ON page_views (path, ts DESC);
+CREATE INDEX IF NOT EXISTS page_views_visitor_idx
+    ON page_views (visitor_hash, ts DESC);
 """
 
 
@@ -559,3 +574,137 @@ def read_max_token_bucket():
             cur.execute("SELECT MAX(hour_bucket) FROM token_volume")
             row = cur.fetchone()
             return int(row[0]) if row and row[0] is not None else None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Page views (private analytics surface — see /admin/stats)
+# ─────────────────────────────────────────────────────────────────────
+
+def log_page_view(path, visitor_hash=None, referrer=None,
+                  user_agent=None, country=None):
+    """Insert one page-view row. Best-effort: never raises. Uses the
+    cached writer connection (same pattern as worker writes) so we don't
+    eat connection-setup latency on every request."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO page_views "
+                "(ts, path, visitor_hash, referrer, user_agent, country) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (int(time.time()), path, visitor_hash,
+                 referrer, user_agent, country),
+            )
+    except Exception:
+        _drop_writer_conn()
+
+
+def read_page_view_stats():
+    """Return rollup counts at common windows for /admin/stats. Each value
+    is a dict with `views` (raw row count) and `uniques` (distinct
+    visitor_hash). Returns zeros on error so the page renders even if PG
+    hiccups."""
+    windows = {
+        "now":     5 * 60,
+        "hour":    60 * 60,
+        "today":   24 * 60 * 60,
+        "week":    7 * 24 * 60 * 60,
+    }
+    out = {k: {"views": 0, "uniques": 0} for k in windows}
+    out["all_time"] = {"views": 0, "uniques": 0}
+    if not pg_available():
+        return out
+    now = int(time.time())
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for key, sec in windows.items():
+                    cur.execute(
+                        "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                        "FROM page_views WHERE ts >= %s",
+                        (now - sec,),
+                    )
+                    v, u = cur.fetchone() or (0, 0)
+                    out[key] = {"views": int(v or 0), "uniques": int(u or 0)}
+                cur.execute(
+                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) FROM page_views"
+                )
+                v, u = cur.fetchone() or (0, 0)
+                out["all_time"] = {"views": int(v or 0), "uniques": int(u or 0)}
+    except Exception:
+        pass
+    return out
+
+
+def read_top_pages(window_seconds, limit=10):
+    """Top paths by view count over the trailing `window_seconds`.
+    Returns list of (path, views, uniques)."""
+    if not pg_available():
+        return []
+    cutoff = int(time.time()) - int(window_seconds)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT path, COUNT(*) AS views, "
+                    "       COUNT(DISTINCT visitor_hash) AS uniques "
+                    "FROM page_views WHERE ts >= %s "
+                    "GROUP BY path ORDER BY views DESC LIMIT %s",
+                    (cutoff, limit),
+                )
+                return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def read_recent_page_views(limit=100):
+    """Last `limit` page views, newest first. Returns list of dicts."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ts, path, visitor_hash, referrer, "
+                    "       user_agent, country "
+                    "FROM page_views ORDER BY ts DESC LIMIT %s",
+                    (limit,),
+                )
+                return [
+                    {
+                        "ts": int(r[0]),
+                        "path": r[1],
+                        "visitor_hash": r[2],
+                        "referrer": r[3],
+                        "user_agent": r[4],
+                        "country": r[5],
+                    }
+                    for r in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def read_country_breakdown(window_seconds, limit=10):
+    """Top countries by view count over the trailing window. Returns list
+    of (country, views, uniques). Country may be None when CF-IPCountry
+    wasn't present (e.g. local dev, or non-Cloudflare front)."""
+    if not pg_available():
+        return []
+    cutoff = int(time.time()) - int(window_seconds)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COALESCE(country, '?') AS c, "
+                    "       COUNT(*) AS views, "
+                    "       COUNT(DISTINCT visitor_hash) AS uniques "
+                    "FROM page_views WHERE ts >= %s "
+                    "GROUP BY c ORDER BY views DESC LIMIT %s",
+                    (cutoff, limit),
+                )
+                return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
+    except Exception:
+        return []

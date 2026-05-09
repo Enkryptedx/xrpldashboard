@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stats · xrpldashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="refresh" content="15">
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 14px; line-height: 1.5; }
+    a { color: var(--cyan); text-decoration: none; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 64px; }
+    h1 { font-size: 1.2rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 0.82rem; margin-bottom: 20px; }
+    .sub .auto { color: var(--dim); }
+
+    .grid { display: grid; gap: 12px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            margin-bottom: 20px; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .stat { background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px 14px; }
+    .stat .lbl { color: var(--muted); font-size: 0.7rem;
+                 text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat .v   { font-family: var(--mono); font-size: 1.5rem; margin-top: 4px;
+                 color: var(--text); }
+    .stat .v.now { color: var(--green); }
+    .stat .sub2 { color: var(--dim); font-size: 0.72rem; margin-top: 2px;
+                  font-family: var(--mono); }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+           margin-bottom: 18px; }
+    @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 14px 16px; }
+    .panel h2 { font-size: 0.78rem; text-transform: uppercase;
+                letter-spacing: 0.08em; color: var(--cyan);
+                margin: 0 0 10px; font-weight: 600; }
+    .panel table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .panel td, .panel th { padding: 5px 0; text-align: left; vertical-align: top; }
+    .panel th { color: var(--muted); font-weight: 500; font-size: 0.7rem;
+                text-transform: uppercase; letter-spacing: 0.06em;
+                border-bottom: 1px solid var(--border); }
+    .panel td { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .panel tr:last-child td { border-bottom: none; }
+    .panel .num { font-family: var(--mono); text-align: right; color: var(--text); }
+    .panel .uniq { font-family: var(--mono); text-align: right; color: var(--muted); }
+    .panel .path { font-family: var(--mono); color: var(--text);
+                   word-break: break-all; }
+
+    .feed { font-size: 0.8rem; }
+    .feed .row-line { display: grid;
+                      grid-template-columns: 60px 1fr 60px 110px;
+                      gap: 10px; padding: 4px 0;
+                      border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .feed .row-line:last-child { border-bottom: none; }
+    .feed .age { color: var(--dim); font-family: var(--mono); font-size: 0.72rem; }
+    .feed .pth { color: var(--text); font-family: var(--mono);
+                 word-break: break-all; }
+    .feed .ctry { color: var(--muted); font-family: var(--mono);
+                  font-size: 0.72rem; }
+    .feed .ua { color: var(--dim); font-size: 0.72rem; }
+
+    .empty { color: var(--dim); font-style: italic; padding: 8px 0; font-size: 0.82rem; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em;
+            text-transform: uppercase; }
+    .pill.ok { background: rgba(34,197,94,0.14); color: var(--green); }
+    .pill.warn { background: rgba(245,158,11,0.14); color: var(--amber); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>visitor stats <span class="pill {{ 'ok' if pg_ok else 'warn' }}">
+      {{ 'live' if pg_ok else 'no db' }}
+    </span></h1>
+    <div class="sub">
+      private analytics surface ·
+      <span class="auto">auto-refreshes every 15s</span>
+    </div>
+
+    <div class="grid">
+      <div class="stat">
+        <div class="lbl">right now</div>
+        <div class="v now">{{ "{:,}".format(rollups.now.uniques) }}</div>
+        <div class="sub2">{{ "{:,}".format(rollups.now.views) }} views · 5min</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">last hour</div>
+        <div class="v">{{ "{:,}".format(rollups.hour.uniques) }}</div>
+        <div class="sub2">{{ "{:,}".format(rollups.hour.views) }} views</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">last 24h</div>
+        <div class="v">{{ "{:,}".format(rollups.today.uniques) }}</div>
+        <div class="sub2">{{ "{:,}".format(rollups.today.views) }} views</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">last 7 days</div>
+        <div class="v">{{ "{:,}".format(rollups.week.uniques) }}</div>
+        <div class="sub2">{{ "{:,}".format(rollups.week.views) }} views</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">all time</div>
+        <div class="v">{{ "{:,}".format(rollups.all_time.uniques) }}</div>
+        <div class="sub2">{{ "{:,}".format(rollups.all_time.views) }} views</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <h2>Top pages · 24h</h2>
+        {% if top_24h %}
+        <table>
+          <tr><th>path</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          {% for path, views, uniques in top_24h %}
+          <tr>
+            <td class="path">{{ path }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no traffic in the last 24h</div>{% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Top pages · 7 days</h2>
+        {% if top_7d %}
+        <table>
+          <tr><th>path</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          {% for path, views, uniques in top_7d %}
+          <tr>
+            <td class="path">{{ path }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no traffic yet</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <h2>Countries · 24h</h2>
+        {% if countries_24h %}
+        <table>
+          <tr><th>country</th><th class="num">views</th><th class="uniq">uniques</th></tr>
+          {% for ctry, views, uniques in countries_24h %}
+          <tr>
+            <td class="path">{{ ctry }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no traffic in the last 24h</div>{% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Recent visits · last 100</h2>
+        {% if recent %}
+        <div class="feed">
+          {% for r in recent %}
+          <div class="row-line">
+            <div class="age">{{ r.age }}</div>
+            <div class="pth">{{ r.path }}</div>
+            <div class="ctry">{{ r.country }}</div>
+            <div class="ua">{{ r.ua_short }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="empty">no visits recorded yet</div>{% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+</content>
+</invoke>
