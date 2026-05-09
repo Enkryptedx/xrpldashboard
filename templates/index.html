@@ -411,19 +411,18 @@
       <div class="hero-text">
         <h2 class="hero-title">The XRP Ledger,<br>made legible.</h2>
         <p class="hero-sub">
-          Public-good analytics for the XRP Ledger. Live on-chain data,
-          plain-language explanations, no upsells, no token, no DEX. Free
-          for retail users — forever.
+          Plain-language explanations, real-time on-chain data, and a
+          fully public <a href="/methodology">methodology</a>. No
+          upsells, no token, no DEX. Free for retail users — forever.
         </p>
         <div class="hero-meta">
-          <span class="live"><span class="dot"></span> Live</span>
           {% if pulse and not pulse.error and pulse.ledger_index %}
           <span class="ticker">
             <span class="lbl">Ledger{{ explainer(
               "ledger",
               "What's a ledger sequence",
               "The XRP network closes a new 'page' of transactions
-               every 3-4 seconds, and each page gets a number. This is
+               every 3-5 seconds, and each page gets a number. This is
                the latest page number we've seen. If the number stops
                climbing, something is wrong with the network.",
             ) }}</span>
@@ -615,9 +614,10 @@
     <footer>
       <div>
         xrpldashboard — public-good analytics for the XRP Ledger.
-        Free for retail users, forever. Pool TVL refreshes from a public XRPL
-        node; whale and token panels read recent on-ledger activity captured
-        by our worker — real-time streaming for those panels is coming soon.
+        Free for retail users, forever. Pool, whale, and token panels all
+        stream live via WebSocket from a public XRPL node, with worker-
+        backed historical context. See <a href="/methodology">methodology</a>
+        for the per-surface freshness table.
       </div>
       <div style="margin-top: 0.6em;">
         <strong>Not financial advice.</strong> Information shown is for
@@ -743,6 +743,15 @@
       }
 
       function frame(now) {
+        // Skip rendering when the tab is hidden — the browser already
+        // throttles RAF in background tabs, but explicitly bailing avoids
+        // the lastT delta exploding to seconds-of-elapsed-time on the
+        // first frame back, which would cause a visible rotation jump.
+        if (document.hidden) {
+          lastT = now;
+          requestAnimationFrame(frame);
+          return;
+        }
         var dt = now - lastT;
         lastT = now;
         rotation += speed * dt;

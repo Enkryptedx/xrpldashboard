@@ -7,7 +7,9 @@
   {% set meta_title = "pools · xrpldashboard" %}
   {% set meta_description = "Every AMM pool on the XRP Ledger, ranked by total value locked. See where liquidity actually sits and which pairs are deep enough to trade." %}
   {% include "_head_meta.html" %}
-  <meta http-equiv="refresh" content="120">
+  {# meta-refresh removed: the constellation is now WS-driven, so reloading
+     every 120s would just interrupt the user mid-look and lose scroll
+     position without delivering any newer data. #}
 
   {# Plausible Analytics — uncomment after creating account at plausible.io
      and confirming the domain. Public stats page should be enabled in
@@ -81,6 +83,50 @@
     .browse-meta .big { font-family: var(--mono); color: var(--cyan);
                         font-weight: 600; }
     @keyframes bp { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* Live stream banner — connection state for the direct XRPL WS feed
+       that drives the constellation comets. */
+    .live-stream-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; margin: 0 0 12px;
+      font-size: 0.82rem;
+    }
+    .lsb-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(245,158,11,0.10);
+      border: 1px solid rgba(245,158,11,0.30);
+      color: var(--amber); font-size: 0.74rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .lsb-pill[data-state="live"] {
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.40);
+      color: var(--green);
+    }
+    .lsb-pill[data-state="closed"] {
+      background: rgba(239,68,68,0.10);
+      border-color: rgba(239,68,68,0.30);
+      color: #ef4444;
+    }
+    .lsb-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .lsb-pill[data-state="live"] .lsb-dot {
+      animation: lsb-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes lsb-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+    }
+    .lsb-meta { color: var(--muted); font-family: var(--mono);
+                font-size: 0.78rem; }
+    @media (prefers-reduced-motion: reduce) {
+      .lsb-pill[data-state="live"] .lsb-dot { animation: none; }
+    }
 
     .stats { display: grid; grid-template-columns: 1fr 1fr;
              gap: 8px; margin-bottom: 18px; }
@@ -444,6 +490,19 @@
 
   {% if top10 %}
   <h2>Top 10 by TVL <span class="sub">star size = pool TVL · comets fire on real on-chain events · click any star for the pool wallet</span></h2>
+
+  {# Live banner — turns green when the public XRPL WebSocket is open and
+     subscribed to the top-10 AMM accounts. Comets fire directly off
+     these events, independent of the worker. #}
+  <div class="live-stream-bar" data-pools-lsb>
+    <span class="lsb-pill" data-lsb-pill>
+      <span class="lsb-dot"></span>
+      <span class="lsb-label">connecting…</span>
+    </span>
+    <span class="lsb-meta">
+      Subscribed to {{ top10|length }} AMM accounts on the public XRPL WebSocket
+    </span>
+  </div>
   {% set max_share = top10[0].share_of_top10 or 1 %}
   {% set positions = [
      (50, 48),
@@ -488,6 +547,7 @@
     <a class="star-node{% if loop.index <= 3 %} r{{ loop.index }}{% endif %}"
        href="/wallet/{{ p.amm_account }}"
        data-amm="{{ p.amm_account }}"
+       data-tvl-usd="{{ p.tvl_usd or 0 }}"
        data-cx="{{ pos[0] }}" data-cy="{{ pos[1] }}"
        title="#{{ loop.index }} {{ p.pair }} — {{ fmt_money(p.tvl_usd) }} ({{ '%.1f'|format(share) }}% of top 10) · fee {{ '%.3f'|format(p.fee_pct or 0) }}%"
        style="--cx: {{ pos[0] }}%; --cy: {{ pos[1] }}%; --c: {{ core }}px; --g: {{ glow }}px; --rgb: {{ rgb }}; --ping: {{ ping_dur }}s; --pingd: {{ ping_delay }}s;">
@@ -505,6 +565,8 @@
     {% for p in top10 %}
     <a class="seg"
        href="/wallet/{{ p.amm_account }}"
+       data-amm="{{ p.amm_account }}"
+       data-tvl-usd="{{ p.tvl_usd or 0 }}"
        title="{{ p.pair }} — {{ fmt_money(p.tvl_usd) }} ({{ '%.1f'|format(p.share_of_top10) }}% of top 10)">
       <span class="seg-pair">{{ p.pair }}</span>
       <span class="seg-tvl">{{ fmt_money(p.tvl_usd) }}</span>
@@ -592,7 +654,8 @@
   </div>
 
   <div class="footer">
-    auto-refresh 120s · ranks pulled live from the XRP Ledger.
+    swaps and TVL stream in live via WebSocket; pool index seeded from
+    <code>amm_info</code> on the public XRPL node.
     <br><br>
     <strong>Not financial advice.</strong> Information shown is for
     educational purposes only and does not constitute financial,
@@ -856,6 +919,212 @@
 
     applyMode();
     setInterval(poll, POLL_MS);
+
+    // Expose for the live-WebSocket IIFE below so it can drive the same
+    // comet animations off direct XRPL transaction events. seenIds is
+    // shared so dedupe works whether an event arrived via /api or via WS.
+    window.__poolsConstellation = {
+      fireForAmm: function (amm, eventType, txId) {
+        if (mode !== 'live') return;
+        if (txId && seenIds.has(txId)) return;
+        if (txId) seenIds.add(txId);
+        var star = stars[amm];
+        if (!star) return;
+        fireComet(star, eventType);
+        setStatus('LIVE');
+      },
+      knownAmms: function () { return Object.keys(stars); }
+    };
+  })();
+</script>
+<script>
+  // Direct WebSocket → top-10 AMM accounts. Subscribes by account so we
+  // see every transaction touching any tracked pool the moment it
+  // validates. Worker-independent: this fires comets even when the Mac
+  // worker is offline. On reconnect we resubscribe automatically.
+  (function () {
+    if (!window.__poolsConstellation) return;
+    if (typeof WebSocket === 'undefined') return;
+    var amms = window.__poolsConstellation.knownAmms();
+    if (!amms || !amms.length) return;
+
+    var statusEl = document.getElementById('constellation-status');
+    var lsbEl    = document.querySelector('[data-pools-lsb]');
+    var lsbPill  = lsbEl ? lsbEl.querySelector('[data-lsb-pill]') : null;
+    var lsbLabel = lsbPill ? lsbPill.querySelector('.lsb-label') : null;
+
+    function setLsb(state, text) {
+      if (lsbPill)  lsbPill.setAttribute('data-state', state);
+      if (lsbLabel) lsbLabel.textContent = text;
+    }
+
+    function classify(tx, meta) {
+      var t = tx && tx.TransactionType;
+      if (t === 'AMMDeposit')  return 'deposit';
+      if (t === 'AMMWithdraw') return 'withdraw';
+      if (t === 'Payment')     return 'swap';
+      return null;
+    }
+
+    function isPoolAccount(addr) {
+      return amms.indexOf(addr) !== -1;
+    }
+
+    var ws = null;
+    var reconnectDelay = 1500;
+    var closed = false;
+
+    function connect() {
+      if (closed) return;
+      try { ws = new WebSocket('wss://s2.ripple.com'); }
+      catch (e) { setLsb('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
+      setLsb('connecting', 'connecting…');
+
+      ws.onopen = function () {
+        reconnectDelay = 1500;
+        setLsb('live', 'live · streaming');
+        try {
+          ws.send(JSON.stringify({
+            id: 'pools-stream',
+            command: 'subscribe',
+            accounts: amms
+          }));
+        } catch (e) {}
+      };
+
+      ws.onmessage = function (msg) {
+        var data;
+        try { data = JSON.parse(msg.data); } catch (e) { return; }
+        if (!data || data.type !== 'transaction') return;
+        if (data.validated !== true) return;
+        var tx   = data.transaction || data.tx_json;
+        var meta = data.meta || {};
+        // Strict tesSUCCESS gate: a missing TransactionResult means we
+        // can't prove the tx applied, so don't fake a pulse. The previous
+        // `&&` short-circuit silently let those through.
+        if (meta.TransactionResult !== 'tesSUCCESS') return;
+        var et = classify(tx, meta);
+        if (!et) return;
+
+        // Find which tracked AMM was touched — Account/Destination first,
+        // then AffectedNodes (a Payment crossing an AMM never sets the AMM
+        // as Account/Destination, so we have to walk the meta).
+        var hit = null;
+        if (isPoolAccount(tx.Account))     hit = tx.Account;
+        else if (isPoolAccount(tx.Destination)) hit = tx.Destination;
+        else if (Array.isArray(meta.AffectedNodes)) {
+          for (var i = 0; i < meta.AffectedNodes.length; i++) {
+            var n = meta.AffectedNodes[i];
+            var node = n.ModifiedNode || n.CreatedNode || n.DeletedNode;
+            if (!node) continue;
+            var f = node.FinalFields || node.NewFields || node.PreviousFields || {};
+            if (isPoolAccount(f.Account))     { hit = f.Account; break; }
+            if (isPoolAccount(f.Destination)) { hit = f.Destination; break; }
+          }
+        }
+        if (!hit) return;
+
+        var txId = tx.hash || (data.ledger_index + '-' + (tx.Sequence || ''));
+        window.__poolsConstellation.fireForAmm(hit, et, txId);
+
+        // TVL accuracy: scale each affected pool's displayed dollar by the
+        // LP-token-supply delta. Deposits grow LPTokens, withdrawals shrink
+        // them, swaps leave them ~unchanged — so this naturally tracks real
+        // money in/out without overstating swap activity.
+        if (window.__poolsTvl && Array.isArray(meta.AffectedNodes)) {
+          for (var j = 0; j < meta.AffectedNodes.length; j++) {
+            var nn = meta.AffectedNodes[j];
+            var mod = nn.ModifiedNode;
+            if (!mod || mod.LedgerEntryType !== 'AMM') continue;
+            var ff = mod.FinalFields || {};
+            var pf = mod.PreviousFields || {};
+            if (!isPoolAccount(ff.Account)) continue;
+            var newLP = parseFloat((ff.LPTokenBalance && ff.LPTokenBalance.value) || '0');
+            var oldLP = parseFloat((pf.LPTokenBalance && pf.LPTokenBalance.value) || newLP);
+            if (newLP > 0 && oldLP > 0 && newLP !== oldLP) {
+              window.__poolsTvl.scale(ff.Account, newLP / oldLP);
+            }
+          }
+        }
+      };
+
+      ws.onerror = function () {};
+      ws.onclose = function () {
+        if (closed) return;
+        setLsb('closed', 'reconnecting…');
+        scheduleReconnect();
+      };
+    }
+
+    function scheduleReconnect() {
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+    }
+
+    window.addEventListener('beforeunload', function () {
+      closed = true;
+      if (ws) { try { ws.close(); } catch (e) {} }
+    });
+
+    connect();
+  })();
+</script>
+<script>
+  // Live TVL updates — every time the WebSocket sees an AMMDeposit or
+  // AMMWithdraw on a tracked pool, we scale that pool's displayed dollar
+  // by the LP-token delta. The 120s page refresh re-syncs from the
+  // server snapshot, so any drift is bounded. fmtMoney mirrors the
+  // server's fmt_money so display granularity matches exactly.
+  (function () {
+    var pools = {};
+    document.querySelectorAll('[data-amm][data-tvl-usd]').forEach(function (el) {
+      var amm = el.getAttribute('data-amm');
+      var tvl = parseFloat(el.getAttribute('data-tvl-usd'));
+      if (!amm || !isFinite(tvl) || tvl <= 0) return;
+      if (!pools[amm]) pools[amm] = { tvl: tvl, displays: [] };
+      pools[amm].displays.push(el);
+    });
+    if (!Object.keys(pools).length) return;
+
+    function fmtMoney(n) {
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+      return '$' + n.toFixed(2);
+    }
+
+    var totalEl = document.querySelector('.tvl-caption strong');
+    function updateTotal() {
+      if (!totalEl) return;
+      var sum = 0;
+      Object.keys(pools).forEach(function (k) { sum += pools[k].tvl; });
+      totalEl.textContent = fmtMoney(sum);
+    }
+
+    var moneyRe = /\$[\d.,]+[MK]?/;
+    function rerender(amm) {
+      var p = pools[amm];
+      if (!p) return;
+      var label = fmtMoney(p.tvl);
+      p.displays.forEach(function (el) {
+        var span = el.querySelector('.l-tvl, .seg-tvl');
+        if (span && span.textContent !== label) span.textContent = label;
+        var t = el.getAttribute('title');
+        if (t && moneyRe.test(t)) {
+          var nt = t.replace(moneyRe, label);
+          if (nt !== t) el.setAttribute('title', nt);
+        }
+      });
+      updateTotal();
+    }
+
+    window.__poolsTvl = {
+      scale: function (amm, ratio) {
+        var p = pools[amm];
+        if (!p || !isFinite(ratio) || ratio <= 0) return;
+        p.tvl = p.tvl * ratio;
+        rerender(amm);
+      }
+    };
   })();
 </script>
 <script>

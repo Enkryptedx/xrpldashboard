@@ -7,7 +7,9 @@
   {% set meta_title = "tokens · xrpldashboard" %}
   {% set meta_description = "What's actually trading on the XRP Ledger right now — tokens ranked by recent activity, with stablecoins, memecoins, and project tokens labeled clearly." %}
   {% include "_head_meta.html" %}
-  <meta http-equiv="refresh" content="60">
+  {# meta-refresh removed: the live counter is now WS-driven; reloading
+     every 60s would interrupt the user reading the per-token list. The
+     aggregate rollups still rebuild on the next manual reload. #}
 
   {# Plausible Analytics — uncomment after creating account at plausible.io
      and confirming the domain. Public stats page should be enabled in
@@ -130,6 +132,56 @@
       .tb-head { font-size: 0.55rem; }
       .tb-foot .num { font-size: 0.7rem; }
       .tb-foot .pct { display: none; }
+    }
+
+    /* Live activity banner — ticks up as token-bearing transactions
+       validate on the public XRPL WebSocket. Connection state shown in
+       the pill; counter resets per page load (this-session count). */
+    .live-stream-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; margin: 0 0 12px;
+      font-size: 0.82rem;
+    }
+    .lsb-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(245,158,11,0.10);
+      border: 1px solid rgba(245,158,11,0.30);
+      color: var(--amber); font-size: 0.74rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .lsb-pill[data-state="live"] {
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.40);
+      color: var(--green);
+    }
+    .lsb-pill[data-state="closed"] {
+      background: rgba(239,68,68,0.10);
+      border-color: rgba(239,68,68,0.30);
+      color: #ef4444;
+    }
+    .lsb-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .lsb-pill[data-state="live"] .lsb-dot {
+      animation: lsb-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes lsb-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+    }
+    .lsb-meta { color: var(--muted); font-family: var(--mono);
+                font-size: 0.78rem; }
+    .lsb-counter {
+      font-family: var(--mono); color: var(--text); font-weight: 600;
+      transition: color 0.25s;
+    }
+    .lsb-counter.lsb-bump { color: var(--green); }
+    @media (prefers-reduced-motion: reduce) {
+      .lsb-pill[data-state="live"] .lsb-dot { animation: none; }
     }
 
     .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -310,6 +362,21 @@
     {% endif %}
   </div>
 
+  {# Live token-trade ticker. Counter increments on every validated
+     non-XRP Payment / AMMDeposit / AMMWithdraw on the public ledger
+     stream — same surface the worker classifies as a "trade". Resets
+     per page load. #}
+  <div class="live-stream-bar" data-live-stream-bar>
+    <span class="lsb-pill" data-lsb-pill>
+      <span class="lsb-dot"></span>
+      <span class="lsb-label">connecting…</span>
+    </span>
+    <span class="lsb-meta">
+      <span class="lsb-counter" data-lsb-counter>0</span>
+      token trades observed live this session
+    </span>
+  </div>
+
   <div class="search-bar">
     <input type="search" id="token-search" placeholder="Search token (e.g. RLUSD, SOLO, GiB)…" autocomplete="off" spellcheck="false" />
     <span class="search-stats" id="token-search-stats"></span>
@@ -376,7 +443,8 @@
   </div>
 
   <div class="footer">
-    auto-refresh 60s · counts pulled from <code>volumes.db</code> live.
+    new trades stream in via WebSocket; aggregate counts come from the
+    worker's hourly buckets and rebuild on the next reload.
     <br><br>
     <strong>Not financial advice.</strong> Information shown is for
     educational purposes only and does not constitute financial,
@@ -420,6 +488,109 @@
       empty.classList.toggle('visible', !!q && visible === 0);
     }
     input.addEventListener('input', apply);
+  })();
+
+  // Live token-trade counter. Subscribes to the public XRPL transaction
+  // stream and increments on Payments carrying a non-XRP token amount,
+  // plus AMMDeposit / AMMWithdraw — matching the worker's "trade"
+  // definition (see token_event_handler in xrpl_stream.py). Per-tab
+  // count, resets on reload.
+  (function () {
+    var bar = document.querySelector('[data-live-stream-bar]');
+    if (!bar) return;
+    var pill    = bar.querySelector('[data-lsb-pill]');
+    var label   = pill ? pill.querySelector('.lsb-label') : null;
+    var counter = bar.querySelector('[data-lsb-counter]');
+    if (!pill || !label || !counter) return;
+    if (typeof WebSocket === 'undefined') {
+      pill.setAttribute('data-state', 'closed');
+      label.textContent = 'unavailable';
+      return;
+    }
+
+    function setState(s, t) {
+      pill.setAttribute('data-state', s);
+      label.textContent = t;
+    }
+
+    var n = 0;
+    function bump() {
+      n++;
+      counter.textContent = n.toLocaleString();
+      counter.classList.add('lsb-bump');
+      setTimeout(function () { counter.classList.remove('lsb-bump'); }, 280);
+    }
+
+    function isTokenTrade(tx) {
+      if (!tx || typeof tx !== 'object') return false;
+      var type = tx.TransactionType;
+      if (type === 'AMMDeposit' || type === 'AMMWithdraw') return true;
+      if (type !== 'Payment') return false;
+      // Non-XRP Payment: Amount/DeliverMax is a {currency, issuer, value}
+      // object. XRP payments are a string (drops). Require all three fields
+      // — a malformed message missing issuer/value would otherwise count.
+      function isTokenAmount(a) {
+        return a && typeof a === 'object'
+          && typeof a.currency === 'string'
+          && typeof a.issuer === 'string'
+          && typeof a.value === 'string';
+      }
+      return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
+    }
+
+    var ws = null;
+    var reconnectDelay = 1500;
+    var closed = false;
+
+    function connect() {
+      if (closed) return;
+      try { ws = new WebSocket('wss://s2.ripple.com'); }
+      catch (e) { setState('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
+      setState('connecting', 'connecting…');
+
+      ws.onopen = function () {
+        reconnectDelay = 1500;
+        setState('live', 'live · streaming');
+        try {
+          ws.send(JSON.stringify({
+            id: 'tokens-stream',
+            command: 'subscribe',
+            streams: ['transactions']
+          }));
+        } catch (e) {}
+      };
+
+      ws.onmessage = function (msg) {
+        var data;
+        try { data = JSON.parse(msg.data); } catch (e) { return; }
+        if (!data || data.type !== 'transaction') return;
+        if (data.validated !== true) return;
+        var tx = data.transaction || data.tx_json;
+        var meta = data.meta || {};
+        // Strict tesSUCCESS gate (missing => can't prove the tx applied).
+        if (meta.TransactionResult !== 'tesSUCCESS') return;
+        if (isTokenTrade(tx)) bump();
+      };
+
+      ws.onerror = function () {};
+      ws.onclose = function () {
+        if (closed) return;
+        setState('closed', 'reconnecting…');
+        scheduleReconnect();
+      };
+    }
+
+    function scheduleReconnect() {
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+    }
+
+    window.addEventListener('beforeunload', function () {
+      closed = true;
+      if (ws) { try { ws.close(); } catch (e) {} }
+    });
+
+    connect();
   })();
 </script>
 {% include "_vibes_scripts.html" %}

@@ -7,7 +7,9 @@
   {% set meta_title = "whales · xrpldashboard" %}
   {% set meta_description = "Live tracker of large XRP transfers — every payment over 50,000 XRP, with the wallets behind them named where we know them." %}
   {% include "_head_meta.html" %}
-  <meta http-equiv="refresh" content="60">
+  {# meta-refresh removed: events stream in via WS and prepend in place,
+     so reloading every 60s would just lose scroll position and re-render
+     the same list. #}
 
   {# Plausible Analytics — uncomment after creating account at plausible.io
      and confirming the domain. Public stats page should be enabled in
@@ -110,6 +112,79 @@
                   text-decoration: none; }
     .pill.active { background: rgba(34,211,238,0.12); color: var(--cyan);
                    border-color: rgba(34,211,238,0.4); }
+
+    /* Live stream banner — visible signal that real-time WebSocket is
+       wired and pushing whale events as they validate. Connecting state
+       is amber, live state pulses cyan. Hidden when filter combo can't be
+       matched client-side (see lsb-disabled). */
+    .live-stream-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; margin: 0 0 12px;
+      font-size: 0.82rem;
+    }
+    .live-stream-bar.lsb-disabled { opacity: 0.7; }
+    .lsb-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(245,158,11,0.10);
+      border: 1px solid rgba(245,158,11,0.30);
+      color: var(--amber); font-size: 0.74rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .lsb-pill[data-state="live"] {
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.40);
+      color: var(--green);
+    }
+    .lsb-pill[data-state="closed"] {
+      background: rgba(239,68,68,0.10);
+      border-color: rgba(239,68,68,0.30);
+      color: #ef4444;
+    }
+    .lsb-pill[data-state="disabled"] {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.10);
+      color: var(--dim);
+    }
+    .lsb-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    /* Hollow dot in the disabled state visually signals "intentionally
+       paused" rather than "broken / connecting" (which keep the solid dot
+       in amber/red). Avoids false-alarming the user. */
+    .lsb-pill[data-state="disabled"] .lsb-dot {
+      background: transparent;
+      box-shadow: inset 0 0 0 1.5px currentColor;
+    }
+    .lsb-pill[data-state="live"] .lsb-dot {
+      animation: lsb-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes lsb-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+    }
+    .lsb-meta { color: var(--muted); font-family: var(--mono);
+                font-size: 0.78rem; }
+    @media (prefers-reduced-motion: reduce) {
+      .lsb-pill[data-state="live"] .lsb-dot { animation: none; }
+    }
+
+    /* New events fade/slide in when the WebSocket prepends them. */
+    .event-list .event.lsb-new {
+      animation: lsb-event-in 0.6s ease-out;
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.35),
+                  0 0 24px rgba(34,197,94,0.10);
+    }
+    @keyframes lsb-event-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .event-list .event.lsb-new { animation: none; }
+    }
 
     .event { background: var(--card); border: 1px solid var(--border);
              border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
@@ -259,6 +334,22 @@
        href="/whales?tier={{ tier }}&amp;type=trustset">trustlines</a>
   </div>
 
+  {# Live banner — turns green when the WebSocket is connected and
+     pushing real-time events. Hidden on tier/type combinations the live
+     stream can't filter client-side (tagged/trustset). #}
+  <div class="live-stream-bar" data-live-stream-bar
+       data-tier-drops="{{ tier_drops }}"
+       data-filter-type="{{ filter_type }}">
+    <span class="lsb-pill" data-lsb-pill>
+      <span class="lsb-dot"></span>
+      <span class="lsb-label">connecting…</span>
+    </span>
+    <span class="lsb-meta">
+      Streaming validated XRPL transactions ≥ {{ "{:,}".format(tier_drops // 1_000_000) }} XRP
+    </span>
+  </div>
+
+  <div class="event-list" data-event-list>
   {% if events %}
     {% for e in events %}
     <div class="event vibes-spot">
@@ -310,6 +401,7 @@
       </div>
     </div>
   {% endif %}
+  </div>{# /.event-list #}
 
   <div class="callout">
     <p>
@@ -602,6 +694,199 @@
     }
 
     requestAnimationFrame(drawScope);
+  })();
+
+  // Live whale stream — subscribe to the public XRPL WebSocket, filter
+  // validated Payment transactions whose XRP amount meets the active size
+  // tier, and prepend matching events to the list. Tagged/trustset filters
+  // can't be classified client-side without the named-accounts dict, so we
+  // mark the banner as disabled in those modes.
+  (function () {
+    var bar = document.querySelector('[data-live-stream-bar]');
+    if (!bar) return;
+    var pill   = bar.querySelector('[data-lsb-pill]');
+    var label  = pill ? pill.querySelector('.lsb-label') : null;
+    var list   = document.querySelector('[data-event-list]');
+    if (!pill || !label || !list) return;
+
+    var tierDrops  = parseInt(bar.getAttribute('data-tier-drops') || '0', 10) || 0;
+    var filterType = (bar.getAttribute('data-filter-type') || '').trim();
+
+    function setState(state, text) {
+      pill.setAttribute('data-state', state);
+      label.textContent = text;
+    }
+
+    if (filterType === 'tagged' || filterType === 'trustset') {
+      bar.classList.add('lsb-disabled');
+      setState('disabled', 'live stream paused');
+      var meta = bar.querySelector('.lsb-meta');
+      if (meta) meta.textContent =
+        "Live updates available on 'all' or 'large XRP' filters.";
+      return;
+    }
+
+    if (typeof WebSocket === 'undefined') {
+      setState('closed', 'unavailable');
+      return;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+      });
+    }
+    function fmtXrp(drops) {
+      var xrp = drops / 1000000;
+      if (xrp >= 1000000) return (xrp / 1000000).toFixed(2) + 'M XRP';
+      if (xrp >= 1000)    return (xrp / 1000).toFixed(1) + 'K XRP';
+      return xrp.toFixed(2) + ' XRP';
+    }
+    function shortAddr(a) {
+      if (!a || a.length < 12) return a || '—';
+      return a.slice(0, 6) + '…' + a.slice(-4);
+    }
+    function shortHash(h) {
+      if (!h || h.length < 16) return h || '';
+      return h.slice(0, 8) + '…' + h.slice(-4);
+    }
+
+    // Bounded dedupe: WS can run for hours on a busy day, and the original
+    // unbounded object grew without limit. 1000 hashes covers far more than
+    // ever stays visible in the list — after eviction the worst case is a
+    // duplicate render of an event the user already scrolled past.
+    var SEEN_CAP = 1000;
+    var seenHashes = Object.create(null);
+    var seenQueue = [];
+    var emptyEl = list.querySelector('.empty');
+
+    function prependEvent(tx, meta, ledgerIndex) {
+      if (tx.hash && seenHashes[tx.hash]) return;
+      if (tx.hash) {
+        seenHashes[tx.hash] = true;
+        seenQueue.push(tx.hash);
+        if (seenQueue.length > SEEN_CAP) {
+          delete seenHashes[seenQueue.shift()];
+        }
+      }
+
+      if (emptyEl && emptyEl.parentNode === list) {
+        list.removeChild(emptyEl);
+        emptyEl = null;
+      }
+
+      var drops = parseInt(tx.Amount, 10);
+      var fromAddr = tx.Account || '';
+      var toAddr   = tx.Destination || '';
+      var hash     = tx.hash || '';
+      var ledger   = ledgerIndex || tx.ledger_index || '';
+
+      var html =
+        '<div class="event-top">' +
+          '<div class="event-meta">' +
+            '<span class="badge large_xfer">large XRP</span>' +
+            '<span>just now</span>' +
+            '<span class="event-link">ledger ' + escapeHtml(String(ledger)) + '</span>' +
+          '</div>' +
+          (hash
+            ? '<a href="https://xrpscan.com/tx/' + escapeHtml(hash) +
+              '" target="_blank" rel="noopener" class="event-link">' +
+              escapeHtml(shortHash(hash)) + ' ↗</a>'
+            : '') +
+        '</div>' +
+        '<div class="event-flow">' +
+          (fromAddr
+            ? '<a class="addr" href="/wallet/' + escapeHtml(fromAddr) + '">' +
+              escapeHtml(shortAddr(fromAddr)) + '</a>'
+            : '<span class="addr">—</span>') +
+          '<span class="arrow">→</span>' +
+          (toAddr
+            ? '<a class="addr" href="/wallet/' + escapeHtml(toAddr) + '">' +
+              escapeHtml(shortAddr(toAddr)) + '</a>'
+            : '<span class="addr">—</span>') +
+        '</div>' +
+        '<div class="amount">' + escapeHtml(fmtXrp(drops)) + '</div>';
+
+      var node = document.createElement('div');
+      node.className = 'event vibes-spot lsb-new';
+      node.innerHTML = html;
+      list.insertBefore(node, list.firstChild);
+
+      // Trim oldest entries so the list doesn't grow unboundedly. Server
+      // re-renders cap at 100; we cap the live-only set at the same.
+      var events = list.querySelectorAll('.event');
+      for (var i = events.length - 1; i >= 100; i--) {
+        events[i].parentNode.removeChild(events[i]);
+      }
+    }
+
+    var ws = null;
+    var reconnectDelay = 1500;
+    var closed = false;
+
+    function connect() {
+      if (closed) return;
+      try {
+        ws = new WebSocket('wss://s2.ripple.com');
+      } catch (e) {
+        setState('closed', 'connect failed · retrying');
+        scheduleReconnect();
+        return;
+      }
+      setState('connecting', 'connecting…');
+
+      ws.onopen = function () {
+        reconnectDelay = 1500;
+        setState('live', 'live · streaming');
+        try {
+          ws.send(JSON.stringify({
+            id: 'whales-stream',
+            command: 'subscribe',
+            streams: ['transactions']
+          }));
+        } catch (e) { /* connection will fail through onerror */ }
+      };
+
+      ws.onmessage = function (msg) {
+        var data;
+        try { data = JSON.parse(msg.data); } catch (e) { return; }
+        if (!data || data.type !== 'transaction') return;
+        if (data.validated !== true) return;
+        var tx = data.transaction || data.tx_json;
+        if (!tx || tx.TransactionType !== 'Payment') return;
+        // XRP-only: Amount is a string of drops. Token amounts are objects.
+        if (typeof tx.Amount !== 'string') return;
+        var drops = parseInt(tx.Amount, 10);
+        if (!isFinite(drops) || drops < tierDrops) return;
+        // Confirm delivered amount equals Amount (no partial-payment short-fill)
+        var meta = data.meta || {};
+        if (meta.delivered_amount &&
+            typeof meta.delivered_amount === 'string' &&
+            parseInt(meta.delivered_amount, 10) < tierDrops) return;
+        // Strict tesSUCCESS gate (missing => can't prove the tx applied).
+        if (meta.TransactionResult !== 'tesSUCCESS') return;
+        prependEvent(tx, meta, data.ledger_index);
+      };
+
+      ws.onerror = function () { /* onclose handles reconnect */ };
+      ws.onclose = function () {
+        if (closed) return;
+        setState('closed', 'reconnecting…');
+        scheduleReconnect();
+      };
+    }
+
+    function scheduleReconnect() {
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+    }
+
+    window.addEventListener('beforeunload', function () {
+      closed = true;
+      if (ws) { try { ws.close(); } catch (e) {} }
+    });
+
+    connect();
   })();
 </script>
 {% include "_vibes_scripts.html" %}

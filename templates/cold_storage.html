@@ -205,7 +205,7 @@
   <div class="card">
     <div class="section-head" style="margin-bottom: 0.4em;">
       <h2>Per-account balances</h2>
-      <span class="meta">live · refreshes every 5 min</span>
+      <span class="meta">cached · refreshes every 5 min</span>
     </div>
 
     <div class="scope-note">
@@ -247,6 +247,19 @@
         {% endif %}
         <div class="esc-link">
           <a href="https://xrpscan.com/account/{{ r.address }}" target="_blank" rel="noopener noreferrer">XRPSCAN ↗</a>
+        </div>
+      </div>
+    {% else %}
+      {# Defensive: empty rows means the cold-wallet RPC fetch returned
+         nothing (network blip or upstream change). Render a clear status
+         instead of a silent blank section so users don't think we lost
+         track of the balances. #}
+      <div class="esc-row">
+        <div class="esc-name" style="grid-column: 1 / -1; color: var(--muted);
+             text-align: center; padding: 1em 0;">
+          Balances temporarily unavailable — refresh in a minute, or check
+          <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a>
+          directly.
         </div>
       </div>
     {% endfor %}

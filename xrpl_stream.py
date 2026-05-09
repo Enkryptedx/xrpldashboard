@@ -559,6 +559,15 @@ def run_session(state):
         client.send(Subscribe(streams=[StreamParameter.TRANSACTIONS]))
         log("subscribed to transactions stream")
 
+        # Stamp an immediate heartbeat so prod /health doesn't wait the full
+        # HEARTBEAT_EVERY_SECONDS window to learn the worker is back up.
+        pgbridge.write_heartbeat(
+            "xrpl_stream",
+            txns_seen=state.get("txns_seen"),
+            last_ledger=state.get("last_ledger_index"),
+            extra={"event": "session_start"},
+        )
+
         last_msg_at = [time.time()]
         watchdog_stop = threading.Event()
 
@@ -566,12 +575,14 @@ def run_session(state):
             while not watchdog_stop.wait(WATCHDOG_TICK_SECONDS):
                 idle = time.time() - last_msg_at[0]
                 if idle > IDLE_KILL_SECONDS:
-                    log(f"watchdog: no msg in {idle:.0f}s — closing socket")
+                    log(f"watchdog: no msg in {idle:.0f}s — closing socket and exiting for launchd restart")
                     try:
                         client.close()
                     except Exception as e:
                         log(f"watchdog close error: {e}")
-                    return
+                    # client.close() alone doesn't unblock the iterator on a
+                    # silently dead socket; hard-exit so launchd KeepAlive restarts.
+                    os._exit(1)
 
         wd = threading.Thread(target=watchdog, daemon=True, name="ws-watchdog")
         wd.start()
@@ -612,6 +623,15 @@ def run_session(state):
                         f"token_evts={state.get('token_events_seen', 0)} "
                         f"new_tokens={state.get('new_tokens_seen', 0)} "
                         f"rate={rate:.1f} tx/s")
+                    # Cross-machine liveness signal: Render reads this row
+                    # to know the Mac-hosted worker is alive (local file
+                    # mtimes don't cross hosts).
+                    pgbridge.write_heartbeat(
+                        "xrpl_stream",
+                        txns_seen=state.get("txns_seen"),
+                        last_ledger=state.get("last_ledger_index"),
+                        extra={"rate_tx_s": round(rate, 2)},
+                    )
                     last_heartbeat = now
                     txns_at_last_heartbeat = state["txns_seen"]
         finally:

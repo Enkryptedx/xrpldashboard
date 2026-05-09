@@ -110,9 +110,12 @@
                     fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
     /* ---------- Row 2: identity + reserve gauge + activity ---------- */
-    .row-2 { display: grid; grid-template-columns: 1.5fr 1fr 1fr;
-             gap: 0.45em; row-gap: 0.45em; margin-bottom: 0.5em;
+    .row-2 { display: grid; grid-template-columns: 1.5fr 2fr;
+             gap: 0.45em; margin-bottom: 0.5em;
              align-items: start; }
+    .row-2-right { display: grid; grid-template-columns: 1fr 1fr;
+                   grid-auto-rows: min-content;
+                   gap: 0.45em; align-items: start; }
 
     /* identity card */
     .identity-card { position: relative; overflow: hidden;
@@ -158,13 +161,13 @@
     .identity-verify:hover { background: rgba(34,211,238,0.12);
                              border-color: rgba(34,211,238,0.7); }
     .balance-block { position: relative; margin-top: auto;
-                     padding-top: 0.9em; border-top: 1px solid var(--border); }
-    .balance-big { font-family: var(--mono); font-size: var(--fs-2xl); font-weight: 600;
+                     padding-top: 0.55em; border-top: 1px solid var(--border); }
+    .balance-big { font-family: var(--mono); font-size: var(--fs-xl); font-weight: 600;
                    letter-spacing: -0.025em; line-height: 1.05;
                    background: var(--grad-primary); -webkit-background-clip: text;
                    background-clip: text; -webkit-text-fill-color: transparent;
-                   margin: 0.1em 0 0.15em; }
-    .balance-sub { font-size: var(--fs-xs); color: var(--text-2);
+                   margin: 0.05em 0 0.1em; }
+    .balance-sub { font-size: var(--fs-2xs); color: var(--text-2);
                    font-family: var(--mono); }
     .balance-sub strong { color: var(--text); }
 
@@ -546,10 +549,10 @@
                            padding: 1px 4px; border-radius: 3px; font-size: 0.92em; }
 
     /* ---------- Slim Wallet Pulse strip (secondary, paired with network) ---------- */
-    .wp-wrap { margin-top: 0.7em; padding-top: 0.7em;
+    .wp-wrap { margin-top: 0.4em; padding-top: 0.4em;
                border-top: 1px dashed var(--border); }
     .wp-head { display: flex; justify-content: space-between; align-items: center;
-               gap: 1em; flex-wrap: wrap; margin-bottom: 0.4em; }
+               gap: 1em; flex-wrap: wrap; margin-bottom: 0.25em; }
     .wp-tag { display: inline-flex; align-items: center; gap: 0.45em;
               font-size: var(--fs-2xs); font-weight: 600;
               text-transform: uppercase; letter-spacing: 0.1em;
@@ -566,20 +569,33 @@
                      rgba(0,0,0,0) 100%);
                    border-radius: 8px;
                    overflow: hidden; }
-    .wp-svg { width: 100%; height: 70px; display: block; overflow: visible; }
+    .wp-svg { width: 100%; height: 44px; display: block; overflow: visible; }
     .wp-line { transition: stroke-dashoffset 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s; }
     .wp-area { transition: opacity 1s ease 1s; }
 
-    .cp-stats { display: grid; grid-template-columns: repeat(4, 1fr);
-                gap: 0.55em; padding-top: 0.4em; }
-    .cp-stat  { background: var(--bg-card-2); border-radius: 9px;
-                padding: 0.55em 0.7em; }
-    .cp-stat .k { font-size: var(--fs-2xs); color: var(--text-3);
-                  text-transform: uppercase; letter-spacing: 0.08em;
-                  font-weight: 600; display: block; }
-    .cp-stat .v { font-family: var(--mono); font-size: var(--fs-sm);
-                  color: var(--text); font-weight: 600; margin-top: 0.15em;
-                  display: block; }
+    .cp-stats { display: flex; flex-wrap: wrap;
+                align-items: center; gap: 0.35em 0.6em;
+                padding: 0.45em 0.65em; margin-top: 0.4em;
+                background: var(--bg-card-2); border-radius: 7px;
+                font-size: var(--fs-2xs); color: var(--text-2);
+                line-height: 1.4; }
+    .cp-stats .v   { font-family: var(--mono); color: var(--text);
+                     font-weight: 600; }
+    .cp-stats .sep { color: var(--text-3); opacity: 0.5; }
+    .cp-stat-top   { background: transparent; border: 0; padding: 0;
+                     color: var(--text-2); font: inherit; cursor: pointer;
+                     display: inline-flex; align-items: center; gap: 0.3em; }
+    .cp-stat-top:hover { color: var(--cyan); }
+    .cp-stat-top .caret { font-size: 0.7em; transition: transform 0.18s ease; }
+    .cp-stat-top[aria-expanded="true"] .caret { transform: rotate(180deg); }
+    .cp-stat-top-detail { display: none; flex-basis: 100%;
+                          padding: 0.4em 0.55em; margin-top: 0.2em;
+                          font-family: var(--mono); font-size: var(--fs-2xs);
+                          color: var(--text); word-break: break-all;
+                          background: rgba(34,211,238,0.05);
+                          border: 1px dashed rgba(34,211,238,0.25);
+                          border-radius: 5px; }
+    .cp-stat-top-detail.is-open { display: block; }
 
     /* reserve gauge */
     .gauge-card { display: flex; flex-direction: column; align-items: center;
@@ -718,6 +734,7 @@
     @media (max-width: 980px) {
       .kpi-strip { grid-template-columns: repeat(2, 1fr); }
       .row-2 { grid-template-columns: 1fr; }
+      .row-2-right { grid-template-columns: 1fr; }
       .row-3 { grid-template-columns: 1fr; }
       .identity-card { grid-row: auto; }
     }
@@ -729,6 +746,17 @@
       .amm-chart { gap: 0.4em; }
       .amm-bar-label { font-size: 0.6rem; }
       .amm-mini-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Reduced-motion: kill every CSS animation on the wallet page. SMIL
+       <animate> tags inside SVGs aren't CSS-controllable; they're paused
+       by the small JS block at the bottom of the page (matchMedia +
+       SVGSVGElement.pauseAnimations). */
+    @media (prefers-reduced-motion: reduce) {
+      .pool-tag .dot { animation: none; }
+      .balance-pulse, .live-dot, .badge-anim, [class*="pulse"] {
+        animation: none !important;
+      }
     }
   </style>
   {% include "_vibes_head.html" %}
@@ -828,7 +856,7 @@
                target="_blank" rel="noopener noreferrer"
                title="Verify this wallet's history on XRPSCAN">Verify on XRPSCAN ↗</a>
           </div>
-          <span class="identity-label">Live · pulled from XRP Ledger</span>
+          <span class="identity-label">Snapshot · pulled from XRP Ledger</span>
         </div>
 
         {% if data.is_amm %}
@@ -844,7 +872,7 @@
              data-address-short="{{ data.address_short }}"
              data-pair="{{ data.amm_pair }}">
           <div class="pool-head">
-            <span class="pool-tag"><span class="dot"></span> Live · Pool Flow</span>
+            <span class="pool-tag"><span class="dot"></span> Pool Flow</span>
             <div class="pool-head-right">
               <div class="pool-mode-toggle" role="tablist" aria-label="Comet mode">
                 <button type="button" class="pool-mode-btn"
@@ -880,7 +908,7 @@
             </span>
           </div>
           <div class="pool-foot-note">
-            Pool reserves and price computed live from XRPL <code>account_info</code> +
+            Pool reserves and price computed from XRPL <code>account_info</code> +
             <code>account_lines</code>. Flow direction aggregated from the most recent
             {{ data.tx_sample_size }} on-chain swap{{ '' if data.tx_sample_size == 1 else 's' }} on the pool's account.
           </div>
@@ -889,7 +917,7 @@
         {# ---- Counterparty Network (entities the wallet has touched) ---- #}
         <div class="cp-wrap" aria-hidden="true">
           <div class="cp-head">
-            <span class="cp-tag"><span class="dot"></span> Live · Counterparty Network</span>
+            <span class="cp-tag"><span class="dot"></span> Counterparty Network</span>
             <span class="cp-meta">{{ data.nodes|length }} entities · {{ data.lookback_days }} days</span>
           </div>
           <div class="cp-wallet-flag" data-cp-wallet-flag aria-live="polite">
@@ -1103,10 +1131,26 @@
           </div>
 
           <div class="cp-stats">
-            <div class="cp-stat"><span class="k">{{ data.lookback_days }}d txs</span><span class="v">{{ data.tx_count_30d }}</span></div>
-            <div class="cp-stat"><span class="k">Active</span><span class="v">{{ data.active_days_30d }} / {{ data.lookback_days }} days</span></div>
-            <div class="cp-stat"><span class="k">Top counterparty</span><span class="v">{{ data.top_counterparty_label }}</span></div>
-            <div class="cp-stat"><span class="k">Last seen</span><span class="v">{{ data.last_seen }}</span></div>
+            <span><span class="v" data-live-tx-count>{{ data.tx_count_30d }}</span> txs / {{ data.lookback_days }}d</span>
+            <span class="sep">·</span>
+            <span><span class="v">{{ data.active_days_30d }}</span> / {{ data.lookback_days }} active</span>
+            {% if data.top_counterparty_label != "—" %}
+              <span class="sep">·</span>
+              <button type="button" class="cp-stat-top"
+                      data-cp-top-toggle aria-expanded="false"
+                      aria-controls="cp-top-detail"
+                      title="Click to reveal full address">
+                top: <span class="v">{{ data.top_counterparty_label }}</span>
+                <span class="caret">▾</span>
+              </button>
+            {% endif %}
+            <span class="sep">·</span>
+            <span>last seen <span class="v" data-live-last-seen>{{ data.last_seen }}</span></span>
+            {% if data.top_counterparty_addr %}
+              <div class="cp-stat-top-detail" id="cp-top-detail" data-cp-top-detail>
+                {{ data.top_counterparty_addr }}
+              </div>
+            {% endif %}
           </div>
         {% else %}
           <div class="cp-stats">
@@ -1129,6 +1173,7 @@
         {% endif %}
       </div>
 
+      <div class="row-2-right">
       {% if not data.is_amm %}
       <div class="card gauge-card">
         <span class="card-label">Reserve usage</span>
@@ -1156,7 +1201,9 @@
           <span>0%</span><span>100%</span>
         </div>
         <div class="gauge-foot">
-          10 XRP base + {{ data.owner_count }} owned objects × 0.2 XRP =
+          {{ "{:g}".format(data.base_reserve_xrp) }} XRP base +
+          {{ data.owner_count }} owned objects ×
+          {{ "{:g}".format(data.owner_reserve_xrp) }} XRP =
           <strong>{{ "{:.1f}".format(data.reserved_xrp) }} XRP</strong> reserved.
           Reserved XRP can't be sent.
         </div>
@@ -1266,7 +1313,7 @@
       <div class="card">
         <div class="section-head" style="margin-bottom: 0.3em;">
           <h2>Pool reserves</h2>
-          <span class="meta">{{ data.amm_pair }} · live from XRP Ledger</span>
+          <span class="meta">{{ data.amm_pair }} · pulled from XRP Ledger</span>
         </div>
         <div style="color: var(--muted); font-size: var(--fs-sm); padding: 0.6em 0;">
           This account <em>is</em> the AMM pool — its XRP balance and top
@@ -1348,11 +1395,12 @@
         {% endif %}
       </div>
       {% endif %}
+      </div>
 
     </section>
 
     <footer>
-      Live wallet view · all balances, holdings, AMM positions and pool activity
+      Wallet view · all balances, holdings, AMM positions and pool activity
       pulled directly from the XRP Ledger via <code style="color: var(--cyan);">account_info</code>,
       <code style="color: var(--cyan);">account_lines</code>, <code style="color: var(--cyan);">account_tx</code>,
       and <code style="color: var(--cyan);">amm_info</code>. Cached 5 min server-side.
@@ -1372,6 +1420,19 @@
           integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz"
           crossorigin="anonymous"></script>
   <script>
+    /* Top-counterparty pill: click reveals full XRPL address inline.
+       Saves vertical space — the strip stays one line until the user
+       opts in to the detail. Surrounding cards reflow naturally. */
+    (function () {
+      var btn = document.querySelector('[data-cp-top-toggle]');
+      var detail = document.querySelector('[data-cp-top-detail]');
+      if (!btn || !detail) return;
+      btn.addEventListener('click', function () {
+        var open = detail.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    })();
+
     /* Stylised wallet QR — scannable identity.
        Encodes the canonical /wallet/<addr> URL so a phone scan opens this
        same view, not a Send screen in a wallet app. Visual: cyan→blue
@@ -1934,40 +1995,48 @@
       });
     })();
 
-    /* Slim Wallet Pulse — same ECG-style trace as the standalone Pulse mock,
-       trimmed to 70px tall so it pairs with the network graph above. */
+    /* Slim Wallet Pulse — ECG-style trace. Exposes window.__walletPulse
+       so the live-tx WebSocket handler can bump today's bin (last index)
+       when a new validated transaction arrives. */
     (function () {
       var data = {{ data.pulse|tojson }};
-      var W = 600, H = 110, baseline = 86, maxH = 70;
+      var W = 600, baseline = 86, maxH = 70;
       var svg = document.querySelector('[data-pulse]');
       if (!svg) return;
       var dayW = W / data.length;
-      var maxCount = Math.max.apply(Math, data) || 1;
-
-      var d = 'M0,' + baseline;
-      data.forEach(function (count, i) {
-        var x = i * dayW;
-        var spikeH = (count / maxCount) * maxH;
-        d += ' L' + (x + dayW * 0.20).toFixed(2) + ',' + baseline;
-        if (count > 0) {
-          d += ' L' + (x + dayW * 0.32).toFixed(2) + ',' + (baseline + 4);
-          d += ' L' + (x + dayW * 0.50).toFixed(2) + ',' + (baseline - spikeH).toFixed(2);
-          d += ' L' + (x + dayW * 0.62).toFixed(2) + ',' + (baseline + 5);
-        }
-        d += ' L' + (x + dayW * 0.80).toFixed(2) + ',' + baseline;
-        d += ' L' + ((i + 1) * dayW).toFixed(2) + ',' + baseline;
-      });
-
       var line = svg.querySelector('.wp-line');
-      line.setAttribute('d', d);
       var area = svg.querySelector('.wp-area');
-      area.setAttribute('d', d + ' L' + W + ',' + baseline + ' L0,' + baseline + ' Z');
+      var dot  = svg.querySelector('.wp-dot');
 
-      var dot = svg.querySelector('.wp-dot');
+      function buildPath() {
+        var maxCount = Math.max.apply(Math, data) || 1;
+        var d = 'M0,' + baseline;
+        data.forEach(function (count, i) {
+          var x = i * dayW;
+          var spikeH = (count / maxCount) * maxH;
+          d += ' L' + (x + dayW * 0.20).toFixed(2) + ',' + baseline;
+          if (count > 0) {
+            d += ' L' + (x + dayW * 0.32).toFixed(2) + ',' + (baseline + 4);
+            d += ' L' + (x + dayW * 0.50).toFixed(2) + ',' + (baseline - spikeH).toFixed(2);
+            d += ' L' + (x + dayW * 0.62).toFixed(2) + ',' + (baseline + 5);
+          }
+          d += ' L' + (x + dayW * 0.80).toFixed(2) + ',' + baseline;
+          d += ' L' + ((i + 1) * dayW).toFixed(2) + ',' + baseline;
+        });
+        return d;
+      }
+
+      function render() {
+        var d = buildPath();
+        line.setAttribute('d', d);
+        area.setAttribute('d', d + ' L' + W + ',' + baseline + ' L0,' + baseline + ' Z');
+      }
+      render();
+
       dot.setAttribute('cx', (W - 1).toFixed(2));
       dot.setAttribute('cy', baseline);
 
-      // Animate the line draw.
+      // Initial draw animation.
       var len = line.getTotalLength();
       line.style.strokeDasharray = len;
       line.style.strokeDashoffset = len;
@@ -1976,6 +2045,120 @@
         line.style.strokeDashoffset = '0';
         area.style.opacity = '1';
       });
+
+      window.__walletPulse = {
+        bumpToday: function () {
+          // No transition flicker: clear the dasharray so the resized
+          // path doesn't re-animate from offset.
+          data[data.length - 1] = (data[data.length - 1] || 0) + 1;
+          line.style.transition = 'none';
+          line.style.strokeDasharray = 'none';
+          line.style.strokeDashoffset = '0';
+          render();
+        }
+      };
+    })();
+
+    /* Live wallet WebSocket — subscribes the browser directly to
+       wss://s2.ripple.com for this wallet's account. On every validated
+       transaction, bumps the 30d tx counter, the pulse sparkline's
+       today bin, and refreshes "last seen" to "just now". One socket
+       per open tab; closes on unload. The site's /whales and /tokens
+       panels are still fed by the Render worker — this is independent. */
+    (function () {
+      var addr = {{ data.address|tojson }};
+      if (!addr || typeof WebSocket === 'undefined') return;
+
+      var WS_URL = 'wss://s2.ripple.com';
+      var ws = null;
+      var RECONNECT_MIN_MS = 3000;
+      var RECONNECT_MAX_MS = 60000;
+      var reconnectMs = RECONNECT_MIN_MS;
+      var reconnectTimer = null;
+      var closed = false;
+
+      function bump() {
+        // Tx counter
+        var counter = document.querySelector('[data-live-tx-count]');
+        if (counter) {
+          var cur = parseInt((counter.textContent || '0').replace(/[^\d]/g, ''), 10) || 0;
+          counter.textContent = (cur + 1).toLocaleString();
+        }
+        // Last seen
+        var ls = document.querySelector('[data-live-last-seen]');
+        if (ls) ls.textContent = 'just now';
+        // Pulse sparkline
+        if (window.__walletPulse) window.__walletPulse.bumpToday();
+        // Brief flash on center wallet node
+        var center = document.querySelectorAll('svg[data-cp] > circle');
+        // The inner solid disk has r=9; flash its fill briefly.
+        for (var i = 0; i < center.length; i++) {
+          var c = center[i];
+          if (c.getAttribute('r') === '9') {
+            var orig = c.getAttribute('fill');
+            c.setAttribute('fill', '#22d3ee');
+            (function (node, oFill) {
+              setTimeout(function () {
+                if (oFill) node.setAttribute('fill', oFill);
+              }, 380);
+            })(c, orig);
+            break;
+          }
+        }
+      }
+
+      function connect() {
+        if (closed) return;
+        try { ws = new WebSocket(WS_URL); }
+        catch (_e) { return scheduleReconnect(); }
+
+        ws.addEventListener('open', function () {
+          // Successful connection — reset backoff so a brief blip doesn't
+          // leave us at 60s reconnect intervals after recovery.
+          reconnectMs = RECONNECT_MIN_MS;
+          try {
+            ws.send(JSON.stringify({
+              command: 'subscribe',
+              accounts: [addr]
+            }));
+          } catch (_e) {}
+        });
+
+        ws.addEventListener('message', function (ev) {
+          // Defensive: any throw inside bump() (DOM-manipulation, sparkline,
+          // counter parsing) would otherwise break the handler binding for
+          // the rest of the session, silently freezing the live feed.
+          try {
+            var msg = JSON.parse(ev.data);
+            if (msg && msg.type === 'transaction' && msg.validated) bump();
+          } catch (_e) { /* swallow — next tick keeps streaming */ }
+        });
+
+        ws.addEventListener('close', scheduleReconnect);
+        ws.addEventListener('error', function () {
+          try { ws.close(); } catch (_e) {}
+        });
+      }
+
+      function scheduleReconnect() {
+        if (closed || reconnectTimer) return;
+        var delay = reconnectMs;
+        reconnectTimer = setTimeout(function () {
+          reconnectTimer = null;
+          connect();
+        }, delay);
+        // Exponential backoff capped at RECONNECT_MAX_MS so a long XRPL
+        // outage doesn't hammer s2.ripple.com every 3s indefinitely.
+        reconnectMs = Math.min(reconnectMs * 2, RECONNECT_MAX_MS);
+      }
+
+      window.addEventListener('beforeunload', function () {
+        closed = true;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        if (ws) try { ws.close(); } catch (_e) {}
+      });
+
+      connect();
     })();
 
     // ============================================================
@@ -2464,6 +2647,45 @@
 
       if (reduced) frame(startTime + 600);
       else requestAnimationFrame(frame);
+    })();
+  </script>
+  <script>
+    // SVG SMIL pause control: under prefers-reduced-motion, freeze every
+    // SVG animation on first paint (saves CPU on phones, respects user
+    // intent). Otherwise, pause SVGs while they're scrolled out of view
+    // via IntersectionObserver — same wins on long wallet pages where
+    // half the visualizations sit below the fold.
+    (function () {
+      var svgs = document.querySelectorAll('svg');
+      if (!svgs.length) return;
+      var reduced = window.matchMedia &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function pauseSafe(svg) {
+        if (svg && typeof svg.pauseAnimations === 'function') {
+          try { svg.pauseAnimations(); } catch (_e) {}
+        }
+      }
+      function unpauseSafe(svg) {
+        if (svg && typeof svg.unpauseAnimations === 'function') {
+          try { svg.unpauseAnimations(); } catch (_e) {}
+        }
+      }
+
+      if (reduced) {
+        for (var i = 0; i < svgs.length; i++) pauseSafe(svgs[i]);
+        return;
+      }
+
+      if (typeof IntersectionObserver === 'undefined') return;
+      var io = new IntersectionObserver(function (entries) {
+        for (var k = 0; k < entries.length; k++) {
+          var e = entries[k];
+          if (e.isIntersecting) unpauseSafe(e.target);
+          else pauseSafe(e.target);
+        }
+      }, { rootMargin: '120px 0px' });
+      for (var j = 0; j < svgs.length; j++) io.observe(svgs[j]);
     })();
   </script>
   {% include "_vibes_scripts.html" %}

@@ -44,3 +44,31 @@ services:
 
     # Auto-deploy on every push to the connected branch.
     autoDeploy: true
+
+    # ------------------------------------------------------------------
+    # DATABASE_URL is set manually in the Render dashboard (web service
+    # env vars), since we don't want the connection string committed.
+    # ------------------------------------------------------------------
+
+  # ====================================================================
+  # XRPL stream worker — DISABLED.
+  #
+  # Architecture decision (2026-05-08): the XRPL worker runs only on
+  # Charlie's Mac via launchd. Enabling this stanza would spin up a
+  # second worker on Render that dual-writes to the same Neon DB,
+  # producing duplicate events.db rows, double-counted token volumes,
+  # and a duplicate worker_heartbeat row fight.
+  #
+  # Re-enable later only if/when we move the worker entirely off the
+  # Mac (and at the same time disable the launchd plist).
+  # ====================================================================
+  # - type: worker
+  #   name: xrpldashboard-stream
+  #   runtime: python
+  #   plan: starter
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python xrpl_stream.py
+  #   envVars:
+  #     - key: PYTHON_VERSION
+  #       value: "3.12.7"
+  #   autoDeploy: true

@@ -10,6 +10,10 @@ venv/
 # Env / secrets
 .env
 .env.local
+# launchd plist for the XRPL stream worker carries DATABASE_URL inline.
+# Other plists in launchd/ (daily_snapshot, verify_toml) have no secrets
+# and are tracked.
+launchd/com.charliebruce.xrpldashboard.xrpl_stream.plist
 
 # Logs
 *.log

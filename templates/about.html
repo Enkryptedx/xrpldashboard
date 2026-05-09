@@ -129,8 +129,13 @@
     <code>s1.ripple.com</code> and <code>s2.ripple.com</code>). A node
     is just a peer in the consensus network — it can&rsquo;t lie about ledger
     contents without the rest of the network rejecting it. The data is
-    canonical. As traffic grows, the plan is to run our own rippled
-    node so we don&rsquo;t depend on anyone else&rsquo;s availability.
+    canonical. <strong>Disclosure:</strong> Ripple&rsquo;s documentation
+    states their public servers are not intended for sustained business
+    use. The plan is to migrate to the community-operated cluster
+    <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>
+    before sustained traffic warrants it, and to run our own rippled
+    node as the project grows. The full per-surface cache and source
+    breakdown is on <a href="/methodology">/methodology</a>.
   </p>
 
   <h3>Reference labels</h3>
@@ -163,8 +168,11 @@
 
   <div class="callout">
     <p>
-      If we ever start depending on a third-party live-data source,
-      that dependency will be disclosed on this page.
+      Every external dependency we have — XRPL nodes, the Postgres
+      provider, the CDN — is named on
+      <a href="/methodology">/methodology</a>, with the cache TTL of
+      every surface that touches it. If a number on this site is wrong,
+      that&rsquo;s where you find out why.
     </p>
   </div>
 

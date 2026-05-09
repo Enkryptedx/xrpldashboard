@@ -12,6 +12,9 @@ import time
 from datetime import datetime, timezone
 
 from flask import Flask, Response, redirect, render_template, request, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from amm_scan_pools import (
     JsonRpcClient,
@@ -63,7 +66,25 @@ PUBLIC_ROUTES = [
 ]
 
 app = Flask(__name__)
+# Render's edge terminates TLS and forwards via X-Forwarded-For. Without
+# ProxyFix, every request appears to come from Render's edge IP and the
+# rate limiter would lump all visitors into one bucket. x_for=1 trusts
+# exactly one upstream proxy hop (Render's), which is correct for our
+# topology. x_proto=1 lets url_for build https URLs behind the proxy.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
+
+# In-memory limiter — Render free tier is single-process / single-replica,
+# so memory storage is correct. Counts reset on deploy (intentional: we're
+# stopping curl loops, not enforcing daily quotas). If we ever scale to
+# multiple replicas, swap storage_uri to Redis or a Neon-backed store.
+# No global default — limits are applied explicitly per-route so health
+# checks and HTML pages stay unthrottled.
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="memory://",
+)
 
 
 @app.context_processor
@@ -80,7 +101,16 @@ _CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://plaus
 _CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
 _CSP_IMG_SRC = "'self' data:"
-_CSP_CONNECT_SRC = "'self' https://plausible.io"
+_CSP_CONNECT_SRC = (
+    # Browsers currently only connect to wss://s2.ripple.com. s1 and
+    # xrplcluster are kept in the allowlist as documented fallbacks so a
+    # node outage can be mitigated by editing the WS_URL constants in
+    # the templates without also pushing a CSP header change. When this
+    # tightens to s2 only, the only operational cost is one extra deploy
+    # on the day s2 has a bad hour. Worth it.
+    "'self' https://plausible.io "
+    "wss://s2.ripple.com wss://s1.ripple.com wss://xrplcluster.com"
+)
 
 _CSP_VALUE = "; ".join([
     "default-src 'self'",
@@ -575,14 +605,32 @@ def health():
     stream_uptime = _iso_to_age_seconds(stream_started)
     stream_log_age = _file_age_seconds(STREAM_LOG_PATH)
 
+    # Cross-machine truth: the worker stamps a heartbeat row in Neon every
+    # ~5min, so prod (Render) — which doesn't have access to the Mac's log
+    # files — can still know whether the worker is alive. Local file-mtime
+    # check stays as the authoritative signal on the Mac itself.
+    pg_hb = db.read_heartbeat("xrpl_stream")
+    pg_hb_age = (int(time.time()) - pg_hb["ts"]) if pg_hb else None
+
     # Liveness: scanner log should tick every ~30s, watcher every ~60s.
     # Conservative thresholds: 5 min and 10 min before flagging stale.
     scan_alive = scan_finished is None and (scan_log_age or 999) < 300
-    stream_alive = (stream_log_age or 999) < 600
+    stream_alive_local = (stream_log_age or 999) < 600
+    # Trust the freshest signal we have. If the local log is missing/stale
+    # but Neon shows a recent heartbeat, the worker IS alive — just on a
+    # different host. Threshold a bit looser (900s) since heartbeat cadence
+    # is 5min and a single skipped tick shouldn't flip prod to "degraded".
+    stream_alive_remote = pg_hb_age is not None and pg_hb_age < 900
+    stream_alive = stream_alive_local or stream_alive_remote
 
     amm_index = _safe_load_json(AMM_INDEX_PATH) or []
 
     overall = "ok" if (scan_alive or scan_finished) and stream_alive else "degraded"
+
+    # Status code is the contract for uptime monitors (UptimeRobot etc.) —
+    # keyword-matching the HTML body is fragile. Body stays informative for
+    # humans hitting /health in a browser; only the code flips on degrade.
+    status_code = 503 if overall == "degraded" else 200
 
     pulse = fetch_pulse_cached()
 
@@ -619,7 +667,7 @@ def health():
             "volumes_rows": _safe_count_table(VOLUMES_DB_PATH, "token_volume"),
         },
         recent_log=_tail_lines(STREAM_LOG_PATH, n=8),
-    )
+    ), status_code
 
 
 def _load_named_accounts_dict():
@@ -857,6 +905,7 @@ def whales():
         filter_type=filter_type,
         tier=tier,
         tier_label=tier_label,
+        tier_drops=tier_drops,
         type_counts=type_counts,
         threshold_xrp=WHALE_XRP_THRESHOLD,
         named_accounts_count=len(_load_named_accounts_dict()),
@@ -1027,6 +1076,12 @@ def tokens():
             "segments": segments,
         })
 
+    # A single 100%-tall bar is misleading — it implies all token activity
+    # is one category when really it's "all *labeled* activity". Suppress
+    # the hero until at least two categories have data.
+    if len(category_bars) < 2:
+        category_bars = []
+
     return render_template(
         "tokens.html",
         tokens=enriched,
@@ -1045,6 +1100,14 @@ def about():
     """Public-facing 'what is this' page. Mission, principles, methodology,
     funding model. Copy lives in the template — review before launch."""
     return render_template("about.html")
+
+
+@app.route("/methodology")
+def methodology():
+    """Per-surface freshness, cache TTLs, data sources, known limitations.
+    The differentiator page — no other XRPL dashboard discloses its
+    caching/source dependencies in one public document."""
+    return render_template("methodology.html")
 
 
 def _historical_snapshot_meta():
@@ -1290,6 +1353,7 @@ def cold_storage():
 
 
 @app.route("/api/ledger-tip")
+@limiter.limit("60 per minute")
 def api_ledger_tip():
     """Lightweight JSON endpoint that the liveness chip in _nav.html polls
     every 30s. Same data the context_processor injects, but without a full
@@ -1308,6 +1372,7 @@ def api_ledger_tip():
 
 
 @app.route("/api/pools/recent_events")
+@limiter.limit("60 per minute")
 def api_pools_recent_events():
     """Recent per-pool AMM activity (deposit/withdraw/swap), polled by the
     constellation on /pools to fire real comets at the matching star.

@@ -35,4 +35,17 @@
     a.card-block:hover, .stat-pill:hover, .mosaic .card:hover,
     .pool-row:hover, .esc-row:hover, .whale-row:hover, .token-row:hover { transform: none; }
   }
+
+  /* Mobile: bump primary touch targets toward Apple's 44pt / Material's
+     48dp guidance. Per-template `.nav a` and `.link-pill` styles tend to
+     use small top/bottom padding tuned for desktop; this gives them a
+     larger hit area on phones without forcing a layout rewrite. */
+  @media (max-width: 540px) {
+    .nav a { padding: 10px 6px; display: inline-block; line-height: 1.2; }
+    .link-pill { padding: 10px 14px; }
+    .pool-mode-btn, .lsb-pill, .filter-pill, .pill {
+      min-height: 36px; padding-top: 8px; padding-bottom: 8px;
+    }
+    a, button { touch-action: manipulation; }
+  }
 </style>

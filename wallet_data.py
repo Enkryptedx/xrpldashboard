@@ -30,7 +30,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 from xrpl.clients import JsonRpcClient
-from xrpl.models.requests import AccountInfo, AccountLines, AccountTx, AMMInfo
+from xrpl.models.requests import AccountInfo, AccountLines, AccountTx, AMMInfo, ServerInfo
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
@@ -49,10 +49,43 @@ TOP_N_COUNTERPARTIES = 8
 # this epoch, not Unix epoch. Convert with: unix_ts = ledger_time + 946684800.
 RIPPLE_EPOCH = 946684800
 
-# XRPL reserve math (current as of ledger amendment FixReducedOffersV1):
-#   base reserve = 10 XRP, owner reserve = 0.2 XRP per owned ledger object.
+# XRPL reserve math. Live values come from server_info (validated_ledger);
+# these constants are only used as a last-resort fallback if the lookup
+# fails. Reserves can change via on-chain amendment, so we never want to
+# rely on the hardcoded numbers in steady state.
 BASE_RESERVE_XRP = 10.0
 OWNER_RESERVE_XRP = 0.2
+
+# Server-info reserve cache: keyed only on the node URL. Reserves only
+# change with on-chain amendments (rare), so a 10-minute TTL is safe and
+# avoids a server_info round-trip on every wallet render.
+_RESERVE_TTL_SECONDS = 600
+_reserve_cache_lock = threading.Lock()
+_reserve_cache = {}  # node_url -> (fetched_at_unix, (base_xrp, owner_xrp))
+
+
+def _fetch_server_reserves(client):
+    """Pull (base_reserve_xrp, owner_reserve_xrp) from validated server_info.
+    Falls back to module constants if the request fails so a transient
+    node error never breaks the wallet view."""
+    now = time.time()
+    with _reserve_cache_lock:
+        cached = _reserve_cache.get(XRPL_NODE)
+        if cached and now - cached[0] < _RESERVE_TTL_SECONDS:
+            return cached[1]
+    try:
+        info = (client.request(ServerInfo()).result or {}).get("info") or {}
+        validated = info.get("validated_ledger") or {}
+        base = validated.get("reserve_base_xrp")
+        owner = validated.get("reserve_inc_xrp")
+        if base is not None and owner is not None:
+            pair = (float(base), float(owner))
+            with _reserve_cache_lock:
+                _reserve_cache[XRPL_NODE] = (now, pair)
+            return pair
+    except Exception:
+        pass
+    return (BASE_RESERVE_XRP, OWNER_RESERVE_XRP)
 
 _cache_lock = threading.Lock()
 _cache = {}  # (address, lookback_days) -> (fetched_at_unix, data_dict)
@@ -794,10 +827,13 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "is_amm": is_amm,
             "amm_pair": amm_pair,
             "balance_xrp": 0.0, "available_xrp": 0.0, "reserved_xrp": 0.0,
+            "base_reserve_xrp": BASE_RESERVE_XRP,
+            "owner_reserve_xrp": OWNER_RESERVE_XRP,
             "pct_locked": 0.0, "owner_count": 0, "trustline_count": 0,
             "tx_count_30d": 0, "active_days_30d": 0,
             "lookback_days": lookback_days,
             "last_seen": "—", "top_counterparty_label": "—",
+            "top_counterparty_addr": None,
             "pulse": [0] * lookback_days, "nodes": [], "tx_sample_size": 0,
             "holdings": [], "holdings_lp": [],
             "amm_positions": [], "amm_total_xrp": 0.0,
@@ -808,7 +844,8 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     balance_drops = int(account_data.get("Balance", "0"))
     owner_count = int(account_data.get("OwnerCount", 0))
     balance_xrp = balance_drops / 1_000_000
-    reserved_xrp = BASE_RESERVE_XRP + OWNER_RESERVE_XRP * owner_count
+    base_reserve_xrp, owner_reserve_xrp = _fetch_server_reserves(client)
+    reserved_xrp = base_reserve_xrp + owner_reserve_xrp * owner_count
     available_xrp = max(0.0, balance_xrp - reserved_xrp)
     pct_locked = (reserved_xrp / balance_xrp) if balance_xrp > 0 else 0.0
 
@@ -851,9 +888,11 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     last_seen = _age_str(last_seen_unix)
 
     top_label = "—"
+    top_addr_full = None
     if nodes:
         top = nodes[0]
         top_label = f"{top['name']} · {top['pct']}%"
+        top_addr_full = (top.get("detail") or {}).get("addressFull")
 
     # AMM-only: aggregate the recent flow direction so the pool widget
     # can bias its slosh to match what's actually happening on-chain.
@@ -907,6 +946,8 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "balance_xrp": balance_xrp,
         "available_xrp": available_xrp,
         "reserved_xrp": reserved_xrp,
+        "base_reserve_xrp": base_reserve_xrp,
+        "owner_reserve_xrp": owner_reserve_xrp,
         "pct_locked": pct_locked,
         "owner_count": owner_count,
         "trustline_count": trustline_count,
@@ -915,6 +956,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "lookback_days": lookback_days,
         "last_seen": last_seen,
         "top_counterparty_label": top_label,
+        "top_counterparty_addr": top_addr_full,
         "pulse": pulse,
         "nodes": nodes,
         "tx_sample_size": len(txs),

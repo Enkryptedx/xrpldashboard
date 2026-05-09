@@ -238,9 +238,9 @@
   {# ========== Status hero ========== #}
   <div class="status-hero {{ 'ok' if network_ok else 'deg' }}">
     <div class="status-hero-inner">
-      <span class="status-bigdot"></span>
+      <span class="status-bigdot" data-network-bigdot></span>
       <div>
-        <div class="status-headline">
+        <div class="status-headline" data-network-headline>
           {% if everything_ok %}All systems normal
           {% elif network_ok %}Network healthy
           {% elif overall == "ok" and pulse and pulse.status == 'running_hot' %}Network running hot
@@ -248,8 +248,8 @@
           {% else %}Service status
           {% endif %}
         </div>
-        <div class="status-sub">
-          XRPL network health and dashboard infrastructure · refreshes every 60 s
+        <div class="status-sub" data-network-sub>
+          XRPL network status updates live · worker fields refresh every 60 s
         </div>
       </div>
     </div>
@@ -260,18 +260,19 @@
             data-load="{{ pulse.load_factor if pulse and not pulse.error else 1 }}"></canvas>
     <div class="status-ekg-meta">
       <span>Heartbeat · scales with network load</span>
-      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm">— bpm</span>
+      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>— bpm</span>
     </div>
   </div>
 
   {# ========== Card 1: XRPL Network ========== #}
   {% if pulse and not pulse.error %}
     {% set net_ok = pulse.status == 'operating_normally' %}
-    <div class="card">
-      <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"></span>
+    <div class="card" data-network-card>
+      <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"
+            data-network-card-dot></span>
       <div class="card-body">
         <div class="title">XRPL network</div>
-        <div class="desc">
+        <div class="desc" data-network-card-desc>
           {% if net_ok %}
             The XRP Ledger is healthy. New ledgers are being closed every
             {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} seconds — exactly as expected.
@@ -285,7 +286,8 @@
           {% endif %}
         </div>
       </div>
-      <div class="card-state {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','congested'] else 'err') }}">
+      <div class="card-state {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','congested'] else 'err') }}"
+           data-network-card-state>
         {{ pulse.status.replace('_',' ') }}
       </div>
     </div>
@@ -383,7 +385,7 @@
         <div class="tech-row"><span class="k">last close age</span><span class="v">{{ pulse.last_close_age_seconds or 0 }}s</span></div>
         <div class="tech-row"><span class="k">validation quorum</span><span class="v">{{ pulse.validation_quorum }}</span></div>
         <div class="tech-row"><span class="k">load factor</span><span class="v">{{ pulse.load_factor }}×</span></div>
-        <div class="tech-row"><span class="k">status_text</span><span class="v dim">{{ pulse.status_text }}</span></div>
+        <div class="tech-row"><span class="k">summary</span><span class="v dim">{{ pulse.status_text }}</span></div>
         {% else %}
         <div class="tech-row"><span class="k">pulse</span><span class="v dim">{{ pulse.error if pulse else "not loaded" }}</span></div>
         {% endif %}
@@ -484,8 +486,10 @@
     }
     renderBpm();
 
-    // Poll the same /api/ledger-tip endpoint the liveness chip uses, so the
-    // heartbeat rate updates without a full page reload.
+    // Poll the same /api/ledger-tip endpoint the liveness chip uses so the
+    // heartbeat rate stays in sync with the server's view of load_factor —
+    // the public WebSocket ledger stream gives us close-rate updates but
+    // not the load multiplier.
     setInterval(function () {
       fetch('/api/ledger-tip', { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -501,6 +505,29 @@
           renderBpm();
         }).catch(function () {});
     }, 30000);
+
+    // Expose updaters so the live-status WebSocket IIFE below can drive
+    // the heartbeat in real time off ledgerClosed events.
+    window.__ekg = {
+      setBaseInterval: function (s) {
+        if (s && isFinite(s) && s > 0) {
+          baseInterval = s;
+          interval = intervalForLoad(loadFactor);
+          renderBpm();
+        }
+      },
+      setLoadFactor: function (l) {
+        if (l && isFinite(l) && l >= 1) {
+          loadFactor = l;
+          interval = intervalForLoad(loadFactor);
+          renderBpm();
+        }
+      },
+      setStatus: function (s) {
+        state = (s === 'operating_normally') ? 'ok' : 'deg';
+        palette = paletteFor(state);
+      }
+    };
 
     function paletteFor(s) {
       return s === 'ok'
@@ -627,6 +654,226 @@
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+  })();
+
+  // ---------- Live network classifier (WebSocket ledger stream) ----------
+  // Subscribes to the public XRPL ledger stream — every ledgerClosed event
+  // delivers the new sequence + close interval. We maintain a 20-event
+  // rolling window for the avg close, treat last-close-age as ticking from
+  // the most recent event, and reclassify status using the same thresholds
+  // as network_pulse._classify so the hero / card 1 / heartbeat all flip
+  // the moment the network state changes — no 60s refresh required.
+  (function () {
+    if (typeof WebSocket === 'undefined') return;
+
+    var bigDot   = document.querySelector('[data-network-bigdot]');
+    var headline = document.querySelector('[data-network-headline]');
+    var card     = document.querySelector('[data-network-card]');
+    var cardDot  = document.querySelector('[data-network-card-dot]');
+    var cardDesc = document.querySelector('[data-network-card-desc]');
+    var cardPill = document.querySelector('[data-network-card-state]');
+    if (!bigDot && !card) return;
+
+    var loadFactor = 1;
+    try {
+      var ekg = document.getElementById('ekg');
+      if (ekg) loadFactor = parseFloat(ekg.dataset.load) || 1;
+    } catch (e) {}
+
+    // Mirror network_pulse._classify thresholds. last_close_age in seconds.
+    function classify(loadFactor, lastCloseAge, avgClose) {
+      if (lastCloseAge == null || avgClose == null) {
+        return { status: 'unknown', text: 'Network status unavailable.' };
+      }
+      if (lastCloseAge > 30 || avgClose > 6.0) {
+        return {
+          status: 'degraded',
+          text: 'XRPL is degraded. Ledgers are closing slowly.'
+        };
+      }
+      if (loadFactor && loadFactor > 5.0) {
+        return {
+          status: 'congested',
+          text: 'XRPL is operating but congested. Closing ledgers every '
+                + avgClose.toFixed(1) + 's. Load is elevated.'
+        };
+      }
+      if (loadFactor && loadFactor > 1.5) {
+        return {
+          status: 'running_hot',
+          text: 'XRPL is operating normally. Closing ledgers every '
+                + avgClose.toFixed(1) + 's. Load slightly elevated.'
+        };
+      }
+      return {
+        status: 'operating_normally',
+        text: 'XRPL is operating normally. Closing ledgers every '
+              + avgClose.toFixed(1) + 's. Network load is light.'
+      };
+    }
+
+    function descForStatus(status, avgClose) {
+      if (status === 'operating_normally') {
+        return 'The XRP Ledger is healthy. New ledgers are being closed every '
+             + avgClose.toFixed(1) + ' seconds — exactly as expected. '
+             + 'Validators are in agreement.';
+      }
+      if (status === 'running_hot') {
+        return 'The ledger is busy. Transactions are still confirming, '
+             + 'but fees may be slightly higher than usual.';
+      }
+      if (status === 'congested') {
+        return 'The network is congested. Transactions are confirming '
+             + 'more slowly and fees are elevated.';
+      }
+      if (status === 'degraded') {
+        return 'XRPL is degraded. Ledgers are closing slowly.';
+      }
+      return 'Network status unavailable.';
+    }
+
+    function colorForStatus(s) {
+      if (s === 'operating_normally') return 'ok';
+      if (s === 'running_hot' || s === 'congested') return 'warn';
+      if (s === 'degraded') return 'err';
+      return 'idle';
+    }
+
+    function headlineForStatus(s) {
+      if (s === 'operating_normally') return 'Network healthy';
+      if (s === 'running_hot')        return 'Network running hot';
+      if (s === 'congested')          return 'Network congested';
+      if (s === 'degraded')           return 'Network degraded';
+      return 'Network status';
+    }
+
+    function applyClass(el, color) {
+      if (!el) return;
+      el.classList.remove('ok', 'warn', 'err', 'idle');
+      el.classList.add(color);
+    }
+
+    var lastStatus = null;
+    function applyStatus(status, avgClose, lastAge) {
+      var color = colorForStatus(status);
+      if (bigDot)   applyClass(bigDot, color);
+      if (cardDot)  applyClass(cardDot, color);
+      if (cardPill) {
+        applyClass(cardPill, color);
+        cardPill.textContent = status.replace(/_/g, ' ');
+      }
+      if (cardDesc) cardDesc.textContent = descForStatus(status, avgClose);
+      if (headline) headline.textContent = headlineForStatus(status);
+      if (window.__ekg) {
+        window.__ekg.setBaseInterval(avgClose);
+        window.__ekg.setStatus(status);
+      }
+      lastStatus = status;
+    }
+
+    // Rolling buffer of close intervals (seconds). 20 events ≈ ~70s of
+    // history — long enough to smooth jitter, short enough to react fast.
+    var closeIntervals = [];
+    var BUFFER = 20;
+    var lastCloseUnix = null;  // wall-clock receipt time of last ledgerClosed
+
+    function onLedgerClosed(ev) {
+      var nowMs = Date.now();
+      var avgClose = null;
+      if (lastCloseUnix != null) {
+        var dt = (nowMs - lastCloseUnix) / 1000;
+        if (dt > 0 && dt < 60) {
+          closeIntervals.push(dt);
+          if (closeIntervals.length > BUFFER) closeIntervals.shift();
+        }
+      }
+      lastCloseUnix = nowMs;
+
+      // Use server-reported avg if WebSocket gives one (rare); otherwise
+      // average our rolling sample. Fall back to the canvas-seeded value.
+      if (closeIntervals.length >= 2) {
+        var sum = 0;
+        for (var i = 0; i < closeIntervals.length; i++) sum += closeIntervals[i];
+        avgClose = sum / closeIntervals.length;
+      } else {
+        var ekg2 = document.getElementById('ekg');
+        avgClose = (ekg2 && parseFloat(ekg2.dataset.baseInterval)) || 3.5;
+      }
+
+      var c = classify(loadFactor, 0, avgClose);
+      if (c.status !== lastStatus) applyStatus(c.status, avgClose, 0);
+    }
+
+    // Tick last-close-age every second between events; flip to degraded
+    // automatically if no ledger has closed in 30+ seconds.
+    setInterval(function () {
+      if (lastCloseUnix == null) return;
+      var ageS = (Date.now() - lastCloseUnix) / 1000;
+      var avgClose = closeIntervals.length >= 2
+        ? closeIntervals.reduce(function (a,b){ return a+b; }, 0) / closeIntervals.length
+        : 3.5;
+      var c = classify(loadFactor, ageS, avgClose);
+      if (c.status !== lastStatus) applyStatus(c.status, avgClose, ageS);
+    }, 1000);
+
+    // Pull load_factor from /api/ledger-tip every 30s — the WebSocket
+    // ledger stream doesn't carry this field, so we still need the server
+    // for the congested/hot thresholds.
+    function refreshLoad() {
+      fetch('/api/ledger-tip', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (j && j.load_factor) loadFactor = j.load_factor;
+        }).catch(function () {});
+    }
+    refreshLoad();
+    setInterval(refreshLoad, 30000);
+
+    var ws = null;
+    var reconnectDelay = 1500;
+    var closed = false;
+
+    function connect() {
+      if (closed) return;
+      try { ws = new WebSocket('wss://s2.ripple.com'); }
+      catch (e) { scheduleReconnect(); return; }
+
+      ws.onopen = function () {
+        reconnectDelay = 1500;
+        try {
+          ws.send(JSON.stringify({
+            id: 'health-ledger',
+            command: 'subscribe',
+            streams: ['ledger']
+          }));
+        } catch (e) {}
+      };
+
+      ws.onmessage = function (msg) {
+        var data;
+        try { data = JSON.parse(msg.data); } catch (e) { return; }
+        if (!data) return;
+        if (data.type === 'ledgerClosed') onLedgerClosed(data);
+      };
+
+      ws.onerror = function () {};
+      ws.onclose = function () {
+        if (closed) return;
+        scheduleReconnect();
+      };
+    }
+
+    function scheduleReconnect() {
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+    }
+
+    window.addEventListener('beforeunload', function () {
+      closed = true;
+      if (ws) { try { ws.close(); } catch (e) {} }
+    });
+
+    connect();
   })();
 </script>
 {% include "_vibes_scripts.html" %}

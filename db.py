@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS amm_pool_events (
 );
 CREATE INDEX IF NOT EXISTS amm_pool_events_ts_idx
     ON amm_pool_events (ts DESC);
+
+CREATE TABLE IF NOT EXISTS worker_heartbeat (
+    worker        TEXT PRIMARY KEY,
+    ts            BIGINT NOT NULL,
+    txns_seen     BIGINT,
+    last_ledger   BIGINT,
+    extra         JSONB
+);
 """
 
 
@@ -140,7 +148,19 @@ def _get_writer_conn():
     if _writer_conn is not None:
         return _writer_conn
     try:
-        _writer_conn = psycopg.connect(pg_url(), autocommit=True)
+        # connect_timeout caps a single connect attempt; TCP keepalives let
+        # a half-dead Neon connection surface as an error instead of
+        # blocking the worker indefinitely (root cause of the 2026-05-08
+        # wedge: socket sat in CLOSE_WAIT while the worker mutex parked).
+        _writer_conn = psycopg.connect(
+            pg_url(),
+            autocommit=True,
+            connect_timeout=10,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=3,
+        )
     except Exception:
         _writer_conn = None
     return _writer_conn
@@ -228,6 +248,57 @@ def write_amm_pool_event(ts, amm_account, event_type):
             )
     except Exception:
         _drop_writer_conn()
+
+
+def write_heartbeat(worker, txns_seen=None, last_ledger=None, extra=None):
+    """Stamp a heartbeat row for `worker` (e.g. 'xrpl_stream'). Used by
+    Flask /health on Render to verify the Mac-hosted worker is alive,
+    since file-mtime liveness checks don't cross machines."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    extra_json = json.dumps(extra, default=str) if extra is not None else None
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO worker_heartbeat "
+                "(worker, ts, txns_seen, last_ledger, extra) "
+                "VALUES (%s, %s, %s, %s, %s::jsonb) "
+                "ON CONFLICT (worker) DO UPDATE SET "
+                "  ts = EXCLUDED.ts, "
+                "  txns_seen = EXCLUDED.txns_seen, "
+                "  last_ledger = EXCLUDED.last_ledger, "
+                "  extra = EXCLUDED.extra",
+                (worker, int(time.time()), txns_seen, last_ledger, extra_json),
+            )
+    except Exception:
+        _drop_writer_conn()
+
+
+def read_heartbeat(worker):
+    """Return dict {ts, txns_seen, last_ledger, extra} for `worker`,
+    or None if missing / Postgres unavailable. Best-effort: never raises."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ts, txns_seen, last_ledger, extra "
+                    "FROM worker_heartbeat WHERE worker = %s",
+                    (worker,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return {
+                    "ts": int(row[0]),
+                    "txns_seen": row[1],
+                    "last_ledger": row[2],
+                    "extra": row[3],
+                }
+    except Exception:
+        return None
 
 
 def prune_amm_pool_events(cap_rows):

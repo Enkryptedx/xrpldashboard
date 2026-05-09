@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>methodology · xrpldashboard</title>
+  {% set meta_title = "methodology · xrpldashboard" %}
+  {% set meta_description = "Every data source, every cache TTL, every limitation — disclosed in plain text. The full methodology behind every number on xrpldashboard." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 36px;
+            max-width: 700px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    h3 { font-size: 1rem; margin: 20px 0 8px; font-weight: 600;
+         color: var(--text); }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+
+    /* Per-surface freshness table */
+    table.freshness { width: 100%; border-collapse: collapse;
+                      margin: 12px 0 8px; font-size: 0.92rem; }
+    table.freshness th, table.freshness td {
+      padding: 10px 12px; text-align: left;
+      border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    table.freshness th { color: var(--muted); font-weight: 600;
+                         font-size: 0.78rem; text-transform: uppercase;
+                         letter-spacing: 0.06em; }
+    table.freshness td.route { font-family: var(--mono); color: var(--text);
+                               white-space: nowrap; }
+    .pill { display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.72rem; padding: 2px 8px; border-radius: 4px;
+            font-weight: 600; letter-spacing: 0.04em;
+            text-transform: uppercase; font-family: var(--sys); }
+    .pill-live   { color: var(--green); border: 1px solid rgba(74,222,128,0.4);
+                   background: rgba(74,222,128,0.08); }
+    .pill-cache  { color: var(--amber); border: 1px solid rgba(251,191,36,0.35);
+                   background: rgba(251,191,36,0.06); }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .pill-live .pill-dot { animation: liveDot 1.6s infinite; }
+    @keyframes liveDot {
+      0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.6); }
+      70%  { box-shadow: 0 0 0 6px rgba(74,222,128,0); }
+      100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>Methodology</h1>
+  <p class="lede">
+    Every data source, every cache, every limitation — listed in plain
+    text on this page. If a number on this site is wrong, this is where
+    you find out why.
+  </p>
+
+  <div class="callout">
+    <p style="margin: 0;">
+      <strong>Why this page exists.</strong> Most XRPL dashboards say
+      "live" without telling you what that means. We commit to the
+      opposite: every claim of "live" is backed by a measurable cadence
+      below, and every cache is named with its TTL. If you disagree with
+      our numbers, this page is the audit trail.
+    </p>
+  </div>
+
+  <h2>What's actually live, per surface</h2>
+  <p>
+    Three states: <span class="pill pill-live"><span class="pill-dot"></span>Live</span>
+    means a WebSocket pushes new data without a page refresh.
+    <span class="pill pill-cache"><span class="pill-dot"></span>Cached</span>
+    means we re-query the XRP Ledger on a fixed cadence and serve the
+    most recent answer to all visitors during the cache window.
+  </p>
+
+  <table class="freshness">
+    <thead>
+      <tr>
+        <th>Page / surface</th>
+        <th>State</th>
+        <th>Cadence / TTL</th>
+        <th>Underlying source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="route">/api/ledger-tip</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
+        <td>20 sec</td>
+        <td><code>server_info</code> on public XRPL node</td>
+      </tr>
+      <tr>
+        <td class="route">Ledger heartbeat chip<br>(every page header)</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
+        <td>polls every 30 sec → 20 sec server cache</td>
+        <td><code>/api/ledger-tip</code></td>
+      </tr>
+      <tr>
+        <td class="route">/wallet/&lt;addr&gt;<br>tx counter, last seen, sparkline today bin</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
+        <td>WebSocket push (~3–5 sec per validated ledger)</td>
+        <td>Browser subscribes directly to <code>wss://s2.ripple.com</code></td>
+      </tr>
+      <tr>
+        <td class="route">/wallet/&lt;addr&gt;<br>balances, holdings, network graph, AMM positions</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
+        <td>5 min</td>
+        <td><code>account_info</code>, <code>account_lines</code>, <code>account_tx</code>, <code>amm_info</code></td>
+      </tr>
+      <tr>
+        <td class="route">/whales<br>large-XRP / tagged / trustset feed</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
+        <td>WebSocket push (~3–5 sec per validated ledger)</td>
+        <td>Browser subscribes directly to <code>wss://s2.ripple.com</code>; initial page load is from worker → Neon</td>
+      </tr>
+      <tr>
+        <td class="route">/tokens, /token/&lt;currency&gt;/&lt;issuer&gt;<br>per-token swap activity</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
+        <td>WebSocket push for new swaps; aggregates rebuild on next reload</td>
+        <td>Browser WS to <code>wss://s2.ripple.com</code>; rollups from worker → Neon</td>
+      </tr>
+      <tr>
+        <td class="route">/pools constellation<br>swap pulses + per-pool TVL</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
+        <td>WebSocket push; TVL adjusts on each AMM LP-token delta</td>
+        <td>Browser WS to <code>wss://s2.ripple.com</code>; static pool index seeded from <code>amm_info</code></td>
+      </tr>
+      <tr>
+        <td class="route">/api/pools/recent_events</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
+        <td>worker writes pool swaps as they happen; API reads on each call</td>
+        <td>Worker → Neon Postgres</td>
+      </tr>
+      <tr>
+        <td class="route">/cold-storage</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
+        <td>5 min</td>
+        <td><code>account_info</code> on labeled cold wallets</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    Five of the nine surfaces above are now Live (browser-side WebSocket
+    push from <code>wss://s2.ripple.com</code>). The remaining cached
+    surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings,
+    and cold-storage balances — are derived from RPC calls that don't
+    have a streaming equivalent, so a short cache is the honest framing.
+  </p>
+
+  <h2>Data sources</h2>
+
+  <h3>XRP Ledger nodes</h3>
+  <p>
+    All on-chain data is read from public XRPL nodes — peers in the
+    consensus network. A node can't lie about ledger contents without
+    the rest of the network rejecting it.
+  </p>
+  <ul>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — Ripple-operated
+      full-history node. Used by the worker for streaming, and by the
+      browser for per-wallet real-time subscriptions.</li>
+    <li><strong><code>s1.ripple.com:51234</code></strong> — Ripple-operated
+      general-purpose JSON-RPC node. Used by the network pulse and
+      ledger-tip endpoints.</li>
+  </ul>
+  <p>
+    <strong>Disclosure.</strong> Ripple's documentation explicitly
+    states their public servers are <em>not intended for sustained
+    business use</em>. We rely on them today because they are the most
+    convenient public endpoints for the XRPL. The plan is to migrate
+    primary traffic to the community-operated cluster
+    <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
+    <code>wss://xrplcluster.com</code></a> (run by the InFTF) before
+    sustained traffic warrants it, and to run our own
+    <code>rippled</code> node as the project grows.
+  </p>
+
+  <h3>Database</h3>
+  <p>
+    Worker writes to <strong>Neon Postgres</strong> (free tier; managed
+    EU-hosted Postgres) and a redundant local SQLite snapshot. The web
+    app prefers Postgres for fresh reads and falls back to the SQLite
+    snapshot if the Postgres connection is unavailable. No third-party
+    analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama,
+    CoinGecko) feeds any number on this site.
+  </p>
+
+  <h3>Reference labels</h3>
+  <p>
+    Token display names and named-account labels are hand-curated in
+    <code>named_accounts.json</code> and <code>token_names.json</code>
+    in the public GitHub repo. Each label has a verifiable source URL
+    (exchange page, project <code>.toml</code>, or audit). Labels are
+    accepted via public PR review; same model as mempool.space's
+    mining-pool list.
+  </p>
+
+  <h2>Methodology notes</h2>
+  <ul>
+    <li><strong>Whale movement.</strong> A single XRP <code>Payment</code>
+      transaction of <strong>50,000 XRP or more</strong>. Smaller
+      transfers don't appear on <a href="/whales">/whales</a>. We do
+      <em>not</em> aggregate multiple smaller transfers — each row is
+      one on-chain payment.</li>
+    <li><strong>Token volume.</strong> Sum of <code>Payment</code> +
+      <code>OfferCreate</code> fills + AMM swap legs touching that
+      currency/issuer pair, over a 30-day window.</li>
+    <li><strong>AMM "current price".</strong> Computed live from the
+      pool's reserves (<code>account_info</code> + <code>account_lines</code>),
+      same constant-product formula the protocol uses internally. This
+      is the spot price at the moment of fetch — it changes with every
+      swap.</li>
+    <li><strong>Counterparty network on /wallet.</strong> Built from
+      the wallet's last 1,000 <code>account_tx</code> entries. Sparse
+      wallets (under 3 counterparties in 30 days) display a note
+      explaining the gap, usually because most activity is order-book
+      trading without a single counterparty.</li>
+    <li><strong>"First-seen" badge.</strong> A counterparty is flagged
+      amber if its first transaction with this wallet was within the
+      last 7 days. When 100% of counterparties are first-seen-recent,
+      the per-node badges collapse to a single wallet-level banner to
+      avoid alarm fatigue.</li>
+    <li><strong>Token labels.</strong> Only displayed when a first-party
+      source is on file. Unverified issuers render unlabeled rather
+      than guessed.</li>
+  </ul>
+
+  <h2>Known limitations</h2>
+  <ul>
+    <li><strong>Wallet pulse sparkline</strong> is built from a daily
+      histogram of the last 30 days, fetched on page load. The
+      WebSocket only bumps today's bar — historical bars are fixed
+      until the next page reload.</li>
+    <li><strong>Whale wallet activity</strong> may double-count a single
+      DEX fill if it crosses multiple offers. Working on de-duplication
+      keyed by ledger sequence + tx hash.</li>
+    <li><strong>Counterparty graph</strong> doesn't currently extract
+      DEX order-book counterparties (only direct payments, AMM swaps,
+      and trustline counterparties). Roadmap.</li>
+    <li><strong>Worker downtime</strong> — if the streaming worker
+      crashes or restarts, panels fed by it (<code>/whales</code>,
+      <code>/tokens</code>) show data up to the last successful write.
+      Per-page WebSockets continue working independently.</li>
+    <li><strong>Reserve values.</strong> The base + per-object reserve
+      shown on each wallet page is pulled live from
+      <code>server_info</code> (validated_ledger), cached 10 minutes.
+      Reserves only change via on-chain amendment, so the cache is safe;
+      the literal numbers in the calculation will reflect the network's
+      current parameters automatically.</li>
+  </ul>
+
+  <h2>Infrastructure</h2>
+  <ul>
+    <li><strong>Web app:</strong> Render starter ($7/mo). Source on
+      GitHub, MIT-licensed.</li>
+    <li><strong>Worker:</strong> Render background worker ($7/mo).
+      Streams XRPL → Postgres 24/7.</li>
+    <li><strong>Database:</strong> Neon Postgres (free tier).</li>
+    <li><strong>CDN:</strong> Cloudflare in front of Render.</li>
+    <li><strong>Status:</strong> <a href="/health">/health</a> — public
+      uptime + ledger-sync indicator.</li>
+  </ul>
+
+  <h2>Versioning this page</h2>
+  <p>
+    This methodology page is part of the same git repository as the
+    code. Any time the site's caching behavior, data sources, or
+    methodology changes, the corresponding edit lands in this file in
+    the same commit. The commit history of <code>templates/methodology.html</code>
+    is the canonical change log.
+  </p>
+
+  <div class="callout">
+    <p style="margin: 0;">
+      <strong>Found a discrepancy?</strong> Open an issue on
+      <a href="https://github.com/Enkryptedx/xrpldashboard/issues" target="_blank" rel="noopener noreferrer">GitHub</a>
+      or email
+      <a href="mailto:contact@xrpldashboard.com?subject=Methodology%20discrepancy">contact@xrpldashboard.com</a>.
+      We'll either fix the data, fix the explanation, or — if it's a
+      genuine ambiguity — add it to the limitations list above.
+    </p>
+  </div>
+
+  <div class="footer">
+    Last updated alongside the code at
+    <code>templates/methodology.html</code> · See
+    <a href="/about">/about</a> for mission and funding ·
+    <a href="/health">/health</a> for live infrastructure status.
+  </div>
+
+</div>
+</body>
+</html>
