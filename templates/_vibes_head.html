@@ -65,4 +65,9 @@
   }
   .vibes-spot:hover::before,
   .stat-pill:hover::before { opacity: 1; }
+
+  /* When an explainer popover opens inside a spot/pill, escape the
+     overflow:hidden clip so the card is actually visible. */
+  .vibes-spot:has(.explainer[open]),
+  .stat-pill:has(.explainer[open]) { overflow: visible; }
 </style>
