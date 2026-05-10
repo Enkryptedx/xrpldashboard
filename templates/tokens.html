@@ -63,75 +63,63 @@
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
 
-    /* Category-bars hero. Six vertical columns — one per token category —
-       each height proportional to that category's share of total trade
-       activity. Each column is segmented into the top tokens within the
-       category (largest at the bottom). Subtle on-load grow animation.
-       Inspired by EQ visualizers. No JS, server-rendered heights. */
-    .token-bars {
-      display: flex; align-items: stretch; gap: 8px;
+    /* Honeycomb hero. SVG hex grid where each cell is one labeled token.
+       Cell baseline brightness = relative trade count over the selected
+       range. When a real validated token-trade hits the WebSocket stream
+       below, the matching cell pulses cyan/category-color for ~1s. No
+       fake connecting lines between cells (per no-fake-data rule). */
+    .honeycomb {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 14px 14px 12px;
-      margin: 0 0 18px;
-      height: 220px; position: relative;
+      border-radius: 12px; padding: 16px 14px 14px;
+      margin: 0 0 18px; position: relative;
     }
-    .token-bars::before {
-      content: "labeled tokens · by category";
+    .honeycomb::before {
+      content: "labeled tokens · live activity";
       position: absolute; top: 8px; right: 12px;
       font-family: var(--mono); font-size: 0.62rem; color: var(--dim);
       text-transform: uppercase; letter-spacing: 0.14em;
     }
-    .tb-col {
-      flex: 1 1 0; min-width: 0;
-      display: flex; flex-direction: column; align-items: stretch;
-      gap: 4px; min-height: 0;
+    .honeycomb-svg {
+      display: block; width: 100%; height: auto;
+      max-height: 260px;
+      overflow: visible;
     }
-    .tb-head {
-      font-family: var(--mono); font-size: 0.62rem;
-      color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
-      text-align: center; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; min-height: 0.9rem;
+    .hex-cell { cursor: pointer; transition: transform 0.18s; transform-origin: center; transform-box: fill-box; }
+    .hex-cell:hover { transform: scale(1.10); }
+    .hex-cell:focus { outline: none; }
+    .hex-poly {
+      stroke-width: 1; stroke: rgba(255,255,255,0.06);
+      transition: fill 0.6s, stroke 0.3s, filter 0.3s;
     }
-    .tb-stack {
-      flex: 1 1 0; display: flex; flex-direction: column-reverse;
-      gap: 2px; min-height: 0; border-radius: 4px;
-      background: rgba(255,255,255,0.02);
-      overflow: hidden;
+    .hex-cell:hover .hex-poly { stroke: rgba(34,211,238,0.6); }
+    .hex-label {
+      font-family: var(--mono); font-size: 8.5px; font-weight: 600;
+      fill: var(--text); text-anchor: middle;
+      pointer-events: none; user-select: none;
+      transition: fill 0.3s;
     }
-    .tb-fill {
-      display: flex; flex-direction: column-reverse; gap: 2px;
-      width: 100%; min-height: 0;
-      animation: tbGrow 0.9s cubic-bezier(.2,.8,.2,1) both;
-      transform-origin: bottom;
+    /* Category color tints. Baseline = brightness from --b (0..1). */
+    .hex-cell[data-cat="stablecoin"]     .hex-poly,
+    .hex-cell[data-cat="fiat"]           .hex-poly { fill: rgb(34,197,94); fill-opacity: calc(0.10 + var(--b) * 0.45); }
+    .hex-cell[data-cat="wrapped_major"]  .hex-poly { fill: rgb(245,158,11); fill-opacity: calc(0.10 + var(--b) * 0.45); }
+    .hex-cell[data-cat="native_utility"] .hex-poly { fill: rgb(34,211,238); fill-opacity: calc(0.10 + var(--b) * 0.45); }
+    .hex-cell[data-cat="memecoin"]       .hex-poly { fill: rgb(236,72,153); fill-opacity: calc(0.10 + var(--b) * 0.45); }
+    .hex-cell[data-cat="other"]          .hex-poly { fill: rgb(140,150,170); fill-opacity: calc(0.08 + var(--b) * 0.35); }
+
+    /* Pulse on live trade — drop-shadow plays nicely with SVG fills. */
+    @keyframes hexPulse {
+      0%   { fill-opacity: 0.55; filter: drop-shadow(0 0 0 rgba(34,211,238,0)); }
+      18%  { fill-opacity: 1.00; filter: drop-shadow(0 0 8px rgba(34,211,238,0.85)); }
+      100% { fill-opacity: var(--rest, 0.45); filter: drop-shadow(0 0 0 rgba(34,211,238,0)); }
     }
-    @keyframes tbGrow {
-      from { transform: scaleY(0); opacity: 0; }
-      to   { transform: scaleY(1); opacity: 1; }
-    }
-    .tb-seg {
-      width: 100%; min-height: 2px;
-      background: rgba(var(--cat-rgb), 0.55);
-      border-radius: 1px;
-      transition: background 0.15s, transform 0.15s;
-    }
-    .tb-seg:first-child { background: rgba(var(--cat-rgb), 0.85); }
-    .tb-seg:hover { background: rgba(var(--cat-rgb), 1.0); }
-    .tb-foot {
-      text-align: center; min-height: 1.5rem;
-    }
-    .tb-foot .num {
-      font-family: var(--mono); font-size: 0.78rem;
-      color: var(--text); font-weight: 600;
-    }
-    .tb-foot .pct {
-      font-family: var(--mono); font-size: 0.6rem;
-      color: rgba(var(--cat-rgb), 0.85); margin-left: 4px;
+    .hex-cell.is-pulsing .hex-poly { animation: hexPulse 1.1s ease-out; }
+    .hex-cell.is-pulsing .hex-label { fill: #ffffff; }
+    @media (prefers-reduced-motion: reduce) {
+      .hex-cell.is-pulsing .hex-poly { animation: none; fill-opacity: 0.85; }
     }
     @media (max-width: 540px) {
-      .token-bars { height: 180px; padding: 12px 8px 10px; gap: 4px; }
-      .tb-head { font-size: 0.55rem; }
-      .tb-foot .num { font-size: 0.7rem; }
-      .tb-foot .pct { display: none; }
+      .honeycomb { padding: 14px 10px 12px; }
+      .hex-label { font-size: 7.5px; }
     }
 
     /* Live activity banner — ticks up as token-bearing transactions
@@ -301,26 +289,29 @@
     {{ freshness_badge(data_age_label) }}
   </div>
 
-  {% if category_bars %}
-  {% set bar_max = category_bars|map(attribute='share_pct')|max %}
-  <div class="token-bars" aria-label="Activity by token category">
-    {% for cat in category_bars %}
-    <div class="tb-col" style="--cat-rgb: {{ cat.rgb }};"
-         title="{{ cat.label }} · {{ '{:,}'.format(cat.trades) }} trades · {{ cat.token_count }} token{{ '' if cat.token_count == 1 else 's' }}">
-      <div class="tb-head">{{ cat.label }}</div>
-      <div class="tb-stack">
-        <div class="tb-fill" style="height: {{ ((cat.share_pct / bar_max) * 100)|round(1) }}%;">
-          {% for seg in cat.segments %}
-          <div class="tb-seg" style="height: {{ seg.share_in_cat }}%;"
-               title="{{ seg.label }} · {{ '{:,}'.format(seg.trades) }} trades"></div>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="tb-foot">
-        <span class="num">{{ '{:,}'.format(cat.trades) }}</span><span class="pct">{{ cat.share_pct }}%</span>
-      </div>
-    </div>
-    {% endfor %}
+  {% if hex_cells %}
+  {% set s = hex_size %}
+  <div class="honeycomb" aria-label="Live token activity grid">
+    <svg class="honeycomb-svg" viewBox="0 0 {{ hex_view_w }} {{ hex_view_h }}"
+         preserveAspectRatio="xMidYMid meet" role="img"
+         aria-label="Honeycomb of {{ hex_cells|length }} labeled tokens — cells pulse when a live trade hits the ledger">
+      {% for c in hex_cells %}
+      <a href="/token/{{ c.currency_raw }}/{{ c.issuer }}"
+         class="hex-cell" data-cat="{{ c.category }}" data-key="{{ c.key }}"
+         style="--b: {{ c.baseline }}; --rest: {{ (0.10 + c.baseline * 0.45)|round(3) }};">
+        <title>{{ c.display }} · {{ "{:,}".format(c.trades) }} trades</title>
+        <polygon class="hex-poly" points="
+          {{ c.cx }},{{ (c.cy - s)|round(2) }}
+          {{ (c.cx + s * 0.866)|round(2) }},{{ (c.cy - s * 0.5)|round(2) }}
+          {{ (c.cx + s * 0.866)|round(2) }},{{ (c.cy + s * 0.5)|round(2) }}
+          {{ c.cx }},{{ (c.cy + s)|round(2) }}
+          {{ (c.cx - s * 0.866)|round(2) }},{{ (c.cy + s * 0.5)|round(2) }}
+          {{ (c.cx - s * 0.866)|round(2) }},{{ (c.cy - s * 0.5)|round(2) }}
+        " />
+        <text class="hex-label" x="{{ c.cx }}" y="{{ (c.cy + 3)|round(2) }}">{{ c.display[:6] }}</text>
+      </a>
+      {% endfor %}
+    </svg>
   </div>
   {% endif %}
 
@@ -521,6 +512,12 @@
       setTimeout(function () { counter.classList.remove('lsb-bump'); }, 280);
     }
 
+    function isTokenAmount(a) {
+      return a && typeof a === 'object'
+        && typeof a.currency === 'string'
+        && typeof a.issuer === 'string'
+        && typeof a.value === 'string';
+    }
     function isTokenTrade(tx) {
       if (!tx || typeof tx !== 'object') return false;
       var type = tx.TransactionType;
@@ -529,13 +526,42 @@
       // Non-XRP Payment: Amount/DeliverMax is a {currency, issuer, value}
       // object. XRP payments are a string (drops). Require all three fields
       // — a malformed message missing issuer/value would otherwise count.
-      function isTokenAmount(a) {
-        return a && typeof a === 'object'
-          && typeof a.currency === 'string'
-          && typeof a.issuer === 'string'
-          && typeof a.value === 'string';
-      }
       return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
+    }
+
+    // Build a key→cell index for the honeycomb. Trades that match a cell
+    // (currency + issuer) trigger a 1.1s pulse animation. Trades whose
+    // (currency, issuer) isn't in our labeled set just bump the counter
+    // — no fake activity painted onto unrelated cells.
+    var hexIndex = {};
+    Array.prototype.forEach.call(
+      document.querySelectorAll('.hex-cell[data-key]'),
+      function (el) { hexIndex[el.getAttribute('data-key')] = el; }
+    );
+    function pulseCellsForTx(tx) {
+      var keys = [];
+      function pushFromAmount(a) {
+        if (isTokenAmount(a)) keys.push(a.currency + '|' + a.issuer);
+      }
+      pushFromAmount(tx.Amount);
+      pushFromAmount(tx.DeliverMax);
+      // AMM events: Asset / Asset2 carry the pool pair (XRP side has
+      // currency only, no issuer — skip it).
+      if (tx.Asset && tx.Asset.issuer) {
+        keys.push(tx.Asset.currency + '|' + tx.Asset.issuer);
+      }
+      if (tx.Asset2 && tx.Asset2.issuer) {
+        keys.push(tx.Asset2.currency + '|' + tx.Asset2.issuer);
+      }
+      for (var i = 0; i < keys.length; i++) {
+        var el = hexIndex[keys[i]];
+        if (!el) continue;
+        // Restart animation if already running.
+        el.classList.remove('is-pulsing');
+        // Force reflow so re-adding the class restarts the keyframes.
+        void el.offsetWidth;
+        el.classList.add('is-pulsing');
+      }
     }
 
     var ws = null;
@@ -569,7 +595,10 @@
         var meta = data.meta || {};
         // Strict tesSUCCESS gate (missing => can't prove the tx applied).
         if (meta.TransactionResult !== 'tesSUCCESS') return;
-        if (isTokenTrade(tx)) bump();
+        if (isTokenTrade(tx)) {
+          bump();
+          pulseCellsForTx(tx);
+        }
       };
 
       ws.onerror = function () {};

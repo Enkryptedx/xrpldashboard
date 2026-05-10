@@ -1288,6 +1288,41 @@ def tokens():
     if len(category_bars) < 2:
         category_bars = []
 
+    # Honeycomb hero — top labeled tokens laid out as a pointy-top hex grid.
+    # Each cell key (currency_raw|issuer) is matched against live WS trades
+    # to pulse in real time. Pure CSS/SVG positioning, server-rendered so
+    # the layout is identical no-JS or first paint.
+    HEX_COLS = 8
+    HEX_ROWS = 4
+    HEX_S = 32  # hex "size" (center → vertex distance), pointy-top
+    sqrt3 = 3 ** 0.5
+    col_w = HEX_S * sqrt3
+    row_h = HEX_S * 1.5
+    pad_x = HEX_S * sqrt3 / 2
+    pad_y = HEX_S
+    hex_cells = []
+    labeled_pool = [t for t in enriched if t["labeled"]]
+    max_trades = max((t["trades"] or 0) for t in labeled_pool) if labeled_pool else 1
+    for idx, t in enumerate(labeled_pool[: HEX_COLS * HEX_ROWS]):
+        row = idx // HEX_COLS
+        col = idx % HEX_COLS
+        cx = pad_x + col * col_w + (col_w / 2 if row % 2 else 0)
+        cy = pad_y + row * row_h
+        baseline = (t["trades"] or 0) / max_trades if max_trades else 0
+        hex_cells.append({
+            "key": f"{t['currency_raw']}|{t['issuer']}",
+            "display": t["display"],
+            "category": t["category"] or "other",
+            "trades": t["trades"] or 0,
+            "currency_raw": t["currency_raw"],
+            "issuer": t["issuer"],
+            "cx": round(cx, 2),
+            "cy": round(cy, 2),
+            "baseline": round(baseline, 3),
+        })
+    hex_view_w = round(pad_x * 2 + (HEX_COLS - 1) * col_w + col_w / 2, 2)
+    hex_view_h = round(pad_y * 2 + (HEX_ROWS - 1) * row_h, 2)
+
     return render_template(
         "tokens.html",
         tokens=enriched,
@@ -1297,6 +1332,10 @@ def tokens():
         labeled_count=sum(1 for t in enriched if t["labeled"]),
         range_key=range_key,
         category_bars=category_bars,
+        hex_cells=hex_cells,
+        hex_view_w=hex_view_w,
+        hex_view_h=hex_view_h,
+        hex_size=HEX_S,
         data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
     )
 
