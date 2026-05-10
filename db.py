@@ -519,6 +519,36 @@ def read_whale_type_counts(tier_drops):
     return counts
 
 
+def read_whale_radar_stats(min_drops, hours_back=24):
+    """Return the two HUD readouts on /whales radar: count of large_xfer
+    events at-or-above min_drops in the last hours_back, and the most
+    recent large_xfer's amount_drops (None if none in window). Single
+    round-trip, no joins, cheap to call per page render."""
+    cutoff_ts = time.time() - hours_back * 3600
+    out = {"last_24h": 0, "last_amount_drops": None}
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM events "
+                "WHERE type = 'large_xfer' AND amount_drops >= %s "
+                "AND ts >= %s",
+                (min_drops, cutoff_ts),
+            )
+            row = cur.fetchone()
+            if row:
+                out["last_24h"] = int(row[0] or 0)
+            cur.execute(
+                "SELECT amount_drops FROM events "
+                "WHERE type = 'large_xfer' AND amount_drops >= %s "
+                "ORDER BY ts DESC LIMIT 1",
+                (min_drops,),
+            )
+            row = cur.fetchone()
+            if row and row[0]:
+                out["last_amount_drops"] = int(row[0])
+    return out
+
+
 def read_token_volume_aggregates(hours_back=None, limit=50):
     """Aggregate token_volume rows for /tokens. Returns list of tuples
     (currency, issuer, total_trades, hours_active). When hours_back is

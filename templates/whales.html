@@ -261,8 +261,8 @@
     <canvas id="whale-radar-canvas"></canvas>
     <div class="hud-tl">XRPL · whale scope<br><span class="hud-num">scan 360°</span></div>
     <div class="hud-tr">range<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
-    <div class="hud-bl">contacts<br><span id="radar-contacts" class="hud-num">0</span></div>
-    <div class="hud-br">last ping<br><span id="radar-ping" class="hud-amber">—</span></div>
+    <div class="hud-bl">24h whales<br><span class="hud-num">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
+    <div class="hud-br">last whale<br><span class="hud-amber">{{ radar_stats.last_label }}</span></div>
   </div>
   <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>
 
@@ -459,9 +459,6 @@
       }
     } catch (e) { blipsRaw = []; }
 
-    var contactsEl = document.getElementById('radar-contacts');
-    var pingEl     = document.getElementById('radar-ping');
-
     function fit() {
       var rect = canvas.getBoundingClientRect();
       var dpr = window.devicePixelRatio || 1;
@@ -506,7 +503,6 @@
     var activeBlips = [];
     var spawnIdx    = 0;
     var lastSpawnAt = 0;
-    var contactsSeen = 0;
 
     function spawnNext(now) {
       var src = SCOPE[spawnIdx % SCOPE.length];
@@ -519,13 +515,6 @@
         born:  now,
         litAt: 0
       });
-    }
-
-    function fmtPing(b) {
-      var bearing = Math.round((b.angle * 180 / Math.PI) % 360);
-      if (bearing < 0) bearing += 360;
-      var range   = Math.round(b.rRel * 100);
-      return ('00' + bearing).slice(-3) + '° · ' + ('00' + range).slice(-2) + 'km';
     }
 
     function drawScope(now) {
@@ -631,9 +620,6 @@
           var d = angleDelta(sweepAng, b.angle);
           if (d >= 0 && d < 0.18) {
             b.litAt = now;
-            contactsSeen++;
-            if (contactsEl) contactsEl.textContent = contactsSeen;
-            if (pingEl)     pingEl.textContent = fmtPing(b);
           }
         }
 

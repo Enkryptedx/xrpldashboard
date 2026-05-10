@@ -1057,6 +1057,53 @@ def whales():
             mag = max(0.2, min(1.0, (math.log10(xrp + 10) - 5.0) / 3.0 + 0.4))
             radar_blips.append({"mag": round(mag, 3), "kind": r[3] or "large_xfer"})
 
+    # Real readings for the two HUD corners (replace the old fake
+    # bearing/range/contacts text). Always reflect the canonical 50K-XRP
+    # whale floor so the numbers don't shift with UI tier filters.
+    radar_floor_drops = WHALE_XRP_THRESHOLD * 1_000_000
+    radar_stats = {"last_24h": 0, "last_amount_drops": None}
+    if db.pg_available():
+        try:
+            radar_stats = db.read_whale_radar_stats(radar_floor_drops)
+        except Exception:
+            radar_stats = {"last_24h": 0, "last_amount_drops": None}
+    if radar_stats["last_24h"] == 0 and radar_stats["last_amount_drops"] is None \
+            and os.path.exists(EVENTS_DB_PATH):
+        try:
+            conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+            try:
+                cutoff_ts = time.time() - 24 * 3600
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM events WHERE type = 'large_xfer' "
+                    "AND amount_drops >= ? AND ts >= ?",
+                    (radar_floor_drops, cutoff_ts),
+                ).fetchone()
+                if row:
+                    radar_stats["last_24h"] = int(row[0] or 0)
+                row = conn.execute(
+                    "SELECT amount_drops FROM events WHERE type = 'large_xfer' "
+                    "AND amount_drops >= ? ORDER BY ts DESC LIMIT 1",
+                    (radar_floor_drops,),
+                ).fetchone()
+                if row and row[0]:
+                    radar_stats["last_amount_drops"] = int(row[0])
+            finally:
+                conn.close()
+        except Exception:
+            pass
+
+    last_drops = radar_stats.get("last_amount_drops")
+    if last_drops:
+        xrp = last_drops / 1_000_000.0
+        if xrp >= 1_000_000:
+            radar_stats["last_label"] = f"{xrp / 1_000_000:.1f}M XRP"
+        elif xrp >= 1_000:
+            radar_stats["last_label"] = f"{xrp / 1_000:.0f}K XRP"
+        else:
+            radar_stats["last_label"] = f"{xrp:,.0f} XRP"
+    else:
+        radar_stats["last_label"] = "—"
+
     return render_template(
         "whales.html",
         events=events,
@@ -1068,6 +1115,7 @@ def whales():
         threshold_xrp=WHALE_XRP_THRESHOLD,
         named_accounts_count=len(_load_named_accounts_dict()),
         radar_blips=radar_blips,
+        radar_stats=radar_stats,
         data_age_label=_format_age_seconds(_events_db_age_seconds()),
     )
 
