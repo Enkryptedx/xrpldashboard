@@ -377,9 +377,9 @@
         <div class="tech-row"><span class="k">{{ _('validation quorum') }}</span><span class="v">{{ pulse.validation_quorum }}</span></div>
         <div class="tech-row"><span class="k">{{ _('load factor') }}</span><span class="v">{{ pulse.load_factor }}×</span></div>
         <div class="tech-row"><span class="k">{{ _('summary') }}</span><span class="v dim">
-          {% if pulse.status == 'operating_normally' %}{{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Network load is light.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
-          {% elif pulse.status == 'running_hot' %}{{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
-          {% elif pulse.status == 'congested' %}{{ _('XRPL is operating but congested. Closing ledgers every %(n)ss. Load is elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+          {% if pulse.status == 'operating_normally' %}{{ (_('XRPL is operating normally. Closing ledgers every %(n)ss. Network load is light.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
+          {% elif pulse.status == 'running_hot' %}{{ (_('XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly elevated.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
+          {% elif pulse.status == 'congested' %}{{ (_('XRPL is operating but congested. Closing ledgers every %(n)ss. Load is elevated.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
           {% elif pulse.status == 'degraded' %}{{ _('XRPL is degraded. Ledgers are closing slowly.') }}
           {% else %}{{ pulse.status_text }}{% endif %}
         </span></div>

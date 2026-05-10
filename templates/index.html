@@ -455,11 +455,11 @@
           </div>
           <div class="status-line">
             {% if pulse.status == 'operating_normally' %}
-              {{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Network load is light.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+              {{ (_('XRPL is operating normally. Closing ledgers every %(n)ss. Network load is light.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
             {% elif pulse.status == 'running_hot' %}
-              {{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+              {{ (_('XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly elevated.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
             {% elif pulse.status == 'congested' %}
-              {{ _('XRPL is operating but congested. Closing ledgers every %(n)ss. Load is elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+              {{ (_('XRPL is operating but congested. Closing ledgers every %(n)ss. Load is elevated.') % {'n': '%.1f'|format(pulse.avg_close_seconds or 3.5)}) }}
             {% elif pulse.status == 'degraded' %}
               {{ _('XRPL is degraded. Ledgers are closing slowly.') }}
             {% else %}
