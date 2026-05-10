@@ -151,6 +151,15 @@
                       padding: 2px 8px; border-radius: 4px; font-weight: 600;
                       letter-spacing: 0.06em; text-transform: uppercase;
                       margin-top: 0.55em; }
+    .xrp-usd-anchor { display: inline-flex; align-items: center; gap: 0.4em;
+                      margin-top: 0.4em; padding: 0.2em 0.55em;
+                      border: 1px solid rgba(34,211,238,0.32);
+                      border-radius: 999px;
+                      background: rgba(34,211,238,0.06);
+                      color: rgba(220,235,255,0.92);
+                      font-family: var(--mono); font-size: var(--fs-2xs);
+                      letter-spacing: 0.04em; }
+    .xrp-usd-src    { color: rgba(160,180,210,0.7); font-size: 0.85em; }
     .identity-verify { display: inline-flex; align-items: center; gap: 0.3em;
                        font-size: var(--fs-2xs); font-weight: 600;
                        color: var(--cyan); text-decoration: none;
@@ -857,6 +866,17 @@
                title="Verify this wallet's history on XRPSCAN">Verify on XRPSCAN ↗</a>
           </div>
           <span class="identity-label">Snapshot · pulled from XRP Ledger</span>
+          {% if data.xrp_usd %}
+          <span class="identity-label xrp-usd-anchor"
+                title="Median of {{ data.xrp_usd_sources | map(attribute=0) | join(' · ') }}. All sources on-ledger; refreshed ~60s.">
+            Live XRP/USD = ${{ "%.4f"|format(data.xrp_usd) }}
+            <span class="xrp-usd-src">·
+              {% for src in data.xrp_usd_sources -%}
+              {{ src[0] }}{% if not loop.last %}, {% endif %}
+              {%- endfor %}
+            </span>
+          </span>
+          {% endif %}
         </div>
 
         {% if data.is_amm %}
@@ -980,36 +1000,8 @@
                       stroke="rgba(255,255,255,0.03)" stroke-width="0.5"
                       stroke-dasharray="2 4"/>
 
-              {# Layer 3: sonar ripples emanating from wallet center — 3 staggered waves #}
-              <g class="cp-sonar">
-                <circle cx="270" cy="170" r="20" fill="none"
-                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
-                  <animate attributeName="r" from="20" to="180"
-                           dur="5s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-opacity" from="0.55" to="0"
-                           dur="5s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-width" from="1" to="0.2"
-                           dur="5s" repeatCount="indefinite"/>
-                </circle>
-                <circle cx="270" cy="170" r="20" fill="none"
-                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
-                  <animate attributeName="r" from="20" to="180"
-                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-opacity" from="0.55" to="0"
-                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-width" from="1" to="0.2"
-                           dur="5s" begin="1.66s" repeatCount="indefinite"/>
-                </circle>
-                <circle cx="270" cy="170" r="20" fill="none"
-                        stroke="rgba(34,211,238,0.55)" stroke-width="1">
-                  <animate attributeName="r" from="20" to="180"
-                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-opacity" from="0.55" to="0"
-                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
-                  <animate attributeName="stroke-width" from="1" to="0.2"
-                           dur="5s" begin="3.33s" repeatCount="indefinite"/>
-                </circle>
-              </g>
+              {# Layer 3: (sonar ripples removed — impact rings now fire at
+                 pulse arrival points instead, see cp-pulses below) #}
 
               {# Layer 4: secondary "constellation" edges — counterparty↔counterparty #}
               <g class="cp-edges-secondary"></g>
@@ -1073,7 +1065,7 @@
                 <circle cx="7" cy="7" r="5" fill="rgba(20,24,50,0.95)"
                         stroke="rgba(140,160,200,0.85)" stroke-width="1.4"/>
               </svg>
-              Peer <span class="cp-leg-count">{{ peer_count }}</span>
+              Unknown account{% if peer_count > 1 %}s{% endif %} <span class="cp-leg-count">{{ peer_count }}</span>
             </span>
             {% endif %}
           </div>
@@ -1810,7 +1802,43 @@
         var nameLabel = el('text', { x: lx, y: ly, 'text-anchor': node.anchor || 'middle', class: labelClass }, labelsG);
         nameLabel.textContent = labelText;
         var pctLabel = el('text', { x: lx, y: ly + 11, 'text-anchor': node.anchor || 'middle', class: 'cp-pct' }, labelsG);
-        pctLabel.textContent = node.pct + '%';
+        // Plain-English stat line. Direction comes from real payment flow
+        // (computed in wallet_data._layout_nodes), so we can use everyday
+        // verbs instead of crypto jargon.
+        var txCount = (node.detail && node.detail.txCount) || 0;
+        var pctRound = Math.round(node.pct);
+        // Prefer USD when the price oracle priced this counterparty's flow.
+        // Falls back to a plain count if pricing wasn't available (no
+        // XRP-paired AMM for the token, or non-payment activity only).
+        function fmtUsdShort(v) {
+          if (v == null || isNaN(v) || v <= 0) return null;
+          if (v >= 1e6) return '~$' + (v / 1e6).toFixed(1) + 'M';
+          if (v >= 1e3) return '~$' + (v / 1e3).toFixed(1) + 'k';
+          if (v >= 10)  return '~$' + Math.round(v);
+          if (v >= 1)   return '~$' + v.toFixed(1);
+          if (v >= 0.01) return '~$' + v.toFixed(2);
+          // Sub-cent values are real — usually dust spam. Label them as
+          // dust rather than rounding to zero, so the user sees the signal.
+          return 'dust (<$0.01)';
+        }
+        var usdInTxt  = fmtUsdShort(node.usdIn);
+        var usdOutTxt = fmtUsdShort(node.usdOut);
+        var statText;
+        var noun = (txCount === 1) ? ' payment' : ' payments';
+        if (node.direction === 'in' && usdInTxt) {
+          statText = 'received ' + usdInTxt;
+        } else if (node.direction === 'out' && usdOutTxt) {
+          statText = 'sent ' + usdOutTxt;
+        } else if (node.direction === 'in') {
+          statText = 'received ' + txCount + noun;
+        } else if (node.direction === 'out') {
+          statText = 'sent ' + txCount + noun;
+        } else if (usdInTxt || usdOutTxt) {
+          statText = (usdInTxt || '$0') + ' in · ' + (usdOutTxt || '$0') + ' out';
+        } else {
+          statText = txCount + (txCount === 1 ? ' interaction' : ' interactions');
+        }
+        pctLabel.textContent = statText;
         node.labelEls = [nameLabel, pctLabel];
 
       });
@@ -1826,7 +1854,16 @@
       pulseEdges.forEach(function (item, k) {
         var n = item.n;
         var dur = (1.9 + (1 - n.w) * 1.3).toFixed(2);
-        var direction = (k % 2 === 0) ? '0;1' : '1;0';
+        // Path is drawn from center → outer node, so:
+        //   keyPoints '0;1' = outward (YOU → counterparty) = funds you SENT
+        //   keyPoints '1;0' = inward  (counterparty → YOU) = funds you RECEIVED
+        // n.direction is computed in wallet_data._layout_nodes from real
+        // payment volume / count ratios. Falls back to alternating for
+        // 'both' (balanced or non-payment activity like trustsets/AMM ops).
+        var direction;
+        if (n.direction === 'in') direction = '1;0';
+        else if (n.direction === 'out') direction = '0;1';
+        else direction = (k % 2 === 0) ? '0;1' : '1;0';
         var baseColor = (n.type === 'peer') ? 'rgba(140,160,200,0.85)'
                                             : '#22d3ee';
 
@@ -1852,6 +1889,48 @@
           }, dot);
           el('mpath', { href: '#' + n.edgeId }, motion);
         }
+
+        // ---------- Impact ring at landing point ----------
+        // When the comet head arrives, spawn a brief expanding ring at the
+        // destination — like an asteroid impact. Inbound pulses land at YOU
+        // (center); outbound land at the counterparty node.
+        var impactX = (direction === '1;0') ? cx : n.x;
+        var impactY = (direction === '1;0') ? cy : n.y;
+        var impactColor = (n.type === 'peer') ? 'rgba(180,200,230,0.95)'
+                                              : '#22d3ee';
+        // Ring stays invisible for 85% of the cycle (while comet travels),
+        // then blooms over the last ~15% as the head arrives.
+        var impact = el('circle', {
+          cx: impactX, cy: impactY, r: 0,
+          fill: 'none', stroke: impactColor,
+          'stroke-width': 0,
+          filter: 'url(#cpSoftGlow)'
+        }, pulsesG);
+        var impactBegin = (k * 0.35).toFixed(3);
+        el('animate', {
+          attributeName: 'r',
+          values: '0;0;2;10',
+          keyTimes: '0;0.85;0.92;1',
+          dur: dur + 's',
+          begin: impactBegin + 's',
+          repeatCount: 'indefinite'
+        }, impact);
+        el('animate', {
+          attributeName: 'opacity',
+          values: '0;0;1;0',
+          keyTimes: '0;0.85;0.92;1',
+          dur: dur + 's',
+          begin: impactBegin + 's',
+          repeatCount: 'indefinite'
+        }, impact);
+        el('animate', {
+          attributeName: 'stroke-width',
+          values: '0;0;2;0.4',
+          keyTimes: '0;0.85;0.92;1',
+          dur: dur + 's',
+          begin: impactBegin + 's',
+          repeatCount: 'indefinite'
+        }, impact);
       });
 
       // ---------- Click-to-detail interaction ----------
@@ -1860,7 +1939,7 @@
       var selectedIdx = null;
 
       var typeLabel = {
-        exchange: 'Exchange', amm: 'AMM Pool', issuer: 'Issuer', peer: 'Unknown peer'
+        exchange: 'Exchange', amm: 'AMM Pool', issuer: 'Issuer', peer: 'Unknown account'
       };
 
       function buildGlyph(type) {
@@ -1906,15 +1985,34 @@
       }
 
       function detailTiles(node) {
-        // The backend populates detail with: address, firstSeen, lastSeen,
-        // txCount. AMM / issuer-specific fields are not yet wired, so we
-        // surface only what's real — tilesGrid drops undefined values.
+        // Tiles render in row-major order; tilesGrid drops empty values.
+        // USD figures come from the price oracle (XRP + token AMMs).
         var d = node.detail || {};
+        function fmtUsd(v) {
+          if (v == null || isNaN(v)) return null;
+          if (v >= 1000) return '$' + Math.round(v).toLocaleString();
+          if (v >= 1) return '$' + v.toFixed(2);
+          if (v >= 0.01) return '$' + v.toFixed(4);
+          // Show dust honestly rather than rounding to $0.00.
+          return '< $0.01 (dust)';
+        }
+        var usdInLabel  = fmtUsd(d.usdIn);
+        var usdOutLabel = fmtUsd(d.usdOut);
+        var tokensInStr = (d.tokensIn || []).slice(0, 3)
+            .map(function (t) { return t.amount.toLocaleString() + ' ' + t.sym; })
+            .join(', ');
+        var tokensOutStr = (d.tokensOut || []).slice(0, 3)
+            .map(function (t) { return t.amount.toLocaleString() + ' ' + t.sym; })
+            .join(', ');
         return [
-          ['Address',    d.address],
-          ['30d txs',    d.txCount],
-          ['First seen', d.firstSeen],
-          ['Last seen',  d.lastSeen]
+          ['Address',     d.address],
+          ['30d txs',     d.txCount],
+          ['Received',    usdInLabel],
+          ['Sent',        usdOutLabel],
+          ['Got tokens',  tokensInStr],
+          ['Sent tokens', tokensOutStr],
+          ['First seen',  d.firstSeen],
+          ['Last seen',   d.lastSeen]
         ];
       }
 

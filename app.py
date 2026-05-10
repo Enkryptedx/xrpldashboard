@@ -94,6 +94,21 @@ def inject_site_url():
     return {"site_url": SITE_URL}
 
 
+@app.context_processor
+def inject_xrp_usd():
+    """Expose the live XRP/USD anchor (from price_oracle, derived from
+    XRPL-native AMMs) to every template — so any page can render a live
+    pricing chip without per-route plumbing. Cached ~60s in the oracle."""
+    try:
+        from price_oracle import xrp_usd, xrp_usd_sources
+        return {
+            "live_xrp_usd": xrp_usd(),
+            "live_xrp_usd_sources": xrp_usd_sources(),
+        }
+    except Exception:
+        return {"live_xrp_usd": None, "live_xrp_usd_sources": []}
+
+
 # Allowlist of external origins our pages legitimately load. Keep narrow —
 # every entry is a trust decision. Plausible is allowlisted ahead of time
 # so uncommenting the analytics tag in templates needs no header change.
@@ -1540,6 +1555,15 @@ def wallet(address):
         return render_template("404.html"), 404
 
     data = fetch_wallet_data_cached(address)
+    # Surface the live USD anchor on every wallet render so the user can
+    # see where the dollar figures come from. Cheap (cached ~60s in oracle).
+    try:
+        from price_oracle import xrp_usd, xrp_usd_sources
+        data["xrp_usd"] = xrp_usd()
+        data["xrp_usd_sources"] = xrp_usd_sources()
+    except Exception:
+        data["xrp_usd"] = None
+        data["xrp_usd_sources"] = []
     return render_template("wallet.html", data=data)
 
 
@@ -1630,6 +1654,33 @@ def api_ledger_tip():
         "status_text": p.get("status_text"),
         "load_factor": p.get("load_factor"),
         "avg_close_seconds": p.get("avg_close_seconds"),
+    }
+
+
+@app.route("/api/xrp-usd")
+@limiter.limit("60 per minute")
+def api_xrp_usd():
+    """USD-per-XRP, derived from the median of multiple XRP/stablecoin AMMs
+    on the XRP Ledger itself. No external price APIs — the only source of
+    truth is the ledger.
+
+    Sources (each surfaces in `sources` so the methodology page and any
+    consumer can audit which pools fed the median):
+      • RLUSD (Ripple's USD stablecoin)
+      • USD.GH (GateHub)
+      • USD.Bitstamp (Bitstamp)
+    Cached ~60s server-side."""
+    from price_oracle import xrp_usd, xrp_usd_sources, PRICE_TTL
+    rate = xrp_usd()
+    if rate is None:
+        return {"error": "no anchor pools resolved"}, 503
+    return {
+        "xrp_usd": round(rate, 6),
+        "sources": [
+            {"label": label, "xrp_usd": round(usd, 6)}
+            for (label, usd) in xrp_usd_sources()
+        ],
+        "ttl_seconds": PRICE_TTL,
     }
 
 

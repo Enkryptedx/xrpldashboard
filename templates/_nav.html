@@ -9,6 +9,16 @@
     color: var(--cyan);
     text-shadow: 0 0 10px rgba(34,211,238,0.35);
   }
+  .nav .xrp-chip {
+    display: inline-flex; align-items: center; gap: 0.35em;
+    padding: 0.15em 0.6em; border-radius: 999px;
+    border: 1px solid rgba(34,211,238,0.32);
+    background: rgba(34,211,238,0.06);
+    color: rgba(220,235,255,0.92);
+    font-family: var(--mono, monospace); font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .nav .xrp-chip .src { color: rgba(160,180,210,0.6); font-size: 0.85em; }
 </style>
 {% set _p = request.path %}
 {% macro _nav_link(href, label, match=None) -%}
@@ -27,6 +37,12 @@
     {{ _nav_link('/health', 'health') }}
     {{ _nav_link('/methodology', 'methodology') }}
     {{ _nav_link('/about', 'about') }}
+    {% if live_xrp_usd %}
+      <span class="xrp-chip" title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }})">
+        XRP ${{ '%.4f' | format(live_xrp_usd) }}
+        <span class="src">· self-sourced</span>
+      </span>
+    {% endif %}
     {% include "_liveness_chip.html" %}
   </div>
 </div>

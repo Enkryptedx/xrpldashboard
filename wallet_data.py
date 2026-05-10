@@ -651,6 +651,21 @@ def _tx_envelope(tx):
     return tx.get("tx") or tx.get("tx_json") or {}
 
 
+def _tx_amount(tx):
+    """Return the actual amount that landed for a Payment, preferring the
+    delivered_amount from meta (the source of truth post-amendment), then
+    falling back to DeliverMax (newer rippled API_VERSION 2+) or Amount
+    (older).  Without this, token payments on newer nodes look like None
+    because the inner tx dict has DeliverMax instead of Amount.
+    """
+    meta = tx.get("meta") or tx.get("metaData") or {}
+    delivered = meta.get("delivered_amount") if isinstance(meta, dict) else None
+    if delivered is not None:
+        return delivered
+    inner = _tx_envelope(tx)
+    return inner.get("Amount") or inner.get("DeliverMax")
+
+
 def _tx_counterparty(tx, owner_address):
     """Return (counterparty_address, kind) for the tx, or None to skip."""
     inner = _tx_envelope(tx)
@@ -714,6 +729,13 @@ def _build_counterparty_graph(txs, owner_address, lookback_days):
     by_addr = defaultdict(lambda: {
         "tx_count": 0, "first_seen": None, "last_seen": None,
         "volume_in_drops": 0, "volume_out_drops": 0,
+        "in_tx_count": 0, "out_tx_count": 0,
+        # USD-priced via price_oracle. Sums across XRP + token payments.
+        "volume_in_usd": 0.0, "volume_out_usd": 0.0,
+        # Track per-token amounts so the detail card can show e.g.
+        # "5 RLUSD + 12 USDC" without re-fetching anything.
+        "tokens_in": defaultdict(float),  # (cur, iss) -> total
+        "tokens_out": defaultdict(float),
     })
     for tx in txs:
         cp = _tx_counterparty(tx, owner_address)
@@ -728,18 +750,41 @@ def _build_counterparty_graph(txs, owner_address, lookback_days):
             continue
         rec = by_addr[addr]
         rec["tx_count"] += 1
+        if kind == "payment_in":
+            rec["in_tx_count"] += 1
+        elif kind == "payment_out":
+            rec["out_tx_count"] += 1
         if unix_ts:
             if rec["first_seen"] is None or unix_ts < rec["first_seen"]:
                 rec["first_seen"] = unix_ts
             if rec["last_seen"] is None or unix_ts > rec["last_seen"]:
                 rec["last_seen"] = unix_ts
-        amount = inner.get("Amount")
+        amount = _tx_amount(tx)
         if isinstance(amount, str) and amount.isdigit():
             drops = int(amount)
             if kind == "payment_in":
                 rec["volume_in_drops"] += drops
             elif kind == "payment_out":
                 rec["volume_out_drops"] += drops
+        # Price-aware volume: works for both XRP and token amounts.
+        # Imported lazily to avoid a hard dependency cycle and so that
+        # missing oracle data degrades gracefully (USD just stays 0).
+        if kind in ("payment_in", "payment_out"):
+            try:
+                from price_oracle import value_amount_usd, _amount_token
+                usd = value_amount_usd(amount)
+                if usd:
+                    if kind == "payment_in":
+                        rec["volume_in_usd"] += usd
+                    else:
+                        rec["volume_out_usd"] += usd
+                tok = _amount_token(amount)
+                if tok:
+                    cur, iss, val = tok
+                    bucket = rec["tokens_in"] if kind == "payment_in" else rec["tokens_out"]
+                    bucket[(cur, iss)] += val
+            except Exception:
+                pass
     sorted_cps = sorted(by_addr.items(), key=lambda x: -x[1]["tx_count"])
     return sorted_cps[:TOP_N_COUNTERPARTIES]
 
@@ -757,7 +802,7 @@ def _layout_nodes(counterparties, total_recent_txs):
         ang = -90 + (360 * i / n)
         ntype, name = _classify_address(addr)
         if name is None:
-            name = _short_addr(addr) or "Unknown peer"
+            name = "Unknown account"
         weight = round(c["tx_count"] / max_count, 2)
         pct = round(100 * c["tx_count"] / total_recent_txs, 1) if total_recent_txs else 0
         first_seen = c["first_seen"]
@@ -784,6 +829,28 @@ def _layout_nodes(counterparties, total_recent_txs):
             detail["volumeIn"] = f"{c['volume_in_drops']/1_000_000:,.0f} XRP"
         if c["volume_out_drops"]:
             detail["volumeOut"] = f"{c['volume_out_drops']/1_000_000:,.0f} XRP"
+        # USD-priced totals (sums XRP + tokens). These drive the on-graph
+        # label when available — falls back to count if pricing failed.
+        usd_in = c.get("volume_in_usd") or 0.0
+        usd_out = c.get("volume_out_usd") or 0.0
+        if usd_in > 0:
+            detail["usdIn"] = usd_in
+        if usd_out > 0:
+            detail["usdOut"] = usd_out
+        # Per-token breakdown for the detail card — useful when most flow
+        # was in stablecoins or specific tokens.
+        token_lines_in = []
+        for (cur, iss), val in (c.get("tokens_in") or {}).items():
+            sym = _short_currency(cur, iss)
+            token_lines_in.append({"sym": sym, "amount": round(val, 4)})
+        token_lines_out = []
+        for (cur, iss), val in (c.get("tokens_out") or {}).items():
+            sym = _short_currency(cur, iss)
+            token_lines_out.append({"sym": sym, "amount": round(val, 4)})
+        if token_lines_in:
+            detail["tokensIn"] = sorted(token_lines_in, key=lambda x: -x["amount"])
+        if token_lines_out:
+            detail["tokensOut"] = sorted(token_lines_out, key=lambda x: -x["amount"])
         if ntype == "amm":
             detail["pair"] = name.replace("AMM · ", "")
             detail["action"] = "View pool"
@@ -794,6 +861,25 @@ def _layout_nodes(counterparties, total_recent_txs):
         else:
             detail["action"] = f"View {c['tx_count']} txs"
 
+        in_v = c["volume_in_drops"]
+        out_v = c["volume_out_drops"]
+        in_n = c["in_tx_count"]
+        out_n = c["out_tx_count"]
+        if in_v + out_v > 0:
+            ratio = in_v / (in_v + out_v)
+        elif in_n + out_n > 0:
+            ratio = in_n / (in_n + out_n)
+        else:
+            ratio = None
+        if ratio is None:
+            direction = "both"
+        elif ratio >= 0.65:
+            direction = "in"
+        elif ratio <= 0.35:
+            direction = "out"
+        else:
+            direction = "both"
+
         node = {
             "name": name,
             "ang": round(ang, 1),
@@ -803,6 +889,9 @@ def _layout_nodes(counterparties, total_recent_txs):
             "labelDy": label_dy,
             "anchor": anchor,
             "detail": detail,
+            "direction": direction,
+            "usdIn": usd_in if usd_in > 0 else None,
+            "usdOut": usd_out if usd_out > 0 else None,
         }
         if label_dx is not None:
             node["labelDx"] = label_dx
