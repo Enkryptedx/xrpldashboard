@@ -398,6 +398,8 @@
         <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>{{ _('pools') }}</a>
         <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
         <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
+        {# RLUSD is a proper noun — not translated. #}
+        <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
         <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
         <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
         {% include "_liveness_chip.html" %}
