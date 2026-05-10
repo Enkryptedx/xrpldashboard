@@ -20,15 +20,15 @@ msgstr ""
 
 #: templates/404.html:6
 msgid "not found"
-msgstr ""
+msgstr "未找到"
 
 #: templates/404.html:77
 msgid "page not found"
-msgstr ""
+msgstr "页面未找到"
 
 #: templates/404.html:78
 msgid "That page isn't here."
-msgstr ""
+msgstr "该页面不存在。"
 
 #: templates/404.html:80
 msgid ""
@@ -81,15 +81,15 @@ msgstr ""
 
 #: templates/500.html:6
 msgid "error"
-msgstr ""
+msgstr "错误"
 
 #: templates/500.html:77
 msgid "server error"
-msgstr ""
+msgstr "服务器错误"
 
 #: templates/500.html:78
 msgid "Something broke on our end."
-msgstr ""
+msgstr "我们这边出了问题。"
 
 #: templates/500.html:80
 msgid ""
@@ -154,7 +154,7 @@ msgstr ""
 
 #: templates/about.html:93
 msgid "Mission"
-msgstr ""
+msgstr "使命"
 
 #: templates/about.html:95
 msgid ""
@@ -165,7 +165,7 @@ msgstr ""
 
 #: templates/about.html:98
 msgid "Principles"
-msgstr ""
+msgstr "原则"
 
 #: templates/about.html:100
 msgid "Retail-free, forever."
@@ -177,7 +177,7 @@ msgstr ""
 
 #: templates/about.html:101
 msgid "Plain language over jargon."
-msgstr ""
+msgstr "清晰的语言胜于行话。"
 
 #: templates/about.html:101
 msgid "Every metric is explained simply."
@@ -244,7 +244,7 @@ msgstr ""
 
 #: templates/about.html:110
 msgid "How it works"
-msgstr ""
+msgstr "工作原理"
 
 #: templates/about.html:112
 msgid ""
@@ -256,7 +256,7 @@ msgstr ""
 
 #: templates/about.html:115
 msgid "Live ledger data"
-msgstr ""
+msgstr "实时账本数据"
 
 #: templates/about.html:117
 msgid "Comes from public XRPL nodes (currently Ripple's"
@@ -265,7 +265,7 @@ msgstr ""
 #: templates/about.html:118 templates/about.html:126
 #: templates/methodology.html:207 templates/wallet.html:1388
 msgid "and"
-msgstr ""
+msgstr "和"
 
 #: templates/about.html:118
 msgid ""
@@ -506,7 +506,7 @@ msgstr "冷存储"
 
 #: templates/cold_storage.html:170
 msgid "XRP locked"
-msgstr ""
+msgstr "锁定的XRP"
 
 #: templates/cold_storage.html:172
 #, fuzzy
@@ -532,7 +532,7 @@ msgstr "秒前"
 
 #: templates/cold_storage.html:184
 msgid "Total locked"
-msgstr ""
+msgstr "总锁定"
 
 #: templates/cold_storage.html:186
 #, fuzzy
@@ -546,11 +546,11 @@ msgstr "关于"
 
 #: templates/cold_storage.html:189
 msgid "Largest holding"
-msgstr ""
+msgstr "最大持有量"
 
 #: templates/cold_storage.html:194
 msgid "Tracked addresses"
-msgstr ""
+msgstr "跟踪地址"
 
 #: templates/cold_storage.html:196
 msgid "responding"
@@ -586,7 +586,7 @@ msgstr "关于"
 
 #: templates/cold_storage.html:221 templates/wallet.html:1274
 msgid "Balance"
-msgstr ""
+msgstr "余额"
 
 #: templates/cold_storage.html:223
 #, fuzzy
@@ -612,7 +612,7 @@ msgstr "Ripple 托管账户"
 
 #: templates/cold_storage.html:274
 msgid "Data: live"
-msgstr ""
+msgstr "数据：实时"
 
 #: templates/cold_storage.html:274
 #, fuzzy
@@ -626,7 +626,7 @@ msgstr "Ripple 托管账户"
 
 #: templates/health.html:244
 msgid "All systems normal"
-msgstr ""
+msgstr "所有系统正常"
 
 #: templates/health.html:245
 #, fuzzy
@@ -640,7 +640,7 @@ msgstr "负载偏高"
 
 #: templates/health.html:247
 msgid "Mostly normal"
-msgstr ""
+msgstr "大部分正常"
 
 #: templates/health.html:248
 #, fuzzy
@@ -653,23 +653,23 @@ msgstr ""
 
 #: templates/health.html:262
 msgid "Heartbeat · scales with network load"
-msgstr ""
+msgstr "心跳·随网络负载扩展"
 
 #: templates/health.html:263
 msgid "bpm"
-msgstr ""
+msgstr "次/分钟"
 
 #: templates/health.html:274 templates/health.html:297
 msgid "XRPL network"
-msgstr ""
+msgstr "XRPL网络"
 
 #: templates/health.html:277
 msgid "The XRP Ledger is healthy. New ledgers are being closed every"
-msgstr ""
+msgstr "XRP Ledger 状态良好。新账本每"
 
 #: templates/health.html:278
 msgid "seconds — exactly as expected. Validators are in agreement."
-msgstr ""
+msgstr "秒关闭一次——完全如预期。验证器达成一致。"
 
 #: templates/health.html:280
 msgid ""
@@ -685,7 +685,7 @@ msgstr ""
 
 #: templates/health.html:298
 msgid "Live network pulse is currently unavailable."
-msgstr ""
+msgstr "实时网络脉冲目前不可用。"
 
 #: templates/health.html:300
 #, fuzzy
@@ -694,7 +694,7 @@ msgstr "未知"
 
 #: templates/health.html:308
 msgid "Pool tracker"
-msgstr ""
+msgstr "池跟踪器"
 
 #: templates/health.html:311
 msgid "Catalogue of XRPL automated market makers is up to date — tracking"
@@ -735,15 +735,15 @@ msgstr ""
 
 #: templates/health.html:324
 msgid "ready"
-msgstr ""
+msgstr "就绪"
 
 #: templates/health.html:324
 msgid "building"
-msgstr ""
+msgstr "构建中"
 
 #: templates/health.html:324
 msgid "snapshot"
-msgstr ""
+msgstr "快照"
 
 #: templates/health.html:332
 #, fuzzy
@@ -792,15 +792,15 @@ msgstr ""
 
 #: templates/health.html:347
 msgid "streaming"
-msgstr ""
+msgstr "流式传输"
 
 #: templates/health.html:347
 msgid "coming soon"
-msgstr ""
+msgstr "即将推出"
 
 #: templates/health.html:354
 msgid "Stored data"
-msgstr ""
+msgstr "存储的数据"
 
 #: templates/health.html:356
 msgid ""
@@ -823,11 +823,11 @@ msgstr "状态"
 
 #: templates/health.html:368
 msgid "Show technical details"
-msgstr ""
+msgstr "显示技术详情"
 
 #: templates/health.html:372
 msgid "XRPL network (live pulse)"
-msgstr ""
+msgstr "XRPL网络（实时脉冲）"
 
 #: templates/health.html:374
 #, fuzzy
@@ -879,7 +879,7 @@ msgstr ""
 
 #: templates/health.html:383 templates/index.html:464
 msgid "XRPL is degraded. Ledgers are closing slowly."
-msgstr ""
+msgstr "XRPL性能下降。账本关闭缓慢。"
 
 #: templates/health.html:387
 #, fuzzy
@@ -897,11 +897,11 @@ msgstr ""
 
 #: templates/health.html:393 templates/health.html:404
 msgid "uptime"
-msgstr ""
+msgstr "正常运行时间"
 
 #: templates/health.html:394
 msgid "pages scanned"
-msgstr ""
+msgstr "扫描的页面"
 
 #: templates/health.html:395
 msgid "objects walked"
@@ -1229,11 +1229,11 @@ msgstr "源代码:"
 
 #: templates/institutional.html:6
 msgid "institutional"
-msgstr ""
+msgstr "机构"
 
 #: templates/institutional.html:103
 msgid "xrpldashboard institutional"
-msgstr ""
+msgstr "xrpldashboard机构版"
 
 #: templates/institutional.html:105
 msgid ""
@@ -1249,7 +1249,7 @@ msgstr ""
 
 #: templates/institutional.html:112
 msgid "Why this exists"
-msgstr ""
+msgstr "为什么存在这个"
 
 #: templates/institutional.html:114
 msgid ""
@@ -1268,7 +1268,7 @@ msgstr ""
 
 #: templates/institutional.html:120
 msgid "How we're building it"
-msgstr ""
+msgstr "我们如何构建它"
 
 #: templates/institutional.html:122
 msgid ""
@@ -1279,7 +1279,7 @@ msgstr ""
 
 #: templates/institutional.html:126
 msgid "What we're already collecting"
-msgstr ""
+msgstr "我们已经在收集什么"
 
 #: templates/institutional.html:128
 msgid ""
@@ -1291,20 +1291,20 @@ msgstr ""
 
 #: templates/institutional.html:133
 msgid "day"
-msgstr ""
+msgstr "天"
 
 #: templates/institutional.html:133 templates/wallet.html:940
 #: templates/wallet.html:1089
 msgid "days"
-msgstr ""
+msgstr "天"
 
 #: templates/institutional.html:133
 msgid "of snapshots"
-msgstr ""
+msgstr "的快照"
 
 #: templates/institutional.html:137
 msgid "watchlist accounts daily"
-msgstr ""
+msgstr "监视列表账户每日"
 
 #: templates/institutional.html:141
 #, fuzzy
@@ -1313,7 +1313,7 @@ msgstr "个 XRPL AMM 池"
 
 #: templates/institutional.html:145
 msgid "Collecting since"
-msgstr ""
+msgstr "从以下时间开始收集"
 
 #: templates/institutional.html:145
 msgid "Raw snapshot access available to launch partners on request."
@@ -1332,7 +1332,7 @@ msgstr ""
 
 #: templates/institutional.html:157
 msgid "Become a launch partner"
-msgstr ""
+msgstr "成为启动合作伙伴"
 
 #: templates/institutional.html:159
 msgid ""
@@ -1371,13 +1371,13 @@ msgstr "什么是账本序号"
 
 #: templates/methodology.html:105
 msgid "Three states:"
-msgstr ""
+msgstr "三种状态："
 
 #: templates/methodology.html:105 templates/methodology.html:135
 #: templates/methodology.html:147 templates/methodology.html:153
 #: templates/methodology.html:159 templates/methodology.html:165
 msgid "Live"
-msgstr ""
+msgstr "实时"
 
 #: templates/methodology.html:106
 msgid "means a WebSocket pushes new data without a page refresh."
@@ -1398,11 +1398,11 @@ msgstr ""
 
 #: templates/methodology.html:114
 msgid "Page / surface"
-msgstr ""
+msgstr "页面/表面"
 
 #: templates/methodology.html:115
 msgid "State"
-msgstr ""
+msgstr "状态"
 
 #: templates/methodology.html:116
 msgid "Cadence / TTL"
@@ -1410,11 +1410,11 @@ msgstr ""
 
 #: templates/methodology.html:117
 msgid "Underlying source"
-msgstr ""
+msgstr "基础来源"
 
 #: templates/methodology.html:124
 msgid "20 sec"
-msgstr ""
+msgstr "20秒"
 
 #: templates/methodology.html:125
 msgid "on public XRPL node"
@@ -2486,7 +2486,7 @@ msgstr "巨鲸"
 
 #: templates/wallet.html:792
 msgid "Total XRP"
-msgstr ""
+msgstr "总XRP"
 
 #: templates/wallet.html:795 templates/wallet.html:1158
 #, fuzzy
@@ -2495,27 +2495,27 @@ msgstr "不可用"
 
 #: templates/wallet.html:805
 msgid "Reserve locked"
-msgstr ""
+msgstr "锁定的储备"
 
 #: templates/wallet.html:807
 msgid "of balance"
-msgstr ""
+msgstr "余额中"
 
 #: templates/wallet.html:816 templates/wallet.html:1217
 msgid "Owned objects"
-msgstr ""
+msgstr "拥有的对象"
 
 #: templates/wallet.html:818
 msgid "trustlines, offers, AMM stakes"
-msgstr ""
+msgstr "信任线、报价、AMM权益"
 
 #: templates/wallet.html:827 templates/wallet.html:1229
 msgid "Trustlines"
-msgstr ""
+msgstr "信任线"
 
 #: templates/wallet.html:829
 msgid "tokens held or trusted"
-msgstr ""
+msgstr "持有或信任的代币"
 
 #: templates/wallet.html:843
 #, fuzzy
@@ -2529,75 +2529,75 @@ msgstr "巨鲸"
 
 #: templates/wallet.html:854
 msgid "Identity attested via"
-msgstr ""
+msgstr "身份通过以下方式证实"
 
 #: templates/wallet.html:854
 msgid "verified"
-msgstr ""
+msgstr "已验证"
 
 #: templates/wallet.html:861
 msgid "Scan to open this wallet page"
-msgstr ""
+msgstr "扫描以打开此钱包页面"
 
 #: templates/wallet.html:865
 msgid "Verify this wallet's history on XRPSCAN"
-msgstr ""
+msgstr "在XRPSCAN上验证此钱包的历史"
 
 #: templates/wallet.html:865
 msgid "Verify on XRPSCAN"
-msgstr ""
+msgstr "在XRPSCAN上验证"
 
 #: templates/wallet.html:867
 msgid "Snapshot · pulled from XRP Ledger"
-msgstr ""
+msgstr "快照·从XRP Ledger提取"
 
 #: templates/wallet.html:870
 msgid "Median of"
-msgstr ""
+msgstr "中位数"
 
 #: templates/wallet.html:870
 msgid "All sources on-ledger; refreshed ~60s."
-msgstr ""
+msgstr "所有来源在线；刷新~60秒。"
 
 #: templates/wallet.html:871
 msgid "Live XRP/USD"
-msgstr ""
+msgstr "实时XRP/USD"
 
 #: templates/wallet.html:894
 msgid "Pool Flow"
-msgstr ""
+msgstr "池流动"
 
 #: templates/wallet.html:896
 msgid "Comet mode"
-msgstr ""
+msgstr "彗星模式"
 
 #: templates/wallet.html:898
 msgid "Exact"
-msgstr ""
+msgstr "精确"
 
 #: templates/wallet.html:900
 msgid "Aggregated"
-msgstr ""
+msgstr "汇总"
 
 #: templates/wallet.html:903
 msgid "swap"
-msgstr ""
+msgstr "交换"
 
 #: templates/wallet.html:903
 msgid "swaps"
-msgstr ""
+msgstr "交换"
 
 #: templates/wallet.html:905
 msgid "last"
-msgstr ""
+msgstr "最后"
 
 #: templates/wallet.html:918
 msgid "Expand to fullscreen"
-msgstr ""
+msgstr "展开为全屏"
 
 #: templates/wallet.html:922
 msgid "in"
-msgstr ""
+msgstr "进入"
 
 #: templates/wallet.html:923
 #, fuzzy
@@ -2611,31 +2611,31 @@ msgstr "估计"
 
 #: templates/wallet.html:930
 msgid "Pool reserves and price computed from XRPL"
-msgstr ""
+msgstr "从XRPL计算的池储备和价格"
 
 #: templates/wallet.html:931
 msgid "Flow direction aggregated from the most recent"
-msgstr ""
+msgstr "流动方向汇总自最近的"
 
 #: templates/wallet.html:932
 msgid "on-chain swap"
-msgstr ""
+msgstr "链上交换"
 
 #: templates/wallet.html:932
 msgid "on-chain swaps"
-msgstr ""
+msgstr "链上交换"
 
 #: templates/wallet.html:932
 msgid "on the pool's account."
-msgstr ""
+msgstr "在池的账户上。"
 
 #: templates/wallet.html:939
 msgid "Counterparty Network"
-msgstr ""
+msgstr "交易对手网络"
 
 #: templates/wallet.html:940
 msgid "entities"
-msgstr ""
+msgstr "实体"
 
 #: templates/wallet.html:944
 msgid ""
@@ -2645,11 +2645,11 @@ msgstr ""
 
 #: templates/wallet.html:1039
 msgid "Exchange"
-msgstr ""
+msgstr "交易所"
 
 #: templates/wallet.html:1058 templates/wallet.html:1274
 msgid "Issuer"
-msgstr ""
+msgstr "发行人"
 
 #: templates/wallet.html:1067
 #, fuzzy
@@ -2663,11 +2663,11 @@ msgstr "未知"
 
 #: templates/wallet.html:1074
 msgid "No counterparties detected in the last"
-msgstr ""
+msgstr "过去"
 
 #: templates/wallet.html:1074 templates/wallet.html:1209
 msgid "days."
-msgstr ""
+msgstr "天未检测到交易对手。"
 
 #: templates/wallet.html:1076
 msgid ""
@@ -2678,71 +2678,71 @@ msgstr ""
 
 #: templates/wallet.html:1088
 msgid "Live · Wallet Pulse"
-msgstr ""
+msgstr "实时·钱包脉冲"
 
 #: templates/wallet.html:1089
 msgid "Last"
-msgstr ""
+msgstr "最后"
 
 #: templates/wallet.html:1123 templates/wallet.html:1225
 msgid "txs"
-msgstr ""
+msgstr "交易"
 
 #: templates/wallet.html:1125
 msgid "active"
-msgstr ""
+msgstr "活跃"
 
 #: templates/wallet.html:1131
 msgid "Click to reveal full address"
-msgstr ""
+msgstr "点击以显示完整地址"
 
 #: templates/wallet.html:1132
 msgid "top:"
-msgstr ""
+msgstr "顶部："
 
 #: templates/wallet.html:1146
 msgid "Spot price"
-msgstr ""
+msgstr "现货价格"
 
 #: templates/wallet.html:1147
 msgid "XRP reserve"
-msgstr ""
+msgstr "XRP储备"
 
 #: templates/wallet.html:1148
 msgid "reserve"
-msgstr ""
+msgstr "储备"
 
 #: templates/wallet.html:1149
 msgid "Recent swaps"
-msgstr ""
+msgstr "最近的交换"
 
 #: templates/wallet.html:1159
 msgid "reserved"
-msgstr ""
+msgstr "已预留"
 
 #: templates/wallet.html:1168
 msgid "Reserve usage"
-msgstr ""
+msgstr "储备使用率"
 
 #: templates/wallet.html:1186
 msgid "of balance locked"
-msgstr ""
+msgstr "余额锁定的"
 
 #: templates/wallet.html:1193
 msgid "base"
-msgstr ""
+msgstr "基础"
 
 #: templates/wallet.html:1194
 msgid "owned objects"
-msgstr ""
+msgstr "拥有的对象"
 
 #: templates/wallet.html:1196
 msgid "reserved."
-msgstr ""
+msgstr "已预留。"
 
 #: templates/wallet.html:1197
 msgid "Reserved XRP can't be sent."
-msgstr ""
+msgstr "预留的XRP无法发送。"
 
 #: templates/wallet.html:1203
 #, fuzzy
@@ -2751,27 +2751,27 @@ msgstr "AMM 活动"
 
 #: templates/wallet.html:1205
 msgid "Recently active"
-msgstr ""
+msgstr "最近活跃"
 
 #: templates/wallet.html:1205
 msgid "Lightly active"
-msgstr ""
+msgstr "轻微活跃"
 
 #: templates/wallet.html:1205
 msgid "Quiet"
-msgstr ""
+msgstr "安静"
 
 #: templates/wallet.html:1209
 msgid "No on-chain activity in the last"
-msgstr ""
+msgstr "过去"
 
 #: templates/wallet.html:1211
 msgid "on-chain transactions in the last"
-msgstr ""
+msgstr "在线交易在过去"
 
 #: templates/wallet.html:1211
 msgid "days,"
-msgstr ""
+msgstr "天，"
 
 #: templates/wallet.html:1212
 #, fuzzy
@@ -2780,11 +2780,11 @@ msgstr "横跨"
 
 #: templates/wallet.html:1212
 msgid "active days."
-msgstr ""
+msgstr "活跃天。"
 
 #: templates/wallet.html:1221
 msgid "Last seen"
-msgstr ""
+msgstr "最后看到"
 
 #: templates/wallet.html:1239
 #, fuzzy
@@ -2793,15 +2793,15 @@ msgstr "tokens"
 
 #: templates/wallet.html:1242
 msgid "top"
-msgstr ""
+msgstr "顶部"
 
 #: templates/wallet.html:1242
 msgid "of"
-msgstr ""
+msgstr "的"
 
 #: templates/wallet.html:1244
 msgid "none"
-msgstr ""
+msgstr "无"
 
 #: templates/wallet.html:1271
 #, fuzzy
@@ -2820,24 +2820,24 @@ msgstr "tokens"
 
 #: templates/wallet.html:1294
 msgid "This wallet holds no token balances — only XRP. The"
-msgstr ""
+msgstr "此钱包不持有代币余额——仅XRP。这些"
 
 #: templates/wallet.html:1295
 msgid "trustline"
-msgstr ""
+msgstr "信任线"
 
 #: templates/wallet.html:1295 templates/whales.html:281
 #: templates/whales.html:316
 msgid "trustlines"
-msgstr ""
+msgstr "信任线"
 
 #: templates/wallet.html:1296
 msgid "on file have zero balance."
-msgstr ""
+msgstr "记录的余额为零。"
 
 #: templates/wallet.html:1304
 msgid "Pool reserves"
-msgstr ""
+msgstr "池储备"
 
 #: templates/wallet.html:1305
 #, fuzzy
@@ -2846,11 +2846,11 @@ msgstr "XRP Ledger,"
 
 #: templates/wallet.html:1308
 msgid "This account"
-msgstr ""
+msgstr "此账户"
 
 #: templates/wallet.html:1308
 msgid "is"
-msgstr ""
+msgstr "是"
 
 #: templates/wallet.html:1308
 msgid ""
@@ -2874,15 +2874,15 @@ msgstr ""
 
 #: templates/wallet.html:1354
 msgid "XRP committed"
-msgstr ""
+msgstr "已承诺的XRP"
 
 #: templates/wallet.html:1358
 msgid "Fees (24h est)"
-msgstr ""
+msgstr "费用（24小时估计）"
 
 #: templates/wallet.html:1362
 msgid "Blended APR"
-msgstr ""
+msgstr "混合APR"
 
 #: templates/wallet.html:1366
 #, fuzzy
@@ -2912,23 +2912,23 @@ msgstr ""
 
 #: templates/wallet.html:1388
 msgid "Cached 5 min server-side."
-msgstr ""
+msgstr "在服务器端缓存5分钟。"
 
 #: templates/wallet.html:1390
 msgid "Served from cache,"
-msgstr ""
+msgstr "从缓存提供，"
 
 #: templates/wallet.html:1390
 msgid "old."
-msgstr ""
+msgstr "旧的。"
 
 #: templates/whales.html:242
 msgid "Whale watch"
-msgstr ""
+msgstr "鲸鱼观察"
 
 #: templates/whales.html:244
 msgid "What counts as a whale event"
-msgstr ""
+msgstr "什么算作鲸鱼事件"
 
 #: templates/whales.html:245
 msgid ""
@@ -2978,15 +2978,15 @@ msgstr ""
 
 #: templates/whales.html:276 templates/whales.html:314
 msgid "tagged"
-msgstr ""
+msgstr "标记"
 
 #: templates/whales.html:285
 msgid "watchlist size"
-msgstr ""
+msgstr "监视列表大小"
 
 #: templates/whales.html:287
 msgid "What's the watchlist"
-msgstr ""
+msgstr "什么是监视列表"
 
 #: templates/whales.html:288
 msgid ""
@@ -3005,7 +3005,7 @@ msgstr "巨鲸动态"
 
 #: templates/whales.html:294
 msgid "size"
-msgstr ""
+msgstr "大小"
 
 #: templates/whales.html:296
 msgid "What 'size' tiers mean"
@@ -3022,7 +3022,7 @@ msgstr ""
 
 #: templates/whales.html:302
 msgid "large"
-msgstr ""
+msgstr "大"
 
 #: templates/whales.html:307
 msgid "Event type"
@@ -3030,7 +3030,7 @@ msgstr ""
 
 #: templates/whales.html:308
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: templates/whales.html:330
 msgid "Streaming validated XRPL transactions ≥"
@@ -3043,19 +3043,19 @@ msgstr "账本"
 
 #: templates/whales.html:373
 msgid "No events to show yet."
-msgstr ""
+msgstr "还没有要显示的事件。"
 
 #: templates/whales.html:376
 msgid "Nothing of type"
-msgstr ""
+msgstr "没有"
 
 #: templates/whales.html:376
 msgid "in the database. Try"
-msgstr ""
+msgstr "在数据库中。试试"
 
 #: templates/whales.html:377
 msgid "all events"
-msgstr ""
+msgstr "所有事件"
 
 #: templates/whales.html:379
 msgid ""
@@ -3065,11 +3065,11 @@ msgstr ""
 
 #: templates/whales.html:380
 msgid "for watcher status."
-msgstr ""
+msgstr "的观看者状态。"
 
 #: templates/whales.html:389
 msgid "How this works:"
-msgstr ""
+msgstr "工作原理："
 
 #: templates/whales.html:390
 msgid ""
@@ -3089,7 +3089,7 @@ msgstr ""
 
 #: templates/whales.html:396
 msgid "The watchlist currently has"
-msgstr ""
+msgstr "监视列表目前有"
 
 #: templates/whales.html:396
 msgid ""
@@ -3099,9 +3099,9 @@ msgstr ""
 
 #: templates/whales.html:401
 msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
-msgstr ""
+msgstr "自动刷新60秒·点击任何交易在XRPSCAN上验证。"
 
 #: templates/whales.html:405
 msgid "how this is sourced"
-msgstr ""
+msgstr "如何获取此信息"
 
