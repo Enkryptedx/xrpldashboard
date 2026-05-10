@@ -444,12 +444,33 @@ AMM_POOL_PRUNE_EVERY = 250
 
 
 def _load_amm_account_set():
+    """Populate the watched AMM account set. Prefers Postgres so the Render
+    worker (where amm_ranked.json is gitignored and absent) still sees the
+    Mac ranker's snapshot. Falls back to the local file when PG is empty or
+    unavailable."""
     global _AMM_ACCOUNT_SET
-    pools = load_json(AMM_RANKED_PATH, [])
-    _AMM_ACCOUNT_SET = {
-        p.get("amm_account") for p in pools if p.get("amm_account")
-    }
-    log(f"amm_pool_event_handler: tracking {len(_AMM_ACCOUNT_SET)} AMM accounts")
+    accounts = set()
+    if pgbridge.pg_available():
+        try:
+            rows = pgbridge.read_amm_ranked_pools()
+            accounts = {
+                r.get("amm_account") for r in rows if r.get("amm_account")
+            }
+            if accounts:
+                log(f"amm_pool_event_handler: tracking {len(accounts)} "
+                    f"AMM accounts (postgres)")
+        except Exception as e:
+            log(f"amm_pool_event_handler: pg load failed ({e}); "
+                f"falling back to file")
+            accounts = set()
+    if not accounts:
+        pools = load_json(AMM_RANKED_PATH, [])
+        accounts = {
+            p.get("amm_account") for p in pools if p.get("amm_account")
+        }
+        log(f"amm_pool_event_handler: tracking {len(accounts)} "
+            f"AMM accounts (file)")
+    _AMM_ACCOUNT_SET = accounts
 
 
 def amm_pool_event_handler(msg, state):
