@@ -580,6 +580,43 @@ def read_max_token_bucket():
 # Page views (private analytics surface — see /admin/stats)
 # ─────────────────────────────────────────────────────────────────────
 
+# Path patterns that identify scanner/bot probes rather than human visits.
+# Every public site gets these constantly — WordPress login attempts, env
+# file leak probes, PHP fingerprinting. We're not WordPress and not PHP, so
+# any hit on these is bot noise, not a real user. SQL LIKE patterns.
+BOT_PATH_PATTERNS = (
+    "/.env%",
+    "/wp-login.php",
+    "/wp-admin%",
+    "/wp-includes%",
+    "/wp-content%",
+    "/wordpress%",
+    "%.php",
+    "%.php?%",
+    "/phpmyadmin%",
+    "/.git%",
+    "/.aws%",
+    "/.ssh%",
+    "/cgi-bin%",
+    "/admin.php",
+    "/config.json",
+    "/backup%",
+    "/dump.sql",
+)
+
+
+def _bot_filter_sql(kind):
+    """Builds a WHERE-clause fragment that selects human / bot / all rows.
+    Returns (fragment, params). Fragment starts with `AND ` so it can be
+    appended to an existing WHERE. `kind` is "human", "bot", or "all"."""
+    if kind == "all":
+        return "", []
+    likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
+    if kind == "bot":
+        return f"AND ({likes})", list(BOT_PATH_PATTERNS)
+    return f"AND NOT ({likes})", list(BOT_PATH_PATTERNS)
+
+
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
@@ -601,11 +638,11 @@ def log_page_view(path, visitor_hash=None, referrer=None,
         _drop_writer_conn()
 
 
-def read_page_view_stats():
+def read_page_view_stats(kind="human"):
     """Return rollup counts at common windows for /admin/stats. Each value
     is a dict with `views` (raw row count) and `uniques` (distinct
-    visitor_hash). Returns zeros on error so the page renders even if PG
-    hiccups."""
+    visitor_hash). `kind` is "human" (default), "bot", or "all". Returns
+    zeros on error so the page renders even if PG hiccups."""
     windows = {
         "now":     5 * 60,
         "hour":    60 * 60,
@@ -617,19 +654,22 @@ def read_page_view_stats():
     if not pg_available():
         return out
     now = int(time.time())
+    bot_frag, bot_params = _bot_filter_sql(kind)
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 for key, sec in windows.items():
                     cur.execute(
                         "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
-                        "FROM page_views WHERE ts >= %s",
-                        (now - sec,),
+                        f"FROM page_views WHERE ts >= %s {bot_frag}",
+                        [now - sec, *bot_params],
                     )
                     v, u = cur.fetchone() or (0, 0)
                     out[key] = {"views": int(v or 0), "uniques": int(u or 0)}
                 cur.execute(
-                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) FROM page_views"
+                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                    f"FROM page_views WHERE 1=1 {bot_frag}",
+                    bot_params,
                 )
                 v, u = cur.fetchone() or (0, 0)
                 out["all_time"] = {"views": int(v or 0), "uniques": int(u or 0)}
@@ -638,21 +678,23 @@ def read_page_view_stats():
     return out
 
 
-def read_top_pages(window_seconds, limit=10):
+def read_top_pages(window_seconds, limit=10, kind="human"):
     """Top paths by view count over the trailing `window_seconds`.
-    Returns list of (path, views, uniques)."""
+    `kind` is "human" (default), "bot", or "all". Returns list of
+    (path, views, uniques)."""
     if not pg_available():
         return []
     cutoff = int(time.time()) - int(window_seconds)
+    bot_frag, bot_params = _bot_filter_sql(kind)
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT path, COUNT(*) AS views, "
                     "       COUNT(DISTINCT visitor_hash) AS uniques "
-                    "FROM page_views WHERE ts >= %s "
+                    f"FROM page_views WHERE ts >= %s {bot_frag} "
                     "GROUP BY path ORDER BY views DESC LIMIT %s",
-                    (cutoff, limit),
+                    [cutoff, *bot_params, limit],
                 )
                 return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
     except Exception:
@@ -687,13 +729,15 @@ def read_recent_page_views(limit=100):
         return []
 
 
-def read_country_breakdown(window_seconds, limit=10):
-    """Top countries by view count over the trailing window. Returns list
-    of (country, views, uniques). Country may be None when CF-IPCountry
-    wasn't present (e.g. local dev, or non-Cloudflare front)."""
+def read_country_breakdown(window_seconds, limit=10, kind="human"):
+    """Top countries by view count over the trailing window. `kind` is
+    "human" (default), "bot", or "all". Country may be None when
+    CF-IPCountry wasn't present (e.g. local dev, or non-Cloudflare front).
+    Returns list of (country, views, uniques)."""
     if not pg_available():
         return []
     cutoff = int(time.time()) - int(window_seconds)
+    bot_frag, bot_params = _bot_filter_sql(kind)
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
@@ -701,9 +745,9 @@ def read_country_breakdown(window_seconds, limit=10):
                     "SELECT COALESCE(country, '?') AS c, "
                     "       COUNT(*) AS views, "
                     "       COUNT(DISTINCT visitor_hash) AS uniques "
-                    "FROM page_views WHERE ts >= %s "
+                    f"FROM page_views WHERE ts >= %s {bot_frag} "
                     "GROUP BY c ORDER BY views DESC LIMIT %s",
-                    (cutoff, limit),
+                    [cutoff, *bot_params, limit],
                 )
                 return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
     except Exception:

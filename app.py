@@ -1629,10 +1629,17 @@ def admin_stats():
     if not expected or not provided or provided != expected:
         return render_template("404.html"), 404
 
-    rollups = db.read_page_view_stats()
-    top_24h = db.read_top_pages(24 * 60 * 60, limit=15)
-    top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15)
-    countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10)
+    rollups = db.read_page_view_stats(kind="human")
+    top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human")
+    top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human")
+    countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
+                                              kind="human")
+
+    bot_rollups = db.read_page_view_stats(kind="bot")
+    bot_top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="bot")
+    bot_countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
+                                                  kind="bot")
+
     recent = db.read_recent_page_views(limit=100)
 
     now = int(time.time())
@@ -1652,6 +1659,9 @@ def admin_stats():
         top_24h=top_24h,
         top_7d=top_7d,
         countries_24h=countries_24h,
+        bot_rollups=bot_rollups,
+        bot_top_24h=bot_top_24h,
+        bot_countries_24h=bot_countries_24h,
         recent=recent_view,
         key=provided,
         pg_ok=db.pg_available(),
