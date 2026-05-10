@@ -63,37 +63,42 @@
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
 
-    /* Live trade particle stream. Each validated token trade spawns a
-       glowing particle that flies in from the right edge and drifts left
-       across the canvas, fading out over ~7s. Color = category, size =
-       log-scaled amount, trail = recent positions. Hover a particle for
-       symbol + amount. Real-time, this-tab only, no fake data. */
-    .particle-stream {
-      background: var(--card); border: 1px solid var(--border);
+    /* Live trade Tron grid. Perspective floor of glowing grid lines
+       receding to a vanishing point. Each validated trade fires a colored
+       pulse that travels from the horizon down its category's lane toward
+       the viewer, leaving a brief light trail. Idle = grid lines scroll
+       toward viewer continuously so motion never stops. */
+    .tron-grid {
+      background:
+        radial-gradient(ellipse at 50% 6%, rgba(34,211,238,0.10), transparent 60%),
+        linear-gradient(180deg, #050818 0%, #0a0e27 60%, #0a0e27 100%);
+      border: 1px solid var(--border);
       border-radius: 12px;
       margin: 0 0 18px; position: relative;
-      height: 300px; overflow: hidden;
+      height: 320px; overflow: hidden;
     }
-    .particle-stream::before {
-      content: "live trade particle stream · this session";
+    .tron-grid::before {
+      content: "live trade grid · this session";
       position: absolute; top: 8px; right: 12px;
       font-family: var(--mono); font-size: 0.62rem; color: var(--dim);
       text-transform: uppercase; letter-spacing: 0.14em;
-      z-index: 2;
+      z-index: 3;
     }
-    .particle-stream-canvas {
+    .tron-grid-canvas {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
       display: block;
     }
-    .particle-stream-empty {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--muted); font-size: 0.85rem; padding: 0 20px;
-      text-align: center; pointer-events: none;
+    .tron-grid-empty {
+      position: absolute; left: 0; right: 0;
+      top: 18px; text-align: center;
+      color: var(--muted); font-size: 0.78rem;
+      font-family: var(--mono);
+      z-index: 2; pointer-events: none;
+      transition: opacity 0.4s;
     }
-    .particle-stream-empty.is-hidden { display: none; }
-    .particle-stream-tooltip {
+    .tron-grid-empty.is-hidden { opacity: 0; }
+    .tron-grid-tooltip {
       position: absolute;
       background: rgba(10, 14, 39, 0.96);
       border: 1px solid rgba(34,211,238,0.35);
@@ -103,27 +108,21 @@
       color: var(--text);
       pointer-events: none;
       white-space: nowrap;
-      z-index: 3;
+      z-index: 4;
       transform: translate(-50%, calc(-100% - 10px));
       opacity: 0; transition: opacity 0.12s;
     }
-    .particle-stream-tooltip.is-visible { opacity: 1; }
-    .particle-stream-legend {
-      position: absolute; left: 14px; bottom: 10px;
-      display: flex; gap: 12px; flex-wrap: wrap;
-      font-family: var(--mono); font-size: 0.66rem;
-      color: var(--muted); z-index: 2;
-      pointer-events: none;
-    }
-    .particle-stream-legend .pl-item {
-      display: inline-flex; align-items: center; gap: 5px;
-    }
-    .particle-stream-legend .pl-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      display: inline-block; box-shadow: 0 0 4px currentColor;
+    .tron-grid-tooltip.is-visible { opacity: 1; }
+    .tron-grid-lanes {
+      position: absolute; left: 0; right: 0; bottom: 6px;
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      font-family: var(--mono); font-size: 0.62rem;
+      color: var(--dim); text-align: center;
+      letter-spacing: 0.10em; text-transform: uppercase;
+      z-index: 2; pointer-events: none;
     }
     @media (prefers-reduced-motion: reduce) {
-      .particle-stream-canvas { opacity: 0.6; }
+      .tron-grid-canvas { opacity: 0.7; }
     }
 
     /* Honeycomb hero (kept for cross-page styling reuse but not currently
@@ -354,18 +353,18 @@
     {{ freshness_badge(data_age_label) }}
   </div>
 
-  <div class="particle-stream" data-particle-stream aria-label="Live token trade particle stream">
-    <canvas class="particle-stream-canvas" data-particle-canvas></canvas>
-    <div class="particle-stream-empty" data-particle-empty>
+  <div class="tron-grid" data-tron-grid aria-label="Live token trade Tron grid">
+    <canvas class="tron-grid-canvas" data-tron-canvas></canvas>
+    <div class="tron-grid-empty" data-tron-empty>
       waiting for the next validated token trade on the public XRPL stream…
     </div>
-    <div class="particle-stream-tooltip" data-particle-tooltip></div>
-    <div class="particle-stream-legend" aria-hidden="true">
-      <span class="pl-item"><span class="pl-dot" style="background:rgb(34,197,94);color:rgb(34,197,94)"></span>stable / fiat</span>
-      <span class="pl-item"><span class="pl-dot" style="background:rgb(245,158,11);color:rgb(245,158,11)"></span>wrapped</span>
-      <span class="pl-item"><span class="pl-dot" style="background:rgb(34,211,238);color:rgb(34,211,238)"></span>utility</span>
-      <span class="pl-item"><span class="pl-dot" style="background:rgb(236,72,153);color:rgb(236,72,153)"></span>memecoin</span>
-      <span class="pl-item"><span class="pl-dot" style="background:rgb(140,150,170);color:rgb(140,150,170)"></span>other</span>
+    <div class="tron-grid-tooltip" data-tron-tooltip></div>
+    <div class="tron-grid-lanes" aria-hidden="true">
+      <span style="color: rgb(34,197,94);">stable</span>
+      <span style="color: rgb(245,158,11);">wrapped</span>
+      <span style="color: rgb(34,211,238);">utility</span>
+      <span style="color: rgb(236,72,153);">meme</span>
+      <span style="color: rgb(140,150,170);">other</span>
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
@@ -595,15 +594,17 @@
       return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
     }
 
-    // Live trade particle stream. Each validated token trade spawns a
-    // glowing particle on a canvas that drifts left across the card and
-    // fades out over ~7s. Labels resolved from the embedded JSON; unknown
-    // tokens show as gray "other" particles with decoded symbol on hover.
-    var PARTICLE_MAX = 140;
-    var particles = [];
-    var canvas    = document.querySelector('[data-particle-canvas]');
-    var emptyEl   = document.querySelector('[data-particle-empty]');
-    var tooltipEl = document.querySelector('[data-particle-tooltip]');
+    // Live trade Tron grid. Perspective floor with vanishing point near
+    // top-center; 5 lanes (one per category) recede to the horizon. Each
+    // validated trade spawns a colored pulse at the horizon that travels
+    // down its lane to the viewer over ~5s, leaving a fading light trail.
+    // The grid lines themselves scroll continuously toward the viewer so
+    // motion never stops, even with no trades. Labels from embedded JSON.
+    var PULSE_MAX = 80;
+    var pulses = [];
+    var canvas    = document.querySelector('[data-tron-canvas]');
+    var emptyEl   = document.querySelector('[data-tron-empty]');
+    var tooltipEl = document.querySelector('[data-tron-tooltip]');
     var labelsEl  = document.getElementById('token-labels-data');
     var LABELS = {};
     if (labelsEl) {
@@ -618,6 +619,14 @@
       memecoin:       [236,72,153],
       other:          [140,150,170],
     };
+    var LANE_ORDER = ['stablecoin', 'wrapped_major', 'native_utility', 'memecoin', 'other'];
+    function laneIndex(cat) {
+      if (cat === 'fiat') return 0;
+      var i = LANE_ORDER.indexOf(cat);
+      return i >= 0 ? i : LANE_ORDER.length - 1;
+    }
+    var NLANES = LANE_ORDER.length;
+
     var ctx = canvas ? canvas.getContext('2d') : null;
     var W = 0, H = 0;
     var dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -632,6 +641,20 @@
     if (canvas) {
       resizeCanvas();
       window.addEventListener('resize', resizeCanvas);
+    }
+
+    // Perspective projection: lane 0..NLANES (boundary index, half-step
+    // for centers), t 0..1 where 0=horizon, 1=viewer.
+    function laneXY(laneIdx, t) {
+      var vpX = W / 2;
+      var vpY = H * 0.10;
+      var bottomY = H + 24;
+      var bottomX = (laneIdx / NLANES) * W;
+      var p = t * t; // ease-in: most depth compression near horizon
+      return {
+        x: vpX + (bottomX - vpX) * p,
+        y: vpY + (bottomY - vpY) * p,
+      };
     }
 
     function decodeCurrency(c) {
@@ -696,34 +719,110 @@
       return Math.min(16, Math.max(4, r));
     }
 
-    function spawnParticle(tx) {
+    function spawnPulse(tx) {
       if (!canvas || !ctx || W <= 0) return;
       var leg = extractTrade(tx);
       if (!leg) return;
       var key = leg.currency + '|' + leg.issuer;
       var lbl = LABELS[key];
       var cat = lbl ? lbl.category : 'other';
-      var rgb = CATEGORY_RGB[cat] || CATEGORY_RGB.other;
-      var r = radiusFromAmount(leg.value);
-      var y = H * 0.18 + Math.random() * H * 0.64;
-      var speed = 55 + Math.random() * 35;
-      particles.push({
-        x: W + r,
-        y: y,
-        vx: -speed,
-        vy: (Math.random() - 0.5) * 8,
-        r: r,
-        rgb: rgb,
+      if (cat === 'fiat') cat = 'stablecoin';
+      var lane = laneIndex(cat);
+      pulses.push({
+        laneCenter: lane + 0.5,
+        progress: 0,
+        speed: 0.20 + Math.random() * 0.06,  // 0.20-0.26 → ~4-5s traverse
+        rgb: CATEGORY_RGB[cat] || CATEGORY_RGB.other,
+        size: radiusFromAmount(leg.value),
         symbol: lbl ? lbl.display : decodeCurrency(leg.currency),
         amount: leg.value,
         kind: leg.kind,
         born: performance.now(),
-        life: 7000,
-        trail: [],
+        lastX: 0, lastY: 0, lastR: 0,
       });
       if (emptyEl) emptyEl.classList.add('is-hidden');
-      if (particles.length > PARTICLE_MAX) {
-        particles.splice(0, particles.length - PARTICLE_MAX);
+      if (pulses.length > PULSE_MAX) {
+        pulses.splice(0, pulses.length - PULSE_MAX);
+      }
+    }
+
+    function drawGrid(now) {
+      var t = now / 1000;
+      // Vertical lines (lane boundaries) — static, just brighter near viewer.
+      for (var i = 0; i <= NLANES; i++) {
+        var top = laneXY(i, 0);
+        var bot = laneXY(i, 1);
+        var grad = ctx.createLinearGradient(top.x, top.y, bot.x, bot.y);
+        grad.addColorStop(0, 'rgba(34,211,238,0.08)');
+        grad.addColorStop(1, 'rgba(34,211,238,0.32)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(top.x, top.y);
+        ctx.lineTo(bot.x, bot.y);
+        ctx.stroke();
+      }
+      // Horizontal lines — scrolling toward viewer at GRID_SPEED cycles/sec.
+      var GRID_LINES = 14;
+      var GRID_SPEED = 0.18;
+      var phase = (t * GRID_SPEED) % 1;
+      for (var j = 0; j < GRID_LINES; j++) {
+        var p = ((j / GRID_LINES) + phase) % 1;
+        if (p < 0.02) continue; // skip the one right at horizon (tiny line)
+        var left  = laneXY(0, p);
+        var right = laneXY(NLANES, p);
+        ctx.strokeStyle = 'rgba(34,211,238,' + (0.06 + 0.22 * p) + ')';
+        ctx.lineWidth = 0.6 + p * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(left.x, left.y);
+        ctx.lineTo(right.x, right.y);
+        ctx.stroke();
+      }
+      // Horizon glow line.
+      var hLeft  = laneXY(0, 0);
+      var hRight = laneXY(NLANES, 0);
+      ctx.strokeStyle = 'rgba(34,211,238,0.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hLeft.x - 60, hLeft.y);
+      ctx.lineTo(hRight.x + 60, hRight.y);
+      ctx.stroke();
+    }
+
+    function drawPulses(dt) {
+      for (var i = pulses.length - 1; i >= 0; i--) {
+        var p = pulses[i];
+        p.progress += p.speed * dt;
+        if (p.progress >= 1.05) { pulses.splice(i, 1); continue; }
+        var pos = laneXY(p.laneCenter, p.progress);
+        var perspScale = 0.30 + 0.90 * p.progress;
+        var radius = p.size * perspScale;
+        var alpha = Math.min(1, p.progress * 5);          // fade in
+        if (p.progress > 0.85) alpha *= (1 - (p.progress - 0.85) / 0.20);
+        alpha = Math.max(0, Math.min(1, alpha)) * 0.95;
+        var rgb = p.rgb;
+        // Trail: line gradient back along the lane ~12% of the way.
+        var trailT = Math.max(0, p.progress - 0.12);
+        var tail = laneXY(p.laneCenter, trailT);
+        var grad = ctx.createLinearGradient(tail.x, tail.y, pos.x, pos.y);
+        grad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+        grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (alpha * 0.55) + ')');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = Math.max(1, radius * 0.55);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tail.x, tail.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        // Pulse head.
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        p.lastX = pos.x; p.lastY = pos.y; p.lastR = radius;
       }
     }
 
@@ -734,59 +833,30 @@
       var dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
       ctx.clearRect(0, 0, W, H);
-      for (var i = particles.length - 1; i >= 0; i--) {
-        var p = particles[i];
-        var age = now - p.born;
-        if (age > p.life || p.x < -40) {
-          particles.splice(i, 1);
-          continue;
-        }
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.trail.push({ x: p.x, y: p.y });
-        if (p.trail.length > 16) p.trail.shift();
-        var alpha = age > p.life - 1500
-          ? Math.max(0, (p.life - age) / 1500)
-          : 1;
-        var rgb = p.rgb;
-        for (var t = 0; t < p.trail.length; t++) {
-          var pt = p.trail[t];
-          var ta = (t / p.trail.length) * 0.30 * alpha;
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, p.r * (0.35 + 0.55 * (t / p.trail.length)), 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + ta + ')';
-          ctx.fill();
-        }
-        ctx.shadowBlur = 14;
-        ctx.shadowColor = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.85 * alpha) + ')';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-      if (particles.length === 0 && emptyEl) {
+      drawGrid(now);
+      drawPulses(dt);
+      if (pulses.length === 0 && emptyEl) {
         emptyEl.classList.remove('is-hidden');
       }
     }
     if (ctx) requestAnimationFrame(frame);
 
-    // Hover tooltip — find topmost particle under cursor each mousemove.
+    // Hover tooltip — find topmost pulse near cursor (use lastX/lastY/lastR).
     if (canvas) {
       canvas.addEventListener('mousemove', function (e) {
         var rect = canvas.getBoundingClientRect();
         var mx = e.clientX - rect.left;
         var my = e.clientY - rect.top;
         var hover = null;
-        for (var i = particles.length - 1; i >= 0; i--) {
-          var p = particles[i];
-          var dx = p.x - mx, dy = p.y - my;
-          var rr = (p.r + 4) * (p.r + 4);
+        for (var i = pulses.length - 1; i >= 0; i--) {
+          var p = pulses[i];
+          var dx = p.lastX - mx, dy = p.lastY - my;
+          var rr = (p.lastR + 5) * (p.lastR + 5);
           if (dx * dx + dy * dy <= rr) { hover = p; break; }
         }
         if (hover && tooltipEl) {
-          tooltipEl.style.left = hover.x + 'px';
-          tooltipEl.style.top  = hover.y + 'px';
+          tooltipEl.style.left = hover.lastX + 'px';
+          tooltipEl.style.top  = hover.lastY + 'px';
           tooltipEl.textContent = hover.symbol + ' · ' + formatAmount(hover.amount) + ' · ' + hover.kind;
           tooltipEl.classList.add('is-visible');
           canvas.style.cursor = 'crosshair';
@@ -833,7 +903,7 @@
         if (meta.TransactionResult !== 'tesSUCCESS') return;
         if (isTokenTrade(tx)) {
           bump();
-          spawnParticle(tx);
+          spawnPulse(tx);
         }
       };
 
