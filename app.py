@@ -28,6 +28,7 @@ from network_pulse import fetch_pulse_cached
 from cold_storage import fetch_cold_storage_cached
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
+from i18n import init_i18n
 import db
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -73,6 +74,11 @@ app = Flask(__name__)
 # topology. x_proto=1 lets url_for build https URLs behind the proxy.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
+
+# Wire Flask-Babel: cookie-based locale, /lang/<code> switcher, template
+# helpers (language_list, current_locale, is_rtl). Strings still need _()
+# wrapping per-template — this just makes the machinery available.
+init_i18n(app)
 
 # In-memory limiter — Render free tier is single-process / single-replica,
 # so memory storage is correct. Counts reset on deploy (intentional: we're
