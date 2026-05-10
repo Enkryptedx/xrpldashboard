@@ -1302,18 +1302,23 @@ def tokens():
     pad_y = HEX_S
     hex_cells = []
     labeled_pool = [t for t in enriched if t["labeled"]]
-    max_trades = max((t["trades"] or 0) for t in labeled_pool) if labeled_pool else 1
+    # Force float — Postgres SUM() returns Decimal, which mixes badly with
+    # float arithmetic in the Jinja template (TypeError → 500).
+    max_trades = float(
+        max((t["trades"] or 0) for t in labeled_pool)
+    ) if labeled_pool else 1.0
     for idx, t in enumerate(labeled_pool[: HEX_COLS * HEX_ROWS]):
         row = idx // HEX_COLS
         col = idx % HEX_COLS
         cx = pad_x + col * col_w + (col_w / 2 if row % 2 else 0)
         cy = pad_y + row * row_h
-        baseline = (t["trades"] or 0) / max_trades if max_trades else 0
+        trades_int = int(t["trades"] or 0)
+        baseline = trades_int / max_trades if max_trades else 0.0
         hex_cells.append({
             "key": f"{t['currency_raw']}|{t['issuer']}",
             "display": t["display"],
             "category": t["category"] or "other",
-            "trades": t["trades"] or 0,
+            "trades": trades_int,
             "currency_raw": t["currency_raw"],
             "issuer": t["issuer"],
             "cx": round(cx, 2),
