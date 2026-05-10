@@ -20,15 +20,15 @@ msgstr ""
 
 #: templates/404.html:6
 msgid "not found"
-msgstr ""
+msgstr "नहीं मिला"
 
 #: templates/404.html:77
 msgid "page not found"
-msgstr ""
+msgstr "पृष्ठ नहीं मिला"
 
 #: templates/404.html:78
 msgid "That page isn't here."
-msgstr ""
+msgstr "वह पृष्ठ यहाँ नहीं है।"
 
 #: templates/404.html:80
 msgid ""
@@ -81,15 +81,15 @@ msgstr ""
 
 #: templates/500.html:6
 msgid "error"
-msgstr ""
+msgstr "त्रुटि"
 
 #: templates/500.html:77
 msgid "server error"
-msgstr ""
+msgstr "सर्वर त्रुटि"
 
 #: templates/500.html:78
 msgid "Something broke on our end."
-msgstr ""
+msgstr "हमारे तरफ से कुछ गलत हुआ।"
 
 #: templates/500.html:80
 msgid ""
@@ -154,7 +154,7 @@ msgstr ""
 
 #: templates/about.html:93
 msgid "Mission"
-msgstr ""
+msgstr "मिशन"
 
 #: templates/about.html:95
 msgid ""
@@ -165,7 +165,7 @@ msgstr ""
 
 #: templates/about.html:98
 msgid "Principles"
-msgstr ""
+msgstr "सिद्धांत"
 
 #: templates/about.html:100
 msgid "Retail-free, forever."
@@ -244,7 +244,7 @@ msgstr ""
 
 #: templates/about.html:110
 msgid "How it works"
-msgstr ""
+msgstr "यह कैसे काम करता है"
 
 #: templates/about.html:112
 msgid ""
@@ -256,7 +256,7 @@ msgstr ""
 
 #: templates/about.html:115
 msgid "Live ledger data"
-msgstr ""
+msgstr "लाइव लेजर डेटा"
 
 #: templates/about.html:117
 msgid "Comes from public XRPL nodes (currently Ripple's"
@@ -265,7 +265,7 @@ msgstr ""
 #: templates/about.html:118 templates/about.html:126
 #: templates/methodology.html:207 templates/wallet.html:1388
 msgid "and"
-msgstr ""
+msgstr "और"
 
 #: templates/about.html:118
 msgid ""
@@ -509,7 +509,7 @@ msgstr "कोल्ड स्टोरेज"
 
 #: templates/cold_storage.html:170
 msgid "XRP locked"
-msgstr ""
+msgstr "लॉक की गई XRP"
 
 #: templates/cold_storage.html:172
 #, fuzzy
@@ -535,7 +535,7 @@ msgstr "स पहले"
 
 #: templates/cold_storage.html:184
 msgid "Total locked"
-msgstr ""
+msgstr "कुल लॉक"
 
 #: templates/cold_storage.html:186
 #, fuzzy
@@ -549,11 +549,11 @@ msgstr "परिचय"
 
 #: templates/cold_storage.html:189
 msgid "Largest holding"
-msgstr ""
+msgstr "सबसे बड़ी होल्डिंग"
 
 #: templates/cold_storage.html:194
 msgid "Tracked addresses"
-msgstr ""
+msgstr "ट्रैक किए गए पते"
 
 #: templates/cold_storage.html:196
 msgid "responding"
@@ -589,7 +589,7 @@ msgstr "परिचय"
 
 #: templates/cold_storage.html:221 templates/wallet.html:1274
 msgid "Balance"
-msgstr ""
+msgstr "शेष"
 
 #: templates/cold_storage.html:223
 #, fuzzy
@@ -615,7 +615,7 @@ msgstr "Ripple एस्क्रो"
 
 #: templates/cold_storage.html:274
 msgid "Data: live"
-msgstr ""
+msgstr "डेटा: लाइव"
 
 #: templates/cold_storage.html:274
 #, fuzzy
@@ -629,7 +629,7 @@ msgstr "Ripple एस्क्रो"
 
 #: templates/health.html:244
 msgid "All systems normal"
-msgstr ""
+msgstr "सभी सिस्टम सामान्य"
 
 #: templates/health.html:245
 #, fuzzy
@@ -643,7 +643,7 @@ msgstr "अत्यधिक लोड"
 
 #: templates/health.html:247
 msgid "Mostly normal"
-msgstr ""
+msgstr "ज्यादातर सामान्य"
 
 #: templates/health.html:248
 #, fuzzy
@@ -656,23 +656,23 @@ msgstr ""
 
 #: templates/health.html:262
 msgid "Heartbeat · scales with network load"
-msgstr ""
+msgstr "हार्टबीट · नेटवर्क लोड के साथ स्केल"
 
 #: templates/health.html:263
 msgid "bpm"
-msgstr ""
+msgstr "bpm"
 
 #: templates/health.html:274 templates/health.html:297
 msgid "XRPL network"
-msgstr ""
+msgstr "XRPL नेटवर्क"
 
 #: templates/health.html:277
 msgid "The XRP Ledger is healthy. New ledgers are being closed every"
-msgstr ""
+msgstr "XRP Ledger स्वस्थ है। नई लेजर हर"
 
 #: templates/health.html:278
 msgid "seconds — exactly as expected. Validators are in agreement."
-msgstr ""
+msgstr "सेकंड बंद हो रहे हैं—बिल्कुल अपेक्षा अनुसार। वेलिडेटर सहमत हैं।"
 
 #: templates/health.html:280
 msgid ""
@@ -688,7 +688,7 @@ msgstr ""
 
 #: templates/health.html:298
 msgid "Live network pulse is currently unavailable."
-msgstr ""
+msgstr "लाइव नेटवर्क पल्स वर्तमान में उपलब्ध नहीं है।"
 
 #: templates/health.html:300
 #, fuzzy
@@ -697,7 +697,7 @@ msgstr "अज्ञात"
 
 #: templates/health.html:308
 msgid "Pool tracker"
-msgstr ""
+msgstr "पूल ट्रैकर"
 
 #: templates/health.html:311
 msgid "Catalogue of XRPL automated market makers is up to date — tracking"
@@ -738,15 +738,15 @@ msgstr ""
 
 #: templates/health.html:324
 msgid "ready"
-msgstr ""
+msgstr "तैयार"
 
 #: templates/health.html:324
 msgid "building"
-msgstr ""
+msgstr "निर्माण"
 
 #: templates/health.html:324
 msgid "snapshot"
-msgstr ""
+msgstr "स्नैपशॉट"
 
 #: templates/health.html:332
 #, fuzzy
@@ -795,15 +795,15 @@ msgstr ""
 
 #: templates/health.html:347
 msgid "streaming"
-msgstr ""
+msgstr "स्ट्रीमिंग"
 
 #: templates/health.html:347
 msgid "coming soon"
-msgstr ""
+msgstr "जल्द आ रहा है"
 
 #: templates/health.html:354
 msgid "Stored data"
-msgstr ""
+msgstr "संग्रहीत डेटा"
 
 #: templates/health.html:356
 msgid ""
@@ -826,7 +826,7 @@ msgstr "स्टेटस"
 
 #: templates/health.html:368
 msgid "Show technical details"
-msgstr ""
+msgstr "तकनीकी विवरण दिखाएं"
 
 #: templates/health.html:372
 msgid "XRPL network (live pulse)"
@@ -882,7 +882,7 @@ msgstr ""
 
 #: templates/health.html:383 templates/index.html:464
 msgid "XRPL is degraded. Ledgers are closing slowly."
-msgstr ""
+msgstr "XRPL खराब हो गया है। लेजर धीमी गति से बंद हो रहे हैं।"
 
 #: templates/health.html:387
 #, fuzzy
@@ -1244,11 +1244,11 @@ msgstr "स्रोत:"
 
 #: templates/institutional.html:6
 msgid "institutional"
-msgstr ""
+msgstr "संस्थागत"
 
 #: templates/institutional.html:103
 msgid "xrpldashboard institutional"
-msgstr ""
+msgstr "xrpldashboard संस्थागत"
 
 #: templates/institutional.html:105
 msgid ""
@@ -1264,7 +1264,7 @@ msgstr ""
 
 #: templates/institutional.html:112
 msgid "Why this exists"
-msgstr ""
+msgstr "यह क्यों है"
 
 #: templates/institutional.html:114
 msgid ""
@@ -1283,7 +1283,7 @@ msgstr ""
 
 #: templates/institutional.html:120
 msgid "How we're building it"
-msgstr ""
+msgstr "हम इसे कैसे बना रहे हैं"
 
 #: templates/institutional.html:122
 msgid ""
@@ -1294,7 +1294,7 @@ msgstr ""
 
 #: templates/institutional.html:126
 msgid "What we're already collecting"
-msgstr ""
+msgstr "हम पहले से क्या एकत्र कर रहे हैं"
 
 #: templates/institutional.html:128
 msgid ""
@@ -1306,20 +1306,20 @@ msgstr ""
 
 #: templates/institutional.html:133
 msgid "day"
-msgstr ""
+msgstr "दिन"
 
 #: templates/institutional.html:133 templates/wallet.html:940
 #: templates/wallet.html:1089
 msgid "days"
-msgstr ""
+msgstr "दिन"
 
 #: templates/institutional.html:133
 msgid "of snapshots"
-msgstr ""
+msgstr "स्नैपशॉट का"
 
 #: templates/institutional.html:137
 msgid "watchlist accounts daily"
-msgstr ""
+msgstr "वॉचलिस्ट खातों दैनिक"
 
 #: templates/institutional.html:141
 #, fuzzy
@@ -1328,7 +1328,7 @@ msgstr "XRPL AMM पूल"
 
 #: templates/institutional.html:145
 msgid "Collecting since"
-msgstr ""
+msgstr "संग्रह कर रहा है"
 
 #: templates/institutional.html:145
 msgid "Raw snapshot access available to launch partners on request."
@@ -1347,7 +1347,7 @@ msgstr ""
 
 #: templates/institutional.html:157
 msgid "Become a launch partner"
-msgstr ""
+msgstr "लॉन्च पार्टनर बनें"
 
 #: templates/institutional.html:159
 msgid ""
@@ -1386,13 +1386,13 @@ msgstr "लेजर सीक्वेंस क्या है"
 
 #: templates/methodology.html:105
 msgid "Three states:"
-msgstr ""
+msgstr "तीन राज्य:"
 
 #: templates/methodology.html:105 templates/methodology.html:135
 #: templates/methodology.html:147 templates/methodology.html:153
 #: templates/methodology.html:159 templates/methodology.html:165
 msgid "Live"
-msgstr ""
+msgstr "लाइव"
 
 #: templates/methodology.html:106
 msgid "means a WebSocket pushes new data without a page refresh."
@@ -1413,11 +1413,11 @@ msgstr ""
 
 #: templates/methodology.html:114
 msgid "Page / surface"
-msgstr ""
+msgstr "पृष्ठ/सतह"
 
 #: templates/methodology.html:115
 msgid "State"
-msgstr ""
+msgstr "अवस्था"
 
 #: templates/methodology.html:116
 msgid "Cadence / TTL"
@@ -1425,11 +1425,11 @@ msgstr ""
 
 #: templates/methodology.html:117
 msgid "Underlying source"
-msgstr ""
+msgstr "अंतर्निहित स्रोत"
 
 #: templates/methodology.html:124
 msgid "20 sec"
-msgstr ""
+msgstr "20 सेकंड"
 
 #: templates/methodology.html:125
 msgid "on public XRPL node"
@@ -2501,7 +2501,7 @@ msgstr "व्हेल"
 
 #: templates/wallet.html:792
 msgid "Total XRP"
-msgstr ""
+msgstr "कुल XRP"
 
 #: templates/wallet.html:795 templates/wallet.html:1158
 #, fuzzy
@@ -2510,27 +2510,27 @@ msgstr "अनुपलब्ध"
 
 #: templates/wallet.html:805
 msgid "Reserve locked"
-msgstr ""
+msgstr "लॉक की गई रिजर्व"
 
 #: templates/wallet.html:807
 msgid "of balance"
-msgstr ""
+msgstr "शेष का"
 
 #: templates/wallet.html:816 templates/wallet.html:1217
 msgid "Owned objects"
-msgstr ""
+msgstr "स्वामित्व वाली वस्तुएं"
 
 #: templates/wallet.html:818
 msgid "trustlines, offers, AMM stakes"
-msgstr ""
+msgstr "विश्वास लाइनें, ऑफर, AMM स्टेक"
 
 #: templates/wallet.html:827 templates/wallet.html:1229
 msgid "Trustlines"
-msgstr ""
+msgstr "विश्वास लाइनें"
 
 #: templates/wallet.html:829
 msgid "tokens held or trusted"
-msgstr ""
+msgstr "आयोजित या विश्वस्त टोकन"
 
 #: templates/wallet.html:843
 #, fuzzy
@@ -2548,7 +2548,7 @@ msgstr ""
 
 #: templates/wallet.html:854
 msgid "verified"
-msgstr ""
+msgstr "सत्यापित"
 
 #: templates/wallet.html:861
 msgid "Scan to open this wallet page"
@@ -2560,59 +2560,59 @@ msgstr ""
 
 #: templates/wallet.html:865
 msgid "Verify on XRPSCAN"
-msgstr ""
+msgstr "XRPSCAN पर सत्यापित करें"
 
 #: templates/wallet.html:867
 msgid "Snapshot · pulled from XRP Ledger"
-msgstr ""
+msgstr "स्नैपशॉट·XRP Ledger से खींचा गया"
 
 #: templates/wallet.html:870
 msgid "Median of"
-msgstr ""
+msgstr "का माध्य"
 
 #: templates/wallet.html:870
 msgid "All sources on-ledger; refreshed ~60s."
-msgstr ""
+msgstr "सभी स्रोत ऑन-लेजर; ~60 सेकंड में ताज़ा किया गया।"
 
 #: templates/wallet.html:871
 msgid "Live XRP/USD"
-msgstr ""
+msgstr "लाइव XRP/USD"
 
 #: templates/wallet.html:894
 msgid "Pool Flow"
-msgstr ""
+msgstr "पूल प्रवाह"
 
 #: templates/wallet.html:896
 msgid "Comet mode"
-msgstr ""
+msgstr "धूमकेतु मोड"
 
 #: templates/wallet.html:898
 msgid "Exact"
-msgstr ""
+msgstr "सटीक"
 
 #: templates/wallet.html:900
 msgid "Aggregated"
-msgstr ""
+msgstr "एकत्रित"
 
 #: templates/wallet.html:903
 msgid "swap"
-msgstr ""
+msgstr "स्वैप"
 
 #: templates/wallet.html:903
 msgid "swaps"
-msgstr ""
+msgstr "स्वैप"
 
 #: templates/wallet.html:905
 msgid "last"
-msgstr ""
+msgstr "अंतिम"
 
 #: templates/wallet.html:918
 msgid "Expand to fullscreen"
-msgstr ""
+msgstr "पूर्ण स्क्रीन में विस्तारित करें"
 
 #: templates/wallet.html:922
 msgid "in"
-msgstr ""
+msgstr "अंदर"
 
 #: templates/wallet.html:923
 #, fuzzy
@@ -2626,31 +2626,31 @@ msgstr "अनुमान"
 
 #: templates/wallet.html:930
 msgid "Pool reserves and price computed from XRPL"
-msgstr ""
+msgstr "XRPL से गणना की गई पूल रिजर्व और मूल्य"
 
 #: templates/wallet.html:931
 msgid "Flow direction aggregated from the most recent"
-msgstr ""
+msgstr "सबसे हाल की से एकत्रित प्रवाह दिशा"
 
 #: templates/wallet.html:932
 msgid "on-chain swap"
-msgstr ""
+msgstr "ऑन-चेन स्वैप"
 
 #: templates/wallet.html:932
 msgid "on-chain swaps"
-msgstr ""
+msgstr "ऑन-चेन स्वैप"
 
 #: templates/wallet.html:932
 msgid "on the pool's account."
-msgstr ""
+msgstr "पूल के खाते पर।"
 
 #: templates/wallet.html:939
 msgid "Counterparty Network"
-msgstr ""
+msgstr "प्रतिपक्ष नेटवर्क"
 
 #: templates/wallet.html:940
 msgid "entities"
-msgstr ""
+msgstr "संस्थाएं"
 
 #: templates/wallet.html:944
 msgid ""
@@ -2660,11 +2660,11 @@ msgstr ""
 
 #: templates/wallet.html:1039
 msgid "Exchange"
-msgstr ""
+msgstr "विनिमय"
 
 #: templates/wallet.html:1058 templates/wallet.html:1274
 msgid "Issuer"
-msgstr ""
+msgstr "जारीकर्ता"
 
 #: templates/wallet.html:1067
 #, fuzzy
@@ -2678,11 +2678,11 @@ msgstr "अज्ञात"
 
 #: templates/wallet.html:1074
 msgid "No counterparties detected in the last"
-msgstr ""
+msgstr "पिछले"
 
 #: templates/wallet.html:1074 templates/wallet.html:1209
 msgid "days."
-msgstr ""
+msgstr "दिनों में कोई प्रतिपक्ष नहीं मिला।"
 
 #: templates/wallet.html:1076
 msgid ""
@@ -2693,19 +2693,19 @@ msgstr ""
 
 #: templates/wallet.html:1088
 msgid "Live · Wallet Pulse"
-msgstr ""
+msgstr "लाइव·वॉलेट पल्स"
 
 #: templates/wallet.html:1089
 msgid "Last"
-msgstr ""
+msgstr "अंतिम"
 
 #: templates/wallet.html:1123 templates/wallet.html:1225
 msgid "txs"
-msgstr ""
+msgstr "लेनदेन"
 
 #: templates/wallet.html:1125
 msgid "active"
-msgstr ""
+msgstr "सक्रिय"
 
 #: templates/wallet.html:1131
 msgid "Click to reveal full address"
@@ -2717,47 +2717,47 @@ msgstr ""
 
 #: templates/wallet.html:1146
 msgid "Spot price"
-msgstr ""
+msgstr "स्पॉट मूल्य"
 
 #: templates/wallet.html:1147
 msgid "XRP reserve"
-msgstr ""
+msgstr "XRP रिजर्व"
 
 #: templates/wallet.html:1148
 msgid "reserve"
-msgstr ""
+msgstr "रिजर्व"
 
 #: templates/wallet.html:1149
 msgid "Recent swaps"
-msgstr ""
+msgstr "हाल के स्वैप"
 
 #: templates/wallet.html:1159
 msgid "reserved"
-msgstr ""
+msgstr "सुरक्षित"
 
 #: templates/wallet.html:1168
 msgid "Reserve usage"
-msgstr ""
+msgstr "रिजर्व उपयोग"
 
 #: templates/wallet.html:1186
 msgid "of balance locked"
-msgstr ""
+msgstr "शेष लॉक का"
 
 #: templates/wallet.html:1193
 msgid "base"
-msgstr ""
+msgstr "आधार"
 
 #: templates/wallet.html:1194
 msgid "owned objects"
-msgstr ""
+msgstr "स्वामित्व वाली वस्तुएं"
 
 #: templates/wallet.html:1196
 msgid "reserved."
-msgstr ""
+msgstr "सुरक्षित।"
 
 #: templates/wallet.html:1197
 msgid "Reserved XRP can't be sent."
-msgstr ""
+msgstr "आरक्षित XRP नहीं भेजा जा सकता।"
 
 #: templates/wallet.html:1203
 #, fuzzy
@@ -2766,27 +2766,27 @@ msgstr "AMM गतिविधि"
 
 #: templates/wallet.html:1205
 msgid "Recently active"
-msgstr ""
+msgstr "हाल ही में सक्रिय"
 
 #: templates/wallet.html:1205
 msgid "Lightly active"
-msgstr ""
+msgstr "हल्के से सक्रिय"
 
 #: templates/wallet.html:1205
 msgid "Quiet"
-msgstr ""
+msgstr "शांत"
 
 #: templates/wallet.html:1209
 msgid "No on-chain activity in the last"
-msgstr ""
+msgstr "पिछले"
 
 #: templates/wallet.html:1211
 msgid "on-chain transactions in the last"
-msgstr ""
+msgstr "पिछले ऑन-चेन लेनदेन"
 
 #: templates/wallet.html:1211
 msgid "days,"
-msgstr ""
+msgstr "दिन,"
 
 #: templates/wallet.html:1212
 #, fuzzy
@@ -2795,11 +2795,11 @@ msgstr "कुल"
 
 #: templates/wallet.html:1212
 msgid "active days."
-msgstr ""
+msgstr "सक्रिय दिन।"
 
 #: templates/wallet.html:1221
 msgid "Last seen"
-msgstr ""
+msgstr "अंतिम बार देखा गया"
 
 #: templates/wallet.html:1239
 #, fuzzy
@@ -2808,15 +2808,15 @@ msgstr "tokens"
 
 #: templates/wallet.html:1242
 msgid "top"
-msgstr ""
+msgstr "शीर्ष"
 
 #: templates/wallet.html:1242
 msgid "of"
-msgstr ""
+msgstr "का"
 
 #: templates/wallet.html:1244
 msgid "none"
-msgstr ""
+msgstr "कोई नहीं"
 
 #: templates/wallet.html:1271
 #, fuzzy
@@ -2835,24 +2835,24 @@ msgstr "tokens"
 
 #: templates/wallet.html:1294
 msgid "This wallet holds no token balances — only XRP. The"
-msgstr ""
+msgstr "इस वॉलेट में कोई टोकन शेष नहीं है—केवल XRP।"
 
 #: templates/wallet.html:1295
 msgid "trustline"
-msgstr ""
+msgstr "विश्वास लाइन"
 
 #: templates/wallet.html:1295 templates/whales.html:281
 #: templates/whales.html:316
 msgid "trustlines"
-msgstr ""
+msgstr "विश्वास लाइनें"
 
 #: templates/wallet.html:1296
 msgid "on file have zero balance."
-msgstr ""
+msgstr "फाइल में शेष शून्य है।"
 
 #: templates/wallet.html:1304
 msgid "Pool reserves"
-msgstr ""
+msgstr "पूल रिजर्व"
 
 #: templates/wallet.html:1305
 #, fuzzy
@@ -2861,11 +2861,11 @@ msgstr "XRP लेजर,"
 
 #: templates/wallet.html:1308
 msgid "This account"
-msgstr ""
+msgstr "यह खाता"
 
 #: templates/wallet.html:1308
 msgid "is"
-msgstr ""
+msgstr "है"
 
 #: templates/wallet.html:1308
 msgid ""
@@ -2889,15 +2889,15 @@ msgstr ""
 
 #: templates/wallet.html:1354
 msgid "XRP committed"
-msgstr ""
+msgstr "XRP प्रतिबद्ध"
 
 #: templates/wallet.html:1358
 msgid "Fees (24h est)"
-msgstr ""
+msgstr "शुल्क (24h est)"
 
 #: templates/wallet.html:1362
 msgid "Blended APR"
-msgstr ""
+msgstr "मिश्रित APR"
 
 #: templates/wallet.html:1366
 #, fuzzy
@@ -2927,23 +2927,23 @@ msgstr ""
 
 #: templates/wallet.html:1388
 msgid "Cached 5 min server-side."
-msgstr ""
+msgstr "सर्वर-साइड 5 मिनट कैश।"
 
 #: templates/wallet.html:1390
 msgid "Served from cache,"
-msgstr ""
+msgstr "कैश से परोसा गया,"
 
 #: templates/wallet.html:1390
 msgid "old."
-msgstr ""
+msgstr "पुरानी।"
 
 #: templates/whales.html:242
 msgid "Whale watch"
-msgstr ""
+msgstr "व्हेल निगरानी"
 
 #: templates/whales.html:244
 msgid "What counts as a whale event"
-msgstr ""
+msgstr "व्हेल इवेंट क्या माना जाता है"
 
 #: templates/whales.html:245
 msgid ""
@@ -2993,15 +2993,15 @@ msgstr ""
 
 #: templates/whales.html:276 templates/whales.html:314
 msgid "tagged"
-msgstr ""
+msgstr "टैग किया गया"
 
 #: templates/whales.html:285
 msgid "watchlist size"
-msgstr ""
+msgstr "वॉचलिस्ट आकार"
 
 #: templates/whales.html:287
 msgid "What's the watchlist"
-msgstr ""
+msgstr "वॉचलिस्ट क्या है"
 
 #: templates/whales.html:288
 msgid ""
@@ -3020,7 +3020,7 @@ msgstr "व्हेल मूव्स"
 
 #: templates/whales.html:294
 msgid "size"
-msgstr ""
+msgstr "आकार"
 
 #: templates/whales.html:296
 msgid "What 'size' tiers mean"
@@ -3037,7 +3037,7 @@ msgstr ""
 
 #: templates/whales.html:302
 msgid "large"
-msgstr ""
+msgstr "बड़ा"
 
 #: templates/whales.html:307
 msgid "Event type"
@@ -3045,7 +3045,7 @@ msgstr ""
 
 #: templates/whales.html:308
 msgid "type"
-msgstr ""
+msgstr "प्रकार"
 
 #: templates/whales.html:330
 msgid "Streaming validated XRPL transactions ≥"
@@ -3058,19 +3058,19 @@ msgstr "लेजर"
 
 #: templates/whales.html:373
 msgid "No events to show yet."
-msgstr ""
+msgstr "अभी दिखाने के लिए कोई इवेंट नहीं।"
 
 #: templates/whales.html:376
 msgid "Nothing of type"
-msgstr ""
+msgstr "प्रकार की कोई चीज नहीं"
 
 #: templates/whales.html:376
 msgid "in the database. Try"
-msgstr ""
+msgstr "डेटाबेस में। कोशिश करें"
 
 #: templates/whales.html:377
 msgid "all events"
-msgstr ""
+msgstr "सभी इवेंट"
 
 #: templates/whales.html:379
 msgid ""
@@ -3080,11 +3080,11 @@ msgstr ""
 
 #: templates/whales.html:380
 msgid "for watcher status."
-msgstr ""
+msgstr "watcher स्थिति के लिए।"
 
 #: templates/whales.html:389
 msgid "How this works:"
-msgstr ""
+msgstr "यह कैसे काम करता है:"
 
 #: templates/whales.html:390
 msgid ""
@@ -3104,7 +3104,7 @@ msgstr ""
 
 #: templates/whales.html:396
 msgid "The watchlist currently has"
-msgstr ""
+msgstr "वॉचलिस्ट में वर्तमान में है"
 
 #: templates/whales.html:396
 msgid ""
@@ -3114,9 +3114,9 @@ msgstr ""
 
 #: templates/whales.html:401
 msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
-msgstr ""
+msgstr "स्वत: ताज़ा 60 सेकंड·XRPSCAN पर सत्यापित करने के लिए किसी भी tx पर क्लिक करें।"
 
 #: templates/whales.html:405
 msgid "how this is sourced"
-msgstr ""
+msgstr "यह कैसे प्राप्त किया जाता है"
 

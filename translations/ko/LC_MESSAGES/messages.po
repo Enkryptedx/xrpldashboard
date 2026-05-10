@@ -20,15 +20,15 @@ msgstr ""
 
 #: templates/404.html:6
 msgid "not found"
-msgstr ""
+msgstr "찾을 수 없습니다"
 
 #: templates/404.html:77
 msgid "page not found"
-msgstr ""
+msgstr "페이지를 찾을 수 없습니다"
 
 #: templates/404.html:78
 msgid "That page isn't here."
-msgstr ""
+msgstr "해당 페이지가 없습니다."
 
 #: templates/404.html:80
 msgid ""
@@ -81,15 +81,15 @@ msgstr ""
 
 #: templates/500.html:6
 msgid "error"
-msgstr ""
+msgstr "오류"
 
 #: templates/500.html:77
 msgid "server error"
-msgstr ""
+msgstr "서버 오류"
 
 #: templates/500.html:78
 msgid "Something broke on our end."
-msgstr ""
+msgstr "저희 쪽에서 문제가 발생했습니다."
 
 #: templates/500.html:80
 msgid ""
@@ -154,7 +154,7 @@ msgstr ""
 
 #: templates/about.html:93
 msgid "Mission"
-msgstr ""
+msgstr "미션"
 
 #: templates/about.html:95
 msgid ""
@@ -165,7 +165,7 @@ msgstr ""
 
 #: templates/about.html:98
 msgid "Principles"
-msgstr ""
+msgstr "원칙"
 
 #: templates/about.html:100
 msgid "Retail-free, forever."
@@ -244,7 +244,7 @@ msgstr ""
 
 #: templates/about.html:110
 msgid "How it works"
-msgstr ""
+msgstr "작동 방식"
 
 #: templates/about.html:112
 msgid ""
@@ -256,7 +256,7 @@ msgstr ""
 
 #: templates/about.html:115
 msgid "Live ledger data"
-msgstr ""
+msgstr "라이브 원장 데이터"
 
 #: templates/about.html:117
 msgid "Comes from public XRPL nodes (currently Ripple's"
@@ -265,7 +265,7 @@ msgstr ""
 #: templates/about.html:118 templates/about.html:126
 #: templates/methodology.html:207 templates/wallet.html:1388
 msgid "and"
-msgstr ""
+msgstr "그리고"
 
 #: templates/about.html:118
 msgid ""
@@ -508,7 +508,7 @@ msgstr "콜드 스토리지"
 
 #: templates/cold_storage.html:170
 msgid "XRP locked"
-msgstr ""
+msgstr "잠금된 XRP"
 
 #: templates/cold_storage.html:172
 #, fuzzy
@@ -534,7 +534,7 @@ msgstr "초 전"
 
 #: templates/cold_storage.html:184
 msgid "Total locked"
-msgstr ""
+msgstr "총 잠금"
 
 #: templates/cold_storage.html:186
 #, fuzzy
@@ -548,11 +548,11 @@ msgstr "소개"
 
 #: templates/cold_storage.html:189
 msgid "Largest holding"
-msgstr ""
+msgstr "최대 보유"
 
 #: templates/cold_storage.html:194
 msgid "Tracked addresses"
-msgstr ""
+msgstr "추적된 주소"
 
 #: templates/cold_storage.html:196
 msgid "responding"
@@ -588,7 +588,7 @@ msgstr "소개"
 
 #: templates/cold_storage.html:221 templates/wallet.html:1274
 msgid "Balance"
-msgstr ""
+msgstr "잔액"
 
 #: templates/cold_storage.html:223
 #, fuzzy
@@ -614,7 +614,7 @@ msgstr "Ripple 에스크로"
 
 #: templates/cold_storage.html:274
 msgid "Data: live"
-msgstr ""
+msgstr "데이터: 라이브"
 
 #: templates/cold_storage.html:274
 #, fuzzy
@@ -628,7 +628,7 @@ msgstr "Ripple 에스크로"
 
 #: templates/health.html:244
 msgid "All systems normal"
-msgstr ""
+msgstr "모든 시스템 정상"
 
 #: templates/health.html:245
 #, fuzzy
@@ -642,7 +642,7 @@ msgstr "부하 높음"
 
 #: templates/health.html:247
 msgid "Mostly normal"
-msgstr ""
+msgstr "대부분 정상"
 
 #: templates/health.html:248
 #, fuzzy
@@ -655,23 +655,23 @@ msgstr ""
 
 #: templates/health.html:262
 msgid "Heartbeat · scales with network load"
-msgstr ""
+msgstr "하트비트·네트워크 부하에 따라 확장"
 
 #: templates/health.html:263
 msgid "bpm"
-msgstr ""
+msgstr "bpm"
 
 #: templates/health.html:274 templates/health.html:297
 msgid "XRPL network"
-msgstr ""
+msgstr "XRPL 네트워크"
 
 #: templates/health.html:277
 msgid "The XRP Ledger is healthy. New ledgers are being closed every"
-msgstr ""
+msgstr "XRP Ledger는 건강합니다. 새 원장이 매"
 
 #: templates/health.html:278
 msgid "seconds — exactly as expected. Validators are in agreement."
-msgstr ""
+msgstr "초마다 종료됩니다—정확히 예상대로입니다. 검증자들이 동의합니다."
 
 #: templates/health.html:280
 msgid ""
@@ -687,7 +687,7 @@ msgstr ""
 
 #: templates/health.html:298
 msgid "Live network pulse is currently unavailable."
-msgstr ""
+msgstr "라이브 네트워크 펄스는 현재 사용할 수 없습니다."
 
 #: templates/health.html:300
 #, fuzzy
@@ -696,7 +696,7 @@ msgstr "알 수 없음"
 
 #: templates/health.html:308
 msgid "Pool tracker"
-msgstr ""
+msgstr "풀 추적기"
 
 #: templates/health.html:311
 msgid "Catalogue of XRPL automated market makers is up to date — tracking"
@@ -737,15 +737,15 @@ msgstr ""
 
 #: templates/health.html:324
 msgid "ready"
-msgstr ""
+msgstr "준비"
 
 #: templates/health.html:324
 msgid "building"
-msgstr ""
+msgstr "구축 중"
 
 #: templates/health.html:324
 msgid "snapshot"
-msgstr ""
+msgstr "스냅샷"
 
 #: templates/health.html:332
 #, fuzzy
@@ -794,15 +794,15 @@ msgstr ""
 
 #: templates/health.html:347
 msgid "streaming"
-msgstr ""
+msgstr "스트리밍"
 
 #: templates/health.html:347
 msgid "coming soon"
-msgstr ""
+msgstr "곧 출시"
 
 #: templates/health.html:354
 msgid "Stored data"
-msgstr ""
+msgstr "저장된 데이터"
 
 #: templates/health.html:356
 msgid ""
@@ -825,7 +825,7 @@ msgstr "상태"
 
 #: templates/health.html:368
 msgid "Show technical details"
-msgstr ""
+msgstr "기술 세부 정보 표시"
 
 #: templates/health.html:372
 msgid "XRPL network (live pulse)"
@@ -881,7 +881,7 @@ msgstr ""
 
 #: templates/health.html:383 templates/index.html:464
 msgid "XRPL is degraded. Ledgers are closing slowly."
-msgstr ""
+msgstr "XRPL이 저하되었습니다. 원장이 천천히 종료되고 있습니다."
 
 #: templates/health.html:387
 #, fuzzy
@@ -1236,11 +1236,11 @@ msgstr "소스:"
 
 #: templates/institutional.html:6
 msgid "institutional"
-msgstr ""
+msgstr "기관"
 
 #: templates/institutional.html:103
 msgid "xrpldashboard institutional"
-msgstr ""
+msgstr "xrpldashboard 기관"
 
 #: templates/institutional.html:105
 msgid ""
@@ -1256,7 +1256,7 @@ msgstr ""
 
 #: templates/institutional.html:112
 msgid "Why this exists"
-msgstr ""
+msgstr "이것이 존재하는 이유"
 
 #: templates/institutional.html:114
 msgid ""
@@ -1275,7 +1275,7 @@ msgstr ""
 
 #: templates/institutional.html:120
 msgid "How we're building it"
-msgstr ""
+msgstr "우리가 어떻게 구축하고 있는지"
 
 #: templates/institutional.html:122
 msgid ""
@@ -1286,7 +1286,7 @@ msgstr ""
 
 #: templates/institutional.html:126
 msgid "What we're already collecting"
-msgstr ""
+msgstr "우리가 이미 수집하고 있는 것"
 
 #: templates/institutional.html:128
 msgid ""
@@ -1298,20 +1298,20 @@ msgstr ""
 
 #: templates/institutional.html:133
 msgid "day"
-msgstr ""
+msgstr "일"
 
 #: templates/institutional.html:133 templates/wallet.html:940
 #: templates/wallet.html:1089
 msgid "days"
-msgstr ""
+msgstr "일"
 
 #: templates/institutional.html:133
 msgid "of snapshots"
-msgstr ""
+msgstr "스냅샷의"
 
 #: templates/institutional.html:137
 msgid "watchlist accounts daily"
-msgstr ""
+msgstr "감시 목록 계정 일일"
 
 #: templates/institutional.html:141
 #, fuzzy
@@ -1320,7 +1320,7 @@ msgstr "개 XRPL AMM 풀"
 
 #: templates/institutional.html:145
 msgid "Collecting since"
-msgstr ""
+msgstr "수집 시작"
 
 #: templates/institutional.html:145
 msgid "Raw snapshot access available to launch partners on request."
@@ -1339,7 +1339,7 @@ msgstr ""
 
 #: templates/institutional.html:157
 msgid "Become a launch partner"
-msgstr ""
+msgstr "론칭 파트너 되기"
 
 #: templates/institutional.html:159
 msgid ""
@@ -1378,13 +1378,13 @@ msgstr "원장 시퀀스란?"
 
 #: templates/methodology.html:105
 msgid "Three states:"
-msgstr ""
+msgstr "세 가지 상태:"
 
 #: templates/methodology.html:105 templates/methodology.html:135
 #: templates/methodology.html:147 templates/methodology.html:153
 #: templates/methodology.html:159 templates/methodology.html:165
 msgid "Live"
-msgstr ""
+msgstr "라이브"
 
 #: templates/methodology.html:106
 msgid "means a WebSocket pushes new data without a page refresh."
@@ -1405,11 +1405,11 @@ msgstr ""
 
 #: templates/methodology.html:114
 msgid "Page / surface"
-msgstr ""
+msgstr "페이지/표면"
 
 #: templates/methodology.html:115
 msgid "State"
-msgstr ""
+msgstr "상태"
 
 #: templates/methodology.html:116
 msgid "Cadence / TTL"
@@ -1417,11 +1417,11 @@ msgstr ""
 
 #: templates/methodology.html:117
 msgid "Underlying source"
-msgstr ""
+msgstr "기본 소스"
 
 #: templates/methodology.html:124
 msgid "20 sec"
-msgstr ""
+msgstr "20초"
 
 #: templates/methodology.html:125
 msgid "on public XRPL node"
@@ -2493,7 +2493,7 @@ msgstr "고래"
 
 #: templates/wallet.html:792
 msgid "Total XRP"
-msgstr ""
+msgstr "총 XRP"
 
 #: templates/wallet.html:795 templates/wallet.html:1158
 #, fuzzy
@@ -2502,27 +2502,27 @@ msgstr "사용 불가"
 
 #: templates/wallet.html:805
 msgid "Reserve locked"
-msgstr ""
+msgstr "잠금된 예약"
 
 #: templates/wallet.html:807
 msgid "of balance"
-msgstr ""
+msgstr "잔액의"
 
 #: templates/wallet.html:816 templates/wallet.html:1217
 msgid "Owned objects"
-msgstr ""
+msgstr "소유 객체"
 
 #: templates/wallet.html:818
 msgid "trustlines, offers, AMM stakes"
-msgstr ""
+msgstr "신뢰선, 오퍼, AMM 스테이크"
 
 #: templates/wallet.html:827 templates/wallet.html:1229
 msgid "Trustlines"
-msgstr ""
+msgstr "신뢰선"
 
 #: templates/wallet.html:829
 msgid "tokens held or trusted"
-msgstr ""
+msgstr "보유하거나 신뢰하는 토큰"
 
 #: templates/wallet.html:843
 #, fuzzy
@@ -2540,7 +2540,7 @@ msgstr ""
 
 #: templates/wallet.html:854
 msgid "verified"
-msgstr ""
+msgstr "검증됨"
 
 #: templates/wallet.html:861
 msgid "Scan to open this wallet page"
@@ -2552,59 +2552,59 @@ msgstr ""
 
 #: templates/wallet.html:865
 msgid "Verify on XRPSCAN"
-msgstr ""
+msgstr "XRPSCAN에서 확인"
 
 #: templates/wallet.html:867
 msgid "Snapshot · pulled from XRP Ledger"
-msgstr ""
+msgstr "스냅샷·XRP Ledger에서 인출"
 
 #: templates/wallet.html:870
 msgid "Median of"
-msgstr ""
+msgstr "의 중앙값"
 
 #: templates/wallet.html:870
 msgid "All sources on-ledger; refreshed ~60s."
-msgstr ""
+msgstr "모든 소스가 온레저; ~60초마다 새로고침."
 
 #: templates/wallet.html:871
 msgid "Live XRP/USD"
-msgstr ""
+msgstr "라이브 XRP/USD"
 
 #: templates/wallet.html:894
 msgid "Pool Flow"
-msgstr ""
+msgstr "풀 플로우"
 
 #: templates/wallet.html:896
 msgid "Comet mode"
-msgstr ""
+msgstr "혜성 모드"
 
 #: templates/wallet.html:898
 msgid "Exact"
-msgstr ""
+msgstr "정확"
 
 #: templates/wallet.html:900
 msgid "Aggregated"
-msgstr ""
+msgstr "집계"
 
 #: templates/wallet.html:903
 msgid "swap"
-msgstr ""
+msgstr "스왑"
 
 #: templates/wallet.html:903
 msgid "swaps"
-msgstr ""
+msgstr "스왑"
 
 #: templates/wallet.html:905
 msgid "last"
-msgstr ""
+msgstr "마지막"
 
 #: templates/wallet.html:918
 msgid "Expand to fullscreen"
-msgstr ""
+msgstr "전체 화면으로 확장"
 
 #: templates/wallet.html:922
 msgid "in"
-msgstr ""
+msgstr "입력"
 
 #: templates/wallet.html:923
 #, fuzzy
@@ -2618,31 +2618,31 @@ msgstr "추정"
 
 #: templates/wallet.html:930
 msgid "Pool reserves and price computed from XRPL"
-msgstr ""
+msgstr "XRPL에서 계산된 풀 예약 및 가격"
 
 #: templates/wallet.html:931
 msgid "Flow direction aggregated from the most recent"
-msgstr ""
+msgstr "가장 최근부터 집계된 흐름 방향"
 
 #: templates/wallet.html:932
 msgid "on-chain swap"
-msgstr ""
+msgstr "온체인 스왑"
 
 #: templates/wallet.html:932
 msgid "on-chain swaps"
-msgstr ""
+msgstr "온체인 스왑"
 
 #: templates/wallet.html:932
 msgid "on the pool's account."
-msgstr ""
+msgstr "풀의 계정에서."
 
 #: templates/wallet.html:939
 msgid "Counterparty Network"
-msgstr ""
+msgstr "거래상대방 네트워크"
 
 #: templates/wallet.html:940
 msgid "entities"
-msgstr ""
+msgstr "개체"
 
 #: templates/wallet.html:944
 msgid ""
@@ -2652,11 +2652,11 @@ msgstr ""
 
 #: templates/wallet.html:1039
 msgid "Exchange"
-msgstr ""
+msgstr "거래소"
 
 #: templates/wallet.html:1058 templates/wallet.html:1274
 msgid "Issuer"
-msgstr ""
+msgstr "발행자"
 
 #: templates/wallet.html:1067
 #, fuzzy
@@ -2670,11 +2670,11 @@ msgstr "알 수 없음"
 
 #: templates/wallet.html:1074
 msgid "No counterparties detected in the last"
-msgstr ""
+msgstr "지난"
 
 #: templates/wallet.html:1074 templates/wallet.html:1209
 msgid "days."
-msgstr ""
+msgstr "일 동안 거래상대방이 감지되지 않았습니다."
 
 #: templates/wallet.html:1076
 msgid ""
@@ -2685,19 +2685,19 @@ msgstr ""
 
 #: templates/wallet.html:1088
 msgid "Live · Wallet Pulse"
-msgstr ""
+msgstr "라이브·지갑 펄스"
 
 #: templates/wallet.html:1089
 msgid "Last"
-msgstr ""
+msgstr "마지막"
 
 #: templates/wallet.html:1123 templates/wallet.html:1225
 msgid "txs"
-msgstr ""
+msgstr "거래"
 
 #: templates/wallet.html:1125
 msgid "active"
-msgstr ""
+msgstr "활성"
 
 #: templates/wallet.html:1131
 msgid "Click to reveal full address"
@@ -2709,47 +2709,47 @@ msgstr ""
 
 #: templates/wallet.html:1146
 msgid "Spot price"
-msgstr ""
+msgstr "현물 가격"
 
 #: templates/wallet.html:1147
 msgid "XRP reserve"
-msgstr ""
+msgstr "XRP 예약"
 
 #: templates/wallet.html:1148
 msgid "reserve"
-msgstr ""
+msgstr "예약"
 
 #: templates/wallet.html:1149
 msgid "Recent swaps"
-msgstr ""
+msgstr "최근 스왑"
 
 #: templates/wallet.html:1159
 msgid "reserved"
-msgstr ""
+msgstr "예약됨"
 
 #: templates/wallet.html:1168
 msgid "Reserve usage"
-msgstr ""
+msgstr "예약 사용량"
 
 #: templates/wallet.html:1186
 msgid "of balance locked"
-msgstr ""
+msgstr "잠금된 잔액의"
 
 #: templates/wallet.html:1193
 msgid "base"
-msgstr ""
+msgstr "기본"
 
 #: templates/wallet.html:1194
 msgid "owned objects"
-msgstr ""
+msgstr "소유 객체"
 
 #: templates/wallet.html:1196
 msgid "reserved."
-msgstr ""
+msgstr "예약됨."
 
 #: templates/wallet.html:1197
 msgid "Reserved XRP can't be sent."
-msgstr ""
+msgstr "예약된 XRP는 전송할 수 없습니다."
 
 #: templates/wallet.html:1203
 #, fuzzy
@@ -2758,27 +2758,27 @@ msgstr "AMM 활동"
 
 #: templates/wallet.html:1205
 msgid "Recently active"
-msgstr ""
+msgstr "최근 활성"
 
 #: templates/wallet.html:1205
 msgid "Lightly active"
-msgstr ""
+msgstr "약간 활성"
 
 #: templates/wallet.html:1205
 msgid "Quiet"
-msgstr ""
+msgstr "조용함"
 
 #: templates/wallet.html:1209
 msgid "No on-chain activity in the last"
-msgstr ""
+msgstr "지난"
 
 #: templates/wallet.html:1211
 msgid "on-chain transactions in the last"
-msgstr ""
+msgstr "지난 온체인 거래"
 
 #: templates/wallet.html:1211
 msgid "days,"
-msgstr ""
+msgstr "일,"
 
 #: templates/wallet.html:1212
 #, fuzzy
@@ -2787,11 +2787,11 @@ msgstr "전체"
 
 #: templates/wallet.html:1212
 msgid "active days."
-msgstr ""
+msgstr "활성 일."
 
 #: templates/wallet.html:1221
 msgid "Last seen"
-msgstr ""
+msgstr "마지막 표시"
 
 #: templates/wallet.html:1239
 #, fuzzy
@@ -2800,15 +2800,15 @@ msgstr "tokens"
 
 #: templates/wallet.html:1242
 msgid "top"
-msgstr ""
+msgstr "상위"
 
 #: templates/wallet.html:1242
 msgid "of"
-msgstr ""
+msgstr "의"
 
 #: templates/wallet.html:1244
 msgid "none"
-msgstr ""
+msgstr "없음"
 
 #: templates/wallet.html:1271
 #, fuzzy
@@ -2827,24 +2827,24 @@ msgstr "tokens"
 
 #: templates/wallet.html:1294
 msgid "This wallet holds no token balances — only XRP. The"
-msgstr ""
+msgstr "이 지갑은 토큰 잔액을 보유하지 않습니다—XRP만입니다."
 
 #: templates/wallet.html:1295
 msgid "trustline"
-msgstr ""
+msgstr "신뢰선"
 
 #: templates/wallet.html:1295 templates/whales.html:281
 #: templates/whales.html:316
 msgid "trustlines"
-msgstr ""
+msgstr "신뢰선"
 
 #: templates/wallet.html:1296
 msgid "on file have zero balance."
-msgstr ""
+msgstr "파일의 잔액이 0입니다."
 
 #: templates/wallet.html:1304
 msgid "Pool reserves"
-msgstr ""
+msgstr "풀 예약"
 
 #: templates/wallet.html:1305
 #, fuzzy
@@ -2853,11 +2853,11 @@ msgstr "XRP 원장,"
 
 #: templates/wallet.html:1308
 msgid "This account"
-msgstr ""
+msgstr "이 계정"
 
 #: templates/wallet.html:1308
 msgid "is"
-msgstr ""
+msgstr "입니다"
 
 #: templates/wallet.html:1308
 msgid ""
@@ -2881,15 +2881,15 @@ msgstr ""
 
 #: templates/wallet.html:1354
 msgid "XRP committed"
-msgstr ""
+msgstr "XRP 커밋됨"
 
 #: templates/wallet.html:1358
 msgid "Fees (24h est)"
-msgstr ""
+msgstr "수수료(24시간 추정)"
 
 #: templates/wallet.html:1362
 msgid "Blended APR"
-msgstr ""
+msgstr "혼합 APR"
 
 #: templates/wallet.html:1366
 #, fuzzy
@@ -2919,23 +2919,23 @@ msgstr ""
 
 #: templates/wallet.html:1388
 msgid "Cached 5 min server-side."
-msgstr ""
+msgstr "서버 측에 5분 캐시됨."
 
 #: templates/wallet.html:1390
 msgid "Served from cache,"
-msgstr ""
+msgstr "캐시에서 제공됨,"
 
 #: templates/wallet.html:1390
 msgid "old."
-msgstr ""
+msgstr "오래됨."
 
 #: templates/whales.html:242
 msgid "Whale watch"
-msgstr ""
+msgstr "고래 감시"
 
 #: templates/whales.html:244
 msgid "What counts as a whale event"
-msgstr ""
+msgstr "고래 이벤트로 간주되는 것"
 
 #: templates/whales.html:245
 msgid ""
@@ -2985,15 +2985,15 @@ msgstr ""
 
 #: templates/whales.html:276 templates/whales.html:314
 msgid "tagged"
-msgstr ""
+msgstr "태그됨"
 
 #: templates/whales.html:285
 msgid "watchlist size"
-msgstr ""
+msgstr "감시 목록 크기"
 
 #: templates/whales.html:287
 msgid "What's the watchlist"
-msgstr ""
+msgstr "감시 목록이란"
 
 #: templates/whales.html:288
 msgid ""
@@ -3012,7 +3012,7 @@ msgstr "고래 움직임"
 
 #: templates/whales.html:294
 msgid "size"
-msgstr ""
+msgstr "크기"
 
 #: templates/whales.html:296
 msgid "What 'size' tiers mean"
@@ -3029,7 +3029,7 @@ msgstr ""
 
 #: templates/whales.html:302
 msgid "large"
-msgstr ""
+msgstr "크게"
 
 #: templates/whales.html:307
 msgid "Event type"
@@ -3037,7 +3037,7 @@ msgstr ""
 
 #: templates/whales.html:308
 msgid "type"
-msgstr ""
+msgstr "타입"
 
 #: templates/whales.html:330
 msgid "Streaming validated XRPL transactions ≥"
@@ -3050,19 +3050,19 @@ msgstr "원장"
 
 #: templates/whales.html:373
 msgid "No events to show yet."
-msgstr ""
+msgstr "아직 표시할 이벤트가 없습니다."
 
 #: templates/whales.html:376
 msgid "Nothing of type"
-msgstr ""
+msgstr "타입의"
 
 #: templates/whales.html:376
 msgid "in the database. Try"
-msgstr ""
+msgstr "데이터베이스에서. 시도해보세요"
 
 #: templates/whales.html:377
 msgid "all events"
-msgstr ""
+msgstr "모든 이벤트"
 
 #: templates/whales.html:379
 msgid ""
@@ -3072,11 +3072,11 @@ msgstr ""
 
 #: templates/whales.html:380
 msgid "for watcher status."
-msgstr ""
+msgstr "감시자 상태용."
 
 #: templates/whales.html:389
 msgid "How this works:"
-msgstr ""
+msgstr "이것이 작동하는 방식:"
 
 #: templates/whales.html:390
 msgid ""
@@ -3096,7 +3096,7 @@ msgstr ""
 
 #: templates/whales.html:396
 msgid "The watchlist currently has"
-msgstr ""
+msgstr "감시 목록에는 현재"
 
 #: templates/whales.html:396
 msgid ""
@@ -3106,9 +3106,9 @@ msgstr ""
 
 #: templates/whales.html:401
 msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
-msgstr ""
+msgstr "자동 새로고침 60초·모든 tx를 클릭하여 XRPSCAN에서 확인."
 
 #: templates/whales.html:405
 msgid "how this is sourced"
-msgstr ""
+msgstr "이것이 출처하는 방식"
 

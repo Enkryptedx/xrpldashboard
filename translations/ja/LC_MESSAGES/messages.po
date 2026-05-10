@@ -20,15 +20,15 @@ msgstr ""
 
 #: templates/404.html:6
 msgid "not found"
-msgstr ""
+msgstr "見つかりません"
 
 #: templates/404.html:77
 msgid "page not found"
-msgstr ""
+msgstr "ページが見つかりません"
 
 #: templates/404.html:78
 msgid "That page isn't here."
-msgstr ""
+msgstr "そのページはここにありません。"
 
 #: templates/404.html:80
 msgid ""
@@ -81,15 +81,15 @@ msgstr ""
 
 #: templates/500.html:6
 msgid "error"
-msgstr ""
+msgstr "エラー"
 
 #: templates/500.html:77
 msgid "server error"
-msgstr ""
+msgstr "サーバーエラー"
 
 #: templates/500.html:78
 msgid "Something broke on our end."
-msgstr ""
+msgstr "私たちの側で何か問題が発生しました。"
 
 #: templates/500.html:80
 msgid ""
@@ -154,7 +154,7 @@ msgstr ""
 
 #: templates/about.html:93
 msgid "Mission"
-msgstr ""
+msgstr "ミッション"
 
 #: templates/about.html:95
 msgid ""
@@ -165,7 +165,7 @@ msgstr ""
 
 #: templates/about.html:98
 msgid "Principles"
-msgstr ""
+msgstr "原則"
 
 #: templates/about.html:100
 msgid "Retail-free, forever."
@@ -244,7 +244,7 @@ msgstr ""
 
 #: templates/about.html:110
 msgid "How it works"
-msgstr ""
+msgstr "どのように機能するか"
 
 #: templates/about.html:112
 msgid ""
@@ -256,7 +256,7 @@ msgstr ""
 
 #: templates/about.html:115
 msgid "Live ledger data"
-msgstr ""
+msgstr "ライブ台帳データ"
 
 #: templates/about.html:117
 msgid "Comes from public XRPL nodes (currently Ripple's"
@@ -265,7 +265,7 @@ msgstr ""
 #: templates/about.html:118 templates/about.html:126
 #: templates/methodology.html:207 templates/wallet.html:1388
 msgid "and"
-msgstr ""
+msgstr "そして"
 
 #: templates/about.html:118
 msgid ""
@@ -508,7 +508,7 @@ msgstr "コールドストレージ"
 
 #: templates/cold_storage.html:170
 msgid "XRP locked"
-msgstr ""
+msgstr "ロックされたXRP"
 
 #: templates/cold_storage.html:172
 #, fuzzy
@@ -534,7 +534,7 @@ msgstr "秒前"
 
 #: templates/cold_storage.html:184
 msgid "Total locked"
-msgstr ""
+msgstr "ロック済み合計"
 
 #: templates/cold_storage.html:186
 #, fuzzy
@@ -548,11 +548,11 @@ msgstr "概要"
 
 #: templates/cold_storage.html:189
 msgid "Largest holding"
-msgstr ""
+msgstr "最大保有量"
 
 #: templates/cold_storage.html:194
 msgid "Tracked addresses"
-msgstr ""
+msgstr "トラッキング対象アドレス"
 
 #: templates/cold_storage.html:196
 msgid "responding"
@@ -588,7 +588,7 @@ msgstr "概要"
 
 #: templates/cold_storage.html:221 templates/wallet.html:1274
 msgid "Balance"
-msgstr ""
+msgstr "残高"
 
 #: templates/cold_storage.html:223
 #, fuzzy
@@ -614,7 +614,7 @@ msgstr "Ripple エスクロー"
 
 #: templates/cold_storage.html:274
 msgid "Data: live"
-msgstr ""
+msgstr "データ：ライブ"
 
 #: templates/cold_storage.html:274
 #, fuzzy
@@ -628,7 +628,7 @@ msgstr "Ripple エスクロー"
 
 #: templates/health.html:244
 msgid "All systems normal"
-msgstr ""
+msgstr "すべてのシステムが正常"
 
 #: templates/health.html:245
 #, fuzzy
@@ -642,7 +642,7 @@ msgstr "負荷高め"
 
 #: templates/health.html:247
 msgid "Mostly normal"
-msgstr ""
+msgstr "ほぼ正常"
 
 #: templates/health.html:248
 #, fuzzy
@@ -655,23 +655,23 @@ msgstr ""
 
 #: templates/health.html:262
 msgid "Heartbeat · scales with network load"
-msgstr ""
+msgstr "ハートビート・ネットワーク負荷に応じてスケーリング"
 
 #: templates/health.html:263
 msgid "bpm"
-msgstr ""
+msgstr "bpm"
 
 #: templates/health.html:274 templates/health.html:297
 msgid "XRPL network"
-msgstr ""
+msgstr "XRPLネットワーク"
 
 #: templates/health.html:277
 msgid "The XRP Ledger is healthy. New ledgers are being closed every"
-msgstr ""
+msgstr "XRP台帳は健全です。新しい台帳は毎"
 
 #: templates/health.html:278
 msgid "seconds — exactly as expected. Validators are in agreement."
-msgstr ""
+msgstr "秒ごとに閉じられています—正確に予想通りです。バリデータが同意しています。"
 
 #: templates/health.html:280
 msgid ""
@@ -687,7 +687,7 @@ msgstr ""
 
 #: templates/health.html:298
 msgid "Live network pulse is currently unavailable."
-msgstr ""
+msgstr "ライブネットワークパルスは現在利用できません。"
 
 #: templates/health.html:300
 #, fuzzy
@@ -696,7 +696,7 @@ msgstr "不明"
 
 #: templates/health.html:308
 msgid "Pool tracker"
-msgstr ""
+msgstr "プールトラッカー"
 
 #: templates/health.html:311
 msgid "Catalogue of XRPL automated market makers is up to date — tracking"
@@ -737,15 +737,15 @@ msgstr ""
 
 #: templates/health.html:324
 msgid "ready"
-msgstr ""
+msgstr "準備完了"
 
 #: templates/health.html:324
 msgid "building"
-msgstr ""
+msgstr "構築中"
 
 #: templates/health.html:324
 msgid "snapshot"
-msgstr ""
+msgstr "スナップショット"
 
 #: templates/health.html:332
 #, fuzzy
@@ -794,15 +794,15 @@ msgstr ""
 
 #: templates/health.html:347
 msgid "streaming"
-msgstr ""
+msgstr "ストリーミング"
 
 #: templates/health.html:347
 msgid "coming soon"
-msgstr ""
+msgstr "近日公開予定"
 
 #: templates/health.html:354
 msgid "Stored data"
-msgstr ""
+msgstr "保存データ"
 
 #: templates/health.html:356
 msgid ""
@@ -825,7 +825,7 @@ msgstr "ステータス"
 
 #: templates/health.html:368
 msgid "Show technical details"
-msgstr ""
+msgstr "技術詳細を表示"
 
 #: templates/health.html:372
 msgid "XRPL network (live pulse)"
@@ -881,7 +881,7 @@ msgstr ""
 
 #: templates/health.html:383 templates/index.html:464
 msgid "XRPL is degraded. Ledgers are closing slowly."
-msgstr ""
+msgstr "XRPLが低下しています。台帳の閉鎖が遅くなっています。"
 
 #: templates/health.html:387
 #, fuzzy
@@ -1236,11 +1236,11 @@ msgstr "ソース:"
 
 #: templates/institutional.html:6
 msgid "institutional"
-msgstr ""
+msgstr "機関"
 
 #: templates/institutional.html:103
 msgid "xrpldashboard institutional"
-msgstr ""
+msgstr "xrpldashboard機関版"
 
 #: templates/institutional.html:105
 msgid ""
@@ -1256,7 +1256,7 @@ msgstr ""
 
 #: templates/institutional.html:112
 msgid "Why this exists"
-msgstr ""
+msgstr "これが存在する理由"
 
 #: templates/institutional.html:114
 msgid ""
@@ -1275,7 +1275,7 @@ msgstr ""
 
 #: templates/institutional.html:120
 msgid "How we're building it"
-msgstr ""
+msgstr "私たちがそれを構築する方法"
 
 #: templates/institutional.html:122
 msgid ""
@@ -1286,7 +1286,7 @@ msgstr ""
 
 #: templates/institutional.html:126
 msgid "What we're already collecting"
-msgstr ""
+msgstr "私たちが既に収集しているもの"
 
 #: templates/institutional.html:128
 msgid ""
@@ -1298,20 +1298,20 @@ msgstr ""
 
 #: templates/institutional.html:133
 msgid "day"
-msgstr ""
+msgstr "日"
 
 #: templates/institutional.html:133 templates/wallet.html:940
 #: templates/wallet.html:1089
 msgid "days"
-msgstr ""
+msgstr "日"
 
 #: templates/institutional.html:133
 msgid "of snapshots"
-msgstr ""
+msgstr "スナップショットの"
 
 #: templates/institutional.html:137
 msgid "watchlist accounts daily"
-msgstr ""
+msgstr "ウォッチリストアカウント毎日"
 
 #: templates/institutional.html:141
 #, fuzzy
@@ -1320,7 +1320,7 @@ msgstr "の XRPL AMM プール"
 
 #: templates/institutional.html:145
 msgid "Collecting since"
-msgstr ""
+msgstr "以降収集中"
 
 #: templates/institutional.html:145
 msgid "Raw snapshot access available to launch partners on request."
@@ -1339,7 +1339,7 @@ msgstr ""
 
 #: templates/institutional.html:157
 msgid "Become a launch partner"
-msgstr ""
+msgstr "ローンチパートナーになる"
 
 #: templates/institutional.html:159
 msgid ""
@@ -1378,13 +1378,13 @@ msgstr "Ledger sequence とは"
 
 #: templates/methodology.html:105
 msgid "Three states:"
-msgstr ""
+msgstr "3つの状態："
 
 #: templates/methodology.html:105 templates/methodology.html:135
 #: templates/methodology.html:147 templates/methodology.html:153
 #: templates/methodology.html:159 templates/methodology.html:165
 msgid "Live"
-msgstr ""
+msgstr "ライブ"
 
 #: templates/methodology.html:106
 msgid "means a WebSocket pushes new data without a page refresh."
@@ -1405,11 +1405,11 @@ msgstr ""
 
 #: templates/methodology.html:114
 msgid "Page / surface"
-msgstr ""
+msgstr "ページ/サーフェス"
 
 #: templates/methodology.html:115
 msgid "State"
-msgstr ""
+msgstr "状態"
 
 #: templates/methodology.html:116
 msgid "Cadence / TTL"
@@ -1417,11 +1417,11 @@ msgstr ""
 
 #: templates/methodology.html:117
 msgid "Underlying source"
-msgstr ""
+msgstr "基礎となるソース"
 
 #: templates/methodology.html:124
 msgid "20 sec"
-msgstr ""
+msgstr "20秒"
 
 #: templates/methodology.html:125
 msgid "on public XRPL node"
@@ -2493,7 +2493,7 @@ msgstr "クジラ"
 
 #: templates/wallet.html:792
 msgid "Total XRP"
-msgstr ""
+msgstr "合計XRP"
 
 #: templates/wallet.html:795 templates/wallet.html:1158
 #, fuzzy
@@ -2502,27 +2502,27 @@ msgstr "利用不可"
 
 #: templates/wallet.html:805
 msgid "Reserve locked"
-msgstr ""
+msgstr "ロック済み予約"
 
 #: templates/wallet.html:807
 msgid "of balance"
-msgstr ""
+msgstr "残高中"
 
 #: templates/wallet.html:816 templates/wallet.html:1217
 msgid "Owned objects"
-msgstr ""
+msgstr "所有オブジェクト"
 
 #: templates/wallet.html:818
 msgid "trustlines, offers, AMM stakes"
-msgstr ""
+msgstr "トラストライン、オファー、AMMステーク"
 
 #: templates/wallet.html:827 templates/wallet.html:1229
 msgid "Trustlines"
-msgstr ""
+msgstr "トラストライン"
 
 #: templates/wallet.html:829
 msgid "tokens held or trusted"
-msgstr ""
+msgstr "保有または信任されたトークン"
 
 #: templates/wallet.html:843
 #, fuzzy
@@ -2536,75 +2536,75 @@ msgstr "クジラ"
 
 #: templates/wallet.html:854
 msgid "Identity attested via"
-msgstr ""
+msgstr "を通じて証明された身元"
 
 #: templates/wallet.html:854
 msgid "verified"
-msgstr ""
+msgstr "検証済み"
 
 #: templates/wallet.html:861
 msgid "Scan to open this wallet page"
-msgstr ""
+msgstr "スキャンしてこのウォレットページを開く"
 
 #: templates/wallet.html:865
 msgid "Verify this wallet's history on XRPSCAN"
-msgstr ""
+msgstr "XRPSCANでこのウォレットの履歴を確認"
 
 #: templates/wallet.html:865
 msgid "Verify on XRPSCAN"
-msgstr ""
+msgstr "XRPSCANで検証"
 
 #: templates/wallet.html:867
 msgid "Snapshot · pulled from XRP Ledger"
-msgstr ""
+msgstr "スナップショット·XRP台帳から取得"
 
 #: templates/wallet.html:870
 msgid "Median of"
-msgstr ""
+msgstr "の中央値"
 
 #: templates/wallet.html:870
 msgid "All sources on-ledger; refreshed ~60s."
-msgstr ""
+msgstr "すべてのソースがオンレジャー。約60秒で更新。"
 
 #: templates/wallet.html:871
 msgid "Live XRP/USD"
-msgstr ""
+msgstr "ライブXRP/USD"
 
 #: templates/wallet.html:894
 msgid "Pool Flow"
-msgstr ""
+msgstr "プールフロー"
 
 #: templates/wallet.html:896
 msgid "Comet mode"
-msgstr ""
+msgstr "コメットモード"
 
 #: templates/wallet.html:898
 msgid "Exact"
-msgstr ""
+msgstr "正確"
 
 #: templates/wallet.html:900
 msgid "Aggregated"
-msgstr ""
+msgstr "集計"
 
 #: templates/wallet.html:903
 msgid "swap"
-msgstr ""
+msgstr "スワップ"
 
 #: templates/wallet.html:903
 msgid "swaps"
-msgstr ""
+msgstr "スワップ"
 
 #: templates/wallet.html:905
 msgid "last"
-msgstr ""
+msgstr "最後"
 
 #: templates/wallet.html:918
 msgid "Expand to fullscreen"
-msgstr ""
+msgstr "フルスクリーンに拡大"
 
 #: templates/wallet.html:922
 msgid "in"
-msgstr ""
+msgstr "イン"
 
 #: templates/wallet.html:923
 #, fuzzy
@@ -2618,31 +2618,31 @@ msgstr "推定"
 
 #: templates/wallet.html:930
 msgid "Pool reserves and price computed from XRPL"
-msgstr ""
+msgstr "XRPLから計算されたプール予約と価格"
 
 #: templates/wallet.html:931
 msgid "Flow direction aggregated from the most recent"
-msgstr ""
+msgstr "最も最近から集計されたフロー方向"
 
 #: templates/wallet.html:932
 msgid "on-chain swap"
-msgstr ""
+msgstr "オンチェーンスワップ"
 
 #: templates/wallet.html:932
 msgid "on-chain swaps"
-msgstr ""
+msgstr "オンチェーンスワップ"
 
 #: templates/wallet.html:932
 msgid "on the pool's account."
-msgstr ""
+msgstr "プールのアカウント上。"
 
 #: templates/wallet.html:939
 msgid "Counterparty Network"
-msgstr ""
+msgstr "カウンターパーティネットワーク"
 
 #: templates/wallet.html:940
 msgid "entities"
-msgstr ""
+msgstr "エンティティ"
 
 #: templates/wallet.html:944
 msgid ""
@@ -2652,11 +2652,11 @@ msgstr ""
 
 #: templates/wallet.html:1039
 msgid "Exchange"
-msgstr ""
+msgstr "取引所"
 
 #: templates/wallet.html:1058 templates/wallet.html:1274
 msgid "Issuer"
-msgstr ""
+msgstr "発行者"
 
 #: templates/wallet.html:1067
 #, fuzzy
@@ -2670,11 +2670,11 @@ msgstr "不明"
 
 #: templates/wallet.html:1074
 msgid "No counterparties detected in the last"
-msgstr ""
+msgstr "過去"
 
 #: templates/wallet.html:1074 templates/wallet.html:1209
 msgid "days."
-msgstr ""
+msgstr "日間にカウンターパーティが検出されません。"
 
 #: templates/wallet.html:1076
 msgid ""
@@ -2685,71 +2685,71 @@ msgstr ""
 
 #: templates/wallet.html:1088
 msgid "Live · Wallet Pulse"
-msgstr ""
+msgstr "ライブ・ウォレットパルス"
 
 #: templates/wallet.html:1089
 msgid "Last"
-msgstr ""
+msgstr "最後"
 
 #: templates/wallet.html:1123 templates/wallet.html:1225
 msgid "txs"
-msgstr ""
+msgstr "トランザクション"
 
 #: templates/wallet.html:1125
 msgid "active"
-msgstr ""
+msgstr "アクティブ"
 
 #: templates/wallet.html:1131
 msgid "Click to reveal full address"
-msgstr ""
+msgstr "クリックして完全なアドレスを表示"
 
 #: templates/wallet.html:1132
 msgid "top:"
-msgstr ""
+msgstr "トップ："
 
 #: templates/wallet.html:1146
 msgid "Spot price"
-msgstr ""
+msgstr "スポット価格"
 
 #: templates/wallet.html:1147
 msgid "XRP reserve"
-msgstr ""
+msgstr "XRP予約"
 
 #: templates/wallet.html:1148
 msgid "reserve"
-msgstr ""
+msgstr "予約"
 
 #: templates/wallet.html:1149
 msgid "Recent swaps"
-msgstr ""
+msgstr "最近のスワップ"
 
 #: templates/wallet.html:1159
 msgid "reserved"
-msgstr ""
+msgstr "予約済み"
 
 #: templates/wallet.html:1168
 msgid "Reserve usage"
-msgstr ""
+msgstr "予約使用量"
 
 #: templates/wallet.html:1186
 msgid "of balance locked"
-msgstr ""
+msgstr "残高ロック中"
 
 #: templates/wallet.html:1193
 msgid "base"
-msgstr ""
+msgstr "ベース"
 
 #: templates/wallet.html:1194
 msgid "owned objects"
-msgstr ""
+msgstr "所有オブジェクト"
 
 #: templates/wallet.html:1196
 msgid "reserved."
-msgstr ""
+msgstr "予約済み。"
 
 #: templates/wallet.html:1197
 msgid "Reserved XRP can't be sent."
-msgstr ""
+msgstr "予約済みXRPは送信できません。"
 
 #: templates/wallet.html:1203
 #, fuzzy
@@ -2758,27 +2758,27 @@ msgstr "AMM の動き"
 
 #: templates/wallet.html:1205
 msgid "Recently active"
-msgstr ""
+msgstr "最近アクティブ"
 
 #: templates/wallet.html:1205
 msgid "Lightly active"
-msgstr ""
+msgstr "軽度アクティブ"
 
 #: templates/wallet.html:1205
 msgid "Quiet"
-msgstr ""
+msgstr "静か"
 
 #: templates/wallet.html:1209
 msgid "No on-chain activity in the last"
-msgstr ""
+msgstr "過去"
 
 #: templates/wallet.html:1211
 msgid "on-chain transactions in the last"
-msgstr ""
+msgstr "過去のオンチェーントランザクション"
 
 #: templates/wallet.html:1211
 msgid "days,"
-msgstr ""
+msgstr "日、"
 
 #: templates/wallet.html:1212
 #, fuzzy
@@ -2787,11 +2787,11 @@ msgstr "全体で"
 
 #: templates/wallet.html:1212
 msgid "active days."
-msgstr ""
+msgstr "アクティブ日。"
 
 #: templates/wallet.html:1221
 msgid "Last seen"
-msgstr ""
+msgstr "最後に表示"
 
 #: templates/wallet.html:1239
 #, fuzzy
@@ -2800,15 +2800,15 @@ msgstr "tokens"
 
 #: templates/wallet.html:1242
 msgid "top"
-msgstr ""
+msgstr "トップ"
 
 #: templates/wallet.html:1242
 msgid "of"
-msgstr ""
+msgstr "の"
 
 #: templates/wallet.html:1244
 msgid "none"
-msgstr ""
+msgstr "なし"
 
 #: templates/wallet.html:1271
 #, fuzzy
@@ -2827,24 +2827,24 @@ msgstr "tokens"
 
 #: templates/wallet.html:1294
 msgid "This wallet holds no token balances — only XRP. The"
-msgstr ""
+msgstr "このウォレットはトークン残高を保持していません—XRPのみです。"
 
 #: templates/wallet.html:1295
 msgid "trustline"
-msgstr ""
+msgstr "トラストライン"
 
 #: templates/wallet.html:1295 templates/whales.html:281
 #: templates/whales.html:316
 msgid "trustlines"
-msgstr ""
+msgstr "トラストライン"
 
 #: templates/wallet.html:1296
 msgid "on file have zero balance."
-msgstr ""
+msgstr "ファイルの残高はゼロです。"
 
 #: templates/wallet.html:1304
 msgid "Pool reserves"
-msgstr ""
+msgstr "プール予約"
 
 #: templates/wallet.html:1305
 #, fuzzy
@@ -2853,11 +2853,11 @@ msgstr "XRP Ledger、"
 
 #: templates/wallet.html:1308
 msgid "This account"
-msgstr ""
+msgstr "このアカウント"
 
 #: templates/wallet.html:1308
 msgid "is"
-msgstr ""
+msgstr "です"
 
 #: templates/wallet.html:1308
 msgid ""
@@ -2881,15 +2881,15 @@ msgstr ""
 
 #: templates/wallet.html:1354
 msgid "XRP committed"
-msgstr ""
+msgstr "XRPコミット済み"
 
 #: templates/wallet.html:1358
 msgid "Fees (24h est)"
-msgstr ""
+msgstr "手数料（24h推定）"
 
 #: templates/wallet.html:1362
 msgid "Blended APR"
-msgstr ""
+msgstr "ブレンドAPR"
 
 #: templates/wallet.html:1366
 #, fuzzy
@@ -2919,23 +2919,23 @@ msgstr ""
 
 #: templates/wallet.html:1388
 msgid "Cached 5 min server-side."
-msgstr ""
+msgstr "サーバー側で5分キャッシュ。"
 
 #: templates/wallet.html:1390
 msgid "Served from cache,"
-msgstr ""
+msgstr "キャッシュから提供、"
 
 #: templates/wallet.html:1390
 msgid "old."
-msgstr ""
+msgstr "古い。"
 
 #: templates/whales.html:242
 msgid "Whale watch"
-msgstr ""
+msgstr "クジラウォッチ"
 
 #: templates/whales.html:244
 msgid "What counts as a whale event"
-msgstr ""
+msgstr "クジライベントとしてカウントされるもの"
 
 #: templates/whales.html:245
 msgid ""
@@ -2985,15 +2985,15 @@ msgstr ""
 
 #: templates/whales.html:276 templates/whales.html:314
 msgid "tagged"
-msgstr ""
+msgstr "タグ付き"
 
 #: templates/whales.html:285
 msgid "watchlist size"
-msgstr ""
+msgstr "ウォッチリストサイズ"
 
 #: templates/whales.html:287
 msgid "What's the watchlist"
-msgstr ""
+msgstr "ウォッチリストとは"
 
 #: templates/whales.html:288
 msgid ""
@@ -3012,7 +3012,7 @@ msgstr "クジラの動き"
 
 #: templates/whales.html:294
 msgid "size"
-msgstr ""
+msgstr "サイズ"
 
 #: templates/whales.html:296
 msgid "What 'size' tiers mean"
@@ -3029,7 +3029,7 @@ msgstr ""
 
 #: templates/whales.html:302
 msgid "large"
-msgstr ""
+msgstr "大"
 
 #: templates/whales.html:307
 msgid "Event type"
@@ -3037,7 +3037,7 @@ msgstr ""
 
 #: templates/whales.html:308
 msgid "type"
-msgstr ""
+msgstr "タイプ"
 
 #: templates/whales.html:330
 msgid "Streaming validated XRPL transactions ≥"
@@ -3050,19 +3050,19 @@ msgstr "Ledger"
 
 #: templates/whales.html:373
 msgid "No events to show yet."
-msgstr ""
+msgstr "まだ表示するイベントはありません。"
 
 #: templates/whales.html:376
 msgid "Nothing of type"
-msgstr ""
+msgstr "タイプの"
 
 #: templates/whales.html:376
 msgid "in the database. Try"
-msgstr ""
+msgstr "データベース内。試してみてください"
 
 #: templates/whales.html:377
 msgid "all events"
-msgstr ""
+msgstr "すべてのイベント"
 
 #: templates/whales.html:379
 msgid ""
@@ -3072,11 +3072,11 @@ msgstr ""
 
 #: templates/whales.html:380
 msgid "for watcher status."
-msgstr ""
+msgstr "ウォッチャーステータス用。"
 
 #: templates/whales.html:389
 msgid "How this works:"
-msgstr ""
+msgstr "これの仕組み："
 
 #: templates/whales.html:390
 msgid ""
@@ -3096,7 +3096,7 @@ msgstr ""
 
 #: templates/whales.html:396
 msgid "The watchlist currently has"
-msgstr ""
+msgstr "ウォッチリストには現在"
 
 #: templates/whales.html:396
 msgid ""
@@ -3106,9 +3106,9 @@ msgstr ""
 
 #: templates/whales.html:401
 msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
-msgstr ""
+msgstr "自動更新60秒·任意のtxをクリックしてXRPSCANで検証。"
 
 #: templates/whales.html:405
 msgid "how this is sourced"
-msgstr ""
+msgstr "これの出典方法"
 

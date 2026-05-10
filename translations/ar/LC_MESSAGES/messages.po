@@ -21,15 +21,15 @@ msgstr ""
 
 #: templates/404.html:6
 msgid "not found"
-msgstr ""
+msgstr "لم يتم العثور عليه"
 
 #: templates/404.html:77
 msgid "page not found"
-msgstr ""
+msgstr "لم يتم العثور على الصفحة"
 
 #: templates/404.html:78
 msgid "That page isn't here."
-msgstr ""
+msgstr "هذه الصفحة غير موجودة."
 
 #: templates/404.html:80
 msgid ""
@@ -82,15 +82,15 @@ msgstr ""
 
 #: templates/500.html:6
 msgid "error"
-msgstr ""
+msgstr "خطأ"
 
 #: templates/500.html:77
 msgid "server error"
-msgstr ""
+msgstr "خطأ بالخادم"
 
 #: templates/500.html:78
 msgid "Something broke on our end."
-msgstr ""
+msgstr "حدث شيء ما خاطئ من جانبنا."
 
 #: templates/500.html:80
 msgid ""
@@ -155,7 +155,7 @@ msgstr ""
 
 #: templates/about.html:93
 msgid "Mission"
-msgstr ""
+msgstr "المهمة"
 
 #: templates/about.html:95
 msgid ""
@@ -166,7 +166,7 @@ msgstr ""
 
 #: templates/about.html:98
 msgid "Principles"
-msgstr ""
+msgstr "المبادئ"
 
 #: templates/about.html:100
 msgid "Retail-free, forever."
@@ -245,7 +245,7 @@ msgstr ""
 
 #: templates/about.html:110
 msgid "How it works"
-msgstr ""
+msgstr "كيف يعمل"
 
 #: templates/about.html:112
 msgid ""
@@ -257,7 +257,7 @@ msgstr ""
 
 #: templates/about.html:115
 msgid "Live ledger data"
-msgstr ""
+msgstr "بيانات دفتر الأستاذ المباشرة"
 
 #: templates/about.html:117
 msgid "Comes from public XRPL nodes (currently Ripple's"
@@ -266,7 +266,7 @@ msgstr ""
 #: templates/about.html:118 templates/about.html:126
 #: templates/methodology.html:207 templates/wallet.html:1388
 msgid "and"
-msgstr ""
+msgstr "و"
 
 #: templates/about.html:118
 msgid ""
@@ -510,7 +510,7 @@ msgstr "التخزين البارد"
 
 #: templates/cold_storage.html:170
 msgid "XRP locked"
-msgstr ""
+msgstr "XRP مقفل"
 
 #: templates/cold_storage.html:172
 #, fuzzy
@@ -536,7 +536,7 @@ msgstr "ث مضت"
 
 #: templates/cold_storage.html:184
 msgid "Total locked"
-msgstr ""
+msgstr "إجمالي مقفل"
 
 #: templates/cold_storage.html:186
 #, fuzzy
@@ -550,11 +550,11 @@ msgstr "حول"
 
 #: templates/cold_storage.html:189
 msgid "Largest holding"
-msgstr ""
+msgstr "أكبر حيازة"
 
 #: templates/cold_storage.html:194
 msgid "Tracked addresses"
-msgstr ""
+msgstr "عناوين مراقبة"
 
 #: templates/cold_storage.html:196
 msgid "responding"
@@ -590,7 +590,7 @@ msgstr "حول"
 
 #: templates/cold_storage.html:221 templates/wallet.html:1274
 msgid "Balance"
-msgstr ""
+msgstr "الرصيد"
 
 #: templates/cold_storage.html:223
 #, fuzzy
@@ -616,7 +616,7 @@ msgstr "ضمانات Ripple"
 
 #: templates/cold_storage.html:274
 msgid "Data: live"
-msgstr ""
+msgstr "البيانات: مباشرة"
 
 #: templates/cold_storage.html:274
 #, fuzzy
@@ -630,7 +630,7 @@ msgstr "ضمانات Ripple"
 
 #: templates/health.html:244
 msgid "All systems normal"
-msgstr ""
+msgstr "جميع الأنظمة طبيعية"
 
 #: templates/health.html:245
 #, fuzzy
@@ -644,7 +644,7 @@ msgstr "حمل مرتفع"
 
 #: templates/health.html:247
 msgid "Mostly normal"
-msgstr ""
+msgstr "في الغالب طبيعي"
 
 #: templates/health.html:248
 #, fuzzy
@@ -657,23 +657,23 @@ msgstr ""
 
 #: templates/health.html:262
 msgid "Heartbeat · scales with network load"
-msgstr ""
+msgstr "نبضات القلب·تتسع مع حمل الشبكة"
 
 #: templates/health.html:263
 msgid "bpm"
-msgstr ""
+msgstr "bpm"
 
 #: templates/health.html:274 templates/health.html:297
 msgid "XRPL network"
-msgstr ""
+msgstr "شبكة XRPL"
 
 #: templates/health.html:277
 msgid "The XRP Ledger is healthy. New ledgers are being closed every"
-msgstr ""
+msgstr "دفتر الأستاذ XRP صحي. يتم إغلاق دفاتر الأستاذ الجديدة كل"
 
 #: templates/health.html:278
 msgid "seconds — exactly as expected. Validators are in agreement."
-msgstr ""
+msgstr "ثواني — بالضبط كما هو متوقع. المدققون متفقون."
 
 #: templates/health.html:280
 msgid ""
@@ -689,7 +689,7 @@ msgstr ""
 
 #: templates/health.html:298
 msgid "Live network pulse is currently unavailable."
-msgstr ""
+msgstr "نبض الشبكة المباشر غير متاح حالياً."
 
 #: templates/health.html:300
 #, fuzzy
@@ -698,7 +698,7 @@ msgstr "غير معروف"
 
 #: templates/health.html:308
 msgid "Pool tracker"
-msgstr ""
+msgstr "متتبع التجمع"
 
 #: templates/health.html:311
 msgid "Catalogue of XRPL automated market makers is up to date — tracking"
@@ -739,15 +739,15 @@ msgstr ""
 
 #: templates/health.html:324
 msgid "ready"
-msgstr ""
+msgstr "جاهز"
 
 #: templates/health.html:324
 msgid "building"
-msgstr ""
+msgstr "البناء"
 
 #: templates/health.html:324
 msgid "snapshot"
-msgstr ""
+msgstr "لقطة"
 
 #: templates/health.html:332
 #, fuzzy
@@ -796,15 +796,15 @@ msgstr ""
 
 #: templates/health.html:347
 msgid "streaming"
-msgstr ""
+msgstr "البث"
 
 #: templates/health.html:347
 msgid "coming soon"
-msgstr ""
+msgstr "قريبا جدا"
 
 #: templates/health.html:354
 msgid "Stored data"
-msgstr ""
+msgstr "البيانات المخزنة"
 
 #: templates/health.html:356
 msgid ""
@@ -827,7 +827,7 @@ msgstr "الحالة"
 
 #: templates/health.html:368
 msgid "Show technical details"
-msgstr ""
+msgstr "إظهار التفاصيل التقنية"
 
 #: templates/health.html:372
 msgid "XRPL network (live pulse)"
@@ -883,7 +883,7 @@ msgstr ""
 
 #: templates/health.html:383 templates/index.html:464
 msgid "XRPL is degraded. Ledgers are closing slowly."
-msgstr ""
+msgstr "XRPL متدهورة. يتم إغلاق دفاتر الأستاذ ببطء."
 
 #: templates/health.html:387
 #, fuzzy
@@ -1242,11 +1242,11 @@ msgstr "المصدر:"
 
 #: templates/institutional.html:6
 msgid "institutional"
-msgstr ""
+msgstr "مؤسسي"
 
 #: templates/institutional.html:103
 msgid "xrpldashboard institutional"
-msgstr ""
+msgstr "xrpldashboard مؤسسي"
 
 #: templates/institutional.html:105
 msgid ""
@@ -1262,7 +1262,7 @@ msgstr ""
 
 #: templates/institutional.html:112
 msgid "Why this exists"
-msgstr ""
+msgstr "لماذا هذا موجود"
 
 #: templates/institutional.html:114
 msgid ""
@@ -1281,7 +1281,7 @@ msgstr ""
 
 #: templates/institutional.html:120
 msgid "How we're building it"
-msgstr ""
+msgstr "كيف نبنيها"
 
 #: templates/institutional.html:122
 msgid ""
@@ -1292,7 +1292,7 @@ msgstr ""
 
 #: templates/institutional.html:126
 msgid "What we're already collecting"
-msgstr ""
+msgstr "ما الذي نجمعه بالفعل"
 
 #: templates/institutional.html:128
 msgid ""
@@ -1304,20 +1304,20 @@ msgstr ""
 
 #: templates/institutional.html:133
 msgid "day"
-msgstr ""
+msgstr "يوم"
 
 #: templates/institutional.html:133 templates/wallet.html:940
 #: templates/wallet.html:1089
 msgid "days"
-msgstr ""
+msgstr "أيام"
 
 #: templates/institutional.html:133
 msgid "of snapshots"
-msgstr ""
+msgstr "من اللقطات"
 
 #: templates/institutional.html:137
 msgid "watchlist accounts daily"
-msgstr ""
+msgstr "حسابات قائمة المراقبة يومياً"
 
 #: templates/institutional.html:141
 #, fuzzy
@@ -1326,7 +1326,7 @@ msgstr "AMM pools على XRPL"
 
 #: templates/institutional.html:145
 msgid "Collecting since"
-msgstr ""
+msgstr "تجميع منذ"
 
 #: templates/institutional.html:145
 msgid "Raw snapshot access available to launch partners on request."
@@ -1345,7 +1345,7 @@ msgstr ""
 
 #: templates/institutional.html:157
 msgid "Become a launch partner"
-msgstr ""
+msgstr "أصبح شريك إطلاق"
 
 #: templates/institutional.html:159
 msgid ""
@@ -1384,13 +1384,13 @@ msgstr "ما هو رقم السجل؟"
 
 #: templates/methodology.html:105
 msgid "Three states:"
-msgstr ""
+msgstr "ثلاث حالات:"
 
 #: templates/methodology.html:105 templates/methodology.html:135
 #: templates/methodology.html:147 templates/methodology.html:153
 #: templates/methodology.html:159 templates/methodology.html:165
 msgid "Live"
-msgstr ""
+msgstr "مباشر"
 
 #: templates/methodology.html:106
 msgid "means a WebSocket pushes new data without a page refresh."
@@ -1411,11 +1411,11 @@ msgstr ""
 
 #: templates/methodology.html:114
 msgid "Page / surface"
-msgstr ""
+msgstr "الصفحة/السطح"
 
 #: templates/methodology.html:115
 msgid "State"
-msgstr ""
+msgstr "حالة"
 
 #: templates/methodology.html:116
 msgid "Cadence / TTL"
@@ -1423,11 +1423,11 @@ msgstr ""
 
 #: templates/methodology.html:117
 msgid "Underlying source"
-msgstr ""
+msgstr "المصدر الأساسي"
 
 #: templates/methodology.html:124
 msgid "20 sec"
-msgstr ""
+msgstr "20 ثانية"
 
 #: templates/methodology.html:125
 msgid "on public XRPL node"
@@ -2499,7 +2499,7 @@ msgstr "حيتان"
 
 #: templates/wallet.html:792
 msgid "Total XRP"
-msgstr ""
+msgstr "إجمالي XRP"
 
 #: templates/wallet.html:795 templates/wallet.html:1158
 #, fuzzy
@@ -2508,27 +2508,27 @@ msgstr "غير متاح"
 
 #: templates/wallet.html:805
 msgid "Reserve locked"
-msgstr ""
+msgstr "احتياطي مقفل"
 
 #: templates/wallet.html:807
 msgid "of balance"
-msgstr ""
+msgstr "من الرصيد"
 
 #: templates/wallet.html:816 templates/wallet.html:1217
 msgid "Owned objects"
-msgstr ""
+msgstr "الأشياء المملوكة"
 
 #: templates/wallet.html:818
 msgid "trustlines, offers, AMM stakes"
-msgstr ""
+msgstr "خطوط الثقة، العروض، حصص AMM"
 
 #: templates/wallet.html:827 templates/wallet.html:1229
 msgid "Trustlines"
-msgstr ""
+msgstr "خطوط الثقة"
 
 #: templates/wallet.html:829
 msgid "tokens held or trusted"
-msgstr ""
+msgstr "الرموز المحتفظ بها أو الموثوقة"
 
 #: templates/wallet.html:843
 #, fuzzy
@@ -2546,7 +2546,7 @@ msgstr ""
 
 #: templates/wallet.html:854
 msgid "verified"
-msgstr ""
+msgstr "تم التحقق"
 
 #: templates/wallet.html:861
 msgid "Scan to open this wallet page"
@@ -2558,59 +2558,59 @@ msgstr ""
 
 #: templates/wallet.html:865
 msgid "Verify on XRPSCAN"
-msgstr ""
+msgstr "التحقق على XRPSCAN"
 
 #: templates/wallet.html:867
 msgid "Snapshot · pulled from XRP Ledger"
-msgstr ""
+msgstr "لقطة·تم سحبها من دفتر الأستاذ XRP"
 
 #: templates/wallet.html:870
 msgid "Median of"
-msgstr ""
+msgstr "الوسيط"
 
 #: templates/wallet.html:870
 msgid "All sources on-ledger; refreshed ~60s."
-msgstr ""
+msgstr "جميع المصادر على السجل؛ تم تحديثها ~60 ثانية."
 
 #: templates/wallet.html:871
 msgid "Live XRP/USD"
-msgstr ""
+msgstr "XRP/USD مباشر"
 
 #: templates/wallet.html:894
 msgid "Pool Flow"
-msgstr ""
+msgstr "تدفق التجمع"
 
 #: templates/wallet.html:896
 msgid "Comet mode"
-msgstr ""
+msgstr "وضع المذنب"
 
 #: templates/wallet.html:898
 msgid "Exact"
-msgstr ""
+msgstr "دقيق"
 
 #: templates/wallet.html:900
 msgid "Aggregated"
-msgstr ""
+msgstr "مجمع"
 
 #: templates/wallet.html:903
 msgid "swap"
-msgstr ""
+msgstr "مبادلة"
 
 #: templates/wallet.html:903
 msgid "swaps"
-msgstr ""
+msgstr "مبادلات"
 
 #: templates/wallet.html:905
 msgid "last"
-msgstr ""
+msgstr "آخر"
 
 #: templates/wallet.html:918
 msgid "Expand to fullscreen"
-msgstr ""
+msgstr "التوسع إلى ملء الشاشة"
 
 #: templates/wallet.html:922
 msgid "in"
-msgstr ""
+msgstr "داخل"
 
 #: templates/wallet.html:923
 #, fuzzy
@@ -2624,31 +2624,31 @@ msgstr "تقدير"
 
 #: templates/wallet.html:930
 msgid "Pool reserves and price computed from XRPL"
-msgstr ""
+msgstr "احتياطيات التجمع والسعر المحسوب من XRPL"
 
 #: templates/wallet.html:931
 msgid "Flow direction aggregated from the most recent"
-msgstr ""
+msgstr "اتجاه التدفق مجمع من الأحدث"
 
 #: templates/wallet.html:932
 msgid "on-chain swap"
-msgstr ""
+msgstr "مبادلة في السلسلة"
 
 #: templates/wallet.html:932
 msgid "on-chain swaps"
-msgstr ""
+msgstr "مبادلات في السلسلة"
 
 #: templates/wallet.html:932
 msgid "on the pool's account."
-msgstr ""
+msgstr "على حساب التجمع."
 
 #: templates/wallet.html:939
 msgid "Counterparty Network"
-msgstr ""
+msgstr "شبكة الطرف الآخر"
 
 #: templates/wallet.html:940
 msgid "entities"
-msgstr ""
+msgstr "كيانات"
 
 #: templates/wallet.html:944
 msgid ""
@@ -2658,11 +2658,11 @@ msgstr ""
 
 #: templates/wallet.html:1039
 msgid "Exchange"
-msgstr ""
+msgstr "الصرف"
 
 #: templates/wallet.html:1058 templates/wallet.html:1274
 msgid "Issuer"
-msgstr ""
+msgstr "المُصدر"
 
 #: templates/wallet.html:1067
 #, fuzzy
@@ -2676,11 +2676,11 @@ msgstr "غير معروف"
 
 #: templates/wallet.html:1074
 msgid "No counterparties detected in the last"
-msgstr ""
+msgstr "لم يتم الكشف عن أطراف أخرى في"
 
 #: templates/wallet.html:1074 templates/wallet.html:1209
 msgid "days."
-msgstr ""
+msgstr "أيام."
 
 #: templates/wallet.html:1076
 msgid ""
@@ -2691,19 +2691,19 @@ msgstr ""
 
 #: templates/wallet.html:1088
 msgid "Live · Wallet Pulse"
-msgstr ""
+msgstr "مباشر·نبض المحفظة"
 
 #: templates/wallet.html:1089
 msgid "Last"
-msgstr ""
+msgstr "آخر"
 
 #: templates/wallet.html:1123 templates/wallet.html:1225
 msgid "txs"
-msgstr ""
+msgstr "معاملات"
 
 #: templates/wallet.html:1125
 msgid "active"
-msgstr ""
+msgstr "نشط"
 
 #: templates/wallet.html:1131
 msgid "Click to reveal full address"
@@ -2715,47 +2715,47 @@ msgstr ""
 
 #: templates/wallet.html:1146
 msgid "Spot price"
-msgstr ""
+msgstr "السعر الفوري"
 
 #: templates/wallet.html:1147
 msgid "XRP reserve"
-msgstr ""
+msgstr "احتياطي XRP"
 
 #: templates/wallet.html:1148
 msgid "reserve"
-msgstr ""
+msgstr "احتياطي"
 
 #: templates/wallet.html:1149
 msgid "Recent swaps"
-msgstr ""
+msgstr "المبادلات الأخيرة"
 
 #: templates/wallet.html:1159
 msgid "reserved"
-msgstr ""
+msgstr "محجوز"
 
 #: templates/wallet.html:1168
 msgid "Reserve usage"
-msgstr ""
+msgstr "استخدام الاحتياطي"
 
 #: templates/wallet.html:1186
 msgid "of balance locked"
-msgstr ""
+msgstr "من الرصيد المقفول"
 
 #: templates/wallet.html:1193
 msgid "base"
-msgstr ""
+msgstr "أساس"
 
 #: templates/wallet.html:1194
 msgid "owned objects"
-msgstr ""
+msgstr "الأشياء المملوكة"
 
 #: templates/wallet.html:1196
 msgid "reserved."
-msgstr ""
+msgstr "محجوز."
 
 #: templates/wallet.html:1197
 msgid "Reserved XRP can't be sent."
-msgstr ""
+msgstr "لا يمكن إرسال XRP المحجوز."
 
 #: templates/wallet.html:1203
 #, fuzzy
@@ -2764,27 +2764,27 @@ msgstr "نشاط AMM"
 
 #: templates/wallet.html:1205
 msgid "Recently active"
-msgstr ""
+msgstr "نشط مؤخراً"
 
 #: templates/wallet.html:1205
 msgid "Lightly active"
-msgstr ""
+msgstr "نشط بخفة"
 
 #: templates/wallet.html:1205
 msgid "Quiet"
-msgstr ""
+msgstr "هادئ"
 
 #: templates/wallet.html:1209
 msgid "No on-chain activity in the last"
-msgstr ""
+msgstr "لا توجد نشاطات في السلسلة في"
 
 #: templates/wallet.html:1211
 msgid "on-chain transactions in the last"
-msgstr ""
+msgstr "معاملات السلسلة في"
 
 #: templates/wallet.html:1211
 msgid "days,"
-msgstr ""
+msgstr "أيام،"
 
 #: templates/wallet.html:1212
 #, fuzzy
@@ -2793,11 +2793,11 @@ msgstr "عبر"
 
 #: templates/wallet.html:1212
 msgid "active days."
-msgstr ""
+msgstr "أيام نشطة."
 
 #: templates/wallet.html:1221
 msgid "Last seen"
-msgstr ""
+msgstr "آخر مشاهدة"
 
 #: templates/wallet.html:1239
 #, fuzzy
@@ -2806,15 +2806,15 @@ msgstr "tokens"
 
 #: templates/wallet.html:1242
 msgid "top"
-msgstr ""
+msgstr "أعلى"
 
 #: templates/wallet.html:1242
 msgid "of"
-msgstr ""
+msgstr "من"
 
 #: templates/wallet.html:1244
 msgid "none"
-msgstr ""
+msgstr "لا شيء"
 
 #: templates/wallet.html:1271
 #, fuzzy
@@ -2833,24 +2833,24 @@ msgstr "tokens"
 
 #: templates/wallet.html:1294
 msgid "This wallet holds no token balances — only XRP. The"
-msgstr ""
+msgstr "هذه المحفظة لا تحتفظ برصيد الرموز — فقط XRP."
 
 #: templates/wallet.html:1295
 msgid "trustline"
-msgstr ""
+msgstr "خط ثقة"
 
 #: templates/wallet.html:1295 templates/whales.html:281
 #: templates/whales.html:316
 msgid "trustlines"
-msgstr ""
+msgstr "خطوط الثقة"
 
 #: templates/wallet.html:1296
 msgid "on file have zero balance."
-msgstr ""
+msgstr "في الملف لها رصيد صفر."
 
 #: templates/wallet.html:1304
 msgid "Pool reserves"
-msgstr ""
+msgstr "احتياطيات التجمع"
 
 #: templates/wallet.html:1305
 #, fuzzy
@@ -2859,11 +2859,11 @@ msgstr "سجل XRP،"
 
 #: templates/wallet.html:1308
 msgid "This account"
-msgstr ""
+msgstr "هذا الحساب"
 
 #: templates/wallet.html:1308
 msgid "is"
-msgstr ""
+msgstr "هو"
 
 #: templates/wallet.html:1308
 msgid ""
@@ -2887,15 +2887,15 @@ msgstr ""
 
 #: templates/wallet.html:1354
 msgid "XRP committed"
-msgstr ""
+msgstr "XRP ملتزم"
 
 #: templates/wallet.html:1358
 msgid "Fees (24h est)"
-msgstr ""
+msgstr "الرسوم (24 س بتقدير)"
 
 #: templates/wallet.html:1362
 msgid "Blended APR"
-msgstr ""
+msgstr "APR مختلط"
 
 #: templates/wallet.html:1366
 #, fuzzy
@@ -2925,23 +2925,23 @@ msgstr ""
 
 #: templates/wallet.html:1388
 msgid "Cached 5 min server-side."
-msgstr ""
+msgstr "مخزن مؤقتاً من جانب الخادم لمدة 5 دقائق."
 
 #: templates/wallet.html:1390
 msgid "Served from cache,"
-msgstr ""
+msgstr "تم تقديمه من الذاكرة المخزنة مؤقتاً،"
 
 #: templates/wallet.html:1390
 msgid "old."
-msgstr ""
+msgstr "قديم."
 
 #: templates/whales.html:242
 msgid "Whale watch"
-msgstr ""
+msgstr "مراقبة الحيتان"
 
 #: templates/whales.html:244
 msgid "What counts as a whale event"
-msgstr ""
+msgstr "ما يعتبر حدث الحوت"
 
 #: templates/whales.html:245
 msgid ""
@@ -2991,15 +2991,15 @@ msgstr ""
 
 #: templates/whales.html:276 templates/whales.html:314
 msgid "tagged"
-msgstr ""
+msgstr "بوسوم"
 
 #: templates/whales.html:285
 msgid "watchlist size"
-msgstr ""
+msgstr "حجم قائمة المراقبة"
 
 #: templates/whales.html:287
 msgid "What's the watchlist"
-msgstr ""
+msgstr "ما هي قائمة المراقبة"
 
 #: templates/whales.html:288
 msgid ""
@@ -3018,7 +3018,7 @@ msgstr "تحركات الحيتان"
 
 #: templates/whales.html:294
 msgid "size"
-msgstr ""
+msgstr "الحجم"
 
 #: templates/whales.html:296
 msgid "What 'size' tiers mean"
@@ -3035,7 +3035,7 @@ msgstr ""
 
 #: templates/whales.html:302
 msgid "large"
-msgstr ""
+msgstr "كبير"
 
 #: templates/whales.html:307
 msgid "Event type"
@@ -3043,7 +3043,7 @@ msgstr ""
 
 #: templates/whales.html:308
 msgid "type"
-msgstr ""
+msgstr "النوع"
 
 #: templates/whales.html:330
 msgid "Streaming validated XRPL transactions ≥"
@@ -3056,19 +3056,19 @@ msgstr "السجل"
 
 #: templates/whales.html:373
 msgid "No events to show yet."
-msgstr ""
+msgstr "لا توجد أحداث للعرض حتى الآن."
 
 #: templates/whales.html:376
 msgid "Nothing of type"
-msgstr ""
+msgstr "لا شيء من النوع"
 
 #: templates/whales.html:376
 msgid "in the database. Try"
-msgstr ""
+msgstr "في قاعدة البيانات. جرب"
 
 #: templates/whales.html:377
 msgid "all events"
-msgstr ""
+msgstr "جميع الأحداث"
 
 #: templates/whales.html:379
 msgid ""
@@ -3078,11 +3078,11 @@ msgstr ""
 
 #: templates/whales.html:380
 msgid "for watcher status."
-msgstr ""
+msgstr "لحالة المراقب."
 
 #: templates/whales.html:389
 msgid "How this works:"
-msgstr ""
+msgstr "كيف يعمل هذا:"
 
 #: templates/whales.html:390
 msgid ""
@@ -3102,7 +3102,7 @@ msgstr ""
 
 #: templates/whales.html:396
 msgid "The watchlist currently has"
-msgstr ""
+msgstr "قائمة المراقبة حالياً لديها"
 
 #: templates/whales.html:396
 msgid ""
@@ -3112,9 +3112,9 @@ msgstr ""
 
 #: templates/whales.html:401
 msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
-msgstr ""
+msgstr "تحديث تلقائي 60 ثانية·انقر فوق أي معاملة للتحقق من XRPSCAN."
 
 #: templates/whales.html:405
 msgid "how this is sourced"
-msgstr ""
+msgstr "كيف يتم الحصول على هذا"
 
