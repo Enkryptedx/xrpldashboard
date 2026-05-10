@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>error · xrpldashboard</title>
+  <title>{{ _('error') }} · xrpldashboard</title>
   {% set meta_title = "error · xrpldashboard" %}
   {% set meta_description = "Something went wrong on xrpldashboard." %}
   {% include "_head_meta.html" %}
@@ -74,25 +74,22 @@
 
   {% include "_nav.html" %}
 
-  <div class="code">500 · server error</div>
-  <h1>Something broke on our end.</h1>
+  <div class="code">500 · {{ _('server error') }}</div>
+  <h1>{{ _('Something broke on our end.') }}</h1>
   <p class="lede">
-    The page you asked for hit an error. The committed snapshots are
-    almost always available even when live data isn't — try one of these:
+    {{ _('The page you asked for hit an error. The committed snapshots are almost always available even when live data isn\'t — try one of these:') }}
   </p>
 
   <div class="links">
-    <a href="/">→ dashboard</a>
-    <a href="/whales">→ whales</a>
-    <a href="/tokens">→ tokens</a>
-    <a href="/pools">→ pools</a>
-    <a href="/health">→ system health</a>
+    <a href="/">→ {{ _('dashboard') }}</a>
+    <a href="/whales">→ {{ _('whales') }}</a>
+    <a href="/tokens">→ {{ _('tokens') }}</a>
+    <a href="/pools">→ {{ _('pools') }}</a>
+    <a href="/health">→ {{ _('system health') }}</a>
   </div>
 
   <div class="footer">
-    If this keeps happening, the live workers may be paused. The /health
-    page shows operational status for the bootstrap scanner and the live
-    transaction watcher.
+    {{ _('If this keeps happening, the live workers may be paused. The /health page shows operational status for the bootstrap scanner and the live transaction watcher.') }}
   </div>
 
 </div>

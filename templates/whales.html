@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>whales · xrpldashboard</title>
+  <title>{{ _('whales') }} · xrpldashboard</title>
   {% set meta_title = "whales · xrpldashboard" %}
   {% set meta_description = "Live tracker of large XRP transfers — every payment over 50,000 XRP, with the wallets behind them named where we know them." %}
   {% include "_head_meta.html" %}
@@ -239,30 +239,23 @@
   {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
   {{ freshness_badge_css() }}
 
-  <h1>Whale watch{{ explainer(
+  <h1>{{ _('Whale watch') }}{{ explainer(
     "whales",
-    "What counts as a whale event",
-    "Three kinds of moves get listed here: (1) really big XRP
-     transfers (the size cutoff is set just below), (2) anything
-     touching a wallet we recognize — exchanges, big projects, public
-     companies, and (3) when one of those recognized wallets starts
-     holding a brand-new token. Even small transactions show up if a
-     recognized wallet is involved, because they're often a clue
-     about what big players are doing.",
+    _("What counts as a whale event"),
+    _("Three kinds of moves get listed here: (1) really big XRP transfers (the size cutoff is set just below), (2) anything touching a wallet we recognize — exchanges, big projects, public companies, and (3) when one of those recognized wallets starts holding a brand-new token. Even small transactions show up if a recognized wallet is involved, because they're often a clue about what big players are doing."),
   ) }}</h1>
   <p class="lede">
-    Large XRP transfers and any activity by accounts we recognize.
-    The watchlist is hand-curated and public — see
-    <a href="/about">about</a> for sourcing.
+    {{ _('Large XRP transfers and any activity by accounts we recognize. The watchlist is hand-curated and public — see') }}
+    <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
   </p>
   {{ freshness_badge(data_age_label) }}
 
   <div class="whale-radar" aria-hidden="true">
     <canvas id="whale-radar-canvas"></canvas>
-    <div class="hud-tl">XRPL · whale scope<br><span class="hud-num">scan 360°</span></div>
-    <div class="hud-tr">range<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
-    <div class="hud-bl">24h whales<br><span class="hud-num">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
-    <div class="hud-br">last whale<br><span class="hud-amber">{{ radar_stats.last_label }}</span></div>
+    <div class="hud-tl">{{ _('XRPL · whale scope') }}<br><span class="hud-num">{{ _('scan 360°') }}</span></div>
+    <div class="hud-tr">{{ _('range') }}<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
+    <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
+    <div class="hud-br">{{ _('last whale') }}<br><span class="hud-amber">{{ radar_stats.last_label }}</span></div>
   </div>
   <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>
 
@@ -270,68 +263,57 @@
     <a class="stat vibes-spot {% if not filter_type %}active{% endif %}"
        href="/whales?tier={{ tier }}">
       <div class="n">{{ "{:,}".format(type_counts._total) }}</div>
-      <div class="l">total events</div>
+      <div class="l">{{ _('total events') }}</div>
     </a>
     <a class="stat vibes-spot {% if filter_type == 'large_xfer' %}active{% endif %}"
        href="/whales?tier={{ tier }}&amp;type=large_xfer">
       <div class="n">{{ "{:,}".format(type_counts.large_xfer) }}</div>
-      <div class="l">large XRP</div>
+      <div class="l">{{ _('large XRP') }}</div>
     </a>
     <a class="stat vibes-spot {% if filter_type == 'tagged' %}active{% endif %}"
        href="/whales?tier={{ tier }}&amp;type=tagged">
       <div class="n">{{ "{:,}".format(type_counts.tagged) }}</div>
-      <div class="l">tagged</div>
+      <div class="l">{{ _('tagged') }}</div>
     </a>
     <a class="stat vibes-spot {% if filter_type == 'trustset' %}active{% endif %}"
        href="/whales?tier={{ tier }}&amp;type=trustset">
       <div class="n">{{ "{:,}".format(type_counts.trustset) }}</div>
-      <div class="l">trustlines</div>
+      <div class="l">{{ _('trustlines') }}</div>
     </a>
     <div class="stat vibes-spot">
       <div class="n">{{ "{:,}".format(named_accounts_count) }}</div>
-      <div class="l">watchlist size{{ explainer(
+      <div class="l">{{ _('watchlist size') }}{{ explainer(
         "watchlist",
-        "What's the watchlist",
-        "A list of XRP wallets we've identified by hand — major
-         exchanges (Bitstamp, Bitso, Bitrue), the Ripple co-founders,
-         big project treasuries. We figured out each one by
-         cross-checking what the wallet owner has publicly announced.
-         When one of these moves money it shows up here, even small
-         amounts, because it tells you what the big players are
-         doing.",
+        _("What's the watchlist"),
+        _("A list of XRP wallets we've identified by hand — major exchanges (Bitstamp, Bitso, Bitrue), the Ripple co-founders, big project treasuries. We figured out each one by cross-checking what the wallet owner has publicly announced. When one of these moves money it shows up here, even small amounts, because it tells you what the big players are doing."),
       ) }}</div>
     </div>
   </div>
 
-  <div class="filters" aria-label="Whale tier">
-    <span class="pill-label">size{{ explainer(
+  <div class="filters" aria-label="{{ _('Whale tier') }}">
+    <span class="pill-label">{{ _('size') }}{{ explainer(
       "tier",
-      "What 'size' tiers mean",
-      "Choose how big a transfer has to be to count. 1M XRP is the
-       classic 'whale' size — rare and almost always worth knowing
-       about. 100K is a good default for catching coordinated
-       activity. 50K shows everything we track, useful on quiet days.
-       Activity from recognized wallets shows up no matter what size
-       you pick.",
+      _("What 'size' tiers mean"),
+      _("Choose how big a transfer has to be to count. 1M XRP is the classic 'whale' size — rare and almost always worth knowing about. 100K is a good default for catching coordinated activity. 50K shows everything we track, useful on quiet days. Activity from recognized wallets shows up no matter what size you pick."),
     ) }}</span>
     <a class="pill {% if tier == '1m' %}active{% endif %}"
-       href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">whales · ≥1M XRP</a>
+       href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('whales') }} · ≥1M XRP</a>
     <a class="pill {% if tier == '100k' %}active{% endif %}"
-       href="/whales?tier=100k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">large · ≥100K XRP</a>
+       href="/whales?tier=100k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('large') }} · ≥100K XRP</a>
     <a class="pill {% if tier == '50k' %}active{% endif %}"
-       href="/whales?tier=50k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">all · ≥50K XRP</a>
+       href="/whales?tier=50k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('all') }} · ≥50K XRP</a>
   </div>
 
-  <div class="filters" aria-label="Event type">
-    <span class="pill-label">type</span>
+  <div class="filters" aria-label="{{ _('Event type') }}">
+    <span class="pill-label">{{ _('type') }}</span>
     <a class="pill {% if not filter_type %}active{% endif %}"
-       href="/whales?tier={{ tier }}">all</a>
+       href="/whales?tier={{ tier }}">{{ _('all') }}</a>
     <a class="pill {% if filter_type == 'large_xfer' %}active{% endif %}"
-       href="/whales?tier={{ tier }}&amp;type=large_xfer">large XRP</a>
+       href="/whales?tier={{ tier }}&amp;type=large_xfer">{{ _('large XRP') }}</a>
     <a class="pill {% if filter_type == 'tagged' %}active{% endif %}"
-       href="/whales?tier={{ tier }}&amp;type=tagged">tagged</a>
+       href="/whales?tier={{ tier }}&amp;type=tagged">{{ _('tagged') }}</a>
     <a class="pill {% if filter_type == 'trustset' %}active{% endif %}"
-       href="/whales?tier={{ tier }}&amp;type=trustset">trustlines</a>
+       href="/whales?tier={{ tier }}&amp;type=trustset">{{ _('trustlines') }}</a>
   </div>
 
   {# Live banner — turns green when the WebSocket is connected and
@@ -342,10 +324,10 @@
        data-filter-type="{{ filter_type }}">
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">connecting…</span>
+      <span class="lsb-label">{{ _('connecting…') }}</span>
     </span>
     <span class="lsb-meta">
-      Streaming validated XRPL transactions ≥ {{ "{:,}".format(tier_drops // 1_000_000) }} XRP
+      {{ _('Streaming validated XRPL transactions ≥') }} {{ "{:,}".format(tier_drops // 1_000_000) }} XRP
     </span>
   </div>
 
@@ -356,8 +338,8 @@
       <div class="event-top">
         <div class="event-meta">
           <span class="badge {{ e.type }}">{{ e.type_display }}</span>
-          <span>{{ e.age }} ago</span>
-          <span class="event-link">ledger {{ e.ledger }}</span>
+          <span>{{ e.age }} {{ _('ago') }}</span>
+          <span class="event-link">{{ _('ledger') }} {{ e.ledger }}</span>
         </div>
         {% if e.xrpscan_url %}
         <a href="{{ e.xrpscan_url }}" target="_blank" rel="noopener"
@@ -388,15 +370,14 @@
     {% endfor %}
   {% else %}
     <div class="empty">
-      <div class="big">No events to show yet.</div>
+      <div class="big">{{ _('No events to show yet.') }}</div>
       <div>
         {% if filter_type %}
-          Nothing of type <code>{{ filter_type }}</code> in the database.
-          Try <a href="/whales">all events</a>.
+          {{ _('Nothing of type') }} <code>{{ filter_type }}</code> {{ _('in the database. Try') }}
+          <a href="/whales">{{ _('all events') }}</a>.
         {% else %}
-          The live watcher is running but hasn't logged any events that
-          meet the criteria yet. Check <a href="/health">/health</a> for
-          watcher status.
+          {{ _("The live watcher is running but hasn't logged any events that meet the criteria yet. Check") }}
+          <a href="/health">/health</a> {{ _('for watcher status.') }}
         {% endif %}
       </div>
     </div>
@@ -405,36 +386,24 @@
 
   <div class="callout">
     <p>
-      <strong>How this works:</strong> a long-running process subscribes to
-      every validated XRPL transaction and records two things — XRP
-      transfers ≥{{ "{:,}".format(threshold_xrp) }} XRP (the floor), and any
-      transaction that touches an address on our public watchlist.
+      <strong>{{ _('How this works:') }}</strong>
+      {{ _('a long-running process subscribes to every validated XRPL transaction and records two things — XRP transfers above the floor (set by the size pill), and any transaction that touches an address on our public watchlist.') }}
     </p>
     <p>
-      The <strong>size pills</strong> above filter large XRP transfers by
-      magnitude — <em>whales</em> (≥1M XRP) is the strict definition;
-      <em>large</em> (≥100K) and <em>all</em> (≥50K) widen the lens. Tagged
-      and watchlisted activity always shows regardless of size, because the
-      <em>who</em> makes them signal.
+      {{ _('The size pills above filter large XRP transfers by magnitude — whales (≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen the lens. Tagged and watchlisted activity always shows regardless of size, because the who makes them signal.') }}
     </p>
     <p>
-      The watchlist currently has {{ named_accounts_count }} entries, all
-      sourced from first-party disclosures (e.g. Ripple's
-      <code>xrp-ledger.toml</code>). We don't include addresses tagged only
-      by third parties.
+      {{ _('The watchlist currently has') }} {{ named_accounts_count }} {{ _("entries, all sourced from first-party disclosures (e.g. Ripple's xrp-ledger.toml). We don't include addresses tagged only by third parties.") }}
     </p>
   </div>
 
   <div class="footer">
-    auto-refresh 60s · click any tx to verify on XRPSCAN.
+    {{ _('auto-refresh 60s · click any tx to verify on XRPSCAN.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/about">how this is sourced</a> ·
-    <a href="/">back to dashboard</a>
+    <a href="/about">{{ _('how this is sourced') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
 </div>

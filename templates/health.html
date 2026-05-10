@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>health · xrpldashboard</title>
+  <title>{{ _('health') }} · xrpldashboard</title>
   {% set meta_title = "health · xrpldashboard" %}
   {% set meta_description = "Operational status for xrpldashboard's background workers — bootstrap scanner, live transaction watcher, and ledger heartbeat. Public on purpose." %}
   {% include "_head_meta.html" %}
@@ -241,15 +241,15 @@
       <span class="status-bigdot" data-network-bigdot></span>
       <div>
         <div class="status-headline" data-network-headline>
-          {% if everything_ok %}All systems normal
-          {% elif network_ok %}Network healthy
-          {% elif overall == "ok" and pulse and pulse.status == 'running_hot' %}Network running hot
-          {% elif overall == "ok" %}Mostly normal
-          {% else %}Service status
+          {% if everything_ok %}{{ _('All systems normal') }}
+          {% elif network_ok %}{{ _('Network healthy') }}
+          {% elif overall == "ok" and pulse and pulse.status == 'running_hot' %}{{ _('Network running hot') }}
+          {% elif overall == "ok" %}{{ _('Mostly normal') }}
+          {% else %}{{ _('Service status') }}
           {% endif %}
         </div>
         <div class="status-sub" data-network-sub>
-          XRPL network status updates live · worker fields refresh every 60 s
+          {{ _('XRPL network status updates live · worker fields refresh every 60 s') }}
         </div>
       </div>
     </div>
@@ -259,8 +259,8 @@
             data-base-interval="{{ '%.2f'|format(pulse.avg_close_seconds or 3.5) if pulse and not pulse.error else '3.5' }}"
             data-load="{{ pulse.load_factor if pulse and not pulse.error else 1 }}"></canvas>
     <div class="status-ekg-meta">
-      <span>Heartbeat · scales with network load</span>
-      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>— bpm</span>
+      <span>{{ _('Heartbeat · scales with network load') }}</span>
+      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>— {{ _('bpm') }}</span>
     </div>
   </div>
 
@@ -271,16 +271,15 @@
       <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"
             data-network-card-dot></span>
       <div class="card-body">
-        <div class="title">XRPL network</div>
+        <div class="title">{{ _('XRPL network') }}</div>
         <div class="desc" data-network-card-desc>
           {% if net_ok %}
-            The XRP Ledger is healthy. New ledgers are being closed every
-            {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} seconds — exactly as expected.
-            Validators are in agreement.
+            {{ _('The XRP Ledger is healthy. New ledgers are being closed every') }}
+            {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} {{ _('seconds — exactly as expected. Validators are in agreement.') }}
           {% elif pulse.status == 'running_hot' %}
-            The ledger is busy. Transactions are still confirming, but fees may be slightly higher than usual.
+            {{ _('The ledger is busy. Transactions are still confirming, but fees may be slightly higher than usual.') }}
           {% elif pulse.status == 'congested' %}
-            The network is congested. Transactions are confirming more slowly and fees are elevated.
+            {{ _('The network is congested. Transactions are confirming more slowly and fees are elevated.') }}
           {% else %}
             {{ pulse.status_text }}
           {% endif %}
@@ -295,134 +294,132 @@
     <div class="card">
       <span class="dot idle"></span>
       <div class="card-body">
-        <div class="title">XRPL network</div>
-        <div class="desc">Live network pulse is currently unavailable.</div>
+        <div class="title">{{ _('XRPL network') }}</div>
+        <div class="desc">{{ _('Live network pulse is currently unavailable.') }}</div>
       </div>
-      <div class="card-state idle">unknown</div>
+      <div class="card-state idle">{{ _('unknown') }}</div>
     </div>
   {% endif %}
 
-  {# ========== Card 2: Pool tracker ========== #}
   {% set pool_state = 'ok' if (scan.finished or scan.alive) else 'idle' %}
   <div class="card">
     <span class="dot {{ pool_state }}"></span>
     <div class="card-body">
-      <div class="title">Pool tracker</div>
+      <div class="title">{{ _('Pool tracker') }}</div>
       <div class="desc">
         {% if scan.finished %}
-          Catalogue of XRPL automated market makers is up to date —
-          tracking <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
-          AMM pools across the ledger.
+          {{ _('Catalogue of XRPL automated market makers is up to date — tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+          {{ _('AMM pools across the ledger.') }}
         {% elif scan.alive %}
-          Currently building the AMM catalogue —
-          {{ "{:,}".format(scan.pages) }} ledger pages scanned at {{ scan.rate or "—" }} pages/sec.
+          {{ _('Currently building the AMM catalogue —') }}
+          {{ "{:,}".format(scan.pages) }} {{ _('ledger pages scanned at') }} {{ scan.rate or "—" }} {{ _('pages/sec.') }}
         {% else %}
-          Pool tracker not yet enabled in production. Showing local snapshot{% if scan.snapshot_at %} from {{ scan.snapshot_at }}{% endif %} —
-          tracking <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
-          AMM pools at the time of capture.
+          {{ _('Pool tracker not yet enabled in production. Showing local snapshot') }}{% if scan.snapshot_at %} {{ _('from') }} {{ scan.snapshot_at }}{% endif %} —
+          {{ _('tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+          {{ _('AMM pools at the time of capture.') }}
         {% endif %}
       </div>
     </div>
     <div class="card-state {{ pool_state }}">
-      {% if scan.finished %}ready{% elif scan.alive %}building{% else %}snapshot{% endif %}
+      {% if scan.finished %}{{ _('ready') }}{% elif scan.alive %}{{ _('building') }}{% else %}{{ _('snapshot') }}{% endif %}
     </div>
   </div>
 
-  {# ========== Card 3: Whale + token watcher ========== #}
   {% set stream_state = 'ok' if stream.alive else 'idle' %}
   <div class="card">
     <span class="dot {{ stream_state }}"></span>
     <div class="card-body">
-      <div class="title">Live activity feed</div>
+      <div class="title">{{ _('Live activity feed') }}</div>
       <div class="desc">
         {% if stream.alive %}
-          Watching every transaction on the XRP Ledger in real time.
-          Since startup we've logged
-          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> large transfers and
-          <strong>{{ "{:,}".format(stream.token_events) }}</strong> token trades.
-          Last update {{ stream.log_age }} ago.
+          {{ _('Watching every transaction on the XRP Ledger in real time. Since startup we\'ve logged') }}
+          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('large transfers and') }}
+          <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades.') }}
+          {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
         {% else %}
-          Live activity feed not yet enabled in production. Coming soon — meanwhile the
-          page shows a snapshot of
-          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> whale transfers and
-          <strong>{{ "{:,}".format(stream.token_events) }}</strong> token trades captured
-          by the local indexer.
+          {{ _('Live activity feed not yet enabled in production. Coming soon — meanwhile the page shows a snapshot of') }}
+          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('whale transfers and') }}
+          <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades captured by the local indexer.') }}
         {% endif %}
       </div>
     </div>
     <div class="card-state {{ stream_state }}">
-      {% if stream.alive %}streaming{% else %}coming soon{% endif %}
+      {% if stream.alive %}{{ _('streaming') }}{% else %}{{ _('coming soon') }}{% endif %}
     </div>
   </div>
 
-  {# ========== Card 4: Database ========== #}
   <div class="card">
     <span class="dot ok"></span>
     <div class="card-body">
-      <div class="title">Stored data</div>
+      <div class="title">{{ _('Stored data') }}</div>
       <div class="desc">
-        Historical activity is being saved to disk so charts and rankings
-        survive restarts.
+        {{ _('Historical activity is being saved to disk so charts and rankings survive restarts.') }}
         <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
-        events recorded ·
+        {{ _('events recorded') }} ·
         <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
-        token volume entries.
+        {{ _('token volume entries.') }}
       </div>
     </div>
-    <div class="card-state ok">healthy</div>
+    <div class="card-state ok">{{ _('healthy') }}</div>
   </div>
 
   {# ========== Technical details (collapsed by default) ========== #}
   <details class="tech-details">
-    <summary>Show technical details</summary>
+    <summary>{{ _('Show technical details') }}</summary>
     <div class="tech-body">
 
       <div class="tech-section">
-        <h3>XRPL network (live pulse)</h3>
+        <h3>{{ _('XRPL network (live pulse)') }}</h3>
         {% if pulse and not pulse.error %}
-        <div class="tech-row"><span class="k">ledger index</span><span class="v">{{ "{:,}".format(pulse.ledger_index) }}</span></div>
-        <div class="tech-row"><span class="k">avg close time</span><span class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</span></div>
-        <div class="tech-row"><span class="k">last close age</span><span class="v">{{ pulse.last_close_age_seconds or 0 }}s</span></div>
-        <div class="tech-row"><span class="k">validation quorum</span><span class="v">{{ pulse.validation_quorum }}</span></div>
-        <div class="tech-row"><span class="k">load factor</span><span class="v">{{ pulse.load_factor }}×</span></div>
-        <div class="tech-row"><span class="k">summary</span><span class="v dim">{{ pulse.status_text }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('ledger index') }}</span><span class="v">{{ "{:,}".format(pulse.ledger_index) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('avg close time') }}</span><span class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('last close age') }}</span><span class="v">{{ pulse.last_close_age_seconds or 0 }}s</span></div>
+        <div class="tech-row"><span class="k">{{ _('validation quorum') }}</span><span class="v">{{ pulse.validation_quorum }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('load factor') }}</span><span class="v">{{ pulse.load_factor }}×</span></div>
+        <div class="tech-row"><span class="k">{{ _('summary') }}</span><span class="v dim">
+          {% if pulse.status == 'operating_normally' %}{{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Network load is light.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+          {% elif pulse.status == 'running_hot' %}{{ _('XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+          {% elif pulse.status == 'congested' %}{{ _('XRPL is operating but congested. Closing ledgers every %(n)ss. Load is elevated.', n='%.1f'|format(pulse.avg_close_seconds or 3.5)) }}
+          {% elif pulse.status == 'degraded' %}{{ _('XRPL is degraded. Ledgers are closing slowly.') }}
+          {% else %}{{ pulse.status_text }}{% endif %}
+        </span></div>
         {% else %}
-        <div class="tech-row"><span class="k">pulse</span><span class="v dim">{{ pulse.error if pulse else "not loaded" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('pulse') }}</span><span class="v dim">{{ pulse.error if pulse else _("not loaded") }}</span></div>
         {% endif %}
       </div>
 
       <div class="tech-section">
-        <h3>Pool tracker (bootstrap scan)</h3>
-        <div class="tech-row"><span class="k">uptime</span><span class="v">{{ scan.uptime }}</span></div>
-        <div class="tech-row"><span class="k">pages scanned</span><span class="v">{{ "{:,}".format(scan.pages) }}</span></div>
-        <div class="tech-row"><span class="k">objects walked</span><span class="v">{{ "{:,}".format(scan.objects_scanned) }}</span></div>
-        <div class="tech-row"><span class="k">amms in index</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
-        <div class="tech-row"><span class="k">scan rate</span><span class="v">{{ scan.rate }} pages/s</span></div>
-        <div class="tech-row"><span class="k">ledger snapshot</span><span class="v dim">{{ scan.ledger_index }}</span></div>
-        <div class="tech-row"><span class="k">log last write</span><span class="v">{{ scan.log_age }} ago</span></div>
+        <h3>{{ _('Pool tracker (bootstrap scan)') }}</h3>
+        <div class="tech-row"><span class="k">{{ _('uptime') }}</span><span class="v">{{ scan.uptime }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('pages scanned') }}</span><span class="v">{{ "{:,}".format(scan.pages) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('objects walked') }}</span><span class="v">{{ "{:,}".format(scan.objects_scanned) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('amms in index') }}</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('scan rate') }}</span><span class="v">{{ scan.rate }} {{ _('pages/s') }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('ledger snapshot') }}</span><span class="v dim">{{ scan.ledger_index }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{{ scan.log_age }} {{ _('ago') }}</span></div>
       </div>
 
       <div class="tech-section">
-        <h3>Live watcher (stream)</h3>
-        <div class="tech-row"><span class="k">uptime</span><span class="v">{{ stream.uptime }}</span></div>
-        <div class="tech-row"><span class="k">txns observed</span><span class="v">{{ "{:,}".format(stream.txns_seen) }}</span></div>
-        <div class="tech-row"><span class="k">amm creates</span><span class="v">{{ stream.amm_creates }}</span></div>
-        <div class="tech-row"><span class="k">whale events</span><span class="v">{{ stream.whale_events }}</span></div>
-        <div class="tech-row"><span class="k">token events</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
-        <div class="tech-row"><span class="k">new tokens (since restart)</span><span class="v">{{ stream.new_tokens }}</span></div>
-        <div class="tech-row"><span class="k">seen-tokens index</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
-        <div class="tech-row"><span class="k">last ledger</span><span class="v dim">{{ stream.last_ledger }}</span></div>
-        <div class="tech-row"><span class="k">log last write</span><span class="v">{{ stream.log_age }} ago</span></div>
+        <h3>{{ _('Live watcher (stream)') }}</h3>
+        <div class="tech-row"><span class="k">{{ _('uptime') }}</span><span class="v">{{ stream.uptime }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('txns observed') }}</span><span class="v">{{ "{:,}".format(stream.txns_seen) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('amm creates') }}</span><span class="v">{{ stream.amm_creates }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('whale events') }}</span><span class="v">{{ stream.whale_events }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('token events') }}</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('new tokens (since restart)') }}</span><span class="v">{{ stream.new_tokens }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('seen-tokens index') }}</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('last ledger') }}</span><span class="v dim">{{ stream.last_ledger }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{{ stream.log_age }} {{ _('ago') }}</span></div>
       </div>
 
       <div class="tech-section">
-        <h3>Data substrate</h3>
-        <div class="tech-row"><span class="k">events.db rows</span><span class="v">{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</span></div>
-        <div class="tech-row"><span class="k">volumes.db rows</span><span class="v">{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</span></div>
+        <h3>{{ _('Data substrate') }}</h3>
+        <div class="tech-row"><span class="k">{{ _('events.db rows') }}</span><span class="v">{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('volumes.db rows') }}</span><span class="v">{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</span></div>
       </div>
 
       <div class="tech-section">
-        <h3>Watcher log · last 8 lines</h3>
+        <h3>{{ _('Watcher log · last 8 lines') }}</h3>
         <div class="log">{% for line in recent_log %}<div>{{ line }}</div>{% endfor %}</div>
       </div>
 
@@ -430,18 +427,15 @@
   </details>
 
   <div class="footer">
-    Public on purpose · trust positioning means we publish real metrics about real infrastructure.
+    {{ _('Public on purpose · trust positioning means we publish real metrics about real infrastructure.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/">dashboard</a> ·
-    <a href="/pools">pools</a> ·
-    <a href="/whales">whales</a> ·
-    <a href="/tokens">tokens</a> ·
-    <a href="/about">about</a>
+    <a href="/">{{ _('dashboard') }}</a> ·
+    <a href="/pools">{{ _('pools') }}</a> ·
+    <a href="/whales">{{ _('whales') }}</a> ·
+    <a href="/tokens">{{ _('tokens') }}</a> ·
+    <a href="/about">{{ _('about') }}</a>
   </div>
 
 </div>

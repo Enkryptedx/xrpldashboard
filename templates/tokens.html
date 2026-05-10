@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tokens · xrpldashboard</title>
+  <title>{{ _('tokens') }} · xrpldashboard</title>
   {% set meta_title = "tokens · xrpldashboard" %}
   {% set meta_description = "What's actually trading on the XRP Ledger right now — tokens ranked by recent activity, with stablecoins, memecoins, and project tokens labeled clearly." %}
   {% include "_head_meta.html" %}
@@ -335,36 +335,30 @@
   {% include "_nav.html" %}
 
   <div class="token-hero">
-    <h1>Token activity{{ explainer(
+    <h1>{{ _('Token activity') }}{{ explainer(
       "page",
-      "What this page tracks",
-      "Which XRP-Ledger tokens are getting traded right now. Each
-       'trade' is a single transaction that moves a token between two
-       wallets. We rank by number of trades, not by dollar amount —
-       so a popular token with lots of small trades can rank higher
-       than a sleepy one with a single whale-sized move.",
+      _("What this page tracks"),
+      _("Which XRP-Ledger tokens are getting traded right now. Each 'trade' is a single transaction that moves a token between two wallets. We rank by number of trades, not by dollar amount — so a popular token with lots of small trades can rank higher than a sleepy one with a single whale-sized move."),
       source="counts pulled from <code>volumes.db</code>"
     ) }}</h1>
     <p class="lede">
-      Top XRPL tokens by recent on-ledger trade count. Counts every token
-      Payment plus every AMM deposit/withdraw. Token names are hand-curated
-      where available — see <a href="/about">about</a> for sourcing.
+      {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw. Token names are hand-curated where available — see') }} <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
     </p>
     {{ freshness_badge(data_age_label) }}
   </div>
 
-  <div class="tron-grid" data-tron-grid aria-label="Live token trade Tron grid">
+  <div class="tron-grid" data-tron-grid aria-label="{{ _('Live token trade grid') }}">
     <canvas class="tron-grid-canvas" data-tron-canvas></canvas>
     <div class="tron-grid-empty" data-tron-empty>
-      waiting for the next validated token trade on the public XRPL stream…
+      {{ _('waiting for the next validated token trade on the public XRPL stream…') }}
     </div>
     <div class="tron-grid-tooltip" data-tron-tooltip></div>
     <div class="tron-grid-lanes" aria-hidden="true">
-      <span style="color: rgb(34,197,94);">stable</span>
-      <span style="color: rgb(245,158,11);">wrapped</span>
-      <span style="color: rgb(34,211,238);">utility</span>
-      <span style="color: rgb(236,72,153);">meme</span>
-      <span style="color: rgb(140,150,170);">unlabeled</span>
+      <span style="color: rgb(34,197,94);">{{ _('stable') }}</span>
+      <span style="color: rgb(245,158,11);">{{ _('wrapped') }}</span>
+      <span style="color: rgb(34,211,238);">{{ _('utility') }}</span>
+      <span style="color: rgb(236,72,153);">{{ _('meme') }}</span>
+      <span style="color: rgb(140,150,170);">{{ _('unlabeled') }}</span>
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
@@ -372,37 +366,29 @@
   <div class="stats">
     <div class="stat vibes-spot">
       <div class="n">{{ tokens|length }}</div>
-      <div class="l">tokens shown</div>
+      <div class="l">{{ _('tokens shown') }}</div>
     </div>
     <div class="stat vibes-spot">
       <div class="n">{{ labeled_count }}</div>
-      <div class="l">labeled{{ explainer(
+      <div class="l">{{ _('labeled') }}{{ explainer(
         "labeled",
-        "What 'labeled' means",
-        "Anyone can create a token on the XRP Ledger, and the Ledger
-         only stores a short code (sometimes just a string of letters
-         and numbers). We keep a hand-checked list of the real names
-         for the well-known ones — labeled tokens show that real name
-         (RLUSD, Coreum, etc.). Unlabeled ones just show whatever the
-         Ledger had on file.",
+        _("What 'labeled' means"),
+        _("Anyone can create a token on the XRP Ledger, and the Ledger only stores a short code (sometimes just a string of letters and numbers). We keep a hand-checked list of the real names for the well-known ones — labeled tokens show that real name (RLUSD, Coreum, etc.). Unlabeled ones just show whatever the Ledger had on file."),
         source="<code>TOKEN_NAMES.md</code> in the public repo — open a PR to add one"
       ) }}</div>
     </div>
     <div class="stat vibes-spot">
       <div class="n">{{ total_buckets }}</div>
-      <div class="l">hour buckets{{ explainer(
+      <div class="l">{{ _('hour buckets') }}{{ explainer(
         "buckets",
-        "What 'hour buckets' means",
-        "We tally each token's trades hour by hour rather than storing
-         every single transaction. This number is roughly 'how many
-         tokens were active in how many hours' — higher means more
-         tokens trading more often.",
+        _("What 'hour buckets' means"),
+        _("We tally each token's trades hour by hour rather than storing every single transaction. This number is roughly 'how many tokens were active in how many hours' — higher means more tokens trading more often."),
       ) }}</div>
     </div>
     {% if latest_iso %}
     <div class="stat vibes-spot">
       <div class="n" style="font-size: 0.85rem;">{{ latest_iso }}</div>
-      <div class="l">latest bucket</div>
+      <div class="l">{{ _('latest bucket') }}</div>
     </div>
     {% endif %}
   </div>
@@ -414,38 +400,32 @@
   <div class="live-stream-bar" data-live-stream-bar>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">connecting…</span>
+      <span class="lsb-label">{{ _('connecting…') }}</span>
     </span>
     <span class="lsb-meta">
       <span class="lsb-counter" data-lsb-counter>0</span>
-      token trades observed live this session
+      {{ _('token trades observed live this session') }}
     </span>
   </div>
 
   <div class="search-bar">
-    <input type="search" id="token-search" placeholder="Search token (e.g. RLUSD, SOLO, GiB)…" autocomplete="off" spellcheck="false" />
+    <input type="search" id="token-search" placeholder="{{ _('Search token (e.g. RLUSD, SOLO, GiB)…') }}" autocomplete="off" spellcheck="false" />
     <span class="search-stats" id="token-search-stats"></span>
   </div>
   <div class="filters">
     <a class="pill {% if range_key == '24h' %}active{% endif %}"
-       href="/tokens?range=24h">last 24h</a>
+       href="/tokens?range=24h">{{ _('last 24h') }}</a>
     <a class="pill {% if range_key == '7d' %}active{% endif %}"
-       href="/tokens?range=7d">last 7d</a>
+       href="/tokens?range=7d">{{ _('last 7d') }}</a>
     <a class="pill {% if range_key == 'all' %}active{% endif %}"
-       href="/tokens?range=all">all</a>
+       href="/tokens?range=all">{{ _('all') }}</a>
     <span class="filters-explainer">{{ explainer(
       "row-meaning",
-      "What the row numbers mean",
-      "The big number is the token's total trade count over the selected
-       range — every on-ledger event that moved the token (Payments plus
-       AMM deposits and withdraws). It's an activity count, not a dollar
-       volume. The small 'Nh active' line below it tells you how many
-       distinct hours the token had at least one trade in. So '22h active'
-       means it was trading almost every hour — a steady token. A token
-       with a big trade count but only '3h active' had bursty activity.",
+      _("What the row numbers mean"),
+      _("The big number is the token's total trade count over the selected range — every on-ledger event that moved the token (Payments plus AMM deposits and withdraws). It's an activity count, not a dollar volume. The small 'Nh active' line below it tells you how many distinct hours the token had at least one trade in. So '22h active' means it was trading almost every hour — a steady token. A token with a big trade count but only '3h active' had bursty activity."),
     ) }}</span>
   </div>
-  <div class="search-empty" id="token-search-empty">No tokens match that search. Try fewer letters, or switch range to <a href="/tokens?range=all">all</a>.</div>
+  <div class="search-empty" id="token-search-empty">{{ _('No tokens match that search. Try fewer letters, or switch range to') }} <a href="/tokens?range=all">{{ _('all') }}</a>.</div>
 
   {% if tokens %}
     {% for t in tokens %}
@@ -461,55 +441,42 @@
         <div class="iss">{{ t.issuer_short }}</div>
       </div>
       <div class="trades">
-        {{ "{:,}".format(t.trades) }} <span class="trades-unit">trades</span>
-        <span class="sub">{{ t.hours_active }}h active</span>
+        {{ "{:,}".format(t.trades) }} <span class="trades-unit">{{ _('trades') }}</span>
+        <span class="sub">{{ t.hours_active }}{{ _('h active') }}</span>
       </div>
     </a>
     {% endfor %}
   {% else %}
     <div class="empty">
-      <div class="big">No token activity recorded yet.</div>
+      <div class="big">{{ _('No token activity recorded yet.') }}</div>
       <div>
-        The watcher tracks token Payments + AMM deposits/withdraws. Either
-        the watcher hasn't been running long enough, or no token activity
-        matched in the selected range. Check <a href="/health">/health</a>.
+        {{ _('The watcher tracks token Payments + AMM deposits/withdraws. Either the watcher hasn\'t been running long enough, or no token activity matched in the selected range. Check') }} <a href="/health">/health</a>.
       </div>
     </div>
   {% endif %}
 
   <div class="callout">
     <p>
-      <strong>What "trades" means here:</strong> every on-ledger event that
-      moves a token — token Payments and AMM deposits/withdraws. It's a
-      raw activity count, not a USD volume.
+      <strong>{{ _('What "trades" means here:') }}</strong> {{ _('every on-ledger event that moves a token — token Payments and AMM deposits/withdraws. It\'s a raw activity count, not a USD volume.') }}
     </p>
     <p>
-      <strong>Why some show as 40-char hex:</strong> XRPL allows tokens to
-      use a 160-bit currency code. We decode it to ASCII when possible;
-      when the bytes aren't text, we show truncated hex. Tokens we've
-      labeled appear with a friendly name + category — to add a label, see
-      <code>TOKEN_NAMES.md</code> in the repo.
+      <strong>{{ _('Why some show as 40-char hex:') }}</strong> {{ _('XRPL allows tokens to use a 160-bit currency code. We decode it to ASCII when possible; when the bytes aren\'t text, we show truncated hex. Tokens we\'ve labeled appear with a friendly name + category — to add a label, see') }}
+      <code>TOKEN_NAMES.md</code> {{ _('in the repo.') }}
     </p>
     <p>
-      <strong>XRP-equivalent volume</strong> isn't shown yet. That requires
-      a price feed derived from the AMM index, which is a later phase
-      (<code>token_prices.py</code>). Trade count alone is already
-      directionally useful.
+      <strong>{{ _('XRP-equivalent volume') }}</strong> {{ _('isn\'t shown yet. That requires a price feed derived from the AMM index, which is a later phase') }}
+      (<code>token_prices.py</code>). {{ _('Trade count alone is already directionally useful.') }}
     </p>
   </div>
 
   <div class="footer">
-    new trades stream in via WebSocket; aggregate counts come from the
-    worker's hourly buckets and rebuild on the next reload.
+    {{ _('new trades stream in via WebSocket; aggregate counts come from the worker\'s hourly buckets and rebuild on the next reload.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/whales">whales</a> · <a href="/about">about</a> ·
-    <a href="mailto:contact@xrpldashboard.com">contact</a> ·
-    <a href="/">back to dashboard</a>
+    <a href="/whales">{{ _('whales') }}</a> · <a href="/about">{{ _('about') }}</a> ·
+    <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
 </div>

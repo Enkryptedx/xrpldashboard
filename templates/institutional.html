@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>institutional · xrpldashboard</title>
+  <title>{{ _('institutional') }} · xrpldashboard</title>
   {% set meta_title = "institutional · xrpldashboard" %}
   {% set meta_description = "Institutional access to xrpldashboard's underlying XRPL datasets — partnership tier for funds, exchanges, and infrastructure teams. Contact for details." %}
   {% include "_head_meta.html" %}
@@ -100,98 +100,74 @@
 
   {% include "_nav.html" %}
 
-  <h1>xrpldashboard institutional</h1>
+  <h1>{{ _('xrpldashboard institutional') }}</h1>
   <p class="lede">
-    Tooling for teams that watch the XRP Ledger as a job — exchanges,
-    funds, custody platforms, compliance desks, ETF issuers.
+    {{ _('Tooling for teams that watch the XRP Ledger as a job — exchanges, funds, custody platforms, compliance desks, ETF issuers.') }}
   </p>
 
   <p>
-    The retail dashboard is free forever. The institutional product is
-    what funds it.
+    {{ _('The retail dashboard is free forever. The institutional product is what funds it.') }}
   </p>
 
-  <h2>Why this exists</h2>
+  <h2>{{ _('Why this exists') }}</h2>
   <p>
-    Anyone can index the XRP Ledger — the data is public. We&rsquo;re the
-    only ones doing the editorial layer at scale: hand-curated wallet
-    identities, classified tokens, plain-language event explanations.
-    Your compliance team doesn&rsquo;t read a hex address — it reads
-    &ldquo;Bitstamp cold wallet moved $5M to Bitso hot wallet.&rdquo;
+    {{ _('Anyone can index the XRP Ledger — the data is public. We\'re the only ones doing the editorial layer at scale: hand-curated wallet identities, classified tokens, plain-language event explanations. Your compliance team doesn\'t read a hex address — it reads "Bitstamp cold wallet moved $5M to Bitso hot wallet."') }}
   </p>
   <p>
-    Editorial coverage delivered via API. That&rsquo;s the product.
-    Webhook alerts, historical depth, custom integrations — those are
-    how it ships.
+    {{ _('Editorial coverage delivered via API. That\'s the product. Webhook alerts, historical depth, custom integrations — those are how it ships.') }}
   </p>
 
-  <h2>How we&rsquo;re building it</h2>
+  <h2>{{ _('How we\'re building it') }}</h2>
   <p>
-    We&rsquo;re building this around real conversations with launch
-    partners. Your needs shape what gets prioritized first. Pricing
-    reflects actual partner agreements once we&rsquo;ve signed the
-    first few.
+    {{ _('We\'re building this around real conversations with launch partners. Your needs shape what gets prioritized first. Pricing reflects actual partner agreements once we\'ve signed the first few.') }}
   </p>
 
   {% if snapshot_meta %}
-  <h2>What we&rsquo;re already collecting</h2>
+  <h2>{{ _('What we\'re already collecting') }}</h2>
   <p>
-    Daily ledger snapshots of our watchlist accounts and the largest
-    AMM pools — captured at a validated ledger and archived as a
-    permanent time series. Historical depth that institutional buyers
-    can&rsquo;t back-fill once they wish they&rsquo;d started.
+    {{ _('Daily ledger snapshots of our watchlist accounts and the largest AMM pools — captured at a validated ledger and archived as a permanent time series. Historical depth that institutional buyers can\'t back-fill once they wish they\'d started.') }}
   </p>
   <div class="snap-strip">
     <div class="snap-cell">
       <div class="snap-num">{{ snapshot_meta.days_collected }}</div>
-      <div class="snap-lbl">{{ "day" if snapshot_meta.days_collected == 1 else "days" }} of snapshots</div>
+      <div class="snap-lbl">{{ _('day') if snapshot_meta.days_collected == 1 else _('days') }} {{ _('of snapshots') }}</div>
     </div>
     <div class="snap-cell">
       <div class="snap-num">{{ snapshot_meta.accounts_tracked }}</div>
-      <div class="snap-lbl">watchlist accounts daily</div>
+      <div class="snap-lbl">{{ _('watchlist accounts daily') }}</div>
     </div>
     <div class="snap-cell">
       <div class="snap-num">{{ snapshot_meta.pools_tracked }}</div>
-      <div class="snap-lbl">AMM pools daily</div>
+      <div class="snap-lbl">{{ _('AMM pools daily') }}</div>
     </div>
   </div>
   <div class="snap-foot">
-    Collecting since {{ snapshot_meta.first_date }}. Raw snapshot
-    access available to launch partners on request.
+    {{ _('Collecting since') }} {{ snapshot_meta.first_date }}. {{ _('Raw snapshot access available to launch partners on request.') }}
   </div>
   {% endif %}
 
   <div class="callout">
     <p>
-      <strong>What this is for:</strong> teams whose data-tools budget
-      runs $5k–50k/yr and who wish there were an XRPL-native option
-      written for humans.
+      <strong>{{ _('What this is for:') }}</strong> {{ _('teams whose data-tools budget runs $5k–50k/yr and who wish there were an XRPL-native option written for humans.') }}
     </p>
   </div>
 
   <div class="cta-row">
     <a class="cta"
-       href="mailto:contact@xrpldashboard.com?subject=Launch%20partner%20interest&body=Hi%20Charlie%2C%0A%0ACompany%3A%0AUse%20case%3A%0ACurrent%20XRPL%20data%20tooling%3A%0AApproximate%20budget%20range%3A%0A%0A">Become
-       a launch partner →</a>
+       href="mailto:contact@xrpldashboard.com?subject=Launch%20partner%20interest&body=Hi%20Charlie%2C%0A%0ACompany%3A%0AUse%20case%3A%0ACurrent%20XRPL%20data%20tooling%3A%0AApproximate%20budget%20range%3A%0A%0A">{{ _('Become a launch partner') }} →</a>
     <p class="contact-note">
-      Charlie reads every message personally. Reply time is usually
-      within a day. Founders prefer direct email over forms.
+      {{ _('Charlie reads every message personally. Reply time is usually within a day. Founders prefer direct email over forms.') }}
     </p>
   </div>
 
   <div class="footer">
-    xrpldashboard is independent and not affiliated with Ripple Labs,
-    the XRPL Foundation, or any exchange. Built with Python, Flask,
-    and the public XRPL.
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRPL Foundation, or any exchange. Built with Python, Flask, and the public XRPL.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/about">about</a> ·
-    <a href="mailto:contact@xrpldashboard.com">contact</a> ·
-    <a href="/">back to dashboard</a>
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
 </div>

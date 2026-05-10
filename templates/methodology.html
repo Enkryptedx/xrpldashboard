@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>methodology · xrpldashboard</title>
+  <title>{{ _('methodology') }} · xrpldashboard</title>
   {% set meta_title = "methodology · xrpldashboard" %}
   {% set meta_description = "Every data source, every cache TTL, every limitation — disclosed in plain text. The full methodology behind every number on xrpldashboard." %}
   {% include "_head_meta.html" %}
@@ -89,246 +89,180 @@
 
   {% include "_nav.html" %}
 
-  <h1>Methodology</h1>
+  <h1>{{ _('Methodology') }}</h1>
   <p class="lede">
-    Every data source, every cache, every limitation — listed in plain
-    text on this page. If a number on this site is wrong, this is where
-    you find out why.
+    {{ _('Every data source, every cache, every limitation — listed in plain text on this page. If a number on this site is wrong, this is where you find out why.') }}
   </p>
 
   <div class="callout">
     <p style="margin: 0;">
-      <strong>Why this page exists.</strong> Most XRPL dashboards say
-      "live" without telling you what that means. We commit to the
-      opposite: every claim of "live" is backed by a measurable cadence
-      below, and every cache is named with its TTL. If you disagree with
-      our numbers, this page is the audit trail.
+      <strong>{{ _('Why this page exists.') }}</strong> {{ _('Most XRPL dashboards say "live" without telling you what that means. We commit to the opposite: every claim of "live" is backed by a measurable cadence below, and every cache is named with its TTL. If you disagree with our numbers, this page is the audit trail.') }}
     </p>
   </div>
 
-  <h2>What's actually live, per surface</h2>
+  <h2>{{ _('What\'s actually live, per surface') }}</h2>
   <p>
-    Three states: <span class="pill pill-live"><span class="pill-dot"></span>Live</span>
-    means a WebSocket pushes new data without a page refresh.
-    <span class="pill pill-cache"><span class="pill-dot"></span>Cached</span>
-    means we re-query the XRP Ledger on a fixed cadence and serve the
-    most recent answer to all visitors during the cache window.
+    {{ _('Three states:') }} <span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span>
+    {{ _('means a WebSocket pushes new data without a page refresh.') }}
+    <span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span>
+    {{ _('means we re-query the XRP Ledger on a fixed cadence and serve the most recent answer to all visitors during the cache window.') }}
   </p>
 
   <table class="freshness">
     <thead>
       <tr>
-        <th>Page / surface</th>
-        <th>State</th>
-        <th>Cadence / TTL</th>
-        <th>Underlying source</th>
+        <th>{{ _('Page / surface') }}</th>
+        <th>{{ _('State') }}</th>
+        <th>{{ _('Cadence / TTL') }}</th>
+        <th>{{ _('Underlying source') }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td class="route">/api/ledger-tip</td>
-        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
-        <td>20 sec</td>
-        <td><code>server_info</code> on public XRPL node</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('20 sec') }}</td>
+        <td><code>server_info</code> {{ _('on public XRPL node') }}</td>
       </tr>
       <tr>
-        <td class="route">Ledger heartbeat chip<br>(every page header)</td>
-        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
-        <td>polls every 30 sec → 20 sec server cache</td>
+        <td class="route">{{ _('Ledger heartbeat chip') }}<br>{{ _('(every page header)') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('polls every 30 sec → 20 sec server cache') }}</td>
         <td><code>/api/ledger-tip</code></td>
       </tr>
       <tr>
-        <td class="route">/wallet/&lt;addr&gt;<br>tx counter, last seen, sparkline today bin</td>
-        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
-        <td>WebSocket push (~3–5 sec per validated ledger)</td>
-        <td>Browser subscribes directly to <code>wss://s2.ripple.com</code></td>
+        <td class="route">/wallet/&lt;addr&gt;<br>{{ _('tx counter, last seen, sparkline today bin') }}</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
+        <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
+        <td>{{ _('Browser subscribes directly to') }} <code>wss://s2.ripple.com</code></td>
       </tr>
       <tr>
-        <td class="route">/wallet/&lt;addr&gt;<br>balances, holdings, network graph, AMM positions</td>
-        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
-        <td>5 min</td>
+        <td class="route">/wallet/&lt;addr&gt;<br>{{ _('balances, holdings, network graph, AMM positions') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('5 min') }}</td>
         <td><code>account_info</code>, <code>account_lines</code>, <code>account_tx</code>, <code>amm_info</code></td>
       </tr>
       <tr>
-        <td class="route">/whales<br>large-XRP / tagged / trustset feed</td>
-        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
-        <td>WebSocket push (~3–5 sec per validated ledger)</td>
-        <td>Browser subscribes directly to <code>wss://s2.ripple.com</code>; initial page load is from worker → Neon</td>
+        <td class="route">/whales<br>{{ _('large-XRP / tagged / trustset feed') }}</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
+        <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
+        <td>{{ _('Browser subscribes directly to') }} <code>wss://s2.ripple.com</code>; {{ _('initial page load is from worker → Neon') }}</td>
       </tr>
       <tr>
-        <td class="route">/tokens, /token/&lt;currency&gt;/&lt;issuer&gt;<br>per-token swap activity</td>
-        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
-        <td>WebSocket push for new swaps; aggregates rebuild on next reload</td>
-        <td>Browser WS to <code>wss://s2.ripple.com</code>; rollups from worker → Neon</td>
+        <td class="route">/tokens, /token/&lt;currency&gt;/&lt;issuer&gt;<br>{{ _('per-token swap activity') }}</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
+        <td>{{ _('WebSocket push for new swaps; aggregates rebuild on next reload') }}</td>
+        <td>{{ _('Browser WS to') }} <code>wss://s2.ripple.com</code>; {{ _('rollups from worker → Neon') }}</td>
       </tr>
       <tr>
-        <td class="route">/pools constellation<br>swap pulses + per-pool TVL</td>
-        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
-        <td>WebSocket push; TVL adjusts on each AMM LP-token delta</td>
-        <td>Browser WS to <code>wss://s2.ripple.com</code>; static pool index seeded from <code>amm_info</code></td>
+        <td class="route">{{ _('/pools constellation') }}<br>{{ _('swap pulses + per-pool TVL') }}</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
+        <td>{{ _('WebSocket push; TVL adjusts on each AMM LP-token delta') }}</td>
+        <td>{{ _('Browser WS to') }} <code>wss://s2.ripple.com</code>; {{ _('static pool index seeded from') }} <code>amm_info</code></td>
       </tr>
       <tr>
         <td class="route">/api/pools/recent_events</td>
-        <td><span class="pill pill-live"><span class="pill-dot"></span>Live</span></td>
-        <td>worker writes pool swaps as they happen; API reads on each call</td>
-        <td>Worker → Neon Postgres</td>
+        <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
+        <td>{{ _('worker writes pool swaps as they happen; API reads on each call') }}</td>
+        <td>{{ _('Worker → Neon Postgres') }}</td>
       </tr>
       <tr>
         <td class="route">/cold-storage</td>
-        <td><span class="pill pill-cache"><span class="pill-dot"></span>Cached</span></td>
-        <td>5 min</td>
-        <td><code>account_info</code> on labeled cold wallets</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('5 min') }}</td>
+        <td><code>account_info</code> {{ _('on labeled cold wallets') }}</td>
       </tr>
     </tbody>
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    Five of the nine surfaces above are now Live (browser-side WebSocket
-    push from <code>wss://s2.ripple.com</code>). The remaining cached
-    surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings,
-    and cold-storage balances — are derived from RPC calls that don't
-    have a streaming equivalent, so a short cache is the honest framing.
+    {{ _('Five of the nine surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://s2.ripple.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, and cold-storage balances — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
   </p>
 
-  <h2>Data sources</h2>
+  <h2>{{ _('Data sources') }}</h2>
 
-  <h3>XRP Ledger nodes</h3>
+  <h3>{{ _('XRP Ledger nodes') }}</h3>
   <p>
-    All on-chain data is read from public XRPL nodes — peers in the
-    consensus network. A node can't lie about ledger contents without
-    the rest of the network rejecting it.
+    {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://s2.ripple.com</code></strong> — Ripple-operated
-      full-history node. Used by the worker for streaming, and by the
-      browser for per-wallet real-time subscriptions.</li>
-    <li><strong><code>s1.ripple.com:51234</code></strong> — Ripple-operated
-      general-purpose JSON-RPC node. Used by the network pulse and
-      ledger-tip endpoints.</li>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Used by the worker for streaming, and by the browser for per-wallet real-time subscriptions.') }}</li>
+    <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse and ledger-tip endpoints.') }}</li>
   </ul>
   <p>
-    <strong>Disclosure.</strong> Ripple's documentation explicitly
-    states their public servers are <em>not intended for sustained
-    business use</em>. We rely on them today because they are the most
-    convenient public endpoints for the XRPL. The plan is to migrate
-    primary traffic to the community-operated cluster
+    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('We rely on them today because they are the most convenient public endpoints for the XRPL. The plan is to migrate primary traffic to the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> (run by the InFTF) before
-    sustained traffic warrants it, and to run our own
-    <code>rippled</code> node as the project grows.
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the InFTF) before sustained traffic warrants it, and to run our own') }}
+    <code>rippled</code> {{ _('node as the project grows.') }}
   </p>
 
-  <h3>Database</h3>
+  <h3>{{ _('Database') }}</h3>
   <p>
-    Worker writes to <strong>Neon Postgres</strong> (free tier; managed
-    EU-hosted Postgres) and a redundant local SQLite snapshot. The web
-    app prefers Postgres for fresh reads and falls back to the SQLite
-    snapshot if the Postgres connection is unavailable. No third-party
-    analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama,
-    CoinGecko) feeds any number on this site.
+    {{ _('Worker writes to') }} <strong>{{ _('Neon Postgres') }}</strong> {{ _('(free tier; managed EU-hosted Postgres) and a redundant local SQLite snapshot. The web app prefers Postgres for fresh reads and falls back to the SQLite snapshot if the Postgres connection is unavailable. No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any number on this site.') }}
   </p>
 
-  <h3>Reference labels</h3>
+  <h3>{{ _('Reference labels') }}</h3>
   <p>
-    Token display names and named-account labels are hand-curated in
-    <code>named_accounts.json</code> and <code>token_names.json</code>
-    in the public GitHub repo. Each label has a verifiable source URL
-    (exchange page, project <code>.toml</code>, or audit). Labels are
-    accepted via public PR review; same model as mempool.space's
-    mining-pool list.
+    {{ _('Token display names and named-account labels are hand-curated in') }}
+    <code>named_accounts.json</code> {{ _('and') }} <code>token_names.json</code>
+    {{ _('in the public GitHub repo. Each label has a verifiable source URL (exchange page, project') }} <code>.toml</code>, {{ _('or audit). Labels are accepted via public PR review; same model as mempool.space\'s mining-pool list.') }}
   </p>
 
-  <h2>Methodology notes</h2>
+  <h2>{{ _('Methodology notes') }}</h2>
   <ul>
-    <li><strong>Whale movement.</strong> A single XRP <code>Payment</code>
-      transaction of <strong>50,000 XRP or more</strong>. Smaller
-      transfers don't appear on <a href="/whales">/whales</a>. We do
-      <em>not</em> aggregate multiple smaller transfers — each row is
-      one on-chain payment.</li>
-    <li><strong>Token volume.</strong> Sum of <code>Payment</code> +
-      <code>OfferCreate</code> fills + AMM swap legs touching that
-      currency/issuer pair, over a 30-day window.</li>
-    <li><strong>AMM "current price".</strong> Computed live from the
-      pool's reserves (<code>account_info</code> + <code>account_lines</code>),
-      same constant-product formula the protocol uses internally. This
-      is the spot price at the moment of fetch — it changes with every
-      swap.</li>
-    <li><strong>Counterparty network on /wallet.</strong> Built from
-      the wallet's last 1,000 <code>account_tx</code> entries. Sparse
-      wallets (under 3 counterparties in 30 days) display a note
-      explaining the gap, usually because most activity is order-book
-      trading without a single counterparty.</li>
-    <li><strong>"First-seen" badge.</strong> A counterparty is flagged
-      amber if its first transaction with this wallet was within the
-      last 7 days. When 100% of counterparties are first-seen-recent,
-      the per-node badges collapse to a single wallet-level banner to
-      avoid alarm fatigue.</li>
-    <li><strong>Token labels.</strong> Only displayed when a first-party
-      source is on file. Unverified issuers render unlabeled rather
-      than guessed.</li>
+    <li><strong>{{ _('Whale movement.') }}</strong> {{ _('A single XRP') }} <code>Payment</code>
+      {{ _('transaction of') }} <strong>{{ _('50,000 XRP or more') }}</strong>. {{ _('Smaller transfers don\'t appear on') }} <a href="/whales">/whales</a>. {{ _('We do') }}
+      <em>{{ _('not') }}</em> {{ _('aggregate multiple smaller transfers — each row is one on-chain payment.') }}</li>
+    <li><strong>{{ _('Token volume.') }}</strong> {{ _('Sum of') }} <code>Payment</code> +
+      <code>OfferCreate</code> {{ _('fills + AMM swap legs touching that currency/issuer pair, over a 30-day window.') }}</li>
+    <li><strong>{{ _('AMM "current price".') }}</strong> {{ _('Computed live from the pool\'s reserves') }} (<code>account_info</code> + <code>account_lines</code>),
+      {{ _('same constant-product formula the protocol uses internally. This is the spot price at the moment of fetch — it changes with every swap.') }}</li>
+    <li><strong>{{ _('Counterparty network on /wallet.') }}</strong> {{ _('Built from the wallet\'s last 1,000') }} <code>account_tx</code> {{ _('entries. Sparse wallets (under 3 counterparties in 30 days) display a note explaining the gap, usually because most activity is order-book trading without a single counterparty.') }}</li>
+    <li><strong>{{ _('"First-seen" badge.') }}</strong> {{ _('A counterparty is flagged amber if its first transaction with this wallet was within the last 7 days. When 100% of counterparties are first-seen-recent, the per-node badges collapse to a single wallet-level banner to avoid alarm fatigue.') }}</li>
+    <li><strong>{{ _('Token labels.') }}</strong> {{ _('Only displayed when a first-party source is on file. Unverified issuers render unlabeled rather than guessed.') }}</li>
   </ul>
 
-  <h2>Known limitations</h2>
+  <h2>{{ _('Known limitations') }}</h2>
   <ul>
-    <li><strong>Wallet pulse sparkline</strong> is built from a daily
-      histogram of the last 30 days, fetched on page load. The
-      WebSocket only bumps today's bar — historical bars are fixed
-      until the next page reload.</li>
-    <li><strong>Whale wallet activity</strong> may double-count a single
-      DEX fill if it crosses multiple offers. Working on de-duplication
-      keyed by ledger sequence + tx hash.</li>
-    <li><strong>Counterparty graph</strong> doesn't currently extract
-      DEX order-book counterparties (only direct payments, AMM swaps,
-      and trustline counterparties). Roadmap.</li>
-    <li><strong>Worker downtime</strong> — if the streaming worker
-      crashes or restarts, panels fed by it (<code>/whales</code>,
-      <code>/tokens</code>) show data up to the last successful write.
-      Per-page WebSockets continue working independently.</li>
-    <li><strong>Reserve values.</strong> The base + per-object reserve
-      shown on each wallet page is pulled live from
-      <code>server_info</code> (validated_ledger), cached 10 minutes.
-      Reserves only change via on-chain amendment, so the cache is safe;
-      the literal numbers in the calculation will reflect the network's
-      current parameters automatically.</li>
+    <li><strong>{{ _('Wallet pulse sparkline') }}</strong> {{ _('is built from a daily histogram of the last 30 days, fetched on page load. The WebSocket only bumps today\'s bar — historical bars are fixed until the next page reload.') }}</li>
+    <li><strong>{{ _('Whale wallet activity') }}</strong> {{ _('may double-count a single DEX fill if it crosses multiple offers. Working on de-duplication keyed by ledger sequence + tx hash.') }}</li>
+    <li><strong>{{ _('Counterparty graph') }}</strong> {{ _('doesn\'t currently extract DEX order-book counterparties (only direct payments, AMM swaps, and trustline counterparties). Roadmap.') }}</li>
+    <li><strong>{{ _('Worker downtime') }}</strong> — {{ _('if the streaming worker crashes or restarts, panels fed by it') }} (<code>/whales</code>,
+      <code>/tokens</code>) {{ _('show data up to the last successful write. Per-page WebSockets continue working independently.') }}</li>
+    <li><strong>{{ _('Reserve values.') }}</strong> {{ _('The base + per-object reserve shown on each wallet page is pulled live from') }}
+      <code>server_info</code> {{ _('(validated_ledger), cached 10 minutes. Reserves only change via on-chain amendment, so the cache is safe; the literal numbers in the calculation will reflect the network\'s current parameters automatically.') }}</li>
   </ul>
 
-  <h2>Infrastructure</h2>
+  <h2>{{ _('Infrastructure') }}</h2>
   <ul>
-    <li><strong>Web app:</strong> Render starter ($7/mo). Source on
-      GitHub, MIT-licensed.</li>
-    <li><strong>Worker:</strong> Render background worker ($7/mo).
-      Streams XRPL → Postgres 24/7.</li>
-    <li><strong>Database:</strong> Neon Postgres (free tier).</li>
-    <li><strong>CDN:</strong> Cloudflare in front of Render.</li>
-    <li><strong>Status:</strong> <a href="/health">/health</a> — public
-      uptime + ledger-sync indicator.</li>
+    <li><strong>{{ _('Web app:') }}</strong> {{ _('Render starter ($7/mo). Source on GitHub, MIT-licensed.') }}</li>
+    <li><strong>{{ _('Worker:') }}</strong> {{ _('Render background worker ($7/mo). Streams XRPL → Postgres 24/7.') }}</li>
+    <li><strong>{{ _('Database:') }}</strong> {{ _('Neon Postgres (free tier).') }}</li>
+    <li><strong>{{ _('CDN:') }}</strong> {{ _('Cloudflare in front of Render.') }}</li>
+    <li><strong>{{ _('Status:') }}</strong> <a href="/health">/health</a> — {{ _('public uptime + ledger-sync indicator.') }}</li>
   </ul>
 
-  <h2>Versioning this page</h2>
+  <h2>{{ _('Versioning this page') }}</h2>
   <p>
-    This methodology page is part of the same git repository as the
-    code. Any time the site's caching behavior, data sources, or
-    methodology changes, the corresponding edit lands in this file in
-    the same commit. The commit history of <code>templates/methodology.html</code>
-    is the canonical change log.
+    {{ _('This methodology page is part of the same git repository as the code. Any time the site\'s caching behavior, data sources, or methodology changes, the corresponding edit lands in this file in the same commit. The commit history of') }} <code>templates/methodology.html</code>
+    {{ _('is the canonical change log.') }}
   </p>
 
   <div class="callout">
     <p style="margin: 0;">
-      <strong>Found a discrepancy?</strong> Open an issue on
+      <strong>{{ _('Found a discrepancy?') }}</strong> {{ _('Open an issue on') }}
       <a href="https://github.com/Enkryptedx/xrpldashboard/issues" target="_blank" rel="noopener noreferrer">GitHub</a>
-      or email
+      {{ _('or email') }}
       <a href="mailto:contact@xrpldashboard.com?subject=Methodology%20discrepancy">contact@xrpldashboard.com</a>.
-      We'll either fix the data, fix the explanation, or — if it's a
-      genuine ambiguity — add it to the limitations list above.
+      {{ _('We\'ll either fix the data, fix the explanation, or — if it\'s a genuine ambiguity — add it to the limitations list above.') }}
     </p>
   </div>
 
   <div class="footer">
-    Last updated alongside the code at
-    <code>templates/methodology.html</code> · See
-    <a href="/about">/about</a> for mission and funding ·
-    <a href="/health">/health</a> for live infrastructure status.
+    {{ _('Last updated alongside the code at') }}
+    <code>templates/methodology.html</code> · {{ _('See') }}
+    <a href="/about">/about</a> {{ _('for mission and funding') }} ·
+    <a href="/health">/health</a> {{ _('for live infrastructure status.') }}
   </div>
 
 </div>

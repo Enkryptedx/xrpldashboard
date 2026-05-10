@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cold storage · xrpldashboard</title>
+  <title>{{ _('Cold storage') }} · xrpldashboard</title>
   {% set meta_title = "Cold storage · xrpldashboard" %}
   {% set meta_description = "Where the big XRP balances actually live — Ripple's monthly-release escrows and verified exchange custody, with the schedule of upcoming unlocks." %}
   {% include "_head_meta.html" %}
@@ -166,14 +166,14 @@
 
   <div class="hero">
     <div class="hero-inner">
-      <div class="hero-eyebrow">Cold storage tracker</div>
-      <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} XRP locked</h1></div>
+      <div class="hero-eyebrow">{{ _('Cold storage tracker') }}</div>
+      <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} {{ _('XRP locked') }}</h1></div>
       <div class="hero-meta">
-        Across {{ data.tracked_count }} addresses ·
-        largest: <strong style="color: var(--text);">{{ data.largest_name }}</strong>
+        {{ _('Across') }} {{ data.tracked_count }} {{ _('addresses') }} ·
+        {{ _('largest:') }} <strong style="color: var(--text);">{{ data.largest_name }}</strong>
         ({{ "{:,.0f}".format(data.largest_xrp) }} XRP)
         {% if data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
-          · cached {{ data.cached_age_seconds | round(0) | int }}s ago
+          · {{ _('cached') }} {{ data.cached_age_seconds | round(0) | int }}{{ _('s ago') }}
         {% endif %}
       </div>
     </div>
@@ -181,46 +181,46 @@
 
   <div class="kpi-strip">
     <div class="kpi">
-      <div class="l">Total locked</div>
+      <div class="l">{{ _('Total locked') }}</div>
       <div class="v">{{ "{:,.0f}".format(data.total_xrp) }}</div>
-      <div class="sub">XRP across {{ data.tracked_count }} accounts</div>
+      <div class="sub">{{ _('XRP across') }} {{ data.tracked_count }} {{ _('accounts') }}</div>
     </div>
     <div class="kpi">
-      <div class="l">Largest holding</div>
+      <div class="l">{{ _('Largest holding') }}</div>
       <div class="v">{{ "{:,.0f}".format(data.largest_xrp) }}</div>
       <div class="sub">{{ data.largest_name }}</div>
     </div>
     <div class="kpi">
-      <div class="l">Tracked addresses</div>
+      <div class="l">{{ _('Tracked addresses') }}</div>
       <div class="v">{{ data.tracked_count }}</div>
-      <div class="sub">{{ data.fetched_ok }} responding</div>
+      <div class="sub">{{ data.fetched_ok }} {{ _('responding') }}</div>
     </div>
     <div class="kpi">
-      <div class="l">Source</div>
+      <div class="l">{{ _('Source') }}</div>
       <div class="v" style="font-size: var(--fs-md);">xrp-ledger.toml</div>
-      <div class="sub">first-party verified</div>
+      <div class="sub">{{ _('first-party verified') }}</div>
     </div>
   </div>
 
   <div class="card">
     <div class="section-head" style="margin-bottom: 0.4em;">
-      <h2>Per-account balances</h2>
-      <span class="meta">cached · refreshes every 5 min</span>
+      <h2>{{ _('Per-account balances') }}</h2>
+      <span class="meta">{{ _('cached · refreshes every 5 min') }}</span>
     </div>
 
     <div class="scope-note">
       {{ data.scope_note }}
-      Historical change tracking (24h / 7d deltas) will appear here once snapshots accumulate.
+      {{ _('Historical change tracking (24h / 7d deltas) will appear here once snapshots accumulate.') }}
     </div>
 
     {% set max_bal = data.rows | map(attribute="balance_xrp") | reject("none") | list %}
     {% set max_val = (max_bal | max) if max_bal else 1 %}
 
     <div class="esc-row head">
-      <div>Account</div>
-      <div style="text-align: right;">Balance</div>
+      <div>{{ _('Account') }}</div>
+      <div style="text-align: right;">{{ _('Balance') }}</div>
       <div></div>
-      <div style="text-align: right;">Verify</div>
+      <div style="text-align: right;">{{ _('Verify') }}</div>
     </div>
 
     {% for r in data.rows %}
@@ -230,7 +230,7 @@
           <span class="sub">{{ r.address_short }}</span>
         </div>
         {% if r.error %}
-          <div class="esc-bal error-cell">— RPC error</div>
+          <div class="esc-bal error-cell">— {{ _('RPC error') }}</div>
           <div class="esc-bar-cell"></div>
         {% elif r.balance_xrp == 0 %}
           <div class="esc-bal empty-cell">0 XRP</div>
@@ -250,16 +250,12 @@
         </div>
       </div>
     {% else %}
-      {# Defensive: empty rows means the cold-wallet RPC fetch returned
-         nothing (network blip or upstream change). Render a clear status
-         instead of a silent blank section so users don't think we lost
-         track of the balances. #}
       <div class="esc-row">
         <div class="esc-name" style="grid-column: 1 / -1; color: var(--muted);
              text-align: center; padding: 1em 0;">
-          Balances temporarily unavailable — refresh in a minute, or check
+          {{ _('Balances temporarily unavailable — refresh in a minute, or check') }}
           <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a>
-          directly.
+          {{ _('directly.') }}
         </div>
       </div>
     {% endfor %}
@@ -269,22 +265,19 @@
         xrp-ledger.toml ↗
       </a>
       <a class="link-pill" href="https://ripple.com/insights/q1-2024-xrp-markets-report/" target="_blank" rel="noopener">
-        Ripple escrow context ↗
+        {{ _('Ripple escrow context') }} ↗
       </a>
     </div>
   </div>
 
   <footer>
-    Data: live <code style="color: var(--cyan);">account_info</code> against {{ data.tracked_count }}
-    Ripple-declared escrow accounts.
+    {{ _('Data: live') }} <code style="color: var(--cyan);">account_info</code> {{ _('against') }} {{ data.tracked_count }}
+    {{ _('Ripple-declared escrow accounts.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/about">about</a> ·
-    <a href="/">dashboard</a>
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a>
   </footer>
 
 </div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>not found · xrpldashboard</title>
+  <title>{{ _('not found') }} · xrpldashboard</title>
   {% set meta_title = "not found · xrpldashboard" %}
   {% set meta_description = "That page doesn't exist on xrpldashboard." %}
   {% include "_head_meta.html" %}
@@ -74,25 +74,23 @@
 
   {% include "_nav.html" %}
 
-  <div class="code">404 · page not found</div>
-  <h1>That page isn't here.</h1>
+  <div class="code">404 · {{ _('page not found') }}</div>
+  <h1>{{ _('That page isn\'t here.') }}</h1>
   <p class="lede">
-    The URL you followed doesn't match anything on xrpldashboard. Maybe a
-    stale link, maybe a typo. Here's where to go from here:
+    {{ _('The URL you followed doesn\'t match anything on xrpldashboard. Maybe a stale link, maybe a typo. Here\'s where to go from here:') }}
   </p>
 
   <div class="links">
-    <a href="/">→ dashboard</a>
-    <a href="/whales">→ whales</a>
-    <a href="/tokens">→ tokens</a>
-    <a href="/pools">→ pools</a>
-    <a href="/cold-storage">→ cold storage</a>
-    <a href="/about">→ about</a>
+    <a href="/">→ {{ _('dashboard') }}</a>
+    <a href="/whales">→ {{ _('whales') }}</a>
+    <a href="/tokens">→ {{ _('tokens') }}</a>
+    <a href="/pools">→ {{ _('pools') }}</a>
+    <a href="/cold-storage">→ {{ _('cold storage') }}</a>
+    <a href="/about">→ {{ _('about') }}</a>
   </div>
 
   <div class="footer">
-    Looking for a wallet? Use the search on the dashboard. Looking for a
-    specific token? Try the tokens page — they're all listed there.
+    {{ _('Looking for a wallet? Use the search on the dashboard. Looking for a specific token? Try the tokens page — they\'re all listed there.') }}
   </div>
 
 </div>

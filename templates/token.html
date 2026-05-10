@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ data.display }} · token · xrpldashboard</title>
+  <title>{{ data.display }} · {{ _('token') }} · xrpldashboard</title>
   {% set meta_title = data.display ~ " · token · xrpldashboard" %}
   {% set meta_description = data.display ~ " on the XRP Ledger — issuer, holders, and recent activity. Independent on-chain data, not exchange-listed prices." %}
   {% include "_head_meta.html" %}
@@ -197,28 +197,27 @@
   {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
   {{ freshness_badge_css() }}
 
-  <div class="crumb"><a href="/tokens">← back to tokens</a></div>
+  <div class="crumb"><a href="/tokens">← {{ _('back to tokens') }}</a></div>
 
   {% if data.error %}
   <div class="error-banner">{{ data.error }}</div>
   {% endif %}
 
-  {# ========== Hero ========== #}
   <div class="hero">
     <div class="hero-inner">
-      <div class="hero-eyebrow">Token detail</div>
+      <div class="hero-eyebrow">{{ _('Token detail') }}</div>
       <div class="hero-name">
         <h1{% if not data.labeled %} class="unlabeled"{% endif %}>{{ data.display }}</h1>
         {% if data.category %}
           <span class="cat-badge cat-{{ data.category }}">{{ data.category|replace("_"," ") }}</span>
         {% else %}
-          <span class="cat-badge cat-unlabeled">unlabeled</span>
+          <span class="cat-badge cat-unlabeled">{{ _('unlabeled') }}</span>
         {% endif %}
       </div>
       <div class="hero-meta">
-        Issued by <span class="iss">{{ data.issuer_short }}</span>
+        {{ _('Issued by') }} <span class="iss">{{ data.issuer_short }}</span>
         {% if data.currency_decoded and data.currency_decoded != data.display %}
-          · raw code <span class="iss">{{ data.currency_decoded }}</span>
+          · {{ _('raw code') }} <span class="iss">{{ data.currency_decoded }}</span>
         {% endif %}
       </div>
       <div class="hero-meta" style="margin-top:0.7em;">
@@ -229,35 +228,33 @@
     </div>
   </div>
 
-  {# ========== KPI strip ========== #}
   <div class="kpi-strip">
     <div class="kpi">
-      <div class="l">Trades · 24h</div>
+      <div class="l">{{ _('Trades · 24h') }}</div>
       <div class="v">{{ "{:,}".format(data.trades_24h) }}</div>
-      <div class="sub">on-ledger token events</div>
+      <div class="sub">{{ _('on-ledger token events') }}</div>
     </div>
     <div class="kpi">
-      <div class="l">Trades · 7d</div>
+      <div class="l">{{ _('Trades · 7d') }}</div>
       <div class="v">{{ "{:,}".format(data.trades_7d) }}</div>
-      <div class="sub">past week, hourly buckets</div>
+      <div class="sub">{{ _('past week, hourly buckets') }}</div>
     </div>
     <div class="kpi">
-      <div class="l">Trades · all time</div>
+      <div class="l">{{ _('Trades · all time') }}</div>
       <div class="v">{{ "{:,}".format(data.trades_all) }}</div>
-      <div class="sub">since watcher start</div>
+      <div class="sub">{{ _('since watcher start') }}</div>
     </div>
     <div class="kpi">
-      <div class="l">AMM pools</div>
+      <div class="l">{{ _('AMM pools') }}</div>
       <div class="v">{{ data.pool_count }}</div>
-      <div class="sub">{% if data.last_seen_age %}last seen {{ data.last_seen_age }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if data.last_seen_age %}{{ _('last seen') }} {{ data.last_seen_age }}{% else %}—{% endif %}</div>
     </div>
   </div>
 
-  {# ========== Sparkline ========== #}
   <div class="card">
     <div class="section-head">
-      <h2>Trade activity · last 7 days</h2>
-      <span class="meta">hourly buckets · {{ data.hours_active }}h active</span>
+      <h2>{{ _('Trade activity · last 7 days') }}</h2>
+      <span class="meta">{{ _('hourly buckets') }} · {{ data.hours_active }}{{ _('h active') }}</span>
     </div>
     {% if data.trades_7d > 0 %}
       {% set max_val = data.sparkline | max %}
@@ -291,22 +288,21 @@
         {% endfor %}
       </svg>
       <div class="spark-axis">
-        <span>7 days ago</span>
-        <span>now</span>
+        <span>{{ _('7 days ago') }}</span>
+        <span>{{ _('now') }}</span>
       </div>
     {% else %}
       <div class="empty" style="margin-top:0.5em;">
-        <div class="big">No trade activity in the last 7 days.</div>
-        <div>Either this token isn't being traded, or the watcher hasn't picked it up yet. Check <a href="/health">/health</a>.</div>
+        <div class="big">{{ _('No trade activity in the last 7 days.') }}</div>
+        <div>{{ _('Either this token isn\'t being traded, or the watcher hasn\'t picked it up yet. Check') }} <a href="/health">/health</a>.</div>
       </div>
     {% endif %}
   </div>
 
-  {# ========== AMM pools containing this token ========== #}
   <div class="card">
     <div class="section-head">
-      <h2>AMM pools holding this token</h2>
-      <span class="meta">{{ data.pool_count }} pool{{ '' if data.pool_count == 1 else 's' }}</span>
+      <h2>{{ _('AMM pools holding this token') }}</h2>
+      <span class="meta">{{ data.pool_count }} {{ _('pool') if data.pool_count == 1 else _('pools') }}</span>
     </div>
     {% if data.pools %}
       {% for p in data.pools[:20] %}
@@ -331,55 +327,50 @@
       {% endfor %}
       {% if data.pools|length > 20 %}
         <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
-          Showing top 20 of {{ data.pools|length }} pools by LP balance.
+          {{ _('Showing top 20 of') }} {{ data.pools|length }} {{ _('pools by LP balance.') }}
         </div>
       {% endif %}
     {% else %}
       <div class="empty" style="margin-top:0.4em;">
-        <div class="big">No AMM pools indexed for this token.</div>
-        <div>This token isn't in any indexed AMM pool. It may still trade on the order book — see XRPSCAN for the full DEX.</div>
+        <div class="big">{{ _('No AMM pools indexed for this token.') }}</div>
+        <div>{{ _('This token isn\'t in any indexed AMM pool. It may still trade on the order book — see XRPSCAN for the full DEX.') }}</div>
       </div>
     {% endif %}
   </div>
 
-  {# ========== Link-outs ========== #}
   <div class="card">
-    <h2>Cross-check on other explorers</h2>
+    <h2>{{ _('Cross-check on other explorers') }}</h2>
     <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.7em;">
-      We link out so you can verify these numbers against another reading.
-      Linking out for verification strengthens trust — see <a href="/about">about</a>.
+      {{ _('We link out so you can verify these numbers against another reading. Linking out for verification strengthens trust — see') }} <a href="/about">{{ _('about') }}</a>.
     </p>
     <div class="links">
       <a class="link-pill" href="https://xrpscan.com/account/{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
-        XRPSCAN · issuer
+        XRPSCAN · {{ _('issuer') }}
       </a>
       <a class="link-pill" href="https://bithomp.com/explorer/{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
-        Bithomp · issuer
+        Bithomp · {{ _('issuer') }}
       </a>
       <a class="link-pill" href="https://xrpl.to/token/{{ data.currency_raw }}.{{ data.issuer }}" target="_blank" rel="noopener noreferrer">
-        xrpl.to · token page
+        xrpl.to · {{ _('token page') }}
       </a>
       {% if data.source_url %}
       <a class="link-pill" href="{{ data.source_url }}" target="_blank" rel="noopener noreferrer">
-        Label source
+        {{ _('Label source') }}
       </a>
       {% endif %}
     </div>
   </div>
 
   <footer>
-    Token detail · counts from <code style="color: var(--cyan);">volumes.db</code>,
-    pool list from <code style="color: var(--cyan);">amm_index.json</code>.
-    {% if data.cached_age_seconds is defined %}cached {{ "%.0f"|format(data.cached_age_seconds) }}s ago.{% endif %}
+    {{ _('Token detail · counts from') }} <code style="color: var(--cyan);">volumes.db</code>,
+    {{ _('pool list from') }} <code style="color: var(--cyan);">amm_index.json</code>.
+    {% if data.cached_age_seconds is defined %}{{ _('cached') }} {{ "%.0f"|format(data.cached_age_seconds) }}{{ _('s ago.') }}{% endif %}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/tokens">all tokens</a>
-    · <a href="mailto:contact@xrpldashboard.com">contact</a>
-    · <a href="/">dashboard</a>
+    <a href="/tokens">{{ _('all tokens') }}</a>
+    · <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a>
+    · <a href="/">{{ _('dashboard') }}</a>
   </footer>
 
 </div>

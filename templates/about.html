@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>about · xrpldashboard</title>
+  <title>{{ _('about') }} · xrpldashboard</title>
   {% set meta_title = "about · xrpldashboard" %}
   {% set meta_description = "Why xrpldashboard exists, who runs it, and how it's funded. Independent XRPL analytics — comprehensive but understandable, free of exchange-listed price feeds." %}
   {% include "_head_meta.html" %}
@@ -77,165 +77,111 @@
 
   {% include "_nav.html" %}
 
-  <h1>About xrpldashboard</h1>
+  <h1>{{ _('About xrpldashboard') }}</h1>
   <p class="lede">
-    A public-good ledger dashboard for the XRP Ledger. Free for retail
-    users, forever. A public-utility approach to ledger data:
-    opinionated about clarity, no token, no DEX, no upsells.
+    {{ _('A public-good ledger dashboard for the XRP Ledger. Free for retail users, forever. A public-utility approach to ledger data: opinionated about clarity, no token, no DEX, no upsells.') }}
   </p>
 
   <div class="callout">
     <p>
-      <strong>Launched: May 9, 2026.</strong> We&rsquo;re live and actively
-      smoothing out rough edges. If you spot something that looks wrong
-      or doesn&rsquo;t render right,
-      <a href="mailto:contact@xrpldashboard.com">tell us</a> &mdash;
-      we&rsquo;d rather hear it from you than ship around it.
+      <strong>{{ _('Launched: May 9, 2026.') }}</strong> {{ _('We\'re live and actively smoothing out rough edges. If you spot something that looks wrong or doesn\'t render right,') }}
+      <a href="mailto:contact@xrpldashboard.com">{{ _('tell us') }}</a> &mdash;
+      {{ _('we\'d rather hear it from you than ship around it.') }}
     </p>
   </div>
 
-  <h2>Mission</h2>
+  <h2>{{ _('Mission') }}</h2>
   <p>
-    Help XRP holders understand on-chain activity. Not get rich. Not
-    sell liquidity. Not push tokens. Just data, explained well, for
-    people who want to understand what they own.
+    {{ _('Help XRP holders understand on-chain activity. Not get rich. Not sell liquidity. Not push tokens. Just data, explained well, for people who want to understand what they own.') }}
   </p>
 
-  <h2>Principles</h2>
+  <h2>{{ _('Principles') }}</h2>
   <ol>
-    <li><strong>Retail-free, forever.</strong> No paywall will ever
-      bump a retail user.</li>
-    <li><strong>Plain language over jargon.</strong> Every metric is
-      explained simply.</li>
-    <li><strong>Link out generously.</strong> We're a dashboard, not a
-      directory — we send you to XRPSCAN, Bithomp, and others for the
-      granular details they do better.</li>
-    <li><strong>Editorial voice is part of the product.</strong> We
-      make choices about what to show and how — that&rsquo;s the work.</li>
-    <li><strong>Trust over features.</strong> We never sensationalize.
-      We never imply intent we can&rsquo;t verify. We&rsquo;d rather omit than
-      overstate.</li>
-    <li><strong>Mission-first.</strong> The funding model serves the
-      mission, not the other way around.</li>
-    <li><strong>Open source.</strong> MIT-licensed. The full source is
-      on GitHub — anyone can fork, audit, or self-host.</li>
-    <li><strong>Transparent metrics.</strong> Our visitor analytics
-      and our infrastructure status (<a href="/health">/health</a>) are
-      both publicly viewable. Nothing to hide.</li>
+    <li><strong>{{ _('Retail-free, forever.') }}</strong> {{ _('No paywall will ever bump a retail user.') }}</li>
+    <li><strong>{{ _('Plain language over jargon.') }}</strong> {{ _('Every metric is explained simply.') }}</li>
+    <li><strong>{{ _('Link out generously.') }}</strong> {{ _('We\'re a dashboard, not a directory — we send you to XRPSCAN, Bithomp, and others for the granular details they do better.') }}</li>
+    <li><strong>{{ _('Editorial voice is part of the product.') }}</strong> {{ _('We make choices about what to show and how — that\'s the work.') }}</li>
+    <li><strong>{{ _('Trust over features.') }}</strong> {{ _('We never sensationalize. We never imply intent we can\'t verify. We\'d rather omit than overstate.') }}</li>
+    <li><strong>{{ _('Mission-first.') }}</strong> {{ _('The funding model serves the mission, not the other way around.') }}</li>
+    <li><strong>{{ _('Open source.') }}</strong> {{ _('MIT-licensed. The full source is on GitHub — anyone can fork, audit, or self-host.') }}</li>
+    <li><strong>{{ _('Transparent metrics.') }}</strong> {{ _('Our visitor analytics and our infrastructure status') }} (<a href="/health">/health</a>) {{ _('are both publicly viewable. Nothing to hide.') }}</li>
   </ol>
 
-  <h2>How it works</h2>
+  <h2>{{ _('How it works') }}</h2>
   <p>
-    Every live number on this site is computed directly from the XRP
-    Ledger. We do not aggregate or re-publish data from third-party
-    APIs (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama). Their
-    products are good — but if we depended on them for our data, we&rsquo;d
-    just be a wrapper for their work.
+    {{ _('Every live number on this site is computed directly from the XRP Ledger. We do not aggregate or re-publish data from third-party APIs (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama). Their products are good — but if we depended on them for our data, we\'d just be a wrapper for their work.') }}
   </p>
 
-  <h3>Live ledger data</h3>
+  <h3>{{ _('Live ledger data') }}</h3>
   <p>
-    Comes from public XRPL nodes (currently Ripple&rsquo;s
-    <code>s1.ripple.com</code> and <code>s2.ripple.com</code>). A node
-    is just a peer in the consensus network — it can&rsquo;t lie about ledger
-    contents without the rest of the network rejecting it. The data is
-    canonical. <strong>Disclosure:</strong> Ripple&rsquo;s documentation
-    states their public servers are not intended for sustained business
-    use. The plan is to migrate to the community-operated cluster
+    {{ _('Comes from public XRPL nodes (currently Ripple\'s') }}
+    <code>s1.ripple.com</code> {{ _('and') }} <code>s2.ripple.com</code>). {{ _('A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }} <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use. The plan is to migrate to the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>
-    before sustained traffic warrants it, and to run our own rippled
-    node as the project grows. The full per-surface cache and source
-    breakdown is on <a href="/methodology">/methodology</a>.
+    {{ _('before sustained traffic warrants it, and to run our own rippled node as the project grows. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
   </p>
 
-  <h3>Reference labels</h3>
+  <h3>{{ _('Reference labels') }}</h3>
   <p>
-    Token display names and named-account labels are hand-curated in
-    our open-source repo. Each label has a verifiable source URL.
-    Contributions go through public PR review (see
-    <code>TOKEN_NAMES.md</code> and <code>KNOWN_ACCOUNTS.md</code>).
-    Same pattern mempool.space uses for its mining-pool list.
+    {{ _('Token display names and named-account labels are hand-curated in our open-source repo. Each label has a verifiable source URL. Contributions go through public PR review (see') }}
+    <code>TOKEN_NAMES.md</code> {{ _('and') }} <code>KNOWN_ACCOUNTS.md</code>).
+    {{ _('Same pattern mempool.space uses for its mining-pool list.') }}
   </p>
 
-  <h3>Cross-checking</h3>
+  <h3>{{ _('Cross-checking') }}</h3>
   <p>
-    We link out to XRPSCAN, Bithomp, and other sources so you can
-    verify our numbers against alternative readings whenever you want.
-    Linking out for verification strengthens the trust principle, not
-    weakens it.
+    {{ _('We link out to XRPSCAN, Bithomp, and other sources so you can verify our numbers against alternative readings whenever you want. Linking out for verification strengthens the trust principle, not weakens it.') }}
   </p>
 
-  <h3>Methodology notes</h3>
+  <h3>{{ _('Methodology notes') }}</h3>
   <ul>
-    <li><strong>Whale movement</strong> — any single XRP transaction of
-      <strong>50,000 XRP or more</strong>. Smaller transfers don&rsquo;t
-      appear on <a href="/whales">/whales</a>.</li>
-    <li><strong>Token labels</strong> — only displayed when we can cite
-      a first-party source for the issuer (exchange page, project
-      <code>.toml</code>, etc.). Unverified issuers render unlabeled
-      rather than guessed.</li>
+    <li><strong>{{ _('Whale movement') }}</strong> — {{ _('any single XRP transaction of') }}
+      <strong>{{ _('50,000 XRP or more') }}</strong>. {{ _('Smaller transfers don\'t appear on') }} <a href="/whales">/whales</a>.</li>
+    <li><strong>{{ _('Token labels') }}</strong> — {{ _('only displayed when we can cite a first-party source for the issuer (exchange page, project') }}
+      <code>.toml</code>, {{ _('etc.). Unverified issuers render unlabeled rather than guessed.') }}</li>
   </ul>
 
   <div class="callout">
     <p>
-      Every external dependency we have — XRPL nodes, the Postgres
-      provider, the CDN — is named on
-      <a href="/methodology">/methodology</a>, with the cache TTL of
-      every surface that touches it. If a number on this site is wrong,
-      that&rsquo;s where you find out why.
+      {{ _('Every external dependency we have — XRPL nodes, the Postgres provider, the CDN — is named on') }}
+      <a href="/methodology">/methodology</a>, {{ _('with the cache TTL of every surface that touches it. If a number on this site is wrong, that\'s where you find out why.') }}
     </p>
   </div>
 
-  <h2>How it&rsquo;s funded</h2>
+  <h2>{{ _('How it\'s funded') }}</h2>
   <p>
-    Hosting and infrastructure currently run a few dollars a month,
-    covered out of pocket. As the project grows we&rsquo;ll be applying
-    for XRPL ecosystem grants, and donations are welcome
-    (<a href="mailto:contact@xrpldashboard.com?subject=Donation">see contact email</a>).
-    Eventually a
-    paid <a href="/institutional"><strong>institutional tier</strong></a>
-    (API access, alerts, custom dashboards) will help fund the public
-    retail dashboard, which stays free forever.
+    {{ _('Hosting and infrastructure currently run a few dollars a month, covered out of pocket. As the project grows we\'ll be applying for XRPL ecosystem grants, and donations are welcome') }}
+    (<a href="mailto:contact@xrpldashboard.com?subject=Donation">{{ _('see contact email') }}</a>).
+    {{ _('Eventually a paid') }} <a href="/institutional"><strong>{{ _('institutional tier') }}</strong></a>
+    {{ _('(API access, alerts, custom dashboards) will help fund the public retail dashboard, which stays free forever.') }}
   </p>
 
-  <h2>Who&rsquo;s behind it</h2>
+  <h2>{{ _('Who\'s behind it') }}</h2>
   <p>
-    Charlie Bruce is the developer behind xrpldashboard. He built it
-    to bring utility and understanding to everyone who interacts with
-    the XRP Ledger — retail holders and institutional investors alike.
-    The goal isn&rsquo;t to serve any particular issuer or exchange;
-    it&rsquo;s to make the ledger legible to the people who use it.
-    Feedback, corrections, and contributions are welcome — see
-    <em>Get involved</em> below.
+    {{ _('Charlie Bruce is the developer behind xrpldashboard. He built it to bring utility and understanding to everyone who interacts with the XRP Ledger — retail holders and institutional investors alike. The goal isn\'t to serve any particular issuer or exchange; it\'s to make the ledger legible to the people who use it. Feedback, corrections, and contributions are welcome — see') }}
+    <em>{{ _('Get involved') }}</em> {{ _('below.') }}
   </p>
 
-  <h2>Get involved</h2>
+  <h2>{{ _('Get involved') }}</h2>
   <ul>
-    <li><strong>Email:</strong>
+    <li><strong>{{ _('Email:') }}</strong>
       <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
-      — feedback, partnerships, press, or anything else.</li>
-    <li><strong>Source code:</strong>
+      — {{ _('feedback, partnerships, press, or anything else.') }}</li>
+    <li><strong>{{ _('Source code:') }}</strong>
       <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a></li>
-    <li><strong>Contribute a token display name:</strong> see
-      <code>TOKEN_NAMES.md</code> in the repo.</li>
-    <li><strong>Contribute a named account:</strong> see
-      <code>KNOWN_ACCOUNTS.md</code> in the repo.</li>
-    <li><strong>Found a bug or want a feature?</strong> Open a GitHub
-      issue or send an email.</li>
+    <li><strong>{{ _('Contribute a token display name:') }}</strong> {{ _('see') }}
+      <code>TOKEN_NAMES.md</code> {{ _('in the repo.') }}</li>
+    <li><strong>{{ _('Contribute a named account:') }}</strong> {{ _('see') }}
+      <code>KNOWN_ACCOUNTS.md</code> {{ _('in the repo.') }}</li>
+    <li><strong>{{ _('Found a bug or want a feature?') }}</strong> {{ _('Open a GitHub issue or send an email.') }}</li>
   </ul>
 
   <div class="footer">
-    xrpldashboard is independent and not affiliated with Ripple Labs,
-    the XRPL Foundation, or any exchange. Built with Python, Flask,
-    and the public XRPL.
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRPL Foundation, or any exchange. Built with Python, Flask, and the public XRPL.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="mailto:contact@xrpldashboard.com">contact</a> ·
-    <a href="/">back to dashboard</a>
+    <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
 </div>

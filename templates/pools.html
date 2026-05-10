@@ -432,75 +432,55 @@
 
   <div class="pool-hero">
     <div>
-      <h1>AMM pools{{ explainer(
+      <h1>{{ _('AMM pools') }}{{ explainer(
         "amm",
-        "What's an AMM pool",
-        "Think of it like a vending machine for swapping two tokens.
-         Anyone can drop both tokens in (this is called 'providing
-         liquidity') and earn a small fee every time someone uses it
-         to swap. The price you get depends on how much of each token
-         is sitting in the pool. TVL is the total dollar value parked
-         inside it right now.",
+        _("What's an AMM pool"),
+        _("Think of it like a vending machine for swapping two tokens. Anyone can drop both tokens in (this is called 'providing liquidity') and earn a small fee every time someone uses it to swap. The price you get depends on how much of each token is sitting in the pool. TVL is the total dollar value parked inside it right now."),
       ) }}</h1>
       <p class="lede">
-        Every AMM pool we&rsquo;ve indexed from the XRP Ledger, ranked by total
-        value locked. XRP-paired pools are sized in USD using the XRP price;
-        pools with a USD-pegged token (stablecoin/fiat) are exact, others are
-        best-effort estimates. See <a href="/about">about</a> for sourcing.
+        {{ _('Every AMM pool we\'ve indexed from the XRP Ledger, ranked by total value locked. XRP-paired pools are sized in USD using the XRP price; pools with a USD-pegged token (stablecoin/fiat) are exact, others are best-effort estimates. See') }} <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
       </p>
     </div>
     {% if rows %}
     <div class="stats">
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-format-money="1">{{ fmt_money(total_tvl_usd) }}</div>
-        <div class="l">total TVL (XRP-paired){{ explainer(
+        <div class="l">{{ _('total TVL (XRP-paired)') }}{{ explainer(
           "tvl-xrp",
-          "Why XRP-paired only",
-          "We only count pools where one side is XRP, because XRP has a
-           live, well-known dollar price we can trust. Pools that pair
-           two other tokens (like RLUSD with USDC) are harder to price
-           honestly — we'd be guessing — so they don't count toward this
-           headline number.",
+          _("Why XRP-paired only"),
+          _("We only count pools where one side is XRP, because XRP has a live, well-known dollar price we can trust. Pools that pair two other tokens (like RLUSD with USDC) are harder to price honestly — we'd be guessing — so they don't count toward this headline number."),
         ) }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ ranked_count }}" data-countup-decimals="0">{{ "{:,}".format(ranked_count) }}</div>
-        <div class="l">pools priced</div>
+        <div class="l">{{ _('pools priced') }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
-        <div class="l">exact TVL{{ explainer(
+        <div class="l">{{ _('exact TVL') }}{{ explainer(
           "tvl-exact",
-          "Exact vs estimated TVL",
-          "Exact = we can convert this pool's value to dollars without
-           guessing (because one side is XRP or a dollar-pegged
-           stablecoin). Estimated = we had to figure out a price for one
-           of the tokens by looking at where else it's traded. Estimated
-           numbers are roughly right — treat them as a ballpark, not
-           precise.",
+          _("Exact vs estimated TVL"),
+          _("Exact = we can convert this pool's value to dollars without guessing (because one side is XRP or a dollar-pegged stablecoin). Estimated = we had to figure out a price for one of the tokens by looking at where else it's traded. Estimated numbers are roughly right — treat them as a ballpark, not precise."),
         ) }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
-        <div class="l">estimated</div>
+        <div class="l">{{ _('estimated') }}</div>
       </div>
     </div>
     {% endif %}
   </div>
 
   {% if top10 %}
-  <h2>Top 10 by TVL <span class="sub">star size = pool TVL · comets fire on real on-chain events · click any star for the pool wallet</span></h2>
+  <h2>{{ _('Top 10 by TVL') }} <span class="sub">{{ _('star size = pool TVL · comets fire on real on-chain events · click any star for the pool wallet') }}</span></h2>
 
-  {# Live banner — turns green when the public XRPL WebSocket is open and
-     subscribed to the top-10 AMM accounts. Comets fire directly off
-     these events, independent of the worker. #}
   <div class="live-stream-bar" data-pools-lsb>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">connecting…</span>
+      <span class="lsb-label">{{ _('connecting…') }}</span>
     </span>
     <span class="lsb-meta">
-      Subscribed to {{ top10|length }} AMM accounts on the public XRPL WebSocket
+      {{ _('Subscribed to') }} {{ top10|length }} {{ _('AMM accounts on the public XRPL WebSocket') }}
     </span>
   </div>
   {% set max_share = top10[0].share_of_top10 or 1 %}
@@ -518,15 +498,15 @@
   ] %}
   <div class="constellation" id="constellation">
     <span class="header-tag">SECTOR · TOP10.MAP</span>
-    <div class="mode-toggle" id="mode-toggle" role="group" aria-label="Constellation data mode">
-      <button type="button" class="mt-btn" data-mode="live" aria-pressed="false">LIVE</button>
-      <button type="button" class="mt-btn" data-mode="sim"  aria-pressed="false">SIM</button>
+    <div class="mode-toggle" id="mode-toggle" role="group" aria-label="{{ _('Constellation data mode') }}">
+      <button type="button" class="mt-btn" data-mode="live" aria-pressed="false">{{ _('LIVE') }}</button>
+      <button type="button" class="mt-btn" data-mode="sim"  aria-pressed="false">{{ _('SIM') }}</button>
     </div>
-    <span class="compass" id="constellation-status">10 POOLS · STANDBY</span>
+    <span class="compass" id="constellation-status">10 {{ _('POOLS · STANDBY') }}</span>
     <span class="legend">
-      <span class="lg"><span class="dot in"></span>DEPOSIT</span>
-      <span class="lg"><span class="dot out"></span>WITHDRAW</span>
-      <span class="lg"><span class="dot swap"></span>SWAP</span>
+      <span class="lg"><span class="dot in"></span>{{ _('DEPOSIT') }}</span>
+      <span class="lg"><span class="dot out"></span>{{ _('WITHDRAW') }}</span>
+      <span class="lg"><span class="dot swap"></span>{{ _('SWAP') }}</span>
     </span>
     {# Empty SVG container — comets are appended dynamically by the poll
        script below in response to real on-chain AMM events. #}
@@ -560,7 +540,7 @@
     {% endfor %}
   </div>
 
-  <h2>Share of top-10 TVL <span class="sub">quick visual recap</span></h2>
+  <h2>{{ _('Share of top-10 TVL') }} <span class="sub">{{ _('quick visual recap') }}</span></h2>
   <div class="tvl-treemap">
     {% for p in top10 %}
     <a class="seg"
@@ -574,26 +554,26 @@
     {% endfor %}
   </div>
   <p class="tvl-caption">
-    Together: <strong>{{ fmt_money(top10_total_tvl) }}</strong>
-    — that&rsquo;s {{ "%.1f"|format(top10_share_of_all) }}% of all-pool TVL.
+    {{ _('Together:') }} <strong>{{ fmt_money(top10_total_tvl) }}</strong>
+    — {{ _('that\'s') }} {{ "%.1f"|format(top10_share_of_all) }}% {{ _('of all-pool TVL.') }}
   </p>
   {% endif %}
 
-  <h2>Browse all <span class="sub">search &amp; filter</span></h2>
+  <h2>{{ _('Browse all') }} <span class="sub">{{ _('search &amp; filter') }}</span></h2>
   <div class="browse-meta">
-    <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> pools tracked · top 100 shown by default{% if rank_in_progress %} · ranking in progress{% endif %}</span>
-    <span>Most XRPL pools have negligible TVL — switch to <em>all</em> below to see the long tail. ({{ ranked_count }} ranked{% if not rank_finished %} so far{% endif %}){% if snapshot_age_label %} · TVL snapshot {{ snapshot_age_label }}{% endif %}</span>
+    <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> {{ _('pools tracked · top 100 shown by default') }}{% if rank_in_progress %} · {{ _('ranking in progress') }}{% endif %}</span>
+    <span>{{ _('Most XRPL pools have negligible TVL — switch to') }} <em>{{ _('all') }}</em> {{ _('below to see the long tail.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %}){% if snapshot_age_label %} · {{ _('TVL snapshot') }} {{ snapshot_age_label }}{% endif %}</span>
   </div>
   <div class="search-bar">
-    <input type="search" id="pool-search" placeholder="Search pair (e.g. USDC, RLUSD, SOLO)…" autocomplete="off" spellcheck="false" />
+    <input type="search" id="pool-search" placeholder="{{ _('Search pair (e.g. USDC, RLUSD, SOLO)…') }}" autocomplete="off" spellcheck="false" />
     <span class="search-stats" id="pool-search-stats"></span>
   </div>
   <div class="filters">
-    <a class="pill {% if tier == '100' %}active{% endif %}" href="/pools?tier=100">top 100</a>
-    <a class="pill {% if tier == '500' %}active{% endif %}" href="/pools?tier=500">top 500</a>
-    <a class="pill {% if tier == 'all' %}active{% endif %}" href="/pools?tier=all">all ({{ ranked_count }})</a>
+    <a class="pill {% if tier == '100' %}active{% endif %}" href="/pools?tier=100">{{ _('top 100') }}</a>
+    <a class="pill {% if tier == '500' %}active{% endif %}" href="/pools?tier=500">{{ _('top 500') }}</a>
+    <a class="pill {% if tier == 'all' %}active{% endif %}" href="/pools?tier=all">{{ _('all') }} ({{ ranked_count }})</a>
   </div>
-  <div class="search-empty" id="pool-search-empty">No pools match that search. Try fewer letters, or switch tier to <a href="/pools?tier=all">all</a>.</div>
+  <div class="search-empty" id="pool-search-empty">{{ _('No pools match that search. Try fewer letters, or switch tier to') }} <a href="/pools?tier=all">{{ _('all') }}</a>.</div>
 
   {% if rows %}
     {% for p in rows %}
@@ -624,46 +604,35 @@
     {% endfor %}
   {% else %}
     <div class="empty">
-      <div class="big">No ranked pools yet.</div>
+      <div class="big">{{ _('No ranked pools yet.') }}</div>
       <div>
-        The bootstrap scan has indexed {{ "{:,}".format(indexed_count) }}
-        AMMs but ranking hasn't run yet. Run
-        <code>python rank_amms.py</code> to populate this view.
+        {{ _('The bootstrap scan has indexed') }} {{ "{:,}".format(indexed_count) }}
+        {{ _('AMMs but ranking hasn\'t run yet. Run') }}
+        <code>python rank_amms.py</code> {{ _('to populate this view.') }}
       </div>
     </div>
   {% endif %}
 
   <div class="callout">
     <p>
-      <strong>Why TVL has different statuses:</strong> XRP-paired pools
-      with a USD-pegged token (stablecoin or fiat-backed) get an
-      <span class="status-exact">exact</span> TVL. XRP-paired pools whose
-      token has no peg get an <span class="status-estimated">estimated</span>
-      TVL — 2&times; the XRP-side value, since AMM curves balance 50/50.
-      Token-token pools (no XRP side) are tagged
-      <span class="status-non_xrp_pair">non&nbsp;xrp&nbsp;pair</span> and
-      sink to the bottom — we&rsquo;ll price them once a derived token
-      price feed exists.
+      <strong>{{ _('Why TVL has different statuses:') }}</strong> {{ _('XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) get an') }}
+      <span class="status-exact">{{ _('exact') }}</span> {{ _('TVL. XRP-paired pools whose token has no peg get an') }} <span class="status-estimated">{{ _('estimated') }}</span>
+      {{ _('TVL — 2× the XRP-side value, since AMM curves balance 50/50. Token-token pools (no XRP side) are tagged') }}
+      <span class="status-non_xrp_pair">{{ _('non xrp pair') }}</span> {{ _('and sink to the bottom — we\'ll price them once a derived token price feed exists.') }}
     </p>
     <p>
-      <strong>Catalog is still expanding.</strong> A bootstrap scan walks
-      the ledger by object ID, so the indexed list grows as the scan
-      progresses. The {{ "{:,}".format(indexed_count) }} you see above is
-      the current count — it goes up over time, not down.
+      <strong>{{ _('Catalog is still expanding.') }}</strong> {{ _('A bootstrap scan walks the ledger by object ID, so the indexed list grows as the scan progresses. The') }} {{ "{:,}".format(indexed_count) }} {{ _('you see above is the current count — it goes up over time, not down.') }}
     </p>
   </div>
 
   <div class="footer">
-    swaps and TVL stream in live via WebSocket; pool index seeded from
-    <code>amm_info</code> on the public XRPL node.
+    {{ _('swaps and TVL stream in live via WebSocket; pool index seeded from') }}
+    <code>amm_info</code> {{ _('on the public XRPL node.') }}
     <br><br>
-    <strong>Not financial advice.</strong> Information shown is for
-    educational purposes only and does not constitute financial,
-    investment, or tax advice. Do your own research before making
-    decisions about XRP or other digital assets.
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/">dashboard</a> · <a href="/about">about</a> ·
-    <a href="mailto:contact@xrpldashboard.com">contact</a>
+    <a href="/">{{ _('dashboard') }}</a> · <a href="/about">{{ _('about') }}</a> ·
+    <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a>
   </div>
 
 </div>

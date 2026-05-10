@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:31-0700\n"
+"POT-Creation-Date: 2026-05-10 07:30-0700\n"
 "PO-Revision-Date: 2026-05-10 06:25-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -18,37 +18,992 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: templates/_nav.html:66
+#: templates/404.html:6
+msgid "not found"
+msgstr "introuvable"
+
+#: templates/404.html:77
+msgid "page not found"
+msgstr "page introuvable"
+
+#: templates/404.html:78
+msgid "That page isn't here."
+msgstr "Cette page n'existe pas."
+
+#: templates/404.html:80
+msgid ""
+"The URL you followed doesn't match anything on xrpldashboard. Maybe a "
+"stale link, maybe a typo. Here's where to go from here:"
+msgstr ""
+
+#: templates/404.html:84 templates/500.html:84 templates/_nav.html:66
+#: templates/cold_storage.html:280 templates/health.html:434
+#: templates/pools.html:634 templates/token.html:373
 msgid "dashboard"
 msgstr "tableau"
 
-#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
-msgid "pools"
-msgstr "pools"
-
-#: templates/_nav.html:68 templates/index.html:399
+#: templates/404.html:85 templates/500.html:85 templates/_nav.html:68
+#: templates/health.html:436 templates/index.html:399 templates/tokens.html:477
+#: templates/whales.html:6 templates/whales.html:300
 msgid "whales"
 msgstr "baleines"
 
-#: templates/_nav.html:69 templates/index.html:400
+#: templates/404.html:86 templates/500.html:86 templates/_nav.html:69
+#: templates/health.html:437 templates/index.html:400 templates/tokens.html:6
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70 templates/index.html:401
+#: templates/404.html:87 templates/500.html:87 templates/_nav.html:67
+#: templates/health.html:435 templates/index.html:398 templates/index.html:591
+#: templates/token.html:305
+msgid "pools"
+msgstr "pools"
+
+#: templates/404.html:88
+#, fuzzy
+msgid "cold storage"
+msgstr "Stockage froid"
+
+#: templates/404.html:89 templates/_nav.html:72 templates/about.html:6
+#: templates/cold_storage.html:279 templates/health.html:438
+#: templates/index.html:402 templates/index.html:630
+#: templates/institutional.html:168 templates/pools.html:441
+#: templates/pools.html:634 templates/token.html:344 templates/tokens.html:345
+#: templates/tokens.html:477 templates/whales.html:249
+msgid "about"
+msgstr "à propos"
+
+#: templates/404.html:93
+msgid ""
+"Looking for a wallet? Use the search on the dashboard. Looking for a "
+"specific token? Try the tokens page — they're all listed there."
+msgstr ""
+
+#: templates/500.html:6
+msgid "error"
+msgstr "erreur"
+
+#: templates/500.html:77
+msgid "server error"
+msgstr "erreur serveur"
+
+#: templates/500.html:78
+msgid "Something broke on our end."
+msgstr "Quelque chose a échoué de notre côté."
+
+#: templates/500.html:80
+msgid ""
+"The page you asked for hit an error. The committed snapshots are almost "
+"always available even when live data isn't — try one of these:"
+msgstr ""
+
+#: templates/500.html:88
+#, fuzzy
+msgid "system health"
+msgstr "état"
+
+#: templates/500.html:92
+msgid ""
+"If this keeps happening, the live workers may be paused. The /health page"
+" shows operational status for the bootstrap scanner and the live "
+"transaction watcher."
+msgstr ""
+
+#: templates/_nav.html:70 templates/health.html:6 templates/index.html:401
 msgid "health"
 msgstr "état"
 
-#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:619
+#: templates/methodology.html:6
 msgid "methodology"
 msgstr "méthodologie"
-
-#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
-msgid "about"
-msgstr "à propos"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "Changer de langue"
+
+#: templates/about.html:80
+#, fuzzy
+msgid "About xrpldashboard"
+msgstr "tableau"
+
+#: templates/about.html:82
+msgid ""
+"A public-good ledger dashboard for the XRP Ledger. Free for retail users,"
+" forever. A public-utility approach to ledger data: opinionated about "
+"clarity, no token, no DEX, no upsells."
+msgstr ""
+
+#: templates/about.html:87
+msgid "Launched: May 9, 2026."
+msgstr "Lancé : 9 mai 2026."
+
+#: templates/about.html:87
+msgid ""
+"We're live and actively smoothing out rough edges. If you spot something "
+"that looks wrong or doesn't render right,"
+msgstr ""
+
+#: templates/about.html:88
+msgid "tell us"
+msgstr "dites-le nous"
+
+#: templates/about.html:89
+msgid "we'd rather hear it from you than ship around it."
+msgstr "nous préférons l'entendre de vous plutôt que de contourner le problème."
+
+#: templates/about.html:93
+msgid "Mission"
+msgstr "Mission"
+
+#: templates/about.html:95
+msgid ""
+"Help XRP holders understand on-chain activity. Not get rich. Not sell "
+"liquidity. Not push tokens. Just data, explained well, for people who "
+"want to understand what they own."
+msgstr ""
+
+#: templates/about.html:98
+msgid "Principles"
+msgstr "Principes"
+
+#: templates/about.html:100
+msgid "Retail-free, forever."
+msgstr "Sans frais pour les particuliers, pour toujours."
+
+#: templates/about.html:100
+msgid "No paywall will ever bump a retail user."
+msgstr "Aucun mur de paiement ne bloquera jamais un utilisateur particulier."
+
+#: templates/about.html:101
+msgid "Plain language over jargon."
+msgstr "Langage clair plutôt que jargon."
+
+#: templates/about.html:101
+msgid "Every metric is explained simply."
+msgstr "Chaque métrique est expliquée simplement."
+
+#: templates/about.html:102
+msgid "Link out generously."
+msgstr "Liens externes généreux."
+
+#: templates/about.html:102
+msgid ""
+"We're a dashboard, not a directory — we send you to XRPSCAN, Bithomp, and"
+" others for the granular details they do better."
+msgstr ""
+
+#: templates/about.html:103
+msgid "Editorial voice is part of the product."
+msgstr "La voix éditoriale fait partie du produit."
+
+#: templates/about.html:103
+msgid "We make choices about what to show and how — that's the work."
+msgstr ""
+"Nous faisons des choix sur ce qu'il faut montrer et comment — c'est le "
+"travail."
+
+#: templates/about.html:104
+msgid "Trust over features."
+msgstr "La confiance avant les fonctionnalités."
+
+#: templates/about.html:104
+msgid ""
+"We never sensationalize. We never imply intent we can't verify. We'd "
+"rather omit than overstate."
+msgstr ""
+
+#: templates/about.html:105
+msgid "Mission-first."
+msgstr "La mission avant tout."
+
+#: templates/about.html:105
+msgid "The funding model serves the mission, not the other way around."
+msgstr "Le modèle de financement sert la mission, pas l'inverse."
+
+#: templates/about.html:106
+#, fuzzy
+msgid "Open source."
+msgstr "Code source :"
+
+#: templates/about.html:106
+msgid ""
+"MIT-licensed. The full source is on GitHub — anyone can fork, audit, or "
+"self-host."
+msgstr ""
+
+#: templates/about.html:107
+msgid "Transparent metrics."
+msgstr "Métriques transparentes."
+
+#: templates/about.html:107
+msgid "Our visitor analytics and our infrastructure status"
+msgstr "Nos analyses de visiteurs et notre état d'infrastructure"
+
+#: templates/about.html:107
+msgid "are both publicly viewable. Nothing to hide."
+msgstr "sont tous deux publiquement visibles. Rien à cacher."
+
+#: templates/about.html:110
+msgid "How it works"
+msgstr "Comment ça marche"
+
+#: templates/about.html:112
+msgid ""
+"Every live number on this site is computed directly from the XRP Ledger. "
+"We do not aggregate or re-publish data from third-party APIs (Bithomp, "
+"XRPSCAN, xrpl.to, XPMarket, DefiLlama). Their products are good — but if "
+"we depended on them for our data, we'd just be a wrapper for their work."
+msgstr ""
+
+#: templates/about.html:115
+msgid "Live ledger data"
+msgstr "Données du ledger en direct"
+
+#: templates/about.html:117
+msgid "Comes from public XRPL nodes (currently Ripple's"
+msgstr "Provient de nœuds XRPL publics (actuellement de Ripple"
+
+#: templates/about.html:118 templates/about.html:126
+#: templates/methodology.html:207 templates/wallet.html:1388
+msgid "and"
+msgstr "et"
+
+#: templates/about.html:118
+msgid ""
+"A node is just a peer in the consensus network — it can't lie about "
+"ledger contents without the rest of the network rejecting it. The data is"
+" canonical."
+msgstr ""
+
+#: templates/about.html:118
+#, fuzzy
+msgid "Disclosure:"
+msgstr "Code source :"
+
+#: templates/about.html:118
+msgid ""
+"Ripple's documentation states their public servers are not intended for "
+"sustained business use. The plan is to migrate to the community-operated "
+"cluster"
+msgstr ""
+
+#: templates/about.html:120
+msgid ""
+"before sustained traffic warrants it, and to run our own rippled node as "
+"the project grows. The full per-surface cache and source breakdown is on"
+msgstr ""
+
+#: templates/about.html:123 templates/methodology.html:204
+msgid "Reference labels"
+msgstr "Étiquettes de référence"
+
+#: templates/about.html:125
+msgid ""
+"Token display names and named-account labels are hand-curated in our "
+"open-source repo. Each label has a verifiable source URL. Contributions "
+"go through public PR review (see"
+msgstr ""
+
+#: templates/about.html:127
+msgid "Same pattern mempool.space uses for its mining-pool list."
+msgstr "Même schéma que mempool.space utilise pour sa liste de mining pools."
+
+#: templates/about.html:130
+msgid "Cross-checking"
+msgstr "Vérification croisée"
+
+#: templates/about.html:132
+msgid ""
+"We link out to XRPSCAN, Bithomp, and other sources so you can verify our "
+"numbers against alternative readings whenever you want. Linking out for "
+"verification strengthens the trust principle, not weakens it."
+msgstr ""
+
+#: templates/about.html:135 templates/methodology.html:211
+#, fuzzy
+msgid "Methodology notes"
+msgstr "méthodologie"
+
+#: templates/about.html:137
+#, fuzzy
+msgid "Whale movement"
+msgstr "Mouvements des baleines"
+
+#: templates/about.html:137
+msgid "any single XRP transaction of"
+msgstr "toute transaction XRP unique de"
+
+#: templates/about.html:138 templates/methodology.html:214
+msgid "50,000 XRP or more"
+msgstr "50 000 XRP ou plus"
+
+#: templates/about.html:138 templates/methodology.html:214
+msgid "Smaller transfers don't appear on"
+msgstr "Les transferts plus petits n'apparaissent pas sur"
+
+#: templates/about.html:139
+#, fuzzy
+msgid "Token labels"
+msgstr "tokens"
+
+#: templates/about.html:139
+msgid ""
+"only displayed when we can cite a first-party source for the issuer "
+"(exchange page, project"
+msgstr ""
+
+#: templates/about.html:140
+msgid "etc.). Unverified issuers render unlabeled rather than guessed."
+msgstr ""
+"etc.). Les émetteurs non vérifiés s'affichent sans étiquette plutôt que "
+"devinés."
+
+#: templates/about.html:145
+msgid ""
+"Every external dependency we have — XRPL nodes, the Postgres provider, "
+"the CDN — is named on"
+msgstr ""
+
+#: templates/about.html:146
+msgid ""
+"with the cache TTL of every surface that touches it. If a number on this "
+"site is wrong, that's where you find out why."
+msgstr ""
+
+#: templates/about.html:150
+msgid "How it's funded"
+msgstr "Comment c'est financé"
+
+#: templates/about.html:152
+msgid ""
+"Hosting and infrastructure currently run a few dollars a month, covered "
+"out of pocket. As the project grows we'll be applying for XRPL ecosystem "
+"grants, and donations are welcome"
+msgstr ""
+
+#: templates/about.html:153
+msgid "see contact email"
+msgstr "voir l'e-mail de contact"
+
+#: templates/about.html:154
+msgid "Eventually a paid"
+msgstr "Éventuellement un"
+
+#: templates/about.html:154
+msgid "institutional tier"
+msgstr "niveau institutionnel payant"
+
+#: templates/about.html:155
+msgid ""
+"(API access, alerts, custom dashboards) will help fund the public retail "
+"dashboard, which stays free forever."
+msgstr ""
+
+#: templates/about.html:158
+msgid "Who's behind it"
+msgstr "Qui est derrière"
+
+#: templates/about.html:160
+msgid ""
+"Charlie Bruce is the developer behind xrpldashboard. He built it to bring"
+" utility and understanding to everyone who interacts with the XRP Ledger "
+"— retail holders and institutional investors alike. The goal isn't to "
+"serve any particular issuer or exchange; it's to make the ledger legible "
+"to the people who use it. Feedback, corrections, and contributions are "
+"welcome — see"
+msgstr ""
+
+#: templates/about.html:161 templates/about.html:164
+msgid "Get involved"
+msgstr "Participer"
+
+#: templates/about.html:161
+msgid "below."
+msgstr "ci-dessous."
+
+#: templates/about.html:166
+msgid "Email:"
+msgstr "E-mail :"
+
+#: templates/about.html:168
+msgid "feedback, partnerships, press, or anything else."
+msgstr "commentaires, partenariats, presse ou autre."
+
+#: templates/about.html:169
+#, fuzzy
+msgid "Source code:"
+msgstr "Code source :"
+
+#: templates/about.html:171
+msgid "Contribute a token display name:"
+msgstr "Proposer un nom d'affichage de token :"
+
+#: templates/about.html:171 templates/about.html:173
+msgid "see"
+msgstr "voir"
+
+#: templates/about.html:172 templates/about.html:174 templates/tokens.html:464
+msgid "in the repo."
+msgstr "dans le dépôt."
+
+#: templates/about.html:173
+msgid "Contribute a named account:"
+msgstr "Proposer un compte nommé :"
+
+#: templates/about.html:175
+msgid "Found a bug or want a feature?"
+msgstr "Trouvé un bug ou voulez une fonctionnalité ?"
+
+#: templates/about.html:175
+msgid "Open a GitHub issue or send an email."
+msgstr "Ouvrez un issue GitHub ou envoyez un e-mail."
+
+#: templates/about.html:179 templates/institutional.html:164
+msgid ""
+"xrpldashboard is independent and not affiliated with Ripple Labs, the "
+"XRPL Foundation, or any exchange. Built with Python, Flask, and the "
+"public XRPL."
+msgstr ""
+
+#: templates/about.html:181 templates/cold_storage.html:277
+#: templates/health.html:432 templates/index.html:622
+#: templates/institutional.html:166 templates/pools.html:632
+#: templates/token.html:369 templates/tokens.html:475
+#: templates/wallet.html:1393 templates/whales.html:403
+msgid "Not financial advice."
+msgstr "Ne constitue pas un conseil financier."
+
+#: templates/about.html:181 templates/cold_storage.html:277
+#: templates/health.html:432 templates/index.html:622
+#: templates/institutional.html:166 templates/pools.html:632
+#: templates/token.html:369 templates/tokens.html:475
+#: templates/wallet.html:1393 templates/whales.html:403
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr ""
+"Les informations affichées sont à but éducatif uniquement et ne "
+"constituent pas un conseil financier, en investissement ou fiscal. Faites"
+" vos propres recherches avant toute décision concernant XRP ou d'autres "
+"actifs numériques."
+
+#: templates/about.html:183 templates/index.html:631
+#: templates/institutional.html:169 templates/pools.html:635
+#: templates/token.html:372 templates/tokens.html:478
+msgid "contact"
+msgstr "contact"
+
+#: templates/about.html:184 templates/institutional.html:170
+#: templates/tokens.html:479 templates/wallet.html:784
+#: templates/whales.html:406
+#, fuzzy
+msgid "back to dashboard"
+msgstr "tableau"
+
+#: templates/cold_storage.html:6 templates/index.html:513
+#: templates/index.html:525
+msgid "Cold storage"
+msgstr "Stockage froid"
+
+#: templates/cold_storage.html:169
+#, fuzzy
+msgid "Cold storage tracker"
+msgstr "Stockage froid"
+
+#: templates/cold_storage.html:170
+msgid "XRP locked"
+msgstr "XRP verrouillé"
+
+#: templates/cold_storage.html:172
+#, fuzzy
+msgid "Across"
+msgstr "sur"
+
+#: templates/cold_storage.html:172
+msgid "addresses"
+msgstr "adresses"
+
+#: templates/cold_storage.html:173
+msgid "largest:"
+msgstr "plus grande :"
+
+#: templates/cold_storage.html:176 templates/index.html:431
+#: templates/token.html:367
+msgid "cached"
+msgstr "en cache"
+
+#: templates/cold_storage.html:176 templates/index.html:431
+msgid "s ago"
+msgstr "s écoulées"
+
+#: templates/cold_storage.html:184
+msgid "Total locked"
+msgstr "Total verrouillé"
+
+#: templates/cold_storage.html:186
+#, fuzzy
+msgid "XRP across"
+msgstr "sur"
+
+#: templates/cold_storage.html:186
+#, fuzzy
+msgid "accounts"
+msgstr "à propos"
+
+#: templates/cold_storage.html:189
+msgid "Largest holding"
+msgstr "Plus grande détention"
+
+#: templates/cold_storage.html:194
+msgid "Tracked addresses"
+msgstr "Adresses suivies"
+
+#: templates/cold_storage.html:196
+msgid "responding"
+msgstr "réactif"
+
+#: templates/cold_storage.html:199
+#, fuzzy
+msgid "Source"
+msgstr "Code source :"
+
+#: templates/cold_storage.html:201
+msgid "first-party verified"
+msgstr "vérifié de première partie"
+
+#: templates/cold_storage.html:207
+msgid "Per-account balances"
+msgstr "Soldes par compte"
+
+#: templates/cold_storage.html:208
+msgid "cached · refreshes every 5 min"
+msgstr "mis en cache · actualisé toutes les 5 min"
+
+#: templates/cold_storage.html:213
+msgid ""
+"Historical change tracking (24h / 7d deltas) will appear here once "
+"snapshots accumulate."
+msgstr ""
+
+#: templates/cold_storage.html:220
+#, fuzzy
+msgid "Account"
+msgstr "à propos"
+
+#: templates/cold_storage.html:221 templates/wallet.html:1274
+msgid "Balance"
+msgstr "Solde"
+
+#: templates/cold_storage.html:223
+#, fuzzy
+msgid "Verify"
+msgstr "Vérifier sur"
+
+#: templates/cold_storage.html:233
+msgid "RPC error"
+msgstr "erreur RPC"
+
+#: templates/cold_storage.html:256
+msgid "Balances temporarily unavailable — refresh in a minute, or check"
+msgstr ""
+"Soldes temporairement indisponibles — actualisez dans une minute, ou "
+"vérifiez"
+
+#: templates/cold_storage.html:258
+msgid "directly."
+msgstr "directement."
+
+#: templates/cold_storage.html:268
+#, fuzzy
+msgid "Ripple escrow context"
+msgstr "Escrows Ripple"
+
+#: templates/cold_storage.html:274
+msgid "Data: live"
+msgstr "Données : en direct"
+
+#: templates/cold_storage.html:274
+#, fuzzy
+msgid "against"
+msgstr "Vérifier sur"
+
+#: templates/cold_storage.html:275
+#, fuzzy
+msgid "Ripple-declared escrow accounts."
+msgstr "Escrows Ripple"
+
+#: templates/health.html:244
+msgid "All systems normal"
+msgstr "Tous les systèmes normaux"
+
+#: templates/health.html:245
+#, fuzzy
+msgid "Network healthy"
+msgstr "État du réseau"
+
+#: templates/health.html:246
+#, fuzzy
+msgid "Network running hot"
+msgstr "Forte charge"
+
+#: templates/health.html:247
+msgid "Mostly normal"
+msgstr "Majoritairement normal"
+
+#: templates/health.html:248
+#, fuzzy
+msgid "Service status"
+msgstr "État du réseau"
+
+#: templates/health.html:252
+msgid "XRPL network status updates live · worker fields refresh every 60 s"
+msgstr ""
+"État du réseau XRPL en direct · champs du worker actualisés toutes les 60"
+" s"
+
+#: templates/health.html:262
+msgid "Heartbeat · scales with network load"
+msgstr "Pulsation · varie avec la charge du réseau"
+
+#: templates/health.html:263
+msgid "bpm"
+msgstr "bpm"
+
+#: templates/health.html:274 templates/health.html:297
+msgid "XRPL network"
+msgstr "Réseau XRPL"
+
+#: templates/health.html:277
+msgid "The XRP Ledger is healthy. New ledgers are being closed every"
+msgstr ""
+"Le XRP Ledger est en bonne santé. De nouveaux ledgers sont fermés toutes "
+"les"
+
+#: templates/health.html:278
+msgid "seconds — exactly as expected. Validators are in agreement."
+msgstr "secondes — exactement comme prévu. Les validateurs sont d'accord."
+
+#: templates/health.html:280
+msgid ""
+"The ledger is busy. Transactions are still confirming, but fees may be "
+"slightly higher than usual."
+msgstr "Le ledger est occupé. Les transactions se confirment toujours, mais les frais peuvent être légèrement plus élevés que d'habitude."
+
+#: templates/health.html:282
+msgid ""
+"The network is congested. Transactions are confirming more slowly and "
+"fees are elevated."
+msgstr "Le réseau est congestionné. Les transactions se confirment plus lentement et les frais sont élevés."
+
+#: templates/health.html:298
+msgid "Live network pulse is currently unavailable."
+msgstr "Le pouls du réseau en direct est actuellement indisponible."
+
+#: templates/health.html:300
+#, fuzzy
+msgid "unknown"
+msgstr "Inconnu"
+
+#: templates/health.html:308
+msgid "Pool tracker"
+msgstr "Suivi des pools"
+
+#: templates/health.html:311
+msgid "Catalogue of XRPL automated market makers is up to date — tracking"
+msgstr "Le catalogue des AMM XRPL est à jour — suivi de"
+
+#: templates/health.html:312
+#, fuzzy
+msgid "AMM pools across the ledger."
+msgstr "Sur tout le ledger"
+
+#: templates/health.html:314
+msgid "Currently building the AMM catalogue —"
+msgstr "Construction du catalogue AMM en cours —"
+
+#: templates/health.html:315
+msgid "ledger pages scanned at"
+msgstr "pages du ledger scannées à"
+
+#: templates/health.html:315
+msgid "pages/sec."
+msgstr "pages/sec."
+
+#: templates/health.html:317
+msgid "Pool tracker not yet enabled in production. Showing local snapshot"
+msgstr ""
+"Suivi des pools non encore activé en production. Affichage du snapshot "
+"local"
+
+#: templates/health.html:317
+msgid "from"
+msgstr "de"
+
+#: templates/health.html:318
+msgid "tracking"
+msgstr "suivi de"
+
+#: templates/health.html:319
+msgid "AMM pools at the time of capture."
+msgstr "pools AMM au moment de la capture."
+
+#: templates/health.html:324
+msgid "ready"
+msgstr "prêt"
+
+#: templates/health.html:324
+msgid "building"
+msgstr "construction"
+
+#: templates/health.html:324
+msgid "snapshot"
+msgstr "snapshot"
+
+#: templates/health.html:332
+#, fuzzy
+msgid "Live activity feed"
+msgstr "Activité des tokens"
+
+#: templates/health.html:335
+msgid ""
+"Watching every transaction on the XRP Ledger in real time. Since startup "
+"we've logged"
+msgstr ""
+
+#: templates/health.html:336
+#, fuzzy
+msgid "large transfers and"
+msgstr "Gros transferts récents"
+
+#: templates/health.html:337
+#, fuzzy
+msgid "token trades."
+msgstr "transactions"
+
+#: templates/health.html:338
+#, fuzzy
+msgid "Last update"
+msgstr "snapshot · dernière mise à jour"
+
+#: templates/health.html:338
+#, fuzzy
+msgid "ago."
+msgstr "auparavant"
+
+#: templates/health.html:340
+msgid ""
+"Live activity feed not yet enabled in production. Coming soon — meanwhile"
+" the page shows a snapshot of"
+msgstr ""
+
+#: templates/health.html:341
+msgid "whale transfers and"
+msgstr "transferts de baleines et"
+
+#: templates/health.html:342
+msgid "token trades captured by the local indexer."
+msgstr "échanges de tokens capturés par l'indexeur local."
+
+#: templates/health.html:347
+msgid "streaming"
+msgstr "streaming"
+
+#: templates/health.html:347
+msgid "coming soon"
+msgstr "à venir"
+
+#: templates/health.html:354
+msgid "Stored data"
+msgstr "Données stockées"
+
+#: templates/health.html:356
+msgid ""
+"Historical activity is being saved to disk so charts and rankings survive"
+" restarts."
+msgstr ""
+
+#: templates/health.html:358
+msgid "events recorded"
+msgstr "événements enregistrés"
+
+#: templates/health.html:360
+msgid "token volume entries."
+msgstr "entrées de volume de tokens."
+
+#: templates/health.html:363
+#, fuzzy
+msgid "healthy"
+msgstr "état"
+
+#: templates/health.html:368
+msgid "Show technical details"
+msgstr "Afficher les détails techniques"
+
+#: templates/health.html:372
+msgid "XRPL network (live pulse)"
+msgstr "Réseau XRPL (pouls en direct)"
+
+#: templates/health.html:374
+#, fuzzy
+msgid "ledger index"
+msgstr "Ledger"
+
+#: templates/health.html:375
+#, fuzzy
+msgid "avg close time"
+msgstr "Clôture moy."
+
+#: templates/health.html:376
+#, fuzzy
+msgid "last close age"
+msgstr "Clôture moy."
+
+#: templates/health.html:377
+msgid "validation quorum"
+msgstr "quorum de validation"
+
+#: templates/health.html:378
+msgid "load factor"
+msgstr "facteur de charge"
+
+#: templates/health.html:379
+msgid "summary"
+msgstr "résumé"
+
+#: templates/health.html:380 templates/index.html:458
+#, python-format
+msgid ""
+"XRPL is operating normally. Closing ledgers every %(n)ss. Network load is"
+" light."
+msgstr "XRPL fonctionne normalement. Fermeture des ledgers toutes les %(n)ss. La charge réseau est légère."
+
+#: templates/health.html:381 templates/index.html:460
+#, python-format
+msgid ""
+"XRPL is operating normally. Closing ledgers every %(n)ss. Load slightly "
+"elevated."
+msgstr "XRPL fonctionne normalement. Fermeture des ledgers toutes les %(n)ss. Charge légèrement élevée."
+
+#: templates/health.html:382 templates/index.html:462
+#, python-format
+msgid ""
+"XRPL is operating but congested. Closing ledgers every %(n)ss. Load is "
+"elevated."
+msgstr "XRPL fonctionne mais est congestionné. Fermeture des ledgers toutes les %(n)ss. La charge est élevée."
+
+#: templates/health.html:383 templates/index.html:464
+msgid "XRPL is degraded. Ledgers are closing slowly."
+msgstr "XRPL est dégradé. Les ledgers se ferment lentement."
+
+#: templates/health.html:387
+#, fuzzy
+msgid "pulse"
+msgstr "pools"
+
+#: templates/health.html:387
+#, fuzzy
+msgid "not loaded"
+msgstr "Données de pulsation non chargées."
+
+#: templates/health.html:392
+msgid "Pool tracker (bootstrap scan)"
+msgstr "Suivi des pools (scan bootstrap)"
+
+#: templates/health.html:393 templates/health.html:404
+msgid "uptime"
+msgstr "disponibilité"
+
+#: templates/health.html:394
+msgid "pages scanned"
+msgstr "pages scannées"
+
+#: templates/health.html:395
+msgid "objects walked"
+msgstr "objets parcourus"
+
+#: templates/health.html:396
+msgid "amms in index"
+msgstr "AMM dans l'index"
+
+#: templates/health.html:397
+msgid "scan rate"
+msgstr "vitesse de scan"
+
+#: templates/health.html:397
+msgid "pages/s"
+msgstr "pages/s"
+
+#: templates/health.html:398
+msgid "ledger snapshot"
+msgstr "snapshot du ledger"
+
+#: templates/health.html:399 templates/health.html:412
+msgid "log last write"
+msgstr "dernière écriture du log"
+
+#: templates/health.html:399 templates/health.html:412 templates/index.html:568
+#: templates/wallet.html:910 templates/whales.html:341
+msgid "ago"
+msgstr "auparavant"
+
+#: templates/health.html:403
+msgid "Live watcher (stream)"
+msgstr "Watcher en direct (stream)"
+
+#: templates/health.html:405
+msgid "txns observed"
+msgstr "transactions observées"
+
+#: templates/health.html:406
+msgid "amm creates"
+msgstr "créations AMM"
+
+#: templates/health.html:407
+#, fuzzy
+msgid "whale events"
+msgstr "Mouvements des baleines"
+
+#: templates/health.html:408
+#, fuzzy
+msgid "token events"
+msgstr "tokens"
+
+#: templates/health.html:409
+msgid "new tokens (since restart)"
+msgstr "nouveaux tokens (depuis redémarrage)"
+
+#: templates/health.html:410
+msgid "seen-tokens index"
+msgstr "index des tokens vus"
+
+#: templates/health.html:411
+#, fuzzy
+msgid "last ledger"
+msgstr "Sur tout le ledger"
+
+#: templates/health.html:416
+msgid "Data substrate"
+msgstr "Substrat de données"
+
+#: templates/health.html:417
+msgid "events.db rows"
+msgstr "lignes events.db"
+
+#: templates/health.html:418
+msgid "volumes.db rows"
+msgstr "lignes volumes.db"
+
+#: templates/health.html:422
+msgid "Watcher log · last 8 lines"
+msgstr "Log du watcher · 8 dernières lignes"
+
+#: templates/health.html:430
+msgid ""
+"Public on purpose · trust positioning means we publish real metrics about"
+" real infrastructure."
+msgstr "Public volontairement · le positionnement de confiance signifie que nous publions des métriques réelles sur l'infrastructure réelle."
 
 #: templates/index.html:412
 msgid "The XRP Ledger,"
@@ -64,9 +1019,12 @@ msgstr "Explications en langage clair, données on-chain en temps réel, et une"
 
 #: templates/index.html:414
 msgid "No upsells, no token, no DEX. Free for retail users — forever."
-msgstr "Pas de vente additionnelle, pas de token, pas de DEX. Gratuit pour les particuliers — pour toujours."
+msgstr ""
+"Pas de ventes additionnelles, pas de token, pas de DEX. Gratuit pour les "
+"utilisateurs particuliers — pour toujours.Pas de vente additionnelle, pas"
+" de token, pas de DEX. Gratuit pour les particuliers — pour toujours."
 
-#: templates/index.html:419 templates/index.html:458
+#: templates/index.html:419 templates/index.html:470
 msgid "Ledger"
 msgstr "Ledger"
 
@@ -79,25 +1037,21 @@ msgid ""
 "The XRP network closes a new 'page' of transactions every 3-5 seconds, "
 "and each page gets a number. This is the latest page number we've seen. "
 "If the number stops climbing, something is wrong with the network."
-msgstr "Le réseau XRP clôt une nouvelle « page » de transactions toutes les 3 à 5 secondes, et chaque page reçoit un numéro. Voici le dernier numéro que nous avons vu. Si le numéro cesse de monter, quelque chose ne va pas sur le réseau."
+msgstr ""
+"Le réseau XRP clôt une nouvelle « page » de transactions toutes les 3 à 5"
+" secondes, et chaque page reçoit un numéro. Voici le dernier numéro que "
+"nous avons vu. Si le numéro cesse de monter, quelque chose ne va pas sur "
+"le réseau."
 
 #: templates/index.html:427
 msgid "closing every"
 msgstr "fermeture toutes les"
 
-#: templates/index.html:431
-msgid "cached"
-msgstr "en cache"
-
-#: templates/index.html:431
-msgid "s ago"
-msgstr "s écoulées"
-
 #: templates/index.html:437
 msgid "XRP · global ledger"
 msgstr "XRP · ledger global"
 
-#: templates/index.html:447 templates/index.html:467
+#: templates/index.html:447 templates/index.html:479
 msgid "Network status"
 msgstr "État du réseau"
 
@@ -121,199 +1075,2087 @@ msgstr "Dégradé"
 msgid "Unknown"
 msgstr "Inconnu"
 
-#: templates/index.html:459
+#: templates/index.html:471
 msgid "Avg close"
 msgstr "Clôture moy."
 
-#: templates/index.html:461
+#: templates/index.html:473
 msgid "Quorum"
 msgstr "Quorum"
 
-#: templates/index.html:462
+#: templates/index.html:474
 msgid "Load"
 msgstr "Charge"
 
-#: templates/index.html:468
+#: templates/index.html:480
 msgid "Unavailable"
 msgstr "Indisponible"
 
-#: templates/index.html:469
+#: templates/index.html:481
 msgid "Pulse data not loaded."
 msgstr "Données de pulsation non chargées."
 
-#: templates/index.html:475
+#: templates/index.html:487
 msgid "Look up an address"
 msgstr "Rechercher une adresse"
 
-#: templates/index.html:476
+#: templates/index.html:488
 msgid "Wallet inspector"
 msgstr "Inspecteur de wallet"
 
-#: templates/index.html:478
+#: templates/index.html:490
 msgid ""
 "Paste any XRPL address to see balance, counterparties, and 30-day "
 "activity — read live from the ledger. No login. No tracking."
-msgstr "Collez n'importe quelle adresse XRPL pour voir le solde, les contreparties et l'activité sur 30 jours — lu en direct depuis le ledger. Sans connexion. Sans tracking."
+msgstr ""
+"Collez n'importe quelle adresse XRPL pour voir le solde, les "
+"contreparties et l'activité sur 30 jours — lu en direct depuis le ledger."
+" Sans connexion. Sans tracking."
 
-#: templates/index.html:484
+#: templates/index.html:496
 msgid "Inspect"
 msgstr "Inspecter"
 
-#: templates/index.html:487
+#: templates/index.html:499
 msgid "XRPL addresses start with"
 msgstr "Les adresses XRPL commencent par"
 
-#: templates/index.html:487
+#: templates/index.html:499
 msgid "and are 25-35 characters."
 msgstr "et comportent 25 à 35 caractères."
 
-#: templates/index.html:490
-msgid "We never ask for keys, seeds, or signatures — public address only."
-msgstr "Nous ne demandons jamais de clés, de seeds, ou de signatures — adresse publique uniquement."
-
-#: templates/index.html:501 templates/index.html:513
-msgid "Cold storage"
-msgstr "Stockage froid"
-
 #: templates/index.html:502
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr ""
+"Nous ne demandons jamais de clés, de seeds, ou de signatures — adresse "
+"publique uniquement."
+
+#: templates/index.html:514
 msgid "Ripple escrows · largest"
 msgstr "escrows Ripple · le plus grand"
 
-#: templates/index.html:514
+#: templates/index.html:526
 msgid "Ripple escrows"
 msgstr "Escrows Ripple"
 
-#: templates/index.html:516
+#: templates/index.html:528
 msgid "view"
 msgstr "voir"
 
-#: templates/index.html:521
+#: templates/index.html:533
 msgid "Locked in AMMs"
 msgstr "Verrouillé dans les AMMs"
 
-#: templates/index.html:522
+#: templates/index.html:534
 msgid "across"
 msgstr "sur"
 
-#: templates/index.html:522
+#: templates/index.html:534
 msgid "XRPL AMM pools"
 msgstr "pools AMM XRPL"
 
-#: templates/index.html:531
+#: templates/index.html:543
 msgid "Across the ledger"
 msgstr "Sur tout le ledger"
 
-#: templates/index.html:533
+#: templates/index.html:545
 msgid "What this section shows"
 msgstr "Ce que cette section montre"
 
-#: templates/index.html:534
+#: templates/index.html:546
 msgid ""
 "A live look at the two main things happening on the XRP Ledger right now:"
 " big-money transfers (left) and token trading (right). Both come straight"
 " from the network — no middlemen. Click either side for the full page."
-msgstr "Un aperçu en direct des deux principales activités sur le XRP Ledger en ce moment : transferts importants (à gauche) et trading de tokens (à droite). Les deux viennent directement du réseau — sans intermédiaire. Cliquez sur l'un des côtés pour voir la page complète."
+msgstr ""
+"Un aperçu en direct des deux principales activités sur le XRP Ledger en "
+"ce moment : transferts importants (à gauche) et trading de tokens (à "
+"droite). Les deux viennent directement du réseau — sans intermédiaire. "
+"Cliquez sur l'un des côtés pour voir la page complète."
 
-#: templates/index.html:541
+#: templates/index.html:553
 msgid "Whale moves"
 msgstr "Mouvements des baleines"
 
-#: templates/index.html:542
+#: templates/index.html:554
 msgid "Recent large transfers"
 msgstr "Gros transferts récents"
 
-#: templates/index.html:544
+#: templates/index.html:556
 msgid "snapshot · last updated"
 msgstr "snapshot · dernière mise à jour"
 
-#: templates/index.html:556
-msgid "ago"
-msgstr "auparavant"
-
-#: templates/index.html:560
+#: templates/index.html:572
 msgid "No whale events yet — watcher still warming up."
 msgstr "Pas encore d'événements de baleines — watcher en chauffe."
 
-#: templates/index.html:562
+#: templates/index.html:574
 msgid "view all whale activity"
 msgstr "voir toute l'activité des baleines"
 
-#: templates/index.html:567
+#: templates/index.html:579
 msgid "AMM activity"
 msgstr "Activité AMM"
 
-#: templates/index.html:568
+#: templates/index.html:580
 msgid "Top pools by TVL"
 msgstr "Top pools par TVL"
 
-#: templates/index.html:573
+#: templates/index.html:585
 msgid "est"
 msgstr "est"
 
-#: templates/index.html:577
+#: templates/index.html:589
 msgid "No AMM pools loaded yet."
 msgstr "Aucune pool AMM chargée pour l'instant."
 
-#: templates/index.html:579
+#: templates/index.html:591
 msgid "browse all"
 msgstr "voir toutes les"
 
-#: templates/index.html:584
+#: templates/index.html:596 templates/tokens.html:338
 msgid "Token activity"
 msgstr "Activité des tokens"
 
-#: templates/index.html:585
+#: templates/index.html:597
 msgid "Most-traded tokens"
 msgstr "Tokens les plus échangés"
 
-#: templates/index.html:593
+#: templates/index.html:605 templates/tokens.html:444
 msgid "trades"
 msgstr "transactions"
 
-#: templates/index.html:597
+#: templates/index.html:609 templates/tokens.html:451
 msgid "No token activity recorded yet."
 msgstr "Aucune activité de token enregistrée pour l'instant."
 
-#: templates/index.html:599
+#: templates/index.html:611
 msgid "browse all tokens"
 msgstr "voir tous les tokens"
 
-#: templates/index.html:607
+#: templates/index.html:619
 msgid ""
 "xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
 " users, forever. Pool, whale, and token panels all stream live via "
 "WebSocket from a public XRPL node, with worker-backed historical context."
 " See"
-msgstr "xrpldashboard — analytique d'intérêt public pour le XRP Ledger. Gratuit pour les particuliers, pour toujours. Les panneaux pools, baleines et tokens diffusent tous en direct via WebSocket depuis un nœud XRPL public, avec contexte historique fourni par des workers. Consultez"
+msgstr ""
+"xrpldashboard — analytique d'intérêt public pour le XRP Ledger. Gratuit "
+"pour les particuliers, pour toujours. Les panneaux pools, baleines et "
+"tokens diffusent tous en direct via WebSocket depuis un nœud XRPL public,"
+" avec contexte historique fourni par des workers. Consultez"
 
-#: templates/index.html:607
+#: templates/index.html:619
 msgid "for the per-surface freshness table."
 msgstr "pour le tableau de fraîcheur par surface."
 
-#: templates/index.html:610
-msgid "Not financial advice."
-msgstr "Ne constitue pas un conseil financier."
-
-#: templates/index.html:610
-msgid ""
-"Information shown is for educational purposes only and does not "
-"constitute financial, investment, or tax advice. Do your own research "
-"before making decisions about XRP or other digital assets."
-msgstr "Les informations affichées sont à but éducatif uniquement et ne constituent pas un conseil financier, en investissement ou fiscal. Faites vos propres recherches avant toute décision concernant XRP ou d'autres actifs numériques."
-
-#: templates/index.html:613
+#: templates/index.html:625
 msgid "Verify against"
 msgstr "Vérifier sur"
 
-#: templates/index.html:614
+#: templates/index.html:626
 msgid "or"
 msgstr "ou"
 
-#: templates/index.html:616
+#: templates/index.html:628
 msgid "Source:"
 msgstr "Code source :"
 
-#: templates/index.html:619
-msgid "contact"
-msgstr "contact"
+#: templates/institutional.html:6
+msgid "institutional"
+msgstr "institutionnel"
+
+#: templates/institutional.html:103
+msgid "xrpldashboard institutional"
+msgstr "xrpldashboard institutionnel"
+
+#: templates/institutional.html:105
+msgid ""
+"Tooling for teams that watch the XRP Ledger as a job — exchanges, funds, "
+"custody platforms, compliance desks, ETF issuers."
+msgstr ""
+
+#: templates/institutional.html:109
+msgid ""
+"The retail dashboard is free forever. The institutional product is what "
+"funds it."
+msgstr ""
+
+#: templates/institutional.html:112
+msgid "Why this exists"
+msgstr "Pourquoi ceci existe"
+
+#: templates/institutional.html:114
+msgid ""
+"Anyone can index the XRP Ledger — the data is public. We're the only ones"
+" doing the editorial layer at scale: hand-curated wallet identities, "
+"classified tokens, plain-language event explanations. Your compliance "
+"team doesn't read a hex address — it reads \"Bitstamp cold wallet moved "
+"$5M to Bitso hot wallet.\""
+msgstr ""
+
+#: templates/institutional.html:117
+msgid ""
+"Editorial coverage delivered via API. That's the product. Webhook alerts,"
+" historical depth, custom integrations — those are how it ships."
+msgstr ""
+
+#: templates/institutional.html:120
+msgid "How we're building it"
+msgstr "Comment nous le construisons"
+
+#: templates/institutional.html:122
+msgid ""
+"We're building this around real conversations with launch partners. Your "
+"needs shape what gets prioritized first. Pricing reflects actual partner "
+"agreements once we've signed the first few."
+msgstr ""
+
+#: templates/institutional.html:126
+msgid "What we're already collecting"
+msgstr "Ce que nous collectons déjà"
+
+#: templates/institutional.html:128
+msgid ""
+"Daily ledger snapshots of our watchlist accounts and the largest AMM "
+"pools — captured at a validated ledger and archived as a permanent time "
+"series. Historical depth that institutional buyers can't back-fill once "
+"they wish they'd started."
+msgstr ""
+
+#: templates/institutional.html:133
+msgid "day"
+msgstr "jour"
+
+#: templates/institutional.html:133 templates/wallet.html:940
+#: templates/wallet.html:1089
+msgid "days"
+msgstr "jours"
+
+#: templates/institutional.html:133
+msgid "of snapshots"
+msgstr "de snapshots"
+
+#: templates/institutional.html:137
+msgid "watchlist accounts daily"
+msgstr "comptes de la liste de surveillance par jour"
+
+#: templates/institutional.html:141
+#, fuzzy
+msgid "AMM pools daily"
+msgstr "pools AMM XRPL"
+
+#: templates/institutional.html:145
+msgid "Collecting since"
+msgstr "Collecte depuis"
+
+#: templates/institutional.html:145
+msgid "Raw snapshot access available to launch partners on request."
+msgstr ""
+"Accès aux snapshots bruts disponible pour les partenaires de lancement "
+"sur demande."
+
+#: templates/institutional.html:151
+#, fuzzy
+msgid "What this is for:"
+msgstr "Ce que cette section montre"
+
+#: templates/institutional.html:151
+msgid ""
+"teams whose data-tools budget runs $5k–50k/yr and who wish there were an "
+"XRPL-native option written for humans."
+msgstr ""
+
+#: templates/institutional.html:157
+msgid "Become a launch partner"
+msgstr "Devenez partenaire de lancement"
+
+#: templates/institutional.html:159
+msgid ""
+"Charlie reads every message personally. Reply time is usually within a "
+"day. Founders prefer direct email over forms."
+msgstr ""
+
+#: templates/methodology.html:92
+#, fuzzy
+msgid "Methodology"
+msgstr "méthodologie"
+
+#: templates/methodology.html:94
+msgid ""
+"Every data source, every cache, every limitation — listed in plain text "
+"on this page. If a number on this site is wrong, this is where you find "
+"out why."
+msgstr ""
+
+#: templates/methodology.html:99
+msgid "Why this page exists."
+msgstr "Pourquoi cette page existe."
+
+#: templates/methodology.html:99
+msgid ""
+"Most XRPL dashboards say \"live\" without telling you what that means. We"
+" commit to the opposite: every claim of \"live\" is backed by a "
+"measurable cadence below, and every cache is named with its TTL. If you "
+"disagree with our numbers, this page is the audit trail."
+msgstr ""
+
+#: templates/methodology.html:103
+#, fuzzy
+msgid "What's actually live, per surface"
+msgstr "Qu'est-ce qu'une séquence de ledger ?"
+
+#: templates/methodology.html:105
+msgid "Three states:"
+msgstr "Trois états :"
+
+#: templates/methodology.html:105 templates/methodology.html:135
+#: templates/methodology.html:147 templates/methodology.html:153
+#: templates/methodology.html:159 templates/methodology.html:165
+msgid "Live"
+msgstr "Direct"
+
+#: templates/methodology.html:106
+msgid "means a WebSocket pushes new data without a page refresh."
+msgstr ""
+"signifie qu'un WebSocket envoie de nouvelles données sans actualiser la "
+"page."
+
+#: templates/methodology.html:107 templates/methodology.html:123
+#: templates/methodology.html:129 templates/methodology.html:141
+#: templates/methodology.html:171
+#, fuzzy
+msgid "Cached"
+msgstr "en cache"
+
+#: templates/methodology.html:108
+msgid ""
+"means we re-query the XRP Ledger on a fixed cadence and serve the most "
+"recent answer to all visitors during the cache window."
+msgstr ""
+
+#: templates/methodology.html:114
+msgid "Page / surface"
+msgstr "Page / surface"
+
+#: templates/methodology.html:115
+msgid "State"
+msgstr "État"
+
+#: templates/methodology.html:116
+msgid "Cadence / TTL"
+msgstr "Cadence / TTL"
+
+#: templates/methodology.html:117
+msgid "Underlying source"
+msgstr "Source sous-jacente"
+
+#: templates/methodology.html:124
+msgid "20 sec"
+msgstr "20 sec"
+
+#: templates/methodology.html:125
+msgid "on public XRPL node"
+msgstr "sur nœud XRPL public"
+
+#: templates/methodology.html:128
+msgid "Ledger heartbeat chip"
+msgstr "Pastille de pouls du ledger"
+
+#: templates/methodology.html:128
+msgid "(every page header)"
+msgstr "(chaque en-tête de page)"
+
+#: templates/methodology.html:130
+msgid "polls every 30 sec → 20 sec server cache"
+msgstr "sondage toutes les 30 sec → cache serveur de 20 sec"
+
+#: templates/methodology.html:134
+msgid "tx counter, last seen, sparkline today bin"
+msgstr "compteur tx, dernier vu, sparkline du jour"
+
+#: templates/methodology.html:136 templates/methodology.html:148
+msgid "WebSocket push (~3–5 sec per validated ledger)"
+msgstr "Push WebSocket (~3–5 sec par ledger validé)"
+
+#: templates/methodology.html:137 templates/methodology.html:149
+msgid "Browser subscribes directly to"
+msgstr "Le navigateur s'abonne directement à"
+
+#: templates/methodology.html:140
+msgid "balances, holdings, network graph, AMM positions"
+msgstr "soldes, détentions, graphe réseau, positions AMM"
+
+#: templates/methodology.html:142 templates/methodology.html:172
+msgid "5 min"
+msgstr "5 min"
+
+#: templates/methodology.html:146
+msgid "large-XRP / tagged / trustset feed"
+msgstr "flux gros XRP / étiquetés / trustset"
+
+#: templates/methodology.html:149
+msgid "initial page load is from worker → Neon"
+msgstr "le chargement initial vient du worker → Neon"
+
+#: templates/methodology.html:152
+#, fuzzy
+msgid "per-token swap activity"
+msgstr "Activité des tokens"
+
+#: templates/methodology.html:154
+msgid "WebSocket push for new swaps; aggregates rebuild on next reload"
+msgstr ""
+"Push WebSocket pour les nouveaux swaps ; agrégats reconstruits au "
+"prochain rechargement"
+
+#: templates/methodology.html:155 templates/methodology.html:161
+#, fuzzy
+msgid "Browser WS to"
+msgstr "voir tous les tokens"
+
+#: templates/methodology.html:155
+msgid "rollups from worker → Neon"
+msgstr "rollups du worker → Neon"
+
+#: templates/methodology.html:158
+msgid "/pools constellation"
+msgstr "constellation /pools"
+
+#: templates/methodology.html:158
+msgid "swap pulses + per-pool TVL"
+msgstr "pulsations de swap + TVL par pool"
+
+#: templates/methodology.html:160
+msgid "WebSocket push; TVL adjusts on each AMM LP-token delta"
+msgstr "Push WebSocket ; le TVL s'ajuste à chaque delta de token LP AMM"
+
+#: templates/methodology.html:161
+msgid "static pool index seeded from"
+msgstr "index de pools statique amorcé depuis"
+
+#: templates/methodology.html:166
+msgid "worker writes pool swaps as they happen; API reads on each call"
+msgstr "le worker écrit les swaps du pool en temps réel ; l'API lit à chaque appel"
+
+#: templates/methodology.html:167
+msgid "Worker → Neon Postgres"
+msgstr "Worker → Neon Postgres"
+
+#: templates/methodology.html:173
+msgid "on labeled cold wallets"
+msgstr "sur les portefeuilles froids étiquetés"
+
+#: templates/methodology.html:179
+msgid ""
+"Five of the nine surfaces above are now Live (browser-side WebSocket push"
+" from"
+msgstr ""
+
+#: templates/methodology.html:179
+msgid ""
+"The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet "
+"balances/holdings, and cold-storage balances — are derived from RPC calls"
+" that don't have a streaming equivalent, so a short cache is the honest "
+"framing."
+msgstr ""
+
+#: templates/methodology.html:182
+#, fuzzy
+msgid "Data sources"
+msgstr "Code source :"
+
+#: templates/methodology.html:184
+#, fuzzy
+msgid "XRP Ledger nodes"
+msgstr "Le XRP Ledger,"
+
+#: templates/methodology.html:186
+msgid ""
+"All on-chain data is read from public XRPL nodes — peers in the consensus"
+" network. A node can't lie about ledger contents without the rest of the "
+"network rejecting it."
+msgstr ""
+
+#: templates/methodology.html:189
+msgid ""
+"Ripple-operated full-history node. Used by the worker for streaming, and "
+"by the browser for per-wallet real-time subscriptions."
+msgstr ""
+
+#: templates/methodology.html:190
+msgid ""
+"Ripple-operated general-purpose JSON-RPC node. Used by the network pulse "
+"and ledger-tip endpoints."
+msgstr ""
+
+#: templates/methodology.html:193
+msgid "Disclosure."
+msgstr "Divulgation."
+
+#: templates/methodology.html:193
+msgid "Ripple's documentation explicitly states their public servers are"
+msgstr ""
+"La documentation de Ripple indique explicitement que leurs serveurs "
+"publics"
+
+#: templates/methodology.html:193
+msgid "not intended for sustained business use"
+msgstr "ne sont pas destinés à un usage commercial soutenu"
+
+#: templates/methodology.html:193
+msgid ""
+"We rely on them today because they are the most convenient public "
+"endpoints for the XRPL. The plan is to migrate primary traffic to the "
+"community-operated cluster"
+msgstr ""
+
+#: templates/methodology.html:195
+msgid ""
+"(run by the InFTF) before sustained traffic warrants it, and to run our "
+"own"
+msgstr ""
+
+#: templates/methodology.html:196
+msgid "node as the project grows."
+msgstr "nœud à mesure que le projet grandit."
+
+#: templates/methodology.html:199
+msgid "Database"
+msgstr "Base de données"
+
+#: templates/methodology.html:201
+msgid "Worker writes to"
+msgstr "Le worker écrit dans"
+
+#: templates/methodology.html:201
+msgid "Neon Postgres"
+msgstr "Neon Postgres"
+
+#: templates/methodology.html:201
+msgid ""
+"(free tier; managed EU-hosted Postgres) and a redundant local SQLite "
+"snapshot. The web app prefers Postgres for fresh reads and falls back to "
+"the SQLite snapshot if the Postgres connection is unavailable. No third-"
+"party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, "
+"CoinGecko) feeds any number on this site."
+msgstr ""
+
+#: templates/methodology.html:206
+msgid "Token display names and named-account labels are hand-curated in"
+msgstr ""
+"Les noms d'affichage de tokens et étiquettes de comptes sont curatés "
+"manuellement dans"
+
+#: templates/methodology.html:208
+msgid ""
+"in the public GitHub repo. Each label has a verifiable source URL "
+"(exchange page, project"
+msgstr ""
+
+#: templates/methodology.html:208
+msgid ""
+"or audit). Labels are accepted via public PR review; same model as "
+"mempool.space's mining-pool list."
+msgstr ""
+
+#: templates/methodology.html:213
+#, fuzzy
+msgid "Whale movement."
+msgstr "Mouvements des baleines"
+
+#: templates/methodology.html:213
+msgid "A single XRP"
+msgstr "Une seule transaction XRP"
+
+#: templates/methodology.html:214
+msgid "transaction of"
+msgstr "de"
+
+#: templates/methodology.html:214
+msgid "We do"
+msgstr "Nous"
+
+#: templates/methodology.html:215
+msgid "not"
+msgstr "ne"
+
+#: templates/methodology.html:215
+msgid "aggregate multiple smaller transfers — each row is one on-chain payment."
+msgstr ""
+"agrégeons pas plusieurs transferts plus petits — chaque ligne est un "
+"paiement on-chain."
+
+#: templates/methodology.html:216
+msgid "Token volume."
+msgstr "Volume de tokens."
+
+#: templates/methodology.html:216
+msgid "Sum of"
+msgstr "Somme des"
+
+#: templates/methodology.html:217
+msgid ""
+"fills + AMM swap legs touching that currency/issuer pair, over a 30-day "
+"window."
+msgstr ""
+
+#: templates/methodology.html:218
+msgid "AMM \"current price\"."
+msgstr ""
+
+#: templates/methodology.html:218
+msgid "Computed live from the pool's reserves"
+msgstr "Calculé en direct à partir des réserves du pool"
+
+#: templates/methodology.html:219
+msgid ""
+"same constant-product formula the protocol uses internally. This is the "
+"spot price at the moment of fetch — it changes with every swap."
+msgstr ""
+
+#: templates/methodology.html:220
+msgid "Counterparty network on /wallet."
+msgstr "Réseau de contreparties sur /wallet."
+
+#: templates/methodology.html:220
+msgid "Built from the wallet's last 1,000"
+msgstr "Construit à partir des 1 000 dernières transactions du portefeuille"
+
+#: templates/methodology.html:220
+msgid ""
+"entries. Sparse wallets (under 3 counterparties in 30 days) display a "
+"note explaining the gap, usually because most activity is order-book "
+"trading without a single counterparty."
+msgstr ""
+
+#: templates/methodology.html:221
+msgid "\"First-seen\" badge."
+msgstr ""
+
+#: templates/methodology.html:221
+#, python-format
+msgid ""
+"A counterparty is flagged amber if its first transaction with this wallet"
+" was within the last 7 days. When 100% of counterparties are first-seen-"
+"recent, the per-node badges collapse to a single wallet-level banner to "
+"avoid alarm fatigue."
+msgstr ""
+
+#: templates/methodology.html:222
+#, fuzzy
+msgid "Token labels."
+msgstr "tokens"
+
+#: templates/methodology.html:222
+msgid ""
+"Only displayed when a first-party source is on file. Unverified issuers "
+"render unlabeled rather than guessed."
+msgstr ""
+
+#: templates/methodology.html:225
+msgid "Known limitations"
+msgstr "Limites connues"
+
+#: templates/methodology.html:227
+msgid "Wallet pulse sparkline"
+msgstr "Sparkline de pouls du portefeuille"
+
+#: templates/methodology.html:227
+msgid ""
+"is built from a daily histogram of the last 30 days, fetched on page "
+"load. The WebSocket only bumps today's bar — historical bars are fixed "
+"until the next page reload."
+msgstr ""
+
+#: templates/methodology.html:228
+#, fuzzy
+msgid "Whale wallet activity"
+msgstr "voir toute l'activité des baleines"
+
+#: templates/methodology.html:228
+msgid ""
+"may double-count a single DEX fill if it crosses multiple offers. Working"
+" on de-duplication keyed by ledger sequence + tx hash."
+msgstr ""
+
+#: templates/methodology.html:229
+msgid "Counterparty graph"
+msgstr "Graphe de contreparties"
+
+#: templates/methodology.html:229
+msgid ""
+"doesn't currently extract DEX order-book counterparties (only direct "
+"payments, AMM swaps, and trustline counterparties). Roadmap."
+msgstr ""
+
+#: templates/methodology.html:230
+msgid "Worker downtime"
+msgstr "Temps d'arrêt du worker"
+
+#: templates/methodology.html:230
+msgid "if the streaming worker crashes or restarts, panels fed by it"
+msgstr "si le worker de streaming plante ou redémarre, les panneaux qu'il alimente"
+
+#: templates/methodology.html:231
+msgid ""
+"show data up to the last successful write. Per-page WebSockets continue "
+"working independently."
+msgstr ""
+
+#: templates/methodology.html:232
+msgid "Reserve values."
+msgstr "Valeurs de réserve."
+
+#: templates/methodology.html:232
+msgid ""
+"The base + per-object reserve shown on each wallet page is pulled live "
+"from"
+msgstr ""
+
+#: templates/methodology.html:233
+msgid ""
+"(validated_ledger), cached 10 minutes. Reserves only change via on-chain "
+"amendment, so the cache is safe; the literal numbers in the calculation "
+"will reflect the network's current parameters automatically."
+msgstr ""
+
+#: templates/methodology.html:236
+msgid "Infrastructure"
+msgstr "Infrastructure"
+
+#: templates/methodology.html:238
+msgid "Web app:"
+msgstr "Application web :"
+
+#: templates/methodology.html:238
+msgid "Render starter ($7/mo). Source on GitHub, MIT-licensed."
+msgstr "Render starter (7 $/mois). Code sur GitHub, sous licence MIT."
+
+#: templates/methodology.html:239
+msgid "Worker:"
+msgstr "Worker :"
+
+#: templates/methodology.html:239
+msgid "Render background worker ($7/mo). Streams XRPL → Postgres 24/7."
+msgstr "Worker en arrière-plan Render (7 $/mois). Flux XRPL → Postgres 24/7."
+
+#: templates/methodology.html:240
+msgid "Database:"
+msgstr "Base de données :"
+
+#: templates/methodology.html:240
+msgid "Neon Postgres (free tier)."
+msgstr "Neon Postgres (niveau gratuit)."
+
+#: templates/methodology.html:241
+msgid "CDN:"
+msgstr "CDN :"
+
+#: templates/methodology.html:241
+msgid "Cloudflare in front of Render."
+msgstr "Cloudflare devant Render."
+
+#: templates/methodology.html:242
+msgid "Status:"
+msgstr "État :"
+
+#: templates/methodology.html:242
+msgid "public uptime + ledger-sync indicator."
+msgstr "disponibilité publique + indicateur de synchronisation du ledger."
+
+#: templates/methodology.html:245
+msgid "Versioning this page"
+msgstr "Versionner cette page"
+
+#: templates/methodology.html:247
+msgid ""
+"This methodology page is part of the same git repository as the code. Any"
+" time the site's caching behavior, data sources, or methodology changes, "
+"the corresponding edit lands in this file in the same commit. The commit "
+"history of"
+msgstr ""
+
+#: templates/methodology.html:248
+msgid "is the canonical change log."
+msgstr "est le journal des modifications canonique."
+
+#: templates/methodology.html:253
+msgid "Found a discrepancy?"
+msgstr "Trouvé une divergence ?"
+
+#: templates/methodology.html:253
+msgid "Open an issue on"
+msgstr "Ouvrez un issue sur"
+
+#: templates/methodology.html:255
+msgid "or email"
+msgstr "ou envoyez un e-mail à"
+
+#: templates/methodology.html:257
+msgid ""
+"We'll either fix the data, fix the explanation, or — if it's a genuine "
+"ambiguity — add it to the limitations list above."
+msgstr ""
+
+#: templates/methodology.html:262
+msgid "Last updated alongside the code at"
+msgstr "Dernière mise à jour avec le code à"
+
+#: templates/methodology.html:263
+msgid "See"
+msgstr "Voir"
+
+#: templates/methodology.html:264
+msgid "for mission and funding"
+msgstr "pour la mission et le financement"
+
+#: templates/methodology.html:265
+msgid "for live infrastructure status."
+msgstr "pour l'état de l'infrastructure en direct."
+
+#: templates/pools.html:435 templates/token.html:248
+#, fuzzy
+msgid "AMM pools"
+msgstr "pools AMM XRPL"
+
+#: templates/pools.html:437
+msgid "What's an AMM pool"
+msgstr "Qu'est-ce qu'un pool AMM"
+
+#: templates/pools.html:438
+msgid ""
+"Think of it like a vending machine for swapping two tokens. Anyone can "
+"drop both tokens in (this is called 'providing liquidity') and earn a "
+"small fee every time someone uses it to swap. The price you get depends "
+"on how much of each token is sitting in the pool. TVL is the total dollar"
+" value parked inside it right now."
+msgstr ""
+
+#: templates/pools.html:441
+msgid ""
+"Every AMM pool we've indexed from the XRP Ledger, ranked by total value "
+"locked. XRP-paired pools are sized in USD using the XRP price; pools with"
+" a USD-pegged token (stablecoin/fiat) are exact, others are best-effort "
+"estimates. See"
+msgstr ""
+
+#: templates/pools.html:441 templates/tokens.html:345 templates/whales.html:249
+msgid "for sourcing."
+msgstr "pour la source."
+
+#: templates/pools.html:448
+msgid "total TVL (XRP-paired)"
+msgstr "TVL total (apparié à XRP)"
+
+#: templates/pools.html:450
+msgid "Why XRP-paired only"
+msgstr "Pourquoi uniquement apparié à XRP"
+
+#: templates/pools.html:451
+msgid ""
+"We only count pools where one side is XRP, because XRP has a live, well-"
+"known dollar price we can trust. Pools that pair two other tokens (like "
+"RLUSD with USDC) are harder to price honestly — we'd be guessing — so "
+"they don't count toward this headline number."
+msgstr ""
+
+#: templates/pools.html:456
+msgid "pools priced"
+msgstr "pools évalués"
+
+#: templates/pools.html:460
+msgid "exact TVL"
+msgstr "TVL exact"
+
+#: templates/pools.html:462
+msgid "Exact vs estimated TVL"
+msgstr "TVL exact vs estimé"
+
+#: templates/pools.html:463
+msgid ""
+"Exact = we can convert this pool's value to dollars without guessing "
+"(because one side is XRP or a dollar-pegged stablecoin). Estimated = we "
+"had to figure out a price for one of the tokens by looking at where else "
+"it's traded. Estimated numbers are roughly right — treat them as a "
+"ballpark, not precise."
+msgstr ""
+
+#: templates/pools.html:468 templates/pools.html:619
+msgid "estimated"
+msgstr "estimé"
+
+#: templates/pools.html:475
+#, fuzzy
+msgid "Top 10 by TVL"
+msgstr "Top pools par TVL"
+
+#: templates/pools.html:475
+msgid ""
+"star size = pool TVL · comets fire on real on-chain events · click any "
+"star for the pool wallet"
+msgstr ""
+
+#: templates/pools.html:480 templates/tokens.html:403 templates/whales.html:327
+msgid "connecting…"
+msgstr "connexion…"
+
+#: templates/pools.html:483
+msgid "Subscribed to"
+msgstr "Abonné à"
+
+#: templates/pools.html:483
+msgid "AMM accounts on the public XRPL WebSocket"
+msgstr "comptes AMM sur le WebSocket XRPL public"
+
+#: templates/pools.html:501
+msgid "Constellation data mode"
+msgstr "Mode de données constellation"
+
+#: templates/pools.html:502
+msgid "LIVE"
+msgstr "DIRECT"
+
+#: templates/pools.html:503
+msgid "SIM"
+msgstr "SIM"
+
+#: templates/pools.html:505
+msgid "POOLS · STANDBY"
+msgstr "POOLS · EN ATTENTE"
+
+#: templates/pools.html:507
+#, fuzzy
+msgid "DEPOSIT"
+msgstr "est"
+
+#: templates/pools.html:508
+msgid "WITHDRAW"
+msgstr "RETIRER"
+
+#: templates/pools.html:509
+msgid "SWAP"
+msgstr "SWAP"
+
+#: templates/pools.html:543
+msgid "Share of top-10 TVL"
+msgstr "Part du top-10 TVL"
+
+#: templates/pools.html:543
+msgid "quick visual recap"
+msgstr "récapitulatif visuel rapide"
+
+#: templates/pools.html:557
+msgid "Together:"
+msgstr "Ensemble :"
+
+#: templates/pools.html:558
+msgid "that's"
+msgstr "c'est"
+
+#: templates/pools.html:558
+#, fuzzy
+msgid "of all-pool TVL."
+msgstr "Top pools par TVL"
+
+#: templates/pools.html:562
+#, fuzzy
+msgid "Browse all"
+msgstr "voir toutes les"
+
+#: templates/pools.html:562
+msgid "search &amp; filter"
+msgstr "rechercher et filtrer"
+
+#: templates/pools.html:564
+msgid "pools tracked · top 100 shown by default"
+msgstr "pools suivis · top 100 affichés par défaut"
+
+#: templates/pools.html:564
+msgid "ranking in progress"
+msgstr "classement en cours"
+
+#: templates/pools.html:565
+msgid "Most XRPL pools have negligible TVL — switch to"
+msgstr "La plupart des pools XRPL ont un TVL négligeable — passez à"
+
+#: templates/pools.html:565 templates/pools.html:574 templates/pools.html:576
+#: templates/tokens.html:421 templates/tokens.html:428
+#: templates/whales.html:304 templates/whales.html:310
+msgid "all"
+msgstr "tous"
+
+#: templates/pools.html:565
+msgid "below to see the long tail."
+msgstr "ci-dessous pour voir la longue traîne."
+
+#: templates/pools.html:565
+msgid "ranked"
+msgstr "classés"
+
+#: templates/pools.html:565
+msgid "so far"
+msgstr "jusqu'ici"
+
+#: templates/pools.html:565
+msgid "TVL snapshot"
+msgstr "snapshot TVL"
+
+#: templates/pools.html:568
+msgid "Search pair (e.g. USDC, RLUSD, SOLO)…"
+msgstr "Rechercher une paire (ex. USDC, RLUSD, SOLO)…"
+
+#: templates/pools.html:572
+msgid "top 100"
+msgstr "top 100"
+
+#: templates/pools.html:573
+msgid "top 500"
+msgstr "top 500"
+
+#: templates/pools.html:576
+msgid "No pools match that search. Try fewer letters, or switch tier to"
+msgstr ""
+"Aucun pool ne correspond. Essayez moins de lettres, ou changez de niveau "
+"pour"
+
+#: templates/pools.html:607
+#, fuzzy
+msgid "No ranked pools yet."
+msgstr "Aucune pool AMM chargée pour l'instant."
+
+#: templates/pools.html:609
+msgid "The bootstrap scan has indexed"
+msgstr "Le scan bootstrap a indexé"
+
+#: templates/pools.html:610
+msgid "AMMs but ranking hasn't run yet. Run"
+msgstr "AMM mais le classement n'a pas encore été exécuté. Exécutez"
+
+#: templates/pools.html:611
+msgid "to populate this view."
+msgstr "pour peupler cette vue."
+
+#: templates/pools.html:618
+msgid "Why TVL has different statuses:"
+msgstr "Pourquoi le TVL a différents statuts :"
+
+#: templates/pools.html:618
+msgid ""
+"XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) get "
+"an"
+msgstr ""
+
+#: templates/pools.html:619
+msgid "exact"
+msgstr "exact"
+
+#: templates/pools.html:619
+msgid "TVL. XRP-paired pools whose token has no peg get an"
+msgstr "TVL. Les pools appariés à XRP dont le token n'a pas de peg obtiennent un"
+
+#: templates/pools.html:620
+msgid ""
+"TVL — 2× the XRP-side value, since AMM curves balance 50/50. Token-token "
+"pools (no XRP side) are tagged"
+msgstr ""
+
+#: templates/pools.html:621
+msgid "non xrp pair"
+msgstr "paire sans XRP"
+
+#: templates/pools.html:621
+msgid ""
+"and sink to the bottom — we'll price them once a derived token price feed"
+" exists."
+msgstr ""
+
+#: templates/pools.html:624
+msgid "Catalog is still expanding."
+msgstr "Le catalogue continue de s'étendre."
+
+#: templates/pools.html:624
+msgid ""
+"A bootstrap scan walks the ledger by object ID, so the indexed list grows"
+" as the scan progresses. The"
+msgstr ""
+
+#: templates/pools.html:624
+msgid "you see above is the current count — it goes up over time, not down."
+msgstr ""
+"que vous voyez ci-dessus est le compte actuel — il monte avec le temps, "
+"pas l'inverse."
+
+#: templates/pools.html:629
+msgid "swaps and TVL stream in live via WebSocket; pool index seeded from"
+msgstr ""
+"les swaps et le TVL sont diffusés en direct via WebSocket ; index de "
+"pools amorcé depuis"
+
+#: templates/pools.html:630
+msgid "on the public XRPL node."
+msgstr "sur le nœud XRPL public."
+
+#: templates/token.html:6
+#, fuzzy
+msgid "token"
+msgstr "tokens"
+
+#: templates/token.html:200
+#, fuzzy
+msgid "back to tokens"
+msgstr "tokens"
+
+#: templates/token.html:208
+#, fuzzy
+msgid "Token detail"
+msgstr "Activité des tokens"
+
+#: templates/token.html:214 templates/tokens.html:361
+#, fuzzy
+msgid "unlabeled"
+msgstr "Indisponible"
+
+#: templates/token.html:218
+msgid "Issued by"
+msgstr "Émis par"
+
+#: templates/token.html:220
+msgid "raw code"
+msgstr "code brut"
+
+#: templates/token.html:233
+#, fuzzy
+msgid "Trades · 24h"
+msgstr "transactions"
+
+#: templates/token.html:235
+msgid "on-ledger token events"
+msgstr "événements de token on-ledger"
+
+#: templates/token.html:238
+#, fuzzy
+msgid "Trades · 7d"
+msgstr "transactions"
+
+#: templates/token.html:240
+msgid "past week, hourly buckets"
+msgstr "semaine passée, intervalles horaires"
+
+#: templates/token.html:243
+msgid "Trades · all time"
+msgstr "Échanges · toujours"
+
+#: templates/token.html:245
+msgid "since watcher start"
+msgstr "depuis le démarrage du watcher"
+
+#: templates/token.html:250 templates/wallet.html:1137
+msgid "last seen"
+msgstr "dernier vu"
+
+#: templates/token.html:256
+msgid "Trade activity · last 7 days"
+msgstr "Activité d'échanges · 7 derniers jours"
+
+#: templates/token.html:257
+msgid "hourly buckets"
+msgstr "intervalles horaires"
+
+#: templates/token.html:257 templates/tokens.html:445
+#, fuzzy
+msgid "h active"
+msgstr "Activité AMM"
+
+#: templates/token.html:291
+#, fuzzy
+msgid "7 days ago"
+msgstr "s écoulées"
+
+#: templates/token.html:292
+#, fuzzy
+msgid "now"
+msgstr "Inconnu"
+
+#: templates/token.html:296
+msgid "No trade activity in the last 7 days."
+msgstr "Aucune activité d'échange ces 7 derniers jours."
+
+#: templates/token.html:297
+msgid ""
+"Either this token isn't being traded, or the watcher hasn't picked it up "
+"yet. Check"
+msgstr ""
+
+#: templates/token.html:304
+msgid "AMM pools holding this token"
+msgstr "Pools AMM détenant ce token"
+
+#: templates/token.html:305
+#, fuzzy
+msgid "pool"
+msgstr "pools"
+
+#: templates/token.html:330
+msgid "Showing top 20 of"
+msgstr "Affichage des 20 premiers sur"
+
+#: templates/token.html:330
+msgid "pools by LP balance."
+msgstr "pools par solde LP."
+
+#: templates/token.html:335
+#, fuzzy
+msgid "No AMM pools indexed for this token."
+msgstr "Aucune pool AMM chargée pour l'instant."
+
+#: templates/token.html:336
+msgid ""
+"This token isn't in any indexed AMM pool. It may still trade on the order"
+" book — see XRPSCAN for the full DEX."
+msgstr ""
+
+#: templates/token.html:342
+msgid "Cross-check on other explorers"
+msgstr "Vérifier sur d'autres explorateurs"
+
+#: templates/token.html:344
+msgid ""
+"We link out so you can verify these numbers against another reading. "
+"Linking out for verification strengthens trust — see"
+msgstr ""
+
+#: templates/token.html:348 templates/token.html:351
+msgid "issuer"
+msgstr "émetteur"
+
+#: templates/token.html:354
+#, fuzzy
+msgid "token page"
+msgstr "tokens"
+
+#: templates/token.html:358
+#, fuzzy
+msgid "Label source"
+msgstr "Code source :"
+
+#: templates/token.html:365
+msgid "Token detail · counts from"
+msgstr "Détail du token · comptes de"
+
+#: templates/token.html:366
+msgid "pool list from"
+msgstr "liste de pools de"
+
+#: templates/token.html:367
+#, fuzzy
+msgid "s ago."
+msgstr "s écoulées"
+
+#: templates/token.html:371
+#, fuzzy
+msgid "all tokens"
+msgstr "tokens"
+
+#: templates/tokens.html:340
+msgid "What this page tracks"
+msgstr "Ce que cette page suit"
+
+#: templates/tokens.html:341
+msgid ""
+"Which XRP-Ledger tokens are getting traded right now. Each 'trade' is a "
+"single transaction that moves a token between two wallets. We rank by "
+"number of trades, not by dollar amount — so a popular token with lots of "
+"small trades can rank higher than a sleepy one with a single whale-sized "
+"move."
+msgstr ""
+
+#: templates/tokens.html:345
+msgid ""
+"Top XRPL tokens by recent on-ledger trade count. Counts every token "
+"Payment plus every AMM deposit/withdraw. Token names are hand-curated "
+"where available — see"
+msgstr ""
+
+#: templates/tokens.html:350
+msgid "Live token trade grid"
+msgstr "Grille d'échanges de tokens en direct"
+
+#: templates/tokens.html:353
+msgid "waiting for the next validated token trade on the public XRPL stream…"
+msgstr "en attente du prochain échange de token validé sur le flux XRPL public…"
+
+#: templates/tokens.html:357
+msgid "stable"
+msgstr "stable"
+
+#: templates/tokens.html:358
+msgid "wrapped"
+msgstr "enveloppé"
+
+#: templates/tokens.html:359
+msgid "utility"
+msgstr "utilitaire"
+
+#: templates/tokens.html:360
+msgid "meme"
+msgstr "meme"
+
+#: templates/tokens.html:369
+#, fuzzy
+msgid "tokens shown"
+msgstr "tokens"
+
+#: templates/tokens.html:373
+msgid "labeled"
+msgstr "étiqueté"
+
+#: templates/tokens.html:375
+msgid "What 'labeled' means"
+msgstr "Ce que 'étiqueté' signifie"
+
+#: templates/tokens.html:376
+msgid ""
+"Anyone can create a token on the XRP Ledger, and the Ledger only stores a"
+" short code (sometimes just a string of letters and numbers). We keep a "
+"hand-checked list of the real names for the well-known ones — labeled "
+"tokens show that real name (RLUSD, Coreum, etc.). Unlabeled ones just "
+"show whatever the Ledger had on file."
+msgstr ""
+
+#: templates/tokens.html:382
+msgid "hour buckets"
+msgstr "intervalles horaires"
+
+#: templates/tokens.html:384
+msgid "What 'hour buckets' means"
+msgstr "Ce que 'intervalles horaires' signifie"
+
+#: templates/tokens.html:385
+msgid ""
+"We tally each token's trades hour by hour rather than storing every "
+"single transaction. This number is roughly 'how many tokens were active "
+"in how many hours' — higher means more tokens trading more often."
+msgstr ""
+
+#: templates/tokens.html:391
+msgid "latest bucket"
+msgstr "dernier intervalle"
+
+#: templates/tokens.html:407
+msgid "token trades observed live this session"
+msgstr "échanges de tokens observés en direct cette session"
+
+#: templates/tokens.html:412
+msgid "Search token (e.g. RLUSD, SOLO, GiB)…"
+msgstr "Rechercher un token (ex. RLUSD, SOLO, GiB)…"
+
+#: templates/tokens.html:417
+msgid "last 24h"
+msgstr "dernières 24h"
+
+#: templates/tokens.html:419
+msgid "last 7d"
+msgstr "derniers 7j"
+
+#: templates/tokens.html:424
+msgid "What the row numbers mean"
+msgstr "Ce que signifient les chiffres des lignes"
+
+#: templates/tokens.html:425
+msgid ""
+"The big number is the token's total trade count over the selected range —"
+" every on-ledger event that moved the token (Payments plus AMM deposits "
+"and withdraws). It's an activity count, not a dollar volume. The small "
+"'Nh active' line below it tells you how many distinct hours the token had"
+" at least one trade in. So '22h active' means it was trading almost every"
+" hour — a steady token. A token with a big trade count but only '3h "
+"active' had bursty activity."
+msgstr ""
+
+#: templates/tokens.html:428
+msgid "No tokens match that search. Try fewer letters, or switch range to"
+msgstr ""
+"Aucun token ne correspond. Essayez moins de lettres, ou changez la plage "
+"pour"
+
+#: templates/tokens.html:453
+msgid ""
+"The watcher tracks token Payments + AMM deposits/withdraws. Either the "
+"watcher hasn't been running long enough, or no token activity matched in "
+"the selected range. Check"
+msgstr ""
+
+#: templates/tokens.html:460
+msgid "What \"trades\" means here:"
+msgstr ""
+
+#: templates/tokens.html:460
+msgid ""
+"every on-ledger event that moves a token — token Payments and AMM "
+"deposits/withdraws. It's a raw activity count, not a USD volume."
+msgstr ""
+
+#: templates/tokens.html:463
+msgid "Why some show as 40-char hex:"
+msgstr "Pourquoi certains s'affichent en hex de 40 caractères :"
+
+#: templates/tokens.html:463
+msgid ""
+"XRPL allows tokens to use a 160-bit currency code. We decode it to ASCII "
+"when possible; when the bytes aren't text, we show truncated hex. Tokens "
+"we've labeled appear with a friendly name + category — to add a label, "
+"see"
+msgstr ""
+
+#: templates/tokens.html:467
+msgid "XRP-equivalent volume"
+msgstr "Volume équivalent XRP"
+
+#: templates/tokens.html:467
+msgid ""
+"isn't shown yet. That requires a price feed derived from the AMM index, "
+"which is a later phase"
+msgstr ""
+
+#: templates/tokens.html:468
+msgid "Trade count alone is already directionally useful."
+msgstr "Le nombre d'échanges seul est déjà utile directionnellement."
+
+#: templates/tokens.html:473
+msgid ""
+"new trades stream in via WebSocket; aggregate counts come from the "
+"worker's hourly buckets and rebuild on the next reload."
+msgstr ""
+
+#: templates/wallet.html:780
+#, fuzzy
+msgid "AMM pool"
+msgstr "pools AMM XRPL"
+
+#: templates/wallet.html:780
+#, fuzzy
+msgid "wallet"
+msgstr "baleines"
+
+#: templates/wallet.html:792
+msgid "Total XRP"
+msgstr "XRP total"
+
+#: templates/wallet.html:795 templates/wallet.html:1158
+#, fuzzy
+msgid "available"
+msgstr "Indisponible"
+
+#: templates/wallet.html:805
+msgid "Reserve locked"
+msgstr "Réserve verrouillée"
+
+#: templates/wallet.html:807
+msgid "of balance"
+msgstr "du solde"
+
+#: templates/wallet.html:816 templates/wallet.html:1217
+msgid "Owned objects"
+msgstr "Objets possédés"
+
+#: templates/wallet.html:818
+msgid "trustlines, offers, AMM stakes"
+msgstr "trustlines, offres, mises AMM"
+
+#: templates/wallet.html:827 templates/wallet.html:1229
+msgid "Trustlines"
+msgstr "Trustlines"
+
+#: templates/wallet.html:829
+msgid "tokens held or trusted"
+msgstr "tokens détenus ou autorisés"
+
+#: templates/wallet.html:843
+#, fuzzy
+msgid "AMM Pool"
+msgstr "pools AMM XRPL"
+
+#: templates/wallet.html:843
+#, fuzzy
+msgid "Wallet"
+msgstr "baleines"
+
+#: templates/wallet.html:854
+msgid "Identity attested via"
+msgstr "Identité attestée via"
+
+#: templates/wallet.html:854
+msgid "verified"
+msgstr "vérifié"
+
+#: templates/wallet.html:861
+msgid "Scan to open this wallet page"
+msgstr "Scanner pour ouvrir cette page de portefeuille"
+
+#: templates/wallet.html:865
+msgid "Verify this wallet's history on XRPSCAN"
+msgstr "Vérifier l'historique de ce portefeuille sur XRPSCAN"
+
+#: templates/wallet.html:865
+msgid "Verify on XRPSCAN"
+msgstr "Vérifier sur XRPSCAN"
+
+#: templates/wallet.html:867
+msgid "Snapshot · pulled from XRP Ledger"
+msgstr "Snapshot · extrait du XRP Ledger"
+
+#: templates/wallet.html:870
+msgid "Median of"
+msgstr "Médiane de"
+
+#: templates/wallet.html:870
+msgid "All sources on-ledger; refreshed ~60s."
+msgstr "Toutes les sources sont on-ledger ; actualisées toutes les ~60s."
+
+#: templates/wallet.html:871
+msgid "Live XRP/USD"
+msgstr "XRP/USD en direct"
+
+#: templates/wallet.html:894
+msgid "Pool Flow"
+msgstr "Flux du pool"
+
+#: templates/wallet.html:896
+msgid "Comet mode"
+msgstr "Mode comète"
+
+#: templates/wallet.html:898
+msgid "Exact"
+msgstr "Exact"
+
+#: templates/wallet.html:900
+msgid "Aggregated"
+msgstr "Agrégé"
+
+#: templates/wallet.html:903
+msgid "swap"
+msgstr "swap"
+
+#: templates/wallet.html:903
+msgid "swaps"
+msgstr "swaps"
+
+#: templates/wallet.html:905
+msgid "last"
+msgstr "dernier"
+
+#: templates/wallet.html:918
+msgid "Expand to fullscreen"
+msgstr "Agrandir en plein écran"
+
+#: templates/wallet.html:922
+msgid "in"
+msgstr "entrant"
+
+#: templates/wallet.html:923
+#, fuzzy
+msgid "out"
+msgstr "à propos"
+
+#: templates/wallet.html:926
+#, fuzzy
+msgid "net"
+msgstr "est"
+
+#: templates/wallet.html:930
+msgid "Pool reserves and price computed from XRPL"
+msgstr "Réserves du pool et prix calculés depuis XRPL"
+
+#: templates/wallet.html:931
+msgid "Flow direction aggregated from the most recent"
+msgstr "Direction du flux agrégée depuis les"
+
+#: templates/wallet.html:932
+msgid "on-chain swap"
+msgstr "swap on-chain le plus récent"
+
+#: templates/wallet.html:932
+msgid "on-chain swaps"
+msgstr "swaps on-chain les plus récents"
+
+#: templates/wallet.html:932
+msgid "on the pool's account."
+msgstr "sur le compte du pool."
+
+#: templates/wallet.html:939
+msgid "Counterparty Network"
+msgstr "Réseau de contreparties"
+
+#: templates/wallet.html:940
+msgid "entities"
+msgstr "entités"
+
+#: templates/wallet.html:944
+msgid ""
+"All counterparties first-seen in last 7 days — this wallet recently "
+"became active."
+msgstr ""
+
+#: templates/wallet.html:1039
+msgid "Exchange"
+msgstr "Exchange"
+
+#: templates/wallet.html:1058 templates/wallet.html:1274
+msgid "Issuer"
+msgstr "Émetteur"
+
+#: templates/wallet.html:1067
+#, fuzzy
+msgid "Unknown account"
+msgstr "Inconnu"
+
+#: templates/wallet.html:1067
+#, fuzzy
+msgid "Unknown accounts"
+msgstr "Inconnu"
+
+#: templates/wallet.html:1074
+msgid "No counterparties detected in the last"
+msgstr "Aucune contrepartie détectée ces"
+
+#: templates/wallet.html:1074 templates/wallet.html:1209
+msgid "days."
+msgstr "jours."
+
+#: templates/wallet.html:1076
+msgid ""
+"Sparse counterparty graph — most of this wallet's recent activity is "
+"order book trading, which doesn't have a single counterparty per tx. "
+"Expanding extraction to DEX fills is on the roadmap."
+msgstr ""
+
+#: templates/wallet.html:1088
+msgid "Live · Wallet Pulse"
+msgstr "En direct · Pouls du portefeuille"
+
+#: templates/wallet.html:1089
+msgid "Last"
+msgstr "Derniers"
+
+#: templates/wallet.html:1123 templates/wallet.html:1225
+msgid "txs"
+msgstr "tx"
+
+#: templates/wallet.html:1125
+msgid "active"
+msgstr "actif"
+
+#: templates/wallet.html:1131
+msgid "Click to reveal full address"
+msgstr "Cliquez pour révéler l'adresse complète"
+
+#: templates/wallet.html:1132
+msgid "top:"
+msgstr "top :"
+
+#: templates/wallet.html:1146
+msgid "Spot price"
+msgstr "Prix au comptant"
+
+#: templates/wallet.html:1147
+msgid "XRP reserve"
+msgstr "Réserve XRP"
+
+#: templates/wallet.html:1148
+msgid "reserve"
+msgstr "réserve"
+
+#: templates/wallet.html:1149
+msgid "Recent swaps"
+msgstr "Swaps récents"
+
+#: templates/wallet.html:1159
+msgid "reserved"
+msgstr "réservé"
+
+#: templates/wallet.html:1168
+msgid "Reserve usage"
+msgstr "Utilisation de la réserve"
+
+#: templates/wallet.html:1186
+msgid "of balance locked"
+msgstr "du solde verrouillé"
+
+#: templates/wallet.html:1193
+msgid "base"
+msgstr "base"
+
+#: templates/wallet.html:1194
+msgid "owned objects"
+msgstr "objets possédés"
+
+#: templates/wallet.html:1196
+msgid "reserved."
+msgstr "réservé."
+
+#: templates/wallet.html:1197
+msgid "Reserved XRP can't be sent."
+msgstr "Le XRP réservé ne peut pas être envoyé."
+
+#: templates/wallet.html:1203
+#, fuzzy
+msgid "Activity"
+msgstr "Activité AMM"
+
+#: templates/wallet.html:1205
+msgid "Recently active"
+msgstr "Récemment actif"
+
+#: templates/wallet.html:1205
+msgid "Lightly active"
+msgstr "Légèrement actif"
+
+#: templates/wallet.html:1205
+msgid "Quiet"
+msgstr "Silencieux"
+
+#: templates/wallet.html:1209
+msgid "No on-chain activity in the last"
+msgstr "Aucune activité on-chain ces"
+
+#: templates/wallet.html:1211
+msgid "on-chain transactions in the last"
+msgstr "transactions on-chain ces"
+
+#: templates/wallet.html:1211
+msgid "days,"
+msgstr "jours,"
+
+#: templates/wallet.html:1212
+#, fuzzy
+msgid "spread across"
+msgstr "sur"
+
+#: templates/wallet.html:1212
+msgid "active days."
+msgstr "jours actifs."
+
+#: templates/wallet.html:1221
+msgid "Last seen"
+msgstr "Dernier vu"
+
+#: templates/wallet.html:1239
+#, fuzzy
+msgid "Token holdings"
+msgstr "tokens"
+
+#: templates/wallet.html:1242
+msgid "top"
+msgstr "top"
+
+#: templates/wallet.html:1242
+msgid "of"
+msgstr "sur"
+
+#: templates/wallet.html:1244
+msgid "none"
+msgstr "aucun"
+
+#: templates/wallet.html:1271
+#, fuzzy
+msgid "Show all"
+msgstr "voir toutes les"
+
+#: templates/wallet.html:1271
+#, fuzzy
+msgid "token holdings"
+msgstr "tokens"
+
+#: templates/wallet.html:1274
+#, fuzzy
+msgid "Token"
+msgstr "tokens"
+
+#: templates/wallet.html:1294
+msgid "This wallet holds no token balances — only XRP. The"
+msgstr "Ce portefeuille ne détient aucun solde de tokens — uniquement XRP. Les"
+
+#: templates/wallet.html:1295
+msgid "trustline"
+msgstr "trustline"
+
+#: templates/wallet.html:1295 templates/whales.html:281
+#: templates/whales.html:316
+msgid "trustlines"
+msgstr "trustlines"
+
+#: templates/wallet.html:1296
+msgid "on file have zero balance."
+msgstr "enregistrées ont un solde nul."
+
+#: templates/wallet.html:1304
+msgid "Pool reserves"
+msgstr "Réserves du pool"
+
+#: templates/wallet.html:1305
+#, fuzzy
+msgid "pulled from XRP Ledger"
+msgstr "Le XRP Ledger,"
+
+#: templates/wallet.html:1308
+msgid "This account"
+msgstr "Ce compte"
+
+#: templates/wallet.html:1308
+msgid "is"
+msgstr "est"
+
+#: templates/wallet.html:1308
+msgid ""
+"the AMM pool — its XRP balance and top token holding above are the pool "
+"reserves. Detailed pool stats (volume, fee history, LP count) are coming "
+"in a dedicated pool view post-launch."
+msgstr ""
+
+#: templates/wallet.html:1314
+#, fuzzy
+msgid "AMM allocation"
+msgstr "Activité AMM"
+
+#: templates/wallet.html:1315
+msgid "XRP committed per pool · est. yield from 24h activity"
+msgstr "XRP engagé par pool · rendement est. de l'activité 24h"
+
+#: templates/wallet.html:1340
+msgid "Estimated APR from last 24h pool activity"
+msgstr "APR estimé à partir de l'activité du pool des dernières 24h"
+
+#: templates/wallet.html:1354
+msgid "XRP committed"
+msgstr "XRP engagé"
+
+#: templates/wallet.html:1358
+msgid "Fees (24h est)"
+msgstr "Frais (est. 24h)"
+
+#: templates/wallet.html:1362
+msgid "Blended APR"
+msgstr "APR mélangé"
+
+#: templates/wallet.html:1366
+#, fuzzy
+msgid "Pools"
+msgstr "pools"
+
+#: templates/wallet.html:1372
+msgid ""
+"APR is a forward projection from each pool's last 24h XRP throughput × "
+"fee rate × your share. Real returns vary with pool volume and impermanent"
+" loss. Token-token pools (no XRP side) are shown without APR — we can't "
+"price their volume in XRP without a quote feed."
+msgstr ""
+
+#: templates/wallet.html:1376
+msgid ""
+"This wallet holds no AMM liquidity positions. Pools you join will appear "
+"here with your share of each pool's XRP reserve and projected fee "
+"earnings."
+msgstr ""
+
+#: templates/wallet.html:1386
+msgid ""
+"Wallet view · all balances, holdings, AMM positions and pool activity "
+"pulled directly from the XRP Ledger via"
+msgstr ""
+
+#: templates/wallet.html:1388
+msgid "Cached 5 min server-side."
+msgstr "Mis en cache 5 min côté serveur."
+
+#: templates/wallet.html:1390
+msgid "Served from cache,"
+msgstr "Servi depuis le cache,"
+
+#: templates/wallet.html:1390
+msgid "old."
+msgstr "d'âge."
+
+#: templates/whales.html:242
+msgid "Whale watch"
+msgstr "Surveillance des baleines"
+
+#: templates/whales.html:244
+msgid "What counts as a whale event"
+msgstr "Ce qui compte comme événement baleine"
+
+#: templates/whales.html:245
+msgid ""
+"Three kinds of moves get listed here: (1) really big XRP transfers (the "
+"size cutoff is set just below), (2) anything touching a wallet we "
+"recognize — exchanges, big projects, public companies, and (3) when one "
+"of those recognized wallets starts holding a brand-new token. Even small "
+"transactions show up if a recognized wallet is involved, because they're "
+"often a clue about what big players are doing."
+msgstr ""
+
+#: templates/whales.html:248
+msgid ""
+"Large XRP transfers and any activity by accounts we recognize. The "
+"watchlist is hand-curated and public — see"
+msgstr ""
+
+#: templates/whales.html:255
+msgid "XRPL · whale scope"
+msgstr "XRPL · portée baleines"
+
+#: templates/whales.html:255
+msgid "scan 360°"
+msgstr "scan 360°"
+
+#: templates/whales.html:256
+msgid "range"
+msgstr "plage"
+
+#: templates/whales.html:257
+#, fuzzy
+msgid "24h whales"
+msgstr "baleines"
+
+#: templates/whales.html:258
+#, fuzzy
+msgid "last whale"
+msgstr "baleines"
+
+#: templates/whales.html:266
+msgid "total events"
+msgstr "événements totaux"
+
+#: templates/whales.html:271 templates/whales.html:312
+msgid "large XRP"
+msgstr "grand XRP"
+
+#: templates/whales.html:276 templates/whales.html:314
+msgid "tagged"
+msgstr "étiqueté"
+
+#: templates/whales.html:285
+msgid "watchlist size"
+msgstr "taille de la liste de surveillance"
+
+#: templates/whales.html:287
+msgid "What's the watchlist"
+msgstr "Qu'est-ce que la liste de surveillance"
+
+#: templates/whales.html:288
+msgid ""
+"A list of XRP wallets we've identified by hand — major exchanges "
+"(Bitstamp, Bitso, Bitrue), the Ripple co-founders, big project "
+"treasuries. We figured out each one by cross-checking what the wallet "
+"owner has publicly announced. When one of these moves money it shows up "
+"here, even small amounts, because it tells you what the big players are "
+"doing."
+msgstr ""
+
+#: templates/whales.html:293
+#, fuzzy
+msgid "Whale tier"
+msgstr "Mouvements des baleines"
+
+#: templates/whales.html:294
+msgid "size"
+msgstr "taille"
+
+#: templates/whales.html:296
+msgid "What 'size' tiers mean"
+msgstr "Ce que signifient les niveaux de 'taille'"
+
+#: templates/whales.html:297
+msgid ""
+"Choose how big a transfer has to be to count. 1M XRP is the classic "
+"'whale' size — rare and almost always worth knowing about. 100K is a good"
+" default for catching coordinated activity. 50K shows everything we "
+"track, useful on quiet days. Activity from recognized wallets shows up no"
+" matter what size you pick."
+msgstr ""
+
+#: templates/whales.html:302
+msgid "large"
+msgstr "grand"
+
+#: templates/whales.html:307
+msgid "Event type"
+msgstr "Type d'événement"
+
+#: templates/whales.html:308
+msgid "type"
+msgstr "type"
+
+#: templates/whales.html:330
+msgid "Streaming validated XRPL transactions ≥"
+msgstr "Diffusion de transactions XRPL validées ≥"
+
+#: templates/whales.html:342
+#, fuzzy
+msgid "ledger"
+msgstr "Ledger"
+
+#: templates/whales.html:373
+msgid "No events to show yet."
+msgstr "Aucun événement à afficher pour l'instant."
+
+#: templates/whales.html:376
+msgid "Nothing of type"
+msgstr "Rien du type"
+
+#: templates/whales.html:376
+msgid "in the database. Try"
+msgstr "dans la base de données. Essayez"
+
+#: templates/whales.html:377
+msgid "all events"
+msgstr "tous les événements"
+
+#: templates/whales.html:379
+msgid ""
+"The live watcher is running but hasn't logged any events that meet the "
+"criteria yet. Check"
+msgstr ""
+
+#: templates/whales.html:380
+msgid "for watcher status."
+msgstr "pour l'état du watcher."
+
+#: templates/whales.html:389
+msgid "How this works:"
+msgstr "Comment ça marche :"
+
+#: templates/whales.html:390
+msgid ""
+"a long-running process subscribes to every validated XRPL transaction and"
+" records two things — XRP transfers above the floor (set by the size "
+"pill), and any transaction that touches an address on our public "
+"watchlist."
+msgstr ""
+
+#: templates/whales.html:393
+msgid ""
+"The size pills above filter large XRP transfers by magnitude — whales "
+"(≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen "
+"the lens. Tagged and watchlisted activity always shows regardless of "
+"size, because the who makes them signal."
+msgstr ""
+
+#: templates/whales.html:396
+msgid "The watchlist currently has"
+msgstr "La liste de surveillance contient actuellement"
+
+#: templates/whales.html:396
+msgid ""
+"entries, all sourced from first-party disclosures (e.g. Ripple's xrp-"
+"ledger.toml). We don't include addresses tagged only by third parties."
+msgstr ""
+
+#: templates/whales.html:401
+msgid "auto-refresh 60s · click any tx to verify on XRPSCAN."
+msgstr "actualisation auto 60s · cliquez sur toute tx pour vérifier sur XRPSCAN."
+
+#: templates/whales.html:405
+msgid "how this is sourced"
+msgstr "comment ceci est sourcé"
 
