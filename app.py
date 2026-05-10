@@ -1328,6 +1328,18 @@ def tokens():
     hex_view_w = round(pad_x * 2 + (HEX_COLS - 1) * col_w + col_w / 2, 2)
     hex_view_h = round(pad_y * 2 + (HEX_ROWS - 1) * row_h, 2)
 
+    # Lookup table for the live trade-tape JS: every labeled token (not just
+    # top 32) so the tape can resolve display name + category color for any
+    # incoming WS trade. Plain JSON, embedded inline in the page.
+    label_lookup = {
+        f"{t['currency_raw']}|{t['issuer']}": {
+            "display": t["display"],
+            "category": t["category"] or "other",
+        }
+        for t in enriched if t["labeled"]
+    }
+    label_lookup_json = json.dumps(label_lookup, separators=(",", ":"))
+
     return render_template(
         "tokens.html",
         tokens=enriched,
@@ -1341,6 +1353,7 @@ def tokens():
         hex_view_w=hex_view_w,
         hex_view_h=hex_view_h,
         hex_size=HEX_S,
+        label_lookup_json=label_lookup_json,
         data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
     )
 

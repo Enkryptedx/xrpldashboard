@@ -63,11 +63,73 @@
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
 
-    /* Honeycomb hero. SVG hex grid where each cell is one labeled token.
-       Cell baseline brightness = relative trade count over the selected
-       range. When a real validated token-trade hits the WebSocket stream
-       below, the matching cell pulses cyan/category-color for ~1s. No
-       fake connecting lines between cells (per no-fake-data rule). */
+    /* Live trade tape. Bloomberg-style scrolling list — every validated
+       token trade on the public XRPL stream slides in at the top with a
+       brief flash. Older lines drift down and out. Real-time, this-tab
+       only, no fake data. */
+    .trade-tape {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 14px 12px;
+      margin: 0 0 18px; position: relative;
+      font-family: var(--mono);
+      height: 380px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .trade-tape::before {
+      content: "live trade tape · this session";
+      position: absolute; top: 8px; right: 12px;
+      font-size: 0.62rem; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.14em;
+    }
+    .trade-tape-rows {
+      flex: 1 1 0; min-height: 0;
+      overflow: hidden; margin-top: 18px;
+      display: flex; flex-direction: column;
+    }
+    .trade-tape-row {
+      display: grid;
+      grid-template-columns: 12px minmax(70px, 110px) minmax(0, 1fr) auto;
+      gap: 10px; align-items: center;
+      font-size: 0.84rem;
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      flex: 0 0 auto;
+      animation: tapeIn 0.45s ease-out both;
+    }
+    @keyframes tapeIn {
+      from { transform: translateY(-10px); opacity: 0; background: rgba(34,211,238,0.18); }
+      to   { transform: translateY(0); opacity: 1; background: transparent; }
+    }
+    .tt-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); box-shadow: 0 0 6px currentColor;
+    }
+    .tt-dot[data-cat="stablecoin"], .tt-dot[data-cat="fiat"] { background: rgb(34,197,94); color: rgb(34,197,94); }
+    .tt-dot[data-cat="wrapped_major"] { background: rgb(245,158,11); color: rgb(245,158,11); }
+    .tt-dot[data-cat="native_utility"] { background: rgb(34,211,238); color: rgb(34,211,238); }
+    .tt-dot[data-cat="memecoin"] { background: rgb(236,72,153); color: rgb(236,72,153); }
+    .tt-dot[data-cat="other"] { background: rgb(140,150,170); color: rgb(140,150,170); }
+    .tt-symbol { color: var(--text); font-weight: 600;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tt-symbol.is-unlabeled { color: var(--muted); font-weight: 500; font-size: 0.76rem; }
+    .tt-amount { color: var(--text); text-align: right;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tt-amount .tt-kind { color: var(--dim); font-size: 0.72rem;
+                          margin-left: 6px; text-transform: uppercase;
+                          letter-spacing: 0.04em; font-weight: 500; }
+    .tt-age { color: var(--dim); font-size: 0.74rem;
+              min-width: 56px; text-align: right; }
+    .trade-tape-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 0.85rem; padding: 0 20px;
+      text-align: center;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .trade-tape-row { animation: none; }
+    }
+
+    /* Honeycomb hero (kept for cross-page styling reuse but not currently
+       rendered — see route hex_cells comment). */
     .honeycomb {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 12px; padding: 16px 14px 14px;
@@ -294,31 +356,13 @@
     {{ freshness_badge(data_age_label) }}
   </div>
 
-  {% if hex_cells %}
-  {% set s = hex_size %}
-  <div class="honeycomb" aria-label="Live token activity grid">
-    <svg class="honeycomb-svg" viewBox="0 0 {{ hex_view_w }} {{ hex_view_h }}"
-         preserveAspectRatio="xMidYMid meet" role="img"
-         aria-label="Honeycomb of {{ hex_cells|length }} labeled tokens — cells pulse when a live trade hits the ledger">
-      {% for c in hex_cells %}
-      <a href="/token/{{ c.currency_raw }}/{{ c.issuer }}"
-         class="hex-cell" data-cat="{{ c.category }}" data-key="{{ c.key }}"
-         style="--b: {{ c.baseline }}; --rest: {{ (0.10 + c.baseline * 0.45)|round(3) }};">
-        <title>{{ c.display }} · {{ "{:,}".format(c.trades) }} trades</title>
-        <polygon class="hex-poly" points="
-          {{ c.cx }},{{ (c.cy - s)|round(2) }}
-          {{ (c.cx + s * 0.866)|round(2) }},{{ (c.cy - s * 0.5)|round(2) }}
-          {{ (c.cx + s * 0.866)|round(2) }},{{ (c.cy + s * 0.5)|round(2) }}
-          {{ c.cx }},{{ (c.cy + s)|round(2) }}
-          {{ (c.cx - s * 0.866)|round(2) }},{{ (c.cy + s * 0.5)|round(2) }}
-          {{ (c.cx - s * 0.866)|round(2) }},{{ (c.cy - s * 0.5)|round(2) }}
-        " />
-        <text class="hex-label" x="{{ c.cx }}" y="{{ (c.cy + 3)|round(2) }}">{{ c.display[:6] }}</text>
-      </a>
-      {% endfor %}
-    </svg>
+  <div class="trade-tape" data-trade-tape aria-label="Live token trade tape">
+    <div class="trade-tape-rows" data-trade-tape-rows></div>
+    <div class="trade-tape-empty" data-trade-tape-empty>
+      waiting for the next validated token trade on the public XRPL stream…
+    </div>
   </div>
-  {% endif %}
+  <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
 
   <div class="stats">
     <div class="stat vibes-spot">
@@ -545,40 +589,136 @@
       return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
     }
 
-    // Build a key→cell index for the honeycomb. Trades that match a cell
-    // (currency + issuer) trigger a 1.1s pulse animation. Trades whose
-    // (currency, issuer) isn't in our labeled set just bump the counter
-    // — no fake activity painted onto unrelated cells.
-    var hexIndex = {};
-    Array.prototype.forEach.call(
-      document.querySelectorAll('.hex-cell[data-key]'),
-      function (el) { hexIndex[el.getAttribute('data-key')] = el; }
-    );
-    function pulseCellsForTx(tx) {
-      var keys = [];
-      function pushFromAmount(a) {
-        if (isTokenAmount(a)) keys.push(a.currency + '|' + a.issuer);
-      }
-      pushFromAmount(tx.Amount);
-      pushFromAmount(tx.DeliverMax);
-      // AMM events: Asset / Asset2 carry the pool pair (XRP side has
-      // currency only, no issuer — skip it).
-      if (tx.Asset && tx.Asset.issuer) {
-        keys.push(tx.Asset.currency + '|' + tx.Asset.issuer);
-      }
-      if (tx.Asset2 && tx.Asset2.issuer) {
-        keys.push(tx.Asset2.currency + '|' + tx.Asset2.issuer);
-      }
-      for (var i = 0; i < keys.length; i++) {
-        var el = hexIndex[keys[i]];
-        if (!el) continue;
-        // Restart animation if already running.
-        el.classList.remove('is-pulsing');
-        // Force reflow so re-adding the class restarts the keyframes.
-        void el.offsetWidth;
-        el.classList.add('is-pulsing');
-      }
+    // Live trade tape. Every validated token trade on the public XRPL
+    // stream is extracted into a row {symbol, amount, kind, ts, category}
+    // and prepended to the tape. Cap at TAPE_MAX rows so old entries
+    // scroll out. Labels resolved from the embedded JSON; unknown tokens
+    // show their decoded short code (or hex) in muted text.
+    var TAPE_MAX = 25;
+    var tape = [];
+    var tapeContainer = document.querySelector('[data-trade-tape-rows]');
+    var tapeEmpty     = document.querySelector('[data-trade-tape-empty]');
+    var labelsEl      = document.getElementById('token-labels-data');
+    var LABELS = {};
+    if (labelsEl) {
+      try { LABELS = JSON.parse(labelsEl.textContent || '{}'); }
+      catch (e) { LABELS = {}; }
     }
+
+    function decodeCurrency(c) {
+      if (!c || typeof c !== 'string') return '?';
+      if (c.length === 3) return c;
+      if (c.length === 40) {
+        // 160-bit currency code: try ASCII decode of leading bytes.
+        var out = '';
+        for (var i = 0; i < 40; i += 2) {
+          var b = parseInt(c.substr(i, 2), 16);
+          if (b === 0) break;
+          if (b < 32 || b > 126) { out = ''; break; }
+          out += String.fromCharCode(b);
+        }
+        if (out) return out;
+        return c.slice(0, 6).toUpperCase() + '…';
+      }
+      return c;
+    }
+
+    function formatAmount(v) {
+      var n = parseFloat(v);
+      if (!isFinite(n) || n <= 0) return v || '0';
+      if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(2).replace(/\.?0+$/, '') + 'K';
+      if (n >= 1)   return n.toFixed(2).replace(/\.?0+$/, '');
+      return n.toPrecision(2);
+    }
+
+    function ageString(ts) {
+      var s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (s < 2)   return 'now';
+      if (s < 60)  return s + 's';
+      if (s < 3600) return Math.floor(s / 60) + 'm';
+      return Math.floor(s / 3600) + 'h';
+    }
+
+    function extractTrade(tx) {
+      // Returns {currency, issuer, value, kind} for the first token leg
+      // we find on the tx, or null if none.
+      var type = tx.TransactionType;
+      if (type === 'Payment') {
+        var a = isTokenAmount(tx.Amount) ? tx.Amount
+              : isTokenAmount(tx.DeliverMax) ? tx.DeliverMax : null;
+        if (a) return { currency: a.currency, issuer: a.issuer, value: a.value, kind: 'pay' };
+      }
+      if (type === 'AMMDeposit' || type === 'AMMWithdraw') {
+        var asset = (tx.Asset && tx.Asset.issuer) ? tx.Asset
+                  : (tx.Asset2 && tx.Asset2.issuer) ? tx.Asset2 : null;
+        if (asset) {
+          var amt = isTokenAmount(tx.Amount) ? tx.Amount
+                  : isTokenAmount(tx.Amount2) ? tx.Amount2 : null;
+          var val = amt ? amt.value : '';
+          return {
+            currency: asset.currency,
+            issuer: asset.issuer,
+            value: val,
+            kind: type === 'AMMDeposit' ? 'amm+' : 'amm-',
+          };
+        }
+      }
+      return null;
+    }
+
+    function recordTrade(tx) {
+      var leg = extractTrade(tx);
+      if (!leg) return;
+      var key = leg.currency + '|' + leg.issuer;
+      var lbl = LABELS[key];
+      tape.unshift({
+        ts: Date.now(),
+        kind: leg.kind,
+        amount: leg.value,
+        symbol: lbl ? lbl.display : decodeCurrency(leg.currency),
+        category: lbl ? lbl.category : null,
+        labeled: !!lbl,
+        currency_raw: leg.currency,
+        issuer: leg.issuer,
+      });
+      if (tape.length > TAPE_MAX) tape.length = TAPE_MAX;
+      renderTape(true);
+    }
+
+    function renderTape(freshTop) {
+      if (!tapeContainer) return;
+      if (tape.length === 0) {
+        if (tapeEmpty) tapeEmpty.style.display = '';
+        tapeContainer.innerHTML = '';
+        return;
+      }
+      if (tapeEmpty) tapeEmpty.style.display = 'none';
+      var html = '';
+      for (var i = 0; i < tape.length; i++) {
+        var r = tape[i];
+        var cat = r.category || 'other';
+        var symClass = r.labeled ? 'tt-symbol' : 'tt-symbol is-unlabeled';
+        var dotAttr  = ' data-cat="' + cat + '"';
+        var rowStyle = (freshTop && i === 0) ? '' : ' style="animation: none;"';
+        html += '<div class="trade-tape-row"' + rowStyle + '>'
+              +   '<span class="tt-dot"' + dotAttr + '></span>'
+              +   '<span class="' + symClass + '">' + escapeHtml(r.symbol) + '</span>'
+              +   '<span class="tt-amount">' + escapeHtml(formatAmount(r.amount))
+              +     '<span class="tt-kind">' + escapeHtml(r.kind) + '</span></span>'
+              +   '<span class="tt-age">' + ageString(r.ts) + '</span>'
+              + '</div>';
+      }
+      tapeContainer.innerHTML = html;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+      });
+    }
+    // Tick ages every second so rows visibly drift from "now" → "12s" → "1m".
+    setInterval(function () { renderTape(false); }, 1000);
 
     var ws = null;
     var reconnectDelay = 1500;
@@ -613,7 +753,7 @@
         if (meta.TransactionResult !== 'tesSUCCESS') return;
         if (isTokenTrade(tx)) {
           bump();
-          pulseCellsForTx(tx);
+          recordTrade(tx);
         }
       };
 
