@@ -42,14 +42,14 @@ services:
       - key: FLASK_DEBUG
         value: "0"
 
-    # Auto-deploy on every push to the connected branch.
-    autoDeploy: true
-
       # DATABASE_URL is set in the Render dashboard (sync: false means
       # "must be set there, never committed"). Same Neon URL is used by
       # both the web service and the worker.
       - key: DATABASE_URL
         sync: false
+
+    # Auto-deploy on every push to the connected branch.
+    autoDeploy: true
 
   # ====================================================================
   # XRPL stream worker — ENABLED 2026-05-09.
