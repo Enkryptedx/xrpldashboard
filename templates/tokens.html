@@ -236,8 +236,13 @@
 
     .trades { font-family: var(--mono); font-size: 0.95rem; color: var(--text);
               text-align: right; font-weight: 600; }
+    .trades .trades-unit { color: var(--muted); font-weight: 400;
+                           font-size: 0.72rem; margin-left: 2px;
+                           text-transform: uppercase; letter-spacing: 0.04em; }
     .trades .sub { display: block; color: var(--dim); font-size: 0.7rem;
                    font-weight: 400; margin-top: 1px; }
+    .filters-explainer { display: inline-flex; align-items: center;
+                         margin-left: auto; font-size: 0.78rem; color: var(--muted); }
 
     .empty { background: var(--card); border: 1px dashed var(--border);
              border-radius: 10px; padding: 24px 18px; text-align: center;
@@ -379,6 +384,17 @@
        href="/tokens?range=7d">last 7d</a>
     <a class="pill {% if range_key == 'all' %}active{% endif %}"
        href="/tokens?range=all">all</a>
+    <span class="filters-explainer">{{ explainer(
+      "row-meaning",
+      "What the row numbers mean",
+      "The big number is the token's total trade count over the selected
+       range — every on-ledger event that moved the token (Payments plus
+       AMM deposits and withdraws). It's an activity count, not a dollar
+       volume. The small 'Nh active' line below it tells you how many
+       distinct hours the token had at least one trade in. So '22h active'
+       means it was trading almost every hour — a steady token. A token
+       with a big trade count but only '3h active' had bursty activity.",
+    ) }}</span>
   </div>
   <div class="search-empty" id="token-search-empty">No tokens match that search. Try fewer letters, or switch range to <a href="/tokens?range=all">all</a>.</div>
 
@@ -396,7 +412,7 @@
         <div class="iss">{{ t.issuer_short }}</div>
       </div>
       <div class="trades">
-        {{ "{:,}".format(t.trades) }}
+        {{ "{:,}".format(t.trades) }} <span class="trades-unit">trades</span>
         <span class="sub">{{ t.hours_active }}h active</span>
       </div>
     </a>
