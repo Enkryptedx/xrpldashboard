@@ -45,30 +45,53 @@ services:
     # Auto-deploy on every push to the connected branch.
     autoDeploy: true
 
-    # ------------------------------------------------------------------
-    # DATABASE_URL is set manually in the Render dashboard (web service
-    # env vars), since we don't want the connection string committed.
-    # ------------------------------------------------------------------
+      # DATABASE_URL is set in the Render dashboard (sync: false means
+      # "must be set there, never committed"). Same Neon URL is used by
+      # both the web service and the worker.
+      - key: DATABASE_URL
+        sync: false
 
   # ====================================================================
-  # XRPL stream worker — DISABLED.
+  # XRPL stream worker — ENABLED 2026-05-09.
   #
-  # Architecture decision (2026-05-08): the XRPL worker runs only on
-  # Charlie's Mac via launchd. Enabling this stanza would spin up a
-  # second worker on Render that dual-writes to the same Neon DB,
-  # producing duplicate events.db rows, double-counted token volumes,
-  # and a duplicate worker_heartbeat row fight.
+  # Lives on Render so the site stays fresh when Charlie's Mac is off.
+  # Subscribes to the public XRPL transaction stream and writes whales,
+  # token volumes, and AMM events to the same Neon Postgres the web
+  # service reads from.
   #
-  # Re-enable later only if/when we move the worker entirely off the
-  # Mac (and at the same time disable the launchd plist).
+  # IMPORTANT: when this is running, the launchd plists on Charlie's
+  # Mac MUST be unloaded — otherwise both workers will write to Neon
+  # and produce duplicate events / double-counted token volumes:
+  #   launchctl unload ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.xrpl_stream.plist
+  #   launchctl unload ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
   # ====================================================================
-  # - type: worker
-  #   name: xrpldashboard-stream
-  #   runtime: python
-  #   plan: starter
-  #   buildCommand: pip install -r requirements.txt
-  #   startCommand: python xrpl_stream.py
-  #   envVars:
-  #     - key: PYTHON_VERSION
-  #       value: "3.12.7"
-  #   autoDeploy: true
+  - type: worker
+    name: xrpldashboard-stream
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python xrpl_stream.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DATABASE_URL
+        sync: false
+
+  # ====================================================================
+  # AMM TVL ranker — periodic cron. Walks every XRPL AMM pool, computes
+  # TVL, writes a fresh snapshot to amm_ranked_pools (the /pools surface).
+  # Schedule matches the previous launchd plist: every 4 hours.
+  # ====================================================================
+  - type: cron
+    name: xrpldashboard-rank-amms
+    runtime: python
+    plan: starter
+    schedule: "0 */4 * * *"   # top of every 4th hour, UTC
+    buildCommand: pip install -r requirements.txt
+    startCommand: python rank_amms.py --reset
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DATABASE_URL
+        sync: false
