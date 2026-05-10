@@ -460,6 +460,23 @@ def prune_amm_pool_events(cap_rows):
 # Flask read helpers (request-scoped connections)
 # ─────────────────────────────────────────────────────────────────────
 
+def read_recent_events(limit=10):
+    """Latest N rows from `events`, no tier/type filter. Mirrors the
+    homepage SQLite query so the existing _resolve_event() resolver works
+    unchanged. Returns rows in column order:
+    tx_hash, ledger_index, ts, type, from_addr, to_addr, amount_drops,
+    currency, issuer, raw_json."""
+    sql = (
+        "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
+        "amount_drops, currency, issuer, raw_json::text FROM events "
+        "ORDER BY ts DESC LIMIT %s"
+    )
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (limit,))
+            return cur.fetchall()
+
+
 def read_whale_events(tier_drops, filter_type=None, limit=100):
     """Return rows in the same column order as the SQLite query in
     app.whales: tx_hash, ledger_index, ts, type, from_addr, to_addr,

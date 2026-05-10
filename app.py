@@ -477,23 +477,37 @@ def _pools_snapshot_label():
 
 def _top_tokens_recent(limit=5, hours_back=24 * 7):
     """Top N tokens by trade count over the last `hours_back` hours.
-    Mirrors the /tokens route but trimmed for the homepage preview."""
-    if not os.path.exists(VOLUMES_DB_PATH):
-        return []
-    try:
-        conn = sqlite3.connect(f"file:{VOLUMES_DB_PATH}?mode=ro", uri=True)
+    Mirrors the /tokens route but trimmed for the homepage preview.
+
+    Dual-read: prefers Postgres when DATABASE_URL is set, falls back to
+    the local volumes.db. On Render the worker and web are separate
+    containers so local volumes.db is empty there — PG is the only source
+    that crosses the gap."""
+    rows = None
+    if db.pg_available():
         try:
-            cutoff = int(time.time() // 3600) - hours_back
-            rows = conn.execute(
-                "SELECT currency, issuer, SUM(trade_count) AS trades "
-                "FROM token_volume WHERE hour_bucket >= ? "
-                "GROUP BY currency, issuer ORDER BY trades DESC LIMIT ?",
-                (cutoff, limit),
-            ).fetchall()
-        finally:
-            conn.close()
-    except Exception:
-        return []
+            agg = db.read_token_volume_aggregates(hours_back=hours_back,
+                                                  limit=limit)
+            rows = [(cur, iss, trades) for cur, iss, trades, _hours in agg]
+        except Exception:
+            rows = None
+    if rows is None:
+        if not os.path.exists(VOLUMES_DB_PATH):
+            return []
+        try:
+            conn = sqlite3.connect(f"file:{VOLUMES_DB_PATH}?mode=ro", uri=True)
+            try:
+                cutoff = int(time.time() // 3600) - hours_back
+                rows = conn.execute(
+                    "SELECT currency, issuer, SUM(trade_count) AS trades "
+                    "FROM token_volume WHERE hour_bucket >= ? "
+                    "GROUP BY currency, issuer ORDER BY trades DESC LIMIT ?",
+                    (cutoff, limit),
+                ).fetchall()
+            finally:
+                conn.close()
+        except Exception:
+            return []
     tokens_meta = _load_token_names_dict()
     out = []
     for cur, iss, trades in rows:
