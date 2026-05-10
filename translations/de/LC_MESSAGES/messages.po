@@ -1,0 +1,52 @@
+# German translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"PO-Revision-Date: 2026-05-10 06:25-0700\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: de\n"
+"Language-Team: de <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: templates/_nav.html:66
+msgid "dashboard"
+msgstr "übersicht"
+
+#: templates/_nav.html:67
+msgid "pools"
+msgstr "pools"
+
+#: templates/_nav.html:68
+msgid "whales"
+msgstr "wale"
+
+#: templates/_nav.html:69
+msgid "tokens"
+msgstr "tokens"
+
+#: templates/_nav.html:70
+msgid "health"
+msgstr "status"
+
+#: templates/_nav.html:71
+msgid "methodology"
+msgstr "methodik"
+
+#: templates/_nav.html:72
+msgid "about"
+msgstr "info"
+
+#: templates/_nav.html:84
+msgid "Change language"
+msgstr "Sprache ändern"
+
