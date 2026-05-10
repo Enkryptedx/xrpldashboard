@@ -1,7 +1,7 @@
 # xrpldashboard
 
 Public-good analytics for the XRP Ledger.
-Live at **[xrpldashboard.com](https://xrpldashboard.com)** *(deployment in progress)*.
+Live at **[xrpldashboard.com](https://xrpldashboard.com)**.
 
 > Closer in spirit to [mempool.space](https://mempool.space) (Bitcoin) than to
 > Nansen (Ethereum): opinionated about clarity, no token, no DEX, no upsells.
@@ -9,14 +9,46 @@ Live at **[xrpldashboard.com](https://xrpldashboard.com)** *(deployment in progr
 
 ## What it does
 
-Renders live AMM pool data from the XRP Ledger as a single dashboard page.
-19 curated pools (stablecoins, wrapped majors, native utility tokens,
-memecoins with real TVL), sorted by total value locked, with a search box
-to look up any XRP/token pool by issuer.
+A multi-page public dashboard for the XRP Ledger:
 
-Every number is pulled directly from a public XRPL node — no third-party
-data source, no aggregator middle-layer. Server-side cache (60s TTL by
-default) keeps load light without making the page feel stale.
+- **Homepage** — network status, cold-storage total, AMM TVL, recent
+  whale moves, top pools, most-traded tokens. Live panels swap in
+  every 30s without a full page reload.
+- **/whales** — large XRP transfers (≥50,000 XRP), labeled when known.
+- **/pools** — every XRPL AMM pool (10,000+), ranked by TVL, with
+  search by issuer or token.
+- **/tokens** — issued tokens by trading activity.
+- **/cold-storage** — Ripple escrow accounts and balances.
+- **/wallet** — paste any XRPL address for balance, counterparties,
+  and 30-day activity.
+- **/health**, **/methodology**, **/about**, **/institutional**.
+
+Every number is computed directly from a public XRPL node — no
+aggregators, no third-party API wrappers. Hand-curated token and
+account labels live in [`TOKEN_NAMES.md`](./TOKEN_NAMES.md) and
+[`KNOWN_ACCOUNTS.md`](./KNOWN_ACCOUNTS.md), contributed via PR (same
+pattern [mempool.space](https://mempool.space) uses for its mining-pool
+list).
+
+## Architecture
+
+A long-running ingest worker (`xrpl_stream.py` + `rank_amms.py`)
+subscribes to a public XRPL node and writes ledger snapshots to
+Postgres (Neon). The Flask web service (`app.py`) reads those
+snapshots and renders pages. Per-surface cache TTLs are documented on
+[/methodology](https://xrpldashboard.com/methodology).
+
+```
+┌─────────────────┐    ws    ┌──────────────┐    write    ┌──────────┐
+│ public XRPL node│ ───────▶ │ ingest worker│ ──────────▶ │ Postgres │
+└─────────────────┘          └──────────────┘             └─────┬────┘
+                                                                │ read
+                                                                ▼
+                                              ┌────────────────────────┐
+                                              │ Flask web (Render)     │
+                                              │ → xrpldashboard.com    │
+                                              └────────────────────────┘
+```
 
 ## Running locally
 
@@ -34,23 +66,22 @@ Then open <http://localhost:5001>.
 ## Deploying
 
 See [DEPLOY.md](./DEPLOY.md) for the launch checklist.
-TL;DR: Render + Cloudflare DNS + Plausible analytics + UptimeRobot.
-~$13/month all-in for a real, monitored, observably-up service.
+TL;DR: Render (web + worker) + Neon Postgres + Cloudflare DNS +
+Plausible analytics + UptimeRobot.
 
 ## Repo layout
 
 | File | What it does |
 |---|---|
-| `app.py` | Flask app — `/`, `/lookup`, `/healthz` |
-| `amm_scan_pools.py` | XRPL scan logic + 19-token curated list + cache |
-| `templates/index.html` | Dashboard page (table, filter, lookup form, detail card) |
-| `requirements.txt` | Pinned production deps (Flask, xrpl-py, gunicorn) |
-| `render.yaml` | Render.com infrastructure-as-code config |
-| `Procfile` | Fallback process definition (Heroku-style hosts) |
-| `ROADMAP.md` | Where this is going (network pulse, whale watch, institutional layer) |
-| `NOTES.md` | How the dev setup works, port choice, search behavior |
-| `DEPLOY.md` | Step-by-step launch guide |
-| `amm_test.py` | Original single-pool proof-of-concept (kept for reference) |
+| `app.py` | Flask app — every public route, snapshot reads from PG |
+| `xrpl_stream.py` | Long-running ingest worker (whales, AMM events) |
+| `rank_amms.py` | Periodic AMM TVL snapshot for `/pools` |
+| `db.py` | Postgres bridge — read/write helpers shared by web + worker |
+| `wallet_data.py` | `/wallet` lookup pipeline (live read from XRPL) |
+| `templates/` | Jinja templates for every page |
+| `render.yaml` | Render infrastructure-as-code (web service + worker) |
+| `TOKEN_NAMES.md` / `KNOWN_ACCOUNTS.md` | Curated label sources |
+| `DEPLOY.md`, `NOTES.md`, `ROADMAP.md` | Docs |
 
 ## Mission
 
