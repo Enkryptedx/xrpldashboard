@@ -395,11 +395,11 @@
         <a href="/" class="brand-link"><h1>xrpl<span class="accent">dashboard</span></h1></a>
       </div>
       <nav class="nav-strip">
-        <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>pools</a>
-        <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>whales</a>
-        <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>tokens</a>
-        <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>health</a>
-        <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>about</a>
+        <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>{{ _('pools') }}</a>
+        <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
+        <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
+        <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
+        <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
         {% include "_liveness_chip.html" %}
       </nav>
     </header>
@@ -409,37 +409,32 @@
     {# ========== HERO ========== #}
     <section class="hero">
       <div class="hero-text">
-        <h2 class="hero-title">The XRP Ledger,<br>made legible.</h2>
+        <h2 class="hero-title">{{ _('The XRP Ledger,') }}<br>{{ _('made legible.') }}</h2>
         <p class="hero-sub">
-          Plain-language explanations, real-time on-chain data, and a
-          fully public <a href="/methodology">methodology</a>. No
-          upsells, no token, no DEX. Free for retail users — forever.
+          {{ _('Plain-language explanations, real-time on-chain data, and a fully public') }} <a href="/methodology">{{ _('methodology') }}</a>. {{ _('No upsells, no token, no DEX. Free for retail users — forever.') }}
         </p>
         <div class="hero-meta">
           {% if pulse and not pulse.error and pulse.ledger_index %}
           <span class="ticker">
-            <span class="lbl">Ledger{{ explainer(
+            <span class="lbl">{{ _('Ledger') }}{{ explainer(
               "ledger",
-              "What's a ledger sequence",
-              "The XRP network closes a new 'page' of transactions
-               every 3-5 seconds, and each page gets a number. This is
-               the latest page number we've seen. If the number stops
-               climbing, something is wrong with the network.",
+              _("What's a ledger sequence"),
+              _("The XRP network closes a new 'page' of transactions every 3-5 seconds, and each page gets a number. This is the latest page number we've seen. If the number stops climbing, something is wrong with the network."),
             ) }}</span>
             <span class="num" id="ledger-num"
                   data-seed="{{ pulse.ledger_index }}"
                   data-rate="{{ '%.2f'|format(pulse.avg_close_seconds or 3.5) }}">{{ "{:,}".format(pulse.ledger_index) }}</span>
-            <span class="sub">closing every {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }}s</span>
+            <span class="sub">{{ _('closing every') }} {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }}s</span>
           </span>
           {% endif %}
           <span class="cached-meta">
-            {{ timestamp_str }} · cached <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>s ago
+            {{ timestamp_str }} · {{ _('cached') }} <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>{{ _('s ago') }}
           </span>
         </div>
       </div>
       <div class="hero-globe" aria-hidden="true">
         <canvas id="xrpl-globe"></canvas>
-        <div class="hero-globe-cap">XRP · global ledger</div>
+        <div class="hero-globe-cap">{{ _('XRP · global ledger') }}</div>
       </div>
     </section>
 
@@ -449,51 +444,50 @@
       <a href="/health" class="card-block" data-live="status-card">
         {% if pulse and not pulse.error %}
         <div class="card card-status vibes-spot">
-          <div class="card-label">Network status</div>
+          <div class="card-label">{{ _('Network status') }}</div>
           <div class="status-pip status-{{ pulse.status }}">
             <span class="dot"></span>
-            {% if pulse.status == 'operating_normally' %}Operating normally
-            {% elif pulse.status == 'running_hot' %}Running hot
-            {% elif pulse.status == 'congested' %}Congested
-            {% elif pulse.status == 'degraded' %}Degraded
-            {% else %}Unknown{% endif %}
+            {% if pulse.status == 'operating_normally' %}{{ _('Operating normally') }}
+            {% elif pulse.status == 'running_hot' %}{{ _('Running hot') }}
+            {% elif pulse.status == 'congested' %}{{ _('Congested') }}
+            {% elif pulse.status == 'degraded' %}{{ _('Degraded') }}
+            {% else %}{{ _('Unknown') }}{% endif %}
           </div>
           <div class="status-line">{{ pulse.status_text }}</div>
           <div class="status-stats">
-            <div class="k">Ledger</div><div class="v">{{ "{:,}".format(pulse.ledger_index) }}</div>
-            <div class="k">Avg close</div>
+            <div class="k">{{ _('Ledger') }}</div><div class="v">{{ "{:,}".format(pulse.ledger_index) }}</div>
+            <div class="k">{{ _('Avg close') }}</div>
             <div class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</div>
-            <div class="k">Quorum</div><div class="v">{{ pulse.validation_quorum }}</div>
-            <div class="k">Load</div><div class="v">{{ pulse.load_factor }}×</div>
+            <div class="k">{{ _('Quorum') }}</div><div class="v">{{ pulse.validation_quorum }}</div>
+            <div class="k">{{ _('Load') }}</div><div class="v">{{ pulse.load_factor }}×</div>
           </div>
         </div>
         {% else %}
         <div class="card card-status vibes-spot">
-          <div class="card-label">Network status</div>
-          <div class="status-pip status-unknown"><span class="dot"></span> Unavailable</div>
-          <div class="status-line">{{ pulse.error if pulse else "Pulse data not loaded." }}</div>
+          <div class="card-label">{{ _('Network status') }}</div>
+          <div class="status-pip status-unknown"><span class="dot"></span> {{ _('Unavailable') }}</div>
+          <div class="status-line">{{ pulse.error if pulse else _("Pulse data not loaded.") }}</div>
         </div>
         {% endif %}
       </a>
 
       <div class="card card-inspector vibes-spot">
-        <div class="card-label">Look up an address</div>
-        <div class="inspector-title">Wallet inspector</div>
+        <div class="card-label">{{ _('Look up an address') }}</div>
+        <div class="inspector-title">{{ _('Wallet inspector') }}</div>
         <p class="inspector-desc">
-          Paste any XRPL address to see balance, counterparties, and 30-day
-          activity — read live from the ledger. No login. No tracking.
+          {{ _('Paste any XRPL address to see balance, counterparties, and 30-day activity — read live from the ledger. No login. No tracking.') }}
         </p>
         <form class="wallet-form" id="wallet-form" autocomplete="off">
           <input type="text" id="wallet-input"
                  placeholder="rN8x4kP9wQ7tF3..."
                  spellcheck="false" />
-          <button type="submit">Inspect →</button>
+          <button type="submit">{{ _('Inspect') }} →</button>
         </form>
         <div class="wallet-form-hint" id="wallet-form-hint">
-          XRPL addresses start with <code>r</code> and are 25-35 characters.
+          {{ _('XRPL addresses start with') }} <code>r</code> {{ _('and are 25-35 characters.') }}
         </div>
         <div class="wallet-form-safety">
-          We never ask for keys, seeds, or signatures — public address only.
+          {{ _('We never ask for keys, seeds, or signatures — public address only.') }}
         </div>
       </div>
 
@@ -504,8 +498,8 @@
       {% if cold_storage and cold_storage.total_xrp %}
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
-          <div class="stat-l">Cold storage</div>
-          <div class="stat-sub">{{ cold_storage.tracked_count }} Ripple escrows · largest {{ cold_storage.largest_name }}</div>
+          <div class="stat-l">{{ _('Cold storage') }}</div>
+          <div class="stat-sub">{{ cold_storage.tracked_count }} {{ _('Ripple escrows · largest') }} {{ cold_storage.largest_name }}</div>
         </div>
         {% if cold_storage.total_xrp >= 1000000000 %}
         <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000000 }}" data-countup-decimals="2" data-countup-suffix="B XRP">{{ "%.2f"|format(cold_storage.total_xrp / 1000000000) }}B XRP</div>
@@ -516,16 +510,16 @@
       {% else %}
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
-          <div class="stat-l">Cold storage</div>
-          <div class="stat-sub">Ripple escrows</div>
+          <div class="stat-l">{{ _('Cold storage') }}</div>
+          <div class="stat-sub">{{ _('Ripple escrows') }}</div>
         </div>
-        <div class="stat-v">view →</div>
+        <div class="stat-v">{{ _('view') }} →</div>
       </a>
       {% endif %}
       <a href="/pools" class="stat-pill" data-live="amm-tvl">
         <div>
-          <div class="stat-l">Locked in AMMs</div>
-          <div class="stat-sub">across {{ "{:,}".format(ranked_pool_count) }} XRPL AMM pools</div>
+          <div class="stat-l">{{ _('Locked in AMMs') }}</div>
+          <div class="stat-sub">{{ _('across') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('XRPL AMM pools') }}</div>
         </div>
         <div class="stat-v" data-countup="{{ ranked_total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-decimals="0" data-countup-format-money="1">{{ fmt_money(ranked_total_tvl_usd) }}</div>
       </a>
@@ -534,23 +528,20 @@
     {# ========== Live mosaic: whales + tokens ========== #}
     <section>
       <div class="section-head">
-        <h2>Across the ledger{{ explainer(
+        <h2>{{ _('Across the ledger') }}{{ explainer(
           "mosaic",
-          "What this section shows",
-          "A live look at the two main things happening on the XRP
-           Ledger right now: big-money transfers (left) and token
-           trading (right). Both come straight from the network — no
-           middlemen. Click either side for the full page.",
+          _("What this section shows"),
+          _("A live look at the two main things happening on the XRP Ledger right now: big-money transfers (left) and token trading (right). Both come straight from the network — no middlemen. Click either side for the full page."),
         ) }}</h2>
       </div>
       <div class="mosaic">
 
         {# ---- Recent whales ---- #}
         <div class="card vibes-spot" data-live="whales">
-          <div class="card-label">Whale moves</div>
-          <div class="card-title">Recent large transfers</div>
+          <div class="card-label">{{ _('Whale moves') }}</div>
+          <div class="card-title">{{ _('Recent large transfers') }}</div>
           {% if whales_snapshot_at %}
-          <div class="card-snapshot-note">snapshot · last updated {{ whales_snapshot_at }}</div>
+          <div class="card-snapshot-note">{{ _('snapshot · last updated') }} {{ whales_snapshot_at }}</div>
           {% endif %}
           {% if recent_whales %}
             {% for e in recent_whales %}
@@ -562,36 +553,36 @@
                   → {{ e.to_label or e.to_addr_short }}
                 </div>
               </div>
-              <div class="right">{{ e.age }} ago</div>
+              <div class="right">{{ e.age }} {{ _('ago') }}</div>
             </div>
             {% endfor %}
           {% else %}
-            <div class="preview-empty">No whale events yet — watcher still warming up.</div>
+            <div class="preview-empty">{{ _('No whale events yet — watcher still warming up.') }}</div>
           {% endif %}
-          <a class="card-link" href="/whales">view all whale activity →</a>
+          <a class="card-link" href="/whales">{{ _('view all whale activity') }} →</a>
         </div>
 
         {# ---- AMM activity (top pools by TVL) ---- #}
         <div class="card vibes-spot" data-live="top-pools">
-          <div class="card-label">AMM activity</div>
-          <div class="card-title">Top pools by TVL</div>
+          <div class="card-label">{{ _('AMM activity') }}</div>
+          <div class="card-title">{{ _('Top pools by TVL') }}</div>
           {% if ranked_top5 %}
             {% for p in ranked_top5 %}
             <div class="mini-pool-row">
               <span class="pair">{{ p.pair }}</span>
-              <span class="tvl">{{ fmt_money(p.tvl_usd) }}{% if p.tvl_status != 'exact' %}<span class="pool-est">est</span>{% endif %}</span>
+              <span class="tvl">{{ fmt_money(p.tvl_usd) }}{% if p.tvl_status != 'exact' %}<span class="pool-est">{{ _('est') }}</span>{% endif %}</span>
             </div>
             {% endfor %}
           {% else %}
-            <div class="preview-empty">No AMM pools loaded yet.</div>
+            <div class="preview-empty">{{ _('No AMM pools loaded yet.') }}</div>
           {% endif %}
-          <a class="card-link" href="/pools">browse all {{ "{:,}".format(ranked_pool_count) }} pools →</a>
+          <a class="card-link" href="/pools">{{ _('browse all') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('pools') }} →</a>
         </div>
 
         {# ---- Top tokens ---- #}
         <div class="card vibes-spot" data-live="top-tokens">
-          <div class="card-label">Token activity</div>
-          <div class="card-title">Most-traded tokens</div>
+          <div class="card-label">{{ _('Token activity') }}</div>
+          <div class="card-title">{{ _('Most-traded tokens') }}</div>
           {% if top_tokens %}
             {% for t in top_tokens %}
             <div class="preview-row">
@@ -599,13 +590,13 @@
                 <div class="primary">{{ t.display }}</div>
                 <div class="secondary">{{ t.issuer_short }}</div>
               </div>
-              <div class="right">{{ "{:,}".format(t.trades) }} trades</div>
+              <div class="right">{{ "{:,}".format(t.trades) }} {{ _('trades') }}</div>
             </div>
             {% endfor %}
           {% else %}
-            <div class="preview-empty">No token activity recorded yet.</div>
+            <div class="preview-empty">{{ _('No token activity recorded yet.') }}</div>
           {% endif %}
-          <a class="card-link" href="/tokens">browse all tokens →</a>
+          <a class="card-link" href="/tokens">{{ _('browse all tokens') }} →</a>
         </div>
 
       </div>
@@ -613,26 +604,19 @@
 
     <footer>
       <div>
-        xrpldashboard — public-good analytics for the XRP Ledger.
-        Free for retail users, forever. Pool, whale, and token panels all
-        stream live via WebSocket from a public XRPL node, with worker-
-        backed historical context. See <a href="/methodology">methodology</a>
-        for the per-surface freshness table.
+        {{ _('xrpldashboard — public-good analytics for the XRP Ledger. Free for retail users, forever. Pool, whale, and token panels all stream live via WebSocket from a public XRPL node, with worker-backed historical context. See') }} <a href="/methodology">{{ _('methodology') }}</a> {{ _('for the per-surface freshness table.') }}
       </div>
       <div style="margin-top: 0.6em;">
-        <strong>Not financial advice.</strong> Information shown is for
-        educational purposes only and does not constitute financial,
-        investment, or tax advice. Do your own research before making
-        decisions about XRP or other digital assets.
+        <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
       </div>
       <div style="margin-top: 0.6em;">
-        Verify against
-        <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a> or
+        {{ _('Verify against') }}
+        <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">XRPSCAN</a> {{ _('or') }}
         <a href="https://bithomp.com" target="_blank" rel="noopener noreferrer">Bithomp</a>.
-        Source:
+        {{ _('Source:') }}
         <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a>
-        · <a href="/about">about</a>
-        · <a href="mailto:contact@xrpldashboard.com">contact</a>
+        · <a href="/about">{{ _('about') }}</a>
+        · <a href="mailto:contact@xrpldashboard.com">{{ _('contact') }}</a>
       </div>
     </footer>
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"POT-Creation-Date: 2026-05-10 06:31-0700\n"
 "PO-Revision-Date: 2026-05-10 06:23-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -22,31 +22,298 @@ msgstr ""
 msgid "dashboard"
 msgstr "panel"
 
-#: templates/_nav.html:67
+#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
 msgid "pools"
 msgstr "pools"
 
-#: templates/_nav.html:68
+#: templates/_nav.html:68 templates/index.html:399
 msgid "whales"
 msgstr "ballenas"
 
-#: templates/_nav.html:69
+#: templates/_nav.html:69 templates/index.html:400
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70
+#: templates/_nav.html:70 templates/index.html:401
 msgid "health"
 msgstr "estado"
 
-#: templates/_nav.html:71
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
 msgid "methodology"
 msgstr "metodología"
 
-#: templates/_nav.html:72
+#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
 msgid "about"
 msgstr "acerca"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "Cambiar idioma"
+
+#: templates/index.html:412
+msgid "The XRP Ledger,"
+msgstr "El XRP Ledger,"
+
+#: templates/index.html:412
+msgid "made legible."
+msgstr "hecho legible."
+
+#: templates/index.html:414
+msgid "Plain-language explanations, real-time on-chain data, and a fully public"
+msgstr "Explicaciones en lenguaje sencillo, datos on-chain en tiempo real, y una"
+
+#: templates/index.html:414
+msgid "No upsells, no token, no DEX. Free for retail users — forever."
+msgstr "Sin upselling, sin token propio, sin DEX. Gratis para usuarios minoristas — para siempre."
+
+#: templates/index.html:419 templates/index.html:458
+msgid "Ledger"
+msgstr "Ledger"
+
+#: templates/index.html:421
+msgid "What's a ledger sequence"
+msgstr "¿Qué es una secuencia de ledger?"
+
+#: templates/index.html:422
+msgid ""
+"The XRP network closes a new 'page' of transactions every 3-5 seconds, "
+"and each page gets a number. This is the latest page number we've seen. "
+"If the number stops climbing, something is wrong with the network."
+msgstr "La red XRP cierra una nueva 'página' de transacciones cada 3 a 5 segundos, y cada página recibe un número. Este es el número más reciente que hemos visto. Si el número deja de subir, algo va mal en la red."
+
+#: templates/index.html:427
+msgid "closing every"
+msgstr "cerrando cada"
+
+#: templates/index.html:431
+msgid "cached"
+msgstr "en caché"
+
+#: templates/index.html:431
+msgid "s ago"
+msgstr "s atrás"
+
+#: templates/index.html:437
+msgid "XRP · global ledger"
+msgstr "XRP · ledger global"
+
+#: templates/index.html:447 templates/index.html:467
+msgid "Network status"
+msgstr "Estado de la red"
+
+#: templates/index.html:450
+msgid "Operating normally"
+msgstr "Funcionando con normalidad"
+
+#: templates/index.html:451
+msgid "Running hot"
+msgstr "Sobrecargada"
+
+#: templates/index.html:452
+msgid "Congested"
+msgstr "Congestionada"
+
+#: templates/index.html:453
+msgid "Degraded"
+msgstr "Degradada"
+
+#: templates/index.html:454
+msgid "Unknown"
+msgstr "Desconocido"
+
+#: templates/index.html:459
+msgid "Avg close"
+msgstr "Cierre prom."
+
+#: templates/index.html:461
+msgid "Quorum"
+msgstr "Quórum"
+
+#: templates/index.html:462
+msgid "Load"
+msgstr "Carga"
+
+#: templates/index.html:468
+msgid "Unavailable"
+msgstr "No disponible"
+
+#: templates/index.html:469
+msgid "Pulse data not loaded."
+msgstr "Datos del pulso no cargados."
+
+#: templates/index.html:475
+msgid "Look up an address"
+msgstr "Consultar una dirección"
+
+#: templates/index.html:476
+msgid "Wallet inspector"
+msgstr "Inspector de wallets"
+
+#: templates/index.html:478
+msgid ""
+"Paste any XRPL address to see balance, counterparties, and 30-day "
+"activity — read live from the ledger. No login. No tracking."
+msgstr "Pega cualquier dirección XRPL para ver saldo, contrapartes y actividad de 30 días — leído en vivo del ledger. Sin login. Sin tracking."
+
+#: templates/index.html:484
+msgid "Inspect"
+msgstr "Inspeccionar"
+
+#: templates/index.html:487
+msgid "XRPL addresses start with"
+msgstr "Las direcciones XRPL empiezan con"
+
+#: templates/index.html:487
+msgid "and are 25-35 characters."
+msgstr "y tienen entre 25 y 35 caracteres."
+
+#: templates/index.html:490
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr "Nunca pedimos claves, seeds ni firmas — solo dirección pública."
+
+#: templates/index.html:501 templates/index.html:513
+msgid "Cold storage"
+msgstr "Almacenamiento en frío"
+
+#: templates/index.html:502
+msgid "Ripple escrows · largest"
+msgstr "escrows de Ripple · mayor"
+
+#: templates/index.html:514
+msgid "Ripple escrows"
+msgstr "Escrows de Ripple"
+
+#: templates/index.html:516
+msgid "view"
+msgstr "ver"
+
+#: templates/index.html:521
+msgid "Locked in AMMs"
+msgstr "Bloqueado en AMMs"
+
+#: templates/index.html:522
+msgid "across"
+msgstr "en"
+
+#: templates/index.html:522
+msgid "XRPL AMM pools"
+msgstr "pools de AMM en XRPL"
+
+#: templates/index.html:531
+msgid "Across the ledger"
+msgstr "En todo el ledger"
+
+#: templates/index.html:533
+msgid "What this section shows"
+msgstr "Qué muestra esta sección"
+
+#: templates/index.html:534
+msgid ""
+"A live look at the two main things happening on the XRP Ledger right now:"
+" big-money transfers (left) and token trading (right). Both come straight"
+" from the network — no middlemen. Click either side for the full page."
+msgstr "Una vista en vivo de las dos cosas principales que están pasando ahora mismo en el XRP Ledger: transferencias de grandes cantidades (izquierda) e intercambio de tokens (derecha). Ambos vienen directos de la red — sin intermediarios. Haz clic en cualquier lado para ver la página completa."
+
+#: templates/index.html:541
+msgid "Whale moves"
+msgstr "Movimientos de ballenas"
+
+#: templates/index.html:542
+msgid "Recent large transfers"
+msgstr "Transferencias grandes recientes"
+
+#: templates/index.html:544
+msgid "snapshot · last updated"
+msgstr "snapshot · última actualización"
+
+#: templates/index.html:556
+msgid "ago"
+msgstr "atrás"
+
+#: templates/index.html:560
+msgid "No whale events yet — watcher still warming up."
+msgstr "Aún sin eventos de ballenas — el watcher se está calentando."
+
+#: templates/index.html:562
+msgid "view all whale activity"
+msgstr "ver toda la actividad de ballenas"
+
+#: templates/index.html:567
+msgid "AMM activity"
+msgstr "Actividad AMM"
+
+#: templates/index.html:568
+msgid "Top pools by TVL"
+msgstr "Top pools por TVL"
+
+#: templates/index.html:573
+msgid "est"
+msgstr "est"
+
+#: templates/index.html:577
+msgid "No AMM pools loaded yet."
+msgstr "Aún no se han cargado pools AMM."
+
+#: templates/index.html:579
+msgid "browse all"
+msgstr "ver todas las"
+
+#: templates/index.html:584
+msgid "Token activity"
+msgstr "Actividad de tokens"
+
+#: templates/index.html:585
+msgid "Most-traded tokens"
+msgstr "Tokens más operados"
+
+#: templates/index.html:593
+msgid "trades"
+msgstr "operaciones"
+
+#: templates/index.html:597
+msgid "No token activity recorded yet."
+msgstr "Aún no se ha registrado actividad de tokens."
+
+#: templates/index.html:599
+msgid "browse all tokens"
+msgstr "ver todos los tokens"
+
+#: templates/index.html:607
+msgid ""
+"xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
+" users, forever. Pool, whale, and token panels all stream live via "
+"WebSocket from a public XRPL node, with worker-backed historical context."
+" See"
+msgstr "xrpldashboard — analítica de bien público para el XRP Ledger. Gratis para usuarios minoristas, para siempre. Los paneles de pools, ballenas y tokens se transmiten en vivo vía WebSocket desde un nodo XRPL público, con contexto histórico respaldado por workers. Ver"
+
+#: templates/index.html:607
+msgid "for the per-surface freshness table."
+msgstr "para la tabla de frescura por superficie."
+
+#: templates/index.html:610
+msgid "Not financial advice."
+msgstr "No es asesoramiento financiero."
+
+#: templates/index.html:610
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr "La información mostrada es solo con fines educativos y no constituye asesoramiento financiero, de inversión ni fiscal. Haz tu propia investigación antes de tomar decisiones sobre XRP u otros activos digitales."
+
+#: templates/index.html:613
+msgid "Verify against"
+msgstr "Verificar contra"
+
+#: templates/index.html:614
+msgid "or"
+msgstr "o"
+
+#: templates/index.html:616
+msgid "Source:"
+msgstr "Código fuente:"
+
+#: templates/index.html:619
+msgid "contact"
+msgstr "contacto"
 

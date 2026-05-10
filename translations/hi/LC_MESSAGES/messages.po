@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"POT-Creation-Date: 2026-05-10 06:31-0700\n"
 "PO-Revision-Date: 2026-05-10 06:25-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: hi\n"
@@ -22,31 +22,298 @@ msgstr ""
 msgid "dashboard"
 msgstr "डैशबोर्ड"
 
-#: templates/_nav.html:67
+#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
 msgid "pools"
 msgstr "pools"
 
-#: templates/_nav.html:68
+#: templates/_nav.html:68 templates/index.html:399
 msgid "whales"
 msgstr "व्हेल"
 
-#: templates/_nav.html:69
+#: templates/_nav.html:69 templates/index.html:400
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70
+#: templates/_nav.html:70 templates/index.html:401
 msgid "health"
 msgstr "स्टेटस"
 
-#: templates/_nav.html:71
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
 msgid "methodology"
 msgstr "कार्यप्रणाली"
 
-#: templates/_nav.html:72
+#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
 msgid "about"
 msgstr "परिचय"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "भाषा बदलें"
+
+#: templates/index.html:412
+msgid "The XRP Ledger,"
+msgstr "XRP लेजर,"
+
+#: templates/index.html:412
+msgid "made legible."
+msgstr "समझने योग्य।"
+
+#: templates/index.html:414
+msgid "Plain-language explanations, real-time on-chain data, and a fully public"
+msgstr "सरल भाषा में स्पष्टीकरण, रीयल-टाइम ऑन-चेन डेटा, और पूरी तरह सार्वजनिक"
+
+#: templates/index.html:414
+msgid "No upsells, no token, no DEX. Free for retail users — forever."
+msgstr "कोई अपसेल नहीं, कोई टोकन नहीं, कोई DEX नहीं। खुदरा उपयोगकर्ताओं के लिए हमेशा मुफ्त।"
+
+#: templates/index.html:419 templates/index.html:458
+msgid "Ledger"
+msgstr "लेजर"
+
+#: templates/index.html:421
+msgid "What's a ledger sequence"
+msgstr "लेजर सीक्वेंस क्या है"
+
+#: templates/index.html:422
+msgid ""
+"The XRP network closes a new 'page' of transactions every 3-5 seconds, "
+"and each page gets a number. This is the latest page number we've seen. "
+"If the number stops climbing, something is wrong with the network."
+msgstr "XRP नेटवर्क हर 3-5 सेकंड में लेन-देन का एक नया 'पेज' बंद करता है, और हर पेज को एक नंबर मिलता है। यह सबसे नया पेज नंबर है जो हमें दिखा है। अगर यह नंबर बढ़ना बंद हो जाए, तो नेटवर्क में कुछ गड़बड़ है।"
+
+#: templates/index.html:427
+msgid "closing every"
+msgstr "हर"
+
+#: templates/index.html:431
+msgid "cached"
+msgstr "कैश्ड"
+
+#: templates/index.html:431
+msgid "s ago"
+msgstr "स पहले"
+
+#: templates/index.html:437
+msgid "XRP · global ledger"
+msgstr "XRP · वैश्विक लेजर"
+
+#: templates/index.html:447 templates/index.html:467
+msgid "Network status"
+msgstr "नेटवर्क स्थिति"
+
+#: templates/index.html:450
+msgid "Operating normally"
+msgstr "सामान्य रूप से चल रहा है"
+
+#: templates/index.html:451
+msgid "Running hot"
+msgstr "अत्यधिक लोड"
+
+#: templates/index.html:452
+msgid "Congested"
+msgstr "जाम"
+
+#: templates/index.html:453
+msgid "Degraded"
+msgstr "कमजोर प्रदर्शन"
+
+#: templates/index.html:454
+msgid "Unknown"
+msgstr "अज्ञात"
+
+#: templates/index.html:459
+msgid "Avg close"
+msgstr "औसत क्लोज"
+
+#: templates/index.html:461
+msgid "Quorum"
+msgstr "कोरम"
+
+#: templates/index.html:462
+msgid "Load"
+msgstr "लोड"
+
+#: templates/index.html:468
+msgid "Unavailable"
+msgstr "अनुपलब्ध"
+
+#: templates/index.html:469
+msgid "Pulse data not loaded."
+msgstr "पल्स डेटा लोड नहीं हुआ।"
+
+#: templates/index.html:475
+msgid "Look up an address"
+msgstr "पता खोजें"
+
+#: templates/index.html:476
+msgid "Wallet inspector"
+msgstr "वॉलेट इंस्पेक्टर"
+
+#: templates/index.html:478
+msgid ""
+"Paste any XRPL address to see balance, counterparties, and 30-day "
+"activity — read live from the ledger. No login. No tracking."
+msgstr "किसी भी XRPL पते को पेस्ट करें और बैलेंस, काउंटरपार्टी, और 30 दिन की गतिविधि देखें — सीधे लेजर से लाइव। कोई लॉगिन नहीं। कोई ट्रैकिंग नहीं।"
+
+#: templates/index.html:484
+msgid "Inspect"
+msgstr "देखें"
+
+#: templates/index.html:487
+msgid "XRPL addresses start with"
+msgstr "XRPL पते से शुरू होते हैं"
+
+#: templates/index.html:487
+msgid "and are 25-35 characters."
+msgstr "और 25-35 अक्षर के होते हैं।"
+
+#: templates/index.html:490
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr "हम कभी भी key, seed, या signature नहीं माँगते — केवल सार्वजनिक पता।"
+
+#: templates/index.html:501 templates/index.html:513
+msgid "Cold storage"
+msgstr "कोल्ड स्टोरेज"
+
+#: templates/index.html:502
+msgid "Ripple escrows · largest"
+msgstr "Ripple एस्क्रो · सबसे बड़ा"
+
+#: templates/index.html:514
+msgid "Ripple escrows"
+msgstr "Ripple एस्क्रो"
+
+#: templates/index.html:516
+msgid "view"
+msgstr "देखें"
+
+#: templates/index.html:521
+msgid "Locked in AMMs"
+msgstr "AMM में लॉक्ड"
+
+#: templates/index.html:522
+msgid "across"
+msgstr "कुल"
+
+#: templates/index.html:522
+msgid "XRPL AMM pools"
+msgstr "XRPL AMM पूल"
+
+#: templates/index.html:531
+msgid "Across the ledger"
+msgstr "पूरे लेजर पर"
+
+#: templates/index.html:533
+msgid "What this section shows"
+msgstr "यह खंड क्या दिखाता है"
+
+#: templates/index.html:534
+msgid ""
+"A live look at the two main things happening on the XRP Ledger right now:"
+" big-money transfers (left) and token trading (right). Both come straight"
+" from the network — no middlemen. Click either side for the full page."
+msgstr "XRP लेजर पर अभी चल रही दो मुख्य गतिविधियाँ की लाइव झलक: बड़ी रकम के ट्रांसफर (बाईं ओर) और टोकन ट्रेडिंग (दाईं ओर)। दोनों सीधे नेटवर्क से आते हैं — कोई बिचौलिया नहीं। पूरा पेज देखने के लिए किसी भी ओर क्लिक करें।"
+
+#: templates/index.html:541
+msgid "Whale moves"
+msgstr "व्हेल मूव्स"
+
+#: templates/index.html:542
+msgid "Recent large transfers"
+msgstr "हाल के बड़े ट्रांसफर"
+
+#: templates/index.html:544
+msgid "snapshot · last updated"
+msgstr "स्नैपशॉट · अंतिम अपडेट"
+
+#: templates/index.html:556
+msgid "ago"
+msgstr "पहले"
+
+#: templates/index.html:560
+msgid "No whale events yet — watcher still warming up."
+msgstr "अभी तक कोई व्हेल इवेंट नहीं — वॉचर अभी शुरू हो रहा है।"
+
+#: templates/index.html:562
+msgid "view all whale activity"
+msgstr "सभी व्हेल गतिविधि देखें"
+
+#: templates/index.html:567
+msgid "AMM activity"
+msgstr "AMM गतिविधि"
+
+#: templates/index.html:568
+msgid "Top pools by TVL"
+msgstr "TVL के अनुसार शीर्ष पूल"
+
+#: templates/index.html:573
+msgid "est"
+msgstr "अनुमान"
+
+#: templates/index.html:577
+msgid "No AMM pools loaded yet."
+msgstr "अभी तक कोई AMM पूल लोड नहीं हुआ।"
+
+#: templates/index.html:579
+msgid "browse all"
+msgstr "सभी देखें"
+
+#: templates/index.html:584
+msgid "Token activity"
+msgstr "टोकन गतिविधि"
+
+#: templates/index.html:585
+msgid "Most-traded tokens"
+msgstr "सबसे अधिक ट्रेड किए गए टोकन"
+
+#: templates/index.html:593
+msgid "trades"
+msgstr "ट्रेड्स"
+
+#: templates/index.html:597
+msgid "No token activity recorded yet."
+msgstr "अभी तक कोई टोकन गतिविधि दर्ज नहीं हुई।"
+
+#: templates/index.html:599
+msgid "browse all tokens"
+msgstr "सभी टोकन देखें"
+
+#: templates/index.html:607
+msgid ""
+"xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
+" users, forever. Pool, whale, and token panels all stream live via "
+"WebSocket from a public XRPL node, with worker-backed historical context."
+" See"
+msgstr "xrpldashboard — XRP लेजर के लिए सार्वजनिक-हित एनालिटिक्स। खुदरा उपयोगकर्ताओं के लिए हमेशा मुफ्त। pools, व्हेल, और टोकन पैनल सभी सार्वजनिक XRPL नोड से WebSocket के जरिए लाइव स्ट्रीम होते हैं, साथ ही worker-समर्थित ऐतिहासिक संदर्भ भी। देखें"
+
+#: templates/index.html:607
+msgid "for the per-surface freshness table."
+msgstr "प्रत्येक पृष्ठ की ताज़गी तालिका के लिए।"
+
+#: templates/index.html:610
+msgid "Not financial advice."
+msgstr "यह वित्तीय सलाह नहीं है।"
+
+#: templates/index.html:610
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr "यहाँ दिखाई गई जानकारी केवल शैक्षिक उद्देश्यों के लिए है और यह वित्तीय, निवेश, या कर सलाह नहीं है। XRP या अन्य डिजिटल संपत्तियों के बारे में निर्णय लेने से पहले अपनी स्वयं की जाँच करें।"
+
+#: templates/index.html:613
+msgid "Verify against"
+msgstr "सत्यापित करें"
+
+#: templates/index.html:614
+msgid "or"
+msgstr "या"
+
+#: templates/index.html:616
+msgid "Source:"
+msgstr "स्रोत:"
+
+#: templates/index.html:619
+msgid "contact"
+msgstr "संपर्क"
 

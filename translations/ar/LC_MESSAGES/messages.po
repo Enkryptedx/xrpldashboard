@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"POT-Creation-Date: 2026-05-10 06:31-0700\n"
 "PO-Revision-Date: 2026-05-10 06:25-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -23,31 +23,298 @@ msgstr ""
 msgid "dashboard"
 msgstr "لوحة"
 
-#: templates/_nav.html:67
+#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
 msgid "pools"
 msgstr "pools"
 
-#: templates/_nav.html:68
+#: templates/_nav.html:68 templates/index.html:399
 msgid "whales"
 msgstr "حيتان"
 
-#: templates/_nav.html:69
+#: templates/_nav.html:69 templates/index.html:400
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70
+#: templates/_nav.html:70 templates/index.html:401
 msgid "health"
 msgstr "الحالة"
 
-#: templates/_nav.html:71
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
 msgid "methodology"
 msgstr "المنهجية"
 
-#: templates/_nav.html:72
+#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
 msgid "about"
 msgstr "حول"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "تغيير اللغة"
+
+#: templates/index.html:412
+msgid "The XRP Ledger,"
+msgstr "سجل XRP،"
+
+#: templates/index.html:412
+msgid "made legible."
+msgstr "بشكل واضح."
+
+#: templates/index.html:414
+msgid "Plain-language explanations, real-time on-chain data, and a fully public"
+msgstr "شرح بلغة بسيطة، وبيانات حية على السلسلة، ومنهجية عامة بالكامل"
+
+#: templates/index.html:414
+msgid "No upsells, no token, no DEX. Free for retail users — forever."
+msgstr "لا بيع إضافي، لا توكن، لا DEX. مجاني لمستخدمي التجزئة — إلى الأبد."
+
+#: templates/index.html:419 templates/index.html:458
+msgid "Ledger"
+msgstr "السجل"
+
+#: templates/index.html:421
+msgid "What's a ledger sequence"
+msgstr "ما هو رقم السجل؟"
+
+#: templates/index.html:422
+msgid ""
+"The XRP network closes a new 'page' of transactions every 3-5 seconds, "
+"and each page gets a number. This is the latest page number we've seen. "
+"If the number stops climbing, something is wrong with the network."
+msgstr "تغلق شبكة XRP «صفحة» جديدة من المعاملات كل 3 إلى 5 ثوانٍ، وكل صفحة تحصل على رقم. هذا هو أحدث رقم رأيناه. إذا توقف الرقم عن التصاعد، فإن هناك خللًا ما في الشبكة."
+
+#: templates/index.html:427
+msgid "closing every"
+msgstr "يُغلق كل"
+
+#: templates/index.html:431
+msgid "cached"
+msgstr "مخزن مؤقتًا"
+
+#: templates/index.html:431
+msgid "s ago"
+msgstr "ث مضت"
+
+#: templates/index.html:437
+msgid "XRP · global ledger"
+msgstr "XRP · السجل العالمي"
+
+#: templates/index.html:447 templates/index.html:467
+msgid "Network status"
+msgstr "حالة الشبكة"
+
+#: templates/index.html:450
+msgid "Operating normally"
+msgstr "يعمل بشكل طبيعي"
+
+#: templates/index.html:451
+msgid "Running hot"
+msgstr "حمل مرتفع"
+
+#: templates/index.html:452
+msgid "Congested"
+msgstr "مزدحمة"
+
+#: templates/index.html:453
+msgid "Degraded"
+msgstr "متدهورة"
+
+#: templates/index.html:454
+msgid "Unknown"
+msgstr "غير معروف"
+
+#: templates/index.html:459
+msgid "Avg close"
+msgstr "متوسط الإغلاق"
+
+#: templates/index.html:461
+msgid "Quorum"
+msgstr "النصاب"
+
+#: templates/index.html:462
+msgid "Load"
+msgstr "الحمل"
+
+#: templates/index.html:468
+msgid "Unavailable"
+msgstr "غير متاح"
+
+#: templates/index.html:469
+msgid "Pulse data not loaded."
+msgstr "لم يتم تحميل بيانات النبض."
+
+#: templates/index.html:475
+msgid "Look up an address"
+msgstr "ابحث عن عنوان"
+
+#: templates/index.html:476
+msgid "Wallet inspector"
+msgstr "مدقق المحفظة"
+
+#: templates/index.html:478
+msgid ""
+"Paste any XRPL address to see balance, counterparties, and 30-day "
+"activity — read live from the ledger. No login. No tracking."
+msgstr "ألصق أي عنوان XRPL لعرض الرصيد والأطراف المقابلة ونشاط 30 يومًا — يُقرأ مباشرة من السجل. لا تسجيل دخول. لا تتبع."
+
+#: templates/index.html:484
+msgid "Inspect"
+msgstr "افحص"
+
+#: templates/index.html:487
+msgid "XRPL addresses start with"
+msgstr "تبدأ عناوين XRPL بـ"
+
+#: templates/index.html:487
+msgid "and are 25-35 characters."
+msgstr "وطولها بين 25 و35 حرفًا."
+
+#: templates/index.html:490
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr "لا نطلب أبدًا مفاتيح أو عبارات استرداد أو توقيعات — العنوان العام فقط."
+
+#: templates/index.html:501 templates/index.html:513
+msgid "Cold storage"
+msgstr "التخزين البارد"
+
+#: templates/index.html:502
+msgid "Ripple escrows · largest"
+msgstr "ضمانات Ripple · الأكبر"
+
+#: templates/index.html:514
+msgid "Ripple escrows"
+msgstr "ضمانات Ripple"
+
+#: templates/index.html:516
+msgid "view"
+msgstr "عرض"
+
+#: templates/index.html:521
+msgid "Locked in AMMs"
+msgstr "مقفل في AMM"
+
+#: templates/index.html:522
+msgid "across"
+msgstr "عبر"
+
+#: templates/index.html:522
+msgid "XRPL AMM pools"
+msgstr "AMM pools على XRPL"
+
+#: templates/index.html:531
+msgid "Across the ledger"
+msgstr "عبر السجل"
+
+#: templates/index.html:533
+msgid "What this section shows"
+msgstr "ماذا يعرض هذا القسم"
+
+#: templates/index.html:534
+msgid ""
+"A live look at the two main things happening on the XRP Ledger right now:"
+" big-money transfers (left) and token trading (right). Both come straight"
+" from the network — no middlemen. Click either side for the full page."
+msgstr "نظرة حية على أهم نشاطين على XRP Ledger الآن: التحويلات الكبيرة (إلى اليسار) وتداول الـ tokens (إلى اليمين). كلاهما يأتي مباشرة من الشبكة — بدون وسطاء. انقر على أي جانب للانتقال إلى الصفحة الكاملة."
+
+#: templates/index.html:541
+msgid "Whale moves"
+msgstr "تحركات الحيتان"
+
+#: templates/index.html:542
+msgid "Recent large transfers"
+msgstr "تحويلات كبيرة حديثة"
+
+#: templates/index.html:544
+msgid "snapshot · last updated"
+msgstr "لقطة · آخر تحديث"
+
+#: templates/index.html:556
+msgid "ago"
+msgstr "مضت"
+
+#: templates/index.html:560
+msgid "No whale events yet — watcher still warming up."
+msgstr "لا توجد أحداث حيتان بعد — المراقب لا يزال يستعد."
+
+#: templates/index.html:562
+msgid "view all whale activity"
+msgstr "عرض كل نشاط الحيتان"
+
+#: templates/index.html:567
+msgid "AMM activity"
+msgstr "نشاط AMM"
+
+#: templates/index.html:568
+msgid "Top pools by TVL"
+msgstr "أعلى pools حسب TVL"
+
+#: templates/index.html:573
+msgid "est"
+msgstr "تقدير"
+
+#: templates/index.html:577
+msgid "No AMM pools loaded yet."
+msgstr "لم يتم تحميل أي pools AMM بعد."
+
+#: templates/index.html:579
+msgid "browse all"
+msgstr "تصفح كل"
+
+#: templates/index.html:584
+msgid "Token activity"
+msgstr "نشاط الـ tokens"
+
+#: templates/index.html:585
+msgid "Most-traded tokens"
+msgstr "الـ tokens الأكثر تداولًا"
+
+#: templates/index.html:593
+msgid "trades"
+msgstr "عملية"
+
+#: templates/index.html:597
+msgid "No token activity recorded yet."
+msgstr "لم يُسجّل نشاط tokens بعد."
+
+#: templates/index.html:599
+msgid "browse all tokens"
+msgstr "تصفح كل الـ tokens"
+
+#: templates/index.html:607
+msgid ""
+"xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
+" users, forever. Pool, whale, and token panels all stream live via "
+"WebSocket from a public XRPL node, with worker-backed historical context."
+" See"
+msgstr "xrpldashboard — تحليلات للنفع العام لـ XRP Ledger. مجاني لمستخدمي التجزئة إلى الأبد. تُبث لوحات pools والحيتان والـ tokens مباشرةً عبر WebSocket من عقدة XRPL عامة، مع سياق تاريخي مدعوم بـ workers. انظر"
+
+#: templates/index.html:607
+msgid "for the per-surface freshness table."
+msgstr "للاطلاع على جدول حداثة البيانات لكل صفحة."
+
+#: templates/index.html:610
+msgid "Not financial advice."
+msgstr "هذه ليست نصيحة مالية."
+
+#: templates/index.html:610
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr "المعلومات المعروضة لأغراض تعليمية فقط ولا تشكّل نصيحة مالية أو استثمارية أو ضريبية. قم بأبحاثك الخاصة قبل اتخاذ قرارات بشأن XRP أو الأصول الرقمية الأخرى."
+
+#: templates/index.html:613
+msgid "Verify against"
+msgstr "تحقق عبر"
+
+#: templates/index.html:614
+msgid "or"
+msgstr "أو"
+
+#: templates/index.html:616
+msgid "Source:"
+msgstr "المصدر:"
+
+#: templates/index.html:619
+msgid "contact"
+msgstr "اتصل بنا"
 

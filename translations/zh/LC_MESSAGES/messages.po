@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"POT-Creation-Date: 2026-05-10 06:31-0700\n"
 "PO-Revision-Date: 2026-05-10 06:25-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh\n"
@@ -22,31 +22,298 @@ msgstr ""
 msgid "dashboard"
 msgstr "仪表板"
 
-#: templates/_nav.html:67
+#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
 msgid "pools"
 msgstr "pools"
 
-#: templates/_nav.html:68
+#: templates/_nav.html:68 templates/index.html:399
 msgid "whales"
 msgstr "巨鲸"
 
-#: templates/_nav.html:69
+#: templates/_nav.html:69 templates/index.html:400
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70
+#: templates/_nav.html:70 templates/index.html:401
 msgid "health"
 msgstr "状态"
 
-#: templates/_nav.html:71
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
 msgid "methodology"
 msgstr "方法论"
 
-#: templates/_nav.html:72
+#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
 msgid "about"
 msgstr "关于"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "切换语言"
+
+#: templates/index.html:412
+msgid "The XRP Ledger,"
+msgstr "XRP Ledger,"
+
+#: templates/index.html:412
+msgid "made legible."
+msgstr "看得懂。"
+
+#: templates/index.html:414
+msgid "Plain-language explanations, real-time on-chain data, and a fully public"
+msgstr "通俗易懂的解释、实时链上数据,以及完全公开的"
+
+#: templates/index.html:414
+msgid "No upsells, no token, no DEX. Free for retail users — forever."
+msgstr "没有附加推销,没有代币,没有 DEX。零售用户永久免费。"
+
+#: templates/index.html:419 templates/index.html:458
+msgid "Ledger"
+msgstr "账本"
+
+#: templates/index.html:421
+msgid "What's a ledger sequence"
+msgstr "什么是账本序号"
+
+#: templates/index.html:422
+msgid ""
+"The XRP network closes a new 'page' of transactions every 3-5 seconds, "
+"and each page gets a number. This is the latest page number we've seen. "
+"If the number stops climbing, something is wrong with the network."
+msgstr "XRP 网络每 3-5 秒关闭一个交易“页面”,每页都有编号。这里显示的是我们看到的最新页号。如果编号停止增长,说明网络出现了问题。"
+
+#: templates/index.html:427
+msgid "closing every"
+msgstr "每"
+
+#: templates/index.html:431
+msgid "cached"
+msgstr "已缓存"
+
+#: templates/index.html:431
+msgid "s ago"
+msgstr "秒前"
+
+#: templates/index.html:437
+msgid "XRP · global ledger"
+msgstr "XRP · 全球账本"
+
+#: templates/index.html:447 templates/index.html:467
+msgid "Network status"
+msgstr "网络状态"
+
+#: templates/index.html:450
+msgid "Operating normally"
+msgstr "运行正常"
+
+#: templates/index.html:451
+msgid "Running hot"
+msgstr "负载偏高"
+
+#: templates/index.html:452
+msgid "Congested"
+msgstr "拥堵"
+
+#: templates/index.html:453
+msgid "Degraded"
+msgstr "降级运行"
+
+#: templates/index.html:454
+msgid "Unknown"
+msgstr "未知"
+
+#: templates/index.html:459
+msgid "Avg close"
+msgstr "平均关账"
+
+#: templates/index.html:461
+msgid "Quorum"
+msgstr "法定人数"
+
+#: templates/index.html:462
+msgid "Load"
+msgstr "负载"
+
+#: templates/index.html:468
+msgid "Unavailable"
+msgstr "不可用"
+
+#: templates/index.html:469
+msgid "Pulse data not loaded."
+msgstr "网络脉搏数据未加载。"
+
+#: templates/index.html:475
+msgid "Look up an address"
+msgstr "查询地址"
+
+#: templates/index.html:476
+msgid "Wallet inspector"
+msgstr "钱包检视器"
+
+#: templates/index.html:478
+msgid ""
+"Paste any XRPL address to see balance, counterparties, and 30-day "
+"activity — read live from the ledger. No login. No tracking."
+msgstr "粘贴任何 XRPL 地址,即可查看余额、交易对手以及 30 天活动 — 直接从账本实时读取。无需登录。不追踪。"
+
+#: templates/index.html:484
+msgid "Inspect"
+msgstr "查看"
+
+#: templates/index.html:487
+msgid "XRPL addresses start with"
+msgstr "XRPL 地址以"
+
+#: templates/index.html:487
+msgid "and are 25-35 characters."
+msgstr "开头,长度为 25-35 个字符。"
+
+#: templates/index.html:490
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr "我们从不索取密钥、助记词或签名 — 仅公开地址。"
+
+#: templates/index.html:501 templates/index.html:513
+msgid "Cold storage"
+msgstr "冷存储"
+
+#: templates/index.html:502
+msgid "Ripple escrows · largest"
+msgstr "Ripple 托管账户 · 最大"
+
+#: templates/index.html:514
+msgid "Ripple escrows"
+msgstr "Ripple 托管账户"
+
+#: templates/index.html:516
+msgid "view"
+msgstr "查看"
+
+#: templates/index.html:521
+msgid "Locked in AMMs"
+msgstr "锁定在 AMM"
+
+#: templates/index.html:522
+msgid "across"
+msgstr "横跨"
+
+#: templates/index.html:522
+msgid "XRPL AMM pools"
+msgstr "个 XRPL AMM 池"
+
+#: templates/index.html:531
+msgid "Across the ledger"
+msgstr "整个账本动态"
+
+#: templates/index.html:533
+msgid "What this section shows"
+msgstr "此区域显示什么"
+
+#: templates/index.html:534
+msgid ""
+"A live look at the two main things happening on the XRP Ledger right now:"
+" big-money transfers (left) and token trading (right). Both come straight"
+" from the network — no middlemen. Click either side for the full page."
+msgstr "实时呈现 XRP Ledger 上当前最重要的两件事:大额转账(左)和代币交易(右)。两者均直接来自网络 — 没有中间方。点击任一侧查看完整页面。"
+
+#: templates/index.html:541
+msgid "Whale moves"
+msgstr "巨鲸动态"
+
+#: templates/index.html:542
+msgid "Recent large transfers"
+msgstr "近期大额转账"
+
+#: templates/index.html:544
+msgid "snapshot · last updated"
+msgstr "快照 · 最后更新"
+
+#: templates/index.html:556
+msgid "ago"
+msgstr "前"
+
+#: templates/index.html:560
+msgid "No whale events yet — watcher still warming up."
+msgstr "暂无巨鲸事件 — 监控器正在预热。"
+
+#: templates/index.html:562
+msgid "view all whale activity"
+msgstr "查看所有巨鲸活动"
+
+#: templates/index.html:567
+msgid "AMM activity"
+msgstr "AMM 活动"
+
+#: templates/index.html:568
+msgid "Top pools by TVL"
+msgstr "TVL 最高的池"
+
+#: templates/index.html:573
+msgid "est"
+msgstr "估计"
+
+#: templates/index.html:577
+msgid "No AMM pools loaded yet."
+msgstr "AMM 池尚未加载。"
+
+#: templates/index.html:579
+msgid "browse all"
+msgstr "浏览全部"
+
+#: templates/index.html:584
+msgid "Token activity"
+msgstr "代币活动"
+
+#: templates/index.html:585
+msgid "Most-traded tokens"
+msgstr "交易量最高的代币"
+
+#: templates/index.html:593
+msgid "trades"
+msgstr "笔交易"
+
+#: templates/index.html:597
+msgid "No token activity recorded yet."
+msgstr "暂无代币活动记录。"
+
+#: templates/index.html:599
+msgid "browse all tokens"
+msgstr "浏览全部代币"
+
+#: templates/index.html:607
+msgid ""
+"xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
+" users, forever. Pool, whale, and token panels all stream live via "
+"WebSocket from a public XRPL node, with worker-backed historical context."
+" See"
+msgstr "xrpldashboard — XRP Ledger 的公共利益分析平台。零售用户永久免费。pools、巨鲸和代币面板均通过 WebSocket 从公共 XRPL 节点实时推送,辅以 worker 维护的历史数据。查看"
+
+#: templates/index.html:607
+msgid "for the per-surface freshness table."
+msgstr "查看各页面的数据新鲜度表。"
+
+#: templates/index.html:610
+msgid "Not financial advice."
+msgstr "并非财务建议。"
+
+#: templates/index.html:610
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr "本页显示的信息仅供教育用途,不构成财务、投资或税务建议。在就 XRP 或其他数字资产做出决定之前,请自行研究。"
+
+#: templates/index.html:613
+msgid "Verify against"
+msgstr "对照验证"
+
+#: templates/index.html:614
+msgid "or"
+msgstr "或"
+
+#: templates/index.html:616
+msgid "Source:"
+msgstr "源代码:"
+
+#: templates/index.html:619
+msgid "contact"
+msgstr "联系"
 

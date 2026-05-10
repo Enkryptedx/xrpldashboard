@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-10 06:23-0700\n"
+"POT-Creation-Date: 2026-05-10 06:31-0700\n"
 "PO-Revision-Date: 2026-05-10 06:25-0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -22,31 +22,298 @@ msgstr ""
 msgid "dashboard"
 msgstr "ダッシュボード"
 
-#: templates/_nav.html:67
+#: templates/_nav.html:67 templates/index.html:398 templates/index.html:579
 msgid "pools"
 msgstr "pools"
 
-#: templates/_nav.html:68
+#: templates/_nav.html:68 templates/index.html:399
 msgid "whales"
 msgstr "クジラ"
 
-#: templates/_nav.html:69
+#: templates/_nav.html:69 templates/index.html:400
 msgid "tokens"
 msgstr "tokens"
 
-#: templates/_nav.html:70
+#: templates/_nav.html:70 templates/index.html:401
 msgid "health"
 msgstr "ステータス"
 
-#: templates/_nav.html:71
+#: templates/_nav.html:71 templates/index.html:414 templates/index.html:607
 msgid "methodology"
 msgstr "方法論"
 
-#: templates/_nav.html:72
+#: templates/_nav.html:72 templates/index.html:402 templates/index.html:618
 msgid "about"
 msgstr "概要"
 
 #: templates/_nav.html:84
 msgid "Change language"
 msgstr "言語を変更"
+
+#: templates/index.html:412
+msgid "The XRP Ledger,"
+msgstr "XRP Ledger、"
+
+#: templates/index.html:412
+msgid "made legible."
+msgstr "読み解けるかたちに。"
+
+#: templates/index.html:414
+msgid "Plain-language explanations, real-time on-chain data, and a fully public"
+msgstr "わかりやすい解説、リアルタイムのオンチェーンデータ、そして完全に公開された"
+
+#: templates/index.html:414
+msgid "No upsells, no token, no DEX. Free for retail users — forever."
+msgstr "アップセルなし、独自トークンなし、DEXなし。個人ユーザーは永続無料。"
+
+#: templates/index.html:419 templates/index.html:458
+msgid "Ledger"
+msgstr "Ledger"
+
+#: templates/index.html:421
+msgid "What's a ledger sequence"
+msgstr "Ledger sequence とは"
+
+#: templates/index.html:422
+msgid ""
+"The XRP network closes a new 'page' of transactions every 3-5 seconds, "
+"and each page gets a number. This is the latest page number we've seen. "
+"If the number stops climbing, something is wrong with the network."
+msgstr "XRP ネットワークは 3〜5 秒ごとに取引の新しい「ページ」を確定し、各ページに番号が付きます。ここに表示されているのは、私たちが確認した最新のページ番号です。番号が増えなくなったら、ネットワークに何か問題があります。"
+
+#: templates/index.html:427
+msgid "closing every"
+msgstr "毎"
+
+#: templates/index.html:431
+msgid "cached"
+msgstr "キャッシュ"
+
+#: templates/index.html:431
+msgid "s ago"
+msgstr "秒前"
+
+#: templates/index.html:437
+msgid "XRP · global ledger"
+msgstr "XRP · グローバル Ledger"
+
+#: templates/index.html:447 templates/index.html:467
+msgid "Network status"
+msgstr "ネットワーク状態"
+
+#: templates/index.html:450
+msgid "Operating normally"
+msgstr "正常稼働"
+
+#: templates/index.html:451
+msgid "Running hot"
+msgstr "負荷高め"
+
+#: templates/index.html:452
+msgid "Congested"
+msgstr "混雑"
+
+#: templates/index.html:453
+msgid "Degraded"
+msgstr "性能低下"
+
+#: templates/index.html:454
+msgid "Unknown"
+msgstr "不明"
+
+#: templates/index.html:459
+msgid "Avg close"
+msgstr "平均クローズ"
+
+#: templates/index.html:461
+msgid "Quorum"
+msgstr "クォーラム"
+
+#: templates/index.html:462
+msgid "Load"
+msgstr "負荷"
+
+#: templates/index.html:468
+msgid "Unavailable"
+msgstr "利用不可"
+
+#: templates/index.html:469
+msgid "Pulse data not loaded."
+msgstr "ネットワーク状態を取得できませんでした。"
+
+#: templates/index.html:475
+msgid "Look up an address"
+msgstr "アドレスを調べる"
+
+#: templates/index.html:476
+msgid "Wallet inspector"
+msgstr "ウォレット検査"
+
+#: templates/index.html:478
+msgid ""
+"Paste any XRPL address to see balance, counterparties, and 30-day "
+"activity — read live from the ledger. No login. No tracking."
+msgstr "XRPL アドレスを貼り付けると、残高・取引相手・30日間のアクティビティを Ledger から直接ライブで取得します。ログイン不要、追跡なし。"
+
+#: templates/index.html:484
+msgid "Inspect"
+msgstr "調べる"
+
+#: templates/index.html:487
+msgid "XRPL addresses start with"
+msgstr "XRPL アドレスは"
+
+#: templates/index.html:487
+msgid "and are 25-35 characters."
+msgstr "から始まり、25〜35文字です。"
+
+#: templates/index.html:490
+msgid "We never ask for keys, seeds, or signatures — public address only."
+msgstr "鍵・シード・署名は一切要求しません — 公開アドレスのみ。"
+
+#: templates/index.html:501 templates/index.html:513
+msgid "Cold storage"
+msgstr "コールドストレージ"
+
+#: templates/index.html:502
+msgid "Ripple escrows · largest"
+msgstr "Ripple エスクロー · 最大"
+
+#: templates/index.html:514
+msgid "Ripple escrows"
+msgstr "Ripple エスクロー"
+
+#: templates/index.html:516
+msgid "view"
+msgstr "見る"
+
+#: templates/index.html:521
+msgid "Locked in AMMs"
+msgstr "AMM にロック中"
+
+#: templates/index.html:522
+msgid "across"
+msgstr "全体で"
+
+#: templates/index.html:522
+msgid "XRPL AMM pools"
+msgstr "の XRPL AMM プール"
+
+#: templates/index.html:531
+msgid "Across the ledger"
+msgstr "Ledger 全体"
+
+#: templates/index.html:533
+msgid "What this section shows"
+msgstr "このセクションについて"
+
+#: templates/index.html:534
+msgid ""
+"A live look at the two main things happening on the XRP Ledger right now:"
+" big-money transfers (left) and token trading (right). Both come straight"
+" from the network — no middlemen. Click either side for the full page."
+msgstr "XRP Ledger でいま起きている主な2つの動きをリアルタイムで表示:大口送金(左)とトークン取引(右)。どちらもネットワークから直接取得しており、仲介はありません。どちらかをクリックすると詳細ページに移動します。"
+
+#: templates/index.html:541
+msgid "Whale moves"
+msgstr "クジラの動き"
+
+#: templates/index.html:542
+msgid "Recent large transfers"
+msgstr "最近の大口送金"
+
+#: templates/index.html:544
+msgid "snapshot · last updated"
+msgstr "スナップショット · 最終更新"
+
+#: templates/index.html:556
+msgid "ago"
+msgstr "前"
+
+#: templates/index.html:560
+msgid "No whale events yet — watcher still warming up."
+msgstr "まだクジラの動きはありません — ウォッチャーを準備中です。"
+
+#: templates/index.html:562
+msgid "view all whale activity"
+msgstr "すべてのクジラの活動を見る"
+
+#: templates/index.html:567
+msgid "AMM activity"
+msgstr "AMM の動き"
+
+#: templates/index.html:568
+msgid "Top pools by TVL"
+msgstr "TVL 上位のプール"
+
+#: templates/index.html:573
+msgid "est"
+msgstr "推定"
+
+#: templates/index.html:577
+msgid "No AMM pools loaded yet."
+msgstr "AMM プールはまだ読み込まれていません。"
+
+#: templates/index.html:579
+msgid "browse all"
+msgstr "すべて見る"
+
+#: templates/index.html:584
+msgid "Token activity"
+msgstr "トークンの動き"
+
+#: templates/index.html:585
+msgid "Most-traded tokens"
+msgstr "取引量の多いトークン"
+
+#: templates/index.html:593
+msgid "trades"
+msgstr "件の取引"
+
+#: templates/index.html:597
+msgid "No token activity recorded yet."
+msgstr "トークンの取引履歴はまだありません。"
+
+#: templates/index.html:599
+msgid "browse all tokens"
+msgstr "すべてのトークンを見る"
+
+#: templates/index.html:607
+msgid ""
+"xrpldashboard — public-good analytics for the XRP Ledger. Free for retail"
+" users, forever. Pool, whale, and token panels all stream live via "
+"WebSocket from a public XRPL node, with worker-backed historical context."
+" See"
+msgstr "xrpldashboard — XRP Ledger のための公共財アナリティクス。個人ユーザーには永続無料。pools・クジラ・トークンの各パネルはすべて、公共の XRPL ノードから WebSocket でライブ配信され、worker による履歴データで補完されます。"
+
+#: templates/index.html:607
+msgid "for the per-surface freshness table."
+msgstr "ページごとの鮮度表をご覧ください。"
+
+#: templates/index.html:610
+msgid "Not financial advice."
+msgstr "投資助言ではありません。"
+
+#: templates/index.html:610
+msgid ""
+"Information shown is for educational purposes only and does not "
+"constitute financial, investment, or tax advice. Do your own research "
+"before making decisions about XRP or other digital assets."
+msgstr "本ページの情報は教育目的のみであり、金融・投資・税務に関する助言ではありません。XRP やその他のデジタル資産に関する判断は、ご自身でリサーチしてください。"
+
+#: templates/index.html:613
+msgid "Verify against"
+msgstr "確認は次でも:"
+
+#: templates/index.html:614
+msgid "or"
+msgstr "または"
+
+#: templates/index.html:616
+msgid "Source:"
+msgstr "ソース:"
+
+#: templates/index.html:619
+msgid "contact"
+msgstr "お問い合わせ"
 
