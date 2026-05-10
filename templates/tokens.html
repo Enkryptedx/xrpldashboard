@@ -63,69 +63,67 @@
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
 
-    /* Live trade tape. Bloomberg-style scrolling list — every validated
-       token trade on the public XRPL stream slides in at the top with a
-       brief flash. Older lines drift down and out. Real-time, this-tab
-       only, no fake data. */
-    .trade-tape {
+    /* Live trade particle stream. Each validated token trade spawns a
+       glowing particle that flies in from the right edge and drifts left
+       across the canvas, fading out over ~7s. Color = category, size =
+       log-scaled amount, trail = recent positions. Hover a particle for
+       symbol + amount. Real-time, this-tab only, no fake data. */
+    .particle-stream {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 16px 14px 12px;
+      border-radius: 12px;
       margin: 0 0 18px; position: relative;
-      font-family: var(--mono);
-      height: 380px; overflow: hidden;
-      display: flex; flex-direction: column;
+      height: 300px; overflow: hidden;
     }
-    .trade-tape::before {
-      content: "live trade tape · this session";
+    .particle-stream::before {
+      content: "live trade particle stream · this session";
       position: absolute; top: 8px; right: 12px;
-      font-size: 0.62rem; color: var(--dim);
+      font-family: var(--mono); font-size: 0.62rem; color: var(--dim);
       text-transform: uppercase; letter-spacing: 0.14em;
+      z-index: 2;
     }
-    .trade-tape-rows {
-      flex: 1 1 0; min-height: 0;
-      overflow: hidden; margin-top: 18px;
-      display: flex; flex-direction: column;
+    .particle-stream-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
     }
-    .trade-tape-row {
-      display: grid;
-      grid-template-columns: 12px minmax(70px, 110px) minmax(0, 1fr) auto;
-      gap: 10px; align-items: center;
-      font-size: 0.84rem;
-      padding: 6px 4px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      flex: 0 0 auto;
-      animation: tapeIn 0.45s ease-out both;
-    }
-    @keyframes tapeIn {
-      from { transform: translateY(-10px); opacity: 0; background: rgba(34,211,238,0.18); }
-      to   { transform: translateY(0); opacity: 1; background: transparent; }
-    }
-    .tt-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--muted); box-shadow: 0 0 6px currentColor;
-    }
-    .tt-dot[data-cat="stablecoin"], .tt-dot[data-cat="fiat"] { background: rgb(34,197,94); color: rgb(34,197,94); }
-    .tt-dot[data-cat="wrapped_major"] { background: rgb(245,158,11); color: rgb(245,158,11); }
-    .tt-dot[data-cat="native_utility"] { background: rgb(34,211,238); color: rgb(34,211,238); }
-    .tt-dot[data-cat="memecoin"] { background: rgb(236,72,153); color: rgb(236,72,153); }
-    .tt-dot[data-cat="other"] { background: rgb(140,150,170); color: rgb(140,150,170); }
-    .tt-symbol { color: var(--text); font-weight: 600;
-                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tt-symbol.is-unlabeled { color: var(--muted); font-weight: 500; font-size: 0.76rem; }
-    .tt-amount { color: var(--text); text-align: right;
-                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tt-amount .tt-kind { color: var(--dim); font-size: 0.72rem;
-                          margin-left: 6px; text-transform: uppercase;
-                          letter-spacing: 0.04em; font-weight: 500; }
-    .tt-age { color: var(--dim); font-size: 0.74rem;
-              min-width: 56px; text-align: right; }
-    .trade-tape-empty {
-      flex: 1; display: flex; align-items: center; justify-content: center;
+    .particle-stream-empty {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
       color: var(--muted); font-size: 0.85rem; padding: 0 20px;
-      text-align: center;
+      text-align: center; pointer-events: none;
+    }
+    .particle-stream-empty.is-hidden { display: none; }
+    .particle-stream-tooltip {
+      position: absolute;
+      background: rgba(10, 14, 39, 0.96);
+      border: 1px solid rgba(34,211,238,0.35);
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-family: var(--mono); font-size: 0.74rem;
+      color: var(--text);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 3;
+      transform: translate(-50%, calc(-100% - 10px));
+      opacity: 0; transition: opacity 0.12s;
+    }
+    .particle-stream-tooltip.is-visible { opacity: 1; }
+    .particle-stream-legend {
+      position: absolute; left: 14px; bottom: 10px;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      font-family: var(--mono); font-size: 0.66rem;
+      color: var(--muted); z-index: 2;
+      pointer-events: none;
+    }
+    .particle-stream-legend .pl-item {
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .particle-stream-legend .pl-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      display: inline-block; box-shadow: 0 0 4px currentColor;
     }
     @media (prefers-reduced-motion: reduce) {
-      .trade-tape-row { animation: none; }
+      .particle-stream-canvas { opacity: 0.6; }
     }
 
     /* Honeycomb hero (kept for cross-page styling reuse but not currently
@@ -356,10 +354,18 @@
     {{ freshness_badge(data_age_label) }}
   </div>
 
-  <div class="trade-tape" data-trade-tape aria-label="Live token trade tape">
-    <div class="trade-tape-rows" data-trade-tape-rows></div>
-    <div class="trade-tape-empty" data-trade-tape-empty>
+  <div class="particle-stream" data-particle-stream aria-label="Live token trade particle stream">
+    <canvas class="particle-stream-canvas" data-particle-canvas></canvas>
+    <div class="particle-stream-empty" data-particle-empty>
       waiting for the next validated token trade on the public XRPL stream…
+    </div>
+    <div class="particle-stream-tooltip" data-particle-tooltip></div>
+    <div class="particle-stream-legend" aria-hidden="true">
+      <span class="pl-item"><span class="pl-dot" style="background:rgb(34,197,94);color:rgb(34,197,94)"></span>stable / fiat</span>
+      <span class="pl-item"><span class="pl-dot" style="background:rgb(245,158,11);color:rgb(245,158,11)"></span>wrapped</span>
+      <span class="pl-item"><span class="pl-dot" style="background:rgb(34,211,238);color:rgb(34,211,238)"></span>utility</span>
+      <span class="pl-item"><span class="pl-dot" style="background:rgb(236,72,153);color:rgb(236,72,153)"></span>memecoin</span>
+      <span class="pl-item"><span class="pl-dot" style="background:rgb(140,150,170);color:rgb(140,150,170)"></span>other</span>
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
@@ -589,20 +595,43 @@
       return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
     }
 
-    // Live trade tape. Every validated token trade on the public XRPL
-    // stream is extracted into a row {symbol, amount, kind, ts, category}
-    // and prepended to the tape. Cap at TAPE_MAX rows so old entries
-    // scroll out. Labels resolved from the embedded JSON; unknown tokens
-    // show their decoded short code (or hex) in muted text.
-    var TAPE_MAX = 25;
-    var tape = [];
-    var tapeContainer = document.querySelector('[data-trade-tape-rows]');
-    var tapeEmpty     = document.querySelector('[data-trade-tape-empty]');
-    var labelsEl      = document.getElementById('token-labels-data');
+    // Live trade particle stream. Each validated token trade spawns a
+    // glowing particle on a canvas that drifts left across the card and
+    // fades out over ~7s. Labels resolved from the embedded JSON; unknown
+    // tokens show as gray "other" particles with decoded symbol on hover.
+    var PARTICLE_MAX = 140;
+    var particles = [];
+    var canvas    = document.querySelector('[data-particle-canvas]');
+    var emptyEl   = document.querySelector('[data-particle-empty]');
+    var tooltipEl = document.querySelector('[data-particle-tooltip]');
+    var labelsEl  = document.getElementById('token-labels-data');
     var LABELS = {};
     if (labelsEl) {
       try { LABELS = JSON.parse(labelsEl.textContent || '{}'); }
       catch (e) { LABELS = {}; }
+    }
+    var CATEGORY_RGB = {
+      stablecoin:     [34,197,94],
+      fiat:           [34,197,94],
+      wrapped_major:  [245,158,11],
+      native_utility: [34,211,238],
+      memecoin:       [236,72,153],
+      other:          [140,150,170],
+    };
+    var ctx = canvas ? canvas.getContext('2d') : null;
+    var W = 0, H = 0;
+    var dpr = Math.max(1, window.devicePixelRatio || 1);
+    function resizeCanvas() {
+      if (!canvas || !ctx) return;
+      var rect = canvas.getBoundingClientRect();
+      W = rect.width; H = rect.height;
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    if (canvas) {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
     }
 
     function decodeCurrency(c) {
@@ -633,14 +662,6 @@
       return n.toPrecision(2);
     }
 
-    function ageString(ts) {
-      var s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-      if (s < 2)   return 'now';
-      if (s < 60)  return s + 's';
-      if (s < 3600) return Math.floor(s / 60) + 'm';
-      return Math.floor(s / 3600) + 'h';
-    }
-
     function extractTrade(tx) {
       // Returns {currency, issuer, value, kind} for the first token leg
       // we find on the tx, or null if none.
@@ -668,57 +689,116 @@
       return null;
     }
 
-    function recordTrade(tx) {
+    function radiusFromAmount(v) {
+      // Log-scaled: ~$1 → 4px, $1k → 7px, $1M → 11px, $1B+ → 16px.
+      var n = parseFloat(v) || 0;
+      var r = 4 + Math.log10(Math.max(1, n)) * 1.6;
+      return Math.min(16, Math.max(4, r));
+    }
+
+    function spawnParticle(tx) {
+      if (!canvas || !ctx || W <= 0) return;
       var leg = extractTrade(tx);
       if (!leg) return;
       var key = leg.currency + '|' + leg.issuer;
       var lbl = LABELS[key];
-      tape.unshift({
-        ts: Date.now(),
-        kind: leg.kind,
-        amount: leg.value,
+      var cat = lbl ? lbl.category : 'other';
+      var rgb = CATEGORY_RGB[cat] || CATEGORY_RGB.other;
+      var r = radiusFromAmount(leg.value);
+      var y = H * 0.18 + Math.random() * H * 0.64;
+      var speed = 55 + Math.random() * 35;
+      particles.push({
+        x: W + r,
+        y: y,
+        vx: -speed,
+        vy: (Math.random() - 0.5) * 8,
+        r: r,
+        rgb: rgb,
         symbol: lbl ? lbl.display : decodeCurrency(leg.currency),
-        category: lbl ? lbl.category : null,
-        labeled: !!lbl,
-        currency_raw: leg.currency,
-        issuer: leg.issuer,
+        amount: leg.value,
+        kind: leg.kind,
+        born: performance.now(),
+        life: 7000,
+        trail: [],
       });
-      if (tape.length > TAPE_MAX) tape.length = TAPE_MAX;
-      renderTape(true);
+      if (emptyEl) emptyEl.classList.add('is-hidden');
+      if (particles.length > PARTICLE_MAX) {
+        particles.splice(0, particles.length - PARTICLE_MAX);
+      }
     }
 
-    function renderTape(freshTop) {
-      if (!tapeContainer) return;
-      if (tape.length === 0) {
-        if (tapeEmpty) tapeEmpty.style.display = '';
-        tapeContainer.innerHTML = '';
-        return;
+    var lastT = performance.now();
+    function frame(now) {
+      requestAnimationFrame(frame);
+      if (!ctx || W <= 0) { lastT = now; return; }
+      var dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
+      ctx.clearRect(0, 0, W, H);
+      for (var i = particles.length - 1; i >= 0; i--) {
+        var p = particles[i];
+        var age = now - p.born;
+        if (age > p.life || p.x < -40) {
+          particles.splice(i, 1);
+          continue;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.trail.push({ x: p.x, y: p.y });
+        if (p.trail.length > 16) p.trail.shift();
+        var alpha = age > p.life - 1500
+          ? Math.max(0, (p.life - age) / 1500)
+          : 1;
+        var rgb = p.rgb;
+        for (var t = 0; t < p.trail.length; t++) {
+          var pt = p.trail[t];
+          var ta = (t / p.trail.length) * 0.30 * alpha;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, p.r * (0.35 + 0.55 * (t / p.trail.length)), 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + ta + ')';
+          ctx.fill();
+        }
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.85 * alpha) + ')';
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
-      if (tapeEmpty) tapeEmpty.style.display = 'none';
-      var html = '';
-      for (var i = 0; i < tape.length; i++) {
-        var r = tape[i];
-        var cat = r.category || 'other';
-        var symClass = r.labeled ? 'tt-symbol' : 'tt-symbol is-unlabeled';
-        var dotAttr  = ' data-cat="' + cat + '"';
-        var rowStyle = (freshTop && i === 0) ? '' : ' style="animation: none;"';
-        html += '<div class="trade-tape-row"' + rowStyle + '>'
-              +   '<span class="tt-dot"' + dotAttr + '></span>'
-              +   '<span class="' + symClass + '">' + escapeHtml(r.symbol) + '</span>'
-              +   '<span class="tt-amount">' + escapeHtml(formatAmount(r.amount))
-              +     '<span class="tt-kind">' + escapeHtml(r.kind) + '</span></span>'
-              +   '<span class="tt-age">' + ageString(r.ts) + '</span>'
-              + '</div>';
+      if (particles.length === 0 && emptyEl) {
+        emptyEl.classList.remove('is-hidden');
       }
-      tapeContainer.innerHTML = html;
     }
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, function (c) {
-        return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    if (ctx) requestAnimationFrame(frame);
+
+    // Hover tooltip — find topmost particle under cursor each mousemove.
+    if (canvas) {
+      canvas.addEventListener('mousemove', function (e) {
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var hover = null;
+        for (var i = particles.length - 1; i >= 0; i--) {
+          var p = particles[i];
+          var dx = p.x - mx, dy = p.y - my;
+          var rr = (p.r + 4) * (p.r + 4);
+          if (dx * dx + dy * dy <= rr) { hover = p; break; }
+        }
+        if (hover && tooltipEl) {
+          tooltipEl.style.left = hover.x + 'px';
+          tooltipEl.style.top  = hover.y + 'px';
+          tooltipEl.textContent = hover.symbol + ' · ' + formatAmount(hover.amount) + ' · ' + hover.kind;
+          tooltipEl.classList.add('is-visible');
+          canvas.style.cursor = 'crosshair';
+        } else if (tooltipEl) {
+          tooltipEl.classList.remove('is-visible');
+          canvas.style.cursor = '';
+        }
+      });
+      canvas.addEventListener('mouseleave', function () {
+        if (tooltipEl) tooltipEl.classList.remove('is-visible');
       });
     }
-    // Tick ages every second so rows visibly drift from "now" → "12s" → "1m".
-    setInterval(function () { renderTape(false); }, 1000);
 
     var ws = null;
     var reconnectDelay = 1500;
@@ -753,7 +833,7 @@
         if (meta.TransactionResult !== 'tesSUCCESS') return;
         if (isTokenTrade(tx)) {
           bump();
-          recordTrade(tx);
+          spawnParticle(tx);
         }
       };
 
