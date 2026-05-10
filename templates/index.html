@@ -446,7 +446,7 @@
     {# ========== ROW 1: primary — network status (left) + wallet inspector (right) ========== #}
     <section class="row-primary">
 
-      <a href="/health" class="card-block">
+      <a href="/health" class="card-block" data-live="status-card">
         {% if pulse and not pulse.error %}
         <div class="card card-status vibes-spot">
           <div class="card-label">Network status</div>
@@ -502,7 +502,7 @@
     {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}
     <section class="row-stats">
       {% if cold_storage and cold_storage.total_xrp %}
-      <a href="/cold-storage" class="stat-pill">
+      <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">Cold storage</div>
           <div class="stat-sub">{{ cold_storage.tracked_count }} Ripple escrows · largest {{ cold_storage.largest_name }}</div>
@@ -514,7 +514,7 @@
         {% endif %}
       </a>
       {% else %}
-      <a href="/cold-storage" class="stat-pill">
+      <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">Cold storage</div>
           <div class="stat-sub">Ripple escrows</div>
@@ -522,7 +522,7 @@
         <div class="stat-v">view →</div>
       </a>
       {% endif %}
-      <a href="/pools" class="stat-pill">
+      <a href="/pools" class="stat-pill" data-live="amm-tvl">
         <div>
           <div class="stat-l">Locked in AMMs</div>
           <div class="stat-sub">across {{ "{:,}".format(ranked_pool_count) }} XRPL AMM pools</div>
@@ -546,7 +546,7 @@
       <div class="mosaic">
 
         {# ---- Recent whales ---- #}
-        <div class="card vibes-spot">
+        <div class="card vibes-spot" data-live="whales">
           <div class="card-label">Whale moves</div>
           <div class="card-title">Recent large transfers</div>
           {% if whales_snapshot_at %}
@@ -572,7 +572,7 @@
         </div>
 
         {# ---- AMM activity (top pools by TVL) ---- #}
-        <div class="card vibes-spot">
+        <div class="card vibes-spot" data-live="top-pools">
           <div class="card-label">AMM activity</div>
           <div class="card-title">Top pools by TVL</div>
           {% if ranked_top5 %}
@@ -589,7 +589,7 @@
         </div>
 
         {# ---- Top tokens ---- #}
-        <div class="card vibes-spot">
+        <div class="card vibes-spot" data-live="top-tokens">
           <div class="card-label">Token activity</div>
           <div class="card-title">Most-traded tokens</div>
           {% if top_tokens %}
@@ -639,19 +639,57 @@
   </div>
 
   <script>
-    // Cached-age ticker (auto-refreshes the page when stale).
+    // Cached-age ticker + live panel refresh. Swap [data-live] panels in
+    // place (no full page reload) so the globe, ledger ticker, wallet form,
+    // and any open explainer chips don't blink/reset.
     (function () {
-      var el = document.getElementById('age-ticker');
-      if (!el) return;
-      var start = parseInt(el.dataset.age, 10) || 0;
+      var ageEl = document.getElementById('age-ticker');
+      if (!ageEl) return;
+      var start = parseInt(ageEl.dataset.age, 10) || 0;
       var t0 = Date.now();
+      var refreshing = false;
+      var REFRESH_AT = 30; // seconds; matches server cache TTLs
+
       setInterval(function () {
         var age = start + Math.floor((Date.now() - t0) / 1000);
-        el.textContent = age;
-        if (age >= 60 && document.visibilityState === 'visible') {
-          window.location.reload();
+        ageEl.textContent = age;
+        if (age >= REFRESH_AT && !refreshing &&
+            document.visibilityState === 'visible') {
+          refreshLivePanels();
         }
       }, 1000);
+
+      function refreshLivePanels() {
+        refreshing = true;
+        fetch(window.location.pathname + '?_=' + Date.now(), {
+          headers: { 'Accept': 'text/html' },
+          credentials: 'same-origin',
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error('http ' + r.status);
+            return r.text();
+          })
+          .then(function (html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            document.querySelectorAll('[data-live]').forEach(function (el) {
+              var key = el.getAttribute('data-live');
+              var fresh = doc.querySelector('[data-live="' + key + '"]');
+              if (fresh) el.innerHTML = fresh.innerHTML;
+            });
+            var freshAge = doc.getElementById('age-ticker');
+            if (freshAge) {
+              start = parseInt(freshAge.dataset.age, 10) || 0;
+              ageEl.dataset.age = start;
+              ageEl.textContent = start;
+              t0 = Date.now();
+            } else {
+              start = 0;
+              t0 = Date.now();
+            }
+          })
+          .catch(function () { /* silent — retry next tick */ })
+          .finally(function () { refreshing = false; });
+      }
     })();
 
     // Live ledger ticker. Server gives us the latest sequence + the network's
