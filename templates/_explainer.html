@@ -1,19 +1,24 @@
 {# Reusable info-explainer chip. Renders a small "?" button that opens a
-   plain-language card inline. Uses native <details>/<summary> so it works
-   without JS on mobile, is keyboard-accessible, and has no modal trap.
+   plain-language card inline. Emits phrasing-content (span + button) so it
+   stays valid when nested inside <h1>/<h2>/inline contexts — older versions
+   used <details>/<summary> (flow content) which scrapers, OG previews and
+   screen readers flattened into "Title?Body" inline blobs.
    Import explainer + explainer_css from this file; place explainer_css()
-   once inside the page <style> block, then call explainer(id, title,
-   body, source=None) anywhere a chip should appear. #}
+   once inside the page <style> block, drop explainer_js() once before
+   </body>, then call explainer(id, title, body, source=None) anywhere a
+   chip should appear. #}
 
 {% macro explainer(id, title, body, source=None) -%}
-<details class="explainer" id="exp-{{ id }}">
-  <summary class="explainer-summary" aria-label="Explain: {{ title }}"><span class="explainer-chip" aria-hidden="true">?</span></summary>
-  <div class="explainer-card" role="region" aria-label="{{ title }}">
-    <div class="explainer-title">{{ title }}</div>
-    <div class="explainer-body">{{ body }}</div>
-    {% if source %}<div class="explainer-source">{{ source|safe }}</div>{% endif %}
-  </div>
-</details>
+<span class="explainer" id="exp-{{ id }}"
+  ><button type="button" class="explainer-summary" aria-expanded="false"
+           aria-controls="exp-{{ id }}-card" aria-label="Explain: {{ title }}"
+    ><span class="explainer-chip" aria-hidden="true">?</span></button
+  ><span class="explainer-card" id="exp-{{ id }}-card"
+         role="region" aria-label="{{ title }}"
+    ><span class="explainer-title">{{ title }}</span
+    ><span class="explainer-body">{{ body }}</span
+    >{% if source %}<span class="explainer-source">{{ source|safe }}</span>{% endif %}</span
+></span>
 {%- endmacro %}
 
 {% macro explainer_css() -%}
@@ -21,11 +26,11 @@
              margin-left: 6px; font-weight: normal; letter-spacing: normal;
              text-transform: none; }
 .explainer-summary {
-  display: inline-block; cursor: pointer; padding: 4px;
-  margin: -4px; list-style: none; -webkit-tap-highlight-color: transparent;
+  display: inline-block; cursor: pointer; padding: 4px; margin: -4px;
+  background: none; border: none; font: inherit; color: inherit;
+  line-height: 1; -webkit-tap-highlight-color: transparent;
 }
-.explainer-summary::-webkit-details-marker { display: none; }
-.explainer-summary::marker { content: ""; }
+.explainer-summary::-moz-focus-inner { border: 0; padding: 0; }
 .explainer-chip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
@@ -35,10 +40,12 @@
   user-select: none; line-height: 1; vertical-align: middle;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.explainer-summary:hover .explainer-chip { border-color: var(--cyan); color: var(--cyan); }
-.explainer[open] .explainer-chip { background: var(--cyan); color: #0a0e27;
-                                   border-color: var(--cyan); }
+.explainer-summary:hover .explainer-chip,
+.explainer-summary:focus-visible .explainer-chip { border-color: var(--cyan); color: var(--cyan); }
+.explainer.is-open .explainer-chip { background: var(--cyan); color: #0a0e27;
+                                     border-color: var(--cyan); }
 .explainer-card {
+  display: none;
   position: absolute; top: 28px; left: -4px; z-index: 50;
   background: var(--card); border: 1px solid var(--cyan);
   border-radius: 8px; padding: 12px 14px;
@@ -46,13 +53,16 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   font-size: 0.85rem; line-height: 1.5; color: var(--text);
   font-weight: 400;
+  text-align: left; text-transform: none; letter-spacing: normal;
 }
-.explainer-title { font-weight: 600; margin-bottom: 6px; color: var(--cyan);
-                   font-size: 0.72rem; text-transform: uppercase;
-                   letter-spacing: 0.06em; }
-.explainer-body { color: var(--text); }
-.explainer-source { color: var(--muted); font-size: 0.75rem; margin-top: 8px;
-                    padding-top: 6px; border-top: 1px solid var(--border); }
+.explainer.is-open .explainer-card { display: block; }
+.explainer-title { display: block; font-weight: 600; margin-bottom: 6px;
+                   color: var(--cyan); font-size: 0.72rem;
+                   text-transform: uppercase; letter-spacing: 0.06em; }
+.explainer-body { display: block; color: var(--text); }
+.explainer-source { display: block; color: var(--muted); font-size: 0.75rem;
+                    margin-top: 8px; padding-top: 6px;
+                    border-top: 1px solid var(--border); }
 @media (max-width: 480px) {
   .explainer-card { width: calc(100vw - 32px); left: -50px; }
 }
@@ -61,17 +71,31 @@
 {% macro explainer_js() -%}
 <script>
 (function () {
-  document.addEventListener('click', function (e) {
-    var clicked = e.target.closest('.explainer');
-    document.querySelectorAll('details.explainer[open]').forEach(function (d) {
-      if (d !== clicked) d.removeAttribute('open');
+  function close(el) {
+    el.classList.remove('is-open');
+    var btn = el.querySelector('.explainer-summary');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function closeAll(except) {
+    document.querySelectorAll('.explainer.is-open').forEach(function (el) {
+      if (el !== except) close(el);
     });
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.explainer-summary');
+    if (btn) {
+      e.preventDefault();
+      var wrap = btn.closest('.explainer');
+      if (!wrap) return;
+      var open = wrap.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      closeAll(open ? wrap : null);
+      return;
+    }
+    if (!e.target.closest('.explainer')) closeAll(null);
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
-    document.querySelectorAll('details.explainer[open]').forEach(function (d) {
-      d.removeAttribute('open');
-    });
+    if (e.key === 'Escape') closeAll(null);
   });
 })();
 </script>
