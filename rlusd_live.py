@@ -28,6 +28,7 @@ import os
 import ssl
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib import request as urlrequest
 from urllib.error import URLError
@@ -77,9 +78,20 @@ ETH_MAX_EVENTS = 80
 # block numbers (logs don't carry timestamps over public RPC, and we
 # don't want to fan out N+1 eth_getBlockByNumber calls).
 ETH_SECONDS_PER_BLOCK = 12
+# Chunked walk for the 24h mint/burn aggregates. 8 × 1000-block chunks
+# covers ~26h at 12s/block — a margin above 24h so we don't miss events
+# clipped by long blocks or RPC-side block-time variance.
+ETH_AGGREGATE_BLOCKS = 8000
+ETH_AGGREGATE_CHUNK = 1000
 
 XRPL_TX_LIMIT = 80
 XRPL_MAX_EVENTS = 80
+# 24h mint/burn aggregate walk. account_tx paginates with marker; we walk
+# newest-first and stop as soon as a page's oldest tx falls past the
+# cutoff. 400 is rippled's per-call max. The page cap is a safety net
+# for a hyperactive issuer day.
+XRPL_AGGREGATE_PAGE = 400
+XRPL_AGGREGATE_MAX_PAGES = 20
 
 CACHE_TTL = int(os.environ.get("RLUSD_CACHE_TTL_SECONDS", "60"))
 ETH_RPC = os.environ.get("ETH_RPC", "https://1rpc.io/eth")
@@ -130,9 +142,86 @@ def _decode_eth_amount(data_hex: str) -> float:
     return raw / (10 ** ETH_DECIMALS)
 
 
+def _eth_chunk_aggregate(from_block: int, to_block: int, kind: str, topics: list,
+                         latest_block: int, now_unix: int, cutoff_ts: int) -> float:
+    """One chunk of the 24h walk — issues a single topic-filtered getLogs and
+    sums the amounts that fall inside the 24h window. Returns USD-equivalent
+    (RLUSD is 1:1 USD). Swallows errors so a single chunk failure doesn't
+    blank the whole aggregate."""
+    try:
+        logs = _eth_rpc("eth_getLogs", [{
+            "address": ETH_CONTRACT,
+            "topics": topics,
+            "fromBlock": hex(from_block),
+            "toBlock": hex(to_block),
+        }])
+    except Exception:
+        return 0.0
+    if not isinstance(logs, list):
+        return 0.0
+    total = 0.0
+    for log in logs:
+        blk_hex = log.get("blockNumber", "0x0")
+        blk = int(blk_hex, 16) if isinstance(blk_hex, str) else int(blk_hex)
+        ts = now_unix - max(0, latest_block - blk) * ETH_SECONDS_PER_BLOCK
+        if ts < cutoff_ts:
+            continue
+        total += _decode_eth_amount(log.get("data", "0x0"))
+    return total
+
+
+def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float, float]:
+    """Sum RLUSD mints (Transfer from 0x0) and burns (Transfer to 0x0) over
+    the trailing 24h. Walks eth_getLogs in 1000-block chunks (under the
+    Cloudflare/1rpc.io 1024-block range cap), fanned out in parallel so the
+    total wall-clock is one RPC RTT, not 16. Returns (mints_usd, burns_usd).
+    Per-chunk failures are swallowed — partial totals beat raising and
+    showing dashes."""
+    cutoff_ts = now_unix - 86_400
+    chunks = ETH_AGGREGATE_BLOCKS // ETH_AGGREGATE_CHUNK
+    # Two queries per chunk × N chunks = 2N parallel jobs. Mints filtered
+    # by topic1 = zero; burns by topic2 = zero. Both topic-filters at the
+    # node level so per-response payloads stay tiny.
+    jobs: list = []
+    for i in range(chunks):
+        to_block = latest_block - (i * ETH_AGGREGATE_CHUNK)
+        from_block = max(0, to_block - ETH_AGGREGATE_CHUNK + 1)
+        if to_block <= 0:
+            break
+        jobs.append(("mint", from_block, to_block, [TRANSFER_TOPIC, ZERO_TOPIC]))
+        jobs.append(("burn", from_block, to_block, [TRANSFER_TOPIC, None, ZERO_TOPIC]))
+
+    mints = 0.0
+    burns = 0.0
+    # max_workers=16 = 2 × chunk count; cheap because each thread is mostly
+    # blocked on the public-RPC socket.
+    with ThreadPoolExecutor(max_workers=16, thread_name_prefix="rlusd-eth") as ex:
+        futures = [
+            (kind, ex.submit(_eth_chunk_aggregate, fb, tb, kind, topics,
+                             latest_block, now_unix, cutoff_ts))
+            for (kind, fb, tb, topics) in jobs
+        ]
+        for kind, fut in futures:
+            try:
+                amt = fut.result(timeout=HTTP_TIMEOUT * 2)
+            except Exception:
+                amt = 0.0
+            if kind == "mint":
+                mints += amt
+            else:
+                burns += amt
+    return mints, burns
+
+
 def fetch_eth() -> dict:
-    """Returns {supply: float|None, events: [...], error: str|None}."""
-    out: dict[str, Any] = {"supply": None, "events": [], "error": None}
+    """Returns {supply, events, mints_24h, burns_24h, error}."""
+    out: dict[str, Any] = {
+        "supply": None,
+        "events": [],
+        "mints_24h": 0.0,
+        "burns_24h": 0.0,
+        "error": None,
+    }
 
     # Total supply via eth_call → totalSupply().
     try:
@@ -195,6 +284,23 @@ def fetch_eth() -> dict:
             if prev else f"eth_events: {type(e).__name__}: {e}"
         )
 
+    # 24h mint/burn aggregates — paginate getLogs over ~24h so the page's
+    # "24H" label is honest. Best-effort; uses the latest block we already
+    # fetched above to keep the time-from-block math consistent.
+    try:
+        latest_hex = _eth_rpc("eth_blockNumber", [])
+        latest = int(latest_hex, 16)
+        now_unix = int(time.time())
+        mints_24h, burns_24h = _fetch_eth_24h_aggregates(latest, now_unix)
+        out["mints_24h"] = mints_24h
+        out["burns_24h"] = burns_24h
+    except Exception as e:
+        prev = out["error"]
+        out["error"] = (
+            f"{prev} | eth_24h: {type(e).__name__}: {e}"
+            if prev else f"eth_24h: {type(e).__name__}: {e}"
+        )
+
     return out
 
 
@@ -204,9 +310,82 @@ def _xrpl_currency_match(cur: str | None) -> bool:
     return cur in XRPL_CURRENCY_NAMES if cur else False
 
 
+def _fetch_xrpl_24h_aggregates(client, now_unix: int) -> tuple[float, float]:
+    """Walk account_tx on the issuer until we cross the 24h cutoff, summing
+    Payment-based mints (issuer → other) and burns (other → issuer). Trades
+    (OfferCreate) are ignored — they don't change supply. Stops as soon as
+    a page's oldest tx is older than the cutoff; capped at
+    XRPL_AGGREGATE_MAX_PAGES so a runaway day can't stall the request."""
+    cutoff_ts = now_unix - 86_400
+    mints = 0.0
+    burns = 0.0
+    marker = None
+    for _ in range(XRPL_AGGREGATE_MAX_PAGES):
+        kwargs = {
+            "account": XRPL_ISSUER,
+            "ledger_index_min": -1,
+            "ledger_index_max": -1,
+            "limit": XRPL_AGGREGATE_PAGE,
+            "binary": False,
+        }
+        if marker is not None:
+            kwargs["marker"] = marker
+        try:
+            resp = client.request(AccountTx(**kwargs))
+        except Exception:
+            break
+        result = resp.result or {}
+        txs = result.get("transactions", []) or []
+        if not txs:
+            break
+        oldest_ts = None
+        for entry in txs:
+            tx = entry.get("tx") or entry.get("tx_json") or {}
+            ts = int(tx.get("date", 0)) + XRPL_EPOCH_OFFSET
+            if oldest_ts is None or ts < oldest_ts:
+                oldest_ts = ts
+            if ts < cutoff_ts:
+                continue
+            if tx.get("TransactionType") != "Payment":
+                continue
+            meta = entry.get("meta") or {}
+            delivered = meta.get("delivered_amount")
+            if not isinstance(delivered, dict):
+                src = tx.get("Amount")
+                delivered = src if isinstance(src, dict) else None
+            if not isinstance(delivered, dict):
+                continue
+            if not _xrpl_currency_match(delivered.get("currency")):
+                continue
+            if delivered.get("issuer") != XRPL_ISSUER:
+                continue
+            try:
+                amount = float(delivered.get("value", "0"))
+            except (TypeError, ValueError):
+                continue
+            sender = tx.get("Account", "")
+            destination = tx.get("Destination", "")
+            if sender == XRPL_ISSUER and destination != XRPL_ISSUER:
+                mints += amount
+            elif destination == XRPL_ISSUER and sender != XRPL_ISSUER:
+                burns += amount
+        if oldest_ts is not None and oldest_ts < cutoff_ts:
+            break
+        marker = result.get("marker")
+        if not marker:
+            break
+    return mints, burns
+
+
 def fetch_xrpl() -> dict:
-    """Returns {supply: float|None, events: [...], error: str|None}."""
-    out: dict[str, Any] = {"supply": None, "events": [], "error": None}
+    """Returns {supply, events, mints_24h, burns_24h, error}."""
+    out: dict[str, Any] = {
+        "supply": None,
+        "events": [],
+        "mints_24h": 0.0,
+        "burns_24h": 0.0,
+        "error": None,
+    }
     client = JsonRpcClient(XRPL_NODE)
 
     # gateway_balances → total RLUSD obligations (= circulating supply).
@@ -305,6 +484,20 @@ def fetch_xrpl() -> dict:
             if prev else f"xrpl_events: {type(e).__name__}: {e}"
         )
 
+    # 24h mint/burn aggregates — paginate account_tx so the page's "24H"
+    # label is honest about its window. Best-effort.
+    try:
+        now_unix = int(time.time())
+        mints_24h, burns_24h = _fetch_xrpl_24h_aggregates(client, now_unix)
+        out["mints_24h"] = mints_24h
+        out["burns_24h"] = burns_24h
+    except Exception as e:
+        prev = out["error"]
+        out["error"] = (
+            f"{prev} | xrpl_24h: {type(e).__name__}: {e}"
+            if prev else f"xrpl_24h: {type(e).__name__}: {e}"
+        )
+
     return out
 
 
@@ -324,8 +517,13 @@ def fetch_state(force: bool = False) -> dict:
         if fresh_enough and not force:
             return cached
 
-    eth = fetch_eth()
-    xrpl = fetch_xrpl()
+    # Fan out both chain fetches in parallel — they're independent, so total
+    # wall-clock collapses to max(eth, xrpl) instead of eth + xrpl.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="rlusd-state") as ex:
+        eth_fut = ex.submit(fetch_eth)
+        xrpl_fut = ex.submit(fetch_xrpl)
+        eth = eth_fut.result()
+        xrpl = xrpl_fut.result()
 
     # Combine + sort events newest-first across both chains.
     events = sorted(
@@ -335,8 +533,18 @@ def fetch_state(force: bool = False) -> dict:
     )
 
     data = {
-        "eth": {"supply": eth["supply"], "error": eth["error"]},
-        "xrpl": {"supply": xrpl["supply"], "error": xrpl["error"]},
+        "eth": {
+            "supply": eth["supply"],
+            "mints_24h": eth.get("mints_24h", 0.0),
+            "burns_24h": eth.get("burns_24h", 0.0),
+            "error": eth["error"],
+        },
+        "xrpl": {
+            "supply": xrpl["supply"],
+            "mints_24h": xrpl.get("mints_24h", 0.0),
+            "burns_24h": xrpl.get("burns_24h", 0.0),
+            "error": xrpl["error"],
+        },
         "events": events[:120],
         "fetched_at": int(now),
         "ttl_seconds": CACHE_TTL,

@@ -972,26 +972,20 @@
     return 'xfer';
   }
   function bumpCounters(ev) {
-    /* In live mode the server is the source of truth for supply — each
-       poll re-anchors state.ethSupply / state.xrplSupply. We only update
-       the 24h aggregates locally so the per-chain mint/burn cells move
-       in real time between polls. In preview mode we mutate supply too
-       so the orbs visibly breathe against the simulated stream. */
+    /* In live mode the server owns supply and the 24h mint/burn totals —
+       both re-anchor every poll. We don't mutate those here so client
+       drift can't accumulate between polls. Preview mode (pre-first-poll)
+       still nudges supply so the orbs visibly breathe against the
+       simulated stream. */
     const k = ev.chain;
-    if (ev.type === 'mint') {
-      if (!LIVE_DATA) {
+    if (!LIVE_DATA) {
+      if (ev.type === 'mint') {
         if (k === 'eth') state.ethSupply += ev.amount;
         else             state.xrplSupply += ev.amount;
-      }
-      if (k === 'eth') state.ethMints24h  += ev.amount;
-      else             state.xrplMints24h += ev.amount;
-    } else if (ev.type === 'burn') {
-      if (!LIVE_DATA) {
+      } else if (ev.type === 'burn') {
         if (k === 'eth') state.ethSupply -= ev.amount;
         else             state.xrplSupply -= ev.amount;
       }
-      if (k === 'eth') state.ethBurns24h  += ev.amount;
-      else             state.xrplBurns24h += ev.amount;
     }
     renderState();
   }
@@ -1152,25 +1146,26 @@
     if (ethS  != null) state.ethSupply  = ethS;
     if (xrplS != null) state.xrplSupply = xrplS;
 
+    /* 24h mint/burn aggregates come straight from the server now — it
+       paginates the full 24h window of on-chain logs/txns. Re-anchor on
+       every poll so client-side drift can't accumulate. */
+    if (data.eth) {
+      state.ethMints24h = Number(data.eth.mints_24h) || 0;
+      state.ethBurns24h = Number(data.eth.burns_24h) || 0;
+    }
+    if (data.xrpl) {
+      state.xrplMints24h = Number(data.xrpl.mints_24h) || 0;
+      state.xrplBurns24h = Number(data.xrpl.burns_24h) || 0;
+    }
+
     const events = Array.isArray(data.events) ? data.events.filter(e => e && e.tx) : [];
 
     if (firstSuccess) {
-      /* Mark the historical backlog as seen — we don't replay it as a
-         flood of animation. We do aggregate it into the 24h cells so
-         the page lands with real numbers, not zeros. */
-      const cutoff = Math.floor(Date.now() / 1000) - 86400;
-      state.ethMints24h = state.ethBurns24h = 0;
-      state.xrplMints24h = state.xrplBurns24h = 0;
+      /* Mark the historical backlog as seen so we don't animate it as a
+         flood of fake-fresh events. The 24h numbers are already set from
+         the server above. */
       for (const e of events) {
         seenTx.add(e.tx);
-        if ((e.ts || 0) < cutoff) continue;
-        if (e.type === 'mint') {
-          if (e.chain === 'eth') state.ethMints24h += e.amount;
-          else                   state.xrplMints24h += e.amount;
-        } else if (e.type === 'burn') {
-          if (e.chain === 'eth') state.ethBurns24h += e.amount;
-          else                   state.xrplBurns24h += e.amount;
-        }
       }
       /* Seed the ticker with the most recent events. Always re-render
          the host (even when empty) so any preview-loop fake events that
