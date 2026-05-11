@@ -635,6 +635,22 @@ def read_max_token_bucket():
             return int(row[0]) if row and row[0] is not None else None
 
 
+def count_table(table):
+    """Row count for a known table. Used by /health on Render where the
+    Mac-side SQLite files don't exist but Neon has the mirrored data.
+    Allowlisted table names — never interpolate untrusted input here."""
+    if table not in ("events", "token_volume", "amm_pool_events", "page_views"):
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                row = cur.fetchone()
+                return int(row[0]) if row else None
+    except Exception:
+        return None
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Page views (private analytics surface — see /admin/stats)
 # ─────────────────────────────────────────────────────────────────────

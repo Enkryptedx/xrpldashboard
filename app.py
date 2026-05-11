@@ -726,6 +726,11 @@ def _tail_lines(path, n=8):
 def _humanize_seconds(s):
     if s is None:
         return "—"
+    # Clamp clock-skew negatives. Workers on a host whose clock is ahead
+    # of the Flask host will produce timestamps "in the future" — that's
+    # not a freshness problem, it's a clock-skew artifact. Show as "0s".
+    if s < 0:
+        s = 0
     if s < 60:
         return f"{s}s"
     if s < 3600:
@@ -740,7 +745,7 @@ def _iso_to_age_seconds(iso_str):
         return None
     try:
         dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        return int((datetime.now(timezone.utc) - dt).total_seconds())
+        return max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
     except Exception:
         return None
 
@@ -761,12 +766,16 @@ def health():
     # snapshots to Neon, so prod (Render) — which has none of the Mac's JSON
     # files — can still report real state. Local file reads stay authoritative
     # on the Mac itself; PG reads only fill gaps.
+    # Clamp heartbeat ages to 0 — a worker on a host whose clock is ahead of
+    # this Flask process produces a "future" timestamp, which is a clock-skew
+    # artifact, not a freshness problem. Negative ages would otherwise leak
+    # to the UI as "-10668s ago" and read as broken.
     pg_hb = db.read_heartbeat("xrpl_stream")
-    pg_hb_age = (int(time.time()) - pg_hb["ts"]) if pg_hb else None
+    pg_hb_age = max(0, int(time.time()) - pg_hb["ts"]) if pg_hb else None
     pg_hb_extra = (pg_hb.get("extra") if isinstance(pg_hb, dict) else None) or {}
 
     ranker_hb = db.read_heartbeat("amm_ranker")
-    ranker_hb_age = (int(time.time()) - ranker_hb["ts"]) if ranker_hb else None
+    ranker_hb_age = max(0, int(time.time()) - ranker_hb["ts"]) if ranker_hb else None
     ranker_hb_extra = (ranker_hb.get("extra") if isinstance(ranker_hb, dict) else None) or {}
 
     scan_started = scan_state.get("started_at") or ranker_hb_extra.get("started_at")
@@ -844,8 +853,19 @@ def health():
             "seen_tokens_count": len(stream_state.get("seen_tokens", []) or []),
         },
         substrate={
-            "events_rows": _safe_count_table(EVENTS_DB_PATH, "events"),
-            "volumes_rows": _safe_count_table(VOLUMES_DB_PATH, "token_volume"),
+            # Prefer local SQLite (authoritative on the Mac). On Render the
+            # files don't exist, so fall back to the mirrored Neon tables —
+            # otherwise the page renders "—" and looks broken.
+            "events_rows": (
+                _safe_count_table(EVENTS_DB_PATH, "events")
+                if os.path.exists(EVENTS_DB_PATH)
+                else (db.count_table("events") if db.pg_available() else None)
+            ),
+            "volumes_rows": (
+                _safe_count_table(VOLUMES_DB_PATH, "token_volume")
+                if os.path.exists(VOLUMES_DB_PATH)
+                else (db.count_table("token_volume") if db.pg_available() else None)
+            ),
         },
         recent_log=_tail_lines(STREAM_LOG_PATH, n=8),
     ), status_code
