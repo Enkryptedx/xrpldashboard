@@ -301,6 +301,11 @@
     .ticker .row .chain.xrpl { color: var(--xrpl); }
     .ticker .row .amount { font-family: var(--mono); text-align: right; }
     .ticker .row .addr { font-family: var(--mono); color: var(--muted); font-size: 0.78rem; }
+    .ticker .row.empty { grid-template-columns: 60px 1fr; padding: 16px 0; }
+    .ticker .row.empty .addr {
+      font-family: var(--sys); font-size: 0.85rem; color: var(--muted);
+      font-style: italic;
+    }
     @media (max-width: 640px) {
       .ticker .row { grid-template-columns: 1fr 1fr; gap: 6px; }
       .ticker .row .when { grid-column: 1; }
@@ -974,13 +979,28 @@
   }
 
   const tickerRows = [];
-  function pushTickerRow(ev) {
-    tickerRows.unshift({ ev, t: Date.now() });
-    if (tickerRows.length > 12) tickerRows.length = 12;
+  function fmtAge(seconds) {
+    const dt = Math.max(0, Math.round(seconds));
+    if (dt < 60) return `${dt}s ago`;
+    if (dt < 3600) return `${Math.floor(dt / 60)}m ago`;
+    if (dt < 86400) return `${Math.floor(dt / 3600)}h ago`;
+    return `${Math.floor(dt / 86400)}d ago`;
+  }
+  function renderTickerRows() {
     const host = document.getElementById('tickerRows');
+    if (!host) return;
+    if (!tickerRows.length) {
+      host.innerHTML = `
+        <div class="row empty">
+          <span class="when">—</span>
+          <span class="what">
+            <span class="addr">No mints or burns in the recent lookback window. Waiting for the next treasury action.</span>
+          </span>
+        </div>`;
+      return;
+    }
     host.innerHTML = tickerRows.map(r => {
-      const dt = Math.max(0, Math.round((Date.now() - r.t) / 1000));
-      const when = dt < 60 ? `${dt}s ago` : `${Math.floor(dt / 60)}m ago`;
+      const when = fmtAge((Date.now() - r.t) / 1000);
       const badge = eventBadge(r.ev);
       const chain = r.ev.chain;
       const chainLabel = chain === 'eth' ? 'Ethereum' : 'XRPL';
@@ -996,15 +1016,23 @@
         </div>`;
     }).join('');
   }
+  function pushTickerRow(ev) {
+    // Anchor the timestamp to the on-chain event time when the server
+    // gives one; only fall back to Date.now() for events that arrive
+    // without a ts (shouldn't happen in live mode but kept defensive).
+    const t = ev && ev.ts ? ev.ts * 1000 : Date.now();
+    tickerRows.unshift({ ev, t });
+    if (tickerRows.length > 12) tickerRows.length = 12;
+    renderTickerRows();
+  }
   setInterval(() => {
     if (!tickerRows.length) return;
     const host = document.getElementById('tickerRows');
     host.querySelectorAll('.row').forEach((row, i) => {
       const r = tickerRows[i];
       if (!r) return;
-      const dt = Math.max(0, Math.round((Date.now() - r.t) / 1000));
-      row.querySelector('.when').textContent =
-        dt < 60 ? `${dt}s ago` : `${Math.floor(dt / 60)}m ago`;
+      const whenEl = row.querySelector('.when');
+      if (whenEl) whenEl.textContent = fmtAge((Date.now() - r.t) / 1000);
     });
   }, 3000);
 
@@ -1113,32 +1141,15 @@
           else                   state.xrplBurns24h += e.amount;
         }
       }
-      /* Seed the ticker with the most recent events so the page doesn't
-         look dead while we wait for new activity to arrive. */
+      /* Seed the ticker with the most recent events. Always re-render
+         the host (even when empty) so any preview-loop fake events that
+         leaked into the DOM before the first poll resolved get cleared
+         and replaced with either real events or the empty-state row. */
       tickerRows.length = 0;
       events.slice(0, 12).forEach(e => {
         tickerRows.push({ ev: e, t: (e.ts ? e.ts * 1000 : Date.now()) });
       });
-      const host = document.getElementById('tickerRows');
-      if (host && tickerRows.length) {
-        host.innerHTML = tickerRows.map(r => {
-          const dt = Math.max(0, Math.round((Date.now() - r.t) / 1000));
-          const when = dt < 60 ? `${dt}s ago` : dt < 3600 ? `${Math.floor(dt / 60)}m ago` : `${Math.floor(dt / 3600)}h ago`;
-          const badge = eventBadge(r.ev);
-          const chain = r.ev.chain;
-          const chainLabel = chain === 'eth' ? 'Ethereum' : 'XRPL';
-          return `
-            <div class="row">
-              <span class="when">${when}</span>
-              <span class="what">
-                <span class="badge ${badge}">${badge}</span>
-                <span class="addr">${eventLabel(r.ev)}</span>
-              </span>
-              <span class="chain ${chain}">${chainLabel}</span>
-              <span class="amount">${fmtUSD(r.ev.amount)}</span>
-            </div>`;
-        }).join('');
-      }
+      renderTickerRows();
       LIVE_DATA = true;
       hidePreviewRibbon();
       renderState();
