@@ -1,8 +1,13 @@
 {# Live "ledger heartbeat" chip — pulsing dot + ledger # + age. Reusable
    across both the shared nav (_nav.html) and pages with custom headers
    (index.html, wallet.html). Pulls from {{ liveness }} in the template
-   context (injected by inject_liveness in app.py). The JS at the bottom
-   ticks the seconds counter every 1s and re-fetches /api/ledger-tip every 30s. #}
+   context (injected by inject_liveness in app.py) for the initial paint,
+   then drives subsequent updates straight off the public XRPL ledger
+   stream via window.LiveStream (loaded in _head_meta.html). Every
+   `ledgerClosed` event from wss://s2.ripple.com resets the seq + age in
+   real time — no 30s polling, no fake ticks. If the socket drops or no
+   event arrives within 30s, the dot flips to "degraded" so the staleness
+   is visible. #}
 <style>
   .liveness-chip { display: inline-flex; align-items: center; gap: 0.5em;
                    padding: 5px 10px 5px 9px; border-radius: 999px;
@@ -51,33 +56,51 @@
   if (!chip || !seqEl || !ageEl) return;
   var fetchedAt = parseInt(chip.dataset.ageFetchedAt, 10);
   var ageBase   = parseInt(chip.dataset.ageBase, 10) || 0;
+
   function fmtAge(s) {
     if (s < 60) return s + 's';
     if (s < 3600) return Math.floor(s/60) + 'm';
     return Math.floor(s/3600) + 'h';
   }
-  function tick() {
+  function liveAgeSeconds() {
     var live = ageBase + (Math.floor(Date.now()/1000) - fetchedAt);
-    if (live < 0) live = 0;
-    ageEl.textContent = fmtAge(live);
+    return live < 0 ? 0 : live;
+  }
+  function applyStatus() {
+    var age = liveAgeSeconds();
+    chip.classList.remove('deg', 'unk');
+    // Mirror network_pulse._classify: >30s without a new ledger is the
+    // degraded threshold. The chip can verify this client-side from the
+    // WS event timestamp without polling the server.
+    if (!window.LiveStream || !window.LiveStream.isConnected()) {
+      // Initial paint still trusts the server-rendered seq; only flip to
+      // "unknown" once enough time has passed that the server data is stale.
+      if (age > 30) chip.classList.add('unk');
+    } else if (age > 30) {
+      chip.classList.add('deg');
+    }
+  }
+  function tick() {
+    ageEl.textContent = fmtAge(liveAgeSeconds());
+    applyStatus();
   }
   tick();
   setInterval(tick, 1000);
-  setInterval(function () {
-    fetch('/api/ledger-tip', {cache: 'no-store'}).then(function (r) {
-      return r.ok ? r.json() : null;
-    }).then(function (j) {
-      if (!j || !j.ledger_index) return;
-      seqEl.textContent = j.ledger_index;
-      ageBase = j.last_close_age_seconds || 0;
+
+  if (window.LiveStream) {
+    window.LiveStream.onLedger(function (ev) {
+      if (!ev || !ev.ledger_index) return;
+      seqEl.textContent = ev.ledger_index;
+      ageBase = 0;
       fetchedAt = Math.floor(Date.now()/1000);
       chip.classList.remove('deg', 'unk');
-      if (j.status === 'degraded') chip.classList.add('deg');
-      else if (j.status === 'unknown') chip.classList.add('unk');
-      if (j.status_text) chip.title = j.status_text;
+      chip.title = 'Live · ledger ' + ev.ledger_index;
       tick();
-    }).catch(function () {});
-  }, 30000);
+    });
+    window.LiveStream.onStatus(function (s) {
+      if (s === 'closed') applyStatus();
+    });
+  }
 })();
 </script>
 {% endif %}

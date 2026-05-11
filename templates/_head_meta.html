@@ -22,3 +22,9 @@
 <meta name="twitter:description" content="{{ meta_description }}">
 <meta name="twitter:image" content="{{ site_url }}/static/og-image.png">
 <meta name="twitter:image:alt" content="xrpldashboard — the XRP Ledger, made legible.">
+
+{# Shared XRPL ledger-stream WebSocket. Loads on every page so any panel
+   can subscribe via window.LiveStream.onLedger(cb) — no per-page boilerplate.
+   Not `defer` on purpose: body-level inline scripts that subscribe must see
+   window.LiveStream defined at parse time, and the file is tiny + cached. #}
+<script src="/static/js/live_stream.js"></script>

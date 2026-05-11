@@ -755,15 +755,17 @@
     requestAnimationFrame(frame);
   })();
 
-  // ---------- Live network classifier (WebSocket ledger stream) ----------
-  // Subscribes to the public XRPL ledger stream — every ledgerClosed event
-  // delivers the new sequence + close interval. We maintain a 20-event
-  // rolling window for the avg close, treat last-close-age as ticking from
-  // the most recent event, and reclassify status using the same thresholds
-  // as network_pulse._classify so the hero / card 1 / heartbeat all flip
-  // the moment the network state changes — no 60s refresh required.
+  // ---------- Live network classifier (shared XRPL ledger stream) ----------
+  // Subscribes to window.LiveStream (defined in /static/js/live_stream.js,
+  // loaded site-wide via _head_meta.html). Every `ledgerClosed` event from
+  // the public XRPL ledger stream delivers the new sequence + close
+  // interval. We maintain a 20-event rolling window for the avg close,
+  // treat last-close-age as ticking from the most recent event, and
+  // reclassify status using the same thresholds as network_pulse._classify
+  // so the hero / card 1 / heartbeat all flip the moment the network
+  // state changes — no 60s refresh required.
   (function () {
-    if (typeof WebSocket === 'undefined') return;
+    if (!window.LiveStream) return;
 
     var bigDot   = document.querySelector('[data-network-bigdot]');
     var headline = document.querySelector('[data-network-headline]');
@@ -928,51 +930,9 @@
     refreshLoad();
     setInterval(refreshLoad, 30000);
 
-    var ws = null;
-    var reconnectDelay = 1500;
-    var closed = false;
-
-    function connect() {
-      if (closed) return;
-      try { ws = new WebSocket('wss://s2.ripple.com'); }
-      catch (e) { scheduleReconnect(); return; }
-
-      ws.onopen = function () {
-        reconnectDelay = 1500;
-        try {
-          ws.send(JSON.stringify({
-            id: 'health-ledger',
-            command: 'subscribe',
-            streams: ['ledger']
-          }));
-        } catch (e) {}
-      };
-
-      ws.onmessage = function (msg) {
-        var data;
-        try { data = JSON.parse(msg.data); } catch (e) { return; }
-        if (!data) return;
-        if (data.type === 'ledgerClosed') onLedgerClosed(data);
-      };
-
-      ws.onerror = function () {};
-      ws.onclose = function () {
-        if (closed) return;
-        scheduleReconnect();
-      };
-    }
-
-    function scheduleReconnect() {
-      setTimeout(connect, reconnectDelay);
-      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
-    }
-
-    window.addEventListener('beforeunload', function () {
-      closed = true;
-      if (ws) { try { ws.close(); } catch (e) {} }
+    window.LiveStream.onLedger(function (ev) {
+      if (ev && ev.type === 'ledgerClosed') onLedgerClosed(ev);
     });
-
-    connect();
   })();
 </script>
 

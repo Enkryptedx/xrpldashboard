@@ -315,13 +315,18 @@
       .ticker .row .amount { grid-column: 1 / span 2; text-align: left; }
     }
 
+    /* Hidden by default — the live cross-chain feed is wired, so the
+       ribbon only ever surfaces if a fetch fails outright. JS toggles
+       it via .ribbon.show (see showLiveFailNotice / hidePreviewRibbon). */
     .ribbon {
+      display: none;
       margin: 0 0 18px;
       padding: 10px 14px; border-radius: 10px;
       background: rgba(245,158,11,0.06);
       border: 1px solid rgba(245,158,11,0.25);
       color: var(--amber); font-size: 0.82rem;
     }
+    .ribbon.show { display: block; }
     .ribbon strong { color: var(--text); font-weight: 600; }
 
     .foot {
@@ -344,10 +349,12 @@
     new dollars appear, old ones disappear, and money cross between them.
   </p>
 
-  <div class="ribbon">
-    <strong>Preview mode.</strong>
-    Animation is running on a representative event stream while the live
-    cross-chain feed is wired up. Issuer addresses and contract are real.
+  {# Hidden by default — the live feed is wired. JS un-hides this ribbon
+     only if the /api/rlusd/state poll fails repeatedly, so the user always
+     sees an honest status. #}
+  <div class="ribbon" id="liveFailRibbon">
+    <strong>Live feed unavailable.</strong>
+    The supply totals above may be a few minutes stale while we reconnect.
   </div>
 
   <div class="press-hero">
@@ -376,7 +383,10 @@
         <span class="chip mint"><span class="sw"></span>new RLUSD created</span>
         <span class="chip burn"><span class="sw"></span>RLUSD removed</span>
         <span class="chip bridge"><span class="sw"></span>moved between chains</span>
-        <span class="chip" id="previewChip" style="margin-left:auto; color: var(--amber);">
+        {# Hidden by default — only shown if the live feed actually fails.
+           Previously this chip was visible during the brief pre-first-poll
+           window, which read as "simulated" even when the data was live. #}
+        <span class="chip" id="previewChip" style="display: none; margin-left:auto; color: var(--amber);">
           <span class="sw" style="background: var(--amber); box-shadow: 0 0 8px var(--amber);"></span>
           simulated stream
         </span>
@@ -1114,13 +1124,26 @@
   const eventQueue = [];
 
   function hidePreviewRibbon() {
-    const r = document.querySelector('.ribbon');
-    if (r) r.style.display = 'none';
+    const r = document.getElementById('liveFailRibbon');
+    if (r) r.classList.remove('show');
     const chip = document.getElementById('previewChip');
     if (chip) chip.style.display = 'none';
     const badge = document.getElementById('liveBadge');
     if (badge) badge.classList.add('on');
   }
+
+  function showLiveFailNotice() {
+    const r = document.getElementById('liveFailRibbon');
+    if (r) r.classList.add('show');
+    const chip = document.getElementById('previewChip');
+    if (chip) chip.style.display = '';
+    const badge = document.getElementById('liveBadge');
+    if (badge) badge.classList.remove('on');
+  }
+
+  // Consecutive poll failures. We only flip on the ribbon after two in a
+  // row so a single transient blip doesn't cry wolf.
+  let consecutiveFailures = 0;
 
   function applyLiveSnapshot(data) {
     const firstSuccess = !LIVE_DATA;
@@ -1180,9 +1203,13 @@
       const r = await fetch('/api/rlusd/state', { cache: 'no-store' });
       if (!r.ok) throw new Error('http ' + r.status);
       const data = await r.json();
+      consecutiveFailures = 0;
       applyLiveSnapshot(data);
     } catch (e) {
-      /* Silent — preview loop keeps the hero alive on transient failure. */
+      consecutiveFailures += 1;
+      // Two strikes — surface the connection issue honestly instead of
+      // letting the preview animations imply the feed is healthy.
+      if (consecutiveFailures >= 2) showLiveFailNotice();
     } finally {
       setTimeout(pollState, POLL_MS);
     }

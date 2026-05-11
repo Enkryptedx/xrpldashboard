@@ -736,22 +736,23 @@
       }
     })();
 
-    // Live ledger ticker. Server gives us the latest sequence + the network's
-    // average close time. We tick +1 every avg_close seconds so the page feels
-    // alive between server refreshes; the next page reload corrects drift.
+    // Live ledger ticker. Subscribes to the real XRPL ledger stream via
+    // window.LiveStream and updates on each `ledgerClosed` event — the
+    // number you see is the number the network just validated. No fake
+    // +1 between events; if the socket drops, the number stops, which is
+    // what should happen.
     (function () {
       var el = document.getElementById('ledger-num');
       if (!el) return;
-      var current = parseInt(el.dataset.seed, 10);
-      var rate = parseFloat(el.dataset.rate) || 3.5;
-      if (isNaN(current)) return;
-      var rateMs = Math.max(1500, Math.min(8000, rate * 1000));
-      setInterval(function () {
-        current += 1;
-        el.textContent = current.toLocaleString();
+      var seed = parseInt(el.dataset.seed, 10);
+      if (!isNaN(seed)) el.textContent = seed.toLocaleString();
+      if (!window.LiveStream) return;
+      window.LiveStream.onLedger(function (ev) {
+        if (!ev || !ev.ledger_index) return;
+        el.textContent = ev.ledger_index.toLocaleString();
         el.classList.add('flash');
         setTimeout(function () { el.classList.remove('flash'); }, 380);
-      }, rateMs);
+      });
     })();
 
     // Spinning XRPL globe (decorative). Wireframe sphere with rotating
