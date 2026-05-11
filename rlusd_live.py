@@ -243,7 +243,10 @@ def fetch_xrpl() -> dict:
             meta = entry.get("meta") or {}
             tx_type = tx.get("TransactionType")
             ts = int(tx.get("date", 0)) + XRPL_EPOCH_OFFSET
-            tx_hash = tx.get("hash", "")
+            # Newer xrpl-py puts the hash on the entry, not inside tx_json.
+            # Without this fallback every XRPL event ships tx="" and the
+            # client's dedupe + non-empty-tx filter drops the whole feed.
+            tx_hash = entry.get("hash") or tx.get("hash", "")
 
             if tx_type == "Payment":
                 delivered = meta.get("delivered_amount")
