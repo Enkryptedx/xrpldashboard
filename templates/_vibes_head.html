@@ -54,17 +54,16 @@
     content: "";
     position: fixed; inset: 0;
     background: radial-gradient(
-      420px circle at var(--mx) var(--my),
-      rgba(34,211,238,0.22), transparent 62%);
+      560px circle at var(--mx) var(--my),
+      rgba(34,211,238,0.55) 0%,
+      rgba(34,211,238,0.28) 25%,
+      transparent 65%);
     pointer-events: none;
-    z-index: 9999;
+    z-index: 2147483646;
     mix-blend-mode: screen;
+    will-change: background;
   }
   @media (prefers-reduced-motion: reduce) {
-    body::after { display: none; }
-  }
-  @media (hover: none) {
-    /* Touch devices — no cursor, no spotlight. */
     body::after { display: none; }
   }
 
@@ -81,8 +80,8 @@
     position: absolute; inset: -1px;
     border-radius: inherit;
     background: radial-gradient(
-      380px circle at var(--vx, 50%) var(--vy, 50%),
-      rgba(34,211,238,0.32), transparent 58%);
+      400px circle at var(--vx, 50%) var(--vy, 50%),
+      rgba(34,211,238,0.55), transparent 60%);
     opacity: 0; transition: opacity 0.18s;
     pointer-events: none;
   }
