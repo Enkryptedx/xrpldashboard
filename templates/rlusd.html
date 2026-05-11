@@ -180,6 +180,13 @@
       background: var(--amber);
       box-shadow: 0 0 6px var(--amber);
     }
+    /* Card sits at the container's right edge, so anchor the explainer
+       popover to the right and let it open leftward — the default
+       left:-4px overflows and gets clipped. */
+    .sim-toggle .explainer-card { left: auto; right: -4px; }
+    @media (max-width: 480px) {
+      .sim-toggle .explainer-card { right: -4px; left: auto; }
+    }
 
     .press-caption {
       padding: 8px 16px; border-top: 1px solid var(--border);
