@@ -402,7 +402,7 @@
     </summary>
     <div class="card-detail">
       <h4>{{ _('What this is') }}</h4>
-      <p>{{ _('A live catalogue of every Automated Market Maker (AMM) on the XRP Ledger. AMMs are pools of two assets that let people swap one for the other without an order book — they handle a big chunk of XRPL token trading. This count is how many distinct pools we currently track.') }}</p>
+      <p>{{ _('A live catalogue of the') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong> {{ _('AMM pools we currently track on the XRP Ledger. AMMs are pools of two assets that let people swap one for the other without an order book — they handle a big chunk of XRPL token trading.') }}</p>
       <h4>{{ _('How we know') }}</h4>
       <p>{{ _('A background worker scans the ledger every few hours, finds new AMM pools as they\'re created, and ranks them by how much value they hold (TVL). The result is the catalogue that powers the /pools page. "Ready" means the catalogue has been built; "building" means it\'s still being scanned for the first time.') }}</p>
     </div>
