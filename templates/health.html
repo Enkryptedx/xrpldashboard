@@ -7,7 +7,9 @@
   {% set meta_title = "health · xrpldashboard" %}
   {% set meta_description = "Operational status for xrpldashboard's background workers — bootstrap scanner, live transaction watcher, and ledger heartbeat. Public on purpose." %}
   {% include "_head_meta.html" %}
-  <meta http-equiv="refresh" content="60">
+  {# Auto-refresh used to live here as a meta-refresh, but it nuked any
+     open expander every 60s. Now handled in JS below: same 60s cadence,
+     but defers the reload while the reader has an explainer open. #}
 
   {# Plausible Analytics — uncomment after creating account at plausible.io
      and confirming the domain. Public stats page should be enabled in
@@ -971,6 +973,47 @@
     });
 
     connect();
+  })();
+</script>
+
+<script>
+  /* Reader-friendly auto-refresh.
+     Replaces the old <meta http-equiv="refresh"> so an open explainer
+     isn't blown away mid-read. Same 60s cadence — but if the reader has
+     any <details> popover open when the timer fires, we wait until they
+     close it before reloading. */
+  (function () {
+    var REFRESH_MS = 60000;
+    function arm() {
+      setTimeout(function () {
+        if (document.querySelector('details[open]')) {
+          arm();
+          return;
+        }
+        try { location.reload(); } catch (e) {}
+      }, REFRESH_MS);
+    }
+    arm();
+
+    /* Click-outside-to-close.
+       Clicking anywhere that isn't inside an open <details> closes every
+       open one. Clicks on the summary toggle natively before this handler
+       runs, so reopening one (or clicking another summary) still works. */
+    document.addEventListener('click', function (e) {
+      var open = document.querySelectorAll('details[open]');
+      if (!open.length) return;
+      open.forEach(function (d) {
+        if (!d.contains(e.target)) d.removeAttribute('open');
+      });
+    });
+
+    /* Escape closes any open <details> too — keyboard parity with click. */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('details[open]').forEach(function (d) {
+        d.removeAttribute('open');
+      });
+    });
   })();
 </script>
 {% include "_vibes_scripts.html" %}
