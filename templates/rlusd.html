@@ -122,6 +122,12 @@
     .legend-chips .chip.burn   { color: var(--red); }
     .legend-chips .chip.bridge { color: var(--cyan); }
 
+    .press-caption {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-top: 1px solid var(--border);
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.08em; font-weight: 600;
+    }
     .press-footer {
       position: relative; display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -298,16 +304,18 @@
       <span id="xrplSupply" hidden>—</span>
     </div>
 
+    <div class="press-caption">
+      <span>Activity · last 24 hours</span>
+      {{ explainer(
+        'rlusd-activity',
+        'Why is this usually $0?',
+        'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this row reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are always current — they are pulled directly from Ethereum and the XRP Ledger every minute.'
+      ) }}
+    </div>
+
     <div class="press-footer">
       <div class="cell">
-        <div class="label">
-          Mints · 24h
-          {{ explainer(
-            'rlusd-activity',
-            'Why is this usually $0?',
-            'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this panel reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are always current — they are pulled directly from Ethereum and the XRP Ledger every minute.'
-          ) }}
-        </div>
+        <div class="label">Mints · 24h</div>
         <div class="value mint" id="mints24h">—</div>
       </div>
       <div class="cell">
