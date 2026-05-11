@@ -242,7 +242,7 @@
   <h1>{{ _('Whale watch') }}{{ explainer(
     "whales",
     _("What counts as a whale event"),
-    _("Three kinds of moves get listed here: (1) really big XRP transfers (the size cutoff is set just below), (2) anything touching a wallet we recognize — exchanges, big projects, public companies, and (3) when one of those recognized wallets starts holding a brand-new token. Even small transactions show up if a recognized wallet is involved, because they're often a clue about what big players are doing."),
+    _("Three kinds of moves get listed here: (1) really big XRP transfers (the size cutoff is set just below), (2) anything touching a wallet we recognize — exchanges, big projects, public companies — that's also above the same size cutoff (token amounts get priced into XRP first), and (3) when one of those recognized wallets opens a trustline to a brand-new token (no size filter — opening a trustline is the signal itself)."),
   ) }}</h1>
   <p class="lede">
     {{ _('Large XRP transfers and any activity by accounts we recognize. The watchlist is hand-curated and public — see') }}
@@ -294,7 +294,7 @@
     <span class="pill-label">{{ _('size') }}{{ explainer(
       "tier",
       _("What 'size' tiers mean"),
-      _("Choose how big a transfer has to be to count. 1M XRP is the classic 'whale' size — rare and almost always worth knowing about. 100K is a good default for catching coordinated activity. 50K shows everything we track, useful on quiet days. Activity from recognized wallets shows up no matter what size you pick."),
+      _("Choose how big a transfer has to be to count. 1M XRP is the classic 'whale' size — rare and almost always worth knowing about. 100K is a good default for catching coordinated activity. 50K shows everything we track, useful on quiet days. Recognized-wallet moves are held to the same size cutoff (token amounts get priced into XRP first); only new-trustline events bypass it."),
     ) }}</span>
     <a class="pill {% if tier == '1m' %}active{% endif %}"
        href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('whales') }} · ≥1M XRP</a>

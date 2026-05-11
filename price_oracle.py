@@ -272,3 +272,24 @@ def value_amount_usd(amount) -> Optional[float]:
         rate = token_usd(cur, iss)
         return val * rate if rate is not None else None
     return None
+
+
+def value_amount_xrp(amount) -> Optional[float]:
+    """XRP-equivalent value of an XRPL Payment Amount.
+
+    Mirrors value_amount_usd but stays inside the XRP unit so callers can
+    compare against XRP-denominated thresholds (e.g. the whale floor) without
+    a second USD→XRP conversion.
+      - drops-string → drops / 1_000_000
+      - token dict   → value * xrp_per_token (via XRP/<token> AMM)
+    Returns None if the token has no XRP-paired AMM, or the AMM query fails.
+    """
+    xrp = _amount_xrp(amount)
+    if xrp is not None:
+        return xrp
+    tok = _amount_token(amount)
+    if tok is not None:
+        cur, iss, val = tok
+        xrp_per_token = _xrp_per_unit_via_amm(cur, iss)
+        return val * xrp_per_token if xrp_per_token is not None else None
+    return None

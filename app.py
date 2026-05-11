@@ -30,6 +30,7 @@ from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
 import db
+import price_oracle
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCAN_STATE_PATH = os.path.join(HERE, "amm_scan_state.json")
@@ -1007,8 +1008,11 @@ def whales():
     if filter_type not in valid_types:
         filter_type = ""
 
-    # Tier filter — applies only to large_xfer events; tagged/trustset bypass
-    # because the "who" makes them signal regardless of size.
+    # Tier filter — SQL pre-filter only knows about `amount_drops`. Tagged
+    # events whose Amount is a token live with amount_drops=NULL, so they
+    # slip past the SQL gate and get sized in Python below via price_oracle.
+    # `trustset` events have no Amount at all and bypass entirely because
+    # the existence of a new trustline is the signal.
     tier_map = {
         "1m":   ("≥1M XRP",   1_000_000 * 1_000_000),
         "100k": ("≥100K XRP",   100_000 * 1_000_000),
@@ -1019,7 +1023,15 @@ def whales():
         tier = "1m"
     tier_label, tier_drops = tier_map[tier]
 
-    clauses = ["(type != 'large_xfer' OR amount_drops >= ?)"]
+    # XRP-denominated tagged events have amount_drops populated and can be
+    # gated cheaply in SQL alongside large_xfer. Token-denominated tagged
+    # events have amount_drops=NULL and slip through to be priced in Python.
+    # trustset events have no amount and always pass.
+    clauses = [
+        "(type = 'trustset' "
+        "OR type = 'tagged' AND amount_drops IS NULL "
+        "OR amount_drops >= ?)"
+    ]
     params = [tier_drops]
     if filter_type:
         clauses.append("type = ?")
@@ -1047,7 +1059,9 @@ def whales():
             try:
                 for r in conn.execute(
                     "SELECT type, COUNT(*) FROM events "
-                    "WHERE (type != 'large_xfer' OR amount_drops >= ?) "
+                    "WHERE (type = 'trustset' "
+                    "       OR (type = 'tagged' AND amount_drops IS NULL) "
+                    "       OR amount_drops >= ?) "
                     "GROUP BY type",
                     (tier_drops,),
                 ):
@@ -1068,6 +1082,46 @@ def whales():
     if rows:
         named = _load_named_accounts_dict()
         tokens = _load_token_names_dict()
+        # Apply the user's tier threshold to `tagged` events too (previously
+        # they bypassed all size gating, which let sub-penny dust from named
+        # wallets surface alongside 1M-XRP transfers). For XRP-denominated
+        # tagged events we can decide from amount_drops alone; for token
+        # amounts we price-convert via the AMM-backed oracle. Unknown prices
+        # are kept so we don't silently hide a possibly-large move.
+        tier_xrp = tier_drops / 1_000_000
+        filtered_rows = []
+        for r in rows:
+            etype = r[3]
+            if etype != "tagged":
+                filtered_rows.append(r)
+                continue
+            drops = r[6]
+            if isinstance(drops, int) and drops > 0:
+                if drops >= tier_drops:
+                    filtered_rows.append(r)
+                continue
+            # Token-denominated tagged event: pull Amount/delivered from raw_json
+            # and convert to XRP. Skip if priced and below threshold.
+            raw_json = r[9]
+            amount_obj = None
+            if raw_json:
+                try:
+                    raw = json.loads(raw_json)
+                    tx = raw.get("transaction") or raw.get("tx_json") or {}
+                    amount_obj = (raw.get("meta") or {}).get("delivered_amount") or \
+                                 tx.get("Amount") or tx.get("DeliverMax")
+                except Exception:
+                    amount_obj = None
+            xrp_value = None
+            if amount_obj is not None:
+                try:
+                    xrp_value = price_oracle.value_amount_xrp(amount_obj)
+                except Exception:
+                    xrp_value = None
+            if xrp_value is not None and xrp_value < tier_xrp:
+                continue
+            filtered_rows.append(r)
+        rows = filtered_rows
         events = [_resolve_event(r, named, tokens) for r in rows]
         # Radar blips: log-scale magnitudes from raw rows (amount_drops
         # at index 6) so 1M XRP ≈ 0.3 and 100M+ ≈ 1.0.

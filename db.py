@@ -481,8 +481,15 @@ def read_whale_events(tier_drops, filter_type=None, limit=100):
     """Return rows in the same column order as the SQLite query in
     app.whales: tx_hash, ledger_index, ts, type, from_addr, to_addr,
     amount_drops, currency, issuer, raw_json. raw_json is returned as a
-    string so the existing _resolve_event() resolver works unchanged."""
-    clauses = ["(type != 'large_xfer' OR amount_drops >= %s)"]
+    string so the existing _resolve_event() resolver works unchanged.
+
+    trustset rows and tagged-token rows (amount_drops NULL) pass through
+    unfiltered — app.whales prices the latter in Python via price_oracle."""
+    clauses = [
+        "(type = 'trustset' "
+        "OR (type = 'tagged' AND amount_drops IS NULL) "
+        "OR amount_drops >= %s)"
+    ]
     params = [tier_drops]
     if filter_type:
         clauses.append("type = %s")
@@ -502,13 +509,18 @@ def read_whale_events(tier_drops, filter_type=None, limit=100):
 
 def read_whale_type_counts(tier_drops):
     """Return dict like {'large_xfer': N, 'tagged': N, 'trustset': N,
-    '_total': N} for the /whales stat tiles."""
+    '_total': N} for the /whales stat tiles. Counts here mirror the SQL
+    pre-filter used by read_whale_events — token-denominated tagged events
+    will still be Python-filtered downstream, so this count is an upper
+    bound on what visitors actually see in the list."""
     counts = {"large_xfer": 0, "tagged": 0, "trustset": 0, "_total": 0}
     with pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT type, COUNT(*) FROM events "
-                "WHERE (type != 'large_xfer' OR amount_drops >= %s) "
+                "WHERE (type = 'trustset' "
+                "       OR (type = 'tagged' AND amount_drops IS NULL) "
+                "       OR amount_drops >= %s) "
                 "GROUP BY type",
                 (tier_drops,),
             )
