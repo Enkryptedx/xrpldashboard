@@ -60,6 +60,7 @@ PUBLIC_ROUTES = [
     "/whales",
     "/tokens",
     "/pools",
+    "/rlusd",
     "/cold-storage",
     "/health",
     "/about",
@@ -1384,6 +1385,17 @@ def about():
     """Public-facing 'what is this' page. Mission, principles, methodology,
     funding model. Copy lives in the template — review before launch."""
     return render_template("about.html")
+
+
+@app.route("/rlusd")
+def rlusd():
+    """Cross-chain treasury watch for Ripple's RLUSD stablecoin.
+
+    Phase A: page renders the Treasury Press hero animation on a
+    representative seeded event stream. Real cross-chain feed (Ethereum
+    + XRPL) wires in next phase. Issuer/contract addresses on the page
+    are real."""
+    return render_template("rlusd.html")
 
 
 @app.route("/methodology")
