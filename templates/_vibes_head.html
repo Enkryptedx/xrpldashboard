@@ -46,17 +46,19 @@
 
   /* Page-wide cursor spotlight. Always visible, always follows the
      mouse — soft cyan radial that paints the whole viewport. JS sets
-     --mx/--my on <html>. Stays under content (z-index:-1) and behind
-     the drifting grid so it never blocks clicks. */
+     --mx/--my on <html>. Sits on top of every surface with
+     pointer-events:none and mix-blend-mode:screen, so dark cards
+     beneath visibly brighten as the cursor passes over them. */
   html { --mx: 50vw; --my: 50vh; }
   body::after {
     content: "";
     position: fixed; inset: 0;
     background: radial-gradient(
       420px circle at var(--mx) var(--my),
-      rgba(34,211,238,0.12), transparent 60%);
+      rgba(34,211,238,0.22), transparent 62%);
     pointer-events: none;
-    z-index: -1;
+    z-index: 9999;
+    mix-blend-mode: screen;
   }
   @media (prefers-reduced-motion: reduce) {
     body::after { display: none; }
@@ -79,13 +81,20 @@
     position: absolute; inset: -1px;
     border-radius: inherit;
     background: radial-gradient(
-      360px circle at var(--vx, 50%) var(--vy, 50%),
-      rgba(34,211,238,0.20), transparent 55%);
-    opacity: 0; transition: opacity 0.25s;
+      380px circle at var(--vx, 50%) var(--vy, 50%),
+      rgba(34,211,238,0.32), transparent 58%);
+    opacity: 0; transition: opacity 0.18s;
     pointer-events: none;
   }
   .vibes-spot:hover::before,
   .stat-pill:hover::before { opacity: 1; }
+  .vibes-spot:hover,
+  .stat-pill:hover {
+    border-color: rgba(34,211,238,0.35);
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.18),
+                0 8px 24px -8px rgba(34,211,238,0.25);
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
 
   /* When an explainer popover opens inside a spot/pill, escape the
      overflow:hidden clip AND hoist the tile above later positioned
