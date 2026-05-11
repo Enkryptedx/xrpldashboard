@@ -254,7 +254,7 @@ def _log_page_view():
         if not db.pg_available():
             return
         ip = request.remote_addr or ""
-        ua = (request.user_agent.string or "")[:300] if request.user_agent else None
+        ua = (request.user_agent.string or "")[:300] or None
         ref = (request.referrer or "")[:300] or None
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
