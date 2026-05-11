@@ -285,7 +285,7 @@
         <span class="chip mint"><span class="sw"></span>new RLUSD created</span>
         <span class="chip burn"><span class="sw"></span>RLUSD removed</span>
         <span class="chip bridge"><span class="sw"></span>moved between chains</span>
-        <span class="chip" style="margin-left:auto; color: var(--amber);">
+        <span class="chip" id="previewChip" style="margin-left:auto; color: var(--amber);">
           <span class="sw" style="background: var(--amber); box-shadow: 0 0 8px var(--amber);"></span>
           simulated stream
         </span>
@@ -965,6 +965,8 @@
   function hidePreviewRibbon() {
     const r = document.querySelector('.ribbon');
     if (r) r.style.display = 'none';
+    const chip = document.getElementById('previewChip');
+    if (chip) chip.style.display = 'none';
   }
 
   function applyLiveSnapshot(data) {
