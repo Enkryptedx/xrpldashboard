@@ -776,6 +776,16 @@ def health():
     pg_hb_age = max(0, int(time.time()) - pg_hb["ts"]) if pg_hb else None
     pg_hb_extra = (pg_hb.get("extra") if isinstance(pg_hb, dict) else None) or {}
 
+    # Latest event ts is a better "Last update" signal than the 5-min worker
+    # heartbeat: every whale move / token trade stamps an events row, so on a
+    # live network this ticks every 30–90s and matches the user-facing copy
+    # ("watcher saw a new transaction").
+    try:
+        last_event_ts = db.read_max_event_ts()
+    except Exception:
+        last_event_ts = None
+    pg_events_age = max(0, int(time.time()) - last_event_ts) if last_event_ts else None
+
     ranker_hb = db.read_heartbeat("amm_ranker")
     ranker_hb_age = max(0, int(time.time()) - ranker_hb["ts"]) if ranker_hb else None
     ranker_hb_extra = (ranker_hb.get("extra") if isinstance(ranker_hb, dict) else None) or {}
@@ -851,7 +861,10 @@ def health():
             "token_events": stream_state.get("token_events_seen") or pg_hb_extra.get("token_events_seen", 0) or 0,
             "new_tokens": stream_state.get("new_tokens_seen") or pg_hb_extra.get("new_tokens_seen", 0) or 0,
             "last_ledger": stream_state.get("last_ledger_index") or (pg_hb.get("last_ledger") if pg_hb else None),
-            "log_age": _humanize_seconds(stream_log_age if stream_log_age is not None else pg_hb_age),
+            "log_age": _humanize_seconds(
+                pg_events_age if pg_events_age is not None
+                else (stream_log_age if stream_log_age is not None else pg_hb_age)
+            ),
             "seen_tokens_count": len(stream_state.get("seen_tokens", []) or []),
         },
         substrate={
