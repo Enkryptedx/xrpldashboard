@@ -304,7 +304,12 @@ def write_heartbeat(worker, txns_seen=None, last_ledger=None, extra=None):
                 "  extra = EXCLUDED.extra",
                 (worker, int(time.time()), txns_seen, last_ledger, extra_json),
             )
-    except Exception:
+    except Exception as e:
+        # Surface the failure so silent staleness can't masquerade as a live
+        # worker on Render's /health. Stale 12:07 heartbeats with zero event
+        # counters lingered for 3h before this was added (2026-05-11).
+        print(f"[db] write_heartbeat({worker}) failed: {type(e).__name__}: {e}",
+              flush=True)
         _drop_writer_conn()
 
 
