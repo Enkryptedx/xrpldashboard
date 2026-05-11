@@ -52,46 +52,18 @@ services:
     autoDeploy: true
 
   # ====================================================================
-  # XRPL stream worker — ENABLED 2026-05-09.
+  # NOTE: XRPL stream worker + AMM ranker cron live on Charlie's Mac
+  # under launchd, NOT on Render. Both write to the same Neon Postgres
+  # that this web service reads, so prod stays fresh without paying for
+  # a second Render plan.
   #
-  # Lives on Render so the site stays fresh when Charlie's Mac is off.
-  # Subscribes to the public XRPL transaction stream and writes whales,
-  # token volumes, and AMM events to the same Neon Postgres the web
-  # service reads from.
+  # The Render-hosted versions were removed 2026-05-11 because they
+  # duplicated the Mac workers: the stream worker restart-looped every
+  # ~6 min and kept zeroing the heartbeat counters (the /health page
+  # was showing "0 large transfers / 0 token trades"), and the cron
+  # ran in parallel with the launchd ranker producing duplicate writes.
   #
-  # IMPORTANT: when this is running, the launchd plists on Charlie's
-  # Mac MUST be unloaded — otherwise both workers will write to Neon
-  # and produce duplicate events / double-counted token volumes:
-  #   launchctl unload ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.xrpl_stream.plist
-  #   launchctl unload ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
+  # Mac plists:
+  #   ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.xrpl_stream.plist
+  #   ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
   # ====================================================================
-  - type: worker
-    name: xrpldashboard-stream
-    runtime: python
-    plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: python xrpl_stream.py
-    autoDeploy: true
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.7"
-      - key: DATABASE_URL
-        sync: false
-
-  # ====================================================================
-  # AMM TVL ranker — periodic cron. Walks every XRPL AMM pool, computes
-  # TVL, writes a fresh snapshot to amm_ranked_pools (the /pools surface).
-  # Schedule matches the previous launchd plist: every 4 hours.
-  # ====================================================================
-  - type: cron
-    name: xrpldashboard-rank-amms
-    runtime: python
-    plan: starter
-    schedule: "0 */4 * * *"   # top of every 4th hour, UTC
-    buildCommand: pip install -r requirements.txt
-    startCommand: python rank_amms.py --reset
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.7"
-      - key: DATABASE_URL
-        sync: false

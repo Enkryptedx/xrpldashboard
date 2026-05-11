@@ -417,10 +417,23 @@
           <div class="title">{{ _('Live activity feed') }}</div>
           <div class="desc">
             {% if stream.alive %}
+              {% if stream.whale_events or stream.token_events %}
               {{ _('Watching every transaction on the XRP Ledger in real time. Since startup we\'ve logged') }}
               <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('large transfers and') }}
               <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades.') }}
               {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
+              {% else %}
+              {# Worker just restarted (or counters reset). The legacy copy
+                 "Since startup we've logged 0 / 0" reads like a broken site
+                 even though it's just an early-cycle restart. Lead with the
+                 ledger pulse so visitors see real activity, fall back to
+                 the all-time archive count once we have it. #}
+              {{ _('Watching every transaction on the XRP Ledger in real time. Watcher just restarted — new whale moves and token trades will appear here as the network ticks.') }}
+              {% if substrate.events_rows %}
+                {{ _('Lifetime archive:') }} <strong>{{ "{:,}".format(substrate.events_rows) }}</strong> {{ _('events recorded.') }}
+              {% endif %}
+              {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
+              {% endif %}
             {% else %}
               {{ _('Live activity feed not yet enabled in production. Coming soon — meanwhile the page shows a snapshot of') }}
               <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('whale transfers and') }}
@@ -499,9 +512,9 @@
         <div class="tech-row"><span class="k">{{ _('pages scanned') }}</span><span class="v">{{ "{:,}".format(scan.pages) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('objects walked') }}</span><span class="v">{{ "{:,}".format(scan.objects_scanned) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('amms in index') }}</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('scan rate') }}</span><span class="v">{{ scan.rate }} {{ _('pages/s') }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('ledger snapshot') }}</span><span class="v dim">{{ scan.ledger_index }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{{ scan.log_age }} {{ _('ago') }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('scan rate') }}</span><span class="v">{% if scan.rate %}{{ scan.rate }} {{ _('pages/s') }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('ledger snapshot') }}</span><span class="v dim">{{ scan.ledger_index or "—" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{% if scan.log_age %}{{ scan.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
       </div>
 
       <div class="tech-section">
@@ -513,8 +526,8 @@
         <div class="tech-row"><span class="k">{{ _('token events') }}</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('new tokens (since restart)') }}</span><span class="v">{{ stream.new_tokens }}</span></div>
         <div class="tech-row"><span class="k">{{ _('seen-tokens index') }}</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('last ledger') }}</span><span class="v dim">{{ stream.last_ledger }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{{ stream.log_age }} {{ _('ago') }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('last ledger') }}</span><span class="v dim">{{ "{:,}".format(stream.last_ledger) if stream.last_ledger else "—" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{% if stream.log_age %}{{ stream.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
       </div>
 
       <div class="tech-section">
@@ -523,10 +536,16 @@
         <div class="tech-row"><span class="k">{{ _('volumes.db rows') }}</span><span class="v">{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</span></div>
       </div>
 
+      {# Render's web container has no STREAM_LOG_PATH on disk — the file
+         lives on the Mac worker. When recent_log is empty, the section
+         would just show an empty black box and read like a broken UI,
+         so we hide it entirely. Local Mac visitors still see real tail. #}
+      {% if recent_log %}
       <div class="tech-section">
         <h3>{{ _('Watcher log · last 8 lines') }}</h3>
         <div class="log">{% for line in recent_log %}<div>{{ line }}</div>{% endfor %}</div>
       </div>
+      {% endif %}
 
     </div>
   </details>
