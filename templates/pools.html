@@ -457,15 +457,15 @@
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
-        <div class="l">{{ _('exact TVL') }}{{ explainer(
+        <div class="l">{{ _('exact-priced pools') }}{{ explainer(
           "tvl-exact",
-          _("Exact vs estimated TVL"),
-          _("Exact = we can convert this pool's value to dollars without guessing (because one side is XRP or a dollar-pegged stablecoin). Estimated = we had to figure out a price for one of the tokens by looking at where else it's traded. Estimated numbers are roughly right — treat them as a ballpark, not precise."),
+          _("Exact vs estimated pricing"),
+          _("This is a count of pools — not a dollar amount. \"Exact-priced\" pools are ones where we can convert their value to dollars without guessing (because one side is XRP or a dollar-pegged stablecoin). \"Estimated\" pools needed a derived token price from somewhere else on the ledger — roughly right, but a ballpark."),
         ) }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
-        <div class="l">{{ _('estimated') }}</div>
+        <div class="l">{{ _('estimated pools') }}</div>
       </div>
     </div>
     {% endif %}
