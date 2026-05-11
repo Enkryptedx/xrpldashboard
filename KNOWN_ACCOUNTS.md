@@ -90,3 +90,23 @@ Two reasons:
 
 Same pattern as mempool.space's mining-pool list — open repo, PR-driven,
 manually merged.
+
+## Watchlist — flagged for verification
+
+Addresses surfaced by the whale-watch panel showing patterns consistent
+with exchange / market-maker / routing wallets. Listed here, **not** in
+`named_accounts.json`, because the verification policy above forbids
+publishing a name we can't back to a first-party source. Anyone with
+access to one of the entity's published address lists or proof-of-
+reserves attestations can open a PR to move an entry from this watchlist
+into `named_accounts.json` with a proper `verified_via` URL.
+
+| Address | Observed pattern | Likely category | Notes |
+|---|---|---|---|
+| `rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV` | Recurring back-and-forth with `rDAE53VfMvftPB4ogpWGWvzkQxfht6JPxr` in 2M-XRP-range chunks | exchange / market maker | Used as the example address in the intro of this file; not yet verified. Check Bitstamp proof-of-reserves disclosures. |
+| `rDAE53VfMvftPB4ogpWGWvzkQxfht6JPxr` | Counterparty to rNxp4h above; also routes 3.5M XRP to `rhWj9g…` | exchange / market maker | Sustained two-way flow with rNxp4h. |
+| `rBNCyNEwpaEbGP9nqkQeYcvwYAwwKkRzTR` | Receives ~1.12M XRP and forwards the same amount within ~7 minutes, multiple deposits ≥2M XRP from independent senders | exchange hot wallet / routing | Classic deposit-then-forward pattern. Worth checking against published exchange address lists. |
+
+To verify any single transaction against the canonical XRPL node (no
+JS-app explorers required), run `python3 verify.py <txhash>` from the
+project root.
