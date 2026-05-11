@@ -325,6 +325,7 @@
     .foot a { color: var(--muted); }
     {{ explainer_css() }}
   </style>
+  {% include "_vibes_head.html" %}
 </head>
 <body>
 <div class="wrap">
@@ -1180,5 +1181,6 @@
 })();
 </script>
 {{ explainer_js() }}
+{% include "_vibes_scripts.html" %}
 </body>
 </html>

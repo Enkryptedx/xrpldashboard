@@ -67,8 +67,25 @@
       nodes.forEach(function (n) { io.observe(n); });
     }
 
-    // Cursor-tracking spotlight on .stat-pill and .vibes-spot
+    // Cursor-tracking spotlight on .stat-pill and .vibes-spot.
+    // Auto-tag common card surfaces first so the effect works site-wide
+    // without per-template class wrangling. Selectors scoped to actual
+    // discrete cards/rows — not paragraphs, not the body — to keep the
+    // glow anchored to surfaces a user expects to "light up".
     if (!reduced) {
+      var autoSel = [
+        '.card',
+        '.card-block',
+        '.row-link',
+        '.pool-row',
+        '.event',
+        '.mosaic > a',
+        'details.card-expandable > summary > .card'
+      ].join(', ');
+      document.querySelectorAll(autoSel).forEach(function (el) {
+        el.classList.add('vibes-spot');
+      });
+
       document.querySelectorAll('.stat-pill, .vibes-spot').forEach(function (card) {
         card.addEventListener('mousemove', function (e) {
           var r = card.getBoundingClientRect();
