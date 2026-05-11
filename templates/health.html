@@ -161,6 +161,64 @@
     .card-state.err  { color: var(--red); }
     .card-state.idle { color: var(--dim); }
 
+    /* Expandable status cards (click to reveal what/how).
+       Wraps each .card in a <details> so keyboard + screen readers work
+       for free. The card itself is the <summary>; the detail panel
+       slides in underneath. */
+    details.card-expandable {
+      margin-bottom: 0.8em;
+    }
+    details.card-expandable > summary {
+      list-style: none; cursor: pointer; outline: none;
+    }
+    details.card-expandable > summary::-webkit-details-marker { display: none; }
+    details.card-expandable > summary .card {
+      margin-bottom: 0;
+      grid-template-columns: auto 1fr auto auto;
+    }
+    .card-chev {
+      color: var(--dim); font-size: 0.85rem;
+      transition: transform 0.18s ease, color 0.18s ease;
+      line-height: 1; padding-left: 4px;
+    }
+    details.card-expandable > summary:hover .card-chev { color: var(--text); }
+    details.card-expandable[open] > summary .card-chev {
+      transform: rotate(180deg); color: var(--text);
+    }
+    details.card-expandable[open] > summary .card {
+      border-color: var(--border-strong); background: var(--card-2);
+      border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    }
+    .card-detail {
+      background: var(--card-2);
+      border: 1px solid var(--border-strong); border-top: none;
+      border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+      padding: 0.4em 1.2em 1em;
+      color: var(--muted); font-size: 0.86rem; line-height: 1.6;
+    }
+    .card-detail h4 {
+      font-size: 0.72rem; color: var(--dim); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0.9em 0 0.35em;
+    }
+    .card-detail h4:first-child { margin-top: 0.6em; }
+    .card-detail p { margin: 0 0 0.5em; color: var(--text); opacity: 0.85; }
+    .card-detail p:last-child { margin-bottom: 0; }
+    .card-detail strong { color: var(--text); font-weight: 600; opacity: 1; }
+
+    @media (max-width: 540px) {
+      details.card-expandable > summary .card {
+        grid-template-columns: auto 1fr auto;
+      }
+      details.card-expandable > summary .card .dot       { grid-column: 1; grid-row: 1; }
+      details.card-expandable > summary .card .card-body { grid-column: 2; grid-row: 1; }
+      details.card-expandable > summary .card .card-chev { grid-column: 3; grid-row: 1; align-self: start; padding-top: 6px; }
+      details.card-expandable > summary .card .card-state {
+        grid-column: 1 / -1; grid-row: 2;
+        text-align: left; padding-left: 24px; margin-top: -0.4em;
+      }
+    }
+
     /* technical details toggle */
     details.tech-details {
       margin-top: 1.4em;
@@ -265,103 +323,148 @@
   </div>
 
   {# ========== Card 1: XRPL Network ========== #}
-  {% if pulse and not pulse.error %}
-    {% set net_ok = pulse.status == 'operating_normally' %}
-    <div class="card" data-network-card>
-      <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"
-            data-network-card-dot></span>
-      <div class="card-body">
-        <div class="title">{{ _('XRPL network') }}</div>
-        <div class="desc" data-network-card-desc>
-          {% if net_ok %}
-            {{ _('The XRP Ledger is healthy. New ledgers are being closed every') }}
-            {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} {{ _('seconds — exactly as expected. Validators are in agreement.') }}
-          {% elif pulse.status == 'running_hot' %}
-            {{ _('The ledger is busy. Transactions are still confirming, but fees may be slightly higher than usual.') }}
-          {% elif pulse.status == 'congested' %}
-            {{ _('The network is congested. Transactions are confirming more slowly and fees are elevated.') }}
-          {% else %}
-            {{ pulse.status_text }}
-          {% endif %}
+  <details class="card-expandable">
+    <summary>
+      {% if pulse and not pulse.error %}
+        {% set net_ok = pulse.status == 'operating_normally' %}
+        <div class="card" data-network-card>
+          <span class="dot {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','degraded'] else 'err') }}"
+                data-network-card-dot></span>
+          <div class="card-body">
+            <div class="title">{{ _('XRPL network') }}</div>
+            <div class="desc" data-network-card-desc>
+              {% if net_ok %}
+                {{ _('The XRP Ledger is healthy. New ledgers are being closed every') }}
+                {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }} {{ _('seconds — exactly as expected. Validators are in agreement.') }}
+              {% elif pulse.status == 'running_hot' %}
+                {{ _('The ledger is busy. Transactions are still confirming, but fees may be slightly higher than usual.') }}
+              {% elif pulse.status == 'congested' %}
+                {{ _('The network is congested. Transactions are confirming more slowly and fees are elevated.') }}
+              {% else %}
+                {{ pulse.status_text }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="card-state {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','congested'] else 'err') }}"
+               data-network-card-state>
+            {{ pulse.status.replace('_',' ') }}
+          </div>
+          <span class="card-chev" aria-hidden="true">▾</span>
         </div>
-      </div>
-      <div class="card-state {{ 'ok' if net_ok else ('warn' if pulse.status in ['running_hot','congested'] else 'err') }}"
-           data-network-card-state>
-        {{ pulse.status.replace('_',' ') }}
-      </div>
+      {% else %}
+        <div class="card">
+          <span class="dot idle"></span>
+          <div class="card-body">
+            <div class="title">{{ _('XRPL network') }}</div>
+            <div class="desc">{{ _('Live network pulse is currently unavailable.') }}</div>
+          </div>
+          <div class="card-state idle">{{ _('unknown') }}</div>
+          <span class="card-chev" aria-hidden="true">▾</span>
+        </div>
+      {% endif %}
+    </summary>
+    <div class="card-detail">
+      <h4>{{ _('What this is') }}</h4>
+      <p>{{ _('The XRP Ledger is the public blockchain this whole site reads from — a global network of independent computers that all agree on every transaction. "Healthy" means new ledgers (think of them as pages in the ledger book) are closing on time and validators agree on what they contain.') }}</p>
+      <h4>{{ _('How we know') }}</h4>
+      <p>{{ _('We ask one of the network\'s public servers for the same status data anyone can read. We watch how often new ledgers close (every ~3.5–4 seconds is normal) and whether validators — the computers that vote on each ledger\'s contents — are in agreement. If close times stretch out or the quorum drops, the status above changes.') }}</p>
     </div>
-  {% else %}
-    <div class="card">
-      <span class="dot idle"></span>
-      <div class="card-body">
-        <div class="title">{{ _('XRPL network') }}</div>
-        <div class="desc">{{ _('Live network pulse is currently unavailable.') }}</div>
-      </div>
-      <div class="card-state idle">{{ _('unknown') }}</div>
-    </div>
-  {% endif %}
+  </details>
 
   {% set pool_state = 'ok' if (scan.finished or scan.alive) else 'idle' %}
-  <div class="card">
-    <span class="dot {{ pool_state }}"></span>
-    <div class="card-body">
-      <div class="title">{{ _('Pool tracker') }}</div>
-      <div class="desc">
-        {% if scan.finished %}
-          {{ _('Catalogue of XRPL automated market makers is up to date — tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
-          {{ _('AMM pools across the ledger.') }}
-        {% elif scan.alive %}
-          {{ _('Currently building the AMM catalogue —') }}
-          {{ "{:,}".format(scan.pages) }} {{ _('ledger pages scanned at') }} {{ scan.rate or "—" }} {{ _('pages/sec.') }}
-        {% else %}
-          {{ _('Pool tracker not yet enabled in production. Showing local snapshot') }}{% if scan.snapshot_at %} {{ _('from') }} {{ scan.snapshot_at }}{% endif %} —
-          {{ _('tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
-          {{ _('AMM pools at the time of capture.') }}
-        {% endif %}
+  <details class="card-expandable">
+    <summary>
+      <div class="card">
+        <span class="dot {{ pool_state }}"></span>
+        <div class="card-body">
+          <div class="title">{{ _('Pool tracker') }}</div>
+          <div class="desc">
+            {% if scan.finished %}
+              {{ _('Catalogue of XRPL automated market makers is up to date — tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+              {{ _('AMM pools across the ledger.') }}
+            {% elif scan.alive %}
+              {{ _('Currently building the AMM catalogue —') }}
+              {{ "{:,}".format(scan.pages) }} {{ _('ledger pages scanned at') }} {{ scan.rate or "—" }} {{ _('pages/sec.') }}
+            {% else %}
+              {{ _('Pool tracker not yet enabled in production. Showing local snapshot') }}{% if scan.snapshot_at %} {{ _('from') }} {{ scan.snapshot_at }}{% endif %} —
+              {{ _('tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+              {{ _('AMM pools at the time of capture.') }}
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-state {{ pool_state }}">
+          {% if scan.finished %}{{ _('ready') }}{% elif scan.alive %}{{ _('building') }}{% else %}{{ _('snapshot') }}{% endif %}
+        </div>
+        <span class="card-chev" aria-hidden="true">▾</span>
       </div>
+    </summary>
+    <div class="card-detail">
+      <h4>{{ _('What this is') }}</h4>
+      <p>{{ _('A live catalogue of every Automated Market Maker (AMM) on the XRP Ledger. AMMs are pools of two assets that let people swap one for the other without an order book — they handle a big chunk of XRPL token trading. This count is how many distinct pools we currently track.') }}</p>
+      <h4>{{ _('How we know') }}</h4>
+      <p>{{ _('A background worker scans the ledger every few hours, finds new AMM pools as they\'re created, and ranks them by how much value they hold (TVL). The result is the catalogue that powers the /pools page. "Ready" means the catalogue has been built; "building" means it\'s still being scanned for the first time.') }}</p>
     </div>
-    <div class="card-state {{ pool_state }}">
-      {% if scan.finished %}{{ _('ready') }}{% elif scan.alive %}{{ _('building') }}{% else %}{{ _('snapshot') }}{% endif %}
-    </div>
-  </div>
+  </details>
 
   {% set stream_state = 'ok' if stream.alive else 'idle' %}
-  <div class="card">
-    <span class="dot {{ stream_state }}"></span>
-    <div class="card-body">
-      <div class="title">{{ _('Live activity feed') }}</div>
-      <div class="desc">
-        {% if stream.alive %}
-          {{ _('Watching every transaction on the XRP Ledger in real time. Since startup we\'ve logged') }}
-          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('large transfers and') }}
-          <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades.') }}
-          {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
-        {% else %}
-          {{ _('Live activity feed not yet enabled in production. Coming soon — meanwhile the page shows a snapshot of') }}
-          <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('whale transfers and') }}
-          <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades captured by the local indexer.') }}
-        {% endif %}
+  <details class="card-expandable">
+    <summary>
+      <div class="card">
+        <span class="dot {{ stream_state }}"></span>
+        <div class="card-body">
+          <div class="title">{{ _('Live activity feed') }}</div>
+          <div class="desc">
+            {% if stream.alive %}
+              {{ _('Watching every transaction on the XRP Ledger in real time. Since startup we\'ve logged') }}
+              <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('large transfers and') }}
+              <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades.') }}
+              {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
+            {% else %}
+              {{ _('Live activity feed not yet enabled in production. Coming soon — meanwhile the page shows a snapshot of') }}
+              <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('whale transfers and') }}
+              <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades captured by the local indexer.') }}
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-state {{ stream_state }}">
+          {% if stream.alive %}{{ _('streaming') }}{% else %}{{ _('coming soon') }}{% endif %}
+        </div>
+        <span class="card-chev" aria-hidden="true">▾</span>
       </div>
+    </summary>
+    <div class="card-detail">
+      <h4>{{ _('What this is') }}</h4>
+      <p>{{ _('A real-time watcher that sees every transaction the moment it confirms on the XRP Ledger. It tags the big stuff — large XRP transfers (whale moves) and token trades — so this site can show live activity, fill its rankings, and build history.') }}</p>
+      <h4>{{ _('How we know') }}</h4>
+      <p>{{ _('A persistent websocket subscription to a public XRPL node streams every closed transaction as it happens. The "Last update" timestamp is how recently the watcher saw a new transaction; an active network ticks every few seconds. "Streaming" means the connection is live and processing.') }}</p>
     </div>
-    <div class="card-state {{ stream_state }}">
-      {% if stream.alive %}{{ _('streaming') }}{% else %}{{ _('coming soon') }}{% endif %}
-    </div>
-  </div>
+  </details>
 
-  <div class="card">
-    <span class="dot ok"></span>
-    <div class="card-body">
-      <div class="title">{{ _('Stored data') }}</div>
-      <div class="desc">
-        {{ _('Historical activity is being saved to disk so charts and rankings survive restarts.') }}
-        <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
-        {{ _('events recorded') }} ·
-        <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
-        {{ _('token volume entries.') }}
+  <details class="card-expandable">
+    <summary>
+      <div class="card">
+        <span class="dot ok"></span>
+        <div class="card-body">
+          <div class="title">{{ _('Stored data') }}</div>
+          <div class="desc">
+            {{ _('Historical activity is being saved to disk so charts and rankings survive restarts.') }}
+            <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+            {{ _('events recorded') }} ·
+            <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+            {{ _('token volume entries.') }}
+          </div>
+        </div>
+        <div class="card-state ok">{{ _('healthy') }}</div>
+        <span class="card-chev" aria-hidden="true">▾</span>
       </div>
+    </summary>
+    <div class="card-detail">
+      <h4>{{ _('What this is') }}</h4>
+      <p>{{ _('A growing archive of everything the live watcher captures, written to a database the moment it happens. Without this, the site would forget yesterday\'s data on every restart — no charts, no rankings, no history.') }}</p>
+      <h4>{{ _('How we know') }}</h4>
+      <p>{{ _('Every event the watcher tags is written into Postgres in real time and mirrored to a local file as backup. The two counts above are the cumulative rows currently stored: "events" (individual transactions of interest) and "token volume entries" (hour-by-hour trading totals per token, which power the token rankings).') }}</p>
     </div>
-    <div class="card-state ok">{{ _('healthy') }}</div>
-  </div>
+  </details>
 
   {# ========== Technical details (collapsed by default) ========== #}
   <details class="tech-details">
