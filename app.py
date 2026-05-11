@@ -1391,11 +1391,22 @@ def about():
 def rlusd():
     """Cross-chain treasury watch for Ripple's RLUSD stablecoin.
 
-    Phase A: page renders the Treasury Press hero animation on a
-    representative seeded event stream. Real cross-chain feed (Ethereum
-    + XRPL) wires in next phase. Issuer/contract addresses on the page
-    are real."""
+    Live cross-chain feed: Ethereum totalSupply via public JSON-RPC,
+    XRPL issuer obligations via Ripple's public node. The page polls
+    /api/rlusd/state and falls back to a preview animation if the feed
+    is unavailable."""
     return render_template("rlusd.html")
+
+
+@app.route("/api/rlusd/state")
+@limiter.limit("30 per minute")
+def api_rlusd_state():
+    """Combined Ethereum + XRPL RLUSD treasury state.
+
+    Returns supply totals from both chains plus recent mint/burn events,
+    TTL-cached server-side so client polling stays cheap."""
+    from rlusd_live import fetch_state
+    return fetch_state()
 
 
 @app.route("/methodology")

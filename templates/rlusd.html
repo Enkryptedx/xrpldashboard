@@ -300,7 +300,14 @@
 
     <div class="press-footer">
       <div class="cell">
-        <div class="label">Mints · 24h</div>
+        <div class="label">
+          Mints · 24h
+          {{ explainer(
+            'rlusd-activity',
+            'Why is this usually $0?',
+            'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this panel reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are always current — they are pulled directly from Ethereum and the XRP Ledger every minute.'
+          ) }}
+        </div>
         <div class="value mint" id="mints24h">—</div>
       </div>
       <div class="cell">
@@ -384,14 +391,13 @@
    a comet from one orb to the other (cyan ring on arrival).
    ========================================================================= */
 (function () {
-  /* Preview mode: live ETH + XRPL feed isn't wired yet, so we don't expose
-     the seed supply numbers as if they were real. The orbs still animate
-     against an in-memory state (so the motion + relative-size metaphor
-     reads correctly), but the orb labels, headline, footer cells, and
-     chain cards all show "—" instead of the seed values. The "Preview
-     mode" ribbon above the hero tells visitors why. Flip this to true
-     once the live data path lands. */
-  const LIVE_DATA = false;
+  /* Starts in preview mode (seeded animation, "—" placeholders, ribbon
+     visible) and flips to true on the first successful /api/rlusd/state
+     poll. While live, server-reported supplies drive the orb sizing and
+     the headline; new mint/burn events animate as they arrive. If the
+     API is unavailable, the preview animation keeps the hero alive
+     instead of showing a dead page. */
+  let LIVE_DATA = false;
 
   const canvas = document.getElementById('pressCanvas');
   const ctx = canvas.getContext('2d');
@@ -851,13 +857,26 @@
     return 'xfer';
   }
   function bumpCounters(ev) {
+    /* In live mode the server is the source of truth for supply — each
+       poll re-anchors state.ethSupply / state.xrplSupply. We only update
+       the 24h aggregates locally so the per-chain mint/burn cells move
+       in real time between polls. In preview mode we mutate supply too
+       so the orbs visibly breathe against the simulated stream. */
     const k = ev.chain;
     if (ev.type === 'mint') {
-      if (k === 'eth')  { state.ethSupply  += ev.amount; state.ethMints24h  += ev.amount; }
-      else              { state.xrplSupply += ev.amount; state.xrplMints24h += ev.amount; }
+      if (!LIVE_DATA) {
+        if (k === 'eth') state.ethSupply += ev.amount;
+        else             state.xrplSupply += ev.amount;
+      }
+      if (k === 'eth') state.ethMints24h  += ev.amount;
+      else             state.xrplMints24h += ev.amount;
     } else if (ev.type === 'burn') {
-      if (k === 'eth')  { state.ethSupply  -= ev.amount; state.ethBurns24h  += ev.amount; }
-      else              { state.xrplSupply -= ev.amount; state.xrplBurns24h += ev.amount; }
+      if (!LIVE_DATA) {
+        if (k === 'eth') state.ethSupply -= ev.amount;
+        else             state.xrplSupply -= ev.amount;
+      }
+      if (k === 'eth') state.ethBurns24h  += ev.amount;
+      else             state.xrplBurns24h += ev.amount;
     }
     renderState();
   }
@@ -924,13 +943,122 @@
     return { type, chain, amount: Math.round(amount) };
   }
 
-  function loop() {
-    processEvent(nextEvent());
+  /* Preview-mode loop. Keeps the canvas alive while the first poll is in
+     flight, and is the fallback if the API never resolves. Becomes a
+     no-op once LIVE_DATA flips on. */
+  function previewLoop() {
+    if (!LIVE_DATA) processEvent(nextEvent());
     const next = 1100 + Math.random() * 1900;
-    setTimeout(loop, next);
+    setTimeout(previewLoop, next);
   }
+
+  /* Live polling. /api/rlusd/state is TTL-cached server-side (~60s), so
+     polling at the cache window keeps the dashboard accurate without
+     thrashing the public Ethereum RPC. New events (tx hash not seen
+     before) are queued and drained one-at-a-time so they appear as
+     individual sparks rather than a frame-1 burst. */
+  const POLL_MS = 60_000;
+  const DRAIN_MS = 1_500;
+  const seenTx = new Set();
+  const eventQueue = [];
+
+  function hidePreviewRibbon() {
+    const r = document.querySelector('.ribbon');
+    if (r) r.style.display = 'none';
+  }
+
+  function applyLiveSnapshot(data) {
+    const firstSuccess = !LIVE_DATA;
+    const ethS  = (data.eth && data.eth.supply)  || null;
+    const xrplS = (data.xrpl && data.xrpl.supply) || null;
+    if (ethS  != null) state.ethSupply  = ethS;
+    if (xrplS != null) state.xrplSupply = xrplS;
+
+    const events = Array.isArray(data.events) ? data.events.filter(e => e && e.tx) : [];
+
+    if (firstSuccess) {
+      /* Mark the historical backlog as seen — we don't replay it as a
+         flood of animation. We do aggregate it into the 24h cells so
+         the page lands with real numbers, not zeros. */
+      const cutoff = Math.floor(Date.now() / 1000) - 86400;
+      state.ethMints24h = state.ethBurns24h = 0;
+      state.xrplMints24h = state.xrplBurns24h = 0;
+      for (const e of events) {
+        seenTx.add(e.tx);
+        if ((e.ts || 0) < cutoff) continue;
+        if (e.type === 'mint') {
+          if (e.chain === 'eth') state.ethMints24h += e.amount;
+          else                   state.xrplMints24h += e.amount;
+        } else if (e.type === 'burn') {
+          if (e.chain === 'eth') state.ethBurns24h += e.amount;
+          else                   state.xrplBurns24h += e.amount;
+        }
+      }
+      /* Seed the ticker with the most recent events so the page doesn't
+         look dead while we wait for new activity to arrive. */
+      tickerRows.length = 0;
+      events.slice(0, 12).forEach(e => {
+        tickerRows.push({ ev: e, t: (e.ts ? e.ts * 1000 : Date.now()) });
+      });
+      const host = document.getElementById('tickerRows');
+      if (host && tickerRows.length) {
+        host.innerHTML = tickerRows.map(r => {
+          const dt = Math.max(0, Math.round((Date.now() - r.t) / 1000));
+          const when = dt < 60 ? `${dt}s ago` : dt < 3600 ? `${Math.floor(dt / 60)}m ago` : `${Math.floor(dt / 3600)}h ago`;
+          const badge = eventBadge(r.ev);
+          const chain = r.ev.chain;
+          const chainLabel = chain === 'eth' ? 'Ethereum' : 'XRPL';
+          return `
+            <div class="row">
+              <span class="when">${when}</span>
+              <span class="what">
+                <span class="badge ${badge}">${badge}</span>
+                <span class="addr">${eventLabel(r.ev)}</span>
+              </span>
+              <span class="chain ${chain}">${chainLabel}</span>
+              <span class="amount">${fmtUSD(r.ev.amount)}</span>
+            </div>`;
+        }).join('');
+      }
+      LIVE_DATA = true;
+      hidePreviewRibbon();
+      renderState();
+      return;
+    }
+
+    /* Subsequent polls: queue genuinely new events to animate. Events
+       come newest-first from the server; reverse so they animate in the
+       order they happened. */
+    const fresh = events.filter(e => !seenTx.has(e.tx)).reverse();
+    for (const e of fresh) {
+      seenTx.add(e.tx);
+      eventQueue.push(e);
+    }
+    renderState();
+  }
+
+  async function pollState() {
+    try {
+      const r = await fetch('/api/rlusd/state', { cache: 'no-store' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      applyLiveSnapshot(data);
+    } catch (e) {
+      /* Silent — preview loop keeps the hero alive on transient failure. */
+    } finally {
+      setTimeout(pollState, POLL_MS);
+    }
+  }
+
+  function drainQueue() {
+    if (eventQueue.length) processEvent(eventQueue.shift());
+    setTimeout(drainQueue, DRAIN_MS);
+  }
+
   renderState();
-  setTimeout(loop, 400);
+  setTimeout(previewLoop, 400);
+  setTimeout(drainQueue, 500);
+  pollState();
 })();
 </script>
 {{ explainer_js() }}
