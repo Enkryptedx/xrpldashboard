@@ -143,12 +143,13 @@
 
     .sim-toggle {
       position: absolute; top: 14px; right: 22px; z-index: 3;
-      display: inline-flex; align-items: center; gap: 8px;
+      white-space: nowrap;
       font-size: 0.72rem; color: var(--muted);
       user-select: none;
     }
     .sim-toggle .sim-btn {
       display: inline-flex; align-items: center; gap: 7px;
+      vertical-align: middle;
       padding: 4px 10px 4px 9px; border-radius: 999px;
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--border);
@@ -181,11 +182,12 @@
     }
 
     .press-caption {
-      display: flex; align-items: center; gap: 6px;
       padding: 8px 16px; border-top: 1px solid var(--border);
       font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
       letter-spacing: 0.08em; font-weight: 600;
+      white-space: nowrap;
     }
+    .press-caption > span:first-child { vertical-align: middle; }
     .press-footer {
       position: relative; display: grid;
       grid-template-columns: repeat(4, 1fr);
