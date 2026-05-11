@@ -1,3 +1,4 @@
+{% from "_explainer.html" import explainer, explainer_css, explainer_js %}
 <!doctype html>
 <html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
@@ -5,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RLUSD · cross-chain treasury watch · xrpldashboard</title>
   {% set meta_title = "RLUSD · cross-chain treasury watch · xrpldashboard" %}
-  {% set meta_description = "Live mints, burns, and transfers for Ripple's RLUSD stablecoin — across both Ethereum and the XRP Ledger, in one view. Independent on-chain data." %}
+  {% set meta_description = "Live cross-chain view of Ripple's RLUSD stablecoin — supply, mints, burns, and bridges across Ethereum and the XRP Ledger." %}
   {% include "_head_meta.html" %}
 
   <style>
@@ -22,10 +23,6 @@
       --amber: #f59e0b;
       --green: #22c55e;
       --red: #ef4444;
-      --purple: #c084fc;
-      --pink: #ec4899;
-      /* Chain-side accents — Ethereum violet, XRPL cyan. Keep these
-         distinct so the split is readable at a glance. */
       --eth: #a78bfa;
       --xrpl: #22d3ee;
       --grad-rlusd: linear-gradient(135deg, #a78bfa 0%, #22d3ee 100%);
@@ -61,7 +58,6 @@
     .lede { color: var(--muted); font-size: 0.96rem; margin: 0 0 18px;
             max-width: 720px; }
 
-    /* Hero card containing the Treasury Press animation. */
     .press-hero {
       position: relative; border: 1px solid var(--border-strong);
       border-radius: 16px; background: var(--card);
@@ -75,17 +71,12 @@
     .press-header {
       position: relative; display: flex; flex-wrap: wrap;
       align-items: baseline; justify-content: space-between;
-      gap: 12px; padding: 18px 22px 10px;
+      gap: 12px; padding: 18px 22px 6px;
     }
     .press-header .eyebrow {
       font-size: 0.72rem; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
     }
-    .press-header h2 {
-      font-size: 1.05rem; margin: 2px 0 0; font-weight: 600;
-      color: var(--text);
-    }
-    .press-header h2 .arrow { color: var(--cyan); }
     .press-header .live {
       font-size: 0.74rem; color: var(--amber);
       display: inline-flex; align-items: center; gap: 6px;
@@ -95,39 +86,42 @@
       width: 7px; height: 7px; border-radius: 50%; background: var(--amber);
       animation: bp 1.6s ease-in-out infinite;
     }
-    .press-header .live.connected { color: var(--green); }
-    .press-header .live.connected .dot { background: var(--green); }
     @keyframes bp { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
 
-    /* Canvas hosting the vault scene. Aspect ratio fixed-ish so the
-       layout stays predictable across viewports. */
     .press-stage {
       position: relative; width: 100%;
       aspect-ratio: 16 / 9;
-      max-height: 540px; min-height: 360px;
-      background: #060923;
+      max-height: 520px; min-height: 320px;
     }
     canvas#pressCanvas {
       position: absolute; inset: 0; width: 100%; height: 100%;
       display: block;
     }
 
-    /* Legend strip above the canvas — explicit so first-time viewers
-       know what each colour means before the first event lands. */
-    .press-legend {
-      position: relative; display: flex; flex-wrap: wrap;
-      gap: 16px; padding: 0 22px 10px;
-      font-size: 0.78rem; color: var(--muted);
+    .headline {
+      position: relative; padding: 6px 22px 14px;
     }
-    .press-legend .item { display: inline-flex; align-items: center; gap: 6px; }
-    .press-legend .swatch {
-      display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+    .headline .total {
+      font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em;
+      background: var(--grad-rlusd); -webkit-background-clip: text;
+      background-clip: text; color: transparent;
     }
-    .press-legend .swatch.mint { background: var(--green); box-shadow: 0 0 8px var(--green); }
-    .press-legend .swatch.burn { background: var(--red);   box-shadow: 0 0 8px var(--red); }
-    .press-legend .swatch.xfer { background: var(--cyan);  box-shadow: 0 0 8px var(--cyan); }
+    .headline .sub {
+      font-size: 0.84rem; color: var(--muted); margin-top: 2px;
+    }
+    .legend-chips {
+      display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px;
+      font-size: 0.76rem; color: var(--muted);
+    }
+    .legend-chips .chip { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-chips .sw {
+      width: 8px; height: 8px; border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .legend-chips .chip.mint   { color: var(--green); }
+    .legend-chips .chip.burn   { color: var(--red); }
+    .legend-chips .chip.bridge { color: var(--cyan); }
 
-    /* Footer strip below the canvas — running counters. */
     .press-footer {
       position: relative; display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -154,7 +148,6 @@
       .press-footer .cell:nth-child(4) { border-top: 1px solid var(--border); }
     }
 
-    /* Two-column section: per-chain stats. */
     .chains {
       display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
       margin-bottom: 22px;
@@ -176,7 +169,6 @@
     }
     .chain-card .head h3 {
       font-size: 1rem; margin: 0; font-weight: 600;
-      letter-spacing: 0.01em;
     }
     .chain-card .head .pct {
       font-size: 0.78rem; color: var(--muted); font-family: var(--mono);
@@ -204,17 +196,12 @@
     }
     .chain-card .source a { color: var(--muted); }
 
-    /* Live event log. */
     .ticker {
       border: 1px solid var(--border); border-radius: 12px;
       background: var(--card); padding: 16px 18px;
     }
-    .ticker h3 {
-      font-size: 1rem; margin: 0 0 10px; font-weight: 600;
-    }
-    .ticker .legend {
-      font-size: 0.78rem; color: var(--muted); margin-bottom: 12px;
-    }
+    .ticker h3 { font-size: 1rem; margin: 0 0 10px; font-weight: 600; }
+    .ticker .legend { font-size: 0.78rem; color: var(--muted); margin-bottom: 12px; }
     .ticker .row {
       display: grid;
       grid-template-columns: 80px 1fr 90px 110px;
@@ -224,9 +211,7 @@
     }
     .ticker .row:first-of-type { border-top: none; }
     .ticker .row .when { color: var(--muted); font-family: var(--mono); font-size: 0.78rem; }
-    .ticker .row .what {
-      display: inline-flex; align-items: center; gap: 8px;
-    }
+    .ticker .row .what { display: inline-flex; align-items: center; gap: 8px; }
     .ticker .row .badge {
       display: inline-block; padding: 2px 8px; border-radius: 999px;
       font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
@@ -242,8 +227,7 @@
     .ticker .row .chain.eth  { color: var(--eth); }
     .ticker .row .chain.xrpl { color: var(--xrpl); }
     .ticker .row .amount { font-family: var(--mono); text-align: right; }
-    .ticker .row .addr { font-family: var(--mono); color: var(--muted);
-                         font-size: 0.78rem; }
+    .ticker .row .addr { font-family: var(--mono); color: var(--muted); font-size: 0.78rem; }
     @media (max-width: 640px) {
       .ticker .row { grid-template-columns: 1fr 1fr; gap: 6px; }
       .ticker .row .when { grid-column: 1; }
@@ -252,7 +236,6 @@
       .ticker .row .amount { grid-column: 1 / span 2; text-align: left; }
     }
 
-    /* Disclosure ribbon — Phase A: simulated. Honest about it. */
     .ribbon {
       margin: 0 0 18px;
       padding: 10px 14px; border-radius: 10px;
@@ -261,49 +244,58 @@
       color: var(--amber); font-size: 0.82rem;
     }
     .ribbon strong { color: var(--text); font-weight: 600; }
-    .ribbon a { color: var(--amber); text-decoration: underline; }
 
     .foot {
       margin-top: 28px; font-size: 0.78rem; color: var(--dim);
       border-top: 1px solid var(--border); padding-top: 16px;
     }
     .foot a { color: var(--muted); }
+    {{ explainer_css() }}
   </style>
 </head>
 <body>
 <div class="wrap">
   {% include "_nav.html" %}
 
-  <h1>RLUSD · cross-chain treasury watch</h1>
+  <h1>RLUSD · live across two chains</h1>
   <p class="lede">
-    Ripple's USD stablecoin lives on two chains. Most of the supply sits on
-    Ethereum, most of the holders sit on the XRP Ledger. This page shows the
-    treasury — issuance, burns, and transfers — across both, side by side.
+    RLUSD is a stablecoin that lives on two networks at once — Ethereum and
+    the XRP Ledger. Each circle below is the supply on that chain. Watch
+    new dollars appear, old ones disappear, and money cross between them.
   </p>
 
-  <div class="ribbon" id="modeRibbon">
+  <div class="ribbon">
     <strong>Preview mode.</strong>
     Animation is running on a representative event stream while the live
     cross-chain feed is wired up. Issuer addresses and contract are real.
   </div>
 
   <div class="press-hero">
-    <div class="press-header">
-      <div>
-        <div class="eyebrow">Cross-chain RLUSD flow</div>
-        <h2>Ethereum <span class="arrow">&harr;</span> Ripple treasury <span class="arrow">&harr;</span> XRP Ledger</h2>
+    <div class="headline">
+      <div class="total">
+        <span id="totalHeadline">—</span> RLUSD circulating
+        {{ explainer(
+          'rlusd-anim',
+          'How to read this visual',
+          'Each glowing circle is the live supply of RLUSD on that chain — Ethereum on the left, the XRP Ledger on the right. The size of the circle is proportional to how much RLUSD lives there. A green spark falling in means new RLUSD was just created on that chain (a "mint"). A red spark rising up means RLUSD was just removed from circulation (a "burn"). A cyan comet flying between the two circles is RLUSD being bridged from one chain to the other. Bigger sparks mean bigger amounts.'
+        ) }}
       </div>
-      <div class="live" id="pressLive"><span class="dot"></span><span id="pressLiveLabel">simulated stream</span></div>
-    </div>
-
-    <div class="press-legend">
-      <span class="item"><span class="swatch mint"></span>mint &mdash; new RLUSD issued</span>
-      <span class="item"><span class="swatch burn"></span>burn &mdash; RLUSD redeemed</span>
-      <span class="item"><span class="swatch xfer"></span>transfer &mdash; wallet to wallet</span>
+      <div class="sub">across Ethereum and the XRP Ledger</div>
+      <div class="legend-chips">
+        <span class="chip mint"><span class="sw"></span>new RLUSD created</span>
+        <span class="chip burn"><span class="sw"></span>RLUSD removed</span>
+        <span class="chip bridge"><span class="sw"></span>moved between chains</span>
+        <span class="chip" style="margin-left:auto; color: var(--amber);">
+          <span class="sw" style="background: var(--amber); box-shadow: 0 0 8px var(--amber);"></span>
+          simulated stream
+        </span>
+      </div>
     </div>
 
     <div class="press-stage">
       <canvas id="pressCanvas"></canvas>
+      <span id="ethSupply" hidden>—</span>
+      <span id="xrplSupply" hidden>—</span>
     </div>
 
     <div class="press-footer">
@@ -376,33 +368,31 @@
   </div>
 
   <div class="foot">
-    Identifiers: Ethereum contract
-    <a href="https://etherscan.io/token/0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD" target="_blank" rel="noopener">0x8292Bb45…17eD</a>
+    Ethereum contract
+    <a href="https://etherscan.io/token/0x8292Bb45bf1Ee4d140127049757C2E0fF06317eD" target="_blank" rel="noopener">0x8292…17eD</a>
     · XRPL issuer
-    <a href="https://xrpscan.com/account/rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De" target="_blank" rel="noopener">rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De</a>
-    · XRPL currency code
-    <span style="font-family: var(--mono);">524C555344…0000 ("RLUSD")</span>.
+    <a href="https://xrpscan.com/account/rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De" target="_blank" rel="noopener">rMxC…m5De</a>
   </div>
 </div>
 
 <script>
 /* =========================================================================
-   Cross-chain RLUSD flow visualisation.
-   -------------------------------------------------------------------------
-   Two glowing "vault" columns (Ethereum left, XRPL right) flank a central
-   "Issuer" hexagon. Mints fire a streak from the issuer to one vault and
-   raise its fluid level. Burns drain the vault back into the issuer.
-   Transfers ping between holder dots beneath the relevant vault.
-
-   The picture maps directly to the real cross-chain story: stablecoin
-   supply lives in two on-chain pools, mints/burns hit the issuer wallet,
-   transfers move RLUSD between holders.
-
-   Phase A: events come from a seeded queue. The shape of an event matches
-   what the real feed will emit, so the visual doesn't change once the
-   live data is wired in.
+   Two-orb cross-chain visual.
+   Each orb's area is proportional to RLUSD supply on that chain. New
+   mints fall from above into an orb (it pulses larger, green ring).
+   Burns rise out of an orb (it pulses smaller, red ring). Bridges send
+   a comet from one orb to the other (cyan ring on arrival).
    ========================================================================= */
 (function () {
+  /* Preview mode: live ETH + XRPL feed isn't wired yet, so we don't expose
+     the seed supply numbers as if they were real. The orbs still animate
+     against an in-memory state (so the motion + relative-size metaphor
+     reads correctly), but the orb labels, headline, footer cells, and
+     chain cards all show "—" instead of the seed values. The "Preview
+     mode" ribbon above the hero tells visitors why. Flip this to true
+     once the live data path lands. */
+  const LIVE_DATA = false;
+
   const canvas = document.getElementById('pressCanvas');
   const ctx = canvas.getContext('2d');
   let W = 0, H = 0, DPR = 1;
@@ -419,454 +409,263 @@
   window.addEventListener('resize', resize);
   resize();
 
-  /* ------------------------------------------------------------------ */
-  /* Layout helpers                                                     */
-  /* ------------------------------------------------------------------ */
-  // Vault column geometry. We scale fill level off a shared cap so the
-  // ETH column looks visibly fuller than the XRPL one — that's the
-  // 88/12 supply split, communicated visually.
-  const SUPPLY_CAP = 1_000_000_000; // $1B reference for vault fill ratio
+  const RGB = {
+    eth:    '167, 139, 250',
+    xrpl:   '34, 211, 238',
+    mint:   '34, 197, 94',
+    burn:   '239, 68, 68',
+    bridge: '125, 211, 252',
+  };
 
-  function vaultRect(side) {
-    const w = Math.max(56, Math.min(96, W * 0.085));
-    const h = Math.max(180, H * 0.62);
-    const cx = side === 'eth' ? W * 0.22 : W * 0.78;
-    const cy = H * 0.50 - 8;
-    return { x: cx - w / 2, y: cy - h / 2, w, h, cx, cy };
+  /* Seed state — only used to size the orbs and drive the animation in
+     preview mode. NOT written to the DOM while LIVE_DATA is false. */
+  const state = {
+    ethSupply:  660_000_000,
+    xrplSupply:  90_000_000,
+    ethMints24h: 0, ethBurns24h: 0,
+    xrplMints24h: 0, xrplBurns24h: 0,
+  };
+
+  /* Two orbs; areas proportional to RLUSD supply on each chain.
+     We pick a dominant-chain max so the bigger orb fits the canvas with
+     headroom, then sqrt-scale the smaller chain off the same maximum. */
+  function orbSupplyMax() {
+    return Math.max(state.ethSupply, state.xrplSupply, 100_000_000);
   }
-  function issuerPos() { return { x: W / 2, y: H / 2 - 8, r: Math.min(W, H) * 0.075 }; }
-  // Holder dots row beneath each vault — receivers/senders for transfers.
-  function holderPos(side, idx, total) {
-    const v = vaultRect(side);
-    const margin = v.w * 1.2;
-    const top = v.y + v.h + 26;
-    const start = v.cx - (total - 1) * 12;
-    return { x: start + idx * 24, y: top + (idx % 2 === 0 ? 0 : 6) };
-    // ignore margin — kept for future use
+  function orbRadius(chain) {
+    const supply = chain === 'eth' ? state.ethSupply : state.xrplSupply;
+    const maxR = Math.min(W, H) * 0.30;
+    const minR = Math.min(W, H) * 0.06;
+    const frac = Math.sqrt(Math.max(supply, 1) / orbSupplyMax());
+    return Math.max(minR, maxR * frac);
+  }
+  function orbCenter(chain) {
+    const cy = H * 0.55;
+    return chain === 'eth'
+      ? { x: W * 0.30, y: cy }
+      : { x: W * 0.70, y: cy };
   }
 
-  const HOLDER_COUNT = 6;
+  /* Animated multiplier on top of the static, supply-based radius.
+     Mints push it briefly above 1.0, burns briefly below. */
+  const orbScale = { eth: 1.0, xrpl: 1.0 };
+  const orbScaleTarget = { eth: 1.0, xrpl: 1.0 };
+  const orbGlow = { eth: 0.30, xrpl: 0.30 };
+  const orbGlowTarget = { eth: 0.30, xrpl: 0.30 };
 
-  /* ------------------------------------------------------------------ */
-  /* Animation entities                                                 */
-  /* ------------------------------------------------------------------ */
-  const flights = [];     // streaks moving between issuer<->vault
-  const floaters = [];    // floating "+$1.5M" / "−$X" labels
-  const pulses = [];      // ring pulses on issuer / vault impact
-  const banners = [];     // brief "MINT · ETHEREUM" tags above a vault
-  const sparks = [];      // ambient bubbles inside vaults (transfers feed these)
+  const flights = [];
+  const pulses  = [];
+  const drops   = [];   /* mint particles falling from above */
+  const sparks  = [];   /* burn particles rising upward */
 
-  // Vault fill level is animated toward a target derived from supply.
-  // Each side tracks current vs. target so the level glides smoothly.
-  const vaultLevel = { eth: 0, xrpl: 0 };
-  const vaultGlow  = { eth: 0, xrpl: 0 };  // 0..1 — bumps on arrival
-  const vaultSurge = { eth: 0, xrpl: 0 };  // surface wave amplitude bump
-  const vaultFlashColour = { eth: null, xrpl: null };
-
-  let issuerGlow = 0.45, issuerTarget = 0.45, issuerSpin = 0;
-
-  /* ------------------------------------------------------------------ */
-  /* Hex-grid backdrop — slow drift, low contrast. Sets the "crypto    */
-  /* tech" aesthetic without competing with the active elements.       */
-  /* ------------------------------------------------------------------ */
-  const HEX_R = 22;
-  let bgPhase = 0;
-  function drawHexGrid() {
-    bgPhase += 0.12;
-    const dy = (bgPhase % (HEX_R * 1.5));
-    ctx.strokeStyle = 'rgba(120, 150, 220, 0.06)';
-    ctx.lineWidth = 1;
-    const horiz = HEX_R * Math.sqrt(3);
-    for (let row = -2; row * HEX_R * 1.5 < H + HEX_R * 3; row++) {
-      const y = row * HEX_R * 1.5 - dy;
-      const xOff = (row % 2 === 0) ? 0 : horiz / 2;
-      for (let col = -2; col * horiz + xOff < W + horiz; col++) {
-        const x = col * horiz + xOff;
-        drawHexPath(x, y, HEX_R);
-        ctx.stroke();
-      }
-    }
+  function clear() {
+    ctx.fillStyle = 'rgba(10, 14, 39, 0.32)';
+    ctx.fillRect(0, 0, W, H);
   }
-  function drawHexPath(cx, cy, r) {
+  function drawBackdrop() {
+    const g = ctx.createRadialGradient(W / 2, H * 0.55, 60, W / 2, H * 0.55, Math.max(W, H) * 0.7);
+    g.addColorStop(0, 'rgba(255,255,255,0.025)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawBridge() {
+    /* Faint static rail between the two orbs so people see they connect. */
+    const a = orbCenter('eth'), b = orbCenter('xrpl');
+    const ar = orbRadius('eth') * orbScale.eth;
+    const br = orbRadius('xrpl') * orbScale.xrpl;
+    const ax = a.x + ar, bx = b.x - br;
+    const grad = ctx.createLinearGradient(ax, a.y, bx, b.y);
+    grad.addColorStop(0,   'rgba(167,139,250,0.18)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+    grad.addColorStop(1,   'rgba(34,211,238,0.18)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i + Math.PI / 6;
-      const x = cx + Math.cos(a) * r;
-      const y = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+    ctx.moveTo(ax, a.y);
+    ctx.lineTo(bx, b.y);
+    ctx.stroke();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Background chain labels + glyphs — make the split unmissable.     */
-  /* ------------------------------------------------------------------ */
-  function drawBackdropLabels() {
-    const fontSize = Math.max(30, Math.min(60, W * 0.048));
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'center';
+  function drawOrb(chain) {
+    orbScale[chain] += (orbScaleTarget[chain] - orbScale[chain]) * 0.08;
+    orbGlow[chain]  += (orbGlowTarget[chain]  - orbGlow[chain])  * 0.06;
 
-    // Ethereum diamond glyph
-    drawEthGlyph(W * 0.22, H * 0.13, fontSize * 0.55);
-    ctx.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    ctx.fillStyle = 'rgba(167, 139, 250, 0.14)';
-    ctx.fillText('ETHEREUM', W * 0.22, H * 0.13 + fontSize * 0.95);
+    const c = orbCenter(chain);
+    const r = orbRadius(chain) * orbScale[chain];
+    const baseRGB = chain === 'eth' ? RGB.eth : RGB.xrpl;
+    const glow = orbGlow[chain];
 
-    // XRPL "X" glyph (stylised)
-    drawXrplGlyph(W * 0.78, H * 0.13, fontSize * 0.55);
-    ctx.fillStyle = 'rgba(34, 211, 238, 0.14)';
-    ctx.fillText('XRP LEDGER', W * 0.78, H * 0.13 + fontSize * 0.95);
-  }
-
-  function drawEthGlyph(cx, cy, r) {
-    // Two stacked triangles forming the Ethereum diamond.
-    ctx.fillStyle = 'rgba(167, 139, 250, 0.18)';
-    ctx.strokeStyle = 'rgba(167, 139, 250, 0.45)';
-    ctx.lineWidth = 1.5;
+    /* Outer halo. */
+    const haloR = r + 12 + 28 * glow;
+    const halo = ctx.createRadialGradient(c.x, c.y, r * 0.2, c.x, c.y, haloR);
+    halo.addColorStop(0, `rgba(${baseRGB},${0.28 * glow + 0.06})`);
+    halo.addColorStop(1, `rgba(${baseRGB},0)`);
+    ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.moveTo(cx, cy - r);
-    ctx.lineTo(cx + r * 0.62, cy);
-    ctx.lineTo(cx, cy + r);
-    ctx.lineTo(cx - r * 0.62, cy);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - r * 0.4);
-    ctx.lineTo(cx + r * 0.62, cy);
-    ctx.lineTo(cx - r * 0.62, cy);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(167, 139, 250, 0.30)';
+    ctx.arc(c.x, c.y, haloR, 0, Math.PI * 2);
     ctx.fill();
-  }
 
-  function drawXrplGlyph(cx, cy, r) {
-    // Stylised "X" mark — two crossing chevrons.
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
+    /* Body — soft glowing disc. */
+    const body = ctx.createRadialGradient(c.x, c.y - r * 0.2, r * 0.05, c.x, c.y, r);
+    body.addColorStop(0, `rgba(${baseRGB},0.42)`);
+    body.addColorStop(0.6, `rgba(${baseRGB},0.16)`);
+    body.addColorStop(1, `rgba(${baseRGB},0.04)`);
+    ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.moveTo(cx - r * 0.7, cy - r * 0.7);
-    ctx.lineTo(cx + r * 0.7, cy + r * 0.7);
-    ctx.moveTo(cx + r * 0.7, cy - r * 0.7);
-    ctx.lineTo(cx - r * 0.7, cy + r * 0.7);
-    ctx.stroke();
-    // small ring around it
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* Outer ring. */
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.95, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.30)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* HUD chrome — corner brackets + faint scanline overlay. Cheap       */
-  /* visual cue that this is a "live data" display, not a static page.  */
-  /* ------------------------------------------------------------------ */
-  function drawHUDChrome() {
-    const m = 12, k = 16;
-    ctx.strokeStyle = 'rgba(120, 150, 220, 0.30)';
-    ctx.lineWidth = 1.5;
-    // Four corner brackets
-    [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]
-      .forEach(([x, y, sx, sy]) => {
-        ctx.beginPath();
-        ctx.moveTo(x, y + sy * k); ctx.lineTo(x, y); ctx.lineTo(x + sx * k, y);
-        ctx.stroke();
-      });
-
-    // Top-left status text
-    ctx.font = '10px ui-monospace, "SF Mono", Menlo, monospace';
-    ctx.fillStyle = 'rgba(120, 150, 220, 0.60)';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText('RLUSD · CROSS-CHAIN MONITOR', m + 18, m + 4);
-    // Top-right cadence chip
-    ctx.textAlign = 'right';
-    ctx.fillText('LIVE · SIM', W - m - 18, m + 4);
-  }
-
-  function drawScanlines() {
-    // Slow upward-drifting scanlines. Very low contrast.
-    const phase = (performance.now() * 0.04) % 6;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.018)';
-    ctx.lineWidth = 1;
-    for (let y = -phase; y < H; y += 6) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Vault column drawing                                               */
-  /* ------------------------------------------------------------------ */
-  function drawVault(side) {
-    const v = vaultRect(side);
-    const isEth = side === 'eth';
-    const accent = isEth ? '167, 139, 250' : '34, 211, 238';
-
-    // Smooth glow + surge falloff
-    vaultGlow[side]  += (0 - vaultGlow[side])  * 0.04;
-    vaultSurge[side] += (0 - vaultSurge[side]) * 0.025;
-
-    // Outer halo — pulses with glow (post-event flash)
-    if (vaultGlow[side] > 0.02) {
-      const halo = ctx.createRadialGradient(v.cx, v.cy, v.w * 0.5,
-                                            v.cx, v.cy, v.w * 2.6);
-      const flashRgb = vaultFlashColour[side] || accent;
-      halo.addColorStop(0, `rgba(${flashRgb}, ${0.42 * vaultGlow[side]})`);
-      halo.addColorStop(1, `rgba(${flashRgb}, 0)`);
-      ctx.fillStyle = halo;
-      ctx.fillRect(v.x - v.w, v.y - v.w, v.w * 3, v.h + v.w * 2);
-    }
-
-    // Frame — neon outline. Rounded rect.
-    const radius = 10;
-    ctx.beginPath();
-    roundRect(ctx, v.x, v.y, v.w, v.h, radius);
-    ctx.strokeStyle = `rgba(${accent}, ${0.55 + 0.35 * vaultGlow[side]})`;
-    ctx.lineWidth = 1.5 + vaultGlow[side];
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${baseRGB},${0.55 + 0.35 * glow})`;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    // Frame corner markers — gives the vault a sci-fi readout feel
-    drawVaultCorners(v, accent);
-
-    // Inner background panel — slightly lighter than canvas
-    ctx.save();
+    /* Specular highlight. */
+    const spec = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.4, 0, c.x - r * 0.35, c.y - r * 0.4, r * 0.6);
+    spec.addColorStop(0, 'rgba(255,255,255,0.16)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
     ctx.beginPath();
-    roundRect(ctx, v.x, v.y, v.w, v.h, radius);
-    ctx.clip();
-    ctx.fillStyle = 'rgba(20, 24, 50, 0.55)';
-    ctx.fillRect(v.x, v.y, v.w, v.h);
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Horizontal scanlines inside the vault
-    ctx.strokeStyle = `rgba(${accent}, 0.08)`;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 12; i++) {
-      const y = v.y + (i + 0.5) * (v.h / 12);
+    /* Labels — chain name above, supply inside. In preview mode the
+       supply text is replaced with an em-dash so we never present the
+       seed value as truth. */
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(${baseRGB},0.95)`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `600 11px ui-monospace, "SF Mono", Menlo, monospace`;
+    ctx.fillText(chain === 'eth' ? 'ETHEREUM' : 'XRP LEDGER', c.x, c.y - r - 14);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.textBaseline = 'middle';
+    const supplyTxt = LIVE_DATA
+      ? fmtUSD(chain === 'eth' ? state.ethSupply : state.xrplSupply)
+      : '—';
+    const fontPx = Math.max(14, Math.min(34, r * 0.45));
+    ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.fillText(supplyTxt, c.x, c.y);
+
+    ctx.fillStyle = 'rgba(220,230,245,0.55)';
+    ctx.font = `500 ${Math.max(9, Math.min(12, r * 0.16))}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.fillText('RLUSD supply', c.x, c.y + fontPx * 0.75);
+  }
+
+  function drawPulses() {
+    const now = performance.now();
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i];
+      const t = (now - p.t0) / p.dur;
+      if (t >= 1) { pulses.splice(i, 1); continue; }
+      const r = p.r0 + (p.r1 - p.r0) * t;
+      const a = (1 - t) * p.a;
       ctx.beginPath();
-      ctx.moveTo(v.x + 4, y);
-      ctx.lineTo(v.x + v.w - 4, y);
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${p.rgb}, ${a})`;
+      ctx.lineWidth = 1.8;
       ctx.stroke();
     }
-
-    // Fluid fill — animated toward target ratio
-    const ratio = Math.max(0, Math.min(1, vaultLevel[side]));
-    const fillH = v.h * ratio;
-    const fillTop = v.y + v.h - fillH;
-    const t = performance.now() * 0.001;
-    const surge = vaultSurge[side];   // 0..1
-    const baseAmp = 1.6;
-    const amp = baseAmp + surge * 6;  // surface jumps higher on event
-
-    // Body of the fluid — vertical gradient, slightly brighter on event
-    const fluid = ctx.createLinearGradient(0, fillTop, 0, v.y + v.h);
-    fluid.addColorStop(0, `rgba(${accent}, ${0.85 + 0.10 * vaultGlow[side]})`);
-    fluid.addColorStop(1, `rgba(${accent}, 0.35)`);
-    ctx.fillStyle = fluid;
-    ctx.fillRect(v.x, fillTop, v.w, fillH);
-
-    // Wavy surface band
-    ctx.fillStyle = `rgba(${accent}, 0.95)`;
-    ctx.beginPath();
-    ctx.moveTo(v.x, fillTop);
-    for (let i = 0; i <= 20; i++) {
-      const x = v.x + (i / 20) * v.w;
-      const y = fillTop + Math.sin(t * 2 + i * 0.7 + (isEth ? 0 : 1.4)) * amp;
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(v.x + v.w, fillTop + 3);
-    ctx.lineTo(v.x, fillTop + 3);
-    ctx.closePath();
-    ctx.fill();
-
-    // Bright surface highlight line
-    ctx.beginPath();
-    for (let i = 0; i <= 20; i++) {
-      const x = v.x + (i / 20) * v.w;
-      const y = fillTop + Math.sin(t * 2 + i * 0.7 + (isEth ? 0 : 1.4)) * amp;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.65 + 0.35 * vaultGlow[side]})`;
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    // Internal rising bubbles — lifecycle managed in updateSparks();
-    // we only draw the ones belonging to this side here.
-    drawSparks(side, v, fillTop, accent);
-
-    ctx.restore();
-
-    // Top label: chain name + percent
-    ctx.font = '700 11px ui-monospace, "SF Mono", Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = `rgba(${accent}, 0.95)`;
-    ctx.fillText(isEth ? 'ETH VAULT' : 'XRPL VAULT', v.cx, v.y - 8);
-
-    // Below: live $ readout
-    const supply = isEth ? state.ethSupply : state.xrplSupply;
-    const total = state.ethSupply + state.xrplSupply;
-    const pct = total > 0 ? (100 * supply / total) : 0;
-    ctx.font = '700 14px ui-monospace, "SF Mono", Menlo, monospace';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#e6e9f2';
-    ctx.fillText(fmtUSD(supply), v.cx, v.y + v.h + 8);
-    ctx.font = '10px ui-monospace, "SF Mono", Menlo, monospace';
-    ctx.fillStyle = `rgba(${accent}, 0.7)`;
-    ctx.fillText(`${pct.toFixed(1)}% of supply`, v.cx, v.y + v.h + 28);
   }
 
-  function drawVaultCorners(v, accent) {
-    // Tiny brackets at each corner of the vault frame.
-    const k = 8;
-    ctx.strokeStyle = `rgba(${accent}, 0.85)`;
-    ctx.lineWidth = 2;
-    [[v.x, v.y, 1, 1], [v.x + v.w, v.y, -1, 1],
-     [v.x, v.y + v.h, 1, -1], [v.x + v.w, v.y + v.h, -1, -1]]
-      .forEach(([x, y, sx, sy]) => {
-        ctx.beginPath();
-        ctx.moveTo(x, y + sy * k); ctx.lineTo(x, y); ctx.lineTo(x + sx * k, y);
-        ctx.stroke();
-      });
+  function drawDrops() {
+    /* Mint drops: a green particle falling from the top of the canvas
+       into an orb. Trail behind. */
+    const now = performance.now();
+    for (let i = drops.length - 1; i >= 0; i--) {
+      const d = drops[i];
+      const t = (now - d.t0) / d.dur;
+      if (t >= 1) {
+        d.onArrive && d.onArrive();
+        drops.splice(i, 1);
+        continue;
+      }
+      const eased = t * t;
+      const y = d.y0 + (d.y1 - d.y0) * eased;
+      const x = d.x0 + (d.x1 - d.x0) * t;
+
+      /* Trail. */
+      ctx.beginPath();
+      const TAIL = 12;
+      for (let k = 0; k < TAIL; k++) {
+        const tk = Math.max(0, t - k * 0.018);
+        const ek = tk * tk;
+        const yk = d.y0 + (d.y1 - d.y0) * ek;
+        const xk = d.x0 + (d.x1 - d.x0) * tk;
+        if (k === 0) ctx.moveTo(xk, yk); else ctx.lineTo(xk, yk);
+      }
+      ctx.strokeStyle = `rgba(${RGB.mint}, 0.55)`;
+      ctx.lineWidth = d.size;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      const headR = d.size + 1.4;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, headR * 4);
+      grad.addColorStop(0, `rgba(${RGB.mint}, 1)`);
+      grad.addColorStop(1, `rgba(${RGB.mint}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, headR * 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, headR, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  function drawSparks(side, v, fillTop, accent) {
+  function drawSparks() {
+    /* Burn sparks: a red particle rising out of the orb upward. Speeds up
+       and fades as it leaves. */
     const now = performance.now();
     for (let i = sparks.length - 1; i >= 0; i--) {
       const s = sparks[i];
-      if (s.side !== side) continue;
       const t = (now - s.t0) / s.dur;
       if (t >= 1) { sparks.splice(i, 1); continue; }
-      // Rises from bottom to surface inside the vault.
-      const y = (v.y + v.h - 6) - t * Math.min(80, v.h * ratioForSpark(side));
-      const x = s.xRel * v.w + v.x;
-      const a = (1 - t) * 0.9;
+      const eased = 1 - (1 - t) * (1 - t);
+      const y = s.y0 + (s.y1 - s.y0) * eased;
+      const x = s.x0 + (s.x1 - s.x0) * t;
+      const a = 1 - t;
+
       ctx.beginPath();
-      ctx.arc(x, y, 1.4 + s.r * (1 - t), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
-      ctx.fill();
+      const TAIL = 10;
+      for (let k = 0; k < TAIL; k++) {
+        const tk = Math.max(0, t - k * 0.02);
+        const ek = 1 - (1 - tk) * (1 - tk);
+        const yk = s.y0 + (s.y1 - s.y0) * ek;
+        const xk = s.x0 + (s.x1 - s.x0) * tk;
+        if (k === 0) ctx.moveTo(xk, yk); else ctx.lineTo(xk, yk);
+      }
+      ctx.strokeStyle = `rgba(${RGB.burn}, ${0.55 * a})`;
+      ctx.lineWidth = s.size;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      const headR = s.size + 1.2;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, headR * 4);
+      grad.addColorStop(0, `rgba(${RGB.burn}, ${a})`);
+      grad.addColorStop(1, `rgba(${RGB.burn}, 0)`);
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, 3 + s.r * (1 - t) * 2, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${accent}, ${a * 0.4})`;
+      ctx.arc(x, y, headR * 4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
-  // Spark rise distance — caps so they don't pop above the surface line.
-  function ratioForSpark(side) {
-    return Math.max(0.08, Math.min(0.7, vaultLevel[side] * 0.9));
+
+  function flightPos(f, t) {
+    const u = 1 - t;
+    const cx = (f.x0 + f.x1) / 2 + f.bend * (f.y1 - f.y0);
+    const cy = (f.y0 + f.y1) / 2 - f.bend * (f.x1 - f.x0);
+    return {
+      x: u * u * f.x0 + 2 * u * t * cx + t * t * f.x1,
+      y: u * u * f.y0 + 2 * u * t * cy + t * t * f.y1,
+    };
   }
 
-  function roundRect(c, x, y, w, h, r) {
-    c.moveTo(x + r, y);
-    c.lineTo(x + w - r, y);
-    c.quadraticCurveTo(x + w, y, x + w, y + r);
-    c.lineTo(x + w, y + h - r);
-    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    c.lineTo(x + r, y + h);
-    c.quadraticCurveTo(x, y + h, x, y + h - r);
-    c.lineTo(x, y + r);
-    c.quadraticCurveTo(x, y, x + r, y);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Issuer hexagon                                                     */
-  /* ------------------------------------------------------------------ */
-  function drawIssuer() {
-    const p = issuerPos();
-    issuerSpin += 0.005;
-    issuerGlow += (issuerTarget - issuerGlow) * 0.05;
-    // Always-on idle pulse so the centre never feels dead.
-    const idlePulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.0018);
-
-    // Outer counter-rotating ring (dashed)
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(-issuerSpin * 0.7);
-    ctx.beginPath();
-    ctx.arc(0, 0, p.r * 1.55, 0, Math.PI * 2);
-    ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = `rgba(180, 200, 240, ${0.22 + 0.3 * issuerGlow})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    // Inner counter-rotating ring (small ticks)
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(issuerSpin * 1.3);
-    ctx.beginPath();
-    for (let i = 0; i < 16; i++) {
-      const a = (Math.PI * 2 / 16) * i;
-      const r1 = p.r * 1.20;
-      const r2 = p.r * 1.30;
-      ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
-      ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
-    }
-    ctx.strokeStyle = `rgba(220, 230, 255, ${0.30 + 0.3 * issuerGlow})`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    // Halo
-    const haloR = p.r + 18 + 22 * issuerGlow + 6 * idlePulse;
-    const halo = ctx.createRadialGradient(p.x, p.y, p.r * 0.4, p.x, p.y, haloR);
-    halo.addColorStop(0, `rgba(255, 255, 255, ${0.20 * issuerGlow + 0.06 * idlePulse})`);
-    halo.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, haloR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Hexagon body, rotating slowly
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(issuerSpin);
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i - Math.PI / 2;
-      const x = Math.cos(a) * p.r;
-      const y = Math.sin(a) * p.r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    const body = ctx.createLinearGradient(-p.r, -p.r, p.r, p.r);
-    body.addColorStop(0, '#1a1f48');
-    body.addColorStop(1, '#0c1130');
-    ctx.fillStyle = body;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.30 + 0.40 * issuerGlow})`;
-    ctx.stroke();
-
-    // Inner ring
-    ctx.beginPath();
-    ctx.arc(0, 0, p.r * 0.6, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + 0.4 * issuerGlow})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // RLUSD wordmark in the centre
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.85 + 0.15 * issuerGlow})`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `800 ${Math.floor(p.r * 0.40)}px -apple-system, BlinkMacSystemFont, sans-serif`;
-    ctx.fillText('RLUSD', 0, -p.r * 0.05);
-    ctx.font = `600 ${Math.floor(p.r * 0.18)}px ui-monospace, "SF Mono", Menlo, monospace`;
-    ctx.fillStyle = 'rgba(180, 200, 230, 0.7)';
-    ctx.fillText('ISSUER', 0, p.r * 0.30);
-    ctx.restore();
-
-    // Caption below — "Ripple treasury"
-    ctx.font = '700 10px ui-monospace, "SF Mono", Menlo, monospace';
-    ctx.fillStyle = 'rgba(200, 215, 245, 0.65)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('RIPPLE TREASURY', p.x, p.y + p.r + 18);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Streaks (mint/burn/transfer)                                       */
-  /* ------------------------------------------------------------------ */
   function drawFlights() {
     const now = performance.now();
     for (let i = flights.length - 1; i >= 0; i--) {
@@ -877,266 +676,137 @@
         flights.splice(i, 1);
         continue;
       }
-      const x = f.x0 + (f.x1 - f.x0) * t;
-      const y = f.y0 + (f.y1 - f.y0) * t;
+      const head = flightPos(f, t);
 
-      // Trail — sample backwards along the linear path
       ctx.beginPath();
       const TAIL = 14;
       for (let k = 0; k < TAIL; k++) {
-        const tk = Math.max(0, t - k * 0.014);
-        const xk = f.x0 + (f.x1 - f.x0) * tk;
-        const yk = f.y0 + (f.y1 - f.y0) * tk;
-        if (k === 0) ctx.moveTo(xk, yk); else ctx.lineTo(xk, yk);
+        const tk = Math.max(0, t - k * 0.012);
+        const p = flightPos(f, tk);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
       }
       ctx.strokeStyle = `rgba(${f.rgb}, 0.55)`;
       ctx.lineWidth = f.size;
       ctx.lineCap = 'round';
       ctx.stroke();
 
-      // Glowing head
-      const headR = f.size + 1.5;
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, headR * 5);
+      const headR = f.size + 1.4;
+      const grad = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, headR * 4);
       grad.addColorStop(0, `rgba(${f.rgb}, 1)`);
       grad.addColorStop(1, `rgba(${f.rgb}, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, headR * 5, 0, Math.PI * 2);
+      ctx.arc(head.x, head.y, headR * 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(x, y, headR, 0, Math.PI * 2);
+      ctx.arc(head.x, head.y, headR, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Floating amount labels — appear on mint/burn arrivals             */
-  /* ------------------------------------------------------------------ */
-  function drawFloaters() {
-    const now = performance.now();
-    for (let i = floaters.length - 1; i >= 0; i--) {
-      const fl = floaters[i];
-      const t = (now - fl.t0) / fl.dur;
-      if (t >= 1) { floaters.splice(i, 1); continue; }
-      const a = t < 0.15 ? (t / 0.15) : (1 - (t - 0.15) / 0.85);
-      const y = fl.y - 28 * t;
-      ctx.font = '700 14px ui-monospace, "SF Mono", Menlo, monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = `rgba(${fl.rgb}, ${a})`;
-      ctx.fillText(fl.text, fl.x, y);
-    }
-  }
-
-  function drawPulses() {
-    const now = performance.now();
-    for (let i = pulses.length - 1; i >= 0; i--) {
-      const pp = pulses[i];
-      const t = (now - pp.t0) / pp.dur;
-      if (t >= 1) { pulses.splice(i, 1); continue; }
-      const r = pp.r0 + (pp.r1 - pp.r0) * t;
-      const a = (1 - t) * pp.a;
-      ctx.beginPath();
-      ctx.arc(pp.x, pp.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${pp.rgb}, ${a})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Banner labels (e.g. "MINT · ETHEREUM") above a vault on impact.    */
-  /* ------------------------------------------------------------------ */
-  function drawBanners() {
-    const now = performance.now();
-    for (let i = banners.length - 1; i >= 0; i--) {
-      const b = banners[i];
-      const t = (now - b.t0) / b.dur;
-      if (t >= 1) { banners.splice(i, 1); continue; }
-      const a = t < 0.10 ? (t / 0.10) : (1 - (t - 0.10) / 0.90);
-      // Pill background
-      ctx.font = '700 11px ui-monospace, "SF Mono", Menlo, monospace';
-      const padX = 9, padY = 5;
-      const tw = ctx.measureText(b.text).width;
-      const x = b.x - tw / 2 - padX;
-      const y = b.y - 9 - padY;
-      ctx.fillStyle = `rgba(${b.rgb}, ${a * 0.20})`;
-      ctx.strokeStyle = `rgba(${b.rgb}, ${a * 0.85})`;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      roundRect(ctx, x, y, tw + padX * 2, 18 + padY, 9);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(b.text, b.x, b.y - 9 + 1);
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Animation loop                                                     */
-  /* ------------------------------------------------------------------ */
   function frame() {
-    // Trail-clear: small alpha overlay so streaks fade gracefully.
-    ctx.fillStyle = 'rgba(6, 9, 35, 0.34)';
-    ctx.fillRect(0, 0, W, H);
-
-    drawHexGrid();
-    drawScanlines();
-    drawBackdropLabels();
-    drawVault('eth');
-    drawVault('xrpl');
-    drawIssuer();
+    clear();
+    drawBackdrop();
+    drawBridge();
+    drawOrb('eth');
+    drawOrb('xrpl');
     drawFlights();
+    drawDrops();
+    drawSparks();
     drawPulses();
-    drawFloaters();
-    drawBanners();
-    drawHUDChrome();
-
-    // Animate vault levels toward supply / cap target.
-    vaultLevel.eth  += (state.ethSupply  / SUPPLY_CAP - vaultLevel.eth)  * 0.05;
-    vaultLevel.xrpl += (state.xrplSupply / SUPPLY_CAP - vaultLevel.xrpl) * 0.05;
-
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
-  // Ambient sparks — a low-rate sprinkle of bubbles inside each vault
-  // so the vaults feel alive even between events. Transfers add a
-  // small burst on top of this.
-  setInterval(() => {
-    if (Math.random() < 0.55) spawnSpark('eth');
-    if (Math.random() < 0.55) spawnSpark('xrpl');
-  }, 700);
-
-  function spawnSpark(side) {
-    sparks.push({
-      side,
-      xRel: 0.15 + Math.random() * 0.70,
-      r: Math.random() * 1.2,
-      t0: performance.now(),
-      dur: 1800 + Math.random() * 1200,
-    });
+  function sizeForAmount(amount) {
+    return Math.max(1.6, Math.min(5.5, Math.log10(Math.max(amount, 1)) - 1.2));
+  }
+  function pulseAt(x, y, kind) {
+    const colour = RGB[kind] || RGB.bridge;
+    pulses.push({ x, y, t0: performance.now(), dur: 1000, r0: 8, r1: 60, a: 0.7, rgb: colour });
+  }
+  function bumpOrb(chain, dir) {
+    /* dir = +1 mint, -1 burn — temporary visual scale bump. */
+    const peak = dir > 0 ? 1.10 : 0.92;
+    orbScaleTarget[chain] = peak;
+    orbGlowTarget[chain]  = 1.0;
+    setTimeout(() => {
+      orbScaleTarget[chain] = 1.0;
+      orbGlowTarget[chain]  = 0.30;
+    }, 700);
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Event ingestion                                                    */
-  /* ------------------------------------------------------------------ */
-  const RGB = {
-    eth:  '167, 139, 250',
-    xrpl: '34, 211, 238',
-    mint: '34, 197, 94',
-    burn: '239, 68, 68',
-    xfer: '255, 255, 255',
-  };
-
-  function spawnFlight({ x0, y0, x1, y1, rgb, size, dur, onArrive }) {
-    flights.push({
-      x0, y0, x1, y1, rgb,
-      size: size || 2,
+  function spawnMintDrop(chain, amount, onArrive) {
+    const c = orbCenter(chain);
+    const r = orbRadius(chain);
+    const x0 = c.x + (Math.random() - 0.5) * r * 0.6;
+    const x1 = c.x + (Math.random() - 0.5) * r * 0.4;
+    const y0 = -10;
+    const y1 = c.y - r * 0.2;
+    drops.push({
+      x0, y0, x1, y1,
+      size: sizeForAmount(amount),
       t0: performance.now(),
-      dur: dur || 1200,
+      dur: 900 + Math.random() * 400,
+      onArrive,
+    });
+  }
+  function spawnBurnSpark(chain, amount) {
+    const c = orbCenter(chain);
+    const r = orbRadius(chain);
+    const x0 = c.x + (Math.random() - 0.5) * r * 0.4;
+    const x1 = x0 + (Math.random() - 0.5) * 60;
+    const y0 = c.y - r * 0.3;
+    const y1 = -20;
+    sparks.push({
+      x0, y0, x1, y1,
+      size: sizeForAmount(amount),
+      t0: performance.now(),
+      dur: 1100 + Math.random() * 400,
+    });
+  }
+  function spawnBridge(fromChain, toChain, amount, onArrive) {
+    const a = orbCenter(fromChain), b = orbCenter(toChain);
+    const ar = orbRadius(fromChain), br = orbRadius(toChain);
+    const dir = b.x > a.x ? 1 : -1;
+    const x0 = a.x + dir * ar * 0.85;
+    const x1 = b.x - dir * br * 0.85;
+    flights.push({
+      x0, y0: a.y, x1, y1: b.y,
+      bend: -0.12 - Math.random() * 0.10,
+      rgb: RGB.bridge,
+      size: sizeForAmount(amount),
+      t0: performance.now(),
+      dur: 1500 + Math.random() * 400,
       onArrive,
     });
   }
 
-  function spawnFloater(x, y, text, rgb) {
-    floaters.push({ x, y, text, rgb, t0: performance.now(), dur: 1600 });
-  }
-
-  function pulseAt(x, y, rgb, r1) {
-    pulses.push({
-      x, y, t0: performance.now(), dur: 900,
-      r0: 4, r1: r1 || 28, a: 0.7, rgb,
-    });
-  }
-
-  function tripleRipple(x, y, rgb, baseR) {
-    // Three concentric ripples staggered by ~120ms.
-    pulses.push({ x, y, t0: performance.now(),       dur: 900, r0: 4,  r1: baseR,         a: 0.85, rgb });
-    pulses.push({ x, y, t0: performance.now() + 120, dur: 1000, r0: 4, r1: baseR * 1.4,   a: 0.55, rgb });
-    pulses.push({ x, y, t0: performance.now() + 240, dur: 1100, r0: 4, r1: baseR * 1.8,   a: 0.30, rgb });
-  }
-
-  function spawnBanner(x, y, text, rgb) {
-    banners.push({ x, y, text, rgb, t0: performance.now(), dur: 1200 });
-  }
-
   function processEvent(ev) {
-    issuerTarget = Math.min(1, issuerTarget + 0.30);
-    setTimeout(() => { issuerTarget = Math.max(0.45, issuerTarget - 0.20); }, 1800);
-
-    const v = vaultRect(ev.chain);
-    const iss = issuerPos();
-    const vaultEdgeX = ev.chain === 'eth' ? v.x + v.w : v.x;
-    const vaultY = v.cy;
-    const chainName = ev.chain === 'eth' ? 'ETHEREUM' : 'XRP LEDGER';
-
-    // Streak head size encodes amount (sub-linear)
-    const sz = Math.max(1.8, Math.min(5, Math.log10(Math.max(ev.amount, 1)) - 1.0));
-
     if (ev.type === 'mint') {
-      spawnFlight({
-        x0: iss.x, y0: iss.y,
-        x1: vaultEdgeX, y1: vaultY,
-        rgb: RGB.mint, size: sz, dur: 1400,
-        onArrive: () => {
-          vaultGlow[ev.chain] = 1;
-          vaultSurge[ev.chain] = 1;
-          vaultFlashColour[ev.chain] = RGB.mint;
-          setTimeout(() => { vaultFlashColour[ev.chain] = null; }, 700);
-          tripleRipple(vaultEdgeX, vaultY, RGB.mint, 36);
-          spawnFloater(v.cx, v.y - 24, '+' + fmtUSD(ev.amount), RGB.mint);
-          spawnBanner(v.cx, v.y - 4, 'MINT · ' + chainName, RGB.mint);
-          // Mint also kicks a short bubble burst inside the vault
-          for (let k = 0; k < 6; k++) spawnSpark(ev.chain);
-        },
+      const c = orbCenter(ev.chain);
+      spawnMintDrop(ev.chain, ev.amount, () => {
+        pulseAt(c.x, c.y, 'mint');
+        bumpOrb(ev.chain, +1);
       });
-      tripleRipple(iss.x, iss.y, RGB.mint, 30);
     } else if (ev.type === 'burn') {
-      spawnFlight({
-        x0: vaultEdgeX, y0: vaultY,
-        x1: iss.x, y1: iss.y,
-        rgb: RGB.burn, size: sz, dur: 1400,
-        onArrive: () => {
-          issuerTarget = Math.min(1, issuerTarget + 0.20);
-          tripleRipple(iss.x, iss.y, RGB.burn, 32);
-        },
+      const c = orbCenter(ev.chain);
+      pulseAt(c.x, c.y, 'burn');
+      spawnBurnSpark(ev.chain, ev.amount);
+      bumpOrb(ev.chain, -1);
+    } else if (ev.type === 'bridge') {
+      const other = ev.chain === 'eth' ? 'xrpl' : 'eth';
+      const dst = orbCenter(other);
+      spawnBridge(ev.chain, other, ev.amount, () => {
+        pulseAt(dst.x, dst.y, 'bridge');
+        orbGlowTarget[other] = 1.0;
+        setTimeout(() => { orbGlowTarget[other] = 0.30; }, 700);
       });
-      vaultGlow[ev.chain] = 1;
-      vaultSurge[ev.chain] = 1;
-      vaultFlashColour[ev.chain] = RGB.burn;
-      setTimeout(() => { vaultFlashColour[ev.chain] = null; }, 700);
-      tripleRipple(vaultEdgeX, vaultY, RGB.burn, 30);
-      spawnFloater(v.cx, v.y - 24, '−' + fmtUSD(ev.amount), RGB.burn);
-      spawnBanner(v.cx, v.y - 4, 'BURN · ' + chainName, RGB.burn);
-    } else {
-      // Transfer — internal bubble burst on the relevant vault, no streak.
-      // Reads as "RLUSD circulating inside the chain" — distinct from
-      // mints/burns which always involve the issuer.
-      vaultSurge[ev.chain] = Math.max(vaultSurge[ev.chain], 0.4);
-      const burst = 4 + Math.floor(Math.random() * 4);
-      for (let k = 0; k < burst; k++) spawnSpark(ev.chain);
     }
-
     pushTickerRow(ev);
     bumpCounters(ev);
   }
-
-  /* ------------------------------------------------------------------ */
-  /* Counters / ticker                                                  */
-  /* ------------------------------------------------------------------ */
-  // Seed values rough-anchored to public info: ~88% of supply on ETH,
-  // ~12% on XRPL. Total ~750m as a plausible recent-era figure. These
-  // get replaced wholesale once the live feed is wired in.
-  const state = {
-    ethSupply:  660_000_000,
-    xrplSupply:  90_000_000,
-    ethMints24h: 0, ethBurns24h: 0,
-    xrplMints24h: 0, xrplBurns24h: 0,
-  };
 
   function fmtUSD(n) {
     if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
@@ -1145,39 +815,41 @@
     return '$' + Math.round(n).toLocaleString();
   }
   function fmtSigned(n) {
-    const s = n >= 0 ? '+' : '−';
-    return s + fmtUSD(Math.abs(n));
+    return (n >= 0 ? '+' : '−') + fmtUSD(Math.abs(n));
   }
-
-  // Preview mode: the in-memory `state` is seeded from a representative
-  // simulated stream so the orbs can animate. Until the live ETH + XRPL
-  // feed is wired (next phase), we deliberately do NOT write those seed
-  // numbers into the supply/mint/burn DOM cells — they'd read as truth.
-  // The HTML keeps em-dash placeholders, and the "Preview mode" ribbon
-  // above the hero explains why.
-  const LIVE_DATA = false;
   function renderState() {
     if (!LIVE_DATA) return;
     const total = state.ethSupply + state.xrplSupply;
+    document.getElementById('totalHeadline').textContent = fmtUSD(total);
+    document.getElementById('ethSupply').textContent  = fmtUSD(state.ethSupply);
+    document.getElementById('xrplSupply').textContent = fmtUSD(state.xrplSupply);
     document.getElementById('ethSupplyBig').textContent  = fmtUSD(state.ethSupply);
     document.getElementById('xrplSupplyBig').textContent = fmtUSD(state.xrplSupply);
     document.getElementById('ethPct').textContent  = (100 * state.ethSupply / total).toFixed(1) + '% of supply';
     document.getElementById('xrplPct').textContent = (100 * state.xrplSupply / total).toFixed(1) + '% of supply';
     document.getElementById('totalSupply').textContent = fmtUSD(total);
-
     const m24 = state.ethMints24h + state.xrplMints24h;
     const b24 = state.ethBurns24h + state.xrplBurns24h;
     document.getElementById('mints24h').textContent = fmtUSD(m24);
     document.getElementById('burns24h').textContent = fmtUSD(b24);
     document.getElementById('net24h').textContent   = fmtSigned(m24 - b24);
     document.getElementById('net24h').className = 'value ' + ((m24 - b24) >= 0 ? 'mint' : 'burn');
-
     document.getElementById('ethMints').textContent  = fmtUSD(state.ethMints24h);
     document.getElementById('ethBurns').textContent  = fmtUSD(state.ethBurns24h);
     document.getElementById('xrplMints').textContent = fmtUSD(state.xrplMints24h);
     document.getElementById('xrplBurns').textContent = fmtUSD(state.xrplBurns24h);
   }
 
+  function eventLabel(ev) {
+    if (ev.type === 'mint')   return ev.chain === 'eth' ? 'new RLUSD on Ethereum' : 'new RLUSD on XRPL';
+    if (ev.type === 'burn')   return ev.chain === 'eth' ? 'RLUSD removed from Ethereum' : 'RLUSD removed from XRPL';
+    return ev.chain === 'eth' ? 'bridged · Ethereum → XRPL' : 'bridged · XRPL → Ethereum';
+  }
+  function eventBadge(ev) {
+    if (ev.type === 'mint') return 'mint';
+    if (ev.type === 'burn') return 'burn';
+    return 'xfer';
+  }
   function bumpCounters(ev) {
     const k = ev.chain;
     if (ev.type === 'mint') {
@@ -1191,25 +863,14 @@
   }
 
   const tickerRows = [];
-  // A small set of plausible counterparty labels — keeps the ticker
-  // readable without the canvas needing per-wallet markers. These get
-  // replaced with real on-chain addresses in Phase B.
-  const TICKER_COUNTERPARTIES = {
-    eth:  ['Coinbase Custody', 'Bitstamp · ETH', 'Wintermute', 'Curve 3pool',
-           'tokenised T-bill vault', 'bridge contract', 'retail holder'],
-    xrpl: ['Bitstamp · XRPL', 'GateHub', 'Sologenic DEX', 'XRPL/ETH bridge',
-           'XRPL market maker', 'Ripple ops wallet', 'retail holder'],
-  };
   function pushTickerRow(ev) {
-    const pool = TICKER_COUNTERPARTIES[ev.chain];
-    const counterparty = pool[Math.floor(Math.random() * pool.length)];
-    tickerRows.unshift({ ev, counterparty, t: Date.now() });
+    tickerRows.unshift({ ev, t: Date.now() });
     if (tickerRows.length > 12) tickerRows.length = 12;
     const host = document.getElementById('tickerRows');
     host.innerHTML = tickerRows.map(r => {
       const dt = Math.max(0, Math.round((Date.now() - r.t) / 1000));
       const when = dt < 60 ? `${dt}s ago` : `${Math.floor(dt / 60)}m ago`;
-      const badge = r.ev.type;
+      const badge = eventBadge(r.ev);
       const chain = r.ev.chain;
       const chainLabel = chain === 'eth' ? 'Ethereum' : 'XRPL';
       return `
@@ -1217,15 +878,13 @@
           <span class="when">${when}</span>
           <span class="what">
             <span class="badge ${badge}">${badge}</span>
-            <span class="addr">${r.counterparty}</span>
+            <span class="addr">${eventLabel(r.ev)}</span>
           </span>
           <span class="chain ${chain}">${chainLabel}</span>
           <span class="amount">${fmtUSD(r.ev.amount)}</span>
         </div>`;
     }).join('');
   }
-
-  // Tick ticker row times every few seconds without re-running events.
   setInterval(() => {
     if (!tickerRows.length) return;
     const host = document.getElementById('tickerRows');
@@ -1238,56 +897,42 @@
     });
   }, 3000);
 
-  /* ------------------------------------------------------------------ */
-  /* Phase A event source: representative seeded queue.                 */
-  /* When the real feed is added, replace `nextEvent()` with a WS push. */
-  /* ------------------------------------------------------------------ */
   function nextEvent() {
-    // Distribution roughly mirrors the real cross-chain pattern:
-    // - Most events are transfers, not mints/burns.
-    // - Mints/burns lean Ethereum (where most issuance happens).
-    // - Average sizes differ by chain (ETH has bigger tickets).
+    /* Three event types only: mint, burn, bridge.
+       Mints are most common (the headline story), burns next, bridges
+       rarest (real bridges move occasionally — they're an event, not a
+       constant flow). */
     const r = Math.random();
     let type, amount, chain;
-    if (r < 0.10) {
+    if (r < 0.55) {
       type = 'mint';
-      chain = Math.random() < 0.75 ? 'eth' : 'xrpl';
+      chain = Math.random() < 0.78 ? 'eth' : 'xrpl';
       amount = chain === 'eth'
         ? 250_000 + Math.random() * 4_750_000
         : 50_000  + Math.random() * 950_000;
-    } else if (r < 0.18) {
+    } else if (r < 0.85) {
       type = 'burn';
       chain = Math.random() < 0.75 ? 'eth' : 'xrpl';
       amount = chain === 'eth'
         ? 100_000 + Math.random() * 2_400_000
         : 25_000  + Math.random() * 475_000;
     } else {
-      type = 'transfer';
-      chain = Math.random() < 0.6 ? 'eth' : 'xrpl';
-      amount = chain === 'eth'
-        ? 5_000 + Math.random() * 495_000
-        : 500   + Math.random() * 99_500;
+      type = 'bridge';
+      chain = Math.random() < 0.5 ? 'eth' : 'xrpl';
+      amount = 25_000 + Math.random() * 475_000;
     }
     return { type, chain, amount: Math.round(amount) };
   }
 
   function loop() {
     processEvent(nextEvent());
-    // Slower cadence so each event has time to land theatrically.
-    // Mint/burn events are expensive to read; transfers come quicker.
-    // 1.5s..4s between events on average.
-    const next = 1500 + Math.random() * 2500;
+    const next = 1100 + Math.random() * 1900;
     setTimeout(loop, next);
   }
-  // Initial render before first event lands.
   renderState();
-  // Warm-up: fire a deliberate mint first so the page opens with a
-  // visible "what is this thing doing" moment instead of dead canvas.
-  setTimeout(() => {
-    processEvent({ type: 'mint', chain: 'eth', amount: 1_500_000 });
-  }, 600);
-  setTimeout(loop, 2200);
+  setTimeout(loop, 400);
 })();
 </script>
+{{ explainer_js() }}
 </body>
 </html>
