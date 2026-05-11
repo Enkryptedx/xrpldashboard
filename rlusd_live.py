@@ -94,7 +94,23 @@ XRPL_AGGREGATE_PAGE = 400
 XRPL_AGGREGATE_MAX_PAGES = 20
 
 CACHE_TTL = int(os.environ.get("RLUSD_CACHE_TTL_SECONDS", "60"))
-ETH_RPC = os.environ.get("ETH_RPC", "https://1rpc.io/eth")
+# Multi-RPC fallback. The 24h aggregate walk fires ~17 calls per cache
+# miss which blew past 1rpc.io's free-tier limits in production. We try
+# each endpoint in order, falling through on rate-limit/auth/network
+# failures so the page survives any single node going dark or throttling.
+# ETH_RPC, when set, prepends to the list (lets prod override without a
+# code change). publicnode.com has the most generous free limits we've
+# tested; llamarpc and ankr are healthy backups.
+_DEFAULT_ETH_RPCS = [
+    "https://ethereum-rpc.publicnode.com",
+    "https://eth.llamarpc.com",
+    "https://rpc.ankr.com/eth",
+    "https://1rpc.io/eth",
+]
+_env_eth_rpc = os.environ.get("ETH_RPC")
+ETH_RPCS = ([_env_eth_rpc] if _env_eth_rpc else []) + _DEFAULT_ETH_RPCS
+# Kept for backward compat / debug surfaces that read a single endpoint.
+ETH_RPC = ETH_RPCS[0]
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
 HTTP_TIMEOUT = 9.0
@@ -109,15 +125,16 @@ _cache: dict[str, Any] = {"data": None, "fetched_at": 0.0}
 
 # --- Ethereum (public JSON-RPC) ---------------------------------------------
 
-def _eth_rpc(method: str, params: list) -> Any:
-    """POST a JSON-RPC request to the public Ethereum node. Returns the
-    `result` field; raises RuntimeError if the node returns a JSON-RPC
-    error envelope. Uses stdlib urllib to avoid an extra dependency."""
+def _eth_rpc_one(endpoint: str, method: str, params: list) -> Any:
+    """POST a JSON-RPC request to a single Ethereum endpoint. Returns the
+    `result` field; raises RuntimeError on network failure or JSON-RPC
+    error envelope (including rate-limit responses, which come back as
+    error envelopes from most public nodes)."""
     payload = json.dumps(
         {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     ).encode("utf-8")
     req = urlrequest.Request(
-        ETH_RPC,
+        endpoint,
         data=payload,
         headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
         method="POST",
@@ -126,13 +143,28 @@ def _eth_rpc(method: str, params: list) -> Any:
         with urlrequest.urlopen(req, timeout=HTTP_TIMEOUT, context=_SSL_CONTEXT) as resp:
             body = resp.read()
     except URLError as e:
-        raise RuntimeError(f"eth_rpc {method}: {type(e).__name__}: {e}")
+        raise RuntimeError(f"{endpoint}: {type(e).__name__}: {e}")
     data = json.loads(body.decode("utf-8"))
     if "error" in data:
         err = data["error"]
         msg = err.get("message", err) if isinstance(err, dict) else err
-        raise RuntimeError(f"eth_rpc {method}: {msg}")
+        raise RuntimeError(f"{endpoint}: {msg}")
     return data.get("result")
+
+
+def _eth_rpc(method: str, params: list) -> Any:
+    """Try each ETH_RPCS endpoint in order; return the first success. Rate
+    limits, auth failures, and network errors fall through to the next
+    node. Raises only if every endpoint fails — message includes the
+    last error so the surfaced cause is the most-recent attempt."""
+    last_err: Exception | None = None
+    for endpoint in ETH_RPCS:
+        try:
+            return _eth_rpc_one(endpoint, method, params)
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(f"eth_rpc {method}: all endpoints failed: {last_err}")
 
 
 def _decode_eth_amount(data_hex: str) -> float:
