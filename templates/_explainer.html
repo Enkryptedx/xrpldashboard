@@ -34,35 +34,38 @@
 .explainer-chip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
-  border: 1px solid rgba(34,211,238,0.45); color: var(--cyan);
+  border: 1px solid rgba(34,211,238,0.45); color: var(--cyan, #22d3ee);
   background: rgba(34,211,238,0.06); font-size: 0.78rem;
-  font-family: var(--mono); font-weight: 600;
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace); font-weight: 600;
   user-select: none; line-height: 1; vertical-align: middle;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .explainer-summary:hover .explainer-chip,
-.explainer-summary:focus-visible .explainer-chip { border-color: var(--cyan); color: var(--cyan); }
-.explainer.is-open .explainer-chip { background: var(--cyan); color: #0a0e27;
-                                     border-color: var(--cyan); }
+.explainer-summary:focus-visible .explainer-chip { border-color: var(--cyan, #22d3ee); color: var(--cyan, #22d3ee); }
+.explainer.is-open .explainer-chip { background: var(--cyan, #22d3ee); color: #0a0e27;
+                                     border-color: var(--cyan, #22d3ee); }
+/* Fallbacks on every var() — the explainer is shared across templates
+   that use different variable names (--card vs --bg-card etc). Without
+   fallbacks the card renders transparent and bleeds into content below. */
 .explainer-card {
   display: none;
   position: absolute; top: 28px; left: -4px; z-index: 50;
-  background: var(--card); border: 1px solid var(--cyan);
+  background: var(--card, #141832); border: 1px solid var(--cyan, #22d3ee);
   border-radius: 8px; padding: 12px 14px;
   width: 320px; max-width: calc(100vw - 32px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  font-size: 0.85rem; line-height: 1.5; color: var(--text);
+  font-size: 0.85rem; line-height: 1.5; color: var(--text, #e6e9f2);
   font-weight: 400;
   text-align: left; text-transform: none; letter-spacing: normal;
 }
 .explainer.is-open .explainer-card { display: block; }
 .explainer-title { display: block; font-weight: 600; margin-bottom: 6px;
-                   color: var(--cyan); font-size: 0.72rem;
+                   color: var(--cyan, #22d3ee); font-size: 0.72rem;
                    text-transform: uppercase; letter-spacing: 0.06em; }
-.explainer-body { display: block; color: var(--text); }
-.explainer-source { display: block; color: var(--muted); font-size: 0.75rem;
+.explainer-body { display: block; color: var(--text, #e6e9f2); }
+.explainer-source { display: block; color: var(--muted, #8090b0); font-size: 0.75rem;
                     margin-top: 8px; padding-top: 6px;
-                    border-top: 1px solid var(--border); }
+                    border-top: 1px solid var(--border, rgba(255,255,255,0.08)); }
 @media (max-width: 480px) {
   .explainer-card { width: calc(100vw - 32px); left: -50px; }
 }
