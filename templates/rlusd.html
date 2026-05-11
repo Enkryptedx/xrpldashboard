@@ -290,9 +290,10 @@
       font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase;
     }
-    .ticker .row .badge.mint { background: rgba(34,197,94,0.12); color: var(--green); }
-    .ticker .row .badge.burn { background: rgba(239,68,68,0.12); color: var(--red); }
-    .ticker .row .badge.xfer { background: rgba(160,180,210,0.10); color: var(--muted); }
+    .ticker .row .badge.mint  { background: rgba(34,197,94,0.12); color: var(--green); }
+    .ticker .row .badge.burn  { background: rgba(239,68,68,0.12); color: var(--red); }
+    .ticker .row .badge.xfer  { background: rgba(99,160,255,0.12); color: var(--eth); }
+    .ticker .row .badge.trade { background: rgba(244,196,48,0.14); color: var(--xrpl); }
     .ticker .row .chain {
       font-family: var(--mono); font-size: 0.74rem; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.06em;
@@ -461,8 +462,10 @@
   <div class="ticker">
     <h3>Live event log</h3>
     <div class="legend">
-      Most-recent treasury actions on either chain. Mints &amp; burns hit
-      the issuer; transfers move RLUSD between holders.
+      Most-recent RLUSD activity on either chain. <b style="color:var(--green)">Mints</b>
+      and <b style="color:var(--red)">burns</b> are rare treasury actions at the issuer;
+      <b style="color:var(--eth)">transfers</b> move RLUSD between Ethereum holders;
+      <b style="color:var(--xrpl)">trades</b> are XRPL DEX orders involving RLUSD.
     </div>
     <div id="tickerRows"></div>
   </div>
@@ -944,13 +947,18 @@
   }
 
   function eventLabel(ev) {
-    if (ev.type === 'mint')   return ev.chain === 'eth' ? 'new RLUSD on Ethereum' : 'new RLUSD on XRPL';
-    if (ev.type === 'burn')   return ev.chain === 'eth' ? 'RLUSD removed from Ethereum' : 'RLUSD removed from XRPL';
-    return ev.chain === 'eth' ? 'bridged · Ethereum → XRPL' : 'bridged · XRPL → Ethereum';
+    if (ev.type === 'mint')     return ev.chain === 'eth' ? 'new RLUSD on Ethereum' : 'new RLUSD on XRPL';
+    if (ev.type === 'burn')     return ev.chain === 'eth' ? 'RLUSD removed from Ethereum' : 'RLUSD removed from XRPL';
+    if (ev.type === 'transfer') return 'RLUSD moved between holders';
+    if (ev.type === 'trade')    return 'RLUSD order on the XRPL DEX';
+    if (ev.type === 'bridge')   return ev.chain === 'eth' ? 'bridged · Ethereum → XRPL' : 'bridged · XRPL → Ethereum';
+    return ev.type;
   }
   function eventBadge(ev) {
-    if (ev.type === 'mint') return 'mint';
-    if (ev.type === 'burn') return 'burn';
+    if (ev.type === 'mint')     return 'mint';
+    if (ev.type === 'burn')     return 'burn';
+    if (ev.type === 'transfer') return 'xfer';
+    if (ev.type === 'trade')    return 'trade';
     return 'xfer';
   }
   function bumpCounters(ev) {
@@ -994,7 +1002,7 @@
         <div class="row empty">
           <span class="when">—</span>
           <span class="what">
-            <span class="addr">No mints or burns in the recent lookback window. Waiting for the next treasury action.</span>
+            <span class="addr">No RLUSD activity in the recent lookback window. Waiting for the next on-chain event.</span>
           </span>
         </div>`;
       return;

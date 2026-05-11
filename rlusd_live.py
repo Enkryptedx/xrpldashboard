@@ -146,7 +146,10 @@ def fetch_eth() -> dict:
     except Exception as e:
         out["error"] = f"eth_supply: {type(e).__name__}: {e}"
 
-    # Recent Transfer events (filtered to mint/burn by zero-address topic).
+    # All Transfer events in the lookback window. Mints/burns are rare
+    # (often zero per day), so showing only those leaves the live log
+    # looking dead even when hundreds of holder-to-holder transfers are
+    # happening. Classify by topic and emit all three event types.
     try:
         latest_hex = _eth_rpc("eth_blockNumber", [])
         latest = int(latest_hex, 16)
@@ -174,15 +177,17 @@ def fetch_eth() -> dict:
                 # Approximate timestamp from latest block + average block time.
                 ts = now_unix - max(0, latest - blk) * ETH_SECONDS_PER_BLOCK
                 if from_t == ZERO_TOPIC:
-                    out["events"].append({
-                        "type": "mint", "chain": "eth",
-                        "amount": amount, "tx": tx_hash, "ts": ts,
-                    })
+                    ev_type = "mint"
                 elif to_t == ZERO_TOPIC:
-                    out["events"].append({
-                        "type": "burn", "chain": "eth",
-                        "amount": amount, "tx": tx_hash, "ts": ts,
-                    })
+                    ev_type = "burn"
+                else:
+                    ev_type = "transfer"
+                out["events"].append({
+                    "type": ev_type, "chain": "eth",
+                    "amount": amount, "tx": tx_hash, "ts": ts,
+                    "from": "0x" + from_t[-40:],
+                    "to": "0x" + to_t[-40:],
+                })
     except Exception as e:
         prev = out["error"]
         out["error"] = (
@@ -220,7 +225,11 @@ def fetch_xrpl() -> dict:
     except Exception as e:
         out["error"] = f"xrpl_supply: {type(e).__name__}: {e}"
 
-    # account_tx on the issuer → recent mint/burn payments.
+    # account_tx on the issuer → recent activity. Payments to/from the
+    # issuer are mints/burns (rare). OfferCreates against RLUSD on the
+    # XRPL DEX are constant and represent real RLUSD price discovery,
+    # so we surface them as "trade" events. Without these the XRPL feed
+    # would look dead even when the DEX is busy.
     try:
         resp = client.request(AccountTx(
             account=XRPL_ISSUER,
@@ -232,37 +241,58 @@ def fetch_xrpl() -> dict:
         for entry in (resp.result or {}).get("transactions", []):
             tx = entry.get("tx") or entry.get("tx_json") or {}
             meta = entry.get("meta") or {}
-            if tx.get("TransactionType") != "Payment":
-                continue
-            delivered = meta.get("delivered_amount")
-            if not isinstance(delivered, dict):
-                src = tx.get("Amount")
-                delivered = src if isinstance(src, dict) else None
-            if not isinstance(delivered, dict):
-                continue
-            if not _xrpl_currency_match(delivered.get("currency")):
-                continue
-            if delivered.get("issuer") != XRPL_ISSUER:
-                continue
-            try:
-                amount = float(delivered.get("value", "0"))
-            except (TypeError, ValueError):
-                continue
-            sender = tx.get("Account", "")
-            destination = tx.get("Destination", "")
-            if sender == XRPL_ISSUER and destination != XRPL_ISSUER:
-                ev_type = "mint"
-            elif destination == XRPL_ISSUER and sender != XRPL_ISSUER:
-                ev_type = "burn"
+            tx_type = tx.get("TransactionType")
+            ts = int(tx.get("date", 0)) + XRPL_EPOCH_OFFSET
+            tx_hash = tx.get("hash", "")
+
+            if tx_type == "Payment":
+                delivered = meta.get("delivered_amount")
+                if not isinstance(delivered, dict):
+                    src = tx.get("Amount")
+                    delivered = src if isinstance(src, dict) else None
+                if not isinstance(delivered, dict):
+                    continue
+                if not _xrpl_currency_match(delivered.get("currency")):
+                    continue
+                if delivered.get("issuer") != XRPL_ISSUER:
+                    continue
+                try:
+                    amount = float(delivered.get("value", "0"))
+                except (TypeError, ValueError):
+                    continue
+                sender = tx.get("Account", "")
+                destination = tx.get("Destination", "")
+                if sender == XRPL_ISSUER and destination != XRPL_ISSUER:
+                    ev_type = "mint"
+                elif destination == XRPL_ISSUER and sender != XRPL_ISSUER:
+                    ev_type = "burn"
+                else:
+                    continue
+                out["events"].append({
+                    "type": ev_type, "chain": "xrpl",
+                    "amount": amount, "tx": tx_hash, "ts": ts,
+                })
+            elif tx_type == "OfferCreate":
+                # Find whichever side of the offer is denominated in RLUSD.
+                rlusd_amount = None
+                for side in (tx.get("TakerPays"), tx.get("TakerGets")):
+                    if (isinstance(side, dict)
+                            and _xrpl_currency_match(side.get("currency"))
+                            and side.get("issuer") == XRPL_ISSUER):
+                        try:
+                            rlusd_amount = float(side.get("value", "0"))
+                        except (TypeError, ValueError):
+                            rlusd_amount = None
+                        break
+                if rlusd_amount is None:
+                    continue
+                out["events"].append({
+                    "type": "trade", "chain": "xrpl",
+                    "amount": rlusd_amount, "tx": tx_hash, "ts": ts,
+                })
             else:
                 continue
-            ts = int(tx.get("date", 0)) + XRPL_EPOCH_OFFSET
-            out["events"].append({
-                "type": ev_type, "chain": "xrpl",
-                "amount": amount,
-                "tx": tx.get("hash", ""),
-                "ts": ts,
-            })
+
             if len(out["events"]) >= XRPL_MAX_EVENTS:
                 break
     except Exception as e:
