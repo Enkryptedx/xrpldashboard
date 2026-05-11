@@ -172,11 +172,23 @@
         <td>{{ _('5 min') }}</td>
         <td><code>account_info</code> {{ _('on labeled cold wallets') }}</td>
       </tr>
+      <tr>
+        <td class="route">/rlusd<br>{{ _('cross-chain supply, mint/burn events') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('60 sec') }}</td>
+        <td>{{ _('Ethereum public JSON-RPC') }} (<code>1rpc.io/eth</code>) + {{ _('XRPL public node') }} (<code>s1.ripple.com</code>)</td>
+      </tr>
+      <tr>
+        <td class="route">/api/rlusd/state</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('60 sec') }}</td>
+        <td><code>eth_call</code>, <code>eth_getLogs</code>, <code>gateway_balances</code>, <code>account_tx</code></td>
+      </tr>
     </tbody>
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five of the nine surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://s2.ripple.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, and cold-storage balances — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
+    {{ _('Five of the eleven surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://s2.ripple.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, cold-storage balances, and the RLUSD cross-chain feed — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
@@ -187,7 +199,15 @@
   </p>
   <ul>
     <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Used by the worker for streaming, and by the browser for per-wallet real-time subscriptions.') }}</li>
-    <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse and ledger-tip endpoints.') }}</li>
+    <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
+  </ul>
+
+  <h3>{{ _('Ethereum nodes') }}</h3>
+  <p>
+    {{ _('RLUSD is a stablecoin that lives on Ethereum as well as the XRP Ledger. To surface the Ethereum-side supply and treasury activity we query a public Ethereum JSON-RPC endpoint directly — no API key, no third-party gateway. The node only sees standard public reads (totalSupply, recent Transfer logs) and cannot lie about contract state without producing an inconsistent block that the rest of the Ethereum network would reject.') }}
+  </p>
+  <ul>
+    <li><strong><code>1rpc.io/eth</code></strong> — {{ _('Public, key-free Ethereum JSON-RPC endpoint. Used by /api/rlusd/state to read the RLUSD ERC-20 totalSupply and recent Transfer logs at contract 0x8292…17eD.') }}</li>
   </ul>
   <p>
     <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('We rely on them today because they are the most convenient public endpoints for the XRPL. The plan is to migrate primary traffic to the community-operated cluster') }}
@@ -231,6 +251,7 @@
       <code>/tokens</code>) {{ _('show data up to the last successful write. Per-page WebSockets continue working independently.') }}</li>
     <li><strong>{{ _('Reserve values.') }}</strong> {{ _('The base + per-object reserve shown on each wallet page is pulled live from') }}
       <code>server_info</code> {{ _('(validated_ledger), cached 10 minutes. Reserves only change via on-chain amendment, so the cache is safe; the literal numbers in the calculation will reflect the network\'s current parameters automatically.') }}</li>
+    <li><strong>{{ _('RLUSD mint/burn window.') }}</strong> {{ _('The 24h activity cells on /rlusd reflect the events surfaced in our query window — public Ethereum RPCs cap eth_getLogs at ~1024 blocks (≈ 3.3 hours), and the XRPL account_tx call returns the most recent 80 issuer-touching transactions, which on a highly-traded issuer like RLUSD can span only minutes. Treasury-level mint/burn events are themselves sparse (often only a handful per week), so these cells read $0 most of the time. The cross-chain supply totals on the same page are not affected — they come from totalSupply and gateway_balances and are always current.') }}</li>
   </ul>
 
   <h2>{{ _('Infrastructure') }}</h2>
