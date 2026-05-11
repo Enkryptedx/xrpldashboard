@@ -97,6 +97,25 @@
       position: absolute; inset: 0; width: 100%; height: 100%;
       display: block;
     }
+    .live-pill {
+      position: absolute; top: 12px; right: 14px; z-index: 2;
+      display: none; align-items: center; gap: 7px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.45);
+      color: var(--green); font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+    .live-pill.on { display: inline-flex; }
+    .live-pill .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      animation: live-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.55; transform: scale(0.82); }
+    }
 
     .headline {
       position: relative; padding: 6px 22px 14px;
@@ -300,6 +319,7 @@
 
     <div class="press-stage">
       <canvas id="pressCanvas"></canvas>
+      <span class="live-pill" id="liveBadge"><span class="dot"></span>LIVE</span>
       <span id="ethSupply" hidden>—</span>
       <span id="xrplSupply" hidden>—</span>
     </div>
@@ -975,6 +995,8 @@
     if (r) r.style.display = 'none';
     const chip = document.getElementById('previewChip');
     if (chip) chip.style.display = 'none';
+    const badge = document.getElementById('liveBadge');
+    if (badge) badge.classList.add('on');
   }
 
   function applyLiveSnapshot(data) {
