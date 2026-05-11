@@ -67,29 +67,11 @@
       nodes.forEach(function (n) { io.observe(n); });
     }
 
-    // Page-wide cursor spotlight. rAF-throttled so it stays cheap even
-    // on a slow phone. Skipped under prefers-reduced-motion.
-    if (!reduced) {
-      var mx = 0, my = 0, pending = false;
-      var root = document.documentElement;
-      window.addEventListener('mousemove', function (e) {
-        mx = e.clientX; my = e.clientY;
-        if (!pending) {
-          pending = true;
-          requestAnimationFrame(function () {
-            root.style.setProperty('--mx', mx + 'px');
-            root.style.setProperty('--my', my + 'px');
-            pending = false;
-          });
-        }
-      }, { passive: true });
-    }
-
-    // Per-card hover spotlight on .stat-pill and .vibes-spot. Auto-tag
-    // common card surfaces first so the effect works site-wide without
-    // per-template class wrangling. Selectors scoped to discrete
-    // cards/rows — not paragraphs, not the body — to keep the glow
-    // anchored to surfaces a user expects to "light up".
+    // Cursor-tracking spotlight on .stat-pill and .vibes-spot.
+    // Auto-tag common card surfaces first so the effect works site-wide
+    // without per-template class wrangling. Selectors scoped to actual
+    // discrete cards/rows — not paragraphs, not the body — to keep the
+    // glow anchored to surfaces a user expects to "light up".
     if (!reduced) {
       var autoSel = [
         '.card',

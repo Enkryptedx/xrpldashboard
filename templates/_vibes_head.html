@@ -44,32 +44,10 @@
     body::before { animation: none; }
   }
 
-  /* Page-wide cursor spotlight. Always visible, always follows the
-     mouse — soft cyan radial that paints the whole viewport. JS sets
-     --mx/--my on <html>. Sits on top of every surface with
-     pointer-events:none and mix-blend-mode:screen, so dark cards
-     beneath visibly brighten as the cursor passes over them. */
-  html { --mx: 50vw; --my: 50vh; }
-  body::after {
-    content: "";
-    position: fixed; inset: 0;
-    background: radial-gradient(
-      560px circle at var(--mx) var(--my),
-      rgba(34,211,238,0.55) 0%,
-      rgba(34,211,238,0.28) 25%,
-      transparent 65%);
-    pointer-events: none;
-    z-index: 2147483646;
-    mix-blend-mode: screen;
-    will-change: background;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    body::after { display: none; }
-  }
-
-  /* Per-card cursor-tracking glow — fires on :hover so the surface the
-     user is actually pointing at "lights up". JS sets --vx/--vy on the
-     element. Stacks on top of the body spotlight. */
+  /* Cursor-tracking spotlight on any element with .vibes-spot.
+     The :hover overlay also auto-applies to .stat-pill, .stat, .pill,
+     .row-link, .event, .stat-pill, etc. Pages opt in by adding the
+     class or relying on the auto-targets below. JS sets --vx/--vy. */
   .vibes-spot,
   .stat-pill {
     position: relative; overflow: hidden;
@@ -80,20 +58,13 @@
     position: absolute; inset: -1px;
     border-radius: inherit;
     background: radial-gradient(
-      400px circle at var(--vx, 50%) var(--vy, 50%),
-      rgba(34,211,238,0.55), transparent 60%);
-    opacity: 0; transition: opacity 0.18s;
+      360px circle at var(--vx, 50%) var(--vy, 50%),
+      rgba(34,211,238,0.20), transparent 55%);
+    opacity: 0; transition: opacity 0.25s;
     pointer-events: none;
   }
   .vibes-spot:hover::before,
   .stat-pill:hover::before { opacity: 1; }
-  .vibes-spot:hover,
-  .stat-pill:hover {
-    border-color: rgba(34,211,238,0.35);
-    box-shadow: 0 0 0 1px rgba(34,211,238,0.18),
-                0 8px 24px -8px rgba(34,211,238,0.25);
-    transition: border-color 0.18s, box-shadow 0.18s;
-  }
 
   /* When an explainer popover opens inside a spot/pill, escape the
      overflow:hidden clip AND hoist the tile above later positioned
