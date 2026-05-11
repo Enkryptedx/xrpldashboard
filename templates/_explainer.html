@@ -49,7 +49,9 @@
    fallbacks the card renders transparent and bleeds into content below. */
 .explainer-card {
   display: none;
-  position: absolute; top: 28px; left: -4px; z-index: 50;
+  /* top:38px clears the 20px chip plus a finger/cursor-sized gap so the
+     card never opens directly under the tap point. */
+  position: absolute; top: 38px; left: -4px; z-index: 50;
   background: var(--card, #141832); border: 1px solid var(--cyan, #22d3ee);
   border-radius: 8px; padding: 12px 14px;
   width: 320px; max-width: calc(100vw - 32px);
