@@ -44,10 +44,31 @@
     body::before { animation: none; }
   }
 
-  /* Cursor-tracking spotlight on any element with .vibes-spot.
-     The :hover overlay also auto-applies to .stat-pill, .stat, .pill,
-     .row-link, .event, .stat-pill, etc. Pages opt in by adding the
-     class or relying on the auto-targets below. JS sets --vx/--vy. */
+  /* Page-wide cursor spotlight. Always visible, always follows the
+     mouse — soft cyan radial that paints the whole viewport. JS sets
+     --mx/--my on <html>. Stays under content (z-index:-1) and behind
+     the drifting grid so it never blocks clicks. */
+  html { --mx: 50vw; --my: 50vh; }
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background: radial-gradient(
+      420px circle at var(--mx) var(--my),
+      rgba(34,211,238,0.12), transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body::after { display: none; }
+  }
+  @media (hover: none) {
+    /* Touch devices — no cursor, no spotlight. */
+    body::after { display: none; }
+  }
+
+  /* Per-card cursor-tracking glow — fires on :hover so the surface the
+     user is actually pointing at "lights up". JS sets --vx/--vy on the
+     element. Stacks on top of the body spotlight. */
   .vibes-spot,
   .stat-pill {
     position: relative; overflow: hidden;
