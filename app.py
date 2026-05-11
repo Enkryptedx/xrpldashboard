@@ -555,6 +555,7 @@ def index():
     data = scan_all_pools_cached()
     pulse = fetch_pulse_cached()
     timestamp_str = data["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp_iso = data["timestamp"].strftime("%Y-%m-%dT%H:%M:%SZ")
     cached_age = data.get("cached_age_seconds", 0.0)
     _featured, _top_tier, _other, enriched = _tier_pools(data["pools"])
     tvl_shares = _compute_tvl_shares(enriched, top_n=5)
@@ -585,6 +586,7 @@ def index():
     return render_template(
         "index.html",
         timestamp_str=timestamp_str,
+        timestamp_iso=timestamp_iso,
         cached_age=cached_age,
         pulse=pulse,
         top_pools=enriched[:5],

@@ -476,7 +476,11 @@
           </span>
           {% endif %}
           <span class="cached-meta">
-            {{ timestamp_str }} · {{ _('cached') }} <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>{{ _('s ago') }}
+            {# Server emits UTC for SEO/no-JS fallback; inline JS below
+               rewrites it to the visitor's local timezone so the hero
+               header doesn't read 12:45 UTC when the reader is at 8:45am
+               local. #}
+            <span id="cached-ts" data-iso="{{ timestamp_iso }}">{{ timestamp_str }}</span> · {{ _('cached') }} <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>{{ _('s ago') }}
           </span>
         </div>
       </div>
@@ -687,6 +691,29 @@
     // place (no full page reload) so the globe, ledger ticker, wallet form,
     // and any open explainer chips don't blink/reset.
     (function () {
+      // Swap the server-rendered UTC timestamp for the visitor's local
+      // timezone. Server renders "2026-05-11 12:45:43 UTC" so search bots
+      // and no-JS readers still get a deterministic value; here we rewrite
+      // it to whatever Intl.DateTimeFormat picks for the user's locale.
+      var tsEl = document.getElementById('cached-ts');
+      if (tsEl && tsEl.dataset.iso) {
+        var d = new Date(tsEl.dataset.iso);
+        if (!isNaN(d.getTime())) {
+          try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+            var fmt = new Intl.DateTimeFormat(undefined, {
+              year: 'numeric', month: 'short', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+              timeZoneName: 'short',
+            }).format(d);
+            tsEl.textContent = fmt;
+            tsEl.title = d.toISOString() + (tz ? ' · ' + tz : '');
+          } catch (_) { /* leave UTC fallback in place */ }
+        }
+      }
+    })();
+
+    (function () {
       var ageEl = document.getElementById('age-ticker');
       if (!ageEl) return;
       var start = parseInt(ageEl.dataset.age, 10) || 0;
@@ -729,6 +756,21 @@
             } else {
               start = 0;
               t0 = Date.now();
+            }
+            var freshTs = doc.getElementById('cached-ts');
+            var liveTs = document.getElementById('cached-ts');
+            if (freshTs && liveTs && freshTs.dataset.iso) {
+              liveTs.dataset.iso = freshTs.dataset.iso;
+              var d2 = new Date(freshTs.dataset.iso);
+              if (!isNaN(d2.getTime())) {
+                try {
+                  liveTs.textContent = new Intl.DateTimeFormat(undefined, {
+                    year: 'numeric', month: 'short', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    timeZoneName: 'short',
+                  }).format(d2);
+                } catch (_) { liveTs.textContent = freshTs.textContent; }
+              }
             }
           })
           .catch(function () { /* silent — retry next tick */ })
