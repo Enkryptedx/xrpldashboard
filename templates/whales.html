@@ -187,7 +187,17 @@
     }
 
     .event { background: var(--card); border: 1px solid var(--border);
-             border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+             border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+             position: relative; }
+    /* Watchlist hits — either side of the transfer is in named_accounts.
+       Adds a cyan left rail and a hint of background tint so curated
+       activity reads visually distinct from generic large transfers
+       without leaving the same row shape. */
+    .event.tagged {
+      border-left: 3px solid var(--cyan);
+      padding-left: 12px;
+      background: linear-gradient(90deg, rgba(34,211,238,0.05), var(--card) 28%);
+    }
     .event-top { display: flex; justify-content: space-between; align-items: center;
                  gap: 10px; margin-bottom: 6px; }
     .event-meta { display: flex; gap: 8px; align-items: center; font-size: 0.78rem;
@@ -334,7 +344,7 @@
   <div class="event-list" data-event-list>
   {% if events %}
     {% for e in events %}
-    <div class="event vibes-spot">
+    <div class="event vibes-spot{% if e.from_label or e.to_label %} tagged{% endif %}">
       <div class="event-top">
         <div class="event-meta">
           <span class="badge {{ e.type }}">{{ e.type_display }}</span>

@@ -18,6 +18,11 @@
   html, body {
     font-family: var(--sys);
     font-feature-settings: "ss01", "cv11";
+    /* Tabular numerals so columns of dollar amounts and counts align
+       across rows. Geist supports `tnum` natively; the OpenType feature
+       cascades into descendants (whales/pools tables, supply readouts,
+       wallet pulse counters, etc.) without per-class opt-in. */
+    font-variant-numeric: tabular-nums;
   }
 
   /* Ambient drifting grid behind everything. Masked to fade at edges

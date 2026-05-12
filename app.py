@@ -826,8 +826,15 @@ def health():
     pool_finished = scan_finished is not None or (
         ranker_hb is not None and (amms_in_index or 0) > 0
     )
+    # Catalogue exists but the worker hasn't touched it recently. The page
+    # used to render this as a healthy "ready" badge with an "all systems
+    # normal" banner, which lies if the ranker has been silent for hours.
+    pool_stale = pool_finished and not scan_alive
 
-    overall = "ok" if (scan_alive or pool_finished) and stream_alive else "degraded"
+    # Banner downgrades when any subsystem is stale, not just when one
+    # disappears outright. Without this, a 40h-old pool tracker still
+    # rolled up to "ok" because `pool_finished` was true.
+    overall = "ok" if scan_alive and stream_alive else "degraded"
 
     # Status code is the contract for uptime monitors (UptimeRobot etc.) —
     # keyword-matching the HTML body is fragile. Body stays informative for
@@ -843,6 +850,7 @@ def health():
         scan={
             "alive": scan_alive,
             "finished": pool_finished,
+            "stale": pool_stale,
             "uptime": _humanize_seconds(scan_uptime),
             "pages": scan_pages,
             "objects_scanned": scan_state.get("raw_objects_scanned", 0),
@@ -1483,8 +1491,22 @@ def rlusd():
     Live cross-chain feed: Ethereum totalSupply via public JSON-RPC,
     XRPL issuer obligations via Ripple's public node. The page polls
     /api/rlusd/state and falls back to a preview animation if the feed
-    is unavailable."""
-    return render_template("rlusd.html")
+    is unavailable.
+
+    Server-side preflight: the same TTL-cached state the API serves is
+    rendered into the template so first paint and JS-less crawlers see
+    real supply numbers instead of "—" placeholders. The client-side
+    poller still drives live updates once the page hydrates."""
+    initial = None
+    try:
+        from rlusd_live import fetch_state
+        initial = fetch_state()
+    except Exception:
+        # The page degrades to its previous "—" placeholders if the
+        # cross-chain feed is genuinely unavailable — same behavior as
+        # before the SSR preflight existed.
+        pass
+    return render_template("rlusd.html", initial=initial)
 
 
 @app.route("/api/rlusd/state")

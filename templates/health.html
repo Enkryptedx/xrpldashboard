@@ -373,7 +373,9 @@
     </div>
   </details>
 
-  {% set pool_state = 'ok' if (scan.finished or scan.alive) else 'idle' %}
+  {% if scan.stale %}{% set pool_state = 'warn' %}
+  {% elif scan.finished or scan.alive %}{% set pool_state = 'ok' %}
+  {% else %}{% set pool_state = 'idle' %}{% endif %}
   <details class="card-expandable">
     <summary>
       <div class="card">
@@ -381,7 +383,10 @@
         <div class="card-body">
           <div class="title">{{ _('Pool tracker') }}</div>
           <div class="desc">
-            {% if scan.finished %}
+            {% if scan.stale %}
+              {{ _('Catalogue is built but the ranker hasn\'t refreshed recently — tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
+              {{ _('AMM pools as of') }} {% if scan.log_age %}{{ scan.log_age }} {{ _('ago.') }}{% else %}{{ _('the last successful scan.') }}{% endif %}
+            {% elif scan.finished %}
               {{ _('Catalogue of XRPL automated market makers is up to date — tracking') }} <strong>{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</strong>
               {{ _('AMM pools across the ledger.') }}
             {% elif scan.alive %}
@@ -395,7 +400,7 @@
           </div>
         </div>
         <div class="card-state {{ pool_state }}">
-          {% if scan.finished %}{{ _('ready') }}{% elif scan.alive %}{{ _('building') }}{% else %}{{ _('snapshot') }}{% endif %}
+          {% if scan.stale %}{{ _('stale') }}{% elif scan.finished %}{{ _('ready') }}{% elif scan.alive %}{{ _('building') }}{% else %}{{ _('snapshot') }}{% endif %}
         </div>
         <span class="card-chev" aria-hidden="true">▾</span>
       </div>

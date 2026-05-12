@@ -1,4 +1,33 @@
 {% from "_explainer.html" import explainer, explainer_css, explainer_js %}
+{# Server-side preflight values. The /rlusd route reads the same TTL-cached
+   cross-chain state the API serves, so the page renders with real supply
+   numbers instead of "—" placeholders. Crawlers and the first JS-less
+   paint both see truthful data; the client-side poller takes over for
+   live updates. Falls back to "—" if the SSR fetch failed. #}
+{% set eth_supply = (initial.eth.supply if initial and initial.eth else None) %}
+{% set xrpl_supply = (initial.xrpl.supply if initial and initial.xrpl else None) %}
+{% set eth_mints = (initial.eth.mints_24h if initial and initial.eth else None) %}
+{% set eth_burns = (initial.eth.burns_24h if initial and initial.eth else None) %}
+{% set xrpl_mints = (initial.xrpl.mints_24h if initial and initial.xrpl else None) %}
+{% set xrpl_burns = (initial.xrpl.burns_24h if initial and initial.xrpl else None) %}
+{% set total_supply = (eth_supply + xrpl_supply) if (eth_supply is not none and xrpl_supply is not none) else None %}
+{% set total_mints = (eth_mints + xrpl_mints) if (eth_mints is not none and xrpl_mints is not none) else None %}
+{% set total_burns = (eth_burns + xrpl_burns) if (eth_burns is not none and xrpl_burns is not none) else None %}
+{% set net_24h = (total_mints - total_burns) if (total_mints is not none and total_burns is not none) else None %}
+{% macro fmt_usd(n) -%}
+  {%- if n is none -%}—
+  {%- elif n >= 1000000000 -%}${{ "%.2f"|format(n / 1000000000) }}B
+  {%- elif n >= 1000000 -%}${{ "%.2f"|format(n / 1000000) }}M
+  {%- elif n >= 1000 -%}${{ "%.0f"|format(n / 1000) }}K
+  {%- else -%}${{ "{:,}".format(n|int) }}
+  {%- endif -%}
+{%- endmacro %}
+{% macro fmt_signed(n) -%}
+  {%- if n is none -%}—
+  {%- elif n >= 0 -%}+{{ fmt_usd(n) }}
+  {%- else -%}−{{ fmt_usd(-n) }}
+  {%- endif -%}
+{%- endmacro %}
 <!doctype html>
 <html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
@@ -371,7 +400,7 @@
         ) }}
       </div>
       <div class="total">
-        <span id="totalHeadline">—</span> RLUSD circulating
+        <span id="totalHeadline">{{ fmt_usd(total_supply) }}</span> RLUSD circulating
         {{ explainer(
           'rlusd-anim',
           'How to read this visual',
@@ -412,19 +441,19 @@
     <div class="press-footer">
       <div class="cell">
         <div class="label">Mints · 24h</div>
-        <div class="value mint" id="mints24h">—</div>
+        <div class="value mint" id="mints24h">{{ fmt_usd(total_mints) }}</div>
       </div>
       <div class="cell">
         <div class="label">Burns · 24h</div>
-        <div class="value burn" id="burns24h">—</div>
+        <div class="value burn" id="burns24h">{{ fmt_usd(total_burns) }}</div>
       </div>
       <div class="cell">
         <div class="label">Net change · 24h</div>
-        <div class="value" id="net24h">—</div>
+        <div class="value {% if net_24h is not none %}{{ 'mint' if net_24h >= 0 else 'burn' }}{% endif %}" id="net24h">{{ fmt_signed(net_24h) }}</div>
       </div>
       <div class="cell">
         <div class="label">Total supply</div>
-        <div class="value" id="totalSupply">—</div>
+        <div class="value" id="totalSupply">{{ fmt_usd(total_supply) }}</div>
       </div>
     </div>
   </div>
@@ -433,13 +462,13 @@
     <div class="chain-card eth">
       <div class="head">
         <h3>Ethereum</h3>
-        <span class="pct" id="ethPct">—</span>
+        <span class="pct" id="ethPct">{% if eth_supply is not none and total_supply %}{{ "%.1f"|format(100 * eth_supply / total_supply) }}% of supply{% else %}—{% endif %}</span>
       </div>
-      <div class="supply" id="ethSupplyBig">—</div>
+      <div class="supply" id="ethSupplyBig">{{ fmt_usd(eth_supply) }}</div>
       <div class="supply-label">RLUSD circulating on Ethereum</div>
       <div class="breakdown">
-        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="ethMints">—</div></div>
-        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="ethBurns">—</div></div>
+        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="ethMints">{{ fmt_usd(eth_mints) }}</div></div>
+        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="ethBurns">{{ fmt_usd(eth_burns) }}</div></div>
       </div>
       <div class="source">
         Contract
@@ -452,13 +481,13 @@
     <div class="chain-card xrpl">
       <div class="head">
         <h3>XRP Ledger</h3>
-        <span class="pct" id="xrplPct">—</span>
+        <span class="pct" id="xrplPct">{% if xrpl_supply is not none and total_supply %}{{ "%.1f"|format(100 * xrpl_supply / total_supply) }}% of supply{% else %}—{% endif %}</span>
       </div>
-      <div class="supply" id="xrplSupplyBig">—</div>
+      <div class="supply" id="xrplSupplyBig">{{ fmt_usd(xrpl_supply) }}</div>
       <div class="supply-label">RLUSD circulating on the XRPL</div>
       <div class="breakdown">
-        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="xrplMints">—</div></div>
-        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="xrplBurns">—</div></div>
+        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="xrplMints">{{ fmt_usd(xrpl_mints) }}</div></div>
+        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="xrplBurns">{{ fmt_usd(xrpl_burns) }}</div></div>
       </div>
       <div class="source">
         Issuer
@@ -489,6 +518,22 @@
 </div>
 
 <script>
+/* Server-side preflight payload. Populated when the /rlusd route was able
+   to read the cross-chain cache at render time, so the canvas and counters
+   start with real numbers instead of seed/placeholder values. Falls back
+   to null when the SSR fetch failed; the client poller then drives state
+   the way it always did. */
+window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
+  ethSupply: {{ initial.eth.supply or 0 }},
+  xrplSupply: {{ initial.xrpl.supply or 0 }},
+  ethMints24h: {{ initial.eth.mints_24h or 0 }},
+  ethBurns24h: {{ initial.eth.burns_24h or 0 }},
+  xrplMints24h: {{ initial.xrpl.mints_24h or 0 }},
+  xrplBurns24h: {{ initial.xrpl.burns_24h or 0 }},
+  events: {{ (initial.events or [])|tojson }}
+}{% else %}null{% endif %};
+</script>
+<script>
 /* =========================================================================
    Two-orb cross-chain visual.
    Each orb's area is proportional to RLUSD supply on that chain. New
@@ -497,13 +542,13 @@
    a comet from one orb to the other (cyan ring on arrival).
    ========================================================================= */
 (function () {
-  /* Starts in preview mode (seeded animation, "—" placeholders, ribbon
-     visible) and flips to true on the first successful /api/rlusd/state
-     poll. While live, server-reported supplies drive the orb sizing and
-     the headline; new mint/burn events animate as they arrive. If the
-     API is unavailable, the preview animation keeps the hero alive
-     instead of showing a dead page. */
-  let LIVE_DATA = false;
+  /* Starts true when the SSR preflight handed us real supply numbers, so
+     the canvas labels and counters render correctly on the very first
+     frame. Falls back to false when the preflight failed; the preview
+     animation then keeps the hero alive until the first /api/rlusd/state
+     poll resolves, at which point it flips to true. */
+  const SSR = window.__RLUSD_INITIAL__;
+  let LIVE_DATA = !!SSR;
 
   const canvas = document.getElementById('pressCanvas');
   const ctx = canvas.getContext('2d');
@@ -529,9 +574,18 @@
     bridge: '125, 211, 252',
   };
 
-  /* Seed state — only used to size the orbs and drive the animation in
-     preview mode. NOT written to the DOM while LIVE_DATA is false. */
-  const state = {
+  /* Seed state. When the SSR preflight succeeded the values are real and
+     LIVE_DATA is already true, so the very first frame draws truthful
+     orbs and counters. Without SSR these stay as preview-mode seeds and
+     get overwritten by the first successful /api/rlusd/state poll. */
+  const state = SSR ? {
+    ethSupply:    SSR.ethSupply,
+    xrplSupply:   SSR.xrplSupply,
+    ethMints24h:  SSR.ethMints24h,
+    ethBurns24h:  SSR.ethBurns24h,
+    xrplMints24h: SSR.xrplMints24h,
+    xrplBurns24h: SSR.xrplBurns24h,
+  } : {
     ethSupply:  660_000_000,
     xrplSupply:  90_000_000,
     ethMints24h: 0, ethBurns24h: 0,
@@ -1215,6 +1269,20 @@
     setTimeout(drainQueue, DRAIN_MS);
   }
 
+  /* SSR bootstrap. When the route handed us real cross-chain state, hide
+     the "live feed unavailable" ribbon path entirely, seed the ticker
+     with the backlog, and mark every backlog tx as already-seen so the
+     first poll doesn't re-animate them as if they were fresh. */
+  if (SSR) {
+    hidePreviewRibbon();
+    const ssrEvents = Array.isArray(SSR.events) ? SSR.events.filter(e => e && e.tx) : [];
+    for (const e of ssrEvents) seenTx.add(e.tx);
+    tickerRows.length = 0;
+    ssrEvents.slice(0, 12).forEach(e => {
+      tickerRows.push({ ev: e, t: (e.ts ? e.ts * 1000 : Date.now()) });
+    });
+    renderTickerRows();
+  }
   renderState();
   setTimeout(previewLoop, 400);
   setTimeout(drainQueue, 500);
