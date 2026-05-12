@@ -2086,13 +2086,21 @@ def admin_stats():
     never the URL — so it doesn't leak into Render/Cloudflare access logs,
     browser history, or Referer headers on outbound clicks. Browsers handle
     the credential prompt natively and remember it per-origin.
-    Wrong/missing key returns 404 (not 401) so the route's existence stays
-    unadvertised to scanners."""
+
+    Returns 401 + WWW-Authenticate challenge on missing/wrong credentials
+    so browsers actually prompt for the password. The /admin/stats path was
+    never a real secret (it's in git history, robots.txt, etc.); the
+    security is constant-time HMAC + rate limit + ADMIN_STATS_KEY entropy,
+    not URL obscurity."""
     expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip()
     auth = request.authorization
     provided = (auth.password or "").strip() if auth and auth.password else ""
     if not expected or not provided or not hmac.compare_digest(provided, expected):
-        return render_template("404.html"), 404
+        return Response(
+            "Authentication required.",
+            status=401,
+            headers={"WWW-Authenticate": 'Basic realm="xrpldashboard admin"'},
+        )
 
     rollups = db.read_page_view_stats(kind="human")
     top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human")
