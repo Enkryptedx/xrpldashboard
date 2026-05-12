@@ -126,25 +126,66 @@
       position: absolute; inset: 0; width: 100%; height: 100%;
       display: block;
     }
-    .live-pill {
-      position: absolute; top: 12px; right: 14px; z-index: 2;
-      display: none; align-items: center; gap: 7px;
-      padding: 4px 10px; border-radius: 999px;
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.45);
-      color: var(--green); font-size: 0.7rem; font-weight: 700;
-      letter-spacing: 0.12em;
-    }
-    .live-pill.on { display: inline-flex; }
-    .live-pill .dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--green); box-shadow: 0 0 8px var(--green);
-      animation: live-pulse 1.6s ease-in-out infinite;
-    }
     @keyframes live-pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50%      { opacity: 0.55; transform: scale(0.82); }
     }
+
+    /* Unified LIVE/SIM segmented toggle. Pinned to the top-right of
+       the .headline block (above the visualization), in the same spot
+       the old SIM toggle lived. Default state is LIVE — the green
+       pulsing dot doubles as a trust signal. SIM injects fake events
+       for preview only; counters and totals never move. If the live
+       feed actually fails, [data-mode="live-down"] reskins the LIVE
+       segment red without yanking it out of the user's reach. */
+    .mode-toggle {
+      position: absolute; top: 14px; right: 22px; z-index: 3;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px; border-radius: 999px;
+      background: rgba(10, 14, 32, 0.65);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .mode-toggle .mode-seg {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: transparent; border: 1px solid transparent;
+      cursor: pointer; color: var(--muted);
+      font: 700 0.7rem/1 inherit;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+    }
+    .mode-toggle .mode-seg:hover { color: var(--text); }
+    .mode-toggle .mode-seg .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+    }
+    .mode-toggle[data-mode="live"] .mode-seg[data-mode="live"] {
+      background: rgba(34, 197, 94, 0.14);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: var(--green);
+    }
+    .mode-toggle[data-mode="live"] .mode-seg[data-mode="live"] .dot {
+      box-shadow: 0 0 8px var(--green);
+      animation: live-pulse 1.6s ease-in-out infinite;
+    }
+    .mode-toggle[data-mode="sim"] .mode-seg[data-mode="sim"] {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.50);
+      color: var(--amber);
+    }
+    .mode-toggle[data-mode="live-down"] .mode-seg[data-mode="live"] {
+      background: rgba(239, 68, 68, 0.10);
+      border-color: rgba(239, 68, 68, 0.40);
+      color: #ef4444;
+    }
+    .mode-toggle[data-mode="live-down"] .mode-seg[data-mode="live"] .dot {
+      animation: none;
+      box-shadow: 0 0 4px #ef4444;
+    }
+    .mode-toggle .explainer { margin: 0 2px 0 0; }
+    .mode-toggle .explainer-card { left: auto; right: -4px; }
 
     .headline {
       position: relative; padding: 6px 22px 14px;
@@ -170,52 +211,8 @@
     .legend-chips .chip.burn   { color: var(--red); }
     .legend-chips .chip.bridge { color: var(--cyan); }
 
-    .sim-toggle {
-      position: absolute; top: 14px; right: 22px; z-index: 3;
-      white-space: nowrap;
-      font-size: 0.72rem; color: var(--muted);
-      user-select: none;
-    }
-    .sim-toggle .sim-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      vertical-align: middle;
-      padding: 4px 10px 4px 9px; border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      color: inherit; font: inherit; cursor: pointer;
-      letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
-      transition: background 0.18s, border-color 0.18s, color 0.18s;
-    }
-    .sim-toggle .sim-btn:hover { background: rgba(255,255,255,0.08); }
-    .sim-toggle .sim-btn .switch {
-      position: relative; width: 26px; height: 14px;
-      background: rgba(255,255,255,0.08); border-radius: 999px;
-      transition: background 0.18s;
-    }
-    .sim-toggle .sim-btn .switch::after {
-      content: ''; position: absolute; top: 1px; left: 1px;
-      width: 10px; height: 10px; border-radius: 50%;
-      background: rgba(220,230,245,0.75);
-      transition: transform 0.18s, background 0.18s;
-    }
-    .sim-toggle.on .sim-btn {
-      color: var(--amber);
-      border-color: rgba(245,158,11,0.5);
-      background: rgba(245,158,11,0.10);
-    }
-    .sim-toggle.on .sim-btn .switch { background: rgba(245,158,11,0.30); }
-    .sim-toggle.on .sim-btn .switch::after {
-      transform: translateX(12px);
-      background: var(--amber);
-      box-shadow: 0 0 6px var(--amber);
-    }
-    /* Card sits at the container's right edge, so anchor the explainer
-       popover to the right and let it open leftward — the default
-       left:-4px overflows and gets clipped. */
-    .sim-toggle .explainer-card { left: auto; right: -4px; }
-    @media (max-width: 480px) {
-      .sim-toggle .explainer-card { right: -4px; left: auto; }
-    }
+    /* Old .sim-toggle / .live-pill rules removed — replaced by the
+       unified .mode-toggle above. */
 
     .press-caption {
       padding: 8px 16px; border-top: 1px solid var(--border);
@@ -388,15 +385,17 @@
 
   <div class="press-hero">
     <div class="headline">
-      <div class="sim-toggle" id="simToggle">
-        <button type="button" class="sim-btn" id="simBtn" aria-pressed="false" aria-label="Toggle simulated event preview">
-          <span>Sim</span>
-          <span class="switch" aria-hidden="true"></span>
+      <div class="mode-toggle" id="modeToggle" data-mode="live" role="tablist" aria-label="Visualization mode">
+        <button type="button" class="mode-seg" data-mode="live" role="tab" aria-selected="true">
+          <span class="dot" aria-hidden="true"></span>LIVE
+        </button>
+        <button type="button" class="mode-seg" data-mode="sim" role="tab" aria-selected="false">
+          SIM
         </button>
         {{ explainer(
-          'rlusd-sim',
-          'What is "Sim" mode?',
-          'Sim mode lets you preview what a mint, burn, or bridge animation looks like when one actually happens. Real Ripple treasury events are rare — sometimes only a handful per week — so most of the time the visualization is quiet. Turn this on to see the animation in action, off to watch only real on-chain events. The live supply totals on the orbs are unaffected either way; sim events do not touch the activity counters or the event log below.'
+          'rlusd-mode',
+          'LIVE vs SIM',
+          'LIVE: the visualization animates only when real on-chain events happen — and those are rare (Ripple treasury mints and burns might only fire a few times a week), so most of the time it will look quiet. SIM: injects fake animation events so you can preview what mints, burns, and bridge transfers look like. Sim events are visual only — they do not touch the supply totals, the 24-hour counters, or the event log.'
         ) }}
       </div>
       <div class="total">
@@ -424,7 +423,6 @@
 
     <div class="press-stage">
       <canvas id="pressCanvas"></canvas>
-      <span class="live-pill" id="liveBadge"><span class="dot"></span>LIVE</span>
       <span id="ethSupply" hidden>—</span>
       <span id="xrplSupply" hidden>—</span>
     </div>
@@ -1137,6 +1135,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
         with {simulated: true} so the canvas demos the animation without
         polluting the ticker or 24h counters. */
   let simMode = false;
+  let liveHealthy = !!SSR;   // SSR presence implies first paint already has real data
   function previewLoop() {
     if (!LIVE_DATA) {
       processEvent(nextEvent());
@@ -1149,15 +1148,29 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
     setTimeout(previewLoop, next);
   }
 
-  function wireSimToggle() {
-    const root = document.getElementById('simToggle');
-    const btn  = document.getElementById('simBtn');
-    if (!root || !btn) return;
-    btn.addEventListener('click', () => {
-      simMode = !simMode;
-      root.classList.toggle('on', simMode);
-      btn.setAttribute('aria-pressed', simMode ? 'true' : 'false');
+  function applyModeUI() {
+    const root = document.getElementById('modeToggle');
+    if (!root) return;
+    let m;
+    if (simMode) m = 'sim';
+    else if (liveHealthy) m = 'live';
+    else m = 'live-down';
+    root.dataset.mode = m;
+    root.querySelectorAll('.mode-seg').forEach(seg => {
+      seg.setAttribute('aria-selected', seg.dataset.mode === (simMode ? 'sim' : 'live') ? 'true' : 'false');
     });
+  }
+
+  function wireSimToggle() {
+    const root = document.getElementById('modeToggle');
+    if (!root) return;
+    root.querySelectorAll('.mode-seg').forEach(seg => {
+      seg.addEventListener('click', () => {
+        simMode = (seg.dataset.mode === 'sim');
+        applyModeUI();
+      });
+    });
+    applyModeUI();
   }
   wireSimToggle();
 
@@ -1176,8 +1189,8 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
     if (r) r.classList.remove('show');
     const chip = document.getElementById('previewChip');
     if (chip) chip.style.display = 'none';
-    const badge = document.getElementById('liveBadge');
-    if (badge) badge.classList.add('on');
+    liveHealthy = true;
+    applyModeUI();
   }
 
   function showLiveFailNotice() {
@@ -1185,8 +1198,8 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
     if (r) r.classList.add('show');
     const chip = document.getElementById('previewChip');
     if (chip) chip.style.display = '';
-    const badge = document.getElementById('liveBadge');
-    if (badge) badge.classList.remove('on');
+    liveHealthy = false;
+    applyModeUI();
   }
 
   // Consecutive poll failures. We only flip on the ribbon after two in a
