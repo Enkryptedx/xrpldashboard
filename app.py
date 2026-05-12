@@ -2046,6 +2046,49 @@ def api_ledger_tip():
     }
 
 
+@app.route("/api/heartbeat-age")
+@limiter.limit("120 per minute")
+def api_heartbeat_age():
+    """Public liveness probe for the XRPL stream worker. Returns 200 only
+    when the heartbeat row is fresh AND Postgres is reachable. Every
+    failure mode (stale, missing, DB unreachable, env not set) returns 503
+    so external monitors treat any break in the alarm chain as an outage —
+    a silent 200 would mean we lost the ability to detect failure."""
+    STALE_SECONDS = 600
+    headers = {"Cache-Control": "no-store"}
+
+    if not db.pg_available():
+        return ({"status": "config_error",
+                 "detail": "DATABASE_URL not set"}, 503, headers)
+
+    try:
+        with db.pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ts FROM worker_heartbeat WHERE worker = %s",
+                    ("xrpl_stream",),
+                )
+                row = cur.fetchone()
+    except Exception as e:
+        return ({"status": "db_error",
+                 "detail": type(e).__name__}, 503, headers)
+
+    if not row:
+        return ({"status": "no_heartbeat"}, 503, headers)
+
+    age = int(time.time()) - int(row[0])
+    if age < 0:
+        age = 0
+    if age > STALE_SECONDS:
+        return ({"status": "stale",
+                 "age_seconds": age,
+                 "threshold_seconds": STALE_SECONDS}, 503, headers)
+
+    return ({"status": "ok",
+             "age_seconds": age,
+             "threshold_seconds": STALE_SECONDS}, 200, headers)
+
+
 @app.route("/api/xrp-usd")
 @limiter.limit("60 per minute")
 def api_xrp_usd():
