@@ -1846,11 +1846,14 @@ def lending():
 def mpts():
     """MPT registry — every MPTokenIssuance on the ledger, with XLS-89
     metadata decoded and classified (RWA / Stablecoin / Utility / Other).
-    Prefers the JSON snapshot written by mpt_snapshot.py (hourly worker);
-    falls back to in-process cached fetcher when the snapshot is missing
-    or stale. Snapshot writes happen offline so the page never blocks on
-    a multi-minute ledger walk."""
+
+    Three-tier source: local snapshot file (Mac), Postgres mirror (Render),
+    then in-process fetcher as a last resort. The fetcher path can block
+    ~10min walking the ledger, so it should rarely fire — only on a fresh
+    Render boot before the Mac worker has run."""
     data = load_mpt_snapshot()
+    if data is None:
+        data = db.read_mpt_snapshot()
     if data is None:
         data = fetch_mpt_data_cached()
     return render_template("mpts.html", data=data)

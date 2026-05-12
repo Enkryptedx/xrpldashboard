@@ -24,6 +24,7 @@ import time
 
 import httpx
 
+import db
 from mpt_data import (
     SNAPSHOT_PATH,
     XRPL_NODE,
@@ -101,6 +102,9 @@ def run_once(path=None, enrich_top_n=None):
     data["enrich_seconds"] = round(enrich_secs, 1)
 
     _atomic_write(path, data)
+    # Mirror into Postgres so Render (no local file, no worker) can serve
+    # /mpts without falling into the multi-minute ledger walk fallback.
+    db.write_mpt_snapshot(data)
     return data
 
 

@@ -118,6 +118,17 @@ CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
     ON page_views (path, ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_visitor_idx
     ON page_views (visitor_hash, ts DESC);
+
+-- Single-row JSONB blob mirroring mpt_snapshot.json. Mac worker writes;
+-- Render Flask reads. Render has no local snapshot file so PG is the
+-- only source there; without this, /mpts on prod blocks ~10min walking
+-- the ledger on every cold request.
+CREATE TABLE IF NOT EXISTS mpt_snapshot (
+    id         INTEGER PRIMARY KEY,
+    payload    JSONB NOT NULL,
+    written_at BIGINT NOT NULL,
+    CHECK (id = 1)
+);
 """
 
 
@@ -440,6 +451,63 @@ def read_amm_snapshot_ts():
                 cur.execute("SELECT MAX(snapshot_ts) FROM amm_ranked_pools")
                 row = cur.fetchone()
                 return int(row[0]) if row and row[0] is not None else None
+    except Exception:
+        return None
+
+
+def write_mpt_snapshot(data):
+    """Mirror mpt_snapshot.json into Postgres so Render can serve /mpts
+    without doing a 10-minute ledger walk on cold request. Single-row
+    table; UPSERT on the fixed id=1. Silent no-op when PG isn't configured.
+
+    `data` is the full snapshot dict (issuances, by_class, total, etc.) —
+    we round-trip it as JSONB and Flask reads it back into the same shape.
+    Empty/unsuccessful payloads are skipped: pushing ok=False would mask
+    a still-good prior snapshot."""
+    if not data or not data.get("ok"):
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    written_at = int(data.get("written_at") or time.time())
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO mpt_snapshot (id, payload, written_at) "
+                "VALUES (1, %s::jsonb, %s) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "    payload = EXCLUDED.payload, "
+                "    written_at = EXCLUDED.written_at",
+                (json.dumps(data, default=str), written_at),
+            )
+    except Exception:
+        _drop_writer_conn()
+
+
+def read_mpt_snapshot():
+    """Return the MPT snapshot dict from Postgres, or None when PG is
+    unavailable / table empty. Adds `snapshot_age_seconds` and a
+    `from_postgres` flag so the template can label the freshness source."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT payload, written_at FROM mpt_snapshot WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload, written_at = row
+                if not isinstance(payload, dict):
+                    return None
+                payload["snapshot_age_seconds"] = round(
+                    time.time() - int(written_at), 1
+                )
+                payload["from_snapshot"] = True
+                payload["from_postgres"] = True
+                return payload
     except Exception:
         return None
 
