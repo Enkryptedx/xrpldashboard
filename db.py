@@ -42,6 +42,28 @@ except ImportError:
     psycopg = None
 
 
+# Rate-limited error logger. Workers fire many writes per second; if Postgres
+# goes down, surfacing every exception would drown Render's log viewer. We
+# emit the first failure of each category immediately, then at most once per
+# minute per category, tagged with the suppressed-since count so the volume
+# stays legible. The 2026-05-12 MPT walk wrote the JSON file fine but its
+# 5.6-hour-deferred Postgres push failed silently — exactly the class of
+# silent-write failure this helper makes visible.
+_LAST_ERR_LOG = {}  # category -> (last_ts, suppressed_count)
+_ERR_LOG_INTERVAL_S = 60
+
+
+def _log_err(category, exc):
+    now = time.time()
+    last_ts, suppressed = _LAST_ERR_LOG.get(category, (0, 0))
+    if now - last_ts < _ERR_LOG_INTERVAL_S:
+        _LAST_ERR_LOG[category] = (last_ts, suppressed + 1)
+        return
+    tail = f" ({suppressed} suppressed in last {_ERR_LOG_INTERVAL_S}s)" if suppressed else ""
+    print(f"[db] {category}: {type(exc).__name__}: {exc}{tail}", flush=True)
+    _LAST_ERR_LOG[category] = (now, 0)
+
+
 SCHEMA_DDL = """
 CREATE TABLE IF NOT EXISTS events (
     tx_hash      TEXT PRIMARY KEY,
@@ -247,7 +269,8 @@ def _get_writer_conn():
             keepalives_interval=10,
             keepalives_count=3,
         )
-    except Exception:
+    except Exception as e:
+        _log_err("writer_connect_failed", e)
         _writer_conn = None
     return _writer_conn
 
@@ -293,7 +316,8 @@ def write_event(
                 (tx_hash, ledger_index, ts, type_, from_addr, to_addr,
                  amount_drops, currency, issuer, raw_json),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("write_event_failed", e)
         _drop_writer_conn()
 
 
@@ -315,7 +339,8 @@ def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1):
                 "SET trade_count = token_volume.trade_count + EXCLUDED.trade_count",
                 (currency, issuer, hour_bucket, trade_delta),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("upsert_token_volume_failed", e)
         _drop_writer_conn()
 
 
@@ -332,7 +357,8 @@ def write_amm_pool_event(ts, amm_account, event_type):
                 "VALUES (%s, %s, %s)",
                 (ts, amm_account, event_type),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("write_amm_pool_event_failed", e)
         _drop_writer_conn()
 
 
@@ -358,11 +384,7 @@ def write_heartbeat(worker, txns_seen=None, last_ledger=None, extra=None):
                 (worker, int(time.time()), txns_seen, last_ledger, extra_json),
             )
     except Exception as e:
-        # Surface the failure so silent staleness can't masquerade as a live
-        # worker on Render's /health. Stale 12:07 heartbeats with zero event
-        # counters lingered for 3h before this was added (2026-05-11).
-        print(f"[db] write_heartbeat({worker}) failed: {type(e).__name__}: {e}",
-              flush=True)
+        _log_err(f"write_heartbeat_failed[{worker}]", e)
         _drop_writer_conn()
 
 
@@ -440,7 +462,8 @@ def replace_amm_ranked_pools(rows):
                     " %s, %s, %s, %s)",
                     payload,
                 )
-    except Exception:
+    except Exception as e:
+        _log_err("replace_amm_ranked_pools_failed", e)
         _drop_writer_conn()
 
 
@@ -522,7 +545,8 @@ def write_mpt_snapshot(data):
                 "    written_at = EXCLUDED.written_at",
                 (json.dumps(data, default=str), written_at),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("write_mpt_snapshot_failed", e)
         _drop_writer_conn()
 
 
@@ -616,7 +640,8 @@ def upsert_account_label(address, name, source, category=None,
                      extra_json, now),
                 )
         return True
-    except Exception:
+    except Exception as e:
+        _log_err("upsert_account_label_failed", e)
         _drop_writer_conn()
         return False
 
@@ -664,7 +689,8 @@ def bulk_upsert_derived_labels(rows):
                 payload,
             )
         return len(payload)
-    except Exception:
+    except Exception as e:
+        _log_err("bulk_upsert_derived_labels_failed", e)
         _drop_writer_conn()
         return 0
 
@@ -774,7 +800,8 @@ def write_amm_tvl_snapshot(rows, ts=None):
                 payload,
             )
         return len(payload)
-    except Exception:
+    except Exception as e:
+        _log_err("write_amm_tvl_snapshot_failed", e)
         _drop_writer_conn()
         return 0
 
@@ -818,7 +845,8 @@ def prune_amm_pool_events(cap_rows):
                 "(SELECT MAX(id) - %s FROM amm_pool_events)",
                 (cap_rows,),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("prune_amm_pool_events_failed", e)
         _drop_writer_conn()
 
 
@@ -1075,7 +1103,8 @@ def log_page_view(path, visitor_hash=None, referrer=None,
                 (int(time.time()), path, visitor_hash,
                  referrer, user_agent, country),
             )
-    except Exception:
+    except Exception as e:
+        _log_err("log_page_view_failed", e)
         _drop_writer_conn()
 
 
