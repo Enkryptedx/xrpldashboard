@@ -1,0 +1,22 @@
+{
+  "_README": [
+    "Manually-curated account labels for xrpldashboard.com.",
+    "",
+    "account_labels_import.py syncs this file into Postgres on each run.",
+    "Edit, save, run the importer. Manual entries always beat auto-derived",
+    "labels (AMM pool / MPT issuer) so curated names show on display.",
+    "",
+    "Categories: exchange, gateway, validator, foundation, custodian,",
+    "            market_maker, project, treasury, other",
+    "",
+    "Source must be honest: 'manual' for Charlie's own classification,",
+    "'xrpscan' / 'bithomp' when copying from those public registries.",
+    "On display we attribute (e.g. 'via xrpscan') — never imply we",
+    "discovered something we copied.",
+    "",
+    "Charlie: paste exchange + gateway entries from xrpscan.com/wells once,",
+    "         leave this README block in place (the importer skips it)."
+  ],
+  "labels": [
+  ]
+}

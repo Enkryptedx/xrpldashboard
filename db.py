@@ -129,6 +129,48 @@ CREATE TABLE IF NOT EXISTS mpt_snapshot (
     written_at BIGINT NOT NULL,
     CHECK (id = 1)
 );
+
+-- Account labels registry. Three layers, one row per address:
+--   manual      — curated by hand from xrpscan, bithomp, etc. (the source
+--                 column records WHERE the label came from so visitors
+--                 see "via xrpscan" rather than us implying we discovered it)
+--   xrpscan     — bulk imports from xrpscan's public labels (when added)
+--   derived:*   — auto-generated from on-chain state we already have
+--                 (AMM pools, MPT issuers). These get rewritten on each
+--                 importer run; manual/xrpscan never get overwritten by them.
+-- One PRIMARY KEY (address) means a derived label can't shadow a curated
+-- one — the importer must UPSERT with source-priority logic.
+CREATE TABLE IF NOT EXISTS account_labels (
+    address     TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    category    TEXT,
+    source      TEXT NOT NULL,
+    confidence  DOUBLE PRECISION DEFAULT 1.0,
+    extra       JSONB,
+    updated_at  BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS account_labels_category_idx
+    ON account_labels (category);
+CREATE INDEX IF NOT EXISTS account_labels_source_idx
+    ON account_labels (source);
+
+-- Per-pool TVL time-series. amm_tvl_recorder.py appends a row per
+-- top-N pool every 15 min so we accumulate forward history (the
+-- amm_ranked_pools snapshot is point-in-time only and gets wiped on
+-- each rerank). Eventually drives a 30-day sparkline on /pools.
+CREATE TABLE IF NOT EXISTS amm_tvl_history (
+    amm_account TEXT NOT NULL,
+    ts          BIGINT NOT NULL,
+    tvl_usd     DOUBLE PRECISION,
+    amount_a    DOUBLE PRECISION,
+    amount_b    DOUBLE PRECISION,
+    pair        TEXT,
+    PRIMARY KEY (amm_account, ts)
+);
+CREATE INDEX IF NOT EXISTS amm_tvl_history_ts_idx
+    ON amm_tvl_history (ts DESC);
+CREATE INDEX IF NOT EXISTS amm_tvl_history_account_ts_idx
+    ON amm_tvl_history (amm_account, ts DESC);
 """
 
 
@@ -510,6 +552,257 @@ def read_mpt_snapshot():
                 return payload
     except Exception:
         return None
+
+
+# Sources we trust enough to never let a `derived:*` importer overwrite.
+# Ordered loosely by trust, but the only check that matters is the
+# membership test below.
+_CURATED_LABEL_SOURCES = frozenset({"manual", "xrpscan", "bithomp"})
+
+
+def upsert_account_label(address, name, source, category=None,
+                         confidence=None, extra=None):
+    """Insert or update one account label.
+    - Curated sources (manual / xrpscan / bithomp) always win: they
+      overwrite anything, including older curated labels.
+    - Derived sources (derived:amm, derived:mpt) only write when the
+      existing row is also derived (or absent). They MUST NOT shadow a
+      curated label, even when the importer would generate a better
+      derived one — the human-curated string is what we trust on display.
+
+    Silent no-op when PG isn't configured. Returns True on a successful
+    write, False otherwise."""
+    if not address or not name or not source:
+        return False
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    extra_json = json.dumps(extra, default=str) if extra is not None else None
+    now = int(time.time())
+    is_curated = source in _CURATED_LABEL_SOURCES
+    try:
+        with conn.cursor() as cur:
+            if is_curated:
+                cur.execute(
+                    "INSERT INTO account_labels "
+                    "(address, name, category, source, confidence, extra, updated_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s) "
+                    "ON CONFLICT (address) DO UPDATE SET "
+                    "  name = EXCLUDED.name, "
+                    "  category = EXCLUDED.category, "
+                    "  source = EXCLUDED.source, "
+                    "  confidence = EXCLUDED.confidence, "
+                    "  extra = EXCLUDED.extra, "
+                    "  updated_at = EXCLUDED.updated_at",
+                    (address, name, category, source,
+                     confidence if confidence is not None else 1.0,
+                     extra_json, now),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO account_labels "
+                    "(address, name, category, source, confidence, extra, updated_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s) "
+                    "ON CONFLICT (address) DO UPDATE SET "
+                    "  name = EXCLUDED.name, "
+                    "  category = EXCLUDED.category, "
+                    "  source = EXCLUDED.source, "
+                    "  confidence = EXCLUDED.confidence, "
+                    "  extra = EXCLUDED.extra, "
+                    "  updated_at = EXCLUDED.updated_at "
+                    "WHERE account_labels.source LIKE 'derived:%%'",
+                    (address, name, category, source,
+                     confidence if confidence is not None else 0.6,
+                     extra_json, now),
+                )
+        return True
+    except Exception:
+        _drop_writer_conn()
+        return False
+
+
+def bulk_upsert_derived_labels(rows):
+    """Bulk path for the derived passes (AMM/MPT importer). One COPY-like
+    executemany instead of N round-trips, which matters at 20k+ AMM
+    accounts. Each row is a tuple:
+        (address, name, category, source, confidence, extra_json_or_None)
+    The ON CONFLICT DO UPDATE … WHERE clause enforces the curated-vs-
+    derived priority server-side: a derived label NEVER overwrites a
+    curated one (`source NOT LIKE 'derived:%'`). Returns count attempted,
+    not count actually written — Postgres doesn't surface the skip count
+    via executemany.rowcount cleanly; recomputing it would cost another
+    round-trip and isn't worth it for a log line."""
+    if not rows:
+        return 0
+    conn = _get_writer_conn()
+    if conn is None:
+        return 0
+    now = int(time.time())
+    payload = [
+        (addr, name, cat, src,
+         conf if conf is not None else 0.6,
+         extra_json, now)
+        for (addr, name, cat, src, conf, extra_json) in rows
+        if addr and name and src
+    ]
+    if not payload:
+        return 0
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO account_labels "
+                "(address, name, category, source, confidence, extra, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s) "
+                "ON CONFLICT (address) DO UPDATE SET "
+                "  name = EXCLUDED.name, "
+                "  category = EXCLUDED.category, "
+                "  source = EXCLUDED.source, "
+                "  confidence = EXCLUDED.confidence, "
+                "  extra = EXCLUDED.extra, "
+                "  updated_at = EXCLUDED.updated_at "
+                "WHERE account_labels.source LIKE 'derived:%%'",
+                payload,
+            )
+        return len(payload)
+    except Exception:
+        _drop_writer_conn()
+        return 0
+
+
+def read_account_label(address):
+    """Single-address lookup. Returns dict or None. Used by per-address
+    pages (whales, wallet detail) where one query per request is fine."""
+    if not address or not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT name, category, source, confidence, extra, updated_at "
+                    "FROM account_labels WHERE address = %s",
+                    (address,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return {
+                    "address": address, "name": row[0], "category": row[1],
+                    "source": row[2], "confidence": row[3], "extra": row[4],
+                    "updated_at": int(row[5]),
+                }
+    except Exception:
+        return None
+
+
+def read_account_labels(addresses):
+    """Bulk lookup. Returns dict keyed by address. Used by list pages
+    where we'd otherwise do N round-trips. Missing addresses are simply
+    absent from the result — caller decides how to render unlabeled rows."""
+    if not addresses or not pg_available():
+        return {}
+    addrs = list({a for a in addresses if a})
+    if not addrs:
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT address, name, category, source, confidence, extra "
+                    "FROM account_labels WHERE address = ANY(%s)",
+                    (addrs,),
+                )
+                return {
+                    r[0]: {
+                        "address": r[0], "name": r[1], "category": r[2],
+                        "source": r[3], "confidence": r[4], "extra": r[5],
+                    }
+                    for r in cur.fetchall()
+                }
+    except Exception:
+        return {}
+
+
+def count_account_labels_by_source():
+    """Returns dict {source: count} for /admin/stats or the labels page.
+    Cheap — one round trip, one GROUP BY."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT source, COUNT(*) FROM account_labels GROUP BY source"
+                )
+                return {r[0]: int(r[1]) for r in cur.fetchall()}
+    except Exception:
+        return {}
+
+
+def write_amm_tvl_snapshot(rows, ts=None):
+    """Append a batch of per-pool TVL rows to amm_tvl_history. `rows` is an
+    iterable of dicts shaped like amm_ranked.json entries (amm_account,
+    pair, tvl_usd, amount_a, amount_b). Skips rows without an amm_account
+    or without a finite tvl_usd — we'd rather have a sparse series than
+    a misleading 0. ON CONFLICT DO NOTHING so re-running at the same
+    second is harmless. Silent no-op when PG isn't configured."""
+    if not rows:
+        return 0
+    conn = _get_writer_conn()
+    if conn is None:
+        return 0
+    ts = int(ts if ts is not None else time.time())
+    payload = []
+    for r in rows:
+        acct = r.get("amm_account")
+        tvl = r.get("tvl_usd")
+        if not acct or tvl is None:
+            continue
+        payload.append((
+            acct, ts, tvl,
+            r.get("amount_a"), r.get("amount_b"),
+            r.get("pair") or "?",
+        ))
+    if not payload:
+        return 0
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO amm_tvl_history "
+                "(amm_account, ts, tvl_usd, amount_a, amount_b, pair) "
+                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (amm_account, ts) DO NOTHING",
+                payload,
+            )
+        return len(payload)
+    except Exception:
+        _drop_writer_conn()
+        return 0
+
+
+def read_amm_tvl_history(amm_account, since_ts=None, limit=2880):
+    """Return (ts, tvl_usd) rows for one pool, oldest-first. Default limit
+    of 2880 covers 30 days at 15-min cadence. Returns [] on error or when
+    PG is unavailable."""
+    if not pg_available():
+        return []
+    clauses = ["amm_account = %s"]
+    params = [amm_account]
+    if since_ts is not None:
+        clauses.append("ts >= %s")
+        params.append(int(since_ts))
+    where = " AND ".join(clauses)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT ts, tvl_usd FROM amm_tvl_history "
+                    f"WHERE {where} ORDER BY ts ASC LIMIT %s",
+                    [*params, int(limit)],
+                )
+                return [(int(r[0]), float(r[1]) if r[1] is not None else None)
+                        for r in cur.fetchall()]
+    except Exception:
+        return []
 
 
 def prune_amm_pool_events(cap_rows):

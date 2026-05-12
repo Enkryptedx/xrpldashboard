@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.amm_tvl_recorder</string>
+
+    <key>Comment</key>
+    <string>AMM TVL history recorder. Every 15 min, slices the top-N of amm_ranked_pools (written by rank_amms.py) and appends a row per pool to amm_tvl_history. Cheap: one PG read, one batched insert, no XRPL calls. Powers the forward sparkline on /pools; backfill (#2b) extends it backwards via account_tx later.</string>
+
+    <!-- Shell wrapper sources $HOME/.config/xrpldashboard/env so DATABASE_URL
+         is set inside the launchd-spawned process. Without it the PG writes
+         silently no-op and we'd accumulate zero history. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_amm_tvl_recorder.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 15 min. Matches retail latency expectations for TVL — pool
+         reserves move on minutes-to-hours, not seconds — and gives 96
+         buckets/day, plenty of resolution for a 30-day chart. -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/amm_tvl_recorder.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/amm_tvl_recorder.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

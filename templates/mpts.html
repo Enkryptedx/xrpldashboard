@@ -286,6 +286,13 @@
           {% endif %}
         </div>
       </div>
+    {% elif data and data.warming %}
+      <div class="empty-state">
+        <div class="e-title">{{ _('Snapshot warming up') }}</div>
+        <div class="e-body">
+          {{ _('The MPT registry is rebuilt by a daily background walk of every MPTokenIssuance on the ledger — a complete walk takes several hours. The previous snapshot is currently unavailable; refresh in a few minutes once the next walk finishes.') }}
+        </div>
+      </div>
     {% else %}
       <div class="empty-state">
         <div class="e-title">{{ _('No MPTs on the ledger yet') }}</div>

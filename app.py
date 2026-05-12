@@ -1847,15 +1847,29 @@ def mpts():
     """MPT registry — every MPTokenIssuance on the ledger, with XLS-89
     metadata decoded and classified (RWA / Stablecoin / Utility / Other).
 
-    Three-tier source: local snapshot file (Mac), Postgres mirror (Render),
-    then in-process fetcher as a last resort. The fetcher path can block
-    ~10min walking the ledger, so it should rarely fire — only on a fresh
-    Render boot before the Mac worker has run."""
+    Source order: local snapshot file (Mac), Postgres mirror (Render).
+    NEVER falls through to an in-process walk inside a request handler:
+    a full ledger walk takes hours and would blow gunicorn's 60s timeout,
+    surfacing as a Render "server failure" alert (2026-05-12 incident).
+    When both snapshots are missing, we render a warming-up placeholder
+    so the page stays responsive — the Mac mpt_snapshot worker will fill
+    PG on its next run and the page becomes real on the next refresh.
+
+    Set MPT_ALLOW_LIVE_FETCH=1 to opt back in to the synchronous walk
+    (local dev only — never on Render)."""
     data = load_mpt_snapshot()
     if data is None:
         data = db.read_mpt_snapshot()
-    if data is None:
+    if data is None and os.environ.get("MPT_ALLOW_LIVE_FETCH") == "1":
         data = fetch_mpt_data_cached()
+    if data is None:
+        data = {
+            "ok": False,
+            "warming": True,
+            "issuances": [],
+            "total": 0,
+            "by_class": {"rwa": 0, "stablecoin": 0, "utility": 0, "other": 0},
+        }
     return render_template("mpts.html", data=data)
 
 
