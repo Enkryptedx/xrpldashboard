@@ -641,7 +641,7 @@ def run_session(state):
         # Stamp an immediate heartbeat so prod /health doesn't wait the full
         # HEARTBEAT_EVERY_SECONDS window to learn the worker is back up.
         pgbridge.write_heartbeat(
-            "xrpl_stream",
+            "xrpl_stream:mac",
             txns_seen=state.get("txns_seen"),
             last_ledger=state.get("last_ledger_index"),
             extra={
@@ -713,7 +713,7 @@ def run_session(state):
                     # to know the Mac-hosted worker is alive (local file
                     # mtimes don't cross hosts).
                     pgbridge.write_heartbeat(
-                        "xrpl_stream",
+                        "xrpl_stream:mac",
                         txns_seen=state.get("txns_seen"),
                         last_ledger=state.get("last_ledger_index"),
                         extra={

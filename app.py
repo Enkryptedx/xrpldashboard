@@ -2075,9 +2075,12 @@ def api_heartbeat_age():
     try:
         with db.pg_connect() as conn:
             with conn.cursor() as cur:
+                # Host-tagged keys ('xrpl_stream:mac', future ':render') —
+                # endpoint stays green if any worker is fresh.
                 cur.execute(
-                    "SELECT ts FROM worker_heartbeat WHERE worker = %s",
-                    ("xrpl_stream",),
+                    "SELECT ts FROM worker_heartbeat "
+                    "WHERE worker LIKE 'xrpl_stream%' "
+                    "ORDER BY ts DESC LIMIT 1"
                 )
                 row = cur.fetchone()
     except Exception as e:
