@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Privacy policy') }} · xrpldashboard</title>
+  {% set meta_title = "privacy policy · xrpldashboard" %}
+  {% set meta_description = "No accounts, no analytics tracker, no fingerprinting. The minimum data needed to serve a webpage, and nothing else." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 36px;
+            max-width: 700px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+    .updated { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('Privacy policy') }}</h1>
+  <p class="updated">{{ _('Last updated:') }} 2026-05-12</p>
+  <p class="lede">
+    {{ _('xrpldashboard is a public website with no accounts, no analytics tracker, and no fingerprinting. We collect the minimum data needed to serve a webpage, and nothing else.') }}
+  </p>
+
+  <div class="callout">
+    <p style="margin: 0;">
+      {{ _('Plain-English summary: standard server logs (IP, browser, page visited) flow through our host\'s infrastructure for security and uptime. One cookie remembers your language choice. That\'s it. No Google Analytics, no Meta pixel, no third-party trackers.') }}
+    </p>
+  </div>
+
+  <h2>1. {{ _('What we collect') }}</h2>
+  <p>
+    {{ _('When you visit any page on the site, our hosting provider (Render) and CDN (Cloudflare) automatically log standard request metadata for security, abuse prevention, and uptime monitoring:') }}
+  </p>
+  <ul>
+    <li>{{ _('IP address') }}</li>
+    <li>{{ _('User-agent string (browser / OS)') }}</li>
+    <li>{{ _('Page path and timestamp') }}</li>
+    <li>{{ _('Referrer (the previous page that linked here, if any)') }}</li>
+  </ul>
+  <p>
+    {{ _('We don\'t aggregate this into a user profile, sell it, or share it with marketers. Logs are retained only as long as our hosting provider keeps them, and we use them solely for security and operational debugging.') }}
+  </p>
+  <p>
+    {{ _('If you visit the language menu and pick a locale, we set a single cookie named') }}
+    <code>locale</code>
+    {{ _('to remember your choice on subsequent visits. That cookie stores nothing else and isn\'t shared with anyone.') }}
+  </p>
+
+  <h2>2. {{ _('What we don\'t collect') }}</h2>
+  <ul>
+    <li>{{ _('No user accounts, passwords, or email addresses (unless you email us).') }}</li>
+    <li>{{ _('No Google Analytics, Meta pixel, Mixpanel, or third-party analytics scripts.') }}</li>
+    <li>{{ _('No browser fingerprinting or device-id stitching.') }}</li>
+    <li>{{ _('No XRPL wallet addresses are linked back to you — looking up a wallet on') }}
+      <code>/wallet/&lt;addr&gt;</code>
+      {{ _('reads public ledger data and isn\'t tied to the IP that asked.') }}</li>
+    <li>{{ _('No advertising. No retargeting. Ever.') }}</li>
+  </ul>
+
+  <h2>3. {{ _('Children') }}</h2>
+  <p>
+    {{ _('xrpldashboard is not directed at children under 13, and we don\'t knowingly collect personal information from anyone under 13. If you believe a child has provided information to us, please email us and we\'ll delete it.') }}
+  </p>
+
+  <h2>4. {{ _('Third-party services') }}</h2>
+  <p>
+    {{ _('The site is built on a few third-party providers. Each operates under its own privacy policy:') }}
+  </p>
+  <ul>
+    <li><strong>{{ _('Render') }}</strong> — {{ _('web hosting and background worker. Sees request metadata.') }}
+      <a href="https://render.com/privacy" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
+    <li><strong>{{ _('Cloudflare') }}</strong> — {{ _('CDN and DDoS protection. Sees request metadata.') }}
+      <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
+    <li><strong>{{ _('Neon') }}</strong> — {{ _('managed Postgres database. Stores public XRPL data only; no visitor data.') }}
+      <a href="https://neon.tech/privacy-policy" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
+    <li><strong>{{ _('Brevo') }}</strong> — {{ _('SMTP relay used only when we send mail from') }}
+      <code>contact@xrpldashboard.com</code>.
+      {{ _('Sees the contents of emails we send.') }}
+      <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
+    <li><strong>{{ _('Public XRPL and Ethereum nodes') }}</strong> — {{ _('we query') }}
+      <code>xrplcluster.com</code>, <code>s1.ripple.com</code>, <code>s2.ripple.com</code>,
+      {{ _('and a handful of public Ethereum RPC providers. From their side, requests appear to come from our server, not from you (except for the in-browser WebSocket subscription, which connects from your browser directly to') }}
+      <code>wss://xrplcluster.com</code>).
+      {{ _('See the') }} <a href="/methodology">{{ _('methodology') }}</a> {{ _('for the full list.') }}</li>
+  </ul>
+
+  <h2>5. {{ _('If you email us') }}</h2>
+  <p>
+    {{ _('Emails sent to') }}
+    <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
+    {{ _('are forwarded through Squarespace\'s email-forwarding service to a personal Gmail inbox, and replies are sent through Brevo\'s SMTP relay. We retain those emails so we can continue the conversation. We don\'t add senders to any marketing list.') }}
+  </p>
+
+  <h2>6. {{ _('Your rights') }}</h2>
+  <p>
+    {{ _('Depending on where you live, you may have rights under laws like the EU GDPR or California CCPA — including the right to access, correct, or delete personal information we hold about you, and to ask us not to use it for certain purposes. Because we collect so little (no accounts, no profiles), there usually isn\'t much to act on, but we\'ll handle any request in good faith. Email us at') }}
+    <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>.
+  </p>
+
+  <h2>7. {{ _('Changes to this policy') }}</h2>
+  <p>
+    {{ _('If this policy changes, we\'ll update the "last updated" date at the top and flag material changes on the homepage for a short window. Continued use of the site after changes take effect means you accept the revised policy.') }}
+  </p>
+
+  <h2>8. {{ _('Contact') }}</h2>
+  <p>
+    {{ _('Privacy questions, deletion requests, or anything else:') }}
+    <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>.
+  </p>
+
+  <div class="footer">
+    {{ _('See also:') }}
+    <a href="/terms">{{ _('terms of service') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

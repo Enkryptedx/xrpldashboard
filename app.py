@@ -1593,6 +1593,16 @@ def methodology():
     return render_template("methodology.html")
 
 
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 def _historical_snapshot_meta():
     """Scan historical_snapshots/ for first-snapshot date, day count, and
     coverage from the latest snapshot. Returns None if nothing on disk yet —
