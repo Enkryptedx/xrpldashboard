@@ -2092,9 +2092,9 @@ def admin_stats():
     never a real secret (it's in git history, robots.txt, etc.); the
     security is constant-time HMAC + rate limit + ADMIN_STATS_KEY entropy,
     not URL obscurity."""
-    expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip()
+    expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip().encode("utf-8")
     auth = request.authorization
-    provided = (auth.password or "").strip() if auth and auth.password else ""
+    provided = (auth.password or "").strip().encode("utf-8") if auth and auth.password else b""
     if not expected or not provided or not hmac.compare_digest(provided, expected):
         return Response(
             "Authentication required.",
