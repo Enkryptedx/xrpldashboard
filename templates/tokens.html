@@ -281,8 +281,8 @@
     .name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .name .display { color: var(--text); font-weight: 600; font-size: 0.95rem;
                      overflow: hidden; text-overflow: ellipsis; }
-    .name .display.unlabeled { color: var(--muted); font-family: var(--mono);
-                               font-weight: 500; font-size: 0.85rem; }
+    .name .display.unnamed { color: var(--muted); font-family: var(--mono);
+                             font-weight: 500; font-size: 0.85rem; }
     .iss { color: var(--dim); font-family: var(--mono); font-size: 0.74rem; }
     .cat-badge { display: inline-block; padding: 1px 7px; border-radius: 999px;
                  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
@@ -358,7 +358,7 @@
       <span style="color: rgb(245,158,11);">{{ _('wrapped') }}</span>
       <span style="color: rgb(34,211,238);">{{ _('utility') }}</span>
       <span style="color: rgb(236,72,153);">{{ _('meme') }}</span>
-      <span style="color: rgb(140,150,170);">{{ _('unlabeled') }}</span>
+      <span style="color: rgb(140,150,170);">{{ _('unnamed') }}</span>
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
@@ -373,7 +373,7 @@
       <div class="l">{{ _('labeled') }}{{ explainer(
         "labeled",
         _("What 'labeled' means"),
-        _("Anyone can create a token on the XRP Ledger, and the Ledger only stores a short code (sometimes just a string of letters and numbers). We keep a hand-checked list of the real names for the well-known ones — labeled tokens show that real name (RLUSD, Coreum, etc.). Unlabeled ones just show whatever the Ledger had on file."),
+        _("Anyone can create a token on the XRP Ledger, and the Ledger only stores a short code (sometimes just a string of letters and numbers). We keep a hand-checked list of the real names for the well-known ones — labeled tokens show that real name (RLUSD, Coreum, etc.). Unnamed ones just show whatever the Ledger had on file."),
         source="<code>TOKEN_NAMES.md</code> in the public repo — open a PR to add one"
       ) }}</div>
     </div>
@@ -433,7 +433,7 @@
       <div class="rank">{{ t.rank }}</div>
       <div class="name-block">
         <div class="name">
-          <span class="display{% if not t.labeled %} unlabeled{% endif %}">{{ t.display }}</span>
+          <span class="display{% if not t.labeled %} unnamed{% endif %}">{{ t.display }}</span>
           {% if t.category %}
             <span class="cat-badge cat-{{ t.category }}">{{ t.category|replace("_"," ") }}</span>
           {% endif %}
@@ -561,12 +561,12 @@
       return isTokenAmount(tx.Amount) || isTokenAmount(tx.DeliverMax);
     }
 
-    // Live trade Tron grid. Perspective floor with vanishing point near
+    // Live trade coin runway. Perspective floor with vanishing point near
     // top-center; 5 lanes (one per category) recede to the horizon. Each
-    // validated trade spawns a colored pulse at the horizon that travels
-    // down its lane to the viewer over ~5s, leaving a fading light trail.
-    // The grid lines themselves scroll continuously toward the viewer so
-    // motion never stops, even with no trades. Labels from embedded JSON.
+    // validated trade spawns a coin glyph at the horizon that travels down
+    // its lane to the viewer over ~5s, leaving a fading light trail. The
+    // grid is static (vertical lane rails + horizon glow + floor wash) —
+    // motion comes from the coins themselves. Labels from embedded JSON.
     var PULSE_MAX = 80;
     var pulses = [];
     var canvas    = document.querySelector('[data-tron-canvas]');
@@ -679,11 +679,18 @@
       return null;
     }
 
-    function radiusFromAmount(v) {
+    function radiusFromAmount(v, cat) {
       // Log-scaled: ~$1 → 4px, $1k → 7px, $1M → 11px, $1B+ → 16px.
+      // Stablecoin values are already in dollars (pegged), so their
+      // nominal numbers look small next to inflated token counts on other
+      // categories — bias them up so a $1k RLUSD trade reads as a real
+      // coin, not a speck.
       var n = parseFloat(v) || 0;
       var r = 4 + Math.log10(Math.max(1, n)) * 1.6;
-      return Math.min(16, Math.max(4, r));
+      if (cat === 'stablecoin' || cat === 'fiat') {
+        r = r * 1.55 + 2;
+      }
+      return Math.min(18, Math.max(4, r));
     }
 
     function spawnPulse(tx) {
@@ -695,13 +702,15 @@
       var cat = lbl ? lbl.category : 'other';
       if (cat === 'fiat') cat = 'stablecoin';
       var lane = laneIndex(cat);
+      var sym = lbl ? lbl.display : decodeCurrency(leg.currency);
       pulses.push({
         laneCenter: lane + 0.5,
         progress: 0,
         speed: 0.20 + Math.random() * 0.06,  // 0.20-0.26 → ~4-5s traverse
         rgb: CATEGORY_RGB[cat] || CATEGORY_RGB.other,
-        size: radiusFromAmount(leg.value),
-        symbol: lbl ? lbl.display : decodeCurrency(leg.currency),
+        size: radiusFromAmount(leg.value, cat),
+        symbol: sym,
+        glyph: (sym || '?').replace(/[^A-Za-z0-9]/g, '').charAt(0).toUpperCase() || '?',
         amount: leg.value,
         kind: leg.kind,
         born: performance.now(),
@@ -714,14 +723,23 @@
     }
 
     function drawGrid(now) {
-      var t = now / 1000;
-      // Vertical lines (lane boundaries) — static, just brighter near viewer.
+      // Floor wash — vertical gradient from horizon (faint cyan) down to
+      // viewer. Static; gives depth without lines.
+      var hY = laneXY(0, 0).y;
+      var floor = ctx.createLinearGradient(0, hY, 0, H);
+      floor.addColorStop(0,    'rgba(34,211,238,0.10)');
+      floor.addColorStop(0.55, 'rgba(34,211,238,0.025)');
+      floor.addColorStop(1,    'rgba(34,211,238,0)');
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, hY, W, H - hY);
+
+      // Vertical lane rails — static, brighter near viewer.
       for (var i = 0; i <= NLANES; i++) {
         var top = laneXY(i, 0);
         var bot = laneXY(i, 1);
         var grad = ctx.createLinearGradient(top.x, top.y, bot.x, bot.y);
-        grad.addColorStop(0, 'rgba(34,211,238,0.08)');
-        grad.addColorStop(1, 'rgba(34,211,238,0.32)');
+        grad.addColorStop(0, 'rgba(34,211,238,0.06)');
+        grad.addColorStop(1, 'rgba(34,211,238,0.28)');
         ctx.strokeStyle = grad;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -729,22 +747,7 @@
         ctx.lineTo(bot.x, bot.y);
         ctx.stroke();
       }
-      // Horizontal lines — scrolling toward viewer at GRID_SPEED cycles/sec.
-      var GRID_LINES = 14;
-      var GRID_SPEED = 0.18;
-      var phase = (t * GRID_SPEED) % 1;
-      for (var j = 0; j < GRID_LINES; j++) {
-        var p = ((j / GRID_LINES) + phase) % 1;
-        if (p < 0.02) continue; // skip the one right at horizon (tiny line)
-        var left  = laneXY(0, p);
-        var right = laneXY(NLANES, p);
-        ctx.strokeStyle = 'rgba(34,211,238,' + (0.06 + 0.22 * p) + ')';
-        ctx.lineWidth = 0.6 + p * 0.8;
-        ctx.beginPath();
-        ctx.moveTo(left.x, left.y);
-        ctx.lineTo(right.x, right.y);
-        ctx.stroke();
-      }
+
       // Horizon glow line.
       var hLeft  = laneXY(0, 0);
       var hRight = laneXY(NLANES, 0);
@@ -754,6 +757,94 @@
       ctx.moveTo(hLeft.x - 60, hLeft.y);
       ctx.lineTo(hRight.x + 60, hRight.y);
       ctx.stroke();
+      // Horizon halo — soft cyan bloom centered on vanishing point.
+      var vpX = W / 2;
+      var halo = ctx.createRadialGradient(vpX, hLeft.y, 0, vpX, hLeft.y, 110);
+      halo.addColorStop(0, 'rgba(34,211,238,0.22)');
+      halo.addColorStop(1, 'rgba(34,211,238,0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, hLeft.y - 40, W, 80);
+    }
+
+    var COIN_FONT = '"Geist Mono", ui-monospace, "SF Mono", Menlo, monospace';
+    function rgbStr(rgb, a) {
+      return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')';
+    }
+    function shade(rgb, delta) {
+      return [
+        Math.max(0, Math.min(255, rgb[0] + delta)),
+        Math.max(0, Math.min(255, rgb[1] + delta)),
+        Math.max(0, Math.min(255, rgb[2] + delta)),
+      ];
+    }
+    function drawCoin(x, y, r, rgb, alpha, glyph) {
+      // Stacked 3D coin (always round): tinted halo → dark edge → beveled
+      // face → bright bevel crescent + dark bevel crescent → specular
+      // hotspot → embossed glyph.
+      var hi = shade(rgb, 95);
+      var mid = rgb;
+      var lo = shade(rgb, -55);
+      var deep = shade(rgb, -85);
+
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Tinted glow halo — scales with radius so big coins bloom more.
+      ctx.shadowBlur = Math.max(8, r * 1.7);
+      ctx.shadowColor = rgbStr(mid, alpha);
+
+      // Coin edge (darker base) — full disc.
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = rgbStr(deep, alpha);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Face — radial gradient with hot highlight upper-left,
+      // mid-tone center, deep shadow at lower-right edge.
+      var face = ctx.createRadialGradient(-r * 0.35, -r * 0.40, r * 0.05, 0, 0, r * 0.95);
+      face.addColorStop(0,    rgbStr(hi,  alpha));
+      face.addColorStop(0.40, rgbStr(mid, alpha));
+      face.addColorStop(1,    rgbStr(lo,  alpha));
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2);
+      ctx.fillStyle = face;
+      ctx.fill();
+
+      // Bevel ring — bright crescent top-left, dark crescent bottom-right.
+      var bevelR = r * 0.92;
+      var bevelW = Math.max(0.8, r * 0.11);
+      ctx.lineWidth = bevelW;
+      ctx.strokeStyle = 'rgba(255,255,255,' + (alpha * 0.65) + ')';
+      ctx.beginPath();
+      ctx.arc(0, 0, bevelR, Math.PI * 0.95, Math.PI * 1.95);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,' + (alpha * 0.45) + ')';
+      ctx.beginPath();
+      ctx.arc(0, 0, bevelR, Math.PI * -0.05, Math.PI * 0.95);
+      ctx.stroke();
+
+      // Specular hotspot — small bright blob on the highlight side.
+      var spec = ctx.createRadialGradient(-r * 0.32, -r * 0.38, 0, -r * 0.32, -r * 0.38, r * 0.50);
+      spec.addColorStop(0, 'rgba(255,255,255,' + (alpha * 0.85) + ')');
+      spec.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = spec;
+      ctx.beginPath();
+      ctx.arc(-r * 0.32, -r * 0.38, r * 0.50, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Embossed glyph — drop shadow + bright fill.
+      if (r >= 5) {
+        ctx.font = '800 ' + Math.round(r * 1.05) + 'px ' + COIN_FONT;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(0,0,0,' + (alpha * 0.55) + ')';
+        ctx.fillText(glyph, 0.6, 1.6);
+        ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+        ctx.fillText(glyph, 0, 0.4);
+      }
+
+      ctx.restore();
     }
 
     function drawPulses(dt) {
@@ -773,22 +864,16 @@
         var tail = laneXY(p.laneCenter, trailT);
         var grad = ctx.createLinearGradient(tail.x, tail.y, pos.x, pos.y);
         grad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
-        grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (alpha * 0.55) + ')');
+        grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (alpha * 0.45) + ')');
         ctx.strokeStyle = grad;
-        ctx.lineWidth = Math.max(1, radius * 0.55);
+        ctx.lineWidth = Math.max(1, radius * 0.45);
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(tail.x, tail.y);
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
-        // Pulse head.
-        ctx.shadowBlur = 16;
-        ctx.shadowColor = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha + ')';
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        // Coin head — disc with ticker glyph.
+        drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph);
         p.lastX = pos.x; p.lastY = pos.y; p.lastR = radius;
       }
     }
