@@ -95,6 +95,41 @@ def _load_named_accounts():
 
 
 NAMED_ACCOUNTS = _load_named_accounts()
+_NAMED_ACCOUNTS_MTIME = (
+    os.path.getmtime(NAMED_ACCOUNTS_PATH)
+    if os.path.exists(NAMED_ACCOUNTS_PATH) else 0
+)
+_NAMED_ACCOUNTS_LAST_CHECK = 0.0
+_NAMED_ACCOUNTS_CHECK_INTERVAL_S = 10
+
+
+def _maybe_reload_named_accounts():
+    """Cheap mtime-based hot reload of named_accounts.json — picks up new
+    watchlist entries within ~10s of the file changing, no restart required.
+    Auditor 2026-05-12: workers used to load this once at boot, so editing
+    the JSON had no effect until launchctl kickstart."""
+    global NAMED_ACCOUNTS, _NAMED_ACCOUNTS_MTIME, _NAMED_ACCOUNTS_LAST_CHECK
+    now = time.time()
+    if now - _NAMED_ACCOUNTS_LAST_CHECK < _NAMED_ACCOUNTS_CHECK_INTERVAL_S:
+        return
+    _NAMED_ACCOUNTS_LAST_CHECK = now
+    if not os.path.exists(NAMED_ACCOUNTS_PATH):
+        return
+    try:
+        mtime = os.path.getmtime(NAMED_ACCOUNTS_PATH)
+    except OSError:
+        return
+    if mtime == _NAMED_ACCOUNTS_MTIME:
+        return
+    new_named = _load_named_accounts()
+    added = len(set(new_named) - set(NAMED_ACCOUNTS))
+    removed = len(set(NAMED_ACCOUNTS) - set(new_named))
+    NAMED_ACCOUNTS = new_named
+    _NAMED_ACCOUNTS_MTIME = mtime
+    log(f"named_accounts hot-reload: {len(NAMED_ACCOUNTS)} entries "
+        f"(+{added} / -{removed})")
+
+
 _SEEN_TOKEN_SET = None  # lazily populated from state["seen_tokens"]
 
 
@@ -188,6 +223,7 @@ def whale_handler(msg, state):
       'trustset'  — TrustSet from a watchlisted account (large-balance filter
                     deferred — needs an extra balance lookup per source)
     """
+    _maybe_reload_named_accounts()
     tx = extract_tx(msg)
     ttype = tx.get("TransactionType")
     if not ttype:
@@ -438,6 +474,8 @@ def pulse_handler(msg, _state):
 # ---------------------------------------------------------------------------
 
 _AMM_ACCOUNT_SET = None
+_AMM_ACCOUNT_SET_LAST_RELOAD = 0.0
+_AMM_ACCOUNT_SET_RELOAD_INTERVAL_S = 60
 _AMM_POOL_INSERTS_SINCE_PRUNE = 0
 AMM_POOL_CAP_ROWS = 5000
 AMM_POOL_PRUNE_EVERY = 250
@@ -448,7 +486,7 @@ def _load_amm_account_set():
     worker (where amm_ranked.json is gitignored and absent) still sees the
     Mac ranker's snapshot. Falls back to the local file when PG is empty or
     unavailable."""
-    global _AMM_ACCOUNT_SET
+    global _AMM_ACCOUNT_SET, _AMM_ACCOUNT_SET_LAST_RELOAD
     accounts = set()
     if pgbridge.pg_available():
         try:
@@ -471,6 +509,27 @@ def _load_amm_account_set():
         log(f"amm_pool_event_handler: tracking {len(accounts)} "
             f"AMM accounts (file)")
     _AMM_ACCOUNT_SET = accounts
+    _AMM_ACCOUNT_SET_LAST_RELOAD = time.time()
+
+
+def _maybe_reload_amm_account_set():
+    """Refresh the watched-AMM set every minute. Without this the worker
+    silently missed any AMM created after boot — the ranker would record
+    the new pool in amm_ranked_pools, but the in-process set stayed frozen
+    until launchctl kickstart. Auditor flagged 2026-05-12."""
+    global _AMM_ACCOUNT_SET
+    if _AMM_ACCOUNT_SET is None:
+        _load_amm_account_set()
+        return
+    if time.time() - _AMM_ACCOUNT_SET_LAST_RELOAD < _AMM_ACCOUNT_SET_RELOAD_INTERVAL_S:
+        return
+    prev = _AMM_ACCOUNT_SET
+    _load_amm_account_set()
+    added = len(_AMM_ACCOUNT_SET - prev)
+    removed = len(prev - _AMM_ACCOUNT_SET)
+    if added or removed:
+        log(f"amm_account_set hot-reload: {len(_AMM_ACCOUNT_SET)} entries "
+            f"(+{added} / -{removed})")
 
 
 def amm_pool_event_handler(msg, state):
@@ -483,8 +542,7 @@ def amm_pool_event_handler(msg, state):
     """
     global _AMM_ACCOUNT_SET, _AMM_POOL_INSERTS_SINCE_PRUNE
 
-    if _AMM_ACCOUNT_SET is None:
-        _load_amm_account_set()
+    _maybe_reload_amm_account_set()
     if not _AMM_ACCOUNT_SET:
         return
     if msg.get("engine_result") != "tesSUCCESS":
