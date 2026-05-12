@@ -13,14 +13,14 @@
 <meta property="og:title" content="{{ meta_title }}">
 <meta property="og:description" content="{{ meta_description }}">
 <meta property="og:url" content="{{ site_url }}{{ request.path }}">
-<meta property="og:image" content="{{ site_url }}/static/og-image.png">
+<meta property="og:image" content="{{ og_image_url or site_url ~ '/static/og-image.png' }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="xrpldashboard — the XRP Ledger, made legible.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ meta_title }}">
 <meta name="twitter:description" content="{{ meta_description }}">
-<meta name="twitter:image" content="{{ site_url }}/static/og-image.png">
+<meta name="twitter:image" content="{{ og_image_url or site_url ~ '/static/og-image.png' }}">
 <meta name="twitter:image:alt" content="xrpldashboard — the XRP Ledger, made legible.">
 
 {# Shared XRPL ledger-stream WebSocket. Loads on every page so any panel

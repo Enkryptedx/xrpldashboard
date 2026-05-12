@@ -35,6 +35,7 @@ from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
 import db
+import og_image
 import price_oracle
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -125,6 +126,98 @@ def inject_site_url():
     """Make {{ site_url }} available to every template, primarily for the
     shared _head_meta.html partial that builds canonical / og:url."""
     return {"site_url": SITE_URL}
+
+
+# Per-page Open Graph card config. Slug -> (title, subtitle, accent_hex).
+# Slugs are stable URL fragments served at /og/<slug>.png. Adding a new
+# entry here + a path mapping below is all it takes to give a route its
+# own social-share preview.
+_OG_PAGES = {
+    "home":          ("xrpldashboard",         "The XRP Ledger, made legible.",                       "#3ec8e0"),
+    "whales":        ("Whale Activity",        "Live large-transfer monitor across the XRP Ledger.",  "#3ec8e0"),
+    "pools":         ("AMM Pools",             "Every pool, ranked by depth and 24h volume.",         "#5ee08a"),
+    "tokens":        ("Token Trades",          "Live trade tape across the XRP Ledger.",              "#b388f6"),
+    "mpts":          ("MPT Registry",          "Every multi-purpose token on XRPL, decoded.",         "#ec4899"),
+    "rlusd":         ("RLUSD",                 "Cross-chain treasury data — XRPL + Ethereum.",        "#3b82f6"),
+    "lending":       ("XRPL Lending",          "Loan brokers, vaults, and TVL — XLS-66.",             "#f59e0b"),
+    "health":        ("System Health",         "Live operational status of every worker.",            "#10b981"),
+    "methodology":   ("How It Works",          "Sources, methods, and freshness windows.",            "#94a3b8"),
+    "about":         ("About xrpldashboard",   "What it is and why it exists.",                       "#94a3b8"),
+    "institutional": ("For Institutions",      "Custom data feeds and direct access.",                "#fbbf24"),
+    "terms":         ("Terms of Service",      "Plain-English terms for using xrpldashboard.",        "#94a3b8"),
+    "privacy":       ("Privacy Policy",        "What we collect, what we don't.",                     "#94a3b8"),
+}
+
+# Path -> OG slug. Anything not in this map falls through to the generic
+# /static/og-image.png (so subpages and detail routes still get *an* image,
+# just the shared one).
+_OG_PATH_SLUG = {
+    "/":              "home",
+    "/whales":        "whales",
+    "/pools":         "pools",
+    "/tokens":        "tokens",
+    "/mpts":          "mpts",
+    "/rlusd":         "rlusd",
+    "/lending":       "lending",
+    "/health":        "health",
+    "/methodology":   "methodology",
+    "/about":         "about",
+    "/institutional": "institutional",
+    "/terms":         "terms",
+    "/privacy":       "privacy",
+}
+
+# Cache of rendered PNG bytes by slug. The output is deterministic for the
+# life of the process (config is static), so a single render-per-slug is all
+# we ever need. ~36KB per slug × 13 slugs = ~470KB max footprint.
+_OG_CACHE = {}
+
+
+@app.context_processor
+def inject_og_image():
+    """Resolve the per-page og:image URL based on request.path.
+
+    Templates pick this up via _head_meta.html. Pages without a config
+    entry just see the existing /static/og-image.png — so adding a new
+    page without an OG slug doesn't break sharing, it just keeps the
+    generic card. Detail pages with dynamic slugs (e.g. /wallet/<addr>,
+    /token/<cur>/<iss>) also fall through to the generic card on purpose
+    — we don't want crawlers minting per-address renders."""
+    slug = _OG_PATH_SLUG.get(request.path or "/")
+    if slug:
+        return {"og_image_url": f"{SITE_URL}/og/{slug}.png"}
+    return {"og_image_url": f"{SITE_URL}/static/og-image.png"}
+
+
+@app.route("/og/<slug>.png")
+@limiter.limit("120 per minute")
+def og_card(slug):
+    """Serve the per-page OG image. Cached in-memory after first render.
+
+    Three layers of fallback to /static/og-image.png:
+      1. Unknown slug
+      2. Pillow missing (og_image.render returns None)
+      3. Any exception during render
+    A failed render is cached as None for the rest of the process lifetime
+    too — no point rebuilding a broken image on every social-card fetch."""
+    cfg = _OG_PAGES.get(slug)
+    if not cfg:
+        return redirect("/static/og-image.png", code=302)
+    if slug in _OG_CACHE:
+        cached = _OG_CACHE[slug]
+        if cached is None:
+            return redirect("/static/og-image.png", code=302)
+        return Response(cached, mimetype="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+    try:
+        png = og_image.render(*cfg)
+    except Exception:
+        png = None
+    _OG_CACHE[slug] = png
+    if not png:
+        return redirect("/static/og-image.png", code=302)
+    return Response(png, mimetype="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.context_processor
