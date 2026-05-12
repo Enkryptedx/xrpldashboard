@@ -1723,7 +1723,7 @@ def privacy():
     return render_template("privacy.html")
 
 
-def _historical_snapshot_meta():
+def _historical_snapshot_meta_from_disk():
     """Scan historical_snapshots/ for first-snapshot date, day count, and
     coverage from the latest snapshot. Returns None if nothing on disk yet —
     template hides the section in that case rather than rendering "0 days".
@@ -1748,6 +1748,16 @@ def _historical_snapshot_meta():
         "pools_tracked": len(latest.get("amm_pools") or []),
         "mpts_tracked": len(latest.get("mpts") or []),
     }
+
+
+def _historical_snapshot_meta():
+    """Prefer the Postgres-mirrored rollup so Render renders the strip even
+    without local snapshot files. Fall back to the local directory when PG
+    is unavailable or empty — keeps Mac-side dev paths working unchanged."""
+    pg_meta = db.read_snapshot_meta()
+    if pg_meta:
+        return pg_meta
+    return _historical_snapshot_meta_from_disk()
 
 
 @app.route("/institutional")

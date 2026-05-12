@@ -152,6 +152,13 @@ CREATE TABLE IF NOT EXISTS mpt_snapshot (
     CHECK (id = 1)
 );
 
+CREATE TABLE IF NOT EXISTS historical_snapshot_meta (
+    id         INTEGER PRIMARY KEY,
+    payload    JSONB NOT NULL,
+    written_at BIGINT NOT NULL,
+    CHECK (id = 1)
+);
+
 -- Account labels registry. Three layers, one row per address:
 --   manual      — curated by hand from xrpscan, bithomp, etc. (the source
 --                 column records WHERE the label came from so visitors
@@ -572,6 +579,63 @@ def read_mpt_snapshot():
                     time.time() - int(written_at), 1
                 )
                 payload["from_snapshot"] = True
+                payload["from_postgres"] = True
+                return payload
+    except Exception:
+        return None
+
+
+def write_snapshot_meta(meta):
+    """Mirror the rollup of historical_snapshots/ into Postgres so Render
+    can render the /institutional snapshot strip without access to the
+    Mac's local directory. Single-row table; UPSERT on the fixed id=1.
+
+    The payload's keys must match what _historical_snapshot_meta_from_disk()
+    returns, because read_snapshot_meta() hands it straight to the template
+    (which reads days_collected, accounts_tracked, pools_tracked,
+    mpts_tracked, first_date). Renaming any of those breaks the strip."""
+    if not meta:
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    written_at = int(meta.get("written_at") or time.time())
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO historical_snapshot_meta (id, payload, written_at) "
+                "VALUES (1, %s::jsonb, %s) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "    payload = EXCLUDED.payload, "
+                "    written_at = EXCLUDED.written_at",
+                (json.dumps(meta, default=str), written_at),
+            )
+    except Exception as e:
+        _log_err("write_snapshot_meta_failed", e)
+        _drop_writer_conn()
+
+
+def read_snapshot_meta():
+    """Return the snapshot-meta payload from Postgres, or None when PG is
+    unavailable / table empty. Adds snapshot_age_seconds + from_postgres
+    so /institutional can label freshness and source."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT payload, written_at FROM historical_snapshot_meta WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload, written_at = row
+                if not isinstance(payload, dict):
+                    return None
+                payload["snapshot_age_seconds"] = round(
+                    time.time() - int(written_at), 1
+                )
                 payload["from_postgres"] = True
                 return payload
     except Exception:

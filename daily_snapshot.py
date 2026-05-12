@@ -219,6 +219,47 @@ def write_snapshot(snap):
     return path
 
 
+def _rollup_meta_from_disk():
+    """Compute the same meta dict /institutional reads from disk, so we can
+    mirror it into Postgres after a successful local write. Keys must match
+    _historical_snapshot_meta_from_disk() in app.py — the template reads
+    those names directly. Returns None if nothing readable on disk."""
+    try:
+        files = sorted(f for f in os.listdir(SNAPSHOT_DIR) if f.endswith(".json"))
+    except (FileNotFoundError, OSError):
+        return None
+    if not files:
+        return None
+    latest_path = os.path.join(SNAPSHOT_DIR, files[-1])
+    try:
+        with open(latest_path) as f:
+            latest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return {
+        "first_date": files[0].replace(".json", ""),
+        "days_collected": len(files),
+        "accounts_tracked": len(latest.get("accounts") or []),
+        "pools_tracked": len(latest.get("amm_pools") or []),
+        "mpts_tracked": len(latest.get("mpts") or []),
+    }
+
+
+def mirror_meta_to_postgres():
+    """Best-effort dual-write of the snapshot-strip rollup. Failures are
+    silent — the local file is still on disk, and db.write_snapshot_meta()
+    already logs and recycles the connection on its end."""
+    try:
+        import db as pgbridge
+    except Exception:
+        return None
+    meta = _rollup_meta_from_disk()
+    if not meta:
+        return None
+    pgbridge.write_snapshot_meta(meta)
+    return meta
+
+
 def summarize(snap):
     accts = snap["accounts"]
     pools = snap["amm_pools"]
@@ -256,6 +297,11 @@ def main():
 
     path = write_snapshot(snap)
     print(f"wrote {path}")
+
+    meta = mirror_meta_to_postgres()
+    if meta:
+        print(f"mirrored meta to pg: days={meta['days_collected']} accounts={meta['accounts_tracked']} pools={meta['pools_tracked']} mpts={meta['mpts_tracked']}")
+
     return 0
 
 
