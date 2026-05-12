@@ -6,7 +6,7 @@
     <string>com.charliebruce.xrpldashboard.lending_snapshot</string>
 
     <key>Comment</key>
-    <string>XLS-66 lending snapshot writer. Dormant pre-activation: writes an empty snapshot in ~0.3s. Once both amendments activate, walks LoanBroker/Vault/Loan ledger objects + enriches top-N brokers with mpt_holders for depositor counts, and writes lending_snapshot.json atomically. /lending route reads from this file when fresh (<30min); falls back to in-process fetcher otherwise.</string>
+    <string>XLS-66 lending snapshot writer. Dormant pre-activation: writes an empty snapshot in ~0.3s. Once both amendments activate, walks LoanBroker/Vault/Loan ledger objects + enriches top-N brokers with mpt_holders for depositor counts, and writes lending_snapshot.json atomically. /lending route reads from this file when fresh (&lt;30min); falls back to in-process fetcher otherwise.</string>
 
     <key>ProgramArguments</key>
     <array>
