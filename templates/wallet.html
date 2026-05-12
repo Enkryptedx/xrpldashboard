@@ -2141,7 +2141,7 @@
     })();
 
     /* Live wallet WebSocket — subscribes the browser directly to
-       wss://s2.ripple.com for this wallet's account. On every validated
+       wss://xrplcluster.com for this wallet's account. On every validated
        transaction, bumps the 30d tx counter, the pulse sparkline's
        today bin, and refreshes "last seen" to "just now". One socket
        per open tab; closes on unload. The site's /whales and /tokens
@@ -2150,7 +2150,7 @@
       var addr = {{ data.address|tojson }};
       if (!addr || typeof WebSocket === 'undefined') return;
 
-      var WS_URL = 'wss://s2.ripple.com';
+      var WS_URL = 'wss://xrplcluster.com';
       var ws = null;
       var RECONNECT_MIN_MS = 3000;
       var RECONNECT_MAX_MS = 60000;
@@ -2229,7 +2229,7 @@
           connect();
         }, delay);
         // Exponential backoff capped at RECONNECT_MAX_MS so a long XRPL
-        // outage doesn't hammer s2.ripple.com every 3s indefinitely.
+        // outage doesn't hammer xrplcluster.com every 3s indefinitely.
         reconnectMs = Math.min(reconnectMs * 2, RECONNECT_MAX_MS);
       }
 

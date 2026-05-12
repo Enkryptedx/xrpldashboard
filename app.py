@@ -129,14 +129,11 @@ _CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
 _CSP_IMG_SRC = "'self' data:"
 _CSP_CONNECT_SRC = (
-    # Browsers currently only connect to wss://s2.ripple.com. s1 and
-    # xrplcluster are kept in the allowlist as documented fallbacks so a
-    # node outage can be mitigated by editing the WS_URL constants in
-    # the templates without also pushing a CSP header change. When this
-    # tightens to s2 only, the only operational cost is one extra deploy
-    # on the day s2 has a bad hour. Worth it.
+    # Browsers connect to wss://xrplcluster.com (primary). s2 and s1 are
+    # kept in the allowlist as automatic fallbacks so a cluster outage
+    # can be mitigated without also pushing a CSP header change.
     "'self' https://plausible.io "
-    "wss://s2.ripple.com wss://s1.ripple.com wss://xrplcluster.com"
+    "wss://xrplcluster.com wss://s2.ripple.com wss://s1.ripple.com"
 )
 
 _CSP_VALUE = "; ".join([
@@ -1168,6 +1165,31 @@ def whales():
     if rows:
         named = _load_named_accounts_dict()
         tokens = _load_token_names_dict()
+        # Layer PG `account_labels` on top of the file-based named_accounts.
+        # File entries (xrp-ledger.toml-verified Ripple escrows etc.) always
+        # win — they're first-party verified. PG fills the long tail:
+        # curated xrpscan paste-ins, plus derived:amm / derived:mpt labels
+        # generated from on-chain state. Failure here is swallowed; the
+        # page renders fine with file-only labels if PG hiccups.
+        if db.pg_available():
+            page_addrs = set()
+            for _r in rows:
+                if _r[4]:
+                    page_addrs.add(_r[4])
+                if _r[5]:
+                    page_addrs.add(_r[5])
+            page_addrs.difference_update(named.keys())
+            if page_addrs:
+                try:
+                    pg_labels = db.read_account_labels(list(page_addrs))
+                    for addr, info in pg_labels.items():
+                        named[addr] = {
+                            "name": info.get("name"),
+                            "category": info.get("category"),
+                            "_source": info.get("source"),
+                        }
+                except Exception:
+                    pass
         # Apply the user's tier threshold to `tagged` events too (previously
         # they bypassed all size gating, which let sub-penny dust from named
         # wallets surface alongside 1M-XRP transfers). For XRP-denominated

@@ -403,7 +403,7 @@
       {{ _('The size pills above filter large XRP transfers by magnitude — whales (≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen the lens. Tagged and watchlisted activity always shows regardless of size, because the who makes them signal.') }}
     </p>
     <p>
-      {{ _('The watchlist currently has') }} {{ named_accounts_count }} {{ _("entries, all sourced from first-party disclosures (e.g. Ripple's xrp-ledger.toml). We don't include addresses tagged only by third parties.") }}
+      {{ _('The watchlist combines') }} {{ named_accounts_count }} {{ _("hand-curated first-party entries (sourced from disclosures like Ripple's xrp-ledger.toml) with a broader reference layer drawn from public lists (XRPSCAN well-known names, derived AMM pool and MPT issuer labels). Curated labels take priority; reference labels fill the rest. Each label is shown with its source so you can tell which is which.") }}
     </p>
   </div>
 
@@ -792,7 +792,7 @@
     function connect() {
       if (closed) return;
       try {
-        ws = new WebSocket('wss://s2.ripple.com');
+        ws = new WebSocket('wss://xrplcluster.com');
       } catch (e) {
         setState('closed', 'connect failed · retrying');
         scheduleReconnect();

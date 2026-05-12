@@ -110,22 +110,21 @@
 
   <h2>{{ _('How it works') }}</h2>
   <p>
-    {{ _('Every live number on this site is computed directly from the XRP Ledger. We do not aggregate or re-publish data from third-party APIs (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama). Their products are good — but if we depended on them for our data, we\'d just be a wrapper for their work.') }}
+    {{ _('Every live number on this site — price, TVL, transaction volume, balances — is computed directly from the XRP Ledger. We do not depend on third-party analytics APIs (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama) for any of our metrics. Their products are good — but if we wrapped them for our data, we\'d just be a thinner version of their work.') }}
   </p>
 
   <h3>{{ _('Live ledger data') }}</h3>
   <p>
-    {{ _('Comes from public XRPL nodes (currently Ripple\'s') }}
-    <code>s1.ripple.com</code> {{ _('and') }} <code>s2.ripple.com</code>). {{ _('A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }} <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use. The plan is to migrate to the community-operated cluster') }}
+    {{ _('Comes from public XRPL nodes. Browser-side streams now go to the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>
-    {{ _('before sustained traffic warrants it, and to run our own rippled node as the project grows. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
+    {{ _('(run by the XRP Ledger Foundation), with') }} <code>s1.ripple.com</code> {{ _('and') }} <code>s2.ripple.com</code> {{ _('retained as automatic fallbacks and for the server-side worker. A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }} <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use, which is why browser traffic was migrated to xrplcluster.com. The remaining server-side worker migration is roadmapped, alongside running our own rippled node as the project grows. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
   </p>
 
   <h3>{{ _('Reference labels') }}</h3>
   <p>
-    {{ _('Token display names and named-account labels are hand-curated in our open-source repo. Each label has a verifiable source URL. Contributions go through public PR review (see') }}
-    <code>TOKEN_NAMES.md</code> {{ _('and') }} <code>KNOWN_ACCOUNTS.md</code>).
-    {{ _('Same pattern mempool.space uses for its mining-pool list.') }}
+    {{ _('Token display names are hand-curated in our open-source repo, each with a verifiable source URL, accepted via public PR review (see') }}
+    <code>TOKEN_NAMES.md</code>).
+    {{ _('Account labels are layered: a hand-curated first-party list (KNOWN_ACCOUNTS.md, sourced from exchange disclosures and project .toml files) takes priority, with public reference data (XRPSCAN well-known list, AMM and MPT issuer labels we derive ourselves) filling the long tail. Each label\'s source is recorded so you can tell which is which.') }}
   </p>
 
   <h3>{{ _('Cross-checking') }}</h3>

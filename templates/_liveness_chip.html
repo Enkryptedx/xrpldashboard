@@ -4,7 +4,7 @@
    context (injected by inject_liveness in app.py) for the initial paint,
    then drives subsequent updates straight off the public XRPL ledger
    stream via window.LiveStream (loaded in _head_meta.html). Every
-   `ledgerClosed` event from wss://s2.ripple.com resets the seq + age in
+   `ledgerClosed` event from wss://xrplcluster.com resets the seq + age in
    real time — no 30s polling, no fake ticks. If the socket drops or no
    event arrives within 30s, the dot flips to "degraded" so the staleness
    is visible. #}

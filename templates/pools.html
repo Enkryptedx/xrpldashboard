@@ -945,7 +945,7 @@
 
     function connect() {
       if (closed) return;
-      try { ws = new WebSocket('wss://s2.ripple.com'); }
+      try { ws = new WebSocket('wss://xrplcluster.com'); }
       catch (e) { setLsb('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
       setLsb('connecting', 'connecting…');
 

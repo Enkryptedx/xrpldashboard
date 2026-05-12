@@ -135,7 +135,7 @@
         <td class="route">/wallet/&lt;addr&gt;<br>{{ _('tx counter, last seen, sparkline today bin') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
-        <td>{{ _('Browser subscribes directly to') }} <code>wss://s2.ripple.com</code></td>
+        <td>{{ _('Browser subscribes directly to') }} <code>wss://xrplcluster.com</code></td>
       </tr>
       <tr>
         <td class="route">/wallet/&lt;addr&gt;<br>{{ _('balances, holdings, network graph, AMM positions') }}</td>
@@ -147,19 +147,19 @@
         <td class="route">/whales<br>{{ _('large-XRP / tagged / trustset feed') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
-        <td>{{ _('Browser subscribes directly to') }} <code>wss://s2.ripple.com</code>; {{ _('initial page load is from worker → Neon') }}</td>
+        <td>{{ _('Browser subscribes directly to') }} <code>wss://xrplcluster.com</code>; {{ _('initial page load is from worker → Neon') }}</td>
       </tr>
       <tr>
         <td class="route">/tokens, /token/&lt;currency&gt;/&lt;issuer&gt;<br>{{ _('per-token swap activity') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push for new swaps; aggregates rebuild on next reload') }}</td>
-        <td>{{ _('Browser WS to') }} <code>wss://s2.ripple.com</code>; {{ _('rollups from worker → Neon') }}</td>
+        <td>{{ _('Browser WS to') }} <code>wss://xrplcluster.com</code>; {{ _('rollups from worker → Neon') }}</td>
       </tr>
       <tr>
         <td class="route">{{ _('/pools constellation') }}<br>{{ _('swap pulses + per-pool TVL') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push; TVL adjusts on each AMM LP-token delta') }}</td>
-        <td>{{ _('Browser WS to') }} <code>wss://s2.ripple.com</code>; {{ _('static pool index seeded from') }} <code>amm_info</code></td>
+        <td>{{ _('Browser WS to') }} <code>wss://xrplcluster.com</code>; {{ _('static pool index seeded from') }} <code>amm_info</code></td>
       </tr>
       <tr>
         <td class="route">/api/pools/recent_events</td>
@@ -189,7 +189,7 @@
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five of the eleven surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://s2.ripple.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, cold-storage balances, and the RLUSD cross-chain feed — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
+    {{ _('Five of the eleven surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://xrplcluster.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, cold-storage balances, and the RLUSD cross-chain feed — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
@@ -199,7 +199,8 @@
     {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Used by the worker for streaming, and by the browser for per-wallet real-time subscriptions.') }}</li>
+    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Used by the browser for all per-page real-time subscriptions (whales, tokens, pools, wallet, liveness chip).') }}</li>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Used by the server-side worker for streaming validated transactions into Postgres. Also kept as the first browser fallback if xrplcluster.com is unreachable.') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
   </ul>
 
@@ -211,22 +212,23 @@
     <li><strong><code>1rpc.io/eth</code></strong> — {{ _('Public, key-free Ethereum JSON-RPC endpoint. Used by /api/rlusd/state to read the RLUSD ERC-20 totalSupply and recent Transfer logs at contract 0x8292…17eD.') }}</li>
   </ul>
   <p>
-    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('We rely on them today because they are the most convenient public endpoints for the XRPL. The plan is to migrate primary traffic to the community-operated cluster') }}
+    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side traffic has now been migrated to the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> {{ _('(run by the InFTF) before sustained traffic warrants it, and to run our own') }}
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. The server-side worker still streams from') }} <code>wss://s2.ripple.com</code>; {{ _('the plan is to migrate it next, and to run our own') }}
     <code>rippled</code> {{ _('node as the project grows.') }}
   </p>
 
   <h3>{{ _('Database') }}</h3>
   <p>
-    {{ _('Worker writes to') }} <strong>{{ _('Neon Postgres') }}</strong> {{ _('(free tier; managed EU-hosted Postgres) and a redundant local SQLite snapshot. The web app prefers Postgres for fresh reads and falls back to the SQLite snapshot if the Postgres connection is unavailable. No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any number on this site.') }}
+    {{ _('Worker writes to') }} <strong>{{ _('Neon Postgres') }}</strong> {{ _('(free tier; managed EU-hosted Postgres) and a redundant local SQLite snapshot. The web app prefers Postgres for fresh reads and falls back to the SQLite snapshot if the Postgres connection is unavailable. No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any of our metrics — price, volume, TVL, balances are all computed directly from the ledger.') }}
   </p>
 
   <h3>{{ _('Reference labels') }}</h3>
   <p>
-    {{ _('Token display names and named-account labels are hand-curated in') }}
-    <code>named_accounts.json</code> {{ _('and') }} <code>token_names.json</code>
-    {{ _('in the public GitHub repo. Each label has a verifiable source URL (exchange page, project') }} <code>.toml</code>, {{ _('or audit). Labels are accepted via public PR review; same model as mempool.space\'s mining-pool list.') }}
+    {{ _('Token display names are hand-curated in') }}
+    <code>token_names.json</code>
+    {{ _('in the public GitHub repo, each with a verifiable source URL (exchange page, project') }} <code>.toml</code>, {{ _('or audit), accepted via public PR review. Account labels are layered: a hand-curated first-party list (') }}
+    <code>named_accounts.json</code>{{ _(') takes priority, and public reference lists (XRPSCAN well-known names; AMM pool and MPT issuer accounts we derive ourselves from on-chain state) fill the long tail. Every label is stored with its source so users can tell first-party from reference.') }}
   </p>
 
   <h2>{{ _('Methodology notes') }}</h2>

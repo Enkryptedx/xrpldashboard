@@ -8,7 +8,7 @@
  *
  * Why browser-direct WS instead of server-mediated SSE: the public ledger
  * stream is free, low-volume (~17 events/min), and CSP already allows
- * wss://s2.ripple.com. Going through Flask would tie up gunicorn workers
+ * wss://xrplcluster.com. Going through Flask would tie up gunicorn workers
  * for every connected tab on the Render free tier. This is cheaper and
  * lower-latency for the panels that just need "did a ledger just close."
  *
@@ -23,8 +23,8 @@
   // We only step to a fallback after the primary refuses to connect, then
   // step back to primary on the next successful open.
   var WS_URLS = [
-    'wss://s2.ripple.com',
     'wss://xrplcluster.com',
+    'wss://s2.ripple.com',
     'wss://s1.ripple.com'
   ];
 
