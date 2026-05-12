@@ -260,7 +260,7 @@
   <h2>{{ _('Infrastructure') }}</h2>
   <ul>
     <li><strong>{{ _('Web app:') }}</strong> {{ _('Render. Source on GitHub, MIT-licensed.') }}</li>
-    <li><strong>{{ _('Worker:') }}</strong> {{ _('Render background worker. Streams XRPL → Postgres 24/7.') }}</li>
+    <li><strong>{{ _('Worker:') }}</strong> {{ _('Self-hosted Python process streaming XRPL → Postgres 24/7. Heartbeat monitored externally; hot-standby failover planned.') }}</li>
     <li><strong>{{ _('Database:') }}</strong> {{ _('Neon Postgres.') }}</li>
     <li><strong>{{ _('CDN:') }}</strong> {{ _('Cloudflare in front of Render.') }}</li>
     <li><strong>{{ _('Status:') }}</strong> <a href="/health">/health</a> — {{ _('public uptime + ledger-sync indicator.') }}</li>
