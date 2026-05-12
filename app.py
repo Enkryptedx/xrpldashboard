@@ -4,6 +4,7 @@ Local dev:    python app.py  (binds 127.0.0.1:5001)
 Production:   gunicorn app:app  (PORT from env, set by host)
 """
 
+import hmac
 import json
 import math
 import os
@@ -13,7 +14,6 @@ from datetime import datetime, timezone
 
 from flask import Flask, Response, redirect, render_template, request, url_for
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from amm_scan_pools import (
@@ -73,12 +73,12 @@ PUBLIC_ROUTES = [
 ]
 
 app = Flask(__name__)
-# Render's edge terminates TLS and forwards via X-Forwarded-For. Without
-# ProxyFix, every request appears to come from Render's edge IP and the
-# rate limiter would lump all visitors into one bucket. x_for=1 trusts
-# exactly one upstream proxy hop (Render's), which is correct for our
-# topology. x_proto=1 lets url_for build https URLs behind the proxy.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+# Cloudflare → Render → Flask is a two-proxy chain: Cloudflare puts the
+# visitor IP at the head of X-Forwarded-For, Render's edge appends its own
+# hop. x_for=2 strips both trusted hops so request.remote_addr is the
+# real client IP, not a shared proxy egress (which would collapse every
+# visitor into one rate-limit bucket).
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
 
 # Wire Flask-Babel: cookie-based locale, /lang/<code> switcher, template
@@ -92,9 +92,20 @@ init_i18n(app)
 # multiple replicas, swap storage_uri to Redis or a Neon-backed store.
 # No global default — limits are applied explicitly per-route so health
 # checks and HTML pages stay unthrottled.
+def _client_ip_key():
+    """Rate-limit key: prefer Cloudflare's CF-Connecting-IP (authoritative
+    client IP, set by CF and not client-modifiable), fall back to
+    request.remote_addr (ProxyFix-resolved). Defense in depth — even if
+    the X-Forwarded-For chain changes shape, the per-IP bucket stays correct."""
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip:
+        return cf_ip.strip()
+    return request.remote_addr or "anonymous"
+
+
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
+    key_func=_client_ip_key,
     storage_uri="memory://",
 )
 
@@ -285,7 +296,7 @@ def inject_liveness():
         return {"liveness": None}
     return {"liveness": {
         "ledger_index": p.get("ledger_index"),
-        "last_close_age_seconds": p.get("last_close_age_seconds"),
+        "last_close_age_seconds": max(0, p.get("last_close_age_seconds") or 0),
         "status": p.get("status"),
         "status_text": p.get("status_text"),
         "fetched_at_unix": int(time.time()),
@@ -1916,7 +1927,7 @@ def api_ledger_tip():
         return {"error": "unavailable"}, 503
     return {
         "ledger_index": p.get("ledger_index"),
-        "last_close_age_seconds": p.get("last_close_age_seconds"),
+        "last_close_age_seconds": max(0, p.get("last_close_age_seconds") or 0),
         "status": p.get("status"),
         "status_text": p.get("status_text"),
         "load_factor": p.get("load_factor"),
@@ -2068,13 +2079,19 @@ def sitemap_xml():
 
 
 @app.route("/admin/stats")
+@limiter.limit("30 per minute")
 def admin_stats():
     """Private real-time visitor analytics, gated by ADMIN_STATS_KEY.
-    The token comes via ?key= query param. Wrong/missing key returns 404
-    (not 401) so the route's existence stays unadvertised to scanners."""
+    The token comes via HTTP Basic Auth (any username, password = the key),
+    never the URL — so it doesn't leak into Render/Cloudflare access logs,
+    browser history, or Referer headers on outbound clicks. Browsers handle
+    the credential prompt natively and remember it per-origin.
+    Wrong/missing key returns 404 (not 401) so the route's existence stays
+    unadvertised to scanners."""
     expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip()
-    provided = (request.args.get("key") or "").strip()
-    if not expected or not provided or provided != expected:
+    auth = request.authorization
+    provided = (auth.password or "").strip() if auth and auth.password else ""
+    if not expected or not provided or not hmac.compare_digest(provided, expected):
         return render_template("404.html"), 404
 
     rollups = db.read_page_view_stats(kind="human")
@@ -2111,7 +2128,6 @@ def admin_stats():
         bot_top_24h=bot_top_24h,
         bot_countries_24h=bot_countries_24h,
         recent=recent_view,
-        key=provided,
         pg_ok=db.pg_available(),
     )
 
