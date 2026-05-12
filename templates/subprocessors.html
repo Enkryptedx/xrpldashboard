@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Subprocessors') }} · xrpldashboard</title>
+  {% set meta_title = "subprocessors · xrpldashboard" %}
+  {% set meta_description = "Every third-party vendor that touches data flowing through xrpldashboard, what they see, where they run, and their data-processing agreement." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .updated { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 8px 0 36px;
+            max-width: 760px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    table.subs { width: 100%; border-collapse: collapse;
+                 margin: 12px 0 8px; font-size: 0.92rem; }
+    table.subs th, table.subs td {
+      padding: 12px 12px; text-align: left;
+      border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    table.subs th { color: var(--muted); font-weight: 600;
+                    font-size: 0.78rem; text-transform: uppercase;
+                    letter-spacing: 0.06em; }
+    table.subs td.vendor { font-weight: 600; color: var(--text); white-space: nowrap; }
+    table.subs td.region { color: var(--muted); white-space: nowrap; }
+    table.subs td.dpa a { white-space: nowrap; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('Subprocessors') }}</h1>
+  <p class="updated">{{ _('Last updated:') }} 2026-05-12</p>
+  <p class="lede">
+    {{ _('Every third-party vendor that touches data flowing through xrpldashboard. What they see, where they run, and their data-processing agreement. If a row changes, this page changes — there are no silent additions.') }}
+  </p>
+
+  <div class="callout">
+    <p style="margin: 0;">
+      <strong>{{ _('How to read this page.') }}</strong>
+      {{ _('"Data they see" describes the maximum scope of data each vendor processes on our behalf — not what they actively store or analyze. xrpldashboard collects no PII (no accounts, no analytics tracker, no marketing list), so the data passing through these vendors is overwhelmingly request metadata and aggregated on-chain figures. The detail is in') }} <a href="/privacy">/privacy</a>.
+    </p>
+  </div>
+
+  <div class="table-wrap">
+    <table class="subs">
+      <thead>
+        <tr>
+          <th>{{ _('Vendor') }}</th>
+          <th>{{ _('Purpose') }}</th>
+          <th>{{ _('Region') }}</th>
+          <th>{{ _('Data they see') }}</th>
+          <th>{{ _('DPA') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="vendor">Cloudflare</td>
+          <td>{{ _('DNS, CDN, WAF, DDoS absorption, TLS termination') }}</td>
+          <td class="region">{{ _('Global (anycast edge)') }}</td>
+          <td>{{ _('Request metadata: client IP, user agent, requested path, response status. Cached static assets only — no HTML caching.') }}</td>
+          <td class="dpa"><a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noopener noreferrer">DPA →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">Render</td>
+          <td>{{ _('Application hosting (Flask app behind Cloudflare)') }}</td>
+          <td class="region">{{ _('United States') }}</td>
+          <td>{{ _('Request metadata forwarded from Cloudflare. Container logs (standard request log + stderr). No write access from the public web.') }}</td>
+          <td class="dpa"><a href="https://render.com/legal/dpa" target="_blank" rel="noopener noreferrer">DPA →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">Neon</td>
+          <td>{{ _('Managed Postgres for time-series and aggregate XRPL data') }}</td>
+          <td class="region">{{ _('United States (Ohio)') }}</td>
+          <td>{{ _('Aggregated on-chain figures (whale events, pool rollups, snapshot metadata, MPT registry). No PII; no per-visitor data.') }}</td>
+          <td class="dpa"><a href="https://neon.tech/dpa" target="_blank" rel="noopener noreferrer">DPA →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">Brevo</td>
+          <td>{{ _('Outbound SMTP for replies from contact@xrpldashboard.com') }}</td>
+          <td class="region">{{ _('European Union') }}</td>
+          <td>{{ _('Sender, recipient, and message body of outbound email replies sent from our contact address. Inbound mail does not pass through Brevo.') }}</td>
+          <td class="dpa"><a href="https://www.brevo.com/legal/" target="_blank" rel="noopener noreferrer">Legal →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">Squarespace</td>
+          <td>{{ _('Inbound email forwarding for contact@xrpldashboard.com') }}</td>
+          <td class="region">{{ _('United States') }}</td>
+          <td>{{ _('Inbound email envelope + body, forwarded to a single operator inbox. No mailbox storage of forwarded mail beyond transit.') }}</td>
+          <td class="dpa"><a href="https://www.squarespace.com/legal" target="_blank" rel="noopener noreferrer">Legal →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">BetterStack</td>
+          <td>{{ _('Uptime monitoring and on-call paging') }}</td>
+          <td class="region">{{ _('European Union') }}</td>
+          <td>{{ _('Health-check request metadata (timing, response code) for a small set of public endpoints. No request bodies, no user traffic.') }}</td>
+          <td class="dpa"><a href="https://betterstack.com/legal" target="_blank" rel="noopener noreferrer">Legal →</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    {{ _('Links labeled "DPA" go directly to the vendor\'s published data-processing agreement. Links labeled "Legal" go to the vendor\'s legal index — the DPA is reachable from there but not at a stable canonical URL. If a link 404s, email') }} <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a> {{ _('and we\'ll update the row.') }}
+  </p>
+
+  <h2>{{ _('What this page does not list') }}</h2>
+  <ul>
+    <li><strong>{{ _('Public infrastructure we query, not vendors we contract with.') }}</strong> {{ _('XRPL nodes (xrplcluster.com, s1/s2.ripple.com), Ethereum public RPC (1rpc.io), and price oracles are read-only public endpoints — they do not process data on our behalf. The full source list is on') }} <a href="/methodology">/methodology</a>.</li>
+    <li><strong>{{ _('Development tooling.') }}</strong> {{ _('GitHub holds the source repository but does not see live production data. CI runs on Render\'s build infrastructure, already listed above.') }}</li>
+    <li><strong>{{ _('Vendors we evaluated and didn\'t adopt.') }}</strong> {{ _('Anything we tested in a sandbox and discarded never touched production data.') }}</li>
+  </ul>
+
+  <h2>{{ _('How changes happen') }}</h2>
+  <p>
+    {{ _('If we add or replace a subprocessor, the change lands on this page in the same deploy. There is no separate vendor list, no internal-only ledger. The "last updated" timestamp at the top reflects the most recent edit. If you want a heads-up before a change goes live, email us and ask to be CC\'d.') }}
+  </p>
+
+  <div class="footer">
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRPL Foundation, or any exchange. Built with Python, Flask, and the public XRPL.') }}
+    <br><br>
+    <a href="/security">{{ _('security') }}</a> ·
+    <a href="/privacy">{{ _('privacy') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

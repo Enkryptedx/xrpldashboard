@@ -73,6 +73,8 @@ PUBLIC_ROUTES = [
     "/health",
     "/about",
     "/institutional",
+    "/security",
+    "/subprocessors",
 ]
 
 app = Flask(__name__)
@@ -147,6 +149,8 @@ _OG_PAGES = {
     "institutional": ("For Institutions",      "Custom data feeds and direct access.",                "#fbbf24"),
     "terms":         ("Terms of Service",      "Plain-English terms for using xrpldashboard.",        "#94a3b8"),
     "privacy":       ("Privacy Policy",        "What we collect, what we don't.",                     "#94a3b8"),
+    "security":      ("Security",              "How we handle data, harden surfaces, and disclose gaps.", "#10b981"),
+    "subprocessors": ("Subprocessors",         "Every vendor that touches data, what they see, where they run.", "#94a3b8"),
 }
 
 # Path -> OG slug. Anything not in this map falls through to the generic
@@ -166,6 +170,8 @@ _OG_PATH_SLUG = {
     "/institutional": "institutional",
     "/terms":         "terms",
     "/privacy":       "privacy",
+    "/security":      "security",
+    "/subprocessors": "subprocessors",
 }
 
 # Cache of rendered PNG bytes by slug. The output is deterministic for the
@@ -1722,6 +1728,16 @@ def terms():
 @app.route("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@app.route("/security")
+def security():
+    return render_template("security.html")
+
+
+@app.route("/subprocessors")
+def subprocessors():
+    return render_template("subprocessors.html")
 
 
 def _historical_snapshot_meta_from_disk():
