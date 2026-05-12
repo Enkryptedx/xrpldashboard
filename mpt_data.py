@@ -35,7 +35,7 @@ SNAPSHOT_PATH = os.environ.get(
     "MPT_SNAPSHOT_PATH",
     os.path.join(HERE, "mpt_snapshot.json"),
 )
-SNAPSHOT_MAX_AGE = int(os.environ.get("MPT_SNAPSHOT_MAX_AGE", "7200"))  # 2 hr
+SNAPSHOT_MAX_AGE = int(os.environ.get("MPT_SNAPSHOT_MAX_AGE", "93600"))  # 26 hr (daily walk + slack)
 
 _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
@@ -174,13 +174,23 @@ def _shape_issuance(state):
     }
 
 
-def _paginate_all(max_pages=2000, time_budget_secs=600):
-    """Walk every MPTokenIssuance. Bounded by both page count and wall-clock
-    so a malfunctioning node can't make us loop forever. Returns list."""
+def _paginate_all(max_pages=10_000_000, time_budget_secs=86400):
+    """Walk every MPTokenIssuance — and we mean every. ledger_data with a
+    type filter still paginates through the FULL ledger object set, so a
+    real mainnet walk processes tens of millions of entries and takes
+    hours. A 600s/2000-page budget (the old defaults) sampled only ~5-10%
+    of the ledger and gave us a floor, not the truth — fine for an MVP,
+    misleading for a page that says "every MPT". Defaults now allow the
+    walk to actually complete; caps stay only to guard against a wedged
+    node that returns markers forever.
+
+    Returns the partial list with `_truncated=True` appended to the last
+    entry when a cap fires, so callers can label the snapshot honestly."""
     t0 = time.time()
     out = []
     marker = None
     pages = 0
+    truncated = False
     while pages < max_pages and (time.time() - t0) < time_budget_secs:
         params = {
             "type": "mpt_issuance",
@@ -198,10 +208,13 @@ def _paginate_all(max_pages=2000, time_budget_secs=600):
         marker = result.get("marker")
         if not marker:
             break
-    return out
+    else:
+        truncated = True  # while-else: loop exited via cap, not via break
+    return {"entries": out, "pages": pages, "truncated": truncated,
+            "elapsed_seconds": round(time.time() - t0, 1)}
 
 
-def fetch_mpt_data(max_pages=2000, time_budget_secs=600):
+def fetch_mpt_data(max_pages=10_000_000, time_budget_secs=86400):
     raw = _paginate_all(max_pages=max_pages, time_budget_secs=time_budget_secs)
     if raw is None:
         return {
@@ -210,8 +223,10 @@ def fetch_mpt_data(max_pages=2000, time_budget_secs=600):
             "issuances": [],
             "total": 0,
             "by_class": {"rwa": 0, "stablecoin": 0, "utility": 0, "other": 0},
+            "walk_complete": False,
         }
-    rows = [_shape_issuance(s) for s in raw]
+    entries = raw["entries"]
+    rows = [_shape_issuance(s) for s in entries]
     rows.sort(key=lambda r: -(r["outstanding_amount"] or 0))
 
     by_class = {"rwa": 0, "stablecoin": 0, "utility": 0, "other": 0}
@@ -227,6 +242,9 @@ def fetch_mpt_data(max_pages=2000, time_budget_secs=600):
         "total": len(rows),
         "unique_issuers": len(issuers),
         "by_class": by_class,
+        "walk_complete": not raw.get("truncated"),
+        "walk_pages": raw.get("pages"),
+        "walk_seconds": raw.get("elapsed_seconds"),
     }
 
 
@@ -273,9 +291,9 @@ def load_mpt_snapshot(path=None, max_age=None):
 
 if __name__ == "__main__":
     t0 = time.time()
-    d = fetch_mpt_data(time_budget_secs=600)
+    d = fetch_mpt_data()
     print(f"node: {d['node']}")
-    print(f"fetched in {time.time()-t0:.1f}s")
+    print(f"fetched in {time.time()-t0:.1f}s  walked={d.get('walk_pages')} pages  complete={d.get('walk_complete')}")
     print(f"total: {d['total']}  by_class={d['by_class']}")
-    for r in d["issuances"][:10]:
+    for r in d["issuances"][:20]:
         print(f"  {r.get('ticker') or '?':8s} {r.get('name') or '(unnamed)':30s} class={r['classification']}  issuer={r['issuer']}")

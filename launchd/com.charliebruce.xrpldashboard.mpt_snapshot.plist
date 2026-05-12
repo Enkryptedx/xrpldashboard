@@ -6,7 +6,7 @@
     <string>com.charliebruce.xrpldashboard.mpt_snapshot</string>
 
     <key>Comment</key>
-    <string>MPToken issuance registry snapshot writer. Walks every MPTokenIssuance ledger object, decodes XLS-89 metadata, enriches top-N by outstanding supply with holder counts via mpt_holders, writes mpt_snapshot.json atomically. /mpts route reads this file when fresh (&lt;2hr); falls back to in-process fetcher otherwise. Hourly cadence because a full mainnet ledger walk for sparsely-populated MPT objects can take several minutes.</string>
+    <string>MPToken issuance registry snapshot writer. Walks every MPTokenIssuance ledger object (full ledger walk — ledger_data with a type filter still paginates through tens of millions of entries), decodes XLS-89 metadata, enriches top-N by outstanding supply with holder counts via mpt_holders, mirrors to Postgres for Render. /mpts route reads this file when fresh (&lt;26hr); falls back to PG and then to in-process fetcher. Daily cadence because a complete mainnet walk takes 1-5 hours.</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -17,11 +17,11 @@
     <key>WorkingDirectory</key>
     <string>/Users/charliebruce/xrpl_test</string>
 
-    <!-- Every hour. Mainnet MPT walks are minutes-long; 15-min cadence
-         would just chain back-to-back walks. Issuance counts shift on
-         hours-to-days timescale, not seconds. -->
+    <!-- Daily. A complete mainnet walk now takes 1-5 hours (was bounded
+         at 10 min and gave a misleading count). MPT issuance counts move
+         on a days-to-weeks timescale today, so daily is plenty. -->
     <key>StartInterval</key>
-    <integer>3600</integer>
+    <integer>86400</integer>
 
     <key>RunAtLoad</key>
     <true/>
