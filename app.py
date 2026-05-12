@@ -13,7 +13,7 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 
-from flask import Flask, Response, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, redirect, render_template, request, url_for
 from flask_limiter import Limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -67,6 +67,7 @@ PUBLIC_ROUTES = [
     "/whales",
     "/tokens",
     "/pools",
+    "/mpts",
     "/rlusd",
     "/cold-storage",
     "/health",
@@ -2007,6 +2008,81 @@ def lending():
     return render_template("lending.html", status=status, data=data)
 
 
+# Tickers and names that obviously mark an issuance as test/demo. Conservative
+# by design: a false-positive "test" badge on a real issuance is more harmful
+# than a false-negative "prepared" badge on a sloppy test. Adjust when a real
+# issuer collides with one of these patterns.
+_MPT_TEST_TICKERS = {"TEST", "TMPT"}
+_MPT_TEST_NAME_PREFIXES = ("test ", "test mpt")
+
+
+def _normalize_outstanding(row):
+    """Scale-aware outstanding amount used for sorting and "is this live".
+    raw is a string of base units; asset_scale is the decimals. (None scale
+    treated as 0 — same as the template's display logic.)"""
+    raw = row.get("outstanding_amount") or 0
+    try:
+        raw = int(raw)
+    except (TypeError, ValueError):
+        return 0.0
+    scale = row.get("asset_scale") or 0
+    try:
+        scale = int(scale)
+    except (TypeError, ValueError):
+        scale = 0
+    if scale <= 0:
+        return float(raw)
+    return raw / (10 ** scale)
+
+
+def _classify_mpt_status(row):
+    """Three-state badge: live / prepared / test. The badge IS the editorial
+    trust signal — readers shouldn't have to compute "real or staged" from
+    a hex outstanding amount."""
+    ticker = (row.get("ticker") or "").upper()
+    name = (row.get("name") or "").strip().lower()
+    if ticker in _MPT_TEST_TICKERS:
+        return "test"
+    if any(name.startswith(p) for p in _MPT_TEST_NAME_PREFIXES):
+        return "test"
+    if _normalize_outstanding(row) > 0:
+        return "live"
+    return "prepared"
+
+
+def _enrich_mpt_rows(data):
+    """Take a raw snapshot dict and add per-row {status, normalized_outstanding,
+    issuer_label} fields, then re-sort: live first (by outstanding desc),
+    then prepared, then test. Mutates a shallow copy so callers see the
+    original snapshot dict untouched."""
+    if not data or not data.get("issuances"):
+        return data
+    rows = list(data.get("issuances") or [])
+    labels = db.read_account_labels({r.get("issuer") for r in rows if r.get("issuer")})
+
+    status_count = {"live": 0, "prepared": 0, "test": 0}
+    enriched = []
+    for r in rows:
+        copy = dict(r)
+        copy["status"] = _classify_mpt_status(r)
+        copy["normalized_outstanding"] = _normalize_outstanding(r)
+        # Only set issuer_label from PG if the snapshot didn't already carry one.
+        if not copy.get("issuer_name"):
+            lbl = labels.get(copy.get("issuer"))
+            if lbl and lbl.get("name"):
+                copy["issuer_name"] = lbl["name"]
+        status_count[copy["status"]] += 1
+        enriched.append(copy)
+
+    status_rank = {"live": 0, "prepared": 1, "test": 2}
+    enriched.sort(key=lambda r: (status_rank.get(r["status"], 3), -r["normalized_outstanding"]))
+
+    out = dict(data)
+    out["issuances"] = enriched
+    out["by_status"] = status_count
+    return out
+
+
 @app.route("/mpts")
 def mpts():
     """MPT registry — every MPTokenIssuance on the ledger, with XLS-89
@@ -2034,8 +2110,106 @@ def mpts():
             "issuances": [],
             "total": 0,
             "by_class": {"rwa": 0, "stablecoin": 0, "utility": 0, "other": 0},
+            "by_status": {"live": 0, "prepared": 0, "test": 0},
         }
+    else:
+        data = _enrich_mpt_rows(data)
     return render_template("mpts.html", data=data)
+
+
+@app.route("/api/mpts")
+@limiter.limit("60 per minute")
+def api_mpts():
+    """Public JSON mirror of /mpts — same rows, same status badges, same
+    sort. Procurement teams, journalists, and downstream tools will scrape
+    this so they don't have to parse the HTML. Documented field names are
+    stable; adding new fields is safe, renaming or removing is not."""
+    data = load_mpt_snapshot()
+    if data is None:
+        data = db.read_mpt_snapshot()
+    if data is None:
+        return ({"ok": False, "warming": True, "issuances": [], "total": 0}, 503,
+                {"Cache-Control": "no-store"})
+    enriched = _enrich_mpt_rows(data)
+    payload = {
+        "ok": True,
+        "total": enriched.get("total"),
+        "by_class": enriched.get("by_class"),
+        "by_status": enriched.get("by_status"),
+        "snapshot_age_seconds": enriched.get("snapshot_age_seconds"),
+        "issuances": [
+            {
+                "issuance_id": r.get("issuance_id"),
+                "name": r.get("name"),
+                "ticker": r.get("ticker"),
+                "issuer": r.get("issuer"),
+                "issuer_name": r.get("issuer_name"),
+                "classification": r.get("classification"),
+                "asset_subclass": r.get("asset_subclass"),
+                "outstanding_amount": r.get("outstanding_amount"),
+                "asset_scale": r.get("asset_scale"),
+                "holders": r.get("holders"),
+                "flags": r.get("flags"),
+                "status": r.get("status"),
+                "detail_url": f"/mpt/{r.get('issuance_id')}" if r.get("issuance_id") else None,
+            }
+            for r in (enriched.get("issuances") or [])
+        ],
+    }
+    return payload
+
+
+@app.route("/mpt/<issuance_id>")
+def mpt_detail(issuance_id):
+    """Per-MPT detail page. Minimal at launch: name, ticker, asset_class,
+    status badge, issuer + curated label, outstanding amount, peer MPTs
+    from the same issuer. Holders / supply-over-time / mint-burn velocity
+    arrive once the holders worker and history table land.
+
+    Test-shaped MPTs render with a noindex meta so we don't pollute the
+    sitemap with junk pages. Real and prepared MPTs are fully indexable —
+    they're the institutional discovery surface."""
+    data = load_mpt_snapshot()
+    if data is None:
+        data = db.read_mpt_snapshot()
+    if data is None:
+        abort(503)
+
+    enriched = _enrich_mpt_rows(data)
+    rows = enriched.get("issuances") or []
+    # Match case-insensitively because XRPL hex IDs are sometimes lowercased
+    # in URLs even though the canonical form is uppercase.
+    target_id = issuance_id.upper()
+    mpt = next((r for r in rows if (r.get("issuance_id") or "").upper() == target_id), None)
+    if mpt is None:
+        abort(404)
+
+    peer_issuer = mpt.get("issuer")
+    peers = [r for r in rows
+             if r.get("issuer") == peer_issuer
+             and (r.get("issuance_id") or "").upper() != target_id]
+
+    # Decode MPTokenIssuance flags here — Jinja doesn't have bitwise ops,
+    # so the template only renders the resulting (label, on) list.
+    # Bits per XLS-33 / MPTokenIssuance ledger entry definitions.
+    flags = int(mpt.get("flags") or 0)
+    flag_decoded = [
+        ("Locked", bool(flags & 0x01)),
+        ("Can be locked", bool(flags & 0x02)),
+        ("Requires authorization", bool(flags & 0x04)),
+        ("Can be escrowed", bool(flags & 0x08)),
+        ("Can be traded", bool(flags & 0x10)),
+        ("Transferable", bool(flags & 0x20)),
+        ("Clawback enabled", bool(flags & 0x40)),
+    ]
+
+    return render_template(
+        "mpt_detail.html",
+        mpt=mpt,
+        peers=peers,
+        peer_count=len(peers),
+        flag_decoded=flag_decoded,
+    )
 
 
 @app.route("/api/ledger-tip")
@@ -2193,10 +2367,15 @@ def healthz():
 def robots_txt():
     """Tell crawlers what's indexable. Allow the public surface, exclude
     operational endpoints and the unbounded detail-page space (every
-    valid wallet address would otherwise be a crawlable URL)."""
+    valid wallet address would otherwise be a crawlable URL).
+
+    /mpt/<id> is allow-listed: the universe of MPT issuance IDs is finite
+    and curated, and indexing them is the point — issuers Google their
+    own MPT name and find themselves here."""
     body = (
         "User-agent: *\n"
         "Allow: /\n"
+        "Allow: /mpt/\n"
         "Disallow: /healthz\n"
         "Disallow: /api/\n"
         "Disallow: /lookup\n"
@@ -2221,9 +2400,10 @@ def security_txt():
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    """Static sitemap covering the curated public pages. Detail pages
-    (wallet/token) are intentionally excluded — they're discoverable
-    through the listing pages, and the URL space is unbounded."""
+    """Static + dynamic sitemap. Curated public pages always included.
+    Per-MPT detail pages (live/prepared only — test issuances carry a
+    noindex meta and are excluded here too) extend the sitemap so issuers
+    find their own MPT page via Google when they search the token name."""
     today = datetime.now(timezone.utc).date().isoformat()
     urls = []
     for path in PUBLIC_ROUTES:
@@ -2237,6 +2417,33 @@ def sitemap_xml():
             f"    <priority>{'1.0' if is_home else '0.7'}</priority>\n"
             f"  </url>"
         )
+
+    # MPT detail pages — gated on having a snapshot. Failure to load is
+    # silent: we just emit a sitemap without MPT entries that day rather
+    # than 500 on a transient snapshot read.
+    try:
+        data = load_mpt_snapshot()
+        if data is None:
+            data = db.read_mpt_snapshot()
+        if data:
+            enriched = _enrich_mpt_rows(data)
+            for r in (enriched.get("issuances") or []):
+                if r.get("status") == "test":
+                    continue
+                iid = r.get("issuance_id")
+                if not iid:
+                    continue
+                urls.append(
+                    f"  <url>\n"
+                    f"    <loc>{SITE_URL}/mpt/{iid}</loc>\n"
+                    f"    <lastmod>{today}</lastmod>\n"
+                    f"    <changefreq>daily</changefreq>\n"
+                    f"    <priority>0.5</priority>\n"
+                    f"  </url>"
+                )
+    except Exception:
+        pass
+
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% set display_name = mpt.name or _('(unnamed MPT)') %}
+  {% set display_ticker = mpt.ticker or '' %}
+  <title>{{ display_name }}{% if display_ticker %} · {{ display_ticker }}{% endif %} · xrpldashboard</title>
+  {% set meta_title = display_name ~ (' · ' ~ display_ticker if display_ticker else '') ~ ' · MPT on XRPL' %}
+  {% set meta_description = 'On-chain Multi-Purpose Token issued on the XRP Ledger. Outstanding supply, issuer, classification, and metadata — sourced directly from the validated ledger.' %}
+  {% include "_head_meta.html" %}
+  {# Don't pollute Google's index with test-shaped MPTs. The directory at
+     /mpts still lists them honestly, but they shouldn't compete with real
+     issuances in search results. #}
+  {% if mpt.status == 'test' %}
+  <meta name="robots" content="noindex,nofollow">
+  {% endif %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --grad-mpt: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(236,72,153,0.05), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(168,85,247,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 64px; }
+
+    .crumbs { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.8em; }
+    .crumbs a { color: var(--muted); }
+    .crumbs a:hover { color: var(--text); }
+
+    .hero { position: relative; overflow: hidden; padding: 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-mpt); opacity: 0.08;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero h1 { font-size: 1.9rem; margin: 0; font-weight: 700;
+               letter-spacing: -0.02em;
+               background: var(--grad-mpt); -webkit-background-clip: text;
+               background-clip: text; color: transparent; }
+    .hero-ticker { font-family: var(--mono); color: var(--muted);
+                   font-size: 0.95rem; margin-left: 0.4em; vertical-align: middle; }
+    .badges { margin-top: 0.6em; display: flex; flex-wrap: wrap; gap: 0.5em; }
+
+    .pill { display: inline-block; padding: 0.18em 0.7em; border-radius: 999px;
+            font-family: var(--mono); font-size: 0.72rem;
+            letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+    .pill.rwa { color: var(--green); background: rgba(34,197,94,0.12); }
+    .pill.stablecoin { color: var(--cyan); background: rgba(34,211,238,0.12); }
+    .pill.utility { color: var(--purple); background: rgba(168,85,247,0.12); }
+    .pill.other { color: var(--muted); background: rgba(128,144,176,0.10); }
+    .pill.live { color: var(--green); background: rgba(34,197,94,0.12); }
+    .pill.prepared { color: var(--amber); background: rgba(245,158,11,0.12); }
+    .pill.test { color: var(--dim); background: rgba(128,144,176,0.10); }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8em; }
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.1em 1.2em; margin-bottom: 0.8em; }
+    .card h2 { font-size: 0.95rem; margin: 0 0 0.5em; font-weight: 600;
+               letter-spacing: -0.01em; color: var(--text); }
+
+    .fact { display: flex; flex-direction: column; gap: 0.25em; }
+    .fact-label { font-size: 0.7rem; color: var(--muted);
+                  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .fact-value { font-family: var(--mono); font-size: 1.15rem; color: var(--text);
+                  font-weight: 600; word-break: break-all; }
+    .fact-value.small { font-size: 0.88rem; font-weight: 500; }
+
+    .addr { font-family: var(--mono); font-size: 0.85rem; color: var(--muted);
+            word-break: break-all; }
+    .addr-label { color: var(--text); font-weight: 600; }
+
+    .flags-list { list-style: none; padding: 0; margin: 0; display: flex;
+                  flex-wrap: wrap; gap: 0.4em; }
+    .flags-list li { font-family: var(--mono); font-size: 0.78rem;
+                     padding: 0.2em 0.6em; border-radius: 6px;
+                     border: 1px solid var(--border); color: var(--muted); }
+    .flags-list li.on { color: var(--text); border-color: rgba(34,211,238,0.35);
+                        background: rgba(34,211,238,0.05); }
+
+    .peer-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .peer-table th { text-align: left; padding: 0.5em 0.7em;
+                     font-size: 0.7rem; color: var(--muted);
+                     text-transform: uppercase; letter-spacing: 0.08em;
+                     border-bottom: 1px solid var(--border); font-weight: 600; }
+    .peer-table td { padding: 0.6em 0.7em; border-bottom: 1px solid var(--border); }
+    .peer-table tr:last-child td { border-bottom: none; }
+    .peer-table tr:hover td { background: rgba(236,72,153,0.04); }
+    .peer-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .peer-table a.name-link { color: var(--text); }
+    .peer-table a.name-link:hover { color: var(--pink); text-decoration: none; }
+
+    .coming-soon { color: var(--muted); font-size: 0.88rem; line-height: 1.65;
+                   padding: 0.9em 1em; border-left: 2px solid var(--amber);
+                   background: rgba(245,158,11,0.04); border-radius: 0 6px 6px 0;
+                   margin: 0.2em 0; }
+
+    footer { margin-top: 2em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: 0.78rem; }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+  {% include "_nav.html" %}
+
+  <div class="crumbs"><a href="/mpts">{{ _('MPT registry') }}</a> · {{ _('MPT detail') }}</div>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <h1>{{ display_name }}{% if display_ticker %}<span class="hero-ticker">({{ display_ticker }})</span>{% endif %}</h1>
+      <div class="badges">
+        <span class="pill {{ mpt.status }}">{{ _(mpt.status) }}</span>
+        <span class="pill {{ mpt.classification }}">{{ mpt.classification }}</span>
+        {% if mpt.asset_subclass %}<span class="pill other">{{ mpt.asset_subclass }}</span>{% endif %}
+      </div>
+      {% if mpt.desc %}
+      <p style="color: var(--muted); margin: 0.9em 0 0; max-width: 720px;">{{ mpt.desc }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="fact">
+        <div class="fact-label">{{ _('Outstanding supply') }}</div>
+        <div class="fact-value">
+          {% if mpt.outstanding_amount %}
+            {%- set scale = mpt.asset_scale or 0 -%}
+            {%- set display = (mpt.outstanding_amount / (10 ** scale)) if scale else mpt.outstanding_amount -%}
+            {{ '{:,.0f}'.format(display) }}
+          {% else %}
+            0
+          {% endif %}
+        </div>
+        <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.2em;">
+          {{ _('asset_scale') }} = {{ mpt.asset_scale or 0 }}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="fact">
+        <div class="fact-label">{{ _('Holders') }}</div>
+        <div class="fact-value">
+          {% if mpt.holders is not none and mpt.holders > 0 %}{{ '{:,}'.format(mpt.holders) }}
+          {% else %}<span style="color: var(--dim);">{{ _('not collected') }}</span>{% endif %}
+        </div>
+        <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.2em;">
+          {{ _('per-MPT holders worker is on the queue') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{{ _('Issuer') }}</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.6em; align-items: baseline;">
+      {% if mpt.issuer_name %}
+        <span class="addr-label">{{ mpt.issuer_name }}</span>
+      {% else %}
+        <span style="color: var(--dim); font-style: italic;">{{ _('(no curated label)') }}</span>
+      {% endif %}
+      <a class="addr" href="https://xrpscan.com/account/{{ mpt.issuer }}" target="_blank" rel="noopener">{{ mpt.issuer }}</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{{ _('Issuance details') }}</h2>
+    <div class="fact" style="margin-bottom: 0.9em;">
+      <div class="fact-label">{{ _('Issuance ID') }}</div>
+      <div class="fact-value small">{{ mpt.issuance_id }}</div>
+    </div>
+    <div class="fact-label" style="margin-bottom: 0.4em;">{{ _('On-chain flags') }}</div>
+    <ul class="flags-list">
+      {% for label, on in flag_decoded %}
+      <li class="{{ 'on' if on else '' }}">{{ _(label) }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% if peers %}
+  <div class="card">
+    <h2>{{ _('Other MPTs from this issuer') }} ({{ peer_count }})</h2>
+    <table class="peer-table">
+      <thead>
+        <tr>
+          <th>{{ _('Name') }}</th>
+          <th>{{ _('Status') }}</th>
+          <th>{{ _('Class') }}</th>
+          <th class="num">{{ _('Outstanding') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in peers[:20] %}
+        <tr>
+          <td>
+            <a class="name-link" href="/mpt/{{ p.issuance_id }}">{{ p.name or _('(unnamed)') }}</a>
+            {% if p.ticker %}<span style="color: var(--muted); font-family: var(--mono); font-size: 0.75rem; margin-left: 0.4em;">{{ p.ticker }}</span>{% endif %}
+          </td>
+          <td><span class="pill {{ p.status }}" style="font-size: 0.65rem;">{{ _(p.status) }}</span></td>
+          <td><span class="pill {{ p.classification }}" style="font-size: 0.65rem;">{{ p.classification }}</span></td>
+          <td class="num">
+            {% if p.outstanding_amount %}
+              {%- set scale = p.asset_scale or 0 -%}
+              {{ '{:,.0f}'.format((p.outstanding_amount / (10 ** scale)) if scale else p.outstanding_amount) }}
+            {% else %}<span style="color: var(--dim);">0</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if peer_count > 20 %}
+    <div style="color: var(--dim); font-size: 0.8rem; margin-top: 0.6em;">
+      {{ _('Showing first 20.') }} <a href="/mpts">{{ _('Full registry') }} →</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>{{ _('Coming next on this page') }}</h2>
+    <div class="coming-soon">
+      {{ _('Outstanding supply sparkline (30 days), top-10 holders with concentration ratio, and 24h/7d/30d mint-burn velocity — once the per-MPT holders worker and history table land. Status of each is tracked openly on') }} <a href="/methodology">/methodology</a>.
+    </div>
+  </div>
+
+  <footer>
+    {{ _('Data: live') }} <code>ledger_data</code> {{ _('RPC against') }} <code>s1.ripple.com</code>, {{ _('refreshed hourly by background snapshot worker.') }}
+    <br><br>
+    <strong>{{ _('Not financial advice.') }}</strong>
+    {{ _('Information shown is for educational purposes only. This page is not an endorsement of any token. Do your own research before interacting with any on-chain issuance.') }}
+    <br><br>
+    <a href="/mpts">← {{ _('back to MPT registry') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a>
+  </footer>
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

@@ -144,6 +144,16 @@
     .class-pill.stablecoin { color: var(--cyan); background: rgba(34,211,238,0.10); }
     .class-pill.utility { color: var(--purple); background: rgba(168,85,247,0.10); }
     .class-pill.other { color: var(--muted); background: rgba(128,144,176,0.10); }
+    .status-pill {
+      display: inline-block; padding: 0.15em 0.55em; border-radius: 999px;
+      font-family: var(--mono); font-size: var(--fs-2xs);
+      letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;
+    }
+    .status-pill.live { color: var(--green); background: rgba(34,197,94,0.12); }
+    .status-pill.prepared { color: var(--amber); background: rgba(245,158,11,0.12); }
+    .status-pill.test { color: var(--dim); background: rgba(128,144,176,0.10); }
+    .mpt-table a.name-link { color: var(--text); text-decoration: none; }
+    .mpt-table a.name-link:hover { color: var(--pink); text-decoration: none; }
     .mpt-table .dim { color: var(--dim); }
 
     .empty-state {
@@ -224,8 +234,15 @@
 
   <div class="card">
     {% if total > 0 %}
-      <div class="filter-row" data-mpt-filter>
-        <button class="filter-pill active" data-filter="all">{{ _('All') }} <span class="dim">({{ total }})</span></button>
+      {% set by_status = data.by_status if data and data.by_status else {'live':0,'prepared':0,'test':0} %}
+      <div class="filter-row" data-mpt-status-filter>
+        <button class="filter-pill active" data-status="all">{{ _('All status') }} <span class="dim">({{ total }})</span></button>
+        <button class="filter-pill" data-status="live">{{ _('Live') }} <span class="dim">({{ by_status.live }})</span></button>
+        <button class="filter-pill" data-status="prepared">{{ _('Prepared') }} <span class="dim">({{ by_status.prepared }})</span></button>
+        <button class="filter-pill" data-status="test">{{ _('Test') }} <span class="dim">({{ by_status.test }})</span></button>
+      </div>
+      <div class="filter-row" data-mpt-class-filter>
+        <button class="filter-pill active" data-filter="all">{{ _('All class') }} <span class="dim">({{ total }})</span></button>
         <button class="filter-pill" data-filter="rwa">{{ _('RWA') }} <span class="dim">({{ by_class.rwa }})</span></button>
         <button class="filter-pill" data-filter="stablecoin">{{ _('Stablecoins') }} <span class="dim">({{ by_class.stablecoin }})</span></button>
         <button class="filter-pill" data-filter="utility">{{ _('Utility') }} <span class="dim">({{ by_class.utility }})</span></button>
@@ -236,6 +253,7 @@
         <thead>
           <tr>
             <th>{{ _('Name') }}</th>
+            <th>{{ _('Status') }}</th>
             <th>{{ _('Class') }}</th>
             <th class="hide-sm">{{ _('Issuer') }}</th>
             <th class="num hide-sm">{{ _('Holders') }}</th>
@@ -247,11 +265,19 @@
             {% set name = r.name or _('(unnamed)') %}
             {% set issuer = r.issuer or '' %}
             {% set issuer_short = (issuer[:6] ~ '…' ~ issuer[-4:]) if issuer|length > 12 else issuer %}
-            <tr data-class="{{ r.classification }}">
+            {% set status = r.status or 'prepared' %}
+            <tr data-class="{{ r.classification }}" data-status="{{ status }}">
               <td>
-                <span class="name">{{ name }}</span>
+                {% if r.issuance_id %}
+                  <a class="name-link" href="/mpt/{{ r.issuance_id }}">
+                    <span class="name">{{ name }}</span>
+                  </a>
+                {% else %}
+                  <span class="name">{{ name }}</span>
+                {% endif %}
                 {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
               </td>
+              <td><span class="status-pill {{ status }}">{{ _(status) }}</span></td>
               <td><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>
               <td class="hide-sm">
                 {% if r.issuer_name %}{{ r.issuer_name }} · {% endif %}
@@ -316,7 +342,8 @@
 
   <footer>
     {{ _('Data: live') }} <code>ledger_data</code> {{ _('RPC against') }} <code>s1.ripple.com</code>{{ _(', refreshed hourly via background snapshot worker.') }}
-    {{ _('Holder counts come from') }} <code>mpt_holders</code> {{ _('for the top issuances by outstanding supply.') }}
+    {{ _('Holder counts are not yet collected at this layer — the per-MPT mpt_holders worker is on the queue.') }}
+    {{ _('Status badges are derived: "live" if outstanding supply is greater than zero, "test" for issuances using TEST/TMPT tickers or "Test ..." names, otherwise "prepared".') }}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research.') }}
     <br><br>
@@ -327,20 +354,39 @@
 </div>
 
 <script>
-  // Client-side filter — no server round-trip per pill click.
+  // Client-side filter — two dimensions (status × class), AND'd together.
+  // No server round-trip per pill click.
   (function () {
-    const wrap = document.querySelector('[data-mpt-filter]');
-    if (!wrap) return;
-    const pills = wrap.querySelectorAll('.filter-pill');
+    const statusWrap = document.querySelector('[data-mpt-status-filter]');
+    const classWrap  = document.querySelector('[data-mpt-class-filter]');
+    if (!statusWrap || !classWrap) return;
     const rows = document.querySelectorAll('.mpt-table tbody tr');
-    pills.forEach(p => p.addEventListener('click', () => {
-      pills.forEach(x => x.classList.remove('active'));
-      p.classList.add('active');
-      const f = p.dataset.filter;
+    const state = { status: 'all', class: 'all' };
+
+    function apply() {
       rows.forEach(r => {
-        r.style.display = (f === 'all' || r.dataset.class === f) ? '' : 'none';
+        const okStatus = state.status === 'all' || r.dataset.status === state.status;
+        const okClass  = state.class  === 'all' || r.dataset.class  === state.class;
+        r.style.display = (okStatus && okClass) ? '' : 'none';
       });
-    }));
+    }
+
+    statusWrap.querySelectorAll('.filter-pill').forEach(p => {
+      p.addEventListener('click', () => {
+        statusWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        state.status = p.dataset.status;
+        apply();
+      });
+    });
+    classWrap.querySelectorAll('.filter-pill').forEach(p => {
+      p.addEventListener('click', () => {
+        classWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        state.class = p.dataset.filter;
+        apply();
+      });
+    });
   })();
 </script>
 {% include "_vibes_scripts.html" %}
