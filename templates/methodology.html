@@ -220,7 +220,7 @@
 
   <h3>{{ _('Database') }}</h3>
   <p>
-    {{ _('Worker writes to') }} <strong>{{ _('Neon Postgres') }}</strong> {{ _('(free tier; managed EU-hosted Postgres) and a redundant local SQLite snapshot. The web app prefers Postgres for fresh reads and falls back to the SQLite snapshot if the Postgres connection is unavailable. No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any of our metrics — price, volume, TVL, balances are all computed directly from the ledger.') }}
+    {{ _('Worker writes to') }} <strong>{{ _('Neon Postgres') }}</strong> {{ _('(managed Postgres, US-hosted) and a redundant local SQLite snapshot. The web app prefers Postgres for fresh reads and falls back to the SQLite snapshot if the Postgres connection is unavailable. No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any of our metrics — price, volume, TVL, balances are all computed directly from the ledger.') }}
   </p>
 
   <h3>{{ _('Reference labels') }}</h3>
@@ -259,9 +259,9 @@
 
   <h2>{{ _('Infrastructure') }}</h2>
   <ul>
-    <li><strong>{{ _('Web app:') }}</strong> {{ _('Render starter ($7/mo). Source on GitHub, MIT-licensed.') }}</li>
-    <li><strong>{{ _('Worker:') }}</strong> {{ _('Render background worker ($7/mo). Streams XRPL → Postgres 24/7.') }}</li>
-    <li><strong>{{ _('Database:') }}</strong> {{ _('Neon Postgres (free tier).') }}</li>
+    <li><strong>{{ _('Web app:') }}</strong> {{ _('Render. Source on GitHub, MIT-licensed.') }}</li>
+    <li><strong>{{ _('Worker:') }}</strong> {{ _('Render background worker. Streams XRPL → Postgres 24/7.') }}</li>
+    <li><strong>{{ _('Database:') }}</strong> {{ _('Neon Postgres.') }}</li>
     <li><strong>{{ _('CDN:') }}</strong> {{ _('Cloudflare in front of Render.') }}</li>
     <li><strong>{{ _('Status:') }}</strong> <a href="/health">/health</a> — {{ _('public uptime + ledger-sync indicator.') }}</li>
   </ul>
