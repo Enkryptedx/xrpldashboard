@@ -177,6 +177,112 @@
     }
     .card-inspector .wallet-form { margin-top: auto; }
 
+    /* ---------- "Where is XRP?" constellation ---------- */
+    .xrp-constellation {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1em 1.2em 1.2em;
+      margin-bottom: 1.4em;
+      overflow: hidden;
+    }
+    .xrp-constellation::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 30% 35%, rgba(168,85,247,0.07), transparent 45%),
+        radial-gradient(circle at 70% 30%, rgba(34,197,94,0.07), transparent 45%),
+        radial-gradient(circle at 50% 95%, rgba(245,158,11,0.07), transparent 45%);
+      pointer-events: none;
+    }
+    .xrp-constell-head {
+      position: relative; z-index: 1;
+      display: flex; justify-content: space-between; align-items: baseline;
+      flex-wrap: wrap; gap: 0.5em; margin-bottom: 0.8em;
+    }
+    .xrp-constell-head h2 {
+      font-size: var(--fs-md); font-weight: 600; margin: 0;
+      color: var(--text); letter-spacing: -0.015em;
+    }
+    .xrp-constell-head .xc-sub {
+      font-size: var(--fs-xs); color: var(--text-3);
+    }
+    .xrp-constell-svg-wrap {
+      position: relative; z-index: 1;
+      display: flex; justify-content: center;
+      padding: 0.3em 0 0.8em;
+    }
+    .xrp-constell-svg {
+      width: 100%; max-width: 520px; height: auto;
+      display: block;
+    }
+    .xrp-constell-svg .sat-label {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;
+    }
+    .xrp-constell-svg .sat-val {
+      font-family: var(--mono); font-size: 13px; fill: var(--text); font-weight: 600;
+    }
+    .xrp-constell-svg .sat-pct {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-3);
+    }
+    .xrp-constell-svg .center-label {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
+    }
+    .xrp-constell-svg .center-val {
+      font-family: var(--mono); font-size: 16px; fill: var(--text); font-weight: 700;
+    }
+    .xrp-constell-svg .connector {
+      stroke-dasharray: 3 4;
+      stroke-width: 1;
+      stroke: rgba(255,255,255,0.18);
+      fill: none;
+    }
+    .xrp-constell-svg .sat-disc { transition: filter 0.25s; }
+    .xrp-constell-svg a:hover .sat-disc { filter: brightness(1.18); }
+    .xrp-constell-svg a { cursor: pointer; }
+
+    .xrp-constell-chips {
+      position: relative; z-index: 1;
+      display: flex; flex-wrap: wrap; gap: 0.5em;
+      justify-content: center;
+    }
+    .xrp-chip {
+      display: inline-flex; align-items: center; gap: 0.5em;
+      background: var(--bg-card-2, rgba(255,255,255,0.03));
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35em 0.85em;
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: var(--fs-xs);
+      transition: border-color 0.18s, color 0.18s, transform 0.18s;
+    }
+    .xrp-chip:hover {
+      border-color: rgba(34,211,238,0.4);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .xrp-chip .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block;
+    }
+    .xrp-chip .dot.escrow    { background: #a855f7; box-shadow: 0 0 6px rgba(168,85,247,0.6); }
+    .xrp-chip .dot.amm       { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.6); }
+    .xrp-chip .dot.circ      { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.6); }
+    .xrp-chip .v {
+      font-family: var(--mono); color: var(--text); font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .xrp-constell-svg .sat-label { font-size: 9px; }
+      .xrp-constell-svg .sat-val { font-size: 11px; }
+      .xrp-constell-svg .sat-pct { font-size: 9px; }
+      .xrp-constell-svg .center-val { font-size: 14px; }
+    }
+
     /* ---------- Compact stats strip (where XRP is locked) ---------- */
     .row-stats { display: grid; grid-template-columns: repeat(2, 1fr);
                  gap: 0.7em; margin-bottom: 1.4em; }
@@ -556,6 +662,98 @@
       </div>
 
     </section>
+
+    {# ========== Where Is XRP? supply constellation ========== #}
+    {% if xrp_distribution %}
+    {% set xd = xrp_distribution %}
+    {# sqrt-scaled satellite radii so a 60%+ wallet slice still fits beside a 0.01% AMM slice #}
+    {% set esc_r  = (14 + 16 * (xd.escrowed_pct / 100)**0.5)|round(1) %}
+    {% set amm_r  = (14 + 16 * (xd.amm_pct      / 100)**0.5)|round(1) %}
+    {% set wal_r  = (14 + 16 * (xd.wallets_pct  / 100)**0.5)|round(1) %}
+    <section class="xrp-constellation" aria-label="{{ _('Where is XRP') }}">
+      <div class="xrp-constell-head">
+        <h2>{{ _('Where is XRP?') }}</h2>
+        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share read live from the ledger') }}</div>
+      </div>
+      <div class="xrp-constell-svg-wrap">
+        <svg class="xrp-constell-svg" viewBox="0 0 520 320" role="img"
+             aria-label="{{ _('XRP supply constellation showing escrowed, AMM-locked, and circulating XRP') }}">
+          <defs>
+            <radialGradient id="grad-center" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.75"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-escrow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#c084fc" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#a855f7" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#a855f7" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-amm" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#4ade80" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#22c55e" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-circ" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#fbbf24" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#f59e0b" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.15"/>
+            </radialGradient>
+          </defs>
+
+          {# connectors #}
+          <line class="connector" x1="260" y1="140" x2="120" y2="80"/>
+          <line class="connector" x1="260" y1="140" x2="400" y2="80"/>
+          <line class="connector" x1="260" y1="140" x2="260" y2="255"/>
+
+          {# center: total #}
+          <circle cx="260" cy="140" r="46" fill="url(#grad-center)"/>
+          <circle cx="260" cy="140" r="46" fill="none" stroke="rgba(34,211,238,0.4)" stroke-width="1"/>
+          <text class="center-label" x="260" y="132" text-anchor="middle">{{ _('TOTAL') }}</text>
+          <text class="center-val"   x="260" y="152" text-anchor="middle">100B XRP</text>
+
+          {# top-left: in escrow → /cold-storage (closest existing page) #}
+          <a href="/cold-storage" aria-label="{{ _('XRP locked in escrow') }}">
+            <circle class="sat-disc" cx="120" cy="80" r="{{ esc_r }}" fill="url(#grad-escrow)"/>
+            <text class="sat-label" x="120" y="30" text-anchor="middle">{{ _('IN ESCROW') }}</text>
+            <text class="sat-val"   x="120" y="46" text-anchor="middle">{% if xd.escrowed_xrp >= 1000000000 %}{{ "%.1f"|format(xd.escrowed_xrp/1000000000) }}B{% else %}{{ "%.0f"|format(xd.escrowed_xrp/1000000) }}M{% endif %} XRP</text>
+            <text class="sat-pct"   x="120" y="60" text-anchor="middle">{{ "%.1f"|format(xd.escrowed_pct) }}%</text>
+          </a>
+
+          {# top-right: AMM → /pools #}
+          <a href="/pools" aria-label="{{ _('AMM pools') }}">
+            <circle class="sat-disc" cx="400" cy="80" r="{{ amm_r }}" fill="url(#grad-amm)"/>
+            <text class="sat-label" x="400" y="30" text-anchor="middle">{{ _('AMM POOLS') }}</text>
+            <text class="sat-val"   x="400" y="46" text-anchor="middle">{% if xd.amm_xrp >= 1000000 %}{{ "%.1f"|format(xd.amm_xrp/1000000) }}M{% else %}{{ "%.0f"|format(xd.amm_xrp/1000) }}K{% endif %} XRP</text>
+            <text class="sat-pct"   x="400" y="60" text-anchor="middle">{{ "%.2f"|format(xd.amm_pct) }}%</text>
+          </a>
+
+          {# bottom: held by wallets (free-float — retail wallets, exchanges, treasuries) #}
+          <circle class="sat-disc" cx="260" cy="255" r="{{ wal_r }}" fill="url(#grad-circ)"/>
+          <text class="sat-label" x="260" y="305" text-anchor="middle">{{ _('HELD BY WALLETS') }}</text>
+          <text class="sat-val"   x="260" y="251" text-anchor="middle" fill="rgba(255,255,255,0.95)" style="font-family: var(--mono); font-size: 13px; font-weight: 700">~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP</text>
+          <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
+        </svg>
+      </div>
+      <div class="xrp-constell-chips">
+        <a class="xrp-chip" href="/cold-storage">
+          <span class="dot escrow"></span>
+          <span>{{ _('Locked in escrow ledger objects') }}</span>
+          <span class="v">{{ "%.1f"|format(xd.escrowed_pct) }}%</span>
+        </a>
+        <a class="xrp-chip" href="/pools">
+          <span class="dot amm"></span>
+          <span>{{ _('AMM pools') }}</span>
+          <span class="v">{{ "%.2f"|format(xd.amm_pct) }}%</span>
+        </a>
+        <span class="xrp-chip" style="cursor:default">
+          <span class="dot circ"></span>
+          <span>{{ _('Wallets, exchanges, treasuries') }}</span>
+          <span class="v">{{ "%.1f"|format(xd.wallets_pct) }}%</span>
+        </span>
+      </div>
+    </section>
+    {% endif %}
 
     {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}
     <section class="row-stats">

@@ -26,6 +26,7 @@ from amm_scan_pools import (
 )
 from network_pulse import fetch_pulse_cached
 from cold_storage import fetch_cold_storage_cached
+from escrow_supply import fetch_escrow_locked_cached
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
@@ -583,6 +584,44 @@ def index():
         cold = fetch_cold_storage_cached()
     except Exception:
         cold = None
+
+    # "Where is XRP?" supply constellation — three live on-ledger buckets:
+    #   - escrowed:  sum of EscrowCreate objects owned by Ripple's 20
+    #                monthly-release accounts (escrow_supply.py)
+    #   - amm:       XRP-side of every AMM pool's reserves
+    #   - wallets:   100B design supply − the two locked buckets above
+    # The design supply is a known constant; the live total drifts down
+    # by ~0.02%/year via transaction-fee burns, well below display rounding.
+    try:
+        esc = fetch_escrow_locked_cached()
+    except Exception:
+        esc = None
+    escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
+    amm_xrp = 0.0
+    try:
+        for p in ranked_full:
+            a = p.get("asset_a") or {}
+            b = p.get("asset_b") or {}
+            if a.get("currency") == "XRP":
+                amm_xrp += float(p.get("amount_a") or 0)
+            elif b.get("currency") == "XRP":
+                amm_xrp += float(p.get("amount_b") or 0)
+    except Exception:
+        amm_xrp = 0.0
+    XRP_DESIGN_SUPPLY = 100_000_000_000.0
+    locked = escrowed_xrp + amm_xrp
+    wallets_xrp = max(0.0, XRP_DESIGN_SUPPLY - locked)
+    xrp_distribution = {
+        "total_xrp": XRP_DESIGN_SUPPLY,
+        "escrowed_xrp": escrowed_xrp,
+        "amm_xrp": amm_xrp,
+        "wallets_xrp": wallets_xrp,
+        "escrowed_pct": (escrowed_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "amm_pct": (amm_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "wallets_pct": (wallets_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "escrow_object_count": (esc.get("object_count") if esc else 0) or 0,
+    }
+
     return render_template(
         "index.html",
         timestamp_str=timestamp_str,
@@ -598,6 +637,7 @@ def index():
         whales_snapshot_at=_whales_snapshot_label(),
         top_tokens=_top_tokens_recent(limit=5),
         cold_storage=cold,
+        xrp_distribution=xrp_distribution,
         **data,
     )
 
