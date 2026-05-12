@@ -29,6 +29,7 @@ from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 from lending_amendment import fetch_lending_status_cached
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
+from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
@@ -1839,6 +1840,20 @@ def lending():
         if data is None:
             data = fetch_lending_data_cached()
     return render_template("lending.html", status=status, data=data)
+
+
+@app.route("/mpts")
+def mpts():
+    """MPT registry — every MPTokenIssuance on the ledger, with XLS-89
+    metadata decoded and classified (RWA / Stablecoin / Utility / Other).
+    Prefers the JSON snapshot written by mpt_snapshot.py (hourly worker);
+    falls back to in-process cached fetcher when the snapshot is missing
+    or stale. Snapshot writes happen offline so the page never blocks on
+    a multi-minute ledger walk."""
+    data = load_mpt_snapshot()
+    if data is None:
+        data = fetch_mpt_data_cached()
+    return render_template("mpts.html", data=data)
 
 
 @app.route("/api/ledger-tip")

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('MPT registry') }} · xrpldashboard</title>
+  {% set meta_title = "Every XRPL MPT, decoded · xrpldashboard" %}
+  {% set meta_description = "The full XRPL MPToken registry — Multi-Purpose Tokens with decoded XLS-89 metadata, classified as RWA / Stablecoin / Utility / Other. Holders, supply, issuer info — live from the ledger." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-mpt: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --fs-2xs: 0.7rem;
+      --fs-xs: 0.78rem;
+      --fs-sm: 0.88rem;
+      --fs-md: 1.05rem;
+      --fs-lg: 1.4rem;
+      --fs-xl: 1.85rem;
+      --fs-2xl: 2.4rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(236,72,153,0.05), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(168,85,247,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+    .top  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    .hero { position: relative; overflow: hidden; padding: 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-mpt); opacity: 0.08;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero-eyebrow { font-size: var(--fs-xs); color: var(--muted);
+                    text-transform: uppercase; letter-spacing: 0.1em;
+                    font-weight: 600; margin-bottom: 0.4em; }
+    .hero-name h1 { font-size: var(--fs-2xl); margin: 0; font-weight: 700;
+                    letter-spacing: -0.02em;
+                    background: var(--grad-mpt); -webkit-background-clip: text;
+                    background-clip: text; color: transparent; }
+    .hero-meta { color: var(--muted); font-size: var(--fs-sm); margin-top: 0.55em;
+                 max-width: 820px; line-height: 1.65; }
+
+    .summary-row {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 0.7em; margin-bottom: 1em;
+    }
+    .summary-tile {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.9em 1em;
+    }
+    .summary-tile .label {
+      font-size: var(--fs-2xs); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 600; margin-bottom: 0.3em;
+    }
+    .summary-tile .value {
+      font-family: var(--mono); font-size: var(--fs-lg);
+      color: var(--text); font-weight: 600; letter-spacing: -0.01em;
+    }
+    .summary-tile.rwa .value { color: var(--green); }
+    .summary-tile.stable .value { color: var(--cyan); }
+    .summary-tile.utility .value { color: var(--purple); }
+    .summary-tile.other .value { color: var(--muted); }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.3em 1.4em; margin-bottom: 1em; }
+    .card h2 { font-size: var(--fs-md); margin: 0 0 0.6em; font-weight: 600;
+               letter-spacing: -0.01em; }
+
+    .filter-row { display: flex; flex-wrap: wrap; gap: 0.4em; margin-bottom: 0.9em; }
+    .filter-pill {
+      padding: 0.4em 0.9em; border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--muted); font-size: var(--fs-xs); font-weight: 500;
+      cursor: pointer; user-select: none;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .filter-pill:hover { color: var(--text); border-color: var(--border-strong); }
+    .filter-pill.active {
+      color: var(--pink); border-color: rgba(236,72,153,0.4);
+      background: rgba(236,72,153,0.06);
+    }
+
+    .mpt-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    .mpt-table th {
+      text-align: left; padding: 0.55em 0.7em;
+      font-size: var(--fs-2xs); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border); font-weight: 600;
+    }
+    .mpt-table td { padding: 0.75em 0.7em; border-bottom: 1px solid var(--border); }
+    .mpt-table tr:last-child td { border-bottom: none; }
+    .mpt-table tr:hover td { background: rgba(236,72,153,0.04); }
+    .mpt-table th.num, .mpt-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mpt-table .name { font-weight: 600; color: var(--text); }
+    .mpt-table .ticker {
+      font-family: var(--mono); font-size: var(--fs-2xs); color: var(--muted);
+      margin-left: 0.5em; padding: 0.1em 0.4em;
+      border-radius: 4px; background: rgba(255,255,255,0.04);
+    }
+    .mpt-table .addr {
+      font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
+    }
+    .mpt-table .class-pill {
+      display: inline-block; padding: 0.15em 0.55em; border-radius: 999px;
+      font-family: var(--mono); font-size: var(--fs-2xs);
+      letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;
+    }
+    .class-pill.rwa { color: var(--green); background: rgba(34,197,94,0.10); }
+    .class-pill.stablecoin { color: var(--cyan); background: rgba(34,211,238,0.10); }
+    .class-pill.utility { color: var(--purple); background: rgba(168,85,247,0.10); }
+    .class-pill.other { color: var(--muted); background: rgba(128,144,176,0.10); }
+    .mpt-table .dim { color: var(--dim); }
+
+    .empty-state {
+      background: var(--card-2);
+      border: 1px dashed rgba(236,72,153,0.35);
+      border-radius: 12px;
+      padding: 2.5em 1em;
+      text-align: center;
+    }
+    .empty-state .e-title { font-size: var(--fs-lg); font-weight: 600;
+                            color: var(--text); margin-bottom: 0.5em; }
+    .empty-state .e-body { font-size: var(--fs-sm); color: var(--muted);
+                           max-width: 560px; margin: 0 auto; line-height: 1.65; }
+
+    .table-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 0.7em; font-size: var(--fs-xs); color: var(--muted);
+    }
+
+    .scope-note { font-size: var(--fs-xs); color: var(--muted); line-height: 1.65;
+                  padding: 0.8em 1em; border-left: 2px solid var(--pink);
+                  background: rgba(236,72,153,0.04); border-radius: 0 6px 6px 0;
+                  margin: 0.8em 0 0.4em; }
+
+    footer { margin-top: 2.5em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: var(--fs-xs); }
+    footer a { color: var(--muted); }
+    footer code { font-family: var(--mono); color: var(--cyan); font-size: 0.95em; }
+
+    @media (max-width: 720px) {
+      .summary-row { grid-template-columns: repeat(2, 1fr); }
+      .mpt-table th.hide-sm, .mpt-table td.hide-sm { display: none; }
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+  {% include "_nav.html" %}
+
+  {% set rows = (data.issuances if data else []) or [] %}
+  {% set total = data.total if data else 0 %}
+  {% set by_class = data.by_class if data and data.by_class else {'rwa':0,'stablecoin':0,'utility':0,'other':0} %}
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">{{ _('XLS-33 multi-purpose tokens') }}</div>
+      <div class="hero-name"><h1>{{ _('Every MPT on the XRP Ledger') }}</h1></div>
+      <div class="hero-meta">
+        {{ _('MPTs are a newer XRPL token type — unlike trust-line IOUs they carry rich metadata (name, asset class, audit links, issuer info) right on the ledger. This is the only registry that decodes them all and classifies by use case.') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-row">
+    <div class="summary-tile">
+      <div class="label">{{ _('Total MPTs') }}</div>
+      <div class="value">{{ total }}</div>
+    </div>
+    <div class="summary-tile rwa">
+      <div class="label">{{ _('RWA') }}</div>
+      <div class="value">{{ by_class.rwa }}</div>
+    </div>
+    <div class="summary-tile stable">
+      <div class="label">{{ _('Stablecoins') }}</div>
+      <div class="value">{{ by_class.stablecoin }}</div>
+    </div>
+    <div class="summary-tile utility">
+      <div class="label">{{ _('Utility') }}</div>
+      <div class="value">{{ by_class.utility }}</div>
+    </div>
+    <div class="summary-tile other">
+      <div class="label">{{ _('Other') }}</div>
+      <div class="value">{{ by_class.other }}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    {% if total > 0 %}
+      <div class="filter-row" data-mpt-filter>
+        <button class="filter-pill active" data-filter="all">{{ _('All') }} <span class="dim">({{ total }})</span></button>
+        <button class="filter-pill" data-filter="rwa">{{ _('RWA') }} <span class="dim">({{ by_class.rwa }})</span></button>
+        <button class="filter-pill" data-filter="stablecoin">{{ _('Stablecoins') }} <span class="dim">({{ by_class.stablecoin }})</span></button>
+        <button class="filter-pill" data-filter="utility">{{ _('Utility') }} <span class="dim">({{ by_class.utility }})</span></button>
+        <button class="filter-pill" data-filter="other">{{ _('Other') }} <span class="dim">({{ by_class.other }})</span></button>
+      </div>
+
+      <table class="mpt-table">
+        <thead>
+          <tr>
+            <th>{{ _('Name') }}</th>
+            <th>{{ _('Class') }}</th>
+            <th class="hide-sm">{{ _('Issuer') }}</th>
+            <th class="num hide-sm">{{ _('Holders') }}</th>
+            <th class="num">{{ _('Outstanding') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            {% set name = r.name or _('(unnamed)') %}
+            {% set issuer = r.issuer or '' %}
+            {% set issuer_short = (issuer[:6] ~ '…' ~ issuer[-4:]) if issuer|length > 12 else issuer %}
+            <tr data-class="{{ r.classification }}">
+              <td>
+                <span class="name">{{ name }}</span>
+                {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
+              </td>
+              <td><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>
+              <td class="hide-sm">
+                {% if r.issuer_name %}{{ r.issuer_name }} · {% endif %}
+                <a class="addr" href="https://xrpscan.com/account/{{ issuer }}" target="_blank" rel="noopener">{{ issuer_short }}</a>
+              </td>
+              <td class="num hide-sm">
+                {% if r.holders is not none %}{{ r.holders }}{% else %}<span class="dim">—</span>{% endif %}
+              </td>
+              <td class="num">
+                {% if r.outstanding_amount %}
+                  {%- set scale = r.asset_scale or 0 -%}
+                  {%- set display = (r.outstanding_amount / (10 ** scale)) if scale else r.outstanding_amount -%}
+                  {{ '{:,.0f}'.format(display) }}
+                {% else %}
+                  <span class="dim">0</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="table-foot">
+        <div>{{ _('Showing all') }} {{ rows|length }} {{ _('MPTs on the ledger') }}.</div>
+        <div>
+          {% if data.from_snapshot %}
+            {{ _('snapshot') }} {{ (data.snapshot_age_seconds / 60) | round(0) | int }}{{ _('m ago') }}
+          {% elif data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
+            {{ _('cached') }} {{ (data.cached_age_seconds / 60) | round(0) | int }}{{ _('m ago') }}
+          {% else %}
+            {{ _('live') }}
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="e-title">{{ _('No MPTs on the ledger yet') }}</div>
+        <div class="e-body">
+          {{ _('The MPTokensV1 amendment is enabled on mainnet, but adoption is still in its earliest days — no issuances visible in the latest validated ledger. This page will populate the moment the first issuer mints, and is built to be the comprehensive registry as the ecosystem grows.') }}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>{{ _('What is an MPT?') }}</h2>
+    <p style="color: var(--muted); font-size: var(--fs-sm); line-height: 1.65; margin: 0 0 0.6em;">
+      {{ _('A Multi-Purpose Token (MPT) is a newer XRPL primitive for issuing tokens directly on the ledger. Unlike trust-line IOUs, MPTs carry a structured metadata blob — name, ticker, description, asset class, issuer info, audit links — that is signed by the issuer and stored on-chain. Built for institutional issuance: tokenized funds, stablecoins, loyalty tokens.') }}
+    </p>
+    <div class="scope-note">
+      <strong>{{ _('Honest note on classification.') }}</strong>
+      {{ _('We classify each MPT by reading its asset_class field per XLS-89 and normalizing. Issuers self-declare — when an issuer leaves the field blank or uses a non-standard value, we put it in "Other".') }}
+    </div>
+  </div>
+
+  <footer>
+    {{ _('Data: live') }} <code>ledger_data</code> {{ _('RPC against') }} <code>s1.ripple.com</code>{{ _(', refreshed hourly via background snapshot worker.') }}
+    {{ _('Holder counts come from') }} <code>mpt_holders</code> {{ _('for the top issuances by outstanding supply.') }}
+    <br><br>
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research.') }}
+    <br><br>
+    <a href="/tokens">{{ _('IOU tokens') }} →</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a>
+  </footer>
+</div>
+
+<script>
+  // Client-side filter — no server round-trip per pill click.
+  (function () {
+    const wrap = document.querySelector('[data-mpt-filter]');
+    if (!wrap) return;
+    const pills = wrap.querySelectorAll('.filter-pill');
+    const rows = document.querySelectorAll('.mpt-table tbody tr');
+    pills.forEach(p => p.addEventListener('click', () => {
+      pills.forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      const f = p.dataset.filter;
+      rows.forEach(r => {
+        r.style.display = (f === 'all' || r.dataset.class === f) ? '' : 'none';
+      });
+    }));
+  })();
+</script>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

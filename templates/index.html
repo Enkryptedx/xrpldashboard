@@ -534,6 +534,7 @@
         <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>{{ _('pools') }}</a>
         <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
         <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
+        <a href="/mpts"{% if _p == '/mpts' or _p.startswith('/mpt/') %} class="active" aria-current="page"{% endif %}>{{ _('MPTs') }}</a>
         {# RLUSD is a proper noun — not translated. #}
         <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
         <a href="/lending"{% if _p.startswith('/lending') %} class="active" aria-current="page"{% endif %}>{{ _('lending') }}</a>
