@@ -2066,11 +2066,41 @@ def _classify_mpt_status(row):
     return "prepared"
 
 
+def _normalize_holders(holders):
+    """Return the v3 holders dict shape regardless of input. One-cycle
+    compatibility shim: pre-worker snapshots had `holders` as int|None
+    (positive-balance count, in practice always 0 due to a field-name bug);
+    v3 snapshots have the full dict. After one hourly cycle confirms only
+    v3 is on disk + in Postgres, the int/None branches can be deleted.
+
+    Renderers (template + /api/mpts) only ever see this shape, so they
+    don't need to know which schema produced the row."""
+    if isinstance(holders, dict):
+        return holders
+    if isinstance(holders, int):
+        return {
+            "with_balance": holders,
+            "authorized": None,
+            "top": [],
+            "walked_complete": True,
+            "walked_at": None,
+            "reason": "complete" if holders > 0 else "no_holders",
+        }
+    return {
+        "with_balance": None,
+        "authorized": None,
+        "top": [],
+        "walked_complete": False,
+        "walked_at": None,
+        "reason": "pending",
+    }
+
+
 def _enrich_mpt_rows(data):
     """Take a raw snapshot dict and add per-row {status, normalized_outstanding,
-    issuer_label} fields, then re-sort: live first (by outstanding desc),
-    then prepared, then test. Mutates a shallow copy so callers see the
-    original snapshot dict untouched."""
+    issuer_label, holders (normalized)} fields, then re-sort: live first (by
+    outstanding desc), then prepared, then test. Mutates a shallow copy so
+    callers see the original snapshot dict untouched."""
     if not data or not data.get("issuances"):
         return data
     rows = list(data.get("issuances") or [])
@@ -2082,6 +2112,7 @@ def _enrich_mpt_rows(data):
         copy = dict(r)
         copy["status"] = _classify_mpt_status(r)
         copy["normalized_outstanding"] = _normalize_outstanding(r)
+        copy["holders"] = _normalize_holders(r.get("holders"))
         # Only set issuer_label from PG if the snapshot didn't already carry one.
         if not copy.get("issuer_name"):
             lbl = labels.get(copy.get("issuer"))

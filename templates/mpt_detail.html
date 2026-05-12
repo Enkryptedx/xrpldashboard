@@ -172,14 +172,29 @@
       </div>
     </div>
     <div class="card">
+      {%- set h = mpt.holders -%}
+      {%- set reason = h.reason if h else 'pending' -%}
       <div class="fact">
         <div class="fact-label">{{ _('Holders') }}</div>
         <div class="fact-value">
-          {% if mpt.holders is not none and mpt.holders > 0 %}{{ '{:,}'.format(mpt.holders) }}
-          {% else %}<span style="color: var(--dim);">{{ _('not collected') }}</span>{% endif %}
+          {% if reason in ('complete', 'no_holders') %}
+            {{ '{:,}'.format(h.with_balance) }}
+          {% else %}
+            <span style="color: var(--dim);">—</span>
+          {% endif %}
         </div>
         <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.2em;">
-          {{ _('per-MPT holders worker is on the queue') }}
+          {% if reason == 'complete' %}
+            {{ _('with positive balance · authorized:') }} {{ '{:,}'.format(h.authorized) }} · {{ _('excludes issuer') }}
+          {% elif reason == 'no_holders' %}
+            {{ _('no non-issuer holders yet') }}
+          {% elif reason == 'incomplete' %}
+            {{ _('walk hit page cap — partial result not shown') }}
+          {% elif reason == 'skipped_test' %}
+            {{ _('test-shaped issuance — not walked') }}
+          {% else %}
+            {{ _('not yet walked') }}
+          {% endif %}
         </div>
       </div>
     </div>
@@ -250,10 +265,42 @@
   </div>
   {% endif %}
 
+  {%- set h = mpt.holders -%}
+  {%- set reason = h.reason if h else 'pending' -%}
+  {% if reason == 'complete' and h.top %}
+  <div class="card">
+    <h2>{{ _('Top holders') }} <span style="color: var(--dim); font-weight: 400; font-size: 0.85em;">({{ h.top|length }})</span></h2>
+    <table class="peer-table">
+      <thead>
+        <tr>
+          <th>{{ _('Account') }}</th>
+          <th class="num">{{ _('Balance') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- set scale = mpt.asset_scale or 0 -%}
+        {% for entry in h.top %}
+        {%- set raw = entry.mpt_amount | int -%}
+        {%- set display = (raw / (10 ** scale)) if scale else raw -%}
+        <tr>
+          <td>
+            <a class="addr" href="https://xrpscan.com/account/{{ entry.account }}" target="_blank" rel="noopener">{{ entry.account }}</a>
+          </td>
+          <td class="num">{{ '{:,.0f}'.format(display) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.7em;">
+      {{ _('Excludes issuer\'s own treasury balance, matching CMC circulating-supply convention. Walked hourly via') }} <code>mpt_holders</code>.
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card">
     <h2>{{ _('Coming next on this page') }}</h2>
     <div class="coming-soon">
-      {{ _('Outstanding supply sparkline (30 days), top-10 holders with concentration ratio, and 24h/7d/30d mint-burn velocity — once the per-MPT holders worker and history table land. Status of each is tracked openly on') }} <a href="/methodology">/methodology</a>.
+      {{ _('Outstanding supply sparkline (30 days) and 24h/7d/30d mint-burn velocity — once the history table lands. Status tracked openly on') }} <a href="/methodology">/methodology</a>.
     </div>
   </div>
 
