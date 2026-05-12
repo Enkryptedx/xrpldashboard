@@ -536,6 +536,7 @@
         <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
         {# RLUSD is a proper noun — not translated. #}
         <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
+        <a href="/lending"{% if _p.startswith('/lending') %} class="active" aria-current="page"{% endif %}>{{ _('lending') }}</a>
         <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
         <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
         {% include "_liveness_chip.html" %}

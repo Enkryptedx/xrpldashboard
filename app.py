@@ -27,6 +27,7 @@ from amm_scan_pools import (
 from network_pulse import fetch_pulse_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
+from lending_amendment import fetch_lending_status_cached
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
@@ -1816,6 +1817,16 @@ def cold_storage():
     See cold_storage.py for the data layer + future-scope notes."""
     data = fetch_cold_storage_cached()
     return render_template("cold_storage.html", data=data)
+
+
+@app.route("/lending")
+def lending():
+    """XLS-66 native lending — pre-built for activation day. While the
+    LendingProtocol + SingleAssetVault amendments are in voting, the page
+    shows amendment status + plain-English explainer. Once both light up,
+    the broker table switches to live LoanBroker/Vault data."""
+    status = fetch_lending_status_cached()
+    return render_template("lending.html", status=status)
 
 
 @app.route("/api/ledger-tip")

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('XRPL lending') }} · xrpldashboard</title>
+  {% set meta_title = "XRPL native lending · xrpldashboard" %}
+  {% set meta_description = "XRPL's XLS-66 native lending protocol — amendment voting status, plain-English explainer, and a Loan Broker Board that goes live the day the network activates it." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --grad-coming: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --fs-2xs: 0.7rem;
+      --fs-xs: 0.78rem;
+      --fs-sm: 0.88rem;
+      --fs-md: 1.05rem;
+      --fs-lg: 1.4rem;
+      --fs-xl: 1.85rem;
+      --fs-2xl: 2.4rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(168,85,247,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+    .top  { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    .hero { position: relative; overflow: hidden; padding: 1.6em 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-coming); opacity: 0.08;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero-eyebrow { font-size: var(--fs-xs); color: var(--muted);
+                    text-transform: uppercase; letter-spacing: 0.1em;
+                    font-weight: 600; margin-bottom: 0.4em;
+                    display: flex; align-items: center; gap: 0.6em; }
+    .hero-name h1 { font-size: var(--fs-2xl); margin: 0; font-weight: 700;
+                    letter-spacing: -0.02em;
+                    background: var(--grad-coming); -webkit-background-clip: text;
+                    background-clip: text; color: transparent; }
+    .hero-meta { color: var(--muted); font-size: var(--fs-sm); margin-top: 0.55em;
+                 max-width: 760px; line-height: 1.65; }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 0.5em;
+                   padding: 0.32em 0.85em; border-radius: 999px;
+                   font-family: var(--mono); font-size: 11px;
+                   letter-spacing: 0.08em; text-transform: uppercase;
+                   font-weight: 600; }
+    .status-pill.voting    { background: rgba(245,158,11,0.12); color: var(--amber);
+                             border: 1px solid rgba(245,158,11,0.35); }
+    .status-pill.activated { background: rgba(34,197,94,0.12); color: var(--green);
+                             border: 1px solid rgba(34,197,94,0.4); }
+    .status-pill.unknown   { background: rgba(128,144,176,0.12); color: var(--muted);
+                             border: 1px solid rgba(128,144,176,0.3); }
+    .status-pill .blip { width: 7px; height: 7px; border-radius: 50%;
+                         background: currentColor; box-shadow: 0 0 6px currentColor;
+                         animation: blip 2.2s ease-in-out infinite; }
+    @keyframes blip {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 1;    transform: scale(1.25); }
+    }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.3em 1.4em; margin-bottom: 1em; }
+    .card h2 { font-size: var(--fs-md); margin: 0 0 0.6em; font-weight: 600;
+               letter-spacing: -0.01em; }
+    .section-head { display: flex; align-items: baseline;
+                    justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+    .section-head .meta { font-size: var(--fs-xs); color: var(--muted); }
+
+    /* Amendment status cards */
+    .amend-grid { display: grid; grid-template-columns: repeat(2, 1fr);
+                  gap: 0.8em; }
+    .amend {
+      background: var(--card-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1em 1.1em;
+      transition: border-color 0.18s, transform 0.18s;
+    }
+    .amend:hover { border-color: rgba(168,85,247,0.3); transform: translateY(-1px); }
+    .amend .a-head { display: flex; justify-content: space-between;
+                     align-items: center; gap: 0.6em; margin-bottom: 0.35em; }
+    .amend .a-name { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
+    .amend .a-hash { font-family: var(--mono); font-size: var(--fs-2xs);
+                     color: var(--dim); margin-top: 0.15em; }
+    .amend .a-desc { font-size: var(--fs-xs); color: var(--muted);
+                     margin-top: 0.5em; line-height: 1.5; }
+
+    /* Explainer */
+    .explainer-grid { display: grid; grid-template-columns: repeat(3, 1fr);
+                      gap: 0.9em; margin-top: 0.6em; }
+    .step { background: var(--card-2); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1em 1.1em; }
+    .step .n { font-family: var(--mono); font-size: 11px; font-weight: 700;
+               color: var(--purple); letter-spacing: 0.12em;
+               text-transform: uppercase; margin-bottom: 0.4em; }
+    .step .t { font-size: var(--fs-sm); font-weight: 600; color: var(--text);
+               margin-bottom: 0.35em; }
+    .step .d { font-size: var(--fs-xs); color: var(--muted); line-height: 1.55; }
+
+    /* Empty broker table (pre-activation state) */
+    .broker-empty {
+      background: var(--card-2);
+      border: 1px dashed rgba(168,85,247,0.35);
+      border-radius: 10px;
+      padding: 2.2em 1em;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .broker-empty::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        repeating-linear-gradient(
+          135deg,
+          transparent 0px,
+          transparent 12px,
+          rgba(168,85,247,0.03) 12px,
+          rgba(168,85,247,0.03) 14px
+        );
+      pointer-events: none;
+    }
+    .broker-empty-inner { position: relative; }
+    .broker-empty .e-title { font-size: var(--fs-md); font-weight: 600;
+                             color: var(--text); margin-bottom: 0.4em; }
+    .broker-empty .e-body { font-size: var(--fs-sm); color: var(--muted);
+                            max-width: 520px; margin: 0 auto; line-height: 1.6; }
+    .broker-empty .e-cols {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 0.6em; max-width: 720px; margin: 1.4em auto 0;
+      font-family: var(--mono); font-size: var(--fs-2xs);
+      color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+    .broker-empty .e-cols span {
+      padding: 0.45em 0.5em;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    /* When activated */
+    .broker-table {
+      width: 100%; border-collapse: collapse;
+      font-size: var(--fs-sm);
+    }
+    .broker-table th {
+      text-align: left; padding: 0.55em 0.7em;
+      font-size: var(--fs-2xs); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border); font-weight: 600;
+    }
+    .broker-table td { padding: 0.75em 0.7em; border-bottom: 1px solid var(--border); }
+
+    .links { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.6em; }
+    .link-pill { display: inline-flex; align-items: center; gap: 0.45em;
+                 padding: 0.4em 0.85em; border-radius: 999px;
+                 background: rgba(255,255,255,0.04);
+                 border: 1px solid var(--border);
+                 color: var(--text); font-size: var(--fs-xs); font-weight: 500; }
+    .link-pill:hover { border-color: rgba(34,211,238,0.4); color: var(--cyan);
+                       text-decoration: none; }
+
+    .scope-note { font-size: var(--fs-xs); color: var(--muted); line-height: 1.65;
+                  padding: 0.8em 1em; border-left: 2px solid var(--purple);
+                  background: rgba(168,85,247,0.04); border-radius: 0 6px 6px 0;
+                  margin: 0.8em 0 0.4em; }
+
+    footer { margin-top: 2.5em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: var(--fs-xs); }
+    footer a { color: var(--muted); }
+    footer code { font-family: var(--mono); color: var(--cyan);
+                  font-size: 0.95em; }
+
+    @media (max-width: 720px) {
+      .amend-grid { grid-template-columns: 1fr; }
+      .explainer-grid { grid-template-columns: 1fr; }
+      .broker-empty .e-cols { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .hero-name h1 { font-size: var(--fs-xl); }
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  {% set activated = status and status.activated %}
+  {% set lending_a = status.lending if status else None %}
+  {% set vault_a = status.vault if status else None %}
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">
+        <span>{{ _('XLS-66 native lending') }}</span>
+        {% if activated %}
+          <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
+        {% elif status and status.ok %}
+          <span class="status-pill voting"><span class="blip"></span>{{ _('in validator voting') }}</span>
+        {% else %}
+          <span class="status-pill unknown">{{ _('status unavailable') }}</span>
+        {% endif %}
+      </div>
+      <div class="hero-name"><h1>{{ _('Lending on the XRP Ledger') }}</h1></div>
+      <div class="hero-meta">
+        {% if activated %}
+          {{ _('Native lending is live on the XRP Ledger. Deposit XRP into a vault, a loan broker lends it against collateral, you earn yield. Below: every active broker, their TVL, current APY, and depositor count — live from the ledger.') }}
+        {% else %}
+          {{ _('Native lending is coming to the XRP Ledger via two amendments currently in validator voting. No smart contracts — the protocol itself will let you deposit XRP into a vault, have a "loan broker" lend it out against collateral, and earn yield. This page is built and ready; the broker table will switch to live data the moment the amendments activate.') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Amendment status ---------- #}
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.7em;">
+      <h2>{{ _('Amendment status') }}</h2>
+      <span class="meta">
+        {{ _('live from XRPL') }} <code style="color: var(--cyan);">feature</code> {{ _('RPC') }}
+        {% if status and status.cached_age_seconds is defined and status.cached_age_seconds > 0 %}
+          · {{ _('cached') }} {{ status.cached_age_seconds | round(0) | int }}{{ _('s ago') }}
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="amend-grid">
+      {% if lending_a %}
+      <div class="amend">
+        <div class="a-head">
+          <div class="a-name">{{ lending_a.name or 'LendingProtocol' }}</div>
+          {% if lending_a.status == 'activated' %}
+            <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
+          {% elif lending_a.status == 'voting' %}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>
+          {% else %}
+            <span class="status-pill unknown">{{ lending_a.status }}</span>
+          {% endif %}
+        </div>
+        <div class="a-hash">{{ lending_a.hash[:32] }}…</div>
+        <div class="a-desc">
+          {{ _('The broker/loan layer. Defines how borrowers take loans from vault deposits, how interest accrues, and how defaults are handled.') }}
+        </div>
+      </div>
+      {% endif %}
+      {% if vault_a %}
+      <div class="amend">
+        <div class="a-head">
+          <div class="a-name">{{ vault_a.name or 'SingleAssetVault' }}</div>
+          {% if vault_a.status == 'activated' %}
+            <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
+          {% elif vault_a.status == 'voting' %}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>
+          {% else %}
+            <span class="status-pill unknown">{{ vault_a.status }}</span>
+          {% endif %}
+        </div>
+        <div class="a-hash">{{ vault_a.hash[:32] }}…</div>
+        <div class="a-desc">
+          {{ _('The deposit primitive. A vault holds a single asset (e.g. XRP) deposited by many users, and is what loan brokers borrow from.') }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="scope-note">
+      {{ _('Both amendments must activate before native lending goes live. The public node exposes whether the network supports each amendment, but per-validator vote tallies are admin-only — for the live vote count check') }}
+      <a href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener noreferrer">{{ _('xrplf.org/amendment-tracker') }} ↗</a>.
+    </div>
+  </div>
+
+  {# ---------- Plain-English explainer ---------- #}
+  <div class="card">
+    <h2>{{ _('How XRPL lending will work') }}</h2>
+    <div class="explainer-grid">
+      <div class="step">
+        <div class="n">{{ _('Step 1') }}</div>
+        <div class="t">{{ _('You deposit') }}</div>
+        <div class="d">{{ _('You put XRP (or another supported asset) into a vault. The vault is a shared pool — your deposit sits alongside other lenders\'.') }}</div>
+      </div>
+      <div class="step">
+        <div class="n">{{ _('Step 2') }}</div>
+        <div class="t">{{ _('A broker lends it out') }}</div>
+        <div class="d">{{ _('Loan brokers — typically regulated institutions, at least at first — take loans against collateral from the vault. They pay interest back to depositors.') }}</div>
+      </div>
+      <div class="step">
+        <div class="n">{{ _('Step 3') }}</div>
+        <div class="t">{{ _('You earn yield') }}</div>
+        <div class="d">{{ _('Interest flows back to the vault. You can withdraw your deposit plus accrued yield, subject to the broker\'s loan book staying healthy.') }}</div>
+      </div>
+    </div>
+    <div class="scope-note" style="border-left-color: var(--amber); background: rgba(245,158,11,0.04); margin-top: 1em;">
+      <strong style="color: var(--amber);">{{ _('Risk reminder.') }}</strong>
+      {{ _('Lending is not free yield. If a borrower defaults and collateral doesn\'t cover the loss, depositors absorb it. This is fundamentally different from AMM pools, which earn fees from trades.') }}
+    </div>
+  </div>
+
+  {# ---------- Loan Broker Board (empty until activation) ---------- #}
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.7em;">
+      <h2>{{ _('Loan Broker Board') }}</h2>
+      <span class="meta">
+        {% if activated %}
+          {{ _('live · refreshes every') }} 5 {{ _('min') }}
+        {% else %}
+          {{ _('switches on when both amendments activate') }}
+        {% endif %}
+      </span>
+    </div>
+
+    {% if activated %}
+      {# TODO: render live LoanBroker / Vault data once the amendments enable.
+         For now, this branch is unreachable — the empty-state branch below is
+         what every visitor sees pre-activation. #}
+      <div class="scope-note">{{ _('Live data path not yet wired — first activation snapshot pending.') }}</div>
+    {% else %}
+      <div class="broker-empty">
+        <div class="broker-empty-inner">
+          <div class="e-title">{{ _('Awaiting amendment activation') }}</div>
+          <div class="e-body">
+            {{ _('The moment both amendments above flip to') }}
+            <strong style="color: var(--green);">{{ _('activated') }}</strong>,
+            {{ _('this table will populate live from the XRPL — every active loan broker, ranked by vault TVL, with current APY, default rate, and depositor count.') }}
+          </div>
+          <div class="e-cols">
+            <span>{{ _('Broker') }}</span>
+            <span>{{ _('Vault TVL') }}</span>
+            <span>{{ _('APY') }}</span>
+            <span>{{ _('Default rate') }}</span>
+            <span>{{ _('Depositors') }}</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>{{ _('Learn more') }}</h2>
+    <div class="links">
+      <a class="link-pill" href="https://xrpl.org/docs/concepts/tokens/lending-protocol" target="_blank" rel="noopener">
+        {{ _('XLS-66 spec') }} ↗
+      </a>
+      <a class="link-pill" href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener">
+        {{ _('Live amendment vote tracker') }} ↗
+      </a>
+      <a class="link-pill" href="/pools">
+        {{ _('Compare: AMM pools') }} →
+      </a>
+      <a class="link-pill" href="/methodology">
+        {{ _('Methodology') }} →
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    {{ _('Data: live') }} <code>feature</code> {{ _('RPC against') }} <code>s1.ripple.com</code>.
+    {{ _('Page goes live with broker data the day the LendingProtocol + SingleAssetVault amendments activate.') }}
+    <br><br>
+    <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
+    <br><br>
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a>
+  </footer>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>
