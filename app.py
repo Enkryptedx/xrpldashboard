@@ -8,6 +8,7 @@ import hmac
 import json
 import math
 import os
+import secrets
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -73,6 +74,15 @@ PUBLIC_ROUTES = [
 ]
 
 app = Flask(__name__)
+# Flask needs a server-side secret for any feature that signs cookies or
+# tokens. We don't use sessions today, but setting one defensively keeps
+# future use safe. Prefer FLASK_SECRET_KEY from env (stable across deploys);
+# fall back to a per-process random so dev/local always has *something*.
+app.secret_key = (
+    os.environ.get("FLASK_SECRET_KEY") or secrets.token_urlsafe(48)
+)
+_VISITOR_HASH_KEY = app.secret_key.encode("utf-8")
+
 # Cloudflare → Render → Flask is a two-proxy chain: Cloudflare puts the
 # visitor IP at the head of X-Forwarded-For, Render's edge appends its own
 # hop. x_for=2 strips both trusted hops so request.remote_addr is the
@@ -231,6 +241,11 @@ _PAGEVIEW_SKIP_PREFIXES = (
     "/api/",
     "/admin/",
     "/og/",
+    # Detail pages whose URL contains a user's address/token identifier.
+    # The pages are public, but logging the exact address contradicts the
+    # "no per-visitor tracking" pledge in /privacy and /about.
+    "/wallet/",
+    "/token/",
 )
 _PAGEVIEW_SKIP_EXACT = {
     "/favicon.ico", "/robots.txt", "/sitemap.xml",
@@ -239,14 +254,15 @@ _PAGEVIEW_SKIP_EXACT = {
 
 
 def _visitor_hash(ip, ua):
-    """Stable per-day fingerprint for unique-visitor counting. We hash so
-    /admin/stats never shows raw IPs (the page is private to Charlie, but
-    not storing PII in the DB at all is the cleaner default). Day-bucketed
-    so the same person counts as one unique per day."""
-    import hashlib
+    """Stable per-day fingerprint for unique-visitor counting. HMAC-SHA256
+    with the server-side _VISITOR_HASH_KEY (== app.secret_key) so the
+    stored hash can't be brute-forced back to an IP even if the DB leaks:
+    without the key the IP-space search is meaningless. Truncated to 32
+    hex (128 bits) — collision-resistant at our visitor volume, half the
+    bytes of a full SHA256. Day-bucketed so one person = one unique per day."""
     day = time.strftime("%Y-%m-%d", time.gmtime())
-    raw = f"{ip or '?'}|{ua or '?'}|{day}".encode("utf-8", "replace")
-    return hashlib.sha256(raw).hexdigest()[:16]
+    msg = f"{ip or '?'}|{ua or '?'}|{day}".encode("utf-8", "replace")
+    return hmac.new(_VISITOR_HASH_KEY, msg, "sha256").hexdigest()[:32]
 
 
 @app.before_request
@@ -1766,6 +1782,7 @@ def _is_xrpl_address(s):
 
 
 @app.route("/wallet/<address>")
+@limiter.limit("60 per minute")
 def wallet(address):
     """Live wallet detail view: balance, reserve, network graph of
     counterparties, 30d activity pulse. Reads directly from XRPL.
@@ -1826,6 +1843,7 @@ def _resolve_display_label_to_hex(label, issuer):
 
 
 @app.route("/token/<currency>/<issuer>")
+@limiter.limit("60 per minute")
 def token_detail(currency, issuer):
     """Token detail view — drilldown from /tokens. Shows trade activity
     over time, AMM pools that hold this token, and links out to other
@@ -2184,5 +2202,5 @@ def server_error(e):
 if __name__ == "__main__":
     # Local dev only. Production uses gunicorn (see Procfile / render.yaml).
     port = int(os.environ.get("PORT", "5001"))
-    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="127.0.0.1", port=port, debug=debug)
