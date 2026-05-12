@@ -2019,6 +2019,17 @@ def robots_txt():
     return Response(body, mimetype="text/plain")
 
 
+@app.route("/.well-known/security.txt")
+def security_txt():
+    body = (
+        "Contact: mailto:contact@xrpldashboard.com\n"
+        "Expires: 2027-05-12T00:00:00.000Z\n"
+        "Preferred-Languages: en\n"
+        f"Canonical: {SITE_URL}/.well-known/security.txt\n"
+    )
+    return Response(body, mimetype="text/plain")
+
+
 @app.route("/sitemap.xml")
 def sitemap_xml():
     """Static sitemap covering the curated public pages. Detail pages
