@@ -81,7 +81,8 @@
               padding-top: 20px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
 
-    .snap-strip { display: grid; grid-template-columns: repeat(3, 1fr);
+    .snap-strip { display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
                   gap: 10px; margin: 14px 0 6px; }
     .snap-cell { background: rgba(34,211,238,0.04); border: 1px solid var(--border);
                  border-radius: 8px; padding: 12px 14px; }
@@ -89,9 +90,6 @@
                  font-variant-numeric: tabular-nums; line-height: 1.1; }
     .snap-lbl  { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
     .snap-foot { color: var(--dim); font-size: 0.82rem; margin-top: 8px; }
-    @media (max-width: 480px) {
-      .snap-strip { grid-template-columns: 1fr; }
-    }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -142,6 +140,10 @@
     <div class="snap-cell">
       <div class="snap-num">{{ snapshot_meta.pools_tracked }}</div>
       <div class="snap-lbl">{{ _('AMM pools daily') }}</div>
+    </div>
+    <div class="snap-cell">
+      <div class="snap-num">{{ snapshot_meta.mpts_tracked }}</div>
+      <div class="snap-lbl">{{ _('MPTs tracked daily') }}</div>
     </div>
   </div>
   <div class="snap-foot">

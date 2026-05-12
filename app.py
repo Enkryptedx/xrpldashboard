@@ -1746,6 +1746,7 @@ def _historical_snapshot_meta():
         "days_collected": len(files),
         "accounts_tracked": len(latest.get("accounts") or []),
         "pools_tracked": len(latest.get("amm_pools") or []),
+        "mpts_tracked": len(latest.get("mpts") or []),
     }
 
 
