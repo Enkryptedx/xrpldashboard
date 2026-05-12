@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.lending_snapshot</string>
+
+    <key>Comment</key>
+    <string>XLS-66 lending snapshot writer. Dormant pre-activation: writes an empty snapshot in ~0.3s. Once both amendments activate, walks LoanBroker/Vault/Loan ledger objects + enriches top-N brokers with mpt_holders for depositor counts, and writes lending_snapshot.json atomically. /lending route reads from this file when fresh (<30min); falls back to in-process fetcher otherwise.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin/python3</string>
+      <string>/Users/charliebruce/xrpl_test/lending_snapshot.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 15 minutes. Pre-activation this is effectively a no-op (just
+         touches the file mtime so the route keeps reading it as fresh).
+         Post-activation, 15 min is plenty of resolution for retail-facing
+         broker stats (TVL/depositor count change on the order of hours). -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/lending_snapshot.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/lending_snapshot.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

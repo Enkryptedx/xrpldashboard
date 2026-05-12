@@ -28,6 +28,7 @@ from network_pulse import fetch_pulse_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 from lending_amendment import fetch_lending_status_cached
+from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
@@ -1824,9 +1825,20 @@ def lending():
     """XLS-66 native lending — pre-built for activation day. While the
     LendingProtocol + SingleAssetVault amendments are in voting, the page
     shows amendment status + plain-English explainer. Once both light up,
-    the broker table switches to live LoanBroker/Vault data."""
+    the broker table switches to live LoanBroker/Vault data.
+
+    Data path on activation: a background worker (lending_snapshot.py)
+    writes lending_snapshot.json with enriched broker rows. We read that
+    snapshot if it's recent enough; otherwise we fall back to the in-
+    process cached fetcher (5min TTL) so the page never breaks even if
+    the snapshot worker is dead."""
     status = fetch_lending_status_cached()
-    return render_template("lending.html", status=status)
+    data = None
+    if status and status.get("activated"):
+        data = load_lending_snapshot()
+        if data is None:
+            data = fetch_lending_data_cached()
+    return render_template("lending.html", status=status, data=data)
 
 
 @app.route("/api/ledger-tip")

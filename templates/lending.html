@@ -174,6 +174,26 @@
     }
 
     /* When activated */
+    .summary-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.7em; margin-bottom: 1em;
+    }
+    .summary-tile {
+      background: var(--card-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.9em 1em;
+    }
+    .summary-tile .label {
+      font-size: var(--fs-2xs); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 600; margin-bottom: 0.3em;
+    }
+    .summary-tile .value {
+      font-family: var(--mono); font-size: var(--fs-lg);
+      color: var(--text); font-weight: 600; letter-spacing: -0.01em;
+    }
+    .summary-tile .unit { color: var(--muted); font-size: var(--fs-sm);
+                           margin-left: 0.25em; font-weight: 400; }
+
     .broker-table {
       width: 100%; border-collapse: collapse;
       font-size: var(--fs-sm);
@@ -184,7 +204,40 @@
       text-transform: uppercase; letter-spacing: 0.08em;
       border-bottom: 1px solid var(--border); font-weight: 600;
     }
+    .broker-table th.num, .broker-table td.num { text-align: right;
+                                                  font-variant-numeric: tabular-nums; }
     .broker-table td { padding: 0.75em 0.7em; border-bottom: 1px solid var(--border); }
+    .broker-table tr:last-child td { border-bottom: none; }
+    .broker-table tr:hover td { background: rgba(168,85,247,0.04); }
+    .broker-table .addr {
+      font-family: var(--mono); font-size: var(--fs-xs);
+      color: var(--text);
+    }
+    .broker-table .asset {
+      font-family: var(--mono); font-size: var(--fs-2xs);
+      color: var(--muted); margin-left: 0.4em;
+    }
+    .broker-table .dim { color: var(--dim); }
+    .broker-table .warn { color: var(--amber); }
+    .broker-table .ok { color: var(--green); }
+
+    .broker-activated-empty {
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.6em 1em;
+      text-align: center; color: var(--muted);
+      font-size: var(--fs-sm); line-height: 1.6;
+    }
+    .table-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 0.7em;
+      font-size: var(--fs-xs); color: var(--muted);
+    }
+
+    @media (max-width: 720px) {
+      .summary-row { grid-template-columns: repeat(2, 1fr); }
+      .broker-table th.hide-sm, .broker-table td.hide-sm { display: none; }
+    }
 
     .links { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.6em; }
     .link-pill { display: inline-flex; align-items: center; gap: 0.45em;
@@ -242,7 +295,7 @@
       <div class="hero-name"><h1>{{ _('Lending on the XRP Ledger') }}</h1></div>
       <div class="hero-meta">
         {% if activated %}
-          {{ _('Native lending is live on the XRP Ledger. Deposit XRP into a vault, a loan broker lends it against collateral, you earn yield. Below: every active broker, their TVL, current APY, and depositor count — live from the ledger.') }}
+          {{ _('Native lending is live on the XRP Ledger. Deposit XRP into a vault, a loan broker lends it against collateral, you earn yield. Below: every active broker — their TVL, depositor count, outstanding loans, and default count, live from the ledger.') }}
         {% else %}
           {{ _('Native lending is coming to the XRP Ledger via two amendments currently in validator voting. No smart contracts — the protocol itself will let you deposit XRP into a vault, have a "loan broker" lend it out against collateral, and earn yield. This page is built and ready; the broker table will switch to live data the moment the amendments activate.') }}
         {% endif %}
@@ -347,10 +400,113 @@
     </div>
 
     {% if activated %}
-      {# TODO: render live LoanBroker / Vault data once the amendments enable.
-         For now, this branch is unreachable — the empty-state branch below is
-         what every visitor sees pre-activation. #}
-      <div class="scope-note">{{ _('Live data path not yet wired — first activation snapshot pending.') }}</div>
+      {% set brokers = (data.brokers if data else []) or [] %}
+      {% set top_brokers = brokers[:10] %}
+      <div class="summary-row">
+        <div class="summary-tile">
+          <div class="label">{{ _('Active brokers') }}</div>
+          <div class="value">{{ data.broker_count if data else 0 }}</div>
+        </div>
+        <div class="summary-tile">
+          <div class="label">{{ _('Vaults') }}</div>
+          <div class="value">{{ data.vault_count if data else 0 }}</div>
+        </div>
+        <div class="summary-tile">
+          <div class="label">{{ _('Open loans') }}</div>
+          <div class="value">{{ data.loan_count if data else 0 }}</div>
+        </div>
+        <div class="summary-tile">
+          <div class="label">{{ _('TVL (XRP leg)') }}</div>
+          <div class="value">
+            {%- if data and data.total_tvl_xrp_equiv -%}
+              {{ '{:,.0f}'.format(data.total_tvl_xrp_equiv) }}<span class="unit">XRP</span>
+            {%- else -%}
+              0<span class="unit">XRP</span>
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
+
+      {% if brokers %}
+        <table class="broker-table">
+          <thead>
+            <tr>
+              <th>{{ _('Broker') }}</th>
+              <th class="num">{{ _('Vault TVL') }}</th>
+              <th class="num hide-sm">{{ _('Depositors') }}</th>
+              <th class="num hide-sm">{{ _('Outstanding') }}</th>
+              <th class="num">{{ _('Defaulted') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in top_brokers %}
+              {% set acct = b.broker_account or '' %}
+              {% set short = (acct[:6] ~ '…' ~ acct[-4:]) if acct|length > 12 else acct %}
+              <tr>
+                <td>
+                  <a class="addr" href="https://xrpscan.com/account/{{ acct }}" target="_blank" rel="noopener">{{ short }}</a>
+                  <span class="asset">· {{ b.vault_asset.label if b.vault_asset else '?' }}</span>
+                </td>
+                <td class="num">
+                  {%- if b.vault_tvl -%}
+                    {{ '{:,.2f}'.format(b.vault_tvl) }}
+                  {%- else -%}
+                    <span class="dim">0</span>
+                  {%- endif -%}
+                </td>
+                <td class="num hide-sm">
+                  {%- if b.depositors is defined and b.depositors is not none -%}
+                    {{ b.depositors }}
+                  {%- else -%}
+                    <span class="dim">—</span>
+                  {%- endif -%}
+                </td>
+                <td class="num hide-sm">
+                  {%- if b.outstanding_principal -%}
+                    {{ '{:,.2f}'.format(b.outstanding_principal) }}
+                    <span class="dim">({{ b.loan_count }})</span>
+                  {%- else -%}
+                    <span class="dim">0</span>
+                  {%- endif -%}
+                </td>
+                <td class="num">
+                  {%- if b.defaulted_count and b.defaulted_count > 0 -%}
+                    <span class="warn">{{ b.defaulted_count }}</span>
+                  {%- else -%}
+                    <span class="ok">0</span>
+                  {%- endif -%}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="table-foot">
+          <div>
+            {% if brokers|length > 10 %}
+              {{ _('Showing top') }} 10 {{ _('of') }} {{ brokers|length }} {{ _('brokers by vault TVL') }}.
+            {% else %}
+              {{ _('Showing all') }} {{ brokers|length }} {{ _('active brokers') }}.
+            {% endif %}
+          </div>
+          <div>
+            {% if data.from_snapshot %}
+              {{ _('snapshot') }} {{ (data.snapshot_age_seconds / 60) | round(0) | int }}{{ _('m ago') }}
+            {% elif data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
+              {{ _('cached') }} {{ (data.cached_age_seconds / 60) | round(0) | int }}{{ _('m ago') }}
+            {% else %}
+              {{ _('live') }}
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="broker-activated-empty">
+          {{ _('Amendments activated — no loan brokers on the ledger yet. This panel will populate as soon as the first broker is created.') }}
+        </div>
+      {% endif %}
+
+      <div class="scope-note" style="margin-top: 1em;">
+        {{ _('Depositor count comes from the vault\'s share MPT holder list. APY is intentionally omitted in v1 — accurate yield requires snapshot history (interest accrued ÷ TVL over a window). It will appear once enough post-activation snapshots accumulate.') }}
+      </div>
     {% else %}
       <div class="broker-empty">
         <div class="broker-empty-inner">

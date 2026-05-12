@@ -31,6 +31,7 @@ amm_scan_state.json
 xrpl_stream_state.json
 amm_rank_state.json
 amm_ranked.json
+lending_snapshot.json
 
 # DBs
 *.sqlite
