@@ -939,7 +939,11 @@ def health():
     # this Flask process produces a "future" timestamp, which is a clock-skew
     # artifact, not a freshness problem. Negative ages would otherwise leak
     # to the UI as "-10668s ago" and read as broken.
-    pg_hb = db.read_heartbeat("xrpl_stream")
+    # Host-tagged keys ('xrpl_stream:mac', future ':render') — match the
+    # prefix and take the freshest row. Reading the bare 'xrpl_stream' key
+    # would return the orphan from before 148c712 (host-tag rollout), which
+    # hasn't been updated since the writer rename and looks dead forever.
+    pg_hb = db.read_heartbeat_prefix("xrpl_stream")
     pg_hb_age = max(0, int(time.time()) - pg_hb["ts"]) if pg_hb else None
     pg_hb_extra = (pg_hb.get("extra") if isinstance(pg_hb, dict) else None) or {}
 

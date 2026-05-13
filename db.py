@@ -421,6 +421,36 @@ def read_heartbeat(worker):
         return None
 
 
+def read_heartbeat_prefix(prefix):
+    """Return the freshest heartbeat row whose worker key starts with `prefix`,
+    in the same shape as read_heartbeat. Host-tagged keys (xrpl_stream:mac,
+    future :render) need this — a literal-key read picks up whichever orphan
+    row was last written under the bare key and silently goes stale forever
+    after the writer is renamed."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ts, txns_seen, last_ledger, extra "
+                    "FROM worker_heartbeat WHERE worker LIKE %s "
+                    "ORDER BY ts DESC LIMIT 1",
+                    (prefix + "%",),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return {
+                    "ts": int(row[0]),
+                    "txns_seen": row[1],
+                    "last_ledger": row[2],
+                    "extra": row[3],
+                }
+    except Exception:
+        return None
+
+
 def replace_amm_ranked_pools(rows):
     """Atomically swap the entire amm_ranked_pools table for `rows`.
 
