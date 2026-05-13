@@ -421,6 +421,10 @@
     .preview-row .left .primary { color: var(--text); font-weight: 500; }
     .preview-row .left .secondary { color: var(--text-3);
                                     font-size: var(--fs-xs); margin-top: 1px; }
+    .attest-tick { color: #22c55e; font-weight: 600; margin-left: 2px; }
+    .attest-domain { color: var(--text-2); border-bottom: 1px dotted var(--text-3);
+                     text-decoration: none; }
+    .attest-domain:hover { color: var(--cyan); border-bottom-color: var(--cyan); }
     .preview-row .right { color: var(--text-2); font-family: var(--mono);
                           font-size: var(--fs-xs); white-space: nowrap; }
     .preview-row .amt { color: var(--text); font-weight: 600;
@@ -818,8 +822,8 @@
               <div class="left">
                 <div class="primary"><span class="amt">{{ e.amount_display }}</span></div>
                 <div class="secondary">
-                  {{ e.from_label or e.from_addr_short }}
-                  → {{ e.to_label or e.to_addr_short }}
+                  {{ e.from_label or e.from_addr_short }}{% if e.from_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.from_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.from_attested_domain }}">✓</span>{% endif %}
+                  → {{ e.to_label or e.to_addr_short }}{% if e.to_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.to_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.to_attested_domain }}">✓</span>{% endif %}
                 </div>
               </div>
               <div class="right">{{ e.age }} {{ _('ago') }}</div>
@@ -861,7 +865,7 @@
             <div class="preview-row">
               <div class="left">
                 <div class="primary">{{ t.display }}</div>
-                <div class="secondary">{{ t.issuer_label or t.issuer_short }}</div>
+                <div class="secondary">{{ t.issuer_label or t.issuer_short }}{% if t.issuer_attested_domain %} <span class="attest-tick">✓</span> <a href="https://{{ t.issuer_attested_domain }}" target="_blank" rel="noopener noreferrer" class="attest-domain">{{ t.issuer_attested_domain }}</a>{% endif %}</div>
               </div>
               <div class="right">{{ "{:,}".format(t.trades) }} {{ _('trades') }}</div>
             </div>

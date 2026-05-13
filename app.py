@@ -699,11 +699,15 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
             decoded = _decode_currency_hex(cur)
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
         lbl = pg_labels.get(iss) or {}
+        attested_domain = None
+        if lbl.get("source") == "toml":
+            attested_domain = (lbl.get("extra") or {}).get("domain")
         out.append({
             "display": display,
             "issuer": iss,
             "issuer_short": _short_addr(iss),
             "issuer_label": lbl.get("name"),
+            "issuer_attested_domain": attested_domain,
             "trades": trades,
         })
     return out
@@ -1218,6 +1222,13 @@ def _resolve_event(row, named_accounts, token_names):
         info = named_accounts.get(addr) if addr else None
         return (info or {}).get("name")
 
+    def _attested_domain(addr):
+        info = named_accounts.get(addr) if addr else None
+        if not info or info.get("_source") != "toml":
+            return None
+        extra = info.get("_extra") or {}
+        return extra.get("domain")
+
     age_seconds = max(0, int(time.time() - ts))
     type_labels = {
         "large_xfer": "large XRP",
@@ -1235,9 +1246,11 @@ def _resolve_event(row, named_accounts, token_names):
         "from_addr": from_addr,
         "from_addr_short": _short_addr(from_addr),
         "from_label": _label(from_addr),
+        "from_attested_domain": _attested_domain(from_addr),
         "to_addr": to_addr,
         "to_addr_short": _short_addr(to_addr),
         "to_label": _label(to_addr),
+        "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
         "xrpscan_url": f"https://xrpscan.com/tx/{tx_hash}" if tx_hash else None,
     }
