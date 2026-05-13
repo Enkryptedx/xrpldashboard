@@ -187,6 +187,18 @@
     .mode-toggle .explainer { margin: 0 2px 0 0; }
     .mode-toggle .explainer-card { left: auto; right: -4px; }
 
+    /* Mobile: the headline text wraps and the absolutely-positioned
+       toggle overlaps the "RLUSD" letters. Drop it back into the flow
+       above the headline, right-aligned. */
+    @media (max-width: 640px) {
+      .headline { display: flex; flex-direction: column; }
+      .mode-toggle {
+        position: static;
+        align-self: flex-end;
+        margin: 0 0 10px 0;
+      }
+    }
+
     .headline {
       position: relative; padding: 6px 22px 14px;
     }
