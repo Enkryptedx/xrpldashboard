@@ -358,7 +358,7 @@
           {% if lending_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif lending_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-lending', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-lending', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ lending_a.status }}</span>
           {% endif %}
@@ -376,7 +376,7 @@
           {% if vault_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif vault_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-vault', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-vault', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ vault_a.status }}</span>
           {% endif %}
