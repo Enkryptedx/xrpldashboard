@@ -45,6 +45,9 @@ mpt_issuance_list.json
 # Private partner call notes
 partner_conversations.md
 
+# Outreach log contains PII (real names, emails, reply notes) — keep local
+OUTREACH_LOG.md
+
 # OS
 .DS_Store
 Thumbs.db
