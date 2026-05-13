@@ -11,7 +11,7 @@ import os
 import secrets
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from flask import Flask, Response, abort, redirect, render_template, request, url_for
 from flask_limiter import Limiter
@@ -1882,14 +1882,19 @@ def _historical_snapshot_meta():
     return _historical_snapshot_meta_from_disk()
 
 
+_COLLECTING_SINCE = date(2026, 5, 7)
+
+
 @app.route("/institutional")
 def institutional():
     """Pre-launch institutional positioning page. Contact-only (no published
     prices) until launch-partner conversations produce real pricing data.
     Linked from /about, intentionally not in top nav."""
+    days_collecting = max(1, (date.today() - _COLLECTING_SINCE).days + 1)
     return render_template(
         "institutional.html",
         snapshot_meta=_historical_snapshot_meta(),
+        days_collecting=days_collecting,
     )
 
 

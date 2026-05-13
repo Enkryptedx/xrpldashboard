@@ -111,6 +111,9 @@
   <p>
     {{ _('Anyone can index the XRP Ledger — the data is public. We\'re the only ones doing the editorial layer at scale: hand-curated wallet identities, classified tokens, plain-language event explanations. Your compliance team doesn\'t read a hex address — it reads "Bitstamp cold wallet moved $5M to Bitso hot wallet."') }}
   </p>
+  <p style="margin-top: 1em;">
+    {{ _('For institutional issuers, we cryptographically verify domain ↔ wallet bindings via the on-ledger Domain field +') }} <code>xrp-ledger.toml</code> {{ _('two-way chain. Verified issuers display a green ✓ badge with their domain name — independently checkable by anyone, no trust in xrpldashboard required. See') }} <a href="/methodology#attestation">{{ _('methodology') }} →</a>.
+  </p>
   <p>
     {{ _('Editorial coverage delivered via API. That\'s the product. Webhook alerts, historical depth, custom integrations — those are how it ships.') }}
   </p>
@@ -130,8 +133,8 @@
   </p>
   <div class="snap-strip">
     <div class="snap-cell">
-      <div class="snap-num">{{ snapshot_meta.days_collected }}</div>
-      <div class="snap-lbl">{{ _('day') if snapshot_meta.days_collected == 1 else _('days') }} {{ _('of snapshots') }}</div>
+      <div class="snap-num">{{ days_collecting }}</div>
+      <div class="snap-lbl">{{ _('day') if days_collecting == 1 else _('days') }} {{ _('of snapshots') }}</div>
     </div>
     <div class="snap-cell">
       <div class="snap-num">{{ snapshot_meta.accounts_tracked }}</div>
@@ -149,7 +152,24 @@
   <div class="snap-foot">
     {{ _('Collecting since') }} {{ snapshot_meta.first_date }}. {{ _('Raw snapshot access available to launch partners on request.') }}
   </div>
+  <p style="margin-top: 1.2em;">
+    {{ _('Plus a live streaming archive captured since worker restart 9 days ago: ~4,300 whale-class transfers, ~1.77M token trades, ~29,000 AMM pools indexed, and MPT supply history accruing hourly since 2026-05-12. All permanent, archived in Neon Postgres, available to launch partners as raw exports.') }}
+  </p>
   {% endif %}
+
+  <h2>{{ _('Already accessible today') }}</h2>
+
+  <p>{{ _('Public API endpoints — no key required, rate-limited at the IP level for fair use:') }}</p>
+
+  <ul>
+    <li><code>/api/heartbeat-age</code> — {{ _('pipeline freshness in seconds') }}</li>
+    <li><code>/api/rlusd/state</code> — {{ _('cross-chain RLUSD supply, mints, burns') }}</li>
+    <li><code>/api/pools/recent_events</code> — {{ _('AMM swap event stream') }}</li>
+    <li><code>/api/mpts</code> — {{ _('full MPT registry, unfiltered') }}</li>
+    <li><code>/api/whales/recent</code> — {{ _('large XRP transfer feed') }}</li>
+  </ul>
+
+  <p>{{ _('These power the public site. Launch partners get higher rate limits, authenticated endpoints with richer payloads, webhook delivery for event triggers, and CSV / JSON exports of historical archives.') }}</p>
 
   <div class="callout">
     <p>
@@ -164,6 +184,17 @@
       {{ _('Charlie reads every message personally. Reply time is usually within a day. Founders prefer direct email over forms.') }}
     </p>
   </div>
+
+  <h2>{{ _('For compliance and procurement review') }}</h2>
+
+  <p>{{ _('All disclosures are public — no NDA required to evaluate:') }}</p>
+
+  <ul>
+    <li><a href="/methodology">{{ _('Methodology') }}</a> — {{ _('every data source, cache TTL, and known limitation') }}</li>
+    <li><a href="/security">{{ _('Security') }}</a> — {{ _('posture, headers, admin surface, what we do not do yet') }}</li>
+    <li><a href="/subprocessors">{{ _('Subprocessors') }}</a> — {{ _('every third-party vendor and their DPAs') }}</li>
+    <li><a href="/privacy">{{ _('Privacy') }}</a> — {{ _('data we do and do not collect') }}</li>
+  </ul>
 
   <div class="footer">
     {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRPL Foundation, or any exchange. Built with Python, Flask, and the public XRPL.') }}
