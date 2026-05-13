@@ -1878,9 +1878,15 @@ def pools():
     rows = ranked if limit is None else ranked[:limit]
 
     indexed_count = meta.get("indexed_count") or 0
-    ranked_count = len(ranked)
     exact_count_all = sum(1 for r in ranked if r.get("tvl_status") == "exact")
     estimated_count_all = sum(1 for r in ranked if r.get("tvl_status") == "estimated")
+    non_xrp_pair_count_all = sum(1 for r in ranked if r.get("tvl_status") == "non_xrp_pair")
+    # ranked_count is the visible breakdown sum, not len(ranked). `error`
+    # rows are operational (RPC flake, schema migration partial) — they
+    # belong in worker logs, not the public stats card. Reconciles math
+    # by construction: ranked_count == exact + estimated + non_xrp_pair
+    # even if error rows are present in the ranked list.
+    ranked_count = exact_count_all + estimated_count_all + non_xrp_pair_count_all
     rank_finished = meta.get("finished_at") is not None
     rank_started = meta.get("started_at") is not None
     rank_in_progress = rank_started and not rank_finished
@@ -1929,6 +1935,7 @@ def pools():
         ranked_count=ranked_count,
         exact_count_all=exact_count_all,
         estimated_count_all=estimated_count_all,
+        non_xrp_pair_count_all=non_xrp_pair_count_all,
         rank_finished=rank_finished,
         rank_in_progress=rank_in_progress,
         total_tvl_usd=total_tvl_usd,

@@ -128,8 +128,14 @@
       .lsb-pill[data-state="live"] .lsb-dot { animation: none; }
     }
 
-    .stats { display: grid; grid-template-columns: 1fr 1fr;
+    .stats { display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
              gap: 8px; margin-bottom: 18px; }
+    .tvl-snapshot-chip { display: inline-block; margin-top: 4px;
+                         font-family: var(--mono); font-size: 0.7rem;
+                         color: var(--muted); background: rgba(255,255,255,0.04);
+                         padding: 1px 7px; border-radius: 999px;
+                         border: 1px solid var(--border); letter-spacing: 0.01em; }
     .stat  { background: var(--card); border: 1px solid var(--border);
              border-radius: 8px; padding: 10px 12px; min-width: 0; }
     .stat .n { font-family: var(--mono); font-size: 1.15rem; color: var(--text); }
@@ -449,11 +455,11 @@
           "tvl-xrp",
           _("Why XRP-paired only"),
           _("We only count pools where one side is XRP, because XRP has a live, well-known dollar price we can trust. Pools that pair two other tokens (like RLUSD with USDC) are harder to price honestly — we'd be guessing — so they don't count toward this headline number."),
-        ) }}</div>
+        ) }}{% if snapshot_age_label %}<div class="tvl-snapshot-chip">{{ _('TVL snapshot') }} · {{ snapshot_age_label }}</div>{% endif %}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ ranked_count }}" data-countup-decimals="0">{{ "{:,}".format(ranked_count) }}</div>
-        <div class="l">{{ _('pools priced') }}</div>
+        <div class="l">{{ _('pools ranked') }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
@@ -466,6 +472,14 @@
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
         <div class="l">{{ _('estimated pools') }}</div>
+      </div>
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ non_xrp_pair_count_all }}" data-countup-decimals="0">{{ "{:,}".format(non_xrp_pair_count_all) }}</div>
+        <div class="l">{{ _('non-XRP paired') }}{{ explainer(
+          "tvl-non-xrp",
+          _("What 'non-XRP paired' means"),
+          _("Pools where neither side is XRP — for example, RLUSD/USDC. We track and rank them, but we don't add them to the headline TVL because pricing them in dollars without an XRP leg means guessing. Count is shown here for transparency; their value isn't included in the $ figure above."),
+        ) }}</div>
       </div>
     </div>
     {% endif %}
@@ -562,7 +576,7 @@
   <h2>{{ _('Browse all') }} <span class="sub">{{ _('search &amp; filter') }}</span></h2>
   <div class="browse-meta">
     <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> {{ _('pools tracked · top 100 shown by default') }}{% if rank_in_progress %} · {{ _('ranking in progress') }}{% endif %}</span>
-    <span>{{ _('Most XRPL pools have negligible TVL — switch to') }} <em>{{ _('all') }}</em> {{ _('below to see the long tail.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %}){% if snapshot_age_label %} · {{ _('TVL snapshot') }} {{ snapshot_age_label }}{% endif %}</span>
+    <span>{{ _('Most XRPL pools have negligible TVL — switch to') }} <em>{{ _('all') }}</em> {{ _('below to see the long tail.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %})</span>
   </div>
   <div class="search-bar">
     <input type="search" id="pool-search" placeholder="{{ _('Search pair (e.g. USDC, RLUSD, SOLO)…') }}" autocomplete="off" spellcheck="false" />
