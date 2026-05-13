@@ -105,7 +105,7 @@
     <li><strong>{{ _('Trust over features.') }}</strong> {{ _('We never sensationalize. We never imply intent we can\'t verify. We\'d rather omit than overstate.') }}</li>
     <li><strong>{{ _('Mission-first.') }}</strong> {{ _('The funding model serves the mission, not the other way around.') }}</li>
     <li><strong>{{ _('Open source.') }}</strong> {{ _('MIT-licensed. The full source is on GitHub — anyone can fork, audit, or self-host.') }}</li>
-    <li><strong>{{ _('Transparent metrics.') }}</strong> {{ _('Our infrastructure status is publicly viewable at') }} <a href="/health">/health</a>. {{ _('Visitor traffic data is kept private — no third-party trackers on the site, internal page-view counts are not published.') }}</li>
+    <li><strong>{{ _('Transparent metrics.') }}</strong> {{ _('Our visitor analytics (') }}<a href="/analytics">/analytics</a> — {{ _('including bots and scanner probes) and our infrastructure status (') }}<a href="/health">/health</a>{{ _(') are both publicly viewable. Nothing to hide.') }}</li>
   </ol>
 
   <h2>{{ _('How it works') }}</h2>
@@ -115,9 +115,13 @@
 
   <h3>{{ _('Live ledger data') }}</h3>
   <p>
-    {{ _('Comes from public XRPL nodes. Browser-side streams now go to the community-operated cluster') }}
-    <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>
-    {{ _('(run by the XRP Ledger Foundation), with') }} <code>s1.ripple.com</code> {{ _('and') }} <code>s2.ripple.com</code> {{ _('retained as automatic fallbacks and for the server-side worker. A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }} <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use, which is why browser traffic was migrated to xrplcluster.com. The remaining server-side worker migration is roadmapped, alongside running our own rippled node as the project grows. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
+    {{ _('Comes from public XRPL nodes. A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }}
+  </p>
+  <p>
+    {{ _('Browser-side traffic streams from the XRP Ledger Foundation\'s community-operated cluster (') }}<a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>{{ _('), with') }} <code>wss://s2.ripple.com</code> {{ _('retained as automatic fallback. The server-side worker still streams from') }} <code>wss://s2.ripple.com</code>{{ _('; planned migration to the community cluster is next, and we\'ll run our own') }} <code>rippled</code> {{ _('node as the project grows.') }}
+  </p>
+  <p>
+    <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use — which is why the migration matters. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
   </p>
 
   <h3>{{ _('Reference labels') }}</h3>
@@ -125,7 +129,11 @@
     {{ _('Token display names are hand-curated in our open-source repo, each with a verifiable source URL, accepted via public PR review (see') }}
     <code>TOKEN_NAMES.md</code>).
     {{ _('Account labels are layered: a hand-curated first-party list (KNOWN_ACCOUNTS.md, sourced from exchange disclosures and project .toml files) takes priority, with public reference data (XRPSCAN well-known list, AMM and MPT issuer labels we derive ourselves) filling the long tail. Each label\'s source is recorded so you can tell which is which.') }}
-    {{ _('Beyond hand-curated labels, we cryptographically verify institutional issuers via the on-ledger Domain field +') }} <code>xrp-ledger.toml</code> {{ _('two-way chain — those issuers display a green ✓ badge on their issuer page. See') }} <a href="/methodology#attestation">/methodology#attestation</a> {{ _('for the full mechanism.') }}
+  </p>
+
+  <h3>{{ _('Domain attestation') }}</h3>
+  <p>
+    {{ _('Beyond hand-curated labels, we cryptographically verify institutional issuers via the on-ledger Domain field +') }} <code>xrp-ledger.toml</code> {{ _('two-way chain. Verified issuers display a green ✓ badge with their domain name. Currently rendered on') }} <code>/mpt/issuer/&lt;wallet&gt;</code> {{ _('pages; will extend to') }} <code>/tokens</code> {{ _('and') }} <code>/whales</code> {{ _('as more domains attest. See') }} <a href="/methodology#attestation">/methodology#attestation</a> {{ _('for the full mechanism.') }}
   </p>
 
   <h3>{{ _('Cross-checking') }}</h3>
