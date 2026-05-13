@@ -196,6 +196,20 @@
             {{ _('not yet walked') }}
           {% endif %}
         </div>
+        {% if concentration %}
+        <div style="margin-top: 0.7em; padding-top: 0.6em; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.8rem;">
+          <span style="color: var(--muted);">{{ _('Top-1 share:') }}</span>
+          <span style="color: var(--text);">{{ concentration.top1_pct }}%</span>
+          {% if concentration.top3_pct is defined %}
+          &nbsp;·&nbsp;
+          <span style="color: var(--muted);">{{ _('Top-3 share:') }}</span>
+          <span style="color: var(--text);">{{ concentration.top3_pct }}%</span>
+          {% endif %}
+        </div>
+        <div style="color: var(--dim); font-size: 0.72rem; margin-top: 0.3em;">
+          {{ _('Concentration of outstanding supply held by the largest accounts (issuer excluded).') }}
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

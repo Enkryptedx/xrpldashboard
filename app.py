@@ -2250,12 +2250,32 @@ def mpt_detail(issuance_id):
         ("Clawback enabled", bool(flags & 0x40)),
     ]
 
+    # Concentration is derived from the v3 holders.top array. We compute it
+    # here (not in the worker) because it's a detail-page-only metric and
+    # avoids a schema bump. Denominator is OutstandingAmount — per XRPL
+    # semantics that equals the sum of all non-issuer balances, so we don't
+    # need to sum the (capped-at-20) top array ourselves.
+    concentration = None
+    holders = mpt.get("holders") or {}
+    if holders.get("reason") == "complete":
+        outstanding = int(mpt.get("outstanding_amount") or 0)
+        top = holders.get("top") or []
+        positive = [int(h.get("mpt_amount") or 0) for h in top]
+        positive = [a for a in positive if a > 0]
+        if outstanding > 0 and positive:
+            concentration = {
+                "top1_pct": round(positive[0] / outstanding * 100, 1),
+            }
+            if len(positive) >= 3:
+                concentration["top3_pct"] = round(sum(positive[:3]) / outstanding * 100, 1)
+
     return render_template(
         "mpt_detail.html",
         mpt=mpt,
         peers=peers,
         peer_count=len(peers),
         flag_decoded=flag_decoded,
+        concentration=concentration,
     )
 
 
