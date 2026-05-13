@@ -496,7 +496,7 @@
         <h3>{{ _('XRPL network (live pulse)') }}</h3>
         {% if pulse and not pulse.error %}
         <div class="tech-row"><span class="k">{{ _('ledger index') }}</span><span class="v">{{ "{:,}".format(pulse.ledger_index) }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('avg close time') }}</span><span class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('avg close time') }}</span><span class="v">{% if pulse.avg_close_seconds %}{{ "%.1f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</span></div>
         <div class="tech-row"><span class="k">{{ _('last close age') }}</span><span class="v">{{ pulse.last_close_age_seconds or 0 }}s</span></div>
         <div class="tech-row"><span class="k">{{ _('validation quorum') }}</span><span class="v">{{ pulse.validation_quorum }}</span></div>
         <div class="tech-row"><span class="k">{{ _('load factor') }}</span><span class="v">{{ pulse.load_factor }}×</span></div>
@@ -542,10 +542,9 @@
         <div class="tech-row"><span class="k">{{ _('uptime') }}</span><span class="v">{{ stream.uptime }}</span></div>
         <div class="tech-row"><span class="k">{{ _('txns observed') }}</span><span class="v">{{ "{:,}".format(stream.txns_seen) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('amm creates') }}</span><span class="v">{{ stream.amm_creates }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('whale events') }}</span><span class="v">{{ stream.whale_events }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('token events') }}</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('whale events (since restart)') }}</span><span class="v">{{ stream.whale_events }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('token events (since restart)') }}</span><span class="v">{{ "{:,}".format(stream.token_events) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('new tokens (since restart)') }}</span><span class="v">{{ stream.new_tokens }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('seen-tokens index') }}</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('last ledger') }}</span><span class="v dim">{{ "{:,}".format(stream.last_ledger) if stream.last_ledger else "—" }}</span></div>
         <div class="tech-row"><span class="k">{{ _('last tracked event') }}</span><span class="v">{% if stream.log_age %}{{ stream.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
       </div>
