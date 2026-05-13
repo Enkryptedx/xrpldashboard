@@ -353,7 +353,7 @@
               <td><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>
               <td class="hide-sm">
                 {% if r.issuer_name %}{{ r.issuer_name }} · {% endif %}
-                <a class="addr" href="https://xrpscan.com/account/{{ issuer }}" target="_blank" rel="noopener">{{ issuer_short }}</a>
+                {% if issuer %}<a class="addr" href="/mpt/issuer/{{ issuer }}" title="{{ _('All MPTs by this issuer') }}">{{ issuer_short }}</a>{% else %}<span class="addr">{{ issuer_short }}</span>{% endif %}
               </td>
               <td class="num hide-sm">
                 {%- set h = r.holders -%}

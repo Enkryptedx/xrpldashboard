@@ -302,7 +302,8 @@
       {% else %}
         <span style="color: var(--dim); font-style: italic;">{{ _('(no curated label)') }}</span>
       {% endif %}
-      <a class="addr" href="https://xrpscan.com/account/{{ mpt.issuer }}" target="_blank" rel="noopener">{{ mpt.issuer }}</a>
+      <a class="addr" href="/mpt/issuer/{{ mpt.issuer }}" title="{{ _('All MPTs by this issuer') }}">{{ mpt.issuer }}</a>
+      <a href="https://xrpscan.com/account/{{ mpt.issuer }}" target="_blank" rel="noopener" style="color: var(--dim); font-size: 0.78rem;" title="{{ _('Open on XRPScan') }}">↗</a>
     </div>
   </div>
 

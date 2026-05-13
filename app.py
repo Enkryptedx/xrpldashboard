@@ -2305,6 +2305,108 @@ def mpt_detail(issuance_id):
     )
 
 
+@app.route("/mpt/issuer/<address>")
+def mpt_issuer(address):
+    """Per-issuer MPT roll-up: every MPT this r-address has minted, with
+    aggregated supply/holders/concentration. Same data path as /mpts and
+    /mpt/<id> (snapshot file → PG mirror), no extra RPC.
+
+    Always renders the full shell — even for issuers with a single MPT or
+    zero MPTs — so the surface is consistent regardless of issuer scale.
+    A 404 only fires for syntactically invalid addresses; a valid address
+    with no MPTs renders an "no MPTs issued" stub.
+
+    Indexable when at least one live (non-test, non-prepared) issuance
+    exists. Issuers with only test-shaped MPTs get noindex so test fixtures
+    don't compete with real institutional pages in search."""
+    if not _is_xrpl_address(address):
+        abort(404)
+
+    data = load_mpt_snapshot()
+    if data is None:
+        data = db.read_mpt_snapshot()
+    if data is None:
+        abort(503)
+
+    enriched = _enrich_mpt_rows(data)
+    all_rows = enriched.get("issuances") or []
+    rows = [r for r in all_rows if r.get("issuer") == address]
+
+    # Curated label takes priority; fall back to any per-MPT issuer_name
+    # the metadata set; final fallback is the truncated hex (rendered in
+    # the template). Matches the priority used by /mpts and /mpt/<id>.
+    pg_label = db.read_account_label(address)
+    header_label = None
+    if pg_label and pg_label.get("name"):
+        header_label = pg_label["name"]
+    else:
+        for r in rows:
+            if r.get("issuer_name"):
+                header_label = r["issuer_name"]
+                break
+
+    # Hero stats. total_holders sums only rows whose walk completed cleanly
+    # — a row with reason=incomplete has with_balance=None and can't be
+    # summed honestly. We surface that gap via `holders_walk_clean_count`.
+    total_holders = 0
+    walks_clean = 0
+    for r in rows:
+        h = r.get("holders") or {}
+        if h.get("reason") in ("complete", "no_holders") and h.get("with_balance") is not None:
+            total_holders += int(h["with_balance"])
+            walks_clean += 1
+
+    # Combined outstanding only meaningful when all issuances share an
+    # asset_scale. Mixed-scale issuers (e.g. one with scale=6, one with
+    # scale=2) make a numeric sum lie about magnitude. In that case we
+    # surface "mixed scales" instead of an arithmetic answer.
+    scales = {int(r.get("asset_scale") or 0) for r in rows}
+    if len(scales) <= 1 and rows:
+        scale = next(iter(scales))
+        combined_outstanding = sum(int(r.get("outstanding_amount") or 0) for r in rows)
+        combined_display = (combined_outstanding / (10 ** scale)) if scale else combined_outstanding
+        combined = {"value": combined_display, "scale": scale, "mixed": False}
+    else:
+        combined = {"value": None, "scale": None, "mixed": len(scales) > 1}
+
+    # Classification + status breakdowns. Counter is fine but we sort by
+    # count desc for a stable display order.
+    from collections import Counter
+    class_counts = Counter(r.get("classification") for r in rows)
+    status_counts = Counter(r.get("status") for r in rows)
+    class_breakdown = sorted(class_counts.items(), key=lambda kv: -kv[1])
+    status_breakdown = sorted(status_counts.items(), key=lambda kv: -kv[1])
+
+    # Indexability: any non-test row → indexable. "prepared" means real
+    # on-ledger metadata with no holders yet (institutional staging, not
+    # test fixture), so prepared issuers belong in the index. Only
+    # all-test issuers + zero-MPT issuers are noindex'd.
+    has_indexable = any(r.get("status") != "test" for r in rows)
+
+    last_refresh_ts = (data.get("last_holders_refresh_at")
+                       or data.get("written_at"))
+    last_refresh_age_seconds = None
+    if last_refresh_ts:
+        last_refresh_age_seconds = max(0, int(time.time()) - int(last_refresh_ts))
+
+    return render_template(
+        "mpt_issuer.html",
+        address=address,
+        header_label=header_label,
+        pg_label=pg_label,
+        rows=rows,
+        total_mpts=len(rows),
+        total_holders=total_holders,
+        walks_clean=walks_clean,
+        combined=combined,
+        class_breakdown=class_breakdown,
+        status_breakdown=status_breakdown,
+        has_indexable=has_indexable,
+        last_refresh_ts=last_refresh_ts,
+        last_refresh_age_seconds=last_refresh_age_seconds,
+    )
+
+
 @app.route("/api/ledger-tip")
 @limiter.limit("60 per minute")
 def api_ledger_tip():

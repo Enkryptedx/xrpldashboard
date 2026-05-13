@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% set addr_short = (address[:6] ~ '…' ~ address[-4:]) if address|length > 12 else address %}
+  {% set page_label = header_label or addr_short %}
+  <title>{{ page_label }} · {{ _('MPT issuer') }} · xrpldashboard</title>
+  {% set meta_title = page_label ~ ' · MPT issuer on XRPL' %}
+  {% set meta_description = 'Every Multi-Purpose Token issued by this XRPL account: holders, supply, classification, refreshed hourly from the validated ledger.' %}
+  {% include "_head_meta.html" %}
+  {% if not has_indexable %}
+  <meta name="robots" content="noindex,nofollow">
+  {% endif %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --grad-mpt: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(236,72,153,0.05), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(168,85,247,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+
+    .crumbs { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.8em; }
+    .crumbs a { color: var(--muted); }
+    .crumbs a:hover { color: var(--text); }
+
+    .hero { position: relative; overflow: hidden; padding: 1.6em;
+            border-radius: 14px; border: 1px solid var(--border-strong);
+            background: var(--card); margin-bottom: 1em; }
+    .hero::before { content: ""; position: absolute; inset: 0;
+                    background: var(--grad-mpt); opacity: 0.08;
+                    pointer-events: none; }
+    .hero-inner { position: relative; }
+    .hero h1 { font-size: 1.7rem; margin: 0; font-weight: 700;
+               letter-spacing: -0.02em;
+               background: var(--grad-mpt); -webkit-background-clip: text;
+               background-clip: text; color: transparent; }
+    .hero-sub { font-family: var(--mono); color: var(--muted);
+                font-size: 0.92rem; margin-top: 0.5em; word-break: break-all; }
+    .hero-sub .addr-link { color: var(--muted); }
+    .hero-sub .addr-link:hover { color: var(--text); }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr);
+                 gap: 0.7em; margin-bottom: 1em; }
+    .stat-card { background: var(--card); border: 1px solid var(--border);
+                 border-radius: 12px; padding: 1em 1.1em; }
+    .stat-label { font-size: 0.68rem; color: var(--muted);
+                  text-transform: uppercase; letter-spacing: 0.08em;
+                  font-weight: 600; margin-bottom: 0.4em; }
+    .stat-value { font-family: var(--mono); font-size: 1.35rem;
+                  color: var(--text); font-weight: 700;
+                  font-variant-numeric: tabular-nums; }
+    .stat-sub { font-size: 0.72rem; color: var(--dim); margin-top: 0.3em;
+                line-height: 1.4; }
+
+    .pill { display: inline-block; padding: 0.18em 0.7em; border-radius: 999px;
+            font-family: var(--mono); font-size: 0.72rem;
+            letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+    .pill.rwa { color: var(--green); background: rgba(34,197,94,0.12); }
+    .pill.stablecoin { color: var(--cyan); background: rgba(34,211,238,0.12); }
+    .pill.utility { color: var(--purple); background: rgba(168,85,247,0.12); }
+    .pill.other { color: var(--muted); background: rgba(128,144,176,0.10); }
+    .pill.live { color: var(--green); background: rgba(34,197,94,0.12); }
+    .pill.prepared { color: var(--amber); background: rgba(245,158,11,0.12); }
+    .pill.test { color: var(--dim); background: rgba(128,144,176,0.10); }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.1em 1.2em; margin-bottom: 0.8em; }
+    .card h2 { font-size: 0.95rem; margin: 0 0 0.5em; font-weight: 600;
+               letter-spacing: -0.01em; color: var(--text); }
+
+    table.mpt-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.mpt-table th { text-align: left; padding: 0.5em 0.7em;
+                        font-size: 0.7rem; color: var(--muted);
+                        text-transform: uppercase; letter-spacing: 0.08em;
+                        border-bottom: 1px solid var(--border); font-weight: 600; }
+    table.mpt-table td { padding: 0.6em 0.7em; border-bottom: 1px solid var(--border); }
+    table.mpt-table tr:last-child td { border-bottom: none; }
+    table.mpt-table tr:hover td { background: rgba(236,72,153,0.04); }
+    table.mpt-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.mpt-table a.name-link { color: var(--text); }
+    table.mpt-table a.name-link:hover { color: var(--pink); text-decoration: none; }
+    .ticker { color: var(--muted); font-family: var(--mono);
+              font-size: 0.75rem; margin-left: 0.4em; }
+    .dim { color: var(--dim); }
+
+    .empty { color: var(--muted); padding: 1.2em; text-align: center;
+             border: 1px dashed var(--border-strong); border-radius: 12px;
+             background: rgba(255,255,255,0.02); }
+
+    footer { margin-top: 2em; padding-top: 1.5em;
+             border-top: 1px solid var(--border);
+             color: var(--dim); font-size: 0.78rem; }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 720px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .hide-sm { display: none; }
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+  {% include "_nav.html" %}
+
+  <div class="crumbs"><a href="/mpts">{{ _('MPT registry') }}</a> · {{ _('Issuer view') }}</div>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <h1>
+        {% if header_label %}
+          {{ header_label }}
+        {% else %}
+          {{ addr_short }}
+        {% endif %}
+      </h1>
+      <div class="hero-sub">
+        <a class="addr-link" href="https://xrpscan.com/account/{{ address }}" target="_blank" rel="noopener">{{ address }}</a>
+        {% if pg_label and pg_label.category %}
+          &nbsp;·&nbsp;<span style="text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem;">{{ pg_label.category }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if total_mpts == 0 %}
+    <div class="empty">
+      {{ _('No MPTs issued by this account.') }}
+      <div style="color: var(--dim); font-size: 0.82rem; margin-top: 0.5em;">
+        {{ _('If this issuer mints an MPT in the future, it will appear here within 24 hours of the next daily walk.') }}
+      </div>
+    </div>
+  {% else %}
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">{{ _('MPTs issued') }}</div>
+      <div class="stat-value">{{ total_mpts }}</div>
+      <div class="stat-sub">
+        {%- for status, n in status_breakdown -%}
+          {{ '{:,}'.format(n) }} {{ _(status) }}{% if not loop.last %} · {% endif %}
+        {%- endfor -%}
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">{{ _('Holders') }}</div>
+      <div class="stat-value">
+        {% if walks_clean > 0 %}
+          {{ '{:,}'.format(total_holders) }}
+        {% else %}
+          <span class="dim">—</span>
+        {% endif %}
+      </div>
+      <div class="stat-sub">
+        {% if walks_clean == total_mpts %}
+          {{ _('sum across all issuances · excludes issuer treasury') }}
+        {% elif walks_clean > 0 %}
+          {{ _('sum across') }} {{ walks_clean }}/{{ total_mpts }} {{ _('with clean holders walk') }}
+        {% else %}
+          {{ _('no holders walks completed cleanly for this issuer yet') }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">{{ _('Combined outstanding') }}</div>
+      <div class="stat-value">
+        {% if combined.mixed %}
+          <span class="dim" style="font-size: 0.9rem;">{{ _('mixed scales') }}</span>
+        {% elif combined.value is not none %}
+          {{ '{:,.0f}'.format(combined.value) }}
+        {% else %}
+          <span class="dim">—</span>
+        {% endif %}
+      </div>
+      <div class="stat-sub">
+        {% if combined.mixed %}
+          {{ _('issuances use different asset_scale values — sum would misrepresent magnitude') }}
+        {% elif combined.value is not none %}
+          {{ _('asset_scale') }} = {{ combined.scale }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">{{ _('Asset classes') }}</div>
+      <div class="stat-value" style="font-size: 0.95rem; line-height: 1.4;">
+        {%- for cls, n in class_breakdown -%}
+          <span class="pill {{ cls }}" style="margin-right: 0.3em; font-size: 0.62rem;">{{ cls }} × {{ n }}</span>
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{{ _('Issuances') }} ({{ total_mpts }})</h2>
+    <table class="mpt-table">
+      <thead>
+        <tr>
+          <th>{{ _('Name') }}</th>
+          <th>{{ _('Status') }}</th>
+          <th>{{ _('Class') }}</th>
+          <th class="num hide-sm">{{ _('Holders') }}</th>
+          <th class="num">{{ _('Outstanding') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            {% if r.issuance_id %}
+              <a class="name-link" href="/mpt/{{ r.issuance_id }}">{{ r.name or _('(unnamed)') }}</a>
+            {% else %}
+              {{ r.name or _('(unnamed)') }}
+            {% endif %}
+            {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
+          </td>
+          <td><span class="pill {{ r.status }}" style="font-size: 0.65rem;">{{ _(r.status) }}</span></td>
+          <td><span class="pill {{ r.classification }}" style="font-size: 0.65rem;">{{ r.classification }}</span></td>
+          <td class="num hide-sm">
+            {%- set h = r.holders -%}
+            {%- set reason = h.reason if h else 'pending' -%}
+            {% if reason in ('complete', 'no_holders') %}
+              {{ '{:,}'.format(h.with_balance) }}
+            {% else %}
+              <span class="dim" title="{{ _('reason:') }} {{ reason }}">—</span>
+            {% endif %}
+          </td>
+          <td class="num">
+            {% if r.outstanding_amount %}
+              {%- set sc = r.asset_scale or 0 -%}
+              {{ '{:,.0f}'.format((r.outstanding_amount / (10 ** sc)) if sc else r.outstanding_amount) }}
+            {% else %}<span class="dim">0</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% endif %}
+
+  <footer>
+    {{ _('Issuer view derived from the daily MPT enumeration. Holders + supply per-MPT refresh hourly.') }}
+    {% if last_refresh_age_seconds is not none %}
+      {%- set age_s = last_refresh_age_seconds -%}
+      {{ _('Last refresh:') }}
+      {% if age_s < 60 %}{{ age_s }}s
+      {% elif age_s < 3600 %}{{ (age_s // 60) }}m
+      {% elif age_s < 86400 %}{{ (age_s // 3600) }}h
+      {% else %}{{ (age_s // 86400) }}d
+      {% endif %}
+      {{ _('ago') }}.
+    {% endif %}
+    <br><br>
+    <strong>{{ _('Not financial advice.') }}</strong>
+    {{ _('Information shown is for educational purposes only. This page is not an endorsement of any issuer or token.') }}
+    <br><br>
+    <a href="/mpts">← {{ _('back to MPT registry') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a>
+  </footer>
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>
