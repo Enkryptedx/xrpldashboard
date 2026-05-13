@@ -2889,30 +2889,18 @@ def sitemap_xml():
     return Response(body, mimetype="application/xml")
 
 
-@app.route("/admin/stats")
-@limiter.limit("30 per minute")
-def admin_stats():
-    """Private real-time visitor analytics, gated by ADMIN_STATS_KEY.
-    The token comes via HTTP Basic Auth (any username, password = the key),
-    never the URL — so it doesn't leak into Render/Cloudflare access logs,
-    browser history, or Referer headers on outbound clicks. Browsers handle
-    the credential prompt natively and remember it per-origin.
+@app.route("/analytics")
+@limiter.limit("60 per minute")
+def analytics():
+    """Public visitor analytics dashboard. Shows page-view counts, top
+    pages, country breakdown, and the last 100 visits (path + country code +
+    browser/OS label — no IPs, no referrers rendered, no session data).
 
-    Returns 401 + WWW-Authenticate challenge on missing/wrong credentials
-    so browsers actually prompt for the password. The /admin/stats path was
-    never a real secret (it's in git history, robots.txt, etc.); the
-    security is constant-time HMAC + rate limit + ADMIN_STATS_KEY entropy,
-    not URL obscurity."""
-    expected = (os.environ.get("ADMIN_STATS_KEY") or "").strip().encode("utf-8")
-    auth = request.authorization
-    provided = (auth.password or "").strip().encode("utf-8") if auth and auth.password else b""
-    if not expected or not provided or not hmac.compare_digest(provided, expected):
-        return Response(
-            "Authentication required.",
-            status=401,
-            headers={"WWW-Authenticate": 'Basic realm="xrpldashboard admin"'},
-        )
-
+    PII posture: recent-visits table shows relative age, path, two-letter
+    country code, and 'Browser · OS' label only. The combination is generic
+    enough (comparable to Plausible.io public stats) that no individual
+    visit is identifiable to third parties. Referrer is stored in the DB
+    but intentionally not rendered here."""
     rollups = db.read_page_view_stats(kind="human")
     top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human")
     top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human")
@@ -2934,7 +2922,6 @@ def admin_stats():
             "path": r["path"],
             "country": r["country"] or "?",
             "ua_short": _short_ua(r.get("user_agent")),
-            "referrer": r["referrer"],
         })
 
     return render_template(
@@ -2949,6 +2936,12 @@ def admin_stats():
         recent=recent_view,
         pg_ok=db.pg_available(),
     )
+
+
+@app.route("/admin/stats")
+def admin_stats():
+    """Legacy path — redirect to the now-public /analytics page."""
+    return redirect(url_for("analytics"), code=301)
 
 
 def _short_ua(ua):
