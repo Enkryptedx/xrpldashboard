@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('tokens') }} · xrpldashboard</title>
   {% set meta_title = "tokens · xrpldashboard" %}
-  {% set meta_description = "What's actually trading on the XRP Ledger right now — tokens ranked by recent activity, with stablecoins, memecoins, and project tokens labeled clearly." %}
+  {% set meta_description = "What's actually trading on the XRP Ledger right now — tokens ranked by recent on-ledger activity, with hand-curated labels for well-known issuances and live counts straight from the network." %}
   {% include "_head_meta.html" %}
   {# meta-refresh removed: the live counter is now WS-driven; reloading
      every 60s would interrupt the user reading the per-token list. The
@@ -400,7 +400,7 @@
   <div class="live-stream-bar" data-live-stream-bar>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">{{ _('connecting…') }}</span>
+      <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
     </span>
     <span class="lsb-meta">
       <span class="lsb-counter" data-lsb-counter>0</span>
@@ -930,11 +930,11 @@
       if (closed) return;
       try { ws = new WebSocket('wss://xrplcluster.com'); }
       catch (e) { setState('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
-      setState('connecting', 'connecting…');
+      setState('connecting', 'connecting to xrplcluster.com…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
-        setState('live', 'live · streaming');
+        setState('live', 'connected — listening for token trades');
         try {
           ws.send(JSON.stringify({
             id: 'tokens-stream',
