@@ -143,11 +143,22 @@
         {% endif %}
       </h1>
       <div class="hero-sub">
-        <a class="addr-link" href="https://xrpscan.com/account/{{ address }}" target="_blank" rel="noopener">{{ address }}</a>
+        <a class="addr-link" href="https://xrpscan.com/account/{{ address }}" target="_blank" rel="noopener noreferrer">{{ address }}</a>
         {% if pg_label and pg_label.category %}
           &nbsp;·&nbsp;<span style="text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem;">{{ pg_label.category }}</span>
         {% endif %}
       </div>
+      {% if pg_label and pg_label.source == 'toml' and pg_label.extra and pg_label.extra.domain %}
+      <div class="hero-sub" style="margin-top: 0.4em; font-family: var(--mono); font-size: 0.85rem;">
+        <span style="color: #22c55e;">✓</span>
+        <a href="https://{{ pg_label.extra.domain }}" target="_blank" rel="noopener noreferrer"
+           style="color: var(--text); border-bottom: 1px dotted var(--muted);">{{ pg_label.extra.domain }}</a>
+        &nbsp;·&nbsp;
+        <span style="color: var(--muted); font-size: 0.78rem;">{{ _('domain-attested') }}</span>
+        &nbsp;·&nbsp;
+        <a href="/methodology#attestation" style="color: var(--muted); font-size: 0.78rem;">{{ _('Methodology') }} →</a>
+      </div>
+      {% endif %}
     </div>
   </div>
 
