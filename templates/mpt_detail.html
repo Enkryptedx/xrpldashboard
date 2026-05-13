@@ -233,7 +233,14 @@
   {%- set svg_pad = 14 -%}
   {%- set sc = mpt.asset_scale or 0 -%}
   <div class="card" style="margin-top: 1em;">
-    <h2>{{ _('Supply trend') }}</h2>
+    <h2 style="display:flex;align-items:baseline;gap:0.8em;flex-wrap:wrap;">
+      {{ _('Supply trend') }}
+      {% if history|length >= 2 and archive_depth_label %}
+      <span style="font-family:var(--mono);font-size:0.72rem;font-weight:normal;color:var(--muted);background:rgba(255,255,255,0.04);padding:0.2em 0.6em;border-radius:999px;border:1px solid var(--border);">
+        {{ _('archive:') }} {{ archive_depth_label }} · {{ history|length }} {{ _('hourly snapshots') }}
+      </span>
+      {% endif %}
+    </h2>
     {% if history|length >= 2 %}
       {# Compute axis ranges. Use max(range, 1) to guard flat-supply MPTs
          against division-by-zero without hiding the line. #}
@@ -265,9 +272,15 @@
       </svg>
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:0.35em;">
         <span>{{ history[0].date_label }}</span>
-        <span>{{ history|length }} {{ _('hourly snapshots') }}</span>
         <span>{{ history[-1].date_label }}</span>
       </div>
+      {% if archive_depth_seconds and archive_depth_seconds < 86400 %}
+      <div style="font-size:0.72rem;color:var(--dim);margin-top:0.5em;">
+        {% trans first_ts=history[0].date_label -%}
+        Early data — first snapshot {{ first_ts }}. Hourly archive grows from here.
+        {%- endtrans %}
+      </div>
+      {% endif %}
     {% else %}
       {# Single-dot variant. r=5 so it reads as editorial intent, not a
          stray pixel. Breathing room matching a 2-point chart is the cue

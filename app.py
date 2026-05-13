@@ -2372,6 +2372,21 @@ def mpt_detail(issuance_id):
                 .strftime("%Y-%m-%d %H:%M UTC"),
         })
 
+    # Archive-depth label for the supply-trend heading chip. Bucketed by
+    # magnitude so early-stage MPTs read "11h" rather than misleading "0.46d".
+    # max(0, ...) guards against a reversed-history schema regression.
+    archive_depth_seconds = 0
+    archive_depth_label = None
+    if len(history) >= 2:
+        archive_depth_seconds = max(0, int(history[-1]["snapshot_ts"] - history[0]["snapshot_ts"]))
+        h = archive_depth_seconds / 3600
+        if h < 1:
+            archive_depth_label = f"{max(int(archive_depth_seconds / 60), 1)}m"
+        elif h < 48:
+            archive_depth_label = f"{int(h)}h"
+        else:
+            archive_depth_label = f"{int(h / 24)}d"
+
     return render_template(
         "mpt_detail.html",
         mpt=mpt,
@@ -2380,6 +2395,8 @@ def mpt_detail(issuance_id):
         flag_decoded=flag_decoded,
         concentration=concentration,
         history=history,
+        archive_depth_seconds=archive_depth_seconds,
+        archive_depth_label=archive_depth_label,
     )
 
 
