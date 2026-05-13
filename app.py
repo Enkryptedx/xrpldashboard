@@ -450,6 +450,29 @@ def _recent_whale_events(limit=3):
             return []
     named = _load_named_accounts_dict()
     tokens = _load_token_names_dict()
+    # Layer PG account_labels for the addresses on this page. File-based
+    # named_accounts always wins (first-party Ripple-escrow verification);
+    # PG fills the long tail (XRPSCAN-curated exchanges + derived AMM/MPT
+    # issuers). Failure is swallowed — card renders fine with file-only.
+    if db.pg_available():
+        page_addrs = set()
+        for r in rows:
+            if r[4]:
+                page_addrs.add(r[4])
+            if r[5]:
+                page_addrs.add(r[5])
+        page_addrs.difference_update(named.keys())
+        if page_addrs:
+            try:
+                for addr, info in db.read_account_labels(list(page_addrs)).items():
+                    named[addr] = {
+                        "name": info.get("name"),
+                        "category": info.get("category"),
+                        "_source": info.get("source"),
+                        "_extra": info.get("extra"),
+                    }
+            except Exception:
+                pass
     return [_resolve_event(r, named, tokens) for r in rows]
 
 
@@ -661,6 +684,12 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
         except Exception:
             return []
     tokens_meta = _load_token_names_dict()
+    pg_labels = {}
+    if db.pg_available():
+        try:
+            pg_labels = db.read_account_labels({iss for _c, iss, _t in rows if iss})
+        except Exception:
+            pg_labels = {}
     out = []
     for cur, iss, trades in rows:
         meta = tokens_meta.get((cur, iss)) or {}
@@ -669,9 +698,12 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
         else:
             decoded = _decode_currency_hex(cur)
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
+        lbl = pg_labels.get(iss) or {}
         out.append({
             "display": display,
+            "issuer": iss,
             "issuer_short": _short_addr(iss),
+            "issuer_label": lbl.get("name"),
             "trades": trades,
         })
     return out

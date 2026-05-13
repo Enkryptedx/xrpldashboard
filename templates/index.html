@@ -861,7 +861,7 @@
             <div class="preview-row">
               <div class="left">
                 <div class="primary">{{ t.display }}</div>
-                <div class="secondary">{{ t.issuer_short }}</div>
+                <div class="secondary">{{ t.issuer_label or t.issuer_short }}</div>
               </div>
               <div class="right">{{ "{:,}".format(t.trades) }} {{ _('trades') }}</div>
             </div>
