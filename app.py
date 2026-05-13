@@ -1735,20 +1735,61 @@ def rlusd():
     /api/rlusd/state and falls back to a preview animation if the feed
     is unavailable.
 
-    Server-side preflight: the same TTL-cached state the API serves is
-    rendered into the template so first paint and JS-less crawlers see
-    real supply numbers instead of "—" placeholders. The client-side
-    poller still drives live updates once the page hydrates."""
+    Three-branch SSR preflight: try the live cross-chain cache first;
+    if it's missing or partial, fall back to Postgres' last-good mirror
+    (rlusd_live dual-writes on every successful refresh); only when both
+    are empty does the page render its graceful empty state. Visitors
+    get a freshness chip — "Live · updated Ns ago" or "Last updated · X
+    ago · reconnecting" — and the JS poller continues from there."""
     initial = None
+    cached_at = None
+    fresh = False
+
+    # Branch 1: live fetch. Validate non-null supplies so a partial RPC
+    # blip can't pass a truthy gate and leak eth.supply=None into the
+    # page as a literal "$0".
     try:
         from rlusd_live import fetch_state
-        initial = fetch_state()
+        candidate = fetch_state()
+        if (candidate
+                and candidate.get("eth", {}).get("supply") is not None
+                and candidate.get("xrpl", {}).get("supply") is not None):
+            initial = candidate
+            cached_at = candidate.get("fetched_at") or int(time.time())
+            fresh = True
     except Exception:
-        # The page degrades to its previous "—" placeholders if the
-        # cross-chain feed is genuinely unavailable — same behavior as
-        # before the SSR preflight existed.
         pass
-    return render_template("rlusd.html", initial=initial)
+
+    # Branch 2: PG last-good fallback. Same completeness check as Branch 1
+    # — the writer gates on it too, but the stricter read keeps us honest
+    # against any future code path that ever persists partial state.
+    if initial is None:
+        try:
+            from db import read_rlusd_state_cache
+            cached_payload, cached_ts = read_rlusd_state_cache()
+            if (cached_payload
+                    and cached_payload.get("eth", {}).get("supply") is not None
+                    and cached_payload.get("xrpl", {}).get("supply") is not None):
+                initial = cached_payload
+                cached_at = cached_ts
+                fresh = False
+        except Exception:
+            pass
+
+    # Branch 3: PG empty too — initial stays None, template renders the
+    # graceful empty state (dashes + JS-driven preview animation).
+
+    age_seconds = None
+    if cached_at:
+        age_seconds = max(0, int(time.time() - cached_at))
+
+    return render_template(
+        "rlusd.html",
+        initial=initial,
+        cached_at=cached_at,
+        age_seconds=age_seconds,
+        fresh=fresh,
+    )
 
 
 @app.route("/api/rlusd/state")

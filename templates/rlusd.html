@@ -367,6 +367,26 @@
     .ribbon.show { display: block; }
     .ribbon strong { color: var(--text); font-weight: 600; }
 
+    /* Freshness chip — always-on indicator paired with the supply totals.
+       Fresh state (post-successful poll) reads "Live · updated Ns ago" in
+       muted grey; stale state (rendering from PG fallback) shifts to amber
+       and reads "Last updated · X ago · reconnecting" until poll succeeds. */
+    .rlusd-freshness-chip {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      display: inline-block;
+      color: var(--muted);
+      transition: color 200ms ease;
+      margin-top: 6px;
+    }
+    .rlusd-freshness-chip.is-stale {
+      color: var(--amber);
+    }
+
     .foot {
       margin-top: 28px; font-size: 0.78rem; color: var(--dim);
       border-top: 1px solid var(--border); padding-top: 16px;
@@ -387,13 +407,23 @@
     new dollars appear, old ones disappear, and money cross between them.
   </p>
 
-  {# Hidden by default — the live feed is wired. JS un-hides this ribbon
-     only if the /api/rlusd/state poll fails repeatedly, so the user always
-     sees an honest status. #}
-  <div class="ribbon" id="liveFailRibbon">
-    <strong>Live feed unavailable.</strong>
-    The supply totals above may be a few minutes stale while we reconnect.
+  {# Two ribbon states from the SSR side: when we're rendering from the PG
+     last-good cache (initial truthy + fresh=False) the ribbon is shown
+     immediately with the "reconnecting" copy. When the live fetch succeeded
+     or we're cold-starting, the ribbon stays hidden; JS un-hides it via
+     .show only after two consecutive poll failures. Single element, same
+     id either way — showLiveFailNotice/hidePreviewRibbon keep working. #}
+  {% if initial and not fresh %}
+  <div class="ribbon show" id="liveFailRibbon">
+    <strong>{{ _('Live feed reconnecting.') }}</strong>
+    {{ _('Numbers shown from the last successful refresh — see timestamp on the chip above.') }}
   </div>
+  {% else %}
+  <div class="ribbon" id="liveFailRibbon">
+    <strong>{{ _('Live feed unavailable.') }}</strong>
+    {{ _('The supply totals above may be a few minutes stale while we reconnect.') }}
+  </div>
+  {% endif %}
 
   <div class="press-hero">
     <div class="headline">
@@ -419,6 +449,29 @@
         ) }}
       </div>
       <div class="sub">across Ethereum and the XRP Ledger</div>
+      {# Freshness chip. SSR renders the initial text; JS owns updates via
+         #rlusd-freshness-chip, ticking once a second from data-attr templates
+         so the timestamp stays honest while the tab sits open. is-stale class
+         flips on/off as the chain feed reconnects. #}
+      {% if age_seconds is not none %}
+      <div id="rlusd-freshness-chip"
+           class="rlusd-freshness-chip{% if not fresh %} is-stale{% endif %}"
+           data-fresh-tmpl="{{ _('Live · updated {age} ago') }}"
+           data-stale-tmpl="{{ _('Last updated · {age} ago · reconnecting') }}">
+        {%- if fresh -%}
+          {% trans age=age_seconds %}Live · updated {{ age }}s ago{% endtrans %}
+        {%- else -%}
+          {%- set human_age -%}
+            {%- if age_seconds < 60 -%}{{ age_seconds }}s
+            {%- elif age_seconds < 3600 -%}{{ age_seconds // 60 }}m
+            {%- elif age_seconds < 86400 -%}{{ age_seconds // 3600 }}h
+            {%- else -%}{{ age_seconds // 86400 }}d
+            {%- endif -%}
+          {%- endset %}
+          {% trans age=human_age %}Last updated · {{ age }} ago · reconnecting{% endtrans %}
+        {%- endif -%}
+      </div>
+      {% endif %}
       <div class="legend-chips">
         <span class="chip mint"><span class="sw"></span>new RLUSD created</span>
         <span class="chip burn"><span class="sw"></span>RLUSD removed</span>
@@ -533,14 +586,16 @@
    start with real numbers instead of seed/placeholder values. Falls back
    to null when the SSR fetch failed; the client poller then drives state
    the way it always did. */
-window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
+window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply is not none and initial.xrpl and initial.xrpl.supply is not none %}{
   ethSupply: {{ initial.eth.supply or 0 }},
   xrplSupply: {{ initial.xrpl.supply or 0 }},
   ethMints24h: {{ initial.eth.mints_24h or 0 }},
   ethBurns24h: {{ initial.eth.burns_24h or 0 }},
   xrplMints24h: {{ initial.xrpl.mints_24h or 0 }},
   xrplBurns24h: {{ initial.xrpl.burns_24h or 0 }},
-  events: {{ (initial.events or [])|tojson }}
+  events: {{ (initial.events or [])|tojson }},
+  cachedAt: {{ cached_at or 0 }},
+  fresh: {{ 'true' if fresh else 'false' }}
 }{% else %}null{% endif %};
 </script>
 <script>
@@ -558,7 +613,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
      animation then keeps the hero alive until the first /api/rlusd/state
      poll resolves, at which point it flips to true. */
   const SSR = window.__RLUSD_INITIAL__;
-  let LIVE_DATA = !!SSR;
+  let LIVE_DATA = !!(SSR && SSR.fresh);
 
   const canvas = document.getElementById('pressCanvas');
   const ctx = canvas.getContext('2d');
@@ -1211,6 +1266,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
     const chip = document.getElementById('previewChip');
     if (chip) chip.style.display = '';
     liveHealthy = false;
+    chipSetStale();
     applyModeUI();
   }
 
@@ -1257,6 +1313,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
       renderTickerRows();
       LIVE_DATA = true;
       hidePreviewRibbon();
+      chipSetFresh();
       renderState();
       return;
     }
@@ -1294,12 +1351,54 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.xrpl %}{
     setTimeout(drainQueue, DRAIN_MS);
   }
 
+  /* Freshness chip. Anchored to the timestamp of the last known-good
+     cross-chain state — when SSR was fresh we anchor to now, when SSR
+     served a cached payload we anchor to its cachedAt. A 1s tick keeps
+     the visible age honest without spamming layout. */
+  const freshnessChip = document.getElementById('rlusd-freshness-chip');
+  let chipAnchor = (SSR && SSR.fresh)
+        ? (Date.now() / 1000)
+        : (SSR && SSR.cachedAt) ? SSR.cachedAt : null;
+  let chipFresh = !!(SSR && SSR.fresh);
+
+  function fmtChipAge(seconds) {
+    const s = Math.max(0, Math.floor(seconds));
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    if (s < 86400) return Math.floor(s / 3600) + 'h';
+    return Math.floor(s / 86400) + 'd';
+  }
+
+  function renderChip() {
+    if (!freshnessChip || chipAnchor == null) return;
+    const age = (Date.now() / 1000) - chipAnchor;
+    const tmpl = chipFresh
+      ? freshnessChip.getAttribute('data-fresh-tmpl')
+      : freshnessChip.getAttribute('data-stale-tmpl');
+    freshnessChip.textContent = (tmpl || '').replace('{age}', fmtChipAge(age));
+    freshnessChip.classList.toggle('is-stale', !chipFresh);
+  }
+
+  function chipSetFresh() {
+    chipFresh = true;
+    chipAnchor = Date.now() / 1000;
+    renderChip();
+  }
+
+  function chipSetStale() {
+    chipFresh = false;
+    renderChip();
+  }
+
+  const chipTimer = setInterval(renderChip, 1000);
+  window.addEventListener('beforeunload', () => clearInterval(chipTimer));
+
   /* SSR bootstrap. When the route handed us real cross-chain state, hide
      the "live feed unavailable" ribbon path entirely, seed the ticker
      with the backlog, and mark every backlog tx as already-seen so the
      first poll doesn't re-animate them as if they were fresh. */
   if (SSR) {
-    hidePreviewRibbon();
+    if (SSR.fresh) hidePreviewRibbon();
     const ssrEvents = Array.isArray(SSR.events) ? SSR.events.filter(e => e && e.tx) : [];
     for (const e of ssrEvents) seenTx.add(e.tx);
     tickerRows.length = 0;

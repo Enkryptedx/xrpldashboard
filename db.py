@@ -223,6 +223,18 @@ CREATE TABLE IF NOT EXISTS mpt_supply_history (
 );
 CREATE INDEX IF NOT EXISTS mpt_supply_history_issuance_ts_idx
     ON mpt_supply_history (mpt_issuance_id, snapshot_ts DESC);
+
+-- Last-good cross-chain RLUSD state for SSR cold-start fallback. Single-row
+-- JSONB blob — same pattern as mpt_snapshot. rlusd_live's refresher dual-
+-- writes here on every successful full-supply tick; /rlusd reads when the
+-- live fetch fails so a cold worker still renders real numbers + a "Last
+-- updated · X ago · reconnecting" chip instead of blank dashes.
+CREATE TABLE IF NOT EXISTS rlusd_state_cache (
+    id         INTEGER PRIMARY KEY,
+    payload    JSONB NOT NULL,
+    written_at BIGINT NOT NULL,
+    CHECK (id = 1)
+);
 """
 
 
@@ -636,6 +648,50 @@ def read_mpt_snapshot():
                 return payload
     except Exception:
         return None
+
+
+def read_rlusd_state_cache():
+    """Return (payload_dict, written_at_epoch) or (None, None) when PG is
+    unavailable / table empty. Powers the SSR cold-start fallback on /rlusd
+    so visitors never see a blank treasury page when the live fetch fails."""
+    if not pg_available():
+        return None, None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT payload, written_at FROM rlusd_state_cache WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if row:
+                    return row[0], row[1]
+    except Exception:
+        pass
+    return None, None
+
+
+def write_rlusd_state_cache(payload):
+    """Upsert the single-row last-good cache. Called from rlusd_live's
+    refresh loop after every successful full-supply build. Best-effort —
+    failures stay silent so a PG hiccup never breaks the live refresh."""
+    if not pg_available():
+        return False
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO rlusd_state_cache (id, payload, written_at) "
+                "VALUES (1, %s::jsonb, %s) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "    payload = EXCLUDED.payload, "
+                "    written_at = EXCLUDED.written_at",
+                (json.dumps(payload, default=str), int(time.time())),
+            )
+        return True
+    except Exception:
+        return False
 
 
 def write_snapshot_meta(meta):

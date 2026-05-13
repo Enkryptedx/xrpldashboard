@@ -605,6 +605,20 @@ def _refresh_cache_once() -> bool:
     with _lock:
         _cache["data"] = data
         _cache["fetched_at"] = time.time()
+
+    # Best-effort PG dual-write so a cold-starting Render worker can read
+    # last-good state on /rlusd SSR. Gated on completeness — a partial RPC
+    # failure would persist eth.supply=None and erase our previous last-
+    # known-good. Failures stay silent: the in-memory path is what matters
+    # for the live API; PG is the safety net for cold SSR.
+    try:
+        if (data.get("eth", {}).get("supply") is not None
+                and data.get("xrpl", {}).get("supply") is not None):
+            import db
+            db.write_rlusd_state_cache(data)
+    except Exception:
+        pass
+
     return True
 
 
