@@ -91,6 +91,11 @@
 
     .stats-role { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
                   letter-spacing: 0.05em; margin-bottom: 6px; }
+    .events-snapshot-chip { display: inline-block; margin: 0 0 14px;
+                            font-family: var(--mono); font-size: 0.7rem;
+                            color: var(--muted); background: rgba(255,255,255,0.04);
+                            padding: 1px 7px; border-radius: 999px;
+                            border: 1px solid var(--border); letter-spacing: 0.01em; }
     .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .stat  { background: var(--card); border: 1px solid var(--border);
              border-radius: 8px; padding: 8px 12px; min-width: 100px;
@@ -248,8 +253,6 @@
 
   {% include "_nav.html" %}
   {% from "_explainer.html" import explainer %}
-  {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
-  {{ freshness_badge_css() }}
 
   <h1>{{ _('Whale watch') }}{{ explainer(
     "whales",
@@ -260,7 +263,7 @@
     {{ _('Large XRP transfers and any activity by accounts we recognize. The watchlist is hand-curated and public — see') }}
     <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
   </p>
-  {{ freshness_badge(data_age_label) }}
+  {% if data_age_label %}<div class="events-snapshot-chip">{{ _('Events snapshot') }} · {{ data_age_label }}</div>{% endif %}
 
   <div class="whale-radar" aria-hidden="true">
     <canvas id="whale-radar-canvas"></canvas>
@@ -345,7 +348,7 @@
        data-filter-type="{{ filter_type }}">
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">{{ _('connecting…') }}</span>
+      <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
     </span>
     <span class="lsb-meta">
       {{ _('Streaming validated XRPL transactions ≥') }} {{ "{:,}".format(tier_drops // 1_000_000) }} XRP
@@ -416,6 +419,9 @@
     <p>
       {{ _('The watchlist combines') }} {{ named_accounts_count }} {{ _("hand-curated first-party entries (sourced from disclosures like Ripple's xrp-ledger.toml) with a broader reference layer drawn from public lists (XRPSCAN well-known names, derived AMM pool and MPT issuer labels). Curated labels take priority; reference labels fill the rest. Each label is shown with its source so you can tell which is which.") }}
     </p>
+    <p>
+      {{ _('All addresses shown are public on the XRP Ledger by design — they appear in every block explorer (XRPSCAN, Bithomp). No private information is surfaced.') }}
+    </p>
   </div>
 
   <div class="footer">
@@ -423,7 +429,8 @@
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
-    <a href="/about">{{ _('how this is sourced') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
     <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
@@ -809,7 +816,7 @@
         scheduleReconnect();
         return;
       }
-      setState('connecting', 'connecting…');
+      setState('connecting', 'connecting to xrplcluster.com…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
