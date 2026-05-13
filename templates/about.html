@@ -105,7 +105,7 @@
     <li><strong>{{ _('Trust over features.') }}</strong> {{ _('We never sensationalize. We never imply intent we can\'t verify. We\'d rather omit than overstate.') }}</li>
     <li><strong>{{ _('Mission-first.') }}</strong> {{ _('The funding model serves the mission, not the other way around.') }}</li>
     <li><strong>{{ _('Open source.') }}</strong> {{ _('MIT-licensed. The full source is on GitHub — anyone can fork, audit, or self-host.') }}</li>
-    <li><strong>{{ _('Transparent metrics.') }}</strong> {{ _('Our visitor analytics and our infrastructure status') }} (<a href="/health">/health</a>) {{ _('are both publicly viewable. Nothing to hide.') }}</li>
+    <li><strong>{{ _('Transparent metrics.') }}</strong> {{ _('Our infrastructure status is publicly viewable at') }} <a href="/health">/health</a>. {{ _('Visitor traffic data is kept private — no third-party trackers on the site, internal page-view counts are not published.') }}</li>
   </ol>
 
   <h2>{{ _('How it works') }}</h2>
@@ -125,6 +125,7 @@
     {{ _('Token display names are hand-curated in our open-source repo, each with a verifiable source URL, accepted via public PR review (see') }}
     <code>TOKEN_NAMES.md</code>).
     {{ _('Account labels are layered: a hand-curated first-party list (KNOWN_ACCOUNTS.md, sourced from exchange disclosures and project .toml files) takes priority, with public reference data (XRPSCAN well-known list, AMM and MPT issuer labels we derive ourselves) filling the long tail. Each label\'s source is recorded so you can tell which is which.') }}
+    {{ _('Beyond hand-curated labels, we cryptographically verify institutional issuers via the on-ledger Domain field +') }} <code>xrp-ledger.toml</code> {{ _('two-way chain — those issuers display a green ✓ badge on their issuer page. See') }} <a href="/methodology#attestation">/methodology#attestation</a> {{ _('for the full mechanism.') }}
   </p>
 
   <h3>{{ _('Cross-checking') }}</h3>
@@ -149,7 +150,7 @@
 
   <h2>{{ _('How it\'s funded') }}</h2>
   <p>
-    {{ _('Hosting and infrastructure currently run a few dollars a month, covered out of pocket. As the project grows we\'ll be applying for XRPL ecosystem grants, and donations are welcome') }}
+    {{ _('Hosting and infrastructure currently run ~$25/month (Render Standard), covered out of pocket. As the project grows we\'ll be applying for XRPL ecosystem grants, and donations are welcome') }}
     (<a href="mailto:contact@xrpldashboard.com?subject=Donation">{{ _('see contact email') }}</a>).
     {{ _('Eventually a paid') }} <a href="/institutional"><strong>{{ _('institutional tier') }}</strong></a>
     {{ _('(API access, alerts, custom dashboards) will help fund the public retail dashboard, which stays free forever.') }}
@@ -166,6 +167,9 @@
     <li><strong>{{ _('Email:') }}</strong>
       <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
       — {{ _('feedback, partnerships, press, or anything else.') }}</li>
+    <li><strong>{{ _('X (Twitter):') }}</strong>
+      <a href="https://x.com/xrpldashboardx" target="_blank" rel="noopener noreferrer">@xrpldashboardx</a>
+      — {{ _('updates and announcements.') }}</li>
     <li><strong>{{ _('Source code:') }}</strong>
       <a href="https://github.com/Enkryptedx/xrpldashboard" target="_blank" rel="noopener noreferrer">github.com/Enkryptedx/xrpldashboard</a></li>
     <li><strong>{{ _('Contribute a token display name:') }}</strong> {{ _('see') }}
