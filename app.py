@@ -2209,6 +2209,30 @@ def mpts():
     else:
         supply_chip_label = babel_gettext("Has supply")
 
+    # Most-held live MPT for the lede sentence. Only rows with a completed
+    # holder walk contribute — warming/partial rows would inflate the count.
+    top_holder_count = max(
+        (
+            (r.get("holders") or {}).get("with_balance") or 0
+            for r in rows
+            if r.get("status") == "live"
+            and (r.get("holders") or {}).get("reason") in ("complete", "no_holders")
+        ),
+        default=0,
+    )
+
+    # Page thesis is "holders as a leading indicator," so default sort is
+    # holders desc. ?sort=outstanding preserves the supply-ranked view that
+    # the helper-default produced (procurement/journalism scrapers may want it).
+    sort_mode = (request.args.get("sort") or "holders").lower()
+    if sort_mode == "holders":
+        status_rank = {"live": 0, "prepared": 1, "test": 2}
+        rows.sort(key=lambda r: (
+            status_rank.get(r.get("status"), 3),
+            -((r.get("holders") or {}).get("with_balance") or 0),
+            -(r.get("normalized_outstanding") or 0),
+        ))
+
     return render_template(
         "mpts.html",
         data=data,
@@ -2217,6 +2241,8 @@ def mpts():
         low_supply_total=low_supply_total,
         combined_hidden_total=combined_hidden_total,
         supply_chip_label=supply_chip_label,
+        top_holder_count=top_holder_count,
+        sort_mode=sort_mode,
     )
 
 
