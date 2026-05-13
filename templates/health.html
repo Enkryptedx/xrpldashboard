@@ -320,7 +320,7 @@
             data-load="{{ pulse.load_factor if pulse and not pulse.error else 1 }}"></canvas>
     <div class="status-ekg-meta">
       <span>{{ _('Heartbeat · scales with network load') }}</span>
-      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>— {{ _('bpm') }}</span>
+      <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>{% if pulse and pulse.avg_close_seconds %}{{ (60 / pulse.avg_close_seconds)|round|int }}{% else %}—{% endif %} {{ _('bpm') }}</span>
     </div>
   </div>
 
@@ -426,7 +426,7 @@
               {{ _('Watching every transaction on the XRP Ledger in real time. Since startup we\'ve logged') }}
               <strong>{{ "{:,}".format(stream.whale_events) }}</strong> {{ _('large transfers and') }}
               <strong>{{ "{:,}".format(stream.token_events) }}</strong> {{ _('token trades.') }}
-              {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
+              {{ _('Last tracked event') }} {{ stream.log_age }} {{ _('ago.') }}
               {% else %}
               {# Worker just restarted (or counters reset). The legacy copy
                  "Since startup we've logged 0 / 0" reads like a broken site
@@ -437,7 +437,7 @@
               {% if substrate.events_rows %}
                 {{ _('Lifetime archive:') }} <strong>{{ "{:,}".format(substrate.events_rows) }}</strong> {{ _('events recorded.') }}
               {% endif %}
-              {{ _('Last update') }} {{ stream.log_age }} {{ _('ago.') }}
+              {{ _('Last tracked event') }} {{ stream.log_age }} {{ _('ago.') }}
               {% endif %}
             {% else %}
               {{ _('Live activity feed not yet enabled in production. Coming soon — meanwhile the page shows a snapshot of') }}
@@ -456,7 +456,8 @@
       <h4>{{ _('What this is') }}</h4>
       <p>{{ _('A real-time watcher that sees every transaction the moment it confirms on the XRP Ledger. It tags the big stuff — large XRP transfers (whale moves) and token trades — so this site can show live activity, fill its rankings, and build history.') }}</p>
       <h4>{{ _('How we know') }}</h4>
-      <p>{{ _('A persistent websocket subscription to a public XRPL node streams every closed transaction as it happens. The "Last update" timestamp is how recently the watcher saw a new transaction; an active network ticks every few seconds. "Streaming" means the connection is live and processing.') }}</p>
+      <p>{{ _('A persistent websocket subscription to a public XRPL node streams every closed transaction as it happens. "Streaming" means the connection is live and processing.') }}</p>
+      <p>{{ _('Ledgers close every few seconds, but the live watcher only logs the events this site tracks — whale transfers, token trades, and AMM creations. Those tick on their own cadence (often a few minutes apart), so the "Last tracked event" timestamp can lag the ledger heartbeat without anything being wrong.') }}</p>
     </div>
   </details>
 
@@ -512,6 +513,13 @@
       </div>
 
       <div class="tech-section">
+        {# On hosts that run the local bootstrap scanner (the Mac), surface
+           the scanner's own counters — pages, objects, scan rate. On hosts
+           without that worker (Render), those fields would all be 0/— and
+           read as a stuck pipeline, even though the ranker cron keeps the
+           catalogue fresh. The ranker branch shows what's actually doing
+           the work: last refresh, cadence, next refresh ETA. #}
+        {% if scan.mode == 'scanner' %}
         <h3>{{ _('Pool tracker (bootstrap scan)') }}</h3>
         <div class="tech-row"><span class="k">{{ _('uptime') }}</span><span class="v">{{ scan.uptime }}</span></div>
         <div class="tech-row"><span class="k">{{ _('pages scanned') }}</span><span class="v">{{ "{:,}".format(scan.pages) }}</span></div>
@@ -520,6 +528,13 @@
         <div class="tech-row"><span class="k">{{ _('scan rate') }}</span><span class="v">{% if scan.rate %}{{ scan.rate }} {{ _('pages/s') }}{% else %}—{% endif %}</span></div>
         <div class="tech-row"><span class="k">{{ _('ledger snapshot') }}</span><span class="v dim">{{ scan.ledger_index or "—" }}</span></div>
         <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{% if scan.log_age %}{{ scan.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
+        {% else %}
+        <h3>{{ _('Pool tracker (ranker cron)') }}</h3>
+        <div class="tech-row"><span class="k">{{ _('amms in index') }}</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
+        <div class="tech-row"><span class="k">{{ _('ranker last refresh') }}</span><span class="v">{% if scan.ranker_age %}{{ scan.ranker_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('ranker next refresh') }}</span><span class="v">{% if scan.ranker_next_in %}{{ _('in ~') }}{{ scan.ranker_next_in }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('refresh cadence') }}</span><span class="v dim">{{ _('every 4 hours') }}</span></div>
+        {% endif %}
       </div>
 
       <div class="tech-section">
@@ -532,7 +547,7 @@
         <div class="tech-row"><span class="k">{{ _('new tokens (since restart)') }}</span><span class="v">{{ stream.new_tokens }}</span></div>
         <div class="tech-row"><span class="k">{{ _('seen-tokens index') }}</span><span class="v">{{ "{:,}".format(stream.seen_tokens_count) }}</span></div>
         <div class="tech-row"><span class="k">{{ _('last ledger') }}</span><span class="v dim">{{ "{:,}".format(stream.last_ledger) if stream.last_ledger else "—" }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{% if stream.log_age %}{{ stream.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('last tracked event') }}</span><span class="v">{% if stream.log_age %}{{ stream.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
       </div>
 
       <div class="tech-section">

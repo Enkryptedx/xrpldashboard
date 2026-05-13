@@ -1029,6 +1029,17 @@ def health():
     amms_in_index = len(amm_index) if isinstance(amm_index, list) and amm_index \
         else ranker_hb_extra.get("indexed_count")
 
+    # On hosts without local bootstrap-scanner state (Render), the tech block
+    # used to show pages/objects/scan-rate as 0/—, which read as a stuck
+    # worker even though the ranker cron was keeping a 29k-pool catalogue
+    # fresh (2026-05-13 audit). When mode == "ranker", the template surfaces
+    # ranker cadence instead of scanner counters. com.charliebruce.xrpldashboard.rank_amms
+    # runs every 14400s (verified via `launchctl print`).
+    scan_mode = "scanner" if scan_state else "ranker"
+    ranker_next_in = (
+        max(0, 14400 - ranker_hb_age) if ranker_hb_age is not None else None
+    )
+
     # Pool tracker is "finished" (catalogue available) whenever the ranker
     # has produced a snapshot — even if this host has no local scan state.
     pool_finished = scan_finished is not None or (
@@ -1059,12 +1070,15 @@ def health():
             "alive": scan_alive,
             "finished": pool_finished,
             "stale": pool_stale,
+            "mode": scan_mode,
             "uptime": _humanize_seconds(scan_uptime),
             "pages": scan_pages,
             "objects_scanned": scan_state.get("raw_objects_scanned", 0),
             "rate": scan_rate,
             "ledger_index": scan_state.get("ledger_index"),
             "log_age": _humanize_seconds(scan_log_age if scan_log_age is not None else ranker_hb_age),
+            "ranker_age": _humanize_seconds(ranker_hb_age) if ranker_hb_age is not None else None,
+            "ranker_next_in": _humanize_seconds(ranker_next_in) if ranker_next_in else None,
             "amms_in_index": amms_in_index,
             "snapshot_at": _pools_snapshot_label(),
         },
