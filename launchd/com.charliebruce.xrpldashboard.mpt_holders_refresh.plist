@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.mpt_holders_refresh</string>
+
+    <key>Comment</key>
+    <string>Hourly MPT holders + supply refresh. Reads mpt_issuance_list.json (written by the daily mpt_snapshot job), fetches current OutstandingAmount per issuance via ledger_entry (cheap, ~0.3s each), walks current holders via mpt_holders, writes a fresh mpt_supply_history row per eligible issuance, and updates mpt_snapshot.json + the Postgres mirror in-place. Does NOT walk ledger_data — the daily job owns enumeration. Measured cycle ~110s for ~200 issuances; well under the 1-hour interval. If wall-clock creeps past 30 min in worker logs, bump StartInterval to 7200 and update methodology copy.</string>
+
+    <!-- Wrapper sources ~/.config/xrpldashboard/env so DATABASE_URL is
+         present; without it the PG mirror silently no-ops and the
+         /mpt/<id> sparkline on Render would never advance. Same pattern
+         as run_daily_snapshot.sh. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_mpt_holders_refresh.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Hourly. StartInterval (not StartCalendarInterval) so the timer
+         survives Mac sleep/wake — UserEventAgent-Aqua dispatch of
+         calendar triggers through powernap has bitten us before. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/mpt_holders_refresh.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/mpt_holders_refresh.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

@@ -214,6 +214,37 @@ def _paginate_all(max_pages=10_000_000, time_budget_secs=86400):
             "elapsed_seconds": round(time.time() - t0, 1)}
 
 
+def fetch_one_issuance(issuance_id):
+    """Fetch the current ledger state for a single MPTokenIssuance via
+    `ledger_entry`. Cheap (one RPC, ~100-200ms) compared to a full ledger
+    walk — used by the hourly holders-refresh job to pick up the current
+    OutstandingAmount without re-walking the ledger.
+
+    Returns a shaped row dict (same shape as fetch_mpt_data's issuances),
+    or None on RPC failure / missing object. Callers MUST treat None as
+    "skip this cycle, retry next hour" — never substitute yesterday's
+    cached outstanding_amount, or every hourly mpt_supply_history row
+    silently lies."""
+    if not issuance_id:
+        return None
+    result = _rpc("ledger_entry", {
+        "mpt_issuance": issuance_id,
+        "ledger_index": "validated",
+    }, timeout=15.0)
+    if not result or "error" in (result or {}):
+        return None
+    node = result.get("node") or result.get("mpt_issuance")
+    if not node:
+        return None
+    # ledger_entry doesn't always echo mpt_issuance_id on the node payload;
+    # stamp the requested id so _shape_issuance produces a stable row.
+    node.setdefault("mpt_issuance_id", issuance_id)
+    try:
+        return _shape_issuance(node)
+    except Exception:
+        return None
+
+
 def fetch_mpt_data(max_pages=10_000_000, time_budget_secs=86400):
     raw = _paginate_all(max_pages=max_pages, time_budget_secs=time_budget_secs)
     if raw is None:

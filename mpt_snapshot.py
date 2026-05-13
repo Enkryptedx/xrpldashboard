@@ -22,7 +22,15 @@ Policy (per Charlie):
   * Page cap is a defensive guard, not a budget — at current scale (top MPT has
     10 holders) no walk pages past 1.
 
-Cadence: hourly via launchd. Run manually: venv/bin/python mpt_snapshot.py
+Cadence: daily via launchd (full ledger walk takes 1-5h). At the end of
+each run we persist mpt_issuance_list.json — the bare list of
+(issuance_id, issuer, name, ticker, classification, is_test) — for the
+hourly mpt_holders_refresh.py job to consume. That job re-walks holders
+(and fetches current OutstandingAmount via ledger_entry) per issuance,
+so /mpt/<id> supply sparklines update hourly without re-walking
+ledger_data.
+
+Run manually: venv/bin/python mpt_snapshot.py
 """
 
 import json
@@ -41,6 +49,12 @@ from mpt_data import (
 )
 
 SCHEMA_VERSION = 3
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ISSUANCE_LIST_PATH = os.environ.get(
+    "MPT_ISSUANCE_LIST_PATH",
+    os.path.join(HERE, "mpt_issuance_list.json"),
+)
 
 HOLDER_PAGE_CAP = int(os.environ.get("MPT_HOLDER_PAGE_CAP", "50"))
 HOLDER_PAGE_LIMIT = int(os.environ.get("MPT_HOLDER_PAGE_LIMIT", "400"))
@@ -184,6 +198,36 @@ def _atomic_write(path, data):
     os.replace(tmp, path)
 
 
+def _write_issuance_list(path, rows, written_at):
+    """Persist the bare-minimum list of (issuance_id, issuer, name, ticker,
+    classification, is_test) that mpt_holders_refresh.py needs. The hourly
+    job reads this — never re-walks ledger_data — so the daily enumeration
+    fully owns "what MPTs exist on mainnet" and the hourly job owns
+    "what each one looks like right now."
+
+    `ticker` is included because _is_test_issuance reads it. `is_test` is
+    pre-computed so the hourly job stays in sync with the daily classifier
+    without re-importing the heuristic."""
+    payload = {
+        "written_at": int(written_at),
+        "source": "mpt_snapshot.run_once",
+        "issuances": [
+            {
+                "issuance_id": r.get("issuance_id"),
+                "issuer": r.get("issuer"),
+                "name": r.get("name"),
+                "ticker": r.get("ticker"),
+                "classification": r.get("classification"),
+                "is_test": _is_test_issuance(r),
+            }
+            for r in rows
+            if r.get("issuance_id")
+        ],
+    }
+    _atomic_write(path, payload)
+    return len(payload["issuances"])
+
+
 def run_once(path=None):
     path = path or SNAPSHOT_PATH
 
@@ -215,6 +259,17 @@ def run_once(path=None):
         ts=data.get("written_at"),
     )
     data["history_rows_written"] = history_rows
+
+    # Persist the issuance list for mpt_holders_refresh.py (hourly job).
+    # Written AFTER the snapshot is on disk so a partial/interrupted daily
+    # run can never leave a stale list pointing at issuances the snapshot
+    # doesn't yet know about.
+    list_rows = _write_issuance_list(
+        ISSUANCE_LIST_PATH,
+        data.get("issuances") or [],
+        data.get("written_at"),
+    )
+    data["issuance_list_rows"] = list_rows
     return data
 
 
@@ -227,5 +282,6 @@ if __name__ == "__main__":
     print(f"  by_class={d.get('by_class')}")
     print(f"  holders_walked={d.get('holders_walked')}  skipped_test={d.get('holders_skipped_test')}")
     print(f"  history_rows={d.get('history_rows_written')}")
+    print(f"  issuance_list_rows={d.get('issuance_list_rows')}")
     print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
     sys.exit(0 if d.get("ok") else 1)

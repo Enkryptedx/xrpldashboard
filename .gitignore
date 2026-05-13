@@ -33,6 +33,7 @@ amm_rank_state.json
 amm_ranked.json
 lending_snapshot.json
 mpt_snapshot.json
+mpt_issuance_list.json
 
 # DBs
 *.sqlite
