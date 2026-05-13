@@ -211,20 +211,26 @@
     }
 
     html.mpts-named-only .mpt-table tbody tr[data-named="false"] { display: none; }
+    html.mpts-supply-only .mpt-table tbody tr[data-has-supply="false"] { display: none; }
+    .filter-info { color: var(--dim); font-size: var(--fs-xs); margin: 0.5em 0 0.8em; }
+    .filter-info[hidden] { display: none; }
   </style>
   <script>
-    // Read the named-only preference and apply the class before paint so the
-    // 30% (unnamed) rows don't flash into view for ~100ms before JS hides them.
-    // Default-on: first-time visitors get the cleaned view; one click reveals all.
+    // Read the named-only + has-supply preferences and apply classes before
+    // paint so the long-tail rows (77% of the table) don't flash into view
+    // for ~100ms before JS hides them. Both default-on for first-time
+    // visitors; one click on either chip reveals everything.
     (function () {
-      try {
-        var v = localStorage.getItem('xrpl_mpts_named_only');
-        if (v === null || v === '1') {
-          document.documentElement.classList.add('mpts-named-only');
+      function maybeAdd(key, cls) {
+        try {
+          var v = localStorage.getItem(key);
+          if (v === null || v === '1') document.documentElement.classList.add(cls);
+        } catch (e) {
+          document.documentElement.classList.add(cls);
         }
-      } catch (e) {
-        document.documentElement.classList.add('mpts-named-only');
       }
+      maybeAdd('xrpl_mpts_named_only', 'mpts-named-only');
+      maybeAdd('xrpl_mpts_has_supply_only', 'mpts-supply-only');
     })();
   </script>
   {% include "_vibes_head.html" %}
@@ -314,10 +320,16 @@
         <button class="filter-pill" data-filter="utility">{{ _('Utility') }} <span class="dim">({{ by_class.utility }})</span></button>
         <button class="filter-pill" data-filter="other">{{ _('Other') }} <span class="dim">({{ by_class.other }})</span></button>
       </div>
-      {% set unnamed_total = (rows | rejectattr('name') | list | length) %}
       <div class="filter-row" data-mpt-named-filter>
         <button class="filter-pill active" data-named="named">{{ _('Has name') }} <span class="dim">({{ unnamed_total }} {{ _('hidden') }})</span></button>
         <button class="filter-pill" data-named="all">{{ _('Show all') }} <span class="dim">({{ total }})</span></button>
+      </div>
+      <div class="filter-row" data-mpt-supply-filter>
+        <button class="filter-pill active" data-supply="supply">{{ supply_chip_label }} <span class="dim">({{ low_supply_total }} {{ _('hidden') }})</span></button>
+        <button class="filter-pill" data-supply="all">{{ _('Show all') }} <span class="dim">({{ total }})</span></button>
+      </div>
+      <div class="filter-info" data-mpt-filter-info hidden>
+        <span data-mpt-combined-count>{{ combined_hidden_total }}</span> {{ _('hidden by active filters') }}
       </div>
 
       <table class="mpt-table">
@@ -338,7 +350,13 @@
             {% set issuer_short = (issuer[:6] ~ '…' ~ issuer[-4:]) if issuer|length > 12 else issuer %}
             {% set status = r.status or 'prepared' %}
             {% set is_named = 'true' if r.name else 'false' %}
-            <tr data-class="{{ r.classification }}" data-status="{{ status }}" data-named="{{ is_named }}">
+            {% set norm_out = r.normalized_outstanding or 0 %}
+            {% if outstanding_min and outstanding_min > 0 %}
+              {% set has_supply = 'true' if norm_out >= outstanding_min else 'false' %}
+            {% else %}
+              {% set has_supply = 'true' if norm_out > 0 else 'false' %}
+            {% endif %}
+            <tr data-class="{{ r.classification }}" data-status="{{ status }}" data-named="{{ is_named }}" data-has-supply="{{ has_supply }}">
               <td>
                 {% if r.issuance_id %}
                   <a class="name-link" href="/mpt/{{ r.issuance_id }}">
@@ -436,32 +454,61 @@
 </div>
 
 <script>
-  // Client-side filter — three dimensions (status × class × named), AND'd.
-  // Named axis is the only one that persists in localStorage (default-on);
-  // status/class reset to 'all' on each visit because they're per-session
+  // Client-side filter — four dimensions (status × class × named × supply),
+  // AND'd. Named + supply axes persist in localStorage (default-on); status
+  // and class reset to 'all' on each visit because they're per-session
   // browsing intent, not a preference.
   (function () {
     const statusWrap = document.querySelector('[data-mpt-status-filter]');
     const classWrap  = document.querySelector('[data-mpt-class-filter]');
     const namedWrap  = document.querySelector('[data-mpt-named-filter]');
-    if (!statusWrap || !classWrap || !namedWrap) return;
+    const supplyWrap = document.querySelector('[data-mpt-supply-filter]');
+    const infoEl    = document.querySelector('[data-mpt-filter-info]');
+    const countEl   = document.querySelector('[data-mpt-combined-count]');
+    if (!statusWrap || !classWrap || !namedWrap || !supplyWrap) return;
     const rows = document.querySelectorAll('.mpt-table tbody tr');
 
-    // Initial named state must match the html.mpts-named-only class the
+    // Initial state must match the html.mpts-{named,supply}-only classes the
     // inline <head> script set before paint, or the chip-row UI lies about
     // what's hidden.
-    const namedOnly = document.documentElement.classList.contains('mpts-named-only');
-    const state = { status: 'all', class: 'all', named: namedOnly ? 'named' : 'all' };
+    const namedOnly  = document.documentElement.classList.contains('mpts-named-only');
+    const supplyOnly = document.documentElement.classList.contains('mpts-supply-only');
+    const state = {
+      status: 'all',
+      class:  'all',
+      named:  namedOnly  ? 'named'  : 'all',
+      supply: supplyOnly ? 'supply' : 'all',
+    };
     namedWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
     namedWrap.querySelector('[data-named="' + state.named + '"]').classList.add('active');
+    supplyWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+    supplyWrap.querySelector('[data-supply="' + state.supply + '"]').classList.add('active');
 
     function apply() {
+      let hidden = 0;
       rows.forEach(r => {
         const okStatus = state.status === 'all' || r.dataset.status === state.status;
         const okClass  = state.class  === 'all' || r.dataset.class  === state.class;
         const okNamed  = state.named  === 'all' || r.dataset.named === 'true';
-        r.style.display = (okStatus && okClass && okNamed) ? '' : 'none';
+        const okSupply = state.supply === 'all' || r.dataset.hasSupply === 'true';
+        const visible = okStatus && okClass && okNamed && okSupply;
+        r.style.display = visible ? '' : 'none';
+        if (!visible) hidden += 1;
       });
+      // Combined count line — only shown when ≥1 filter is active. Count is
+      // measured from actual hidden rows, so AND/OR overlap math is always
+      // accurate (no additive double-count).
+      const anyFilterOn =
+        state.status !== 'all' || state.class !== 'all' ||
+        state.named !== 'all'  || state.supply !== 'all';
+      if (infoEl && countEl) {
+        if (anyFilterOn && hidden > 0) {
+          countEl.textContent = hidden;
+          infoEl.hidden = false;
+        } else {
+          infoEl.hidden = true;
+        }
+      }
     }
 
     statusWrap.querySelectorAll('.filter-pill').forEach(p => {
@@ -485,14 +532,29 @@
         namedWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
         p.classList.add('active');
         state.named = p.dataset.named;
-        // Once JS has taken over the named filter, drop the CSS-driven hide
-        // so row.style.display from apply() wins (otherwise "Show all" can't
-        // re-reveal data-named="false" rows because the CSS rule still hides them).
+        // Once JS owns the filter, drop the CSS-driven hide so row.style.display
+        // from apply() wins (otherwise "Show all" can't re-reveal data-named="false"
+        // rows because the CSS rule still hides them).
         document.documentElement.classList.remove('mpts-named-only');
         try { localStorage.setItem('xrpl_mpts_named_only', state.named === 'named' ? '1' : '0'); } catch (e) {}
         apply();
       });
     });
+    supplyWrap.querySelectorAll('.filter-pill').forEach(p => {
+      p.addEventListener('click', () => {
+        supplyWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        state.supply = p.dataset.supply;
+        document.documentElement.classList.remove('mpts-supply-only');
+        try { localStorage.setItem('xrpl_mpts_has_supply_only', state.supply === 'supply' ? '1' : '0'); } catch (e) {}
+        apply();
+      });
+    });
+
+    // Initial info-line state for first paint (CSS hid the rows, but the
+    // info element was server-rendered hidden — show it now that JS has
+    // taken over and we know both default-on chips are active).
+    apply();
   })();
 </script>
 {% include "_vibes_scripts.html" %}

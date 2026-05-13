@@ -34,6 +34,7 @@ from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from i18n import init_i18n
+from flask_babel import gettext as babel_gettext
 import db
 import og_image
 import price_oracle
@@ -2148,7 +2149,11 @@ def mpts():
     PG on its next run and the page becomes real on the next refresh.
 
     Set MPT_ALLOW_LIVE_FETCH=1 to opt back in to the synchronous walk
-    (local dev only — never on Render)."""
+    (local dev only — never on Render).
+
+    ?outstanding_min=N is a presentational threshold for the "Has supply"
+    long-tail filter chip. Default 0 hides only never-minted MPTs; power
+    users (researchers, journalists) bump it for a tighter view."""
     data = load_mpt_snapshot()
     if data is None:
         data = db.read_mpt_snapshot()
@@ -2165,7 +2170,54 @@ def mpts():
         }
     else:
         data = _enrich_mpt_rows(data)
-    return render_template("mpts.html", data=data)
+
+    # Long-tail filter threshold. Default 0 = hide rows with no circulating
+    # supply (the 77% prepared-but-never-minted tail). Negative or junk
+    # input falls back to 0.
+    try:
+        outstanding_min = max(0.0, float(request.args.get("outstanding_min") or 0))
+    except (TypeError, ValueError):
+        outstanding_min = 0.0
+
+    rows = data.get("issuances") or []
+    unnamed_total = sum(1 for r in rows if not r.get("name"))
+    # Hide predicate matches the chip's stated meaning:
+    #   min == 0  → "Has supply"     → hide rows where outstanding == 0
+    #   min  > 0  → "Outstanding ≥ N" → hide rows where outstanding < N
+    # The split avoids the off-by-one where "≥ 100" hides a row at exactly 100.
+    def _below_supply_floor(r):
+        n = r.get("normalized_outstanding") or 0
+        return n <= 0 if outstanding_min == 0 else n < outstanding_min
+
+    low_supply_total = sum(1 for r in rows if _below_supply_floor(r))
+    # Combined = |unnamed ∪ low_supply|, not the sum (some rows fail both).
+    # Computed once here so the template can't accidentally render an
+    # additive count that doesn't match reality.
+    combined_hidden_total = sum(
+        1 for r in rows
+        if (not r.get("name")) or _below_supply_floor(r)
+    )
+
+    # Compose the chip label server-side. Whole numbers render without a
+    # trailing .0 ("Outstanding ≥ 100", not "Outstanding ≥ 100.0").
+    if outstanding_min > 0:
+        if outstanding_min == int(outstanding_min):
+            threshold_str = str(int(outstanding_min))
+        else:
+            threshold_str = f"{outstanding_min:g}"
+        supply_chip_label = f"{babel_gettext('Outstanding')} ≥ {threshold_str}"
+    else:
+        supply_chip_label = babel_gettext("Has supply")
+
+    return render_template(
+        "mpts.html",
+        data=data,
+        outstanding_min=outstanding_min,
+        unnamed_total=unnamed_total,
+        low_supply_total=low_supply_total,
+        combined_hidden_total=combined_hidden_total,
+        supply_chip_label=supply_chip_label,
+    )
 
 
 @app.route("/api/mpts")
@@ -2622,6 +2674,7 @@ def sitemap_xml():
             data = db.read_mpt_snapshot()
         if data:
             enriched = _enrich_mpt_rows(data)
+            issuer_indexable = {}
             for r in (enriched.get("issuances") or []):
                 if r.get("status") == "test":
                     continue
@@ -2631,6 +2684,21 @@ def sitemap_xml():
                 urls.append(
                     f"  <url>\n"
                     f"    <loc>{SITE_URL}/mpt/{iid}</loc>\n"
+                    f"    <lastmod>{today}</lastmod>\n"
+                    f"    <changefreq>daily</changefreq>\n"
+                    f"    <priority>0.5</priority>\n"
+                    f"  </url>"
+                )
+                issuer = r.get("issuer")
+                if issuer:
+                    issuer_indexable[issuer] = True
+            # Per-issuer roll-up pages: one URL per distinct issuer with
+            # at least one non-test issuance (mirrors the page's own
+            # noindex rule — test-only issuers stay out of the sitemap).
+            for issuer in sorted(issuer_indexable.keys()):
+                urls.append(
+                    f"  <url>\n"
+                    f"    <loc>{SITE_URL}/mpt/issuer/{issuer}</loc>\n"
                     f"    <lastmod>{today}</lastmod>\n"
                     f"    <changefreq>daily</changefreq>\n"
                     f"    <priority>0.5</priority>\n"
