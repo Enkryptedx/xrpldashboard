@@ -2604,6 +2604,29 @@ def api_pools_recent_events():
     return {"now": int(time.time()), "events": events}
 
 
+@app.route("/api/whales/recent")
+@limiter.limit("60 per minute")
+def api_whales_recent():
+    """Recent whale events as JSON. Polled by the homepage globe so each
+    pulse is timed by a real on-ledger event (coordinates remain symbolic;
+    see /methodology). Same source as the /whales feed and the mosaic card.
+
+    Returns {"now": <unix>, "events": [...]} — empty list when the source
+    is unavailable, so the consumer can fall silent rather than fake."""
+    try:
+        limit = int(request.args.get("limit", "10"))
+    except (TypeError, ValueError):
+        limit = 10
+    limit = max(1, min(limit, 50))
+
+    events = _recent_whale_events(limit=limit)
+    return (
+        {"now": int(time.time()), "events": events},
+        200,
+        {"Cache-Control": "no-store"},
+    )
+
+
 @app.route("/healthz")
 def healthz():
     """Lightweight health endpoint for uptime monitors. No XRPL call, no scan."""

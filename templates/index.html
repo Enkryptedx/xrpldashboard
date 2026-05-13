@@ -1039,10 +1039,11 @@
       });
     })();
 
-    // Spinning XRPL globe (decorative). Wireframe sphere with rotating
-    // surface dots; periodically launches arcing transaction sparks
-    // between two random surface points so the globe feels "alive".
-    // Pure canvas, no deps. Pauses if reduced motion.
+    // Spinning XRPL globe. Wireframe sphere with rotating surface dots;
+    // each pulse is driven by a real whale event from /api/whales/recent
+    // (coordinates remain symbolic — see /methodology). Polls every 10s,
+    // renders one pulse every ~5s, falls silent on fetch failure rather
+    // than faking traffic. Pure canvas, no deps. Pauses if reduced motion.
     (function () {
       var canvas = document.getElementById('xrpl-globe');
       if (!canvas) return;
@@ -1066,11 +1067,32 @@
       }
 
       var ARCS = [];
-      function spawnArc() {
+      var PENDING = [];                 // queued whale events awaiting render
+      var SEEN = Object.create(null);   // tx_hash → true, dedupe across polls
+      var SEEN_ORDER = [];              // FIFO cap so the dedupe table is bounded
+      var MAX_PENDING = 3;              // backlog cap — drop oldest, keep newest
+      var POLL_INTERVAL_MS = 10000;
+      var WHALE_PULSE_INTERVAL_MS = 5000;
+      var firstPoll = true;
+
+      function rememberTx(hash) {
+        if (SEEN[hash]) return false;
+        SEEN[hash] = true;
+        SEEN_ORDER.push(hash);
+        if (SEEN_ORDER.length > 200) {
+          delete SEEN[SEEN_ORDER.shift()];
+        }
+        return true;
+      }
+
+      // Ambient cosmetic arc — random coordinates, random colour, dim
+      // styling. Decorative only; no event association.
+      function spawnAmbientArc() {
         var a = POINTS[Math.floor(Math.random() * POINTS.length)];
         var b = POINTS[Math.floor(Math.random() * POINTS.length)];
         if (a === b) return;
         ARCS.push({
+          kind: 'ambient',
           a: a, b: b,
           t: 0,
           life: 0.9 + Math.random() * 0.6,
@@ -1078,15 +1100,73 @@
         });
       }
 
+      // Whale-event arc — coordinates are still symbolic, but the
+      // arc fires only on a real new tx_hash from /api/whales/recent.
+      // Visually distinct (brighter, thicker, with landing halo) so
+      // the eye picks it out of the ambient flicker.
+      function spawnWhaleArc() {
+        var a = POINTS[Math.floor(Math.random() * POINTS.length)];
+        var b = POINTS[Math.floor(Math.random() * POINTS.length)];
+        if (a === b) b = POINTS[(POINTS.indexOf(a) + 1) % POINTS.length];
+        ARCS.push({
+          kind: 'whale',
+          a: a, b: b,
+          t: 0,
+          life: 1.4 + Math.random() * 0.3,
+          rgb: '125,240,255'
+        });
+      }
+
+      function pollWhales() {
+        if (prefersReduced) return;
+        if (document.hidden) return;
+        fetch('/api/whales/recent?limit=20', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data || !Array.isArray(data.events)) return;
+            // First poll: queue the three most-recent so the whale layer
+            // is visible within seconds of page load, and seed the dedupe
+            // set with the rest so we don't subsequently burst-render the
+            // entire backlog.
+            if (firstPoll) {
+              var queued = 0;
+              for (var i = 0; i < data.events.length; i++) {
+                var ev0 = data.events[i];
+                if (!ev0 || !ev0.tx_hash) continue;
+                rememberTx(ev0.tx_hash);
+                if (queued < MAX_PENDING) { PENDING.push(ev0); queued++; }
+              }
+              firstPoll = false;
+              return;
+            }
+            // Events come newest-first; reverse so we render in
+            // chronological order if multiple arrive in one poll.
+            for (var j = data.events.length - 1; j >= 0; j--) {
+              var ev = data.events[j];
+              if (!ev || !ev.tx_hash) continue;
+              if (!rememberTx(ev.tx_hash)) continue;
+              if (PENDING.length >= MAX_PENDING) PENDING.shift();
+              PENDING.push(ev);
+            }
+          })
+          .catch(function () { /* silent — no whale pulses until next OK poll */ });
+      }
+
       var rotation = 0;
       var speed = 0.0006;
       var lastT = performance.now();
-      var lastSpark = lastT;
-      var sparkEvery = 380;
+      var lastAmbientAt = lastT;
+      var ambientEvery = 380;
+      var lastWhalePulseAt = 0;
 
       var prefersReduced = window.matchMedia &&
                            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (prefersReduced) speed = 0;
+
+      if (!prefersReduced) {
+        pollWhales();
+        setInterval(pollWhales, POLL_INTERVAL_MS);
+      }
 
       function project(lat, lng) {
         var rl = lng + rotation;
@@ -1123,9 +1203,16 @@
         lastT = now;
         rotation += speed * dt;
 
-        if (now - lastSpark > sparkEvery) {
-          lastSpark = now;
-          if (!prefersReduced) spawnArc();
+        if (!prefersReduced && now - lastAmbientAt > ambientEvery) {
+          lastAmbientAt = now;
+          spawnAmbientArc();
+        }
+
+        if (!prefersReduced && PENDING.length > 0 &&
+            now - lastWhalePulseAt >= WHALE_PULSE_INTERVAL_MS) {
+          spawnWhaleArc();
+          PENDING.shift();
+          lastWhalePulseAt = now;
         }
 
         var w = canvas.clientWidth;
@@ -1154,8 +1241,21 @@
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = 'rgba(120, 150, 200, 0.10)';
-        ctx.lineWidth = 1;
+        // Inner shadow — darkens the rim so the sphere reads as a
+        // sphere rather than a flat disc.
+        var innerShadow = ctx.createRadialGradient(
+          cx, cy, R * 0.68,
+          cx, cy, R
+        );
+        innerShadow.addColorStop(0, 'rgba(0,0,0,0)');
+        innerShadow.addColorStop(1, 'rgba(0,0,0,0.45)');
+        ctx.fillStyle = innerShadow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(120, 150, 200, 0.07)';
+        ctx.lineWidth = 0.6;
         for (var lat = -60; lat <= 60; lat += 30) {
           var rad = lat * Math.PI / 180;
           var ry = Math.sin(rad) * R;
@@ -1165,7 +1265,7 @@
           ctx.stroke();
         }
 
-        ctx.strokeStyle = 'rgba(120, 150, 200, 0.08)';
+        ctx.strokeStyle = 'rgba(120, 150, 200, 0.05)';
         for (var k = 0; k < 8; k++) {
           var meridian = (k / 8) * Math.PI * 2 + rotation;
           ctx.beginPath();
@@ -1183,6 +1283,14 @@
           }
           ctx.stroke();
         }
+
+        // Crisp sphere edge — single hairline stroke on top of the
+        // grid/shadow so the silhouette stays sharp on hi-dpi displays.
+        ctx.strokeStyle = 'rgba(150, 180, 220, 0.22)';
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
 
         for (var i = 0; i < POINTS.length; i++) {
           var pt = POINTS[i];
@@ -1207,6 +1315,11 @@
           var pb = project(arc.b.lat, arc.b.lng);
           if (pa.z < -0.4 && pb.z < -0.4) continue;
 
+          var isWhale = arc.kind === 'whale';
+          var baseWidth = isWhale ? 2.2 : 1.4;
+          var widthStep = isWhale ? 0.10 : 0.07;
+          var alphaMul  = isWhale ? 1.0  : 0.55;
+
           ctx.lineCap = 'round';
           for (var s = 0; s < 14; s++) {
             var u1 = Math.max(0, arc.t - s * 0.04);
@@ -1219,9 +1332,10 @@
             var px2 = cx + pt2.x * R;
             var py2 = cy + pt2.y * R;
             var depth = Math.max(0, (pt1.z + pt2.z) / 2 + 0.4);
-            var alphaT = (1 - s / 14) * (1 - arc.t * 0.4) * Math.min(1, depth + 0.3);
+            var alphaT = (1 - s / 14) * (1 - arc.t * 0.4) *
+                         Math.min(1, depth + 0.3) * alphaMul;
             ctx.strokeStyle = 'rgba(' + arc.rgb + ',' + alphaT.toFixed(3) + ')';
-            ctx.lineWidth = 1.4 - s * 0.07;
+            ctx.lineWidth = baseWidth - s * widthStep;
             ctx.beginPath();
             ctx.moveTo(px1, py1);
             ctx.lineTo(px2, py2);
@@ -1231,11 +1345,23 @@
           var head = bezierPoint(pa, pb, arc.t);
           var hx = cx + head.x * R;
           var hy = cy + head.y * R;
-          var headAlpha = head.z >= -0.3 ? 1 : 0.3;
-          ctx.fillStyle = 'rgba(' + arc.rgb + ',' + headAlpha + ')';
+          var headAlpha = (head.z >= -0.3 ? 1 : 0.3) * alphaMul;
+          ctx.fillStyle = 'rgba(' + arc.rgb + ',' + headAlpha.toFixed(3) + ')';
           ctx.beginPath();
-          ctx.arc(hx, hy, 2.2, 0, Math.PI * 2);
+          ctx.arc(hx, hy, isWhale ? 2.8 : 2.2, 0, Math.PI * 2);
           ctx.fill();
+
+          // Whale-only: expanding halo around the head so the eye picks
+          // the real-event pulse out of the ambient flicker.
+          if (isWhale) {
+            var haloR = 4 + arc.t * 14;
+            var haloA = (1 - arc.t) * 0.55 * (head.z >= -0.3 ? 1 : 0.3);
+            ctx.strokeStyle = 'rgba(' + arc.rgb + ',' + haloA.toFixed(3) + ')';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(hx, hy, haloR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
         }
 
         requestAnimationFrame(frame);
