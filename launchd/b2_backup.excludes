@@ -1,0 +1,36 @@
+# rclone exclude list for nightly B2 backup.
+# Patterns are evaluated relative to each --source root passed to rclone sync.
+# Format: one glob per line, # for comments.
+
+# Version control — code is canonical in GitHub.
+.git/**
+
+# Python build artifacts — reproducible from requirements.txt.
+__pycache__/**
+*.pyc
+*.pyo
+venv/**
+.venv/**
+
+# Node — reproducible from package-lock.
+node_modules/**
+
+# OS / editor cruft.
+.DS_Store
+*.swp
+*.tmp
+*~
+
+# Previous-snapshot duplicates kept for diffing.
+*.prev
+*.prev.*
+
+# Sandbox / experiment files.
+*.v3sandbox.json
+
+# Worker logs — operational, not historical state.
+*.log
+launchd_logs/**
+
+# Backup tooling's own logs (avoid recursion if run twice in a day).
+b2_backup.*.log

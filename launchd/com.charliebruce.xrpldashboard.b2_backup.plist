@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.b2_backup</string>
+
+    <key>Comment</key>
+    <string>Daily off-site disaster-recovery backup. Pushes ~/xrpl_test + ~/.ssh to a Backblaze B2 bucket via rclone (recommended: through an rclone-crypt wrapper so ~/.ssh and .env land client-side encrypted). 03:00 local — runs after daily_snapshot (02:07) and well before the morning, so an interrupted run has nine hours of margin. RunAtLoad is FALSE on purpose: we don't want a full sync on every reboot or post-install; nightly is enough.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_b2_backup.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Hour</key>
+      <integer>3</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/b2_backup.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/b2_backup.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <!-- Override BACKUP_REMOTE if you want plain b2: instead of b2crypt:.
+           Override BACKUP_BUCKET_PREFIX if your bucket layout differs. -->
+    </dict>
+  </dict>
+</plist>
