@@ -385,9 +385,6 @@
                 white-space: nowrap; font-size: var(--fs-sm); }
     .pool-fee { font-family: var(--mono); color: var(--text-2);
                 font-size: var(--fs-xs); text-align: right; }
-    .pool-est { color: var(--text-3); font-size: var(--fs-2xs); margin-left: 0.3em;
-                text-transform: uppercase; letter-spacing: 0.05em; }
-
     /* ---------- Mosaic of subsystems ---------- */
     .mosaic { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em;
               margin-bottom: 1.6em; }
@@ -630,8 +627,16 @@
             <div class="k">{{ _('Ledger') }}</div><div class="v">{{ "{:,}".format(pulse.ledger_index) }}</div>
             <div class="k">{{ _('Avg close') }}</div>
             <div class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</div>
-            <div class="k">{{ _('Quorum') }}</div><div class="v">{{ pulse.validation_quorum }}</div>
-            <div class="k">{{ _('Load') }}</div><div class="v">{{ pulse.load_factor }}×</div>
+            <div class="k">{{ _('Quorum') }}{{ explainer(
+              "quorum",
+              _("What's quorum"),
+              _("Validators that must agree before a ledger is final. The current value means that many trusted validators have signed off — higher = more consensus."),
+            ) }}</div><div class="v">{{ pulse.validation_quorum }}</div>
+            <div class="k">{{ _('Load') }}{{ explainer(
+              "load",
+              _("What's load"),
+              _("How busy the network is right now. 1× is baseline; above 1× means fees scale up automatically as demand rises."),
+            ) }}</div><div class="v">{{ pulse.load_factor }}×</div>
           </div>
         </div>
         {% else %}
@@ -829,12 +834,16 @@
         {# ---- AMM activity (top pools by TVL) ---- #}
         <div class="card vibes-spot" data-live="top-pools">
           <div class="card-label">{{ _('AMM activity') }}</div>
-          <div class="card-title">{{ _('Top pools by TVL') }}</div>
+          <div class="card-title">{{ _('Top pools by TVL') }}{{ explainer(
+            "tvl-approx",
+            _("What ≈ means"),
+            _("≈ means estimated: pool reserves × current XRP mid-price; varies with spread. Pools shown without ≈ are exact USD/RLUSD pairs. Full figures on /pools."),
+          ) }}</div>
           {% if ranked_top5 %}
             {% for p in ranked_top5 %}
             <div class="mini-pool-row">
               <span class="pair">{{ p.pair }}</span>
-              <span class="tvl">{{ fmt_money(p.tvl_usd) }}{% if p.tvl_status != 'exact' %}<span class="pool-est">{{ _('est') }}</span>{% endif %}</span>
+              <span class="tvl">{% if p.tvl_status != 'exact' %}≈ {% endif %}{{ fmt_money(p.tvl_usd) }}</span>
             </div>
             {% endfor %}
           {% else %}
