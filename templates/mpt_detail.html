@@ -218,6 +218,82 @@
     </div>
   </div>
 
+  {% if history %}
+  {#
+    Supply trend sparkline.
+    Gate: ≥2 points → line chart; 1 point → single dot + label + whitespace;
+    0 points → block hidden (no empty-state noise).
+    All outstanding values are pre-cast to int in the route handler so SVG
+    path strings never contain scientific notation (Decimal.__str__ can
+    emit 1e7 for large/small values; SVG silently misparses them).
+  #}
+  {%- set svg_w = 320 -%}
+  {%- set svg_h = 80 -%}
+  {%- set svg_pad = 14 -%}
+  {%- set sc = mpt.asset_scale or 0 -%}
+  <div class="card" style="margin-top: 1em;">
+    <h2>{{ _('Supply trend') }}</h2>
+    {% if history|length >= 2 %}
+      {# Compute axis ranges. Use max(range, 1) to guard flat-supply MPTs
+         against division-by-zero without hiding the line. #}
+      {%- set t_first = history[0].snapshot_ts -%}
+      {%- set t_last  = history[-1].snapshot_ts -%}
+      {%- set t_range = [(t_last - t_first), 1] | max -%}
+      {%- set outstandings = history | map(attribute='outstanding') | list -%}
+      {%- set v_min = outstandings | min -%}
+      {%- set v_max = outstandings | max -%}
+      {%- set v_range = [(v_max - v_min), 1] | max -%}
+      <svg viewBox="0 0 {{ svg_w }} {{ svg_h }}" width="100%" height="80"
+           style="display:block;" aria-label="{{ _('Outstanding supply over time') }}">
+        <polyline
+          points="{% for p in history -%}
+            {{- (svg_pad + (svg_w - 2*svg_pad) * (p.snapshot_ts - t_first) / t_range) | round(1) }},{{ (svg_h - svg_pad - (svg_h - 2*svg_pad) * (p.outstanding - v_min) / v_range) | round(1) -}}
+            {{- ' ' -}}
+          {%- endfor %}"
+          fill="none"
+          stroke="var(--text)"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+        {% for p in history %}
+        <circle
+          cx="{{ (svg_pad + (svg_w - 2*svg_pad) * (p.snapshot_ts - t_first) / t_range) | round(1) }}"
+          cy="{{ (svg_h - svg_pad - (svg_h - 2*svg_pad) * (p.outstanding - v_min) / v_range) | round(1) }}"
+          r="2.5" fill="var(--text)"/>
+        {% endfor %}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:0.35em;">
+        <span>{{ history[0].date_label }}</span>
+        <span>{{ history|length }} {{ _('hourly snapshots') }}</span>
+        <span>{{ history[-1].date_label }}</span>
+      </div>
+    {% else %}
+      {# Single-dot variant. r=5 so it reads as editorial intent, not a
+         stray pixel. Breathing room matching a 2-point chart is the cue
+         that this is "first datapoint, more coming" not a broken render. #}
+      {%- set p = history[0] -%}
+      <svg viewBox="0 0 {{ svg_w }} {{ svg_h }}" width="100%" height="80"
+           style="display:block;" aria-label="{{ _('First supply datapoint') }}">
+        <circle cx="{{ svg_w // 2 }}" cy="{{ svg_h // 2 }}" r="5" fill="var(--text)"/>
+      </svg>
+      <div style="text-align:center;margin-top:0.4em;">
+        <div style="font-family:var(--mono);font-size:0.85rem;color:var(--text);">
+          {%- set display = (p.outstanding / (10 ** sc)) if sc else p.outstanding -%}
+          {{ '{:,.0f}'.format(display) }}
+          {% if mpt.ticker %}<span style="color:var(--muted);font-size:0.78rem;margin-left:0.3em;">{{ mpt.ticker }}</span>{% endif %}
+        </div>
+        <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:0.15em;">
+          {{ _('First datapoint captured') }} {{ p.date_label }}
+        </div>
+        <div style="font-size:0.7rem;color:var(--dim);margin-top:0.4em;">
+          {{ _('Hourly archive growing — full trend visible after additional captures.') }}
+          <a href="/methodology" style="color:var(--muted);">{{ _('See methodology') }} →</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="card">
     <h2>{{ _('Issuer') }}</h2>
     <div style="display: flex; flex-wrap: wrap; gap: 0.6em; align-items: baseline;">

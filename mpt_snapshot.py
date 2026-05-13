@@ -206,6 +206,15 @@ def run_once(path=None):
     # Mirror into Postgres so Render (no local file, no worker) can serve
     # /mpts without falling into the multi-minute ledger walk fallback.
     db.write_mpt_snapshot(data)
+    # Append a per-MPT history row for each eligible issuance — eligible
+    # meaning the holders walk completed cleanly. Drives the /mpt/<id>
+    # supply sparkline. Writer filters incomplete/skipped/pending rows
+    # internally so the time-series stays gap-free where it has data.
+    history_rows = db.write_mpt_supply_history(
+        data.get("issuances") or [],
+        ts=data.get("written_at"),
+    )
+    data["history_rows_written"] = history_rows
     return data
 
 
@@ -217,5 +226,6 @@ if __name__ == "__main__":
     print(f"  ok={d.get('ok')}  total={d.get('total')}  issuers={d.get('unique_issuers')}")
     print(f"  by_class={d.get('by_class')}")
     print(f"  holders_walked={d.get('holders_walked')}  skipped_test={d.get('holders_skipped_test')}")
+    print(f"  history_rows={d.get('history_rows_written')}")
     print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
     sys.exit(0 if d.get("ok") else 1)

@@ -200,6 +200,29 @@ CREATE INDEX IF NOT EXISTS amm_tvl_history_ts_idx
     ON amm_tvl_history (ts DESC);
 CREATE INDEX IF NOT EXISTS amm_tvl_history_account_ts_idx
     ON amm_tvl_history (amm_account, ts DESC);
+
+-- Per-MPT supply + concentration time-series. mpt_snapshot.py appends a
+-- row per eligible MPT each hourly run — eligible meaning the holders
+-- walk completed cleanly (reason ∈ {complete, no_holders}). Pending /
+-- incomplete / skipped_test walks do NOT enter history, so any chart
+-- rendered off this table is gap-free where it has data; gaps mean the
+-- walk wasn't conclusive that hour, not that the issuance went dark.
+--
+-- outstanding_amount is NUMERIC because XRPL MPT amounts can exceed
+-- bigint (the on-ledger Amount field is uint64). PRIMARY KEY (issuance,
+-- ts) makes the worker idempotent across retries.
+CREATE TABLE IF NOT EXISTS mpt_supply_history (
+    mpt_issuance_id       TEXT NOT NULL,
+    snapshot_ts           BIGINT NOT NULL,
+    outstanding_amount    NUMERIC,
+    holders_with_balance  INT,
+    holders_authorized    INT,
+    top1_share            NUMERIC(6,3),
+    top3_share            NUMERIC(6,3),
+    PRIMARY KEY (mpt_issuance_id, snapshot_ts)
+);
+CREATE INDEX IF NOT EXISTS mpt_supply_history_issuance_ts_idx
+    ON mpt_supply_history (mpt_issuance_id, snapshot_ts DESC);
 """
 
 
@@ -898,6 +921,126 @@ def write_amm_tvl_snapshot(rows, ts=None):
         _log_err("write_amm_tvl_snapshot_failed", e)
         _drop_writer_conn()
         return 0
+
+
+def write_mpt_supply_history(rows, ts=None):
+    """Append per-MPT supply + concentration rows to mpt_supply_history.
+
+    `rows` is the issuance list from mpt_snapshot.fetch_mpt_data after the
+    holders walk. We write one row per issuance whose holders walk
+    completed cleanly — reason ∈ {complete, no_holders}. Pending /
+    incomplete / skipped_test do NOT enter history; the next clean walk
+    backfills. This keeps the time-series gap-free where it has data
+    (gaps mean "walk was inconclusive that hour", not "issuance went
+    dark"), which is documented on /methodology.
+
+    top1/top3 share are computed inline so the renderer doesn't have to
+    re-derive them on every read. Share = balance / outstanding * 100,
+    using the same OutstandingAmount denominator the detail page uses.
+    top3 is NULL when fewer than 3 positive-balance holders exist.
+
+    ON CONFLICT DO NOTHING (idempotent on retry within the same second).
+    Silent no-op when PG isn't configured."""
+    if not rows:
+        return 0
+    conn = _get_writer_conn()
+    if conn is None:
+        return 0
+    ts = int(ts if ts is not None else time.time())
+    payload = []
+    for r in rows:
+        issuance_id = r.get("issuance_id")
+        if not issuance_id:
+            continue
+        h = r.get("holders") or {}
+        if h.get("reason") not in ("complete", "no_holders"):
+            continue
+        try:
+            outstanding = int(r.get("outstanding_amount") or 0)
+        except (TypeError, ValueError):
+            outstanding = 0
+        with_balance = h.get("with_balance")
+        authorized = h.get("authorized")
+        top1_share = None
+        top3_share = None
+        if outstanding > 0:
+            top = h.get("top") or []
+            amounts = []
+            for entry in top:
+                try:
+                    a = int(entry.get("mpt_amount") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if a > 0:
+                    amounts.append(a)
+            if amounts:
+                top1_share = round(amounts[0] / outstanding * 100, 3)
+            if len(amounts) >= 3:
+                top3_share = round(sum(amounts[:3]) / outstanding * 100, 3)
+        payload.append((
+            issuance_id, ts, outstanding,
+            with_balance, authorized,
+            top1_share, top3_share,
+        ))
+    if not payload:
+        return 0
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO mpt_supply_history "
+                "(mpt_issuance_id, snapshot_ts, outstanding_amount, "
+                " holders_with_balance, holders_authorized, "
+                " top1_share, top3_share) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (mpt_issuance_id, snapshot_ts) DO NOTHING",
+                payload,
+            )
+        return len(payload)
+    except Exception as e:
+        _log_err("write_mpt_supply_history_failed", e)
+        _drop_writer_conn()
+        return 0
+
+
+def read_mpt_supply_history(mpt_issuance_id, since_ts=None, limit=2160):
+    """Return oldest-first history rows for one MPT. Default limit of 2160
+    covers the full 90-day raw retention window at hourly cadence — beyond
+    that the planned daily rollup table takes over. Returns [] on error /
+    PG unavailable.
+
+    Each row: (snapshot_ts, outstanding_amount, holders_with_balance,
+    top1_share, top3_share). outstanding_amount is returned as int (XRPL
+    raw units); shares as float pct or None."""
+    if not pg_available():
+        return []
+    clauses = ["mpt_issuance_id = %s"]
+    params = [mpt_issuance_id]
+    if since_ts is not None:
+        clauses.append("snapshot_ts >= %s")
+        params.append(int(since_ts))
+    where = " AND ".join(clauses)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT snapshot_ts, outstanding_amount, holders_with_balance, "
+                    f"       top1_share, top3_share "
+                    f"FROM mpt_supply_history WHERE {where} "
+                    f"ORDER BY snapshot_ts ASC LIMIT %s",
+                    [*params, int(limit)],
+                )
+                out = []
+                for r in cur.fetchall():
+                    out.append((
+                        int(r[0]),
+                        int(r[1]) if r[1] is not None else None,
+                        int(r[2]) if r[2] is not None else None,
+                        float(r[3]) if r[3] is not None else None,
+                        float(r[4]) if r[4] is not None else None,
+                    ))
+                return out
+    except Exception:
+        return []
 
 
 def read_amm_tvl_history(amm_account, since_ts=None, limit=2880):

@@ -2273,6 +2273,27 @@ def mpt_detail(issuance_id):
             if len(positive) >= 3:
                 concentration["top3_pct"] = round(sum(positive[:3]) / outstanding * 100, 1)
 
+    # Supply history sparkline. Reader is a single indexed lookup (no
+    # joins, oldest-first). We materialize as dicts so the template doesn't
+    # have to index into tuples, and cast Decimal to int up-front so SVG
+    # path arithmetic never sees scientific notation downstream. Dates are
+    # pre-formatted UTC strings (the rest of the app does the same — no
+    # custom jinja filter).
+    raw_history = db.read_mpt_supply_history(mpt.get("issuance_id") or "")
+    history = []
+    for (ts, outstanding, with_balance, top1, top3) in raw_history:
+        if outstanding is None:
+            continue
+        history.append({
+            "snapshot_ts": ts,
+            "outstanding": int(outstanding),
+            "with_balance": with_balance,
+            "top1_share": top1,
+            "top3_share": top3,
+            "date_label": datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                .strftime("%Y-%m-%d %H:%M UTC"),
+        })
+
     return render_template(
         "mpt_detail.html",
         mpt=mpt,
@@ -2280,6 +2301,7 @@ def mpt_detail(issuance_id):
         peer_count=len(peers),
         flag_decoded=flag_decoded,
         concentration=concentration,
+        history=history,
     )
 
 
