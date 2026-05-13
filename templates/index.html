@@ -151,25 +151,6 @@
     .card-sub { font-size: var(--fs-sm); color: var(--text-2); }
     .card-sub strong { color: var(--text); font-weight: 600; }
 
-    /* ---------- Institutional strip (between hero and row-primary) ---------- */
-    .row-institutional { display: grid; grid-template-columns: 1fr 1fr;
-                         gap: 1em; margin-bottom: 1.2em; }
-    .row-institutional-eyebrow { font-size: var(--fs-2xs); text-transform: uppercase;
-                                  letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
-                                  margin: 0 0 0.55em; }
-    .row-institutional-eyebrow a { color: var(--text-2); text-decoration: none; }
-    .row-institutional-eyebrow a:hover { color: var(--text); }
-    .card-inst { display: flex; flex-direction: column; }
-    .card-inst .inst-title { font-size: var(--fs-md); font-weight: 600; color: var(--text);
-                              letter-spacing: -0.015em; margin: 0.1em 0 0.55em; }
-    .card-inst .inst-desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.55; margin: 0; }
-    .card-inst .inst-cta { font-size: var(--fs-xs); color: var(--text-3);
-                            margin-top: 0.85em; letter-spacing: 0.02em; }
-    a.card-inst-link { display: block; color: inherit; text-decoration: none;
-                        transition: border-color 0.18s; }
-    a.card-inst-link:hover { border-color: var(--border-strong); }
-    a.card-inst-link:hover .inst-cta { color: var(--text); }
-
     /* ---------- Row 1: primary hero (network status + wallet inspector) ---------- */
     .row-primary { display: grid; grid-template-columns: 1.15fr 1fr;
                    gap: 1em; margin-bottom: 1em; }
@@ -486,7 +467,7 @@
 
     /* ---------- Mobile ---------- */
     @media (max-width: 880px) {
-      .row-primary, .row-stats, .row-institutional, .mosaic { grid-template-columns: 1fr; }
+      .row-primary, .row-stats, .mosaic { grid-template-columns: 1fr; }
       .row-2-grid { grid-template-columns: 1fr; }
       .donut-card { max-width: 360px; margin: 0 auto; }
       header { gap: 0.6em; }
@@ -614,27 +595,6 @@
       <div class="hero-globe" aria-hidden="true">
         <canvas id="xrpl-globe"></canvas>
         <div class="hero-globe-cap">{{ _('XRP · global ledger') }}</div>
-      </div>
-    </section>
-
-    {# ========== Institutional strip — audience-named: partners + procurement teams ========== #}
-    <section aria-label="{{ _('For partners and procurement teams') }}">
-      <div class="row-institutional-eyebrow">{{ _('For partners and procurement teams') }} →</div>
-      <div class="row-institutional">
-        <a href="/mpts" class="card vibes-spot card-inst-link">
-          <div class="card-inst">
-            <div class="inst-title">{{ _('Concentration metrics on every MPT') }}</div>
-            <p class="inst-desc">{{ _('Top-1 share, holder distribution, hourly archive — every MPTokenIssuance on the ledger, classified and walked.') }}</p>
-            <div class="inst-cta">{{ _('Open the MPT registry') }} →</div>
-          </div>
-        </a>
-        <a href="/security" class="card vibes-spot card-inst-link">
-          <div class="card-inst">
-            <div class="inst-title">{{ _('How data is handled') }}</div>
-            <p class="inst-desc">{{ _('Headers, subprocessors, what we do — and what we don\'t do yet. Procurement-ready transparency, not a marketing page.') }}</p>
-            <div class="inst-cta">{{ _('Read the security page') }} →</div>
-          </div>
-        </a>
       </div>
     </section>
 
