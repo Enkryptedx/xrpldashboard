@@ -340,12 +340,13 @@
         <span data-mpt-combined-count>{{ combined_hidden_total }}</span> {{ _('hidden by active filters') }}
       </div>
 
+      <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
       <table class="mpt-table">
         <thead>
           <tr>
             <th>{{ _('Name') }}</th>
             <th>{{ _('Status') }}</th>
-            <th>{{ _('Class') }}</th>
+            <th class="hide-sm">{{ _('Class') }}</th>
             <th class="hide-sm">{{ _('Issuer') }}</th>
             <th class="num hide-sm">{{ _('Holders') }}</th>
             <th class="num">{{ _('Outstanding') }}</th>
@@ -376,7 +377,7 @@
                 {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
               </td>
               <td><span class="status-pill {{ status }}">{{ _(status) }}</span></td>
-              <td><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>
+              <td class="hide-sm"><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>
               <td class="hide-sm">
                 {% if r.issuer_name %}{{ r.issuer_name }} · {% endif %}
                 {% if issuer %}<a class="addr" href="/mpt/issuer/{{ issuer }}" title="{{ _('All MPTs by this issuer') }}">{{ issuer_short }}</a>{% else %}<span class="addr">{{ issuer_short }}</span>{% endif %}
@@ -407,6 +408,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
 
       <div class="table-foot">
         <div>{{ _('Showing all') }} {{ rows|length }} {{ _('MPTs on the ledger') }}.</div>
