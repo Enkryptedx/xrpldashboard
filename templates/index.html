@@ -177,7 +177,7 @@
     }
     .card-inspector .wallet-form { margin-top: auto; }
 
-    /* ---------- "Where is XRP?" constellation ---------- */
+    /* ---------- XRP supply distribution constellation ---------- */
     .xrp-constellation {
       position: relative;
       background: var(--bg-card);
@@ -681,9 +681,9 @@
     {% set esc_r  = (14 + 16 * (xd.escrowed_pct / 100)**0.5)|round(1) %}
     {% set amm_r  = (14 + 16 * (xd.amm_pct      / 100)**0.5)|round(1) %}
     {% set wal_r  = (14 + 16 * (xd.wallets_pct  / 100)**0.5)|round(1) %}
-    <section class="xrp-constellation" aria-label="{{ _('Where is XRP') }}">
+    <section class="xrp-constellation" aria-label="{{ _('XRP supply distribution') }}">
       <div class="xrp-constell-head">
-        <h2>{{ _('Where is XRP?') }}</h2>
+        <h2>{{ _('XRP supply distribution') }}</h2>
         <div class="xc-sub">{{ _('100B design supply · escrow + AMM share read live from the ledger') }}</div>
       </div>
       <div class="xrp-constell-svg-wrap">
@@ -801,7 +801,7 @@
     {# ========== Live mosaic: whales + tokens ========== #}
     <section>
       <div class="section-head">
-        <h2>{{ _('Across the ledger') }}{{ explainer(
+        <h2>{{ _('Live ledger activity') }}{{ explainer(
           "mosaic",
           _("What this section shows"),
           _("A live look at the two main things happening on the XRP Ledger right now: big-money transfers (left) and token trading (right). Both come straight from the network — no middlemen. Click either side for the full page."),
