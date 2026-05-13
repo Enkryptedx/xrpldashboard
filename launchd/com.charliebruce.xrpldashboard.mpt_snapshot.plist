@@ -6,12 +6,16 @@
     <string>com.charliebruce.xrpldashboard.mpt_snapshot</string>
 
     <key>Comment</key>
-    <string>MPToken issuance registry snapshot writer. Walks every MPTokenIssuance ledger object (full ledger walk — ledger_data with a type filter still paginates through tens of millions of entries), decodes XLS-89 metadata, enriches top-N by outstanding supply with holder counts via mpt_holders, mirrors to Postgres for Render. /mpts route reads this file when fresh (&lt;26hr); falls back to PG and then to in-process fetcher. Daily cadence because a complete mainnet walk takes 1-5 hours.</string>
+    <string>MPToken issuance registry snapshot writer. Walks every MPTokenIssuance ledger object (full ledger walk — ledger_data with a type filter still paginates through tens of millions of entries), decodes XLS-89 metadata, enriches top-N by outstanding supply with holder counts via mpt_holders, mirrors to Postgres for Render. /mpts route reads this file when fresh (&lt;26hr); falls back to PG and then to in-process fetcher. Daily cadence because a complete mainnet walk takes 1-5 hours. At end of run, persists mpt_issuance_list.json for the hourly mpt_holders_refresh job.</string>
 
+    <!-- Wrapper sources ~/.config/xrpldashboard/env so DATABASE_URL is
+         present at launch; without it db.write_mpt_snapshot +
+         write_mpt_supply_history silently no-op on every scheduled run
+         and Render keeps reading stale numbers. Same pattern as
+         run_daily_snapshot.sh + run_mpt_holders_refresh.sh. -->
     <key>ProgramArguments</key>
     <array>
-      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin/python3</string>
-      <string>/Users/charliebruce/xrpl_test/mpt_snapshot.py</string>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_mpt_snapshot.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
