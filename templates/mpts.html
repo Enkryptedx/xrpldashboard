@@ -188,7 +188,24 @@
       .summary-row { grid-template-columns: repeat(2, 1fr); }
       .mpt-table th.hide-sm, .mpt-table td.hide-sm { display: none; }
     }
+
+    html.mpts-named-only .mpt-table tbody tr[data-named="false"] { display: none; }
   </style>
+  <script>
+    // Read the named-only preference and apply the class before paint so the
+    // 30% (unnamed) rows don't flash into view for ~100ms before JS hides them.
+    // Default-on: first-time visitors get the cleaned view; one click reveals all.
+    (function () {
+      try {
+        var v = localStorage.getItem('xrpl_mpts_named_only');
+        if (v === null || v === '1') {
+          document.documentElement.classList.add('mpts-named-only');
+        }
+      } catch (e) {
+        document.documentElement.classList.add('mpts-named-only');
+      }
+    })();
+  </script>
   {% include "_vibes_head.html" %}
 </head>
 <body>
@@ -249,6 +266,11 @@
         <button class="filter-pill" data-filter="utility">{{ _('Utility') }} <span class="dim">({{ by_class.utility }})</span></button>
         <button class="filter-pill" data-filter="other">{{ _('Other') }} <span class="dim">({{ by_class.other }})</span></button>
       </div>
+      {% set unnamed_total = (rows | rejectattr('name') | list | length) %}
+      <div class="filter-row" data-mpt-named-filter>
+        <button class="filter-pill active" data-named="named">{{ _('Has name') }} <span class="dim">({{ unnamed_total }} {{ _('hidden') }})</span></button>
+        <button class="filter-pill" data-named="all">{{ _('Show all') }} <span class="dim">({{ total }})</span></button>
+      </div>
 
       <table class="mpt-table">
         <thead>
@@ -267,7 +289,8 @@
             {% set issuer = r.issuer or '' %}
             {% set issuer_short = (issuer[:6] ~ '…' ~ issuer[-4:]) if issuer|length > 12 else issuer %}
             {% set status = r.status or 'prepared' %}
-            <tr data-class="{{ r.classification }}" data-status="{{ status }}">
+            {% set is_named = 'true' if r.name else 'false' %}
+            <tr data-class="{{ r.classification }}" data-status="{{ status }}" data-named="{{ is_named }}">
               <td>
                 {% if r.issuance_id %}
                   <a class="name-link" href="/mpt/{{ r.issuance_id }}">
@@ -365,20 +388,31 @@
 </div>
 
 <script>
-  // Client-side filter — two dimensions (status × class), AND'd together.
-  // No server round-trip per pill click.
+  // Client-side filter — three dimensions (status × class × named), AND'd.
+  // Named axis is the only one that persists in localStorage (default-on);
+  // status/class reset to 'all' on each visit because they're per-session
+  // browsing intent, not a preference.
   (function () {
     const statusWrap = document.querySelector('[data-mpt-status-filter]');
     const classWrap  = document.querySelector('[data-mpt-class-filter]');
-    if (!statusWrap || !classWrap) return;
+    const namedWrap  = document.querySelector('[data-mpt-named-filter]');
+    if (!statusWrap || !classWrap || !namedWrap) return;
     const rows = document.querySelectorAll('.mpt-table tbody tr');
-    const state = { status: 'all', class: 'all' };
+
+    // Initial named state must match the html.mpts-named-only class the
+    // inline <head> script set before paint, or the chip-row UI lies about
+    // what's hidden.
+    const namedOnly = document.documentElement.classList.contains('mpts-named-only');
+    const state = { status: 'all', class: 'all', named: namedOnly ? 'named' : 'all' };
+    namedWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+    namedWrap.querySelector('[data-named="' + state.named + '"]').classList.add('active');
 
     function apply() {
       rows.forEach(r => {
         const okStatus = state.status === 'all' || r.dataset.status === state.status;
         const okClass  = state.class  === 'all' || r.dataset.class  === state.class;
-        r.style.display = (okStatus && okClass) ? '' : 'none';
+        const okNamed  = state.named  === 'all' || r.dataset.named === 'true';
+        r.style.display = (okStatus && okClass && okNamed) ? '' : 'none';
       });
     }
 
@@ -395,6 +429,19 @@
         classWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
         p.classList.add('active');
         state.class = p.dataset.filter;
+        apply();
+      });
+    });
+    namedWrap.querySelectorAll('.filter-pill').forEach(p => {
+      p.addEventListener('click', () => {
+        namedWrap.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        state.named = p.dataset.named;
+        // Once JS has taken over the named filter, drop the CSS-driven hide
+        // so row.style.display from apply() wins (otherwise "Show all" can't
+        // re-reveal data-named="false" rows because the CSS rule still hides them).
+        document.documentElement.classList.remove('mpts-named-only');
+        try { localStorage.setItem('xrpl_mpts_named_only', state.named === 'named' ? '1' : '0'); } catch (e) {}
         apply();
       });
     });
