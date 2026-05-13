@@ -491,7 +491,7 @@
   <div class="live-stream-bar" data-pools-lsb>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">{{ _('connecting…') }}</span>
+      <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
     </span>
     <span class="lsb-meta">
       {{ _('Subscribed to') }} {{ top10|length }} {{ _('AMM accounts on the public XRPL WebSocket') }}
@@ -608,8 +608,8 @@
         {% endif %}
       </div>
       <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
-        {% if p.tvl_usd is not none %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
-        {% if p.tvl_status != 'estimated' %}
+        {% if p.tvl_usd is not none %}{% if p.tvl_status == 'estimated' %}≈ {% endif %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
+        {% if p.tvl_status not in ('exact', 'estimated') %}
         <span class="status status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
         {% endif %}
       </div>
@@ -961,11 +961,11 @@
       if (closed) return;
       try { ws = new WebSocket('wss://xrplcluster.com'); }
       catch (e) { setLsb('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
-      setLsb('connecting', 'connecting…');
+      setLsb('connecting', 'connecting to xrplcluster.com…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
-        setLsb('live', 'live · streaming');
+        setLsb('live', 'connected — listening for AMM events');
         try {
           ws.send(JSON.stringify({
             id: 'pools-stream',
