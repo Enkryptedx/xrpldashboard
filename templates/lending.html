@@ -1,3 +1,4 @@
+{% from "_explainer.html" import explainer, explainer_css, explainer_js %}
 <!doctype html>
 <html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
@@ -172,6 +173,16 @@
       border: 1px solid var(--border);
       border-radius: 6px;
     }
+    .broker-empty .e-ghost {
+      max-width: 720px; margin: 0.6em auto 0;
+      padding: 0.65em 0.8em;
+      background: rgba(168,85,247,0.04);
+      border: 1px dashed rgba(168,85,247,0.25);
+      border-radius: 6px;
+      font-family: var(--mono); font-size: var(--fs-2xs);
+      color: var(--muted); letter-spacing: 0.04em;
+      text-align: center;
+    }
 
     /* When activated */
     .summary-row {
@@ -260,6 +271,24 @@
     footer code { font-family: var(--mono); color: var(--cyan);
                   font-size: 0.95em; }
 
+    .amend-snapshot-chip {
+      display: inline-flex; align-items: center; gap: 0.45em;
+      font-family: var(--mono); font-size: 0.7rem;
+      color: var(--muted); background: rgba(255,255,255,0.04);
+      padding: 2px 9px; border-radius: 999px;
+      border: 1px solid var(--border); letter-spacing: 0.01em;
+    }
+    .amend-snapshot-chip .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+    }
+    .amend-snapshot-chip.is-stale { color: var(--amber);
+      border-color: rgba(245,158,11,0.35); }
+    .amend-snapshot-chip.is-stale .dot { background: var(--amber);
+      box-shadow: 0 0 6px var(--amber); }
+
+    {{ explainer_css() }}
+
     @media (max-width: 720px) {
       .amend-grid { grid-template-columns: 1fr; }
       .explainer-grid { grid-template-columns: 1fr; }
@@ -308,10 +337,16 @@
     <div class="section-head" style="margin-bottom: 0.7em;">
       <h2>{{ _('Amendment status') }}</h2>
       <span class="meta">
-        {{ _('live from XRPL') }} <code style="color: var(--cyan);">feature</code> {{ _('RPC') }}
-        {% if status and status.cached_age_seconds is defined and status.cached_age_seconds > 0 %}
-          · {{ _('cached') }} {{ status.cached_age_seconds | round(0) | int }}{{ _('s ago') }}
-        {% endif %}
+        {% set cached_age = (status.cached_age_seconds if status and status.cached_age_seconds is defined else 0) %}
+        {% set is_stale = cached_age > 60 %}
+        <span class="amend-snapshot-chip{% if is_stale %} is-stale{% endif %}">
+          <span class="dot"></span>
+          {% if cached_age and cached_age > 0 %}
+            {{ _('Amendment status') }} · {{ cached_age | round(0) | int }}{{ _('s ago') }}
+          {% else %}
+            {{ _('Amendment status') }} · {{ _('live') }}
+          {% endif %}
+        </span>
       </span>
     </div>
 
@@ -323,7 +358,7 @@
           {% if lending_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif lending_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-lending', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ lending_a.status }}</span>
           {% endif %}
@@ -341,7 +376,7 @@
           {% if vault_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif vault_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-vault', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ vault_a.status }}</span>
           {% endif %}
@@ -372,7 +407,7 @@
       <div class="step">
         <div class="n">{{ _('Step 2') }}</div>
         <div class="t">{{ _('A broker lends it out') }}</div>
-        <div class="d">{{ _('Loan brokers — typically regulated institutions, at least at first — take loans against collateral from the vault. They pay interest back to depositors.') }}</div>
+        <div class="d">{{ _('Loan brokers — likely regulated entities early on, though the protocol itself doesn\'t gate participation — take loans against collateral from the vault. They pay interest back to depositors.') }}</div>
       </div>
       <div class="step">
         <div class="n">{{ _('Step 3') }}</div>
@@ -523,6 +558,9 @@
             <span>{{ _('Default rate') }}</span>
             <span>{{ _('Depositors') }}</span>
           </div>
+          <div class="e-ghost">
+            {{ _('Waiting for LendingProtocol + SingleAssetVault activation') }}
+          </div>
         </div>
       </div>
     {% endif %}
@@ -549,6 +587,9 @@
   <footer>
     {{ _('Data: live') }} <code>feature</code> {{ _('RPC against') }} <code>s1.ripple.com</code>.
     {{ _('Page goes live with broker data the day the LendingProtocol + SingleAssetVault amendments activate.') }}
+    {{ _('Verify against') }}
+    <a href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener">xrplf.org/amendment-tracker</a>
+    {{ _('or any public') }} <code>feature</code> {{ _('RPC.') }}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
@@ -558,5 +599,6 @@
 
 </div>
 {% include "_vibes_scripts.html" %}
+{{ explainer_js() }}
 </body>
 </html>
