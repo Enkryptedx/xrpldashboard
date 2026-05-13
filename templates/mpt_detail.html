@@ -197,7 +197,10 @@
           {% endif %}
         </div>
         {% if concentration %}
-        <div style="margin-top: 0.7em; padding-top: 0.6em; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.8rem;">
+        {%- set conc_tooltip -%}
+{{ _('Top-1 share = largest non-issuer holder\'s balance ÷ OutstandingAmount.') }}{% if concentration.top3_pct is defined %} {{ _('Top-3 share = sum of three largest non-issuer balances ÷ OutstandingAmount.') }}{% endif %} {{ _('See /methodology.') }}
+        {%- endset %}
+        <div title="{{ conc_tooltip | trim }}" style="margin-top: 0.7em; padding-top: 0.6em; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.8rem; cursor: help;">
           <span style="color: var(--muted);">{{ _('Top-1 share:') }}</span>
           <span style="color: var(--text);">{{ concentration.top1_pct }}%</span>
           {% if concentration.top3_pct is defined %}
@@ -208,6 +211,7 @@
         </div>
         <div style="color: var(--dim); font-size: 0.72rem; margin-top: 0.3em;">
           {{ _('Concentration of outstanding supply held by the largest accounts (issuer excluded).') }}
+          <a href="/methodology" style="color: var(--muted);">{{ _('Definitions') }} →</a>
         </div>
         {% endif %}
       </div>
