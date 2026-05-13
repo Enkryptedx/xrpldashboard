@@ -101,6 +101,10 @@
     </p>
   </div>
 
+  <p style="color: var(--muted); font-size: 0.875rem; margin-top: 0;">
+    {{ _('Page last revised 2026-05-13. Versioned in git alongside the code that ships these features.') }}
+  </p>
+
   <h2>{{ _('What\'s actually live, per surface') }}</h2>
   <p>
     {{ _('Three states:') }} <span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span>
@@ -185,11 +189,35 @@
         <td>{{ _('60 sec') }}</td>
         <td><code>eth_call</code>, <code>eth_getLogs</code>, <code>gateway_balances</code>, <code>account_tx</code></td>
       </tr>
+      <tr>
+        <td class="route">/mpts<br>{{ _('MPT registry + holder counts') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('hourly snapshot worker') }}</td>
+        <td>{{ _('daily') }} <code>ledger_data</code> {{ _('walk seeds the registry; hourly') }} <code>mpt_holders</code> {{ _('+ ') }}<code>ledger_entry</code> {{ _('refresh holder counts and outstanding supply') }}</td>
+      </tr>
+      <tr>
+        <td class="route">/mpt/&lt;id&gt;<br>{{ _('detail page + supply history chart') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('hourly snapshot; history chart from 90-day time-series') }}</td>
+        <td>{{ _('same hourly worker; time-series written to') }} <code>mpt_supply_history</code> {{ _('on each successful walk') }}</td>
+      </tr>
+      <tr>
+        <td class="route">/mpt/issuer/&lt;wallet&gt;<br>{{ _('issuer roll-up + attestation badge') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('hourly snapshot') }}</td>
+        <td>{{ _('aggregated from same hourly worker snapshot; domain attestation verified at index time against') }} <code>.well-known/xrp-ledger.toml</code></td>
+      </tr>
+      <tr>
+        <td class="route">/lending<br>{{ _('amendment status + protocol explainer') }}</td>
+        <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <td>{{ _('5 min') }}</td>
+        <td><code>feature</code> {{ _('RPC (amendment voting status); switches to live broker/vault data once LendingProtocol amendment activates') }}</td>
+      </tr>
     </tbody>
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five of the eleven surfaces above are now Live (browser-side WebSocket push from') }} <code>wss://xrplcluster.com</code>). {{ _('The remaining cached surfaces — ledger-tip, the heartbeat chip, wallet balances/holdings, cold-storage balances, and the RLUSD cross-chain feed — are derived from RPC calls that don\'t have a streaming equivalent, so a short cache is the honest framing.') }}
+    {{ _('Five surfaces use browser-side WebSocket push (Live) from') }} <code>wss://xrplcluster.com</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
@@ -227,8 +255,16 @@
   <p>
     {{ _('Token display names are hand-curated in') }}
     <code>token_names.json</code>
-    {{ _('in the public GitHub repo, each with a verifiable source URL (exchange page, project') }} <code>.toml</code>, {{ _('or audit), accepted via public PR review. Account labels are layered: a hand-curated first-party list (') }}
-    <code>named_accounts.json</code>{{ _(') takes priority, and public reference lists (XRPSCAN well-known names; AMM pool and MPT issuer accounts we derive ourselves from on-chain state) fill the long tail. Every label is stored with its source so users can tell first-party from reference.') }}
+    {{ _('in the public GitHub repo, each with a verifiable source URL (exchange page, project') }} <code>.toml</code>, {{ _('or audit), accepted via public PR review. Account labels are layered by priority:') }}
+  </p>
+  <ol>
+    <li><strong>{{ _('First-party hand-curated') }}</strong> — <code>named_accounts.json</code> {{ _('in the repo; highest trust, manually reviewed.') }}</li>
+    <li><strong>{{ _('TOML-attested') }}</strong> — {{ _('issuers where the on-ledger') }} <code>Domain</code> {{ _('field and the domain\'s') }} <code>.well-known/xrp-ledger.toml</code> {{ _('form a verified two-way chain (see Domain attestation below). Stored with') }} <code>source=\'toml\'</code>.</li>
+    <li><strong>{{ _('Public reference lists') }}</strong> — {{ _('XRPSCAN well-known names; AMM pool and MPT issuer accounts we derive ourselves from on-chain state.') }}</li>
+    <li><strong>{{ _('Unlabeled') }}</strong> — {{ _('account address only; no label rendered rather than a guess.') }}</li>
+  </ol>
+  <p>
+    {{ _('Every label is stored with its source so users can tell first-party from TOML-attested from reference.') }}
   </p>
 
   <h2 id="attestation">{{ _('Domain attestation') }}</h2>
@@ -248,6 +284,10 @@
     it is not an endorsement, not KYC, not legal or regulatory verification, not a signal of financial soundness. It only certifies that the on-ledger account and the named domain are operated by the same party. Whether that party is trustworthy in any other sense is for the visitor to research.
     {%- endtrans %}
   </p>
+  <p>
+    <strong>{{ _('Where the badge renders:') }}</strong>
+    {{ _('Currently on') }} <code>/mpt/issuer/&lt;wallet&gt;</code> {{ _('pages for verified MPT issuers. Will extend to') }} <code>/tokens</code>, <code>/whales</code>, {{ _('and homepage label surfaces as more issuers publish') }} <code>xrp-ledger.toml</code> {{ _('attestations.') }}
+  </p>
 
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
@@ -263,7 +303,7 @@
     <li><strong>{{ _('Token labels.') }}</strong> {{ _('Only displayed when a first-party source is on file. Unverified issuers render unnamed rather than guessed.') }}</li>
     <li><strong>{{ _('MPT holders.') }}</strong> {{ _('Split cadence: a daily background worker enumerates every MPTokenIssuance on the ledger (full') }} <code>ledger_data</code> {{ _('walk, 1-5 hours), and an hourly worker re-walks the') }} <code>mpt_holders</code> {{ _('RPC + refreshes current') }} <code>OutstandingAmount</code> {{ _('via') }} <code>ledger_entry</code> {{ _('for each known issuance. Results are stored with a non-null') }} <code>reason</code> {{ _('enum so the source state is machine-readable, not just visible in a tooltip. The enum values are:') }} <code>complete</code> ({{ _('walked cleanly, at least one non-issuer holder') }}), <code>no_holders</code> ({{ _('walked cleanly, zero non-issuer holders') }}), <code>incomplete</code> ({{ _('walk hit the page cap before exhausting markers; partial counts are suppressed') }}), <code>skipped_test</code> ({{ _('TEST/TMPT tickers or "Test ..." names — not walked, labelled distinctly from "we haven\'t walked yet"') }}), <code>pending</code> ({{ _('never walked, or the RPC errored on this cycle') }}). {{ _('The headline number is the count of holders with a positive balance; "authorized" is stored alongside. Holders count excludes the issuer\'s own treasury balance, matching CMC circulating-supply convention.') }}</li>
     <li><strong>{{ _('MPT concentration.') }}</strong> {{ _('On each /mpt/<id> detail page we show two concentration ratios derived from the holders walk.') }} <strong>{{ _('Top-1 share') }}</strong> = {{ _('largest non-issuer holder ÷ total positive-balance holdings.') }} <strong>{{ _('Top-3 share') }}</strong> = {{ _('sum of three largest ÷ total positive-balance holdings.') }} {{ _('Both exclude issuer treasury (CMC circulating-supply convention). Suppressed when fewer positive-balance holders exist than the ratio requires.') }} {{ _('The denominator is exact by XRPL ledger invariant — sum of all non-issuer balances equals') }} <code>OutstandingAmount</code> — {{ _('so the ratio is faithful even though our stored top-N list is capped at 20 entries.') }}</li>
-    <li><strong>{{ _('MPT supply history.') }}</strong> {{ _('Every successful hourly refresh (reason ∈ {complete, no_holders}) writes one row per issuance to') }} <code>mpt_supply_history</code>. {{ _('Both the holders walk and the current') }} <code>OutstandingAmount</code> {{ _('are re-fetched per cycle, so each row is internally consistent — top-1/top-3 share are never computed against a stale denominator. Pending, incomplete, ledger_entry-failed, and skipped-test runs are excluded — the time-series is gap-free where it has data, not gap-filled across uncertainty. Raw rows retained 90 days; daily rollup beyond.') }} {{ _('Initial seed (2026-05-12 23:29 UTC): 203 issuances entered the time-series — 143 with zero positive-balance holders, 60 with active distribution. Anyone curious can verify against the live table.') }}</li>
+    <li><strong>{{ _('MPT supply history.') }}</strong> {{ _('Every successful hourly refresh (reason ∈ {complete, no_holders}) writes one row per issuance to') }} <code>mpt_supply_history</code>. {{ _('Both the holders walk and the current') }} <code>OutstandingAmount</code> {{ _('are re-fetched per cycle, so each row is internally consistent — top-1/top-3 share are never computed against a stale denominator. Pending, incomplete, ledger_entry-failed, and skipped-test runs are excluded — the time-series is gap-free where it has data, not gap-filled across uncertainty. Raw rows retained 90 days; daily rollup beyond.') }} {{ _('Initial seed (2026-05-12 23:29 UTC): 203 issuances entered the time-series — 143 with zero positive-balance holders, 60 with active distribution. Current count grows as new MPTs are minted; see') }} <a href="/mpts">/mpts</a> {{ _('for the live figure. Anyone curious can verify against the live table.') }}</li>
     <li><strong>{{ _('MPT registry filters.') }}</strong> {{ _('The') }} <code>/mpts</code> {{ _('table defaults to two presentational filters that hide the long tail: "Has name" (excludes MPTs missing XLS-89 metadata) and "Has supply" (excludes never-minted issuances where') }} <code>OutstandingAmount = 0</code>). {{ _('Both default-on, both togglable from the chip row, both persist in localStorage. The full data is always present in the page — filters only affect display — and') }} <code>/api/mpts</code> {{ _('returns every row unfiltered. Power users can override the supply threshold via') }} <code>?outstanding_min=N</code> ({{ _('e.g.') }} <code>?outstanding_min=100</code> {{ _('for a tighter view); the chip label updates to reflect the override.') }}</li>
     <li><strong>{{ _('Homepage globe pulses.') }}</strong> {{ _('The spinning globe carries two visual layers, both with symbolic (non-geographic) coordinates. An ambient cosmetic flicker fires frequent dim arcs purely to convey "active network" — these have no event association and are decoration only. Layered on top, brighter and thicker arcs with an expanding landing halo are fired by real whale events: the globe polls') }} <code>/api/whales/recent</code> {{ _('every 10 seconds, dedupes by transaction hash, and renders one halo-pulse roughly every 5 seconds for each new event seen. Each halo-pulse corresponds to an actual transaction recorded on') }} <code>/whales</code>. {{ _('On fetch failure the whale layer falls silent rather than faking traffic; under') }} <code>prefers-reduced-motion</code> {{ _('both layers pause and the static sphere remains.') }}</li>
   </ul>
