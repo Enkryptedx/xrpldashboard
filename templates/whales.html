@@ -89,6 +89,8 @@
       .whale-radar .hud-bl, .whale-radar .hud-br { font-size: 0.6rem; }
     }
 
+    .stats-role { color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
+                  letter-spacing: 0.05em; margin-bottom: 6px; }
     .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
     .stat  { background: var(--card); border: 1px solid var(--border);
              border-radius: 8px; padding: 8px 12px; min-width: 100px;
@@ -263,12 +265,21 @@
   <div class="whale-radar" aria-hidden="true">
     <canvas id="whale-radar-canvas"></canvas>
     <div class="hud-tl">{{ _('XRPL · whale scope') }}<br><span class="hud-num">{{ _('scan 360°') }}</span></div>
-    <div class="hud-tr">{{ _('range') }}<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
+    <div class="hud-tr">{{ _('tracking floor') }}<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
     <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
     <div class="hud-br">{{ _('last whale') }}<br><span class="hud-amber">{{ radar_stats.last_label }}</span></div>
   </div>
   <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>
 
+  {# Role-label for the stat tiles. The HUD readouts above are world stats
+     (24h, pinned to the canonical tracking floor) so they don't shift with
+     the tier filter; the tiles below are result-set counters for the
+     current viewing tier. Different roles = different scopes = different
+     numbers — this line makes the role boundary visible so adjacent counts
+     don't read as a self-contradiction. #}
+  <div class="stats-role">
+    {% trans tier=tier_label %}Results in this view ({{ tier }}, all-time){% endtrans %}
+  </div>
   <div class="stats">
     <a class="stat vibes-spot {% if not filter_type %}active{% endif %}"
        href="/whales?tier={{ tier }}">
