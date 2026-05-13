@@ -231,6 +231,24 @@
     <code>named_accounts.json</code>{{ _(') takes priority, and public reference lists (XRPSCAN well-known names; AMM pool and MPT issuer accounts we derive ourselves from on-chain state) fill the long tail. Every label is stored with its source so users can tell first-party from reference.') }}
   </p>
 
+  <h2 id="attestation">{{ _('Domain attestation') }}</h2>
+  <p>
+    {% trans -%}
+    A "domain-attested" issuer is one we can cryptographically link to a public web domain by following a two-way chain. First, the issuer's on-ledger <code>Domain</code> field (set via <code>AccountSet</code>) points to a hostname (e.g. <code>sivax.io</code>). Second, that hostname publishes an <code>xrp-ledger.toml</code> file at <code>/.well-known/xrp-ledger.toml</code> whose <code>[[ISSUERS]]</code> block explicitly names the same on-ledger wallet. Both directions have to agree — if either side is missing or contradicts, no badge.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    This matters because anyone can mint an MPT and claim to be an institutional issuer. Attestation lets a visitor verify the claim without trusting xrpldashboard: the domain is the badge, the <code>.well-known/xrp-ledger.toml</code> file is publicly readable, and the entire chain is independently checkable.
+    {%- endtrans %}
+  </p>
+  <p>
+    <strong>{{ _('What the green ✓ does NOT mean:') }}</strong>
+    {% trans -%}
+    it is not an endorsement, not KYC, not legal or regulatory verification, not a signal of financial soundness. It only certifies that the on-ledger account and the named domain are operated by the same party. Whether that party is trustworthy in any other sense is for the visitor to research.
+    {%- endtrans %}
+  </p>
+
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
     <li><strong>{{ _('Whale movement.') }}</strong> {{ _('A single XRP') }} <code>Payment</code>
