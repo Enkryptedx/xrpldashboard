@@ -316,6 +316,25 @@ def apply_security_headers(response):
         Explicitly disables features we never use (camera, microphone,
         geolocation, payment, USB, motion sensors, FLoC interest-cohort).
         Even if compromised JS asks for them, the browser refuses.
+
+    - Cross-Origin-Opener-Policy: same-origin
+        Isolates our browsing context group from cross-origin popups so
+        opener.window references can't leak across origins.
+
+    - Cross-Origin-Embedder-Policy: credentialless
+        Stricter than the default but more compatible than require-corp —
+        cross-origin subresources (XRPSCAN links, xrpl.org docs) load
+        without forcing them to send CORP headers, but with credentials
+        stripped. Pairs with COOP to enable cross-origin isolation.
+
+    - Cross-Origin-Resource-Policy: same-origin
+        Stops cross-origin pages from embedding our resources as no-cors
+        loads. Same-origin only — we don't host shared assets.
+
+    - Content-Security-Policy-Report-Only (Trusted Types)
+        Report-only enforcement of Trusted Types for sinks like innerHTML.
+        Violations log to the browser console without breaking rendering.
+        Promote to enforced (drop "-Report-Only") after a week of clean logs.
     """
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
@@ -329,6 +348,16 @@ def apply_security_headers(response):
     response.headers.setdefault("Content-Security-Policy", _CSP_VALUE)
     response.headers.setdefault(
         "Permissions-Policy", _PERMISSIONS_POLICY_VALUE
+    )
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault(
+        "Cross-Origin-Embedder-Policy", "credentialless"
+    )
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy-Report-Only",
+        "require-trusted-types-for 'script'; "
+        "trusted-types default 'allow-duplicates'",
     )
     return response
 
