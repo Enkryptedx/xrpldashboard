@@ -302,6 +302,59 @@ def categorize(toml_data: dict, default: str | None) -> str:
     return "other"
 
 
+def _write_account_label(
+    addr: str, entry: dict, mode_tag: str, dry_run: bool,
+) -> None:
+    """Dual-write: mirror a successfully TOML-attested entry into the
+    Postgres account_labels table so it surfaces on /pools brand-warn,
+    /mpt attestation badges, /rwa promotion logic, etc. Idempotent via
+    the db.py ON CONFLICT path; failure here logs and continues so the
+    named_accounts.json write path isn't blocked by a DB hiccup."""
+    if dry_run:
+        return
+    try:
+        import db
+    except Exception as e:
+        log(f"  [{mode_tag}] {addr}: account_labels dual-write skipped "
+            f"(db import failed: {e})")
+        return
+    # Pick a category that downstream queries can target. app.py:1967
+    # uses `source='toml' AND category='mpt_issuer'` for the /rwa MPT
+    # attestation panel — match that for the mpt-issuers mode.
+    category = entry.get("category") or "other"
+    if mode_tag == "mpt-issuers":
+        category = "mpt_issuer"
+    elif mode_tag == "token-issuers":
+        category = "token_issuer"
+    via = entry.get("verified_via", "")
+    domain = None
+    try:
+        netloc = urlparse(via).netloc
+        if netloc:
+            domain = netloc.split(":")[0].lower()
+    except Exception:
+        pass
+    extra = {
+        "domain": domain,
+        "verified_via": via,
+        "verified_at_unix": int(time.time()),
+        "mode": mode_tag,
+    }
+    ok = db.upsert_account_label(
+        address=addr,
+        name=entry.get("name") or addr,
+        source="toml",
+        category=category,
+        confidence=0.95,
+        extra=extra,
+    )
+    if ok:
+        log(f"  [{mode_tag}] {addr}: account_labels dual-write OK "
+            f"(source=toml category={category})")
+    else:
+        log(f"  [{mode_tag}] {addr}: account_labels dual-write FAILED")
+
+
 def upsert(named: dict, address: str, entry_new: dict, dry_run: bool) -> str:
     """Insert or refresh. Return one of {'new', 'refreshed', 'noop'}."""
     existing = named.get(address)
@@ -368,6 +421,7 @@ def scan_org_mode(named: dict, dry_run: bool) -> tuple[int, int]:
             elif outcome == "refreshed":
                 refreshed_count += 1
                 log(f"    refreshed source for {addr}")
+            _write_account_label(addr, entry, "org", dry_run)
 
         # Process TOKENS (issuer addresses)
         for block in tokens:
@@ -394,6 +448,7 @@ def scan_org_mode(named: dict, dry_run: bool) -> tuple[int, int]:
             elif outcome == "refreshed":
                 refreshed_count += 1
                 log(f"    refreshed source for issuer {addr}")
+            _write_account_label(addr, entry, "org", dry_run)
 
     return new_count, refreshed_count
 
@@ -458,6 +513,7 @@ def scan_account_mode(
                 f"({final_url})")
         else:
             log(f"  [{mode_tag}] {addr}: VERIFIED (noop, already current)")
+        _write_account_label(addr, entry, mode_tag, dry_run)
         time.sleep(0.15)  # be polite to public RPC
 
     return new_count, refreshed_count

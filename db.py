@@ -785,7 +785,7 @@ def read_snapshot_meta():
 # Sources we trust enough to never let a `derived:*` importer overwrite.
 # Ordered loosely by trust, but the only check that matters is the
 # membership test below.
-_CURATED_LABEL_SOURCES = frozenset({"manual", "xrpscan", "bithomp"})
+_CURATED_LABEL_SOURCES = frozenset({"manual", "xrpscan", "bithomp", "toml"})
 
 
 def upsert_account_label(address, name, source, category=None,
