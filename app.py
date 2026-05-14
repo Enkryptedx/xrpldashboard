@@ -599,24 +599,35 @@ def _verified_brands():
     """Return dict[currency_hex] -> set of TOML-attested issuers.
 
     Source of truth is token_names.json's verified_via field: any entry
-    pointing to an xrp-ledger.toml marks its issuer as canonical for that
-    currency_hex. Cached for 5 min — the file mutates rarely."""
+    pointing to an xrp-ledger.toml (or xrpscan@ provenance) marks its
+    issuer as canonical for that currency_hex. Null-canonical brands
+    (composite key '<hex>:') register an empty issuer set — every XRPL
+    issuer of that currency_hex then fails membership and flags as a
+    brand-protection violation. Cached for 5 min — the file mutates
+    rarely. Mirror of rank_amms.load_verified_brands()."""
     now = time.time()
     cached = _VERIFIED_BRANDS_CACHE
     if cached["data"] is not None and now - cached["ts"] < 300:
         return cached["data"]
     brands = {}
     raw = _safe_load_json(TOKEN_NAMES_PATH) or {}
-    for entry in raw.values():
+    for key, entry in raw.items():
         if not isinstance(entry, dict):
             continue
         ver = entry.get("verified_via") or ""
-        if "xrp-ledger.toml" not in ver:
+        if not any(tier in ver for tier in ("xrp-ledger.toml", "xrpscan@")):
             continue
-        cur_hex = entry.get("currency_hex")
-        iss = entry.get("issuer")
-        if cur_hex and iss:
-            brands.setdefault(cur_hex, set()).add(iss)
+        try:
+            cur_hex, iss = key.split(":", 1)
+        except ValueError:
+            continue
+        cur_hex = cur_hex.strip()
+        iss = iss.strip()
+        if not cur_hex:
+            continue
+        brands.setdefault(cur_hex, set())
+        if iss:
+            brands[cur_hex].add(iss)
     cached["data"] = brands
     cached["ts"] = now
     return brands
@@ -2014,13 +2025,11 @@ def rwa():
          "reason": "Real treasury-management software company at gtreasury.com "
                    "but no XRPL tokenization announcement. Suspected brand "
                    "spoof."},
-        {"name": "Ondo Finance", "status": "pending",
-         "reason": "Vanity wallet rondo… on-ledger, no domain attestation "
-                   "chain. Promote to verified pending TOML check at "
-                   "ondo.finance."},
-        {"name": "Franklin Templeton (sgBENJI)", "status": "pending",
-         "reason": "Franklin BENJI not in Franklin Templeton's public XRPL "
-                   "announcements. Promote pending domain attestation."},
+        # Ondo Finance moved to verified families (TOML chain closed at ondo.finance).
+        {"name": "Franklin Templeton (sgBENJI)", "status": "excluded",
+         "reason": "Wallet sets Domain to franklinresources.com but no "
+                   "xrp-ledger.toml exists at that host — vanity-domain spoof. "
+                   "No on-XRPL Franklin Templeton attestation chain published."},
         {"name": "Archax", "status": "pending",
          "reason": "Archax is a real institutional broker (archax.com) but no "
                    "evidence of trust-line token issuance on XRPL. Promote "

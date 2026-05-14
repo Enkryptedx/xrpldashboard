@@ -102,22 +102,36 @@ def load_verified_brands():
     """Return dict[currency_hex] -> set of TOML-attested issuers.
 
     A currency_hex is a 'protected brand' if any token_names.json entry
-    for it has verified_via pointing to an xrp-ledger.toml. The display
-    label decoded from the hex (e.g. 'RLUSD') is only trustworthy when
-    the issuer is on the per-brand allowlist; any other issuer rendering
-    that hex on /pools is currency-code spoofing the brand."""
+    for it has verified_via pointing to an xrp-ledger.toml (or an
+    xrpscan@ provenance tier). The display label decoded from the hex
+    (e.g. 'RLUSD') is only trustworthy when the issuer is on the
+    per-brand allowlist; any other issuer rendering that hex on /pools
+    is currency-code spoofing the brand.
+
+    Null-canonical brands: an entry with empty issuer (composite key
+    '<hex>:') registers the brand with an empty allowlist, so every
+    XRPL issuer of that currency code fails membership and flags. Used
+    for tokens whose canonical issuance is off-XRPL (e.g. ONDO is
+    Ethereum-only)."""
     brands = {}
     raw = load_json(TOKEN_NAMES_PATH, {})
-    for entry in raw.values():
+    for key, entry in raw.items():
         if not isinstance(entry, dict):
             continue
         ver = entry.get("verified_via") or ""
-        if "xrp-ledger.toml" not in ver:
+        if not any(tier in ver for tier in ("xrp-ledger.toml", "xrpscan@")):
             continue
-        cur_hex = entry.get("currency_hex")
-        iss = entry.get("issuer")
-        if cur_hex and iss:
-            brands.setdefault(cur_hex, set()).add(iss)
+        try:
+            cur_hex, iss = key.split(":", 1)
+        except ValueError:
+            continue
+        cur_hex = cur_hex.strip()
+        iss = iss.strip()
+        if not cur_hex:
+            continue
+        brands.setdefault(cur_hex, set())
+        if iss:
+            brands[cur_hex].add(iss)
     return brands
 
 

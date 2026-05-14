@@ -137,5 +137,19 @@
     "issuer": "rpwAnF1mMZRszxdinETFHwzGQiPgsv3jHR",
     "category": "memecoin",
     "verified_via": "TODO_curation_pass"
+  },
+  "4F55534700000000000000000000000000000000:rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
+    "currency_hex": "4F55534700000000000000000000000000000000",
+    "issuer": "rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p",
+    "currency_display": "OUSG",
+    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
+    "notes": "Ondo Short-Term US Government Treasury Fund. Canonical issuer attested via two-way TOML chain."
+  },
+  "4F4E444F00000000000000000000000000000000:": {
+    "currency_hex": "4F4E444F00000000000000000000000000000000",
+    "issuer": "",
+    "currency_display": "ONDO",
+    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
+    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand."
   }
 }

@@ -173,6 +173,8 @@
                    max-width: 720px; font-style: italic; }
     .freshness { color: var(--dim); font-size: 0.75rem; font-family: var(--mono);
                  margin-top: 6px; }
+    .family-no-liquidity { padding: 0.4em 0; }
+    .stat-note { font-size: 0.85rem; color: var(--muted); font-style: italic; }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -243,6 +245,10 @@
                 </li>
               {% endfor %}
             </ul>
+          {% else %}
+            <div class="family-no-liquidity">
+              <span class="stat-note">{{ _('Institutional presence only — canonical issuer attested, no AMM liquidity yet.') }}</span>
+            </div>
           {% endif %}
         </div>
       {% endfor %}

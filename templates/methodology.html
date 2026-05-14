@@ -300,6 +300,26 @@
     <li><strong>{{ _('Exclusion process.') }}</strong> {{ _('Families appearing in AMM pool names that have not yet cleared the criteria above are listed openly in the "What we are not showing yet" section of') }} <a href="/rwa">/rwa</a>, {{ _('with a reason per row and a status pill (') }}<code>excluded</code> {{ _('for cases we believe are spoofs / mislabels;') }} <code>pending</code> {{ _('for cases that may clear once domain attestation lands). The list is editorial, public, and updated as evidence changes — readers can see what we considered and chose not to surface.') }}</li>
   </ul>
 
+  <h3>{{ _('Worked example: detecting the rondo spoof') }}</h3>
+  <p>{% trans -%}
+  A wallet with vanity prefix <code>rondo4tPzRyU72uNpY97iCqXGYd35AmYv</code>
+  set its on-ledger <code>Domain</code> field to <code>ondo.finance/ousg</code>.
+  A one-way Domain check would have validated this as Ondo. The two-way TOML chain caught it:
+  {%- endtrans %}</p>
+  <ol>
+    <li>{{ _('The on-ledger Domain field claims <code>ondo.finance/ousg</code>') | safe }}</li>
+    <li>{{ _('Fetching <code>https://ondo.finance/.well-known/xrp-ledger.toml</code>') | safe }}</li>
+    <li>{{ _('The <code>[[ISSUERS]]</code> block lists <code>rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p</code> as canonical OUSG issuer — NOT the rondo vanity wallet') | safe }}</li>
+    <li>{{ _('Two-way chain: BROKEN. Vanity wallet is impersonating Ondo.') }}</li>
+  </ol>
+  <p>{% trans -%}
+  This same wallet also issues a fabricated ONDO token (Ondo's governance token
+  is Ethereum-only — no XRPL presence) and pairs with the BlackRock and Franklin
+  Templeton vanity wallets in self-referential spoof pools. After adding OUSG
+  and ONDO to the verified-brand allowlist, all 12 spoof pool sides auto-flag
+  with ⚠ on <a href="/pools">/pools</a>.
+  {%- endtrans %}</p>
+
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
     <li><strong>{{ _('Whale movement.') }}</strong> {{ _('A single XRP') }} <code>Payment</code>
