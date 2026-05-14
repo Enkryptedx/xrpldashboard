@@ -392,6 +392,45 @@
       border-top: 1px solid var(--border); padding-top: 16px;
     }
     .foot a { color: var(--muted); }
+
+    .rlusd-roadmap-strip {
+      margin-top: 1.5em;
+      padding: 0.8em 1em;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+    }
+    .rlusd-roadmap-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rlusd-roadmap-badges {
+      display: flex;
+      gap: 0.6em;
+      flex-wrap: wrap;
+    }
+    .chain-badge {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      display: inline-block;
+    }
+    .rlusd-roadmap-note {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--dim);
+    }
+    .rlusd-roadmap-note a {
+      color: var(--muted);
+    }
     {{ explainer_css() }}
   </style>
   {% include "_vibes_head.html" %}
@@ -490,6 +529,24 @@
       <canvas id="pressCanvas"></canvas>
       <span id="ethSupply" hidden>—</span>
       <span id="xrplSupply" hidden>—</span>
+    </div>
+
+    <div class="rlusd-roadmap-strip">
+      <div class="rlusd-roadmap-label">
+        {{ _('Multi-chain roadmap') }}
+      </div>
+      <div class="rlusd-roadmap-badges">
+        <span class="chain-badge">Base · {{ _('testing') }}</span>
+        <span class="chain-badge">Optimism · {{ _('testing') }}</span>
+        <span class="chain-badge">Unichain · {{ _('testing') }}</span>
+        <span class="chain-badge">Ink · {{ _('testing') }}</span>
+      </div>
+      <div class="rlusd-roadmap-note">
+        {% trans -%}
+        Wormhole NTT testing in progress. Public rollout pending NYDFS approval.
+        See <a href="/methodology">methodology</a>.
+        {%- endtrans %}
+      </div>
     </div>
 
     <div class="press-caption">
