@@ -169,6 +169,8 @@
     .footer-note { color: var(--dim); font-size: 0.8rem; margin: 24px 0 0;
                    max-width: 760px; }
     .footer-note a { color: var(--muted); }
+    .agg-context { color: var(--muted); font-size: 0.82rem; margin: -10px 0 22px;
+                   max-width: 720px; font-style: italic; }
     .freshness { color: var(--dim); font-size: 0.75rem; font-family: var(--mono);
                  margin-top: 6px; }
   </style>
@@ -204,6 +206,9 @@
       <span class="agg-small">{{ _('snapshot age') }}</span>
     </div>
   </div>
+  <p class="agg-context">
+    {{ _('Liquidity is currently nominal — institutional RWA adoption on XRPL is in early phase. This page tracks presence, not size.') }}
+  </p>
 
   {% if families %}
     <h2 class="section">{{ _('Verified issuer families') }}</h2>

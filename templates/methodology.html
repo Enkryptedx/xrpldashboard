@@ -289,6 +289,17 @@
     {{ _('Currently on') }} <code>/mpt/issuer/&lt;wallet&gt;</code> {{ _('pages for verified MPT issuers. Will extend to') }} <code>/tokens</code>, <code>/whales</code>, {{ _('and homepage label surfaces as more issuers publish') }} <code>xrp-ledger.toml</code> {{ _('attestations.') }}
   </p>
 
+  <h2 id="rwa-attribution">{{ _('RWA attribution') }}</h2>
+  <p>
+    {{ _('How institutional Real-World Asset families surface on') }} <a href="/rwa">/rwa</a> — {{ _('and what we deliberately exclude.') }}
+  </p>
+  <ul>
+    <li><strong>{{ _('Curation criteria.') }}</strong> {{ _('An issuer family qualifies as') }} <em>{{ _('verified') }}</em> {{ _('when either (a) the issuer wallet is canonically labelled by') }} <a href="https://xrpscan.com" target="_blank" rel="noopener noreferrer">xrpscan</a> {{ _('against the family\'s public identity, or (b) a domain-attestation chain holds:') }} <code>Domain</code> {{ _('field → matching') }} <code>xrp-ledger.toml</code> {{ _('listing the same wallet. No name-pattern matching alone — a pool called "Foo/BlackRock" is not evidence BlackRock issues anything.') }}</li>
+    <li><strong>{{ _('Pool inclusion gate.') }}</strong> {{ _('An AMM pool is attributed to a family only when') }} <em>{{ _('both') }}</em> {{ _('the currency code and the issuer wallet on the counterparty side match the family\'s verified-issuer set. Same currency code from a different wallet is treated as a separate (and potentially spoofing) issuance, not as the family\'s liquidity.') }}</li>
+    <li><strong>{{ _('Verified-brand allowlist.') }}</strong> {{ _('Currency codes from TOML-attested entries in') }} <code>token_names.json</code> {{ _('form a brand-protection allowlist. When a pool surfaces a currency code on the allowlist but the issuer wallet is') }} <em>{{ _('not') }}</em> {{ _('on the allowlist for that brand, the pool is annotated as an unverified-brand spoof and renders with a') }} ⚠ {{ _('marker on') }} <a href="/pools">/pools</a>. {{ _('The same substrate gates inclusion on /rwa — the spoofs never appear as part of a verified family.') }}</li>
+    <li><strong>{{ _('Exclusion process.') }}</strong> {{ _('Families appearing in AMM pool names that have not yet cleared the criteria above are listed openly in the "What we are not showing yet" section of') }} <a href="/rwa">/rwa</a>, {{ _('with a reason per row and a status pill (') }}<code>excluded</code> {{ _('for cases we believe are spoofs / mislabels;') }} <code>pending</code> {{ _('for cases that may clear once domain attestation lands). The list is editorial, public, and updated as evidence changes — readers can see what we considered and chose not to surface.') }}</li>
+  </ul>
+
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
     <li><strong>{{ _('Whale movement.') }}</strong> {{ _('A single XRP') }} <code>Payment</code>
