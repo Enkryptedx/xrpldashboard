@@ -494,8 +494,6 @@ def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
         cands = sorted(active_addresses())
         extras = [s.strip() for s in (args.extra or "").split(",") if s.strip()]
         cands.extend(a for a in extras if a not in cands)
-        if args.limit:
-            cands = cands[: args.limit]
     elif mode == "mpt-issuers":
         cands = candidates_mpt_issuers()
     elif mode == "token-issuers":
@@ -505,6 +503,10 @@ def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
     cands = [a for a in cands if a not in seen]
     if not args.force_recheck:
         cands = filter_curated(cands)
+    # --limit applies to every wallet-walking mode so dry-runs stay
+    # bounded regardless of which candidate source is selected.
+    if args.limit:
+        cands = cands[: args.limit]
     return cands
 
 
