@@ -467,6 +467,12 @@ def scan_account_mode(
 
 MODE_CHOICES = ("org", "on-chain", "mpt-issuers", "token-issuers")
 
+# Order matters for --all: walk the small candidate pools first so any
+# overlap with the much larger on-chain set surfaces as cross-mode
+# dedup-skips rather than getting silently included. mpt-issuers (~36)
+# and token-issuers (~50) before on-chain (~1k+) accomplishes that.
+ALL_RUN_ORDER = ("org", "mpt-issuers", "token-issuers", "on-chain")
+
 
 def _resolve_modes(args) -> list[str]:
     """Pick which modes to run, honouring legacy flags for backwards-compat.
@@ -474,7 +480,7 @@ def _resolve_modes(args) -> list[str]:
     if args.mode:
         return [args.mode]
     if args.all:
-        return list(MODE_CHOICES)
+        return list(ALL_RUN_ORDER)
     if args.org_only:
         return ["org"]
     if args.account_only:
@@ -484,10 +490,14 @@ def _resolve_modes(args) -> list[str]:
     return ["org", "on-chain"]
 
 
-def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
+def _gather_candidates(
+    mode: str, args, seen: set[str], remaining_budget: int | None,
+) -> list[str]:
     """Source the candidate list for `mode`, drop wallets already walked
     in this --all run, then apply the curated-skip filter unless
-    --force-recheck is set."""
+    --force-recheck is set. `remaining_budget` is a shared total cap
+    across the whole run so --all --limit N walks N wallets total, not
+    N per mode (which would silently bypass cross-mode dedup)."""
     if mode == "org":
         return []  # org mode walks domains, not pre-listed wallets
     if mode == "on-chain":
@@ -508,10 +518,10 @@ def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
             f"candidate(s) already walked in an earlier mode — skipping")
     if not args.force_recheck:
         cands = filter_curated(cands)
-    # --limit applies to every wallet-walking mode so dry-runs stay
-    # bounded regardless of which candidate source is selected.
-    if args.limit:
-        cands = cands[: args.limit]
+    # --limit is a TOTAL walked-wallets budget shared across modes — not
+    # per-mode — so the dedup logic gets exercised when modes overlap.
+    if remaining_budget is not None:
+        cands = cands[:max(0, remaining_budget)]
     return cands
 
 
@@ -553,17 +563,24 @@ def main() -> int:
     seen: set[str] = set()
     per_mode_new: dict[str, int] = {}
     per_mode_ref: dict[str, int] = {}
+    # Total walked-wallets budget (None = uncapped). Depletes as each
+    # mode consumes from it; later modes see a smaller cap.
+    remaining_budget: int | None = args.limit if args.limit else None
 
     for mode in modes:
         try:
             if mode == "org":
                 new, ref = scan_org_mode(named, args.dry_run)
             else:
-                cands = _gather_candidates(mode, args, seen)
+                cands = _gather_candidates(
+                    mode, args, seen, remaining_budget,
+                )
                 seen.update(cands)
                 new, ref = scan_account_mode(
                     cands, named, args.dry_run, mode_tag=mode,
                 )
+                if remaining_budget is not None:
+                    remaining_budget = max(0, remaining_budget - len(cands))
         except Exception as e:
             # Continue-on-error: one mode's failure must not cascade.
             log(f"ERROR mode={mode} crashed: {e!r} — continuing")
