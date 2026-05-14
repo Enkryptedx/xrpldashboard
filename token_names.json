@@ -151,5 +151,27 @@
     "currency_display": "ONDO",
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
     "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand."
+  },
+  "6D5442494C4C0000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
+    "currency_hex": "6D5442494C4C0000000000000000000000000000",
+    "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
+    "currency_display": "mTBILL",
+    "verified_via": "xrpscan@axelar-bridge",
+    "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
+    "notes": "Midas mTBILL bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled."
+  },
+  "4D49444153000000000000000000000000000000:": {
+    "currency_hex": "4D49444153000000000000000000000000000000",
+    "issuer": "",
+    "currency_display": "MIDAS",
+    "verified_via": "xrpscan@brand-protected",
+    "notes": "MIDAS currency code has no canonical XRPL issuer. Midas's authentic XRPL representation is mTBILL via Axelar Bridge, not MIDAS. Any wallet issuing MIDAS on XRPL is a spoof."
+  },
+  "4D5442494C4C0000000000000000000000000000:": {
+    "currency_hex": "4D5442494C4C0000000000000000000000000000",
+    "issuer": "",
+    "currency_display": "MTBILL",
+    "verified_via": "xrpscan@brand-protected",
+    "notes": "MTBILL (uppercase) is not Midas's canonical mTBILL. Different bytes, different brand. Any wallet issuing MTBILL is a spoof of the case-changed lookalike."
   }
 }
