@@ -235,6 +235,30 @@ CREATE TABLE IF NOT EXISTS rlusd_state_cache (
     written_at BIGINT NOT NULL,
     CHECK (id = 1)
 );
+
+-- Institutional RWA families with on-chain presence on XRPL. Seeded from
+-- migrations/2026_05_14_rwa_schema.sql; SCHEMA_DDL re-declaration here keeps
+-- fresh installs in sync. Idempotent.
+CREATE TABLE IF NOT EXISTS rwa_family (
+    family_slug        TEXT PRIMARY KEY,
+    family_name        TEXT NOT NULL,
+    description        TEXT,
+    external_url       TEXT,
+    attestation_level  TEXT NOT NULL
+        CHECK (attestation_level IN ('verified','inferred','preliminary')),
+    created_at         TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS rwa_pool_attribution (
+    pool_address  TEXT NOT NULL,
+    family_slug   TEXT NOT NULL REFERENCES rwa_family(family_slug),
+    confidence    TEXT NOT NULL CHECK (confidence IN ('high','medium','low')),
+    provenance    TEXT NOT NULL,
+    notes         TEXT,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (pool_address, family_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_rwa_pool_attribution_family
+    ON rwa_pool_attribution (family_slug);
 """
 
 

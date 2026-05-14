@@ -1906,6 +1906,139 @@ def api_rlusd_state():
     return fetch_state()
 
 
+@app.route("/rwa")
+def rwa():
+    """Institutional RWA on XRPL — verified issuer families with on-chain
+    liquidity. Two tiers: (A) TOML-attested MPT issuers (no trust-line
+    liquidity yet), (B) AMM pools whose counterparty issuer matches a
+    verified-brand allowlist. Plus an open exclusion list naming what we
+    chose NOT to surface and why — the truth-first credibility multiplier."""
+    families = []
+    mpt_attested = []
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT f.family_slug, f.family_name, f.description,
+                               f.external_url, f.attestation_level,
+                               COALESCE(
+                                 array_agg(p.pool_address)
+                                   FILTER (WHERE p.pool_address IS NOT NULL),
+                                 '{}'
+                               ) AS pool_addresses
+                          FROM rwa_family f
+                     LEFT JOIN rwa_pool_attribution p
+                            ON f.family_slug = p.family_slug
+                      GROUP BY f.family_slug, f.family_name, f.description,
+                               f.external_url, f.attestation_level
+                      ORDER BY array_length(array_agg(p.pool_address), 1)
+                                 DESC NULLS LAST,
+                               f.family_name
+                    """)
+                    for row in cur.fetchall():
+                        families.append({
+                            "slug": row[0],
+                            "name": row[1],
+                            "description": row[2],
+                            "external_url": row[3],
+                            "attestation_level": row[4],
+                            "pool_addresses": list(row[5] or []),
+                            "pool_details": [],
+                            "total_tvl_usd": 0.0,
+                            "tokens": [],
+                        })
+                    cur.execute("""
+                        SELECT address, name, extra
+                          FROM account_labels
+                         WHERE source = 'toml' AND category = 'mpt_issuer'
+                      ORDER BY name
+                    """)
+                    for row in cur.fetchall():
+                        extra = row[2] if isinstance(row[2], dict) else {}
+                        mpt_attested.append({
+                            "address": row[0],
+                            "name": row[1],
+                            "domain": extra.get("domain"),
+                        })
+        except Exception:
+            pass
+
+    try:
+        ranked_rows, ranked_meta = _ranked_amm_snapshot()
+    except Exception:
+        ranked_rows, ranked_meta = [], {}
+    by_address = {
+        r.get("amm_account"): r
+        for r in (ranked_rows or [])
+        if r.get("amm_account")
+    }
+
+    for family in families:
+        tokens = set()
+        for addr in family["pool_addresses"]:
+            pool = by_address.get(addr)
+            if not pool:
+                continue
+            family["pool_details"].append(pool)
+            family["total_tvl_usd"] += pool.get("tvl_usd") or 0.0
+            for side_key in ("asset_a", "asset_b"):
+                side = pool.get(side_key) or {}
+                disp = side.get("display")
+                if disp and disp != "XRP":
+                    tokens.add(disp)
+        family["tokens"] = sorted(tokens)
+
+    verified_families = [
+        f for f in families if f["attestation_level"] == "verified"
+    ]
+    total_family_count = len(verified_families)
+    total_pool_count = sum(len(f["pool_addresses"]) for f in verified_families)
+    total_tvl = sum(f["total_tvl_usd"] for f in verified_families)
+
+    snap_ts = ranked_meta.get("snapshot_ts") if isinstance(ranked_meta, dict) else None
+    snapshot_age = (
+        max(0, int(time.time()) - int(snap_ts)) if snap_ts else None
+    )
+
+    exclude_list = [
+        {"name": "BlackRock", "status": "excluded",
+         "reason": "Vanity wallet rBLACK… exists on-ledger, but BlackRock "
+                   "issues no trust-line tokens on XRPL. BUIDL is Ethereum-only "
+                   "via Securitize."},
+        {"name": "Ripple Treasury (3 variants)", "status": "excluded",
+         "reason": "Three spellings (Ripple Treasury / XRPLTreasury / "
+                   "XRPTreasury) across unlabeled wallets. No Ripple Labs "
+                   "attestation."},
+        {"name": "GTreasury", "status": "excluded",
+         "reason": "Real treasury-management software company at gtreasury.com "
+                   "but no XRPL tokenization announcement. Suspected brand "
+                   "spoof."},
+        {"name": "Ondo Finance", "status": "pending",
+         "reason": "Vanity wallet rondo… on-ledger, no domain attestation "
+                   "chain. Promote to verified pending TOML check at "
+                   "ondo.finance."},
+        {"name": "Franklin Templeton (sgBENJI)", "status": "pending",
+         "reason": "Franklin BENJI not in Franklin Templeton's public XRPL "
+                   "announcements. Promote pending domain attestation."},
+        {"name": "Archax", "status": "pending",
+         "reason": "Archax is a real institutional broker (archax.com) but no "
+                   "evidence of trust-line token issuance on XRPL. Promote "
+                   "pending TOML check."},
+    ]
+
+    return render_template(
+        "rwa.html",
+        families=verified_families,
+        mpt_attested=mpt_attested,
+        exclude_list=exclude_list,
+        total_pool_count=total_pool_count,
+        total_family_count=total_family_count,
+        total_tvl=total_tvl,
+        snapshot_age=snapshot_age,
+    )
+
+
 @app.route("/methodology")
 def methodology():
     """Per-surface freshness, cache TTLs, data sources, known limitations.
