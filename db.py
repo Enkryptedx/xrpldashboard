@@ -298,12 +298,19 @@ def _get_writer_conn():
     if _writer_conn is not None:
         return _writer_conn
     try:
+        # Prefer DATABASE_URL_DIRECT (Neon unpooled endpoint) when set —
+        # this is the long-lived cached conn, and PgBouncer transaction
+        # mode rebalances server conns between client transactions.
+        # Today's writes are all autocommit single-statement so it works
+        # through the pooler, but adding SET LOCAL / prepared statements
+        # would silently break. Falls back to DATABASE_URL if unset.
         # connect_timeout caps a single connect attempt; TCP keepalives let
         # a half-dead Neon connection surface as an error instead of
         # blocking the worker indefinitely (root cause of the 2026-05-08
         # wedge: socket sat in CLOSE_WAIT while the worker mutex parked).
+        writer_url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
         _writer_conn = psycopg.connect(
-            pg_url(),
+            writer_url,
             autocommit=True,
             connect_timeout=10,
             keepalives=1,
