@@ -500,7 +500,12 @@ def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
         cands = candidates_token_issuers(args.top_n)
     else:
         return []
+    before_dedup = len(cands)
     cands = [a for a in cands if a not in seen]
+    dedup_dropped = before_dedup - len(cands)
+    if dedup_dropped:
+        log(f"  [{mode}] cross-mode dedup: {dedup_dropped}/{before_dedup} "
+            f"candidate(s) already walked in an earlier mode — skipping")
     if not args.force_recheck:
         cands = filter_curated(cands)
     # --limit applies to every wallet-walking mode so dry-runs stay
