@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -62,6 +63,32 @@ LOG_PATH = os.path.join(HERE, "verify_toml.log")
 XRPL_RPC = os.environ.get("XRPL_RPC", "https://s1.ripple.com:51234")
 HTTP_TIMEOUT = 10
 USER_AGENT = "xrpldashboard-toml-verifier/1.0 (+https://xrpldashboard.com)"
+
+# Strict hostname gate applied before any HTTP fetch. RFC 1035 label shape:
+# lowercase alnum, internal hyphens allowed but no leading/trailing hyphen,
+# each label 1-63 chars, at least one dot, total length 4-253. Rejects
+# IP addresses, paths, schemes, ports, IDN punycode-as-input, whitespace,
+# and the on-chain `Domain` field accidents (control bytes, mojibake) that
+# slip past minimal ASCII decoding.
+DOMAIN_RE = re.compile(
+    r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+    r"(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+)
+
+
+def _is_safe_domain(d) -> bool:
+    if not isinstance(d, str):
+        return False
+    d = d.strip().lower()
+    if not (4 <= len(d) <= 253 and DOMAIN_RE.match(d)):
+        return False
+    # Reject IPv4 literals (last label all-digits is never a valid TLD
+    # under IANA policy). Without this, the regex accepts "192.168.1.1"
+    # and an attacker-controlled on-chain Domain field could SSRF to
+    # internal infra via https://<rfc1918>/.well-known/xrp-ledger.toml.
+    if d.rsplit(".", 1)[-1].isdigit():
+        return False
+    return True
 
 
 def log(msg: str) -> None:
@@ -119,7 +146,7 @@ def fetch_domain_field(client: JsonRpcClient, address: str) -> str | None:
         except (ValueError, UnicodeDecodeError):
             return None
         decoded = decoded.strip().lower()
-        if not decoded or "/" in decoded or " " in decoded:
+        if not _is_safe_domain(decoded):
             return None
         return decoded
     except Exception:
@@ -128,6 +155,10 @@ def fetch_domain_field(client: JsonRpcClient, address: str) -> str | None:
 
 def fetch_toml(domain: str) -> tuple[str, dict | None, str | None]:
     """Fetch domain's xrp-ledger.toml. Returns (final_url, parsed, error_reason)."""
+    if not _is_safe_domain(domain):
+        return f"https://{domain}/.well-known/xrp-ledger.toml", None, (
+            "rejected by domain regex gate"
+        )
     url = f"https://{domain}/.well-known/xrp-ledger.toml"
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
