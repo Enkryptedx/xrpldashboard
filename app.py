@@ -592,6 +592,66 @@ def _volumes_db_age_seconds():
         return None
 
 
+_VERIFIED_BRANDS_CACHE = {"data": None, "ts": 0.0}
+
+
+def _verified_brands():
+    """Return dict[currency_hex] -> set of TOML-attested issuers.
+
+    Source of truth is token_names.json's verified_via field: any entry
+    pointing to an xrp-ledger.toml marks its issuer as canonical for that
+    currency_hex. Cached for 5 min — the file mutates rarely."""
+    now = time.time()
+    cached = _VERIFIED_BRANDS_CACHE
+    if cached["data"] is not None and now - cached["ts"] < 300:
+        return cached["data"]
+    brands = {}
+    raw = _safe_load_json(TOKEN_NAMES_PATH) or {}
+    for entry in raw.values():
+        if not isinstance(entry, dict):
+            continue
+        ver = entry.get("verified_via") or ""
+        if "xrp-ledger.toml" not in ver:
+            continue
+        cur_hex = entry.get("currency_hex")
+        iss = entry.get("issuer")
+        if cur_hex and iss:
+            brands.setdefault(cur_hex, set()).add(iss)
+    cached["data"] = brands
+    cached["ts"] = now
+    return brands
+
+
+def _annotate_unverified_brands(rows):
+    """Stamp unverified_brand on asset_a/asset_b for ranked-pool rows whose
+    display label comes from decode_currency() (hex → ASCII) rather than
+    a peg-table lookup. If a side's currency_hex is a TOML-attested brand
+    but its issuer isn't on the per-brand allowlist, the label is a
+    leaky-abstraction spoof — set unverified_brand=True and surface the
+    canonical issuer list (truncated for tooltip display) so the template
+    can render an attribution warning without hardcoding addresses.
+    Idempotent — safe to call repeatedly."""
+    brands = _verified_brands()
+    if not brands:
+        return rows
+    for r in rows:
+        for side_key in ("asset_a", "asset_b"):
+            side = r.get(side_key)
+            if not isinstance(side, dict) or "unverified_brand" in side:
+                continue
+            cur = side.get("currency")
+            iss = side.get("issuer")
+            unverified = bool(
+                cur and iss and cur in brands and iss not in brands[cur]
+            )
+            side["unverified_brand"] = unverified
+            if unverified:
+                side["canonical_issuers"] = ", ".join(
+                    f"{a[:6]}…{a[-4:]}" for a in sorted(brands[cur])
+                )
+    return rows
+
+
 def _ranked_amm_snapshot():
     """Single source of truth for AMM ranking data on /pools and the
     homepage AMM card. Prefers Postgres (the Mac-hosted ranker dual-writes
@@ -617,7 +677,7 @@ def _ranked_amm_snapshot():
                 snap_ts = db.read_amm_snapshot_ts()
             except Exception:
                 snap_ts = None
-            return rows, {
+            return _annotate_unverified_brands(rows), {
                 "indexed_count": extra.get("indexed_count") or len(rows),
                 "started_at": extra.get("started_at"),
                 "finished_at": extra.get("finished_at"),
@@ -633,7 +693,7 @@ def _ranked_amm_snapshot():
             snap_ts = int(os.path.getmtime(AMM_RANKED_PATH))
     except Exception:
         snap_ts = None
-    return rows, {
+    return _annotate_unverified_brands(rows), {
         "indexed_count": len(index) if isinstance(index, list) else 0,
         "started_at": state.get("started_at"),
         "finished_at": state.get("finished_at"),

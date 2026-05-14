@@ -396,6 +396,13 @@
     .row .tvl.is-non_xrp_pair { color: var(--dim); }
     .row .tvl.is-error { color: var(--red); }
 
+    /* Brand-spoof warning: currency_hex matches a TOML-attested brand
+       (e.g. RLUSD) but the pool's issuer is not the attested one. The
+       marker is the only signal the visitor has that "RLUSD" on this
+       row is not from Ripple's verified wallet. */
+    .brand-warn { color: var(--amber); font-size: 0.85em; cursor: help;
+                  margin-left: 0.25em; vertical-align: middle; }
+
     .empty { background: var(--card); border: 1px dashed var(--border);
              border-radius: 10px; padding: 24px 18px; text-align: center;
              color: var(--muted); }
@@ -435,6 +442,15 @@
 
   {% include "_nav.html" %}
   {% from "_explainer.html" import explainer %}
+
+  {% macro brand_warn(p) -%}
+    {%- set unv_a = p.asset_a and p.asset_a.unverified_brand -%}
+    {%- set unv_b = p.asset_b and p.asset_b.unverified_brand -%}
+    {%- if unv_a or unv_b -%}
+      {%- set unv = p.asset_b if unv_b else p.asset_a -%}
+      <span class="brand-warn" title="{{ _('Unverified issuer — currency code matches %(brand)s but not the attested wallet. Verified %(brand)s issuer: %(addr)s. May be spoof or community-minted lookalike.', brand=unv.display, addr=unv.canonical_issuers) }}">⚠</span>
+    {%- endif -%}
+  {%- endmacro %}
 
   <div class="pool-hero">
     <div>
@@ -547,7 +563,7 @@
        style="--cx: {{ pos[0] }}%; --cy: {{ pos[1] }}%; --c: {{ core }}px; --g: {{ glow }}px; --rgb: {{ rgb }}; --ping: {{ ping_dur }}s; --pingd: {{ ping_delay }}s;">
       <span class="s-rank">#{{ loop.index }}</span>
       <span class="s-label">
-        <span class="l-pair">{{ p.pair }}</span>
+        <span class="l-pair">{{ p.pair }}{{ brand_warn(p) }}</span>
         <span class="l-tvl">{{ fmt_money(p.tvl_usd) }}</span>
       </span>
     </a>
@@ -562,7 +578,7 @@
        data-amm="{{ p.amm_account }}"
        data-tvl-usd="{{ p.tvl_usd or 0 }}"
        title="{{ p.pair }} — {{ fmt_money(p.tvl_usd) }} ({{ '%.1f'|format(p.share_of_top10) }}% of top 10)">
-      <span class="seg-pair">{{ p.pair }}</span>
+      <span class="seg-pair">{{ p.pair }}{{ brand_warn(p) }}</span>
       <span class="seg-tvl">{{ fmt_money(p.tvl_usd) }}</span>
     </a>
     {% endfor %}
@@ -595,7 +611,7 @@
     <div class="row">
       <div class="rank">{{ loop.index }}</div>
       <div class="pair-block">
-        <div class="pair">{{ p.pair }}</div>
+        <div class="pair">{{ p.pair }}{{ brand_warn(p) }}</div>
         <div class="acct">{{ p.amm_account }}</div>
       </div>
       <div class="fee">{{ "%.3f"|format(p.fee_pct or 0) }}%</div>

@@ -98,6 +98,29 @@ def load_token_pegs():
     return pegs
 
 
+def load_verified_brands():
+    """Return dict[currency_hex] -> set of TOML-attested issuers.
+
+    A currency_hex is a 'protected brand' if any token_names.json entry
+    for it has verified_via pointing to an xrp-ledger.toml. The display
+    label decoded from the hex (e.g. 'RLUSD') is only trustworthy when
+    the issuer is on the per-brand allowlist; any other issuer rendering
+    that hex on /pools is currency-code spoofing the brand."""
+    brands = {}
+    raw = load_json(TOKEN_NAMES_PATH, {})
+    for entry in raw.values():
+        if not isinstance(entry, dict):
+            continue
+        ver = entry.get("verified_via") or ""
+        if "xrp-ledger.toml" not in ver:
+            continue
+        cur_hex = entry.get("currency_hex")
+        iss = entry.get("issuer")
+        if cur_hex and iss:
+            brands.setdefault(cur_hex, set()).add(iss)
+    return brands
+
+
 def decode_currency(currency):
     """XRPL token currency is either 3-char ASCII or 40-char hex.
     Hex codes carry an embedded ASCII name (or junk). Return a display
@@ -116,22 +139,34 @@ def decode_currency(currency):
     return currency[:8].upper()  # short hex if undecodable
 
 
-def normalize_pair(asset, asset2, pegs):
+def normalize_pair(asset, asset2, pegs, verified_brands=None):
     """Return (display_pair, asset_meta_a, asset_meta_b, kind).
-    kind ∈ {'xrp_first', 'xrp_second', 'non_xrp'}."""
+    kind ∈ {'xrp_first', 'xrp_second', 'non_xrp'}.
+
+    When verified_brands is provided, sides whose currency_hex matches a
+    TOML-attested brand but whose issuer is not on the allowlist get
+    unverified_brand=True so downstream UI can flag the spoof."""
+    if verified_brands is None:
+        verified_brands = {}
+
     def meta(side):
         cur = side.get("currency", "?")
         issuer = side.get("issuer")
         if cur == "XRP":
             return {"display": "XRP", "currency": "XRP", "issuer": None,
-                    "peg_usd": XRP_USD_PRICE, "category": "native"}
+                    "peg_usd": XRP_USD_PRICE, "category": "native",
+                    "unverified_brand": False}
         peg_entry = pegs.get((cur, issuer))
         if peg_entry:
             return {"display": peg_entry["display"], "currency": cur,
                     "issuer": issuer, "peg_usd": peg_entry["peg_usd"],
-                    "category": peg_entry["category"]}
+                    "category": peg_entry["category"],
+                    "unverified_brand": False}
+        unverified = (cur in verified_brands
+                      and issuer not in verified_brands[cur])
         return {"display": decode_currency(cur), "currency": cur,
-                "issuer": issuer, "peg_usd": None, "category": None}
+                "issuer": issuer, "peg_usd": None, "category": None,
+                "unverified_brand": unverified}
 
     a = meta(asset)
     b = meta(asset2)
@@ -175,11 +210,13 @@ def request_with_retry(client, request):
     raise RuntimeError(f"exhausted retries: {last_err}")
 
 
-def rank_one(client, amm_entry, pegs):
+def rank_one(client, amm_entry, pegs, verified_brands=None):
     """Return a ranked-pool dict, or None if the AMM couldn't be priced."""
     asset  = amm_entry.get("Asset", {})
     asset2 = amm_entry.get("Asset2", {})
-    pair, meta_a, meta_b, kind = normalize_pair(asset, asset2, pegs)
+    pair, meta_a, meta_b, kind = normalize_pair(
+        asset, asset2, pegs, verified_brands
+    )
 
     try:
         resp = request_with_retry(client, AMMInfo(asset=asset, asset2=asset2))
@@ -325,6 +362,9 @@ def main():
 
     pegs = load_token_pegs()
     log(f"loaded {len(pegs)} token pegs from {os.path.basename(TOKEN_NAMES_PATH)}")
+    verified_brands = load_verified_brands()
+    log(f"loaded {len(verified_brands)} TOML-attested brand(s) "
+        f"({sum(len(s) for s in verified_brands.values())} issuer(s))")
 
     index = load_json(INDEX_PATH, None)
     if index is None:
@@ -366,7 +406,7 @@ def main():
         entry = index[i]
         t0 = time.time()
         try:
-            row = rank_one(client, entry, pegs)
+            row = rank_one(client, entry, pegs, verified_brands)
         except KeyboardInterrupt:
             log("interrupted — saving progress")
             save_json(RANKED_PATH, ranked)
