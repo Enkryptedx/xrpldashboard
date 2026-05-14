@@ -234,6 +234,21 @@
              border-radius: 10px; padding: 24px 18px; text-align: center;
              color: var(--muted); }
     .empty .big { color: var(--text); font-size: 1.05rem; margin-bottom: 6px; }
+    .empty.by-design { text-align: left; max-width: 640px; margin: 0 auto;
+                       padding: 22px 22px; border-left: 3px solid var(--cyan);
+                       border-radius: 8px; }
+    .empty.by-design .big { text-align: left; margin-bottom: 10px; }
+    .empty.by-design .by-design-badge {
+      display: inline-block; font-family: var(--mono); font-size: 0.65rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--cyan); border: 1px solid rgba(34,211,238,0.4);
+      background: rgba(34,211,238,0.06);
+      padding: 2px 7px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .empty.by-design p { margin: 0 0 10px; font-style: italic;
+                         font-size: 0.92rem; line-height: 1.55; }
+    .empty.by-design p.followup { font-style: normal; color: var(--dim);
+                                  font-size: 0.85rem; margin-top: 12px; }
 
     .callout { background: var(--card); border: 1px solid var(--border);
                border-left: 3px solid var(--cyan); border-radius: 6px;
@@ -393,18 +408,40 @@
     </div>
     {% endfor %}
   {% else %}
-    <div class="empty">
-      <div class="big">{{ _('No events to show yet.') }}</div>
-      <div>
-        {% if filter_type %}
-          {{ _('Nothing of type') }} <code>{{ filter_type }}</code> {{ _('in the database. Try') }}
-          <a href="/whales">{{ _('all events') }}</a>.
-        {% else %}
-          {{ _("The live watcher is running but hasn't logged any events that meet the criteria yet. Check") }}
-          <a href="/health">/health</a> {{ _('for watcher status.') }}
-        {% endif %}
+    {% if filter_type == 'trustset' %}
+      <div class="empty by-design">
+        <span class="by-design-badge">{{ _('by design') }}</span>
+        <div class="big">{{ _('No TrustSet events from the current watchlist.') }}</div>
+        <p>
+          {% trans -%}
+          The watchlist is composed of token issuers and Ripple escrows, neither of which
+          initiates TrustSet transactions — issuers receive trust lines from their holders,
+          and escrows release funds but don't accumulate them. So the current filter has
+          nothing to surface.
+          {%- endtrans %}
+        </p>
+        <p class="followup">
+          {% trans -%}
+          Catching organic whale accumulation requires a balance-threshold filter (any
+          account holding above a floor of XRP creating a new trust line). On the roadmap.
+          {%- endtrans %}
+          <a href="/whales?tier={{ tier }}">{{ _('Browse all events') }}</a>.
+        </p>
       </div>
-    </div>
+    {% else %}
+      <div class="empty">
+        <div class="big">{{ _('No events to show yet.') }}</div>
+        <div>
+          {% if filter_type %}
+            {{ _('Nothing of type') }} <code>{{ filter_type }}</code> {{ _('in the database. Try') }}
+            <a href="/whales">{{ _('all events') }}</a>.
+          {% else %}
+            {{ _("The live watcher is running but hasn't logged any events that meet the criteria yet. Check") }}
+            <a href="/health">/health</a> {{ _('for watcher status.') }}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
   {% endif %}
   </div>{# /.event-list #}
 
