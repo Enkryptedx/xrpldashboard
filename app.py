@@ -657,8 +657,10 @@ def _annotate_unverified_brands(rows):
             )
             side["unverified_brand"] = unverified
             if unverified:
+                canonical = brands[cur]
+                side["is_null_canonical"] = not canonical
                 side["canonical_issuers"] = ", ".join(
-                    f"{a[:6]}…{a[-4:]}" for a in sorted(brands[cur])
+                    f"{a[:6]}…{a[-4:]}" for a in sorted(canonical)
                 )
     return rows
 

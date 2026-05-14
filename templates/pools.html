@@ -448,7 +448,11 @@
     {%- set unv_b = p.asset_b and p.asset_b.unverified_brand -%}
     {%- if unv_a or unv_b -%}
       {%- set unv = p.asset_b if unv_b else p.asset_a -%}
-      <span class="brand-warn" title="{{ _('Unverified issuer — currency code matches %(brand)s but not the attested wallet. Verified %(brand)s issuer: %(addr)s. May be spoof or community-minted lookalike.', brand=unv.display, addr=unv.canonical_issuers) }}">⚠</span>
+      {%- if unv.is_null_canonical -%}
+        <span class="brand-warn" title="{{ _('No canonical XRPL issuer for %(brand)s — its canonical issuance is off-XRPL. Any wallet issuing %(brand)s on XRPL is by definition a spoof.', brand=unv.display) }}">⚠</span>
+      {%- else -%}
+        <span class="brand-warn" title="{{ _('Unverified issuer — currency code matches %(brand)s but not the attested wallet. Verified %(brand)s issuer: %(addr)s. May be spoof or community-minted lookalike.', brand=unv.display, addr=unv.canonical_issuers) }}">⚠</span>
+      {%- endif -%}
     {%- endif -%}
   {%- endmacro %}
 
