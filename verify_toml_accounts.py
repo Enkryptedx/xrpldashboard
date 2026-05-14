@@ -114,6 +114,88 @@ def save_named(data: dict) -> None:
         f.write("\n")
 
 
+def candidates_mpt_issuers() -> list[str]:
+    """MPT issuance issuer wallets — read from `mpt_snapshot` JSONB
+    (mirror of mpt_snapshot.json). Returns dedup'd issuer addresses in
+    snapshot order so output is reproducible run-to-run."""
+    try:
+        import db
+    except Exception as e:
+        log(f"WARN candidates_mpt_issuers: db import failed: {e}")
+        return []
+    try:
+        snap = db.read_mpt_snapshot()
+    except Exception as e:
+        log(f"WARN candidates_mpt_issuers: read_mpt_snapshot failed: {e}")
+        return []
+    if not snap:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for r in (snap.get("issuances") or []):
+        addr = r.get("issuer")
+        if addr and addr not in seen:
+            seen.add(addr)
+            out.append(addr)
+    return out
+
+
+def candidates_token_issuers(top_n: int) -> list[str]:
+    """Top-N trust-line token issuers by recent trade count — read from
+    `token_volume` aggregates (Postgres-first, what /tokens already
+    ranks). Returns issuer addresses, deduped, in trade-count DESC order."""
+    try:
+        import db
+    except Exception as e:
+        log(f"WARN candidates_token_issuers: db import failed: {e}")
+        return []
+    try:
+        rows = db.read_token_volume_aggregates(hours_back=None, limit=top_n)
+    except Exception as e:
+        log(f"WARN candidates_token_issuers: read_token_volume_aggregates "
+            f"failed: {e}")
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for cur, iss, _trades, _hours in rows:
+        if iss and iss not in seen:
+            seen.add(iss)
+            out.append(iss)
+    return out
+
+
+def filter_curated(addrs: list[str]) -> list[str]:
+    """Skip addresses that already have a non-derived `account_labels`
+    row (manual / xrpscan / toml — curated layers we don't want to
+    overwrite or waste RPC re-checking). Pass-through if db is
+    unavailable so org/on-chain runs aren't blocked offline."""
+    if not addrs:
+        return addrs
+    try:
+        import db
+    except Exception as e:
+        log(f"WARN filter_curated: db import failed ({e}); "
+            f"pass-through with {len(addrs)} candidate(s)")
+        return addrs
+    try:
+        labeled = db.read_account_labels(addrs)
+    except Exception as e:
+        log(f"WARN filter_curated: read_account_labels failed ({e}); "
+            f"pass-through with {len(addrs)} candidate(s)")
+        return addrs
+    kept = [
+        a for a in addrs
+        if not (labeled.get(a) and not (
+            labeled[a].get("source", "").startswith("derived:")
+        ))
+    ]
+    skipped = len(addrs) - len(kept)
+    if skipped:
+        log(f"  curated-skip: {skipped}/{len(addrs)} candidate(s) already "
+            f"labeled (non-derived); use --force-recheck to override")
+    return kept
+
+
 def active_addresses() -> set[str]:
     """Unique from_addr/to_addr seen in events.db."""
     seen: set[str] = set()
@@ -319,24 +401,34 @@ def scan_org_mode(named: dict, dry_run: bool) -> tuple[int, int]:
 # ─── ON-CHAIN MODE ────────────────────────────────────────────────────────
 
 def scan_account_mode(
-    candidates: list[str], named: dict, dry_run: bool
+    candidates: list[str], named: dict, dry_run: bool,
+    mode_tag: str = "on-chain",
 ) -> tuple[int, int]:
-    log(f"on-chain mode: probing {len(candidates)} account(s) for Domain field")
+    """Walk each candidate via on-chain `Domain` field → TOML two-way
+    proof. Same verification path for every candidate source; the only
+    difference is the `mode_tag` printed in log lines so a multi-mode
+    --all run is grep-able."""
+    log(f"[{mode_tag}] probing {len(candidates)} account(s) for Domain field")
+    if not candidates:
+        return 0, 0
     client = JsonRpcClient(XRPL_RPC)
     new_count = refreshed_count = 0
 
     for i, addr in enumerate(candidates, 1):
         domain = fetch_domain_field(client, addr)
         if not domain:
+            log(f"  [{mode_tag}] {addr}: NO_DOMAIN")
             time.sleep(0.1)  # throttle even on misses
             continue
         final_url, toml_data, err = fetch_toml(domain)
         if toml_data is None:
-            log(f"  {addr}: domain={domain} → toml unusable ({err})")
+            log(f"  [{mode_tag}] {addr}: ERROR domain={domain} → "
+                f"toml unusable ({err})")
             time.sleep(0.1)
             continue
         if not address_in_toml(toml_data, addr):
-            log(f"  {addr}: domain={domain} → toml does NOT list this address")
+            log(f"  [{mode_tag}] {addr}: UNVERIFIABLE domain={domain} → "
+                f"toml does NOT list this address")
             time.sleep(0.1)
             continue
         # Find the ACCOUNTS block matching this address (for name/desc)
@@ -358,16 +450,63 @@ def scan_account_mode(
         outcome = upsert(named, addr, entry, dry_run)
         if outcome == "new":
             new_count += 1
-            log(f"  NEW [{i}/{len(candidates)}] {addr} → {entry['name']}")
+            log(f"  [{mode_tag}] {addr}: VERIFIED [{i}/{len(candidates)}] → "
+                f"{entry['name']} ({final_url})")
         elif outcome == "refreshed":
             refreshed_count += 1
-            log(f"  refreshed [{i}/{len(candidates)}] {addr}")
+            log(f"  [{mode_tag}] {addr}: REFRESHED [{i}/{len(candidates)}] "
+                f"({final_url})")
+        else:
+            log(f"  [{mode_tag}] {addr}: VERIFIED (noop, already current)")
         time.sleep(0.15)  # be polite to public RPC
 
     return new_count, refreshed_count
 
 
 # ─── ENTRYPOINT ───────────────────────────────────────────────────────────
+
+MODE_CHOICES = ("org", "on-chain", "mpt-issuers", "token-issuers")
+
+
+def _resolve_modes(args) -> list[str]:
+    """Pick which modes to run, honouring legacy flags for backwards-compat.
+    Precedence: --mode > --all > legacy --org-only/--account-only > default."""
+    if args.mode:
+        return [args.mode]
+    if args.all:
+        return list(MODE_CHOICES)
+    if args.org_only:
+        return ["org"]
+    if args.account_only:
+        return ["on-chain"]
+    # Default = pre-existing behaviour (ORG + ON-CHAIN). MPT and token
+    # modes are opt-in until the population pass has been reviewed.
+    return ["org", "on-chain"]
+
+
+def _gather_candidates(mode: str, args, seen: set[str]) -> list[str]:
+    """Source the candidate list for `mode`, drop wallets already walked
+    in this --all run, then apply the curated-skip filter unless
+    --force-recheck is set."""
+    if mode == "org":
+        return []  # org mode walks domains, not pre-listed wallets
+    if mode == "on-chain":
+        cands = sorted(active_addresses())
+        extras = [s.strip() for s in (args.extra or "").split(",") if s.strip()]
+        cands.extend(a for a in extras if a not in cands)
+        if args.limit:
+            cands = cands[: args.limit]
+    elif mode == "mpt-issuers":
+        cands = candidates_mpt_issuers()
+    elif mode == "token-issuers":
+        cands = candidates_token_issuers(args.top_n)
+    else:
+        return []
+    cands = [a for a in cands if a not in seen]
+    if not args.force_recheck:
+        cands = filter_curated(cands)
+    return cands
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
@@ -377,39 +516,63 @@ def main() -> int:
                     help="comma-separated extra XRPL addresses for on-chain mode")
     ap.add_argument("--limit", type=int, default=0,
                     help="cap addresses scanned in on-chain mode (0 = no cap)")
+    ap.add_argument("--mode", choices=MODE_CHOICES, default=None,
+                    help="run a single candidate-source mode "
+                         "(default: org + on-chain)")
+    ap.add_argument("--all", action="store_true",
+                    help=f"run every mode sequentially: "
+                         f"{', '.join(MODE_CHOICES)}")
+    ap.add_argument("--top-n", type=int, default=50,
+                    help="N for --mode token-issuers (default 50)")
+    ap.add_argument("--force-recheck", action="store_true",
+                    help="walk candidates even if account_labels has a "
+                         "non-derived row for them (default: skip curated)")
+    # Legacy aliases — kept so existing launchd jobs and ops scripts keep
+    # working without a flag flip.
     ap.add_argument("--org-only", action="store_true",
-                    help="run only the ORG (domain seed) mode")
+                    help="legacy alias for --mode org")
     ap.add_argument("--account-only", action="store_true",
-                    help="run only the ON-CHAIN (Domain field) mode")
+                    help="legacy alias for --mode on-chain")
     args = ap.parse_args()
 
+    modes = _resolve_modes(args)
     log("=" * 60)
-    log(f"verify_toml_accounts start (dry_run={args.dry_run})")
+    log(f"verify_toml_accounts start (dry_run={args.dry_run} "
+        f"modes={','.join(modes)} top_n={args.top_n} "
+        f"force_recheck={args.force_recheck})")
     named = load_json(NAMED_ACCOUNTS_PATH, {})
     initial_size = len(named)
 
-    org_new = org_refreshed = acct_new = acct_refreshed = 0
+    seen: set[str] = set()
+    per_mode_new: dict[str, int] = {}
+    per_mode_ref: dict[str, int] = {}
 
-    if not args.account_only:
-        org_new, org_refreshed = scan_org_mode(named, args.dry_run)
+    for mode in modes:
+        try:
+            if mode == "org":
+                new, ref = scan_org_mode(named, args.dry_run)
+            else:
+                cands = _gather_candidates(mode, args, seen)
+                seen.update(cands)
+                new, ref = scan_account_mode(
+                    cands, named, args.dry_run, mode_tag=mode,
+                )
+        except Exception as e:
+            # Continue-on-error: one mode's failure must not cascade.
+            log(f"ERROR mode={mode} crashed: {e!r} — continuing")
+            new, ref = 0, 0
+        per_mode_new[mode] = new
+        per_mode_ref[mode] = ref
 
-    if not args.org_only:
-        candidates = sorted(active_addresses())
-        extras = [s.strip() for s in args.extra.split(",") if s.strip()]
-        candidates.extend(a for a in extras if a not in candidates)
-        # Skip addresses already promoted via org mode this run
-        if args.limit:
-            candidates = candidates[: args.limit]
-        acct_new, acct_refreshed = scan_account_mode(
-            candidates, named, args.dry_run
-        )
+    new_total = sum(per_mode_new.values())
+    refreshed_total = sum(per_mode_ref.values())
 
-    new_total = org_new + acct_new
-    refreshed_total = org_refreshed + acct_refreshed
-
-    log(f"summary: new={new_total} (org={org_new} onchain={acct_new}) "
-        f"refreshed={refreshed_total} (org={org_refreshed} onchain={acct_refreshed}) "
-        f"watchlist {initial_size}→{len(named)}")
+    breakdown = " ".join(
+        f"{m}={per_mode_new.get(m, 0)}/{per_mode_ref.get(m, 0)}"
+        for m in modes
+    )
+    log(f"summary: new={new_total} refreshed={refreshed_total} "
+        f"[{breakdown}] watchlist {initial_size}→{len(named)}")
 
     if (new_total or refreshed_total) and not args.dry_run:
         save_named(named)
