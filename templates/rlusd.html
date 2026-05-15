@@ -1471,6 +1471,18 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
 })();
 </script>
 {{ explainer_js() }}
+{# --- signed-snapshot fingerprint pin --- #}
+<div class="callout">
+  <p>
+    <strong>{{ _('Signing key fingerprint.') }}</strong>
+    {% if snapshot_fingerprint %}
+      <code>{{ snapshot_fingerprint }}</code>
+    {% else %}
+      <span class="muted">{{ _('not yet published.') }}</span>
+    {% endif %}
+  </p>
+  <p>{{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.</p>
+</div>
 {% include "_vibes_scripts.html" %}
 </body>
 </html>

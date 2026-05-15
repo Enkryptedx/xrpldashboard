@@ -303,5 +303,18 @@
     {%- endtrans %}
   </p>
 </div>
+{# --- signed-snapshot fingerprint pin --- #}
+<div class="callout">
+  <p>
+    <strong>{{ _('Signing key fingerprint.') }}</strong>
+    {% if snapshot_fingerprint %}
+      <code>{{ snapshot_fingerprint }}</code>
+    {% else %}
+      <span class="muted">{{ _('not yet published.') }}</span>
+    {% endif %}
+  </p>
+  <p>{{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.</p>
+  <p class="muted" style="font-size:var(--fs-xs);margin-top:0.25rem;">{{ _('Total AUM signed in today\'s snapshot reflects on-chain liquidity only — institutional presence not yet fully captured.') }}</p>
+</div>
 </body>
 </html>
