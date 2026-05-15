@@ -48,12 +48,17 @@ def _load_known_tokens():
     for entry in data.values():
         if not isinstance(entry, dict):
             continue
+        display = entry.get("currency_display")
+        currency = entry.get("currency_hex")
+        issuer = entry.get("issuer")
+        if not display or not currency or not issuer:
+            continue
         category = entry.get("category")
         usd_peg = 1.00 if category in USD_PEGGED_CATEGORIES else None
         tokens.append({
-            "name": entry["currency_display"],
-            "currency": entry["currency_hex"],
-            "issuer": entry["issuer"],
+            "name": display,
+            "currency": currency,
+            "issuer": issuer,
             "usd_peg": usd_peg,
             "category": category,
         })
