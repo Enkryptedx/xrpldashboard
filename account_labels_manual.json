@@ -19,6 +19,19 @@
   ],
   "labels": [
     {
+      "address": "rf5Jzzy6oAFBJjLhokha1v8pXVgYYjee3b",
+      "name": "Ark Institute",
+      "category": "project",
+      "source": "toml",
+      "confidence": 1.0,
+      "extra": {
+        "verified_via": "https://ark.institute/.well-known/xrp-ledger.toml",
+        "attestation": "two_way",
+        "domain": "ark.institute",
+        "note": "ARK token issuer. Domain field on-ledger = ark.institute. TOML lists address under [[ISSUERS]]. Charitable funding platform."
+      }
+    },
+    {
       "address": "raZt4gvHF161caioa8CcC475TDhEpoaUKU",
       "name": "Soil (ORQO Group)",
       "category": "project",
