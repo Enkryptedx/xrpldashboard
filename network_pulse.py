@@ -44,7 +44,19 @@ def _ripple_to_unix(close_time):
 
 
 def _classify(load_factor, last_close_age, avg_close):
-    """Rule-based status. Plain-language, no LLM, no hype."""
+    """Rule-based status. Plain-language, no LLM, no hype.
+
+    Primary signal: avg ledger close time.
+      - Normal XRPL target: 3–4s. Above 5s = throughput genuinely degraded.
+    Secondary signal: load_factor from server_info.
+      - This is the *local* node's fee multiplier, not a network-wide figure.
+        Public nodes like s1.ripple.com routinely show 100–500x because they
+        absorb enormous client traffic. High load_factor alone does NOT mean the
+        network is slow — close time is the honest congestion signal.
+      - We only surface fee pressure when close time is also elevated, or when
+        load is extreme (>256) AND close time is borderline (>4s), to avoid
+        falsely labelling a 3.9s-close network as "CONGESTED".
+    """
     if last_close_age is None or avg_close is None:
         return "unknown", "Network status unavailable."
 
@@ -55,16 +67,16 @@ def _classify(load_factor, last_close_age, avg_close):
             "XRPL is degraded. Ledgers are closing slowly.",
         )
 
-    # Congested: load factor elevated (network charging more than base fee).
-    if load_factor and load_factor > 5.0:
+    # Congested: close time elevated AND fees are high — both signals together.
+    if avg_close > 5.0 and load_factor and load_factor > 10.0:
         return (
             "congested",
-            f"XRPL is operating but congested. "
-            f"Closing ledgers every {avg_close:.1f}s. Load is elevated.",
+            f"XRPL is congested. "
+            f"Closing ledgers every {avg_close:.1f}s with elevated fee load.",
         )
 
-    # Hot: minor load.
-    if load_factor and load_factor > 1.5:
+    # Hot: close time slightly above target, or extreme local node load.
+    if avg_close > 4.5 or (load_factor and load_factor > 256 and avg_close > 4.0):
         return (
             "running_hot",
             f"XRPL is operating normally. "
