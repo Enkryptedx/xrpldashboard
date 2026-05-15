@@ -596,7 +596,7 @@
   <h2>{{ _('Browse all') }} <span class="sub">{{ _('search &amp; filter') }}</span></h2>
   <div class="browse-meta">
     <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> {{ _('pools tracked · top 100 shown by default') }}{% if rank_in_progress %} · {{ _('ranking in progress') }}{% endif %}</span>
-    <span>{{ _('Most XRPL pools have negligible TVL — switch to') }} <em>{{ _('all') }}</em> {{ _('below to see the long tail.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %})</span>
+    <span>{{ _('Most XRPL pools have negligible TVL. The bottom ~27,000 sit at near-zero — many are non-XRP pairs we can\'t price honestly. Browse all if you want to confirm the long-tail shape.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %})</span>
   </div>
   <div class="search-bar">
     <input type="search" id="pool-search" placeholder="{{ _('Search pair (e.g. USDC, RLUSD, SOLO)…') }}" autocomplete="off" spellcheck="false" />
@@ -605,9 +605,9 @@
   <div class="filters">
     <a class="pill {% if tier == '100' %}active{% endif %}" href="/pools?tier=100">{{ _('top 100') }}</a>
     <a class="pill {% if tier == '500' %}active{% endif %}" href="/pools?tier=500">{{ _('top 500') }}</a>
-    <a class="pill {% if tier == 'all' %}active{% endif %}" href="/pools?tier=all">{{ _('all') }} ({{ ranked_count }})</a>
+    <a class="pill {% if tier == 'browse' %}active{% endif %}" href="/pools?page=1">{{ _('browse all →') }}</a>
   </div>
-  <div class="search-empty" id="pool-search-empty">{{ _('No pools match that search. Try fewer letters, or switch tier to') }} <a href="/pools?tier=all">{{ _('all') }}</a>.</div>
+  <div class="search-empty" id="pool-search-empty">{{ _('No pools match that search. Try fewer letters, or switch tier to') }} <a href="/pools?tier=500">{{ _('top 500') }}</a>{% if tier == 'browse' %} · {{ _('search applies to this page only') }}{% endif %}.</div>
 
   {% if rows %}
     {% for p in rows %}
@@ -636,6 +636,19 @@
     </div>
     </a>
     {% endfor %}
+
+  {% if tier == 'browse' and total_pages and total_pages > 1 %}
+  <nav class="pagination">
+    {% if page > 1 %}
+    <a class="pill" href="/pools?page={{ page - 1 }}">{{ _('← prev') }}</a>
+    {% endif %}
+    <span class="muted">{{ _('page') }} {{ page }} {{ _('of') }} {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a class="pill" href="/pools?page={{ page + 1 }}">{{ _('next →') }}</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
   {% else %}
     <div class="empty">
       <div class="big">{{ _('No ranked pools yet.') }}</div>

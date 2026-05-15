@@ -2393,11 +2393,9 @@ def pools():
     to top 100 (?tier=100|500|all). The header reflects how many pools
     have been indexed by the bootstrap scan, not just how many are ranked
     so far — so users see "9,500+ indexed" even if ranking is mid-run."""
-    valid_tiers = {"100": 100, "500": 500, "all": None}
+    _PAGE_SIZE = 500
+    valid_tiers = {"100": 100, "500": 500}
     tier = (request.args.get("tier") or "100").strip().lower()
-    if tier not in valid_tiers:
-        tier = "100"
-    limit = valid_tiers[tier]
 
     ranked, meta = _ranked_amm_snapshot()
 
@@ -2413,7 +2411,23 @@ def pools():
     )
 
     top10 = [r for r in ranked if (r.get("tvl_usd") or 0) > 0][:10]
-    rows = ranked if limit is None else ranked[:limit]
+
+    if tier in valid_tiers:
+        limit = valid_tiers[tier]
+        rows = ranked[:limit]
+        page = None
+        total_pages = None
+    else:
+        # browse-all: paginated at PAGE_SIZE rows per page
+        tier = "browse"
+        try:
+            page = max(1, int(request.args.get("page") or 1))
+        except (TypeError, ValueError):
+            page = 1
+        total_pages = max(1, (len(ranked) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+        page = min(page, total_pages)
+        offset = (page - 1) * _PAGE_SIZE
+        rows = ranked[offset : offset + _PAGE_SIZE]
 
     indexed_count = meta.get("indexed_count") or 0
     exact_count_all = sum(1 for r in ranked if r.get("tvl_status") == "exact")
@@ -2480,6 +2494,8 @@ def pools():
         top10_total_tvl=top10_total_tvl,
         top10_share_of_all=top10_share_of_all,
         snapshot_age_label=snapshot_age_label,
+        page=page,
+        total_pages=total_pages,
     )
 
 
