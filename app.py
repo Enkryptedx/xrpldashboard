@@ -2395,7 +2395,8 @@ def pools():
     so far — so users see "9,500+ indexed" even if ranking is mid-run."""
     _PAGE_SIZE = 500
     valid_tiers = {"100": 100, "500": 500}
-    tier = (request.args.get("tier") or "100").strip().lower()
+    tier = (request.args.get("tier") or "").strip().lower()
+    has_page = request.args.get("page") is not None
 
     ranked, meta = _ranked_amm_snapshot()
 
@@ -2412,7 +2413,12 @@ def pools():
 
     top10 = [r for r in ranked if (r.get("tvl_usd") or 0) > 0][:10]
 
-    if tier in valid_tiers:
+    if has_page:
+        pass  # fall through to browse-all branch below
+    elif tier not in valid_tiers:
+        tier = "100"  # unknown or missing tier → default top-100
+
+    if not has_page and tier in valid_tiers:
         limit = valid_tiers[tier]
         rows = ranked[:limit]
         page = None
