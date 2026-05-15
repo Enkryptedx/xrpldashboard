@@ -33,6 +33,27 @@ from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
+
+try:
+    import qrcode
+    import qrcode.image.svg as _qr_svg
+    from io import BytesIO as _BytesIO
+
+    def _wallet_qr_svg(address: str) -> str:
+        buf = _BytesIO()
+        qrcode.make(
+            f"xrpl:{address}",
+            image_factory=_qr_svg.SvgPathImage,
+            box_size=4,
+            border=2,
+        ).save(buf)
+        svg = buf.getvalue().decode("utf-8")
+        if svg.startswith("<?xml"):
+            svg = svg[svg.index("<svg"):]
+        return svg
+except ImportError:
+    def _wallet_qr_svg(address: str) -> str:
+        return ""
 from i18n import init_i18n
 from flask_babel import gettext as babel_gettext
 import db
@@ -2545,7 +2566,7 @@ def wallet(address):
     except Exception:
         data["xrp_usd"] = None
         data["xrp_usd_sources"] = []
-    return render_template("wallet.html", data=data)
+    return render_template("wallet.html", data=data, wallet_qr_svg=_wallet_qr_svg(address))
 
 
 _CURRENCY_HEX_CHARS = set("0123456789abcdefABCDEF")

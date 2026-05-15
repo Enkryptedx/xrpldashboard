@@ -857,8 +857,9 @@
           {% endif %}
           <div class="identity-addr-row">
             <span class="identity-addr">{{ data.address }}</span>
-            <span class="qr-host" data-qr="{{ site_url }}/wallet/{{ data.address }}"
-                  title="{{ _('Scan to open this wallet page') }}"></span>
+            {% if wallet_qr_svg %}
+            <span class="qr-host" title="{{ _('Scan to send to this wallet') }}">{{ wallet_qr_svg | safe }}</span>
+            {% endif %}
             <a class="identity-verify"
                href="https://xrpscan.com/account/{{ data.address }}"
                target="_blank" rel="noopener noreferrer"
@@ -1017,7 +1018,7 @@
               <circle cx="270" cy="170" r="16" fill="rgba(20,24,50,0.95)"
                       stroke="url(#nodeGrad)" stroke-width="1.5" filter="url(#cpSoftGlow)"/>
               <circle cx="270" cy="170" r="9" fill="url(#nodeGrad)"/>
-              <text x="270" y="194" text-anchor="middle" class="cp-you">{% if data.is_amm %}AMM{% else %}YOU{% endif %}</text>
+              <text x="270" y="194" text-anchor="middle" class="cp-you">{% if data.is_amm %}AMM{% elif data.self_info.name %}{{ data.self_info.name | truncate(12, True, '…') }}{% else %}{{ data.address[:6] }}…{{ data.address[-4:] }}{% endif %}</text>
 
               {# Layer 7: outer nodes (with type-specific glyphs) + labels #}
               <g class="cp-nodes"></g>
@@ -1395,9 +1396,6 @@
 
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"
-          integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz"
-          crossorigin="anonymous"></script>
   <script>
     /* Top-counterparty pill: click reveals full XRPL address inline.
        Saves vertical space — the strip stays one line until the user
@@ -1410,122 +1408,6 @@
         var open = detail.classList.toggle('is-open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
-    })();
-
-    /* Stylised wallet QR — scannable identity.
-       Encodes the canonical /wallet/<addr> URL so a phone scan opens this
-       same view, not a Send screen in a wallet app. Visual: cyan→blue
-       gradient, rounded data dots, custom finder corners, XRP "X" mark at
-       center inside a white halo. Uses H-level error correction (~30%
-       redundancy) so the center logo doesn't break scanning. The QR is
-       naturally unique per wallet — every address produces a different
-       bit pattern. */
-    (function () {
-      function buildQR(addr) {
-        if (typeof qrcode !== 'function') return '<!-- QR lib missing -->';
-        var data = addr; // canonical wallet URL — scan opens the page, not Send
-        var qr = qrcode(0, 'H');
-        qr.addData(data);
-        qr.make();
-        var n = qr.getModuleCount();
-        var SIZE = 100;
-        var cell = SIZE / n;
-        var FG = '#0b1020';
-
-        function isFinder(r, c) {
-          return (r < 7 && c < 7) ||
-                 (r < 7 && c >= n - 7) ||
-                 (r >= n - 7 && c < 7);
-        }
-
-        // Tight clear zone for center logo — well under H error-correction budget.
-        var cx0 = SIZE / 2, cy0 = SIZE / 2;
-        var clearR = SIZE * 0.085;
-
-        var modules = '';
-        for (var r = 0; r < n; r++) {
-          for (var c = 0; c < n; c++) {
-            if (!qr.isDark(r, c)) continue;
-            if (isFinder(r, c)) continue;
-            var x = c * cell, y = r * cell;
-            var mcx = x + cell / 2, mcy = y + cell / 2;
-            var dx = mcx - cx0, dy = mcy - cy0;
-            if (Math.sqrt(dx * dx + dy * dy) < clearR) continue;
-            modules += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) +
-                       '" width="' + cell.toFixed(2) + '" height="' + cell.toFixed(2) +
-                       '" fill="' + FG + '"/>';
-          }
-        }
-
-        function finderAt(or, oc) {
-          var x = oc * cell, y = or * cell;
-          return '' +
-            '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) +
-                '" width="' + (7 * cell).toFixed(2) +
-                '" height="' + (7 * cell).toFixed(2) + '" fill="' + FG + '"/>' +
-            '<rect x="' + (x + cell).toFixed(2) + '" y="' + (y + cell).toFixed(2) +
-                '" width="' + (5 * cell).toFixed(2) +
-                '" height="' + (5 * cell).toFixed(2) + '" fill="#ffffff"/>' +
-            '<rect x="' + (x + 2 * cell).toFixed(2) + '" y="' + (y + 2 * cell).toFixed(2) +
-                '" width="' + (3 * cell).toFixed(2) +
-                '" height="' + (3 * cell).toFixed(2) + '" fill="' + FG + '"/>';
-        }
-        var finders = finderAt(0, 0) + finderAt(0, n - 7) + finderAt(n - 7, 0);
-
-        // Small XRP "X" mark — kept tiny so error correction handles it cleanly.
-        var logoR = clearR * 0.95;
-        var armEnd = logoR * 0.55;
-        var xStroke = cell * 1.1;
-        var logo =
-          '<circle cx="' + cx0 + '" cy="' + cy0 + '" r="' + logoR.toFixed(2) +
-            '" fill="#ffffff"/>' +
-          '<g stroke="url(#qrGrad)" stroke-width="' + xStroke.toFixed(2) +
-            '" stroke-linecap="round" fill="none">' +
-            '<line x1="' + (cx0 - armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
-                 '" x2="' + (cx0 + armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
-            '<line x1="' + (cx0 + armEnd).toFixed(2) + '" y1="' + (cy0 - armEnd).toFixed(2) +
-                 '" x2="' + (cx0 - armEnd).toFixed(2) + '" y2="' + (cy0 + armEnd).toFixed(2) + '"/>' +
-          '</g>';
-
-        return [
-          '<svg viewBox="0 0 ' + SIZE + ' ' + SIZE + '" shape-rendering="crispEdges">',
-            '<defs>',
-              '<linearGradient id="qrGrad" x1="0" y1="0" x2="1" y2="1">',
-                '<stop offset="0%"  stop-color="#22d3ee"/>',
-                '<stop offset="100%" stop-color="#3b82f6"/>',
-              '</linearGradient>',
-            '</defs>',
-            '<rect width="' + SIZE + '" height="' + SIZE + '" fill="#ffffff"/>',
-            modules,
-            finders,
-            logo,
-          '</svg>'
-        ].join('');
-      }
-
-      function renderAll() {
-        document.querySelectorAll('[data-qr]').forEach(function (host) {
-          var addr = host.dataset.qr || '';
-          if (!addr) return;
-          host.innerHTML = buildQR(addr);
-          host.removeAttribute('data-loading');
-        });
-      }
-
-      if (typeof qrcode === 'function') {
-        renderAll();
-      } else {
-        document.querySelectorAll('[data-qr]').forEach(function (h) {
-          h.setAttribute('data-loading', '1');
-        });
-        // qrcode lib loads as a separate <script>; if we ran first, retry once it's there
-        var tries = 0;
-        var iv = setInterval(function () {
-          tries++;
-          if (typeof qrcode === 'function') { clearInterval(iv); renderAll(); }
-          else if (tries > 40) { clearInterval(iv); }
-        }, 50);
-      }
     })();
 
     /* Counterparty Network — radial graph of entities the wallet has
