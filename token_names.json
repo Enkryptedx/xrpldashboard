@@ -188,5 +188,1141 @@
     "currency_display": "SOIL",
     "verified_via": "xrpscan@brand-protected",
     "notes": "SOIL canonical issuer is Axelar bridge (rfmS3z...). Any other issuer is a spoof."
+  },
+  "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753:rJyNbUbcvP19KYwMq2bPnvYQNwUY2ZQrWZ": {
+    "currency_hex": "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753",
+    "currency_display": "KLD",
+    "issuer": "rJyNbUbcvP19KYwMq2bPnvYQNwUY2ZQrWZ",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Kladia Liquidity Deflator",
+    "desc": "Debt-indexed, fixed-supply protocol token.",
+    "issuer_name": "Kladia"
+  },
+  "0586FBE4CA4DB3644CDA54E95F28198316CF41F2AB2A616E:rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn": {
+    "currency_hex": "0586FBE4CA4DB3644CDA54E95F28198316CF41F2AB2A616E",
+    "currency_display": "MPT",
+    "issuer": "rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "MPTPAD",
+    "desc": "MPToken Launchpad, Airdrop and claiming system "
+  },
+  "0634CF15DADB8E4C44F8CEAFF89B3A9FED52604FEE1A184F:rLxDKFyn1hYmLZY2Ktd8kQaLx8E35dBkoV": {
+    "currency_hex": "0634CF15DADB8E4C44F8CEAFF89B3A9FED52604FEE1A184F",
+    "currency_display": "KEY",
+    "issuer": "rLxDKFyn1hYmLZY2Ktd8kQaLx8E35dBkoV",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Keystone Protocol Token",
+    "desc": "The native utility and governance token of the Keystone Protocol, built on the XRP Ledger.",
+    "issuer_name": "Keystone Foundation"
+  },
+  "0627B6859931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
+    "currency_hex": "0627B6859931344A3871ED63805BBF07DECBF03F9C2698BD",
+    "currency_display": "SVXV1",
+    "issuer": "rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIVAX-VAULT-V1",
+    "desc": "Daily auto-rolling structured product vault. XRP base.",
+    "issuer_name": "SIVAX.io"
+  },
+  "05EA16F276AA755D480BD7BFE4090A4009C6342909716A36:rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy": {
+    "currency_hex": "05EA16F276AA755D480BD7BFE4090A4009C6342909716A36",
+    "currency_display": "AMEN",
+    "issuer": "rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "AMEN",
+    "desc": "THIS TOKEN IS RWA FAITH BASED. WE PRAY TO RIPPLE AS OUR LORDS AND SAVIOURS. GIVE US MANY FREE MONEY AND XRP 589."
+  },
+  "0615A7A0E6286F29815248DE524F113883280E85B482DD4B:rMyxiYL5vZ1TGohA4yjuTvZtgG6TCJQjyN": {
+    "currency_hex": "0615A7A0E6286F29815248DE524F113883280E85B482DD4B",
+    "currency_display": "XRP+",
+    "issuer": "rMyxiYL5vZ1TGohA4yjuTvZtgG6TCJQjyN",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Contro XRP+",
+    "desc": "Contro XRP+ token",
+    "issuer_name": "Contro"
+  },
+  "062A13EF9969F110E3B4FE23619B389B949052231E4196F8:rNzBJJkaDVhh17wUyzpLjnL6QEohY4bdX5": {
+    "currency_hex": "062A13EF9969F110E3B4FE23619B389B949052231E4196F8",
+    "currency_display": "EBIT",
+    "issuer": "rNzBJJkaDVhh17wUyzpLjnL6QEohY4bdX5",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "EBITDA",
+    "desc": "Infrastructure-backed utility token by Campione Infrastructure"
+  },
+  "062B590488AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B590488AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "FNPL forward contract: 10000kg Ganado, FWD-2026-004",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)"
+  },
+  "05EA16F076AA755D480BD7BFE4090A4009C6342909716A36:rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy": {
+    "currency_hex": "05EA16F076AA755D480BD7BFE4090A4009C6342909716A36",
+    "currency_display": "AAAAAAAA",
+    "issuer": "rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "AAAAAAAA",
+    "desc": "WHY THIS SHIT IS SO COMPLICATED? WHO DESIGNED THIS NONSENSE?"
+  },
+  "0624E3B7F8B4CD6885ED337BB2FFB228BBA4D9A7059A868D:rPgswA5wCM6wvtzsNd7oQa6r3UK5YT6om9": {
+    "currency_hex": "0624E3B7F8B4CD6885ED337BB2FFB228BBA4D9A7059A868D",
+    "currency_display": "RGOLD",
+    "issuer": "rPgswA5wCM6wvtzsNd7oQa6r3UK5YT6om9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Regolda Gold RG-2026-7879",
+    "issuer_name": "Regolda"
+  },
+  "06315EDD2FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315EDD2FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "TELEVI",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Televisores Premier 32\"",
+    "desc": "Televisores Premier 32\"",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315EE92FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315EE92FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "AIRESA",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Aires Acondicionados 0",
+    "desc": "Aires Acondicionados 0",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315EC92FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315EC92FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "AIRESA",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Aires Acondicionados 2",
+    "desc": "Aires Acondicionados 2",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315EE12FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315EE12FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "TELEVI",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Televisores Premier 40\"",
+    "desc": "Televisores Premier 40\"",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315EE52FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315EE52FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "TELEVI",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Televisores Iffalcom 40\"",
+    "desc": "Televisores Iffalcom 40\"",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315ED92FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315ED92FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "REFRIG",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Refrigeradores Chiq 2",
+    "desc": "Refrigeradores Chiq 2",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315ED12FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315ED12FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "LAVADO",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Lavadoras Chiq 2",
+    "desc": "Lavadoras Chiq 2",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "06315ECD2FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315ECD2FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "LAVADO",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Lavadoras Chiq 1",
+    "desc": "Lavadoras Chiq 1",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "05F9CB84F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E:rP69aih8Cy4RuGCFLNV1W7DUQgoraFaiDQ": {
+    "currency_hex": "05F9CB84F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E",
+    "currency_display": "CREMA",
+    "issuer": "rP69aih8Cy4RuGCFLNV1W7DUQgoraFaiDQ",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Crema",
+    "desc": "XRPresso closed-loop loyalty token. Non-transferable. Earn by trading, redeem for perks."
+  },
+  "06315ED52FCE7850C7682731C4DB47F379B59B393406E71F:rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc": {
+    "currency_hex": "06315ED52FCE7850C7682731C4DB47F379B59B393406E71F",
+    "currency_display": "REFRIG",
+    "issuer": "rnM8aoWev2a1a2sT7DLUP6P8FyLwCxvfDc",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Refrigeradores Chiq 1",
+    "desc": "Refrigeradores Chiq 1",
+    "issuer_name": "ONCHAIN ETF"
+  },
+  "0601A5B3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5B3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV51",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-51-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-51-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5B6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5B6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV56",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-56-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-56-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0625721BA7DF85FD44DB64FB8B1701DFC8A0757FDFD300A5:rGJdc5PUa5dGE6BiDcufXyU9BDSQ4Zg2r8": {
+    "currency_hex": "0625721BA7DF85FD44DB64FB8B1701DFC8A0757FDFD300A5",
+    "currency_display": "TEST",
+    "issuer": "rGJdc5PUa5dGE6BiDcufXyU9BDSQ4Zg2r8",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Common Stock"
+  },
+  "061F54C24D777C9D55F65AF6EC115A30F312B0E20652EB16:r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe": {
+    "currency_hex": "061F54C24D777C9D55F65AF6EC115A30F312B0E20652EB16",
+    "currency_display": "KLD",
+    "issuer": "r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Kladia|kladia.com",
+    "desc": "Yield-bearing stablecoin backed by U.S. Treasuries",
+    "issuer_name": "kladia.com"
+  },
+  "0601A5B1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5B1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV46",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-46-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-46-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91:rHCx2zWMN1r9yB78mtNX9bUUHCL5eMYHUR": {
+    "currency_hex": "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91",
+    "currency_display": "RGLD",
+    "issuer": "rHCx2zWMN1r9yB78mtNX9bUUHCL5eMYHUR",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "ReGold",
+    "desc": "Recycled Gold Token (RGT) is a fully traceable, ESG-compliant digital token backed by 100% certified recycled gold. Each token represents an allocated unit of recycled gold sourced from verified suppliers, with independent third-party certification for provenance, carbon footprint, and ethical sourcing. Designed for ESG-conscious investors and funds, RGT provides a secure, transparent, and environmentally responsible way to invest in gold, while enabling redemption into physical recycled gold bars through a verified partner network."
+  },
+  "0601A5CEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5CEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV99",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-99-Principal Protected-2m",
+    "desc": "Multi-Purpose Token: SIV-99-Principal Protected-2m",
+    "issuer_name": "MPT Platform"
+  },
+  "060CA3E3AEFA71AFB10A5827E77A5D0E1D8AB4DEADCB1723:rGxUbYEHnmiJ55e5hKuJ9m7dthdJHSx5vz": {
+    "currency_hex": "060CA3E3AEFA71AFB10A5827E77A5D0E1D8AB4DEADCB1723",
+    "currency_display": "FSDEBT",
+    "issuer": "rGxUbYEHnmiJ55e5hKuJ9m7dthdJHSx5vz",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FortStock Debt Token",
+    "issuer_name": "DesertBridge Logistics FZ-LLC"
+  },
+  "0601A5D6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV112",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-112-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-112-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5DAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV116",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-116-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-116-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5A5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV34",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-34-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-34-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5D4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV107",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-107-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-107-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "0634B7B6EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
+    "currency_hex": "0634B7B6EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
+    "currency_display": "KEY",
+    "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Keystone Protocol Token"
+  },
+  "0476D60F478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
+    "currency_hex": "0476D60F478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
+    "currency_display": "Xspence",
+    "issuer": "rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Xspence",
+    "desc": "Rewards token distributed by Xspence"
+  },
+  "0586FBE7CA4DB3644CDA54E95F28198316CF41F2AB2A616E:rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn": {
+    "currency_hex": "0586FBE7CA4DB3644CDA54E95F28198316CF41F2AB2A616E",
+    "currency_display": "MPTPAD",
+    "issuer": "rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "MPTPAD",
+    "desc": "MPToken Launchpad, Airdrop and claiming system "
+  },
+  "0601A5C8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV84",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-84-Non-Principal Protected-3w",
+    "desc": "Multi-Purpose Token: SIV-84-Non-Principal Protected-3w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5C3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV76",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-76-Non-Principal Protected-3w",
+    "desc": "Multi-Purpose Token: SIV-76-Non-Principal Protected-3w",
+    "issuer_name": "MPT Platform"
+  },
+  "06044300BB5C43251E82F2F17A2F6223B39257CDD681E491:rJnCt4Mm826qSA6jc4WqwmrpwPxBBgLfwp": {
+    "currency_hex": "06044300BB5C43251E82F2F17A2F6223B39257CDD681E491",
+    "currency_display": "FSWRNT",
+    "issuer": "rJnCt4Mm826qSA6jc4WqwmrpwPxBBgLfwp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FortStock Warrant",
+    "desc": "Digital representation of real-world asset-backed warrants",
+    "issuer_name": "rJnCt4Mm826qSA6jc4WqwmrpwPxBBgLfwp"
+  },
+  "0601A5BDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5BDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV70",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-70-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-70-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05DDE2E3CB353EBC4865E25BCF97C49C19051CC771DB31E8:rKXTx7SxZP4apsLtj3dNH1SgiYr6LNMhcp": {
+    "currency_hex": "05DDE2E3CB353EBC4865E25BCF97C49C19051CC771DB31E8",
+    "currency_display": "SRG",
+    "issuer": "rKXTx7SxZP4apsLtj3dNH1SgiYr6LNMhcp",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Silk Road Group 2030",
+    "desc": "Senior Unsecured Bond - Digital representation on XRPL"
+  },
+  "0601A5CBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5CBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV89",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-89-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-89-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0598F6D89E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
+    "currency_hex": "0598F6D89E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
+    "currency_display": "TMPT",
+    "issuer": "rERShrtUSEXkrwtTpugPV4v8E787vpx1kb",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Test MPT",
+    "desc": "CLI smoke test",
+    "issuer_name": "MPTPad Test"
+  },
+  "0598F6DA9E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
+    "currency_hex": "0598F6DA9E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
+    "currency_display": "TMPT",
+    "issuer": "rERShrtUSEXkrwtTpugPV4v8E787vpx1kb",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Test MPT",
+    "desc": "CLI smoke test",
+    "issuer_name": "MPTPad Test"
+  },
+  "0601A5C0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV73",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-73-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-73-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV128",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-128-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-128-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "06044302574C35EC653023A69CA466297DF85B8CFF3B6AD0:r3xbnusH7QGr3x2qUkYc7urEANhHgFaTmn": {
+    "currency_hex": "06044302574C35EC653023A69CA466297DF85B8CFF3B6AD0",
+    "currency_display": "FSDEBT",
+    "issuer": "r3xbnusH7QGr3x2qUkYc7urEANhHgFaTmn",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FortStock Debt Token",
+    "issuer_name": "DesertBridge Logistics FZ-LLC"
+  },
+  "0601A5A8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV37",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-37-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-37-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "03F907F270631F5CC5E1A2E556F42D017F52CEE7EA30AF80:rBEERdzDHqDyYmfw2jqzyMNBZu31yzfg6q": {
+    "currency_hex": "03F907F270631F5CC5E1A2E556F42D017F52CEE7EA30AF80",
+    "currency_display": "XAU",
+    "issuer": "rBEERdzDHqDyYmfw2jqzyMNBZu31yzfg6q",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tokenized Gold (XAU)",
+    "desc": "Tokenized Gold backed by secure Gold (XAU) holdings",
+    "issuer_name": "Helvetic Metals GmbH"
+  },
+  "0601A5C7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV83",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-83-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-83-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5A7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV8",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-8-Principal Protected-2m",
+    "desc": "Multi-Purpose Token: SIV-8-Principal Protected-2m",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5DBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV117",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-117-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-117-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "061F54B64D777C9D55F65AF6EC115A30F312B0E20652EB16:r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe": {
+    "currency_hex": "061F54B64D777C9D55F65AF6EC115A30F312B0E20652EB16",
+    "currency_display": "KLD",
+    "issuer": "r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Kladia|kladia.com",
+    "desc": "Yield-bearing stablecoin backed by U.S. Treasuries",
+    "issuer_name": "Kladia Liquidity Deflator"
+  },
+  "056762A93087A14B122055FA030F9EE6F74F87116559C83D:rnRbuxseqEHbxXgaBZJu7PAMQKmVAqp9RM": {
+    "currency_hex": "056762A93087A14B122055FA030F9EE6F74F87116559C83D",
+    "currency_display": "Precious MPT",
+    "issuer": "rnRbuxseqEHbxXgaBZJu7PAMQKmVAqp9RM",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Precious MPT - undefined",
+    "desc": "Metaprotocol Token representing precious metals portfolio for customer undefined"
+  },
+  "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV131",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-131-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-131-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5A6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV35",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-35-Principal Protected-1m",
+    "desc": "Multi-Purpose Token: SIV-35-Principal Protected-1m",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5DEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV120",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-120-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-120-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "05E5A094812A18E6A0B83F20DC317DDC181AE062766DB7EF:rUmxb5W7kBiQtoQo6SK4aX6a64xEAWaEiw": {
+    "currency_hex": "05E5A094812A18E6A0B83F20DC317DDC181AE062766DB7EF",
+    "currency_display": "SYN",
+    "issuer": "rUmxb5W7kBiQtoQo6SK4aX6a64xEAWaEiw",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Synthetics Token",
+    "desc": "Synthetics Token on XRPL"
+  },
+  "0601A5CDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5CDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV92",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-92-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-92-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5BCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5BCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV69",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-69-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-69-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5DDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV119",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-119-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-119-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A597E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A597E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV13",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-13-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-13-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV123",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-123-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-123-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "061F54C34D777C9D55F65AF6EC115A30F312B0E20652EB16:r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe": {
+    "currency_hex": "061F54C34D777C9D55F65AF6EC115A30F312B0E20652EB16",
+    "currency_display": "KLD",
+    "issuer": "r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Kladia|kladia.com",
+    "desc": "Yield-bearing stablecoin backed by U.S. Treasuries",
+    "issuer_name": "kladia.com"
+  },
+  "0601A594E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A594E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV1",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-1-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-1-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5BAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5BAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV67",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-67-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-67-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5CAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5CAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV88",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-88-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-88-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A58EE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A58EE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV1",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-1-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-1-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5D7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV113",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-113-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-113-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV126",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-126-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-126-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5D5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV108",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-108-Non-Principal Protected-2w",
+    "desc": "Multi-Purpose Token: SIV-108-Non-Principal Protected-2w",
+    "issuer_name": "MPT Platform"
+  },
+  "0634B7B8EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
+    "currency_hex": "0634B7B8EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
+    "currency_display": "KEY",
+    "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Keystone Protocol Token"
+  },
+  "0601A5AAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5AAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV39",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-39-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-39-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05FCD1506BEFCA2829B503F1893C0ED01A0D05AFCD7062F5:rwq5ZQ7rqZmcQf9y2wG8qxgHk5zuL1NKE5": {
+    "currency_hex": "05FCD1506BEFCA2829B503F1893C0ED01A0D05AFCD7062F5",
+    "currency_display": "RWRD",
+    "issuer": "rwq5ZQ7rqZmcQf9y2wG8qxgHk5zuL1NKE5",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "RewardSystem",
+    "desc": "Rewards for payments to ryouhapPYV5KNHmFUKrjNqsjxhnxvQiVt"
+  },
+  "0601A5DFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV121",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-121-Principal Protected-2m",
+    "desc": "Multi-Purpose Token: SIV-121-Principal Protected-2m",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5C6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV82",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-82-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-82-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5C5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV80",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-80-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-80-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05E251B480B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
+    "currency_hex": "05E251B480B597F02A5B03A862311D5A920246833C10B65A",
+    "currency_display": "DEMO",
+    "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Demo Token",
+    "issuer_name": "XXX"
+  },
+  "0601A596E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A596E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV4",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-4-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-4-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV122",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-122-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-122-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0598F6D99E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
+    "currency_hex": "0598F6D99E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
+    "currency_display": "TMPT",
+    "issuer": "rERShrtUSEXkrwtTpugPV4v8E787vpx1kb",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Test MPT",
+    "desc": "CLI smoke test",
+    "issuer_name": "MPTPad Test"
+  },
+  "0601A5A9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV36",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-36-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-36-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05E251B180B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
+    "currency_hex": "05E251B180B597F02A5B03A862311D5A920246833C10B65A",
+    "currency_display": "DEMO",
+    "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Demo Token",
+    "issuer_name": "XXX"
+  },
+  "0625721DA7DF85FD44DB64FB8B1701DFC8A0757FDFD300A5:rGJdc5PUa5dGE6BiDcufXyU9BDSQ4Zg2r8": {
+    "currency_hex": "0625721DA7DF85FD44DB64FB8B1701DFC8A0757FDFD300A5",
+    "currency_display": "RER",
+    "issuer": "rGJdc5PUa5dGE6BiDcufXyU9BDSQ4Zg2r8",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "-Chain Metadata",
+    "desc": "DescriptiDescriptiDescripti TEST",
+    "issuer_name": "-Chain Metadata LTD"
+  },
+  "0601A5D3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV106",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-106-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-106-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "06250C1982A2A3C10B2AD7917E90F6538BD18553EAE55AEF:rUujgL52fMEp5zf9bbYH1t5u52RPT1jtWa": {
+    "currency_hex": "06250C1982A2A3C10B2AD7917E90F6538BD18553EAE55AEF",
+    "currency_display": "SSR",
+    "issuer": "rUujgL52fMEp5zf9bbYH1t5u52RPT1jtWa",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "SSR-Super Sonic Rails",
+    "desc": "Real operational payment rail and bridge token for 1:1 CBDC settlement and private garden limit orders. Used to bridge real bank CBDC payments through vetted KYC accounts in the walled garden. The garden is the deciding factor."
+  },
+  "0601A5C2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV75",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-75-Principal Protected-3m",
+    "desc": "Multi-Purpose Token: SIV-75-Principal Protected-3m",
+    "issuer_name": "MPT Platform"
+  },
+  "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
+    "currency_hex": "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
+    "currency_display": "KEY",
+    "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Keystone Protocol Token",
+    "desc": "The native utility and governance token of the Keystone Protocol \u2014 a decentralized lending and asset management platform built on XRPL.",
+    "issuer_name": "Keystone Foundation"
+  },
+  "0601A5B4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5B4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV52",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-52-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-52-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5ECE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5ECE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV134",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-134-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-134-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "061F54C14D777C9D55F65AF6EC115A30F312B0E20652EB16:r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe": {
+    "currency_hex": "061F54C14D777C9D55F65AF6EC115A30F312B0E20652EB16",
+    "currency_display": "KLD",
+    "issuer": "r3hcwikU3XyAXX9969oRzDJm7B5hepfXGe",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Kladia|kladia.com",
+    "desc": "Yield-bearing stablecoin backed by U.S. Treasuries",
+    "issuer_name": "kladia.com"
+  },
+  "0601A5BBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5BBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV68",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-68-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-68-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV124",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-124-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-124-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05E251B280B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
+    "currency_hex": "05E251B280B597F02A5B03A862311D5A920246833C10B65A",
+    "currency_display": "DEMO",
+    "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Demo Token",
+    "issuer_name": "XXX"
+  },
+  "00000AE825B89F24B381CABA5921FF0B634DE9111D915B2A:rhSTwqSK13zdRmzHMZZP8i7DnuG27pwX76": {
+    "currency_hex": "00000AE825B89F24B381CABA5921FF0B634DE9111D915B2A",
+    "currency_display": "XRP NFT",
+    "issuer": "rhSTwqSK13zdRmzHMZZP8i7DnuG27pwX76",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "XRP NFT",
+    "desc": "XRP - svg and glb"
+  },
+  "060CA3E09B41B8EB574622BE0CDA7BB12D05EB50B60C8EF5:rE9v7U5cQQAuvtYKgyFPpqc719a1MH4SNP": {
+    "currency_hex": "060CA3E09B41B8EB574622BE0CDA7BB12D05EB50B60C8EF5",
+    "currency_display": "FSWRNT",
+    "issuer": "rE9v7U5cQQAuvtYKgyFPpqc719a1MH4SNP",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FortStock Warrant",
+    "desc": "Digital representation of real-world asset-backed warrants",
+    "issuer_name": "rE9v7U5cQQAuvtYKgyFPpqc719a1MH4SNP"
+  },
+  "05DB34950E8F50CD29809257E664B7FBFF00F1F6005A30C6:rpKz9RxDJv8jFDuk9EdtWyyKRcMgrYddCp": {
+    "currency_hex": "05DB34950E8F50CD29809257E664B7FBFF00F1F6005A30C6",
+    "currency_display": "Precious MPT",
+    "issuer": "rpKz9RxDJv8jFDuk9EdtWyyKRcMgrYddCp",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Precious MPT - 1",
+    "desc": "Multi-Purpose Token representing precious metals portfolio for customer 1"
+  },
+  "0601A5AEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5AEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV44",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-44-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-44-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5EAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5EAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV132",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-132-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-132-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5A3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5A3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV32",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-32-Principal Protected-1m",
+    "desc": "Multi-Purpose Token: SIV-32-Principal Protected-1m",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5D0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5D0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV101",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-101-Principal Protected-1m",
+    "desc": "Multi-Purpose Token: SIV-101-Principal Protected-1m",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5C9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV87",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-87-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-87-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A595E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A595E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV7",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-7-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-7-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A59AE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A59AE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV21",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-21-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-21-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "05E251B380B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
+    "currency_hex": "05E251B380B597F02A5B03A862311D5A920246833C10B65A",
+    "currency_display": "DEMO",
+    "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Demo Token",
+    "issuer_name": "XXX"
+  },
+  "0601A5CCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5CCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV91",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-91-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-91-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5B2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5B2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV49",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-49-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-49-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0634CAF62DABD2924D048F7C6D8F9BA2088EE68499D61B69:rnwVEnB7zQqJactNFm7ZhaAkK2yUp7HUmn": {
+    "currency_hex": "0634CAF62DABD2924D048F7C6D8F9BA2088EE68499D61B69",
+    "currency_display": "KEY",
+    "issuer": "rnwVEnB7zQqJactNFm7ZhaAkK2yUp7HUmn",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Keystone Protocol Token",
+    "desc": "The native utility and governance token of the Keystone Protocol, built on the XRP Ledger.",
+    "issuer_name": "Keystone Foundation"
+  },
+  "0601A5C4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV78",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-78-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-78-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5DCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5DCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV118",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-118-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-118-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV127",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-127-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-127-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5E7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5E7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV129",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-129-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-129-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5C1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5C1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV74",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-74-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-74-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5BEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5BEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV71",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-71-Non-Principal Protected-1w",
+    "desc": "Multi-Purpose Token: SIV-71-Non-Principal Protected-1w",
+    "issuer_name": "MPT Platform"
+  },
+  "0601A5ACE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "currency_hex": "0601A5ACE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
+    "currency_display": "SIV42",
+    "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "SIV-42-Principal Protected-1m",
+    "desc": "Multi-Purpose Token: SIV-42-Principal Protected-1m",
+    "issuer_name": "MPT Platform"
+  },
+  "4F70756C656E6365000000000000000000000000:rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd": {
+    "currency_hex": "4F70756C656E6365000000000000000000000000",
+    "issuer": "rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd",
+    "source": "domain_fallback",
+    "issuer_name": "OpulenceX",
+    "domain": "opulencex.io",
+    "verified_via": "https://www.opulencex.io/.well-known/xrp-ledger.toml"
+  },
+  "ZRP:rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe": {
+    "currency_hex": "ZRP",
+    "currency_display": "ZRP",
+    "issuer": "rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe",
+    "source": "toml",
+    "verified_via": "https://zerpmon.world/.well-known/xrp-ledger.toml"
+  },
+  "XHO:r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur": {
+    "currency_hex": "XHO",
+    "issuer": "r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur",
+    "source": "domain_fallback",
+    "issuer_name": "Xhero",
+    "domain": "xheronft.com",
+    "verified_via": "https://xheronft.com/.well-known/xrp-ledger.toml",
+    "currency_display": "XHO"
   }
 }
