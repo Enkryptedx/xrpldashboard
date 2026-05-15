@@ -78,7 +78,7 @@ PRIVKEY_ENC_PATH = os.path.join(SECRETS_DIR, "snapshot_ed25519_enc.pem")
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SIGNING_DOMAIN = "xrpldashboard.com/signed_snapshot/v1"
 
 
@@ -380,6 +380,83 @@ def collect_metrics() -> tuple[list[dict], list[str]]:
         })
     except (OSError, json.JSONDecodeError) as e:
         errors.append(f"named_accounts: {type(e).__name__}")
+
+    # RLUSD cross-chain supply (from PG cache written by rlusd_live worker)
+    try:
+        import db
+        _rlusd_result = db.read_rlusd_state_cache()
+        rlusd_cached = _rlusd_result[0] if _rlusd_result else None
+        if rlusd_cached:
+            xrpl_supply = (rlusd_cached.get("xrpl") or {}).get("supply")
+            eth_supply = (rlusd_cached.get("eth") or {}).get("supply")
+            if xrpl_supply is not None:
+                metrics.append({
+                    "name": "rlusd_xrpl_supply",
+                    "value": round(float(xrpl_supply), 2),
+                    "unit": "usd",
+                    "source": "rlusd_state_cache (xrpl gateway_balances)",
+                })
+            if eth_supply is not None:
+                metrics.append({
+                    "name": "rlusd_eth_supply",
+                    "value": round(float(eth_supply), 2),
+                    "unit": "usd",
+                    "source": "rlusd_state_cache (ethereum transfer log)",
+                })
+            if xrpl_supply is not None and eth_supply is not None:
+                metrics.append({
+                    "name": "rlusd_total_supply",
+                    "value": round(float(xrpl_supply) + float(eth_supply), 2),
+                    "unit": "usd",
+                    "source": "rlusd_state_cache (xrpl + ethereum)",
+                })
+        else:
+            errors.append("rlusd_state_cache_unavailable")
+    except Exception as e:
+        errors.append(f"rlusd: {type(e).__name__}")
+
+    # RWA total AUM — sum of tvl_usd for verified AMM pools attributed to
+    # RWA families. Reads the same amm_ranked.json already loaded above,
+    # cross-referenced against pool addresses in Postgres rwa_pool_attribution.
+    try:
+        import db
+        if db.pg_available():
+            with db.pg_connect() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT pool_address FROM rwa_pool_attribution"
+                )
+                rwa_pool_addresses = {row[0] for row in cur.fetchall()}
+            if rwa_pool_addresses:
+                try:
+                    with open(AMM_RANKED_PATH) as f:
+                        ranked_all = json.load(f) or []
+                    rwa_tvl = sum(
+                        float(p.get("tvl_usd") or 0)
+                        for p in ranked_all
+                        if isinstance(p, dict)
+                        and p.get("amm_account") in rwa_pool_addresses
+                        and p.get("tvl_status") in ("exact", "estimated")
+                    )
+                    metrics.append({
+                        "name": "rwa_total_aum_usd",
+                        "value": round(rwa_tvl, 2),
+                        "unit": "usd",
+                        "source": "amm_ranked.json (rwa_pool_attribution cross-ref)",
+                    })
+                except (OSError, json.JSONDecodeError) as e:
+                    errors.append(f"rwa_aum: {type(e).__name__}")
+            else:
+                metrics.append({
+                    "name": "rwa_total_aum_usd",
+                    "value": 0.0,
+                    "unit": "usd",
+                    "source": "rwa_pool_attribution (no pools attributed)",
+                })
+        else:
+            errors.append("rwa_aum_pg_unavailable")
+    except Exception as e:
+        errors.append(f"rwa: {type(e).__name__}")
 
     return metrics, errors
 
