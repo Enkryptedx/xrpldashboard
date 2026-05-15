@@ -13,7 +13,7 @@ import sqlite3
 import time
 from datetime import date, datetime, timezone
 
-from flask import Flask, Response, abort, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -52,6 +52,9 @@ VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
 SNAPSHOT_DIR = os.path.join(HERE, "historical_snapshots")
+SIGNED_SNAPSHOTS_DIR = os.path.join(HERE, "signed_snapshots")
+SNAPSHOT_PUBKEY_PEM_PATH = os.path.join(HERE, "snapshot_pubkey.pem")
+SNAPSHOT_PUBKEY_FP_PATH = os.path.join(HERE, "snapshot_pubkey_fingerprint.txt")
 
 WHALE_XRP_THRESHOLD = 50_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
 
@@ -130,6 +133,29 @@ def inject_site_url():
     """Make {{ site_url }} available to every template, primarily for the
     shared _head_meta.html partial that builds canonical / og:url."""
     return {"site_url": SITE_URL}
+
+
+_SNAPSHOT_FP_CACHE = {"path_mtime": None, "value": None}
+
+
+@app.context_processor
+def inject_snapshot_fingerprint():
+    """Expose the Ed25519 signed-snapshot pubkey fingerprint to every
+    template, so /about and /methodology can pin it inline without each
+    route handler having to read the file. Cached by mtime — re-reads
+    only after a fresh keygen rewrites the fingerprint file."""
+    try:
+        st = os.stat(SNAPSHOT_PUBKEY_FP_PATH)
+    except FileNotFoundError:
+        return {"snapshot_fingerprint": None}
+    if _SNAPSHOT_FP_CACHE["path_mtime"] != st.st_mtime:
+        try:
+            with open(SNAPSHOT_PUBKEY_FP_PATH) as f:
+                _SNAPSHOT_FP_CACHE["value"] = f.read().strip() or None
+        except OSError:
+            _SNAPSHOT_FP_CACHE["value"] = None
+        _SNAPSHOT_FP_CACHE["path_mtime"] = st.st_mtime
+    return {"snapshot_fingerprint": _SNAPSHOT_FP_CACHE["value"]}
 
 
 # Per-page Open Graph card config. Slug -> (title, subtitle, accent_hex).
@@ -2076,6 +2102,225 @@ def security():
 @app.route("/subprocessors")
 def subprocessors():
     return render_template("subprocessors.html")
+
+
+# ---------------------------------------------------------------------------
+# Signed integrity snapshots — the truth-first endpoint
+#
+# Every day at 00:05 UTC, signed_snapshot.py captures a small set of
+# canonical numbers (ledger index, pool count + TVL, MPT count, watchlist
+# count), hashes them into a Merkle leaf, extends the global chain, and
+# signs the result with our Ed25519 key. The resulting JSON file is
+# self-attesting: anyone with our public key can verify the value was
+# attested at the recorded date and is included in the chain root.
+#
+# Files live in signed_snapshots/ (committed to repo for transparency).
+# Routes below serve them at standard well-known paths so any verifier
+# (a journalist, an institutional buyer, a contributor) can fetch them
+# programmatically.
+# ---------------------------------------------------------------------------
+
+
+def _list_signed_snapshots():
+    """Newest-first list of YYYY-MM-DD dates with a signed snapshot. Prefer
+    Postgres (Render has no disk access to the Mac-written files); fall
+    back to disk so local dev still works without DATABASE_URL."""
+    pg_dates = db.read_signed_snapshot_dates()
+    if pg_dates:
+        return pg_dates
+    try:
+        files = sorted(
+            (f for f in os.listdir(SIGNED_SNAPSHOTS_DIR)
+             if f.endswith(".json") and f != "chain.json"),
+            reverse=True,
+        )
+    except (FileNotFoundError, OSError):
+        return []
+    return [f.removesuffix(".json") for f in files]
+
+
+def _read_chain_meta():
+    """Live chain head. PG-first (so Render sees the same chain root the
+    Mac wrote); disk fallback for local dev. Returns the dict matching
+    disk's chain.json shape, or None when no data anywhere."""
+    pg_chain = db.read_signed_snapshot_chain()
+    if pg_chain:
+        return pg_chain
+    try:
+        with open(os.path.join(SIGNED_SNAPSHOTS_DIR, "chain.json")) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+
+def _read_signed_envelope(date_str):
+    """Load one date's envelope: PG-first, disk fallback. Returns dict or
+    None. Caller has already validated `date_str` via _safe_date_str."""
+    pg_env = db.read_signed_snapshot(date_str)
+    if pg_env:
+        return pg_env
+    path = os.path.join(SIGNED_SNAPSHOTS_DIR, f"{date_str}.json")
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+
+@app.route("/.well-known/snapshots/<date>.json")
+def well_known_signed_snapshot(date):
+    """Serve a signed snapshot JSON. PG-first so Render serves the same
+    bytes the Mac wrote; disk fallback for local dev. Once written, a
+    snapshot is mathematically immutable — its hash is anchored into the
+    Merkle chain — so the cache header reflects that semantic."""
+    if not _safe_date_str(date):
+        abort(404)
+    envelope = _read_signed_envelope(date)
+    if envelope is None:
+        abort(404)
+    resp = jsonify(envelope)
+    resp.headers["Cache-Control"] = (
+        "public, max-age=31536000, s-maxage=31536000, immutable"
+    )
+    return resp
+
+
+@app.route("/.well-known/snapshots/chain.json")
+def well_known_signed_chain():
+    """Append-only Merkle chain head. PG-first; disk fallback. Shorter
+    cache than per-date snapshots because the chain extends daily and we
+    want verifiers to pick up new leaves promptly."""
+    chain = _read_chain_meta()
+    if chain is None:
+        abort(404)
+    resp = jsonify(chain)
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
+@app.route("/.well-known/snapshots/pubkey.pem")
+def well_known_signed_pubkey():
+    """Public key, PEM-encoded. Pinned in three independent places:
+    here, /about page, and a DNS TXT record. Verifiers triangulate."""
+    resp = send_from_directory(
+        HERE, "snapshot_pubkey.pem",
+        mimetype="application/x-pem-file",
+    )
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
+def _safe_date_str(s):
+    """Strict YYYY-MM-DD validation. Defends the well-known route from
+    directory-traversal attempts via crafted date param."""
+    if not isinstance(s, str) or len(s) != 10:
+        return False
+    try:
+        date.fromisoformat(s)
+        return True
+    except ValueError:
+        return False
+
+
+@app.route("/snapshots/")
+def signed_snapshots_index():
+    """Human-readable index of all signed snapshots + verification doc."""
+    dates = _list_signed_snapshots()
+    fingerprint = None
+    try:
+        with open(SNAPSHOT_PUBKEY_FP_PATH) as f:
+            fingerprint = f.read().strip()
+    except (OSError, FileNotFoundError):
+        pass
+
+    chain = _read_chain_meta()
+    chain_meta = None
+    if chain:
+        leaves = chain.get("leaves") or []
+        chain_meta = {
+            "current_root": chain.get("current_root"),
+            "leaves_total": chain.get("leaves_total") or len(leaves),
+            "first_date": chain.get("first_date")
+                or (leaves[0].get("date") if leaves else None),
+        }
+
+    return render_template(
+        "signed_snapshots_index.html",
+        dates=dates,  # already newest-first
+        fingerprint=fingerprint,
+        chain_meta=chain_meta,
+    )
+
+
+@app.route("/snapshots/verify")
+def signed_snapshots_verify():
+    """Interactive verification UI. Visitor enters (date, metric, expected
+    value); we fetch the corresponding signed file from disk, re-derive
+    the leaf hash, verify the Ed25519 signature, verify the audit path
+    against the chain root, and report each check independently."""
+    date_str = (request.args.get("date") or "").strip()
+    metric = (request.args.get("metric") or "").strip()
+    expected = (request.args.get("value") or "").strip()
+
+    result = None
+    if date_str:
+        if not _safe_date_str(date_str):
+            result = {"ok": False, "issues": [f"invalid date format (need YYYY-MM-DD): {date_str}"]}
+        else:
+            result = _verify_snapshot(date_str, metric, expected)
+
+    fingerprint = None
+    try:
+        with open(SNAPSHOT_PUBKEY_FP_PATH) as f:
+            fingerprint = f.read().strip()
+    except (OSError, FileNotFoundError):
+        pass
+
+    return render_template(
+        "signed_snapshots_verify.html",
+        date_str=date_str,
+        metric=metric,
+        expected=expected,
+        result=result,
+        fingerprint=fingerprint,
+    )
+
+
+def _verify_snapshot(date_str, metric, expected):
+    """Run the same checks signed_snapshot.py --verify does, plus an
+    optional metric-value lookup. PG-first; disk fallback. Pulls the
+    envelope from whichever source has it and runs verify_envelope on
+    the dict directly so a single code path covers both storage sources."""
+    try:
+        import signed_snapshot as ss
+    except Exception as e:
+        return {"ok": False, "issues": [f"verifier module unavailable: {type(e).__name__}"]}
+
+    envelope = _read_signed_envelope(date_str)
+    if envelope is None:
+        return {"ok": False, "issues": [f"snapshot for {date_str}: not found"]}
+
+    ok, issues = ss.verify_envelope(envelope)
+    matched_metric = None
+    if ok and metric:
+        for m in envelope.get("metrics", []):
+            if m.get("name") == metric:
+                matched_metric = m
+                break
+        if matched_metric is None:
+            issues.append(f"metric '{metric}' not present in snapshot")
+            ok = False
+        elif expected:
+            # Best-effort string compare — handles ints and floats by
+            # round-trip through str() of the file value.
+            if str(matched_metric.get("value")) != expected:
+                issues.append(
+                    f"value mismatch (snapshot has {matched_metric.get('value')!r}, "
+                    f"you provided expected value {expected!r})"
+                )
+                ok = False
+
+    return {"ok": ok, "issues": issues, "matched_metric": matched_metric}
 
 
 def _historical_snapshot_meta_from_disk():

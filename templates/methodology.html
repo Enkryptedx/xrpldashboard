@@ -267,6 +267,63 @@
     {{ _('Every label is stored with its source so users can tell first-party from TOML-attested from reference.') }}
   </p>
 
+  <h2 id="signed-snapshots">{{ _('Signed integrity snapshots') }}</h2>
+  <p>
+    {% trans -%}
+    Every UTC day we capture a small canonical set of headline metrics (validated ledger index, AMM pool count and total TVL, MPT count, named-accounts count), hash that capture into a Merkle leaf, extend a global append-only Merkle chain, and sign the resulting envelope with our Ed25519 private key. The signed JSON is published at <code>/.well-known/snapshots/YYYY-MM-DD.json</code> and the cumulative chain root at <code>/.well-known/snapshots/chain.json</code>. Both are static, cacheable, and independently verifiable forever.
+    {%- endtrans %}
+  </p>
+  <p>
+    <strong>{{ _('Why this exists.') }}</strong>
+    {% trans -%}
+    Web dashboards can silently re-render history. A number that was true yesterday can quietly become a different number today, and visitors have no way to tell. Daily signed snapshots make that class of drift detectable: if the JSON you fetch today doesn't pass cryptographic verification against our published public key, something is wrong — either with the file, the chain, or the signing key. No other XRPL dashboard publishes a verifiable history of its own numbers.
+    {%- endtrans %}
+  </p>
+  <p>
+    <strong>{{ _('Anatomy of one snapshot.') }}</strong>
+    {% trans -%}
+    Each daily file contains: the metrics block (name → value+unit pairs), a canonical-JSON SHA-256 leaf hash, the leaf's index in the global chain, the audit path proving inclusion under that day's chain root, the previous chain root, the new chain root, and an Ed25519 signature over the canonical envelope summary. All hashing follows RFC 6962-style domain separation — <code>0x00</code> byte prefix for leaves, <code>0x01</code> for internal nodes — so leaves and intermediate hashes can never collide.
+    {%- endtrans %}
+  </p>
+  <p>
+    <strong>{{ _('How to verify yourself.') }}</strong>
+    {% trans -%}
+    Three independent checks, all server-side-free:
+    {%- endtrans %}
+  </p>
+  <ol>
+    <li>{{ _('Fetch our public key from <a href="/.well-known/snapshots/pubkey.pem">/.well-known/snapshots/pubkey.pem</a>, cross-check the fingerprint against this page, <a href="/about#signed-snapshots">/about</a>, and DNS TXT <code>_xrpld-snapshot-key.xrpldashboard.com</code>. All four sources must agree.') | safe }}</li>
+    <li>{{ _('Re-derive the leaf hash: SHA-256 of (<code>0x00</code> || canonical-JSON of the <code>{signing_domain, schema_version, snapshot_date_utc, metrics}</code> subset).') | safe }}</li>
+    <li>{{ _('Walk the <code>audit_path</code> from the leaf, hashing each pair with the <code>0x01</code> domain separator. The result must equal the published <code>chain_root</code>.') | safe }}</li>
+    <li>{{ _('Verify the Ed25519 signature in <code>signature_ed25519</code> against the canonical-JSON of the envelope summary <code>{signing_domain, schema_version, snapshot_date_utc, leaf_hash, leaf_index, leaves_total, chain_root, previous_root}</code>, using the public key from step 1.') | safe }}</li>
+  </ol>
+  <p>
+    {{ _('Our') }} <a href="/snapshots/verify">{{ _('one-click verification form') }}</a>
+    {{ _('runs all three checks server-side and shows each pass/fail independently — the same verification you can run locally with any Ed25519 library plus a SHA-256.') }}
+  </p>
+  <p>
+    <strong>{{ _('Trust model.') }}</strong>
+    {% trans -%}
+    A signed snapshot proves only that the published number existed on the recorded date and was signed by the key whose public half we pin in four places. It does not prove the number was <em>correct</em> — that depends on the source data and our collection logic, both documented in the rest of this page. Signed snapshots make it impossible for us to quietly rewrite history without being caught, but they are not a substitute for the rest of the methodology audit; they are the audit's lower bound.
+    {%- endtrans %}
+  </p>
+  <div class="callout">
+    <p>
+      <strong>{{ _('Signing key fingerprint.') }}</strong>
+      {% if snapshot_fingerprint %}
+        <code>{{ snapshot_fingerprint }}</code>
+      {% else %}
+        <span class="muted">{{ _('not yet published — fingerprint will appear here once the first signed snapshot is generated.') }}</span>
+      {% endif %}
+    </p>
+    <p>
+      {{ _('Schema version:') }} <code>1</code>.
+      {{ _('Signing domain:') }} <code>xrpldashboard.com/signed_snapshot/v1</code>.
+      {{ _('Curve:') }} <code>Ed25519</code>.
+      {{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.
+    </p>
+  </div>
+
   <h2 id="attestation">{{ _('Domain attestation') }}</h2>
   <p>
     {% trans -%}

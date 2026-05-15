@@ -156,6 +156,28 @@
     </p>
   </div>
 
+  <h2 id="signed-snapshots">{{ _('Signed integrity snapshots') }}</h2>
+  <p>
+    {% trans -%}
+    Every UTC day we publish a cryptographically signed snapshot of headline metrics — ledger index, AMM pool count and TVL, MPT count, named-accounts count — chained into an append-only Merkle tree and signed with our Ed25519 key. Anyone can fetch any past snapshot, verify the signature against our published public key, and prove the number was attested by us on the recorded date. No other XRPL dashboard publishes verifiable historical data.
+    {%- endtrans %}
+  </p>
+  <div class="callout">
+    <p>
+      <strong>{{ _('Our signing key fingerprint:') }}</strong>
+      {% if snapshot_fingerprint %}
+        <code>{{ snapshot_fingerprint }}</code>
+      {% else %}
+        <span class="muted">{{ _('not yet published.') }}</span>
+      {% endif %}
+    </p>
+    <p>
+      {% trans -%}
+      The same fingerprint is pinned on <a href="/methodology#signed-snapshots">/methodology</a> and in DNS TXT <code>_xrpld-snapshot-key.xrpldashboard.com</code>. All three sources must agree — if any one of them is altered without the others, the discrepancy is the alarm. Full public key at <a href="/.well-known/snapshots/pubkey.pem">/.well-known/snapshots/pubkey.pem</a>; verification form at <a href="/snapshots/verify">/snapshots/verify</a>; daily snapshot index at <a href="/snapshots/">/snapshots/</a>.
+      {%- endtrans %}
+    </p>
+  </div>
+
   <h2>{{ _('How it\'s funded') }}</h2>
   <p>
     {{ _('Hosting and infrastructure currently run ~$25/month (Render Standard), covered out of pocket. As the project grows we\'ll be applying for XRPL ecosystem grants, and donations are welcome') }}

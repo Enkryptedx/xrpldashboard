@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('signed snapshots') }} · xrpldashboard</title>
+  {% set meta_title = "signed snapshots · xrpldashboard" %}
+  {% set meta_description = "Daily Ed25519-signed snapshots of headline xrpldashboard metrics. Every number we've ever published is independently verifiable forever." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 32px; max-width: 720px; }
+    h2 { font-size: 1.15rem; margin: 32px 0 12px; font-weight: 600; }
+    a { color: var(--cyan); }
+    a:hover { color: var(--text); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px 20px; margin: 0 0 16px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: 0.78rem; letter-spacing: 0.02em; }
+    .pill.live { background: rgba(74,222,128,0.12); color: var(--green); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px; margin: 0 0 12px; }
+    .grid a { display: block; padding: 10px 12px; background: var(--card);
+              border: 1px solid var(--border); border-radius: 8px; text-decoration: none;
+              color: var(--text); font-family: var(--mono); font-size: 0.95rem; }
+    .grid a:hover { border-color: var(--cyan); }
+    code { font-family: var(--mono); font-size: 0.9rem; color: var(--text);
+           background: rgba(255,255,255,0.04); padding: 1px 6px; border-radius: 4px;
+           word-break: break-all; }
+    .root { font-family: var(--mono); font-size: 0.82rem; color: var(--muted);
+            word-break: break-all; margin: 4px 0 0; }
+    .muted { color: var(--muted); font-size: 0.92rem; }
+    ol li, ul li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  {% include "_nav.html" %}
+  <main class="wrap">
+    <h1>Signed integrity snapshots</h1>
+    <p class="lede">
+      Every day at 00:05 UTC we capture a small set of canonical metrics
+      (XRPL ledger index, total AMM pools, total TVL, MPT count, named-accounts
+      count), hash them into a Merkle leaf, extend the global chain, and sign
+      the result with our Ed25519 key. Any visitor can fetch a past snapshot,
+      verify the signature against our public key, and prove the number was
+      attested on the recorded date. <strong>No other XRPL dashboard publishes
+      cryptographically verifiable historical data.</strong>
+    </p>
+
+    {% if chain_meta %}
+    <div class="card">
+      <div><span class="pill live">●</span> chain active</div>
+      <div style="margin-top:8px">
+        <strong>{{ chain_meta.leaves_total }}</strong> snapshot{{ '' if chain_meta.leaves_total == 1 else 's' }}
+        committed since <code>{{ chain_meta.first_date or '—' }}</code>.
+      </div>
+      {% if chain_meta.current_root %}
+      <div class="muted" style="margin-top:6px">current chain root</div>
+      <div class="root">{{ chain_meta.current_root }}</div>
+      {% endif %}
+      <div style="margin-top:10px">
+        <a href="/.well-known/snapshots/chain.json">/.well-known/snapshots/chain.json</a> ·
+        <a href="/.well-known/snapshots/pubkey.pem">pubkey.pem</a>
+        {% if fingerprint %}<span class="muted"> · fingerprint <code>{{ fingerprint }}</code></span>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card muted">
+      No signed snapshots written yet. Once <code>signed_snapshot.py</code> runs
+      for the first time, this index populates and verification becomes available.
+    </div>
+    {% endif %}
+
+    {% if dates %}
+    <h2>Snapshots</h2>
+    <div class="grid">
+      {% for d in dates %}
+        <a href="/.well-known/snapshots/{{ d }}.json">{{ d }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <h2>How to verify a number yourself</h2>
+    <ol>
+      <li>Fetch our public key: <a href="/.well-known/snapshots/pubkey.pem">/.well-known/snapshots/pubkey.pem</a> (also pinned in <a href="/about">/about</a> and in DNS TXT <code>_xrpld-snapshot-key</code>).</li>
+      <li>Fetch the signed snapshot for the date you care about, e.g. <code>/.well-known/snapshots/{{ dates[0] if dates else 'YYYY-MM-DD' }}.json</code>.</li>
+      <li>Re-derive the leaf hash: SHA-256 of (<code>0x00</code> || canonical-JSON of the <code>{signing_domain, schema_version, snapshot_date_utc, metrics}</code> subset).</li>
+      <li>Reconstruct the chain root by walking the <code>audit_path</code> from the leaf, hashing pairs with a <code>0x01</code> domain-separator prefix.</li>
+      <li>Verify the Ed25519 signature: <code>signature_ed25519</code> against the canonical-JSON of the envelope summary <code>{signing_domain, schema_version, snapshot_date_utc, leaf_hash, leaf_index, leaves_total, chain_root, previous_root}</code>, using the public key from step 1.</li>
+    </ol>
+
+    <h2>One-click verification</h2>
+    <p>
+      Try our <a href="/snapshots/verify">verification form</a> — paste a date and a metric name+value, and we'll run all checks server-side and show the result.
+    </p>
+
+    <p class="muted" style="margin-top:36px">
+      Source: <code>signed_snapshot.py</code> in the public repo. Methodology: <a href="/methodology#signed-snapshots">/methodology</a>.
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.signed_snapshot</string>
+
+    <key>Comment</key>
+    <string>Daily Ed25519-signed Merkle-chained snapshot of headline metrics (ledger index, AMM pool count/TVL, MPT count, named accounts count). Output: signed_snapshots/YYYY-MM-DD.json + chain.json, published at /.well-known/snapshots/.</string>
+
+    <!-- Wrapper script sources SIGNING_KEY_PASSPHRASE from ~/.config/xrpldashboard/env
+         before exec'ing python, so signed_snapshot.py can decrypt the AES-256
+         encrypted Ed25519 private key. Without the env var the script exits
+         non-zero rather than silently writing an unsigned snapshot. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_signed_snapshot.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- 24-hour rolling interval, matching daily_snapshot.plist. macOS
+         UserEventAgent-Aqua dispatches StartCalendarInterval unreliably
+         across sleep/wake (observed 2026-05-13: armed 02:07 trigger
+         silently no-op'd overnight). StartInterval survives sleep/wake;
+         RunAtLoad catches install-time + post-reboot. signed_snapshot.py
+         uses today-UTC for the snapshot date and has append-or-replace
+         semantics for same-day re-runs, so exact wall-clock timing
+         doesn't matter — only "once per UTC day" matters. -->
+    <key>StartInterval</key>
+    <integer>86400</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/signed_snapshot.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/signed_snapshot.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

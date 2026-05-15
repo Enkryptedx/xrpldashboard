@@ -259,6 +259,39 @@ CREATE TABLE IF NOT EXISTS rwa_pool_attribution (
 );
 CREATE INDEX IF NOT EXISTS idx_rwa_pool_attribution_family
     ON rwa_pool_attribution (family_slug);
+
+-- Daily Ed25519-signed integrity snapshots. Mac worker (signed_snapshot.py)
+-- writes one row per UTC day with the full signed JSON envelope; Flask on
+-- Render reads from here to serve /.well-known/snapshots/<date>.json and
+-- /snapshots/. Without PG mirroring, only the Mac can serve these files —
+-- visitors hitting xrpldashboard.com (Render) get 404, which would silently
+-- break the entire "verifiable history" claim. PRIMARY KEY (snapshot_date)
+-- gives same-day replace semantics matching signed_snapshot.py.
+CREATE TABLE IF NOT EXISTS signed_snapshots (
+    snapshot_date  DATE PRIMARY KEY,
+    envelope       JSONB NOT NULL,
+    leaf_hash      TEXT NOT NULL,
+    leaf_index     INTEGER NOT NULL,
+    chain_root     TEXT NOT NULL,
+    pubkey_fp      TEXT NOT NULL,
+    written_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_signed_snapshots_leaf_index
+    ON signed_snapshots (leaf_index);
+
+-- Single-row live chain head, mirroring signed_snapshots/chain.json. Kept
+-- separate from signed_snapshots so /.well-known/snapshots/chain.json can
+-- read one row instead of aggregating across all per-day rows. The leaves
+-- array on disk is reconstructable from signed_snapshots, but exposing it
+-- precomputed keeps the route O(1).
+CREATE TABLE IF NOT EXISTS signed_snapshot_chain (
+    id              INTEGER PRIMARY KEY DEFAULT 1,
+    current_root    TEXT NOT NULL,
+    leaves_total    INTEGER NOT NULL,
+    schema_version  INTEGER NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (id = 1)
+);
 """
 
 
@@ -1544,5 +1577,180 @@ def read_country_breakdown(window_seconds, limit=10, kind="human"):
                     [cutoff, *bot_params, limit],
                 )
                 return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Signed integrity snapshots
+# ─────────────────────────────────────────────────────────────────────
+#
+# Mac-side signed_snapshot.py dual-writes the daily envelope to disk
+# (./signed_snapshots/YYYY-MM-DD.json) AND to PG via write_signed_snapshot.
+# Render's Flask app reads via the read_* helpers — disk is irrelevant on
+# Render because the file is generated locally on the Mac.
+#
+# The envelope row + the one-row chain head are upserted atomically in a
+# single transaction so a partial PG failure can never leave the chain
+# head pointing at a leaf the envelope row doesn't yet have.
+
+def write_signed_snapshot(envelope, current_root, leaves_total, schema_version):
+    """Mirror one signed-snapshot envelope into PG. `envelope` is the full
+    JSON dict produced by signed_snapshot.py (everything the per-date route
+    returns). `current_root` / `leaves_total` / `schema_version` are taken
+    from the updated chain head (post-write).
+
+    Idempotent: re-running for the same date overwrites the row (matches
+    signed_snapshot.py's same-day replace semantics). The chain head is
+    always set to the post-write values; never decrements.
+
+    Returns True on success, False on PG failure (caller logs and continues
+    — disk is the source of truth, PG mirror catches up next run)."""
+    if not pg_available():
+        return False
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO signed_snapshots "
+                "  (snapshot_date, envelope, leaf_hash, leaf_index, "
+                "   chain_root, pubkey_fp, written_at) "
+                "VALUES (%s::date, %s::jsonb, %s, %s, %s, %s, NOW()) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "  envelope    = EXCLUDED.envelope, "
+                "  leaf_hash   = EXCLUDED.leaf_hash, "
+                "  leaf_index  = EXCLUDED.leaf_index, "
+                "  chain_root  = EXCLUDED.chain_root, "
+                "  pubkey_fp   = EXCLUDED.pubkey_fp, "
+                "  written_at  = EXCLUDED.written_at",
+                (
+                    envelope["snapshot_date_utc"],
+                    json.dumps(envelope, default=str),
+                    envelope["leaf_hash"],
+                    int(envelope["leaf_index"]),
+                    envelope["chain_root"],
+                    envelope.get("signing_pubkey_fingerprint") or "",
+                ),
+            )
+            cur.execute(
+                "INSERT INTO signed_snapshot_chain "
+                "  (id, current_root, leaves_total, schema_version, updated_at) "
+                "VALUES (1, %s, %s, %s, NOW()) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "  current_root   = EXCLUDED.current_root, "
+                "  leaves_total   = EXCLUDED.leaves_total, "
+                "  schema_version = EXCLUDED.schema_version, "
+                "  updated_at     = EXCLUDED.updated_at",
+                (current_root, int(leaves_total), int(schema_version)),
+            )
+        conn.commit()
+        return True
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        _log_err("write_signed_snapshot_failed", e)
+        _drop_writer_conn()
+        return False
+
+
+def read_signed_snapshot(date_str):
+    """Return the signed envelope dict for `date_str` (ISO YYYY-MM-DD), or
+    None when not in PG. Caller validates the date format first."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT envelope FROM signed_snapshots "
+                    "WHERE snapshot_date = %s::date",
+                    (date_str,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload = row[0]
+                return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def read_signed_snapshot_chain():
+    """Return the live chain head dict matching disk's chain.json shape:
+        {schema_version, current_root, leaves_total, first_date, leaves,
+         root_history}
+    or None when PG has no rows. `leaves` is rebuilt from signed_snapshots
+    so the route doesn't need to JOIN at request time; `root_history` is
+    the per-date chain_root trail (every leaf is also a root after its
+    own write)."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT current_root, leaves_total, schema_version "
+                    "FROM signed_snapshot_chain WHERE id = 1"
+                )
+                head = cur.fetchone()
+                if not head:
+                    return None
+                current_root, leaves_total, schema_version = head
+                cur.execute(
+                    "SELECT snapshot_date, leaf_hash, chain_root, "
+                    "       envelope->'metrics' "
+                    "FROM signed_snapshots ORDER BY leaf_index ASC"
+                )
+                rows = cur.fetchall()
+                leaves = []
+                root_history = []
+                for snapshot_date, leaf_hash, chain_root, metrics_jsonb in rows:
+                    date_str = snapshot_date.isoformat()
+                    ledger_index = None
+                    if isinstance(metrics_jsonb, list):
+                        for m in metrics_jsonb:
+                            if isinstance(m, dict) and m.get(
+                                "name"
+                            ) == "xrpl_validated_ledger_index":
+                                try:
+                                    ledger_index = int(m.get("value"))
+                                except (TypeError, ValueError):
+                                    ledger_index = None
+                                break
+                    leaves.append({
+                        "date": date_str,
+                        "leaf_hash": leaf_hash,
+                        "ledger_index": ledger_index,
+                    })
+                    root_history.append({"date": date_str, "root": chain_root})
+                return {
+                    "schema_version": int(schema_version),
+                    "current_root": current_root,
+                    "leaves_total": int(leaves_total),
+                    "first_date": leaves[0]["date"] if leaves else None,
+                    "leaves": leaves,
+                    "root_history": root_history,
+                }
+    except Exception:
+        return None
+
+
+def read_signed_snapshot_dates():
+    """Newest-first list of YYYY-MM-DD strings of every signed snapshot in
+    PG. Powers the date grid on /snapshots/. Empty list when PG empty."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date FROM signed_snapshots "
+                    "ORDER BY snapshot_date DESC"
+                )
+                return [r[0].isoformat() for r in cur.fetchall()]
     except Exception:
         return []
