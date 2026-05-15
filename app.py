@@ -77,7 +77,7 @@ SIGNED_SNAPSHOTS_DIR = os.path.join(HERE, "signed_snapshots")
 SNAPSHOT_PUBKEY_PEM_PATH = os.path.join(HERE, "snapshot_pubkey.pem")
 SNAPSHOT_PUBKEY_FP_PATH = os.path.join(HERE, "snapshot_pubkey_fingerprint.txt")
 
-WHALE_XRP_THRESHOLD = 50_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
+WHALE_XRP_THRESHOLD = 100_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
 
 # Canonical production origin. Used for og:url / canonical / sitemap.xml.
 # Override with SITE_URL env var if a preview deploy needs a different host.
