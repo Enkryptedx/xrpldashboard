@@ -1581,8 +1581,12 @@ def whales():
             mag = max(0.2, min(1.0, (math.log10(xrp + 10) - 5.0) / 3.0 + 0.4))
             radar_blips.append({"mag": round(mag, 3), "kind": r[3] or "large_xfer"})
 
+    # Cap historical blips: more than ~8 makes the radar look constantly active
+    # on page load (each blip spawns 1100ms apart, so 8 = ~9s of animation).
+    radar_blips = radar_blips[:8]
+
     # Real readings for the two HUD corners (replace the old fake
-    # bearing/range/contacts text). Always reflect the canonical 50K-XRP
+    # bearing/range/contacts text). Always reflect the canonical 100K-XRP
     # whale floor so the numbers don't shift with UI tier filters.
     radar_floor_drops = WHALE_XRP_THRESHOLD * 1_000_000
     radar_stats = {"last_24h": 0, "last_amount_drops": None}
