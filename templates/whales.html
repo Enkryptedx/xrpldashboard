@@ -284,8 +284,8 @@
     <canvas id="whale-radar-canvas"></canvas>
     <div class="hud-tl">{{ _('XRPL · whale scope') }}<br><span class="hud-num">{{ _('scan 360°') }}</span></div>
     <div class="hud-tr">{{ _('tracking floor') }}<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
-    <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
-    <div class="hud-br">{{ _('last whale') }}<br><span class="hud-amber">{{ radar_stats.last_label }}</span></div>
+    <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num" id="hud-24h-count">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
+    <div class="hud-br">{{ _('last whale') }}<br><span class="hud-amber" id="hud-last-whale">{{ radar_stats.last_label }}</span></div>
   </div>
   <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>
 
@@ -538,18 +538,34 @@
     var spawnIdx    = 0;
     var lastSpawnAt = 0;
 
+    // Historical seed: play each page-load blip ONCE at a cadenced interval,
+    // then stop. Only real incoming WS events spawn blips after that.
     function spawnNext(now) {
-      var src = SCOPE[spawnIdx % SCOPE.length];
+      if (spawnIdx >= SCOPE.length) return; // history exhausted — no looping
+      var src = SCOPE[spawnIdx];
       spawnIdx++;
       activeBlips.push({
-        angle: src.angle,
-        rRel:  src.rRel,
-        mag:   src.mag,
-        kind:  src.kind,
-        born:  now,
-        litAt: 0
+        angle: src.angle, rRel: src.rRel,
+        mag: src.mag, kind: src.kind,
+        born: now, litAt: 0
       });
     }
+
+    // Called by the live WS handler when a real whale event arrives.
+    // Angle is golden-angle from a running counter so blips scatter evenly.
+    var liveBlipCounter = SCOPE.length;
+    window._radarAddLiveBlip = function(drops) {
+      var xrp = drops / 1000000;
+      var mag = Math.max(0.2, Math.min(1.0, (Math.log10(xrp + 10) - 5.0) / 3.0 + 0.4));
+      var ang = (liveBlipCounter * 137.5) * Math.PI / 180;
+      var rRel = 0.95 - mag * 0.55;
+      liveBlipCounter++;
+      activeBlips.push({
+        angle: ang, rRel: rRel,
+        mag: mag, kind: 'large_xfer',
+        born: performance.now(), litAt: 0
+      });
+    };
 
     function drawScope(now) {
       var rect = canvas.getBoundingClientRect();
@@ -623,8 +639,8 @@
       ctx.stroke();
       ctx.restore();
 
-      // Spawn next blip on cadence
-      if (!reduced && now - lastSpawnAt > BLIP_SPAWN_MS) {
+      // Seed historical blips at cadence (plays through once, then stops).
+      if (!reduced && spawnIdx < SCOPE.length && now - lastSpawnAt > BLIP_SPAWN_MS) {
         spawnNext(now);
         lastSpawnAt = now;
       } else if (reduced && activeBlips.length === 0) {
@@ -780,6 +796,37 @@
     var seenQueue = [];
     var emptyEl = list.querySelector('.empty');
 
+    // Sliding-window 24h counter. hudBase is reconciled from the server
+    // every 60s so it never drifts. liveTimestamps tracks WS events received
+    // since the last server reconcile for immediate visual response.
+    var hudBase = {{ radar_stats.last_24h }};
+    var liveTimestamps = [];
+    var hud24h = document.getElementById('hud-24h-count');
+    var hudLast = document.getElementById('hud-last-whale');
+    function update24hHud() {
+      if (!hud24h) return;
+      var cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      while (liveTimestamps.length && liveTimestamps[0] < cutoff) {
+        liveTimestamps.shift();
+      }
+      hud24h.textContent = (hudBase + liveTimestamps.length).toLocaleString();
+    }
+    function reconcileFromServer() {
+      fetch('/api/whales/radar-stats', {cache: 'no-store'})
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+          if (!d) return;
+          // Server count already includes all events; reset live buffer so
+          // we don't double-count events the DB has already picked up.
+          hudBase = d.last_24h;
+          liveTimestamps = [];
+          update24hHud();
+          if (d.last_label && hudLast) hudLast.textContent = d.last_label;
+        })
+        .catch(function() {});
+    }
+    setInterval(reconcileFromServer, 60000);
+
     function prependEvent(tx, meta, ledgerIndex) {
       if (tx.hash && seenHashes[tx.hash]) return;
       if (tx.hash) {
@@ -831,6 +878,12 @@
       node.className = 'event vibes-spot lsb-new';
       node.innerHTML = html;
       list.insertBefore(node, list.firstChild);
+
+      // Update HUD, 24h counter, and radar blip for this real event.
+      if (hudLast) hudLast.textContent = fmtXrp(drops);
+      liveTimestamps.push(Date.now());
+      update24hHud();
+      if (window._radarAddLiveBlip) window._radarAddLiveBlip(drops);
 
       // Trim oldest entries so the list doesn't grow unboundedly. Server
       // re-renders cap at 100; we cap the live-only set at the same.

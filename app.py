@@ -3303,6 +3303,36 @@ def api_whales_recent():
     )
 
 
+@app.route("/api/whales/radar-stats")
+@limiter.limit("120 per minute")
+def api_whales_radar_stats():
+    """Live 24h whale count and last whale amount for the /whales HUD.
+    Polled every 60s by the client to keep the radar stats current."""
+    radar_floor_drops = WHALE_XRP_THRESHOLD * 1_000_000
+    stats = {"last_24h": 0, "last_amount_drops": None}
+    if db.pg_available():
+        try:
+            stats = db.read_whale_radar_stats(radar_floor_drops)
+        except Exception:
+            pass
+    last_drops = stats.get("last_amount_drops")
+    if last_drops:
+        xrp = last_drops / 1_000_000.0
+        if xrp >= 1_000_000:
+            last_label = f"{xrp / 1_000_000:.1f}M XRP"
+        elif xrp >= 1_000:
+            last_label = f"{xrp / 1_000:.0f}K XRP"
+        else:
+            last_label = f"{xrp:,.0f} XRP"
+    else:
+        last_label = None
+    return (
+        {"last_24h": stats["last_24h"], "last_label": last_label},
+        200,
+        {"Cache-Control": "no-store"},
+    )
+
+
 @app.route("/healthz")
 def healthz():
     """Lightweight health endpoint for uptime monitors. No XRPL call, no scan."""
