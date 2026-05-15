@@ -18,5 +18,18 @@
     "         leave this README block in place (the importer skips it)."
   ],
   "labels": [
+    {
+      "address": "raZt4gvHF161caioa8CcC475TDhEpoaUKU",
+      "name": "Soil (ORQO Group)",
+      "category": "project",
+      "source": "toml",
+      "confidence": 1.0,
+      "extra": {
+        "verified_via": "https://xrpl.soil.co/.well-known/xrp-ledger.toml",
+        "attestation": "two_way",
+        "domain": "xrpl.soil.co",
+        "note": "Soil operational wallet. Domain field on-ledger = xrpl.soil.co. TOML lists address under [[ACCOUNTS]]. ORQO Group, Abu Dhabi."
+      }
+    }
   ]
 }

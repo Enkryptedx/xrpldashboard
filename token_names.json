@@ -150,7 +150,7 @@
     "issuer": "",
     "currency_display": "ONDO",
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
-    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand."
+    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL \u2014 any wallet doing so is impersonating the brand."
   },
   "6D5442494C4C0000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "currency_hex": "6D5442494C4C0000000000000000000000000000",
@@ -173,5 +173,20 @@
     "currency_display": "MTBILL",
     "verified_via": "xrpscan@brand-protected",
     "notes": "MTBILL (uppercase) is not Midas's canonical mTBILL. Different bytes, different brand. Any wallet issuing MTBILL is a spoof of the case-changed lookalike."
+  },
+  "534F494C00000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
+    "currency_hex": "534F494C00000000000000000000000000000000",
+    "currency_display": "SOIL",
+    "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
+    "category": "bridge",
+    "verified_via": null,
+    "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet \u2014 not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance."
+  },
+  "534F494C00000000000000000000000000000000:": {
+    "currency_hex": "534F494C00000000000000000000000000000000",
+    "issuer": "",
+    "currency_display": "SOIL",
+    "verified_via": "xrpscan@brand-protected",
+    "notes": "SOIL canonical issuer is Axelar bridge (rfmS3z...). Any other issuer is a spoof."
   }
 }
