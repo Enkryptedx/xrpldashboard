@@ -129,5 +129,23 @@
     "category": "issuer",
     "verified_via": "https://medium.com/@txEcosystem/sologenic-solo-airdrop-distribution-complete-official-report-8e5d8594e43e",
     "_note": "Sologenic's official SOLO token issuer on the XRPL. Source: Sologenic's official airdrop distribution report on Medium identifies this address as the SOLO issuer. Vanity-prefixed (rsoLo...) confirms ownership intent."
+  },
+  "rNzBJJkaDVhh17wUyzpLjnL6QEohY4bdX5": {
+    "name": "EBIT Token Issuer",
+    "category": "other",
+    "verified_via": "https://campioneinfrastructure.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to campioneinfrastructure.com, and https://campioneinfrastructure.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
+    "name": "User Withdraw Account",
+    "category": "other",
+    "verified_via": "https://www.sivax.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to www.sivax.io, and https://www.sivax.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rUujgL52fMEp5zf9bbYH1t5u52RPT1jtWa": {
+    "name": "Evan Wyn Evans",
+    "category": "other",
+    "verified_via": "https://xrp-liquid.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrp-liquid.com, and https://xrp-liquid.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
   }
 }
