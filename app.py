@@ -181,7 +181,7 @@ _OG_PAGES = {
 }
 
 # Path -> OG slug. Anything not in this map falls through to the generic
-# /static/og-image.png (so subpages and detail routes still get *an* image,
+# /static/og-image.jpg (so subpages and detail routes still get *an* image,
 # just the shared one).
 _OG_PATH_SLUG = {
     "/":              "home",
@@ -212,7 +212,7 @@ def inject_og_image():
     """Resolve the per-page og:image URL based on request.path.
 
     Templates pick this up via _head_meta.html. Pages without a config
-    entry just see the existing /static/og-image.png — so adding a new
+    entry just see the existing /static/og-image.jpg — so adding a new
     page without an OG slug doesn't break sharing, it just keeps the
     generic card. Detail pages with dynamic slugs (e.g. /wallet/<addr>,
     /token/<cur>/<iss>) also fall through to the generic card on purpose
@@ -220,7 +220,7 @@ def inject_og_image():
     slug = _OG_PATH_SLUG.get(request.path or "/")
     if slug:
         return {"og_image_url": f"{SITE_URL}/og/{slug}.png"}
-    return {"og_image_url": f"{SITE_URL}/static/og-image.png"}
+    return {"og_image_url": f"{SITE_URL}/static/og-image.jpg"}
 
 
 @app.route("/og/<slug>.png")
@@ -228,7 +228,7 @@ def inject_og_image():
 def og_card(slug):
     """Serve the per-page OG image. Cached in-memory after first render.
 
-    Three layers of fallback to /static/og-image.png:
+    Three layers of fallback to /static/og-image.jpg:
       1. Unknown slug
       2. Pillow missing (og_image.render returns None)
       3. Any exception during render
@@ -236,11 +236,11 @@ def og_card(slug):
     too — no point rebuilding a broken image on every social-card fetch."""
     cfg = _OG_PAGES.get(slug)
     if not cfg:
-        return redirect("/static/og-image.png", code=302)
+        return redirect("/static/og-image.jpg", code=302)
     if slug in _OG_CACHE:
         cached = _OG_CACHE[slug]
         if cached is None:
-            return redirect("/static/og-image.png", code=302)
+            return redirect("/static/og-image.jpg", code=302)
         return Response(cached, mimetype="image/png",
                         headers={"Cache-Control": "public, max-age=86400"})
     try:
@@ -249,7 +249,7 @@ def og_card(slug):
         png = None
     _OG_CACHE[slug] = png
     if not png:
-        return redirect("/static/og-image.png", code=302)
+        return redirect("/static/og-image.jpg", code=302)
     return Response(png, mimetype="image/png",
                     headers={"Cache-Control": "public, max-age=86400"})
 
