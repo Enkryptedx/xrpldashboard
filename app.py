@@ -1394,7 +1394,7 @@ def _resolve_event(row, named_accounts, token_names):
 
     age_seconds = max(0, int(time.time() - ts))
     type_labels = {
-        "large_xfer": "large XRP",
+        "large_xfer": "whale",
         "tagged":     "tagged",
         "trustset":   "trustline",
     }
