@@ -29,6 +29,22 @@ signed_snapshots/
 # Ed25519 encrypted private key — never commit
 snapshot_ed25519_enc.pem
 
+# Generated prev/backup files
+*.prev
+
+# Generated outputs (daily posts, historical snapshots, translation scripts)
+daily_posts/
+historical_snapshots/
+translate_all.py
+translate_complete.py
+apply_prose.py
+daily_twitter_post.py
+mpt_snapshot.v3sandbox.json
+
+# Backup templates
+templates/*_v1.html
+templates/*_backup.html
+
 # Runtime state — generated, not source of truth
 amm_index.json
 amm_index_incremental.json
