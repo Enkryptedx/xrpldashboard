@@ -604,6 +604,11 @@
             <span class="sub">{{ _('closing every') }} {{ "%.1f"|format(pulse.avg_close_seconds or 3.5) }}s</span>
           </span>
           {% endif %}
+          <span class="ticker" id="xrp-price-ticker" style="display:none;">
+            <span class="lbl">XRP</span>
+            <span class="num" id="xrp-price-num">—</span>
+            <span class="sub">XRPL DEX · XRP/RLUSD <span class="live" id="xrp-price-live" style="display:none;"><span class="dot"></span>LIVE</span></span>
+          </span>
           <span class="cached-meta">
             {# Server emits UTC for SEO/no-JS fallback; inline JS below
                rewrites it to the visitor's local timezone so the hero
@@ -1051,6 +1056,35 @@
         el.classList.add('flash');
         setTimeout(function () { el.classList.remove('flash'); }, 380);
       });
+    })();
+
+    // XRP/RLUSD live price — polls /api/xrp-price every 20s.
+    // Source: on-chain XRP/RLUSD AMM (xrplcluster.com). Flashes cyan on update.
+    (function () {
+      var ticker = document.getElementById('xrp-price-ticker');
+      var numEl  = document.getElementById('xrp-price-num');
+      var liveEl = document.getElementById('xrp-price-live');
+      if (!ticker || !numEl) return;
+
+      function update() {
+        fetch('/api/xrp-price', { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d || !d.price) return;
+            var formatted = '$' + d.price.toFixed(4);
+            if (numEl.textContent !== formatted) {
+              numEl.textContent = formatted;
+              numEl.classList.add('flash');
+              setTimeout(function () { numEl.classList.remove('flash'); }, 600);
+            }
+            ticker.style.display = '';
+            if (liveEl) liveEl.style.display = '';
+          })
+          .catch(function () {});
+      }
+
+      update();
+      setInterval(update, 20000);
     })();
 
     // Spinning XRPL globe. Wireframe sphere with rotating surface dots;

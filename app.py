@@ -26,6 +26,7 @@ from amm_scan_pools import (
     scan_all_pools_cached,
 )
 from network_pulse import fetch_pulse_cached
+from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 from lending_amendment import fetch_lending_status_cached
@@ -3202,6 +3203,27 @@ def api_heartbeat_age():
     return ({"status": "ok",
              "age_seconds": age,
              "threshold_seconds": STALE_SECONDS}, 200, headers)
+
+
+@app.route("/api/xrp-price")
+@limiter.limit("120 per minute")
+def api_xrp_price():
+    """Live XRP/USD price from the on-chain XRP/RLUSD AMM (xrplcluster.com).
+    Single disclosed source — RLUSD only, not a median. 20s server cache."""
+    p = fetch_xrp_price_cached()
+    if p.get("error"):
+        return {"error": p["error"]}, 503
+    return (
+        {
+            "price": p["price"],
+            "source": p["source"],
+            "xrp_reserves": p.get("xrp_reserves"),
+            "rlusd_reserves": p.get("rlusd_reserves"),
+            "cached_age_seconds": p["cached_age_seconds"],
+        },
+        200,
+        {"Cache-Control": "no-store"},
+    )
 
 
 @app.route("/api/xrp-usd")
