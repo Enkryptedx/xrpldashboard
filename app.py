@@ -191,7 +191,7 @@ _OG_PAGES = {
     "tokens":        ("Token Trades",          "Live trade tape across the XRP Ledger.",              "#b388f6"),
     "mpts":          ("MPT Registry",          "Every multi-purpose token on XRPL, decoded.",         "#ec4899"),
     "rlusd":         ("RLUSD",                 "Cross-chain treasury data — XRPL + Ethereum.",        "#3b82f6"),
-    "lending":       ("XRPL Lending",          "Loan brokers, vaults, and TVL — XLS-66.",             "#f59e0b"),
+    "lending":       ("XRPL Lending",          "Loan brokers, vaults, and TVL — XLS-66d.",            "#f59e0b"),
     "health":        ("System Health",         "Live operational status of every worker.",            "#10b981"),
     "methodology":   ("How It Works",          "Sources, methods, and freshness windows.",            "#94a3b8"),
     "about":         ("About xrpldashboard",   "What it is and why it exists.",                       "#94a3b8"),

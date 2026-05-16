@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('XRPL lending') }} · xrpldashboard</title>
   {% set meta_title = "XRPL native lending · xrpldashboard" %}
-  {% set meta_description = "XRPL's XLS-66 native lending protocol — amendment voting status, plain-English explainer, and a Loan Broker Board that goes live the day the network activates it." %}
+  {% set meta_description = "XRPL's XLS-66d native lending protocol — amendment voting status, plain-English explainer, and a Loan Broker Board that goes live the day the network activates it." %}
   {% include "_head_meta.html" %}
 
   <style>
@@ -312,7 +312,7 @@
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-eyebrow">
-        <span>{{ _('XLS-66 native lending') }}</span>
+        <span>{{ _('XLS-66d native lending') }}</span>
         {% if activated %}
           <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
         {% elif status and status.ok %}
@@ -570,7 +570,7 @@
     <h2>{{ _('Learn more') }}</h2>
     <div class="links">
       <a class="link-pill" href="https://xrpl.org/docs/concepts/tokens/lending-protocol" target="_blank" rel="noopener">
-        {{ _('XLS-66 spec') }} ↗
+        {{ _('XLS-66d spec') }} ↗
       </a>
       <a class="link-pill" href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener">
         {{ _('Live amendment vote tracker') }} ↗
