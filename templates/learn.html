@@ -73,7 +73,9 @@
            background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
     em { color: var(--text); }
 
-    /* Hero: static current ledger index */
+    /* Hero: ledger heartbeat — server-rendered "as of" on first paint,
+       upgrades to a LIVE pill + ticking age once the WebSocket confirms
+       a real ledgerClosed event. Never shows LIVE before the WS proves it. */
     .hero {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 14px; padding: 22px 24px; margin: 8px 0 32px;
@@ -83,11 +85,38 @@
       color: var(--muted); font-size: 0.78rem;
       text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
       margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .hero .live-pill {
+      display: none; align-items: center; gap: 5px;
+      font-size: 0.66rem; padding: 2px 7px 2px 6px; border-radius: 999px;
+      font-weight: 700; letter-spacing: 0.06em;
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,0.35);
+      background: rgba(74,222,128,0.07);
+      font-family: var(--sys);
+    }
+    .hero .live-pill.on { display: inline-flex; }
+    .hero .live-pill.deg {
+      color: #fbbf24;
+      border-color: rgba(251,191,36,0.4);
+      background: rgba(251,191,36,0.07);
+    }
+    .hero .live-pill .pill-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+      animation: heroLiveDot 1.6s ease-in-out infinite;
+    }
+    .hero .live-pill.deg .pill-dot { animation: none; opacity: 0.85; }
+    @keyframes heroLiveDot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); opacity: 0.85; }
+      50%     { box-shadow: 0 0 0 5px rgba(74,222,128,0); opacity: 1; }
     }
     .hero .ledger-num {
       font-family: var(--mono); font-size: 1.8rem; color: var(--text);
       letter-spacing: -0.01em; line-height: 1;
+      transition: color .2s;
     }
+    .hero .ledger-num.bump { color: var(--cyan); }
     .hero .as-of {
       color: var(--dim); font-size: 0.82rem; margin-top: 8px;
       font-family: var(--mono);
@@ -142,17 +171,22 @@
   </p>
 
   {% if ledger_index %}
-    <div class="hero">
+    <div class="hero" id="learnHero" data-as-of-unix="{{ as_of_unix }}">
       <div>
-        <div class="label">{{ _('Current ledger index') }}</div>
-        <div class="ledger-num">#{{ '{:,}'.format(ledger_index) }}</div>
-        <div class="as-of" data-as-of-unix="{{ as_of_unix }}">
+        <div class="label">
+          {{ _('Current ledger index') }}
+          <span class="live-pill" id="learnLivePill" aria-hidden="true">
+            <span class="pill-dot"></span><span class="pill-label">{{ _('LIVE') }}</span>
+          </span>
+        </div>
+        <div class="ledger-num" id="learnLedgerNum">#{{ '{:,}'.format(ledger_index) }}</div>
+        <div class="as-of" id="learnAsOf">
           {{ _('as of') }} <span class="as-of-time">{{ as_of_unix }}</span> UTC
         </div>
       </div>
       <div class="caption">
         {% trans -%}
-        Every few seconds the XRP Ledger closes a new page. The number on the left is the page the network is on right now — a public, shared count that anyone in the world can read.
+        Every few seconds the XRP Ledger validates a new ledger — a freshly-signed snapshot of every balance, trustline, and order on the network. The number on the left is the most recent one, a public, shared count that anyone in the world can read.
         {%- endtrans %}
       </div>
     </div>
@@ -165,7 +199,7 @@
       </div>
       <div class="caption">
         {% trans -%}
-        The XRP Ledger closes a new page every few seconds. We couldn't fetch the current page number this moment — the network is fine; our read path is busy. Refresh in a few seconds.
+        The XRP Ledger validates a new ledger every few seconds. We couldn't fetch the current ledger index this moment — the network is fine; our read path is busy. Refresh in a few seconds.
         {%- endtrans %}
       </div>
     </div>
@@ -195,19 +229,24 @@
   </p>
   <p>
     {% trans -%}
-    The XRP Ledger is that notebook. The pages are called "ledgers." A new one closes roughly every three to five seconds. Anyone in the world can read every page that has ever been written, all the way back to the very first one in 2012.
+    The XRP Ledger is that notebook. The pages are called "ledgers." A new one closes roughly every three to five seconds. The network has run with very high uptime since 2012, and every ledger from January 2013 onward is preserved in full-history archives — run by Ripple, the XRP Ledger Foundation, and others — that anyone can query. (The very first 32,569 ledgers from 2012 were lost early on to a software bug; that gap is publicly documented.)
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Here's where the metaphor needs a small upgrade: an XRPL "page" — or ledger — isn't just the new entries since the last one. It's a fresh copy of <em>everything</em>. Every account, every balance, every open order, every issued token. The network signs that whole snapshot, links it to the previous one, and moves on. That's different from Bitcoin, where a block carries only the new transactions and the current set of balances has to be reconstructed by replaying history. Ethereum splits the difference — each block commits to a cryptographic root of the full state, but the state itself lives in a separate database that nodes maintain alongside the chain. On the XRP Ledger, the full state ships inside the ledger itself, every few seconds, already signed.
     {%- endtrans %}
   </p>
 
   <h2 id="who-writes">{{ _('Who actually writes to it?') }}</h2>
   <p>
     {% trans -%}
-    There is no central company in charge of the notebook. Instead, about 150 independent computers around the world — called <em>validators</em> — propose what the next page should say. They are run by universities, exchanges, banks, the XRP Ledger Foundation, and ordinary technically-inclined people in different countries.
+    There is no central company in charge of the notebook. Instead, a network of independent computers around the world — called <em>validators</em> — propose what the next page should say. They are run by universities, exchanges, banks, the XRP Ledger Foundation, and ordinary technically-inclined people in different countries. At any given moment, around 150+ validator servers publish proposals on the network, but consensus is built on a smaller, trusted set — currently around 35 validators on the default <em>unique node list</em> maintained by the XRP Ledger Foundation. Any operator can publish their own trusted set if they don't want to use the default.
     {%- endtrans %}
   </p>
   <p>
     {% trans -%}
-    Every few seconds, each validator independently looks at the pending transactions, decides which ones it considers valid, and broadcasts its proposal. The validators then compare proposals and agree on a single shared answer for that page. If more than 80% of the trusted validators agree, that page is written. If they don't agree, no page is written until they do. This is called <em>consensus</em>.
+    Every few seconds, each validator independently looks at the pending transactions, decides which ones it considers valid, and broadcasts its proposal. The validators then compare proposals and agree on a single shared answer for that page. If more than 80% of the validators on the trusted set agree, that page is written. If they don't agree, no page is written until they do. This is called <em>consensus</em>.
     {%- endtrans %}
   </p>
   <p>
@@ -224,14 +263,14 @@
   </p>
   <p>
     {% trans -%}
-    Beyond paying for transactions, XRP is also used as a unit of value and as one of the assets traded inside the ledger's own on-chain exchange. It was sometimes described as a bridge currency between other assets, though in practice most trades on XRPL today route directly through automated-market-maker pools rather than through XRP as an intermediate hop.
+    Beyond paying for transactions, XRP is also used as a unit of value and as one of the assets traded inside the ledger's own on-chain exchange. It was originally described as a bridge currency between other assets, and that still happens — but since the AMM amendment activated in 2024, many trades now route through automated-market-maker pools directly rather than only through XRP as an intermediate hop.
     {%- endtrans %}
   </p>
 
   <h2 id="speed-cost">{{ _('How fast and how expensive is it?') }}</h2>
   <p>
     {% trans -%}
-    A transaction is final in three to five seconds — the time it takes the next page to close. The base fee for a standard payment is on the order of 0.00001 XRP, which at typical prices is a small fraction of a US cent. Fees rise automatically if the network gets congested, then fall back when it clears.
+    A transaction is final in three to five seconds — the time it takes the next ledger to close. The base fee for a standard payment is on the order of 0.00001 XRP, which at typical prices is a small fraction of a US cent. Fees rise automatically if the network gets congested, then fall back when it clears.
     {%- endtrans %}
   </p>
   <p>
@@ -268,13 +307,13 @@
     <li>
       <strong>{{ _('Lending (in progress).') }}</strong>
       {% trans -%}
-      Native on-chain lending is being added by amendment — a way for token holders to lend and borrow against ledger-resident assets without leaving the network.
+      The native lending amendment (XLS-66d) entered validator voting in January 2026 and is not yet activated. Once it passes, it will let token holders lend and borrow against ledger-resident assets without leaving the network.
       {%- endtrans %}
     </li>
   </ul>
   <p>
     {% trans -%}
-    Real institutions are already using the ledger this way. Archax tokenizes regulated financial instruments on XRPL; Ondo Finance launched a pilot tokenizing US Treasury exposure on the ledger in May 2026. These are not promises about a future — they are live products you can look up.
+    Real institutions are already using the ledger this way. Ondo Finance launched a pilot tokenizing US Treasury exposure on XRPL in May 2026 — a live, verifiable example you can look up on this dashboard's <a href="/rwa">/rwa</a> page. As more institutional issuers come online with on-chain attestations, they'll show up there too.
     {%- endtrans %}
   </p>
 
@@ -317,7 +356,7 @@
   <h2 id="one-sentence">{{ _('One-sentence summary') }}</h2>
   <p>
     {% trans -%}
-    The XRP Ledger is a public, shared, near-real-time financial notebook that about 150 independent operators agree to write, in which XRP is the postage stamp and the rules — for payments, tokens, exchange, and assets — are baked into the protocol itself.
+    The XRP Ledger is a public, shared, near-real-time financial notebook that a worldwide network of independent operators agrees to write, in which XRP is the postage stamp and the rules — for payments, tokens, exchange, and assets — are baked into the protocol itself.
     {%- endtrans %}
   </p>
 
@@ -332,11 +371,11 @@
       <li>
         <strong>{{ _('Watch ledgers close.') }}</strong>
         {% trans -%}
-        Open the dashboard homepage. The pulsing chip in the top right shows the current ledger index and ticks every few seconds — that's the network writing a new page in real time.
+        Open the dashboard homepage. The pulsing chip in the top right shows the current ledger index and ticks every few seconds — that's the network validating a new ledger in real time.
         {%- endtrans %}
       </li>
       <li>
-        <strong>{{ _('Read any past page.') }}</strong>
+        <strong>{{ _('Read any past ledger.') }}</strong>
         {% trans -%}
         Any ledger explorer — XRPSCAN, Bithomp, the XRPL Foundation's tools — lets you pull up any historical ledger by number and see exactly what transactions it contained.
         {%- endtrans %}
@@ -370,31 +409,94 @@
 </div>
 {% include "_vibes_scripts.html" %}
 <script>
-  // Convert the server-emitted UTC unix timestamp into the visitor's locale
-  // — same pattern as the rest of the site. Server is canonical, browser
-  // is presentation.
+  // Hero ledger heartbeat. First paint shows the server-rendered "as of"
+  // timestamp localized to the visitor's clock (truthful static signal).
+  // Once window.LiveStream confirms a real ledgerClosed event, the LIVE
+  // pill appears, the number updates per close, and the caption switches
+  // to a ticking "closed Ns ago." No LIVE label is shown before the WS
+  // proves the connection — same anti-fake-liveness rule the site uses
+  // elsewhere.
   (function () {
-    var el = document.querySelector('.as-of[data-as-of-unix] .as-of-time');
-    if (!el) return;
-    var parent = el.closest('.as-of');
-    var unix = parseInt(parent.getAttribute('data-as-of-unix'), 10);
-    if (!unix || isNaN(unix)) return;
-    var d = new Date(unix * 1000);
-    try {
-      el.textContent = new Intl.DateTimeFormat(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        timeZoneName: 'short'
-      }).format(d);
-      // We've replaced the canonical timestamp with a localized one that
-      // already carries its own timezone label — drop the trailing "UTC"
-      // so we don't show two zones.
-      parent.childNodes.forEach(function (n) {
-        if (n.nodeType === 3 && n.textContent && n.textContent.indexOf('UTC') !== -1) {
-          n.textContent = n.textContent.replace(/\s*UTC\s*$/, '');
-        }
-      });
-    } catch (e) { /* keep server text */ }
+    var hero = document.getElementById('learnHero');
+    if (!hero) return;
+    var numEl    = document.getElementById('learnLedgerNum');
+    var asOfEl   = document.getElementById('learnAsOf');
+    var pill     = document.getElementById('learnLivePill');
+    var initialUnix = parseInt(hero.getAttribute('data-as-of-unix'), 10) || 0;
+
+    function fmtNum(n) {
+      try { return '#' + Number(n).toLocaleString(); }
+      catch (e) { return '#' + n; }
+    }
+    function fmtAge(s) {
+      if (s < 0) s = 0;
+      if (s < 60) return s + 's';
+      if (s < 3600) return Math.floor(s/60) + 'm';
+      return Math.floor(s/3600) + 'h';
+    }
+
+    // Initial paint: localize the server-rendered UTC timestamp so the
+    // visitor sees their own clock, not the server's. We leave it as
+    // "as of [local time]" until the WS upgrades us to live mode.
+    (function localizeInitial() {
+      var span = asOfEl && asOfEl.querySelector('.as-of-time');
+      if (!span || !initialUnix) return;
+      try {
+        span.textContent = new Intl.DateTimeFormat(undefined, {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          timeZoneName: 'short'
+        }).format(new Date(initialUnix * 1000));
+        asOfEl.childNodes.forEach(function (n) {
+          if (n.nodeType === 3 && n.textContent) {
+            n.textContent = n.textContent.replace(/\s*UTC\s*$/, '');
+          }
+        });
+      } catch (e) {}
+    })();
+
+    if (!window.LiveStream) return;
+
+    var liveLedger = null;     // most recent confirmed ledger_index
+    var liveAtMs   = null;     // browser time when the WS event arrived
+    var degraded   = false;
+
+    function paintLive() {
+      if (liveLedger == null || liveAtMs == null) return;
+      var age = Math.max(0, Math.floor((Date.now() - liveAtMs) / 1000));
+      asOfEl.textContent = '';
+      var span = document.createElement('span');
+      span.textContent = 'closed ' + fmtAge(age) + ' ago';
+      asOfEl.appendChild(span);
+      // Degrade if no new ledger seen for >30s — same threshold as the
+      // shared liveness chip's classifier.
+      var labelEl = pill.querySelector('.pill-label');
+      if (age > 30 && !degraded) {
+        degraded = true;
+        pill.classList.add('deg');
+        if (labelEl) labelEl.textContent = 'STALE';
+      } else if (age <= 30 && degraded) {
+        degraded = false;
+        pill.classList.remove('deg');
+        if (labelEl) labelEl.textContent = 'LIVE';
+      }
+    }
+
+    window.LiveStream.onLedger(function (ev) {
+      if (!ev || !ev.ledger_index) return;
+      var prev = liveLedger;
+      liveLedger = ev.ledger_index;
+      liveAtMs   = Date.now();
+      numEl.textContent = fmtNum(liveLedger);
+      pill.classList.add('on');
+      pill.setAttribute('aria-hidden', 'false');
+      if (prev != null && prev !== liveLedger) {
+        numEl.classList.add('bump');
+        setTimeout(function () { numEl.classList.remove('bump'); }, 600);
+      }
+      paintLive();
+    });
+
+    setInterval(paintLive, 1000);
   })();
 </script>
 </body>
