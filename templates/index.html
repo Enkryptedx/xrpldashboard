@@ -551,6 +551,7 @@
         <a href="/" class="brand-link"><h1>xrpl<span class="accent">dashboard</span></h1></a>
       </div>
       <nav class="nav-strip">
+        <a href="/learn"{% if _p.startswith('/learn') %} class="active" aria-current="page"{% endif %}>{{ _('learn') }}</a>
         <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>{{ _('pools') }}</a>
         <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
         <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
@@ -560,6 +561,7 @@
         <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
         <a href="/lending"{% if _p.startswith('/lending') %} class="active" aria-current="page"{% endif %}>{{ _('lending') }}</a>
         <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
+        <a href="/methodology"{% if _p == '/methodology' %} class="active" aria-current="page"{% endif %}>{{ _('methodology') }}</a>
         <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
         {% include "_liveness_chip.html" %}
         {# Language switcher — mirrors the one in _nav.html so users stuck
@@ -927,6 +929,9 @@
 
     <footer>
       <div>
+        {{ _('New here?') }} <a href="/learn">{{ _('Read a plain-language explainer of the XRP Ledger') }}</a> — {{ _('what it is, who runs it, and how to verify everything yourself.') }}
+      </div>
+      <div style="margin-top: 0.6em;">
         {{ _('xrpldashboard — public-good analytics for the XRP Ledger. Free for retail users, forever. Pool, whale, and token panels all stream live via WebSocket from a public XRPL node, with worker-backed historical context. See') }} <a href="/methodology">{{ _('methodology') }}</a> {{ _('for the per-surface freshness table.') }}
       </div>
       <div style="margin-top: 0.6em;">

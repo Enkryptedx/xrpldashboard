@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Learn') }} · {{ _('the XRP Ledger, explained simply') }} · xrpldashboard</title>
+  {% set meta_title = "Learn · the XRP Ledger, explained simply · xrpldashboard" %}
+  {% set meta_description = "The XRP Ledger explained in plain language. What it is, who writes to it, how fast and cheap it is, what it can and can't do, and how to verify everything yourself." %}
+  {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "The XRP Ledger, explained simply",
+    "description": "A plain-language explanation of the XRP Ledger: what it is, who runs it, what XRP is, how it works, and how to verify everything yourself.",
+    "author": {
+      "@type": "Organization",
+      "name": "xrpldashboard"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "xrpldashboard",
+      "url": "{{ site_url }}"
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "{{ site_url }}/learn"
+    },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 2.0rem; margin: 0 0 10px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.08rem; margin: 0 0 28px;
+            max-width: 700px; }
+    h2 { font-size: 1.25rem; margin: 40px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; scroll-margin-top: 24px; }
+    h3 { font-size: 1rem; margin: 20px 0 8px; font-weight: 600;
+         color: var(--text); }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    em { color: var(--text); }
+
+    /* Hero: static current ledger index */
+    .hero {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 22px 24px; margin: 8px 0 32px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .hero .label {
+      color: var(--muted); font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .hero .ledger-num {
+      font-family: var(--mono); font-size: 1.8rem; color: var(--text);
+      letter-spacing: -0.01em; line-height: 1;
+    }
+    .hero .as-of {
+      color: var(--dim); font-size: 0.82rem; margin-top: 8px;
+      font-family: var(--mono);
+    }
+    .hero .caption {
+      color: var(--muted); font-size: 0.92rem; flex: 1 1 280px; min-width: 0;
+      line-height: 1.55;
+    }
+    .hero .caption strong { color: var(--text); }
+    .hero.unavailable .ledger-num { color: var(--dim); }
+
+    /* Section anchor TOC (small, restrained) */
+    .toc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.92rem;
+    }
+    .toc .toc-label {
+      color: var(--muted); font-size: 0.74rem; text-transform: uppercase;
+      letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px;
+    }
+    .toc ol { margin: 0; padding-left: 22px; }
+    .toc li { margin-bottom: 2px; }
+    .toc a { color: var(--text); }
+    .toc a:hover { color: var(--cyan); }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 18px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .verify {
+      border-top: 1px solid var(--border);
+      margin-top: 44px; padding-top: 28px;
+    }
+    .verify h2 { margin-top: 0; }
+    .verify code { word-break: break-all; }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('The XRP Ledger, explained simply') }}</h1>
+  <p class="lede">
+    {{ _('A plain-language tour for anyone who keeps hearing about XRP and the XRPL but has never been told what they actually are. No prior crypto knowledge required.') }}
+  </p>
+
+  {% if ledger_index %}
+    <div class="hero">
+      <div>
+        <div class="label">{{ _('Current ledger index') }}</div>
+        <div class="ledger-num">#{{ '{:,}'.format(ledger_index) }}</div>
+        <div class="as-of" data-as-of-unix="{{ as_of_unix }}">
+          {{ _('as of') }} <span class="as-of-time">{{ as_of_unix }}</span> UTC
+        </div>
+      </div>
+      <div class="caption">
+        {% trans -%}
+        Every few seconds the XRP Ledger closes a new page. The number on the left is the page the network is on right now — a public, shared count that anyone in the world can read.
+        {%- endtrans %}
+      </div>
+    </div>
+  {% else %}
+    <div class="hero unavailable">
+      <div>
+        <div class="label">{{ _('Current ledger index') }}</div>
+        <div class="ledger-num">—</div>
+        <div class="as-of">{{ _('temporarily unavailable') }}</div>
+      </div>
+      <div class="caption">
+        {% trans -%}
+        The XRP Ledger closes a new page every few seconds. We couldn't fetch the current page number this moment — the network is fine; our read path is busy. Refresh in a few seconds.
+        {%- endtrans %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="toc">
+    <div class="toc-label">{{ _('On this page') }}</div>
+    <ol>
+      <li><a href="#what">{{ _('What is the XRP Ledger?') }}</a></li>
+      <li><a href="#who-writes">{{ _('Who actually writes to it?') }}</a></li>
+      <li><a href="#xrp">{{ _('What is XRP?') }}</a></li>
+      <li><a href="#speed-cost">{{ _('How fast and how expensive is it?') }}</a></li>
+      <li><a href="#capabilities">{{ _('What can the ledger do besides send XRP?') }}</a></li>
+      <li><a href="#not-designed-for">{{ _("What it's not designed for") }}</a></li>
+      <li><a href="#who-decides">{{ _('Who decides what changes?') }}</a></li>
+      <li><a href="#why-matters">{{ _('Why this matters') }}</a></li>
+      <li><a href="#one-sentence">{{ _('One-sentence summary') }}</a></li>
+      <li><a href="#verify-it-yourself">{{ _('Verify it yourself') }}</a></li>
+    </ol>
+  </div>
+
+  <h2 id="what">{{ _('What is the XRP Ledger?') }}</h2>
+  <p>
+    {% trans -%}
+    Picture a notebook. Every few seconds, someone adds a new page. Each page lists everything that happened in the last few seconds — who sent money to whom, who opened a trade, who issued a new token. Once a page is written down, it can never be changed.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    The XRP Ledger is that notebook. The pages are called "ledgers." A new one closes roughly every three to five seconds. Anyone in the world can read every page that has ever been written, all the way back to the very first one in 2012.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="who-writes">{{ _('Who actually writes to it?') }}</h2>
+  <p>
+    {% trans -%}
+    There is no central company in charge of the notebook. Instead, about 150 independent computers around the world — called <em>validators</em> — propose what the next page should say. They are run by universities, exchanges, banks, the XRP Ledger Foundation, and ordinary technically-inclined people in different countries.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Every few seconds, each validator independently looks at the pending transactions, decides which ones it considers valid, and broadcasts its proposal. The validators then compare proposals and agree on a single shared answer for that page. If more than 80% of the trusted validators agree, that page is written. If they don't agree, no page is written until they do. This is called <em>consensus</em>.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Because the writing is spread across many independent operators in different jurisdictions, no single one of them can rewrite history, censor a transaction permanently, or shut the network down. The XRPL has run with very high uptime since 2012.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="xrp">{{ _('What is XRP?') }}</h2>
+  <p>
+    {% trans -%}
+    XRP is the native asset of the ledger — think of it as the postage stamp on every transaction. To write anything to the notebook, you pay a tiny amount of XRP. The fee is destroyed (not paid to anyone), which keeps the cost of spamming the network meaningfully high while the cost of a real transaction stays near-zero.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Beyond paying for transactions, XRP is also used as a unit of value and as one of the assets traded inside the ledger's own on-chain exchange. It was sometimes described as a bridge currency between other assets, though in practice most trades on XRPL today route directly through automated-market-maker pools rather than through XRP as an intermediate hop.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="speed-cost">{{ _('How fast and how expensive is it?') }}</h2>
+  <p>
+    {% trans -%}
+    A transaction is final in three to five seconds — the time it takes the next page to close. The base fee for a standard payment is on the order of 0.00001 XRP, which at typical prices is a small fraction of a US cent. Fees rise automatically if the network gets congested, then fall back when it clears.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Speed and cost are not promises from a marketing page — they are properties of how the protocol is built. You can watch a transaction confirm on any ledger explorer, including this one, and time it yourself.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="capabilities">{{ _('What can the ledger do besides send XRP?') }}</h2>
+  <p>
+    {% trans -%}
+    The XRP Ledger is unusual among blockchains in that many features common on other chains are built directly into the protocol — not added later as smart-contract code. That means they share the network's speed, low cost, and predictable behavior.
+    {%- endtrans %}
+  </p>
+  <ul>
+    <li>
+      <strong>{{ _('Issued tokens.') }}</strong>
+      {% trans -%}
+      Anyone can issue a token on XRPL — a stablecoin, a reward point, a tokenized share. Tokens live as balances on the ledger and can be sent, traded, and held just like XRP.
+      {%- endtrans %}
+    </li>
+    <li>
+      <strong>{{ _('On-chain exchange.') }}</strong>
+      {% trans -%}
+      There is a built-in order book and automated-market-maker system. You can trade XRP for any issued token, or one token for another, directly from your wallet — no separate exchange contract required.
+      {%- endtrans %}
+    </li>
+    <li>
+      <strong>{{ _('Multi-purpose tokens (MPTs).') }}</strong>
+      {% trans -%}
+      A newer token type designed for real-world assets — bonds, money-market funds, regulated instruments — with built-in fields for issuance metadata, supply tracking, and authorization controls.
+      {%- endtrans %}
+    </li>
+    <li>
+      <strong>{{ _('Lending (in progress).') }}</strong>
+      {% trans -%}
+      Native on-chain lending is being added by amendment — a way for token holders to lend and borrow against ledger-resident assets without leaving the network.
+      {%- endtrans %}
+    </li>
+  </ul>
+  <p>
+    {% trans -%}
+    Real institutions are already using the ledger this way. Archax tokenizes regulated financial instruments on XRPL; Ondo Finance launched a pilot tokenizing US Treasury exposure on the ledger in May 2026. These are not promises about a future — they are live products you can look up.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="not-designed-for">{{ _("What it's not designed for") }}</h2>
+  <p>
+    {% trans -%}
+    The XRP Ledger is deliberately not a platform for arbitrary computer programs. Networks like Ethereum let anyone deploy any program that other people can then trigger; the XRPL chose a different shape, where a fixed set of well-understood transaction types is built into the protocol and runs the same way every time.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    The trade-off is straightforward: less flexibility, more predictability. If your use case fits one of the built-in transaction types — payments, token issuance, exchange, MPTs, lending — it runs fast and cheap. If your use case is "I want to deploy an arbitrary new program," XRPL is not the chain for that.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="who-decides">{{ _('Who decides what changes?') }}</h2>
+  <p>
+    {% trans -%}
+    Big changes to how the ledger works — new transaction types, new fields, new behavior — happen through <em>amendments</em>. Anyone can write one. To activate, an amendment has to be supported by at least 80% of the trusted validators for two consecutive weeks. If support drops, the amendment fails.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    No company controls this vote. No single country controls it. The validators themselves — universities, exchanges, foundations, individuals — each choose what to support. The result is that the network changes only when a broad cross-section of operators agree it should.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="why-matters">{{ _('Why this matters') }}</h2>
+  <p>
+    {% trans -%}
+    Most of what people mean when they say "blockchain" — money that moves without a bank, assets that anyone can issue, a public record that no one can tamper with, an exchange built into the protocol itself — the XRP Ledger has been doing for over a decade. Quietly, cheaply, and at very high uptime.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    The point isn't to make you a believer. The point is that everything described on this page is verifiable by anyone with a browser. The numbers on this site come straight from public XRPL nodes, and we tell you exactly which ones on the methodology page.
+    {%- endtrans %}
+  </p>
+
+  <h2 id="one-sentence">{{ _('One-sentence summary') }}</h2>
+  <p>
+    {% trans -%}
+    The XRP Ledger is a public, shared, near-real-time financial notebook that about 150 independent operators agree to write, in which XRP is the postage stamp and the rules — for payments, tokens, exchange, and assets — are baked into the protocol itself.
+    {%- endtrans %}
+  </p>
+
+  <div id="verify-it-yourself" class="verify">
+    <h2>{{ _('Verify it yourself') }}</h2>
+    <p>
+      {% trans -%}
+      None of this requires trust. Every claim on this page can be checked directly against the XRP Ledger using public tools.
+      {%- endtrans %}
+    </p>
+    <ul>
+      <li>
+        <strong>{{ _('Watch ledgers close.') }}</strong>
+        {% trans -%}
+        Open the dashboard homepage. The pulsing chip in the top right shows the current ledger index and ticks every few seconds — that's the network writing a new page in real time.
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong>{{ _('Read any past page.') }}</strong>
+        {% trans -%}
+        Any ledger explorer — XRPSCAN, Bithomp, the XRPL Foundation's tools — lets you pull up any historical ledger by number and see exactly what transactions it contained.
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong>{{ _('Check our numbers.') }}</strong>
+        {% trans -%}
+        Every metric on xrpldashboard links to the data source it came from, and the full caching and methodology breakdown is on <a href="/methodology">/methodology</a>. If a number looks wrong, the audit trail is open.
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong>{{ _('Read the protocol.') }}</strong>
+        {% trans -%}
+        The XRP Ledger code and documentation are open-source. Anyone can read the consensus algorithm, the transaction types, and the amendment process, and run their own node if they want to.
+        {%- endtrans %}
+      </li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    {{ _('This page is part of the same git repository as the code. Edits land in') }}
+    <code>templates/learn.html</code>. {{ _('Want a section explained differently, or spot something inaccurate?') }}
+    <a href="mailto:contact@xrpldashboard.com?subject=Learn%20page%20feedback">{{ _('Email us') }}</a>.
+    <br><br>
+    <a href="/">{{ _('back to dashboard') }}</a> ·
+    <a href="/methodology">/methodology</a> ·
+    <a href="/about">/about</a> ·
+    <a href="/health">/health</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+<script>
+  // Convert the server-emitted UTC unix timestamp into the visitor's locale
+  // — same pattern as the rest of the site. Server is canonical, browser
+  // is presentation.
+  (function () {
+    var el = document.querySelector('.as-of[data-as-of-unix] .as-of-time');
+    if (!el) return;
+    var parent = el.closest('.as-of');
+    var unix = parseInt(parent.getAttribute('data-as-of-unix'), 10);
+    if (!unix || isNaN(unix)) return;
+    var d = new Date(unix * 1000);
+    try {
+      el.textContent = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        timeZoneName: 'short'
+      }).format(d);
+      // We've replaced the canonical timestamp with a localized one that
+      // already carries its own timezone label — drop the trailing "UTC"
+      // so we don't show two zones.
+      parent.childNodes.forEach(function (n) {
+        if (n.nodeType === 3 && n.textContent && n.textContent.indexOf('UTC') !== -1) {
+          n.textContent = n.textContent.replace(/\s*UTC\s*$/, '');
+        }
+      });
+    } catch (e) { /* keep server text */ }
+  })();
+</script>
+</body>
+</html>

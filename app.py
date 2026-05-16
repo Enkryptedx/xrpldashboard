@@ -2110,6 +2110,30 @@ def methodology():
     return render_template("methodology.html")
 
 
+@app.route("/learn")
+def learn():
+    """Plain-language XRPL explainer for visitors who don't already know
+    what a blockchain is. Hero shows the current validated ledger index
+    server-side with an 'as of' timestamp — truthful static signal, not a
+    fake liveness label. Phase 2 will swap in a real live heartbeat widget."""
+    p = None
+    try:
+        p = fetch_pulse_cached()
+    except Exception:
+        p = None
+    if p and not p.get("error"):
+        ledger_index = p.get("ledger_index")
+        as_of_unix = int(time.time())
+    else:
+        ledger_index = None
+        as_of_unix = None
+    return render_template(
+        "learn.html",
+        ledger_index=ledger_index,
+        as_of_unix=as_of_unix,
+    )
+
+
 @app.route("/terms")
 def terms():
     return render_template("terms.html")
