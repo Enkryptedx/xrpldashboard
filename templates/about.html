@@ -91,6 +91,20 @@
     </p>
   </div>
 
+  <div class="callout">
+    <h3 style="margin-top: 0;">{{ _('Recent shipping highlights (May 2026)') }}</h3>
+    <ul>
+      <li>{{ _('Signed Ed25519 daily snapshots with Merkle-chained manifests; fingerprint pin on /, /pools, /mpts, /rwa, /rlusd, /about, /methodology, /learn') }}</li>
+      <li>{{ _('Brand-warn substrate publicly excluding identified issuer spoofs (Ripple Treasury variants, BlackRock vanity, Franklin Templeton, GTreasury)') }}</li>
+      <li>{{ _('/learn explainer page with live ledger heartbeat hero') }}</li>
+      <li>{{ _('/rwa institutional tracker with 3 verified families (OpenEden, Midas-via-Axelar, Ondo Finance) and transparent exclusion list') }}</li>
+      <li>{{ _('MPT walker with concentration metrics and supply-history archive depth honesty') }}</li>
+      <li>{{ _('Server-side signed QR codes on wallet pages (XLS-44d payment URI)') }}</li>
+      <li>{{ _('Live whale streaming via WebSocket with 60-second server reconcile') }}</li>
+      <li>{{ _('28+ institutional accounts verified via two-way TOML attestation') }}</li>
+    </ul>
+  </div>
+
   <h2>{{ _('Mission') }}</h2>
   <p>
     {{ _('Help XRP holders understand on-chain activity. Not get rich. Not sell liquidity. Not push tokens. Just data, explained well, for people who want to understand what they own.') }}
@@ -118,10 +132,7 @@
     {{ _('Comes from public XRPL nodes. A node is just a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it. The data is canonical.') }}
   </p>
   <p>
-    {{ _('Browser-side traffic streams from the XRP Ledger Foundation\'s community-operated cluster (') }}<a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a>{{ _('), with') }} <code>wss://s2.ripple.com</code> {{ _('retained as automatic fallback. The server-side worker still streams from') }} <code>wss://s2.ripple.com</code>{{ _('; planned migration to the community cluster is next, and we\'ll run our own') }} <code>rippled</code> {{ _('node as the project grows.') }}
-  </p>
-  <p>
-    <strong>{{ _('Disclosure:') }}</strong> {{ _('Ripple\'s documentation states their public servers are not intended for sustained business use — which is why the migration matters. The full per-surface cache and source breakdown is on') }} <a href="/methodology">/methodology</a>.
+    {{ _('Browser-side from') }} <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer"><code>wss://xrplcluster.com</code></a> {{ _('(XRP Ledger Foundation-operated community cluster); server-side worker from') }} <code>wss://s2.ripple.com</code>. {{ _('See') }} <a href="/methodology">/methodology</a> {{ _('for full source breakdown and rotation plan.') }}
   </p>
 
   <h3>{{ _('Reference labels') }}</h3>
