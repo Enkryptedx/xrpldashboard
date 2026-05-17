@@ -43,6 +43,48 @@
         "domain": "xrpl.soil.co",
         "note": "Soil operational wallet. Domain field on-ledger = xrpl.soil.co. TOML lists address under [[ACCOUNTS]]. ORQO Group, Abu Dhabi."
       }
+    },
+    {
+      "address": "rBitcoiNXev8VoVxV7pwoQx1sSfonVP9i3",
+      "name": "BITx",
+      "category": "project",
+      "source": "toml",
+      "confidence": 1.0,
+      "extra": {
+        "verified_via": "https://bitx.fyi/.well-known/xrp-ledger.toml",
+        "attestation": "two_way",
+        "domain": "bitx.fyi",
+        "twitter": "getbitx",
+        "brand_warn": "Vanity address starts with 'rBitcoiN' and currency code is 'BITx' — visually adjacent to BTC. Label exists so users can distinguish this self-attested project token from canonical BTC issuers.",
+        "note": "BITx token. Domain field on-ledger = bitx.fyi. TOML lists address under [[ISSUERS]] and currency under [[TOKENS]]. Master key disabled, regkey blackholed."
+      }
+    },
+    {
+      "address": "rDKJWtrPqKiMBzK9FTVvebMVec7FJtJLx6",
+      "name": "Horizon",
+      "category": "project",
+      "source": "toml",
+      "confidence": 1.0,
+      "extra": {
+        "verified_via": "https://18oc8j7jk2ugfoitefgu.toml.firstledger.net/.well-known/xrp-ledger.toml",
+        "attestation": "two_way",
+        "domain": "horizonxrpl.com",
+        "toml_host": "firstledger.net",
+        "note": "Horizon token (currency hex 486F72697A6F6E…). On-ledger Domain field points to FirstLedger-hosted TOML which lists the issuer back. xrpscan accountName confirms 'Horizon / Issuer / horizonxrpl.com'."
+      }
+    },
+    {
+      "address": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+      "name": "GateHub Fifth",
+      "category": "gateway",
+      "source": "xrpscan",
+      "confidence": 0.95,
+      "extra": {
+        "verified_via": "https://xrpscan.com/account/rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+        "attestation": "one_way",
+        "domain": "gatehub.net",
+        "note": "Canonical GateHub USD/EUR issuer. Documented in xrpl.org subscribe examples and used across the XRPL ecosystem as the GateHub fiat-token issuer since 2015. xrpscan attributes to gatehub.net; on-ledger Domain field empty (gatehub.net does not host a public TOML at the standard well-known path)."
+      }
     }
   ]
 }
