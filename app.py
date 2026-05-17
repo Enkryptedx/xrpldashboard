@@ -3486,8 +3486,10 @@ def api_whales_radar_stats():
 
 
 @app.route("/healthz")
+@app.route("/api/health")
 def healthz():
-    """Lightweight health endpoint for uptime monitors. No XRPL call, no scan."""
+    """Lightweight health endpoint for uptime monitors. No XRPL call, no scan.
+    /api/health is an alias matching the /api/ prefix convention for programmatic clients."""
     return {"status": "ok"}, 200
 
 
