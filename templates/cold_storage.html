@@ -167,31 +167,46 @@
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-eyebrow">{{ _('Cold storage tracker') }}</div>
-      <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} {{ _('XRP locked') }}</h1></div>
-      <div class="hero-meta">
-        {{ _('Across') }} {{ data.tracked_count }} {{ _('addresses') }} ·
-        {{ _('largest:') }} <strong style="color: var(--text);">{{ data.largest_name }}</strong>
-        ({{ "{:,.0f}".format(data.largest_xrp) }} XRP)
-        {% if data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
-          · {{ _('cached') }} {{ data.cached_age_seconds | round(0) | int }}{{ _('s ago') }}
-        {% endif %}
-      </div>
+      {% if locked and locked.total_xrp %}
+        <div class="hero-name"><h1>{{ "{:,.0f}".format(locked.total_xrp) }} {{ _('XRP locked') }}</h1></div>
+        <div class="hero-meta">
+          {{ _('Across') }} {{ locked.object_count }} {{ _('active escrow objects on') }} {{ data.tracked_count }} {{ _('Ripple monthly-release accounts.') }}
+          {{ _('Liquid balance on these accounts:') }} <strong style="color: var(--text);">{{ "{:,.0f}".format(data.total_xrp) }} XRP</strong>
+          ({{ _('unlocked but not yet swept') }}).
+          {% if locked.cached_age_seconds is defined and locked.cached_age_seconds > 0 %}
+            · {{ _('cached') }} {{ locked.cached_age_seconds | round(0) | int }}{{ _('s ago') }}
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} {{ _('XRP liquid') }}</h1></div>
+        <div class="hero-meta">
+          {{ _('Liquid balance across') }} {{ data.tracked_count }} {{ _('Ripple monthly-release accounts. Locked escrow total is loading — refresh in a moment.') }}
+        </div>
+      {% endif %}
     </div>
   </div>
 
   <div class="kpi-strip">
     <div class="kpi">
-      <div class="l">{{ _('Total locked') }}</div>
+      <div class="l">{{ _('Locked in escrows') }}</div>
+      <div class="v">
+        {% if locked and locked.total_xrp %}{{ "{:,.0f}".format(locked.total_xrp) }}{% else %}—{% endif %}
+      </div>
+      <div class="sub">
+        {% if locked and locked.object_count %}
+          {{ _('XRP across') }} {{ locked.object_count }} {{ _('escrow objects') }}
+        {% else %}
+          {{ _('fetching from XRPL') }}…
+        {% endif %}
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="l">{{ _('Liquid (not yet swept)') }}</div>
       <div class="v">{{ "{:,.0f}".format(data.total_xrp) }}</div>
-      <div class="sub">{{ _('XRP across') }} {{ data.tracked_count }} {{ _('accounts') }}</div>
+      <div class="sub">{{ _('largest:') }} {{ data.largest_name }}</div>
     </div>
     <div class="kpi">
-      <div class="l">{{ _('Largest holding') }}</div>
-      <div class="v">{{ "{:,.0f}".format(data.largest_xrp) }}</div>
-      <div class="sub">{{ data.largest_name }}</div>
-    </div>
-    <div class="kpi">
-      <div class="l">{{ _('Tracked addresses') }}</div>
+      <div class="l">{{ _('Tracked accounts') }}</div>
       <div class="v">{{ data.tracked_count }}</div>
       <div class="sub">{{ data.fetched_ok }} {{ _('responding') }}</div>
     </div>
@@ -218,7 +233,7 @@
 
     <div class="esc-row head">
       <div>{{ _('Account') }}</div>
-      <div style="text-align: right;">{{ _('Balance') }}</div>
+      <div style="text-align: right;">{{ _('Liquid balance') }}</div>
       <div></div>
       <div style="text-align: right;">{{ _('Verify') }}</div>
     </div>
@@ -271,7 +286,7 @@
   </div>
 
   <footer>
-    {{ _('Data: live') }} <code style="color: var(--cyan);">account_info</code> {{ _('against') }} {{ data.tracked_count }}
+    {{ _('Data: live') }} <code style="color: var(--cyan);">account_objects(type=escrow)</code> {{ _('for locked totals and') }} <code style="color: var(--cyan);">account_info</code> {{ _('for liquid balances, against') }} {{ data.tracked_count }}
     {{ _('Ripple-declared escrow accounts.') }}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
