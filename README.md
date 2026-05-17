@@ -14,7 +14,7 @@ A multi-page public dashboard for the XRP Ledger:
 - **Homepage** — network status, cold-storage total, AMM TVL, recent
   whale moves, top pools, most-traded tokens. Live panels swap in
   every 30s without a full page reload.
-- **/whales** — large XRP transfers (≥50,000 XRP), labeled when known.
+- **/whales** — large XRP transfers (≥100,000 XRP), labeled when known.
 - **/pools** — every XRPL AMM pool (10,000+), ranked by TVL, with
   search by issuer or token.
 - **/tokens** — issued tokens by trading activity.
