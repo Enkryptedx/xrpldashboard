@@ -440,9 +440,6 @@ def apply_security_headers(response):
         "require-trusted-types-for 'script'; "
         "trusted-types default 'allow-duplicates'",
     )
-    # Render injects x-render-origin-server: gunicorn into every response;
-    # discloses the backend with no operational value. Strip it.
-    response.headers.pop("x-render-origin-server", None)
     return response
 
 
