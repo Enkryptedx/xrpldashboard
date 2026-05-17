@@ -158,6 +158,15 @@
     .exclude-table tr:first-child td { border-top: none; }
     .exclude-name { font-weight: 600; white-space: nowrap; color: var(--text); }
     .exclude-reason { color: var(--muted); }
+    .exclude-reason .why-pending {
+      display: inline-block; margin-left: 6px; white-space: nowrap;
+      color: var(--amber); font-size: 0.82rem;
+      border-bottom: 1px dotted rgba(245,158,11,0.5);
+    }
+    .exclude-reason .why-pending:hover {
+      color: var(--text); border-bottom-color: var(--amber);
+      text-decoration: none;
+    }
     .status-pill { padding: 2px 8px; border-radius: 999px; font-size: 0.68rem;
                    font-family: var(--mono); text-transform: uppercase;
                    letter-spacing: 0.06em; }
@@ -287,7 +296,7 @@
           <tr>
             <td class="exclude-name">{{ item.name }}</td>
             <td><span class="status-pill status-{{ item.status }}">{{ item.status }}</span></td>
-            <td class="exclude-reason">{{ item.reason }}</td>
+            <td class="exclude-reason">{{ item.reason }}{% if item.status == 'pending' %} <a class="why-pending" href="/verify">{{ _('Why pending?') }} →</a>{% endif %}</td>
           </tr>
         {% endfor %}
       </tbody>

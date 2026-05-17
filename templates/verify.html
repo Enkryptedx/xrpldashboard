@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Verify your XRPL issuer · xrpldashboard') }}</title>
+  {% set meta_title = "Verify your XRPL issuer · two-way TOML attestation · xrpldashboard" %}
+  {% set meta_description = "Step-by-step guide for an XRPL token or MPT issuer to publish a two-way TOML attestation — set the Domain field on the issuer wallet and publish an xrp-ledger.toml that claims the wallet back." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --red: #ef4444;
+      --grad-verify: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 2.0rem; margin: 0 0 10px; font-weight: 700;
+         letter-spacing: -0.02em;
+         background: var(--grad-verify); -webkit-background-clip: text;
+         background-clip: text; color: transparent; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 28px;
+            max-width: 720px; }
+    h2 { font-size: 1.25rem; margin: 40px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; scroll-margin-top: 24px; }
+    h3 { font-size: 1rem; margin: 22px 0 8px; font-weight: 600; color: var(--text); }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 8px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px;
+           word-break: break-all; }
+    em { color: var(--text); }
+    strong { color: var(--text); }
+
+    .toc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.95rem;
+    }
+    .toc .toc-label {
+      color: var(--muted); font-size: 0.74rem; text-transform: uppercase;
+      letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px;
+    }
+    .toc ol { margin: 0; padding-left: 22px; }
+    .toc li { margin-bottom: 2px; }
+    .toc a { color: var(--text); }
+    .toc a:hover { color: var(--cyan); }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 18px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout.amber { border-color: rgba(251,191,36,0.32);
+                     background: rgba(251,191,36,0.04); }
+    .callout.cyan { border-color: rgba(34,211,238,0.32);
+                    background: rgba(34,211,238,0.04); }
+
+    pre.code-block {
+      background: #0d1126; border: 1px solid var(--border-strong);
+      border-radius: 8px; padding: 14px 16px; margin: 12px 0 18px;
+      overflow-x: auto; font-family: var(--mono); font-size: 0.85rem;
+      line-height: 1.55; color: var(--text);
+    }
+    pre.code-block .c { color: var(--dim); }
+    pre.code-block .k { color: var(--cyan); }
+    pre.code-block .s { color: var(--green); }
+
+    .step {
+      border-left: 3px solid var(--cyan);
+      padding: 4px 0 4px 16px; margin: 22px 0;
+    }
+    .step .step-label {
+      color: var(--cyan); font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.1em; font-weight: 700; margin-bottom: 2px;
+    }
+    .step h3 { margin-top: 4px; }
+
+    .pitfall {
+      border-left: 3px solid var(--amber);
+      padding: 4px 0 4px 16px; margin: 14px 0;
+    }
+    .pitfall .pitfall-label {
+      color: var(--amber); font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.1em; font-weight: 700; margin-bottom: 4px;
+    }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+
+    .check-list { list-style: none; padding-left: 0; }
+    .check-list li {
+      position: relative; padding-left: 28px; margin-bottom: 10px;
+    }
+    .check-list li::before {
+      content: "✓"; position: absolute; left: 4px; top: 0;
+      color: var(--green); font-weight: 700;
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('Verify your XRPL issuer') }}</h1>
+  <p class="lede">
+    {{ _('A step-by-step guide for any team that issues a token or MPT on the XRP Ledger to publish a cryptographic two-way attestation between an issuer wallet and a public domain. Once both sides match, your project becomes verifiable by anyone — including this dashboard.') }}
+  </p>
+
+  <div class="callout cyan">
+    <p style="margin: 0;">
+      <strong>{{ _('Who this page is for.') }}</strong>
+      {{ _('Anyone who controls an XRPL issuer wallet and a web domain — a token issuer, an MPT issuer, a tokenized-RWA project, an institutional treasury. Setup takes roughly 15 minutes once you have access to both the wallet and the domain.') }}
+    </p>
+  </div>
+
+  <div class="toc">
+    <div class="toc-label">{{ _('On this page') }}</div>
+    <ol>
+      <li><a href="#why">{{ _('Why two-way attestation?') }}</a></li>
+      <li><a href="#how-it-works">{{ _('How the two-way chain works') }}</a></li>
+      <li><a href="#step-1">{{ _('Step 1 — Set the Domain field on your issuer wallet') }}</a></li>
+      <li><a href="#step-2">{{ _('Step 2 — Publish an xrp-ledger.toml at that domain') }}</a></li>
+      <li><a href="#step-3">{{ _('Step 3 — Verify the chain yourself') }}</a></li>
+      <li><a href="#step-4">{{ _('Step 4 — Wait for indexers to pick it up') }}</a></li>
+      <li><a href="#pitfalls">{{ _('Common pitfalls') }}</a></li>
+      <li><a href="#contact">{{ _('Contact us once verified') }}</a></li>
+    </ol>
+  </div>
+
+  <h2 id="why">{{ _('Why two-way attestation?') }}</h2>
+  <p>
+    {% trans -%}
+    Anyone can put a string in their wallet's Domain field, and anyone can put a wallet address in a file on their website. Either by itself proves nothing — both are unilateral claims.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    A <em>two-way</em> attestation is different. The wallet on-ledger says "I belong to this domain," and the domain says "this wallet belongs to me." When both sides match, an observer can verify the claim cryptographically without trusting either side individually — because controlling both sides requires controlling both the issuer's private key <em>and</em> the issuer's web infrastructure. That's the bar this dashboard, and most institutional indexers, use to call an issuer "verified."
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Without it, we have no way to distinguish a legitimate issuer from a vanity wallet that happens to share a recognizable name. So we don't try — we list the project as <em>pending attestation</em> until the chain is in place. The same logic applies on the consumer side: wallet apps like Xaman, explorers like Bithomp and XPRSCAN, and most institutional indexers use this two-way handshake to decide what name to attach to a wallet.
+    {%- endtrans %}
+  </p>
+
+  <div class="callout cyan">
+    <p style="margin: 0;">
+      <strong>{{ _('Want to see a real one?') }}</strong>
+      {% trans -%}
+      Ripple publishes a production TOML at <a href="https://ripple.com/.well-known/xrp-ledger.toml" target="_blank" rel="noopener noreferrer">ripple.com/.well-known/xrp-ledger.toml</a>. It uses every canonical section (<code>[METADATA]</code>, <code>[[VALIDATORS]]</code>, <code>[[SERVERS]]</code>, <code>[[ACCOUNTS]]</code>, <code>[[PRINCIPALS]]</code>) and also includes two non-canonical custom blocks of Ripple's own (<code>[[ISSUERS]]</code> and <code>[[TOKENS]]</code>) for richer asset metadata. Those custom blocks are tolerated by the spec but not parsed by general-purpose XRPL tooling — for portability, stick to the canonical schema in your own TOML.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <h2 id="how-it-works">{{ _('How the two-way chain works') }}</h2>
+  <p>
+    {% trans -%}
+    The mechanism is defined in <a href="https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0026d-account-and-domain-verification" target="_blank" rel="noopener noreferrer">XLS-26</a>, an XRPL community standard. It uses two pieces:
+    {%- endtrans %}
+  </p>
+  <ol>
+    <li>
+      <strong>{{ _('Domain field on the issuer wallet (on-chain).') }}</strong>
+      {% trans -%}
+      A short hex-encoded string set on the issuer account via an <code>AccountSet</code> transaction. It points to a domain you control — e.g., <code>example.com</code>.
+      {%- endtrans %}
+    </li>
+    <li>
+      <strong>{{ _('xrp-ledger.toml file at that domain (off-chain).') }}</strong>
+      {% trans -%}
+      A plain-text TOML file served at <code>https://example.com/.well-known/xrp-ledger.toml</code>. Inside, an <code>[[ACCOUNTS]]</code> entry lists the same wallet address.
+      {%- endtrans %}
+    </li>
+  </ol>
+  <p>
+    {% trans -%}
+    A verifier (this dashboard, a wallet app, an indexer) reads the Domain field from the wallet, fetches the TOML at that domain, and checks that the file claims the same wallet back. Match → verified. Mismatch or missing → not verified.
+    {%- endtrans %}
+  </p>
+
+  <div class="step" id="step-1">
+    <div class="step-label">{{ _('Step 1') }}</div>
+    <h3>{{ _('Set the Domain field on your issuer wallet') }}</h3>
+    <p>
+      {% trans -%}
+      Sign and submit an <code>AccountSet</code> transaction from your issuer wallet that sets the <code>Domain</code> field to your domain, hex-encoded (uppercase).
+      {%- endtrans %}
+    </p>
+    <p>
+      {% trans -%}
+      For domain <code>example.com</code>, the hex-encoded value is <code>6578616D706C652E636F6D</code>. Most signing tools (Xaman/Xumm, GemWallet, xrpl-py, xrpl.js) accept the domain as a plain string and hex-encode it for you. The protocol stores it as hex; the human-readable form is just a presentation detail.
+      {%- endtrans %}
+    </p>
+    <p>{{ _('Example transaction body:') }}</p>
+<pre class="code-block">{
+  "TransactionType": "AccountSet",
+  "Account": "rYourIssuerWalletAddressHere...",
+  "Domain": "6578616D706C652E636F6D"
+}</pre>
+    <p>
+      {% trans -%}
+      Once the transaction is included in a validated ledger, anyone can read the Domain field back via <code>account_info</code> against any public XRPL node and decode the hex to confirm the domain.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="step" id="step-2">
+    <div class="step-label">{{ _('Step 2') }}</div>
+    <h3>{{ _('Publish an xrp-ledger.toml at that domain') }}</h3>
+    <p>
+      {% trans -%}
+      Create a plain-text TOML file and serve it from your domain at the exact path <code>/.well-known/xrp-ledger.toml</code> over HTTPS. The minimum required content is an <code>[[ACCOUNTS]]</code> entry that names the same issuer wallet you set the Domain field on.
+      {%- endtrans %}
+    </p>
+    <p>{{ _('Minimal example for an issuer of one token, using only canonical XLS-26 sections:') }}</p>
+<pre class="code-block">[METADATA]
+modified = 2026-05-17T00:00:00.000Z
+
+[[ACCOUNTS]]
+address = "rYourIssuerWalletAddressHere..."
+desc = "Primary issuer wallet for the Example Token (EXM)."
+
+[[CURRENCIES]]
+code = "EXM"
+issuer = "rYourIssuerWalletAddressHere..."
+display_decimals = 2
+
+[[PRINCIPALS]]
+name = "Example Inc. — Compliance Desk"
+email = "compliance@example.com"</pre>
+    <p>
+      {% trans -%}
+      Every section above is defined in the canonical XLS-26 spec. The role of each block:
+      {%- endtrans %}
+    </p>
+    <ul>
+      <li>
+        <strong><code>[METADATA]</code></strong> —
+        {% trans -%}
+        a single timestamp recording when the file was last updated. Optional but encouraged; helps indexers know if their cached copy is stale.
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong><code>[[ACCOUNTS]]</code></strong> —
+        {% trans -%}
+        the wallets you are claiming. This is the half of the chain that closes the loop with the on-chain Domain field. List multiple entries here if you have hot/cold, treasury, or operational wallets to disclose.
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong><code>[[CURRENCIES]]</code></strong> —
+        {% trans -%}
+        the tokens you issue. The <code>issuer</code> field MUST point to a wallet listed above in <code>[[ACCOUNTS]]</code>. The <code>code</code> field is the on-ledger currency ticker. Optional fields include <code>display_decimals</code>, <code>symbol</code>, and <code>network</code> (use <code>"main"</code> for the production XRP Ledger; omit to default to main).
+        {%- endtrans %}
+      </li>
+      <li>
+        <strong><code>[[PRINCIPALS]]</code></strong> —
+        {% trans -%}
+        the people or business contacts associated with the issuer. Useful for wallets, indexers, or regulators that need a verified point of contact.
+        {%- endtrans %}
+      </li>
+    </ul>
+    <p>
+      {% trans -%}
+      The full schema (including <code>[[VALIDATORS]]</code>, <code>[[SERVERS]]</code>, and every optional field on each section) is documented in the <a href="https://xrpl.org/docs/references/xrp-ledger-toml" target="_blank" rel="noopener noreferrer">xrpl.org reference</a>. The spec also permits custom non-standard fields — tools tolerate them but will silently ignore typos and any sections not defined here, so stick to canonical names unless you know exactly what you're doing.
+      {%- endtrans %}
+    </p>
+    <div class="callout amber">
+      <p style="margin: 0;">
+        <strong>{{ _('CORS matters.') }}</strong>
+        {% trans -%}
+        Many wallet apps and indexers fetch the TOML from the browser. The response must include <code>Access-Control-Allow-Origin: *</code>, or those clients won't be able to read it. Most CDNs let you set this with one line of config.
+        {%- endtrans %}
+      </p>
+    </div>
+  </div>
+
+  <div class="step" id="step-3">
+    <div class="step-label">{{ _('Step 3') }}</div>
+    <h3>{{ _('Verify the chain yourself') }}</h3>
+    <p>
+      {% trans -%}
+      Before announcing anything, prove both sides match. You can do this from a terminal with no special tooling.
+      {%- endtrans %}
+    </p>
+    <p><strong>{{ _('Check the file is reachable:') }}</strong></p>
+<pre class="code-block">curl -sS https://example.com/.well-known/xrp-ledger.toml</pre>
+    <p>{{ _('You should see the TOML you published. Anything else (404, HTML, redirect to a landing page) means it is not yet correctly served.') }}</p>
+    <p><strong>{{ _('Check the wallet Domain field:') }}</strong></p>
+<pre class="code-block">curl -sS -X POST -H 'Content-Type: application/json' \
+  --data '{"method":"account_info","params":[{"account":"rYourIssuerWalletAddressHere..."}]}' \
+  https://s2.ripple.com:51234/</pre>
+    <p>
+      {% trans -%}
+      In the JSON response, look for <code>account_data.Domain</code>. Decode the hex (any hex decoder, or <code>python3 -c "print(bytes.fromhex('...').decode())"</code>) and confirm it matches the domain serving your TOML.
+      {%- endtrans %}
+    </p>
+    <p>
+      {% trans -%}
+      If both sides agree, the two-way chain is closed. Anyone in the world can now verify your issuer the same way.
+      {%- endtrans %}
+    </p>
+    <p>
+      {% trans -%}
+      <strong>Official checker (browser).</strong> The XRP Ledger Foundation runs a hosted verification tool at <a href="https://xrpl.org/resources/dev-tools/xrp-ledger-toml-checker" target="_blank" rel="noopener noreferrer">xrpl.org/resources/dev-tools/xrp-ledger-toml-checker</a>. Paste your domain into the "Look Up By Domain" form, or your wallet address into "Look Up By Account," and it walks the two-way chain and reports any mismatch. Use this as the canonical green-light before announcing.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="step" id="step-4">
+    <div class="step-label">{{ _('Step 4') }}</div>
+    <h3>{{ _('Wait for indexers to pick it up') }}</h3>
+    <p>
+      {% trans -%}
+      This dashboard runs a periodic sweep that rechecks the Domain field and TOML file for every issuer wallet we know about. Once the chain matches, your project will move from <em>pending</em> to <em>verified</em> on the next sweep — typically within a day. Other XRPL surfaces (wallet apps, block explorers, third-party indexers) operate on their own schedules.
+      {%- endtrans %}
+    </p>
+    <p>
+      {% trans -%}
+      To accelerate the check on this dashboard specifically, send us a note (link at the bottom of this page) with the wallet address and the domain. We will re-run the check on demand.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <h2 id="pitfalls">{{ _('Common pitfalls') }}</h2>
+
+  <div class="pitfall">
+    <div class="pitfall-label">{{ _('Pitfall') }}</div>
+    <p style="margin: 0;">
+      <strong>{{ _('Wrong path.') }}</strong>
+      {% trans -%}
+      The file must live at <code>/.well-known/xrp-ledger.toml</code> exactly. Not <code>/xrp-ledger.toml</code>. Not <code>/well-known/...</code>. The leading dot in <code>.well-known</code> is a real, standardized directory name (RFC 8615).
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="pitfall">
+    <div class="pitfall-label">{{ _('Pitfall') }}</div>
+    <p style="margin: 0;">
+      <strong>{{ _('Wrong domain in the wallet.') }}</strong>
+      {% trans -%}
+      The Domain field must be the bare domain — e.g., <code>example.com</code>, not <code>https://example.com</code> or <code>example.com/about</code>. Verifiers prepend <code>https://</code> and append <code>/.well-known/xrp-ledger.toml</code> themselves.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="pitfall">
+    <div class="pitfall-label">{{ _('Pitfall') }}</div>
+    <p style="margin: 0;">
+      <strong>{{ _('Soft 404 from a single-page app.') }}</strong>
+      {% trans -%}
+      If your domain serves a React/Vue/etc. SPA, the server may return HTML for every path — including <code>/.well-known/xrp-ledger.toml</code> — instead of a real 404 or the actual file. Configure your web server or CDN to serve the TOML as a static file <em>before</em> the SPA fallback rule.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="pitfall">
+    <div class="pitfall-label">{{ _('Pitfall') }}</div>
+    <p style="margin: 0;">
+      <strong>{{ _('Content-Type mismatch.') }}</strong>
+      {% trans -%}
+      The TOML should be served as <code>text/plain</code> or <code>application/toml</code>. If your server sends <code>text/html</code> or <code>application/json</code>, some clients will reject the response. <code>curl -I</code> against the URL shows the headers being returned.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <div class="pitfall">
+    <div class="pitfall-label">{{ _('Pitfall') }}</div>
+    <p style="margin: 0;">
+      <strong>{{ _('Apex vs. www mismatch.') }}</strong>
+      {% trans -%}
+      If your wallet Domain field is <code>example.com</code>, verifiers fetch from <code>https://example.com/.well-known/xrp-ledger.toml</code> — not <code>www.example.com</code>. Either serve the file from both, or make sure the apex resolves and serves the file directly.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <h2 id="contact">{{ _('Contact us once verified') }}</h2>
+  <p>
+    {% trans -%}
+    If you have completed all four steps and the chain checks out, send us a short note at <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a> with your wallet address and your domain. We will re-run the verification, and on a match your issuer moves to the verified list on <a href="/rwa">/rwa</a>.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    We do not charge for verification, do not run a paid placement program, and do not promote one issuer over another. The list is curated solely on whether the on-chain Domain field and the off-chain TOML claim each other.
+    {%- endtrans %}
+  </p>
+
+  <ul class="check-list">
+    <li>{{ _('Domain field set on issuer wallet (hex-encoded, bare domain)') }}</li>
+    <li>{{ _('xrp-ledger.toml served over HTTPS at /.well-known/xrp-ledger.toml') }}</li>
+    <li>{{ _('TOML lists the same wallet address under [[ACCOUNTS]]') }}</li>
+    <li>{{ _('Both sides confirmed via curl') }}</li>
+  </ul>
+
+  <div class="footer">
+    {% trans -%}
+    XLS-26 is an open community standard maintained at <a href="https://github.com/XRPLF/XRPL-Standards" target="_blank" rel="noopener noreferrer">github.com/XRPLF/XRPL-Standards</a>. Reference documentation lives at <a href="https://xrpl.org/docs/infrastructure/xrp-ledger-toml" target="_blank" rel="noopener noreferrer">xrpl.org</a>. This dashboard's verification methodology is documented on the <a href="/methodology">/methodology</a> page.
+    {%- endtrans %}
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

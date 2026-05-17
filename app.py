@@ -2178,6 +2178,15 @@ def learn():
     )
 
 
+@app.route("/verify")
+def verify():
+    """Step-by-step guide for an XRPL issuer to publish a two-way TOML
+    attestation: set the Domain field on the issuer wallet AND publish an
+    xrp-ledger.toml at that domain that claims the wallet back. Public-good
+    operator doc — linked from each /rwa pending entry and from outreach DMs."""
+    return render_template("verify.html")
+
+
 @app.route("/terms")
 def terms():
     return render_template("terms.html")
