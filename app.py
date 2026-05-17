@@ -2124,6 +2124,14 @@ def rwa():
          "reason": "Archax is a real institutional broker (archax.com) but no "
                    "evidence of trust-line token issuance on XRPL. Promote "
                    "pending TOML check."},
+        {"name": "Justoken (JMWH)", "status": "pending",
+         "reason": "Real project with legitimate press coverage (YPF Luz energy "
+                   "partnership, tokenized-energy claims via the JMWH token). "
+                   "However the issuer wallet r976xbKc6om7WYTFwZHByvxnYFi1y5hJXH "
+                   "sets no on-chain Domain field, and Justoken publishes no "
+                   "xrp-ledger.toml at justoken.com. Cannot verify the wallet "
+                   "actually belongs to Justoken — promote to verified once "
+                   "attestation chain lands."},
     ]
 
     return render_template(
