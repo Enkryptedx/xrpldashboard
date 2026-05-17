@@ -820,7 +820,7 @@
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">{{ _('Cold storage') }}</div>
-          <div class="stat-sub">{{ cold_storage.tracked_count }} {{ _('Ripple escrows · largest') }} {{ cold_storage.largest_name }}</div>
+          <div class="stat-sub">{{ cold_storage.tracked_count }} {{ _('Ripple escrow accounts · largest') }} {{ cold_storage.largest_name }}</div>
         </div>
         {% if cold_storage.total_xrp >= 1000000000 %}
         <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000000 }}" data-countup-decimals="2" data-countup-suffix="B XRP">{{ "%.2f"|format(cold_storage.total_xrp / 1000000000) }}B XRP</div>
@@ -832,15 +832,15 @@
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">{{ _('Cold storage') }}</div>
-          <div class="stat-sub">{{ _('Ripple escrows') }}</div>
+          <div class="stat-sub">{{ _('Ripple escrow accounts') }}</div>
         </div>
         <div class="stat-v">{{ _('view') }} →</div>
       </a>
       {% endif %}
       <a href="/pools" class="stat-pill" data-live="amm-tvl">
         <div>
-          <div class="stat-l">{{ _('Locked in AMMs') }}</div>
-          <div class="stat-sub">{{ _('across') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('XRPL AMM pools') }}</div>
+          <div class="stat-l">{{ _('Locked in priced AMMs') }}</div>
+          <div class="stat-sub">{{ "{:,}".format(priced_pool_count) }} {{ _('priced of') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('XRPL AMM pools') }}</div>
         </div>
         <div class="stat-v" data-countup="{{ ranked_total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-decimals="0" data-countup-format-money="1">{{ fmt_money(ranked_total_tvl_usd) }}</div>
       </a>

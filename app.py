@@ -927,6 +927,14 @@ def index():
         for r in ranked_full
         if r.get("tvl_status") in ("exact", "estimated")
     )
+    # Pools whose TVL we can actually price (XRP-side or stablecoin-side
+    # reference). The aggregate above silently excludes anything else, so
+    # the homepage must disclose the split to stay truth-first.
+    priced_pool_count = sum(
+        1 for r in ranked_full
+        if r.get("tvl_status") in ("exact", "estimated")
+        and (r.get("tvl_usd") or 0) > 0
+    )
     ranked_top5 = [r for r in ranked_full if (r.get("tvl_usd") or 0) > 0][:5]
 
     try:
@@ -981,6 +989,7 @@ def index():
         tvl_shares=tvl_shares,
         ranked_top5=ranked_top5,
         ranked_pool_count=ranked_pool_count,
+        priced_pool_count=priced_pool_count,
         ranked_total_tvl_usd=ranked_total_tvl_usd,
         recent_whales=_recent_whale_events(limit=3),
         whales_snapshot_at=_whales_snapshot_label(),
@@ -1953,7 +1962,16 @@ def tokens():
 def about():
     """Public-facing 'what is this' page. Mission, principles, methodology,
     funding model. Copy lives in the template — review before launch."""
-    return render_template("about.html")
+    # Live count of TOML-attested accounts. Was hard-coded "28+" — the
+    # number doesn't drift on its own as we onboard more, so it has to
+    # read from the source of truth at render time.
+    attested_count = None
+    try:
+        with open(os.path.join(HERE, "named_accounts.json")) as f:
+            attested_count = len(json.load(f))
+    except Exception:
+        pass
+    return render_template("about.html", attested_count=attested_count)
 
 
 @app.route("/rlusd")

@@ -101,7 +101,9 @@
       <li>{{ _('MPT walker with concentration metrics and supply-history archive depth honesty') }}</li>
       <li>{{ _('Server-side signed QR codes on wallet pages (XLS-44d payment URI)') }}</li>
       <li>{{ _('Live whale streaming via WebSocket with 60-second server reconcile') }}</li>
-      <li>{{ _('28+ institutional accounts verified via two-way TOML attestation') }}</li>
+      {% if attested_count %}
+      <li>{{ attested_count }} {{ _('institutional accounts verified via two-way TOML attestation') }}</li>
+      {% endif %}
     </ul>
   </div>
 
