@@ -551,6 +551,7 @@ def _recent_whale_events(limit=3):
                 rows = conn.execute(
                     "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
                     "amount_drops, currency, issuer, raw_json FROM events "
+                    "WHERE type != 'trustset' "
                     "ORDER BY ts DESC LIMIT ?",
                     (limit,),
                 ).fetchall()
@@ -1488,8 +1489,6 @@ def whales():
     # Tier filter — SQL pre-filter only knows about `amount_drops`. Tagged
     # events whose Amount is a token live with amount_drops=NULL, so they
     # slip past the SQL gate and get sized in Python below via price_oracle.
-    # `trustset` events have no Amount at all and bypass entirely because
-    # the existence of a new trustline is the signal.
     tier_map = {
         "1m":   ("≥1M XRP",   1_000_000 * 1_000_000),
         "100k": ("≥100K XRP",   100_000 * 1_000_000),
@@ -1500,19 +1499,26 @@ def whales():
         tier = "1m"
     tier_label, tier_drops = tier_map[tier]
 
-    # XRP-denominated tagged events have amount_drops populated and can be
-    # gated cheaply in SQL alongside large_xfer. Token-denominated tagged
-    # events have amount_drops=NULL and slip through to be priced in Python.
-    # trustset events have no amount and always pass.
-    clauses = [
-        "(type = 'trustset' "
-        "OR type = 'tagged' AND amount_drops IS NULL "
-        "OR amount_drops >= ?)"
-    ]
-    params = [tier_drops]
-    if filter_type:
-        clauses.append("type = ?")
-        params.append(filter_type)
+    # Default view = value movement. Trustset events have no Amount and are
+    # signal, not movement — they read as noise alongside ≥1M XRP transfers.
+    # Users opt in to them via the "trustlines" pill (filter_type='trustset'),
+    # which short-circuits the tier gate (trustset rows have amount_drops=NULL
+    # and would otherwise be excluded by it).
+    if filter_type == "trustset":
+        clauses = ["type = 'trustset'"]
+        params = []
+    else:
+        # XRP-denominated tagged events have amount_drops populated and can be
+        # gated cheaply in SQL alongside large_xfer. Token-denominated tagged
+        # events have amount_drops=NULL and slip through to be priced in Python.
+        clauses = [
+            "((type = 'tagged' AND amount_drops IS NULL) "
+            "OR amount_drops >= ?)"
+        ]
+        params = [tier_drops]
+        if filter_type:
+            clauses.append("type = ?")
+            params.append(filter_type)
     where_clause = "WHERE " + " AND ".join(clauses)
 
     events = []
@@ -1536,15 +1542,18 @@ def whales():
             try:
                 for r in conn.execute(
                     "SELECT type, COUNT(*) FROM events "
-                    "WHERE (type = 'trustset' "
-                    "       OR (type = 'tagged' AND amount_drops IS NULL) "
-                    "       OR amount_drops >= ?) "
+                    "WHERE type = 'trustset' "
+                    "   OR (type = 'tagged' AND amount_drops IS NULL) "
+                    "   OR amount_drops >= ? "
                     "GROUP BY type",
                     (tier_drops,),
                 ):
                     if r[0] in type_counts:
                         type_counts[r[0]] = r[1]
-                    type_counts["_total"] += r[1]
+                    # _total = the count shown on the default "All" tile, which
+                    # mirrors the default-view row list — value movement only.
+                    if r[0] != "trustset":
+                        type_counts["_total"] += r[1]
                 rows = conn.execute(
                     f"SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
                     f"amount_drops, currency, issuer, raw_json FROM events "

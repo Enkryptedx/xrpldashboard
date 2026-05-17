@@ -1212,14 +1212,17 @@ def prune_amm_pool_events(cap_rows):
 # ─────────────────────────────────────────────────────────────────────
 
 def read_recent_events(limit=10):
-    """Latest N rows from `events`, no tier/type filter. Mirrors the
+    """Latest N rows from `events`, value-movement only. Mirrors the
     homepage SQLite query so the existing _resolve_event() resolver works
-    unchanged. Returns rows in column order:
+    unchanged. Excludes trustset (signal, not movement) so the homepage
+    globe pulse and the institutional /api/whales/recent contract stay
+    aligned with "large XRP transfer feed". Returns rows in column order:
     tx_hash, ledger_index, ts, type, from_addr, to_addr, amount_drops,
     currency, issuer, raw_json."""
     sql = (
         "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
         "amount_drops, currency, issuer, raw_json::text FROM events "
+        "WHERE type != 'trustset' "
         "ORDER BY ts DESC LIMIT %s"
     )
     with pg_connect() as conn:
@@ -1234,17 +1237,23 @@ def read_whale_events(tier_drops, filter_type=None, limit=100):
     amount_drops, currency, issuer, raw_json. raw_json is returned as a
     string so the existing _resolve_event() resolver works unchanged.
 
-    trustset rows and tagged-token rows (amount_drops NULL) pass through
-    unfiltered — app.whales prices the latter in Python via price_oracle."""
-    clauses = [
-        "(type = 'trustset' "
-        "OR (type = 'tagged' AND amount_drops IS NULL) "
-        "OR amount_drops >= %s)"
-    ]
-    params = [tier_drops]
-    if filter_type:
-        clauses.append("type = %s")
-        params.append(filter_type)
+    Trustset rows are signal, not movement, so the default view excludes
+    them; filter_type='trustset' short-circuits the tier gate and returns
+    only trustset rows (which always have amount_drops=NULL). Tagged-token
+    rows pass through unfiltered — app.whales prices them in Python via
+    price_oracle."""
+    if filter_type == "trustset":
+        clauses = ["type = 'trustset'"]
+        params = []
+    else:
+        clauses = [
+            "((type = 'tagged' AND amount_drops IS NULL) "
+            "OR amount_drops >= %s)"
+        ]
+        params = [tier_drops]
+        if filter_type:
+            clauses.append("type = %s")
+            params.append(filter_type)
     where = "WHERE " + " AND ".join(clauses)
     sql = (
         "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
@@ -1263,22 +1272,25 @@ def read_whale_type_counts(tier_drops):
     '_total': N} for the /whales stat tiles. Counts here mirror the SQL
     pre-filter used by read_whale_events — token-denominated tagged events
     will still be Python-filtered downstream, so this count is an upper
-    bound on what visitors actually see in the list."""
+    bound on what visitors actually see in the list. `_total` excludes
+    trustset: it powers the "All" tile, which mirrors the default-view row
+    list (value movement only)."""
     counts = {"large_xfer": 0, "tagged": 0, "trustset": 0, "_total": 0}
     with pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT type, COUNT(*) FROM events "
-                "WHERE (type = 'trustset' "
-                "       OR (type = 'tagged' AND amount_drops IS NULL) "
-                "       OR amount_drops >= %s) "
+                "WHERE type = 'trustset' "
+                "   OR (type = 'tagged' AND amount_drops IS NULL) "
+                "   OR amount_drops >= %s "
                 "GROUP BY type",
                 (tier_drops,),
             )
             for type_, n in cur.fetchall():
                 if type_ in counts:
                     counts[type_] = n
-                counts["_total"] += n
+                if type_ != "trustset":
+                    counts["_total"] += n
     return counts
 
 
