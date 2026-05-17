@@ -75,7 +75,7 @@
   {% include "_nav.html" %}
 
   <h1>{{ _('Subprocessors') }}</h1>
-  <p class="updated">{{ _('Last updated:') }} 2026-05-13</p>
+  <p class="updated">{{ _('Last updated:') }} 2026-05-17</p>
   <p class="lede">
     {{ _('Every third-party vendor that touches data flowing through xrpldashboard. What they see, where they run, and their data-processing agreement. If a row changes, this page changes — there are no silent additions.') }}
   </p>
@@ -140,6 +140,13 @@
           <td class="region">{{ _('European Union') }}</td>
           <td>{{ _('Health-check request metadata (timing, response code) for a small set of public endpoints. No request bodies, no user traffic.') }}</td>
           <td class="dpa"><a href="https://betterstack.com/legal" target="_blank" rel="noopener noreferrer">Legal →</a></td>
+        </tr>
+        <tr>
+          <td class="vendor">Backblaze B2</td>
+          <td>{{ _('Nightly encrypted backup of source directories (rclone with client-side crypt)') }}</td>
+          <td class="region">{{ _('United States') }}</td>
+          <td>{{ _('Encrypted blobs only. Backblaze holds ciphertext and cannot decrypt; the encryption key is held off-platform by the operator. Object metadata visible to Backblaze is limited to size, modification time, and bucket path.') }}</td>
+          <td class="dpa"><a href="https://www.backblaze.com/company/legal.html" target="_blank" rel="noopener noreferrer">Legal →</a></td>
         </tr>
       </tbody>
     </table>
