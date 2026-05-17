@@ -89,7 +89,8 @@ def init_i18n(app):
         resp.set_cookie(
             COOKIE_NAME, code,
             max_age=COOKIE_MAX_AGE,
-            httponly=False,  # JS can read it for client-side hints
+            httponly=True,
+            secure=True,
             samesite="Lax",
         )
         return resp
