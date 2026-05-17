@@ -1209,6 +1209,16 @@ def health():
     stream_alive_remote = pg_hb_age is not None and pg_hb_age < 900
     stream_alive = stream_alive_local or stream_alive_remote
 
+    # Mac → Prod mirror health. When _mirror_to_postgres on the Mac fails, the
+    # heartbeat row doesn't update — its age IS the inverse of "mirror is
+    # working". Configurable threshold via MIRROR_DEGRADED_AGE_SEC (default
+    # 18000s = 5h: one missed 4h rank_amms cron + buffer). On the Mac itself,
+    # the local-scan signal would mask this, so mirror_alive is only used to
+    # downgrade overall — not to flip pool tracker UI.
+    mirror_threshold = int(os.environ.get("MIRROR_DEGRADED_AGE_SEC", "18000"))
+    mirror_alive = ranker_hb_age is not None and ranker_hb_age < mirror_threshold
+    mirror_last_success_age = ranker_hb_age
+
     amm_index = _safe_load_json(AMM_INDEX_PATH) or []
     amms_in_index = len(amm_index) if isinstance(amm_index, list) and amm_index \
         else ranker_hb_extra.get("indexed_count")
@@ -1237,7 +1247,7 @@ def health():
     # Banner downgrades when any subsystem is stale, not just when one
     # disappears outright. Without this, a 40h-old pool tracker still
     # rolled up to "ok" because `pool_finished` was true.
-    overall = "ok" if scan_alive and stream_alive else "degraded"
+    overall = "ok" if scan_alive and stream_alive and mirror_alive else "degraded"
 
     # Status code is the contract for uptime monitors (UptimeRobot etc.) —
     # keyword-matching the HTML body is fragile. Body stays informative for
@@ -1280,6 +1290,13 @@ def health():
                 else (stream_log_age if stream_log_age is not None else pg_hb_age)
             ),
             "seen_tokens_count": len(stream_state.get("seen_tokens", []) or []),
+        },
+        mirror={
+            "alive": mirror_alive,
+            "last_success_age": _humanize_seconds(mirror_last_success_age) if mirror_last_success_age is not None else None,
+            "last_success_age_sec": mirror_last_success_age,
+            "threshold": _humanize_seconds(mirror_threshold),
+            "threshold_sec": mirror_threshold,
         },
         substrate={
             # Prefer local SQLite (authoritative on the Mac). On Render the

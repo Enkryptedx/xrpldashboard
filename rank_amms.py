@@ -326,12 +326,27 @@ def merge_incremental(index):
     return index, added
 
 
+# Module-level counters so consecutive failures across SAVE_EVERY checkpoints
+# within a single run can be detected and logged loudly. Reset by a success.
+# Persistent cross-run state lives in the heartbeat row in Postgres — when
+# THAT can't be written, the absence of a fresh heartbeat IS the prod signal.
+_mirror_consec_failures = 0
+
+
 def _mirror_to_postgres(ranked, state, indexed_count):
     """Push the current ranked snapshot + meta to Postgres so the prod
     Flask web (Render) sees the same data the Mac just wrote to disk.
 
     Silent no-op when DATABASE_URL isn't set; never raises (prod outage on
-    Neon must not block local ranking from making progress)."""
+    Neon must not block local ranking from making progress).
+
+    Tracks consecutive failures: a streak of MIRROR_FAILURE_THRESHOLD (default
+    10) trips a loud log line so the operator scanning launchd logs sees it
+    without grepping. Prod-side detection rides on heartbeat-row age via
+    /health — when mirror writes fail, the heartbeat doesn't update, and
+    /health flips to degraded after MIRROR_DEGRADED_AGE_SEC."""
+    global _mirror_consec_failures
+    threshold = int(os.environ.get("MIRROR_FAILURE_THRESHOLD", "10"))
     try:
         db.replace_amm_ranked_pools(ranked)
         db.write_heartbeat(
@@ -346,8 +361,15 @@ def _mirror_to_postgres(ranked, state, indexed_count):
                 "skipped": state.get("skipped"),
             },
         )
+        if _mirror_consec_failures:
+            log(f"  postgres mirror recovered after {_mirror_consec_failures} consecutive failure(s)")
+        _mirror_consec_failures = 0
     except Exception as e:
-        log(f"  postgres mirror failed (non-fatal): {e}")
+        _mirror_consec_failures += 1
+        if _mirror_consec_failures >= threshold:
+            log(f"  MIRROR_HEALTH degraded — {_mirror_consec_failures} consecutive failures (threshold {threshold}); last error: {e}")
+        else:
+            log(f"  postgres mirror failed (non-fatal, streak={_mirror_consec_failures}): {e}")
 
 
 def parse_args():

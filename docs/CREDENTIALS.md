@@ -63,6 +63,22 @@ pick up changes to the env file — see Recovery, step 5.
   `backfill_amm_pools.py`, `daily_twitter_post.py` — workers
 - `xrpscan_labels_import.py`, `account_labels_import.py` — one-shot CLIs
 
+### Operational env tunables
+
+These are **not** credentials — they tune the mirror-failure observability
+that ships with #71. Both have safe defaults; override only if real-world
+operation shows the defaults are wrong-shaped.
+
+| Var | Default | Read by | What it tunes |
+|---|---|---|---|
+| `MIRROR_FAILURE_THRESHOLD` | `10` | `rank_amms.py` (Mac) | Consecutive `_mirror_to_postgres` failures within one run before a loud `MIRROR_HEALTH degraded` line lands in `launchd_logs/rank_amms.out.log`. Sub-threshold failures log a quiet `streak=N`. Greppable from logs without alerting until the run pattern says it's worth it. |
+| `MIRROR_DEGRADED_AGE_SEC` | `18000` (5h) | `app.py` (Render `/health`) | Seconds since the last `amm_ranker` heartbeat before `/health` flips `mirror_alive=False`, rolls `overall=degraded`, returns HTTP 503, and Better Stack alerts. Default is one missed 4-hour rank cycle plus 1-hour buffer. Tighten to 2-3h after a few days if real cron cadence supports it. |
+
+Both vars are read at process fork. Changing them on Render takes effect on
+the next deploy; changing them on the Mac takes effect on the next launchd
+job spawn (so `launchctl kickstart -k` the relevant job to pick up the new
+value mid-cycle).
+
 ---
 
 ## 2. Standard rotation procedure
@@ -145,9 +161,13 @@ The cheapest single signal is the rank_amms log. Mirror failures land as
 25 seconds at the steady-state 3.7 pools/sec rate. A healthy run has
 zero of these lines per 4-hour cycle.
 
-When `#71` (mirror failure visibility) ships, `_mirror_to_postgres`
-will surface consecutive failures to `/health`. Until then, the
-rank_amms log is the smoking gun.
+As of `#71` (mirror failure visibility), `_mirror_to_postgres` surfaces
+two correlated signals: a greppable `MIRROR_HEALTH degraded` line in
+`launchd_logs/rank_amms.out.log` after `MIRROR_FAILURE_THRESHOLD`
+consecutive in-run failures (fast, 4-min trigger at default streak), and
+`/health` flipping `mirror_alive=False` once the `amm_ranker` heartbeat
+ages past `MIRROR_DEGRADED_AGE_SEC` (slow, 5h trigger; Better Stack
+auto-alerts on the 503). Both env vars are documented in §1 above.
 
 ### What "expected" looks like
 
