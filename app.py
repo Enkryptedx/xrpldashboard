@@ -103,6 +103,39 @@ PUBLIC_ROUTES = [
     "/subprocessors",
 ]
 
+
+def ttl_cache(seconds=60):
+    """Per-process TTL cache for hot helpers that re-fetch identical results
+    within seconds. Sized to a single value per arg-tuple — fine for the
+    no-arg snapshot loaders below. Race on simultaneous miss is benign:
+    one wasted compute, last writer wins, no corruption. Returned values
+    are shared by reference, so decorated functions must not return
+    objects that callers mutate in place."""
+    def decorator(fn):
+        store = {}
+        def wrapper(*args, **kwargs):
+            key = (args, tuple(sorted(kwargs.items())))
+            now = time.time()
+            entry = store.get(key)
+            if entry is not None and now - entry[1] <= seconds:
+                return entry[0]
+            value = fn(*args, **kwargs)
+            store[key] = (value, now)
+            return value
+        wrapper.__wrapped__ = fn
+        return wrapper
+    return decorator
+
+
+@ttl_cache(seconds=60)
+def _cached_db_mpt_snapshot():
+    """60s cache wrapper around db.read_mpt_snapshot(). The snapshot is
+    refreshed daily by the mpt_snapshot worker; rereading the multi-MB
+    JSONB blob on every /mpts request was the dominant per-request
+    allocation pre-cache."""
+    return db.read_mpt_snapshot()
+
+
 app = Flask(__name__)
 # Flask needs a server-side secret for any feature that signs cookies or
 # tokens. We don't use sessions today, but setting one defensively keeps
@@ -713,6 +746,7 @@ def _annotate_unverified_brands(rows):
     return rows
 
 
+@ttl_cache(seconds=60)
 def _ranked_amm_snapshot():
     """Single source of truth for AMM ranking data on /pools and the
     homepage AMM card. Prefers Postgres (the Mac-hosted ranker dual-writes
@@ -1266,10 +1300,12 @@ def health():
     ), status_code
 
 
+@ttl_cache(seconds=60)
 def _load_named_accounts_dict():
     return _safe_load_json(NAMED_ACCOUNTS_PATH) or {}
 
 
+@ttl_cache(seconds=60)
 def _load_token_names_dict():
     """Build {(currency_hex, issuer): entry} for fast lookup. Entries
     still tagged `TODO_curation_pass` are excluded from the live render
@@ -2818,7 +2854,7 @@ def mpts():
     users (researchers, journalists) bump it for a tighter view."""
     data = load_mpt_snapshot()
     if data is None:
-        data = db.read_mpt_snapshot()
+        data = _cached_db_mpt_snapshot()
     if data is None and os.environ.get("MPT_ALLOW_LIVE_FETCH") == "1":
         data = fetch_mpt_data_cached()
     if data is None:
@@ -2917,7 +2953,7 @@ def api_mpts():
     stable; adding new fields is safe, renaming or removing is not."""
     data = load_mpt_snapshot()
     if data is None:
-        data = db.read_mpt_snapshot()
+        data = _cached_db_mpt_snapshot()
     if data is None:
         return ({"ok": False, "warming": True, "issuances": [], "total": 0}, 503,
                 {"Cache-Control": "no-store"})
@@ -2962,7 +2998,7 @@ def mpt_detail(issuance_id):
     they're the institutional discovery surface."""
     data = load_mpt_snapshot()
     if data is None:
-        data = db.read_mpt_snapshot()
+        data = _cached_db_mpt_snapshot()
     if data is None:
         abort(503)
 
@@ -3081,7 +3117,7 @@ def mpt_issuer(address):
 
     data = load_mpt_snapshot()
     if data is None:
-        data = db.read_mpt_snapshot()
+        data = _cached_db_mpt_snapshot()
     if data is None:
         abort(503)
 
@@ -3450,7 +3486,7 @@ def sitemap_xml():
     try:
         data = load_mpt_snapshot()
         if data is None:
-            data = db.read_mpt_snapshot()
+            data = _cached_db_mpt_snapshot()
         if data:
             enriched = _enrich_mpt_rows(data)
             issuer_indexable = {}
