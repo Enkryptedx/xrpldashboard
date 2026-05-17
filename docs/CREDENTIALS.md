@@ -63,6 +63,20 @@ pick up changes to the env file — see Recovery, step 5.
   `backfill_amm_pools.py`, `daily_twitter_post.py` — workers
 - `xrpscan_labels_import.py`, `account_labels_import.py` — one-shot CLIs
 
+### Phantom touchpoints — files that look like credential touchpoints but aren't
+
+The following files have existed at various points and are **NOT** consumed
+by any code path. Don't diff against canonical during drift investigation:
+
+- `~/xrpl_test/.env` (repo-local, gitignored) — Removed 2026-05-17 after a
+  runbook walkthrough confirmed it was unused. If you find this file again
+  (e.g., a future developer recreates it for dev convenience), delete it.
+  Not a credential touchpoint. Use `~/.config/xrpldashboard/env` for
+  canonical Mac credentials; if you want a one-liner for dev shells,
+  `set -a; . ~/.config/xrpldashboard/env; set +a` or an alias.
+
+Add new entries here as future drift investigations identify them.
+
 ### Operational env tunables
 
 These are **not** credentials — they tune the mirror-failure observability
