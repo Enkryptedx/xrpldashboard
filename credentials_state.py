@@ -400,7 +400,14 @@ def _persist_snapshot():
     Reads PG first and only overrides keys where this worker actually has
     a value. This prevents a fresh worker (whose `_state["cumulative"]`
     might still be None because the walk lock is held elsewhere) from
-    clobbering a good snapshot another worker just wrote."""
+    clobbering a good snapshot another worker just wrote.
+
+    Also refuses to overwrite a cumulative snapshot whose seed set was
+    larger than this walk's. A bootstrap-only walk (seed_set_size near
+    len(SEED_ACCOUNTS_BOOTSTRAP)) running against an expanded existing
+    snapshot would otherwise erase the discovered seed accounts and
+    collapse the visible count. Genuine deletes are unaffected because
+    a real walk inherits the expanded seed set via prior_seeds."""
     try:
         existing = db.read_credentials_snapshot() or {}
     except Exception:
@@ -409,6 +416,21 @@ def _persist_snapshot():
         local_amend = dict(_state["amendment"]) if _state.get("amendment") else None
         local_cum = dict(_state["cumulative"]) if _state.get("cumulative") else None
         local_rec = dict(_state["recent"]) if _state.get("recent") else None
+
+    existing_cum = existing.get("cumulative") or {}
+    existing_seed_size = int(existing_cum.get("seed_set_size") or 0)
+    if local_cum and existing_seed_size > len(SEED_ACCOUNTS_BOOTSTRAP):
+        local_seed_size = int(local_cum.get("seed_set_size") or 0)
+        if local_seed_size < existing_seed_size:
+            log.warning(
+                "credentials: refusing to persist regressed walk "
+                "(local seed_size=%d count=%s vs existing seed_size=%d count=%s); "
+                "keeping existing cumulative snapshot",
+                local_seed_size, local_cum.get("count_floor"),
+                existing_seed_size, existing_cum.get("count_floor"),
+            )
+            local_cum = None
+
     payload = {
         "amendment": local_amend or existing.get("amendment"),
         "cumulative": local_cum or existing.get("cumulative"),
@@ -441,7 +463,18 @@ def _refresh_cycle():
         if lock_conn is not None:
             try:
                 log.info("credentials: acquired walk lock, starting account_objects walk")
+                # Read prior seeds from PG directly rather than relying on
+                # _state["cumulative"] being populated. A worker that hits the
+                # walk path before hydration completes (or after hydration
+                # silently errored) would otherwise walk with bootstrap-only
+                # seeds and clobber the expanded snapshot in PG.
                 prior_seeds = (_state.get("cumulative") or {}).get("seed_accounts") or []
+                if not prior_seeds:
+                    try:
+                        pg_snap = db.read_credentials_snapshot() or {}
+                        prior_seeds = (pg_snap.get("cumulative") or {}).get("seed_accounts") or []
+                    except Exception:
+                        prior_seeds = []
                 cum = _walk_via_account_objects(prior_seeds)
                 with _state_lock:
                     _state["cumulative"] = cum
