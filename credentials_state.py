@@ -395,14 +395,26 @@ def _scan_recent():
 
 def _persist_snapshot():
     """Write the in-memory state to PG so every gunicorn worker reads
-    the same view. No-op when DATABASE_URL isn't configured."""
+    the same view. No-op when DATABASE_URL isn't configured.
+
+    Reads PG first and only overrides keys where this worker actually has
+    a value. This prevents a fresh worker (whose `_state["cumulative"]`
+    might still be None because the walk lock is held elsewhere) from
+    clobbering a good snapshot another worker just wrote."""
+    try:
+        existing = db.read_credentials_snapshot() or {}
+    except Exception:
+        existing = {}
     with _state_lock:
-        payload = {
-            "amendment": dict(_state["amendment"]) if _state.get("amendment") else None,
-            "cumulative": dict(_state["cumulative"]) if _state.get("cumulative") else None,
-            "recent": dict(_state["recent"]) if _state.get("recent") else None,
-            "written_at": int(time.time()),
-        }
+        local_amend = dict(_state["amendment"]) if _state.get("amendment") else None
+        local_cum = dict(_state["cumulative"]) if _state.get("cumulative") else None
+        local_rec = dict(_state["recent"]) if _state.get("recent") else None
+    payload = {
+        "amendment": local_amend or existing.get("amendment"),
+        "cumulative": local_cum or existing.get("cumulative"),
+        "recent": local_rec or existing.get("recent"),
+        "written_at": int(time.time()),
+    }
     db.write_credentials_snapshot(payload)
 
 
@@ -476,10 +488,34 @@ def _refresh_loop():
         time.sleep(60)
 
 
+def _hydrate_from_pg():
+    """Pull whatever the most-recent walker wrote (across any worker) into
+    this worker's in-memory state. Without this, a fresh worker starts with
+    cumulative=None/recent=None, and its first amendment refresh will
+    persist that partial state and clobber the existing PG snapshot."""
+    try:
+        pg_snap = db.read_credentials_snapshot()
+    except Exception:
+        return
+    if not pg_snap:
+        return
+    with _state_lock:
+        if _state.get("amendment") is None and pg_snap.get("amendment"):
+            _state["amendment"] = pg_snap["amendment"]
+            _state["persisted_amend_at"] = time.time()
+        if _state.get("cumulative") is None and pg_snap.get("cumulative"):
+            _state["cumulative"] = pg_snap["cumulative"]
+            _state["persisted_cum_at"] = time.time()
+        if _state.get("recent") is None and pg_snap.get("recent"):
+            _state["recent"] = pg_snap["recent"]
+            _state["persisted_rec_at"] = time.time()
+
+
 def _ensure_thread():
     global _thread
     with _thread_lock:
         if _thread is None or not _thread.is_alive():
+            _hydrate_from_pg()
             _thread = threading.Thread(
                 target=_refresh_loop,
                 name="credentials-refresh",
