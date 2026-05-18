@@ -159,6 +159,19 @@ CREATE TABLE IF NOT EXISTS historical_snapshot_meta (
     CHECK (id = 1)
 );
 
+-- Single-row JSONB blob for the /credentials live tracker. Holds
+-- amendment status, the latest cumulative SHAMap walk result, and the
+-- latest recent-activity tx scan. Walker writes (currently a daemon
+-- thread inside a gunicorn worker, future: launchd job); every Flask
+-- worker reads on each request so cold-start workers never render
+-- placeholders.
+CREATE TABLE IF NOT EXISTS credentials_snapshot (
+    id         INTEGER PRIMARY KEY,
+    payload    JSONB NOT NULL,
+    written_at BIGINT NOT NULL,
+    CHECK (id = 1)
+);
+
 -- Account labels registry. Three layers, one row per address:
 --   manual      — curated by hand from xrpscan, bithomp, etc. (the source
 --                 column records WHERE the label came from so visitors
@@ -712,6 +725,100 @@ def read_mpt_snapshot():
                 return payload
     except Exception:
         return None
+
+
+def write_credentials_snapshot(data):
+    """Persist the /credentials state blob so every gunicorn worker
+    (and any future standalone walker) reads the same view. Silent no-op
+    when PG isn't configured. Empty payloads are dropped: never overwrite
+    a good snapshot with one that lacks any successful component."""
+    if not data:
+        return
+    if not (data.get("amendment") or data.get("cumulative") or data.get("recent")):
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    written_at = int(data.get("written_at") or time.time())
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO credentials_snapshot (id, payload, written_at) "
+                "VALUES (1, %s::jsonb, %s) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "    payload = EXCLUDED.payload, "
+                "    written_at = EXCLUDED.written_at",
+                (json.dumps(data, default=str), written_at),
+            )
+    except Exception as e:
+        _log_err("write_credentials_snapshot_failed", e)
+        _drop_writer_conn()
+
+
+def read_credentials_snapshot():
+    """Return the credentials snapshot dict from Postgres, or None when
+    PG is unavailable / table empty. Adds `snapshot_age_seconds` so the
+    template can show freshness."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT payload, written_at FROM credentials_snapshot WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload, written_at = row
+                if not isinstance(payload, dict):
+                    return None
+                payload["snapshot_age_seconds"] = round(
+                    time.time() - int(written_at), 1
+                )
+                payload["written_at"] = int(written_at)
+                payload["from_postgres"] = True
+                return payload
+    except Exception:
+        return None
+
+
+def try_acquire_credentials_walk_lock(lock_key=4271006201):
+    """Try to grab a Postgres advisory lock so only ONE gunicorn worker
+    actually does the SHAMap walk at a time. Returns the held connection
+    on success, None when another worker holds it. Caller MUST call
+    release_credentials_walk_lock(conn) when done (or close the conn).
+
+    The lock is session-scoped — releasing the conn releases the lock, so
+    a worker crash mid-walk doesn't permanently block the next attempt."""
+    if not pg_available():
+        return None
+    try:
+        conn = pg_connect()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
+            got = cur.fetchone()[0]
+        if not got:
+            conn.close()
+            return None
+        return conn
+    except Exception:
+        return None
+
+
+def release_credentials_walk_lock(conn, lock_key=4271006201):
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except Exception:
+        pass
 
 
 def read_rlusd_state_cache():

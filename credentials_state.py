@@ -30,6 +30,8 @@ import time
 
 import httpx
 
+import db
+
 XRPL_FULL = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRPL_CLIO = os.environ.get("XRPL_CLIO_NODE", "https://s2.ripple.com:51234")
 
@@ -252,42 +254,83 @@ def _scan_recent():
     }
 
 
-def _refresh_loop():
-    last_cum = 0.0
-    last_recent = 0.0
-    last_amend = 0.0
-    while True:
-        try:
-            now = time.time()
-            if now - last_amend > 6 * 3600 or _state.get("amendment") is None:
-                amend = _fetch_amendment_status()
-                if amend is not None:
-                    with _state_lock:
-                        _state["amendment"] = amend
-                    last_amend = now
+def _persist_snapshot():
+    """Write the in-memory state to PG so every gunicorn worker reads
+    the same view. No-op when DATABASE_URL isn't configured."""
+    with _state_lock:
+        payload = {
+            "amendment": dict(_state["amendment"]) if _state.get("amendment") else None,
+            "cumulative": dict(_state["cumulative"]) if _state.get("cumulative") else None,
+            "recent": dict(_state["recent"]) if _state.get("recent") else None,
+            "written_at": int(time.time()),
+        }
+    db.write_credentials_snapshot(payload)
 
-            if now - last_cum > CUMULATIVE_REFRESH_SECONDS or _state.get("cumulative") is None:
-                log.info("credentials: starting cumulative walk")
+
+def _refresh_cycle():
+    """One pass through the three refresh checks. Wrapped so we can do an
+    eager run on thread start and then loop on a 60s tick."""
+    now = time.time()
+    persisted_at = _state.get("persisted_amend_at", 0)
+    if now - persisted_at > 6 * 3600 or _state.get("amendment") is None:
+        amend = _fetch_amendment_status()
+        if amend is not None:
+            with _state_lock:
+                _state["amendment"] = amend
+                _state["persisted_amend_at"] = now
+            _persist_snapshot()
+
+    cum_at = _state.get("persisted_cum_at", 0)
+    if now - cum_at > CUMULATIVE_REFRESH_SECONDS or _state.get("cumulative") is None:
+        # Only one gunicorn worker should walk at a time; the others read
+        # the previous snapshot from PG. The advisory lock auto-releases
+        # when the held connection closes, so a worker crash mid-walk
+        # doesn't deadlock future attempts.
+        lock_conn = db.try_acquire_credentials_walk_lock()
+        if lock_conn is not None:
+            try:
+                log.info("credentials: acquired walk lock, starting cumulative walk")
                 cum = _walk_cumulative()
                 with _state_lock:
                     _state["cumulative"] = cum
-                last_cum = time.time()
+                    _state["persisted_cum_at"] = time.time()
+                _persist_snapshot()
                 log.info(
-                    "credentials: cumulative done — floor=%d exhausted=%s pages=%d",
+                    "credentials: cumulative done — count=%d exhausted=%s pages=%d",
                     cum["count_floor"], cum["exhausted"], cum["pages_scanned"],
                 )
+            finally:
+                db.release_credentials_walk_lock(lock_conn)
+        else:
+            log.debug("credentials: walk lock held elsewhere, skipping cycle")
 
-            if now - last_recent > RECENT_REFRESH_SECONDS or _state.get("recent") is None:
+    rec_at = _state.get("persisted_rec_at", 0)
+    if now - rec_at > RECENT_REFRESH_SECONDS or _state.get("recent") is None:
+        # Recent-activity scan is cheap relative to the cumulative walk
+        # (3-min budget vs 12-min), so we use a separate lock so it can
+        # run concurrently with a walk on a different worker.
+        lock_conn = db.try_acquire_credentials_walk_lock(lock_key=4271006202)
+        if lock_conn is not None:
+            try:
                 log.info("credentials: starting recent-activity scan")
                 rec = _scan_recent()
                 if rec is not None:
                     with _state_lock:
                         _state["recent"] = rec
-                    last_recent = time.time()
+                        _state["persisted_rec_at"] = time.time()
+                    _persist_snapshot()
                     log.info(
                         "credentials: recent done — scanned=%d total_tx=%d",
                         rec["ledgers_scanned"], rec["total"],
                     )
+            finally:
+                db.release_credentials_walk_lock(lock_conn, lock_key=4271006202)
+
+
+def _refresh_loop():
+    while True:
+        try:
+            _refresh_cycle()
         except Exception as exc:
             log.exception("credentials refresh loop error: %s", exc)
         time.sleep(60)
@@ -306,7 +349,23 @@ def _ensure_thread():
 
 
 def get_credentials_state():
+    """Return the latest snapshot. ALWAYS reads from Postgres first when
+    available so a cold-start gunicorn worker never renders placeholder
+    'scanning…' state for a visitor — they see whatever the most-recent
+    walker wrote, which is then refreshed in-place by this worker's own
+    daemon as cycles complete."""
     _ensure_thread()
+    pg_snap = db.read_credentials_snapshot()
+    if pg_snap and (pg_snap.get("amendment") or pg_snap.get("cumulative")):
+        pg_snap["now_iso"] = _now_iso()
+        pg_snap["initial_scan_complete"] = bool(
+            pg_snap.get("cumulative") and pg_snap.get("amendment")
+        )
+        pg_snap["source"] = "postgres"
+        return pg_snap
+
+    # PG empty (very first deploy) or unavailable — fall back to whatever
+    # this worker has accumulated in memory.
     with _state_lock:
         snapshot = {
             "amendment": dict(_state["amendment"]) if _state.get("amendment") else None,
@@ -314,6 +373,7 @@ def get_credentials_state():
             "recent": dict(_state["recent"]) if _state.get("recent") else None,
             "started_at_iso": _state["started_at_iso"],
             "now_iso": _now_iso(),
+            "source": "in-memory",
         }
     snapshot["initial_scan_complete"] = bool(
         snapshot.get("cumulative") and snapshot.get("amendment")

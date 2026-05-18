@@ -13,7 +13,7 @@ import sqlite3
 import time
 from datetime import date, datetime, timezone
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, Response, abort, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -2260,9 +2260,15 @@ def credentials():
     on mainnet but adoption is sparse, so an in-request `ledger_data` walk
     is infeasible — credentials_state.py runs a background daemon that
     refreshes a cumulative SHAMap walk every 6h and a recent-activity
-    transaction scan every 30 min. The route just renders the snapshot."""
+    transaction scan every 30 min. The route reads from PG so every
+    gunicorn worker serves the same snapshot."""
     state = get_credentials_state()
-    return render_template("credentials.html", state=state)
+    resp = make_response(render_template("credentials.html", state=state))
+    # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
+    # see fresh-within-a-minute data; without this header, CF returns
+    # DYNAMIC but browsers heuristic-cache the response indefinitely.
+    resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return resp
 
 
 @app.route("/verify")
