@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Amendments') }} · {{ _('live XRPL governance') }} · xrpldashboard</title>
+  {% set meta_title = "Amendments · live XRPL governance · xrpldashboard" %}
+  {% set meta_description = "Live tracker of XRP Ledger amendments — what validators are voting on right now, what each change actually does in plain English, and when the next activation lands." %}
+  {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "XRPL amendments, live",
+    "description": "A plain-language tracker of XRP Ledger amendments currently in flight — what's being voted on, what each amendment does, and when the next activation is projected.",
+    "datePublished": "2026-05-18T00:00:00Z",
+    "dateModified": "{{ state.fetched_at_iso if state and state.fetched_at_iso else '2026-05-18T00:00:00Z' }}",
+    "author": { "@type": "Organization", "name": "xrpldashboard" },
+    "publisher": { "@type": "Organization", "name": "xrpldashboard", "url": "{{ site_url }}" },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "{{ site_url }}/amendments" },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.9rem; margin: 0 0 10px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 24px;
+            max-width: 720px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    h3 { font-size: 1rem; margin: 18px 0 6px; font-weight: 600;
+         color: var(--text); }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.88em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .dim { color: var(--dim); }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    /* Stats strip — total enabled vs in-flight */
+    .stats { display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+             gap: 10px; margin: 8px 0 28px; }
+    .stat { background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px; }
+    .stat .num { font-family: var(--mono); font-size: 1.5rem; color: var(--text);
+                 font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .stat .lbl { color: var(--muted); font-size: 0.78rem;
+                 margin-top: 6px; letter-spacing: 0.02em; }
+
+    /* Countdown card — the Majorities entry. */
+    .countdown {
+      background: linear-gradient(180deg, rgba(251,191,36,0.06), rgba(251,191,36,0.02) 60%, var(--card));
+      border: 1px solid rgba(251,191,36,0.28);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin: 16px 0 12px;
+    }
+    .countdown .tag {
+      display: inline-block; padding: 2px 9px; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+      color: var(--amber); border: 1px solid rgba(251,191,36,0.5);
+      background: rgba(251,191,36,0.08); text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .countdown .name {
+      font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em;
+      margin: 4px 0;
+    }
+    .countdown .hash {
+      font-family: var(--mono); font-size: 0.78rem;
+      color: var(--muted); word-break: break-all;
+    }
+    .countdown .timer {
+      font-family: var(--mono); font-variant-numeric: tabular-nums;
+      font-size: 1.6rem; color: var(--text); letter-spacing: -0.01em;
+      margin: 10px 0 4px;
+    }
+    .countdown .when { color: var(--muted); font-size: 0.88rem; }
+    .countdown .truth-note {
+      background: rgba(0,0,0,0.18); border-left: 3px solid var(--amber);
+      padding: 10px 14px; margin: 14px 0 0;
+      font-size: 0.92rem; line-height: 1.55; color: var(--text);
+      border-radius: 0 6px 6px 0;
+    }
+    .countdown .truth-note .lbl {
+      display: block; color: var(--amber); font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    /* In-flight amendment cards */
+    .amend-list { display: grid; gap: 10px; margin: 12px 0 0; }
+    details.amend {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0;
+    }
+    details.amend > summary {
+      list-style: none; cursor: pointer;
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    details.amend > summary::-webkit-details-marker { display: none; }
+    details.amend > summary::after {
+      content: '▸'; margin-left: auto; color: var(--dim);
+      transition: transform .15s;
+    }
+    details.amend[open] > summary::after { transform: rotate(90deg); }
+    details.amend .name {
+      font-weight: 600; font-size: 1rem; color: var(--text);
+    }
+    details.amend .kind {
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+      letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700;
+    }
+    .kind.feature { color: var(--cyan); border: 1px solid rgba(34,211,238,0.35);
+                    background: rgba(34,211,238,0.06); }
+    .kind.fix     { color: var(--muted); border: 1px solid rgba(160,180,210,0.25);
+                    background: rgba(160,180,210,0.05); }
+    details.amend .body {
+      padding: 0 18px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+    }
+    details.amend .body p { margin: 12px 0 8px; }
+    details.amend .body .meta {
+      font-family: var(--mono); font-size: 0.78rem; color: var(--dim);
+      margin: 8px 0 0; word-break: break-all;
+    }
+    details.amend .body .meta a { color: var(--muted); }
+    details.amend .body .meta a:hover { color: var(--cyan); }
+
+    .source-note {
+      color: var(--dim); font-size: 0.85rem; margin: 10px 0 28px;
+      font-style: italic;
+    }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+
+    /* CTA to /institutional for the four already-enabled */
+    .recent-callout {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 20px; margin: 14px 0 24px;
+    }
+    .recent-callout .label {
+      color: var(--green); font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('XRPL amendments, live') }}</h1>
+  <p class="lede">
+    {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
+  </p>
+
+  {% if not state or not state.ok %}
+    <div class="countdown" style="border-color: rgba(251,113,133,0.32); background: linear-gradient(180deg, rgba(251,113,133,0.06), var(--card));">
+      <div class="tag" style="color: var(--rose); border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.08);">{{ _('upstream offline') }}</div>
+      <p style="margin-top: 8px;">
+        {{ _('The public XRPL feature RPC didn\'t answer this request. The page returns to live state the moment the upstream is reachable again — no stale snapshot is served. Refresh in a moment.') }}
+      </p>
+    </div>
+  {% else %}
+
+  <div class="stats">
+    <div class="stat">
+      <div class="num">{{ state.enabled_count }}</div>
+      <div class="lbl">{{ _('amendments live on mainnet') }}</div>
+    </div>
+    <div class="stat">
+      <div class="num">{{ state.in_flight_count }}</div>
+      <div class="lbl">{{ _('in-flight (supported, not yet enabled)') }}</div>
+    </div>
+    <div class="stat">
+      <div class="num">{{ state.majorities | length }}</div>
+      <div class="lbl">{{ _('in 14-day activation countdown') }}</div>
+    </div>
+    <div class="stat">
+      <div class="num mono">{{ state.ledger_index }}</div>
+      <div class="lbl">{{ _('validated ledger at fetch') }}</div>
+    </div>
+  </div>
+
+  {% if state.majorities %}
+    <h2>{{ _('In countdown') }}</h2>
+    <p class="dim" style="font-size: 0.92rem;">
+      {{ _('Amendments that have crossed the 80 percent validator-majority threshold. If the majority holds for 14 consecutive days, the amendment activates at the close of the first ledger after that window.') }}
+    </p>
+    {% for m in state.majorities %}
+      <div class="countdown">
+        <span class="tag">{{ _('at majority · tracking 14-day window') }}</span>
+        <div class="name">
+          {% if m.recognized and m.name %}
+            {{ m.name }}
+          {% elif m.known_meta and m.known_meta.name %}
+            {{ m.known_meta.name }} <span class="dim" style="font-size: 0.78rem; font-weight: 400;">({{ _('per off-ledger source — see below') }})</span>
+          {% else %}
+            {{ _('Unrecognized amendment') }}
+          {% endif %}
+        </div>
+        <div class="hash">{{ m.hash }}</div>
+
+        <div class="timer" data-activation-iso="{{ m.activation_eta_iso }}">
+          {{ m.activation_eta_iso }}
+        </div>
+        <div class="conditional" style="color: var(--muted); font-size: 0.82rem; margin: -2px 0 6px; font-style: italic;">
+          {{ _('if the 80 percent majority holds for the full 14-day window') }}
+        </div>
+        <div class="when">
+          {{ _('projected activation') }} ·
+          {{ _('majority reached at fetch') }} {{ m.majority_reached_iso }}
+        </div>
+
+        {% if not m.recognized %}
+          <div class="truth-note">
+            <span class="lbl">{{ _('truth-first note') }}</span>
+            {{ _('The XRPL node that answered this request does not have a definition for this amendment hash. That means validators on a newer rippled build are voting yes on a change current released binaries don\'t recognize. Either the next rippled release will ship the definition before the activation ledger, or older clients will gracefully treat the activated flag as unknown.') }}
+            {% if m.known_meta %}
+              <br><br>
+              {{ _('Off-ledger sources identify this hash as') }}
+              <code>{{ m.known_meta.name }}</code> —
+              <a href="{{ m.known_meta.source_url }}" rel="nofollow noopener" target="_blank">{{ m.known_meta.source_label }}</a>.
+              {{ _('We name it for context but do not speculate on its behaviour beyond what that source documents.') }}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <h2>{{ _('In countdown') }}</h2>
+    <p class="dim">{{ _('Nothing in the 14-day activation window right now. The Amendments ledger object shows no current Majority entries.') }}</p>
+  {% endif %}
+
+  <h2>{{ _('In-flight amendments') }}</h2>
+  <p class="dim" style="font-size: 0.92rem;">
+    {{ _('Currently supported by the responding XRPL node but not yet enabled. Validators may or may not be voting yes — the public RPC doesn\'t expose per-validator tallies. Plain-language summaries below are hand-edited from primary sources; click each one to read.') }}
+  </p>
+
+  {# Plain-English summaries. Each entry: short_kind (feature|fix), summary,
+     source_label, source_url. Edit copy here, not in a database — these
+     are editorial commitments tied to the amendment's documented spec. #}
+  {% set summaries = {
+    "Batch": {
+      "kind": "feature",
+      "summary": _("Allows multiple transactions to be bundled into one atomic group. Either every transaction in the batch succeeds, or none of them do — no partial state. Designed for multi-leg AMM routing, coordinated payouts, and workflows where 'most succeeded' is worse than 'all rolled back'."),
+      "source_label": "XLS-56 Batch (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
+    },
+    "CryptoConditionsSuite": {
+      "kind": "feature",
+      "summary": _("Was intended to extend escrow's crypto-condition support beyond PREIMAGE-SHA-256 to include the other families defined in the IETF draft (PREFIX-SHA-256, THRESHOLD, RSA-SHA-256, ED25519-SHA-256). Implementation was never completed; rippled upstream has retired this amendment, though the public RPC still surfaces its hash."),
+      "source_label": "draft-thomas-crypto-conditions (IETF)",
+      "source_url": "https://datatracker.ietf.org/doc/html/draft-thomas-crypto-conditions"
+    },
+    "DynamicMPT": {
+      "kind": "feature",
+      "summary": _("Lets MPT (Multi-Purpose Token) issuers modify designated fields after issuance. Today MPTs are fully immutable post-mint, which limits product flexibility for tokenized RWAs that need to update reference data, transfer fees, or URI metadata over time."),
+      "source_label": "XLS-94 Dynamic MPT (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0094-dynamic-MPT"
+    },
+    "InvariantsV1_1": {
+      "kind": "fix",
+      "summary": _("Adds new transaction-level invariants the consensus engine checks before committing a transaction — starting with a check that ledger entries owned by an account are deleted when the account itself is removed. A defensive amendment; no user-visible feature, but tightens the integrity floor."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "LendingProtocol": {
+      "kind": "feature",
+      "summary": _("Enables on-chain fixed-term loans drawn from pooled funds held in a SingleAssetVault. Pairs with SingleAssetVault — both amendments must be live for the lending stack to function. xrpldashboard's /lending page is pre-built for activation day."),
+      "source_label": "XLS-66 Lending Protocol (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0066-lending-protocol"
+    },
+    "NonFungibleTokensV1": {
+      "kind": "feature",
+      "summary": _("Introduces native NFT support on the XRP Ledger via five new transaction types and two new ledger object types — the original NFToken specification. Has been in-flight for an extended period without reaching the 80 percent validator threshold; later cleanup amendments (fixNFTokenDirV1, fixNFTokenNegOffer) target issues found in this base spec."),
+      "source_label": "XLS-20d Non-Fungible Tokens (XRPL-Standards discussion)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/discussions/46"
+    },
+    "PermissionDelegation": {
+      "kind": "feature",
+      "summary": _("Lets one wallet delegate signing authority for specific transaction types to another wallet without sharing the master key — approve-by-type instead of approve-by-key. Disabled in rippled v2.6.1 after a bug surfaced; fixDelegateV1_1 (also in this list) is the companion patch and the pair is expected to re-enable together."),
+      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
+    },
+    "SingleAssetVault": {
+      "kind": "feature",
+      "summary": _("A single-asset vault primitive. Depositors contribute one asset (XRP, IOU, or MPT) and receive vault shares as a Multi-Purpose Token; withdrawals redeem shares back to the underlying asset. The deposit layer the XLS-66 Lending Protocol sits on."),
+      "source_label": "XLS-65 Single Asset Vault (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0065-single-asset-vault"
+    },
+    "XChainBridge": {
+      "kind": "feature",
+      "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
+      "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
+    },
+    "fixDelegateV1_1": {
+      "kind": "fix",
+      "summary": _("Companion patch for the bug that caused PermissionDelegation to be disabled in rippled v2.6.1. Designed to activate alongside a re-enabled PermissionDelegation so the network ships the feature and its fix as a coherent pair."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixNFTokenDirV1": {
+      "kind": "fix",
+      "summary": _("Remedies an off-by-one error in NFTokenPage assignment and adjusts the related invariant checks. Shipped in rippled v1.9.1; targets behaviour introduced by NonFungibleTokensV1."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixNFTokenNegOffer": {
+      "kind": "fix",
+      "summary": _("Prevents NFTs from being traded for a negative amount of currency. Closes a validation hole that should never have admitted such offers. Shipped in rippled v1.9.2; targets behaviour introduced by NonFungibleTokensV1."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixXChainRewardRounding": {
+      "kind": "fix",
+      "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    }
+  } %}
+
+  <div class="amend-list">
+    {% for amend in state.in_flight %}
+      {% set meta = summaries.get(amend.name) %}
+      <details class="amend">
+        <summary>
+          <span class="name">{{ amend.name }}</span>
+          {% if meta %}
+            <span class="kind {{ meta.kind }}">{{ _(meta.kind) if meta.kind == 'feature' else _('fix') }}</span>
+          {% else %}
+            <span class="kind fix">{{ _('uncatalogued') }}</span>
+          {% endif %}
+        </summary>
+        <div class="body">
+          {% if meta %}
+            <p>{{ meta.summary }}</p>
+            <p class="meta">
+              {{ _('Source') }}:
+              <a href="{{ meta.source_url }}" rel="nofollow noopener" target="_blank">{{ meta.source_label }}</a>
+              · {{ _('hash') }}: <code>{{ amend.hash }}</code>
+            </p>
+          {% else %}
+            <p class="dim">
+              {{ _('No plain-English summary is on file for this amendment yet. The node reports it as supported but we have not yet curated a primary source — until we do, we don\'t guess at what it does.') }}
+            </p>
+            <p class="meta">{{ _('hash') }}: <code>{{ amend.hash }}</code></p>
+          {% endif %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+  <h2>{{ _('Recently enabled') }}</h2>
+  <div class="recent-callout">
+    <div class="label">{{ _('live on mainnet now') }}</div>
+    <p style="margin: 4px 0 0;">
+      {{ _('The XRP Ledger\'s institutional stack — Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow — activated in earlier release windows and is live on mainnet today.') }}
+      <a href="/institutional">{{ _('See the institutional page') }} →</a>
+    </p>
+  </div>
+
+  <p class="source-note">
+    {{ _('Data sourced from the public') }} <code>feature</code> {{ _('RPC at') }} <code>s1.ripple.com:51234</code>
+    {{ _('and the canonical Amendments ledger object. Cached for up to five minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the public RPC; for those, see') }}
+    <a href="https://xrpl.org/known-amendments.html" rel="nofollow noopener" target="_blank">xrpl.org/known-amendments</a>.
+    {% if state.fetched_at_iso %}
+      <br>{{ _('Fetched') }} <span class="mono">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  <div class="footer">
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRP Ledger Foundation, or any exchange. Amendment status reflects the public XRPL feature RPC at fetch time; the canonical record is the ledger itself.') }}
+    <br><br>
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/learn">{{ _('learn') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
+  </div>
+
+</div>
+
+<script>
+  // Browser-side: convert the projected activation ISO timestamp to the
+  // visitor's locale, and (if it's in the future) show a live countdown
+  // ticking under it. Server emits canonical UTC; we never reformat on
+  // the server side, so a visitor in any timezone sees the same source.
+  (function () {
+    var timers = document.querySelectorAll('.countdown .timer[data-activation-iso]');
+    if (!timers.length) return;
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function fmtLocal(iso) {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      try {
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'long', timeStyle: 'short'
+        }).format(d);
+      } catch (e) {
+        return d.toLocaleString();
+      }
+    }
+    function tickOne(el, iso) {
+      var when = new Date(iso).getTime();
+      var now = Date.now();
+      var diff = when - now;
+      if (isNaN(when)) return;
+      if (diff <= 0) {
+        el.textContent = fmtLocal(iso) + ' — past, awaiting next-ledger activation';
+        return;
+      }
+      var sec = Math.floor(diff / 1000);
+      var days = Math.floor(sec / 86400); sec -= days * 86400;
+      var hrs  = Math.floor(sec / 3600);  sec -= hrs * 3600;
+      var mins = Math.floor(sec / 60);    sec -= mins * 60;
+      var parts = [];
+      if (days) parts.push(days + 'd');
+      parts.push(pad(hrs) + 'h');
+      parts.push(pad(mins) + 'm');
+      parts.push(pad(sec) + 's');
+      el.textContent = parts.join(' ');
+      var when_el = el.parentElement.querySelector('.when');
+      if (when_el && !when_el.dataset.expanded) {
+        when_el.innerHTML = 'projected activation · ' + fmtLocal(iso);
+        when_el.dataset.expanded = '1';
+      }
+    }
+    function tickAll() {
+      timers.forEach(function (el) {
+        var iso = el.dataset.activationIso;
+        if (iso) tickOne(el, iso);
+      });
+    }
+    tickAll();
+    setInterval(tickAll, 1000);
+  })();
+</script>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

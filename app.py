@@ -29,6 +29,7 @@ from network_pulse import fetch_pulse_cached
 from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
+from amendments_state import fetch_amendments_state_cached
 from lending_amendment import fetch_lending_status_cached
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
@@ -2234,6 +2235,22 @@ def learn():
         ledger_index=ledger_index,
         as_of_unix=as_of_unix,
     )
+
+
+@app.route("/amendments")
+def amendments():
+    """Live in-flight amendment tracker. Reads the public `feature` RPC
+    + the Amendments ledger object so the page reflects exactly what
+    validators are currently voting on — including the rare case where
+    a hash sits in Majorities but the responding node has no definition
+    for it (i.e. validators on a newer build voting on something current
+    released rippled binaries don't carry). Plain-English summaries are
+    hand-edited per amendment; truth-first guardrail: the page never
+    speculates on what an unrecognized hash does, only on the verifiable
+    facts (hash, majority close time, projected activation if majority
+    holds, link to off-ledger metadata if any)."""
+    state = fetch_amendments_state_cached()
+    return render_template("amendments.html", state=state)
 
 
 @app.route("/verify")
