@@ -35,8 +35,8 @@ import db
 XRPL_FULL = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRPL_CLIO = os.environ.get("XRPL_CLIO_NODE", "https://s2.ripple.com:51234")
 
-CUMULATIVE_REFRESH_SECONDS = int(os.environ.get("CREDENTIALS_CUM_REFRESH", str(6 * 3600)))
-CUMULATIVE_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_CUM_BUDGET", str(12 * 60)))
+CUMULATIVE_REFRESH_SECONDS = int(os.environ.get("CREDENTIALS_CUM_REFRESH", str(30 * 60)))
+CUMULATIVE_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_CUM_BUDGET", str(5 * 60)))
 RECENT_REFRESH_SECONDS = int(os.environ.get("CREDENTIALS_RECENT_REFRESH", str(30 * 60)))
 RECENT_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_RECENT_BUDGET", str(3 * 60)))
 
@@ -46,6 +46,31 @@ LSF_ACCEPTED = 0x00010000
 XRPL_EPOCH_OFFSET = 946684800
 
 CREDENTIAL_TX_TYPES = ("CredentialCreate", "CredentialAccept", "CredentialDelete")
+
+# Seed set for the account_objects-based walker. Each account is queried for
+# its Credential ledger objects (`account_objects type=credential` returns
+# both credentials issued BY and TO the account). New issuer/subject addresses
+# discovered in each cycle are merged into the seed set and persisted, so the
+# walker's coverage grows monotonically across runs. The supplemental SHAMap
+# walk (kept for new-issuer discovery, run rarely) is what bootstraps brand-new
+# issuers we don't yet know about.
+SEED_ACCOUNTS_BOOTSTRAP = [
+    "rLGRav6ziCMTpQGeobWXz9gAs8kBstr2jU",
+    "rKT9K5764jvejpmPQfeKoVb6vuG8LTqenV",
+    "rKX81Nyg4LiBJwxNibKnwvwLNoDTx5iQXV",
+    "rUhvWdQZKAyzVJPa3TiX9fULQswc5iinMn",
+    "rm9oxnf2QRUckx5YDVYHMCN1stbu1ngjW",
+    "rLwjrhYnjVCDHKdTD2zSNUEy2k3WzcgdV8",
+    "rwLtR6jCNAMddG6udvXiCV3XUm4XNtGK2N",
+    "raBopEaxzWRWsjqzXu2Ykur1YndYEFbgWG",
+    "r4C88NG3qbu9z9eqRvCaXZXbGGoVFaLzTi",
+    "r9JoiCWSrNcebGfRoc8PP95SUQxXDAo4hZ",
+    "rNGz3rwHA9g7ABEzR7FgWNjuoEBY8ruANx",
+    "r97MGUDC6v7szXXu1JurAWQarueCi4isEv",
+    "rGKMDUdmquUCvoXxhcJSttnVnr2NYc9fYi",
+    "rJi1NFyZia2KfY472aQAUiDCr5Ssz5pXqk",
+]
+ACCOUNT_OBJECTS_PAGE_LIMIT = 400
 
 log = logging.getLogger("credentials_state")
 
@@ -139,17 +164,122 @@ def _fetch_amendment_status():
             "supported": None, "fetched_at_iso": _now_iso()}
 
 
+def _account_objects_credentials(account, ledger_index="validated"):
+    """Return all Credential ledger objects for an account, paginated."""
+    objs = []
+    marker = None
+    while True:
+        params = {
+            "account": account,
+            "type": "credential",
+            "ledger_index": ledger_index,
+            "limit": ACCOUNT_OBJECTS_PAGE_LIMIT,
+        }
+        if marker:
+            params["marker"] = marker
+        res = _post(XRPL_CLIO, "account_objects", params, timeout=15)
+        if res is None:
+            return objs
+        for o in res.get("account_objects") or []:
+            if o.get("LedgerEntryType") == "Credential":
+                objs.append(o)
+        marker = res.get("marker")
+        if not marker:
+            break
+    return objs
+
+
+def _walk_via_account_objects(seed_accounts):
+    """Discover credentials by walking `account_objects type=credential` for
+    every known account, auto-expanding the seed set with each new issuer or
+    subject encountered. Converges when no new accounts are discovered in a
+    pass — typically 2-3 iterations.
+
+    Unlike the SHAMap walk, this is exhaustive PER ACCOUNT (Clio returns every
+    credential involving that account) and bounded by the size of the seed set,
+    not by the size of global state. The trade-off: it can only find credentials
+    whose issuer OR subject is already in the seed set. New issuers are picked
+    up by the supplemental `_walk_cumulative` discovery scan.
+    """
+    started_at = time.time()
+    started_at_iso = _now_iso()
+    deadline = started_at + CUMULATIVE_BUDGET_SECONDS
+
+    seed_set = set(seed_accounts or []) | set(SEED_ACCOUNTS_BOOTSTRAP)
+    queried = set()
+    credentials_by_index = {}
+    accounts_queried = 0
+    ledger_index = None
+
+    while time.time() < deadline:
+        to_query = seed_set - queried
+        if not to_query:
+            break
+        for acc in sorted(to_query):
+            if time.time() >= deadline:
+                break
+            objs = _account_objects_credentials(acc)
+            queried.add(acc)
+            accounts_queried += 1
+            for o in objs:
+                idx = o.get("index")
+                if not idx:
+                    continue
+                if idx not in credentials_by_index:
+                    credentials_by_index[idx] = _clean_credential(o)
+                iss = o.get("Issuer")
+                sub = o.get("Subject")
+                if iss:
+                    seed_set.add(iss)
+                if sub:
+                    seed_set.add(sub)
+
+    exhausted = (seed_set == queried)
+    credentials = list(credentials_by_index.values())
+    issuers = {c["issuer"] for c in credentials if c.get("issuer")}
+    subjects = {c["subject"] for c in credentials if c.get("subject")}
+    accepted = sum(1 for c in credentials if c.get("accepted"))
+    self_issued = sum(1 for c in credentials if c.get("self_issued"))
+
+    return {
+        "count": len(credentials),
+        "count_floor": len(credentials),
+        "exhausted": exhausted,
+        "method": "account_objects_seed",
+        "accounts_queried": accounts_queried,
+        "seed_set_size": len(seed_set),
+        "seed_accounts": sorted(seed_set),
+        "issuers_distinct": len(issuers),
+        "subjects_distinct": len(subjects),
+        "accepted_count": accepted,
+        "self_issued_count": self_issued,
+        "examples": credentials[:EXAMPLE_LIMIT],
+        "started_at_iso": started_at_iso,
+        "fetched_at_iso": _now_iso(),
+        "duration_seconds": int(time.time() - started_at),
+        "node": XRPL_CLIO,
+        "ledger_index": ledger_index,
+    }
+
+
 def _walk_cumulative():
     """One pass of ledger_data type=credential, bounded by time budget."""
     marker = None
     pages = 0
     credentials = []
-    deadline = time.time() + CUMULATIVE_BUDGET_SECONDS
+    started_at = time.time()
+    started_at_iso = _now_iso()
+    deadline = started_at + CUMULATIVE_BUDGET_SECONDS
     exhausted = False
+    # Pin to the first response's ledger_index so the marker walk stays
+    # consistent across pagination. ledger_index="validated" re-resolves
+    # to a new ledger on every request, which can desync the marker
+    # mid-walk and cause us to skip whole regions of state.
+    pinned_ledger_index = None
     while time.time() < deadline:
         params = {
             "type": "credential",
-            "ledger_index": "validated",
+            "ledger_index": pinned_ledger_index or "validated",
             "limit": WALK_PAGE_LIMIT,
         }
         if marker:
@@ -158,6 +288,8 @@ def _walk_cumulative():
         if res is None:
             time.sleep(2)
             continue
+        if pinned_ledger_index is None:
+            pinned_ledger_index = res.get("ledger_index") or res.get("ledger_hash")
         pages += 1
         for e in res.get("state") or []:
             if e.get("LedgerEntryType") == "Credential":
@@ -177,12 +309,15 @@ def _walk_cumulative():
         "exhausted": exhausted,
         "pages_scanned": pages,
         "page_limit": WALK_PAGE_LIMIT,
+        "ledger_index": pinned_ledger_index,
         "issuers_distinct": len(issuers),
         "subjects_distinct": len(subjects),
         "accepted_count": accepted,
         "self_issued_count": self_issued,
         "examples": credentials[:EXAMPLE_LIMIT],
+        "started_at_iso": started_at_iso,
         "fetched_at_iso": _now_iso(),
+        "duration_seconds": int(time.time() - started_at),
         "node": XRPL_CLIO,
     }
 
@@ -200,7 +335,9 @@ def _scan_recent():
     ledgers_scanned = 0
     earliest_close_iso = None
     latest_close_iso = None
-    deadline = time.time() + RECENT_BUDGET_SECONDS
+    started_at = time.time()
+    started_at_iso = _now_iso()
+    deadline = started_at + RECENT_BUDGET_SECONDS
 
     offset = 2
     while time.time() < deadline:
@@ -249,7 +386,9 @@ def _scan_recent():
         "window_earliest_close_iso": earliest_close_iso,
         "window_latest_close_iso": latest_close_iso,
         "window_seconds": window_seconds,
+        "started_at_iso": started_at_iso,
         "fetched_at_iso": _now_iso(),
+        "duration_seconds": int(time.time() - started_at),
         "node": XRPL_CLIO,
     }
 
@@ -289,15 +428,16 @@ def _refresh_cycle():
         lock_conn = db.try_acquire_credentials_walk_lock()
         if lock_conn is not None:
             try:
-                log.info("credentials: acquired walk lock, starting cumulative walk")
-                cum = _walk_cumulative()
+                log.info("credentials: acquired walk lock, starting account_objects walk")
+                prior_seeds = (_state.get("cumulative") or {}).get("seed_accounts") or []
+                cum = _walk_via_account_objects(prior_seeds)
                 with _state_lock:
                     _state["cumulative"] = cum
                     _state["persisted_cum_at"] = time.time()
                 _persist_snapshot()
                 log.info(
-                    "credentials: cumulative done — count=%d exhausted=%s pages=%d",
-                    cum["count_floor"], cum["exhausted"], cum["pages_scanned"],
+                    "credentials: walk done — count=%d exhausted=%s accounts_queried=%d seed_size=%d",
+                    cum["count"], cum["exhausted"], cum["accounts_queried"], cum["seed_set_size"],
                 )
             finally:
                 db.release_credentials_walk_lock(lock_conn)

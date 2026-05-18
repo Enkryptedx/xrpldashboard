@@ -2251,7 +2251,9 @@ def amendments():
     facts (hash, majority close time, projected activation if majority
     holds, link to off-ledger metadata if any)."""
     state = fetch_amendments_state_cached()
-    return render_template("amendments.html", state=state)
+    resp = make_response(render_template("amendments.html", state=state))
+    resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return resp
 
 
 @app.route("/credentials")
