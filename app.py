@@ -30,6 +30,7 @@ from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 from amendments_state import fetch_amendments_state_cached
+from credentials_state import get_credentials_state
 from lending_amendment import fetch_lending_status_cached
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
@@ -2251,6 +2252,17 @@ def amendments():
     holds, link to off-ledger metadata if any)."""
     state = fetch_amendments_state_cached()
     return render_template("amendments.html", state=state)
+
+
+@app.route("/credentials")
+def credentials():
+    """Live view of XRPL Credentials (XLS-70). The amendment is enabled
+    on mainnet but adoption is sparse, so an in-request `ledger_data` walk
+    is infeasible — credentials_state.py runs a background daemon that
+    refreshes a cumulative SHAMap walk every 6h and a recent-activity
+    transaction scan every 30 min. The route just renders the snapshot."""
+    state = get_credentials_state()
+    return render_template("credentials.html", state=state)
 
 
 @app.route("/verify")
