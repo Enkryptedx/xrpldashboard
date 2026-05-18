@@ -563,14 +563,14 @@
         <div class="tech-row"><span class="k">{{ _('scan rate') }}</span><span class="v">{% if scan.rate %}{{ scan.rate }} {{ _('pages/s') }}{% else %}—{% endif %}</span></div>
         <div class="tech-row"><span class="k">{{ _('ledger snapshot') }}</span><span class="v dim">{{ scan.ledger_index or "—" }}</span></div>
         <div class="tech-row"><span class="k">{{ _('log last write') }}</span><span class="v">{% if scan.log_age %}{{ scan.log_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
-        <div class="tech-row"><span class="k">{{ _('bootstrap snapshot') }}</span><span class="v">{% if scan.bootstrap_age %}{{ scan.bootstrap_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('bootstrap snapshot') }}</span><span class="v">{% if scan.bootstrap_age_sec is not none %}{{ scan.bootstrap_age }} {{ _('ago') }}{% else %}<span class="dim">{{ _('not on this host') }}</span>{% endif %}</span></div>
         {% else %}
         <h3>{{ _('Pool tracker (ranker cron)') }}</h3>
         <div class="tech-row"><span class="k">{{ _('amms in index') }}</span><span class="v">{{ "{:,}".format(scan.amms_in_index) if scan.amms_in_index is not none else "—" }}</span></div>
         <div class="tech-row"><span class="k">{{ _('ranker last refresh') }}</span><span class="v">{% if scan.ranker_age %}{{ scan.ranker_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
         <div class="tech-row"><span class="k">{{ _('ranker next refresh') }}</span><span class="v">{% if scan.ranker_next_in %}{{ _('in ~') }}{{ scan.ranker_next_in }}{% else %}—{% endif %}</span></div>
         <div class="tech-row"><span class="k">{{ _('refresh cadence') }}</span><span class="v dim">{{ _('every 4 hours') }}</span></div>
-        <div class="tech-row"><span class="k">{{ _('bootstrap snapshot') }}</span><span class="v">{% if scan.bootstrap_age %}{{ scan.bootstrap_age }} {{ _('ago') }}{% else %}—{% endif %}</span></div>
+        <div class="tech-row"><span class="k">{{ _('bootstrap snapshot') }}</span><span class="v">{% if scan.bootstrap_age_sec is not none %}{{ scan.bootstrap_age }} {{ _('ago') }}{% else %}<span class="dim">{{ _('not on this host') }}</span>{% endif %}</span></div>
         {% endif %}
       </div>
 
