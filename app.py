@@ -1513,9 +1513,13 @@ def whales():
         "100k": ("≥100K XRP",   100_000 * 1_000_000),
         "50k":  ("≥50K XRP",     50_000 * 1_000_000),
     }
-    tier = (request.args.get("tier") or "1m").strip().lower()
+    # Default tier = 100k to match the page's meta description and the audience's
+    # intuition of "whale" (a 1M-XRP default surfaced ≥1M only, leaving the
+    # 100K-1M band invisible unless explicitly opted into via ?tier=100k —
+    # which contradicted the "every payment over 100,000 XRP" meta copy).
+    tier = (request.args.get("tier") or "100k").strip().lower()
     if tier not in tier_map:
-        tier = "1m"
+        tier = "100k"
     tier_label, tier_drops = tier_map[tier]
 
     # Default view = value movement. Trustset events have no Amount and are
