@@ -1233,6 +1233,14 @@ def health():
     amms_in_index = len(amm_index) if isinstance(amm_index, list) and amm_index \
         else ranker_hb_extra.get("indexed_count")
 
+    # Bootstrap-scan freshness: amm_index.json is the full-crawl snapshot that
+    # xrpl_stream.py extends incrementally. The bootstrap re-scan isn't on a
+    # launchd timer (intentional — it's a multi-hour walk of the entire ledger
+    # AMM space), so stream-driven discovery is the canonical path. Surfacing
+    # the index file's age lets visitors see when the last full reconciliation
+    # ran, so silent stream-filter drops would become visible as the gap grows.
+    bootstrap_age_sec = _file_age_seconds(AMM_INDEX_PATH)
+
     # On hosts without local bootstrap-scanner state (Render), the tech block
     # used to show pages/objects/scan-rate as 0/—, which read as a stuck
     # worker even though the ranker cron was keeping a 29k-pool catalogue
@@ -1285,6 +1293,8 @@ def health():
             "ranker_next_in": _humanize_seconds(ranker_next_in) if ranker_next_in else None,
             "amms_in_index": amms_in_index,
             "snapshot_at": _pools_snapshot_label(),
+            "bootstrap_age": _humanize_seconds(bootstrap_age_sec),
+            "bootstrap_age_sec": bootstrap_age_sec,
         },
         stream={
             "alive": stream_alive,
