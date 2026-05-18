@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('institutional') }} · xrpldashboard</title>
   {% set meta_title = "institutional · xrpldashboard" %}
-  {% set meta_description = "Institutional access to xrpldashboard's underlying XRPL datasets — partnership tier for funds, exchanges, and infrastructure teams. Contact for details." %}
+  {% set meta_description = "Institutional XRPL tooling: Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow are live on mainnet — xrpldashboard tracks the stack. Partnership tier for funds, exchanges, and compliance desks." %}
   {% include "_head_meta.html" %}
 
   {# Plausible Analytics — uncomment after creating account at plausible.io
@@ -124,6 +124,20 @@
   <h2>{{ _('How we\'re building it') }}</h2>
   <p>
     {{ _('Launch partners shape the roadmap and lock in grandfathered pricing — terms negotiated once, honored as the product matures. The first few conversations determine which integrations and event types get built first.') }}
+  </p>
+
+  <h2>{{ _('XRPL\'s institutional stack is live') }}</h2>
+  <p>
+    {{ _('Four amendments enabled on mainnet now make regulated, KYC-gated trading possible natively on the XRP Ledger — no custodian, no off-ledger middleware. We track all four and surface their on-chain activity as it appears.') }}
+  </p>
+  <ul>
+    <li><strong>{{ _('Credentials') }}</strong> — {{ _('on-ledger KYC attestations. An issuer (e.g. a KYC provider) signs that a wallet meets a credential type, the wallet accepts, and the binding is publicly verifiable. 0.2 XRP reserve per credential.') }}</li>
+    <li><strong>{{ _('PermissionedDomains') }}</strong> — {{ _('group wallets by which credential types they hold; the domain object names the credential issuers and types that grant access.') }}</li>
+    <li><strong>{{ _('PermissionedDEX') }}</strong> — {{ _('order books that only accept offers from wallets inside a named PermissionedDomain. KYC-gated trading without leaving the ledger.') }}</li>
+    <li><strong>{{ _('TokenEscrow') }}</strong> — {{ _('escrow generalized to any issued token — RLUSD, USDC, MPTs — not just XRP. Multi-day locks and conditional release for settlement, vesting, and OTC.') }}</li>
+  </ul>
+  <p>
+    {{ _('All four confirmed enabled on mainnet via the') }} <code>feature</code> {{ _('RPC. For compliance desks scoping XRPL integration: these primitives are already there.') }}
   </p>
 
   {% if snapshot_meta %}
