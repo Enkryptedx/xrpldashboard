@@ -6,21 +6,23 @@ a per-request live count via ledger_data is infeasible: Clio walks the
 global SHAMap and filters by type, so a full pass takes ~10 minutes and
 typically returns single-digit results.
 
-Solution: a background daemon thread runs two scans on independent
-cadences, and the route reads from in-memory state. Until the first
-cycle completes, the page surfaces the activation badge + diagram +
-"initial scan in progress" framing.
+Solution: a single-shot walker (credentials_walker.py) runs on launchd
+every 30 min and writes a snapshot to Postgres. The /credentials route
+reads from Postgres only. This module exposes `run_once()` for the
+walker and `get_credentials_state()` for the route.
 
-  - Cumulative walk: paginated `ledger_data type=credential` against
-    s2.ripple.com (Clio). Refreshes every 6h. May not exhaust within the
-    per-cycle time budget; the page frames the count as a FLOOR with an
-    "exhausted: true/false" indicator.
-
+Each walker pass does three things:
+  - Amendment status refresh via the `feature` RPC.
+  - Cumulative walk via `account_objects type=credential` for every
+    account in the persisted seed set, auto-expanding the seed set with
+    each newly-discovered issuer / subject. Bounded by a time budget;
+    the page frames the count as a FLOOR with an "exhausted: true/false"
+    indicator.
   - Recent-activity scan: walks back from the current ledger and counts
     CredentialCreate / CredentialAccept / CredentialDelete transactions
-    within a fixed per-cycle time budget. Refreshes every 30 min. The
-    page labels the window with the ACTUAL earliest close-time covered,
-    not a notional "last 24 hours."
+    within a fixed per-cycle time budget. The page labels the window
+    with the ACTUAL earliest close-time covered, not a notional "last
+    24 hours."
 """
 
 import logging
@@ -35,9 +37,7 @@ import db
 XRPL_FULL = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRPL_CLIO = os.environ.get("XRPL_CLIO_NODE", "https://s2.ripple.com:51234")
 
-CUMULATIVE_REFRESH_SECONDS = int(os.environ.get("CREDENTIALS_CUM_REFRESH", str(30 * 60)))
 CUMULATIVE_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_CUM_BUDGET", str(5 * 60)))
-RECENT_REFRESH_SECONDS = int(os.environ.get("CREDENTIALS_RECENT_REFRESH", str(30 * 60)))
 RECENT_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_RECENT_BUDGET", str(3 * 60)))
 
 WALK_PAGE_LIMIT = 2000
@@ -81,8 +81,6 @@ _state = {
     "recent": None,
     "started_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
 }
-_thread = None
-_thread_lock = threading.Lock()
 
 
 def _now_iso():
@@ -440,130 +438,49 @@ def _persist_snapshot():
     db.write_credentials_snapshot(payload)
 
 
-def _refresh_cycle():
-    """One pass through the three refresh checks. Wrapped so we can do an
-    eager run on thread start and then loop on a 60s tick."""
-    now = time.time()
-    persisted_at = _state.get("persisted_amend_at", 0)
-    if now - persisted_at > 6 * 3600 or _state.get("amendment") is None:
-        amend = _fetch_amendment_status()
-        if amend is not None:
-            with _state_lock:
-                _state["amendment"] = amend
-                _state["persisted_amend_at"] = now
-            _persist_snapshot()
+def run_once():
+    """Single-pass walker entrypoint. Invoked by credentials_walker.py
+    under launchd every 30 minutes. Forces all three steps (amendment,
+    cumulative, recent) and persists the resulting snapshot to Postgres."""
+    log.info("credentials walker: starting one-shot pass")
 
-    cum_at = _state.get("persisted_cum_at", 0)
-    if now - cum_at > CUMULATIVE_REFRESH_SECONDS or _state.get("cumulative") is None:
-        # Only one gunicorn worker should walk at a time; the others read
-        # the previous snapshot from PG. The advisory lock auto-releases
-        # when the held connection closes, so a worker crash mid-walk
-        # doesn't deadlock future attempts.
-        lock_conn = db.try_acquire_credentials_walk_lock()
-        if lock_conn is not None:
-            try:
-                log.info("credentials: acquired walk lock, starting account_objects walk")
-                # Read prior seeds from PG directly rather than relying on
-                # _state["cumulative"] being populated. A worker that hits the
-                # walk path before hydration completes (or after hydration
-                # silently errored) would otherwise walk with bootstrap-only
-                # seeds and clobber the expanded snapshot in PG.
-                prior_seeds = (_state.get("cumulative") or {}).get("seed_accounts") or []
-                if not prior_seeds:
-                    try:
-                        pg_snap = db.read_credentials_snapshot() or {}
-                        prior_seeds = (pg_snap.get("cumulative") or {}).get("seed_accounts") or []
-                    except Exception:
-                        prior_seeds = []
-                cum = _walk_via_account_objects(prior_seeds)
-                with _state_lock:
-                    _state["cumulative"] = cum
-                    _state["persisted_cum_at"] = time.time()
-                _persist_snapshot()
-                log.info(
-                    "credentials: walk done — count=%d exhausted=%s accounts_queried=%d seed_size=%d",
-                    cum["count"], cum["exhausted"], cum["accounts_queried"], cum["seed_set_size"],
-                )
-            finally:
-                db.release_credentials_walk_lock(lock_conn)
-        else:
-            log.debug("credentials: walk lock held elsewhere, skipping cycle")
+    amend = _fetch_amendment_status()
+    if amend is not None:
+        with _state_lock:
+            _state["amendment"] = amend
 
-    rec_at = _state.get("persisted_rec_at", 0)
-    if now - rec_at > RECENT_REFRESH_SECONDS or _state.get("recent") is None:
-        # Recent-activity scan is cheap relative to the cumulative walk
-        # (3-min budget vs 12-min), so we use a separate lock so it can
-        # run concurrently with a walk on a different worker.
-        lock_conn = db.try_acquire_credentials_walk_lock(lock_key=4271006202)
-        if lock_conn is not None:
-            try:
-                log.info("credentials: starting recent-activity scan")
-                rec = _scan_recent()
-                if rec is not None:
-                    with _state_lock:
-                        _state["recent"] = rec
-                        _state["persisted_rec_at"] = time.time()
-                    _persist_snapshot()
-                    log.info(
-                        "credentials: recent done — scanned=%d total_tx=%d",
-                        rec["ledgers_scanned"], rec["total"],
-                    )
-            finally:
-                db.release_credentials_walk_lock(lock_conn, lock_key=4271006202)
-
-
-def _refresh_loop():
-    while True:
-        try:
-            _refresh_cycle()
-        except Exception as exc:
-            log.exception("credentials refresh loop error: %s", exc)
-        time.sleep(60)
-
-
-def _hydrate_from_pg():
-    """Pull whatever the most-recent walker wrote (across any worker) into
-    this worker's in-memory state. Without this, a fresh worker starts with
-    cumulative=None/recent=None, and its first amendment refresh will
-    persist that partial state and clobber the existing PG snapshot."""
+    prior_seeds = []
     try:
-        pg_snap = db.read_credentials_snapshot()
+        pg_snap = db.read_credentials_snapshot() or {}
+        prior_seeds = (pg_snap.get("cumulative") or {}).get("seed_accounts") or []
     except Exception:
-        return
-    if not pg_snap:
-        return
+        prior_seeds = []
+    cum = _walk_via_account_objects(prior_seeds)
     with _state_lock:
-        if _state.get("amendment") is None and pg_snap.get("amendment"):
-            _state["amendment"] = pg_snap["amendment"]
-            _state["persisted_amend_at"] = time.time()
-        if _state.get("cumulative") is None and pg_snap.get("cumulative"):
-            _state["cumulative"] = pg_snap["cumulative"]
-            _state["persisted_cum_at"] = time.time()
-        if _state.get("recent") is None and pg_snap.get("recent"):
-            _state["recent"] = pg_snap["recent"]
-            _state["persisted_rec_at"] = time.time()
+        _state["cumulative"] = cum
+    log.info(
+        "credentials walker: cumulative — count=%d exhausted=%s accounts_queried=%d seed_size=%d",
+        cum["count"], cum["exhausted"], cum["accounts_queried"], cum["seed_set_size"],
+    )
 
+    rec = _scan_recent()
+    if rec is not None:
+        with _state_lock:
+            _state["recent"] = rec
+        log.info(
+            "credentials walker: recent — scanned=%d total_tx=%d",
+            rec["ledgers_scanned"], rec["total"],
+        )
 
-def _ensure_thread():
-    global _thread
-    with _thread_lock:
-        if _thread is None or not _thread.is_alive():
-            _hydrate_from_pg()
-            _thread = threading.Thread(
-                target=_refresh_loop,
-                name="credentials-refresh",
-                daemon=True,
-            )
-            _thread.start()
+    _persist_snapshot()
+    log.info("credentials walker: persisted snapshot")
 
 
 def get_credentials_state():
-    """Return the latest snapshot. ALWAYS reads from Postgres first when
-    available so a cold-start gunicorn worker never renders placeholder
-    'scanning…' state for a visitor — they see whatever the most-recent
-    walker wrote, which is then refreshed in-place by this worker's own
-    daemon as cycles complete."""
-    _ensure_thread()
+    """Return the latest snapshot. Reads only from Postgres — the walker
+    writes there on its launchd cadence and every gunicorn worker reads
+    the same view. Falls back to an empty snapshot if PG is unavailable
+    or hasn't been written yet."""
     pg_snap = db.read_credentials_snapshot()
     if pg_snap and (pg_snap.get("amendment") or pg_snap.get("cumulative")):
         pg_snap["now_iso"] = _now_iso()
@@ -573,18 +490,12 @@ def get_credentials_state():
         pg_snap["source"] = "postgres"
         return pg_snap
 
-    # PG empty (very first deploy) or unavailable — fall back to whatever
-    # this worker has accumulated in memory.
-    with _state_lock:
-        snapshot = {
-            "amendment": dict(_state["amendment"]) if _state.get("amendment") else None,
-            "cumulative": dict(_state["cumulative"]) if _state.get("cumulative") else None,
-            "recent": dict(_state["recent"]) if _state.get("recent") else None,
-            "started_at_iso": _state["started_at_iso"],
-            "now_iso": _now_iso(),
-            "source": "in-memory",
-        }
-    snapshot["initial_scan_complete"] = bool(
-        snapshot.get("cumulative") and snapshot.get("amendment")
-    )
-    return snapshot
+    return {
+        "amendment": None,
+        "cumulative": None,
+        "recent": None,
+        "started_at_iso": _state["started_at_iso"],
+        "now_iso": _now_iso(),
+        "source": "empty",
+        "initial_scan_complete": False,
+    }

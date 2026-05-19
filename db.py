@@ -783,44 +783,6 @@ def read_credentials_snapshot():
         return None
 
 
-def try_acquire_credentials_walk_lock(lock_key=4271006201):
-    """Try to grab a Postgres advisory lock so only ONE gunicorn worker
-    actually does the SHAMap walk at a time. Returns the held connection
-    on success, None when another worker holds it. Caller MUST call
-    release_credentials_walk_lock(conn) when done (or close the conn).
-
-    The lock is session-scoped — releasing the conn releases the lock, so
-    a worker crash mid-walk doesn't permanently block the next attempt."""
-    if not pg_available():
-        return None
-    try:
-        conn = pg_connect()
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
-            got = cur.fetchone()[0]
-        if not got:
-            conn.close()
-            return None
-        return conn
-    except Exception:
-        return None
-
-
-def release_credentials_walk_lock(conn, lock_key=4271006201):
-    if conn is None:
-        return
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
-    except Exception:
-        pass
-    try:
-        conn.close()
-    except Exception:
-        pass
-
-
 def read_rlusd_state_cache():
     """Return (payload_dict, written_at_epoch) or (None, None) when PG is
     unavailable / table empty. Powers the SSR cold-start fallback on /rlusd

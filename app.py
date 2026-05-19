@@ -2274,10 +2274,9 @@ def amendments():
 def credentials():
     """Live view of XRPL Credentials (XLS-70). The amendment is enabled
     on mainnet but adoption is sparse, so an in-request `ledger_data` walk
-    is infeasible — credentials_state.py runs a background daemon that
-    refreshes a cumulative SHAMap walk every 6h and a recent-activity
-    transaction scan every 30 min. The route reads from PG so every
-    gunicorn worker serves the same snapshot."""
+    is infeasible — credentials_walker.py runs every 30 min under launchd
+    on Mac and writes a snapshot to Postgres. The route reads from PG so
+    every gunicorn worker (Mac and Render) serves the same view."""
     state = get_credentials_state()
     resp = make_response(render_template("credentials.html", state=state))
     # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
