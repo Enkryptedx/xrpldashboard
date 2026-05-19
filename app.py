@@ -478,6 +478,20 @@ def _visitor_hash(ip, ua):
     return hmac.new(_VISITOR_HASH_KEY, msg, "sha256").hexdigest()[:32]
 
 
+_BLOCKED_UA_FRAGMENTS = ("meta-externalagent",)
+
+
+@app.before_request
+def _block_ai_crawlers():
+    """Fast-path 403 for AI training crawlers. Their UA is unique enough that
+    a substring match is safe; legitimate browsers never include these tokens.
+    Runs before page-view logging so denied requests aren't counted."""
+    ua = (request.headers.get("User-Agent") or "").lower()
+    for fragment in _BLOCKED_UA_FRAGMENTS:
+        if fragment in ua:
+            return "Forbidden", 403
+
+
 @app.before_request
 def _log_page_view():
     """Best-effort page-view logger feeding /admin/stats. Inline insert
