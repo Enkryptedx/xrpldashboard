@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Network') }} · {{ _('live XRPL validator lists') }} · xrpldashboard</title>
+  {% set meta_title = "Network · live XRPL validator lists · xrpldashboard" %}
+  {% set meta_description = "Live status of the two canonical XRPL validator lists — Ripple's UNL and the XRPL Foundation's UNL — plus the validator overlap that has kept consensus running through a 120-day Foundation UNL expiry." %}
+  {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "XRPL validator lists, live",
+    "description": "How XRPL maintained consensus after the Foundation UNL expired on 2026-01-18 — Ripple's UNL kept going, and most operators carry both lists with heavy overlap.",
+    "datePublished": "2026-05-19T00:00:00Z",
+    "dateModified": "{{ state.fetched_at_iso if state and state.fetched_at_iso else '2026-05-19T00:00:00Z' }}",
+    "author": { "@type": "Organization", "name": "xrpldashboard" },
+    "publisher": { "@type": "Organization", "name": "xrpldashboard", "url": "{{ site_url }}" },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "{{ site_url }}/network" },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(74,222,128,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.9rem; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 24px; max-width: 720px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600; letter-spacing: -0.01em; }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.88em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .dim { color: var(--dim); }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    /* Hero: side-by-side UNL status cards */
+    .unl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 14px; margin: 8px 0 28px; }
+    .unl-card { background: var(--card); border: 1px solid var(--border);
+                border-radius: 14px; padding: 18px 20px; position: relative; }
+    .unl-card.ok    { border-color: rgba(74,222,128,0.25); }
+    .unl-card.stale { border-color: rgba(251,113,133,0.32); }
+    .unl-card .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .unl-card.ok .tag {
+      color: var(--green);
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.4);
+    }
+    .unl-card.stale .tag {
+      color: var(--rose);
+      background: rgba(251,113,133,0.08);
+      border: 1px solid rgba(251,113,133,0.5);
+    }
+    .unl-card .tag .dot { width: 7px; height: 7px; border-radius: 999px; }
+    .unl-card.ok .tag .dot {
+      background: #4ade80;
+      box-shadow: 0 0 0 0 rgba(74,222,128,0.5);
+      animation: liveDot 2s ease-in-out infinite;
+    }
+    .unl-card.stale .tag .dot {
+      background: #fb7185;
+    }
+    @keyframes liveDot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
+      50%     { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+    }
+    .unl-card h3 {
+      font-size: 1.15rem; font-weight: 700; margin: 10px 0 4px;
+      letter-spacing: -0.01em;
+    }
+    .unl-card .op { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; }
+    .unl-card .row {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 6px 0; border-top: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .unl-card .row:first-of-type { border-top: none; }
+    .unl-card .row .k { color: var(--muted); }
+    .unl-card .row .v { font-family: var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+    .unl-card.stale .row .v.exp { color: var(--rose); }
+    .unl-card.ok .row .v.exp { color: var(--green); }
+
+    /* Venn diagram — distinct hero viz for this page */
+    .venn-wrap {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 24px 20px 16px; margin: 12px 0 24px; text-align: center;
+    }
+    .venn-wrap svg { max-width: 100%; height: auto; }
+    .venn-legend {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 18px 28px; margin-top: 14px;
+      font-size: 0.86rem; color: var(--muted);
+    }
+    .venn-legend .item { display: inline-flex; align-items: center; gap: 8px; }
+    .venn-legend .swatch {
+      width: 12px; height: 12px; border-radius: 3px;
+    }
+    .venn-legend .swatch.r { background: rgba(34,211,238,0.55); }
+    .venn-legend .swatch.f { background: rgba(74,222,128,0.55); }
+    .venn-legend .swatch.b { background: rgba(184,178,210,0.7); }
+    .venn-legend .num { font-family: var(--mono); color: var(--text);
+                        font-weight: 600; }
+
+    /* Explainer card */
+    .explainer {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 22px; margin: 12px 0 24px;
+    }
+    .explainer h3 { font-size: 1rem; margin: 0 0 8px; color: var(--text); }
+    .explainer p:last-child { margin-bottom: 0; }
+
+    .truth-note {
+      background: rgba(0,0,0,0.18); border-left: 3px solid var(--amber);
+      padding: 12px 16px; margin: 18px 0;
+      font-size: 0.92rem; line-height: 1.6; color: var(--text);
+      border-radius: 0 8px 8px 0;
+    }
+    .truth-note .lbl {
+      display: block; color: var(--amber); font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .source-note {
+      color: var(--dim); font-size: 0.85rem; margin: 18px 0 28px;
+      font-style: italic;
+    }
+    .source-note a { color: var(--muted); }
+    .source-note a:hover { color: var(--cyan); }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+
+    .links { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 14px 0 6px;
+             font-size: 0.9rem; }
+    .links a {
+      color: var(--cyan); background: rgba(34,211,238,0.06);
+      border: 1px solid rgba(34,211,238,0.25);
+      border-radius: 999px; padding: 4px 12px;
+    }
+    .links a:hover { background: rgba(34,211,238,0.12); text-decoration: none; }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('XRPL validator lists, live') }}</h1>
+  <p class="lede">
+    {{ _('XRPL consensus depends on each validator trusting a Unique Node List (UNL). There are two canonical published lists — Ripple\'s and the XRPL Foundation\'s. This page shows the live status of both, the validator overlap between them, and why XRPL kept producing ledgers through a months-long Foundation UNL expiry.') }}
+  </p>
+
+  {% if not state or not state.ok %}
+    <div class="unl-card stale">
+      <span class="tag"><span class="dot"></span>{{ _('upstream offline') }}</span>
+      <p style="margin-top: 10px;">
+        {{ _('Neither published UNL endpoint answered this request. The page returns to live state the moment they are reachable again — no stale snapshot is served. Refresh in a moment.') }}
+      </p>
+    </div>
+  {% else %}
+
+  <div class="unl-grid">
+    {% for l in state.lists %}
+      {% if l.ok %}
+        <div class="unl-card {% if l.is_expired %}stale{% else %}ok{% endif %}">
+          <span class="tag">
+            <span class="dot"></span>
+            {% if l.is_expired %}{{ _('expired') }}{% else %}{{ _('current') }}{% endif %}
+          </span>
+          <h3>{{ l.label }}</h3>
+          <div class="op">
+            {{ _('Operated by') }}
+            <a href="{{ l.operator_url }}" rel="nofollow noopener" target="_blank">{{ l.operator }}</a>
+          </div>
+          <div class="row">
+            <span class="k">{{ _('Validators') }}</span>
+            <span class="v">{{ l.validator_count }}</span>
+          </div>
+          <div class="row">
+            <span class="k">{{ _('Sequence') }}</span>
+            <span class="v">{{ l.sequence }}</span>
+          </div>
+          <div class="row">
+            <span class="k">{{ _('Expiration') }}</span>
+            <span class="v exp" data-iso="{{ l.expiration_iso }}">{{ l.expiration_iso }}</span>
+          </div>
+          <div class="row">
+            <span class="k">
+              {% if l.is_expired %}{{ _('Past expiry') }}{% else %}{{ _('Time remaining') }}{% endif %}
+            </span>
+            <span class="v exp">
+              {% if l.is_expired %}
+                {{ l.days_past_expiry }} {{ _('days') }}
+              {% else %}
+                {{ l.days_remaining }} {{ _('days') }}
+              {% endif %}
+            </span>
+          </div>
+        </div>
+      {% else %}
+        <div class="unl-card stale">
+          <span class="tag"><span class="dot"></span>{{ _('fetch failed') }}</span>
+          <h3>{{ l.label }}</h3>
+          <div class="op">{{ l.operator }} · <code>{{ l.url }}</code></div>
+          <p class="dim" style="margin: 10px 0 0; font-size: 0.88rem;">
+            {{ _('Upstream did not respond on this request') }}: <code>{{ l.error }}</code>.
+          </p>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if state.overlap %}
+    <h2>{{ _('Validator overlap') }}</h2>
+    <p class="dim" style="font-size: 0.92rem;">
+      {{ _('How many validators are published on both UNLs, and how many appear on only one. This overlap is the practical reason consensus held through the Foundation UNL expiry — operators carrying both lists still had a quorum from the Ripple UNL alone.') }}
+    </p>
+
+    {% set v = state.overlap %}
+    <div class="venn-wrap">
+      {# Pure-SVG Venn. Numbers are derived server-side from the fetched
+         pubkey sets; no client-side computation. Geometry is fixed so
+         placeholders never shift. #}
+      <svg viewBox="0 0 460 230" role="img" aria-label="{{ _('Validator overlap between Ripple UNL and Foundation UNL') }}">
+        <defs>
+          <radialGradient id="r-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(34,211,238,0.55)"/>
+            <stop offset="100%" stop-color="rgba(34,211,238,0.18)"/>
+          </radialGradient>
+          <radialGradient id="f-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(74,222,128,0.55)"/>
+            <stop offset="100%" stop-color="rgba(74,222,128,0.18)"/>
+          </radialGradient>
+        </defs>
+        <circle cx="180" cy="115" r="95" fill="url(#r-grad)" stroke="rgba(34,211,238,0.6)" stroke-width="1.5"/>
+        <circle cx="280" cy="115" r="95" fill="url(#f-grad)" stroke="rgba(74,222,128,0.6)" stroke-width="1.5"/>
+
+        <text x="100" y="40" fill="#22d3ee" font-family="ui-monospace, monospace" font-size="13" font-weight="700">{{ _('Ripple') }}</text>
+        <text x="320" y="40" fill="#4ade80" font-family="ui-monospace, monospace" font-size="13" font-weight="700">{{ _('Foundation') }}</text>
+
+        {# Ripple-only #}
+        <text x="115" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="26" font-weight="700" text-anchor="middle">{{ v.ripple_only }}</text>
+        <text x="115" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('only here') }}</text>
+
+        {# Both #}
+        <text x="230" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="32" font-weight="700" text-anchor="middle">{{ v.both }}</text>
+        <text x="230" y="142" fill="#b8b2d2" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('on both lists') }}</text>
+
+        {# Foundation-only #}
+        <text x="345" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="26" font-weight="700" text-anchor="middle">{{ v.xrplf_only }}</text>
+        <text x="345" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('only here') }}</text>
+      </svg>
+      <div class="venn-legend">
+        <span class="item"><span class="swatch r"></span>{{ _('Ripple-only') }}: <span class="num">{{ v.ripple_only }}</span></span>
+        <span class="item"><span class="swatch b"></span>{{ _('on both') }}: <span class="num">{{ v.both }}</span></span>
+        <span class="item"><span class="swatch f"></span>{{ _('Foundation-only') }}: <span class="num">{{ v.xrplf_only }}</span></span>
+        <span class="item">{{ _('Jaccard') }}: <span class="num">{{ v.jaccard_pct }}%</span></span>
+      </div>
+    </div>
+  {% endif %}
+
+  <h2>{{ _('How XRPL kept consensus when one UNL went stale') }}</h2>
+  <div class="explainer">
+    <h3>{{ _('What a UNL is') }}</h3>
+    <p>
+      {{ _('A Unique Node List is the set of validators a single XRPL node chooses to trust. Consensus requires 80 percent agreement among the validators on the node\'s UNL — not across the whole network. Each operator configures their own UNL (or, more commonly, subscribes to one or more published lists).') }}
+    </p>
+    <h3>{{ _('Why two lists') }}</h3>
+    <p>
+      {{ _('Both Ripple and the XRPL Foundation publish signed UNLs to make it easy for operators to bootstrap a trustworthy validator set. The two lists overlap heavily but aren\'t identical — Ripple publishes a curated set, the Foundation publishes a partially-different curated set, and operators can subscribe to either or both.') }}
+    </p>
+    <h3>{{ _('Why the Foundation expiry didn\'t break the ledger') }}</h3>
+    <p>
+      {{ _('Each published UNL has its own expiration. When the Foundation UNL\'s signed manifest expired on 2026-01-18, operators relying on it stopped accepting it as authoritative — but the validators on the Ripple UNL kept signing every ledger as normal. Because most operators subscribe to both lists, and because of the overlap shown above, every node still had a working quorum from the Ripple UNL alone. The Foundation UNL going stale is an operations event for the Foundation, not a consensus event for the ledger.') }}
+    </p>
+  </div>
+
+  <div class="truth-note">
+    <span class="lbl">{{ _('truth-first note') }}</span>
+    {{ _('This page reads only the two canonical published lists. Many operators run their own UNLs (or carry validators not on either published list); those custom configurations are invisible to us. The overlap number above describes the published-list relationship, not the full picture of who any specific operator trusts.') }}
+  </div>
+
+  <h2>{{ _('Cross-references') }}</h2>
+  <div class="links">
+    <a href="https://vl.ripple.com/" rel="nofollow noopener" target="_blank">vl.ripple.com</a>
+    <a href="https://vl.xrplf.org/" rel="nofollow noopener" target="_blank">vl.xrplf.org</a>
+    <a href="https://validator.xrpl-labs.com/" rel="nofollow noopener" target="_blank">validator.xrpl-labs.com</a>
+    <a href="https://livenet.xrpl.org/validators" rel="nofollow noopener" target="_blank">livenet.xrpl.org/validators</a>
+    <a href="/amendments">{{ _('in-flight amendments') }} → /amendments</a>
+  </div>
+
+  <p class="source-note">
+    {{ _('Manifests fetched directly from') }}
+    <a href="https://vl.ripple.com/" rel="nofollow noopener" target="_blank">vl.ripple.com</a>
+    {{ _('and') }}
+    <a href="https://vl.xrplf.org/" rel="nofollow noopener" target="_blank">vl.xrplf.org</a>.
+    {{ _('Each blob is base64-decoded server-side and the sequence, validator count, and expiration are read straight from the signed payload — no off-ledger interpretation. Cached for up to 10 minutes.') }}
+    {% if state.fetched_at_iso %}
+      <br>{{ _('Fetched') }} <span class="mono" data-iso="{{ state.fetched_at_iso }}">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  <div class="footer">
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRP Ledger Foundation, or any exchange. UNL status reflects the signed manifests at fetch time; the canonical record is each list publisher itself.') }}
+    <br><br>
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/learn">{{ _('learn') }}</a> ·
+    <a href="/amendments">{{ _('amendments') }}</a> ·
+    <a href="/">{{ _('back to dashboard') }}</a>
+  </div>
+
+</div>
+
+<script>
+  // Convert any data-iso timestamps to the visitor's locale, leaving the
+  // server-emitted ISO in place as the canonical truth. Per the site's
+  // timestamp pattern: server emits UTC, browser localizes.
+  (function () {
+    var nodes = document.querySelectorAll('[data-iso]');
+    if (!nodes.length) return;
+    nodes.forEach(function (el) {
+      var iso = el.getAttribute('data-iso');
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return;
+      try {
+        el.textContent = new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium', timeStyle: 'short'
+        }).format(d);
+      } catch (e) {
+        el.textContent = d.toLocaleString();
+      }
+      el.setAttribute('title', iso);
+    });
+  })();
+</script>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

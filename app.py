@@ -30,6 +30,7 @@ from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 from amendments_state import fetch_amendments_state_cached
+from network_state import fetch_network_state_cached
 from credentials_state import get_credentials_state
 from lending_amendment import fetch_lending_status_cached
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
@@ -2267,6 +2268,21 @@ def amendments():
     state = fetch_amendments_state_cached()
     resp = make_response(render_template("amendments.html", state=state))
     resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return resp
+
+
+@app.route("/network")
+def network():
+    """Live view of the two canonical XRPL UNLs (Ripple + Foundation),
+    with validator counts, expiration status, and the pubkey overlap.
+    Editorial purpose: the Foundation UNL has been expired since
+    2026-01-18 yet XRPL kept producing ledgers — because most operators
+    carry both lists and the overlap means the Ripple UNL alone has the
+    quorum every node needs. Reads each list's signed manifest directly
+    and decodes server-side; cached up to 10 minutes."""
+    state = fetch_network_state_cached()
+    resp = make_response(render_template("network.html", state=state))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp
 
 
