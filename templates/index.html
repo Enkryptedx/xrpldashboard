@@ -816,24 +816,28 @@
     {% endif %}
 
     {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}
+    {# Cold-storage tile shows the LOCKED escrow total (sum of EscrowCreate
+       Amount fields across Ripple's monthly-release accounts) — matches the
+       hero figure on /cold-storage and the constellation chart above. The
+       earlier liquid-balance sum was a categorical mislabel (liquid ≠ locked). #}
     <section class="row-stats">
-      {% if cold_storage and cold_storage.total_xrp %}
+      {% if xrp_distribution and xrp_distribution.escrowed_xrp %}
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
-          <div class="stat-l">{{ _('Cold storage') }}</div>
-          <div class="stat-sub">{{ cold_storage.tracked_count }} {{ _('Ripple escrow accounts · largest') }} {{ cold_storage.largest_name }}</div>
+          <div class="stat-l">{{ _('XRP locked in escrows') }}</div>
+          <div class="stat-sub">{{ xrp_distribution.escrow_object_count }} {{ _('escrow objects across') }} {{ cold_storage.tracked_count if cold_storage else 21 }} {{ _('Ripple monthly-release accounts') }}</div>
         </div>
-        {% if cold_storage.total_xrp >= 1000000000 %}
-        <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000000 }}" data-countup-decimals="2" data-countup-suffix="B XRP">{{ "%.2f"|format(cold_storage.total_xrp / 1000000000) }}B XRP</div>
+        {% if xrp_distribution.escrowed_xrp >= 1000000000 %}
+        <div class="stat-v" data-countup="{{ xrp_distribution.escrowed_xrp / 1000000000 }}" data-countup-decimals="1" data-countup-suffix="B XRP">{{ "%.1f"|format(xrp_distribution.escrowed_xrp / 1000000000) }}B XRP</div>
         {% else %}
-        <div class="stat-v" data-countup="{{ cold_storage.total_xrp / 1000000 }}" data-countup-decimals="0" data-countup-suffix="M XRP">{{ "{:,.0f}".format(cold_storage.total_xrp / 1000000) }}M XRP</div>
+        <div class="stat-v" data-countup="{{ xrp_distribution.escrowed_xrp / 1000000 }}" data-countup-decimals="0" data-countup-suffix="M XRP">{{ "{:,.0f}".format(xrp_distribution.escrowed_xrp / 1000000) }}M XRP</div>
         {% endif %}
       </a>
       {% else %}
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
-          <div class="stat-l">{{ _('Cold storage') }}</div>
-          <div class="stat-sub">{{ _('Ripple escrow accounts') }}</div>
+          <div class="stat-l">{{ _('XRP locked in escrows') }}</div>
+          <div class="stat-sub">{{ _('Ripple monthly-release accounts') }}</div>
         </div>
         <div class="stat-v">{{ _('view') }} →</div>
       </a>
