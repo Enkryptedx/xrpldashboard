@@ -180,6 +180,12 @@
     .footer-note a { color: var(--muted); }
     .agg-context { color: var(--muted); font-size: 0.82rem; margin: -10px 0 22px;
                    max-width: 720px; font-style: italic; }
+    .agg-callout { background: rgba(255,255,255,0.03); border-left: 3px solid var(--accent, #4ea1ff);
+                   padding: 10px 14px; border-radius: 4px; max-width: 760px;
+                   font-size: 0.88rem; line-height: 1.5; margin: 0 0 22px; }
+    .agg-callout strong { color: var(--accent, #4ea1ff); }
+    .agg-source { display: block; margin-top: 6px; font-size: 0.75rem; color: var(--dim); }
+    .agg-source a { color: var(--muted); }
     .freshness { color: var(--dim); font-size: 0.75rem; font-family: var(--mono);
                  margin-top: 6px; }
     .family-no-liquidity { padding: 0.4em 0; }
@@ -220,6 +226,11 @@
   <p class="agg-context">
     {{ _('Liquidity is currently nominal — institutional RWA adoption on XRPL is in early phase. This page tracks presence, not size.') }}
   </p>
+  <div class="agg-callout">
+    <strong>{{ _('Ecosystem context:') }}</strong>
+    {{ _('Industry trackers place total XRPL-linked RWA value near $3B when Justoken\'s ~$1.76B of tokenized real estate is included. We exclude Justoken from the figure above pending TOML / attestation evidence — see the candidates list for the gating criteria.') }}
+    <span class="agg-source">{{ _('Source:') }} <a href="https://247wallst.com/investing/2026/05/15/xrpl-rwa-tokenization-crosses-3-billion-with-justoken-real-estate-onboarding/" target="_blank" rel="noopener noreferrer">24/7 Wall St., 2026-05-15</a></span>
+  </div>
 
   {% if families %}
     <h2 class="section">{{ _('Verified issuer families') }}</h2>

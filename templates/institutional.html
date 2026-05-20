@@ -90,6 +90,8 @@
                  font-variant-numeric: tabular-nums; line-height: 1.1; }
     .snap-lbl  { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
     .snap-foot { color: var(--dim); font-size: 0.82rem; margin-top: 8px; }
+    .inst-source { display: block; margin-top: 8px; font-size: 0.78rem; color: var(--dim); }
+    .inst-source a { color: var(--muted); }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -138,6 +140,12 @@
   </ul>
   <p>
     {{ _('All four confirmed enabled on mainnet via the') }} <code>feature</code> {{ _('RPC. For compliance desks scoping XRPL integration: these primitives are already there.') }}
+  </p>
+
+  <h2>{{ _('Institutional capital is flowing in') }}</h2>
+  <p>
+    {{ _('Ripple Prime — the institutional brokerage built on the Hidden Road acquisition — drew a $200M strategic investment from Neuberger Berman, validating prime-brokerage demand for XRPL-native rails. Hidden Road brings established FX, equities, and crypto prime infrastructure under Ripple\'s roof.') }}
+    <span class="inst-source">{{ _('Source:') }} <a href="https://www.coindesk.com/business/2026/05/14/neuberger-berman-invests-200m-in-ripple-prime-formerly-hidden-road" target="_blank" rel="noopener noreferrer">CoinDesk, 2026-05-14</a></span>
   </p>
 
   {% if snapshot_meta %}
