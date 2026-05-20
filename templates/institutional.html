@@ -90,6 +90,8 @@
                  font-variant-numeric: tabular-nums; line-height: 1.1; }
     .snap-lbl  { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
     .snap-foot { color: var(--dim); font-size: 0.82rem; margin-top: 8px; }
+    .inst-source { display: block; margin-top: 8px; font-size: 0.78rem; color: var(--dim); }
+    .inst-source a { color: var(--muted); }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -138,6 +140,12 @@
   </ul>
   <p>
     {{ _('All four confirmed enabled on mainnet via the') }} <code>feature</code> {{ _('RPC. For compliance desks scoping XRPL integration: these primitives are already there.') }}
+  </p>
+
+  <h2>{{ _('Institutional capital is flowing in') }}</h2>
+  <p>
+    {{ _('On 2026-05-11, Ripple Prime — Ripple\'s multi-asset prime brokerage platform — closed a $200M debt facility from Neuberger Specialty Finance, Neuberger\'s asset-based investment team. Since Ripple acquired the platform in 2025, Ripple Prime has tripled revenue year over year. Proceeds extend financing to clients across traditional and digital markets, increasing the platform\'s lending capacity.') }}
+    <span class="inst-source">{{ _('Source:') }} <a href="https://ripple.com/ripple-press/ripple-prime-secures-usd200-million-debt-facility-from-neuberger-specialty-finance-to-expand-capacity/" target="_blank" rel="noopener noreferrer">{{ _('Ripple press release, 2026-05-11') }}</a></span>
   </p>
 
   {% if snapshot_meta %}
