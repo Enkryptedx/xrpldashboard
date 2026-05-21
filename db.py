@@ -305,6 +305,27 @@ CREATE TABLE IF NOT EXISTS signed_snapshot_chain (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (id = 1)
 );
+
+-- CTA click events. One row per click on an instrumented call-to-action
+-- (currently only the /institutional "Become a launch partner" mailto).
+-- Server-side click endpoints log here before issuing the 302 redirect
+-- so we capture clicks even when JS is disabled and have durable forensic
+-- detail (referrer, optional ?ref= channel tag) the analytics tool can't
+-- give us. Visitor hash reuses the same day-bucketed HMAC pattern as
+-- page_views so a click can be correlated with a view by the same visitor
+-- without storing identifiers we could otherwise dox.
+CREATE TABLE IF NOT EXISTS cta_clicks (
+    id            BIGSERIAL PRIMARY KEY,
+    ts            BIGINT NOT NULL,
+    cta_id        TEXT NOT NULL,
+    ref_param     TEXT,
+    referrer      TEXT,
+    visitor_hash  TEXT,
+    user_agent    TEXT,
+    country       TEXT
+);
+CREATE INDEX IF NOT EXISTS cta_clicks_ts_idx ON cta_clicks (ts DESC);
+CREATE INDEX IF NOT EXISTS cta_clicks_cta_ts_idx ON cta_clicks (cta_id, ts DESC);
 """
 
 
@@ -1660,6 +1681,107 @@ def read_country_breakdown(window_seconds, limit=10, kind="human"):
                 return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
     except Exception:
         return []
+
+
+def log_cta_click(cta_id, ref_param=None, referrer=None,
+                  visitor_hash=None, user_agent=None, country=None):
+    """Insert one CTA click row. Best-effort: never raises. Same
+    cached-writer pattern as log_page_view."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO cta_clicks "
+                "(ts, cta_id, ref_param, referrer, visitor_hash, "
+                " user_agent, country) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (int(time.time()), cta_id, ref_param, referrer,
+                 visitor_hash, user_agent, country),
+            )
+    except Exception as e:
+        _log_err("log_cta_click_failed", e)
+        _drop_writer_conn()
+
+
+def read_recent_cta_clicks(limit=100, cta_id=None):
+    """Last `limit` CTA clicks, newest first. Optionally filter by cta_id.
+    Returns list of dicts."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                if cta_id:
+                    cur.execute(
+                        "SELECT ts, cta_id, ref_param, referrer, "
+                        "       visitor_hash, user_agent, country "
+                        "FROM cta_clicks WHERE cta_id = %s "
+                        "ORDER BY ts DESC LIMIT %s",
+                        (cta_id, limit),
+                    )
+                else:
+                    cur.execute(
+                        "SELECT ts, cta_id, ref_param, referrer, "
+                        "       visitor_hash, user_agent, country "
+                        "FROM cta_clicks ORDER BY ts DESC LIMIT %s",
+                        (limit,),
+                    )
+                return [
+                    {
+                        "ts": int(r[0]),
+                        "cta_id": r[1],
+                        "ref_param": r[2],
+                        "referrer": r[3],
+                        "visitor_hash": r[4],
+                        "user_agent": r[5],
+                        "country": r[6],
+                    }
+                    for r in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def read_cta_click_stats(cta_id=None):
+    """Return rollup counts at common windows for the CTA click admin view.
+    Each value is a dict with `clicks` (raw row count) and `uniques`
+    (distinct visitor_hash). Filter by cta_id when provided."""
+    windows = {
+        "now":     5 * 60,
+        "hour":    60 * 60,
+        "today":   24 * 60 * 60,
+        "week":    7 * 24 * 60 * 60,
+    }
+    out = {k: {"clicks": 0, "uniques": 0} for k in windows}
+    out["all_time"] = {"clicks": 0, "uniques": 0}
+    if not pg_available():
+        return out
+    now = int(time.time())
+    cta_frag = "AND cta_id = %s" if cta_id else ""
+    cta_param = [cta_id] if cta_id else []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for key, sec in windows.items():
+                    cur.execute(
+                        "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                        f"FROM cta_clicks WHERE ts >= %s {cta_frag}",
+                        [now - sec, *cta_param],
+                    )
+                    v, u = cur.fetchone() or (0, 0)
+                    out[key] = {"clicks": int(v or 0), "uniques": int(u or 0)}
+                cur.execute(
+                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                    f"FROM cta_clicks WHERE 1=1 {cta_frag}",
+                    cta_param,
+                )
+                v, u = cur.fetchone() or (0, 0)
+                out["all_time"] = {"clicks": int(v or 0), "uniques": int(u or 0)}
+    except Exception:
+        pass
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -455,6 +455,9 @@ _PAGEVIEW_SKIP_PREFIXES = (
     "/api/",
     "/admin/",
     "/og/",
+    # CTA click trackers — logged separately via cta_clicks so they don't
+    # double-count in page_views.
+    "/click/",
     # Detail pages whose URL contains a user's address/token identifier.
     # The pages are public, but logging the exact address contradicts the
     # "no per-visitor tracking" pledge in /privacy and /about.
@@ -2601,6 +2604,55 @@ def institutional():
         snapshot_meta=_historical_snapshot_meta(),
         days_collecting=days_collecting,
     )
+
+
+# Pre-encoded mailto target for the /institutional launch-partner CTA.
+# Held server-side so the click endpoint can't be coerced into redirecting
+# to an arbitrary URL — the destination is fixed regardless of input.
+_INSTITUTIONAL_MAILTO = (
+    "mailto:contact@xrpldashboard.com"
+    "?subject=Launch%20partner%20interest"
+    "&body=Hi%20Charlie%2C%0A%0A"
+    "Company%3A%0A"
+    "Use%20case%3A%0A"
+    "Current%20XRPL%20data%20tooling%3A%0A"
+    "Approximate%20budget%20range%3A%0A%0A"
+)
+
+
+@app.route("/click/institutional-contact")
+def click_institutional_contact():
+    """Server-side click logger for the /institutional launch-partner CTA.
+    Logs the click event (timestamp, referrer, optional ?ref= channel tag,
+    visitor hash, country) then 302-redirects to the fixed mailto: target.
+
+    Why server-side: gives durable forensic detail (referrer, channel
+    attribution via ?ref=, country) that the analytics tool alone won't
+    surface, and works with JavaScript disabled. The redirect is pure
+    HTTP — no client JS required — so the user's email client opens
+    without any perceptible delay beyond a single round-trip.
+
+    The mailto target is hard-coded above; the endpoint ignores any
+    user-supplied destination so it can't be used as an open redirector."""
+    try:
+        ip = request.remote_addr or ""
+        ua = (request.user_agent.string or "")[:300] or None
+        ref_param = (request.args.get("ref") or "").strip()[:64] or None
+        referrer = (request.referrer or "")[:300] or None
+        country = request.headers.get("CF-IPCountry") \
+            or request.headers.get("X-Vercel-IP-Country") \
+            or request.headers.get("X-Country-Code")
+        db.log_cta_click(
+            cta_id="institutional-contact",
+            ref_param=ref_param,
+            referrer=referrer,
+            visitor_hash=_visitor_hash(ip, ua),
+            user_agent=ua,
+            country=country,
+        )
+    except Exception:
+        pass
+    return redirect(_INSTITUTIONAL_MAILTO, code=302)
 
 
 def _rank_status_order(r):

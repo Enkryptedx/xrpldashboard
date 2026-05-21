@@ -8,11 +8,10 @@
   {% set meta_description = "Institutional XRPL tooling: Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow are live on mainnet — xrpldashboard tracks the stack. Partnership tier for funds, exchanges, and compliance desks." %}
   {% include "_head_meta.html" %}
 
-  {# Plausible Analytics — uncomment after creating account at plausible.io
-     and confirming the domain. Public stats page should be enabled in
-     Plausible settings (Site Settings → Visibility → Make stats public).
-  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
-  #}
+  {# Plausible Analytics — tagged-events variant lets us fire custom
+     events from a link via class="plausible-event-name=...". Public
+     stats page is enabled in Plausible (Site Settings → Visibility). #}
+  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.tagged-events.js"></script>
 
   <style>
     :root {
@@ -200,8 +199,8 @@
   </div>
 
   <div class="cta-row">
-    <a class="cta"
-       href="mailto:contact@xrpldashboard.com?subject=Launch%20partner%20interest&body=Hi%20Charlie%2C%0A%0ACompany%3A%0AUse%20case%3A%0ACurrent%20XRPL%20data%20tooling%3A%0AApproximate%20budget%20range%3A%0A%0A">{{ _('Become a launch partner') }} →</a>
+    <a class="cta plausible-event-name=Institutional+CTA+Click"
+       href="/click/institutional-contact{% if request.args.get('ref') %}?ref={{ request.args.get('ref')|urlencode }}{% endif %}">{{ _('Become a launch partner') }} →</a>
     <p class="contact-note">
       {{ _('Charlie reads every message personally. Reply time is usually within a day. Founders prefer direct email over forms.') }}
     </p>
