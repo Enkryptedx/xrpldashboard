@@ -116,6 +116,13 @@
     .row-2-right { display: grid; grid-template-columns: 1fr 1fr;
                    grid-auto-rows: min-content;
                    gap: 0.45em; align-items: start; }
+    /* AMM/Vault pool-view variant: pool-flow widget on the left runs tall,
+       so the right column stacks vertically (Activity → Token holdings →
+       Pool reserves) to mirror that height instead of leaving a void.
+       Also widen the right column slightly and lower the mobile breakpoint
+       so two-column stays on narrower MacBook windows. */
+    .row-2-pool { grid-template-columns: 1fr 1.25fr; }
+    .row-2-right-pool { grid-template-columns: 1fr; }
 
     /* identity card */
     .identity-card { position: relative; overflow: hidden;
@@ -836,7 +843,7 @@
     </section>
 
     {# ========== Row 2: identity + reserve gauge + activity ========== #}
-    <section class="row-2">
+    <section class="row-2{% if data.is_amm or data.is_vault %} row-2-pool{% endif %}">
 
       <div class="card identity-card">
         <div class="identity-top">
@@ -1167,7 +1174,7 @@
         {% endif %}
       </div>
 
-      <div class="row-2-right">
+      <div class="row-2-right{% if data.is_amm or data.is_vault %} row-2-right-pool{% endif %}">
       {% if not data.is_amm %}
       <div class="card gauge-card">
         <span class="card-label">{{ _('Reserve usage') }}</span>
