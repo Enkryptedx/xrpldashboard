@@ -8,10 +8,13 @@
   {% set meta_description = "Institutional XRPL tooling: Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow are live on mainnet — xrpldashboard tracks the stack. Partnership tier for funds, exchanges, and compliance desks." %}
   {% include "_head_meta.html" %}
 
-  {# Plausible Analytics — tagged-events variant lets us fire custom
-     events from a link via class="plausible-event-name=...". Public
-     stats page is enabled in Plausible (Site Settings → Visibility). #}
-  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.tagged-events.js"></script>
+  {# Plausible Analytics — intentionally NOT loaded. Site-wide claims on
+     /privacy, /security, and /subprocessors promise "no analytics tracker"
+     and "no third-party scripts" — a client-side Plausible script would
+     falsify them. CTA click tracking lives server-side via /click/* into
+     the cta_clicks table (same first-party pattern as page_views, already
+     disclosed at /analytics). Do not re-add a Plausible tag without also
+     updating those three claims to disclose the script. #}
 
   <style>
     :root {
@@ -199,7 +202,7 @@
   </div>
 
   <div class="cta-row">
-    <a class="cta plausible-event-name=Institutional+CTA+Click"
+    <a class="cta"
        href="/click/institutional-contact{% if request.args.get('ref') %}?ref={{ request.args.get('ref')|urlencode }}{% endif %}">{{ _('Become a launch partner') }} →</a>
     <p class="contact-note">
       {{ _('Charlie reads every message personally. Reply time is usually within a day. Founders prefer direct email over forms.') }}

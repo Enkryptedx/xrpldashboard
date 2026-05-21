@@ -78,6 +78,7 @@
     {{ _nav_link('/health', _('health')) }}
     {{ _nav_link('/methodology', _('methodology')) }}
     {{ _nav_link('/about', _('about')) }}
+    {{ _nav_link('/institutional', _('institutional')) }}
     {% if live_xrp_usd %}
       {# XRP/AMM/self-sourced are crypto proper nouns — not translated. #}
       <span class="xrp-chip" title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }})">

@@ -2597,7 +2597,8 @@ _COLLECTING_SINCE = date(2026, 5, 7)
 def institutional():
     """Pre-launch institutional positioning page. Contact-only (no published
     prices) until launch-partner conversations produce real pricing data.
-    Linked from /about, intentionally not in top nav."""
+    Linked from the top nav so the CTA has traffic to measure; server-side
+    click logger at /click/institutional-contact writes one row per click."""
     days_collecting = max(1, (date.today() - _COLLECTING_SINCE).days + 1)
     return render_template(
         "institutional.html",
