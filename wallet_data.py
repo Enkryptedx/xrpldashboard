@@ -199,14 +199,50 @@ def _self_info(address):
     }
 
 
-def _amm_self_info(address):
-    """If `address` is an AMM pool account, return its pair label
-    ("XRP/RLUSD") so the wallet view can re-frame itself as a pool view.
-    Returns (False, None) for non-AMM addresses."""
-    amm = _AMM_BY_ACCOUNT.get(address)
-    if not amm:
-        return False, None
-    return True, _amm_pair_label(amm.get("Asset", {}), amm.get("Asset2", {}))
+def _amm_pair_label_from_info(amm):
+    """Build a pair label like "XRP/RLUSD" from an amm_info response's
+    `amm` dict (whose `amount`/`amount2` may be XRP-drops strings or
+    {currency, issuer, value} dicts). Returns None if neither side
+    decodes."""
+    amount = amm.get("amount")
+    amount2 = amm.get("amount2")
+    if _amount_xrp(amount) is not None:
+        iou = _amount_iou(amount2)
+        return f"XRP/{_short_currency(iou[0], iou[1])}" if iou else None
+    if _amount_xrp(amount2) is not None:
+        iou = _amount_iou(amount)
+        return f"XRP/{_short_currency(iou[0], iou[1])}" if iou else None
+    iou_a = _amount_iou(amount)
+    iou_b = _amount_iou(amount2)
+    if iou_a and iou_b:
+        return f"{_short_currency(iou_a[0], iou_a[1])}/{_short_currency(iou_b[0], iou_b[1])}"
+    return None
+
+
+def _special_account_self_info(client, account_data, address):
+    """Detect whether `address` is a special pseudo-account using its
+    AccountRoot's stored ledger fields. Per XRPL spec:
+      - AMMID present  → AMM pseudo-account (XLS-30)
+      - VaultID present → Single Asset Vault pseudo-account (XLS-65)
+    Both fields are set at account creation and immutable, so presence
+    alone is definitive — no flag-combo heuristics needed.
+
+    Returns (is_amm, is_vault, amm_pair). For AMM accounts the pair
+    label resolves via the local AMM index fast-path, falling back to
+    an `amm_info` RPC when the address isn't in the index (which is
+    always the case on Render, where amm_index.json is gitignored)."""
+    is_amm = bool(account_data.get("AMMID"))
+    is_vault = bool(account_data.get("VaultID"))
+    amm_pair = None
+    if is_amm:
+        cached = _AMM_BY_ACCOUNT.get(address)
+        if cached:
+            amm_pair = _amm_pair_label(cached.get("Asset", {}), cached.get("Asset2", {}))
+        else:
+            resp = _safe_request(client, AMMInfo(amm_account=address))
+            if resp:
+                amm_pair = _amm_pair_label_from_info(resp.get("amm") or {})
+    return is_amm, is_vault, amm_pair
 
 
 def _compute_pool_flow(txs, amm_account):
@@ -905,7 +941,6 @@ def _layout_nodes(counterparties, total_recent_txs):
 
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     client = JsonRpcClient(XRPL_NODE)
-    is_amm, amm_pair = _amm_self_info(address)
     info = _fetch_account_info(client, address)
     if info is None:
         return {
@@ -913,8 +948,9 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "address": address,
             "address_short": _short_addr(address),
             "self_info": _self_info(address),
-            "is_amm": is_amm,
-            "amm_pair": amm_pair,
+            "is_amm": False,
+            "is_vault": False,
+            "amm_pair": None,
             "balance_xrp": 0.0, "available_xrp": 0.0, "reserved_xrp": 0.0,
             "base_reserve_xrp": BASE_RESERVE_XRP,
             "owner_reserve_xrp": OWNER_RESERVE_XRP,
@@ -930,6 +966,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "pool_flow": None,
         }
     account_data = info.get("account_data", {})
+    is_amm, is_vault, amm_pair = _special_account_self_info(client, account_data, address)
     balance_drops = int(account_data.get("Balance", "0"))
     owner_count = int(account_data.get("OwnerCount", 0))
     balance_xrp = balance_drops / 1_000_000
@@ -949,7 +986,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     # so the enrichment output is unused. Without this short-circuit a
     # pool with N LP-bearing trustlines stalls the page for 5–25s on cold
     # cache because each enrichment is sequentially expensive.
-    amm_positions = [] if is_amm else _enrich_lp_holdings(holdings_lp)
+    amm_positions = [] if (is_amm or is_vault) else _enrich_lp_holdings(holdings_lp)
     amm_total_xrp = sum(p["my_xrp"] for p in amm_positions if p["my_xrp"] is not None)
     amm_24h_fees_xrp = sum(
         p["my_24h_fees_xrp"] for p in amm_positions if p["my_24h_fees_xrp"] is not None
@@ -963,7 +1000,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     # page for AMM views — keeps the recent-swappers graph meaningful
     # without paginating thousands of historic swaps. Regular wallets
     # still get the full 5-page lookback for the 30-day pulse.
-    txs = _fetch_account_tx(client, address, max_pages=1 if is_amm else MAX_TX_PAGES)
+    txs = _fetch_account_tx(client, address, max_pages=1 if (is_amm or is_vault) else MAX_TX_PAGES)
     pulse = _build_pulse(txs, lookback_days)
     counterparties = _build_counterparty_graph(txs, address, lookback_days)
     total_recent_txs = sum(pulse)
@@ -1031,6 +1068,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "address_short": _short_addr(address),
         "self_info": _self_info(address),
         "is_amm": is_amm,
+        "is_vault": is_vault,
         "amm_pair": amm_pair,
         "balance_xrp": balance_xrp,
         "available_xrp": available_xrp,

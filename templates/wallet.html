@@ -777,7 +777,7 @@
     <header>
       <div class="brand">
         <h1><a href="/" style="color: inherit; text-decoration: none;">xrpldashboard</a></h1>
-        <span class="preview-badge">{% if data.is_amm %}{{ _('AMM pool') }} · {{ data.amm_pair }}{% else %}{{ _('wallet') }} · {{ data.address_short }}{% endif %}</span>
+        <span class="preview-badge">{% if data.is_amm %}{{ _('AMM pool') }} · {{ data.amm_pair or data.address_short }}{% elif data.is_vault %}{{ _('Vault account') }} · {{ data.address_short }}{% else %}{{ _('wallet') }} · {{ data.address_short }}{% endif %}</span>
       </div>
       <div class="header-meta" style="display: flex; align-items: center; gap: 1em;">
         {% include "_liveness_chip.html" %}
@@ -840,10 +840,14 @@
 
       <div class="card identity-card">
         <div class="identity-top">
-          <div class="identity-greeting">{% if data.is_amm %}{{ _('AMM Pool') }}{% else %}{{ _('Wallet') }}{% endif %}</div>
+          <div class="identity-greeting">{% if data.is_amm %}{{ _('AMM Pool') }}{% elif data.is_vault %}{{ _('Vault Account') }}{% else %}{{ _('Wallet') }}{% endif %}</div>
           {% if data.is_amm %}
             <div class="identity-name-row">
-              <span class="identity-name">{{ data.amm_pair }}</span>
+              <span class="identity-name">{{ data.amm_pair or data.address_short }}</span>
+            </div>
+          {% elif data.is_vault %}
+            <div class="identity-name-row">
+              <span class="identity-name">{{ data.address_short }}</span>
             </div>
           {% elif data.self_info and data.self_info.name %}
             <div class="identity-name-row">
@@ -1303,10 +1307,20 @@
       <div class="card">
         <div class="section-head" style="margin-bottom: 0.3em;">
           <h2>{{ _('Pool reserves') }}</h2>
-          <span class="meta">{{ data.amm_pair }} · {{ _('pulled from XRP Ledger') }}</span>
+          <span class="meta">{{ data.amm_pair or _('AMM pool') }} · {{ _('pulled from XRP Ledger') }}</span>
         </div>
         <div style="color: var(--muted); font-size: var(--fs-sm); padding: 0.6em 0;">
           {{ _('This account') }} <em>{{ _('is') }}</em> {{ _('the AMM pool — its XRP balance and top token holding above are the pool reserves. Detailed pool stats (volume, fee history, LP count) are coming in a dedicated pool view post-launch.') }}
+        </div>
+      </div>
+      {% elif data.is_vault %}
+      <div class="card">
+        <div class="section-head" style="margin-bottom: 0.3em;">
+          <h2>{{ _('Vault account') }}</h2>
+          <span class="meta">{{ _('Single Asset Vault · pulled from XRP Ledger') }}</span>
+        </div>
+        <div style="color: var(--muted); font-size: var(--fs-sm); padding: 0.6em 0;">
+          {{ _('This account') }} <em>{{ _('is') }}</em> {{ _('a Single Asset Vault pseudo-account (XLS-65) — its holdings above are the vault\'s reserves, not a user\'s portfolio. A dedicated vault view is on the roadmap.') }}
         </div>
       </div>
       {% else %}
