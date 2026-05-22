@@ -173,11 +173,15 @@ def _trade_history(conn, currency, issuer):
     by_hour = {b: c for (b, c) in rows_spark}
     sparkline = [by_hour.get(now_hour - SPARKLINE_HOURS + 1 + i, 0)
                  for i in range(SPARKLINE_HOURS)]
+    # hours_active is rendered on the "last 7 days" sparkline card; derive
+    # it from the sparkline result so the count matches the window the card
+    # displays. Mirrors the PG path in db.read_token_history.
+    hours_active_7d = len(by_hour)
 
     return {
         "trades_all": int(trades_all or 0),
         "volume_all_xrp": float(volume_all or 0),
-        "hours_active": int(hours_active or 0),
+        "hours_active": hours_active_7d,
         "first_bucket": first_bucket,
         "last_bucket": last_bucket,
         "trades_24h": int(trades_24h or 0),

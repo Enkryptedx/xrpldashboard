@@ -1536,10 +1536,16 @@ def read_token_history(currency, issuer, spark_hours=168):
             by_hour = {b: c for (b, c) in cur.fetchall()}
 
     sparkline = [by_hour.get(cutoff_spark + 1 + i, 0) for i in range(spark_hours)]
+    # hours_active is rendered on the "last 7 days" sparkline card; derive
+    # it from the sparkline result so the count is anchored to the same
+    # window the card displays (cutoff_spark == cutoff_7d == now_hour - 168).
+    # Previously this returned COUNT(*) across all buckets, producing values
+    # > 168 under a "last 7 days" label.
+    hours_active_7d = len(by_hour)
     return {
         "trades_all": int(trades_all or 0),
         "volume_all_xrp": float(volume_all or 0),
-        "hours_active": int(hours_active or 0),
+        "hours_active": hours_active_7d,
         "first_bucket": first_b,
         "last_bucket": last_b,
         "trades_24h": int(trades_24h or 0),
