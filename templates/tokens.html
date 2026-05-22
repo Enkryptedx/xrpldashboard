@@ -59,6 +59,8 @@
          letter-spacing: -0.01em; }
     .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 20px;
             max-width: 640px; }
+    .lede.coverage-note { font-size: 0.85rem; opacity: 0.78;
+                          margin-top: 6px; }
 
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
@@ -343,6 +345,9 @@
     ) }}</h1>
     <p class="lede">
       {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw. Token names are hand-curated where available — see') }} <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
+    </p>
+    <p class="lede coverage-note">
+      {{ _('Liquidity and volume figures reflect AMM activity only. Order-book DEX trading isn\'t included yet.') }}
     </p>
     {{ freshness_badge(data_age_label) }}
   </div>

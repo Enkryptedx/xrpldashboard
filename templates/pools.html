@@ -62,6 +62,8 @@
          letter-spacing: -0.01em; }
     .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 16px;
             max-width: 720px; }
+    .lede.coverage-note { font-size: 0.85rem; opacity: 0.78;
+                          margin-top: 6px; }
 
     .pool-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
                  gap: 1.6em; align-items: start; margin-bottom: 22px; }
@@ -465,6 +467,9 @@
       ) }}</h1>
       <p class="lede">
         {{ _('Every AMM pool we\'ve indexed from the XRP Ledger, ranked by total value locked. XRP-paired pools are sized in USD using the XRP price; pools with a USD-pegged token (stablecoin/fiat) are exact, others are best-effort estimates. See') }} <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
+      </p>
+      <p class="lede coverage-note">
+        {{ _('Shows AMM (automated market maker) pools only. XRPL\'s order-book DEX isn\'t included yet — order-book liquidity and volume are tracked separately and coming soon.') }}
       </p>
     </div>
     {% if rows %}
