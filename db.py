@@ -674,6 +674,58 @@ def read_amm_ranked_pools():
         return []
 
 
+def read_amm_index_entries():
+    """Mirror of amm_index.json for the wallet/token detail layers.
+
+    amm_index.json is gitignored (built by the Mac worker), so the file
+    is absent on Render and any code that loads it at import time sees
+    an empty list — silent zero, identical bug class to volumes.db.
+
+    Returns a list of dicts shaped like amm_index entries
+    (Account / Asset / Asset2 / TradingFee / LPTokenBalance) sourced
+    from the amm_ranked_pools snapshot. LPTokenBalance.value carries
+    tvl_usd as a sort proxy (callers only use it for pool ordering).
+
+    Returns None when Postgres isn't configured — signals the caller
+    to fall back to the local file (dev / Mac path). RAISES on PG
+    query failure: production should fail loudly rather than render
+    an empty AMM index, per the volumes.db post-mortem.
+    """
+    if not pg_available():
+        return None
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT amm_account, asset_a, asset_b, fee_raw, tvl_usd "
+                "FROM amm_ranked_pools"
+            )
+            rows = cur.fetchall()
+    out = []
+    for amm_acct, asset_a, asset_b, fee_raw, tvl_usd in rows:
+        if not amm_acct:
+            continue
+        a = asset_a or {}
+        b = asset_b or {}
+        a_cur = a.get("currency")
+        b_cur = b.get("currency")
+        if not a_cur or not b_cur:
+            continue
+        Asset = {"currency": a_cur}
+        if a.get("issuer"):
+            Asset["issuer"] = a["issuer"]
+        Asset2 = {"currency": b_cur}
+        if b.get("issuer"):
+            Asset2["issuer"] = b["issuer"]
+        out.append({
+            "Account": amm_acct,
+            "Asset": Asset,
+            "Asset2": Asset2,
+            "TradingFee": int(fee_raw or 0),
+            "LPTokenBalance": {"value": str(tvl_usd if tvl_usd is not None else 0)},
+        })
+    return out
+
+
 def read_amm_snapshot_ts():
     """Return the snapshot_ts of the most-recent amm_ranked_pools write
     (all rows in a snapshot share the same ts), or None when empty/unavailable.

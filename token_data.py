@@ -43,7 +43,20 @@ _TOKEN_BY_KEY = {
     for v in _TOKENS_RAW.values()
     if isinstance(v, dict)
 }
-_AMM_INDEX = _load_json_safe(AMM_INDEX_PATH) or []
+
+
+def _load_amm_index():
+    """Postgres-first; falls back to amm_index.json only when DATABASE_URL
+    is unset (dev / Mac path). On Render, a PG failure raises and the
+    module import fails — the service refuses to start rather than serve
+    a silently-empty pool list."""
+    entries = db.read_amm_index_entries()
+    if entries is not None:
+        return entries
+    return _load_json_safe(AMM_INDEX_PATH) or []
+
+
+_AMM_INDEX = _load_amm_index()
 
 
 def _short_addr(addr):

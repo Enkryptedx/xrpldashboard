@@ -32,6 +32,8 @@ from datetime import datetime
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountInfo, AccountLines, AccountTx, AMMInfo, ServerInfo
 
+import db
+
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -116,8 +118,17 @@ _TOKEN_BY_KEY = {
 
 # AMM index — used both ways: by account (lookup classifying a counterparty)
 # and by (Asset, Asset2) pair (for AMMDeposit/AMMWithdraw txs that don't
-# carry the AMM account directly).
-_AMM_INDEX = _load_json_safe(AMM_INDEX_PATH) or []
+# carry the AMM account directly). Postgres-first: amm_index.json is
+# gitignored, so on Render we read the amm_ranked_pools mirror. File
+# fallback only fires when DATABASE_URL is unset (dev / Mac path).
+def _load_amm_index():
+    entries = db.read_amm_index_entries()
+    if entries is not None:
+        return entries
+    return _load_json_safe(AMM_INDEX_PATH) or []
+
+
+_AMM_INDEX = _load_amm_index()
 _AMM_BY_ACCOUNT = {}
 _AMM_BY_PAIR = {}
 
