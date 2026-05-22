@@ -270,6 +270,12 @@
            text-decoration: none; color: inherit;
            transition: border-color 0.12s, transform 0.12s; }
     a.row:hover { border-color: rgba(34,211,238,0.4); transform: translateY(-1px); }
+    /* Sibling-issuer accent: rows whose issuer mints multiple tokens get
+       a colored left border keyed by issuer. Pad-left compensation keeps
+       content alignment unchanged when the left border widens from 1→3px. */
+    .row[data-sibling] { border-left: 3px solid var(--sibling-color);
+                         padding-left: 12px; }
+    a.row[data-sibling]:hover { border-left-color: var(--sibling-color); }
     .rank { font-family: var(--mono); color: var(--dim); font-size: 0.85rem;
             text-align: right; }
     .name-block { display: flex; flex-direction: column; gap: 2px;
@@ -428,7 +434,8 @@
 
   {% if tokens %}
     {% for t in tokens %}
-    <a class="row vibes-spot" href="/token/{{ t.currency_raw }}/{{ t.issuer }}">
+    <a class="row vibes-spot" href="/token/{{ t.currency_raw }}/{{ t.issuer }}"
+       {% if t.sibling_color %}data-sibling style="--sibling-color: {{ t.sibling_color }};"{% endif %}>
       <div class="rank">{{ t.rank }}</div>
       <div class="name-block">
         <div class="name">

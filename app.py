@@ -11,6 +11,7 @@ import os
 import secrets
 import sqlite3
 import time
+from collections import Counter
 from datetime import date, datetime, timezone
 
 from flask import Flask, Response, abort, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
@@ -1875,6 +1876,21 @@ def tokens():
             "trades": trades,
             "hours_active": hours_active,
         })
+
+    # Sibling-issuer accent — a single issuer can mint multiple tokens
+    # (e.g. r3qWgp…Kp4R issues both RPR and ASC). Without a visual cue,
+    # two adjacent rows with the same truncated address read as unrelated.
+    # Assign a left-border color to every row whose issuer appears more
+    # than once in the visible list; cycle through a small palette so
+    # multiple sibling groups stay distinguishable. Palette avoids the
+    # category-badge colors so the two signals don't visually collide.
+    _SIBLING_PALETTE = ["#c084fc", "#14b8a6", "#f97316", "#6366f1"]
+    _issuer_counts = Counter(t["issuer"] for t in enriched)
+    _multi_issuers = sorted(iss for iss, c in _issuer_counts.items() if c > 1)
+    _sibling_color = {iss: _SIBLING_PALETTE[i % len(_SIBLING_PALETTE)]
+                      for i, iss in enumerate(_multi_issuers)}
+    for t in enriched:
+        t["sibling_color"] = _sibling_color.get(t["issuer"])
 
     earliest_iso = None
     if earliest_bucket is not None:

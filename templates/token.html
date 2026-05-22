@@ -210,8 +210,8 @@
       </div>
       <div class="hero-meta">
         {{ _('Issued by') }} <span class="iss">{{ data.issuer_short }}</span>
-        {% if data.currency_decoded and data.currency_decoded != data.display %}
-          · {{ _('raw code') }} <span class="iss">{{ data.currency_decoded }}</span>
+        {% if data.currency_raw and data.currency_raw|length == 40 %}
+          · {{ _('currency hex') }} <span class="iss" style="word-break: break-all;">{{ data.currency_raw }}</span>
         {% endif %}
       </div>
       <div class="hero-meta" style="margin-top:0.7em;">
