@@ -75,6 +75,6 @@
      overflow:hidden clip AND hoist the tile above later positioned
      siblings (event rows, list items) that would otherwise paint
      on top of the popover. */
-  .vibes-spot:has(.explainer[open]),
-  .stat-pill:has(.explainer[open]) { overflow: visible; z-index: 100; }
+  .vibes-spot:has(.explainer.is-open),
+  .stat-pill:has(.explainer.is-open) { overflow: visible; z-index: 100; }
 </style>
