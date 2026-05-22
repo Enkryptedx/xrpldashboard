@@ -253,7 +253,7 @@
   {% if state.overlap %}
     <h2>{{ _('Validator overlap') }}</h2>
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('How many validators are published on both UNLs, and how many appear on only one. This overlap is the practical reason consensus held through the Foundation UNL expiry — operators carrying both lists still had a quorum from the Ripple UNL alone.') }}
+      {{ _('How many validators are published on both UNLs, and how many appear on only one. This overlap is the practical reason consensus held through the Foundation UNL expiry — operators carrying both lists still had a working quorum — the Ripple UNL alone was sufficient for consensus.') }}
     </p>
 
     {% set v = state.overlap %}
