@@ -110,13 +110,23 @@
     .row-2-right { display: grid; grid-template-columns: 1fr 1fr;
                    grid-auto-rows: min-content;
                    gap: 0.45em; align-items: start; }
-    /* AMM/Vault pool-view variant: pool-flow widget on the left runs tall,
-       so the right column stacks vertically (Activity → Token holdings →
-       Pool reserves) to mirror that height instead of leaving a void.
-       Also widen the right column slightly and lower the mobile breakpoint
-       so two-column stays on narrower MacBook windows. */
+    /* Vault pool-view variant: the identity card still carries the full-
+       wallet flow (Counterparty Network → Wallet Pulse → cp-stats →
+       balance), so we keep the two-column split with the right column
+       stacked vertically alongside it. */
     .row-2-pool { grid-template-columns: 1fr 1.25fr; }
     .row-2-right-pool { grid-template-columns: 1fr; }
+    /* AMM pool-view variant: the AMM view is intentionally narrower than a
+       full wallet view (no Counterparty Network, no Wallet Pulse, no
+       reserve gauge — those signals are noise for a pseudo-account), so
+       the wallet's 2-col grid leaves the right column feeling empty next
+       to the tall pool-flow widget. Compress: full-width identity+pool-
+       flow hero on top, 3-up grid below carrying Activity / Token holdings
+       / Pool reserves. Layout-only fix; an AMM-first detail page is the
+       proper follow-up. */
+    .row-2-amm { grid-template-columns: 1fr; }
+    .row-2-right-amm { grid-template-columns: repeat(3, minmax(0, 1fr));
+                       align-items: start; gap: 0.45em; }
 
     /* identity card */
     .identity-card { position: relative; overflow: hidden;
@@ -837,7 +847,7 @@
     </section>
 
     {# ========== Row 2: identity + reserve gauge + activity ========== #}
-    <section class="row-2{% if data.is_amm or data.is_vault %} row-2-pool{% endif %}">
+    <section class="row-2{% if data.is_amm %} row-2-amm{% elif data.is_vault %} row-2-pool{% endif %}">
 
       <div class="card identity-card">
         <div class="identity-top">
@@ -1168,7 +1178,7 @@
         {% endif %}
       </div>
 
-      <div class="row-2-right{% if data.is_amm or data.is_vault %} row-2-right-pool{% endif %}">
+      <div class="row-2-right{% if data.is_amm %} row-2-right-amm{% elif data.is_vault %} row-2-right-pool{% endif %}">
       {% if not data.is_amm %}
       <div class="card gauge-card">
         <span class="card-label">{{ _('Reserve usage') }}</span>
