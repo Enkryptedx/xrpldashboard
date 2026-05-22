@@ -2316,6 +2316,36 @@ def network():
     return resp
 
 
+def _group_credentials_for_display(examples):
+    """Collapse identical (issuer, type, URI) attestations to one card so the
+    examples list reads as N distinct claims rather than N near-duplicates.
+    Order-preserving: first occurrence's position sets the group's slot."""
+    groups = []
+    index_by_key = {}
+    for c in examples or []:
+        key = (
+            c.get("issuer"),
+            c.get("credential_type_hex") or c.get("credential_type_label"),
+            c.get("uri_label") or c.get("uri_hex"),
+        )
+        if key in index_by_key:
+            g = groups[index_by_key[key]]
+            g["members"].append(c)
+            if not c.get("accepted"):
+                g["all_accepted"] = False
+            if not c.get("self_issued"):
+                g["all_self_issued"] = False
+        else:
+            index_by_key[key] = len(groups)
+            groups.append({
+                "head": c,
+                "members": [c],
+                "all_accepted": bool(c.get("accepted")),
+                "all_self_issued": bool(c.get("self_issued")),
+            })
+    return groups
+
+
 @app.route("/credentials")
 def credentials():
     """Live view of XRPL Credentials (XLS-70). The amendment is enabled
@@ -2324,7 +2354,15 @@ def credentials():
     on Mac and writes a snapshot to Postgres. The route reads from PG so
     every gunicorn worker (Mac and Render) serves the same view."""
     state = get_credentials_state()
-    resp = make_response(render_template("credentials.html", state=state))
+    examples = (state.get("cumulative") or {}).get("examples") if state else None
+    cred_groups = _group_credentials_for_display(examples) if examples else []
+    has_collapsed_groups = any(len(g["members"]) > 1 for g in cred_groups)
+    resp = make_response(render_template(
+        "credentials.html",
+        state=state,
+        cred_groups=cred_groups,
+        has_collapsed_groups=has_collapsed_groups,
+    ))
     # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
     # see fresh-within-a-minute data; without this header, CF returns
     # DYNAMIC but browsers heuristic-cache the response indefinitely.
