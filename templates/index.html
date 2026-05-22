@@ -269,6 +269,13 @@
     .xrp-chip .v {
       font-family: var(--mono); color: var(--text); font-weight: 600;
     }
+    /* Compact qualifier that resolves the "13.1M XRP vs $37.49M" reader
+       confusion — constellation measures XRP-side only, the stat pill
+       below measures both sides of each pool. */
+    .xrp-chip-qual {
+      font-size: 0.78em; color: var(--text-3);
+      font-style: italic; margin-left: 0.25em;
+    }
 
     @media (max-width: 640px) {
       .xrp-constell-svg .sat-label { font-size: 9px; }
@@ -798,7 +805,7 @@
         </a>
         <a class="xrp-chip" href="/pools">
           <span class="dot amm"></span>
-          <span>{{ _('AMM pools') }}</span>
+          <span>{{ _('AMM pools') }} <span class="xrp-chip-qual">{{ _('XRP only') }}</span></span>
           <span class="v">{{ "%.2f"|format(xd.amm_pct) }}%</span>
         </a>
         <span class="xrp-chip" style="cursor:default">
@@ -840,7 +847,7 @@
       <a href="/pools" class="stat-pill" data-live="amm-tvl">
         <div>
           <div class="stat-l">{{ _('Locked in priced AMMs') }}</div>
-          <div class="stat-sub">{{ "{:,}".format(priced_pool_count) }} {{ _('priced of') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('XRPL AMM pools') }}</div>
+          <div class="stat-sub">{{ _('Total TVL across both sides') }} · {{ "{:,}".format(priced_pool_count) }} {{ _('priced of') }} {{ "{:,}".format(ranked_pool_count) }} {{ _('pools') }}</div>
         </div>
         <div class="stat-v" data-countup="{{ ranked_total_tvl_usd or 0 }}" data-countup-prefix="$" data-countup-decimals="0" data-countup-format-money="1">{{ fmt_money(ranked_total_tvl_usd) }}</div>
       </a>
