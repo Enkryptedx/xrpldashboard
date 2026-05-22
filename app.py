@@ -328,9 +328,10 @@ def inject_xrp_usd():
 
 
 # Allowlist of external origins our pages legitimately load. Keep narrow —
-# every entry is a trust decision. Plausible is allowlisted ahead of time
-# so uncommenting the analytics tag in templates needs no header change.
-_CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://plausible.io"
+# every entry is a trust decision. jsdelivr serves vendored front-end deps
+# (Geist fonts, Lenis, GSAP, CountUp) and is disclosed at /security; the
+# self-host plan replaces it with /static/vendor/ (tracked as #93).
+_CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
 _CSP_IMG_SRC = "'self' data:"
@@ -338,8 +339,7 @@ _CSP_CONNECT_SRC = (
     # Browsers connect to wss://xrplcluster.com (primary). s2 and s1 are
     # kept in the allowlist as automatic fallbacks so a cluster outage
     # can be mitigated without also pushing a CSP header change.
-    "'self' https://plausible.io "
-    "wss://xrplcluster.com wss://s2.ripple.com wss://s1.ripple.com"
+    "'self' wss://xrplcluster.com wss://s2.ripple.com wss://s1.ripple.com"
 )
 
 _CSP_VALUE = "; ".join([
@@ -389,7 +389,7 @@ def apply_security_headers(response):
         ignore HSTS over HTTP, so this header is inert in local dev.
 
     - Content-Security-Policy
-        Allowlists the exact external origins we load (jsdelivr, plausible).
+        Allowlists the exact external origins we load (jsdelivr only).
         'unsafe-inline' is required because templates carry large embedded
         <style> and <script> blocks; tightening to nonces is a future move.
         Even with 'unsafe-inline', CSP still blocks loading scripts/styles

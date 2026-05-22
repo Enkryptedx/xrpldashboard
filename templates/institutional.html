@@ -8,13 +8,14 @@
   {% set meta_description = "Institutional XRPL tooling: Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow are live on mainnet — xrpldashboard tracks the stack. Partnership tier for funds, exchanges, and compliance desks." %}
   {% include "_head_meta.html" %}
 
-  {# Plausible Analytics — intentionally NOT loaded. Site-wide claims on
-     /privacy, /security, and /subprocessors promise "no analytics tracker"
-     and "no third-party scripts" — a client-side Plausible script would
-     falsify them. CTA click tracking lives server-side via /click/* into
-     the cta_clicks table (same first-party pattern as page_views, already
-     disclosed at /analytics). Do not re-add a Plausible tag without also
-     updating those three claims to disclose the script. #}
+  {# No client-side analytics on this or any other page. Site-wide
+     claims on /privacy, /security, and /subprocessors promise "no
+     analytics tracker, no marketing pixels." CTA click tracking lives
+     server-side via /click/* into the cta_clicks table (same first-
+     party pattern as page_views, disclosed at /analytics). Do not add
+     a third-party analytics tag (Plausible, GA, Fathom, etc.) without
+     also updating those three claims. The origin-guard test in
+     tools/origin_guard.py will fail loudly if one is added. #}
 
   <style>
     :root {

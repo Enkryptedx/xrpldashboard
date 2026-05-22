@@ -80,7 +80,8 @@
     <li><strong>HTTPS only.</strong> {{ _('All traffic is terminated at Cloudflare with HSTS enforced. Plain-HTTP requests are 301\'d to HTTPS.') }}</li>
     <li><strong>{{ _('Content Security Policy') }}.</strong> {{ _('CSP restricts script sources, blocks inline-eval, and refuses mixed content. Every page sets it explicitly — no opt-outs.') }}</li>
     <li><strong>{{ _('Strict referrer + frame ancestors') }}.</strong> <code>Referrer-Policy: strict-origin-when-cross-origin</code> {{ _('and') }} <code>X-Frame-Options: DENY</code> {{ _('are set globally to limit leakage and clickjacking.') }}</li>
-    <li><strong>{{ _('No third-party scripts.') }}</strong> {{ _('No analytics tags, no marketing pixels, no embedded widgets. The only outbound network the page initiates is the XRPL WebSocket cluster (visible in /methodology).') }}</li>
+    <li><strong>{{ _('No analytics, no pixels, no widgets.') }}</strong> {{ _('No analytics tracker, no marketing pixels, no embedded widgets, no fingerprinting. Outbound network from the page is limited to the XRPL WebSocket cluster (visible in /methodology) and font/animation libraries described below.') }}</li>
+    <li><strong>{{ _('Vendored front-end libraries.') }}</strong> {{ _('Fonts (Geist) and three animation libraries (Lenis, GSAP, CountUp) currently load from') }} <code>cdn.jsdelivr.net</code> {{ _('with SRI integrity hashes. They\'re open-source presentation code with no analytics or telemetry — but they are third-party origins, so we name them here rather than claim "no third-party scripts." Self-hosting these from') }} <code>/static/vendor/</code> {{ _('is in progress.') }}</li>
   </ul>
 
   <h2>{{ _('Admin surface') }}</h2>

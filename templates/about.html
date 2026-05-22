@@ -8,12 +8,6 @@
   {% set meta_description = "Why xrpldashboard exists, who runs it, and how it's funded. Independent XRPL analytics — comprehensive but understandable, free of exchange-listed price feeds." %}
   {% include "_head_meta.html" %}
 
-  {# Plausible Analytics — uncomment after creating account at plausible.io
-     and confirming the domain. Public stats page should be enabled in
-     Plausible settings (Site Settings → Visibility → Make stats public).
-  <script defer data-domain="xrpldashboard.com" src="https://plausible.io/js/script.js"></script>
-  #}
-
   <style>
     :root {
       --bg: #0a0e27;
@@ -130,7 +124,7 @@
 
   <h2>{{ _('How it works') }}</h2>
   <p>
-    {{ _('Every live number on this site — price, TVL, transaction volume, balances — is computed directly from the XRP Ledger. We do not depend on third-party analytics APIs (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama) for any of our metrics. Their products are good — but if we wrapped them for our data, we\'d just be a thinner version of their work.') }}
+    {{ _('Every live number on this site — price, TVL, transaction volume, balances — is computed directly from the XRP Ledger. We do not source any metric from third-party analytics APIs (Bithomp, xrpl.to, XPMarket, DefiLlama, etc.). Their products are good — but if we wrapped them for our data, we\'d just be a thinner version of their work. Account display labels are a separate concern (see "Reference labels" below) — there, XRPSCAN\'s public well-known list is one of several sources we layer onto on-ledger identifiers.') }}
   </p>
 
   <h3>{{ _('Live ledger data') }}</h3>
