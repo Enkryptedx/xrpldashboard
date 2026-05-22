@@ -213,7 +213,7 @@
             <span class="v">{{ l.validator_count }}</span>
           </div>
           <div class="row">
-            <span class="k">{{ _('Sequence') }}</span>
+            <span class="k">{{ _('Manifest sequence') }}</span>
             <span class="v">{{ l.sequence }}</span>
           </div>
           <div class="row">
@@ -246,6 +246,10 @@
     {% endfor %}
   </div>
 
+  <p class="dim" style="font-size: 0.85rem; margin-top: 8px;">
+    {{ _('Manifest sequence note: Ripple publishes a small monotonic counter; the Foundation encodes the publish date as YYYYMMDDNN. Both are valid — XRPL accepts any strictly increasing integer per validator key.') }}
+  </p>
+
   {% if state.overlap %}
     <h2>{{ _('Validator overlap') }}</h2>
     <p class="dim" style="font-size: 0.92rem;">
@@ -276,7 +280,7 @@
 
         {# Ripple-only #}
         <text x="115" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="26" font-weight="700" text-anchor="middle">{{ v.ripple_only }}</text>
-        <text x="115" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('only here') }}</text>
+        <text x="115" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('Ripple-only') }}</text>
 
         {# Both #}
         <text x="230" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="32" font-weight="700" text-anchor="middle">{{ v.both }}</text>
@@ -284,7 +288,7 @@
 
         {# Foundation-only #}
         <text x="345" y="120" fill="#e6e9f2" font-family="ui-monospace, monospace" font-size="26" font-weight="700" text-anchor="middle">{{ v.xrplf_only }}</text>
-        <text x="345" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('only here') }}</text>
+        <text x="345" y="140" fill="#8090b0" font-family="-apple-system, sans-serif" font-size="11" text-anchor="middle">{{ _('Foundation-only') }}</text>
       </svg>
       <div class="venn-legend">
         <span class="item"><span class="swatch r"></span>{{ _('Ripple-only') }}: <span class="num">{{ v.ripple_only }}</span></span>
