@@ -15,6 +15,8 @@ import threading
 import time
 from datetime import datetime, timezone
 
+import db
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
@@ -207,18 +209,30 @@ def fetch_token_data(currency, issuer):
         labeled = False
         source_url = None
 
-    # 2. Trade history
+    # 2. Trade history. Prefer Postgres (Render reads here — volumes.db
+    # is gitignored, so the SQLite path returns all-zero in prod and the
+    # detail page lied about activity that /tokens correctly surfaced).
+    # Fall back to the local SQLite file when Postgres isn't configured
+    # (dev) or errors out.
     history = {
         "trades_all": 0, "volume_all_xrp": 0.0, "hours_active": 0,
         "first_bucket": None, "last_bucket": None,
         "trades_24h": 0, "trades_7d": 0,
         "sparkline": [0] * SPARKLINE_HOURS,
     }
-    if os.path.exists(VOLUMES_DB_PATH):
+    history_source = None
+    if db.pg_available():
+        try:
+            history = db.read_token_history(currency, issuer, SPARKLINE_HOURS)
+            history_source = "postgres"
+        except Exception:
+            history_source = None
+    if history_source is None and os.path.exists(VOLUMES_DB_PATH):
         try:
             conn = sqlite3.connect(f"file:{VOLUMES_DB_PATH}?mode=ro", uri=True)
             try:
                 history = _trade_history(conn, currency, issuer)
+                history_source = "sqlite"
             finally:
                 conn.close()
         except sqlite3.Error:
@@ -248,6 +262,7 @@ def fetch_token_data(currency, issuer):
         "sparkline_hours": SPARKLINE_HOURS,
         "pools": pools,
         "pool_count": len(pools),
+        "history_source": history_source,
     }
 
 

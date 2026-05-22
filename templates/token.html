@@ -356,7 +356,12 @@
   </div>
 
   <footer>
-    {{ _('Token detail · counts from') }} <code style="color: var(--cyan);">volumes.db</code>,
+    {{ _('Token detail · counts from') }}
+    {% if data.history_source == 'postgres' %}
+      <code style="color: var(--cyan);">token_volume</code> ({{ _('Postgres mirror') }}),
+    {% else %}
+      <code style="color: var(--cyan);">volumes.db</code>,
+    {% endif %}
     {{ _('pool list from') }} <code style="color: var(--cyan);">amm_index.json</code>.
     {% if data.cached_age_seconds is defined %}{{ _('cached') }} {{ "%.0f"|format(data.cached_age_seconds) }}{{ _('s ago.') }}{% endif %}
     <br><br>

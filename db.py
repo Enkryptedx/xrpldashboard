@@ -1439,6 +1439,63 @@ def read_token_volume_aggregates(hours_back=None, limit=50):
             return cur.fetchall()
 
 
+def read_token_history(currency, issuer, spark_hours=168):
+    """Per-token trade history for /token/<cur>/<iss>. Mirrors the
+    SQLite path in token_data._trade_history so the detail page renders
+    real numbers on Render (where volumes.db is gitignored). Returns
+    dict with totals, 24h/7d counts, first/last buckets, and an
+    hourly sparkline aligned to now_hour."""
+    now_hour = int(time.time() // 3600)
+    cutoff_24h = now_hour - 24
+    cutoff_7d = now_hour - 24 * 7
+    cutoff_spark = now_hour - spark_hours
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(SUM(trade_count), 0), "
+                "       COALESCE(SUM(volume_xrp), 0), "
+                "       COUNT(*), MIN(hour_bucket), MAX(hour_bucket) "
+                "FROM token_volume WHERE currency = %s AND issuer = %s",
+                (currency, issuer),
+            )
+            row_all = cur.fetchone() or (0, 0, 0, None, None)
+            trades_all, volume_all, hours_active, first_b, last_b = row_all
+
+            cur.execute(
+                "SELECT COALESCE(SUM(trade_count), 0) FROM token_volume "
+                "WHERE currency = %s AND issuer = %s AND hour_bucket >= %s",
+                (currency, issuer, cutoff_24h),
+            )
+            trades_24h = (cur.fetchone() or (0,))[0]
+
+            cur.execute(
+                "SELECT COALESCE(SUM(trade_count), 0) FROM token_volume "
+                "WHERE currency = %s AND issuer = %s AND hour_bucket >= %s",
+                (currency, issuer, cutoff_7d),
+            )
+            trades_7d = (cur.fetchone() or (0,))[0]
+
+            cur.execute(
+                "SELECT hour_bucket, trade_count FROM token_volume "
+                "WHERE currency = %s AND issuer = %s AND hour_bucket >= %s "
+                "ORDER BY hour_bucket ASC",
+                (currency, issuer, cutoff_spark),
+            )
+            by_hour = {b: c for (b, c) in cur.fetchall()}
+
+    sparkline = [by_hour.get(cutoff_spark + 1 + i, 0) for i in range(spark_hours)]
+    return {
+        "trades_all": int(trades_all or 0),
+        "volume_all_xrp": float(volume_all or 0),
+        "hours_active": int(hours_active or 0),
+        "first_bucket": first_b,
+        "last_bucket": last_b,
+        "trades_24h": int(trades_24h or 0),
+        "trades_7d": int(trades_7d or 0),
+        "sparkline": sparkline,
+    }
+
+
 def read_token_volume_bucket_stats():
     """Return (min_bucket, max_bucket, distinct_buckets) — same shape as
     the SQLite stats query in app.tokens. Used for the latest-bucket
