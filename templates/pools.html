@@ -494,9 +494,9 @@
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ non_xrp_pair_count_all }}" data-countup-decimals="0">{{ "{:,}".format(non_xrp_pair_count_all) }}</div>
-        <div class="l">{{ _('non-XRP paired') }}{{ explainer(
+        <div class="l">{{ _('token-token pairs') }}{{ explainer(
           "tvl-non-xrp",
-          _("What 'non-XRP paired' means"),
+          _("What 'token-token pairs' means"),
           _("Pools where neither side is XRP — for example, RLUSD/USDC. We track and rank them, but we don't add them to the headline TVL because pricing them in dollars without an XRP leg means guessing. Count is shown here for transparency; their value isn't included in the $ figure above."),
         ) }}</div>
       </div>
@@ -594,8 +594,8 @@
 
   <h2>{{ _('Browse all') }} <span class="sub">{{ _('search &amp; filter') }}</span></h2>
   <div class="browse-meta">
-    <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> {{ _('pools tracked · top 100 shown by default') }}{% if rank_in_progress %} · {{ _('ranking in progress') }}{% endif %}</span>
-    <span>{{ _('Most XRPL pools have negligible TVL. The bottom ~27,000 sit at near-zero — many are non-XRP pairs we can\'t price honestly. Browse all if you want to confirm the long-tail shape.') }} ({{ ranked_count }} {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %})</span>
+    <span><span class="pulse-dot"></span><span class="big">{{ "{:,}".format(indexed_count) }}</span> {{ _('indexed') }} · <span class="big">{{ "{:,}".format(ranked_count) }}</span> {{ _('ranked') }}{% if not rank_finished %} {{ _('so far') }}{% endif %} · {{ _('top 100 shown by default') }}{% if rank_in_progress %} · {{ _('ranking in progress') }}{% endif %}</span>
+    <span>{{ _('Most XRPL pools have negligible TVL. The bottom ~27,000 sit at near-zero — many are token-token pairs we can\'t price honestly. Browse all if you want to confirm the long-tail shape.') }}</span>
   </div>
   <div class="search-bar">
     <input type="search" id="pool-search" placeholder="{{ _('Search pair (e.g. USDC, RLUSD, SOLO)…') }}" autocomplete="off" spellcheck="false" />
@@ -629,7 +629,7 @@
       <div class="tvl{% if p.tvl_status not in ('exact','estimated') %} is-{{ p.tvl_status }}{% endif %}">
         {% if p.tvl_usd is not none %}{% if p.tvl_status == 'estimated' %}≈ {% endif %}{{ fmt_money(p.tvl_usd) }}{% else %}—{% endif %}
         {% if p.tvl_status not in ('exact', 'estimated') %}
-        <span class="status status-{{ p.tvl_status }}">{{ p.tvl_status|replace("_"," ") }}</span>
+        <span class="status status-{{ p.tvl_status }}">{% if p.tvl_status == 'non_xrp_pair' %}{{ _('token-token pair') }}{% else %}{{ p.tvl_status|replace("_"," ") }}{% endif %}</span>
         {% endif %}
       </div>
     </div>
@@ -662,8 +662,8 @@
   <div class="callout">
     <p>
       <strong>{{ _('Why TVL has different statuses:') }}</strong> {{ _('XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) are tagged') }}
-      <span class="status-exact">{{ _('stablecoin-anchored') }}</span> — {{ _('the dollar value comes direct from the pegged side. XRP-paired pools without a fiat anchor are tagged') }} <span class="status-estimated">{{ _('estimated · 2× XRP') }}</span> — {{ _('twice the XRP-side value, deterministic because AMM curves balance 50/50. Token-token pools (no XRP side) are tagged') }}
-      <span class="status-non_xrp_pair">{{ _('non xrp pair') }}</span> {{ _('and sink to the bottom — we\'ll price them once a derived token price feed exists.') }}
+      <span class="status-exact">{{ _('stablecoin-anchored') }}</span> — {{ _('the dollar value comes direct from the pegged side. XRP-paired pools without a fiat anchor are tagged') }} <span class="status-estimated">{{ _('estimated · 2× XRP') }}</span> — {{ _('twice the XRP-side value, deterministic because AMM curves balance 50/50. Pools with no XRP side are tagged') }}
+      <span class="status-non_xrp_pair">{{ _('token-token pair') }}</span> {{ _('and sink to the bottom — we\'ll price them once a derived token price feed exists.') }}
     </p>
     <p>
       <strong>{{ _('Catalog is still expanding.') }}</strong> {{ _('A bootstrap scan walks the ledger by object ID, so the indexed list grows as the scan progresses. The') }} {{ "{:,}".format(indexed_count) }} {{ _('you see above is the current count — it goes up over time, not down.') }}
