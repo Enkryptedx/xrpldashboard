@@ -290,7 +290,7 @@
      numbers — this line makes the role boundary visible so adjacent counts
      don't read as a self-contradiction. #}
   <div class="stats-role">
-    {% trans tier=tier_label %}Results in this view ({{ tier }}, all-time){% endtrans %}
+    {% trans total="{:,}".format(type_counts._total), tier=tier_label, shown=events|length %}{{ total }} total events {{ tier }} · showing {{ shown }} most recent{% endtrans %}
   </div>
   <div class="stats">
     <a class="stat vibes-spot {% if not filter_type %}active{% endif %}"
@@ -311,7 +311,7 @@
     <a class="stat vibes-spot {% if filter_type == 'trustset' %}active{% endif %}"
        href="/whales?tier={{ tier }}&amp;type=trustset">
       <div class="n">{{ "{:,}".format(type_counts.trustset) }}</div>
-      <div class="l">{{ _('trustlines') }}</div>
+      <div class="l">{% if type_counts.trustset == 0 %}{{ _('no recent trustlines from watchlist') }}{% else %}{{ _('trustlines') }}{% endif %}</div>
     </a>
     <div class="stat vibes-spot">
       <div class="n">{{ "{:,}".format(named_accounts_count) }}</div>
