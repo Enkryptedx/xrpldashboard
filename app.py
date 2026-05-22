@@ -1387,6 +1387,26 @@ def _short_addr(addr):
     return f"{addr[:6]}…{addr[-4:]}" if len(addr) > 14 else addr
 
 
+def _disambiguate_labels(parties):
+    """Given [(label, addr), ...], append a 6-char address tail to any
+    label that appears more than once in the row — so Binance → Binance
+    (hot → cold) reads as Binance · …xxxxxx → Binance · …yyyyyy instead
+    of an apparent self-send. Generalizes to any N-party row. Returns
+    the adjusted label list in input order; unlabeled entries pass
+    through untouched."""
+    counts = {}
+    for lbl, _addr in parties:
+        if lbl:
+            counts[lbl] = counts.get(lbl, 0) + 1
+    out = []
+    for lbl, addr in parties:
+        if lbl and counts.get(lbl, 0) > 1 and addr and len(addr) >= 6:
+            out.append(f"{lbl} · …{addr[-6:]}")
+        else:
+            out.append(lbl)
+    return out
+
+
 def _decode_currency_hex(hex_str):
     """XRPL non-standard currencies are 40-char hex with NUL padding.
     If the bytes are printable ASCII, render that; otherwise return None
@@ -1493,6 +1513,13 @@ def _resolve_event(row, named_accounts, token_names):
         "trustset":   "trustline",
     }
 
+    from_label_raw = _label(from_addr)
+    to_label_raw = _label(to_addr)
+    from_label, to_label = _disambiguate_labels([
+        (from_label_raw, from_addr),
+        (to_label_raw, to_addr),
+    ])
+
     return {
         "tx_hash": tx_hash,
         "tx_hash_short": (tx_hash[:10] + "…") if tx_hash else "?",
@@ -1502,11 +1529,11 @@ def _resolve_event(row, named_accounts, token_names):
         "type_display": type_labels.get(etype, etype),
         "from_addr": from_addr,
         "from_addr_short": _short_addr(from_addr),
-        "from_label": _label(from_addr),
+        "from_label": from_label,
         "from_attested_domain": _attested_domain(from_addr),
         "to_addr": to_addr,
         "to_addr_short": _short_addr(to_addr),
-        "to_label": _label(to_addr),
+        "to_label": to_label,
         "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
         "xrpscan_url": f"https://xrpscan.com/tx/{tx_hash}" if tx_hash else None,
