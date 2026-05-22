@@ -38,10 +38,15 @@ def _load_json_safe(path):
 
 
 _TOKENS_RAW = _load_json_safe(TOKEN_NAMES_PATH) or {}
+# TODO_curation_pass entries are gated per TOKEN_NAMES.md ("never publish
+# a name we can't back to a first-party source"). The /tokens list route
+# already applies this filter in _load_token_names_dict; mirror it here
+# so the detail page can't publish labels the list page is suppressing.
 _TOKEN_BY_KEY = {
     (v.get("currency_hex"), v.get("issuer")): v
     for v in _TOKENS_RAW.values()
     if isinstance(v, dict)
+    and v.get("verified_via") != "TODO_curation_pass"
 }
 
 
