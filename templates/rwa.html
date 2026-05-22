@@ -82,6 +82,8 @@
                letter-spacing: -0.01em; }
     .agg-small { font-size: 0.7rem; color: var(--dim); text-transform: uppercase;
                  letter-spacing: 0.08em; }
+    .agg-sub { font-size: 0.68rem; color: var(--muted); font-family: var(--mono);
+               letter-spacing: 0; margin-top: 2px; }
     @media (max-width: 640px) {
       .agg-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -207,8 +209,9 @@
 
   <div class="agg-strip">
     <div class="agg-stat">
-      <span class="agg-big">{{ total_family_count }}</span>
+      <span class="agg-big">{{ total_family_count + mpt_attested|length }}</span>
       <span class="agg-small">{{ _('verified families') }}</span>
+      <span class="agg-sub">{{ total_family_count }} {{ _('AMM-verified') }} · {{ mpt_attested|length }} {{ _('MPT-attested') }}</span>
     </div>
     <div class="agg-stat">
       <span class="agg-big">{{ total_pool_count }}</span>
