@@ -482,15 +482,15 @@
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
-        <div class="l">{{ _('exact-priced pools') }}{{ explainer(
+        <div class="l">{{ _('stablecoin-anchored') }}{{ explainer(
           "tvl-exact",
-          _("Exact vs estimated pricing"),
-          _("This is a count of pools — not a dollar amount. \"Exact-priced\" pools are ones where we can convert their value to dollars without guessing (because one side is XRP or a dollar-pegged stablecoin). \"Estimated\" pools needed a derived token price from somewhere else on the ledger — roughly right, but a ballpark."),
+          _("Why stablecoin-anchored vs estimated"),
+          _("This is a count of pools — not a dollar amount. Stablecoin-anchored pools have a USD-pegged token on one side, so the dollar value comes direct from that side. Estimated pools are XRP-paired without a fiat anchor — dollar value is the XRP side × 2, which is deterministic because AMM pools balance 50/50, just without an external dollar peg."),
         ) }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
-        <div class="l">{{ _('estimated pools') }}</div>
+        <div class="l">{{ _('estimated · 2× XRP') }}</div>
       </div>
       <div class="stat vibes-spot">
         <div class="n" data-countup="{{ non_xrp_pair_count_all }}" data-countup-decimals="0">{{ "{:,}".format(non_xrp_pair_count_all) }}</div>
@@ -661,9 +661,8 @@
 
   <div class="callout">
     <p>
-      <strong>{{ _('Why TVL has different statuses:') }}</strong> {{ _('XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) get an') }}
-      <span class="status-exact">{{ _('exact') }}</span> {{ _('TVL. XRP-paired pools whose token has no peg get an') }} <span class="status-estimated">{{ _('estimated') }}</span>
-      {{ _('TVL — 2× the XRP-side value, since AMM curves balance 50/50. Token-token pools (no XRP side) are tagged') }}
+      <strong>{{ _('Why TVL has different statuses:') }}</strong> {{ _('XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) are tagged') }}
+      <span class="status-exact">{{ _('stablecoin-anchored') }}</span> — {{ _('the dollar value comes direct from the pegged side. XRP-paired pools without a fiat anchor are tagged') }} <span class="status-estimated">{{ _('estimated · 2× XRP') }}</span> — {{ _('twice the XRP-side value, deterministic because AMM curves balance 50/50. Token-token pools (no XRP side) are tagged') }}
       <span class="status-non_xrp_pair">{{ _('non xrp pair') }}</span> {{ _('and sink to the bottom — we\'ll price them once a derived token price feed exists.') }}
     </p>
     <p>
