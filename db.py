@@ -1628,23 +1628,26 @@ def count_table(table):
 # file leak probes, PHP fingerprinting. We're not WordPress and not PHP, so
 # any hit on these is bot noise, not a real user. SQL LIKE patterns.
 BOT_PATH_PATTERNS = (
-    "/.env%",
-    "/wp-login.php",
-    "/wp-admin%",
-    "/wp-includes%",
-    "/wp-content%",
-    "/wordpress%",
+    "%/.env%",
+    "%wp-login%",
+    "%wp-admin%",
+    "%wp-includes%",
+    "%wp-content%",
+    "%wordpress%",
+    "%wlwmanifest%",
     "%.php",
     "%.php?%",
-    "/phpmyadmin%",
-    "/.git%",
-    "/.aws%",
-    "/.ssh%",
-    "/cgi-bin%",
-    "/admin.php",
-    "/config.json",
-    "/backup%",
-    "/dump.sql",
+    "%phpmyadmin%",
+    "%/.git%",
+    "%/.aws%",
+    "%/.ssh%",
+    "%cgi-bin%",
+    "%admin.php",
+    "%config.json",
+    # NOTE: %backup% means any future route containing "backup" in its
+    # path will be mis-bucketed as bot traffic. Avoid that substring.
+    "%backup%",
+    "%dump.sql",
 )
 
 
