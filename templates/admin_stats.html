@@ -226,6 +226,32 @@
         </div>
         {% else %}<div class="empty">no external referrers in the last 7 days</div>{% endif %}
       </div>
+
+      <div class="panel">
+        <h2>UTM-attributed landings · 7 days</h2>
+        {% if utm_landings_7d %}
+        <table>
+          <tr><th>utm_source</th><th class="num">landings</th></tr>
+          {% for src, hits in utm_landings_7d %}
+          <tr>
+            <td class="path">{{ src }}</td>
+            <td class="num">{{ "{:,}".format(hits) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        <div class="sub" style="margin-top: 10px;">
+          Fresh attributions from UTM-tagged inbound links. Grows as
+          outbound links are tagged with <code>?utm_source=…</code>.
+        </div>
+        {% else %}
+        <div class="empty">no UTM-attributed landings in the last 7 days yet</div>
+        <div class="sub" style="margin-top: 10px;">
+          Will populate as outbound links get tagged with
+          <code>?utm_source=…</code>. Surfaces fresh attributions that
+          survive when the Referer header doesn't.
+        </div>
+        {% endif %}
+      </div>
     </div>
 
     <h1 style="margin-top: 36px;">bot probes

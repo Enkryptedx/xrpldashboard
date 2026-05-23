@@ -519,12 +519,15 @@ def _log_page_view():
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
             or request.headers.get("X-Country-Code")
+        utm = request.args.get("utm_source")
+        utm = utm[:100] if utm else None
         db.log_page_view(
             path=path[:300],
             visitor_hash=_visitor_hash(ip, ua),
             referrer=ref,
             user_agent=ua,
             country=country,
+            utm_source=utm,
         )
     except Exception:
         # Logging must never break a page render.
@@ -3832,6 +3835,7 @@ def analytics():
                                               kind="human")
 
     external_refs_7d = db.read_external_referrers(7 * 24 * 60 * 60, limit=15)
+    utm_landings_7d = db.read_utm_landings(7 * 24 * 60 * 60, limit=15)
 
     bot_rollups = db.read_page_view_stats(kind="bot")
     bot_top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="bot")
@@ -3857,6 +3861,7 @@ def analytics():
         top_7d=top_7d,
         countries_24h=countries_24h,
         external_refs_7d=external_refs_7d,
+        utm_landings_7d=utm_landings_7d,
         bot_rollups=bot_rollups,
         bot_top_24h=bot_top_24h,
         bot_countries_24h=bot_countries_24h,

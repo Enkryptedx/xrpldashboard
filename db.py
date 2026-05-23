@@ -133,8 +133,10 @@ CREATE TABLE IF NOT EXISTS page_views (
     visitor_hash  TEXT,
     referrer      TEXT,
     user_agent    TEXT,
-    country       TEXT
+    country       TEXT,
+    utm_source    TEXT
 );
+ALTER TABLE page_views ADD COLUMN IF NOT EXISTS utm_source TEXT;
 CREATE INDEX IF NOT EXISTS page_views_ts_idx ON page_views (ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
     ON page_views (path, ts DESC);
@@ -1664,7 +1666,7 @@ def _bot_filter_sql(kind):
 
 
 def log_page_view(path, visitor_hash=None, referrer=None,
-                  user_agent=None, country=None):
+                  user_agent=None, country=None, utm_source=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
     eat connection-setup latency on every request."""
@@ -1675,10 +1677,11 @@ def log_page_view(path, visitor_hash=None, referrer=None,
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO page_views "
-                "(ts, path, visitor_hash, referrer, user_agent, country) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
+                "(ts, path, visitor_hash, referrer, user_agent, country, "
+                " utm_source) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
-                 referrer, user_agent, country),
+                 referrer, user_agent, country, utm_source),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)
@@ -1772,6 +1775,30 @@ def read_recent_page_views(limit=100):
                     }
                     for r in cur.fetchall()
                 ]
+    except Exception:
+        return []
+
+
+def read_utm_landings(window_seconds, limit=15):
+    """Top utm_source values over the trailing window. Counts inbound
+    landings carrying a ?utm_source=... query param. Returns list of
+    (utm_source, hits). Empty until UTM-tagged outbound links exist."""
+    if not pg_available():
+        return []
+    cutoff = int(time.time()) - int(window_seconds)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT utm_source, COUNT(*) AS hits "
+                    "FROM page_views "
+                    "WHERE ts >= %s "
+                    "  AND utm_source IS NOT NULL AND utm_source != '' "
+                    "GROUP BY utm_source "
+                    "ORDER BY hits DESC LIMIT %s",
+                    [cutoff, limit],
+                )
+                return [(r[0], int(r[1])) for r in cur.fetchall()]
     except Exception:
         return []
 
