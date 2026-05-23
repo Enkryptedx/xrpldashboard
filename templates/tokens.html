@@ -344,7 +344,11 @@
       source="counts pulled from <code>volumes.db</code>"
     ) }}</h1>
     <p class="lede">
-      {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw. Token names are hand-curated where available — see') }} <a href="/about">{{ _('about') }}</a> {{ _('for sourcing.') }}
+      {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw.') }}
+    </p>
+    <p class="lede labeling-note">
+      {{ _("Most XRPL tokens don't publish issuer attestation — those appear as UNNAMED here. We only label tokens with cryptographic verification.") }}
+      <a href="/methodology">{{ _('How we verify →') }}</a>
     </p>
     <p class="lede coverage-note">
       {{ _('Liquidity and volume figures reflect AMM activity only. Order-book DEX trading isn\'t included yet.') }}
