@@ -1743,6 +1743,26 @@ def log_page_view(path, visitor_hash=None, referrer=None,
         _drop_writer_conn()
 
 
+# TEMPORARY (Safari 18.1 source identification). Drop this function
+# AND the safari18_probe table together when investigation completes.
+def log_safari18_probe(ip, path, user_agent):
+    """Side-capture for the 22s-cadence Safari 18.1 anomaly. Never raises.
+    Independent writer call so a failure here cannot affect page_views."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO safari18_probe (ts, ip, path, user_agent) "
+                "VALUES (%s, %s, %s, %s)",
+                (int(time.time()), ip or "", path, user_agent),
+            )
+    except Exception as e:
+        _log_err("log_safari18_probe_failed", e)
+        _drop_writer_conn()
+
+
 def read_page_view_stats(kind="human"):
     """Return rollup counts at common windows for /admin/stats. Each value
     is a dict with `views` (raw row count) and `uniques` (distinct

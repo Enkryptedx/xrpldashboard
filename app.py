@@ -529,6 +529,19 @@ def _log_page_view():
             country=country,
             utm_source=utm,
         )
+        # TEMPORARY: capture real client IP for the Safari/18.1 anomaly
+        # investigation (22s-cadence polling, 70% of post-filter human
+        # bucket). Uses cf-connecting-ip — Cloudflare passes the true
+        # client IP; remote_addr would only show CF's edge. Side write,
+        # independent try/except — failure here cannot affect page_views.
+        # Revert this block + drop safari18_probe table after source is
+        # identified.
+        try:
+            if ua and "Version/18.1" in ua and "Safari" in ua:
+                cf_ip = request.headers.get("CF-Connecting-IP") or ip
+                db.log_safari18_probe(cf_ip, path[:300], ua[:200])
+        except Exception:
+            pass
     except Exception:
         # Logging must never break a page render.
         pass
