@@ -254,6 +254,64 @@
       </div>
     </div>
 
+    <div class="row">
+      <div class="panel">
+        <h2>Outbound clicks · /institutional contact</h2>
+        <table>
+          <tr><th>window</th><th class="num">clicks</th><th class="num">unique visitors</th></tr>
+          <tr>
+            <td>last hour</td>
+            <td class="num">{{ "{:,}".format(cta_stats.hour.clicks) }}</td>
+            <td class="num">{{ "{:,}".format(cta_stats.hour.uniques) }}</td>
+          </tr>
+          <tr>
+            <td>last 24h</td>
+            <td class="num">{{ "{:,}".format(cta_stats.today.clicks) }}</td>
+            <td class="num">{{ "{:,}".format(cta_stats.today.uniques) }}</td>
+          </tr>
+          <tr>
+            <td>last 7d</td>
+            <td class="num">{{ "{:,}".format(cta_stats.week.clicks) }}</td>
+            <td class="num">{{ "{:,}".format(cta_stats.week.uniques) }}</td>
+          </tr>
+          <tr>
+            <td>all time</td>
+            <td class="num">{{ "{:,}".format(cta_stats.all_time.clicks) }}</td>
+            <td class="num">{{ "{:,}".format(cta_stats.all_time.uniques) }}</td>
+          </tr>
+        </table>
+        <div class="sub" style="margin-top: 10px;">
+          Tracks clicks on the /institutional contact link. Server-side
+          capture via <code>/click/*</code> — survives ad blockers, privacy
+          modes, and JS-disabled browsers. Logged before the 302 redirect,
+          so intent-to-contact is captured even if the user closes the
+          compose window.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Recent outbound clicks</h2>
+        {% if cta_recent %}
+        <div class="feed">
+          {% for r in cta_recent %}
+          <div class="row-line">
+            <div class="age">{{ r.age }}</div>
+            <div class="pth">{{ r.ref_param }}</div>
+            <div class="ctry">{{ r.country }}</div>
+            <div class="ua">{{ r.ua_short }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="empty">no outbound clicks recorded yet</div>{% endif %}
+        <div class="sub" style="margin-top: 10px;">
+          <code>ref</code> is the optional <code>?ref=channel</code> tag
+          on the inbound link — populates when an outbound link is
+          tagged. Channel attribution lives alongside the click itself,
+          not session-carried.
+        </div>
+      </div>
+    </div>
+
     <h1 style="margin-top: 36px;">bot probes
       <span class="pill warn">noise</span>
     </h1>

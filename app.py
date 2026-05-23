@@ -3837,6 +3837,10 @@ def analytics():
     external_refs_7d = db.read_external_referrers(7 * 24 * 60 * 60, limit=15)
     utm_landings_7d = db.read_utm_landings(7 * 24 * 60 * 60, limit=15)
 
+    cta_stats = db.read_cta_click_stats(cta_id="institutional-contact")
+    cta_recent_raw = db.read_recent_cta_clicks(limit=10,
+                                               cta_id="institutional-contact")
+
     bot_rollups = db.read_page_view_stats(kind="bot")
     bot_top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="bot")
     bot_countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
@@ -3854,6 +3858,16 @@ def analytics():
             "ua_short": _short_ua(r.get("user_agent")),
         })
 
+    cta_recent = [
+        {
+            "age": _humanize_seconds(now - r["ts"]),
+            "ref_param": r.get("ref_param") or "—",
+            "country": r.get("country") or "?",
+            "ua_short": _short_ua(r.get("user_agent")),
+        }
+        for r in cta_recent_raw
+    ]
+
     return render_template(
         "admin_stats.html",
         rollups=rollups,
@@ -3862,6 +3876,8 @@ def analytics():
         countries_24h=countries_24h,
         external_refs_7d=external_refs_7d,
         utm_landings_7d=utm_landings_7d,
+        cta_stats=cta_stats,
+        cta_recent=cta_recent,
         bot_rollups=bot_rollups,
         bot_top_24h=bot_top_24h,
         bot_countries_24h=bot_countries_24h,
