@@ -134,13 +134,13 @@
     .venn-legend .num { font-family: var(--mono); color: var(--text);
                         font-weight: 600; }
 
-    /* Explainer card */
-    .explainer {
+    /* Consensus explainer card */
+    .consensus-explainer {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 12px; padding: 18px 22px; margin: 12px 0 24px;
     }
-    .explainer h3 { font-size: 1rem; margin: 0 0 8px; color: var(--text); }
-    .explainer p:last-child { margin-bottom: 0; }
+    .consensus-explainer h3 { font-size: 1rem; margin: 0 0 8px; color: var(--text); }
+    .consensus-explainer p:last-child { margin-bottom: 0; }
 
     .truth-note {
       background: rgba(0,0,0,0.18); border-left: 3px solid var(--amber);
@@ -300,7 +300,7 @@
   {% endif %}
 
   <h2>{{ _('How XRPL kept consensus when one UNL went stale') }}</h2>
-  <div class="explainer">
+  <div class="consensus-explainer">
     <h3>{{ _('What a UNL is') }}</h3>
     <p>
       {{ _('A Unique Node List is the set of validators a single XRPL node chooses to trust. Consensus requires 80 percent agreement among the validators on the node\'s UNL — not across the whole network. Each operator configures their own UNL (or, more commonly, subscribes to one or more published lists).') }}
