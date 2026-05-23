@@ -210,7 +210,7 @@
       </div>
       {% if data.category == 'lp_token' and data.pool_pair_label %}
       <div class="hero-meta lp-clarifier">
-        {{ _('AMM LP token — represents a share of the %(pair)s pool. Holders earn fees from swaps in this pool.') % {'pair': data.pool_pair_label} }}
+        {{ _('AMM LP token — represents a share of the %(pair)s pool. Holders earn fees from swaps in this pool.', pair=data.pool_pair_label) }}
       </div>
       {% endif %}
       <div class="hero-meta">
