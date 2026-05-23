@@ -40,6 +40,20 @@ XRPL_EPOCH_OFFSET = 946684800
 # amendment at the first close after the window elapses.
 ACTIVATION_WINDOW_SECONDS = 14 * 24 * 3600
 
+# Amendments the responding node still reports as enabled=False but
+# which have been superseded by a later amendment that bundled their
+# effects (and IS enabled). The XRPL node `feature` API doesn't expose
+# an `obsolete` flag, so we maintain this list manually against the
+# canonical registry.
+#
+# Source of truth: https://xrpl.org/resources/known-amendments
+# When adding entries, verify the "Obsolete" status there before shipping.
+OBSOLETE_AMENDMENTS = {
+    "NonFungibleTokensV1",   # superseded by NonFungibleTokensV1_1
+    "fixNFTokenDirV1",        # effects bundled into NonFungibleTokensV1_1
+    "fixNFTokenNegOffer",     # effects bundled into NonFungibleTokensV1_1
+}
+
 # Hashes we can name from off-ledger sources even when the responding
 # node doesn't carry the definition (e.g. amendments merged to rippled
 # `develop` but not yet in a released binary). Each entry must cite a
@@ -98,17 +112,21 @@ def fetch_amendments_state():
 
     enabled = []
     in_flight = []
+    superseded = []
     for h, info in features.items():
         if not isinstance(info, dict):
             continue
         name = info.get("name")
         if info.get("enabled"):
             enabled.append({"hash": h, "name": name})
+        elif name in OBSOLETE_AMENDMENTS:
+            superseded.append({"hash": h, "name": name})
         elif info.get("supported"):
             in_flight.append({"hash": h, "name": name})
 
     enabled.sort(key=lambda x: (x["name"] or "").lower())
     in_flight.sort(key=lambda x: (x["name"] or "").lower())
+    superseded.sort(key=lambda x: (x["name"] or "").lower())
 
     majorities = []
     for entry in majorities_raw:
@@ -142,6 +160,8 @@ def fetch_amendments_state():
         "enabled_count": len(enabled),
         "in_flight": in_flight,
         "in_flight_count": len(in_flight),
+        "superseded": superseded,
+        "superseded_count": len(superseded),
         "majorities": majorities,
         "fetched_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
