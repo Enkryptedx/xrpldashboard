@@ -10,6 +10,11 @@ Part B (IOU TOML): iterates unlabeled IOU token issuers from token_volume,
   match, source="domain_fallback" when domain/TOML found but no matching
   currency block (issuer org name only).
 
+Part C (LP-token derivation): reads amm_index.json, computes the protocol-
+  deterministic LP token currency code for each AMM pool, writes entries
+  with source="lp_derived". Same trust tier as mpt_metadata — derived from
+  on-ledger AMM state via the canonical algorithm.
+
 Does NOT overwrite existing entries — safe to re-run without data loss.
 
 Usage:
@@ -17,12 +22,14 @@ Usage:
     python enrich_token_names.py --dry-run  # report only, no writes
     python enrich_token_names.py --part-a   # MPT only
     python enrich_token_names.py --part-b   # IOU TOML only
+    python enrich_token_names.py --part-c   # LP-token derivation only
     python enrich_token_names.py --limit 50 # cap IOU issuers checked (default 200)
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -35,10 +42,12 @@ from verify_toml_accounts import (
     log,
 )
 from xrpl.clients import JsonRpcClient
+from xrpl.core.addresscodec import decode_classic_address
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
 MPT_SNAPSHOT_PATH = os.path.join(HERE, "mpt_snapshot.json")
+AMM_INDEX_PATH = os.path.join(HERE, "amm_index.json")
 
 XRPL_RPC = os.environ.get("XRPL_RPC", "https://s1.ripple.com:51234")
 RPC_PAUSE = 0.12   # seconds between account_info calls
@@ -343,6 +352,183 @@ def enrich_iou_toml(names: dict, dry_run: bool, limit: int) -> int:
     return added
 
 
+# ─── Part C: LP-token derivation ─────────────────────────────────────────────
+
+# Reference: rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency
+# Note: xrpl.org docs say "currency codes and their issuers" but the actual
+# algorithm hashes only the 20-byte currency parts; the issuer is the
+# ordering key (full Issue = currency+account compared byte-wise), not hash
+# input. Spec text on xrpl.org is slightly inaccurate; rippled is canonical.
+
+LP_REFERENCE = "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+
+
+def _currency_to_bytes(cur: str) -> bytes:
+    """3-char ASCII -> 20-byte standard form (chars at positions 12-14).
+       40-char hex -> raw 20 bytes. 'XRP' -> 20 zero bytes."""
+    if cur == "XRP":
+        return b"\x00" * 20
+    if len(cur) == 3:
+        out = bytearray(20)
+        out[12:15] = cur.encode("ascii")
+        return bytes(out)
+    if len(cur) == 40:
+        return bytes.fromhex(cur)
+    raise ValueError(f"bad currency code: {cur!r}")
+
+
+def _issue_bytes(asset: dict) -> bytes:
+    """40-byte canonical Issue: currency(20) || account(20). XRP zero-pads both."""
+    cur = _currency_to_bytes(asset["currency"])
+    iss = asset.get("issuer")
+    if asset["currency"] == "XRP" or not iss:
+        acct = b"\x00" * 20
+    else:
+        acct = decode_classic_address(iss)
+    return cur + acct
+
+
+def derive_lp_currency(asset1: dict, asset2: dict) -> str:
+    """Compute the 40-char hex LP-token currency code for an AMM pool.
+
+    See LP_REFERENCE above for spec source."""
+    a, b = _issue_bytes(asset1), _issue_bytes(asset2)
+    lo, hi = (a, b) if a < b else (b, a)
+    # Hash only the 20-byte currency portions (positions 0-19 of each Issue)
+    h = hashlib.sha512(lo[:20] + hi[:20]).digest()[:32]  # sha512Half
+    return ("03" + h[:19].hex()).upper()
+
+
+def _decode_currency_label(cur: str) -> str:
+    """Render an XRPL currency code as a short human-presentable label.
+
+    - 'XRP' passes through.
+    - 3-char ASCII passes through.
+    - 40-char hex: try ASCII decode of the leading bytes (strip trailing zeros)
+      if printable, else fall back to first 6 hex chars + '…'."""
+    if cur == "XRP" or len(cur) == 3:
+        return cur
+    if len(cur) == 40:
+        try:
+            raw = bytes.fromhex(cur).rstrip(b"\x00")
+            if raw and all(32 <= b < 127 for b in raw):
+                return raw.decode("ascii")
+        except Exception:
+            pass
+        return cur[:6] + "…"
+    return cur
+
+
+def _shippable_side(asset: dict, names: dict) -> tuple[bool, str]:
+    """Strict truth-first gate: return (shippable, display) for one LP side.
+
+    XRP always shippable. Non-XRP must have a curated token_names.json entry
+    whose verified_via is NOT 'TODO_curation_pass' — labeling an LP token
+    implicitly endorses both component tokens, so we only ship LP labels when
+    each side has already passed the same verification gate."""
+    cur = asset.get("currency", "")
+    iss = asset.get("issuer", "")
+    if cur == "XRP":
+        return True, "XRP"
+    existing = names.get(f"{cur}:{iss}")
+    if not isinstance(existing, dict):
+        return False, ""
+    if existing.get("verified_via") == "TODO_curation_pass":
+        return False, ""
+    disp = (existing.get("currency_display") or "").strip()
+    return (bool(disp), disp or _decode_currency_label(cur))
+
+
+def enrich_lp_tokens(names: dict, dry_run: bool) -> int:
+    """Derive LP-token labels ONLY for pools where BOTH sides are
+    already-verified, shippable entries in token_names.json.
+
+    Strict-mode rationale: labeling an LP token transitively endorses both
+    component tokens. If either side is unverified or TODO-gated, the LP
+    label inherits that uncertainty and should not ship. derive_lp_currency
+    remains a public helper for on-demand computation of unverified pairs
+    without persistence."""
+    entries = _load(AMM_INDEX_PATH)
+    if not isinstance(entries, list) or not entries:
+        log("Part C: amm_index.json missing or empty — skipping")
+        return 0
+
+    added = 0
+    skipped_unverified = 0
+    skipped_existing = 0
+    skipped_malformed = 0
+
+    for pool in entries:
+        if not isinstance(pool, dict):
+            skipped_malformed += 1
+            continue
+        a1 = pool.get("Asset")
+        a2 = pool.get("Asset2")
+        amm_acct = pool.get("Account")
+        lp_balance = pool.get("LPTokenBalance") or {}
+        on_chain_lp_cur = (lp_balance.get("currency") or "").upper()
+
+        if not isinstance(a1, dict) or not isinstance(a2, dict) or not amm_acct:
+            skipped_malformed += 1
+            continue
+
+        ok1, side1 = _shippable_side(a1, names)
+        ok2, side2 = _shippable_side(a2, names)
+        if not (ok1 and ok2):
+            skipped_unverified += 1
+            continue
+
+        try:
+            lp_cur = derive_lp_currency(a1, a2)
+        except Exception as e:
+            log(f"  [lp] derive failed for {amm_acct}: {e}")
+            skipped_malformed += 1
+            continue
+
+        # Sanity gate: if amm_index recorded the on-chain LP currency and it
+        # disagrees with our derivation, refuse to write — surfaces protocol
+        # changes or upstream-data drift instead of silently shipping bad codes.
+        if on_chain_lp_cur and on_chain_lp_cur != lp_cur:
+            log(f"  [lp] WARN derivation mismatch {amm_acct}: "
+                f"computed={lp_cur} on_chain={on_chain_lp_cur} — skipped")
+            skipped_malformed += 1
+            continue
+
+        key = f"{lp_cur}:{amm_acct}"
+        if key in names:
+            skipped_existing += 1
+            continue
+
+        display = f"LP: {side1}/{side2}"
+
+        entry = {
+            "currency_hex":     lp_cur,
+            "currency_display": display,
+            "issuer":           amm_acct,
+            "source":           "lp_derived",
+            "verified_via":     "lp_derived",
+            "category":         "lp_token",
+            "asset_pair":       [
+                {"currency": a1.get("currency"), "issuer": a1.get("issuer")},
+                {"currency": a2.get("currency"), "issuer": a2.get("issuer")},
+            ],
+            "reference":        LP_REFERENCE,
+        }
+
+        if dry_run:
+            added += 1
+            log(f"  [lp/dry] {lp_cur[:10]}…:{amm_acct[:8]}… → {display}")
+        else:
+            if _insert(names, key, entry):
+                added += 1
+                log(f"  [lp] {lp_cur[:10]}…:{amm_acct[:8]}… → {display}")
+
+    log(f"Part C: scanned {len(entries)} pools — "
+        f"+{added} shippable, {skipped_unverified} unverified-side, "
+        f"{skipped_existing} already present, {skipped_malformed} malformed/mismatch")
+    return added
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -350,15 +536,18 @@ def main() -> None:
     ap.add_argument("--dry-run",  action="store_true")
     ap.add_argument("--part-a",   action="store_true", help="MPT metadata only")
     ap.add_argument("--part-b",   action="store_true", help="IOU TOML only")
+    ap.add_argument("--part-c",   action="store_true", help="LP-token derivation only")
     ap.add_argument("--limit",    type=int, default=200,
                     help="Max IOU issuers to check (default 200)")
     args = ap.parse_args()
 
-    run_a = args.part_a or (not args.part_a and not args.part_b)
-    run_b = args.part_b or (not args.part_a and not args.part_b)
+    any_explicit = args.part_a or args.part_b or args.part_c
+    run_a = args.part_a or not any_explicit
+    run_b = args.part_b or not any_explicit
+    run_c = args.part_c or not any_explicit
 
     log(f"enrich_token_names.py start "
-        f"(dry_run={args.dry_run} part_a={run_a} part_b={run_b} limit={args.limit})")
+        f"(dry_run={args.dry_run} part_a={run_a} part_b={run_b} part_c={run_c} limit={args.limit})")
 
     names = _load(TOKEN_NAMES_PATH)
     log(f"loaded {len(names)} existing entries from token_names.json")
@@ -373,6 +562,11 @@ def main() -> None:
     if run_b:
         n = enrich_iou_toml(names, dry_run=args.dry_run, limit=args.limit)
         log(f"Part B done: +{n} IOU TOML entries")
+        total += n
+
+    if run_c:
+        n = enrich_lp_tokens(names, dry_run=args.dry_run)
+        log(f"Part C done: +{n} LP-derived entries")
         total += n
 
     if not args.dry_run and total > 0:

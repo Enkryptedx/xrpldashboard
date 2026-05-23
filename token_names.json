@@ -1324,5 +1324,290 @@
     "domain": "xheronft.com",
     "verified_via": "https://xheronft.com/.well-known/xrp-ledger.toml",
     "currency_display": "XHO"
+  },
+  "03E08BBAEC715432B7181A8A166C0AA81FB5098D:rsUqtLEUi9Yu6V3wJHe1YsmsTxDCUT7o3C": {
+    "currency_hex": "03E08BBAEC715432B7181A8A166C0AA81FB5098D",
+    "currency_display": "LP: XRP/ZRP",
+    "issuer": "rsUqtLEUi9Yu6V3wJHe1YsmsTxDCUT7o3C",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "ZRP",
+        "issuer": "rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03B245BE580EC4F4386A751C084489EC4B514A2F:rhWTXC2m2gGGA9WozUaoMm6kLAVPb1tcS3": {
+    "currency_hex": "03B245BE580EC4F4386A751C084489EC4B514A2F",
+    "currency_display": "LP: XRP/RLUSD",
+    "issuer": "rhWTXC2m2gGGA9WozUaoMm6kLAVPb1tcS3",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "034C255445FD871C417966C404DF5C6526A20B4B:rURvga3Euq8WgzfMhbCSV98H6U1BV4SLon": {
+    "currency_hex": "034C255445FD871C417966C404DF5C6526A20B4B",
+    "currency_display": "LP: USD.Bitstamp/USDC",
+    "issuer": "rURvga3Euq8WgzfMhbCSV98H6U1BV4SLon",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      },
+      {
+        "currency": "5553444300000000000000000000000000000000",
+        "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "034317801B08500446BC533B718359BC014D6B37:rMEJo9H5XvTe17UoAJzj8jtKVvTRcxwngo": {
+    "currency_hex": "034317801B08500446BC533B718359BC014D6B37",
+    "currency_display": "LP: XRP/SOLO",
+    "issuer": "rMEJo9H5XvTe17UoAJzj8jtKVvTRcxwngo",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "534F4C4F00000000000000000000000000000000",
+        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03B20F3A7D26D33C6DA3503E5CCE3E67B102D4D2:rM7cHVPfhe9yxQNk2kDNBEQqoQmMcQGPWE": {
+    "currency_hex": "03B20F3A7D26D33C6DA3503E5CCE3E67B102D4D2",
+    "currency_display": "LP: XRP/USDC",
+    "issuer": "rM7cHVPfhe9yxQNk2kDNBEQqoQmMcQGPWE",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "5553444300000000000000000000000000000000",
+        "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03243C9023C4EBBD69BDF34D5A7A634D74EAE20B:rf2hwm9GA8gY1x2mH8Bbm2rfpUgusoMGps": {
+    "currency_hex": "03243C9023C4EBBD69BDF34D5A7A634D74EAE20B",
+    "currency_display": "LP: XRP/SOIL",
+    "issuer": "rf2hwm9GA8gY1x2mH8Bbm2rfpUgusoMGps",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "534F494C00000000000000000000000000000000",
+        "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "035E1B33A52AE59A9F19A85DEED3195FD7A11D0E:rQBeAghWHEwWvKShryBSa5yR3VRX9oyQ5T": {
+    "currency_hex": "035E1B33A52AE59A9F19A85DEED3195FD7A11D0E",
+    "currency_display": "LP: XRP/BTC.Bitstamp",
+    "issuer": "rQBeAghWHEwWvKShryBSa5yR3VRX9oyQ5T",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "BTC",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0307EF70D957F2C3768C45ABD1D4611CF0A7CA73:rBVrmZ4PCLh3DMSz7aKYnZY3eXCzXdSZCh": {
+    "currency_hex": "0307EF70D957F2C3768C45ABD1D4611CF0A7CA73",
+    "currency_display": "LP: XRP/mTBILL",
+    "issuer": "rBVrmZ4PCLh3DMSz7aKYnZY3eXCzXdSZCh",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "6D5442494C4C0000000000000000000000000000",
+        "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0395089DEF1B25CAC563FD4150F6411DCBBB8412:rMF6neGT9ua2qTL9TpLD1SCtBxzBCNuPdj": {
+    "currency_hex": "0395089DEF1B25CAC563FD4150F6411DCBBB8412",
+    "currency_display": "LP: USD.Bitstamp/SOLO",
+    "issuer": "rMF6neGT9ua2qTL9TpLD1SCtBxzBCNuPdj",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      },
+      {
+        "currency": "534F4C4F00000000000000000000000000000000",
+        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03BDD17B763B150160B58015220E95388D3FE16F:rQEgfa7o3tETb1YW59escuiqJn8X3fNof1": {
+    "currency_hex": "03BDD17B763B150160B58015220E95388D3FE16F",
+    "currency_display": "LP: XRP/XHO",
+    "issuer": "rQEgfa7o3tETb1YW59escuiqJn8X3fNof1",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "XHO",
+        "issuer": "r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03E489E07B649D5A255991C7ABA3296364D77EEE:raifzAfZNqZoRjPverdoPXPaRGn1ijawod": {
+    "currency_hex": "03E489E07B649D5A255991C7ABA3296364D77EEE",
+    "currency_display": "LP: RLUSD/SOLO",
+    "issuer": "raifzAfZNqZoRjPverdoPXPaRGn1ijawod",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      },
+      {
+        "currency": "534F4C4F00000000000000000000000000000000",
+        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "030031C4FE98AE3726134F68E3D2F5515804EB4E:rB3bK9PnHueTTabMVHedKuBzG5RSFYAUEH": {
+    "currency_hex": "030031C4FE98AE3726134F68E3D2F5515804EB4E",
+    "currency_display": "LP: USD.Bitstamp/RLUSD",
+    "issuer": "rB3bK9PnHueTTabMVHedKuBzG5RSFYAUEH",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      },
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "039D71C7B284887F530C7F2E9D448A069E2E6BD3:rQBFp6Mjxca7kKU4DptrQGZ82AeS5CoPUg": {
+    "currency_hex": "039D71C7B284887F530C7F2E9D448A069E2E6BD3",
+    "currency_display": "LP: SOLO/USDC",
+    "issuer": "rQBFp6Mjxca7kKU4DptrQGZ82AeS5CoPUg",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "534F4C4F00000000000000000000000000000000",
+        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz"
+      },
+      {
+        "currency": "5553444300000000000000000000000000000000",
+        "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03930D02208264E2E40EC1B0C09E4DB96EE197B1:rHUpaqUPbwzKZdzQ8ZQCme18FrgW9pB4am": {
+    "currency_hex": "03930D02208264E2E40EC1B0C09E4DB96EE197B1",
+    "currency_display": "LP: XRP/USD.Bitstamp",
+    "issuer": "rHUpaqUPbwzKZdzQ8ZQCme18FrgW9pB4am",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03F20B853FF03B7648B755D6F942165CCBDA3FCA:rfWfhoLj3LiaBpoxus3h7pEF8jXDMtyGqb": {
+    "currency_hex": "03F20B853FF03B7648B755D6F942165CCBDA3FCA",
+    "currency_display": "LP: RLUSD/USDC",
+    "issuer": "rfWfhoLj3LiaBpoxus3h7pEF8jXDMtyGqb",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      },
+      {
+        "currency": "5553444300000000000000000000000000000000",
+        "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
   }
 }

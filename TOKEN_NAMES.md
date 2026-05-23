@@ -46,6 +46,44 @@ If a label is later disputed and we can't re-verify, **remove it**
 pending re-verification. Brand survives "we removed a label" much
 better than "we got it wrong."
 
+## Verified source tiers
+
+Each non-TODO entry has a `source` field naming the verification tier:
+
+| `source`           | Trust origin                                                                |
+|--------------------|------------------------------------------------------------------------------|
+| `mpt_metadata`     | XLS-89 on-ledger MPT name/ticker fields. Protocol-deterministic.            |
+| `toml`             | Issuer's `xrp-ledger.toml` `[[CURRENCIES]]` block; on-chain `Domain` field. |
+| `domain_fallback`  | Issuer publishes a TOML with org name but no matching currency block.       |
+| `lp_derived`       | LP-token currency derived from a verified AMM asset pair (see below).       |
+
+### `lp_derived` — LP-token labels
+
+LP-token currency codes are protocol-deterministic: rippled computes them
+from the AMM's asset pair via SHA512Half. The derivation is the canonical
+algorithm in `src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency`:
+
+1. Canonical order: `minmax(Asset1, Asset2)` over the full Issue
+   (currency+account compared byte-wise).
+2. Hash: `SHA512Half(currency_lo || currency_hi)` — only the 20-byte
+   currency parts are hashed. The issuer is the ordering key, not hash input.
+3. LP currency = `0x03` || first 19 bytes of the hash.
+
+> **Spec nuance**: The xrpl.org docs phrase the inputs as "the two assets'
+> currency codes **and their issuers**." The rippled source is canonical;
+> the issuer participates only in canonical ordering, not in the hash. Trust
+> rippled, not the docs page.
+
+We ship `lp_derived` labels only when **both underlying tokens are already
+verified** (any non-TODO source above). Labeling an LP transitively endorses
+both component tokens, so each side must pass the same gate. The
+`derive_lp_currency` helper in `enrich_token_names.py` is available for
+on-demand computation of unverified pairs without persistence.
+
+Coverage expands automatically as more underlying tokens are curated: every
+verified issuer cascades into the LP labels it appears in, no code change
+required.
+
 ## How to contribute
 
 1. Fork the repo.
