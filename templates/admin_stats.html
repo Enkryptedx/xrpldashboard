@@ -206,6 +206,28 @@
       </div>
     </div>
 
+    <div class="row">
+      <div class="panel">
+        <h2>External referrers · 7 days</h2>
+        {% if external_refs_7d %}
+        <table>
+          <tr><th>source</th><th class="num">hits</th></tr>
+          {% for host, hits in external_refs_7d %}
+          <tr>
+            <td class="path">{{ host }}</td>
+            <td class="num">{{ "{:,}".format(hits) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        <div class="sub" style="margin-top: 10px;">
+          Most direct traffic doesn't pass a referrer (modern privacy
+          defaults, bookmark, typed URL, HTTPS→HTTP strip). This panel
+          surfaces what's measurable, not full external reach.
+        </div>
+        {% else %}<div class="empty">no external referrers in the last 7 days</div>{% endif %}
+      </div>
+    </div>
+
     <h1 style="margin-top: 36px;">bot probes
       <span class="pill warn">noise</span>
     </h1>

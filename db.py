@@ -1776,6 +1776,37 @@ def read_recent_page_views(limit=100):
         return []
 
 
+def read_external_referrers(window_seconds, limit=15):
+    """Top external referrer hosts over the trailing window. Excludes
+    self-referrals (xrpldashboard.com) and null/empty referrers. Folds
+    `www.` so `www.example.com` and `example.com` collapse to one row.
+    Returns list of (host, hits)."""
+    if not pg_available():
+        return []
+    cutoff = int(time.time()) - int(window_seconds)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT host, COUNT(*) AS hits FROM ("
+                    "  SELECT regexp_replace("
+                    "           substring(referrer FROM 'https?://([^/]+)'),"
+                    "           '^www\\.', '') AS host "
+                    "  FROM page_views "
+                    "  WHERE ts >= %s "
+                    "    AND referrer IS NOT NULL AND referrer != '' "
+                    "    AND referrer !~ 'xrpldashboard' "
+                    ") sub "
+                    "WHERE host IS NOT NULL AND host != '' "
+                    "GROUP BY host "
+                    "ORDER BY hits DESC LIMIT %s",
+                    [cutoff, limit],
+                )
+                return [(r[0], int(r[1])) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
 def read_country_breakdown(window_seconds, limit=10, kind="human"):
     """Top countries by view count over the trailing window. `kind` is
     "human" (default), "bot", or "all". Country may be None when
