@@ -231,6 +231,14 @@ def fetch_token_data(currency, issuer):
         labeled = False
         source_url = None
 
+    # LP-token clarifier: extract the underlying pair from the curated display
+    # string ("LP: XRP/RLUSD" -> "XRP/RLUSD") so the template can render a
+    # one-line explanation. Reuses the already-resolved pair label rather than
+    # re-deriving from asset_pair so naming stays consistent with the title.
+    pool_pair_label = None
+    if category == "lp_token" and isinstance(display, str) and display.startswith("LP: "):
+        pool_pair_label = display[4:]
+
     # 2. Trade history. Prefer Postgres (Render reads here — volumes.db
     # is gitignored, so the SQLite path returns all-zero in prod and the
     # detail page lied about activity that /tokens correctly surfaced).
@@ -272,6 +280,7 @@ def fetch_token_data(currency, issuer):
         "category": category,
         "labeled": labeled,
         "source_url": source_url,
+        "pool_pair_label": pool_pair_label,
         "trades_all": history["trades_all"],
         "trades_24h": history["trades_24h"],
         "trades_7d": history["trades_7d"],
