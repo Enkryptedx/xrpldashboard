@@ -350,7 +350,7 @@
 
   {# ========== Recent incident (dated; remove after ~30 days) ========== #}
   <details class="incident" open>
-    <summary><span class="inc-tag">Recent incident</span>2026-05-19 04:02 EDT — ~2-minute outage, resolved</summary>
+    <summary><span class="inc-tag">Dashboard incident</span>2026-05-19 04:02 EDT — ~2-minute serving outage, resolved. XRP Ledger was unaffected.</summary>
     <div class="inc-body">
       <p>For roughly two minutes around 04:02 EDT (08:02 UTC) the site returned 502 errors. Better Stack's uptime monitor flagged it; the service self-recovered within ~2 minutes.</p>
       <p><strong>Cause.</strong> Meta's AI training crawler (User-Agent <code>meta-externalagent/1.1</code>, source IP range <code>57.141.18.0/24</code>) hit the wallet pages faster than our workers could serve them. The wallet route walks the on-chain transfer graph and can take 5-25 seconds per request, so a sustained burst exhausted the gunicorn worker pool and tripped its 30-second timeout.</p>
