@@ -159,6 +159,33 @@
     details.amend .body .meta a { color: var(--muted); }
     details.amend .body .meta a:hover { color: var(--cyan); }
 
+    /* Superseded amendments — collapsed-by-default historical bucket.
+       Same chevron pattern as /health incident card, neutral muted tone. */
+    details.superseded-section {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 18px; margin: 8px 0 24px;
+    }
+    details.superseded-section > summary {
+      list-style: none; cursor: pointer; outline: none;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      color: var(--text); font-weight: 600;
+    }
+    details.superseded-section > summary::-webkit-details-marker { display: none; }
+    details.superseded-section > summary::after {
+      content: "▾"; margin-left: auto; color: var(--dim);
+      transition: transform 0.18s;
+    }
+    details.superseded-section[open] > summary::after { transform: rotate(180deg); }
+    details.superseded-section .sup-count {
+      font-family: var(--mono); font-size: 0.78rem; color: var(--dim);
+      padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(160,180,210,0.05);
+    }
+    .kind.superseded {
+      color: var(--dim); border: 1px solid rgba(160,180,210,0.18);
+      background: rgba(160,180,210,0.04);
+    }
+
     .source-note {
       color: var(--dim); font-size: 0.85rem; margin: 10px 0 28px;
       font-style: italic;
@@ -309,10 +336,10 @@
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0066-lending-protocol"
     },
     "NonFungibleTokensV1": {
-      "kind": "feature",
-      "summary": _("Introduces native NFT support on the XRP Ledger via five new transaction types and two new ledger object types — the original NFToken specification. Has been in-flight for an extended period without reaching the 80 percent validator threshold; later cleanup amendments (fixNFTokenDirV1, fixNFTokenNegOffer) target issues found in this base spec."),
-      "source_label": "XLS-20d Non-Fungible Tokens (XRPL-Standards discussion)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/discussions/46"
+      "kind": "superseded",
+      "summary": _("Original NFToken specification — introduced native NFT support on the XRP Ledger via five new transaction types and two new ledger object types. Superseded by NonFungibleTokensV1_1, which bundles this base spec together with the fixNFTokenDirV1 and fixNFTokenNegOffer cleanup amendments. V1_1 is enabled on mainnet, so native NFT functionality is live; this base amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
+      "source_url": "https://xrpl.org/resources/known-amendments"
     },
     "PermissionDelegation": {
       "kind": "feature",
@@ -339,15 +366,15 @@
       "source_url": "https://xrpl.org/resources/known-amendments"
     },
     "fixNFTokenDirV1": {
-      "kind": "fix",
-      "summary": _("Remedies an off-by-one error in NFTokenPage assignment and adjusts the related invariant checks. Shipped in rippled v1.9.1; targets behaviour introduced by NonFungibleTokensV1."),
-      "source_label": "xrpl.org · Known Amendments",
+      "kind": "superseded",
+      "summary": _("Cleanup amendment for an off-by-one error in NFTokenPage assignment introduced by NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
       "source_url": "https://xrpl.org/resources/known-amendments"
     },
     "fixNFTokenNegOffer": {
-      "kind": "fix",
-      "summary": _("Prevents NFTs from being traded for a negative amount of currency. Closes a validation hole that should never have admitted such offers. Shipped in rippled v1.9.2; targets behaviour introduced by NonFungibleTokensV1."),
-      "source_label": "xrpl.org · Known Amendments",
+      "kind": "superseded",
+      "summary": _("Cleanup amendment that prevents NFTs from being traded for a negative amount of currency, closing a validation hole in NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
       "source_url": "https://xrpl.org/resources/known-amendments"
     },
     "fixXChainRewardRounding": {
@@ -388,6 +415,42 @@
       </details>
     {% endfor %}
   </div>
+
+  {% if state.superseded and state.superseded|length > 0 %}
+    <details class="superseded-section">
+      <summary>
+        <span>{{ _('Superseded amendments') }}</span>
+        <span class="sup-count">{{ state.superseded|length }}</span>
+      </summary>
+      <p class="dim" style="font-size: 0.92rem; margin: 14px 0 8px;">
+        {{ _('Amendments the responding node still lists as not-enabled, but which have been replaced by a later amendment whose effects bundle them in. The XRPL feature RPC does not expose an obsolete flag, so the dashboard maintains this list against xrpl.org\'s canonical registry.') }}
+      </p>
+      <div class="amend-list">
+        {% for amend in state.superseded %}
+          {% set meta = summaries.get(amend.name) %}
+          <details class="amend">
+            <summary>
+              <span class="name">{{ amend.name }}</span>
+              <span class="kind superseded">{{ _('superseded') }}</span>
+            </summary>
+            <div class="body">
+              {% if meta %}
+                <p>{{ meta.summary }}</p>
+                <p class="meta">
+                  {{ _('Source') }}:
+                  <a href="{{ meta.source_url }}" rel="nofollow noopener" target="_blank">{{ meta.source_label }}</a>
+                  · {{ _('hash') }}: <code>{{ amend.hash }}</code>
+                </p>
+              {% else %}
+                <p class="dim">{{ _('Superseded amendment; no curated summary on file.') }}</p>
+                <p class="meta">{{ _('hash') }}: <code>{{ amend.hash }}</code></p>
+              {% endif %}
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    </details>
+  {% endif %}
 
   <h2>{{ _('Recently enabled') }}</h2>
   <div class="recent-callout">
