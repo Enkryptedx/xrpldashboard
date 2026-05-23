@@ -1653,16 +1653,71 @@ BOT_PATH_PATTERNS = (
 )
 
 
+# User-Agent patterns that identify automated traffic — named SEO/AI
+# crawlers and non-browser HTTP clients that hit otherwise-legitimate
+# paths. Re-buckets these from human → bot in /analytics rollups.
+# SQL ILIKE patterns (case-insensitive — crawlers don't always preserve
+# UA casing). Three groups:
+#  (1) Named crawlers — self-identifying, near-zero false-positive risk.
+#  (2) Non-browser HTTP clients — real users don't browse with curl or
+#      python-requests. Werkzeug was the /mpt/NOTREAL probe signal.
+#  (3) Generic substrings — FALSE-POSITIVE RISK: any future product or
+#      route whose UA contains "bot/", "spider", or "crawler" gets
+#      mis-bucketed. The "bot/" form (slash forces version-string shape)
+#      reduces matches on words like "robot" or "abbot".
+BOT_UA_PATTERNS = (
+    "%AhrefsBot%",
+    "%bingbot%",
+    "%Googlebot%",
+    "%GPTBot%",
+    "%ChatGPT-User%",
+    "%ClaudeBot%",
+    "%anthropic-ai%",
+    "%PerplexityBot%",
+    "%MJ12bot%",
+    "%Applebot%",
+    "%Twitterbot%",
+    "%SemrushBot%",
+    "%DotBot%",
+    "%YandexBot%",
+    "%Baiduspider%",
+    "%facebookexternalhit%",
+    "%LinkedInBot%",
+    "%Slackbot%",
+    "%DuckDuckBot%",
+    "%Go-http-client%",
+    "%python-requests%",
+    "%aiohttp%",
+    "%Werkzeug%",
+    "%curl/%",
+    "%Wget%",
+    "%Scrapy%",
+    "%Java/%",
+    "%bot/%",
+    "%spider%",
+    "%crawler%",
+)
+
+
 def _bot_filter_sql(kind):
     """Builds a WHERE-clause fragment that selects human / bot / all rows.
     Returns (fragment, params). Fragment starts with `AND ` so it can be
-    appended to an existing WHERE. `kind` is "human", "bot", or "all"."""
+    appended to an existing WHERE. `kind` is "human", "bot", or "all".
+    A row counts as bot if EITHER its path matches BOT_PATH_PATTERNS or
+    its user_agent matches BOT_UA_PATTERNS."""
     if kind == "all":
         return "", []
-    likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
+    path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
+    # COALESCE collapses NULL UA to '' so ILIKE returns FALSE rather than
+    # NULL; otherwise three-valued logic drops NULL-UA rows from BOTH the
+    # human and bot buckets (NOT NULL is NULL, not TRUE).
+    ua_likes = " OR ".join(
+        "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
+    )
+    params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     if kind == "bot":
-        return f"AND ({likes})", list(BOT_PATH_PATTERNS)
-    return f"AND NOT ({likes})", list(BOT_PATH_PATTERNS)
+        return f"AND (({path_likes}) OR ({ua_likes}))", params
+    return f"AND NOT (({path_likes}) OR ({ua_likes}))", params
 
 
 def log_page_view(path, visitor_hash=None, referrer=None,
