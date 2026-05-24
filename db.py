@@ -31,6 +31,7 @@ drop and reopen on the next call. Flask request paths use `pg_connect()`
 context-managed connections, which is fine at our request volume.
 """
 
+import datetime
 import os
 import json
 import time
@@ -354,6 +355,36 @@ CREATE TABLE IF NOT EXISTS token_prices (
 );
 CREATE INDEX IF NOT EXISTS token_prices_snapshot_idx
     ON token_prices (snapshot_ts DESC);
+
+-- Daily UNL composition snapshots. unl_snapshot.py fetches each
+-- canonical published UNL (vl.ripple.com, vl.xrplf.org) once per day,
+-- decodes the signed manifest server-side, and persists the validator
+-- list as JSONB. Daily cadence matches the observed rotation rate:
+-- Ripple UNL changed validators once in 39 months of Wayback history,
+-- XRPLF twice in 18 months — re-sequencing happens ~4×/year per list
+-- but validator-set changes are ~yearly. The diff between consecutive
+-- snapshots powers the "Validator-set composition over time" section
+-- on /network.
+--
+-- Payload shape (one row per source per day):
+--   {"sequence": 85,
+--    "expiration_iso": "2027-04-06T17:51:34Z",
+--    "validator_count": 35,
+--    "validators": [{"pubkey": "...", "domain": "bitso.com"|null,
+--                    "manifest_b64": "..."}]}
+--
+-- PRIMARY KEY (source, snapshot_date) is daily-granular (DATE, not
+-- BIGINT) so multiple same-day runs land idempotent upserts and
+-- restart-replay is built in. ~730 rows/year total.
+CREATE TABLE IF NOT EXISTS unl_snapshots (
+    source           TEXT  NOT NULL,
+    snapshot_date    DATE  NOT NULL,
+    payload          JSONB NOT NULL,
+    fetched_at_iso   TEXT  NOT NULL,
+    PRIMARY KEY (source, snapshot_date)
+);
+CREATE INDEX IF NOT EXISTS unl_snapshots_date_idx
+    ON unl_snapshots (snapshot_date DESC);
 """
 
 
@@ -745,6 +776,65 @@ def read_token_price(currency, issuer):
     except Exception as e:
         _log_err("read_token_price_failed", e)
         return None
+
+
+def write_unl_snapshot(source, payload, fetched_at_iso, snapshot_date=None):
+    """Upsert one daily UNL row for `source` ("ripple" | "xrplf"). Idempotent
+    on (source, snapshot_date) — same-day re-runs overwrite the prior row
+    rather than appending. snapshot_date defaults to today (UTC). Returns
+    1 on success, 0 on no-op (PG unavailable or insert failed)."""
+    if not pg_available():
+        return 0
+    if snapshot_date is None:
+        snapshot_date = datetime.datetime.now(datetime.timezone.utc).date()
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO unl_snapshots "
+                    "(source, snapshot_date, payload, fetched_at_iso) "
+                    "VALUES (%s, %s, %s, %s) "
+                    "ON CONFLICT (source, snapshot_date) DO UPDATE SET "
+                    "  payload = EXCLUDED.payload, "
+                    "  fetched_at_iso = EXCLUDED.fetched_at_iso",
+                    (source, snapshot_date, json.dumps(payload, default=str),
+                     fetched_at_iso),
+                )
+            conn.commit()
+        return 1
+    except Exception as e:
+        _log_err("write_unl_snapshot_failed", e)
+        return 0
+
+
+def read_recent_unl_snapshots(source, limit=30):
+    """Return the most-recent `limit` snapshots for `source`, newest first.
+    Each row: {"snapshot_date": "YYYY-MM-DD", "payload": {...},
+    "fetched_at_iso": "..."}. Returns [] when PG unavailable or no rows
+    (cold-start before the first daily run)."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, payload, fetched_at_iso "
+                    "FROM unl_snapshots WHERE source = %s "
+                    "ORDER BY snapshot_date DESC LIMIT %s",
+                    (source, limit),
+                )
+                rows = cur.fetchall()
+        return [
+            {
+                "snapshot_date": d.isoformat() if d else None,
+                "payload": p,
+                "fetched_at_iso": f,
+            }
+            for (d, p, f) in rows
+        ]
+    except Exception as e:
+        _log_err("read_recent_unl_snapshots_failed", e)
+        return []
 
 
 def read_amm_ranked_pools():

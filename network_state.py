@@ -31,6 +31,8 @@ import time
 
 import httpx
 
+from xrpl.core import addresscodec
+
 UNL_SOURCES = [
     {
         "key": "ripple",
@@ -150,6 +152,136 @@ def fetch_network_state():
         "lists": lists,
         "overlap": overlap,
         "fetched_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def _diff_entry(validator):
+    return {
+        "pubkey": validator.get("pubkey"),
+        "domain": validator.get("domain"),
+    }
+
+
+def _sort_diff_entries(entries):
+    # Domain-bearing rows first (alphabetical), null-domain rows last
+    # (sorted by pubkey). Stable across runs so the template renders
+    # the same order every time.
+    return sorted(
+        entries,
+        key=lambda e: (e["domain"] is None, e["domain"] or "", e["pubkey"]),
+    )
+
+
+def compute_unl_diff(source):
+    """Return the most recent diff between two snapshots of `source`,
+    or None if fewer than two snapshots exist.
+
+    Identity is pubkey-keyed: a validator that re-publishes its manifest
+    with a different Domain stays the same validator. Metadata-only
+    changes are intentionally invisible here — only true add/drop events
+    surface. If we ever want to surface "domain changed," it's an
+    additive enhancement, not a reshape of this contract.
+
+    Shape:
+      {
+        "from_date": "YYYY-MM-DD",
+        "to_date":   "YYYY-MM-DD",
+        "added":   [{"pubkey": "...", "domain": "..."|None}, ...],
+        "dropped": [{"pubkey": "...", "domain": "..."|None}, ...],
+      }
+    """
+    import db
+    rows = db.read_recent_unl_snapshots(source, limit=2)
+    if len(rows) < 2:
+        return None
+    newer, older = rows[0], rows[1]
+    new_validators = (newer["payload"] or {}).get("validators") or []
+    old_validators = (older["payload"] or {}).get("validators") or []
+    new_by_pubkey = {v["pubkey"]: v for v in new_validators if v.get("pubkey")}
+    old_by_pubkey = {v["pubkey"]: v for v in old_validators if v.get("pubkey")}
+    added_keys = set(new_by_pubkey) - set(old_by_pubkey)
+    dropped_keys = set(old_by_pubkey) - set(new_by_pubkey)
+    return {
+        "from_date": str(older["snapshot_date"]),
+        "to_date": str(newer["snapshot_date"]),
+        "added": _sort_diff_entries(_diff_entry(new_by_pubkey[k]) for k in added_keys),
+        "dropped": _sort_diff_entries(_diff_entry(old_by_pubkey[k]) for k in dropped_keys),
+    }
+
+
+def format_validator_for_display(entry):
+    """Decorate a diff entry with base58 + truncated pubkey for the
+    template. Base58 is the canonical display form across XRPL tooling
+    (xrpscan, xrpl.org, validator manifests); we store hex for binary
+    compactness and convert at render. Returns a new dict; input is
+    not mutated. On encode failure (malformed hex), pubkey_base58 is
+    None and the truncated form falls back to the raw hex string —
+    truth-first: never fabricate a base58 pubkey from broken input."""
+    out = dict(entry)
+    pubkey_hex = entry.get("pubkey") or ""
+    try:
+        b58 = addresscodec.encode_node_public_key(bytes.fromhex(pubkey_hex))
+        out["pubkey_base58"] = b58
+        out["pubkey_truncated"] = (
+            f"{b58[:8]}…{b58[-4:]}" if len(b58) > 12 else b58
+        )
+    except (ValueError, Exception):
+        out["pubkey_base58"] = None
+        out["pubkey_truncated"] = (
+            f"{pubkey_hex[:8]}…{pubkey_hex[-4:]}"
+            if len(pubkey_hex) > 12
+            else pubkey_hex
+        )
+    return out
+
+
+def build_unl_diff_view(source):
+    """Template-friendly diff view for one UNL source. Returns one of:
+
+      {"state": "no_data"}
+        — zero snapshots in DB (first deploy, PG hiccup).
+
+      {"state": "cold_start", "tracking_started": "YYYY-MM-DD"}
+        — exactly one snapshot recorded; diff requires two.
+
+      {"state": "diffed",
+       "from_date": "...", "to_date": "...",
+       "added":   [{...}, ...],
+       "dropped": [{...}, ...],
+       "entries": [{"change_type": "added"|"dropped", ...}, ...],
+       "total_changes": N}
+        — two or more snapshots; metadata-only changes (same pubkey,
+          different domain) intentionally do not surface here.
+
+    Two distinct empty-states ("cold_start" vs. "diffed" with
+    total_changes==0) so the template can give honest, distinct copy
+    for "we haven't seen enough yet" vs. "we've watched and nothing
+    happened."
+    """
+    import db
+    diff = compute_unl_diff(source)
+    if diff is not None:
+        added = [format_validator_for_display(e) for e in diff["added"]]
+        dropped = [format_validator_for_display(e) for e in diff["dropped"]]
+        entries = (
+            [{"change_type": "added", **e} for e in added]
+            + [{"change_type": "dropped", **e} for e in dropped]
+        )
+        return {
+            "state": "diffed",
+            "from_date": diff["from_date"],
+            "to_date": diff["to_date"],
+            "added": added,
+            "dropped": dropped,
+            "entries": entries,
+            "total_changes": len(entries),
+        }
+    rows = db.read_recent_unl_snapshots(source, limit=1)
+    if not rows:
+        return {"state": "no_data"}
+    return {
+        "state": "cold_start",
+        "tracking_started": str(rows[0]["snapshot_date"]),
     }
 
 

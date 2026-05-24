@@ -165,6 +165,44 @@
               padding-top: 20px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
 
+    /* Recent UNL changes section */
+    .changes-grid { display: grid; grid-template-columns: 1fr; gap: 14px;
+                    margin: 12px 0 24px; }
+    .changes-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 20px;
+    }
+    .changes-card h3 {
+      font-size: 1rem; font-weight: 600; margin: 0 0 10px; color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .changes-card .empty { color: var(--muted); font-size: 0.9rem; margin: 0; }
+    .change-row {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 6px 0; font-size: 0.92rem;
+      border-top: 1px solid var(--border);
+    }
+    .change-row:first-of-type { border-top: none; }
+    .change-row .marker {
+      font-family: var(--mono); font-weight: 700; min-width: 14px;
+    }
+    .change-row.added .marker   { color: var(--green); }
+    .change-row.dropped .marker { color: var(--rose); }
+    .change-row .domain { color: var(--text); }
+    .change-row .nodom  { color: var(--muted); font-style: italic; }
+    .change-row .pk { font-family: var(--mono); color: var(--dim);
+                      font-size: 0.85em; margin-left: auto; }
+    .changes-card details { margin-top: 6px; }
+    .changes-card details > summary {
+      cursor: pointer; color: var(--muted); font-size: 0.85rem;
+      padding: 6px 0; user-select: none; list-style: none;
+    }
+    .changes-card details > summary::-webkit-details-marker { display: none; }
+    .changes-card details > summary::before {
+      content: "▸ "; color: var(--dim); margin-right: 4px;
+    }
+    .changes-card details[open] > summary::before { content: "▾ "; }
+
     .links { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 14px 0 6px;
              font-size: 0.9rem; }
     .links a {
@@ -296,6 +334,52 @@
         <span class="item"><span class="swatch f"></span>{{ _('Foundation-only') }}: <span class="num">{{ v.xrplf_only }}</span></span>
         <span class="item">{{ _('Jaccard') }}: <span class="num">{{ v.jaccard_pct }}%</span></span>
       </div>
+    </div>
+  {% endif %}
+
+  {% if diffs %}
+    <h2>{{ _('Recent UNL changes') }}</h2>
+    <div class="changes-grid">
+      {% for src, label in [('ripple', _('Ripple UNL')), ('xrplf', _('Foundation UNL'))] %}
+        {% set d = diffs.get(src) %}
+        <div class="changes-card">
+          <h3>{{ label }}</h3>
+          {% if not d or d.state == 'no_data' %}
+            <p class="empty">{{ _('Tracker not initialised — no daily snapshots recorded yet.') }}</p>
+          {% elif d.state == 'cold_start' %}
+            <p class="empty">{{ _('Tracking started %(date)s. The first diff appears after two daily snapshots have been recorded.', date=d.tracking_started) }}</p>
+          {% elif d.total_changes == 0 %}
+            <p class="empty">{{ _('No validator changes since %(date)s.', date=d.from_date) }}</p>
+          {% else %}
+            {% set first = d.entries[0] %}
+            <div class="change-row {{ first.change_type }}">
+              <span class="marker">{{ '+' if first.change_type == 'added' else '−' }}</span>
+              {% if first.domain %}
+                <span class="domain">{{ first.domain }}</span>
+              {% else %}
+                <span class="nodom">{{ _('no published domain') }}</span>
+              {% endif %}
+              <span class="pk" title="{{ first.pubkey_base58 or first.pubkey }}">{{ first.pubkey_truncated }}</span>
+            </div>
+            {% if d.total_changes > 1 %}
+              <details>
+                <summary>{{ ngettext('%(num)d more change', '%(num)d more changes', d.total_changes - 1, num=d.total_changes - 1) }}</summary>
+                {% for e in d.entries[1:] %}
+                  <div class="change-row {{ e.change_type }}">
+                    <span class="marker">{{ '+' if e.change_type == 'added' else '−' }}</span>
+                    {% if e.domain %}
+                      <span class="domain">{{ e.domain }}</span>
+                    {% else %}
+                      <span class="nodom">{{ _('no published domain') }}</span>
+                    {% endif %}
+                    <span class="pk" title="{{ e.pubkey_base58 or e.pubkey }}">{{ e.pubkey_truncated }}</span>
+                  </div>
+                {% endfor %}
+              </details>
+            {% endif %}
+          {% endif %}
+        </div>
+      {% endfor %}
     </div>
   {% endif %}
 
