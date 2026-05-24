@@ -248,6 +248,11 @@
       <div class="v">{{ data.pool_count }}</div>
       <div class="sub">{{ _('where this token is paired') }}</div>
     </div>
+    <div class="kpi">
+      <div class="l">{{ _('XRP price') }}</div>
+      <div class="v">{% if data.xrp_price is not none %}{{ "{:,.6g}".format(data.xrp_price) }}{% else %}—{% endif %}</div>
+      <div class="sub">{% if data.xrp_price is not none %}{{ _('per token, from XRP-paired AMM pool') }}{% else %}{{ _('no XRP pool above 1,000-XRP floor') }}{% endif %}</div>
+    </div>
   </div>
 
   <div class="card">

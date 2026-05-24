@@ -708,6 +708,45 @@ def write_token_prices(rows):
         return 0
 
 
+def read_token_prices_map():
+    """Return {(currency, issuer): xrp_price} for every row in token_prices.
+    Used by /tokens and the token-detail page to render per-token XRP price
+    without a per-token round-trip. Returns {} when PG isn't configured or
+    the table is empty (cold-start, before the first rank_amms cycle)."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT currency, issuer, xrp_price FROM token_prices"
+                )
+                return {(c, i): float(p) for (c, i, p) in cur.fetchall()}
+    except Exception as e:
+        _log_err("read_token_prices_map_failed", e)
+        return {}
+
+
+def read_token_price(currency, issuer):
+    """Single-row variant for the token-detail page. Returns float price in
+    XRP, or None when the token has no row (no XRP pool above floor)."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT xrp_price FROM token_prices "
+                    "WHERE currency = %s AND issuer = %s",
+                    (currency, issuer),
+                )
+                row = cur.fetchone()
+                return float(row[0]) if row else None
+    except Exception as e:
+        _log_err("read_token_price_failed", e)
+        return None
+
+
 def read_amm_ranked_pools():
     """Return the ranked-pools snapshot as a list of dicts in the same shape
     as amm_ranked.json — so app.py and templates don't care whether the

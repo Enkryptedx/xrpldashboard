@@ -1391,6 +1391,26 @@ def _short_addr(addr):
     return f"{addr[:6]}…{addr[-4:]}" if len(addr) > 14 else addr
 
 
+def _format_xrp_price(p):
+    """Render an XRP-per-token price as a short string across the full
+    magnitude range we see on /tokens (5e-8 dust → 56,000+ for wrapped BTC).
+    Returns None when price is missing so the template can branch on it."""
+    if p is None:
+        return None
+    try:
+        pf = float(p)
+    except (TypeError, ValueError):
+        return None
+    if pf >= 1000:
+        return f"{pf:,.0f}"
+    if pf >= 1:
+        return f"{pf:,.4f}".rstrip("0").rstrip(".")
+    if pf >= 0.0001:
+        return f"{pf:.6f}".rstrip("0").rstrip(".")
+    # Below 0.0001 XRP — scientific avoids a long string of leading zeros.
+    return f"{pf:.3g}"
+
+
 def _disambiguate_labels(parties):
     """Given [(label, addr), ...], append a 6-char address tail to any
     label that appears more than once in the row — so Binance → Binance
@@ -1856,6 +1876,11 @@ def tokens():
         rows = []
 
     tokens_meta = _load_token_names_dict()
+    # Single read of the per-token XRP price snapshot — rendered as a sub-line
+    # on each row. Absent rows render "—" in the template; per token_prices.py,
+    # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
+    # not a placeholder to backfill.
+    price_map = db.read_token_prices_map() if db.pg_available() else {}
     enriched = []
     for cur, iss, trades, hours_active in rows:
         meta = tokens_meta.get((cur, iss)) or {}
@@ -1868,6 +1893,7 @@ def tokens():
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
             category = None
             labeled = False
+        price = price_map.get((cur, iss))
         enriched.append({
             "rank": len(enriched) + 1,
             "currency_raw": cur,
@@ -1878,6 +1904,8 @@ def tokens():
             "labeled": labeled,
             "trades": trades,
             "hours_active": hours_active,
+            "xrp_price": price,
+            "xrp_price_str": _format_xrp_price(price),
         })
 
     # Sibling-issuer accent — a single issuer can mint multiple tokens

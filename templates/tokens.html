@@ -453,6 +453,7 @@
       <div class="trades">
         {{ "{:,}".format(t.trades) }} <span class="trades-unit">{{ _('trades') }}</span>
         <span class="sub">{{ t.hours_active }}{{ _('h active') }}</span>
+        <span class="sub">{% if t.xrp_price_str %}{{ t.xrp_price_str }} {{ _('XRP') }}{% else %}—{% endif %}</span>
       </div>
     </a>
     {% endfor %}
@@ -474,8 +475,7 @@
       <code>TOKEN_NAMES.md</code> {{ _('in the repo.') }}
     </p>
     <p>
-      <strong>{{ _('XRP-equivalent volume') }}</strong> {{ _('isn\'t shown yet. That requires a price feed derived from the AMM index, which is a later phase') }}
-      (<code>token_prices.py</code>). {{ _('Trade count alone is already directionally useful.') }}
+      <strong>{{ _('XRP price per token') }}</strong> {{ _('is now derived from AMM pool reserves for tokens with at least 1,000 XRP of XRP-paired liquidity. Tokens below the floor render') }} <code>—</code> {{ _('rather than a thin-pool fiction. Per-trade XRP volume requires capturing trade amounts in the stream handler and is queued as a separate change.') }}
     </p>
   </div>
 

@@ -271,6 +271,16 @@ def fetch_token_data(currency, issuer):
     # 3. AMM pools containing this token
     pools = _amm_pools_holding(currency, issuer)
 
+    # 4. XRP price (None when no XRP-paired pool clears the dust floor — the
+    # absence IS the signal; template renders "—" so consumers don't backfill
+    # with stale data. See token_prices.py for the floor rationale.)
+    xrp_price = None
+    if db.pg_available():
+        try:
+            xrp_price = db.read_token_price(currency, issuer)
+        except Exception:
+            xrp_price = None
+
     return {
         "currency_raw": currency,
         "currency_decoded": _decode_currency_hex(currency),
@@ -285,6 +295,7 @@ def fetch_token_data(currency, issuer):
         "trades_24h": history["trades_24h"],
         "trades_7d": history["trades_7d"],
         "volume_all_xrp": history["volume_all_xrp"],
+        "xrp_price": xrp_price,
         "hours_active": history["hours_active"],
         "first_seen_iso": _bucket_to_iso(history["first_bucket"]),
         "last_seen_iso": _bucket_to_iso(history["last_bucket"]),
