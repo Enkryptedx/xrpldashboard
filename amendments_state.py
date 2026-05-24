@@ -78,7 +78,26 @@ OBSOLETE_AMENDMENTS = {
 #
 # Empty list = section does not render on /amendments. Content commits
 # add entries one at a time so each ships and verifies in isolation.
-IN_DEVELOPMENT_AMENDMENTS = []
+IN_DEVELOPMENT_AMENDMENTS = [
+    {
+        "xls_number":   "XLS-68",
+        "name":         "Sponsor",
+        "kind":         "feature",
+        "summary":      _l(
+            "Lets one account pay the transaction fees and reserves for "
+            "another account, so end users can transact on XRPL without "
+            "holding XRP themselves. Supports two modes: co-signed (the "
+            "sponsor signs each transaction) and pre-funded (the sponsor "
+            "opens a Sponsorship ledger object the other account can draw "
+            "from). Defines two granular permissions — SponsorFee and "
+            "SponsorReserve — both drawn from the account-permission "
+            "namespace established by XLS-74."
+        ),
+        "source_label": "XLS-68 Sponsored Fees and Reserves (XRPL-Standards)",
+        "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves",
+        "dependencies": ["XLS-74 Account Permissions (Final)"],
+    },
+]
 
 
 # Hashes we can name from off-ledger sources even when the responding
