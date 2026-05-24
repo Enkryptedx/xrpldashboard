@@ -296,6 +296,43 @@
     <p class="dim">{{ _('Nothing in the 14-day activation window right now. The Amendments ledger object shows no current Majority entries.') }}</p>
   {% endif %}
 
+  {# In-development amendments. XLS specs published by XRPLF that
+     haven't shipped in a rippled release yet — they're not in the
+     `feature` RPC, so the in-flight loop below won't surface them.
+     Entries are curated in amendments_state.IN_DEVELOPMENT_AMENDMENTS.
+     When the list is empty (initial scaffold), the entire section
+     does not render — no header, no markup, no whitespace surface. #}
+  {% if state.in_development and state.in_development|length > 0 %}
+    <h2>{{ _('In development — not yet on-chain') }}</h2>
+    <p class="dim" style="font-size: 0.92rem;">
+      {{ _('XLS specifications published by XRPLF that haven\'t shipped in a rippled release yet. These amendments don\'t appear in the public') }} <code>feature</code> {{ _('RPC because no released binary carries their definition, but the spec is public and the design is far enough along that they\'re worth surfacing alongside the in-flight list.') }}
+    </p>
+    <div class="amend-list">
+      {% for entry in state.in_development %}
+        <details class="amend">
+          <summary>
+            <span class="name">{{ entry.xls_number }} · {{ entry.name }}</span>
+            <span class="kind {{ entry.kind }}">{{ _(entry.kind) if entry.kind == 'feature' else _('fix') }}</span>
+          </summary>
+          <div class="body">
+            <p>{{ entry.summary }}</p>
+            {% if entry.dependencies %}
+              <p class="meta">
+                {{ _('Depends on') }}:
+                {% for dep in entry.dependencies %}{{ dep }}{% if not loop.last %}, {% endif %}{% endfor %}
+              </p>
+            {% endif %}
+            <p class="meta">
+              {{ _('Source') }}:
+              <a href="{{ entry.source_url }}" rel="nofollow noopener" target="_blank">{{ entry.source_label }}</a>
+              · {{ _('status') }}: {{ _('in development, no on-chain hash') }}
+            </p>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <h2>{{ _('In-flight amendments') }}</h2>
   <p class="dim" style="font-size: 0.92rem;">
     {{ _('Currently supported by the responding XRPL node but not yet enabled. Validators may or may not be voting yes — the public RPC doesn\'t expose per-validator tallies. Plain-language summaries below are hand-edited from primary sources; click each one to read.') }}

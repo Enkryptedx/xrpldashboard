@@ -23,6 +23,7 @@ import threading
 import time
 
 import httpx
+from flask_babel import lazy_gettext as _l
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("AMENDMENTS_CACHE_TTL", "300"))
@@ -53,6 +54,32 @@ OBSOLETE_AMENDMENTS = {
     "fixNFTokenDirV1",        # effects bundled into NonFungibleTokensV1_1
     "fixNFTokenNegOffer",     # effects bundled into NonFungibleTokensV1_1
 }
+
+# Amendments XRPLF has published as XLS specs but which haven't shipped
+# in a rippled release yet. They don't appear in the `feature` RPC and
+# have no on-chain hash, so the in-flight iteration above can't surface
+# them. We curate them here so /amendments can show the in-development
+# roadmap, not just what the responding binary already knows about.
+#
+# Source of truth: https://xrpl.org/resources/known-amendments
+# Each entry must cite the XLS spec; verify status before shipping.
+#
+# Entry shape:
+#   {
+#       "xls_number":   "XLS-NN",                  # display, e.g. "XLS-68"
+#       "name":         "Amendment Name",          # display
+#       "kind":         "feature" | "fix",         # for kind badge
+#       "summary":      _l("..."),                 # lazy_gettext — must be
+#                                                  #   request-context-safe
+#       "source_label": "XLS-NN Foo (XRPL-Standards)",
+#       "source_url":   "https://github.com/XRPLF/XRPL-Standards/...",
+#       "dependencies": ["XLS-NN Other (status)", ...],  # may be empty
+#   }
+#
+# Empty list = section does not render on /amendments. Content commits
+# add entries one at a time so each ships and verifies in isolation.
+IN_DEVELOPMENT_AMENDMENTS = []
+
 
 # Hashes we can name from off-ledger sources even when the responding
 # node doesn't carry the definition (e.g. amendments merged to rippled
@@ -162,6 +189,8 @@ def fetch_amendments_state():
         "in_flight_count": len(in_flight),
         "superseded": superseded,
         "superseded_count": len(superseded),
+        "in_development": IN_DEVELOPMENT_AMENDMENTS,
+        "in_development_count": len(IN_DEVELOPMENT_AMENDMENTS),
         "majorities": majorities,
         "fetched_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
