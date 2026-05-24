@@ -118,6 +118,28 @@ IN_DEVELOPMENT_AMENDMENTS = [
         "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0100-smart-escrows",
         "dependencies": ["WASM engine and API spec (companion XLS, no number assigned yet)"],
     },
+    {
+        "xls_number":   "XLS-96",
+        "name":         "Confidential Transfers for Multi-Purpose Tokens",
+        "kind":         "feature",
+        "summary":      _l(
+            "Adds confidential balances and transfers to Multi-Purpose "
+            "Tokens: individual balances and transfer amounts are "
+            "encrypted under EC-ElGamal and validated by zero-knowledge "
+            "proofs, so validators and external observers can't see "
+            "them while supply invariants are still enforced. Introduces "
+            "five new transaction types covering the confidential-MPT "
+            "round-trip and clawback. Builds on XLS-33 MPTokensV1 "
+            "(already enabled on mainnet); the sfMutableFlags portion "
+            "also requires DynamicMPT once it activates."
+        ),
+        "source_label": "XLS-96 Confidential Transfers for MPTs (XRPL-Standards)",
+        "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-mpt",
+        "dependencies": [
+            "XLS-33 MPTokensV1 (enabled on mainnet)",
+            "XLS-94 DynamicMPT (in-flight; required for sfMutableFlags)",
+        ],
+    },
 ]
 
 
