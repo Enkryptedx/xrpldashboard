@@ -15,14 +15,20 @@ Dust-pool gate
 depth a single small swap moves the constant-product price 30%+, so the
 "implied price" stops reflecting market consensus and starts reflecting
 whoever placed the last $5 trade. We refuse to publish prices below
-MIN_POOL_XRP_RESERVE (default 1,000 XRP reserve). The absence of a row
+MIN_POOL_XRP_RESERVE (default 2,500 XRP reserve). The absence of a row
 IS the signal — consumers must not backfill those tokens with stale
 data; they need to render "—" / "thin liquidity" instead.
 
-The floor is editorial. It was chosen because at >= 1,000 XRP reserve,
-a 1% price move requires ~10 XRP of trading flow, which is a real
-trade; below the floor, dust-level activity dominates. Override via
-the MIN_POOL_XRP_RESERVE env var when sweeping for the right value.
+The floor is editorial. 2,500 XRP per side is the depth at which
+arbitrage gravity reliably pulls the implied price toward external
+reference: a ~10% price move requires ~$340 of trade flow, well
+within retail arb capacity. Pools below this drift visibly (e.g. a
+1,085-XRP "LTC" pool implied 39 XRP/tok when the market was ~66).
+Override via the MIN_POOL_XRP_RESERVE env var when sweeping. The
+1,000-XRP starting floor was raised to 2,500 after the LTC/ASTEROID
+visible-error cases on 2026-05-24; 5,000 was tested but cut 73% of
+priceable tokens including top-15 actives (SENT, GiB) whose pools
+are shallow-but-honest.
 
 Integration
 -----------
@@ -42,7 +48,7 @@ import time
 
 import db
 
-MIN_POOL_XRP_RESERVE = float(os.environ.get("MIN_POOL_XRP_RESERVE", "1000"))
+MIN_POOL_XRP_RESERVE = float(os.environ.get("MIN_POOL_XRP_RESERVE", "2500"))
 RANKED_PATH = os.path.join(os.path.dirname(__file__), "amm_ranked.json")
 
 
