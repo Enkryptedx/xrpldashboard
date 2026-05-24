@@ -97,6 +97,27 @@ IN_DEVELOPMENT_AMENDMENTS = [
         "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves",
         "dependencies": ["XLS-74 Account Permissions (Final)"],
     },
+    {
+        "xls_number":   "XLS-100",
+        "name":         "Smart Escrows",
+        "kind":         "feature",
+        "summary":      _l(
+            "Adds programmable conditions to XRPL Escrows: a small piece "
+            "of WASM code lives on the Escrow ledger object and decides "
+            "whether the escrow can be released or canceled — going "
+            "beyond today's time-based and crypto-conditional gates. "
+            "Stacks on top of TokenEscrow (already enabled on mainnet, "
+            "which extended escrow to IOU and MPT balances), opening "
+            "the door to tokenized RWA workflows like conditional "
+            "release on attestation or oracle-driven triggers. The "
+            "WASM engine and API are defined in a separate companion "
+            "XLS that hasn't been assigned a number yet — Smart "
+            "Escrows can't ship until that companion lands."
+        ),
+        "source_label": "XLS-100 Smart Escrows (XRPL-Standards)",
+        "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0100-smart-escrows",
+        "dependencies": ["WASM engine and API spec (companion XLS, no number assigned yet)"],
+    },
 ]
 
 
