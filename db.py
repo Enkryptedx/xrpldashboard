@@ -328,6 +328,32 @@ CREATE TABLE IF NOT EXISTS cta_clicks (
 );
 CREATE INDEX IF NOT EXISTS cta_clicks_ts_idx ON cta_clicks (ts DESC);
 CREATE INDEX IF NOT EXISTS cta_clicks_cta_ts_idx ON cta_clicks (cta_id, ts DESC);
+
+-- Per-token XRP-equivalent price. Derived by token_prices.py from the
+-- in-memory ranked pool list at the end of each rank_amms.py run. One
+-- row per (currency, issuer); tokens whose XRP-paired pool has reserve
+-- below MIN_POOL_XRP_RESERVE are intentionally NOT written — at that
+-- depth the implied constant-product price is fictional (single small
+-- swap moves it 30%+). The absence of a row IS the signal: "price not
+-- derivable from a deep-enough pool"; consumers must not backfill.
+--
+-- snapshot_ts is overwritten on each walk in v1 (current-price-only).
+-- Forward path to price history: change PK to include snapshot_ts and
+-- swap the upsert (DELETE+INSERT) for a plain INSERT. No column
+-- migration required.
+CREATE TABLE IF NOT EXISTS token_prices (
+    currency           TEXT             NOT NULL,
+    issuer             TEXT             NOT NULL,
+    snapshot_ts        BIGINT           NOT NULL,
+    xrp_price          DOUBLE PRECISION NOT NULL,
+    pool_amm_account   TEXT             NOT NULL,
+    pool_xrp_reserve   DOUBLE PRECISION NOT NULL,
+    pool_token_reserve DOUBLE PRECISION NOT NULL,
+    derivation_method  TEXT             NOT NULL,
+    PRIMARY KEY (currency, issuer)
+);
+CREATE INDEX IF NOT EXISTS token_prices_snapshot_idx
+    ON token_prices (snapshot_ts DESC);
 """
 
 
@@ -637,6 +663,49 @@ def replace_amm_ranked_pools(rows):
     except Exception as e:
         _log_err("replace_amm_ranked_pools_failed", e)
         _drop_writer_conn()
+
+
+def write_token_prices(rows):
+    """Replace the entire token_prices table with `rows`. The table is
+    per-token (currency, issuer); writers always send the full set and we
+    wipe-and-reinsert in one transaction so /tokens readers stay on the
+    prior snapshot under READ COMMITTED until COMMIT. Empty input is a
+    no-op, not a wipe — guards against a bug pushing 0 rows to prod."""
+    if not rows:
+        return 0
+    conn = _get_writer_conn()
+    if conn is None:
+        return 0
+    payload = [
+        (
+            r["currency"],
+            r["issuer"],
+            r["snapshot_ts"],
+            r["xrp_price"],
+            r["pool_amm_account"],
+            r["pool_xrp_reserve"],
+            r["pool_token_reserve"],
+            r["derivation_method"],
+        )
+        for r in rows
+    ]
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM token_prices")
+                cur.executemany(
+                    "INSERT INTO token_prices "
+                    "(currency, issuer, snapshot_ts, xrp_price, "
+                    " pool_amm_account, pool_xrp_reserve, "
+                    " pool_token_reserve, derivation_method) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    payload,
+                )
+        return len(rows)
+    except Exception as e:
+        _log_err("write_token_prices_failed", e)
+        _drop_writer_conn()
+        return 0
 
 
 def read_amm_ranked_pools():

@@ -491,6 +491,25 @@ def main():
     save_json(STATE_PATH, state)
     _mirror_to_postgres(ranked, state, indexed_count=len(index))
     log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']}")
+
+    # Derive XRP-equivalent token prices from the just-ranked in-memory
+    # pool list and upsert to Postgres. Piggybacks here rather than
+    # running on a separate launchd plist so the price snapshot is
+    # always paired with the pool snapshot it was derived from — no
+    # schedule drift, no "which one ran more recently" question.
+    # Failures are isolated: a token_prices error never blocks the
+    # ranker exit code.
+    try:
+        import token_prices
+        written, dust, other = token_prices.run_once(
+            pools=ranked,
+            snapshot_ts=int(time.time()),
+        )
+        log(f"token_prices: written={written} dust_skipped={dust} "
+            f"other_skipped={other}")
+    except Exception as e:
+        log(f"token_prices: derivation failed (non-fatal): {e}")
+
     return 0
 
 
