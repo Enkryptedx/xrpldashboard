@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.unl_snapshot</string>
+
+    <key>Comment</key>
+    <string>Daily UNL composition snapshot. Fetches vl.ripple.com + vl.xrplf.org, decodes each validator manifest server-side, UPSERTs one row per source per day into unl_snapshots. Powers the "Recent UNL changes" diff section on /network.</string>
+
+    <!-- Wrapper script sources DATABASE_URL from ~/.config/xrpldashboard/env
+         before exec'ing python, so db.write_unl_snapshot lands the row in
+         Neon. Without this, the script no-ops silently and /network's diff
+         helper stays in cold-start state with no operator signal. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_unl_snapshot.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- 02:23 local, offset 16 min from daily_snapshot (02:07) to avoid
+         simultaneous Neon writes and to give the network a quiet window.
+         UNL publishers (vl.ripple.com / vl.xrplf.org) are static-cached
+         CDN-style so timing isn't sensitive on the fetch side. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Hour</key>
+      <integer>2</integer>
+      <key>Minute</key>
+      <integer>23</integer>
+    </dict>
+
+    <!-- RunAtLoad fires the job on registration and after every reboot.
+         UPSERT on (source, snapshot_date) means re-runs same-day are
+         idempotent — the row is overwritten with the same payload. Safe. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/unl_snapshot.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/unl_snapshot.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
