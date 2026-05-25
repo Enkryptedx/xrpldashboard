@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.pg_backup_canary</string>
+
+    <key>Comment</key>
+    <string>Daily freshness check for the Postgres backup. Lists b2crypt:.../postgres/ and exits nonzero if the newest neondb-*.dump is older than 25 hours. Catches "backups stopped running" within one day. 06:00 local — 2.5h after the 03:30 backup, giving generous slack for slow uploads. RunAtLoad FALSE. Pairs with the weekly restore-test for correctness coverage.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_pg_backup_canary.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Hour</key>
+      <integer>6</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup_canary.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup_canary.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
