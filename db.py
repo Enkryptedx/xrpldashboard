@@ -697,11 +697,13 @@ def replace_amm_ranked_pools(rows):
 
 
 def write_token_prices(rows):
-    """Replace the entire token_prices table with `rows`. The table is
-    per-token (currency, issuer); writers always send the full set and we
-    wipe-and-reinsert in one transaction so /tokens readers stay on the
-    prior snapshot under READ COMMITTED until COMMIT. Empty input is a
-    no-op, not a wipe — guards against a bug pushing 0 rows to prod."""
+    """Append a new snapshot of token prices. PK is
+    (currency, issuer, snapshot_ts) — every walker cycle adds one row per
+    token, preserving prior days as historical record. Readers must select
+    the latest row per token via DISTINCT ON / ORDER BY snapshot_ts DESC
+    (see read_token_prices_map and read_token_price). ON CONFLICT DO
+    NOTHING handles same-second collisions if the walker is re-run
+    manually within one second. Empty input is a no-op."""
     if not rows:
         return 0
     conn = _get_writer_conn()
@@ -723,13 +725,13 @@ def write_token_prices(rows):
     try:
         with conn.transaction():
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM token_prices")
                 cur.executemany(
                     "INSERT INTO token_prices "
                     "(currency, issuer, snapshot_ts, xrp_price, "
                     " pool_amm_account, pool_xrp_reserve, "
                     " pool_token_reserve, derivation_method) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT DO NOTHING",
                     payload,
                 )
         return len(rows)
@@ -740,17 +742,22 @@ def write_token_prices(rows):
 
 
 def read_token_prices_map():
-    """Return {(currency, issuer): xrp_price} for every row in token_prices.
-    Used by /tokens and the token-detail page to render per-token XRP price
-    without a per-token round-trip. Returns {} when PG isn't configured or
-    the table is empty (cold-start, before the first rank_amms cycle)."""
+    """Return {(currency, issuer): xrp_price} for the LATEST row per token.
+    token_prices is history-append (PK includes snapshot_ts), so a naive
+    SELECT returns every snapshot's rows. DISTINCT ON collapses to one
+    row per (currency, issuer) using the most recent snapshot_ts.
+    Backed by token_prices_latest_idx for index-only scan. Returns {}
+    when PG isn't configured or the table is empty."""
     if not pg_available():
         return {}
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT currency, issuer, xrp_price FROM token_prices"
+                    "SELECT DISTINCT ON (currency, issuer) "
+                    "  currency, issuer, xrp_price "
+                    "FROM token_prices "
+                    "ORDER BY currency, issuer, snapshot_ts DESC"
                 )
                 return {(c, i): float(p) for (c, i, p) in cur.fetchall()}
     except Exception as e:
@@ -759,8 +766,10 @@ def read_token_prices_map():
 
 
 def read_token_price(currency, issuer):
-    """Single-row variant for the token-detail page. Returns float price in
-    XRP, or None when the token has no row (no XRP pool above floor)."""
+    """Single-row variant for the token-detail page. Returns the latest
+    XRP price for one token, or None when the token has no row (no XRP
+    pool above floor). ORDER BY snapshot_ts DESC LIMIT 1 picks the most
+    recent snapshot from the history-append table."""
     if not pg_available():
         return None
     try:
@@ -768,7 +777,8 @@ def read_token_price(currency, issuer):
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT xrp_price FROM token_prices "
-                    "WHERE currency = %s AND issuer = %s",
+                    "WHERE currency = %s AND issuer = %s "
+                    "ORDER BY snapshot_ts DESC LIMIT 1",
                     (currency, issuer),
                 )
                 row = cur.fetchone()
