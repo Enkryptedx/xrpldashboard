@@ -5,8 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('about') }} · xrpldashboard</title>
   {% set meta_title = "about · xrpldashboard" %}
-  {% set meta_description = "Why xrpldashboard exists, who runs it, and how it's funded. Independent XRPL analytics — comprehensive but understandable, free of exchange-listed price feeds." %}
+  {% set meta_description = "About xrpldashboard — who runs it, how it's funded, and the methodology behind every metric. Independent XRPL analytics, free for retail users, forever." %}
   {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "About xrpldashboard",
+    "url": "{{ site_url }}/about",
+    "description": "About xrpldashboard — who runs it, how it's funded, and the methodology behind every metric. Independent XRPL analytics, free for retail users, forever.",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "xrpldashboard",
+      "url": "{{ site_url }}"
+    },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
 
   <style>
     :root {
@@ -74,7 +90,7 @@
 
   <h1>{{ _('About xrpldashboard') }}</h1>
   <p class="lede">
-    {{ _('A public-good ledger dashboard for the XRP Ledger. Free for retail users, forever. A public-utility approach to ledger data: opinionated about clarity, no token, no DEX, no upsells.') }}
+    {{ _('xrpldashboard is a read-only observatory for the XRP Ledger. We track validators, AMM pools, RWA tokens, whale activity, credentials, amendments, MPTs, lending, and the full spectrum of XRPL on-chain activity. Free for retail users, forever. No wallet connection, no token sales, no trading interface — just public ledger analysis with verifiable methodology.') }}
   </p>
 
   <div class="callout">

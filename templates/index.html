@@ -5,8 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>xrpldashboard · the XRP Ledger, made legible</title>
   {% set meta_title = "xrpldashboard · the XRP Ledger, made legible" %}
-  {% set meta_description = "Follow XRP whale moves, AMM pool TVL, token activity, and exchange cold storage on the XRP Ledger — without the blockchain jargon." %}
+  {% set meta_description = "A read-only observatory for the XRP Ledger — validators, amendments, AMM pools, RWA tokens, whales, credentials. Public methodology, plain English." %}
   {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "xrpldashboard",
+    "url": "{{ site_url }}",
+    "description": "A read-only observatory for the XRP Ledger — validators, amendments, AMM pools, RWA tokens, whales, credentials. Public methodology, plain English.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "xrpldashboard",
+      "url": "{{ site_url }}"
+    },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
 
   <style>
     {% from "_explainer.html" import explainer_css %}
