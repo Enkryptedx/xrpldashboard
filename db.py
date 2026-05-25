@@ -1110,6 +1110,85 @@ def write_rlusd_state_cache(payload):
         return False
 
 
+def write_rlusd_supply_history(payload):
+    """Append/refresh today's RLUSD supply row in rlusd_supply_history.
+
+    Called from signed_snapshot.collect_metrics() with the same payload
+    already read out of rlusd_state_cache for the per-cycle metrics.
+    Idempotent on snapshot_date — same-day re-runs UPSERT the latest
+    values from the most recent cache refresh.
+
+    snapshot_date and written_at_iso are both derived from
+    payload['fetched_at'] (epoch seconds) — the data's own freshness
+    timestamp, not now(). See feedback_history_flip_cadence_rule.md
+    for the underlying principle.
+
+    Best-effort: returns True on success, False on any failure (PG
+    unavailable, payload missing required keys, etc.). Never raises —
+    a logging hiccup here must not break the daily snapshot pass.
+    """
+    if not pg_available():
+        return False
+    if not isinstance(payload, dict):
+        return False
+    xrpl_branch = payload.get("xrpl") or {}
+    eth_branch = payload.get("eth") or {}
+    xrpl_supply = xrpl_branch.get("supply")
+    eth_supply = eth_branch.get("supply")
+    fetched_at = payload.get("fetched_at")
+    if xrpl_supply is None or eth_supply is None or fetched_at is None:
+        return False
+    try:
+        fetched_dt = datetime.datetime.fromtimestamp(
+            int(fetched_at), tz=datetime.timezone.utc
+        )
+    except (TypeError, ValueError, OSError):
+        return False
+    snapshot_date = fetched_dt.date()
+    written_at_iso = fetched_dt.isoformat()
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO rlusd_supply_history ("
+                "    snapshot_date, xrpl_supply, eth_supply, total_supply, "
+                "    xrpl_holders, eth_holders, "
+                "    xrpl_mints_24h, xrpl_burns_24h, "
+                "    eth_mints_24h, eth_burns_24h, "
+                "    written_at_iso"
+                ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "    xrpl_supply    = EXCLUDED.xrpl_supply, "
+                "    eth_supply     = EXCLUDED.eth_supply, "
+                "    total_supply   = EXCLUDED.total_supply, "
+                "    xrpl_holders   = EXCLUDED.xrpl_holders, "
+                "    eth_holders    = EXCLUDED.eth_holders, "
+                "    xrpl_mints_24h = EXCLUDED.xrpl_mints_24h, "
+                "    xrpl_burns_24h = EXCLUDED.xrpl_burns_24h, "
+                "    eth_mints_24h  = EXCLUDED.eth_mints_24h, "
+                "    eth_burns_24h  = EXCLUDED.eth_burns_24h, "
+                "    written_at_iso = EXCLUDED.written_at_iso",
+                (
+                    snapshot_date,
+                    float(xrpl_supply),
+                    float(eth_supply),
+                    float(xrpl_supply) + float(eth_supply),
+                    xrpl_branch.get("holders"),
+                    eth_branch.get("holders"),
+                    xrpl_branch.get("mints_24h"),
+                    xrpl_branch.get("burns_24h"),
+                    eth_branch.get("mints_24h"),
+                    eth_branch.get("burns_24h"),
+                    written_at_iso,
+                ),
+            )
+        return True
+    except Exception:
+        return False
+
+
 def write_snapshot_meta(meta):
     """Mirror the rollup of historical_snapshots/ into Postgres so Render
     can render the /institutional snapshot strip without access to the

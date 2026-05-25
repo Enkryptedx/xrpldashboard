@@ -410,6 +410,14 @@ def collect_metrics() -> tuple[list[dict], list[str]]:
                     "unit": "usd",
                     "source": "rlusd_state_cache (xrpl + ethereum)",
                 })
+            # Append today's row to rlusd_supply_history (daily UPSERT
+            # keyed on snapshot_date, derived from payload.fetched_at).
+            # Same in-memory payload, no extra fetch. Failures are
+            # silent — must not break the per-cycle metric emission.
+            try:
+                db.write_rlusd_supply_history(rlusd_cached)
+            except Exception:
+                pass
         else:
             errors.append("rlusd_state_cache_unavailable")
     except Exception as e:
