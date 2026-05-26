@@ -316,12 +316,13 @@
     </div>
     {% if data.pools %}
       <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.8em;">
+        {% set thr_label = "{:,.0f}".format(data.meaningful_lp_threshold) %}
         {% if data.meaningful_pool_count == data.pool_count %}
-          {{ _('All %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued).')|format(n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+          {{ _('All %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued).', n=data.pool_count, thr=thr_label) }}
         {% elif data.meaningful_pool_count == 0 %}
-          {{ _('None of the %(n)d indexed pools hold a meaningful LP balance (≥ %(thr)s LP issued). Every row below is a micro-pool — algorithmically seeded or near-empty.')|format(n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+          {{ _('None of the %(n)d indexed pools hold a meaningful LP balance (≥ %(thr)s LP issued). Every row below is a micro-pool — algorithmically seeded or near-empty.', n=data.pool_count, thr=thr_label) }}
         {% else %}
-          {{ _('%(m)d of %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued); the remainder are micro-pools.')|format(m=data.meaningful_pool_count, n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+          {{ _('%(m)d of %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued); the remainder are micro-pools.', m=data.meaningful_pool_count, n=data.pool_count, thr=thr_label) }}
         {% endif %}
       </p>
       {% for p in data.pools[:20] %}
