@@ -25,6 +25,14 @@ AMM_INDEX_PATH = os.path.join(HERE, "amm_index.json")
 CACHE_TTL = int(os.environ.get("TOKEN_CACHE_TTL", "120"))
 SPARKLINE_HOURS = 24 * 7  # last 7 days, hourly
 
+# LP-balance threshold below which a pool is treated as a non-meaningful
+# micro / algorithmic-seed pool (typical pattern: thousands of pools across
+# a token with sub-1 LP supply, no real liquidity). Lets the /token page
+# distinguish "this token has N real pools" from "this token has N pools
+# total, most of them dust" without ever hiding rows. 1000 is empirical
+# (BITx pools sit at 0.07–11.18; RLUSD/USDC sit above 10^9).
+MEANINGFUL_LP_THRESHOLD = 1000.0
+
 _cache_lock = threading.Lock()
 _cache = {}  # (currency, issuer) -> (fetched_at_unix, data_dict)
 
@@ -270,6 +278,13 @@ def fetch_token_data(currency, issuer):
 
     # 3. AMM pools containing this token
     pools = _amm_pools_holding(currency, issuer)
+    meaningful_pool_count = 0
+    for p in pools:
+        try:
+            if float(p["lp_balance"] or 0) >= MEANINGFUL_LP_THRESHOLD:
+                meaningful_pool_count += 1
+        except (TypeError, ValueError):
+            continue
 
     # 4. XRP price (None when no XRP-paired pool clears the dust floor — the
     # absence IS the signal; template renders "—" so consumers don't backfill
@@ -304,6 +319,8 @@ def fetch_token_data(currency, issuer):
         "sparkline_hours": SPARKLINE_HOURS,
         "pools": pools,
         "pool_count": len(pools),
+        "meaningful_pool_count": meaningful_pool_count,
+        "meaningful_lp_threshold": MEANINGFUL_LP_THRESHOLD,
         "history_source": history_source,
     }
 

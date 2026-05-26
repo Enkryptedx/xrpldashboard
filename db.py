@@ -110,20 +110,22 @@ CREATE TABLE IF NOT EXISTS worker_heartbeat (
 );
 
 CREATE TABLE IF NOT EXISTS amm_ranked_pools (
-    id          BIGSERIAL PRIMARY KEY,
-    amm_account TEXT,
-    pair        TEXT NOT NULL,
-    fee_pct     DOUBLE PRECISION,
-    fee_raw     INTEGER,
-    amount_a    DOUBLE PRECISION,
-    amount_b    DOUBLE PRECISION,
-    asset_a     JSONB,
-    asset_b     JSONB,
-    tvl_usd     DOUBLE PRECISION,
-    tvl_status  TEXT,
-    kind        TEXT,
-    snapshot_ts BIGINT NOT NULL
+    id             BIGSERIAL PRIMARY KEY,
+    amm_account    TEXT,
+    pair           TEXT NOT NULL,
+    fee_pct        DOUBLE PRECISION,
+    fee_raw        INTEGER,
+    amount_a       DOUBLE PRECISION,
+    amount_b       DOUBLE PRECISION,
+    asset_a        JSONB,
+    asset_b        JSONB,
+    tvl_usd        DOUBLE PRECISION,
+    tvl_status     TEXT,
+    kind           TEXT,
+    lp_token_value NUMERIC,
+    snapshot_ts    BIGINT NOT NULL
 );
+ALTER TABLE amm_ranked_pools ADD COLUMN IF NOT EXISTS lp_token_value NUMERIC;
 CREATE INDEX IF NOT EXISTS amm_ranked_pools_tvl_idx
     ON amm_ranked_pools (tvl_usd DESC NULLS LAST);
 
@@ -675,6 +677,7 @@ def replace_amm_ranked_pools(rows):
             r.get("tvl_usd"),
             r.get("tvl_status"),
             r.get("kind"),
+            r.get("lp_token_value"),
             snapshot_ts,
         )
         for r in rows
@@ -686,9 +689,10 @@ def replace_amm_ranked_pools(rows):
                 cur.executemany(
                     "INSERT INTO amm_ranked_pools "
                     "(amm_account, pair, fee_pct, fee_raw, amount_a, amount_b, "
-                    " asset_a, asset_b, tvl_usd, tvl_status, kind, snapshot_ts) "
+                    " asset_a, asset_b, tvl_usd, tvl_status, kind, "
+                    " lp_token_value, snapshot_ts) "
                     "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, "
-                    " %s, %s, %s, %s)",
+                    " %s, %s, %s, %s, %s)",
                     payload,
                 )
     except Exception as e:
@@ -894,7 +898,13 @@ def read_amm_index_entries():
     Returns a list of dicts shaped like amm_index entries
     (Account / Asset / Asset2 / TradingFee / LPTokenBalance) sourced
     from the amm_ranked_pools snapshot. LPTokenBalance.value carries
-    tvl_usd as a sort proxy (callers only use it for pool ordering).
+    the real amm_info `lp_token.value` (the issued LP token supply for
+    the pool); callers may use it for sorting or display.
+
+    Pools written before the lp_token_value column was backfilled have
+    NULL — those entries are skipped here to avoid downstream "0 LP"
+    mislabels. Once one full rank_amms cycle has run, all rows carry
+    the real value.
 
     Returns None when Postgres isn't configured — signals the caller
     to fall back to the local file (dev / Mac path). RAISES on PG
@@ -906,13 +916,15 @@ def read_amm_index_entries():
     with pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT amm_account, asset_a, asset_b, fee_raw, tvl_usd "
+                "SELECT amm_account, asset_a, asset_b, fee_raw, lp_token_value "
                 "FROM amm_ranked_pools"
             )
             rows = cur.fetchall()
     out = []
-    for amm_acct, asset_a, asset_b, fee_raw, tvl_usd in rows:
+    for amm_acct, asset_a, asset_b, fee_raw, lp_token_value in rows:
         if not amm_acct:
+            continue
+        if lp_token_value is None:
             continue
         a = asset_a or {}
         b = asset_b or {}
@@ -931,7 +943,7 @@ def read_amm_index_entries():
             "Asset": Asset,
             "Asset2": Asset2,
             "TradingFee": int(fee_raw or 0),
-            "LPTokenBalance": {"value": str(tvl_usd if tvl_usd is not None else 0)},
+            "LPTokenBalance": {"value": str(lp_token_value)},
         })
     return out
 

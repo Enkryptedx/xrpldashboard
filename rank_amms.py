@@ -247,6 +247,11 @@ def rank_one(client, amm_entry, pegs, verified_brands=None):
     amt_b = amount_to_float(amm.get("amount2"))
     fee_pct = amm.get("trading_fee", 0) / 1000.0
     account = amm.get("account") or amm_entry.get("Account")
+    lp_token_raw = (amm.get("lp_token") or {}).get("value")
+    try:
+        lp_token_value = float(lp_token_raw) if lp_token_raw is not None else None
+    except (TypeError, ValueError):
+        lp_token_value = None
 
     # Compute TVL.
     a_usd = amt_a * meta_a["peg_usd"] if meta_a["peg_usd"] is not None else None
@@ -275,6 +280,7 @@ def rank_one(client, amm_entry, pegs, verified_brands=None):
         "tvl_usd": tvl_usd,
         "tvl_status": tvl_status,
         "kind": kind,
+        "lp_token_value": lp_token_value,
     }
 
 

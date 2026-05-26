@@ -306,9 +306,24 @@
   <div class="card">
     <div class="section-head">
       <h2>{{ _('AMM pools holding this token') }}</h2>
-      <span class="meta">{{ data.pool_count }} {{ _('pool') if data.pool_count == 1 else _('pools') }}</span>
+      <span class="meta">
+        {%- if data.meaningful_pool_count == data.pool_count -%}
+          {{ data.pool_count }} {{ _('pool') if data.pool_count == 1 else _('pools') }}
+        {%- else -%}
+          {{ data.meaningful_pool_count }} {{ _('meaningful of') }} {{ data.pool_count }}
+        {%- endif -%}
+      </span>
     </div>
     {% if data.pools %}
+      <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.8em;">
+        {% if data.meaningful_pool_count == data.pool_count %}
+          {{ _('All %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued).')|format(n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+        {% elif data.meaningful_pool_count == 0 %}
+          {{ _('None of the %(n)d indexed pools hold a meaningful LP balance (≥ %(thr)s LP issued). Every row below is a micro-pool — algorithmically seeded or near-empty.')|format(n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+        {% else %}
+          {{ _('%(m)d of %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued); the remainder are micro-pools.')|format(m=data.meaningful_pool_count, n=data.pool_count, thr="{:,.0f}".format(data.meaningful_lp_threshold)) }}
+        {% endif %}
+      </p>
       {% for p in data.pools[:20] %}
       <div class="pool-row">
         <div class="pool-pair">
@@ -331,8 +346,13 @@
       {% endfor %}
       {% if data.pools|length > 20 %}
         <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
-          {{ _('Showing top 20 of') }} {{ data.pools|length }} {{ _('pools by LP balance.') }}
+          {{ _('Showing top 20 of') }} {{ data.pools|length }} {{ _('pools by issued LP balance.') }}
         </div>
+      {% endif %}
+      {% if data.pool_count > 100 and (data.meaningful_pool_count * 10) < data.pool_count %}
+        <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0.8em 0 0;">
+          {{ _('Why so many pools when only a handful are real? An AMM can be created against any two assets, and some addresses spawn pools algorithmically and seed them with near-zero liquidity. They show up in the on-chain count but carry no usable depth. The "meaningful" filter above is a coarse cutoff on issued LP supply — it isn\'t price-aware, just a way to separate live pools from algorithmic noise.') }}
+        </p>
       {% endif %}
     {% else %}
       <div class="empty" style="margin-top:0.4em;">
