@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.permissioned_domains_walker</string>
+
+    <key>Comment</key>
+    <string>Daily one-shot /permissioned-domains walker (XLS-80 Phase 1). Walks account_objects type=permissioned_domain across a 14-account institutional bootstrap seed (auto-expanding from discovered domain owners), writes discovered PermissionedDomain rows to permissioned_domains and one audit row per pass to permissioned_domain_walker_runs. Mirrors credentials_walker shape. Expected state for weeks: zero domains found, but the walker_runs metadata row is the freshness signal Phase 2's UI reads against.</string>
+
+    <!-- Wrapper sources ~/.config/xrpldashboard/env so DATABASE_URL is
+         present at launch; without it db.write_* silently no-ops and
+         the daily audit row never lands. Same pattern as
+         run_credentials_walker.sh + run_daily_snapshot.sh. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_permissioned_domains_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 24 hours from RunAtLoad. StartCalendarInterval (e.g. 04:47)
+         was considered but rejected per the daily_snapshot.plist lesson:
+         macOS UserEventAgent-Aqua dispatches calendar triggers
+         unreliably across sleep/wake/powernap. StartInterval survives
+         sleep/wake cleanly. The trade-off is the run time drifts with
+         each boot — fine for this walker since the relevant signal is
+         "ran at least once today," not "ran at exactly 04:47."
+         Pass budget is ~3 min (PERMISSIONED_DOMAINS_BUDGET) so this
+         doesn't stack against other walkers in any meaningful way. -->
+    <key>StartInterval</key>
+    <integer>86400</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/permissioned_domains_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/permissioned_domains_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

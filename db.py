@@ -387,6 +387,64 @@ CREATE TABLE IF NOT EXISTS unl_snapshots (
 );
 CREATE INDEX IF NOT EXISTS unl_snapshots_date_idx
     ON unl_snapshots (snapshot_date DESC);
+
+-- XLS-80 PermissionedDomains Phase 1: walker + schema, no UI yet.
+-- Append-only history shape from day 1 — the trajectory IS the data we
+-- want (count rises 0→1→N as institutions adopt the primitive). Do NOT
+-- collapse this to a singleton blob the way credentials_snapshot does;
+-- per cadence-rule, write_cadence (daily) ≈ change_rate so a separate
+-- daily-grain history table is the right shape.
+CREATE TABLE IF NOT EXISTS permissioned_domains (
+    snapshot_date         DATE NOT NULL,
+    domain_id             TEXT NOT NULL,
+    owner_account         TEXT NOT NULL,
+    sequence              INTEGER NOT NULL,
+    accepted_credentials  JSONB NOT NULL,
+    cred_count            SMALLINT NOT NULL,
+    previous_txn_id       TEXT,
+    ledger_close_time     BIGINT NOT NULL,
+    fetched_at_iso        TEXT NOT NULL,
+    PRIMARY KEY (snapshot_date, domain_id)
+);
+CREATE INDEX IF NOT EXISTS permissioned_domains_history_idx
+    ON permissioned_domains (domain_id, snapshot_date DESC);
+CREATE INDEX IF NOT EXISTS permissioned_domains_owner_idx
+    ON permissioned_domains (owner_account);
+
+-- Phase 1: created empty. Phase 2/3 populates from a PermissionedDomainSet
+-- /Delete tx scan once we have a UI consuming events. The table exists now
+-- so future migration is a column-add, not a schema introduction.
+CREATE TABLE IF NOT EXISTS permissioned_domain_events (
+    event_id          BIGSERIAL PRIMARY KEY,
+    tx_hash           TEXT NOT NULL UNIQUE,
+    tx_type           TEXT NOT NULL,
+    domain_id         TEXT NOT NULL,
+    owner_account     TEXT NOT NULL,
+    ledger_index      BIGINT NOT NULL,
+    ledger_close_time BIGINT NOT NULL,
+    payload           JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS permissioned_domain_events_domain_idx
+    ON permissioned_domain_events (domain_id, ledger_close_time DESC);
+CREATE INDEX IF NOT EXISTS permissioned_domain_events_time_idx
+    ON permissioned_domain_events (ledger_close_time DESC);
+
+-- One row per walker pass. Without this audit trail, an empty
+-- permissioned_domains table is indistinguishable from "walker never
+-- ran" or "walker errored silently." Phase 2's empty-state copy reads
+-- straight off this table — "last walker pass <fetched_at_iso>, scanned
+-- <accounts_queried> seed accounts, found <domains_found> domains" —
+-- so the page reads as live infrastructure even at N=0.
+CREATE TABLE IF NOT EXISTS permissioned_domain_walker_runs (
+    snapshot_date      DATE PRIMARY KEY,
+    fetched_at_iso     TEXT NOT NULL,
+    seed_set_size      INTEGER NOT NULL,
+    accounts_queried   INTEGER NOT NULL,
+    domains_found      INTEGER NOT NULL,
+    exhausted          BOOLEAN NOT NULL,
+    walker_duration_ms INTEGER NOT NULL,
+    notes              TEXT
+);
 """
 
 
@@ -1076,6 +1134,162 @@ def read_credentials_snapshot():
                 return payload
     except Exception:
         return None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# /permissioned-domains (XLS-80) — Phase 1: walker writes, no UI yet.
+# Append-only history: one row per (snapshot_date, domain_id) and one
+# audit row per walker pass in permissioned_domain_walker_runs.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def write_permissioned_domains(rows, fetched_at_iso, snapshot_date):
+    """Insert today's snapshot rows into permissioned_domains. Idempotent:
+    ON CONFLICT (snapshot_date, domain_id) DO NOTHING so same-day re-runs
+    don't duplicate. Silent no-op when PG isn't configured. Empty `rows`
+    is valid (zero domains found today)."""
+    if not pg_available():
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            for r in rows or []:
+                cur.execute(
+                    "INSERT INTO permissioned_domains ("
+                    "  snapshot_date, domain_id, owner_account, sequence, "
+                    "  accepted_credentials, cred_count, previous_txn_id, "
+                    "  ledger_close_time, fetched_at_iso"
+                    ") VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s) "
+                    "ON CONFLICT (snapshot_date, domain_id) DO NOTHING",
+                    (
+                        snapshot_date,
+                        r["domain_id"],
+                        r["owner_account"],
+                        r["sequence"],
+                        json.dumps(r.get("accepted_credentials") or [], default=str),
+                        r["cred_count"],
+                        r.get("previous_txn_id"),
+                        r["ledger_close_time"],
+                        fetched_at_iso,
+                    ),
+                )
+        conn.commit()
+    except Exception as e:
+        _log_err("write_permissioned_domains_failed", e)
+        _drop_writer_conn()
+
+
+def write_permissioned_domain_walker_run(metadata, snapshot_date):
+    """Upsert one row per snapshot_date into permissioned_domain_walker_runs.
+    Same-day second invocation overwrites with the newer pass (latest
+    duration_ms / domains_found wins). Silent no-op when PG isn't configured."""
+    if not pg_available():
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO permissioned_domain_walker_runs ("
+                "  snapshot_date, fetched_at_iso, seed_set_size, "
+                "  accounts_queried, domains_found, exhausted, "
+                "  walker_duration_ms, notes"
+                ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "  fetched_at_iso = EXCLUDED.fetched_at_iso, "
+                "  seed_set_size = EXCLUDED.seed_set_size, "
+                "  accounts_queried = EXCLUDED.accounts_queried, "
+                "  domains_found = EXCLUDED.domains_found, "
+                "  exhausted = EXCLUDED.exhausted, "
+                "  walker_duration_ms = EXCLUDED.walker_duration_ms, "
+                "  notes = EXCLUDED.notes",
+                (
+                    snapshot_date,
+                    metadata["fetched_at_iso"],
+                    metadata["seed_set_size"],
+                    metadata["accounts_queried"],
+                    metadata["domains_found"],
+                    metadata["exhausted"],
+                    metadata["walker_duration_ms"],
+                    metadata.get("notes"),
+                ),
+            )
+        conn.commit()
+    except Exception as e:
+        _log_err("write_permissioned_domain_walker_run_failed", e)
+        _drop_writer_conn()
+
+
+def read_permissioned_domains_latest():
+    """Return the most recent snapshot row per domain_id. Empty list when
+    PG unavailable or table empty (which is the expected steady state
+    until XLS-80 adoption begins)."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT ON (domain_id) "
+                    "  snapshot_date, domain_id, owner_account, sequence, "
+                    "  accepted_credentials, cred_count, previous_txn_id, "
+                    "  ledger_close_time, fetched_at_iso "
+                    "FROM permissioned_domains "
+                    "ORDER BY domain_id, snapshot_date DESC"
+                )
+                cols = [c.name for c in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def read_permissioned_domain_walker_runs(limit=30):
+    """Return the most recent walker-run metadata rows, newest first.
+    Phase 2's empty-state copy reads off this — last run, scan size,
+    duration, exhaustion flag. Empty list when PG unavailable."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, fetched_at_iso, seed_set_size, "
+                    "  accounts_queried, domains_found, exhausted, "
+                    "  walker_duration_ms, notes "
+                    "FROM permissioned_domain_walker_runs "
+                    "ORDER BY snapshot_date DESC LIMIT %s",
+                    (int(limit),),
+                )
+                cols = [c.name for c in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def read_permissioned_domain_events(limit=50, offset=0):
+    """Phase 1: returns [] because the events table is intentionally empty
+    until Phase 2/3 adds tx-history population. Helper exists now so Phase
+    2 templates can import the consumer API without a follow-up change."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT tx_hash, tx_type, domain_id, owner_account, "
+                    "  ledger_index, ledger_close_time, payload "
+                    "FROM permissioned_domain_events "
+                    "ORDER BY ledger_close_time DESC "
+                    "LIMIT %s OFFSET %s",
+                    (int(limit), int(offset)),
+                )
+                cols = [c.name for c in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
+    except Exception:
+        return []
 
 
 def read_rlusd_state_cache():
