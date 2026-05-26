@@ -30,7 +30,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 from xrpl.clients import JsonRpcClient
-from xrpl.models.requests import AccountInfo, AccountLines, AccountTx, AMMInfo, ServerInfo
+from xrpl.models.requests import (
+    AccountInfo, AccountLines, AccountTx, AMMInfo, ServerInfo,
+    AccountObjects, AccountOffers,
+)
+from xrpl.models.requests.account_objects import AccountObjectType
 
 import db
 
@@ -1018,6 +1022,213 @@ def _fetch_token_issuance(address):
     return issued
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Phase 2 — escrows / offers / MPT holdings
+# ─────────────────────────────────────────────────────────────────────
+
+# MPT issuance metadata is held as one JSONB blob in mpt_snapshot.payload
+# (no per-holder index — that's what account_objects type=mptoken on the
+# focal wallet gives us). We pull the issuances array once and key it by
+# MPTokenIssuanceID for an in-memory join at render time.
+_MPT_INDEX_TTL = 600
+_mpt_index_lock = threading.Lock()
+_mpt_index_cache = None  # (fetched_at_unix, {issuance_id: meta_dict})
+
+
+def _load_mpt_issuance_index():
+    """Lazy-load + TTL-refresh the MPT issuance index. Returns a dict
+    keyed by issuance_id. Fail-soft on any PG / shape error so a missing
+    enrichment never breaks wallet render — MPT holdings will just show
+    truncated IDs instead of token names."""
+    global _mpt_index_cache
+    now = time.time()
+    with _mpt_index_lock:
+        if _mpt_index_cache and (now - _mpt_index_cache[0]) < _MPT_INDEX_TTL:
+            return _mpt_index_cache[1]
+    try:
+        with db.pg_connect() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT payload FROM mpt_snapshot WHERE id=1")
+            row = cur.fetchone()
+        payload = (row[0] if row else None) or {}
+        issuances = payload.get("issuances") or []
+        idx = {}
+        for iss in issuances:
+            if isinstance(iss, dict) and iss.get("issuance_id"):
+                idx[iss["issuance_id"]] = iss
+    except Exception:
+        idx = {}
+    with _mpt_index_lock:
+        _mpt_index_cache = (now, idx)
+    return idx
+
+
+def _fetch_escrows(client, address):
+    """Return {sent_external: [...], self_locks: [...]}.
+
+    account_objects only returns escrows the focal account *owns* (paid
+    owner reserve for) — i.e. Account == focal. Inbound escrows (where
+    focal is Destination but not Account) live in the sender's directory
+    and would need a tx-history scan to surface; deferred to Phase 3.
+
+    Self-lock = Account == Destination == focal (the Ripple-vesting
+    pattern). Sent-external = Account == focal, Destination != focal.
+    """
+    out = {"sent_external": [], "self_locks": []}
+    result = _safe_request(
+        client,
+        AccountObjects(account=address, type=AccountObjectType.ESCROW, ledger_index="validated"),
+    )
+    if not result:
+        return out
+    for obj in result.get("account_objects") or []:
+        owner = obj.get("Account")
+        dest = obj.get("Destination")
+        if owner != address:
+            continue  # defensive — account_objects shouldn't return foreign-owned
+        amount_raw = obj.get("Amount")
+        try:
+            amount_xrp = int(amount_raw) / 1_000_000 if amount_raw else 0.0
+        except (TypeError, ValueError):
+            amount_xrp = 0.0
+        finish_after_unix = _ripple_to_unix(obj.get("FinishAfter"))
+        cancel_after_unix = _ripple_to_unix(obj.get("CancelAfter"))
+        conditional = bool(obj.get("Condition"))
+        entry = {
+            "amount_xrp": amount_xrp,
+            "finish_after_unix": finish_after_unix,
+            "cancel_after_unix": cancel_after_unix,
+            "conditional": conditional,
+        }
+        if dest == address:
+            out["self_locks"].append(entry)
+        else:
+            entry["destination"] = dest
+            entry["destination_short"] = _short_addr(dest)
+            _, dest_name = _classify_address(dest) if dest else (None, None)
+            entry["destination_name"] = dest_name
+            out["sent_external"].append(entry)
+    # Sort each bucket: largest amounts first, then earliest unlock first.
+    out["sent_external"].sort(key=lambda e: (-e["amount_xrp"], e["finish_after_unix"] or 0))
+    out["self_locks"].sort(key=lambda e: (-e["amount_xrp"], e["finish_after_unix"] or 0))
+    return out
+
+
+def _format_amount_display(amount):
+    """Render an XRPL amount as a short human label. XRP = drops string
+    → '12,345.67 XRP'. IOU = dict → '12.34 SYMBOL'."""
+    if isinstance(amount, str):
+        try:
+            return "{:,.2f} XRP".format(int(amount) / 1_000_000)
+        except ValueError:
+            return amount
+    if isinstance(amount, dict):
+        try:
+            v = float(amount.get("value") or 0)
+        except (TypeError, ValueError):
+            v = 0.0
+        sym = _short_currency(amount.get("currency"), amount.get("issuer"))
+        return "{:,.4f} {}".format(v, sym)
+    return "?"
+
+
+def _fetch_offers(client, address):
+    """Return [{seq, taker_gets_display, taker_pays_display, ...}, ...].
+
+    Pending DEX limit orders. The wallet account is the maker on each —
+    taker_gets is what the maker is offering, taker_pays is what they
+    want in return. Either side can be XRP (drops string) or IOU dict.
+    """
+    out = []
+    result = _safe_request(
+        client,
+        AccountOffers(account=address, ledger_index="validated"),
+    )
+    if not result:
+        return out
+    for off in result.get("offers") or []:
+        gets = off.get("taker_gets")
+        pays = off.get("taker_pays")
+        expiration_unix = _ripple_to_unix(off.get("expiration"))
+        out.append({
+            "seq": off.get("seq"),
+            "taker_gets_display": _format_amount_display(gets),
+            "taker_pays_display": _format_amount_display(pays),
+            "expiration_unix": expiration_unix,
+        })
+    # Newest first by sequence — recent offers tend to be the most
+    # interesting; old standing offers slide down.
+    out.sort(key=lambda o: -(o.get("seq") or 0))
+    return out
+
+
+def _fetch_mpt_holdings(client, address):
+    """Return [{issuance_id, amount_display, name, ticker, ...}, ...].
+
+    account_objects type=mptoken gives the focal wallet's MPToken
+    objects directly — symmetric with escrows/offers, no PG holder
+    index required. Enrichment (name, ticker, icon, asset_scale)
+    joins in-memory against mpt_snapshot.payload.issuances; falls
+    back to truncated MPTokenIssuanceID + /mpt/<id> link when an
+    issuance is uncatalogued.
+    """
+    out = []
+    result = _safe_request(
+        client,
+        AccountObjects(account=address, type=AccountObjectType.MPTOKEN, ledger_index="validated"),
+    )
+    if not result:
+        return out
+    index = _load_mpt_issuance_index()
+    for obj in result.get("account_objects") or []:
+        issuance_id = obj.get("MPTokenIssuanceID")
+        if not issuance_id:
+            continue
+        try:
+            raw_amount = int(obj.get("MPTAmount") or 0)
+        except (TypeError, ValueError):
+            raw_amount = 0
+        meta = index.get(issuance_id) or {}
+        labeled = bool(meta)
+        try:
+            asset_scale = int(meta.get("asset_scale") or 0)
+        except (TypeError, ValueError):
+            asset_scale = 0
+        if asset_scale > 0:
+            display_amount = raw_amount / (10 ** asset_scale)
+        else:
+            display_amount = float(raw_amount)
+        issuer = meta.get("issuer")
+        out.append({
+            "issuance_id": issuance_id,
+            "issuance_id_short": (issuance_id[:8] + "…" + issuance_id[-4:]) if len(issuance_id) > 14 else issuance_id,
+            "raw_amount": raw_amount,
+            "display_amount": display_amount,
+            "display_amount_str": "{:,.{}f}".format(display_amount, min(asset_scale, 6)) if asset_scale > 0 else "{:,.0f}".format(display_amount),
+            "name": meta.get("name"),
+            "ticker": meta.get("ticker"),
+            "icon": meta.get("icon"),
+            "asset_scale": asset_scale,
+            "classification": meta.get("classification"),
+            "issuer": issuer,
+            "issuer_short": _short_addr(issuer) if issuer else None,
+            "issuer_name": meta.get("issuer_name"),
+            "labeled": labeled,
+            "detail_url": "/mpt/{}".format(issuance_id),
+        })
+    # Display-labeled first (has ticker or name) by ticker/name, then
+    # everything else by raw amount desc — same sort tier as wallet
+    # token holdings so the precedence reads consistently.
+    def _named(e):
+        return bool(e.get("ticker") or e.get("name"))
+    out.sort(key=lambda e: (
+        0 if _named(e) else 1,
+        (e["ticker"] or e["name"] or "").lower() if _named(e) else "",
+        -e["raw_amount"],
+    ))
+    return out
+
+
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     client = JsonRpcClient(XRPL_NODE)
     info = _fetch_account_info(client, address)
@@ -1045,6 +1256,9 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "pool_flow": None,
             "whale_flag": False,
             "tokens_issued": [],
+            "escrows": {"sent_external": [], "self_locks": []},
+            "offers": [],
+            "mpt_holdings": [],
         }
     account_data = info.get("account_data", {})
     is_amm, is_vault, amm_pair = _special_account_self_info(client, account_data, address)
@@ -1093,6 +1307,33 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         inner = _tx_envelope(txs[0])
         last_seen_unix = _ripple_to_unix(inner.get("date"))
     last_seen = _age_str(last_seen_unix)
+
+    # Phase 2 — escrows / offers / MPT holdings. Three independent RPCs
+    # fanned out in parallel with a generous per-call timeout; any one
+    # failing degrades to that section being empty (the template hides
+    # empty sections), so a transient node hiccup never 500s the page.
+    escrows = {"sent_external": [], "self_locks": []}
+    offers = []
+    mpt_holdings = []
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        fut_escrows = ex.submit(_fetch_escrows, JsonRpcClient(XRPL_NODE), address)
+        fut_offers = ex.submit(_fetch_offers, JsonRpcClient(XRPL_NODE), address)
+        fut_mpts = ex.submit(_fetch_mpt_holdings, JsonRpcClient(XRPL_NODE), address)
+        for label, fut, default in (
+            ("escrows", fut_escrows, escrows),
+            ("offers", fut_offers, offers),
+            ("mpt_holdings", fut_mpts, mpt_holdings),
+        ):
+            try:
+                value = fut.result(timeout=7)
+            except Exception:
+                value = default
+            if label == "escrows":
+                escrows = value
+            elif label == "offers":
+                offers = value
+            else:
+                mpt_holdings = value
 
     top_label = "—"
     top_addr_full = None
@@ -1177,6 +1418,9 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "pool_flow": pool_flow,
         "whale_flag": _fetch_whale_flag(address),
         "tokens_issued": _fetch_token_issuance(address),
+        "escrows": escrows,
+        "offers": offers,
+        "mpt_holdings": mpt_holdings,
     }
 
 

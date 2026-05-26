@@ -1533,6 +1533,170 @@
     </section>
     {% endif %}
 
+    {# ========== Phase 2 — MPT / DEX offers / Escrows ==========
+       Three independent on-chain signal sections, each gated on
+       data presence so a wallet with none of them sees no change.
+       Order: lightest → heaviest visual weight. Specialist detail,
+       intentionally placed below the at-a-glance row-2 cards. #}
+
+    {% if data.mpt_holdings and data.mpt_holdings | length > 0 %}
+    <section class="row-mpt">
+      <div class="card">
+        <div class="section-head">
+          <h2>{{ _('MPT holdings') }}</h2>
+          <span class="meta">
+            {{ data.mpt_holdings | length }}
+            {{ _('issuance') if data.mpt_holdings | length == 1 else _('issuances') }}
+          </span>
+        </div>
+        <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.8em;">
+          {{ _('Multi-Purpose Tokens (XLS-33) — the issuer-controlled token standard. Each holding is a discrete on-ledger object.') }}
+        </p>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          {% for m in data.mpt_holdings[:10] %}
+          <li style="display: flex; align-items: center; justify-content: space-between; gap: 0.8em; padding: 0.6em 0; border-top: 1px solid var(--border);">
+            <a href="{{ m.detail_url }}" style="display: flex; align-items: center; gap: 0.6em; color: inherit; text-decoration: none; min-width: 0; flex: 1;">
+              {% if m.icon %}
+                <img src="{{ m.icon }}" alt="" style="width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;" loading="lazy">
+              {% endif %}
+              <span style="min-width: 0;">
+                <span style="display: block; font-weight: 600;">
+                  {% if m.ticker or m.name %}
+                    {{ m.ticker or m.name }}
+                    {% if m.ticker and m.name %}<span style="color: var(--text-2); font-weight: 400; font-size: var(--fs-xs); margin-left: 0.4em;">{{ m.name }}</span>{% endif %}
+                  {% else %}
+                    <span style="font-family: var(--mono); font-size: var(--fs-xs);">{{ m.issuance_id_short }}</span>
+                    <span style="color: var(--text-3); font-size: var(--fs-2xs); margin-left: 0.4em;">{{ _('uncatalogued') }}</span>
+                  {% endif %}
+                </span>
+                {% if m.issuer_name or m.classification %}
+                <span style="color: var(--text-2); font-size: var(--fs-2xs);">
+                  {% if m.issuer_name %}{{ m.issuer_name }}{% endif %}
+                  {% if m.issuer_name and m.classification %} · {% endif %}
+                  {% if m.classification %}{{ m.classification }}{% endif %}
+                </span>
+                {% endif %}
+              </span>
+            </a>
+            <span style="font-family: var(--mono); font-size: var(--fs-sm); color: var(--cyan); flex-shrink: 0;">{{ m.display_amount_str }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if data.mpt_holdings | length > 10 %}
+        <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
+          + {{ (data.mpt_holdings | length) - 10 }} {{ _('more — see') }} <a href="/mpts">/mpts</a>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if data.offers and data.offers | length > 0 %}
+    <section class="row-offers">
+      <div class="card">
+        <div class="section-head">
+          <h2>{{ _('DEX offers (pending)') }}</h2>
+          <span class="meta">
+            {{ data.offers | length }}
+            {{ _('offer') if data.offers | length == 1 else _('offers') }}
+          </span>
+        </div>
+        <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.8em;">
+          {{ _('Standing limit orders on the native XRPL DEX. Each row is one open offer — what this wallet is willing to give and what it wants in return.') }}
+        </p>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          {% for o in data.offers[:10] %}
+          <li style="display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 0.6em; padding: 0.6em 0; border-top: 1px solid var(--border); font-size: var(--fs-sm);">
+            <span style="color: var(--text-3); font-size: var(--fs-2xs);">#{{ o.seq }}</span>
+            <span style="font-family: var(--mono); color: var(--text);">{{ o.taker_gets_display }}</span>
+            <span style="color: var(--text-3);">→</span>
+            <span style="font-family: var(--mono); color: var(--cyan);">{{ o.taker_pays_display }}</span>
+            <span style="color: var(--text-3); font-size: var(--fs-2xs);">
+              {% if o.expiration_unix %}<span data-unix="{{ o.expiration_unix }}" data-format="rel">{{ _('exp.') }}</span>{% else %}{{ _('no exp.') }}{% endif %}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if data.offers | length > 10 %}
+        <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
+          + {{ (data.offers | length) - 10 }} {{ _('more offers not shown') }}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if data.escrows and (data.escrows.sent_external or data.escrows.self_locks) %}
+    <section class="row-escrows">
+      <div class="card">
+        <div class="section-head">
+          <h2>{{ _('Escrows') }}</h2>
+          <span class="meta">
+            {% set total_escrows = (data.escrows.sent_external | length) + (data.escrows.self_locks | length) %}
+            {{ total_escrows }}
+            {{ _('escrow') if total_escrows == 1 else _('escrows') }}
+          </span>
+        </div>
+        <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 0.8em;">
+          {{ _('On-ledger time-locked XRP this wallet owns. account_objects returns only the owner side — escrows where this wallet is the destination but not the owner are tracked separately.') }}
+        </p>
+
+        {% if data.escrows.self_locks %}
+        <div style="margin-bottom: 1em;">
+          <h3 style="font-size: var(--fs-sm); color: var(--text-2); margin: 0 0 0.4em; text-transform: uppercase; letter-spacing: 0.05em;">
+            {{ _('Self-lock escrows (vesting / time-locked balances)') }}
+          </h3>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for e in data.escrows.self_locks[:10] %}
+            <li style="display: grid; grid-template-columns: 1fr auto auto; gap: 0.6em; align-items: baseline; padding: 0.5em 0; border-top: 1px solid var(--border); font-size: var(--fs-sm);">
+              <span style="font-family: var(--mono); color: var(--cyan);">{{ "{:,.0f}".format(e.amount_xrp) }} XRP</span>
+              <span style="color: var(--text-2); font-size: var(--fs-xs);">
+                {% if e.finish_after_unix %}<span data-unix="{{ e.finish_after_unix }}" data-format="abs">{{ _('unlocks') }}</span>{% endif %}
+              </span>
+              <span style="color: var(--text-3); font-size: var(--fs-2xs);">
+                {% if e.conditional %}{{ _('conditional') }}{% endif %}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if data.escrows.self_locks | length > 10 %}
+          <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.4em;">
+            + {{ (data.escrows.self_locks | length) - 10 }} {{ _('more self-lock escrows') }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if data.escrows.sent_external %}
+        <div>
+          <h3 style="font-size: var(--fs-sm); color: var(--text-2); margin: 0 0 0.4em; text-transform: uppercase; letter-spacing: 0.05em;">
+            {{ _('Sent to others') }}
+          </h3>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for e in data.escrows.sent_external[:10] %}
+            <li style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.6em; align-items: baseline; padding: 0.5em 0; border-top: 1px solid var(--border); font-size: var(--fs-sm);">
+              <span style="font-family: var(--mono); color: var(--cyan);">{{ "{:,.0f}".format(e.amount_xrp) }} XRP</span>
+              <a href="/wallet/{{ e.destination }}" style="font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-2);">{{ e.destination_name or e.destination_short }}</a>
+              <span style="color: var(--text-2); font-size: var(--fs-xs);">
+                {% if e.finish_after_unix %}<span data-unix="{{ e.finish_after_unix }}" data-format="abs">{{ _('unlocks') }}</span>{% endif %}
+              </span>
+              <span style="color: var(--text-3); font-size: var(--fs-2xs);">
+                {% if e.conditional %}{{ _('conditional') }}{% endif %}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if data.escrows.sent_external | length > 10 %}
+          <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.4em;">
+            + {{ (data.escrows.sent_external | length) - 10 }} {{ _('more sent escrows') }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
     <footer>
       {{ _('Wallet view · all balances, holdings, AMM positions and pool activity pulled directly from the XRP Ledger via') }} <code style="color: var(--cyan);">account_info</code>,
       <code style="color: var(--cyan);">account_lines</code>, <code style="color: var(--cyan);">account_tx</code>,
