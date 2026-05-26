@@ -1725,6 +1725,32 @@ def read_whale_type_counts(tier_drops):
     return counts
 
 
+def read_whale_flag(address, window_days, tier_drops):
+    """True if `address` appears as sender or recipient in any XRP-denominated
+    whale-tier event in the last `window_days`. Powers the WHALE badge on
+    /wallet — same tier threshold as the /whales page so the two surfaces
+    stay consistent. XRP-denominated only (amount_drops NOT NULL); tagged
+    token whales would need price_oracle pricing per row to match, which
+    is too expensive for a per-render badge check."""
+    if not pg_available():
+        return False
+    cutoff_ts = time.time() - window_days * 86400
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT 1 FROM events "
+                    "WHERE (from_addr = %s OR to_addr = %s) "
+                    "  AND amount_drops >= %s "
+                    "  AND ts >= %s "
+                    "LIMIT 1",
+                    (address, address, tier_drops, cutoff_ts),
+                )
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
 def read_whale_radar_stats(min_drops, hours_back=24):
     """Return the two HUD readouts on /whales radar: count of large_xfer
     events at-or-above min_drops in the last hours_back, and the most

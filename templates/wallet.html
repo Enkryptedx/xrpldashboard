@@ -128,6 +128,56 @@
     .row-2-right-amm { grid-template-columns: repeat(3, minmax(0, 1fr));
                        align-items: start; gap: 0.45em; }
 
+    /* ---------- Token issuance card (issuers only) ---------- */
+    .row-issuance { margin-bottom: 0.5em; }
+    .token-issuance-card { padding: 1.1em 1.3em; }
+    .issuance-head { display: flex; align-items: baseline;
+                     justify-content: space-between; gap: 0.6em;
+                     margin-bottom: 0.85em; flex-wrap: wrap; }
+    .issuance-count { font-size: var(--fs-xs); color: var(--text-2);
+                      font-family: var(--mono); }
+    .issuance-list { list-style: none; margin: 0; padding: 0;
+                     display: grid;
+                     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                     gap: 0.4em; }
+    .issuance-item { margin: 0; }
+    .issuance-link { display: flex; align-items: center;
+                     justify-content: space-between; gap: 0.6em;
+                     padding: 0.55em 0.75em; border-radius: 8px;
+                     background: rgba(255,255,255,0.025);
+                     border: 1px solid var(--border);
+                     text-decoration: none; color: var(--text);
+                     transition: background 0.15s, border-color 0.15s; }
+    .issuance-link:hover { background: rgba(34,211,238,0.06);
+                           border-color: rgba(34,211,238,0.32); }
+    .issuance-symbol { font-family: var(--mono); font-weight: 700;
+                       font-size: var(--fs-sm); letter-spacing: -0.01em;
+                       color: var(--text); }
+    .issuance-meta { display: inline-flex; align-items: center;
+                     gap: 0.35em; flex-wrap: wrap;
+                     justify-content: flex-end; }
+    .issuance-badge { font-size: var(--fs-2xs); font-weight: 600;
+                      padding: 1px 6px; border-radius: 3px;
+                      letter-spacing: 0.05em; text-transform: uppercase;
+                      line-height: 1.1; }
+    .issuance-badge-verified { color: #4ade80;
+                               border: 1px solid rgba(74,222,128,0.45);
+                               background: rgba(74,222,128,0.08); }
+    .issuance-badge-flagged { color: var(--warning);
+                              border: 1px solid rgba(245,158,11,0.4);
+                              background: rgba(245,158,11,0.06); }
+    .issuance-badge-unverified { color: var(--text-3);
+                                 border: 1px solid var(--border-strong);
+                                 background: transparent; }
+    .issuance-category { font-size: var(--fs-2xs); color: var(--text-3);
+                         text-transform: lowercase; }
+    .issuance-more { margin-top: 0.7em; font-size: var(--fs-xs);
+                     color: var(--text-2); }
+    .issuance-more a { color: var(--cyan); text-decoration: none; }
+    .issuance-more a:hover { text-decoration: underline; }
+    .issuance-note { margin-top: 0.8em; font-size: var(--fs-2xs);
+                     color: var(--text-3); line-height: 1.5; }
+
     /* identity card */
     .identity-card { position: relative; overflow: hidden;
                      border: 1px solid var(--border-strong);
@@ -152,6 +202,22 @@
                          text-decoration: none; }
     .identity-verified:hover { background: rgba(74,222,128,0.15);
                                border-color: rgba(74,222,128,0.7); }
+    .identity-badges-row { display: flex; align-items: center; gap: 0.4em;
+                           flex-wrap: wrap; margin: 0.1em 0 0.5em; }
+    .identity-badge { display: inline-flex; align-items: center; gap: 0.35em;
+                      font-size: var(--fs-2xs); font-weight: 700;
+                      padding: 3px 9px; border-radius: 999px;
+                      letter-spacing: 0.08em; text-transform: uppercase;
+                      text-decoration: none; line-height: 1.1; }
+    .identity-badge-whale { color: #c4b5fd;
+                            border: 1px solid rgba(168,85,247,0.5);
+                            background: linear-gradient(135deg,
+                                rgba(168,85,247,0.18) 0%,
+                                rgba(59,130,246,0.18) 100%); }
+    .identity-badge-whale:hover { border-color: rgba(168,85,247,0.85);
+                                  color: #ddd6fe; }
+    .identity-badge-whale .whale-glyph { font-size: 0.95em; color: #a855f7;
+                                         transform: translateY(-0.5px); }
     .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
                          flex-wrap: wrap; }
     .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
@@ -852,6 +918,14 @@
       <div class="card identity-card">
         <div class="identity-top">
           <div class="identity-greeting">{% if data.is_amm %}{{ _('AMM Pool') }}{% elif data.is_vault %}{{ _('Vault Account') }}{% else %}{{ _('Wallet') }}{% endif %}</div>
+          {% if data.whale_flag %}
+          <div class="identity-badges-row">
+            <a class="identity-badge identity-badge-whale" href="/whales"
+               title="{{ _('Sent or received at least 100,000 XRP in the last 7 days. Click to see the recent whale activity feed.') }}">
+              <span class="whale-glyph" aria-hidden="true">◆</span> {{ _('WHALE · last 7 days') }}
+            </a>
+          </div>
+          {% endif %}
           {% if data.is_amm %}
             <div class="identity-name-row">
               <span class="identity-name">{{ data.amm_pair or data.address_short }}</span>
@@ -1407,6 +1481,57 @@
       </div>
 
     </section>
+
+    {% if data.tokens_issued and data.tokens_issued | length > 0 %}
+    {# ========== Token issuance (only for issuers) ==========
+       Reverse lookup of token_names.json — tokens whose issuer matches
+       this address. Verified (TOML-attested) first; flagged middle;
+       unverified last. Capped at 10 inline; long-tail issuers show
+       a count-only "more" pill rather than an expanded list. #}
+    <section class="row-issuance">
+      <div class="card token-issuance-card">
+        <div class="issuance-head">
+          <span class="card-label">{{ _('Tokens issued') }}</span>
+          <span class="issuance-count">
+            {{ data.tokens_issued | length }}
+            {{ _('token') if data.tokens_issued | length == 1 else _('tokens') }}
+            {{ _('catalogued') }}
+          </span>
+        </div>
+        <ul class="issuance-list">
+          {% for tok in data.tokens_issued[:10] %}
+          <li class="issuance-item issuance-tier-{{ tok.verification_tier }}">
+            <a class="issuance-link" href="{{ tok.detail_url }}">
+              <span class="issuance-symbol">{{ tok.currency_display }}</span>
+              <span class="issuance-meta">
+                {% if tok.verification_tier == 1 %}
+                  <span class="issuance-badge issuance-badge-verified"
+                        title="{{ _('Identity attested via TOML') }}">✓ {{ _('verified') }}</span>
+                {% elif tok.verification_tier == 2 %}
+                  <span class="issuance-badge issuance-badge-flagged"
+                        title="{{ _('Token catalogued; identity attestation pending') }}">{{ _('flagged') }}</span>
+                {% else %}
+                  <span class="issuance-badge issuance-badge-unverified"
+                        title="{{ _('Token catalogued; identity unverified') }}">{{ _('unverified') }}</span>
+                {% endif %}
+                <span class="issuance-category">{{ tok.category }}</span>
+              </span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if data.tokens_issued | length > 10 %}
+        <div class="issuance-more">
+          + {{ (data.tokens_issued | length) - 10 }} {{ _('more — full catalogue on the') }}
+          <a href="/tokens">{{ _('tokens page') }}</a>
+        </div>
+        {% endif %}
+        <div class="issuance-note">
+          {{ _('Issuance reflects only tokens we have catalogued. An XRPL account can issue any currency code — verification status reflects whether the issuer has published a TOML file attesting the token.') }}
+        </div>
+      </div>
+    </section>
+    {% endif %}
 
     <footer>
       {{ _('Wallet view · all balances, holdings, AMM positions and pool activity pulled directly from the XRP Ledger via') }} <code style="color: var(--cyan);">account_info</code>,

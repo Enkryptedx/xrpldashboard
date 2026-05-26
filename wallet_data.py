@@ -58,6 +58,20 @@ RIPPLE_EPOCH = 946684800
 BASE_RESERVE_XRP = 10.0
 OWNER_RESERVE_XRP = 0.2
 
+# Whale badge: editorial framing is "appeared in the current /whales view".
+# 100K XRP matches the /whales page default tier exactly; 7 days approximates
+# the time depth covered by /whales' LIMIT 100 at typical mainnet whale-event
+# rates (~10-20/day). Window can drift past LIMIT 100 in quiet periods or
+# under-fill it in busy ones; the framing remains "recently active whale".
+WHALE_WINDOW_DAYS = 7
+WHALE_TIER_DROPS = 100_000 * 1_000_000  # 100,000 XRP
+
+# Token issuance badge cap: keep visual density bounded for the long-tail
+# issuer (largest in token_names.json: 62 tokens). Top N inline + "+N more"
+# count link to the issuer's /wallet page itself for the full list (the
+# section being on that page already, so the "more" is a scroll cue).
+TOKEN_ISSUANCE_INLINE_CAP = 10
+
 # Server-info reserve cache: keyed only on the node URL. Reserves only
 # change with on-chain amendments (rare), so a 10-minute TTL is safe and
 # avoids a server_info round-trip on every wallet render.
@@ -950,6 +964,60 @@ def _layout_nodes(counterparties, total_recent_txs):
     return nodes
 
 
+def _fetch_whale_flag(address):
+    """True if `address` is in the recent /whales window. Cheap PG lookup
+    (indexed), silent failure → False so a Postgres hiccup never breaks
+    the wallet view."""
+    try:
+        return db.read_whale_flag(address, WHALE_WINDOW_DAYS, WHALE_TIER_DROPS)
+    except Exception:
+        return False
+
+
+def _token_verification_tier(verified_via):
+    """Sort tier for token issuance list. Lower = surfaces first.
+    Tier 1: TOML-attested (verified_via is an http URL we can follow).
+    Tier 2: flagged for verification (TODO placeholder or non-URL note).
+    Tier 3: unverified (no verified_via at all)."""
+    if not verified_via:
+        return 3
+    s = str(verified_via).strip()
+    if s.lower().startswith("http"):
+        return 1
+    return 2
+
+
+def _fetch_token_issuance(address):
+    """Reverse-lookup token_names.json for tokens issued by this address.
+    Sorted by verification tier (TOML-verified first), then alphabetically
+    by display name within tier. Each entry carries a /token/<hex>/<issuer>
+    link so the wallet view can hand off to the canonical token-detail
+    page for any token surfaced here."""
+    issued = []
+    for entry in _TOKENS_RAW.values():
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("issuer") != address:
+            continue
+        currency_hex = entry.get("currency_hex")
+        if not currency_hex:
+            continue
+        verified_via = entry.get("verified_via")
+        issued.append({
+            "currency_hex": currency_hex,
+            "currency_display": entry.get("currency_display") or currency_hex[:6],
+            "category": entry.get("category") or "other",
+            "verified_via": verified_via,
+            "verification_tier": _token_verification_tier(verified_via),
+            "detail_url": "/token/{0}/{1}".format(currency_hex, address),
+        })
+    issued.sort(key=lambda e: (
+        e["verification_tier"],
+        (e["currency_display"] or "").lower(),
+    ))
+    return issued
+
+
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     client = JsonRpcClient(XRPL_NODE)
     info = _fetch_account_info(client, address)
@@ -975,6 +1043,8 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "amm_positions": [], "amm_total_xrp": 0.0,
             "amm_24h_fees_xrp": 0.0, "amm_blended_apr": 0.0,
             "pool_flow": None,
+            "whale_flag": False,
+            "tokens_issued": [],
         }
     account_data = info.get("account_data", {})
     is_amm, is_vault, amm_pair = _special_account_self_info(client, account_data, address)
@@ -1105,6 +1175,8 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "amm_24h_fees_xrp": amm_24h_fees_xrp,
         "amm_blended_apr": amm_blended_apr,
         "pool_flow": pool_flow,
+        "whale_flag": _fetch_whale_flag(address),
+        "tokens_issued": _fetch_token_issuance(address),
     }
 
 
