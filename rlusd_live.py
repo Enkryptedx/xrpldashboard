@@ -26,7 +26,6 @@ from __future__ import annotations
 import json
 import os
 import ssl
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -93,13 +92,15 @@ XRPL_MAX_EVENTS = 80
 XRPL_AGGREGATE_PAGE = 400
 XRPL_AGGREGATE_MAX_PAGES = 20
 
-CACHE_TTL = int(os.environ.get("RLUSD_CACHE_TTL_SECONDS", "60"))
-# Background refresher cadence. The cache is kept warm by a daemon thread,
-# so API requests always return instantly from memory — RPC latency stays
-# off the hot path and the 19s+ refresh can never trip gunicorn's request
-# timeout. 30s = "live enough" for a treasury page where mints are rare
-# treasury actions and trades land in seconds-to-minute clumps.
-REFRESH_INTERVAL = int(os.environ.get("RLUSD_REFRESH_INTERVAL_SECONDS", "30"))
+# Refresher cadence. The launchd walker (rlusd_refresher_walker) invokes
+# _refresh_cache_once on this interval and writes the result to Neon. The
+# /rlusd route and /api/rlusd/state read from Postgres only — RPC latency
+# stays off the hot path and the 19s+ refresh can never trip gunicorn's
+# request timeout. 5 min is adequate for a treasury page where XRPL-side
+# mints/burns are genuinely rare and ETH-side moves in seconds-to-minute
+# clumps. Was 30s when a per-worker daemon thread kept the cache warm;
+# that pattern died silently on every deploy (caught 2026-05-27).
+REFRESH_INTERVAL = int(os.environ.get("RLUSD_REFRESH_INTERVAL_SECONDS", "300"))
 # Multi-RPC fallback. The 24h aggregate walk fires ~17 calls per cache
 # miss which blew past 1rpc.io's free-tier limits in production. We try
 # each endpoint in order, falling through on rate-limit/auth/network
@@ -121,12 +122,6 @@ XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
 HTTP_TIMEOUT = 9.0
 USER_AGENT = "xrpldashboard/1.0 (+https://xrpldashboard.com)"
-
-
-# --- Cache -------------------------------------------------------------------
-
-_lock = threading.Lock()
-_cache: dict[str, Any] = {"data": None, "fetched_at": 0.0}
 
 
 # --- Ethereum (public JSON-RPC) ---------------------------------------------
@@ -541,9 +536,6 @@ def fetch_xrpl() -> dict:
 
 # --- Combined cached entry point --------------------------------------------
 
-_refresher_started = False
-_refresher_lock = threading.Lock()
-
 
 def _build_state() -> dict:
     """Pull fresh state from both chains and assemble the payload. Each chain
@@ -594,74 +586,43 @@ def _build_state() -> dict:
 
 
 def _refresh_cache_once() -> bool:
-    """One refresh tick. Returns True on success. Defends against any
-    unexpected raise so the daemon loop never dies silently. Leaves the
-    previous cache in place on failure — last-good is always better than
-    a 500 or an empty payload on a treasury page."""
+    """One refresh tick. Returns True on success. Invoked by the launchd
+    walker (rlusd_refresher_walker) every REFRESH_INTERVAL seconds; also
+    callable in-process via fetch_state(force=True). Defends against any
+    unexpected raise so the walker never dies silently. Leaves the
+    previous PG row in place on failure — last-good is always better
+    than an empty payload on a treasury page."""
     try:
         data = _build_state()
     except Exception:
         return False
-    with _lock:
-        _cache["data"] = data
-        _cache["fetched_at"] = time.time()
 
-    # Best-effort PG dual-write so a cold-starting Render worker can read
-    # last-good state on /rlusd SSR. Gated on completeness — a partial RPC
-    # failure would persist eth.supply=None and erase our previous last-
-    # known-good. Failures stay silent: the in-memory path is what matters
-    # for the live API; PG is the safety net for cold SSR.
+    # Gated on completeness — a partial RPC failure would persist
+    # eth.supply=None and erase our previous last-known-good. Failures
+    # stay silent: the walker process exits non-zero and launchd retries
+    # on the next interval.
     try:
         if (data.get("eth", {}).get("supply") is not None
                 and data.get("xrpl", {}).get("supply") is not None):
             import db
             db.write_rlusd_state_cache(data)
     except Exception:
-        pass
+        return False
 
     return True
 
 
-def _refresh_loop() -> None:
-    while True:
-        _refresh_cache_once()
-        time.sleep(REFRESH_INTERVAL)
-
-
-def _ensure_refresher() -> None:
-    """Lazy-start the background refresher on first call. Once-per-process —
-    each gunicorn worker imports this module independently and gets its own
-    refresher thread, which is fine: duplicate refreshes don't conflict and
-    every worker stays warm. The first call also does a synchronous fetch so
-    the API never serves an empty payload."""
-    global _refresher_started
-    with _refresher_lock:
-        if _refresher_started:
-            return
-        _refresher_started = True
-    _refresh_cache_once()
-    t = threading.Thread(
-        target=_refresh_loop, name="rlusd-refresher", daemon=True
-    )
-    t.start()
-
-
 def fetch_state(force: bool = False) -> dict:
-    """Return the latest cached cross-chain RLUSD state.
-
-    A background daemon thread refreshes the cache every REFRESH_INTERVAL
-    seconds, so requests always return instantly from memory and a slow
-    public-RPC node can never freeze the live event log. force=True
-    triggers a synchronous refresh first (used by smoke tests)."""
-    _ensure_refresher()
+    """Return the latest cross-chain RLUSD state from the Postgres mirror
+    that the launchd walker (rlusd_refresher_walker) refreshes every
+    REFRESH_INTERVAL seconds. Reading from PG keeps RPC latency off the
+    request hot path. force=True triggers a synchronous refresh first
+    (used by smoke tests). Cold-start fallthrough to _build_state only
+    if the PG row is missing entirely — a true outage."""
     if force:
         _refresh_cache_once()
-    with _lock:
-        cached = _cache["data"]
-    if cached is not None:
-        return cached
-    # Cold-start fallthrough — the refresher's first tick failed (all RPC
-    # endpoints down at boot). Try once synchronously; if it still fails
-    # _build_state raises and the API returns 500, which is correct on a
-    # true outage.
+    import db
+    payload, _written_at = db.read_rlusd_state_cache()
+    if payload is not None:
+        return payload
     return _build_state()
