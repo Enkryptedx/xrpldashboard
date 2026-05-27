@@ -243,6 +243,30 @@
   {% set total = data.total if data else 0 %}
   {% set by_class = data.by_class if data and data.by_class else {'rwa':0,'stablecoin':0,'utility':0,'other':0} %}
 
+  {# Staleness banner: caught 2026-05-27 when 11 of last 13 walker runs
+     failed silently while /mpts kept rendering last-good as fresh. Reads
+     walker_health (PG); fires on last_run_ok=False or >48h since success. #}
+  {% set staleness_age = walker_health.last_success_age_seconds if walker_health else none %}
+  {% set should_warn_stale = walker_health and (
+        (not walker_health.last_run_ok)
+        or (staleness_age is not none and staleness_age > 172800)
+     ) %}
+  {% if should_warn_stale %}
+  <div role="status" style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0.75rem 1rem; border: 1px solid #b45309; background: rgba(180,83,9,0.10); border-radius: 6px; color: #f0d49a; font-size: 0.92rem; line-height: 1.45;">
+    <strong>{{ _('Snapshot may be stale.') }}</strong>
+    {% if staleness_age is not none %}
+      {% set age_h = (staleness_age / 3600) | round(0) | int %}
+      {{ _('Last successful walk:') }} {{ age_h }}{{ _('h ago.') }}
+    {% else %}
+      {{ _('No successful walk recorded yet.') }}
+    {% endif %}
+    {% if not walker_health.last_run_ok %}
+      {{ _('Most recent walk attempt failed') }}{% if walker_health.consecutive_failures and walker_health.consecutive_failures > 1 %} ({{ walker_health.consecutive_failures }}× {{ _('in a row') }}){% endif %}.
+    {% endif %}
+    {{ _('Data below reflects the last good snapshot — counts and metadata may not match the current ledger.') }}
+  </div>
+  {% endif %}
+
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-eyebrow">{{ _('XLS-33 multi-purpose tokens') }}</div>
@@ -411,7 +435,7 @@
       </div>
 
       <div class="table-foot">
-        <div>{{ _('Showing all') }} {{ rows|length }} {{ _('MPTs on the ledger') }}.</div>
+        <div>{{ _('Showing') }} {{ rows|length }} {{ _('MPTs from this snapshot') }}.</div>
         <div>
           {% if data.from_snapshot %}
             {{ _('snapshot') }} {{ (data.snapshot_age_seconds / 60) | round(0) | int }}{{ _('m ago') }}

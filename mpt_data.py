@@ -18,6 +18,7 @@ as /lending was for activation.
 import binascii
 import json
 import os
+import sys
 import threading
 import time
 
@@ -29,6 +30,15 @@ XRPL_NODE = os.environ.get(
 )
 CACHE_TTL = int(os.environ.get("MPT_DATA_CACHE_TTL", "1800"))  # 30 min
 PAGE_LIMIT = 400
+
+# Walker retry policy. The full SHAMap walk takes ~5 hours and ~74k pages;
+# a single transient hiccup anywhere in the walk used to abort with ok=False
+# and silently no-op the PG write — 11 of 13 walks failed silently for
+# ~2 weeks before being caught. Per-page retries handle one-off blips;
+# the cumulative budget keeps a heavy load-shedding day from compounding
+# into a 15+ hour walk that never finishes.
+RPC_RETRY_BACKOFFS_SECS = (1, 2, 4, 8)  # 4 attempts = 15s max per page
+WALK_RETRY_BUDGET_SECS = int(os.environ.get("MPT_WALK_RETRY_BUDGET_SECS", "1800"))  # 30 min
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAPSHOT_PATH = os.environ.get(
@@ -42,15 +52,83 @@ _cache = {"fetched_at": 0.0, "data": None}
 
 
 def _rpc(method, params, timeout=30.0):
+    """Single-shot RPC. Returns the result dict (possibly with an "error"
+    key), or None on exception / malformed JSON. Empty result body and
+    error responses are returned verbatim — the caller decides what is
+    transient. _rpc_retry wraps this for the walk path."""
     try:
         resp = httpx.post(
             XRPL_NODE,
             json={"method": method, "params": [params]},
             timeout=timeout,
         )
-        return (resp.json() or {}).get("result") or {}
+        body = resp.json() or {}
+        result = body.get("result")
+        return result if isinstance(result, dict) else {}
     except Exception:
         return None
+
+
+# Transient = retry. Empty/None result body is the load-shedding signature
+# we caught s1 returning. slowDown / noNetwork are explicit "back off"
+# signals. Any other error (e.g. invalidParams) is a real bug — don't retry.
+_TRANSIENT_RPC_ERRORS = {"slowDown", "noNetwork", "noCurrent", "tooBusy"}
+
+
+def _is_transient_rpc(result):
+    if result is None:
+        return True
+    if not result:  # empty dict {} — observed silent-load-shed shape
+        return True
+    return result.get("error") in _TRANSIENT_RPC_ERRORS
+
+
+def _rpc_retry(method, params, retry_tracker, page_n=None, timeout=30.0):
+    """Wrap _rpc with exponential backoff. Returns:
+      - dict (success — possibly with non-transient error key the caller handles)
+      - None when retries exhausted
+      - "budget_exhausted" sentinel when the per-walk cumulative budget hits
+        before all attempts complete; caller treats this as a partial-result
+        exit (don't keep retrying forever on a heavy load-shedding day)
+    retry_tracker is a mutable dict {"seconds": float} updated in place."""
+    last_reason = "?"
+    for attempt_idx, backoff in enumerate(RPC_RETRY_BACKOFFS_SECS):
+        result = _rpc(method, params, timeout=timeout)
+        if not _is_transient_rpc(result):
+            return result
+        # Identify what we're retrying for the log line.
+        if result is None:
+            last_reason = "exception_or_timeout"
+        elif not result:
+            last_reason = "empty_result_body"
+        else:
+            last_reason = result.get("error") or "unknown_error"
+        is_last_attempt = attempt_idx == len(RPC_RETRY_BACKOFFS_SECS) - 1
+        if is_last_attempt:
+            sys.stderr.write(
+                f"[mpt_walk_retry] page={page_n} attempt={attempt_idx + 1} "
+                f"reason={last_reason} exhausted\n"
+            )
+            sys.stderr.flush()
+            return None
+        # Budget gate: don't sleep into oblivion when s1 is in heavy
+        # load-shedding mode and 5%+ of pages fail.
+        if retry_tracker["seconds"] + backoff > WALK_RETRY_BUDGET_SECS:
+            sys.stderr.write(
+                f"[mpt_walk_retry] page={page_n} attempt={attempt_idx + 1} "
+                f"reason={last_reason} budget_exhausted "
+                f"(cumulative={round(retry_tracker['seconds'], 1)}s)\n"
+            )
+            sys.stderr.flush()
+            return "budget_exhausted"
+        sys.stderr.write(
+            f"[mpt_walk_retry] page={page_n} attempt={attempt_idx + 1} "
+            f"reason={last_reason} sleeping={backoff}s\n"
+        )
+        sys.stderr.flush()
+        time.sleep(backoff)
+        retry_tracker["seconds"] += backoff
+    return None
 
 
 def _decode_metadata(hex_blob):
@@ -184,13 +262,18 @@ def _paginate_all(max_pages=10_000_000, time_budget_secs=86400):
     walk to actually complete; caps stay only to guard against a wedged
     node that returns markers forever.
 
-    Returns the partial list with `_truncated=True` appended to the last
-    entry when a cap fires, so callers can label the snapshot honestly."""
+    Partial-result contract: if a transient RPC failure exhausts retries
+    after we've already collected ≥1 page, we return what we have with
+    `truncated=True` + an `abort_reason` string. Only pages==0 returns
+    None (no salvage). This unblocks the "got 200 of 210 MPTs before
+    transient hiccup" case from the historical silent-skip pattern."""
     t0 = time.time()
     out = []
     marker = None
     pages = 0
-    truncated = False
+    walk_complete = False
+    abort_reason = None
+    retry_tracker = {"seconds": 0.0}
     while pages < max_pages and (time.time() - t0) < time_budget_secs:
         params = {
             "type": "mpt_issuance",
@@ -199,19 +282,51 @@ def _paginate_all(max_pages=10_000_000, time_budget_secs=86400):
         }
         if marker is not None:
             params["marker"] = marker
-        result = _rpc("ledger_data", params)
+        result = _rpc_retry("ledger_data", params, retry_tracker, page_n=pages)
+        if result == "budget_exhausted":
+            abort_reason = "retry_budget_exhausted"
+            sys.stderr.write(
+                f"[mpt_walk] retry budget exhausted after {pages} pages, "
+                f"{round(retry_tracker['seconds'], 1)}s total retry time, "
+                f"exiting with partial results\n"
+            )
+            sys.stderr.flush()
+            break
         if not result:
-            return None
+            abort_reason = "rpc_failed_after_retries"
+            sys.stderr.write(
+                f"[mpt_walk] RPC failed after retries at page {pages}, "
+                f"exiting with partial results\n"
+            )
+            sys.stderr.flush()
+            break
         for entry in result.get("state") or []:
             out.append(entry)
         pages += 1
         marker = result.get("marker")
         if not marker:
+            walk_complete = True
             break
     else:
-        truncated = True  # while-else: loop exited via cap, not via break
-    return {"entries": out, "pages": pages, "truncated": truncated,
-            "elapsed_seconds": round(time.time() - t0, 1)}
+        # while-else: loop exited via the while condition, not via break.
+        # We hit max_pages or time_budget_secs without naturally exhausting
+        # the marker chain.
+        abort_reason = "page_or_time_budget_exhausted"
+
+    if not walk_complete and pages == 0:
+        # Nothing to salvage — fresh-start failure. Caller will treat as
+        # full failure (ok=False) so the snapshot isn't overwritten with
+        # an empty payload that masks the last-good PG row.
+        return None
+
+    return {
+        "entries": out,
+        "pages": pages,
+        "truncated": not walk_complete,
+        "elapsed_seconds": round(time.time() - t0, 1),
+        "abort_reason": abort_reason,
+        "cumulative_retry_seconds": round(retry_tracker["seconds"], 1),
+    }
 
 
 def fetch_one_issuance(issuance_id):
@@ -248,6 +363,7 @@ def fetch_one_issuance(issuance_id):
 def fetch_mpt_data(max_pages=10_000_000, time_budget_secs=86400):
     raw = _paginate_all(max_pages=max_pages, time_budget_secs=time_budget_secs)
     if raw is None:
+        # Fresh-start failure — zero pages walked, nothing to salvage.
         return {
             "ok": False,
             "node": XRPL_NODE,
@@ -255,6 +371,9 @@ def fetch_mpt_data(max_pages=10_000_000, time_budget_secs=86400):
             "total": 0,
             "by_class": {"rwa": 0, "stablecoin": 0, "utility": 0, "other": 0},
             "walk_complete": False,
+            "walk_partial": False,
+            "walk_abort_reason": "fresh_start_rpc_failure",
+            "walk_cumulative_retry_seconds": 0.0,
         }
     entries = raw["entries"]
     rows = [_shape_issuance(s) for s in entries]
@@ -266,16 +385,27 @@ def fetch_mpt_data(max_pages=10_000_000, time_budget_secs=86400):
 
     issuers = {r["issuer"] for r in rows if r.get("issuer")}
 
+    walk_complete = not raw.get("truncated")
+    total = len(rows)
+    # ok=True when the walk completed naturally OR we got at least one
+    # entry on a partial walk (worth writing — beats yesterday's snapshot
+    # for the entries we did see). ok=False only when total==0 AND we
+    # didn't complete — that's an empty-payload that would clobber last-good.
+    ok = walk_complete or total > 0
+
     return {
-        "ok": True,
+        "ok": ok,
         "node": XRPL_NODE,
         "issuances": rows,
-        "total": len(rows),
+        "total": total,
         "unique_issuers": len(issuers),
         "by_class": by_class,
-        "walk_complete": not raw.get("truncated"),
+        "walk_complete": walk_complete,
+        "walk_partial": bool(raw.get("truncated")),
         "walk_pages": raw.get("pages"),
         "walk_seconds": raw.get("elapsed_seconds"),
+        "walk_abort_reason": raw.get("abort_reason"),
+        "walk_cumulative_retry_seconds": raw.get("cumulative_retry_seconds", 0.0),
     }
 
 

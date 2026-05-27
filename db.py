@@ -445,6 +445,23 @@ CREATE TABLE IF NOT EXISTS permissioned_domain_walker_runs (
     walker_duration_ms INTEGER NOT NULL,
     notes              TEXT
 );
+
+-- Walker health — one row per scheduled background walker. start writes
+-- last_run_started; end UPDATEs the outcome + bumps consecutive_failures
+-- or resets to 0. /mpts (and future per-walker pages) read this so the
+-- template renders a "may be stale" banner when a walker is silently
+-- failing, instead of serving last-good as if it were live.
+-- See migrations/2026_05_27_walker_health.sql.
+CREATE TABLE IF NOT EXISTS walker_health (
+    walker_name           TEXT PRIMARY KEY,
+    last_run_started      TIMESTAMPTZ NOT NULL,
+    last_run_completed    TIMESTAMPTZ,
+    last_run_ok           BOOLEAN NOT NULL,
+    last_run_message      TEXT,
+    last_success_at       TIMESTAMPTZ,
+    last_failure_at       TIMESTAMPTZ,
+    consecutive_failures  INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -1132,6 +1149,134 @@ def read_credentials_snapshot():
                 payload["written_at"] = int(written_at)
                 payload["from_postgres"] = True
                 return payload
+    except Exception:
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Walker health — every scheduled walker writes a start row at the top
+# of its run and updates the same row with the outcome at the end via
+# try/finally. Lets /mpts and future per-walker pages render a stale
+# banner instead of silently serving last-good when the worker has been
+# failing for weeks. Pattern triggered by 2026-05-27 mpt_snapshot
+# investigation (11 of last 13 walks silently failed).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def write_walker_health_start(walker_name):
+    """UPSERT walker_health at the top of a walker run. Sets
+    last_run_started=now() and last_run_ok=False as a defensive default
+    so an uncaught crash before the end-of-run write still shows as a
+    failure to the reader (rather than the prior run's ok=True).
+    consecutive_failures is NOT touched here; the end-of-run write owns it.
+    Silent no-op when PG isn't configured."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO walker_health "
+                "  (walker_name, last_run_started, last_run_ok) "
+                "VALUES (%s, now(), false) "
+                "ON CONFLICT (walker_name) DO UPDATE SET "
+                "  last_run_started = EXCLUDED.last_run_started, "
+                "  last_run_ok = false, "
+                "  last_run_completed = NULL, "
+                "  last_run_message = NULL",
+                (walker_name,),
+            )
+    except Exception as e:
+        _log_err(f"write_walker_health_start_failed[{walker_name}]", e)
+        _drop_writer_conn()
+
+
+def write_walker_health_end(walker_name, ok, message=None):
+    """Update walker_health with the run outcome. On ok=True: stamps
+    last_success_at=now() and zeroes consecutive_failures. On ok=False:
+    stamps last_failure_at=now() and increments consecutive_failures.
+    The row must already exist (start-of-run write created it); if not,
+    we still UPSERT so a walker that forgot to call start isn't invisible.
+    Silent no-op when PG isn't configured."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            if ok:
+                cur.execute(
+                    "INSERT INTO walker_health "
+                    "  (walker_name, last_run_started, last_run_completed, "
+                    "   last_run_ok, last_run_message, last_success_at, "
+                    "   consecutive_failures) "
+                    "VALUES (%s, now(), now(), true, %s, now(), 0) "
+                    "ON CONFLICT (walker_name) DO UPDATE SET "
+                    "  last_run_completed = now(), "
+                    "  last_run_ok = true, "
+                    "  last_run_message = EXCLUDED.last_run_message, "
+                    "  last_success_at = now(), "
+                    "  consecutive_failures = 0",
+                    (walker_name, message),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO walker_health "
+                    "  (walker_name, last_run_started, last_run_completed, "
+                    "   last_run_ok, last_run_message, last_failure_at, "
+                    "   consecutive_failures) "
+                    "VALUES (%s, now(), now(), false, %s, now(), 1) "
+                    "ON CONFLICT (walker_name) DO UPDATE SET "
+                    "  last_run_completed = now(), "
+                    "  last_run_ok = false, "
+                    "  last_run_message = EXCLUDED.last_run_message, "
+                    "  last_failure_at = now(), "
+                    "  consecutive_failures = walker_health.consecutive_failures + 1",
+                    (walker_name, message),
+                )
+    except Exception as e:
+        _log_err(f"write_walker_health_end_failed[{walker_name}]", e)
+        _drop_writer_conn()
+
+
+def read_walker_health(walker_name):
+    """Return the walker_health row as a dict, or None when PG is
+    unavailable / row missing. Adds `last_success_age_seconds` for
+    template staleness checks."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT last_run_started, last_run_completed, "
+                    "       last_run_ok, last_run_message, "
+                    "       last_success_at, last_failure_at, "
+                    "       consecutive_failures "
+                    "  FROM walker_health WHERE walker_name = %s",
+                    (walker_name,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                last_success_at = row[4]
+                age_secs = None
+                if last_success_at is not None:
+                    age_secs = (
+                        time.time() - last_success_at.timestamp()
+                    )
+                return {
+                    "walker_name": walker_name,
+                    "last_run_started": row[0],
+                    "last_run_completed": row[1],
+                    "last_run_ok": row[2],
+                    "last_run_message": row[3],
+                    "last_success_at": last_success_at,
+                    "last_failure_at": row[5],
+                    "consecutive_failures": row[6],
+                    "last_success_age_seconds": (
+                        round(age_secs, 1) if age_secs is not None else None
+                    ),
+                }
     except Exception:
         return None
 

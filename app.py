@@ -2397,22 +2397,134 @@ def _group_credentials_for_display(examples):
     return groups
 
 
+def _decode_credential_type(hex_str):
+    """XLS-70 CredentialType is hex-encoded ASCII per the spec. '4B5943' → 'KYC'.
+    Falls back to the raw hex when bytes don't decode as printable ASCII."""
+    if not hex_str:
+        return None
+    try:
+        decoded = bytes.fromhex(hex_str).decode("ascii")
+        if decoded.isprintable():
+            return decoded
+    except (ValueError, UnicodeDecodeError):
+        pass
+    return None
+
+
+def _shape_permissioned_domains_for_display(rows):
+    """Shape PermissionedDomain rows for the credentials.html embed.
+    Splits each domain's accept-list into self-issued vs external entries so
+    the editorial framing can distinguish coalition-trust from self-trust.
+    A domain that accepts its own owner as an issuer is structurally different
+    from one that only accepts external attestations — surfacing that split
+    explicitly is the precision the page is built on."""
+    shaped = []
+    for r in rows or []:
+        owner = r.get("owner_account")
+        accept_list = r.get("accepted_credentials") or []
+        entries = []
+        self_count = 0
+        external_count = 0
+        types_seen = set()
+        for entry in accept_list:
+            cred = entry.get("Credential") if isinstance(entry, dict) else None
+            if not cred:
+                continue
+            issuer = cred.get("Issuer")
+            ct_hex = cred.get("CredentialType")
+            ct_label = _decode_credential_type(ct_hex)
+            is_self = (issuer == owner)
+            if is_self:
+                self_count += 1
+            else:
+                external_count += 1
+            if ct_label:
+                types_seen.add(ct_label)
+            elif ct_hex:
+                types_seen.add(ct_hex)
+            entries.append({
+                "issuer": issuer,
+                "credential_type_hex": ct_hex,
+                "credential_type_label": ct_label,
+                "is_self_issued": is_self,
+            })
+
+        # Editorial shape classification. Explicit precision over "N-issuer
+        # consortium" simplification — owner-as-its-own-issuer is structurally
+        # distinct from coalition trust.
+        if external_count >= 2 and self_count >= 1:
+            shape_label = "multi_party_with_self"
+        elif external_count >= 2 and self_count == 0:
+            shape_label = "pure_consortium"
+        elif external_count == 1 and self_count >= 1:
+            shape_label = "mixed_single_plus_self"
+        elif external_count == 1 and self_count == 0:
+            shape_label = "single_external"
+        elif external_count == 0 and self_count >= 1:
+            shape_label = "self_only"
+        else:
+            shape_label = "empty"
+
+        # Unix epoch → ISO8601. The walker already converts ripple-epoch
+        # close_time → Unix before persistence, so no offset adjustment
+        # here. Template's ts-local JS expects ISO.
+        ledger_close_time = r.get("ledger_close_time")
+        ledger_close_iso = None
+        if ledger_close_time is not None:
+            try:
+                ledger_close_iso = datetime.fromtimestamp(
+                    int(ledger_close_time), tz=timezone.utc
+                ).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except (ValueError, TypeError, OverflowError):
+                pass
+
+        shaped.append({
+            "domain_id": r.get("domain_id"),
+            "owner_account": owner,
+            "sequence": r.get("sequence"),
+            "cred_count": r.get("cred_count"),
+            "previous_txn_id": r.get("previous_txn_id"),
+            "ledger_close_time": ledger_close_time,
+            "ledger_close_iso": ledger_close_iso,
+            "fetched_at_iso": r.get("fetched_at_iso"),
+            "snapshot_date": r.get("snapshot_date"),
+            "entries": entries,
+            "self_count": self_count,
+            "external_count": external_count,
+            "types_seen": sorted(types_seen),
+            "shape_label": shape_label,
+        })
+    return shaped
+
+
 @app.route("/credentials")
 def credentials():
-    """Live view of XRPL Credentials (XLS-70). The amendment is enabled
-    on mainnet but adoption is sparse, so an in-request `ledger_data` walk
-    is infeasible — credentials_walker.py runs every 30 min under launchd
-    on Mac and writes a snapshot to Postgres. The route reads from PG so
-    every gunicorn worker (Mac and Render) serves the same view."""
+    """Live view of XRPL Credentials (XLS-70) plus the PermissionedDomains
+    (XLS-80) that gate on those credentials. The credentials amendment is
+    enabled on mainnet but adoption is sparse, so an in-request `ledger_data`
+    walk is infeasible — credentials_walker.py runs every 30 min under launchd
+    on Mac and writes a snapshot to Postgres. permissioned_domains_walker.py
+    runs daily under launchd against a 14-account institutional seed; both
+    paths read from PG so every gunicorn worker (Mac and Render) serves the
+    same view. The two amendments describe one institutional surface, so
+    they render on one page until adoption justifies a split."""
     state = get_credentials_state()
     examples = (state.get("cumulative") or {}).get("examples") if state else None
     cred_groups = _group_credentials_for_display(examples) if examples else []
     has_collapsed_groups = any(len(g["members"]) > 1 for g in cred_groups)
+
+    perm_domains_raw = db.read_permissioned_domains_latest()
+    perm_domains = _shape_permissioned_domains_for_display(perm_domains_raw)
+    perm_walker_runs = db.read_permissioned_domain_walker_runs(limit=1)
+    perm_walker_last = perm_walker_runs[0] if perm_walker_runs else None
+
     resp = make_response(render_template(
         "credentials.html",
         state=state,
         cred_groups=cred_groups,
         has_collapsed_groups=has_collapsed_groups,
+        perm_domains=perm_domains,
+        perm_walker_last=perm_walker_last,
     ))
     # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
     # see fresh-within-a-minute data; without this header, CF returns
@@ -3246,6 +3358,11 @@ def mpts():
             -(r.get("normalized_outstanding") or 0),
         ))
 
+    # Walker health for the staleness banner — surfaces silent failures
+    # of the launchd mpt_snapshot walker (caught 2026-05-27: 11 of last 13
+    # runs failed silently while /mpts kept rendering last-good as fresh).
+    walker_health = db.read_walker_health("mpt_snapshot")
+
     return render_template(
         "mpts.html",
         data=data,
@@ -3256,6 +3373,7 @@ def mpts():
         supply_chip_label=supply_chip_label,
         top_holder_count=top_holder_count,
         sort_mode=sort_mode,
+        walker_health=walker_health,
     )
 
 

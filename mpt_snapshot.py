@@ -274,14 +274,41 @@ def run_once(path=None):
 
 
 if __name__ == "__main__":
-    d = run_once()
-    print(f"wrote {SNAPSHOT_PATH}")
-    print(f"  schema_version={d.get('schema_version')}")
-    print(f"  node={d.get('node')}")
-    print(f"  ok={d.get('ok')}  total={d.get('total')}  issuers={d.get('unique_issuers')}")
-    print(f"  by_class={d.get('by_class')}")
-    print(f"  holders_walked={d.get('holders_walked')}  skipped_test={d.get('holders_skipped_test')}")
-    print(f"  history_rows={d.get('history_rows_written')}")
-    print(f"  issuance_list_rows={d.get('issuance_list_rows')}")
-    print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
-    sys.exit(0 if d.get("ok") else 1)
+    # walker_health: write start row up front (defensive ok=false until the
+    # end-write fires) so an uncaught crash leaves a visible failure row
+    # instead of just a stale last_success_at. /mpts reads this to render
+    # honest staleness instead of silently serving last-good.
+    db.write_walker_health_start("mpt_snapshot")
+    ok = False
+    message = None
+    d = None
+    try:
+        d = run_once()
+        ok = bool(d.get("ok"))
+        parts = [
+            f"total={d.get('total')}",
+            f"walk_complete={d.get('walk_complete')}",
+            f"pages={d.get('walk_pages')}",
+        ]
+        if d.get("walk_partial"):
+            parts.append(f"partial_reason={d.get('walk_abort_reason')}")
+        retry_secs = d.get("walk_cumulative_retry_seconds") or 0
+        if retry_secs:
+            parts.append(f"retry_secs={retry_secs}")
+        message = "; ".join(parts)
+        print(f"wrote {SNAPSHOT_PATH}")
+        print(f"  schema_version={d.get('schema_version')}")
+        print(f"  node={d.get('node')}")
+        print(f"  ok={d.get('ok')}  total={d.get('total')}  issuers={d.get('unique_issuers')}")
+        print(f"  by_class={d.get('by_class')}")
+        print(f"  holders_walked={d.get('holders_walked')}  skipped_test={d.get('holders_skipped_test')}")
+        print(f"  history_rows={d.get('history_rows_written')}")
+        print(f"  issuance_list_rows={d.get('issuance_list_rows')}")
+        print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
+    except Exception as exc:
+        ok = False
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("mpt_snapshot", ok=ok, message=message)
+    sys.exit(0 if ok else 1)
