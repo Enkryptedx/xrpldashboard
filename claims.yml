@@ -1,0 +1,902 @@
+# xrpldashboard claims manifest — exhaustive visitor-facing claim inventory
+# For use with tools/claim_audit.py CI check
+# Last updated: 2026-05-22
+
+claims:
+  # ===== templates/institutional.html =====
+  - file: templates/institutional.html
+    line: 136
+    quote: "Four amendments enabled on mainnet now make regulated, KYC-gated trading possible natively on the XRP Ledger"
+    claim_type: coverage
+    verifies_against: "feature RPC: Credentials, PermissionedDomains, PermissionedDEX, TokenEscrow all enabled=true"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Amendment status verified mainnet 2026-05-22. All four enabled."
+
+  - file: templates/institutional.html
+    line: 117
+    quote: "We're the only ones doing the editorial layer at scale"
+    claim_type: integrity
+    verifies_against: "competitive landscape audit; manual verification"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Comparative uniqueness claim; hard to falsify exhaustively"
+
+  - file: templates/institutional.html
+    line: 150
+    quote: "On 2026-05-11, Ripple Prime — Ripple's multi-asset prime brokerage platform — closed a $200M debt facility from Neuberger Specialty Finance"
+    claim_type: numeric
+    verifies_against: "Ripple press release 2026-05-11"
+    source: "Ripple"
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Factual sourced claim; verify against press release"
+
+  - file: templates/institutional.html
+    line: 181
+    quote: "~4,300 whale-class transfers, ~1.77M token trades, ~29,000 AMM pools indexed, and MPT supply history accruing hourly since 2026-05-12"
+    claim_type: numeric
+    verifies_against: "worker database snapshot counts; compare to actual live counts"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "HIGH RISK: hard-coded snapshot metrics from ~10 days ago. Will become stale rapidly. Recommend parameterizing."
+
+  - file: templates/institutional.html
+    line: 225
+    quote: "xrpldashboard is independent and not affiliated with Ripple Labs, the XRP Ledger Foundation, or any exchange"
+    claim_type: integrity
+    verifies_against: "entity registration / business records"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Self-claim of non-affiliation; binding only if legal structure maintains it"
+
+  # ===== templates/security.html =====
+  - file: templates/security.html
+    line: 80
+    quote: "All traffic is terminated at Cloudflare with HSTS enforced. Plain-HTTP requests are 301'd to HTTPS."
+    claim_type: integrity
+    verifies_against: "curl HEAD http:// redirect check; Cloudflare config audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Infrastructure claim; verify Cloudflare config and HSTS headers"
+
+  - file: templates/security.html
+    line: 83
+    quote: "No analytics tracker, no marketing pixels, no embedded widgets, no fingerprinting. Outbound network from the page is limited to the XRPL WebSocket cluster (visible in /methodology) and font/animation libraries described below."
+    claim_type: integrity
+    verifies_against: "tools/origin_guard.py on every push; network tap inspection"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Primary integrity claim; origin-guard CI test enforces this"
+
+  - file: templates/security.html
+    line: 84
+    quote: "Fonts (Geist) and three animation libraries (Lenis, GSAP, CountUp) currently load from cdn.jsdelivr.net with SRI integrity hashes."
+    claim_type: integrity
+    verifies_against: "grep for cdn.jsdelivr.net in rendered HTML; verify SRI hash attributes"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Self-disclosed third-party CDN load; contradicts 'no third-party' if read without context"
+
+  - file: templates/security.html
+    line: 91
+    quote: "The Flask app reads from Postgres; only the workers running on Charlie's Mac (or the standby Render worker) can write. A leaked DB credential on the Flask side cannot mutate state."
+    claim_type: integrity
+    verifies_against: "access control audit; verify no write endpoints from public web"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Architecture claim about write-isolation; depends on actual access controls"
+
+  - file: templates/security.html
+    line: 98
+    quote: "No PII collection. No analytics tracker, no fingerprinting library, no marketing email list."
+    claim_type: integrity
+    verifies_against: "/privacy policy audit; network tap for PII in payloads; source code grep"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Multiple bundled integrity claims"
+
+  # ===== templates/about.html =====
+  - file: templates/about.html
+    line: 82
+    quote: "Launched: May 9, 2026."
+    claim_type: numeric
+    verifies_against: "git log; public announcement records"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Historical fact; immutable once passed"
+
+  - file: templates/about.html
+    line: 94
+    quote: "3 verified families (OpenEden, Midas-via-Axelar, Ondo Finance)"
+    claim_type: numeric
+    verifies_against: "/rwa endpoint; count attested_issuers in current database"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Hard-coded count; will drift as new RWA issuers are verified. Recommend parameterizing."
+
+  - file: templates/about.html
+    line: 100
+    quote: "including Ripple's 21-account programmatic vesting schedule"
+    claim_type: numeric
+    verifies_against: "cold-storage.py output; count escrow accounts matching Ripple vesting pattern"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Specific hard-coded count; verify it's still accurate"
+
+  - file: templates/about.html
+    line: 115
+    quote: "No paywall will ever bump a retail user."
+    claim_type: integrity
+    verifies_against: "terms of service; inspect retail tier access logic"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Strong integrity claim; binding only if legal terms enforce it"
+
+  - file: templates/about.html
+    line: 127
+    quote: "We do not source any metric from third-party analytics APIs (Bithomp, xrpl.to, XPMarket, DefiLlama, etc.)."
+    claim_type: integrity
+    verifies_against: "grep codebase for HTTP calls to those domains"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Explicit naming of excluded integrations; verify no imports in db.py/workers"
+
+  - file: templates/about.html
+    line: 157
+    quote: "every AMM pool"
+    claim_type: coverage
+    verifies_against: "amm_walker.py output count vs. ledger_data AMM object walk"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Coverage claim about AMM indexing; hedged in practice by methodology limits"
+
+  - file: templates/about.html
+    line: 173
+    quote: "Every UTC day we publish a cryptographically signed snapshot of headline metrics"
+    claim_type: coverage
+    verifies_against: "/.well-known/snapshots/ directory; verify daily files exist with Ed25519 signatures"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Snapshot completeness claim; flag if a day is missing"
+
+  # ===== templates/methodology.html =====
+  - file: templates/methodology.html
+    line: 100
+    quote: "every claim of 'live' is backed by a measurable cadence below, and every cache is named with its TTL"
+    claim_type: integrity
+    verifies_against: "inspect all 'live' claims in methodology table for TTL/cadence entry"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Meta-claim about transparency; depends on methodology table completeness"
+
+  - file: templates/methodology.html
+    line: 157
+    quote: "any single XRP transaction of 100,000 XRP or more"
+    claim_type: numeric
+    verifies_against: "whale feed definition in worker code; SQL query threshold setting"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Hard-coded threshold for whale classification; changing it would alter all whale data"
+
+  - file: templates/methodology.html
+    line: 181
+    quote: "60 sec"
+    claim_type: numeric
+    verifies_against: "RLUSD cache TTL in app.py config or worker code"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Cache TTL specification; must match actual config"
+
+  - file: templates/methodology.html
+    line: 195
+    quote: "hourly snapshot worker"
+    claim_type: coverage
+    verifies_against: "MPT walker task schedule; confirm hourly cadence in cron/worker config"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Freshness cadence claim; flag if worker is stalled"
+
+  - file: templates/methodology.html
+    line: 251
+    quote: "No third-party analytics API (Bithomp, XRPSCAN, xrpl.to, XPMarket, DefiLlama, CoinGecko) feeds any of our metrics"
+    claim_type: integrity
+    verifies_against: "grep codebase for HTTP calls to those domains; code audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Explicit enumeration of excluded sources"
+
+  - file: templates/methodology.html
+    line: 279
+    quote: "No other XRPL dashboard publishes a verifiable history of its own numbers."
+    claim_type: coverage
+    verifies_against: "competitive analysis; query other dashboards for signed snapshot endpoints"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Comparative uniqueness claim; hard to falsify exhaustively"
+
+  - file: templates/methodology.html
+    line: 384
+    quote: "We do not aggregate multiple smaller transfers — each row is one on-chain payment."
+    claim_type: integrity
+    verifies_against: "whale feed deduplication logic; verify 1:1 mapping tx hash to row"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Claim about non-aggregation of whale movements"
+
+  - file: templates/methodology.html
+    line: 393
+    quote: "Raw rows retained 90 days; daily rollup beyond."
+    claim_type: numeric
+    verifies_against: "mpt_supply_history retention policy in database; check DELETE cron job execution"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Data retention SLA; depends on actual cleanup job execution"
+
+  # ===== templates/privacy.html =====
+  - file: templates/privacy.html
+    line: 67
+    quote: "xrpldashboard is a public website with no accounts, no analytics tracker, and no fingerprinting"
+    claim_type: integrity
+    verifies_against: "registration table audit; network tap for fingerprinting JS; source audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Core privacy assertion"
+
+  - file: templates/privacy.html
+    line: 72
+    quote: "One cookie remembers your language choice. That's it. No Google Analytics, no Meta pixel, no third-party trackers."
+    claim_type: integrity
+    verifies_against: "grep HTML for GA/Meta pixel tags; inspect cookies set in DevTools"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Enumeration of what IS and IS NOT collected"
+
+  - file: templates/privacy.html
+    line: 98
+    quote: "No Google Analytics, Meta pixel, Mixpanel, or third-party analytics scripts."
+    claim_type: integrity
+    verifies_against: "grep source for gtag, fbq, Mixpanel SDK; origin_guard.py"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Repeated claim in section 2; explicit vendor enumeration"
+
+  - file: templates/privacy.html
+    line: 99
+    quote: "No browser fingerprinting or device-id stitching."
+    claim_type: integrity
+    verifies_against: "static analysis for fingerprinting libraries; grep for canvas/WebGL calls"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Fingerprinting non-use claim"
+
+  - file: templates/privacy.html
+    line: 103
+    quote: "No advertising. No retargeting. Ever."
+    claim_type: integrity
+    verifies_against: "grep for ad network tags; inspect HTTP headers for ad pixels"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Emphatic exclusion claim with 'Ever'"
+
+  - file: templates/privacy.html
+    line: 137
+    quote: "Emails sent to contact@xrpldashboard.com are forwarded through Squarespace's email-forwarding service to a personal Gmail inbox, and replies are sent through Brevo's SMTP relay."
+    claim_type: integrity
+    verifies_against: "domain MX records; Squarespace/Brevo service audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Disclosure of email vendor pipeline; infrastructure change would require update"
+
+  # ===== templates/terms.html =====
+  - file: templates/terms.html
+    line: 79
+    quote: "xrpldashboard.com (the 'site') is an independent analytics dashboard for the XRP Ledger"
+    claim_type: integrity
+    verifies_against: "entity registration; business affiliation audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Self-designation as independent; mirrors institutional.html"
+
+  - file: templates/terms.html
+    line: 96
+    quote: "We pull data directly from the public XRP Ledger and from public Ethereum nodes"
+    claim_type: integrity
+    verifies_against: "codebase audit; network tap inspection for third-party API calls"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Source-authenticity claim; depends on actual data sources in code"
+
+  # ===== templates/subprocessors.html =====
+  - file: templates/subprocessors.html
+    line: 80
+    quote: "Every third-party vendor that touches data flowing through xrpldashboard"
+    claim_type: coverage
+    verifies_against: "completeness audit of subprocessor table against actual code dependencies"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Coverage claim about vendor enumeration; any new vendor must be added"
+
+  # ===== templates/verify.html =====
+  - file: templates/verify.html
+    line: 139
+    quote: "Setup takes roughly 15 minutes once you have access to both the wallet and the domain."
+    claim_type: numeric
+    verifies_against: "UX testing; measure actual setup time for first-time issuers"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Time estimate; approximation with 'roughly' hedges the claim"
+
+  # ===== templates/learn.html =====
+  - file: templates/learn.html
+    line: 232
+    quote: "Every ledger from January 2013 onward is preserved in full-history archives"
+    claim_type: coverage
+    verifies_against: "XRPL archive operators; verify earliest accessible ledger index"
+    source: "XRP Ledger Foundation"
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Historical completeness claim; depends on external archive operators"
+
+  - file: templates/learn.html
+    line: 233
+    quote: "The very first 32,569 ledgers from 2012 were lost early on to a software bug"
+    claim_type: numeric
+    verifies_against: "XRPL Foundation historical documentation; rippled git history"
+    source: "XRP Ledger Foundation"
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Specific count of lost early ledgers; immutable historical fact"
+
+  - file: templates/learn.html
+    line: 244
+    quote: "around 150+ validator servers publish proposals on the network"
+    claim_type: numeric
+    verifies_against: "validators RPC endpoint; count active validators"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Hedged with 'around'; changes daily, expires fast"
+
+  - file: templates/learn.html
+    line: 244
+    quote: "consensus is built on a smaller, trusted set — currently around 35 validators on the default unique node list"
+    claim_type: numeric
+    verifies_against: "UNL manifest; count validators in DefaultUNL"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Hedged with 'around'; changes with UNL updates"
+
+  - file: templates/learn.html
+    line: 261
+    quote: "The fee is destroyed (not paid to anyone)"
+    claim_type: integrity
+    verifies_against: "XRP Ledger protocol spec; verify burn address vs. redistribution"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Protocol-level claim; immutable by design"
+
+  - file: templates/learn.html
+    line: 266
+    quote: "since the AMM amendment activated in 2024, many trades now route through automated-market-maker pools"
+    claim_type: coverage
+    verifies_against: "AMM amendment activation date in ledger history; analyze trade routing post-activation"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Hedged coverage claim with 'many' instead of 'all'; historical fact once passed"
+
+  - file: templates/learn.html
+    line: 273
+    quote: "The base fee for a standard payment is on the order of 0.00001 XRP"
+    claim_type: numeric
+    verifies_against: "server_info RPC base_fee_drops parameter"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Hard-coded fee reference; may become stale if amended"
+
+  - file: templates/learn.html
+    line: 310
+    quote: "The native lending amendment (XLS-66d) entered validator voting in January 2026 and is not yet activated"
+    claim_type: coverage
+    verifies_against: "feature RPC; search for LendingProtocol amendment status"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Time-bound claim from May 2026 perspective; status will change"
+
+  - file: templates/learn.html
+    line: 316
+    quote: "Ondo Finance launched a pilot tokenizing US Treasury exposure on XRPL in May 2026 — a live, verifiable example you can look up on this dashboard's /rwa page"
+    claim_type: coverage
+    verifies_against: "/rwa endpoint; verify Ondo Finance entry exists and is recent"
+    source: "Ondo Finance announcement"
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Real-world institution claim; depends on /rwa data accuracy and Ondo's active tokenization"
+
+  # ===== templates/pools.html =====
+  - file: templates/pools.html
+    line: 8
+    quote: "Every AMM pool on the XRP Ledger, ranked by total value locked"
+    claim_type: coverage
+    verifies_against: "worker output count vs indexed_count parameter"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Hero meta-description; core coverage claim"
+
+  - file: templates/pools.html
+    line: 463
+    quote: "Every AMM pool we've indexed from the XRP Ledger, ranked by total value locked"
+    claim_type: coverage
+    verifies_against: "ranked_count and indexed_count parameters"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Lede paragraph — claims exhaustive indexing"
+
+  - file: templates/pools.html
+    line: 466
+    quote: "Shows AMM (automated market maker) pools only. XRPL's order-book DEX isn't included yet — order-book liquidity and volume are tracked separately and coming soon."
+    claim_type: coverage
+    verifies_against: "worker output: confirm only AMM pools indexed, no order-book"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "CRITICAL: Disclosure of coverage gap; order-book DEX NOT included yet"
+
+  # ===== templates/tokens.html =====
+  - file: templates/tokens.html
+    line: 341
+    quote: "Counts every token Payment plus every AMM deposit/withdraw."
+    claim_type: coverage
+    verifies_against: "token trade counter worker; verify includes both Payments and AMM operations"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Coverage claim about trade counting; confirm worker counts both types"
+
+  - file: templates/tokens.html
+    line: 344
+    quote: "Liquidity and volume figures reflect AMM activity only. Order-book DEX trading isn't included yet."
+    claim_type: coverage
+    verifies_against: "worker configuration: confirm only AMM tracked, order-book excluded"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "CRITICAL: Same coverage gap as pools.html — order-book DEX NOT included"
+
+  # ===== templates/whales.html =====
+  - file: templates/whales.html
+    line: 8
+    quote: "Live tracker of whale XRP transfers — every payment over 100,000 XRP"
+    claim_type: coverage
+    verifies_against: "worker event filter: confirm threshold=100000 XRP, full tx subscription"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Meta-description; claims 'every' payment ≥100K XRP"
+
+  - file: templates/whales.html
+    line: 445
+    quote: "a long-running process subscribes to every validated XRPL transaction and records two things — XRP transfers above the floor"
+    claim_type: coverage
+    verifies_against: "worker: confirm full transaction subscription, no filtering until threshold"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Callout section; claims 'every validated' transaction subscription"
+
+  # ===== templates/mpts.html =====
+  - file: templates/mpts.html
+    line: 249
+    quote: "Every MPT on the XRP Ledger"
+    claim_type: coverage
+    verifies_against: "mpt_walk output: all MPTokenIssuance objects enumerated"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Hero h1 title; core claim"
+
+  - file: templates/mpts.html
+    line: 251
+    quote: "MPTs are a newer XRPL token type ... This page decodes that metadata and groups each token by what it actually is"
+    claim_type: coverage
+    verifies_against: "mpt_walk completeness; verify all issuances on mainnet are decoded"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Hero meta; 'decodes' implies exhaustive parsing"
+
+  - file: templates/mpts.html
+    line: 436
+    quote: "The MPTokensV1 amendment is enabled on mainnet"
+    claim_type: integrity
+    verifies_against: "feature RPC: confirm MPTokensV1 amendment status on mainnet"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Amendment enablement claim; verified enabled=true 2026-05-22"
+
+  # ===== templates/token.html =====
+  - file: templates/token.html
+    line: 330
+    quote: "This token isn't in any indexed AMM pool. It may still trade on the order book — see XRPSCAN for the full DEX"
+    claim_type: coverage
+    verifies_against: "amm_index.json: confirm token not present in indexed pools"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Empty state for pool list; discloses coverage gap (order book not indexed)"
+
+  # ===== templates/wallet.html =====
+  - file: templates/wallet.html
+    line: 8
+    quote: "XRPL wallet — balance, recent activity, and integrity checks (account flags, escrows, rippling)"
+    claim_type: integrity
+    verifies_against: "wallet page: confirm integrity checks for flags, escrows, rippling are performed"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Meta-description; promises integrity checks"
+
+  # ===== templates/lending.html =====
+  - file: templates/lending.html
+    line: 329
+    quote: "Native lending is coming to the XRP Ledger via two amendments currently in validator voting"
+    claim_type: coverage
+    verifies_against: "feature RPC: LendingProtocol and SingleAssetVault in 'voting' status; confirm NOT enabled"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Conditional; currently renders (amendments NOT yet enabled). Will change when activated."
+
+  - file: templates/lending.html
+    line: 361
+    quote: "What does \"voting\" mean? At least one validator has this amendment enabled, but it hasn't crossed the 80%% threshold for 2 weeks."
+    claim_type: integrity
+    verifies_against: "amendment mechanics: confirm 80% threshold + 14-day window = auto-activation"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Explainer tooltip; defines amendment voting mechanics (immutable protocol rule)"
+
+  # ===== templates/credentials.html =====
+  - file: templates/credentials.html
+    line: 165
+    quote: "The Credentials amendment lets one XRPL account attest something about another account on-ledger"
+    claim_type: integrity
+    verifies_against: "feature RPC: Credentials amendment enabled=true on mainnet"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Hero lede; describes Credentials amendment capability. Verified enabled 2026-05-22."
+
+  - file: templates/credentials.html
+    line: 182
+    quote: "Every Credential identified by the last full walk is listed below"
+    claim_type: coverage
+    verifies_against: "worker walk_complete flag; cumulative.count vs actual Credential objects on ledger"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Conditional text; only shown if walk_complete=true"
+
+  # ===== templates/amendments.html =====
+  - file: templates/amendments.html
+    line: 225
+    quote: "Amendments that have crossed the 80 percent validator-majority threshold. If the majority holds for 14 consecutive days, the amendment activates"
+    claim_type: integrity
+    verifies_against: "amendment mechanics: confirm 80% threshold + 14-day window requirement"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Explainer text; defines activation mechanics (immutable protocol rule)"
+
+  - file: templates/amendments.html
+    line: 391
+    quote: "The XRP Ledger's institutional stack — Credentials, PermissionedDomains, PermissionedDEX, and TokenEscrow — activated in earlier release windows and is live on mainnet today"
+    claim_type: integrity
+    verifies_against: "feature RPC: all four amendments have enabled=true on mainnet"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Recent callout; asserts four amendments are currently live. Verified enabled 2026-05-22."
+
+  # ===== templates/network.html =====
+  - file: templates/network.html
+    line: 8
+    quote: "Live status of the two canonical XRPL validator lists — Ripple's UNL and the XRPL Foundation's UNL"
+    claim_type: coverage
+    verifies_against: "UNL manifests from both vl.ripple.com and vl.xrplf.org"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Coverage claim; depends on real-time UNL data freshness"
+
+  - file: templates/network.html
+    line: 310
+    quote: "When the Foundation UNL's signed manifest expired on 2026-01-18, operators relying on it stopped accepting it as authoritative"
+    claim_type: numeric
+    verifies_against: "UNL manifest history: Foundation UNL expiration_date = 2026-01-18"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Explainer; cites specific historical event (immutable once passed)"
+
+  # ===== templates/rwa.html =====
+  - file: templates/rwa.html
+    line: 24
+    quote: "Real-world assets on the XRP Ledger — only the issuer families we can cryptographically verify"
+    claim_type: integrity
+    verifies_against: "RWA page: TOML attestation filter logic"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Meta-description; integrity claim about curation method"
+
+  - file: templates/rwa.html
+    line: 203
+    quote: "Real-world assets that exist on XRPL — only the issuers we can cryptographically verify."
+    claim_type: integrity
+    verifies_against: "Source code: TOML attestation check; verify_toml_accounts.py"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Lede paragraph; same integrity claim as line 24"
+
+  # ===== templates/rlusd.html =====
+  - file: templates/rlusd.html
+    line: 38
+    quote: "Live cross-chain view of Ripple's RLUSD stablecoin — supply, mints, burns, and bridges across Ethereum and the XRP Ledger."
+    claim_type: coverage
+    verifies_against: "Page shows ETH + XRPL supplies and cross-chain events"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Meta-description; coverage of RLUSD page"
+
+  - file: templates/rlusd.html
+    line: 454
+    quote: "RLUSD is a stablecoin that lives on two networks at once — Ethereum and the XRP Ledger."
+    claim_type: integrity
+    verifies_against: "Etherscan + XRPSCAN contract/issuer verification"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Factual claim about where RLUSD exists"
+
+  - file: templates/rlusd.html
+    line: 634
+    quote: "280+ spot pairs"
+    claim_type: numeric
+    verifies_against: "OKX market data; compare to live trading pairs on OKX"
+    source: "OKX"
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Third-party sourced metric; dated '2026-04-29' in original memo. Will drift."
+
+  - file: templates/rlusd.html
+    line: 635
+    quote: "institutional-grade margin collateral"
+    claim_type: integrity
+    verifies_against: "OKX derivatives offering documentation"
+    source: "OKX"
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Feature claim sourced to OKX; verify via OKX docs"
+
+  # ===== templates/signed_snapshots_index.html =====
+  - file: templates/signed_snapshots_index.html
+    line: 65
+    quote: "Every day at 00:05 UTC we capture a small set of canonical metrics"
+    claim_type: numeric
+    verifies_against: "signed_snapshot.py cron schedule"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Daily snapshot timing claim; flag if schedule drifts"
+
+  - file: templates/signed_snapshots_index.html
+    line: 70
+    quote: "No other XRPL dashboard publishes cryptographically verifiable historical data."
+    claim_type: integrity
+    verifies_against: "Competitive landscape audit; search other dashboards for signed snapshot endpoints"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Unique feature claim about signed snapshots; hard to falsify exhaustively"
+
+  # ===== templates/index.html =====
+  - file: templates/index.html
+    line: 589
+    quote: "No upsells, no token, no DEX."
+    claim_type: integrity
+    verifies_against: "Feature audit; verify no token or DEX on site"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Three integrity assertions in hero"
+
+  - file: templates/index.html
+    line: 589
+    quote: "Free for retail users — forever."
+    claim_type: integrity
+    verifies_against: "Pricing page or ToS; inspect retail tier access logic"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 365
+    known_carveouts: "Perpetual free access claim; binding only if ToS enforces it"
+
+  - file: templates/index.html
+    line: 597
+    quote: "The XRP network closes a new 'page' of transactions every 3-5 seconds"
+    claim_type: numeric
+    verifies_against: "XRPL official specification; ledger_index intervals"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Range claim about ledger close frequency (protocol invariant)"
+
+  - file: templates/index.html
+    line: 631
+    quote: "Concentration metrics on every MPT"
+    claim_type: coverage
+    verifies_against: "MPT page: all MPTokenIssuance objects on ledger"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Coverage claim for institutional MPT tracker"
+
+  - file: templates/index.html
+    line: 632
+    quote: "every MPTokenIssuance on the ledger, classified and walked"
+    claim_type: coverage
+    verifies_against: "MPT indexer output: all on-chain MPT issuances"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Explicit 'every' coverage claim"
+
+  - file: templates/index.html
+    line: 703
+    quote: "No login. No tracking."
+    claim_type: integrity
+    verifies_against: "Privacy policy; source code audit"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Two integrity claims in wallet inspector card"
+
+  - file: templates/index.html
+    line: 715
+    quote: "We never ask for keys, seeds, or signatures — public address only."
+    claim_type: integrity
+    verifies_against: "Source code: wallet form submission handler; DevTools inspect"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Security claim about what the wallet inspector does not do"
+
+  - file: templates/index.html
+    line: 731
+    quote: "100B design supply"
+    claim_type: numeric
+    verifies_against: "XRPL design specification (immutable)"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "Hard-coded total XRP supply; immutable by protocol"
+
+  # ===== templates/health.html =====
+  - file: templates/health.html
+    line: 336
+    quote: "worker fields refresh every 60 s"
+    claim_type: numeric
+    verifies_against: "Health page auto-refresh interval; JavaScript setInterval config"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "Hard-coded refresh cadence"
+
+  - file: templates/health.html
+    line: 374
+    quote: "New ledgers are being closed every 3.5–4 seconds"
+    claim_type: numeric
+    verifies_against: "pulse.avg_close_seconds; XRPL network spec"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Range for normal ledger close time; hedged with range"
+
+  - file: templates/health.html
+    line: 405
+    quote: "a global network of independent computers that all agree on every transaction"
+    claim_type: coverage
+    verifies_against: "XRPL whitepaper; consensus protocol"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "'every transaction' coverage claim in explainer (protocol invariant)"
+
+  - file: templates/health.html
+    line: 461
+    quote: "Watching every transaction on the XRP Ledger in real time."
+    claim_type: coverage
+    verifies_against: "Live watcher worker: WebSocket subscription to public XRPL node; verify feeds subset (whale/token)"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 7
+    known_carveouts: "Coverage claim for live activity feed; note tags subset only (whale/token, not ALL txs)"
+
+  # ===== templates/cold_storage.html =====
+  - file: templates/cold_storage.html
+    line: 8
+    quote: "Where the big XRP balances actually live — Ripple's monthly-release escrows and verified exchange custody"
+    claim_type: coverage
+    verifies_against: "Page scope: Ripple escrows + exchanges only"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 90
+    known_carveouts: "Meta-description defining coverage; note that numbers are dynamic ({{ }}) not hard-coded"
+
+  # ===== NOTES =====
+  # Data layer issues (not template claims but must-capture):
+  - file: db.py
+    line: 477
+    quote: "volume_xrp = 0.0"
+    claim_type: numeric
+    verifies_against: "db.py:477 hardcoded zero; check whether any page renders it as real volume"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: 30
+    known_carveouts: "CRITICAL: volume_xrp hardcoded to 0 in token_volume inserts. tokens.html discloses 'XRP-equivalent volume isn't shown yet' so not lying silently. But will produce wrong data if ever displayed."
+
+  # Entries mentioned in spec but NOT found in current templates:
+  - file: templates/about.html
+    line: null
+    quote: "28+ institutional accounts verified"
+    claim_type: numeric
+    verifies_against: "domain_attestations table count where verified=true"
+    source: null
+    last_audit: "2026-05-22"
+    expires_after_days: null
+    known_carveouts: "NOTE: This hard-coded claim does NOT currently appear in any template. Was removed or memory is stale. Line 103 has dynamic {{ attested_count }}. Skip until rediscovered."
