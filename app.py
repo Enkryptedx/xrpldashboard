@@ -1173,6 +1173,115 @@ def _iso_to_age_seconds(iso_str):
         return None
 
 
+def _max_event_ts_localfirst():
+    """Latest events.ts honoring the same local-first preference the
+    substrate row counts use: read local SQLite when present (authoritative
+    on the Mac), otherwise fall back to the mirrored Neon table. Without
+    this, a temporarily unreachable Neon would leave Card 5 falsely "idle"
+    even while local writes are landing every minute.
+    """
+    if os.path.exists(EVENTS_DB_PATH):
+        try:
+            conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+            try:
+                row = conn.execute("SELECT MAX(ts) FROM events").fetchone()
+                if row and row[0] is not None:
+                    return int(row[0])
+            finally:
+                conn.close()
+        except Exception:
+            pass
+    try:
+        return db.read_max_event_ts()
+    except Exception:
+        return None
+
+
+def _health_degrade_state():
+    """Read every freshness signal once and derive scan/stream/mirror
+    liveness + the overall degrade flag.
+
+    PG + local-file reads only — no XRPL RPC — so `/healthz` and
+    `/api/health` can call this without burning the pulse helper on every
+    monitor poll. `/health` calls the same function for its UI booleans,
+    which guarantees the human page and the machine endpoints can never
+    report different degrade states for the same request.
+    """
+    now = int(time.time())
+
+    pg_hb = db.read_heartbeat_prefix("xrpl_stream")
+    pg_hb_age = max(0, now - pg_hb["ts"]) if pg_hb else None
+
+    last_event_ts = _max_event_ts_localfirst()
+    pg_events_age = max(0, now - last_event_ts) if last_event_ts else None
+
+    ranker_hb = db.read_heartbeat("amm_ranker")
+    ranker_hb_age = max(0, now - ranker_hb["ts"]) if ranker_hb else None
+
+    scan_state = _safe_load_json(SCAN_STATE_PATH) or {}
+    stream_state = _safe_load_json(STREAM_STATE_PATH) or {}
+    ranker_extra = (ranker_hb.get("extra") if isinstance(ranker_hb, dict) else None) or {}
+    scan_finished = scan_state.get("finished_at") or ranker_extra.get("finished_at")
+    scan_log_age = _file_age_seconds(SCAN_LOG_PATH)
+    stream_log_age = _file_age_seconds(STREAM_LOG_PATH)
+
+    scan_alive_local = scan_finished is None and (scan_log_age or 999) < 300
+    ranker_alive_remote = ranker_hb_age is not None and ranker_hb_age < 21600
+    scan_alive = scan_alive_local or ranker_alive_remote
+
+    stream_alive_local = (stream_log_age or 999) < 600
+    stream_alive_remote = pg_hb_age is not None and pg_hb_age < 900
+    stream_alive = stream_alive_local or stream_alive_remote
+
+    mirror_threshold = int(os.environ.get("MIRROR_DEGRADED_AGE_SEC", "18000"))
+    mirror_alive = ranker_hb_age is not None and ranker_hb_age < mirror_threshold
+
+    overall = "ok" if scan_alive and stream_alive and mirror_alive else "degraded"
+    status_code = 503 if overall == "degraded" else 200
+
+    return {
+        "overall": overall,
+        "status_code": status_code,
+        "scan_alive": scan_alive,
+        "stream_alive": stream_alive,
+        "mirror_alive": mirror_alive,
+        "pg_hb": pg_hb,
+        "pg_hb_age": pg_hb_age,
+        "last_event_ts": last_event_ts,
+        "pg_events_age": pg_events_age,
+        "ranker_hb": ranker_hb,
+        "ranker_hb_age": ranker_hb_age,
+        "scan_state": scan_state,
+        "stream_state": stream_state,
+        "scan_finished": scan_finished,
+        "scan_log_age": scan_log_age,
+        "stream_log_age": stream_log_age,
+        "mirror_threshold": mirror_threshold,
+    }
+
+
+def _stored_data_state(pg_events_age):
+    """Card 5 ("Stored data") freshness state.
+
+    Anchors on `pg_events_age` (last events row's ts vs now) — Card 3
+    watches the stream heartbeat, Card 5 watches whether the stream's
+    output is actually landing on disk. Distinct signals: a stream whose
+    WebSocket is alive but whose DB writes are silently failing would
+    leave Card 3 green and grow `pg_events_age` indefinitely.
+
+    Thresholds calibrated against 7-day write cadence in events.db
+    (avg gap 88s, max legitimate quiet-period gap ~40m): 1h ok comfortably
+    above normal idle, 6h matches the ranker-alive ceiling used elsewhere.
+    """
+    if pg_events_age is None:
+        return "idle"
+    if pg_events_age < 3600:
+        return "ok"
+    if pg_events_age < 21600:
+        return "warn"
+    return "err"
+
+
 @app.route("/health")
 def health():
     """Operational status page for the background workers.
@@ -1182,75 +1291,40 @@ def health():
     bootstrap scan is making progress, whether the live watcher is
     catching transactions, and how much data has accumulated.
     """
-    scan_state = _safe_load_json(SCAN_STATE_PATH) or {}
-    stream_state = _safe_load_json(STREAM_STATE_PATH) or {}
-
     # Cross-machine truth: workers on the Mac dual-write heartbeats + ranked
     # snapshots to Neon, so prod (Render) — which has none of the Mac's JSON
-    # files — can still report real state. Local file reads stay authoritative
-    # on the Mac itself; PG reads only fill gaps.
-    # Clamp heartbeat ages to 0 — a worker on a host whose clock is ahead of
-    # this Flask process produces a "future" timestamp, which is a clock-skew
-    # artifact, not a freshness problem. Negative ages would otherwise leak
-    # to the UI as "-10668s ago" and read as broken.
-    # Host-tagged keys ('xrpl_stream:mac', future ':render') — match the
-    # prefix and take the freshest row. Reading the bare 'xrpl_stream' key
-    # would return the orphan from before 148c712 (host-tag rollout), which
-    # hasn't been updated since the writer rename and looks dead forever.
-    pg_hb = db.read_heartbeat_prefix("xrpl_stream")
-    pg_hb_age = max(0, int(time.time()) - pg_hb["ts"]) if pg_hb else None
+    # files — can still report real state. The shared `_health_degrade_state`
+    # helper performs every freshness read once so /health (human UI) and
+    # /healthz (monitor JSON) can never disagree about the degrade verdict.
+    state = _health_degrade_state()
+    scan_state = state["scan_state"]
+    stream_state = state["stream_state"]
+    pg_hb = state["pg_hb"]
+    pg_hb_age = state["pg_hb_age"]
     pg_hb_extra = (pg_hb.get("extra") if isinstance(pg_hb, dict) else None) or {}
-
-    # Latest event ts is a better "Last update" signal than the 5-min worker
-    # heartbeat: every whale move / token trade stamps an events row, so on a
-    # live network this ticks every 30–90s and matches the user-facing copy
-    # ("watcher saw a new transaction").
-    try:
-        last_event_ts = db.read_max_event_ts()
-    except Exception:
-        last_event_ts = None
-    pg_events_age = max(0, int(time.time()) - last_event_ts) if last_event_ts else None
-
-    ranker_hb = db.read_heartbeat("amm_ranker")
-    ranker_hb_age = max(0, int(time.time()) - ranker_hb["ts"]) if ranker_hb else None
+    last_event_ts = state["last_event_ts"]
+    pg_events_age = state["pg_events_age"]
+    ranker_hb = state["ranker_hb"]
+    ranker_hb_age = state["ranker_hb_age"]
     ranker_hb_extra = (ranker_hb.get("extra") if isinstance(ranker_hb, dict) else None) or {}
+    scan_finished = state["scan_finished"]
+    scan_log_age = state["scan_log_age"]
+    stream_log_age = state["stream_log_age"]
+    scan_alive = state["scan_alive"]
+    stream_alive = state["stream_alive"]
+    mirror_alive = state["mirror_alive"]
+    mirror_threshold = state["mirror_threshold"]
+    overall = state["overall"]
+    status_code = state["status_code"]
+    mirror_last_success_age = ranker_hb_age
 
     scan_started = scan_state.get("started_at") or ranker_hb_extra.get("started_at")
-    scan_finished = scan_state.get("finished_at") or ranker_hb_extra.get("finished_at")
     scan_uptime = _iso_to_age_seconds(scan_started)
     scan_pages = scan_state.get("pages", 0)
     scan_rate = round(scan_pages / scan_uptime, 2) if scan_uptime else None
-    scan_log_age = _file_age_seconds(SCAN_LOG_PATH)
 
     stream_started = stream_state.get("started_at") or pg_hb_extra.get("started_at")
     stream_uptime = _iso_to_age_seconds(stream_started)
-    stream_log_age = _file_age_seconds(STREAM_LOG_PATH)
-
-    # Liveness: scanner log should tick every ~30s, watcher every ~60s.
-    # Conservative thresholds: 5 min and 10 min before flagging stale.
-    scan_alive_local = scan_finished is None and (scan_log_age or 999) < 300
-    # Ranker cron is every 4h; treat the catalogue as "up to date" whenever
-    # the ranker has stamped a heartbeat in the last 6h.
-    ranker_alive_remote = ranker_hb_age is not None and ranker_hb_age < 21600
-    scan_alive = scan_alive_local or ranker_alive_remote
-
-    stream_alive_local = (stream_log_age or 999) < 600
-    # Trust the freshest signal we have. If the local log is missing/stale
-    # but Neon shows a recent heartbeat, the worker IS alive — just on a
-    # different host. Threshold a bit looser (900s) since heartbeat cadence
-    # is 5min and a single skipped tick shouldn't flip prod to "degraded".
-    stream_alive_remote = pg_hb_age is not None and pg_hb_age < 900
-    stream_alive = stream_alive_local or stream_alive_remote
-
-    # Mac → Prod mirror health. When _mirror_to_postgres on the Mac fails, the
-    # heartbeat row doesn't update — its age IS the inverse of "mirror is
-    # working". Configurable threshold via MIRROR_DEGRADED_AGE_SEC (default
-    # 18000s = 5h: one missed 4h rank_amms cron + buffer). On the Mac itself,
-    # the local-scan signal would mask this, so mirror_alive is only used to
-    # downgrade overall — not to flip pool tracker UI.
-    mirror_threshold = int(os.environ.get("MIRROR_DEGRADED_AGE_SEC", "18000"))
-    mirror_alive = ranker_hb_age is not None and ranker_hb_age < mirror_threshold
-    mirror_last_success_age = ranker_hb_age
 
     amm_index = _safe_load_json(AMM_INDEX_PATH) or []
     amms_in_index = len(amm_index) if isinstance(amm_index, list) and amm_index \
@@ -1285,15 +1359,7 @@ def health():
     # normal" banner, which lies if the ranker has been silent for hours.
     pool_stale = pool_finished and not scan_alive
 
-    # Banner downgrades when any subsystem is stale, not just when one
-    # disappears outright. Without this, a 40h-old pool tracker still
-    # rolled up to "ok" because `pool_finished` was true.
-    overall = "ok" if scan_alive and stream_alive and mirror_alive else "degraded"
-
-    # Status code is the contract for uptime monitors (UptimeRobot etc.) —
-    # keyword-matching the HTML body is fragile. Body stays informative for
-    # humans hitting /health in a browser; only the code flips on degrade.
-    status_code = 503 if overall == "degraded" else 200
+    stored_state = _stored_data_state(pg_events_age)
 
     pulse = fetch_pulse_cached()
 
@@ -1355,6 +1421,14 @@ def health():
                 if os.path.exists(VOLUMES_DB_PATH)
                 else (db.count_table("token_volume") if db.pg_available() else None)
             ),
+            # Row counts alone are cumulative — they only grow, so a frozen
+            # write path leaves the card visually identical. `stored_state`
+            # is anchored on `pg_events_age` so a stream that's silently
+            # failing to land rows downgrades this card even while Card 3
+            # (stream heartbeat) still reads alive.
+            "stored_state": stored_state,
+            "events_age": _humanize_seconds(pg_events_age),
+            "events_age_sec": pg_events_age,
         },
         recent_log=_tail_lines(STREAM_LOG_PATH, n=8),
     ), status_code
@@ -3854,9 +3928,27 @@ def api_whales_radar_stats():
 @app.route("/healthz")
 @app.route("/api/health")
 def healthz():
-    """Lightweight health endpoint for uptime monitors. No XRPL call, no scan.
-    /api/health is an alias matching the /api/ prefix convention for programmatic clients."""
-    return {"status": "ok"}, 200
+    """Machine-readable health endpoint for uptime monitors.
+
+    Shares `_health_degrade_state()` with `/health` so the JSON verdict here
+    and the human page can never disagree for the same request. PG + local
+    file reads only — no XRPL RPC — so polling at 30s cadence stays cheap
+    even at high monitor fanout. The per-check breakdown lets monitors
+    surface what degraded, not just that something did.
+
+    /api/health is an alias matching the /api/ prefix convention for
+    programmatic clients.
+    """
+    state = _health_degrade_state()
+    body = {
+        "status": state["overall"],
+        "checks": {
+            "scan": state["scan_alive"],
+            "stream": state["stream_alive"],
+            "mirror": state["mirror_alive"],
+        },
+    }
+    return body, state["status_code"]
 
 
 @app.route("/robots.txt")

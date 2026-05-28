@@ -531,21 +531,51 @@
     </div>
   </details>
 
+  {% set stored_state = substrate.stored_state or 'idle' %}
   <details class="card-expandable">
     <summary>
       <div class="card">
-        <span class="dot ok"></span>
+        <span class="dot {{ stored_state }}"></span>
         <div class="card-body">
           <div class="title">{{ _('Stored data') }}</div>
           <div class="desc">
-            {{ _('Historical activity is being saved to disk so charts and rankings survive restarts.') }}
-            <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
-            {{ _('events recorded') }} ·
-            <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
-            {{ _('token volume entries.') }}
+            {% if stored_state == 'ok' %}
+              {{ _('Historical activity is being saved to disk so charts and rankings survive restarts.') }}
+              <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+              {{ _('events recorded') }} ·
+              <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+              {{ _('token volume entries.') }}
+            {% elif stored_state == 'warn' %}
+              {{ _('No new events have been written in') }} {{ substrate.events_age }} —
+              {{ _('the storage path may be stalled even though the live feed reads alive. Counts below are frozen at the last write:') }}
+              <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+              {{ _('events recorded') }} ·
+              <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+              {{ _('token volume entries.') }}
+            {% elif stored_state == 'err' %}
+              {{ _('Storage has not accepted a new event in') }} {{ substrate.events_age }}.
+              {{ _('The live feed may be alive but the write path is broken — these counts are stale:') }}
+              <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+              {{ _('events recorded') }} ·
+              <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+              {{ _('token volume entries.') }}
+            {% else %}
+              {{ _('No events archived yet — the storage path is wired but no row has landed.') }}
+              {% if substrate.events_rows or substrate.volumes_rows %}
+                <strong>{{ "{:,}".format(substrate.events_rows) if substrate.events_rows is not none else "—" }}</strong>
+                {{ _('events recorded') }} ·
+                <strong>{{ "{:,}".format(substrate.volumes_rows) if substrate.volumes_rows is not none else "—" }}</strong>
+                {{ _('token volume entries.') }}
+              {% endif %}
+            {% endif %}
           </div>
         </div>
-        <div class="card-state ok">{{ _('healthy') }}</div>
+        <div class="card-state {{ stored_state }}">
+          {% if stored_state == 'ok' %}{{ _('healthy') }}
+          {% elif stored_state == 'warn' %}{{ _('stalled') }}
+          {% elif stored_state == 'err' %}{{ _('write path broken') }}
+          {% else %}{{ _('no signal') }}{% endif %}
+        </div>
         <span class="card-chev" aria-hidden="true">▾</span>
       </div>
     </summary>
@@ -553,7 +583,7 @@
       <h4>{{ _('What this is') }}</h4>
       <p>{{ _('A growing archive of everything the live watcher captures, written to a database the moment it happens. Without this, the site would forget yesterday\'s data on every restart — no charts, no rankings, no history.') }}</p>
       <h4>{{ _('How we know') }}</h4>
-      <p>{{ _('Every event the watcher tags is written into Postgres in real time and mirrored to a local file as backup. The two counts above are the cumulative rows currently stored: "events" (individual transactions of interest) and "token volume entries" (hour-by-hour trading totals per token, which power the token rankings).') }}</p>
+      <p>{{ _('Every event the watcher tags is written into Postgres in real time and mirrored to a local file as backup. The two counts above are the cumulative rows currently stored. The freshness signal is separate — we read the age of the most recent event row directly, so a write path that stalls while the live feed stays connected still downgrades this card.') }}</p>
     </div>
   </details>
 
