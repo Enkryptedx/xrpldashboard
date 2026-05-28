@@ -630,12 +630,15 @@
             <span class="num" id="xrp-price-num">—</span>
             <span class="sub">XRPL DEX · XRP/RLUSD <span class="live" id="xrp-price-live" style="display:none;"><span class="dot"></span>LIVE</span></span>
           </span>
-          <span class="cached-meta">
-            {# Server emits UTC for SEO/no-JS fallback; inline JS below
-               rewrites it to the visitor's local timezone so the hero
-               header doesn't read 12:45 UTC when the reader is at 8:45am
-               local. #}
-            <span id="cached-ts" data-iso="{{ timestamp_iso }}">{{ timestamp_str }}</span> · {{ _('cached') }} <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>{{ _('s ago') }}
+          {# Hidden heartbeat: drives the 30s [data-live] panel refresh in
+             the JS below. The visible "cached Xs ago" label was removed
+             because the underlying scan_all_pools_cached source it claimed
+             to track was dead; a backlog item covers adding an honest
+             homepage freshness indicator that's anchored to a real data
+             source rather than overclaiming page-wide staleness. #}
+          <span class="cached-meta" style="display:none" aria-hidden="true">
+            <span id="cached-ts" data-iso="{{ timestamp_iso }}">{{ timestamp_str }}</span>
+            <span id="age-ticker" data-age="{{ "%.0f"|format(cached_age or 0) }}">{{ "%.0f"|format(cached_age or 0) }}</span>
           </span>
         </div>
       </div>

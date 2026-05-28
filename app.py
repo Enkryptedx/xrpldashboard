@@ -926,13 +926,15 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
 def index():
     """The public landing page. Mosaic of every subsystem so visitors
     immediately see the full scope of the dashboard, not just AMM pools."""
-    data = scan_all_pools_cached()
     pulse = fetch_pulse_cached()
-    timestamp_str = data["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
-    timestamp_iso = data["timestamp"].strftime("%Y-%m-%dT%H:%M:%SZ")
-    cached_age = data.get("cached_age_seconds", 0.0)
-    _featured, _top_tier, _other, enriched = _tier_pools(data["pools"])
-    tvl_shares = _compute_tvl_shares(enriched, top_n=5)
+    # Render-time heartbeat for the hidden cached-meta hook that drives the
+    # 30s [data-live] panel refresh in templates/index.html. Visible label
+    # was removed (was claiming cache-age from a now-removed scan call);
+    # backlog item tracks adding an honest freshness indicator.
+    _now = datetime.now(timezone.utc)
+    timestamp_str = _now.strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp_iso = _now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    cached_age = 0.0
 
     # Pull from the full ranked index so the homepage's headline AMM stat
     # and Top-pools card match what /pools shows. Without this the homepage
@@ -1009,8 +1011,6 @@ def index():
         timestamp_iso=timestamp_iso,
         cached_age=cached_age,
         pulse=pulse,
-        top_pools=enriched[:5],
-        tvl_shares=tvl_shares,
         ranked_top5=ranked_top5,
         ranked_pool_count=ranked_pool_count,
         priced_pool_count=priced_pool_count,
@@ -1020,7 +1020,6 @@ def index():
         top_tokens=_top_tokens_recent(limit=5),
         cold_storage=cold,
         xrp_distribution=xrp_distribution,
-        **data,
     )
 
 
