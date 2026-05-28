@@ -470,7 +470,7 @@
     </p>
     <div class="scope-note">
       <strong>{{ _('Honest note on classification.') }}</strong>
-      {{ _('We classify each MPT by reading its asset_class field per XLS-89 and normalizing. Issuers self-declare — when an issuer leaves the field blank or uses a non-standard value, we put it in "Other".') }}
+      {{ _('We attempt XLS-89 asset_class first, falling back to issuer-name and ticker heuristics. Current state: every MPT we\'ve walked has an empty asset_class field, so all 207 classifications come from heuristics.') }}
     </div>
   </div>
 
