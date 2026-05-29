@@ -564,7 +564,7 @@
       {{ explainer(
         'rlusd-activity',
         'Why is this usually $0?',
-        'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this row reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are always current — they are pulled directly from Ethereum and the XRP Ledger every minute.'
+        'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this row reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are pulled directly from Ethereum and the XRP Ledger every ' ~ refresh_interval_minutes ~ ' minutes by a background walker; the page reads the latest cached values from Postgres.'
       ) }}
     </div>
 
@@ -1326,11 +1326,13 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
   }
   wireSimToggle();
 
-  /* Live polling. /api/rlusd/state is TTL-cached server-side (~60s), so
-     polling at the cache window keeps the dashboard accurate without
-     thrashing the public Ethereum RPC. New events (tx hash not seen
-     before) are queued and drained one-at-a-time so they appear as
-     individual sparks rather than a frame-1 burst. */
+  /* Live polling. /api/rlusd/state reads from Postgres, which the
+     launchd rlusd_refresher walker writes on REFRESH_INTERVAL
+     (currently 5 min — see rlusd_live.py). PG reads are cheap, so
+     polling at 60s keeps the freshness chip honest even though new
+     upstream data only appears every 5 min. New events (tx hash
+     not seen before) are queued and drained one-at-a-time so they
+     appear as individual sparks rather than a frame-1 burst. */
   const POLL_MS = 60_000;
   const DRAIN_MS = 1_500;
   const seenTx = new Set();

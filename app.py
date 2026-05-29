@@ -2215,12 +2215,16 @@ def rlusd():
     if cached_at:
         age_seconds = max(0, int(time.time() - cached_at))
 
+    import rlusd_live
+    refresh_interval_minutes = max(1, rlusd_live.REFRESH_INTERVAL // 60)
+
     return render_template(
         "rlusd.html",
         initial=initial,
         cached_at=cached_at,
         age_seconds=age_seconds,
         fresh=fresh,
+        refresh_interval_minutes=refresh_interval_minutes,
     )
 
 
