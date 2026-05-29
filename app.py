@@ -32,6 +32,7 @@ from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
 import amendments_state
 from amendments_state import fetch_amendments_state_cached
+import network_state
 from network_state import fetch_network_state_cached, build_unl_diff_view
 from credentials_state import get_credentials_state
 from lending_amendment import fetch_lending_status_cached
@@ -2451,7 +2452,12 @@ def network():
         "ripple": build_unl_diff_view("ripple"),
         "xrplf": build_unl_diff_view("xrplf"),
     }
-    resp = make_response(render_template("network.html", state=state, diffs=diffs))
+    resp = make_response(render_template(
+        "network.html",
+        state=state,
+        diffs=diffs,
+        cache_ttl_seconds=network_state.CACHE_TTL,
+    ))
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp
 

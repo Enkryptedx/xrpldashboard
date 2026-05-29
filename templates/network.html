@@ -418,7 +418,7 @@
     <a href="https://vl.ripple.com/" rel="nofollow noopener" target="_blank">vl.ripple.com</a>
     {{ _('and') }}
     <a href="https://vl.xrplf.org/" rel="nofollow noopener" target="_blank">vl.xrplf.org</a>.
-    {{ _('Each blob is base64-decoded server-side and the sequence, validator count, and expiration are read straight from the signed payload — no off-ledger interpretation. Cached for up to 10 minutes.') }}
+    {{ _('Each blob is base64-decoded server-side and the sequence, validator count, and expiration are read straight from the signed payload — no off-ledger interpretation. Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes.') }}
     {% if state.fetched_at_iso %}
       <br>{{ _('Fetched') }} <span class="mono" data-iso="{{ state.fetched_at_iso }}">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
     {% endif %}
