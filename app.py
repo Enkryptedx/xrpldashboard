@@ -2241,6 +2241,7 @@ def rwa():
     chose NOT to surface and why — the truth-first credibility multiplier."""
     families = []
     mpt_attested = []
+    curation_last_updated = None
     if db.pg_available():
         try:
             with db.pg_connect() as conn:
@@ -2287,8 +2288,16 @@ def rwa():
                             "name": row[1],
                             "domain": extra.get("domain"),
                         })
+                    cur.execute(
+                        "SELECT MAX(created_at) FROM rwa_pool_attribution"
+                    )
+                    _row = cur.fetchone()
+                    curation_last_updated = (
+                        _row[0].strftime("%Y-%m-%d")
+                        if _row and _row[0] else None
+                    )
         except Exception:
-            pass
+            curation_last_updated = None
 
     try:
         ranked_rows, ranked_meta = _ranked_amm_snapshot()
@@ -2368,6 +2377,7 @@ def rwa():
         total_family_count=total_family_count,
         total_tvl=total_tvl,
         snapshot_age=snapshot_age,
+        curation_last_updated=curation_last_updated,
     )
 
 

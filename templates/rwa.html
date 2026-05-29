@@ -231,12 +231,17 @@
   </p>
   <div class="agg-callout">
     <strong>{{ _('Ecosystem context:') }}</strong>
-    {{ _('RWA.xyz tracks $3.6B in real-world assets on the XRP Ledger as of May 3, 2026 (excluding stablecoins) — split roughly $1B in distributed assets and $2.6B in represented assets across 301 projects. Justoken\'s JMWH accounts for $1.76B of that — roughly half the total. Each JMWH token represents one real megawatt-hour of energy backed by energy companies. We exclude Justoken from the figure above pending TOML / attestation evidence — see the') }} <a href="/verify#how-it-works">{{ _('candidates list') }}</a> {{ _('for the gating criteria.') }}
+    {{ _('Per RWA.xyz\'s 2026-05-03 snapshot: $3.6B in real-world assets on the XRP Ledger (excluding stablecoins) — split roughly $1B in distributed assets and $2.6B in represented assets across 301 projects. Justoken\'s JMWH accounts for $1.76B of that — roughly half the total. Each JMWH token represents one real megawatt-hour of energy backed by energy companies. We exclude Justoken from the figure above pending TOML / attestation evidence — see the') }} <a href="/verify#how-it-works">{{ _('candidates list') }}</a> {{ _('for the gating criteria.') }}
     <span class="agg-source">{{ _('Source:') }} <a href="https://cryptoslate.com/why-xrp-ledger-is-becoming-a-3-6b-hot-spot-for-tokenized-energy-commodities/" target="_blank" rel="noopener noreferrer">CryptoSlate, 2026-05-03</a></span>
   </div>
 
   {% if families %}
     <h2 class="section">{{ _('Verified issuer families') }}</h2>
+    {% if curation_last_updated %}
+    <p class="curation-note" style="font-size:0.72rem;color:var(--dim);margin:-6px 0 10px;font-family:var(--mono);letter-spacing:0.04em;">
+      {{ _('Curation last updated:') }} {{ curation_last_updated }}
+    </p>
+    {% endif %}
     <div class="family-grid">
       {% for family in families %}
         <div class="family-card">
