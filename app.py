@@ -34,6 +34,7 @@ from amendments_state import fetch_amendments_state_cached
 from network_state import fetch_network_state_cached, build_unl_diff_view
 from credentials_state import get_credentials_state
 from lending_amendment import fetch_lending_status_cached
+from lending_data import CACHE_TTL as LENDING_CACHE_TTL
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
@@ -3234,7 +3235,12 @@ def lending():
         data = load_lending_snapshot()
         if data is None:
             data = fetch_lending_data_cached()
-    return render_template("lending.html", status=status, data=data)
+    return render_template(
+        "lending.html",
+        status=status,
+        data=data,
+        cache_ttl_seconds=LENDING_CACHE_TTL,
+    )
 
 
 # Tickers and names that obviously mark an issuance as test/demo. Conservative

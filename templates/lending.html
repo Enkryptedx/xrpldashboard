@@ -352,7 +352,7 @@
 
     <div class="amend-grid">
       {% if lending_a %}
-      <div class="amend">
+      <article class="amend">
         <div class="a-head">
           <div class="a-name">{{ lending_a.name or 'LendingProtocol' }}</div>
           {% if lending_a.status == 'activated' %}
@@ -367,10 +367,10 @@
         <div class="a-desc">
           {{ _('The broker/loan layer. Defines how borrowers take loans from vault deposits, how interest accrues, and how defaults are handled.') }}
         </div>
-      </div>
+      </article>
       {% endif %}
       {% if vault_a %}
-      <div class="amend">
+      <article class="amend">
         <div class="a-head">
           <div class="a-name">{{ vault_a.name or 'SingleAssetVault' }}</div>
           {% if vault_a.status == 'activated' %}
@@ -385,7 +385,7 @@
         <div class="a-desc">
           {{ _('The deposit primitive. A vault holds a single asset (e.g. XRP) deposited by many users, and is what loan brokers borrow from.') }}
         </div>
-      </div>
+      </article>
       {% endif %}
     </div>
 
@@ -427,7 +427,7 @@
       <h2>{{ _('Loan Broker Board') }}</h2>
       <span class="meta">
         {% if activated %}
-          {{ _('live · refreshes every') }} 5 {{ _('min') }}
+          {{ _('live · refreshes every') }} {{ (cache_ttl_seconds / 60) | int }} {{ _('min') }}
         {% else %}
           {{ _('switches on when both amendments activate') }}
         {% endif %}
