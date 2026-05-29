@@ -62,8 +62,24 @@ def main():
         f"written={written} elapsed={elapsed}s",
         flush=True,
     )
-    return 0 if written or snapshotted == 0 else 1
+    # Empty read (snapshotted==0) is a clean no-op — rank_amms.py hasn't run
+    # yet or DATABASE_URL is unset; not a failure. snapshotted>0 with
+    # written==0 means the validity filter rejected every row, which IS a
+    # failure worth surfacing.
+    ok = bool(written or snapshotted == 0)
+    message = f"snapshotted={snapshotted} written={written} elapsed={elapsed}s"
+    return ok, message
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    db.write_walker_health_start("amm_tvl_recorder")
+    ok = False
+    message = None
+    try:
+        ok, message = main()
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("amm_tvl_recorder", ok=ok, message=message)
+    sys.exit(0 if ok else 1)

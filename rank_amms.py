@@ -520,4 +520,31 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Resumable walker: each launchd invocation either completes the full
+    # pass or advances the cursor + saves state. main() returning 0 covers
+    # both "completed this invocation" and the early-return "already
+    # finished" no-op (line 430-433) — both are forward progress from the
+    # walker_health reader's perspective. Cursor advance shows in message
+    # so partial vs. full-pass is visible without flagging as failure.
+    db.write_walker_health_start("rank_amms")
+    ok = False
+    message = None
+    rc = 1
+    try:
+        rc = main()
+        ok = (rc == 0)
+        try:
+            st = load_json(STATE_PATH, {})
+            message = (
+                f"rc={rc} cursor={st.get('cursor')} "
+                f"errors={st.get('errors')} skipped={st.get('skipped')} "
+                f"finished_at={st.get('finished_at')}"
+            )
+        except Exception:
+            message = f"rc={rc}"
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("rank_amms", ok=ok, message=message)
+    sys.exit(rc)

@@ -171,12 +171,35 @@ def run_once(list_path=None, snapshot_path=None):
 
 
 if __name__ == "__main__":
-    r = run_once()
-    print(f"mpt_holders_refresh: ok={r.get('ok')}")
-    if not r.get("ok"):
-        print(f"  reason={r.get('reason')}")
-        sys.exit(1)
-    print(f"  elapsed={r.get('elapsed_seconds')}s  total_in_list={r.get('total_in_list')}")
-    print(f"  counts={r.get('counts')}")
-    print(f"  history_rows={r.get('history_rows')}")
-    sys.exit(0)
+    db.write_walker_health_start("mpt_holders_refresh")
+    ok = False
+    message = None
+    try:
+        r = run_once()
+        ok = bool(r.get("ok"))
+        if ok:
+            counts = r.get("counts") or {}
+            message = (
+                f"elapsed={r.get('elapsed_seconds')}s "
+                f"total_in_list={r.get('total_in_list')} "
+                f"history_rows={r.get('history_rows')} "
+                f"ok_count={counts.get('ok')} "
+                f"ledger_failed={counts.get('ledger_entry_failed')} "
+                f"skipped_test={counts.get('skipped_test')} "
+                f"holders_incomplete={counts.get('holders_incomplete')}"
+            )
+        else:
+            message = f"reason={r.get('reason')}"
+        print(f"mpt_holders_refresh: ok={ok}")
+        if not ok:
+            print(f"  reason={r.get('reason')}")
+        else:
+            print(f"  elapsed={r.get('elapsed_seconds')}s  total_in_list={r.get('total_in_list')}")
+            print(f"  counts={r.get('counts')}")
+            print(f"  history_rows={r.get('history_rows')}")
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("mpt_holders_refresh", ok=ok, message=message)
+    sys.exit(0 if ok else 1)
