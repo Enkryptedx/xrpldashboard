@@ -217,6 +217,22 @@ def fetch_amendments_state():
     in_flight.sort(key=lambda x: (x["name"] or "").lower())
     superseded.sort(key=lambda x: (x["name"] or "").lower())
 
+    # Canonical enabled count comes from the Amendments ledger object, not
+    # from feature-RPC matches. Any amendment enabled on-chain that the
+    # responding node doesn't recognize would otherwise be silently dropped
+    # from the hero count.
+    recognized_enabled_hashes = {e["hash"] for e in enabled}
+    unrecognized_enabled = []
+    for h in enabled_hashes - recognized_enabled_hashes:
+        meta = KNOWN_UNRECOGNIZED_HASHES.get(h)
+        unrecognized_enabled.append({
+            "hash": h,
+            "name": (meta or {}).get("name"),
+            "source_label": (meta or {}).get("source_label"),
+            "source_url": (meta or {}).get("source_url"),
+        })
+    unrecognized_enabled.sort(key=lambda x: (x["name"] or x["hash"]).lower())
+
     majorities = []
     for entry in majorities_raw:
         m = (entry or {}).get("Majority") or {}
@@ -246,7 +262,9 @@ def fetch_amendments_state():
         "ok": True,
         "ledger_index": ledger_result.get("ledger_index")
             or feat_result.get("ledger_index"),
-        "enabled_count": len(enabled),
+        "enabled_count": len(enabled_hashes),
+        "unrecognized_enabled": unrecognized_enabled,
+        "unrecognized_enabled_count": len(unrecognized_enabled),
         "in_flight": in_flight,
         "in_flight_count": len(in_flight),
         "superseded": superseded,

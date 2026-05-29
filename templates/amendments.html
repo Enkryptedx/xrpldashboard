@@ -246,6 +246,25 @@
     </div>
   </div>
 
+  {% if state.unrecognized_enabled_count and state.unrecognized_enabled_count > 0 %}
+    <div class="truth-note" style="margin: -8px 0 18px;">
+      <span class="lbl">{{ _('truth-first note') }}</span>
+      {% set names_present = state.unrecognized_enabled | selectattr('name') | list %}
+      {% if names_present|length == state.unrecognized_enabled_count %}
+        {{ _('The hero count above comes from the canonical Amendments ledger object. The XRPL node that answered this request does not carry a definition for') }}
+        {{ state.unrecognized_enabled_count }}
+        {% if state.unrecognized_enabled_count == 1 %}{{ _('of those enabled amendments') }}{% else %}{{ _('of those enabled amendments') }}{% endif %} —
+        {% for u in state.unrecognized_enabled %}<code>{{ u.name }}</code>{% if u.source_url %} (<a href="{{ u.source_url }}" rel="nofollow noopener" target="_blank">{{ u.source_label }}</a>){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}.
+        {{ _('XRPL activates amendments faster than any single rippled binary updates; the next release will ship the definition.') }}
+      {% else %}
+        {{ _('The hero count above comes from the canonical Amendments ledger object.') }}
+        {{ state.unrecognized_enabled_count }}
+        {% if state.unrecognized_enabled_count == 1 %}{{ _('enabled amendment is') }}{% else %}{{ _('enabled amendments are') }}{% endif %}
+        {{ _('not recognized by the responding XRPL node — validators on a newer rippled build activated a change current released binaries don\'t carry.') }}
+      {% endif %}
+    </div>
+  {% endif %}
+
   {% if state.majorities %}
     <h2>{{ _('In countdown') }}</h2>
     <p class="dim" style="font-size: 0.92rem;">
@@ -502,7 +521,7 @@
 
   <p class="source-note">
     {{ _('Data sourced from the public') }} <code>feature</code> {{ _('RPC at') }} <code>s1.ripple.com:51234</code>
-    {{ _('and the canonical Amendments ledger object. Cached for up to five minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the public RPC; for those, see') }}
+    {{ _('and the canonical Amendments ledger object. Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the public RPC; for those, see') }}
     <a href="https://xrpl.org/known-amendments.html" rel="nofollow noopener" target="_blank">xrpl.org/known-amendments</a>.
     {% if state.fetched_at_iso %}
       <br>{{ _('Fetched') }} <span class="mono">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.

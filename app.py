@@ -30,6 +30,7 @@ from network_pulse import fetch_pulse_cached
 from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
+import amendments_state
 from amendments_state import fetch_amendments_state_cached
 from network_state import fetch_network_state_cached, build_unl_diff_view
 from credentials_state import get_credentials_state
@@ -2427,7 +2428,11 @@ def amendments():
     facts (hash, majority close time, projected activation if majority
     holds, link to off-ledger metadata if any)."""
     state = fetch_amendments_state_cached()
-    resp = make_response(render_template("amendments.html", state=state))
+    resp = make_response(render_template(
+        "amendments.html",
+        state=state,
+        cache_ttl_seconds=amendments_state.CACHE_TTL,
+    ))
     resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
     return resp
 
