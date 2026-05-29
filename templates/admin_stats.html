@@ -110,7 +110,7 @@
       (one person clicking around 5 pages = 5 loads, but still just 1 person).
     </div>
 
-    <div class="grid">
+    <div class="grid" role="group" aria-label="Visitor traffic statistics">
       <div class="stat">
         <div class="lbl">right now</div>
         <div class="v now">{{ "{:,}".format(rollups.now.uniques) }} <span class="unit">people</span></div>
@@ -320,7 +320,7 @@
       Every public site gets these. None of these paths exist on our site.
     </div>
 
-    <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+    <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));" role="group" aria-label="Bot probe statistics">
       <div class="stat">
         <div class="lbl">last hour</div>
         <div class="v">{{ "{:,}".format(bot_rollups.hour.views) }} <span class="unit">probes</span></div>

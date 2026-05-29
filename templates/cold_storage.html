@@ -225,15 +225,16 @@
     {% set max_bal = data.rows | map(attribute="balance_xrp") | reject("none") | list %}
     {% set max_val = (max_bal | max) if max_bal else 1 %}
 
-    <div class="esc-row head">
-      <div>{{ _('Account') }}</div>
-      <div style="text-align: right;">{{ _('Liquid balance') }}</div>
-      <div></div>
-      <div style="text-align: right;">{{ _('Verify') }}</div>
+    <div role="table" aria-label="{{ _('Cold storage escrow accounts') }}">
+    <div class="esc-row head" role="row">
+      <div role="columnheader">{{ _('Account') }}</div>
+      <div role="columnheader" style="text-align: right;">{{ _('Liquid balance') }}</div>
+      <div role="columnheader"></div>
+      <div role="columnheader" style="text-align: right;">{{ _('Verify') }}</div>
     </div>
 
     {% for r in data.rows %}
-      <div class="esc-row">
+      <div class="esc-row" role="row">
         <div class="esc-name">
           {{ r.name }}
           <span class="sub">{{ r.address_short }}</span>
@@ -259,7 +260,7 @@
         </div>
       </div>
     {% else %}
-      <div class="esc-row">
+      <div class="esc-row" role="row">
         <div class="esc-name" style="grid-column: 1 / -1; color: var(--muted);
              text-align: center; padding: 1em 0;">
           {{ _('Balances temporarily unavailable — refresh in a minute, or check') }}
@@ -268,6 +269,7 @@
         </div>
       </div>
     {% endfor %}
+    </div>
 
     <div class="links" style="margin-top: 1em; padding-top: 0.8em; border-top: 1px solid var(--border);">
       <a class="link-pill" href="https://ripple.com/.well-known/xrp-ledger.toml" target="_blank" rel="noopener">

@@ -278,7 +278,7 @@
     <canvas id="whale-radar-canvas"></canvas>
     <div class="hud-tl">{{ _('XRPL · whale scope') }}<br><span class="hud-num">{{ _('scan 360°') }}</span></div>
     <div class="hud-tr">{{ _('tracking floor') }}<br><span class="hud-num">≥{{ "{:,}".format(threshold_xrp) }} XRP</span></div>
-    <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num" id="hud-24h-count">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
+    <div class="hud-bl">{{ _('24h whales') }}<br><span class="hud-num" id="hud-24h-count" aria-live="polite">{{ "{:,}".format(radar_stats.last_24h) }}</span></div>
     <div class="hud-br">{{ _('last whale') }}<br><span class="hud-amber" id="hud-last-whale">{{ radar_stats.last_label }}</span></div>
   </div>
   <script type="application/json" id="radar-blips-data">{{ radar_blips|tojson }}</script>

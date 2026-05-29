@@ -43,5 +43,8 @@
     .data-fresh { font-size: 0.7rem; padding: 4px 9px; }
     .data-fresh .df-soon { display: none; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .data-fresh .df-dot { animation: none; }
+  }
 </style>
 {%- endmacro %}

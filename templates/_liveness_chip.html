@@ -36,6 +36,9 @@
     50%     { box-shadow: 0 0 0 5px rgba(245,158,11,0); opacity: 1; }
   }
   @media (max-width: 720px) { .liveness-chip { display: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .liveness-chip .dot { animation: none; }
+  }
 </style>
 
 {% if liveness and liveness.ledger_index %}
@@ -45,8 +48,8 @@
    data-age-base="{{ liveness.last_close_age_seconds or 0 }}"
    title="{{ liveness.status_text or 'Live ledger heartbeat' }}">
   <span class="dot"></span>
-  Ledger #<b id="livenessSeq">{{ liveness.ledger_index }}</b>
-  · <span id="livenessAge">{{ liveness.last_close_age_seconds or 0 }}s</span>
+  Ledger #<b id="livenessSeq" aria-live="polite">{{ liveness.ledger_index }}</b>
+  · <span id="livenessAge" aria-live="polite">{{ liveness.last_close_age_seconds or 0 }}s</span>
 </a>
 <script>
 (function () {

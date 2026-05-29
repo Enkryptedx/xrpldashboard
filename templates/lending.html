@@ -90,6 +90,9 @@
     .status-pill .blip { width: 7px; height: 7px; border-radius: 50%;
                          background: currentColor; box-shadow: 0 0 6px currentColor;
                          animation: blip 2.2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .status-pill .blip { animation: none; }
+    }
     @keyframes blip {
       0%, 100% { opacity: 0.55; transform: scale(1); }
       50%      { opacity: 1;    transform: scale(1.25); }
@@ -543,7 +546,7 @@
         {{ _('Depositor count comes from the vault\'s share MPT holder list. APY is intentionally omitted in v1 — accurate yield requires snapshot history (interest accrued ÷ TVL over a window). It will appear once enough post-activation snapshots accumulate.') }}
       </div>
     {% else %}
-      <div class="broker-empty">
+      <div class="broker-empty" aria-label="{{ _('Loan broker table preview — awaiting amendment activation') }}">
         <div class="broker-empty-inner">
           <div class="e-title">{{ _('Awaiting amendment activation') }}</div>
           <div class="e-body">

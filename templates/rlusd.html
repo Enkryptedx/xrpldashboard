@@ -489,7 +489,7 @@
           'LIVE: the visualization animates only when real on-chain events happen — and those are rare (Ripple treasury mints and burns might only fire a few times a week), so most of the time it will look quiet. SIM: injects fake animation events so you can preview what mints, burns, and bridge transfers look like. Sim events are visual only — they do not touch the supply totals, the 24-hour counters, or the event log.'
         ) }}
       </div>
-      <div class="total">
+      <div class="total" aria-live="polite" aria-atomic="true">
         <span id="totalHeadline">{{ fmt_usd(total_supply) }}</span> RLUSD circulating
         {{ explainer(
           'rlusd-anim',

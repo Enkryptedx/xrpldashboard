@@ -71,6 +71,9 @@
 @media (max-width: 480px) {
   .explainer-card { width: calc(100vw - 32px); left: -50px; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .explainer-chip { transition: none; }
+}
 {%- endmacro %}
 
 {% macro explainer_js() -%}
