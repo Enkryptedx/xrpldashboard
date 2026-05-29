@@ -538,6 +538,27 @@ def _log_page_view():
 
 
 @app.context_processor
+def inject_whale_thresholds():
+    """Expose whale threshold + window constants to every template, so
+    editorial copy describing them ("100,000 XRP", "last 7 days",
+    "30-day window", "last 1,000 account_tx entries") renders from a
+    single source of truth instead of mirroring the constants as literals.
+    Codifies the hardcoded-numbers-mirror-constants anti-pattern fix at
+    the global injection level."""
+    from wallet_data import (
+        WHALE_WINDOW_DAYS, LOOKBACK_DAYS,
+        MAX_TX_PAGES, TX_PAGE_LIMIT,
+    )
+    return {
+        "whale_xrp_threshold": WHALE_XRP_THRESHOLD,
+        "whale_window_days": WHALE_WINDOW_DAYS,
+        "lookback_days": LOOKBACK_DAYS,
+        "max_tx_pages": MAX_TX_PAGES,
+        "tx_page_limit": TX_PAGE_LIMIT,
+    }
+
+
+@app.context_processor
 def inject_liveness():
     """Make a slim ledger-heartbeat dict available to every template via
     {{ liveness }}. Drives the pulsing chip in the shared nav. Pull is cheap

@@ -920,9 +920,10 @@
           <div class="identity-greeting">{% if data.is_amm %}{{ _('AMM Pool') }}{% elif data.is_vault %}{{ _('Vault Account') }}{% else %}{{ _('Wallet') }}{% endif %}</div>
           {% if data.whale_flag %}
           <div class="identity-badges-row">
+            {# "100,000 XRP" mirrors WHALE_XRP_THRESHOLD, "7 days" mirrors WHALE_WINDOW_DAYS; both injected via inject_whale_thresholds #}
             <a class="identity-badge identity-badge-whale" href="/whales"
-               title="{{ _('Sent or received at least 100,000 XRP in the last 7 days. Click to see the recent whale activity feed.') }}">
-              <span class="whale-glyph" aria-hidden="true">◆</span> {{ _('WHALE · last 7 days') }}
+               title="{{ _('Sent or received at least') }} {{ "{:,}".format(whale_xrp_threshold) }} {{ _('XRP in the last') }} {{ whale_window_days }} {{ _('days. Click to see the recent whale activity feed.') }}">
+              <span class="whale-glyph" aria-hidden="true">◆</span> {{ _('WHALE · last') }} {{ whale_window_days }} {{ _('days') }}
             </a>
           </div>
           {% endif %}
