@@ -126,6 +126,7 @@
       <tr>
         <td class="route">/api/ledger-tip</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors network_pulse.PULSE_CACHE_TTL_SECONDS=20 -->
         <td>{{ _('20 sec') }}</td>
         <td><code>server_info</code> {{ _('on public XRPL node') }}</td>
       </tr>
@@ -144,6 +145,7 @@
       <tr>
         <td class="route">/wallet/&lt;addr&gt;<br>{{ _('balances, holdings, network graph, AMM positions') }}</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors wallet_data.CACHE_TTL=300 -->
         <td>{{ _('5 min') }}</td>
         <td><code>account_info</code>, <code>account_lines</code>, <code>account_tx</code>, <code>amm_info</code></td>
       </tr>
@@ -174,18 +176,21 @@
       <tr>
         <td class="route">/cold-storage</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors cold_storage.CACHE_TTL=300 -->
         <td>{{ _('5 min') }}</td>
         <td><code>account_info</code> {{ _('on labeled cold wallets') }}</td>
       </tr>
       <tr>
         <td class="route">/rlusd<br>{{ _('cross-chain supply, mint/burn events') }}</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors rlusd_live.REFRESH_INTERVAL=300 -->
         <td>{{ _('5 min') }}</td>
         <td>{{ _('Ethereum public JSON-RPC') }} (<code>1rpc.io/eth</code>) + {{ _('XRPL public node') }} (<code>s1.ripple.com</code>)</td>
       </tr>
       <tr>
         <td class="route">/api/rlusd/state</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors rlusd_live.REFRESH_INTERVAL=300 -->
         <td>{{ _('5 min') }}</td>
         <td><code>eth_call</code>, <code>eth_getLogs</code>, <code>gateway_balances</code>, <code>account_tx</code></td>
       </tr>
@@ -210,6 +215,7 @@
       <tr>
         <td class="route">/lending<br>{{ _('amendment status + protocol explainer') }}</td>
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
+        <!-- mirrors lending_data.CACHE_TTL=300 -->
         <td>{{ _('5 min') }}</td>
         <td><code>feature</code> {{ _('RPC (amendment voting status); switches to live broker/vault data once LendingProtocol amendment activates') }}</td>
       </tr>
@@ -403,6 +409,7 @@
     <li><strong>{{ _('Counterparty graph') }}</strong> {{ _('doesn\'t currently extract DEX order-book counterparties (only direct payments, AMM swaps, and trustline counterparties). Roadmap.') }}</li>
     <li><strong>{{ _('Worker downtime') }}</strong> — {{ _('if the streaming worker crashes or restarts, panels fed by it') }} (<code>/whales</code>,
       <code>/tokens</code>) {{ _('show data up to the last successful write. Per-page WebSockets continue working independently.') }}</li>
+    <!-- "cached 10 minutes" mirrors network_state.CACHE_TTL=600 -->
     <li><strong>{{ _('Reserve values.') }}</strong> {{ _('The base + per-object reserve shown on each wallet page is pulled live from') }}
       <code>server_info</code> {{ _('(validated_ledger), cached 10 minutes. Reserves only change via on-chain amendment, so the cache is safe; the literal numbers in the calculation will reflect the network\'s current parameters automatically.') }}</li>
     <li><strong>{{ _('RLUSD mint/burn window.') }}</strong> {{ _('The 24h activity cells on /rlusd reflect the events surfaced in our query window — public Ethereum RPCs cap eth_getLogs at ~1024 blocks (≈ 3.3 hours), and the XRPL account_tx call returns the most recent 80 issuer-touching transactions, which on a highly-traded issuer like RLUSD can span only minutes. Treasury-level mint/burn events are themselves sparse (often only a handful per week), so these cells read $0 most of the time. The cross-chain supply totals on the same page are not affected — they come from totalSupply and gateway_balances and are always current.') }}</li>
