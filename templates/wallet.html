@@ -1700,7 +1700,7 @@
     <footer>
       {{ _('Wallet view · all balances, holdings, AMM positions and pool activity pulled directly from the XRP Ledger via') }} <code style="color: var(--cyan);">account_info</code>,
       <code style="color: var(--cyan);">account_lines</code>, <code style="color: var(--cyan);">account_tx</code>,
-      {{ _('and') }} <code style="color: var(--cyan);">amm_info</code>. {{ _('Cached 5 min server-side.') }}
+      {{ _('and') }} <code style="color: var(--cyan);">amm_info</code>. {{ _('Cached') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('min server-side.') }}
       {% if data.cached_age_seconds is defined and data.cached_age_seconds > 0 %}
         {{ _('Served from cache,') }} {{ data.cached_age_seconds | round(0) | int }}s {{ _('old.') }}
       {% endif %}

@@ -214,7 +214,7 @@
   <div class="card">
     <div class="section-head" style="margin-bottom: 0.4em;">
       <h2>{{ _('Per-account balances') }}</h2>
-      <span class="meta">{{ _('cached · refreshes every 5 min') }}</span>
+      <span class="meta">{{ _('cached · refreshes every') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('min') }}</span>
     </div>
 
     <div class="scope-note">

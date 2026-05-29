@@ -3152,7 +3152,13 @@ def wallet(address):
     except Exception:
         data["xrp_usd"] = None
         data["xrp_usd_sources"] = []
-    return render_template("wallet.html", data=data, wallet_qr_svg=_wallet_qr_svg(address))
+    import wallet_data
+    return render_template(
+        "wallet.html",
+        data=data,
+        wallet_qr_svg=_wallet_qr_svg(address),
+        cache_ttl_seconds=wallet_data.CACHE_TTL,
+    )
 
 
 _CURRENCY_HEX_CHARS = set("0123456789abcdefABCDEF")
@@ -3229,7 +3235,13 @@ def cold_storage():
         locked = fetch_escrow_locked_cached()
     except Exception:
         locked = None
-    return render_template("cold_storage.html", data=data, locked=locked)
+    import cold_storage as cold_storage_module
+    return render_template(
+        "cold_storage.html",
+        data=data,
+        locked=locked,
+        cache_ttl_seconds=cold_storage_module.CACHE_TTL,
+    )
 
 
 @app.route("/lending")
