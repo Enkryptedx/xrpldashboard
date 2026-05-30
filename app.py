@@ -2487,6 +2487,112 @@ def network():
     return resp
 
 
+# ─────────────────────────────────────────────────────────────────────
+# /walker_health — public view of every instrumented background walker.
+# Reads the walker_health table (populated by each walker's try/finally
+# instrumentation) and renders a single sortable severity table.
+# Truth-first stance: this page exists so visitors can verify the data
+# they see on other pages is actually fresh, not last-good.
+# ─────────────────────────────────────────────────────────────────────
+
+WALKER_SEVERITY_WARN_MULTIPLE = 2   # >2× cadence since last success → yellow
+WALKER_SEVERITY_CRIT_MULTIPLE = 4   # >4× cadence since last success → red
+
+
+def _walker_severity(row):
+    """Map a walker_health row to a (severity, sort_rank) tuple.
+    severity ∈ {"red", "yellow", "green", "idle"}. sort_rank is used
+    by the page to put broken walkers at the top of the table."""
+    cf = row.get("consecutive_failures") or 0
+    age = row.get("last_success_age_seconds")
+    cadence = row.get("cadence_seconds")
+    last_success_at = row.get("last_success_at")
+
+    if last_success_at is None:
+        # Row exists but walker has never succeeded yet. Could be brand-new
+        # (first run still in progress) or persistently failing. Treat as
+        # idle when last_run_completed is also NULL (run truly in flight),
+        # otherwise red.
+        if row.get("last_run_completed") is None:
+            return ("idle", 1)
+        return ("red", 3)
+
+    if cf >= 2:
+        return ("red", 3)
+    if cadence is not None and age is not None and age > WALKER_SEVERITY_CRIT_MULTIPLE * cadence:
+        return ("red", 3)
+    if cf == 1:
+        return ("yellow", 2)
+    if cadence is not None and age is not None and age > WALKER_SEVERITY_WARN_MULTIPLE * cadence:
+        return ("yellow", 2)
+    return ("green", 0)
+
+
+def _humanize_cadence(seconds):
+    """Render an integer second count as a friendly cadence string for
+    the /walker_health table. None → 'unknown'."""
+    if seconds is None:
+        return "unknown"
+    if seconds < 60:
+        return f"every {seconds}s"
+    if seconds < 3600:
+        return f"every {seconds // 60} min"
+    if seconds < 86400:
+        hours = seconds / 3600
+        return f"every {int(hours)} hr" if hours == int(hours) else f"every {hours:.1f} hr"
+    days = seconds / 86400
+    return f"daily" if days == 1 else f"every {int(days)} days"
+
+
+def _humanize_age(seconds):
+    """Render a 'seconds ago' duration in plain English. None → 'never'."""
+    if seconds is None:
+        return "never"
+    if seconds < 60:
+        return f"{int(seconds)}s ago"
+    if seconds < 3600:
+        return f"{int(seconds // 60)} min ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)} hr ago"
+    return f"{int(seconds // 86400)} days ago"
+
+
+@app.route("/walker_health")
+def walker_health_page():
+    """Public transparency view: every instrumented walker, its current
+    health, expected cadence, and time-since-last-success. Severity
+    (green/yellow/red) is computed per-row from the walker's own
+    declared cadence_seconds, not from page-wide hardcoded thresholds."""
+    rows = db.read_walker_health_all()
+    enriched = []
+    for r in rows:
+        severity, rank = _walker_severity(r)
+        enriched.append({
+            **r,
+            "severity": severity,
+            "_rank": rank,
+            "cadence_human": _humanize_cadence(r.get("cadence_seconds")),
+            "age_human": _humanize_age(r.get("last_success_age_seconds")),
+        })
+    enriched.sort(key=lambda x: (-x["_rank"], x["walker_name"]))
+    counts = {
+        "red": sum(1 for r in enriched if r["severity"] == "red"),
+        "yellow": sum(1 for r in enriched if r["severity"] == "yellow"),
+        "green": sum(1 for r in enriched if r["severity"] == "green"),
+        "idle": sum(1 for r in enriched if r["severity"] == "idle"),
+        "total": len(enriched),
+    }
+    resp = make_response(render_template(
+        "walker_health.html",
+        rows=enriched,
+        counts=counts,
+        warn_multiple=WALKER_SEVERITY_WARN_MULTIPLE,
+        crit_multiple=WALKER_SEVERITY_CRIT_MULTIPLE,
+    ))
+    resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return resp
+
+
 def _group_credentials_for_display(examples):
     """Collapse identical (issuer, type, URI) attestations to one card so the
     examples list reads as N distinct claims rather than N near-duplicates.

@@ -1252,6 +1252,52 @@ def write_walker_health_end(walker_name, ok, message=None):
         _drop_writer_conn()
 
 
+def read_walker_health_all():
+    """Return every walker_health row as a list of dicts (alphabetical by
+    walker_name). Each row includes `last_success_age_seconds` and
+    `cadence_seconds` so /walker_health can compute per-row severity
+    without a second query. Returns [] when PG is unavailable."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT walker_name, last_run_started, last_run_completed, "
+                    "       last_run_ok, last_run_message, "
+                    "       last_success_at, last_failure_at, "
+                    "       consecutive_failures, cadence_seconds "
+                    "  FROM walker_health "
+                    "  ORDER BY walker_name"
+                )
+                rows = cur.fetchall()
+                now = time.time()
+                out = []
+                for row in rows:
+                    last_success_at = row[5]
+                    age_secs = (
+                        now - last_success_at.timestamp()
+                        if last_success_at is not None else None
+                    )
+                    out.append({
+                        "walker_name": row[0],
+                        "last_run_started": row[1],
+                        "last_run_completed": row[2],
+                        "last_run_ok": row[3],
+                        "last_run_message": row[4],
+                        "last_success_at": last_success_at,
+                        "last_failure_at": row[6],
+                        "consecutive_failures": row[7],
+                        "cadence_seconds": row[8],
+                        "last_success_age_seconds": (
+                            round(age_secs, 1) if age_secs is not None else None
+                        ),
+                    })
+                return out
+    except Exception:
+        return []
+
+
 def read_walker_health(walker_name):
     """Return the walker_health row as a dict, or None when PG is
     unavailable / row missing. Adds `last_success_age_seconds` for

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Data Pipeline Health') }} · xrpldashboard</title>
+  {% set meta_title = "Data Pipeline Health · xrpldashboard" %}
+  {% set meta_description = "Real-time health of every background walker that keeps xrpldashboard's data fresh. Public on purpose so visitors can verify what they're seeing is current." %}
+  {% include "_head_meta.html" %}
+  {% include "_vibes_head.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #5a6680;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --grad-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.55; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 20px 64px; }
+
+    .top { display: flex; align-items: center; justify-content: space-between;
+           margin-bottom: 22px; }
+    .brand { font-weight: 600; font-size: 1.05rem; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+
+    h1 { margin: 0 0 0.4em; font-size: 1.7rem; letter-spacing: -0.01em; }
+    .lede { color: var(--muted); margin: 0 0 1.6em; max-width: 64ch; }
+    .lede strong { color: var(--text); }
+
+    /* severity dot — matches /health convention */
+    .dot {
+      display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+      vertical-align: middle; margin-right: 0.55em;
+      box-shadow: 0 0 0 0 currentColor; animation: pulse 2.4s ease-in-out infinite;
+    }
+    .dot.green  { background: var(--green); color: rgba(34,197,94,0.45); }
+    .dot.yellow { background: var(--amber); color: rgba(245,158,11,0.45); }
+    .dot.red    { background: var(--red);   color: rgba(239,68,68,0.45);
+                  animation: pulse-fast 1s ease-in-out infinite; }
+    .dot.idle   { background: var(--dim); animation: none; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+      50%      { box-shadow: 0 0 0 6px transparent; }
+    }
+    @keyframes pulse-fast {
+      0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+      50%      { box-shadow: 0 0 0 5px transparent; }
+    }
+
+    /* severity summary strip */
+    .summary {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin: 0 0 1.4em;
+    }
+    .summary .chip {
+      display: inline-flex; align-items: center; gap: 0.45em;
+      padding: 0.45em 0.85em; border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: rgba(255,255,255,0.02);
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em;
+    }
+    .summary .chip .count { color: var(--text); font-weight: 600; }
+    .summary .chip .label { color: var(--muted); }
+
+    /* threshold explainer */
+    .explainer {
+      padding: 0.95em 1.1em;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      border-radius: 10px;
+      color: var(--muted); font-size: 0.92rem;
+      margin: 0 0 1.6em;
+    }
+    .explainer .legend { display: inline-flex; align-items: center;
+                         gap: 0.35em; margin-right: 1em; white-space: nowrap; }
+    .explainer .legend .dot { margin-right: 0.3em; }
+    .explainer code {
+      font-family: var(--mono); font-size: 0.9em;
+      padding: 0.05em 0.35em; border-radius: 4px;
+      background: rgba(255,255,255,0.05); color: var(--text);
+    }
+
+    /* health table */
+    .table-wrap { border: 1px solid var(--border);
+                  border-radius: 12px; overflow: hidden;
+                  background: var(--card); }
+    table.health { width: 100%; border-collapse: collapse;
+                   font-size: 0.93rem; }
+    table.health th, table.health td {
+      padding: 0.7em 0.95em; text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    table.health thead th {
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); font-weight: 600;
+      background: rgba(255,255,255,0.02);
+    }
+    table.health tbody tr:last-child td { border-bottom: none; }
+    table.health tbody tr:hover { background: rgba(34,211,238,0.03); }
+    table.health .walker { font-family: var(--mono); color: var(--text);
+                           font-size: 0.92em; }
+    table.health .cadence { color: var(--muted); font-family: var(--mono);
+                            font-size: 0.86em; white-space: nowrap; }
+    table.health .age { color: var(--muted); font-family: var(--mono);
+                        font-size: 0.86em; white-space: nowrap; }
+    table.health .age.green-fresh { color: var(--green); }
+    table.health .age.yellow-stale { color: var(--amber); }
+    table.health .age.red-stale { color: var(--red); }
+    table.health .cf {
+      font-family: var(--mono); font-size: 0.86em;
+      text-align: center;
+    }
+    table.health .cf.zero { color: var(--dim); }
+    table.health .cf.one { color: var(--amber); }
+    table.health .cf.many { color: var(--red); font-weight: 600; }
+    table.health .msg {
+      font-family: var(--mono); color: var(--muted);
+      font-size: 0.84em; max-width: 36ch;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    table.health .msg.empty { color: var(--dim); font-style: italic; }
+    table.health .severity-cell { width: 1px; padding-right: 0; }
+
+    .empty-state { padding: 2.4em 1em; text-align: center;
+                   color: var(--muted); }
+
+    .foot {
+      margin: 1.8em 0 0; padding-top: 1.2em;
+      border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 0.9rem; max-width: 64ch;
+    }
+    .foot a { color: var(--cyan); }
+    .foot .pending {
+      display: block; margin-top: 0.6em;
+      color: var(--dim); font-size: 0.85rem;
+    }
+
+    @media (max-width: 720px) {
+      .wrap { padding: 20px 14px 48px; }
+      h1 { font-size: 1.45rem; }
+      table.health .cadence, table.health .age, table.health .cf { font-size: 0.78em; }
+      table.health .msg { max-width: 18ch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dot { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    {% include "_nav.html" %}
+
+    <h1>{{ _('Data Pipeline Health') }}</h1>
+    <p class="lede">
+      {{ _('Background walkers keep this dashboard\'s data fresh — fetching from XRPL nodes, computing snapshots, persisting to Postgres. This page shows the live health of every instrumented walker so you can verify what you\'re seeing on other pages is actually current, not last-good.') }}
+    </p>
+
+    <div class="summary" role="group" aria-label="{{ _('walker severity summary') }}">
+      <span class="chip"><span class="dot green" aria-hidden="true"></span><span class="count">{{ counts.green }}</span><span class="label">{{ _('healthy') }}</span></span>
+      <span class="chip"><span class="dot yellow" aria-hidden="true"></span><span class="count">{{ counts.yellow }}</span><span class="label">{{ _('warning') }}</span></span>
+      <span class="chip"><span class="dot red" aria-hidden="true"></span><span class="count">{{ counts.red }}</span><span class="label">{{ _('critical') }}</span></span>
+      {% if counts.idle %}
+      <span class="chip"><span class="dot idle" aria-hidden="true"></span><span class="count">{{ counts.idle }}</span><span class="label">{{ _('idle / in flight') }}</span></span>
+      {% endif %}
+      <span class="chip"><span class="count">{{ counts.total }}</span><span class="label">{{ _('walkers instrumented') }}</span></span>
+    </div>
+
+    <div class="explainer">
+      <span class="legend"><span class="dot green"></span>{{ _('healthy') }}</span>
+      <span class="legend"><span class="dot yellow"></span>{{ _('getting stale or one failed run') }}</span>
+      <span class="legend"><span class="dot red"></span>{{ _('needs attention') }}</span>
+      <br>
+      {{ _('Thresholds are computed per-walker from its own declared cadence: warn at') }} <code>{{ warn_multiple }}×</code> {{ _('cadence, alert at') }} <code>{{ crit_multiple }}×</code> {{ _('cadence. A 15-minute walker turns yellow at 30 min stale, red at 60 min; a daily walker turns yellow at 2 days, red at 4 days.') }}
+    </div>
+
+    {% if rows %}
+    <div class="table-wrap">
+      <table class="health" aria-label="{{ _('walker health table') }}">
+        <thead>
+          <tr>
+            <th class="severity-cell" scope="col" aria-label="{{ _('severity') }}"></th>
+            <th scope="col">{{ _('walker') }}</th>
+            <th scope="col">{{ _('cadence') }}</th>
+            <th scope="col">{{ _('last success') }}</th>
+            <th scope="col" style="text-align:center">{{ _('consecutive failures') }}</th>
+            <th scope="col">{{ _('last message') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td class="severity-cell">
+              <span class="dot {{ r.severity }}" aria-label="{{ r.severity }}"></span>
+            </td>
+            <td class="walker">{{ r.walker_name }}</td>
+            <td class="cadence">{{ r.cadence_human }}</td>
+            <td class="age {{ 'green-fresh' if r.severity == 'green' else ('yellow-stale' if r.severity == 'yellow' else ('red-stale' if r.severity == 'red' else '')) }}"
+                {% if r.last_success_at %}title="{{ r.last_success_at.isoformat() }}"{% endif %}>
+              {{ r.age_human }}
+            </td>
+            <td class="cf {{ 'zero' if (r.consecutive_failures or 0) == 0 else ('one' if r.consecutive_failures == 1 else 'many') }}">
+              {{ r.consecutive_failures or 0 }}
+            </td>
+            <td class="msg {% if not r.last_run_message %}empty{% endif %}"
+                title="{{ r.last_run_message or '' }}">
+              {{ r.last_run_message or _('(no message)') }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      {{ _('No walker_health rows available. Either Postgres is unreachable or no walkers have written health rows yet.') }}
+    </div>
+    {% endif %}
+
+    <div class="foot">
+      {{ _('Walker instrumentation rolls out incrementally. As more walkers are wired into the canonical try/finally pattern, they\'ll appear in this table automatically — no template change required.') }}
+      <span class="pending">{{ _('Coverage today:') }} {{ counts.total }}/13 {{ _('walkers instrumented. Remaining: signed_snapshot, daily_snapshot, lending_snapshot, enrich_token_names, verify_toml.') }}</span>
+      <br>
+      <a href="/methodology">{{ _('Methodology') }}</a> · <a href="/health">{{ _('Site health') }}</a> · <a href="/about">{{ _('About') }}</a>
+    </div>
+  </div>
+  {% include "_vibes_scripts.html" %}
+</body>
+</html>
