@@ -125,17 +125,32 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    t0 = time.time()
-    results = run_once()
-    elapsed = round(time.time() - t0, 2)
-    print(
-        f"[unl_snapshot] results={results} elapsed={elapsed}s",
-        flush=True,
-    )
-    # Exit nonzero only when both sources failed — partial success is
-    # acceptable (one list down doesn't invalidate the other).
-    any_ok = any(v == "written" for v in results.values())
-    sys.exit(0 if any_ok else 1)
+    db.write_walker_health_start("unl_snapshot")
+    ok = False
+    message = None
+    try:
+        t0 = time.time()
+        results = run_once()
+        elapsed = round(time.time() - t0, 2)
+        print(
+            f"[unl_snapshot] results={results} elapsed={elapsed}s",
+            flush=True,
+        )
+        # Strict policy: /network's core claim is the cross-UNL overlap
+        # between Ripple + XRPL Foundation lists. A partial fetch makes
+        # that overlap undefined, so ok=True only when both sources wrote.
+        # Treating partial as failure lets consecutive_failures escalate
+        # and trip the staleness banner instead of silently resetting.
+        written = [k for k, v in results.items() if v == "written"]
+        failed = [f"{k}:{v}" for k, v in results.items() if v != "written"]
+        ok = (not failed) and bool(written)
+        message = f"written={written} failed={failed} elapsed={elapsed}s"
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("unl_snapshot", ok=ok, message=message)
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

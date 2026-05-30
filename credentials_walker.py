@@ -14,6 +14,7 @@ import logging
 import sys
 
 import credentials_state
+import db
 
 
 def main():
@@ -21,11 +22,19 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    db.write_walker_health_start("credentials_walker")
+    ok = False
+    message = None
     try:
         credentials_state.run_once()
-    except Exception:
-        logging.getLogger("credentials_walker").exception("walker run failed")
-        sys.exit(1)
+        ok = True
+        message = "walked"
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("credentials_walker", ok=ok, message=message)
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

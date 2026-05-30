@@ -250,6 +250,7 @@ def run_once():
         "accounts_queried=%d seed_size=%d exhausted=%s duration_ms=%d",
         len(rows), len(queried), len(seed_set), exhausted, duration_ms,
     )
+    return metadata
 
 
 def main():
@@ -257,13 +258,31 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    db.write_walker_health_start("permissioned_domains_walker")
+    ok = False
+    message = None
     try:
-        run_once()
-    except Exception:
-        logging.getLogger("permissioned_domains_walker").exception(
-            "walker run failed"
+        meta = run_once()
+        # Phase 1 state expects 0 domains for weeks — completion alone is
+        # the ok signal, not domain count. permissioned_domain_walker_runs
+        # owns the per-pass audit row (UPSERT on snapshot_date); this row
+        # is independent and tracks the launchd-level pass health.
+        ok = True
+        message = (
+            f"domains_found={meta.get('domains_found')} "
+            f"accounts_queried={meta.get('accounts_queried')} "
+            f"seed_size={meta.get('seed_set_size')} "
+            f"exhausted={meta.get('exhausted')} "
+            f"duration_ms={meta.get('walker_duration_ms')}"
         )
-        sys.exit(1)
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end(
+            "permissioned_domains_walker", ok=ok, message=message
+        )
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

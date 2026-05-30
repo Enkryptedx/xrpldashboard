@@ -16,6 +16,7 @@ window (caught 2026-05-27). Mirrors credentials_walker / mpt_snapshot.
 import logging
 import sys
 
+import db
 import rlusd_live
 
 
@@ -24,12 +25,29 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    ok = rlusd_live._refresh_cache_once()
-    if not ok:
-        logging.getLogger("rlusd_refresher_walker").error(
-            "refresh failed (upstream RPC error); previous cache row left in place"
-        )
-        sys.exit(1)
+    db.write_walker_health_start("rlusd_refresher")
+    ok = False
+    message = None
+    try:
+        ok = bool(rlusd_live._refresh_cache_once())
+        if ok:
+            message = "refreshed"
+        else:
+            # Soft fail: _refresh_cache_once returned False (upstream RPC
+            # error). Previous cache row stays in place; next 5-min cycle
+            # retries. Log + surface via walker_health.last_run_message so
+            # consecutive_failures climbs and the staleness banner trips
+            # if upstream stays down across multiple cycles.
+            message = "refresh_failed_upstream_rpc"
+            logging.getLogger("rlusd_refresher_walker").error(
+                "refresh failed (upstream RPC error); previous cache row left in place"
+            )
+    except Exception as exc:
+        message = f"exception: {type(exc).__name__}: {exc}"
+        raise
+    finally:
+        db.write_walker_health_end("rlusd_refresher", ok=ok, message=message)
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":
