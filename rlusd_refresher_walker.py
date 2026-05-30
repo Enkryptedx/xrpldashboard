@@ -19,13 +19,17 @@ import sys
 import db
 import rlusd_live
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.rlusd_refresher.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 300
+
 
 def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    db.write_walker_health_start("rlusd_refresher")
+    db.write_walker_health_start("rlusd_refresher", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:

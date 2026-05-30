@@ -40,6 +40,10 @@ import httpx
 
 import db
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.permissioned_domains_walker.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 86400
+
 
 XRPL_FULL = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
@@ -258,7 +262,7 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    db.write_walker_health_start("permissioned_domains_walker")
+    db.write_walker_health_start("permissioned_domains_walker", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:

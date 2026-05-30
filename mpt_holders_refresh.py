@@ -45,6 +45,10 @@ from mpt_snapshot import (
     _walk_holders,
 )
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.mpt_holders_refresh.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 3600
+
 
 def _load_issuance_list(path):
     """Read the list produced by mpt_snapshot._write_issuance_list. Returns
@@ -171,7 +175,7 @@ def run_once(list_path=None, snapshot_path=None):
 
 
 if __name__ == "__main__":
-    db.write_walker_health_start("mpt_holders_refresh")
+    db.write_walker_health_start("mpt_holders_refresh", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:

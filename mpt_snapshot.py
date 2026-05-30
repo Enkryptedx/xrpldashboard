@@ -50,6 +50,10 @@ from mpt_data import (
 
 SCHEMA_VERSION = 3
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.mpt_snapshot.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 86400
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ISSUANCE_LIST_PATH = os.environ.get(
     "MPT_ISSUANCE_LIST_PATH",
@@ -278,7 +282,7 @@ if __name__ == "__main__":
     # end-write fires) so an uncaught crash leaves a visible failure row
     # instead of just a stale last_success_at. /mpts reads this to render
     # honest staleness instead of silently serving last-good.
-    db.write_walker_health_start("mpt_snapshot")
+    db.write_walker_health_start("mpt_snapshot", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     d = None

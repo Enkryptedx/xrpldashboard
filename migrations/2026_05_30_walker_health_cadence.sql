@@ -1,0 +1,14 @@
+-- Add per-walker cadence_seconds to walker_health. The forthcoming
+-- /walker_health page uses this to compute staleness multiples
+-- (green/yellow/red) without hardcoding thresholds in the template —
+-- avoiding the hardcoded-numbers-mirror-constants anti-pattern that
+-- chewed up the 2026-05-28/29 grep-pass commits. Walkers self-declare
+-- their cadence (mirroring the launchd plist StartInterval) and pass
+-- it on every start-write; the page reads it and computes thresholds
+-- relative to each walker's own cadence. NULL is allowed so a walker
+-- without a declared cadence still writes health rows (the page
+-- renders such rows with an "unknown cadence" indicator instead of
+-- guessing).
+--
+-- Idempotent: SCHEMA_DDL re-declares this column in db.py.
+ALTER TABLE walker_health ADD COLUMN IF NOT EXISTS cadence_seconds INTEGER;

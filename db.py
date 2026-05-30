@@ -451,7 +451,12 @@ CREATE TABLE IF NOT EXISTS permissioned_domain_walker_runs (
 -- or resets to 0. /mpts (and future per-walker pages) read this so the
 -- template renders a "may be stale" banner when a walker is silently
 -- failing, instead of serving last-good as if it were live.
--- See migrations/2026_05_27_walker_health.sql.
+-- See migrations/2026_05_27_walker_health.sql + 2026_05_30_walker_health_cadence.sql.
+-- cadence_seconds is each walker's self-declared expected run frequency
+-- (mirrors its launchd plist StartInterval). The /walker_health page
+-- uses it to compute staleness multiples (green/yellow/red) per row
+-- without hardcoding thresholds. NULL allowed for walkers that haven't
+-- declared one yet — page renders such rows with "unknown cadence".
 CREATE TABLE IF NOT EXISTS walker_health (
     walker_name           TEXT PRIMARY KEY,
     last_run_started      TIMESTAMPTZ NOT NULL,
@@ -460,7 +465,8 @@ CREATE TABLE IF NOT EXISTS walker_health (
     last_run_message      TEXT,
     last_success_at       TIMESTAMPTZ,
     last_failure_at       TIMESTAMPTZ,
-    consecutive_failures  INTEGER NOT NULL DEFAULT 0
+    consecutive_failures  INTEGER NOT NULL DEFAULT 0,
+    cadence_seconds       INTEGER
 );
 """
 
@@ -1163,12 +1169,19 @@ def read_credentials_snapshot():
 # ─────────────────────────────────────────────────────────────────────
 
 
-def write_walker_health_start(walker_name):
+def write_walker_health_start(walker_name, cadence_seconds=None):
     """UPSERT walker_health at the top of a walker run. Sets
     last_run_started=now() and last_run_ok=False as a defensive default
     so an uncaught crash before the end-of-run write still shows as a
     failure to the reader (rather than the prior run's ok=True).
     consecutive_failures is NOT touched here; the end-of-run write owns it.
+
+    cadence_seconds: walker's self-declared expected run frequency
+    (mirrors its launchd plist StartInterval). When provided, /walker_health
+    uses it to compute per-row staleness thresholds. None leaves the
+    existing value untouched (lets a partial rollout coexist with already-
+    declared walkers).
+
     Silent no-op when PG isn't configured."""
     conn = _get_writer_conn()
     if conn is None:
@@ -1177,14 +1190,15 @@ def write_walker_health_start(walker_name):
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO walker_health "
-                "  (walker_name, last_run_started, last_run_ok) "
-                "VALUES (%s, now(), false) "
+                "  (walker_name, last_run_started, last_run_ok, cadence_seconds) "
+                "VALUES (%s, now(), false, %s) "
                 "ON CONFLICT (walker_name) DO UPDATE SET "
                 "  last_run_started = EXCLUDED.last_run_started, "
                 "  last_run_ok = false, "
                 "  last_run_completed = NULL, "
-                "  last_run_message = NULL",
-                (walker_name,),
+                "  last_run_message = NULL, "
+                "  cadence_seconds = COALESCE(EXCLUDED.cadence_seconds, walker_health.cadence_seconds)",
+                (walker_name, cadence_seconds),
             )
     except Exception as e:
         _log_err(f"write_walker_health_start_failed[{walker_name}]", e)

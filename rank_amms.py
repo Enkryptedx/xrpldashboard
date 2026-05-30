@@ -36,6 +36,10 @@ import time
 
 import db
 
+# Mirrors ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 14400
+
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRP_USD_PRICE = 1.44   # mirrors amm_scan_pools.py — single source of truth later
 DEFAULT_RPS = 5.0      # safe under public-node throttling
@@ -526,7 +530,7 @@ if __name__ == "__main__":
     # finished" no-op (line 430-433) — both are forward progress from the
     # walker_health reader's perspective. Cursor advance shows in message
     # so partial vs. full-pass is visible without flagging as failure.
-    db.write_walker_health_start("rank_amms")
+    db.write_walker_health_start("rank_amms", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     rc = 1

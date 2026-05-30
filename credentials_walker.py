@@ -16,13 +16,17 @@ import sys
 import credentials_state
 import db
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.credentials_walker.plist
+# StartInterval. Read by /walker_health for per-row staleness thresholds.
+WALKER_CADENCE_SECONDS = 1800
+
 
 def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    db.write_walker_health_start("credentials_walker")
+    db.write_walker_health_start("credentials_walker", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:

@@ -29,6 +29,14 @@ from xrpl.core import binarycodec
 import db
 from network_state import RIPPLE_EPOCH, UNL_SOURCES, _fetch_unl
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.unl_snapshot.plist
+# StartCalendarInterval (02:23 daily). No per-second StartInterval, so we
+# express the calendar cadence as 86400s for /walker_health's staleness
+# thresholds — the page treats this as "once per 24h window" and computes
+# 2x/4x boundaries from that. Single calendar-cadence walker; documenting
+# the convention here so future ones can mirror it.
+WALKER_CADENCE_SECONDS = 86400
+
 
 def _decode_manifest_domain(manifest_b64):
     """Extract the Domain field from a validator's base64-encoded manifest
@@ -125,7 +133,7 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    db.write_walker_health_start("unl_snapshot")
+    db.write_walker_health_start("unl_snapshot", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:

@@ -28,6 +28,11 @@ import db
 
 TOP_N = int(os.environ.get("AMM_TVL_TOP_N", "50"))
 
+# Mirrors launchd/com.charliebruce.xrpldashboard.amm_tvl_recorder.plist
+# StartInterval. Read by /walker_health to compute per-row staleness
+# thresholds (green/yellow/red) without hardcoding multiples in the page.
+WALKER_CADENCE_SECONDS = 900
+
 
 def record_once():
     """Snapshot the top-N pools by TVL into amm_tvl_history. Returns
@@ -72,7 +77,7 @@ def main():
 
 
 if __name__ == "__main__":
-    db.write_walker_health_start("amm_tvl_recorder")
+    db.write_walker_health_start("amm_tvl_recorder", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
     try:
