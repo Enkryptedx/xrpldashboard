@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>xrpldashboard · the XRP Ledger, made legible</title>
   {% set meta_title = "xrpldashboard · the XRP Ledger, made legible" %}
-  {% set meta_description = "A read-only observatory for the XRP Ledger — validators, amendments, AMM pools, RWA tokens, whales, credentials. Public methodology, plain English." %}
+  {% set meta_description = "The XRP Ledger, made legible. Free public dashboard tracking AMMs, RWA, MPTs, lending, credentials, permissioned domains, amendments, and validator activity." %}
   {% include "_head_meta.html" %}
 
   <script type="application/ld+json">
@@ -476,6 +476,20 @@
 
     .card-desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.55;
                  margin: 0; }
+
+    /* ---------- Scope section ---------- */
+    .tracked-scope { margin-top: 2.5em; padding-top: 1.5em;
+                     border-top: 1px solid var(--border); }
+    .tracked-scope h2 { font-size: var(--fs-xs); font-weight: 600;
+                        text-transform: uppercase; letter-spacing: 0.07em;
+                        color: var(--text-3); margin: 0 0 0.9em; }
+    .tracked-scope ul { list-style: none; padding: 0; margin: 0;
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                        gap: 0.4em 2em; }
+    .tracked-scope li { font-size: var(--fs-xs); color: var(--text-2);
+                        line-height: 1.5; }
+    .tracked-scope li strong { color: var(--text); font-weight: 600; }
 
     /* ---------- Footer ---------- */
     footer { margin-top: 2.5em; padding-top: 1.5em; border-top: 1px solid var(--border);
@@ -951,6 +965,21 @@
         </div>
 
       </div>
+    </section>
+
+    <section class="tracked-scope" aria-labelledby="tracked-scope-heading">
+      <h2 id="tracked-scope-heading">{{ _('What this dashboard tracks') }}</h2>
+      <ul>
+        <li><strong>AMMs</strong> — {{ _('pool TVL, share distribution, AMM-on-AMM relationships') }}</li>
+        <li><strong>RWA</strong> — {{ _('institutional tokens with cryptographic issuer verification') }}</li>
+        <li><strong>{{ _('Credentials & Permissioned Domains') }}</strong> (XLS-70 + XLS-80)</li>
+        <li><strong>MPTs</strong> ({{ _('Multi-Purpose Tokens') }}, XLS-33) — {{ _('every issuance on the ledger') }}</li>
+        <li><strong>{{ _('Lending') }}</strong> — {{ _('XLS-66 broker/vault/loan tracking (pre-activation)') }}</li>
+        <li><strong>{{ _('Amendments') }}</strong> — {{ _('voting status, activation tracking, governance signals') }}</li>
+        <li><strong>UNL</strong> — {{ _('validator list diffs across both publishers (Ripple + XRPL Foundation)') }}</li>
+        <li><strong>{{ _('Whales') }}</strong> — {{ _('payments over %(threshold)s XRP', threshold="{:,}".format(whale_xrp_threshold)) }}</li>
+        <li><strong>{{ _('Escrow & cold storage') }}</strong> — {{ _('Ripple monthly-release accounts') }}</li>
+      </ul>
     </section>
 
     <footer>
