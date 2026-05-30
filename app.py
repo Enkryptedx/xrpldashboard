@@ -2559,10 +2559,13 @@ def _humanize_age(seconds):
 
 @app.route("/walker_health")
 def walker_health_page():
-    """Public transparency view: every instrumented walker, its current
-    health, expected cadence, and time-since-last-success. Severity
-    (green/yellow/red) is computed per-row from the walker's own
+    """Admin-only view: token-gated via WALKER_HEALTH_TOKEN env var.
+    Returns 404 for missing/wrong token so the page is not discoverable.
+    Severity (green/yellow/red) is computed per-row from the walker's own
     declared cadence_seconds, not from page-wide hardcoded thresholds."""
+    expected_token = os.environ.get("WALKER_HEALTH_TOKEN")
+    if not expected_token or request.args.get("token") != expected_token:
+        abort(404)
     rows = db.read_walker_health_all()
     enriched = []
     for r in rows:
