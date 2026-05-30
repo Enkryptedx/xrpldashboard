@@ -2559,12 +2559,13 @@ def _humanize_age(seconds):
 
 @app.route("/walker_health")
 def walker_health_page():
-    """Admin-only view: token-gated via WALKER_HEALTH_TOKEN env var.
-    Returns 404 for missing/wrong token so the page is not discoverable.
+    """Localhost-only admin view. 404s for any request not originating
+    from 127.0.0.1 / ::1 — which means on Render (behind the proxy) this
+    is never reachable from the internet, and on the Mac it's available at
+    localhost:PORT/walker_health with no token or env var required.
     Severity (green/yellow/red) is computed per-row from the walker's own
     declared cadence_seconds, not from page-wide hardcoded thresholds."""
-    expected_token = os.environ.get("WALKER_HEALTH_TOKEN")
-    if not expected_token or request.args.get("token") != expected_token:
+    if request.remote_addr not in ("127.0.0.1", "::1"):
         abort(404)
     rows = db.read_walker_health_all()
     enriched = []
