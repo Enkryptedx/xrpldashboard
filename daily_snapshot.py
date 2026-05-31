@@ -37,6 +37,7 @@ NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 SNAPSHOT_DIR = os.path.join(HERE, "historical_snapshots")
 SCHEMA_VERSION = 2
+WALKER_CADENCE_SECONDS = 86400  # run_daily_snapshot.sh called daily via launchd
 DEFAULT_TOP_AMMS = 200
 DEFAULT_TOP_MPTS = 200
 MPT_SNAPSHOT_MAX_AGE_SECONDS = 86400
@@ -288,21 +289,45 @@ def main():
     parser.add_argument("--top-mpts", type=int, default=DEFAULT_TOP_MPTS, help=f"Top-N MPTs by outstanding supply (default {DEFAULT_TOP_MPTS})")
     args = parser.parse_args()
 
-    snap = build_snapshot(top_amms=args.top, top_mpts=args.top_mpts)
-    print(summarize(snap))
+    _wh_db = None
+    if not args.dry_run:
+        try:
+            import db as _wh_db_mod
+            _wh_db = _wh_db_mod
+            _wh_db.write_walker_health_start("daily_snapshot", cadence_seconds=WALKER_CADENCE_SECONDS)
+        except Exception:
+            _wh_db = None
 
-    if args.dry_run:
-        print("(dry-run: nothing written)")
+    _ok = False
+    _msg = "init"
+    try:
+        snap = build_snapshot(top_amms=args.top, top_mpts=args.top_mpts)
+        print(summarize(snap))
+
+        if args.dry_run:
+            print("(dry-run: nothing written)")
+            return 0
+
+        path = write_snapshot(snap)
+        print(f"wrote {path}")
+        _ok = True
+        _msg = (f"wrote {os.path.basename(path)} "
+                f"accounts={len(snap.get('accounts', []))} "
+                f"pools={len(snap.get('amm_pools', []))} "
+                f"mpts={len(snap.get('mpts') or [])} "
+                f"elapsed={snap.get('elapsed_seconds')}s")
+
+        meta = mirror_meta_to_postgres()
+        if meta:
+            print(f"mirrored meta to pg: days={meta['days_collected']} accounts={meta['accounts_tracked']} pools={meta['pools_tracked']} mpts={meta['mpts_tracked']}")
+
         return 0
-
-    path = write_snapshot(snap)
-    print(f"wrote {path}")
-
-    meta = mirror_meta_to_postgres()
-    if meta:
-        print(f"mirrored meta to pg: days={meta['days_collected']} accounts={meta['accounts_tracked']} pools={meta['pools_tracked']} mpts={meta['mpts_tracked']}")
-
-    return 0
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        if _wh_db is not None:
+            _wh_db.write_walker_health_end("daily_snapshot", ok=_ok, message=_msg)
 
 
 if __name__ == "__main__":

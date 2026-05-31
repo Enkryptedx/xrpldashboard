@@ -34,6 +34,7 @@ from lending_data import (
 )
 
 DEPOSITOR_ENRICH_TOP_N = int(os.environ.get("LENDING_ENRICH_TOP_N", "30"))
+WALKER_CADENCE_SECONDS = 900  # StartInterval in com.xrpldashboard.lending_snapshot.plist
 
 
 def _rpc(method, params):
@@ -109,10 +110,28 @@ def run_once(path=None, enrich_top_n=None):
 
 
 if __name__ == "__main__":
-    d = run_once()
-    print(f"wrote {SNAPSHOT_PATH}")
-    print(f"  node={d.get('node')}")
-    print(f"  activated={d.get('activated')}  ok={d.get('ok')}")
-    print(f"  brokers={d.get('broker_count')}  vaults={d.get('vault_count')}  loans={d.get('loan_count')}")
-    print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
-    sys.exit(0 if d.get("ok") else 1)
+    import db as _db
+    _db.write_walker_health_start("lending_snapshot", cadence_seconds=WALKER_CADENCE_SECONDS)
+    _ok = False
+    _msg = "init"
+    try:
+        d = run_once()
+        activated = d.get("activated", False)
+        _ok = bool(d.get("ok")) if activated else True
+        if not activated:
+            _msg = f"pre-activation (activated=False) fetch={d.get('fetch_seconds')}s"
+        else:
+            _msg = (f"activated=True brokers={d.get('broker_count')} "
+                    f"vaults={d.get('vault_count')} loans={d.get('loan_count')} "
+                    f"fetch={d.get('fetch_seconds')}s enrich={d.get('enrich_seconds')}s")
+        print(f"wrote {SNAPSHOT_PATH}")
+        print(f"  node={d.get('node')}")
+        print(f"  activated={d.get('activated')}  ok={d.get('ok')}")
+        print(f"  brokers={d.get('broker_count')}  vaults={d.get('vault_count')}  loans={d.get('loan_count')}")
+        print(f"  fetch={d.get('fetch_seconds')}s  enrich={d.get('enrich_seconds')}s")
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        _db.write_walker_health_end("lending_snapshot", ok=_ok, message=_msg)
+    sys.exit(0 if _ok else 1)

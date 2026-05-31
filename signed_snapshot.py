@@ -80,6 +80,7 @@ NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 
 SCHEMA_VERSION = 2
 SIGNING_DOMAIN = "xrpldashboard.com/signed_snapshot/v1"
+WALKER_CADENCE_SECONDS = 86400  # run_signed_snapshot.sh called daily via launchd
 
 
 # ---------------------------------------------------------------------------
@@ -715,43 +716,67 @@ def main():
         return 1
 
     date_str = args.date or dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
-    snap = build_snapshot(date_str)
-    signed = sign_snapshot(snap, dry_run=args.dry_run)
-    print(summarize(signed))
 
-    if args.dry_run:
-        print("(dry-run: nothing written)")
-        return 0
+    _wh_db = None
+    if not args.dry_run:
+        try:
+            import db as _wh_db_mod
+            _wh_db = _wh_db_mod
+            _wh_db.write_walker_health_start("signed_snapshot", cadence_seconds=WALKER_CADENCE_SECONDS)
+        except Exception:
+            _wh_db = None
 
-    # Self-verify what we just wrote — catches any I/O round-trip surprise
-    ok, issues = verify_snapshot_file(date_str)
-    if not ok:
-        print("POST-WRITE VERIFY FAILED:")
-        for it in issues:
-            print(f"  - {it}")
-        return 2
-    print(f"post-write verify: OK")
-
-    # Mirror to Postgres so Render (which has no disk access to this file)
-    # can serve /.well-known/snapshots/<date>.json globally. Disk is the
-    # source of truth; PG failure here is logged and ignored — next run
-    # will replay the upsert and the mirror catches up.
+    _ok = False
+    _msg = "init"
     try:
-        import db
-        if db.pg_available():
-            mirrored = db.write_signed_snapshot(
-                envelope=signed,
-                current_root=signed["chain_root"],
-                leaves_total=signed["leaves_total"],
-                schema_version=signed["schema_version"],
-            )
-            print(f"postgres mirror: {'OK' if mirrored else 'FAILED (disk intact, retry next run)'}")
-        else:
-            print("postgres mirror: skipped (DATABASE_URL not set)")
-    except Exception as e:
-        print(f"postgres mirror: ERROR {type(e).__name__}: {e}", file=sys.stderr)
+        snap = build_snapshot(date_str)
+        signed = sign_snapshot(snap, dry_run=args.dry_run)
+        print(summarize(signed))
 
-    return 0
+        if args.dry_run:
+            print("(dry-run: nothing written)")
+            return 0
+
+        # Self-verify what we just wrote — catches any I/O round-trip surprise
+        ok, issues = verify_snapshot_file(date_str)
+        if not ok:
+            print("POST-WRITE VERIFY FAILED:")
+            for it in issues:
+                print(f"  - {it}")
+            _msg = f"post-write verify FAILED: {'; '.join(issues)}"
+            return 2
+        print(f"post-write verify: OK")
+
+        # Mirror to Postgres so Render (which has no disk access to this file)
+        # can serve /.well-known/snapshots/<date>.json globally. Disk is the
+        # source of truth; PG failure here is logged and ignored — next run
+        # will replay the upsert and the mirror catches up.
+        try:
+            import db
+            if db.pg_available():
+                mirrored = db.write_signed_snapshot(
+                    envelope=signed,
+                    current_root=signed["chain_root"],
+                    leaves_total=signed["leaves_total"],
+                    schema_version=signed["schema_version"],
+                )
+                print(f"postgres mirror: {'OK' if mirrored else 'FAILED (disk intact, retry next run)'}")
+            else:
+                print("postgres mirror: skipped (DATABASE_URL not set)")
+        except Exception as e:
+            print(f"postgres mirror: ERROR {type(e).__name__}: {e}", file=sys.stderr)
+
+        _ok = True
+        _msg = (f"signed+verified path=signed_snapshots/{date_str}.json "
+                f"metrics={len(signed.get('metrics', []))} "
+                f"root={signed['chain_root'][:16]}")
+        return 0
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        if _wh_db is not None:
+            _wh_db.write_walker_health_end("signed_snapshot", ok=_ok, message=_msg)
 
 
 if __name__ == "__main__":

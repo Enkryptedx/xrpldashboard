@@ -52,6 +52,7 @@ AMM_INDEX_PATH = os.path.join(HERE, "amm_index.json")
 XRPL_RPC = os.environ.get("XRPL_RPC", "https://s1.ripple.com:51234")
 RPC_PAUSE = 0.12   # seconds between account_info calls
 TOML_PAUSE = 0.15  # seconds between TOML fetches
+WALKER_CADENCE_SECONDS = 604800  # StartInterval in com.xrpldashboard.enrich_token_names.plist (weekly)
 
 
 # ─── I/O helpers ─────────────────────────────────────────────────────────────
@@ -541,41 +542,61 @@ def main() -> None:
                     help="Max IOU issuers to check (default 200)")
     args = ap.parse_args()
 
-    any_explicit = args.part_a or args.part_b or args.part_c
-    run_a = args.part_a or not any_explicit
-    run_b = args.part_b or not any_explicit
-    run_c = args.part_c or not any_explicit
+    _wh_db = None
+    if not args.dry_run:
+        try:
+            import db as _wh_db_mod
+            _wh_db = _wh_db_mod
+            _wh_db.write_walker_health_start("enrich_token_names", cadence_seconds=WALKER_CADENCE_SECONDS)
+        except Exception:
+            _wh_db = None
 
-    log(f"enrich_token_names.py start "
-        f"(dry_run={args.dry_run} part_a={run_a} part_b={run_b} part_c={run_c} limit={args.limit})")
+    _ok = False
+    _msg = "init"
+    try:
+        any_explicit = args.part_a or args.part_b or args.part_c
+        run_a = args.part_a or not any_explicit
+        run_b = args.part_b or not any_explicit
+        run_c = args.part_c or not any_explicit
 
-    names = _load(TOKEN_NAMES_PATH)
-    log(f"loaded {len(names)} existing entries from token_names.json")
+        log(f"enrich_token_names.py start "
+            f"(dry_run={args.dry_run} part_a={run_a} part_b={run_b} part_c={run_c} limit={args.limit})")
 
-    total = 0
+        names = _load(TOKEN_NAMES_PATH)
+        log(f"loaded {len(names)} existing entries from token_names.json")
 
-    if run_a:
-        n = enrich_mpt(names, dry_run=args.dry_run)
-        log(f"Part A done: +{n} MPT entries")
-        total += n
+        part_a_n = part_b_n = part_c_n = 0
 
-    if run_b:
-        n = enrich_iou_toml(names, dry_run=args.dry_run, limit=args.limit)
-        log(f"Part B done: +{n} IOU TOML entries")
-        total += n
+        if run_a:
+            part_a_n = enrich_mpt(names, dry_run=args.dry_run)
+            log(f"Part A done: +{part_a_n} MPT entries")
 
-    if run_c:
-        n = enrich_lp_tokens(names, dry_run=args.dry_run)
-        log(f"Part C done: +{n} LP-derived entries")
-        total += n
+        if run_b:
+            part_b_n = enrich_iou_toml(names, dry_run=args.dry_run, limit=args.limit)
+            log(f"Part B done: +{part_b_n} IOU TOML entries")
 
-    if not args.dry_run and total > 0:
-        _save(TOKEN_NAMES_PATH, names)
-        log(f"saved token_names.json ({len(names)} total entries, +{total} new)")
-    elif args.dry_run:
-        log(f"dry-run complete: would add {total} entries")
-    else:
-        log("no new entries found — token_names.json unchanged")
+        if run_c:
+            part_c_n = enrich_lp_tokens(names, dry_run=args.dry_run)
+            log(f"Part C done: +{part_c_n} LP-derived entries")
+
+        total = part_a_n + part_b_n + part_c_n
+
+        if not args.dry_run and total > 0:
+            _save(TOKEN_NAMES_PATH, names)
+            log(f"saved token_names.json ({len(names)} total entries, +{total} new)")
+        elif args.dry_run:
+            log(f"dry-run complete: would add {total} entries")
+        else:
+            log("no new entries found — token_names.json unchanged")
+
+        _ok = True
+        _msg = f"A+{part_a_n} B+{part_b_n} C+{part_c_n} total+{total} names_total={len(names)}"
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        if _wh_db is not None:
+            _wh_db.write_walker_health_end("enrich_token_names", ok=_ok, message=_msg)
 
 
 if __name__ == "__main__":

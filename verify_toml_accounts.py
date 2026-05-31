@@ -63,6 +63,7 @@ LOG_PATH = os.path.join(HERE, "verify_toml.log")
 XRPL_RPC = os.environ.get("XRPL_RPC", "https://s1.ripple.com:51234")
 HTTP_TIMEOUT = 10
 USER_AGENT = "xrpldashboard-toml-verifier/1.0 (+https://xrpldashboard.com)"
+WALKER_CADENCE_SECONDS = 604800  # StartInterval in com.xrpldashboard.verify_toml.plist (weekly)
 
 # Strict hostname gate applied before any HTTP fetch. RFC 1035 label shape:
 # lowercase alnum, internal hyphens allowed but no leading/trailing hyphen,
@@ -608,56 +609,77 @@ def main() -> int:
                     help="legacy alias for --mode on-chain")
     args = ap.parse_args()
 
-    modes = _resolve_modes(args)
-    log("=" * 60)
-    log(f"verify_toml_accounts start (dry_run={args.dry_run} "
-        f"modes={','.join(modes)} top_n={args.top_n} "
-        f"force_recheck={args.force_recheck})")
-    named = load_json(NAMED_ACCOUNTS_PATH, {})
-    initial_size = len(named)
-
-    seen: set[str] = set()
-    per_mode_new: dict[str, int] = {}
-    per_mode_ref: dict[str, int] = {}
-    # Total walked-wallets budget (None = uncapped). Depletes as each
-    # mode consumes from it; later modes see a smaller cap.
-    remaining_budget: int | None = args.limit if args.limit else None
-
-    for mode in modes:
+    _wh_db = None
+    if not args.dry_run:
         try:
-            if mode == "org":
-                new, ref = scan_org_mode(named, args.dry_run)
-            else:
-                cands = _gather_candidates(
-                    mode, args, seen, remaining_budget,
-                )
-                seen.update(cands)
-                new, ref = scan_account_mode(
-                    cands, named, args.dry_run, mode_tag=mode,
-                )
-                if remaining_budget is not None:
-                    remaining_budget = max(0, remaining_budget - len(cands))
-        except Exception as e:
-            # Continue-on-error: one mode's failure must not cascade.
-            log(f"ERROR mode={mode} crashed: {e!r} — continuing")
-            new, ref = 0, 0
-        per_mode_new[mode] = new
-        per_mode_ref[mode] = ref
+            import db as _wh_db_mod
+            _wh_db = _wh_db_mod
+            _wh_db.write_walker_health_start("verify_toml", cadence_seconds=WALKER_CADENCE_SECONDS)
+        except Exception:
+            _wh_db = None
 
-    new_total = sum(per_mode_new.values())
-    refreshed_total = sum(per_mode_ref.values())
+    _ok = False
+    _msg = "init"
+    try:
+        modes = _resolve_modes(args)
+        log("=" * 60)
+        log(f"verify_toml_accounts start (dry_run={args.dry_run} "
+            f"modes={','.join(modes)} top_n={args.top_n} "
+            f"force_recheck={args.force_recheck})")
+        named = load_json(NAMED_ACCOUNTS_PATH, {})
+        initial_size = len(named)
 
-    breakdown = " ".join(
-        f"{m}={per_mode_new.get(m, 0)}/{per_mode_ref.get(m, 0)}"
-        for m in modes
-    )
-    log(f"summary: new={new_total} refreshed={refreshed_total} "
-        f"[{breakdown}] watchlist {initial_size}→{len(named)}")
+        seen: set[str] = set()
+        per_mode_new: dict[str, int] = {}
+        per_mode_ref: dict[str, int] = {}
+        # Total walked-wallets budget (None = uncapped). Depletes as each
+        # mode consumes from it; later modes see a smaller cap.
+        remaining_budget: int | None = args.limit if args.limit else None
 
-    if (new_total or refreshed_total) and not args.dry_run:
-        save_named(named)
-        log(f"wrote {NAMED_ACCOUNTS_PATH}")
-    return 0
+        for mode in modes:
+            try:
+                if mode == "org":
+                    new, ref = scan_org_mode(named, args.dry_run)
+                else:
+                    cands = _gather_candidates(
+                        mode, args, seen, remaining_budget,
+                    )
+                    seen.update(cands)
+                    new, ref = scan_account_mode(
+                        cands, named, args.dry_run, mode_tag=mode,
+                    )
+                    if remaining_budget is not None:
+                        remaining_budget = max(0, remaining_budget - len(cands))
+            except Exception as e:
+                # Continue-on-error: one mode's failure must not cascade.
+                log(f"ERROR mode={mode} crashed: {e!r} — continuing")
+                new, ref = 0, 0
+            per_mode_new[mode] = new
+            per_mode_ref[mode] = ref
+
+        new_total = sum(per_mode_new.values())
+        refreshed_total = sum(per_mode_ref.values())
+
+        breakdown = " ".join(
+            f"{m}={per_mode_new.get(m, 0)}/{per_mode_ref.get(m, 0)}"
+            for m in modes
+        )
+        log(f"summary: new={new_total} refreshed={refreshed_total} "
+            f"[{breakdown}] watchlist {initial_size}→{len(named)}")
+
+        if (new_total or refreshed_total) and not args.dry_run:
+            save_named(named)
+            log(f"wrote {NAMED_ACCOUNTS_PATH}")
+
+        _ok = True
+        _msg = f"new={new_total} refreshed={refreshed_total} [{breakdown}]"
+        return 0
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        if _wh_db is not None:
+            _wh_db.write_walker_health_end("verify_toml", ok=_ok, message=_msg)
 
 
 if __name__ == "__main__":
