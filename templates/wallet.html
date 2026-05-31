@@ -1035,7 +1035,7 @@
             <span class="cp-wallet-flag-text">{{ _('All counterparties first-seen in last 7 days — this wallet recently became active.') }}</span>
           </div>
           <div class="cp-svg-wrap">
-            <svg class="cp-svg" viewBox="0 0 540 340" data-cp>
+            <svg class="cp-svg" viewBox="0 0 540 340" data-cp role="img" aria-label="{{ _('Counterparty exposure network') }}">
               <defs>
                 <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%"  stop-color="#3b82f6" stop-opacity="0.15"/>
@@ -1180,7 +1180,7 @@
               <span class="wp-meta">{{ _('Last') }} {{ data.lookback_days }} {{ _('days') }}</span>
             </div>
             <div class="wp-svg-wrap">
-              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse>
+              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse aria-label="{{ _('Transaction activity over last') }} {{ data.lookback_days }} {{ _('days') }}">
                 <defs>
                   <linearGradient id="wpGrad" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.45"/>
@@ -1258,7 +1258,7 @@
       <div class="card gauge-card">
         <span class="card-label">{{ _('Reserve usage') }}</span>
         <div class="gauge-wrap">
-          <svg class="gauge-svg" viewBox="0 0 200 120">
+          <svg class="gauge-svg" viewBox="0 0 200 120" aria-label="{{ _('Reserve usage gauge:') }} {{ '{:.1f}'.format(data.pct_locked * 100) }}% {{ _('locked') }}">
             <defs>
               <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%"  stop-color="#22d3ee"/>

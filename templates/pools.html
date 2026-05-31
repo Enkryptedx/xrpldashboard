@@ -543,7 +543,7 @@
     </span>
     {# Empty SVG container — comets are appended dynamically by the poll
        script below in response to real on-chain AMM events. #}
-    <svg class="link-svg" preserveAspectRatio="none" viewBox="0 0 100 100"></svg>
+    <svg class="link-svg" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden="true"></svg>
     {% for p in top10 %}
     {% set share = p.share_of_top10 or 0 %}
     {% set ratio = (share / max_share) ** 0.5 %}
