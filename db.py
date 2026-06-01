@@ -164,6 +164,37 @@ CREATE TABLE IF NOT EXISTS historical_snapshot_meta (
     CHECK (id = 1)
 );
 
+-- Per-account daily snapshot. Mac worker (daily_snapshot.py) dual-writes
+-- here alongside historical_snapshots/YYYY-MM-DD.json so Render-side
+-- editorial surfaces can read per-account XRP + trust-line history
+-- without reaching for the Mac's filesystem. PRIMARY KEY (snapshot_date,
+-- address) gives same-day-replace semantics matching the JSON file's
+-- daily-overwrite cadence — a launchd retry after a transient failure
+-- UPSERTs cleanly.
+--
+-- trust_lines JSONB carries the account_lines payload (list of
+-- {currency, issuer, balance, limit, no_ripple, ...}) for non-zero
+-- balances only. JSONB chosen over a normalized table for Phase 1 —
+-- editorial surfaces can extract specific currency:issuer pairs with
+-- a JSONB path query. If trust-line-level history queries become a
+-- hot path later, normalization is a forward migration.
+CREATE TABLE IF NOT EXISTS historical_account_snapshots (
+    snapshot_date  DATE NOT NULL,
+    address        TEXT NOT NULL,
+    name           TEXT,
+    category       TEXT,
+    balance_xrp    DOUBLE PRECISION,
+    balance_drops  BIGINT,
+    sequence       BIGINT,
+    owner_count    INTEGER,
+    trust_lines    JSONB,
+    error          TEXT,
+    written_at     BIGINT NOT NULL,
+    PRIMARY KEY (snapshot_date, address)
+);
+CREATE INDEX IF NOT EXISTS historical_account_snapshots_addr_date_idx
+    ON historical_account_snapshots (address, snapshot_date DESC);
+
 -- Single-row JSONB blob for the /credentials live tracker. Holds
 -- amendment status, the latest cumulative SHAMap walk result, and the
 -- latest recent-activity tx scan. Walker writes (currently a daemon
@@ -1647,6 +1678,62 @@ def write_snapshot_meta(meta):
             )
     except Exception as e:
         _log_err("write_snapshot_meta_failed", e)
+        _drop_writer_conn()
+
+
+def write_account_snapshots(snapshot_date, rows):
+    """Mirror per-account snapshot rows (as returned by daily_snapshot.
+    snapshot_accounts) into Postgres. Silent no-op when PG isn't
+    configured. Errors drop the cached connection so the next call
+    reconnects — never raises (worker JSON write must not be blocked
+    by a flaky Postgres).
+
+    snapshot_date: 'YYYY-MM-DD' string (matches the JSON filename so a
+                   same-day rerun UPSERTs onto the same row set).
+    rows: list of dicts from snapshot_accounts(); each row may carry
+          balance_xrp/balance_drops/sequence/owner_count/trust_lines, or
+          an `error` string when account_info failed.
+    """
+    if not rows:
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    written_at = int(time.time())
+    try:
+        with conn.cursor() as cur:
+            for r in rows:
+                addr = r.get("address")
+                if not addr:
+                    continue
+                trust_lines = r.get("trust_lines")
+                trust_lines_json = (
+                    json.dumps(trust_lines, default=str)
+                    if trust_lines is not None else None
+                )
+                cur.execute(
+                    "INSERT INTO historical_account_snapshots "
+                    "(snapshot_date, address, name, category, balance_xrp, "
+                    " balance_drops, sequence, owner_count, trust_lines, "
+                    " error, written_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s) "
+                    "ON CONFLICT (snapshot_date, address) DO UPDATE SET "
+                    "    name = EXCLUDED.name, "
+                    "    category = EXCLUDED.category, "
+                    "    balance_xrp = EXCLUDED.balance_xrp, "
+                    "    balance_drops = EXCLUDED.balance_drops, "
+                    "    sequence = EXCLUDED.sequence, "
+                    "    owner_count = EXCLUDED.owner_count, "
+                    "    trust_lines = EXCLUDED.trust_lines, "
+                    "    error = EXCLUDED.error, "
+                    "    written_at = EXCLUDED.written_at",
+                    (snapshot_date, addr, r.get("name"), r.get("category"),
+                     r.get("balance_xrp"), r.get("balance_drops"),
+                     r.get("sequence"), r.get("owner_count"),
+                     trust_lines_json, r.get("error"), written_at),
+                )
+    except Exception as e:
+        _log_err("write_account_snapshots_failed", e)
         _drop_writer_conn()
 
 

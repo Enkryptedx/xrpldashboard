@@ -29,14 +29,14 @@ import sys
 import time
 
 from xrpl.clients import JsonRpcClient
-from xrpl.models.requests import AccountInfo, AMMInfo, Ledger
+from xrpl.models.requests import AccountInfo, AccountLines, AMMInfo, Ledger
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 SNAPSHOT_DIR = os.path.join(HERE, "historical_snapshots")
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 WALKER_CADENCE_SECONDS = 86400  # run_daily_snapshot.sh called daily via launchd
 DEFAULT_TOP_AMMS = 200
 DEFAULT_TOP_MPTS = 200
@@ -60,8 +60,37 @@ def _validated_ledger_index(client):
     return result.get("ledger_index") or (result.get("ledger") or {}).get("ledger_index")
 
 
+def _fetch_trust_lines(client, addr):
+    """Return non-zero trust lines for `addr` as a list of dicts, or [] if
+    account_lines fails or the account holds no IOUs. Zero balances are
+    filtered as noise — an open trust line at 0 carries no signal worth
+    persisting. LP tokens (40-char hex currency starting with '03') ARE
+    kept; they're real holdings, just labeled by AMM pool hash."""
+    result = _safe_request(client, AccountLines(account=addr, ledger_index="validated"))
+    if not result:
+        return []
+    lines = result.get("lines") or []
+    kept = []
+    for ln in lines:
+        try:
+            balance = float(ln.get("balance", "0"))
+        except (TypeError, ValueError):
+            balance = 0.0
+        if balance == 0:
+            continue
+        kept.append({
+            "currency": ln.get("currency"),
+            "issuer": ln.get("account"),  # counterparty issuer per account_lines spec
+            "balance": ln.get("balance"),
+            "limit": ln.get("limit"),
+            "no_ripple": ln.get("no_ripple"),
+        })
+    return kept
+
+
 def snapshot_accounts(client):
-    """Balance + sequence + owner_count for every entry in named_accounts.json."""
+    """Balance + sequence + owner_count + non-zero trust lines for every
+    entry in named_accounts.json."""
     with open(NAMED_ACCOUNTS_PATH) as f:
         named = json.load(f) or {}
 
@@ -78,6 +107,7 @@ def snapshot_accounts(client):
             drops = int(ad.get("Balance", "0"))
         except (TypeError, ValueError):
             drops = 0
+        trust_lines = _fetch_trust_lines(client, addr)
         rows.append({
             "address": addr,
             "name": meta.get("name"),
@@ -86,6 +116,7 @@ def snapshot_accounts(client):
             "balance_drops": drops,
             "sequence": ad.get("Sequence"),
             "owner_count": ad.get("OwnerCount", 0),
+            "trust_lines": trust_lines,
         })
     return rows
 
@@ -261,6 +292,23 @@ def mirror_meta_to_postgres():
     return meta
 
 
+def mirror_accounts_to_postgres(snap):
+    """Best-effort dual-write of per-account rows into Postgres so Render
+    can query per-account XRP + trust-line history without the Mac's
+    filesystem. Failures are silent on db.py's side; the JSON file is
+    still on disk as the source of truth. Returns the row count written
+    (best-effort estimate) or None when PG isn't available."""
+    try:
+        import db as pgbridge
+    except Exception:
+        return None
+    rows = snap.get("accounts") or []
+    if not rows:
+        return 0
+    pgbridge.write_account_snapshots(snap["snapshot_date_utc"], rows)
+    return len(rows)
+
+
 def summarize(snap):
     accts = snap["accounts"]
     pools = snap["amm_pools"]
@@ -268,6 +316,7 @@ def summarize(snap):
     acct_ok = sum(1 for a in accts if "error" not in a)
     pool_ok = sum(1 for p in pools if "error" not in p)
     total_xrp = sum((a.get("balance_xrp") or 0) for a in accts if "error" not in a)
+    accts_with_tl = sum(1 for a in accts if a.get("trust_lines"))
     mpts_meta = snap.get("mpts_meta") or {}
     mpt_part = f"mpts={len(mpts)}"
     if mpts_meta.get("error"):
@@ -275,6 +324,7 @@ def summarize(snap):
     return (
         f"ledger={snap.get('ledger_index')} "
         f"accounts={acct_ok}/{len(accts)} "
+        f"with_trust_lines={accts_with_tl} "
         f"pools={pool_ok}/{len(pools)} "
         f"{mpt_part} "
         f"watchlist_xrp_total={total_xrp:,.0f} "
@@ -320,6 +370,10 @@ def main():
         meta = mirror_meta_to_postgres()
         if meta:
             print(f"mirrored meta to pg: days={meta['days_collected']} accounts={meta['accounts_tracked']} pools={meta['pools_tracked']} mpts={meta['mpts_tracked']}")
+
+        accts_mirrored = mirror_accounts_to_postgres(snap)
+        if accts_mirrored is not None:
+            print(f"mirrored accounts to pg: rows={accts_mirrored}")
 
         return 0
     except Exception as e:

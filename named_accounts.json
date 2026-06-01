@@ -147,5 +147,23 @@
     "category": "other",
     "verified_via": "https://xrp-liquid.com/.well-known/xrp-ledger.toml",
     "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrp-liquid.com, and https://xrp-liquid.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rEPQxsSVER2r4HeVR4APrVCB45K68rqgp2": {
+    "name": "Doppler Finance \u2014 Deposit",
+    "category": "yield",
+    "verified_via": "https://docs.doppler.finance/product/doppler-vaults/xrp-vault",
+    "_note": "CeDeFi yield protocol. Deposit wallet (filter; funds pass through to treasury). Doppler does not publish an xrp-ledger.toml — verified_via points to the protocol docs that name this address as the XRP Vault deposit endpoint. First XRPL-native yield protocol with meaningful on-chain footprint; off-chain yield generation via Fireblocks custody."
+  },
+  "rprFy94qJB5riJpMmnPDp3ttmVKfcrFiuq": {
+    "name": "Doppler Finance \u2014 Treasury",
+    "category": "yield",
+    "verified_via": "https://docs.doppler.finance/product/doppler-vaults/xrp-vault",
+    "_note": "CeDeFi yield protocol. Treasury wallet — XRPL-side storage where vault TVL accumulates. Holds XRP plus an RLUSD trust line. Doppler does not publish an xrp-ledger.toml — verified_via points to the protocol docs that name this address."
+  },
+  "rGuVpUBfprkb1cmKFGbL8c48fQWT3xEwyZ": {
+    "name": "Doppler Finance \u2014 Withdrawal",
+    "category": "yield",
+    "verified_via": "https://docs.doppler.finance/product/doppler-vaults/xrp-vault",
+    "_note": "CeDeFi yield protocol. Withdrawal wallet (outflow to users; daily batch processing at 01:00 UTC). Doppler does not publish an xrp-ledger.toml — verified_via points to the protocol docs that name this address."
   }
 }
