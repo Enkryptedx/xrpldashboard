@@ -85,7 +85,10 @@ SIGNED_SNAPSHOTS_DIR = os.path.join(HERE, "signed_snapshots")
 SNAPSHOT_PUBKEY_PEM_PATH = os.path.join(HERE, "snapshot_pubkey.pem")
 SNAPSHOT_PUBKEY_FP_PATH = os.path.join(HERE, "snapshot_pubkey_fingerprint.txt")
 
-WHALE_XRP_THRESHOLD = 100_000  # mirror of WHALE_XRP_THRESHOLD_DROPS / 1e6
+WHALE_XRP_THRESHOLD = 100_000  # editorial display floor (100K).
+# Capture is wider — see xrpl_stream.py WHALE_XRP_THRESHOLD_DROPS
+# (default 50K). Display filters the wider capture set down to
+# the editorial "whale" tier. See 46334fb for the rename + raise.
 
 # Canonical production origin. Used for og:url / canonical / sitemap.xml.
 # Override with SITE_URL env var if a preview deploy needs a different host.

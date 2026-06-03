@@ -82,8 +82,20 @@ maintain two WebSocket connections, each with its own reconnect logic.
 Pure function that takes a transaction and returns either an Event
 record or None. Defaults reflect the conservative-threshold lock:
 
-- `WHALE_XRP_THRESHOLD` (env, default 500_000 XRP) — tune down only if
-  the feed is too sparse, never up without a public note
+**Two-tier whale threshold:**
+
+- **Capture** (`xrpl_stream.py`): `WHALE_XRP_THRESHOLD_DROPS`, default 50K XRP.
+  Wide capture into `events.db` — keeps enough history for retrospective
+  filtering at higher thresholds. Overrideable via env
+  `WHALE_XRP_THRESHOLD_XRP`.
+- **Display** (`app.py`): `WHALE_XRP_THRESHOLD = 100K XRP`.
+  Editorial display floor on `/whales` and homepage feed. Surfaces the
+  top tier of captured events.
+
+The display floor must be ≥ the capture floor (display can only show
+what was captured). Display can be raised in the future without
+losing historical data.
+
 - `WHALE_USD_THRESHOLD` (env, default 750_000 USD-equivalent)
 - `TRUSTSET_MIN_BALANCE_XRP` (env, default 5_000_000)
 - `WATCHLIST_ALWAYS_INCLUDE` (any tx involving a watchlisted account
