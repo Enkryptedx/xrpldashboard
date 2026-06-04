@@ -945,7 +945,12 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
     const supplyTxt = LIVE_DATA
       ? fmtUSD(chain === 'eth' ? state.ethSupply : state.xrplSupply)
       : '—';
-    const fontPx = Math.max(14, Math.min(34, r * 0.45));
+    /* On narrow viewports the two orbs sit close enough that the
+       supply labels collide ("$985.68M" + "$735.46M" run together
+       on phones). Tighten the font ceiling under 600px so the
+       labels stay separated even when both orbs are full-radius. */
+    const fontCap = W < 600 ? 20 : 34;
+    const fontPx = Math.max(14, Math.min(fontCap, r * 0.45));
     ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.fillText(supplyTxt, c.x, c.y);
 
