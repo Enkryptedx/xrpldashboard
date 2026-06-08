@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.bridge_signer_walker</string>
+
+    <key>Comment</key>
+    <string>Hourly Axelar XRPL Gateway SignerList rotation tracker. On first run, reads the current SignerList via account_objects and writes a bootstrap row (tx_hash='BOOTSTRAP') to bridge_signer_history. On each subsequent run, scans account_tx for the gateway in the (last_scanned_ledger, current_validated] range, filters TransactionType=='SignerListSet' with tesSUCCESS, and appends new rows. PK conflict on (ledger_index, tx_hash) makes overlapping re-runs idempotent. Steady-state windows at hourly cadence are ~1200 ledgers; MAX_LEDGERS_PER_RUN=2_500_000 caps post-outage resume. Writes a walker_health row keyed walker_name='bridge_signer_walker' on each non-dry-run pass. SignerListSet events fire weeks apart for the Axelar verifier set — most runs add 0 rows and just refresh the walker_health timestamp. Feeds the /sidechain verifier-set rotation history.</string>
+
+    <!-- Wrapper sources ~/.config/xrpldashboard/env so DATABASE_URL is
+         present; without it the walker early-exits and
+         bridge_signer_history never advances. Same pattern as
+         run_mpt_holders_refresh.sh. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_bridge_signer_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Hourly. StartInterval (not StartCalendarInterval) so the timer
+         survives Mac sleep/wake — UserEventAgent-Aqua dispatch of
+         calendar triggers through powernap has bitten us before. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- RunAtLoad=false to avoid firing on every Mac wake event (lid
+         open, network change, scheduled wake). SignerListSet rotations
+         fire weeks apart; load-time runs add RPC + Postgres cost
+         without editorial value. Manual --bootstrap-only invocation
+         is the verification path on first install. Matches
+         mpt_holders_refresh.plist precedent. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/bridge_signer_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/bridge_signer_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

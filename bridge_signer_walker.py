@@ -322,48 +322,82 @@ def main():
         print("Postgres not configured (DATABASE_URL); aborting.")
         return 2
 
-    client = JsonRpcClient(XRPL_NODE)
-
-    with db.pg_connect() as conn:
-        if not has_bootstrap_row(conn):
-            snap = fetch_current_signer_list(client)
-            if not snap or not snap.get("ledger_index"):
-                print("ERROR: bootstrap failed — could not fetch current "
-                      "SignerList for Axelar XRPL gateway")
-                return 1
-            if args.dry_run:
-                print(f"DRY bootstrap: ledger={snap['ledger_index']} "
-                      f"quorum={snap['quorum']} "
-                      f"signers={snap['signer_count']}")
-            else:
-                n = write_bootstrap_row(conn, snap)
-                conn.commit()
-                print(f"bootstrap: wrote {n} row @ ledger={snap['ledger_index']} "
-                      f"quorum={snap['quorum']} "
-                      f"signers={snap['signer_count']}")
-        else:
-            print("bootstrap: already present, skipping")
-
-        if args.bootstrap_only:
-            return 0
-
-        from_ledger = last_scanned_ledger(conn) or bootstrap_ledger(conn) or 0
-        to_ledger = current_validated_ledger(client)
-        if to_ledger is None:
-            print("ERROR: could not resolve current validated ledger")
-            return 1
-        if to_ledger - from_ledger > MAX_LEDGERS_PER_RUN:
-            print(f"WARN: range {from_ledger}..{to_ledger} exceeds cap; "
-                  f"truncating to last {MAX_LEDGERS_PER_RUN} ledgers")
-            from_ledger = to_ledger - MAX_LEDGERS_PER_RUN
-
-        added = scan_signerlistset_events(
-            client, conn, from_ledger, to_ledger, dry_run=args.dry_run,
+    # Skip walker_health tracking in --dry-run so verification runs
+    # don't pollute the health table with rows that aren't real
+    # production runs. Mirrors daily_snapshot.py:343 precedent.
+    track_health = not args.dry_run
+    if track_health:
+        db.write_walker_health_start(
+            WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS,
         )
-        mode = "DRY " if args.dry_run else ""
-        print(f"{mode}scan: range=({from_ledger}, {to_ledger}] "
-              f"events_added={added}")
-        return 0
+
+    _ok = False
+    _msg = "init"
+    bootstrap_written = 0
+    rotations_added = 0
+    from_ledger = None
+    to_ledger = None
+    try:
+        client = JsonRpcClient(XRPL_NODE)
+
+        with db.pg_connect() as conn:
+            if not has_bootstrap_row(conn):
+                snap = fetch_current_signer_list(client)
+                if not snap or not snap.get("ledger_index"):
+                    _msg = "bootstrap_fetch_failed"
+                    print("ERROR: bootstrap failed — could not fetch current "
+                          "SignerList for Axelar XRPL gateway")
+                    return 1
+                if args.dry_run:
+                    print(f"DRY bootstrap: ledger={snap['ledger_index']} "
+                          f"quorum={snap['quorum']} "
+                          f"signers={snap['signer_count']}")
+                else:
+                    bootstrap_written = write_bootstrap_row(conn, snap)
+                    conn.commit()
+                    print(f"bootstrap: wrote {bootstrap_written} row "
+                          f"@ ledger={snap['ledger_index']} "
+                          f"quorum={snap['quorum']} "
+                          f"signers={snap['signer_count']}")
+            else:
+                print("bootstrap: already present, skipping")
+
+            if args.bootstrap_only:
+                _ok = True
+                _msg = f"bootstrap_only bootstrap_written={bootstrap_written}"
+                return 0
+
+            from_ledger = last_scanned_ledger(conn) or bootstrap_ledger(conn) or 0
+            to_ledger = current_validated_ledger(client)
+            if to_ledger is None:
+                _msg = "current_validated_unresolved"
+                print("ERROR: could not resolve current validated ledger")
+                return 1
+            if to_ledger - from_ledger > MAX_LEDGERS_PER_RUN:
+                print(f"WARN: range {from_ledger}..{to_ledger} exceeds cap; "
+                      f"truncating to last {MAX_LEDGERS_PER_RUN} ledgers")
+                from_ledger = to_ledger - MAX_LEDGERS_PER_RUN
+
+            rotations_added = scan_signerlistset_events(
+                client, conn, from_ledger, to_ledger, dry_run=args.dry_run,
+            )
+            mode = "DRY " if args.dry_run else ""
+            print(f"{mode}scan: range=({from_ledger}, {to_ledger}] "
+                  f"events_added={rotations_added}")
+            _ok = True
+            _msg = (f"bootstrap_written={bootstrap_written} "
+                    f"rotations_added={rotations_added} "
+                    f"range=({from_ledger},{to_ledger}]")
+            return 0
+    except Exception as e:
+        _msg = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        if track_health:
+            try:
+                db.write_walker_health_end(WALKER_NAME, ok=_ok, message=_msg)
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
