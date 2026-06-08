@@ -165,5 +165,11 @@
     "category": "yield",
     "verified_via": "https://docs.doppler.finance/product/doppler-vaults/xrp-vault",
     "_note": "CeDeFi yield protocol. Withdrawal wallet (outflow to users; daily batch processing at 01:00 UTC). Doppler does not publish an xrp-ledger.toml — verified_via points to the protocol docs that name this address."
+  },
+  "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
+    "name": "Axelar \u2014 XRPL Gateway",
+    "category": "bridge",
+    "verified_via": "https://docs.axelar.dev/dev/general-message-passing/xrpl/xrpl-gmp/",
+    "_note": "Multisig gateway operated by the Axelar verifier set. Dual-purpose: General Message Passing (GMP) destination and Interchain Token Service (ITS) custody. Bridges XRPL to Axelar-connected chains. Primary source quotes: \"The mainnet address for the XRPL Gateway is: rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw\". Bithomp labels this account \"Axelar Bridge\" and TOML-verifies via axelar.foundation."
   }
 }
