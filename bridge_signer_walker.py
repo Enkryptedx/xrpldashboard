@@ -130,32 +130,51 @@ def _parse_signer_entries(raw):
 def fetch_current_signer_list(client):
     """Read the Axelar gateway's current SignerList via account_objects.
 
-    Returns dict with ledger_index, close_time, quorum, signer_count,
-    signer_entries — or None on RPC failure / no SignerList found.
+    Pages through account_objects until a SignerList is found. The
+    `type="signer_list"` filter narrows the response, but rippled
+    paginates the underlying object set BEFORE applying the filter,
+    so the SignerList may not appear on page 1 for accounts with
+    many other objects. The Axelar gateway carries 4000+ trust lines
+    (RippleState) plus hundreds of Tickets — the SignerList shows up
+    on page 6 of 11 under a 400-limit pagination at the time of v1
+    bootstrap. Returns dict with ledger_index/close_time/quorum/
+    signer_count/signer_entries, or None on RPC failure / SignerList
+    truly absent after exhausting all pages.
     """
-    result = _safe_request(
-        client,
-        AccountObjects(
-            account=AXELAR_GATEWAY,
-            type="signer_list",
-            ledger_index="validated",
-        ),
-    )
-    if not result:
-        return None
-    objs = result.get("account_objects") or []
-    if not objs:
-        return None
-    sl = objs[0]
-    entries = _parse_signer_entries(sl.get("SignerEntries"))
-    ledger_index = result.get("ledger_index") or result.get("ledger_current_index")
-    return {
-        "ledger_index": int(ledger_index) if ledger_index else None,
-        "close_time": _resolve_close_time(client, ledger_index),
-        "quorum": sl.get("SignerQuorum"),
-        "signer_count": len(entries),
-        "signer_entries": entries,
-    }
+    marker = None
+    ledger_index = None
+    safety_pages = 50  # ~20k objects at limit=400; covers any realistic account
+    for _ in range(safety_pages):
+        result = _safe_request(
+            client,
+            AccountObjects(
+                account=AXELAR_GATEWAY,
+                type="signer_list",
+                ledger_index="validated",
+                limit=400,
+                marker=marker,
+            ),
+        )
+        if not result:
+            return None
+        if ledger_index is None:
+            ledger_index = (result.get("ledger_index")
+                            or result.get("ledger_current_index"))
+        for obj in (result.get("account_objects") or []):
+            if obj.get("LedgerEntryType") != "SignerList":
+                continue
+            entries = _parse_signer_entries(obj.get("SignerEntries"))
+            return {
+                "ledger_index": int(ledger_index) if ledger_index else None,
+                "close_time": _resolve_close_time(client, ledger_index),
+                "quorum": obj.get("SignerQuorum"),
+                "signer_count": len(entries),
+                "signer_entries": entries,
+            }
+        marker = result.get("marker")
+        if not marker:
+            return None
+    return None
 
 
 def has_bootstrap_row(conn):
