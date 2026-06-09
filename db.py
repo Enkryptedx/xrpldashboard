@@ -2784,13 +2784,18 @@ def read_external_referrers(window_seconds, limit=15):
 
 def read_country_breakdown(window_seconds, limit=10, kind="human"):
     """Top countries by view count over the trailing window. `kind` is
-    "human" (default), "bot", or "all". Country may be None when
-    CF-IPCountry wasn't present (e.g. local dev, or non-Cloudflare front).
+    "human" (default), "bot", or "all". Pass `window_seconds=None` for
+    no time filter (all-time). Country may be None when CF-IPCountry
+    wasn't present (e.g. local dev, or non-Cloudflare front).
     Returns list of (country, views, uniques)."""
     if not pg_available():
         return []
-    cutoff = int(time.time()) - int(window_seconds)
     bot_frag, bot_params = _bot_filter_sql(kind)
+    if window_seconds is None:
+        time_frag, time_params = "WHERE 1=1", []
+    else:
+        cutoff = int(time.time()) - int(window_seconds)
+        time_frag, time_params = "WHERE ts >= %s", [cutoff]
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
@@ -2798,13 +2803,40 @@ def read_country_breakdown(window_seconds, limit=10, kind="human"):
                     "SELECT COALESCE(country, '?') AS c, "
                     "       COUNT(*) AS views, "
                     "       COUNT(DISTINCT visitor_hash) AS uniques "
-                    f"FROM page_views WHERE ts >= %s {bot_frag} "
+                    f"FROM page_views {time_frag} {bot_frag} "
                     "GROUP BY c ORDER BY views DESC LIMIT %s",
-                    [cutoff, *bot_params, limit],
+                    [*time_params, *bot_params, limit],
                 )
                 return [(r[0], int(r[1]), int(r[2])) for r in cur.fetchall()]
     except Exception:
         return []
+
+
+def read_country_count(window_seconds, kind="human"):
+    """Count of distinct origins (countries + Cloudflare special codes
+    like T1 for Tor) seen in the trailing window. Mirrors
+    read_country_breakdown's bot-filter + window semantics so the count
+    lines up with the table. Pass window_seconds=None for all-time."""
+    if not pg_available():
+        return 0
+    bot_frag, bot_params = _bot_filter_sql(kind)
+    if window_seconds is None:
+        time_frag, time_params = "WHERE 1=1", []
+    else:
+        cutoff = int(time.time()) - int(window_seconds)
+        time_frag, time_params = "WHERE ts >= %s", [cutoff]
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(DISTINCT COALESCE(country, '?')) "
+                    f"FROM page_views {time_frag} {bot_frag}",
+                    [*time_params, *bot_params],
+                )
+                row = cur.fetchone()
+                return int(row[0]) if row else 0
+    except Exception:
+        return 0
 
 
 def log_cta_click(cta_id, ref_param=None, referrer=None,

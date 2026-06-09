@@ -4300,6 +4300,13 @@ def analytics():
     top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human")
     countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
                                               kind="human")
+    countries_24h_count = db.read_country_count(24 * 60 * 60, kind="human")
+
+    # All-time origin list. limit=500 is a no-op ceiling vs the ~250
+    # ISO 3166-1 codes plus a handful of Cloudflare special codes
+    # (T1 = Tor, ? = no header) — sized to never truncate in practice.
+    countries_all = db.read_country_breakdown(None, limit=500, kind="human")
+    countries_all_count = db.read_country_count(None, kind="human")
 
     external_refs_7d = db.read_external_referrers(7 * 24 * 60 * 60, limit=15)
     utm_landings_7d = db.read_utm_landings(7 * 24 * 60 * 60, limit=15)
@@ -4341,6 +4348,9 @@ def analytics():
         top_24h=top_24h,
         top_7d=top_7d,
         countries_24h=countries_24h,
+        countries_24h_count=countries_24h_count,
+        countries_all=countries_all,
+        countries_all_count=countries_all_count,
         external_refs_7d=external_refs_7d,
         utm_landings_7d=utm_landings_7d,
         cta_stats=cta_stats,

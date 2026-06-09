@@ -174,7 +174,7 @@
 
     <div class="row">
       <div class="panel">
-        <h2>Countries · 24h</h2>
+        <h2>Countries · 24h · {{ countries_24h_count }} distinct origins</h2>
         {% if countries_24h %}
         <table>
           <tr><th>country</th><th class="num">page loads</th><th class="uniq">people</th></tr>
@@ -203,6 +203,27 @@
           {% endfor %}
         </div>
         {% else %}<div class="empty">no visits recorded yet</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <h2>Countries · all-time · {{ countries_all_count }} distinct origins</h2>
+        {% if countries_all %}
+        <table>
+          <tr><th>country</th><th class="num">page loads</th><th class="uniq">people</th></tr>
+          {% for ctry, views, uniques in countries_all %}
+          <tr>
+            <td class="path">{{ ctry }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        <div class="empty" style="margin-top:8px;">
+          T1 = Tor exit nodes · ? = no Cloudflare country header
+        </div>
+        {% else %}<div class="empty">no traffic yet</div>{% endif %}
       </div>
     </div>
 
