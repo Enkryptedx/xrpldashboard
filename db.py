@@ -1403,6 +1403,37 @@ def read_walker_health(walker_name):
         return None
 
 
+def read_latest_bridge_signers():
+    """Return the most recent bridge_signer_history row as a dict, or
+    None when PG is unavailable / table empty. Used by /sidechain to
+    render quorum + signer count + (for uniform weights) the M-of-N
+    framing visitors actually understand."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ledger_index, close_time, quorum, signer_count, "
+                    "       signer_entries, tx_hash "
+                    "  FROM bridge_signer_history "
+                    " ORDER BY ledger_index DESC LIMIT 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return {
+                    "ledger_index": row[0],
+                    "close_time": row[1],
+                    "quorum": row[2],
+                    "signer_count": row[3],
+                    "signer_entries": row[4],
+                    "tx_hash": row[5],
+                }
+    except Exception:
+        return None
+
+
 # ─────────────────────────────────────────────────────────────────────
 # /permissioned-domains (XLS-80) — Phase 1: walker writes, no UI yet.
 # Append-only history: one row per (snapshot_date, domain_id) and one

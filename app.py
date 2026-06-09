@@ -2466,6 +2466,27 @@ def amendments():
     return resp
 
 
+def _load_latest_bridge_signers():
+    """Shape the latest bridge_signer_history row for the /sidechain
+    hero. Computes is_uniform / required_signers (the M-of-N framing)
+    when all signer weights are identical — defensive against a future
+    weighted rotation where 'X of N' would be misleading."""
+    row = db.read_latest_bridge_signers()
+    if not row:
+        return None
+    entries = row.get("signer_entries") or []
+    weights = [int(e.get("weight", 0)) for e in entries if e.get("weight")]
+    is_uniform = bool(weights) and len(set(weights)) == 1
+    uniform_weight = weights[0] if is_uniform else None
+    required = (int(row["quorum"]) // uniform_weight) if is_uniform and uniform_weight else None
+    return {
+        **row,
+        "is_uniform": is_uniform,
+        "uniform_weight": uniform_weight,
+        "required_signers": required,
+    }
+
+
 @app.route("/network")
 def network():
     """Live view of the two canonical XRPL UNLs (Ripple + Foundation),
@@ -2485,6 +2506,34 @@ def network():
         state=state,
         diffs=diffs,
         cache_ttl_seconds=network_state.CACHE_TTL,
+    ))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
+@app.route("/sidechain")
+def sidechain():
+    """Live view of the XRPL ↔ XRPL EVM Sidechain bridge multisig.
+    Axelar's Amplifier verifier set signs every bridge operation via
+    a SignerList on the canonical XRPL bridge account. We snapshot
+    that SignerList into bridge_signer_history; this page renders the
+    latest row — quorum, signer count, and (for uniform weights) the
+    M-of-N framing visitors actually understand.
+
+    Freshness pill tracks walker_health.last_success_at, not the
+    table's last write — SignerListSet rotations are rare events and
+    written_at would drift to 'months ago' while the dashboard is
+    actively working as designed."""
+    state = _load_latest_bridge_signers()
+    walker = db.read_walker_health("bridge_signer_walker")
+    walker_age = walker.get("last_success_age_seconds") if walker else None
+    data_age_label = _format_age_seconds(
+        int(walker_age) if walker_age is not None else None
+    )
+    resp = make_response(render_template(
+        "sidechain.html",
+        state=state,
+        data_age_label=data_age_label,
     ))
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp

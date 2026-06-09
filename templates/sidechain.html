@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Sidechain') }} · {{ _('live XRPL→EVM bridge multisig') }} · xrpldashboard</title>
+  {% set meta_title = "Sidechain · live XRPL→EVM bridge multisig · xrpldashboard" %}
+  {% set meta_description = "XRPL EVM Sidechain bridge — Axelar verifier set, signing quorum, and live multisig snapshots from the canonical XRPL bridge account." %}
+  {% include "_head_meta.html" %}
+
+  {% set _modified = state.close_time.isoformat() if state and state.close_time else None %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "XRPL ↔ XRPL EVM Sidechain bridge multisig, live",
+    "description": "The Axelar verifier set signing every bridge operation between XRPL and the XRPL EVM Sidechain — quorum, signer count, and rotation history.",
+    "datePublished": "2026-06-09T00:00:00Z"
+    {% if _modified %}, "dateModified": "{{ _modified }}"{% endif %},
+    "author": { "@type": "Organization", "name": "xrpldashboard" },
+    "publisher": { "@type": "Organization", "name": "xrpldashboard", "url": "{{ site_url }}" },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "{{ site_url }}/sidechain" },
+    "inLanguage": "{{ current_locale }}"
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(74,222,128,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.9rem; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 24px; max-width: 720px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600; letter-spacing: -0.01em; }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.88em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .dim { color: var(--dim); }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    .hero-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 26px;
+      margin: 8px 0 24px; text-align: center;
+    }
+    .hero-card .stat-big {
+      font-family: var(--mono); font-size: 3.2rem; font-weight: 700;
+      color: var(--green); letter-spacing: -0.02em; line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-card .stat-sub {
+      color: var(--muted); font-size: 0.95rem; margin-top: 6px;
+      letter-spacing: 0.01em;
+    }
+    .hero-card .stat-meta {
+      margin-top: 16px; font-size: 0.82rem;
+      padding-top: 14px; border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 480px) {
+      .hero-card .stat-big { font-size: 2.4rem; }
+    }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  {% include "_nav.html" %}
+  <div class="wrap">
+    <h1>{{ _('XRPL EVM Sidechain bridge') }}</h1>
+    <p class="lede">
+      {{ _('30 verifiers in the Axelar network sign every bridge operation between XRPL and the XRPL EVM Sidechain. 20 must agree.') }}
+    </p>
+
+    {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
+    {{ freshness_badge_css() }}
+    {{ freshness_badge(data_age_label) }}
+
+    {% if state %}
+      <div class="hero-card">
+        {% if state.is_uniform %}
+          <div class="stat-big">{{ state.required_signers }}-of-{{ state.signer_count }}</div>
+          <div class="stat-sub">{{ _('to authorize · 2/3 majority required') }}</div>
+        {% else %}
+          <div class="stat-big">Q = {{ '{:,}'.format(state.quorum) }}</div>
+          <div class="stat-sub">{{ _('weighted multisig · %(n)d signers') | format(n=state.signer_count) }}</div>
+        {% endif %}
+        <div class="stat-meta mono dim">
+          {{ _('ledger') }} {{ '{:,}'.format(state.ledger_index) }}
+          · {{ state.close_time.strftime('%Y-%m-%d %H:%M UTC') }}
+        </div>
+      </div>
+    {% else %}
+      <p class="dim">{{ _('Bridge data temporarily unavailable. Refreshing.') }}</p>
+    {% endif %}
+
+    <div class="footer">
+      <a href="/">← {{ _('back to dashboard') }}</a>
+    </div>
+  </div>
+</body>
+</html>
