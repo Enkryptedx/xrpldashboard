@@ -263,3 +263,81 @@ class TestPoolsSnapshotLabel:
             # Year should be 4 digits at the end
             assert out.split(",")[-1].strip().isdigit()
             assert len(out.split(",")[-1].strip()) == 4
+
+
+# ---------- _extract_amm_xrp_delta_drops ----------
+
+class TestExtractAmmXrpDeltaDrops:
+    """The walker captures XRP-side magnitude on every AMM event by reading
+    the AMM AccountRoot's Balance delta in meta.AffectedNodes. These tests
+    pin the four structural cases that drive the /pools constellation's
+    magnitude-aware comet scaling."""
+
+    @pytest.fixture(scope="class")
+    def extract(self):
+        import xrpl_stream
+        return xrpl_stream._extract_amm_xrp_delta_drops
+
+    def test_deposit_returns_positive_drops(self, extract):
+        """AMMDeposit: AMM's AccountRoot Balance grows by deposited drops."""
+        affected = [{
+            "ModifiedNode": {
+                "LedgerEntryType": "AccountRoot",
+                "FinalFields": {"Account": "rAMM", "Balance": "5000000000"},
+                "PreviousFields": {"Balance": "3000000000"},
+            }
+        }]
+        assert extract(affected, "rAMM") == 2_000_000_000
+
+    def test_withdraw_returns_positive_drops(self, extract):
+        """AMMWithdraw: Balance shrinks; abs() returns positive magnitude."""
+        affected = [{
+            "ModifiedNode": {
+                "LedgerEntryType": "AccountRoot",
+                "FinalFields": {"Account": "rAMM", "Balance": "3000000000"},
+                "PreviousFields": {"Balance": "5000000000"},
+            }
+        }]
+        assert extract(affected, "rAMM") == 2_000_000_000
+
+    def test_iou_iou_pool_returns_none(self, extract):
+        """IOU/IOU pool: AccountRoot touched but Balance unchanged → None.
+        Constellation renders these at neutral scale per Gate 1 framing."""
+        affected = [{
+            "ModifiedNode": {
+                "LedgerEntryType": "AccountRoot",
+                "FinalFields": {"Account": "rAMM", "Sequence": 100},
+                "PreviousFields": {"Sequence": 99},
+            }
+        }]
+        assert extract(affected, "rAMM") is None
+
+    def test_no_amm_match_returns_none(self, extract):
+        """AMM AccountRoot absent from affected list → None. Defensive case
+        — caller has already confirmed amm_account is in the list before
+        invoking this helper, but a None return is safe regardless."""
+        affected = [{
+            "ModifiedNode": {
+                "LedgerEntryType": "RippleState",
+                "FinalFields": {"Balance": "5000000000"},
+            }
+        }]
+        assert extract(affected, "rAMM") is None
+
+    def test_other_amm_in_list_ignored(self, extract):
+        """When multiple AccountRoots show up (rare but possible on swaps
+        that cascade through multiple AMMs), only the targeted amm_account
+        is read."""
+        affected = [
+            {"ModifiedNode": {
+                "LedgerEntryType": "AccountRoot",
+                "FinalFields": {"Account": "rOTHER", "Balance": "9000000000"},
+                "PreviousFields": {"Balance": "1000000000"},
+            }},
+            {"ModifiedNode": {
+                "LedgerEntryType": "AccountRoot",
+                "FinalFields": {"Account": "rAMM", "Balance": "5500000000"},
+                "PreviousFields": {"Balance": "5000000000"},
+            }},
+        ]
+        assert extract(affected, "rAMM") == 500_000_000

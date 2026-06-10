@@ -82,6 +82,17 @@ def _open_db(path):
 _events_conn = _open_db(EVENTS_DB_PATH)
 _volumes_conn = _open_db(VOLUMES_DB_PATH)
 
+# Idempotent SQLite migration: add magnitude_xrp_drops to amm_pool_events for
+# existing installs. Fresh installs get the column via init_dbs.py EVENTS_SCHEMA.
+# SQLite has no ADD COLUMN IF NOT EXISTS, so we swallow the "duplicate column"
+# OperationalError on re-run.
+try:
+    _events_conn.execute(
+        "ALTER TABLE amm_pool_events ADD COLUMN magnitude_xrp_drops INTEGER"
+    )
+except sqlite3.OperationalError:
+    pass
+
 
 def _load_named_accounts():
     if not os.path.exists(NAMED_ACCOUNTS_PATH):
@@ -532,6 +543,54 @@ def _maybe_reload_amm_account_set():
             f"(+{added} / -{removed})")
 
 
+def _extract_amm_xrp_delta_drops(affected_nodes, amm_account):
+    """XRP-side balance delta for the AMM's AccountRoot in this tx, in drops.
+
+    Returns absolute |Balance_final - Balance_prev| as a positive int. Returns
+    None for IOU/IOU AMMs (no XRP Balance field), for events that touched the
+    AccountRoot without moving its Balance (single-sided IOU events on mixed
+    pools), and for parse errors.
+
+    Single helper works for all four event types (AMMDeposit, AMMWithdraw,
+    Payment-through-AMM, OfferCreate-against-AMM) because the AMM's XRP
+    AccountRoot Balance always shifts by the swap/deposit/withdraw amount,
+    regardless of which tx type triggered it.
+    """
+    for node in affected_nodes:
+        wrapper = (node.get("ModifiedNode")
+                   or node.get("CreatedNode")
+                   or node.get("DeletedNode"))
+        if not wrapper:
+            continue
+        if wrapper.get("LedgerEntryType") != "AccountRoot":
+            continue
+        final = wrapper.get("FinalFields") or {}
+        new = wrapper.get("NewFields") or {}
+        acct = final.get("Account") or new.get("Account")
+        if acct != amm_account:
+            continue
+
+        prev = wrapper.get("PreviousFields") or {}
+        final_bal_str = final.get("Balance")
+        prev_bal_str = prev.get("Balance")
+
+        if final_bal_str is not None and prev_bal_str is not None:
+            try:
+                return abs(int(final_bal_str) - int(prev_bal_str))
+            except (TypeError, ValueError):
+                return None
+
+        if new.get("Balance") is not None:
+            try:
+                return abs(int(new["Balance"]))
+            except (TypeError, ValueError):
+                return None
+
+        return None
+
+    return None
+
+
 def amm_pool_event_handler(msg, state):
     """Per-pool AMM activity → amm_pool_events ring buffer in events.db.
 
@@ -581,18 +640,21 @@ def amm_pool_event_handler(msg, state):
     else:
         event_type = "swap"
 
+    mag_drops = _extract_amm_xrp_delta_drops(affected, matched_account)
+
     now_ts = int(time.time())
     try:
         _events_conn.execute(
-            "INSERT INTO amm_pool_events (ts, amm_account, event_type) "
-            "VALUES (?, ?, ?)",
-            (now_ts, matched_account, event_type),
+            "INSERT INTO amm_pool_events "
+            "(ts, amm_account, event_type, magnitude_xrp_drops) "
+            "VALUES (?, ?, ?, ?)",
+            (now_ts, matched_account, event_type, mag_drops),
         )
     except Exception as e:
         log(f"amm_pool_event_handler db error: {e}")
         return
 
-    pgbridge.write_amm_pool_event(now_ts, matched_account, event_type)
+    pgbridge.write_amm_pool_event(now_ts, matched_account, event_type, mag_drops)
 
     state["amm_pool_events_seen"] = state.get("amm_pool_events_seen", 0) + 1
     _AMM_POOL_INSERTS_SINCE_PRUNE += 1

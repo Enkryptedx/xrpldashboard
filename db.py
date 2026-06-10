@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS amm_pool_events (
     amm_account TEXT NOT NULL,
     event_type  TEXT NOT NULL
 );
+ALTER TABLE amm_pool_events ADD COLUMN IF NOT EXISTS magnitude_xrp_drops BIGINT;
 CREATE INDEX IF NOT EXISTS amm_pool_events_ts_idx
     ON amm_pool_events (ts DESC);
 
@@ -688,7 +689,7 @@ def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1):
         _drop_writer_conn()
 
 
-def write_amm_pool_event(ts, amm_account, event_type):
+def write_amm_pool_event(ts, amm_account, event_type, magnitude_xrp_drops=None):
     """Append a row to the amm_pool_events ring buffer in Postgres.
     Silent no-op when PG isn't configured."""
     conn = _get_writer_conn()
@@ -697,9 +698,10 @@ def write_amm_pool_event(ts, amm_account, event_type):
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO amm_pool_events (ts, amm_account, event_type) "
-                "VALUES (%s, %s, %s)",
-                (ts, amm_account, event_type),
+                "INSERT INTO amm_pool_events "
+                "(ts, amm_account, event_type, magnitude_xrp_drops) "
+                "VALUES (%s, %s, %s, %s)",
+                (ts, amm_account, event_type, magnitude_xrp_drops),
             )
     except Exception as e:
         _log_err("write_amm_pool_event_failed", e)
@@ -2464,18 +2466,21 @@ def read_token_volume_bucket_stats():
 
 def read_recent_amm_pool_events(seconds):
     """Recent AMM pool events for the /pools constellation poll.
-    Returns list of dicts (id, ts, amm_account, event_type) ordered by id."""
+    Returns list of dicts (id, ts, amm_account, event_type, magnitude_xrp_drops)
+    ordered by id. magnitude_xrp_drops is None for IOU/IOU pool events and
+    for rows written before the magnitude walker landed."""
     cutoff = int(time.time()) - seconds
     with pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, ts, amm_account, event_type "
+                "SELECT id, ts, amm_account, event_type, magnitude_xrp_drops "
                 "FROM amm_pool_events WHERE ts >= %s "
                 "ORDER BY id ASC LIMIT 200",
                 (cutoff,),
             )
             return [
-                {"id": r[0], "ts": r[1], "amm_account": r[2], "event_type": r[3]}
+                {"id": r[0], "ts": r[1], "amm_account": r[2],
+                 "event_type": r[3], "magnitude_xrp_drops": r[4]}
                 for r in cur.fetchall()
             ]
 

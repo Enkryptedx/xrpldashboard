@@ -4076,13 +4076,14 @@ def api_pools_recent_events():
             conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
             try:
                 rows = conn.execute(
-                    "SELECT id, ts, amm_account, event_type "
+                    "SELECT id, ts, amm_account, event_type, magnitude_xrp_drops "
                     "FROM amm_pool_events WHERE ts >= ? "
                     "ORDER BY id ASC LIMIT 200",
                     (cutoff,),
                 ).fetchall()
                 events = [
-                    {"id": r[0], "ts": r[1], "amm_account": r[2], "event_type": r[3]}
+                    {"id": r[0], "ts": r[1], "amm_account": r[2],
+                     "event_type": r[3], "magnitude_xrp_drops": r[4]}
                     for r in rows
                 ]
             finally:

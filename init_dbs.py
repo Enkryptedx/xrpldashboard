@@ -47,10 +47,11 @@ CREATE INDEX IF NOT EXISTS tx_pulse_id_idx ON tx_pulse(id);
 -- on /pools. event_type ∈ {'deposit','withdraw','swap'}. Pruned by the stream
 -- worker to a fixed cap so growth stays bounded.
 CREATE TABLE IF NOT EXISTS amm_pool_events (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts            INTEGER NOT NULL,
-  amm_account   TEXT NOT NULL,
-  event_type    TEXT NOT NULL
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts                   INTEGER NOT NULL,
+  amm_account          TEXT NOT NULL,
+  event_type           TEXT NOT NULL,
+  magnitude_xrp_drops  INTEGER
 );
 CREATE INDEX IF NOT EXISTS amm_pool_events_ts_idx
   ON amm_pool_events(ts);
