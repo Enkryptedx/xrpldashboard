@@ -286,6 +286,29 @@ CREATE TABLE IF NOT EXISTS rlusd_state_cache (
     CHECK (id = 1)
 );
 
+-- Daily RLUSD supply history (append-only). Companion to rlusd_state_cache:
+-- the cache is a ~30s live singleton (overwrites every refresh, mostly
+-- duplicate rows if flipped to append); RLUSD only meaningfully changes
+-- ~20×/day. Daily-grain history captures change cadence without codifying
+-- 30s noise. See migrations/2026_05_25_rlusd_supply_history.sql and
+-- feedback_history_flip_cadence_rule.md.
+CREATE TABLE IF NOT EXISTS rlusd_supply_history (
+    snapshot_date    DATE     NOT NULL,
+    xrpl_supply      NUMERIC  NOT NULL,
+    eth_supply       NUMERIC  NOT NULL,
+    total_supply     NUMERIC  NOT NULL,
+    xrpl_holders     INTEGER,
+    eth_holders      INTEGER,
+    xrpl_mints_24h   NUMERIC,
+    xrpl_burns_24h   NUMERIC,
+    eth_mints_24h    NUMERIC,
+    eth_burns_24h    NUMERIC,
+    written_at_iso   TEXT     NOT NULL,
+    PRIMARY KEY (snapshot_date)
+);
+CREATE INDEX IF NOT EXISTS rlusd_supply_history_date_idx
+    ON rlusd_supply_history (snapshot_date DESC);
+
 -- Institutional RWA families with on-chain presence on XRPL. Seeded from
 -- migrations/2026_05_14_rwa_schema.sql; SCHEMA_DDL re-declaration here keeps
 -- fresh installs in sync. Idempotent.
@@ -372,10 +395,11 @@ CREATE INDEX IF NOT EXISTS cta_clicks_cta_ts_idx ON cta_clicks (cta_id, ts DESC)
 -- swap moves it 30%+). The absence of a row IS the signal: "price not
 -- derivable from a deep-enough pool"; consumers must not backfill.
 --
--- snapshot_ts is overwritten on each walk in v1 (current-price-only).
--- Forward path to price history: change PK to include snapshot_ts and
--- swap the upsert (DELETE+INSERT) for a plain INSERT. No column
--- migration required.
+-- History-append since migrations/2026_05_25_token_prices_history_append.sql:
+-- PK is (currency, issuer, snapshot_ts) so every walker run appends a new
+-- row per token (INSERT … ON CONFLICT DO NOTHING). token_prices_latest_idx
+-- powers the "current price" read path; the snapshot_ts index powers the
+-- time-series read path.
 CREATE TABLE IF NOT EXISTS token_prices (
     currency           TEXT             NOT NULL,
     issuer             TEXT             NOT NULL,
@@ -385,8 +409,10 @@ CREATE TABLE IF NOT EXISTS token_prices (
     pool_xrp_reserve   DOUBLE PRECISION NOT NULL,
     pool_token_reserve DOUBLE PRECISION NOT NULL,
     derivation_method  TEXT             NOT NULL,
-    PRIMARY KEY (currency, issuer)
+    PRIMARY KEY (currency, issuer, snapshot_ts)
 );
+CREATE INDEX IF NOT EXISTS token_prices_latest_idx
+    ON token_prices (currency, issuer, snapshot_ts DESC);
 CREATE INDEX IF NOT EXISTS token_prices_snapshot_idx
     ON token_prices (snapshot_ts DESC);
 
