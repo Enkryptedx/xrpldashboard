@@ -258,6 +258,13 @@
     .constellation .legend .dot.in  { background: rgba(34,211,238,1); box-shadow: 0 0 6px rgba(34,211,238,0.7); }
     .constellation .legend .dot.out { background: rgba(245,158,11,1); box-shadow: 0 0 6px rgba(245,158,11,0.7); }
     .constellation .legend .dot.swap { background: rgba(229,231,235,1); box-shadow: 0 0 6px rgba(229,231,235,0.7); }
+    .constellation .legend .meth-link {
+      pointer-events: auto;
+      color: var(--muted); text-decoration: none;
+      border-bottom: 1px dotted rgba(148,163,184,0.5);
+      padding-bottom: 1px;
+    }
+    .constellation .legend .meth-link:hover { color: var(--ink); border-bottom-color: rgba(34,211,238,0.7); }
     .star-node:hover {
       transform: translate(-50%, -50%) scale(1.15);
       text-decoration: none; z-index: 5;
@@ -432,6 +439,9 @@
     }
   </style>
   {% include "_vibes_head.html" %}
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
+          integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
+          crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="wrap">
@@ -540,6 +550,7 @@
       <span class="lg"><span class="dot in"></span>{{ _('DEPOSIT') }}</span>
       <span class="lg"><span class="dot out"></span>{{ _('WITHDRAW') }}</span>
       <span class="lg"><span class="dot swap"></span>{{ _('SWAP') }}</span>
+      <a class="meth-link" href="/methodology#pools-constellation">{{ _('methodology') }}</a>
     </span>
     {# Empty SVG container — comets are appended dynamically by the poll
        script below in response to real on-chain AMM events. #}
@@ -682,17 +693,17 @@
 
 </div>
 <script>
-  // Live constellation comets — polls /api/pools/recent_events for real
-  // AMMDeposit / AMMWithdraw / Payment-through-AMM events touching the top-10
-  // pools and fires a comet (cyan inbound for deposit, amber outbound for
-  // withdraw, white pulse for swap) at the matching star. When the worker
-  // isn't running (e.g. production), the endpoint returns an empty list and
-  // the constellation simply stays in standby.
+  // Live constellation comets — polls /api/pools/recent_events and fires a
+  // comet at the matching star: cyan inbound for deposit, amber outbound for
+  // withdraw, white impact ring for swap. Comet size scales sublinearly with
+  // the event's XRP-side magnitude (see /methodology#pools-constellation).
+  // Empty endpoint → constellation stays in standby.
   (function () {
     var constellation = document.getElementById('constellation');
     if (!constellation) return;
     var svg = constellation.querySelector('.link-svg');
     if (!svg) return;
+    if (typeof gsap === 'undefined') return;
 
     var stars = {};
     constellation.querySelectorAll('.star-node[data-amm]').forEach(function (el) {
@@ -706,6 +717,17 @@
     var POLL_WINDOW_S = 5;
     var seenIds = new Set();
     var firstPoll = true;
+
+    // Sublinear log scale on XRP-side magnitude. Calibrated against live
+    // percentile data: p50(0.1 XRP)≈0.96, p95(46 XRP)≈1.62, p99(259)≈1.80,
+    // max cap 2.0. NULL drops (pre-walker rows / IOU-IOU swaps where we
+    // can't extract a delta) render at neutral 1.0 — honest "unknown".
+    function magScale(drops) {
+      if (drops == null) return 1.0;
+      var xrp = drops / 1e6;
+      var s = 0.7 + 0.25 * Math.log10(xrp * 100 + 1);
+      return Math.min(2.0, Math.max(0.7, s));
+    }
 
     function pickEdge(cx, cy) {
       var jitter = function () { return (Math.random() - 0.5) * 30; };
@@ -723,57 +745,82 @@
       return best;
     }
 
-    // SMIL anchored to the SVG's timeline-origin (page load) won't fire when
-    // appended later — t=0 is already in the past. Using begin="indefinite"
-    // and calling beginElement() after append anchors the animation to "now".
-    function makeAnimate(attr, values, keyTimes, dur) {
-      var a = document.createElementNS(SVG_NS, 'animate');
-      a.setAttribute('attributeName', attr);
-      a.setAttribute('values', values);
-      a.setAttribute('keyTimes', keyTimes);
-      a.setAttribute('dur', dur + 's');
-      a.setAttribute('begin', 'indefinite');
-      a.setAttribute('repeatCount', '1');
-      a.setAttribute('fill', 'freeze');
-      return a;
-    }
-    function startAnim(el) {
-      try { el.beginElement(); } catch (e) {}
+    var reducedMotion = false;
+    if (window.matchMedia) {
+      try { reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+      catch (e) { reducedMotion = false; }
     }
 
-    function spawnImpactRing(cx, cy, rgbStr, beginAt, lifeSec) {
+    function spawnImpactRing(cx, cy, rgbStr, scale, lifeSec) {
+      var ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', cx);
+      ring.setAttribute('cy', cy);
+      ring.setAttribute('r', 0);
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', 'rgba(' + rgbStr + ',1)');
+      ring.setAttribute('stroke-width', 0);
+      ring.setAttribute('opacity', 0);
+      ring.style.filter = 'drop-shadow(0 0 3px rgba(' + rgbStr + ',0.9))';
+      svg.appendChild(ring);
+
+      var rMax = 3 * scale;
+      var tl = gsap.timeline({
+        onComplete: function () { ring.remove(); }
+      });
+      tl.to(ring, {
+        duration: lifeSec * 0.1,
+        attr: { r: 0.8 * scale, 'stroke-width': 1 },
+        opacity: 1,
+        ease: 'power2.out'
+      }).to(ring, {
+        duration: lifeSec * 0.9,
+        attr: { r: rMax, 'stroke-width': 0.15 },
+        opacity: 0,
+        ease: 'power1.out'
+      });
+    }
+
+    var statusEl = document.getElementById('constellation-status');
+    var statusBaseText = '10 POOLS · STANDBY';
+    function setStatus(text) {
+      statusBaseText = '10 POOLS · ' + text;
+      if (statusEl && !statusEl.dataset.flashing) statusEl.textContent = statusBaseText;
+    }
+    // Status-pill text flash — accessible accent for reduced-motion users.
+    // Carries the actual event label (DEPOSIT/WITHDRAW/SWAP), not decoration.
+    function pillFlash(eventType) {
+      if (!statusEl) return;
+      var label = eventType === 'deposit' ? 'DEPOSIT'
+                : eventType === 'withdraw' ? 'WITHDRAW'
+                : 'SWAP';
+      var color = eventType === 'deposit' ? 'rgba(34,211,238,1)'
+                : eventType === 'withdraw' ? 'rgba(245,158,11,1)'
+                : 'rgba(229,231,235,1)';
+      statusEl.dataset.flashing = '1';
+      var prevColor = statusEl.style.color;
+      statusEl.textContent = '10 POOLS · ' + label;
+      statusEl.style.color = color;
       setTimeout(function () {
-        var ring = document.createElementNS(SVG_NS, 'circle');
-        ring.setAttribute('cx', cx);
-        ring.setAttribute('cy', cy);
-        ring.setAttribute('r', '0');
-        ring.setAttribute('fill', 'none');
-        ring.setAttribute('stroke', 'rgba(' + rgbStr + ',1)');
-        ring.setAttribute('stroke-width', '0');
-        ring.setAttribute('opacity', '0');
-        ring.setAttribute('style',
-          'filter: drop-shadow(0 0 3px rgba(' + rgbStr + ',0.9));');
-        var aR = makeAnimate('r',            '0;0.8;3',  '0;0.1;1', lifeSec);
-        var aS = makeAnimate('stroke-width', '0;1;0.15', '0;0.1;1', lifeSec);
-        var aO = makeAnimate('opacity',      '0;1;0',    '0;0.1;1', lifeSec);
-        ring.appendChild(aR);
-        ring.appendChild(aS);
-        ring.appendChild(aO);
-        svg.appendChild(ring);
-        startAnim(aR); startAnim(aS); startAnim(aO);
-        setTimeout(function () { ring.remove(); }, lifeSec * 1000 + 150);
-      }, beginAt * 1000);
+        statusEl.style.color = prevColor;
+        delete statusEl.dataset.flashing;
+        statusEl.textContent = statusBaseText;
+      }, 250);
     }
 
-    function fireComet(starEl, eventType) {
+    function fireComet(starEl, eventType, magnitude) {
       var cx = parseFloat(starEl.getAttribute('data-cx'));
       var cy = parseFloat(starEl.getAttribute('data-cy'));
       if (isNaN(cx) || isNaN(cy)) return;
 
-      // Swap = directionless pulse only. We don't know which side of the pool
-      // gained vs. lost without parsing further metadata, so we don't fake it.
+      // Reduced-motion: no spatial animation, accessible label flash instead.
+      if (reducedMotion) { pillFlash(eventType); return; }
+
+      var scale = magScale(magnitude);
+
+      // Swap = directionless pulse only. Without parsing AffectedNodes
+      // direction we won't fake which side gained.
       if (eventType === 'swap') {
-        spawnImpactRing(cx, cy, '229,231,235', 0, 0.4);
+        spawnImpactRing(cx, cy, '229,231,235', scale, 0.4);
         return;
       }
 
@@ -785,47 +832,40 @@
       var toY   = isOutbound ? edge.y : cy;
       var rgbStr = isOutbound ? '245,158,11' : '34,211,238';
       var dur = 1.4;
-
-      var pathId = 'cmt-' + Math.random().toString(36).slice(2, 9);
-      var path = document.createElementNS(SVG_NS, 'path');
-      path.setAttribute('id', pathId);
-      path.setAttribute('d', 'M ' + fromX + ' ' + fromY + ' L ' + toX + ' ' + toY);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'none');
-      svg.appendChild(path);
+      var radius = 0.7 * scale;
 
       var circle = document.createElementNS(SVG_NS, 'circle');
-      circle.setAttribute('r', '0.7');
       circle.setAttribute('class', isOutbound ? 'comet-out' : 'comet-in');
-      circle.setAttribute('opacity', '0');
-
-      var motion = document.createElementNS(SVG_NS, 'animateMotion');
-      motion.setAttribute('dur', dur + 's');
-      motion.setAttribute('repeatCount', '1');
-      motion.setAttribute('fill', 'freeze');
-      motion.setAttribute('begin', 'indefinite');
-      var mpath = document.createElementNS(SVG_NS, 'mpath');
-      mpath.setAttribute('href', '#' + pathId);
-      motion.appendChild(mpath);
-      circle.appendChild(motion);
-      var op = makeAnimate('opacity', '0;1;1;0', '0;0.1;0.92;1', dur);
-      circle.appendChild(op);
+      circle.setAttribute('cx', fromX);
+      circle.setAttribute('cy', fromY);
+      circle.setAttribute('r', radius);
+      circle.setAttribute('opacity', 0);
       svg.appendChild(circle);
-      startAnim(motion); startAnim(op);
 
-      // Impact ring fires at the star — at end of inbound, at start of outbound.
-      var ringBegin = isOutbound ? 0 : dur * 0.92;
-      spawnImpactRing(cx, cy, rgbStr, ringBegin, 0.22);
+      var tl = gsap.timeline({
+        onComplete: function () { circle.remove(); }
+      });
+      // Pure GSAP attr tween — replaces the prior animateMotion + animate-opacity
+      // mixed-paradigm path. Single timeline owns lifecycle and cleanup.
+      tl.to(circle, {
+        duration: dur,
+        attr: { cx: toX, cy: toY },
+        ease: 'power1.inOut'
+      }, 0).to(circle, {
+        duration: dur * 0.1,
+        opacity: 1,
+        ease: 'power2.out'
+      }, 0).to(circle, {
+        duration: dur * 0.08,
+        opacity: 0,
+        ease: 'power2.in'
+      }, dur * 0.92);
 
-      setTimeout(function () {
-        circle.remove();
-        path.remove();
-      }, (dur + 0.3) * 1000);
-    }
-
-    var statusEl = document.getElementById('constellation-status');
-    function setStatus(text) {
-      if (statusEl) statusEl.textContent = '10 POOLS · ' + text;
+      // Impact ring fires at the star — end of inbound, start of outbound.
+      var ringDelay = isOutbound ? 0 : dur * 0.92;
+      gsap.delayedCall(ringDelay, function () {
+        spawnImpactRing(cx, cy, rgbStr, scale, 0.22);
+      });
     }
 
     var mode = (function () {
@@ -847,14 +887,14 @@
           events.forEach(function (ev) {
             if (seenIds.has(ev.id)) return;
             seenIds.add(ev.id);
-            // On the very first poll, mark all pre-existing events as seen
-            // without firing — we don't want a flurry of stale comets on load.
-            if (firstPoll) return;
+            if (firstPoll) return;       // mark stale events seen without firing
             var star = stars[ev.amm_account];
             if (!star) return;
             firedThisPoll++;
-            setTimeout(function () { fireComet(star, ev.event_type); },
-                       Math.random() * 250);
+            var mag = ev.magnitude_xrp_drops;
+            gsap.delayedCall(Math.random() * 0.25, function () {
+              fireComet(star, ev.event_type, mag);
+            });
           });
           if (firstPoll) {
             firstPoll = false;
@@ -872,11 +912,9 @@
         .then(function () { polling = false; });
     }
 
-    // Simulated mode — generates fake events so users can preview what the
-    // constellation looks like when liquidity is actively moving. Top-3 pools
-    // get heavier weighting and the swap > deposit > withdraw mix mirrors
-    // typical AMM activity. Toggle is amber-tinted so the demo state is
-    // never mistaken for real on-chain data.
+    // Simulated mode — neutral-scale comets only (no fake magnitudes injected).
+    // Top-3 weighted; mix mirrors typical AMM activity. Amber toggle so the
+    // demo state is never mistaken for real on-chain data.
     var simTimer = null;
     var starList = Array.prototype.slice.call(
       constellation.querySelectorAll('.star-node[data-amm]')
@@ -890,7 +928,7 @@
           : Math.floor(Math.random() * starList.length);
         var r = Math.random();
         var et = r < 0.65 ? 'swap' : r < 0.85 ? 'deposit' : 'withdraw';
-        fireComet(starList[idx], et);
+        fireComet(starList[idx], et, null);   // null → neutral 1.0 scale
       }
       simTimer = setTimeout(simTick, 400 + Math.random() * 700);
     }
@@ -915,7 +953,7 @@
         startSim();
       } else {
         stopSim();
-        firstPoll = true;       // re-arm so toggling back doesn't dump stale events
+        firstPoll = true;
         setStatus('STANDBY');
         poll();
       }
@@ -934,9 +972,9 @@
     applyMode();
     setInterval(poll, POLL_MS);
 
-    // Expose for the live-WebSocket IIFE below so it can drive the same
-    // comet animations off direct XRPL transaction events. seenIds is
-    // shared so dedupe works whether an event arrived via /api or via WS.
+    // Exposed for the WebSocket IIFE below — WS path has no magnitude yet,
+    // so it renders at neutral 1.0 scale until client-side meta extraction
+    // is added. seenIds shared with poll path for cross-source dedupe.
     window.__poolsConstellation = {
       fireForAmm: function (amm, eventType, txId) {
         if (mode !== 'live') return;
@@ -944,7 +982,7 @@
         if (txId) seenIds.add(txId);
         var star = stars[amm];
         if (!star) return;
-        fireComet(star, eventType);
+        fireComet(star, eventType, null);
         setStatus('LIVE');
       },
       knownAmms: function () { return Object.keys(stars); }

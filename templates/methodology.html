@@ -383,6 +383,42 @@
   with ⚠ on <a href="/pools">/pools</a>.
   {%- endtrans %}</p>
 
+  <h2 id="pools-constellation">{{ _('Pools constellation — how comets are sized') }}</h2>
+  <p>{% trans -%}
+  The constellation on <a href="/pools">/pools</a> fires a comet at the matching star
+  whenever a top-10 AMM pool sees an on-chain event: cyan inbound for
+  <code>AMMDeposit</code>, amber outbound for <code>AMMWithdraw</code>, white impact ring
+  for a <code>Payment</code> swap routed through the pool. The comet's <em>size</em> carries
+  one extra dimension — the magnitude of XRP that moved on the XRP side of the pool
+  in that transaction.
+  {%- endtrans %}</p>
+  <p>{% trans -%}
+  The XRP-side delta is extracted from the transaction's <code>meta.AffectedNodes</code>
+  block by the XRPL streaming worker (<code>xrpl_stream.py</code>) at write time — never
+  re-derived client-side. For IOU↔IOU swaps and pre-walker rows where no XRP delta
+  is available, magnitude is recorded as NULL and the comet renders at neutral scale
+  (1.0×) — honest "unknown", not a guessed value. Walker began writing magnitudes
+  on 2026-06-10 at 12:21 UTC; events before that bootstrap timestamp will always
+  render neutral.
+  {%- endtrans %}</p>
+  <div class="callout">
+    <p><strong>{{ _('Scaling math.') }}</strong> {{ _('Sublinear log scale on the XRP side, calibrated against live percentile data so dust transfers stay perceptible without flooring everything to a single value:') }}</p>
+    <pre style="font-family: var(--mono); font-size: 0.78rem; padding: 0.6rem 0.8rem; background: rgba(15,23,42,0.5); border-left: 2px solid rgba(34,211,238,0.4); margin: 0.4rem 0; overflow-x: auto;">scale = clamp(0.7, 0.7 + 0.25 · log₁₀(xrp · 100 + 1), 2.0)</pre>
+    <p>{{ _('Anchor points against the live distribution:') }}
+      {{ _('dust (1 drop) → 0.70× floor;') }}
+      {{ _('p50 (0.10 XRP) → 0.96×;') }}
+      {{ _('p95 (46 XRP) → 1.62×;') }}
+      {{ _('p99 (259 XRP) → 1.80×;') }}
+      {{ _('max observed (3,641 XRP) → 2.0× cap.') }}
+    </p>
+  </div>
+  <p>{% trans -%}
+  Under <code>prefers-reduced-motion</code> the comets are suppressed entirely;
+  the constellation status pill flashes the event label (DEPOSIT / WITHDRAW / SWAP)
+  in the matching colour for 250 ms instead. Information is delivered, motion is
+  not — same accessibility contract as the homepage globe.
+  {%- endtrans %}</p>
+
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
     <!-- "100,000 XRP" mirrors WHALE_XRP_THRESHOLD (app.py); injected via inject_whale_thresholds -->
