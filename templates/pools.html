@@ -510,6 +510,16 @@
           _("Pools where neither side is XRP — for example, RLUSD/USDC. We track and rank them, but we don't add them to the headline TVL because pricing them in dollars without an XRP leg means guessing. Count is shown here for transparency; their value isn't included in the $ figure above."),
         ) }}</div>
       </div>
+      {% if spoof_count_all and spoof_count_all > 0 %}
+      <div class="stat vibes-spot">
+        <div class="n" data-countup="{{ spoof_count_all }}" data-countup-decimals="0">{{ "{:,}".format(spoof_count_all) }}</div>
+        <div class="l">{{ _('flagged spoof sides') }}{{ explainer(
+          "spoof-flagged",
+          _("What 'flagged spoof sides' means"),
+          _("Pool sides where the currency code matches a TOML-attested brand (e.g. RLUSD, OUSG) but the issuer wallet is not the attested issuer. The ⚠ marker renders next to the pair on /pools — these pools sit below the top-100 TVL band, so opening 'browse all →' is where you see them. Verifiable: the substrate is the same one /rwa uses to gate inclusion in verified families."),
+        ) }}</div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
   </div>

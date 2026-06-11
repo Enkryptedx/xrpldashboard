@@ -2179,7 +2179,31 @@ def about():
             attested_count = len(json.load(f))
     except Exception:
         pass
-    return render_template("about.html", attested_count=attested_count)
+    amendments_in_flight = None
+    try:
+        amendments_in_flight = (
+            fetch_amendments_state_cached().get("in_flight_count")
+        )
+    except Exception:
+        pass
+    rwa_family_count = None
+    try:
+        if db.pg_available():
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM rwa_family "
+                        "WHERE attestation_level = 'verified'"
+                    )
+                    rwa_family_count = cur.fetchone()[0]
+    except Exception:
+        pass
+    return render_template(
+        "about.html",
+        attested_count=attested_count,
+        amendments_in_flight=amendments_in_flight,
+        rwa_family_count=rwa_family_count,
+    )
 
 
 @app.route("/rlusd")
@@ -3235,6 +3259,12 @@ def pools():
     # by construction: ranked_count == exact + estimated + non_xrp_pair
     # even if error rows are present in the ranked list.
     ranked_count = exact_count_all + estimated_count_all + non_xrp_pair_count_all
+    spoof_count_all = sum(
+        1
+        for r in ranked
+        for side in (r.get("asset_a"), r.get("asset_b"))
+        if isinstance(side, dict) and side.get("unverified_brand")
+    )
     rank_finished = meta.get("finished_at") is not None
     rank_started = meta.get("started_at") is not None
     rank_in_progress = rank_started and not rank_finished
@@ -3284,6 +3314,7 @@ def pools():
         exact_count_all=exact_count_all,
         estimated_count_all=estimated_count_all,
         non_xrp_pair_count_all=non_xrp_pair_count_all,
+        spoof_count_all=spoof_count_all,
         rank_finished=rank_finished,
         rank_in_progress=rank_in_progress,
         total_tvl_usd=total_tvl_usd,

@@ -109,6 +109,10 @@ def fetch_cold_storage():
         "rows": rows,
         "total_xrp": total_xrp,
         "tracked_count": len(rows),
+        "escrow_account_count": sum(
+            1 for _, meta in addresses
+            if "RLUSD" not in (meta.get("name") or "")
+        ),
         "fetched_ok": fetched_ok,
         "largest_name": largest["name"] if largest else None,
         "largest_xrp": largest["balance_xrp"] if largest else 0.0,

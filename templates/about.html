@@ -107,13 +107,13 @@
       <li>{{ _('Signed Ed25519 daily snapshots with Merkle-chained manifests; fingerprint pin on /, /pools, /mpts, /rwa, /rlusd, /about, /methodology, /learn') }}</li>
       <li>{{ _('Brand-warn substrate publicly excluding identified issuer spoofs (Ripple Treasury variants, BlackRock vanity, Franklin Templeton, GTreasury)') }}</li>
       <li>{{ _('/learn explainer page with live ledger heartbeat hero') }}</li>
-      <li>{{ _('/rwa institutional tracker with 3 verified families (OpenEden, Midas-via-Axelar, Ondo Finance) and transparent exclusion list') }}</li>
+      <li>{% if rwa_family_count %}{{ _('/rwa institutional tracker with %(n)s verified families and transparent exclusion list', n=rwa_family_count) }}{% else %}{{ _('/rwa institutional tracker with verified families and transparent exclusion list') }}{% endif %}</li>
       <li>{{ _('MPT walker with concentration metrics and supply-history archive depth honesty') }}</li>
       <li>{{ _('Server-side signed QR codes on wallet pages (XLS-44d payment URI)') }}</li>
       <li>{{ _('Live whale streaming via WebSocket with 60-second server reconcile') }}</li>
-      <li>{{ _('/amendments live tracker — 13 in-flight protocol amendments summarized in plain language, plus truth-first disclosure of an unknown-hash entry') }}</li>
+      <li>{% if amendments_in_flight is not none %}{{ _('/amendments live tracker — %(n)s in-flight protocol amendments summarized in plain language, plus truth-first disclosure of an unknown-hash entry', n=amendments_in_flight) }}{% else %}{{ _('/amendments live tracker — in-flight protocol amendments summarized in plain language, plus truth-first disclosure of an unknown-hash entry') }}{% endif %}</li>
       <li>{{ _('/credentials live tracker for XLS-70 on-ledger KYC attestations with continuous SHAMap walk and recent-transaction scan') }}</li>
-      <li>{{ _('/cold-storage page surfacing every escrow-locked XRP account, including Ripple\'s 21-account programmatic vesting schedule') }}</li>
+      <li>{{ _('/cold-storage page surfacing every escrow-locked XRP account, including Ripple\'s 20-account programmatic vesting schedule') }}</li>
       <li>{{ _('/verify step-by-step guide for issuers to publish two-way TOML attestation (Domain field + xrp-ledger.toml) and earn the green ✓ badge') }}</li>
       {% if attested_count %}
       <li>{{ attested_count }} {{ _('institutional accounts verified via two-way TOML attestation') }}</li>

@@ -301,7 +301,7 @@
     <li>{{ _('Fetch our public key from <a href="/.well-known/snapshots/pubkey.pem">/.well-known/snapshots/pubkey.pem</a>, cross-check the fingerprint against this page, <a href="/about#signed-snapshots">/about</a>, and DNS TXT <code>_xrpld-snapshot-key.xrpldashboard.com</code>. All four sources must agree.') | safe }}</li>
     <li>{{ _('Re-derive the leaf hash: SHA-256 of (<code>0x00</code> || canonical-JSON of the <code>{signing_domain, schema_version, snapshot_date_utc, metrics}</code> subset).') | safe }}</li>
     <li>{{ _('Walk the <code>audit_path</code> from the leaf, hashing each pair with the <code>0x01</code> domain separator. The result must equal the published <code>chain_root</code>.') | safe }}</li>
-    <li>{{ _('Verify the Ed25519 signature in <code>signature_ed25519</code> against the canonical-JSON of the envelope summary <code>{signing_domain, schema_version, snapshot_date_utc, leaf_hash, leaf_index, leaves_total, chain_root, previous_root}</code>, using the public key from step 1.') | safe }}</li>
+    <li>{{ _('Verify the Ed25519 signature in <code>signature_ed25519</code> (hex-encoded) against the canonical-JSON of the envelope summary <code>{signing_domain, schema_version, snapshot_date_utc, leaf_hash, leaf_index, leaves_total, chain_root, previous_root}</code>, using the public key from step 1.') | safe }}</li>
   </ol>
   <p>
     {{ _('Our') }} <a href="/snapshots/verify">{{ _('one-click verification form') }}</a>
@@ -323,7 +323,7 @@
       {% endif %}
     </p>
     <p>
-      {{ _('Schema version:') }} <code>1</code>.
+      {{ _('Schema version:') }} <code>2</code>.
       {{ _('Signing domain:') }} <code>xrpldashboard.com/signed_snapshot/v1</code>.
       {{ _('Curve:') }} <code>Ed25519</code>.
       {{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.

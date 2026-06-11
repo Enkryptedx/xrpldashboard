@@ -164,7 +164,7 @@
       {% if locked and locked.total_xrp %}
         <div class="hero-name"><h1>{{ "{:,.0f}".format(locked.total_xrp) }} {{ _('XRP locked') }}</h1></div>
         <div class="hero-meta">
-          {{ _('Across') }} {{ locked.object_count }} {{ _('active escrow objects on') }} {{ data.tracked_count }} {{ _('Ripple monthly-release accounts.') }}
+          {{ _('Across') }} {{ locked.object_count }} {{ _('active escrow objects on') }} {{ data.escrow_account_count }} {{ _('Ripple monthly-release accounts.') }}
           {{ _('Liquid balance on these accounts:') }} <strong style="color: var(--text);">{{ "{:,.0f}".format(data.total_xrp) }} XRP</strong>
           ({{ _('unlocked but not yet swept') }}).
           {% if locked.cached_age_seconds is defined and locked.cached_age_seconds > 0 %}
@@ -174,7 +174,7 @@
       {% else %}
         <div class="hero-name"><h1>{{ "{:,.0f}".format(data.total_xrp) }} {{ _('XRP liquid') }}</h1></div>
         <div class="hero-meta">
-          {{ _('Liquid balance across') }} {{ data.tracked_count }} {{ _('Ripple monthly-release accounts. Locked escrow total is loading — refresh in a moment.') }}
+          {{ _('Liquid balance across') }} {{ data.escrow_account_count }} {{ _('Ripple monthly-release accounts. Locked escrow total is loading — refresh in a moment.') }}
         </div>
       {% endif %}
     </div>
