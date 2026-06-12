@@ -119,10 +119,16 @@
     .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
     .copy-btn.ok { color: var(--green); border-color: var(--green); }
 
+    .weight-caption-mobile { display: none; }
+
     @media (max-width: 600px) {
       .signers-table th.weight-col,
       .signers-table td.weight { display: none; }
       .signers-table td.addr { word-break: break-all; font-size: 0.78rem; }
+      .weight-caption-mobile {
+        display: block; color: var(--dim);
+        font-size: 0.78rem; margin: 8px 0 0;
+      }
     }
 
     /* Rotation timeline */
@@ -202,6 +208,17 @@
         <h2>{{ _('Current verifier set') }}</h2>
         <p class="dim" style="font-size: 0.88rem; margin: -4px 0 8px;">
           {{ _('Every verifier on the gateway SignerList, ordered as stored on-chain. Click an address to open its /wallet view.') }}
+        </p>
+        <p class="dim" style="font-size: 0.88rem; margin: 0 0 8px;">
+          {{ _('Verifier addresses sign authorizations but don\'t custody funds — bridged value is held by the') }}
+          <a href="/wallet/{{ gateway_address }}">{{ _('gateway account') }}</a>.
+        </p>
+        <p class="weight-caption-mobile">
+          {% if state.is_uniform %}
+            {{ _('All %(n)d verifiers carry equal weight.', n=state.signer_entries|length) }}
+          {% else %}
+            {{ _('Verifier weights vary — see the desktop view for the full breakdown.') }}
+          {% endif %}
         </p>
         <table class="signers-table">
           <thead>
