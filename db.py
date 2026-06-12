@@ -1462,6 +1462,47 @@ def read_latest_bridge_signers():
         return None
 
 
+def read_bridge_signer_rotations():
+    """Return every observed SignerListSet rotation (tx_hash != 'BOOTSTRAP')
+    ordered oldest → newest, with the prior row's signer_count and quorum
+    attached for diff display. The bootstrap row participates as the
+    "previous state" for the first rotation but is not itself returned.
+
+    Empty list when PG unavailable, table empty, or no real rotations
+    have been observed yet."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ledger_index, close_time, quorum, signer_count, "
+                    "       tx_hash "
+                    "  FROM bridge_signer_history "
+                    " ORDER BY ledger_index ASC"
+                )
+                rows = cur.fetchall()
+                out = []
+                prev = None
+                for r in rows:
+                    if r[4] == "BOOTSTRAP":
+                        prev = (r[3], r[2])
+                        continue
+                    out.append({
+                        "ledger_index": r[0],
+                        "close_time": r[1],
+                        "quorum": r[2],
+                        "signer_count": r[3],
+                        "tx_hash": r[4],
+                        "prev_signer_count": prev[0] if prev else None,
+                        "prev_quorum": prev[1] if prev else None,
+                    })
+                    prev = (r[3], r[2])
+                return out
+    except Exception:
+        return []
+
+
 # ─────────────────────────────────────────────────────────────────────
 # /permissioned-domains (XLS-80) — Phase 1: walker writes, no UI yet.
 # Append-only history: one row per (snapshot_date, domain_id) and one

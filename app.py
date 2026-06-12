@@ -2502,7 +2502,13 @@ def _load_latest_bridge_signers():
     weights = [int(e.get("weight", 0)) for e in entries if e.get("weight")]
     is_uniform = bool(weights) and len(set(weights)) == 1
     uniform_weight = weights[0] if is_uniform else None
-    required = (int(row["quorum"]) // uniform_weight) if is_uniform and uniform_weight else None
+    # Ceiling division: M signers each at uniform_weight must SUM >= quorum.
+    # Floor division understates by 1 whenever quorum is not a clean multiple
+    # of weight (e.g. 1223320 / 65535 = 18.66 → must be 19, not 18).
+    required = (
+        -(-int(row["quorum"]) // uniform_weight)
+        if is_uniform and uniform_weight else None
+    )
     return {
         **row,
         "is_uniform": is_uniform,
@@ -2549,15 +2555,20 @@ def sidechain():
     written_at would drift to 'months ago' while the dashboard is
     actively working as designed."""
     state = _load_latest_bridge_signers()
+    rotations = db.read_bridge_signer_rotations()
     walker = db.read_walker_health("bridge_signer_walker")
     walker_age = walker.get("last_success_age_seconds") if walker else None
     data_age_label = _format_age_seconds(
         int(walker_age) if walker_age is not None else None
     )
+    # Gateway r-address mirrors bridge_signer_walker.AXELAR_GATEWAY.
+    gateway_address = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
     resp = make_response(render_template(
         "sidechain.html",
         state=state,
+        rotations=rotations,
         data_age_label=data_age_label,
+        gateway_address=gateway_address,
     ))
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp

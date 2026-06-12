@@ -419,6 +419,40 @@
   not — same accessibility contract as the homepage globe.
   {%- endtrans %}</p>
 
+  <h2 id="sidechain">{{ _('Sidechain bridge — how the verifier set is read') }}</h2>
+  <p>{% trans -%}
+  <a href="/sidechain">/sidechain</a> renders one row from
+  <code>bridge_signer_history</code> — the most recent observed state of the
+  SignerList on the Axelar XRPL Gateway account
+  <code>rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw</code>. The hero stat is computed from
+  that row at request time: when every signer carries the same weight the page
+  shows <code>M-of-N</code> (quorum ÷ uniform weight = the count that must agree);
+  when weights diverge it shows the raw quorum and signer count instead, because
+  a flat M-of-N would mislead.
+  {%- endtrans %}</p>
+  <p>{% trans -%}
+  The walker (<code>bridge_signer_walker.py</code>) runs hourly via launchd. On its
+  first run it took an <code>account_objects</code> snapshot of the live SignerList
+  and wrote one row with <code>tx_hash = 'BOOTSTRAP'</code> — that row anchors the
+  rotation timeline but does not itself count as a rotation. From there each pass
+  scans <code>account_tx</code> on the gateway in the validated-ledger range,
+  filters for <code>SignerListSet</code> transactions with <code>tesSUCCESS</code>,
+  and inserts one row per observed rotation. The PK on
+  <code>(ledger_index, tx_hash)</code> makes overlapping re-runs idempotent.
+  {%- endtrans %}</p>
+  <p>{% trans -%}
+  <strong>Bootstrap horizon: 2026-06-08 11:07 UTC.</strong> Any verifier rotation
+  that happened before that ledger is not in our timeline — same shape as the
+  pools-constellation magnitude horizon above. The freshness pill on the page is
+  driven by the walker's last successful run, not by the row's
+  <code>close_time</code>: rotations are rare, so a "data fresh 1 hour ago" badge
+  means the walker checked the chain an hour ago and found no new rotation —
+  not that the multisig itself changed. Cross-references to
+  <a href="https://axelarscan.io/" target="_blank" rel="noopener">axelarscan.io</a>
+  and <a href="https://bithomp.com/explorer/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw" target="_blank" rel="noopener">bithomp's gateway view</a>
+  are linked on the page for anyone who wants to verify against the canonical XRPL ledger directly.
+  {%- endtrans %}</p>
+
   <h2>{{ _('Methodology notes') }}</h2>
   <ul>
     <!-- "100,000 XRP" mirrors WHALE_XRP_THRESHOLD (app.py); injected via inject_whale_thresholds -->

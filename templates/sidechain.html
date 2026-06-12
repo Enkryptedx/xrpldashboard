@@ -87,6 +87,73 @@
     .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
               padding-top: 20px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
+
+    /* Verifier table */
+    .signers-table {
+      width: 100%; border-collapse: collapse;
+      font-family: var(--mono); font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      margin: 8px 0 0;
+    }
+    .signers-table th, .signers-table td {
+      padding: 8px 10px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .signers-table th {
+      color: var(--muted); font-weight: 600;
+      font-size: 0.78rem; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .signers-table td.rank { color: var(--dim); width: 36px; }
+    .signers-table td.addr a { color: var(--cyan); }
+    .signers-table td.weight { color: var(--dim); text-align: right;
+                               white-space: nowrap; }
+    .signers-table td.copy { width: 28px; text-align: right; }
+    .copy-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); border-radius: 4px;
+      padding: 2px 6px; font-family: var(--mono);
+      font-size: 0.72rem; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+    .copy-btn.ok { color: var(--green); border-color: var(--green); }
+
+    @media (max-width: 600px) {
+      .signers-table th.weight-col,
+      .signers-table td.weight { display: none; }
+      .signers-table td.addr { word-break: break-all; font-size: 0.78rem; }
+    }
+
+    /* Rotation timeline */
+    .rotation {
+      border-left: 2px solid rgba(34,211,238,0.4);
+      padding: 4px 0 4px 16px;
+      margin: 0 0 14px;
+    }
+    .rotation .when {
+      font-family: var(--mono); font-size: 0.85rem;
+      color: var(--cyan); font-variant-numeric: tabular-nums;
+    }
+    .rotation .delta { color: var(--text); font-size: 0.95rem; margin: 4px 0 0; }
+    .rotation .tx {
+      font-family: var(--mono); font-size: 0.78rem;
+      color: var(--dim); margin: 2px 0 0;
+      word-break: break-all;
+    }
+    .rotation .tx a { color: var(--dim); }
+    .rotation .tx a:hover { color: var(--cyan); }
+
+    /* About / cross-links */
+    .about p { margin: 0 0 12px; }
+    .crosslinks {
+      font-size: 0.88rem; color: var(--dim);
+      padding: 14px 0; border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin: 24px 0;
+    }
+    .crosslinks a { color: var(--cyan); }
+    .crosslinks .label { color: var(--muted); margin-right: 8px; }
   </style>
 </head>
 <body>
@@ -94,7 +161,13 @@
   <div class="wrap">
     <h1>{{ _('XRPL EVM Sidechain bridge') }}</h1>
     <p class="lede">
-      {{ _('30 verifiers in the Axelar network sign every bridge operation between XRPL and the XRPL EVM Sidechain. 20 must agree.') }}
+      {% if state and state.is_uniform and state.required_signers %}
+        {{ _('%(n)d verifiers in the Axelar network sign every bridge operation between XRPL and the XRPL EVM Sidechain. %(m)d must agree.', n=state.signer_count, m=state.required_signers) }}
+      {% elif state %}
+        {{ _('The Axelar verifier set signs every bridge operation between XRPL and the XRPL EVM Sidechain. %(n)d verifiers; weighted multisig with quorum %(q)s.', n=state.signer_count, q='{:,}'.format(state.quorum)) }}
+      {% else %}
+        {{ _('The Axelar verifier set signs every bridge operation between XRPL and the XRPL EVM Sidechain.') }}
+      {% endif %}
     </p>
 
     {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
@@ -108,16 +181,147 @@
           <div class="stat-sub">{{ _('to authorize · 2/3 majority required') }}</div>
         {% else %}
           <div class="stat-big">Q = {{ '{:,}'.format(state.quorum) }}</div>
-          <div class="stat-sub">{{ _('weighted multisig · %(n)d signers') | format(n=state.signer_count) }}</div>
+          <div class="stat-sub">{{ _('weighted multisig · %(n)d signers', n=state.signer_count) }}</div>
         {% endif %}
         <div class="stat-meta mono dim">
           {{ _('ledger') }} {{ '{:,}'.format(state.ledger_index) }}
           · {{ state.close_time.strftime('%Y-%m-%d %H:%M UTC') }}
         </div>
       </div>
+
+      <div class="crosslinks">
+        <span class="label">{{ _('Cross-references:') }}</span>
+        <a href="https://bithomp.com/explorer/{{ gateway_address }}" target="_blank" rel="noopener">bithomp/{{ gateway_address[:6] }}…</a>
+        ·
+        <a href="https://axelarscan.io/" target="_blank" rel="noopener">axelarscan.io</a>
+        ·
+        <a href="/wallet/{{ gateway_address }}">{{ _('gateway on /wallet') }}</a>
+      </div>
+
+      {% if state.signer_entries %}
+        <h2>{{ _('Current verifier set') }}</h2>
+        <p class="dim" style="font-size: 0.88rem; margin: -4px 0 8px;">
+          {{ _('Every verifier on the gateway SignerList, ordered as stored on-chain. Click an address to open its /wallet view.') }}
+        </p>
+        <table class="signers-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{{ _('Verifier address') }}</th>
+              <th class="weight-col" style="text-align: right;">{{ _('Weight') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in state.signer_entries %}
+              {% set addr = entry.account %}
+              <tr>
+                <td class="rank">{{ loop.index }}</td>
+                <td class="addr"><a href="/wallet/{{ addr }}">{{ addr }}</a></td>
+                <td class="weight">
+                  {% if state.is_uniform %}
+                    {{ '{:,}'.format(entry.weight) }} <span class="dim">({{ _('uniform') }})</span>
+                  {% else %}
+                    {{ '{:,}'.format(entry.weight) }}
+                  {% endif %}
+                </td>
+                <td class="copy">
+                  <button class="copy-btn" data-addr="{{ addr }}" aria-label="{{ _('Copy address') }}">{{ _('copy') }}</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <script>
+          document.querySelectorAll('.copy-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var addr = btn.getAttribute('data-addr');
+              if (!addr) return;
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(addr).then(function () {
+                  btn.classList.add('ok');
+                  var prev = btn.textContent;
+                  btn.textContent = '{{ _("copied") }}';
+                  setTimeout(function () {
+                    btn.classList.remove('ok');
+                    btn.textContent = prev;
+                  }, 1400);
+                });
+              }
+            });
+          });
+        </script>
+      {% endif %}
     {% else %}
       <p class="dim">{{ _('Bridge data temporarily unavailable. Refreshing.') }}</p>
     {% endif %}
+
+    <h2>{{ _('Rotation history') }}</h2>
+    {% if rotations %}
+      <p class="dim" style="font-size: 0.88rem; margin: -4px 0 12px;">
+        {{ _('Every SignerListSet observed since the bootstrap snapshot. Bootstrap was 2026-06-08 — rotations before that date were not captured by this walker.') }}
+      </p>
+      {% for r in rotations | reverse %}
+        <div class="rotation">
+          <div class="when">
+            {{ r.close_time.strftime('%Y-%m-%d %H:%M UTC') }}
+            <span class="dim">· {{ _('ledger') }} {{ '{:,}'.format(r.ledger_index) }}</span>
+          </div>
+          <div class="delta">
+            {% if r.prev_signer_count and r.prev_signer_count != r.signer_count %}
+              {{ _('Verifiers') }}: {{ r.prev_signer_count }} → <strong>{{ r.signer_count }}</strong>
+            {% else %}
+              {{ _('Verifiers') }}: <strong>{{ r.signer_count }}</strong>
+            {% endif %}
+            <span class="dim">·</span>
+            {% if r.prev_quorum and r.prev_quorum != r.quorum %}
+              {{ _('quorum') }} {{ '{:,}'.format(r.prev_quorum) }} → <strong>{{ '{:,}'.format(r.quorum) }}</strong>
+            {% else %}
+              {{ _('quorum') }} <strong>{{ '{:,}'.format(r.quorum) }}</strong>
+            {% endif %}
+          </div>
+          <div class="tx">
+            tx <a href="https://bithomp.com/explorer/{{ r.tx_hash }}" target="_blank" rel="noopener">{{ r.tx_hash[:16] }}…</a>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="dim">{{ _('No verifier rotations observed yet since the bootstrap snapshot on 2026-06-08.') }}</p>
+    {% endif %}
+
+    <h2>{{ _('About the bridge') }}</h2>
+    <div class="about">
+      <p>{% trans -%}
+      The XRPL EVM Sidechain bridge runs on Axelar Amplifier — Axelar's framework for
+      connecting new chains to its interchain network. On the XRPL side, a single
+      account holds the SignerList that authorizes every bridge operation; that account
+      is the receiving address for user-initiated bridge transfers and the signing
+      account for messages relayed back from the Sidechain.
+      {%- endtrans %}</p>
+      <p>{% trans -%}
+      A bridge transfer starts as a regular XRPL <code>Payment</code> transaction sent to
+      that account, with hex-encoded memos carrying the destination chain, contract,
+      and ABI-encoded payload. The Axelar network verifies the payment and relays it
+      to the Sidechain, where the Amplifier gateway approves the message and a relayer
+      executes the call on the target contract.
+      {%- endtrans %}</p>
+      <p>{% trans -%}
+      The verifiers themselves are Amplifier participants who post a bond
+      (50,000 AXL on mainnet) and register support for specific chains via an
+      <code>xrpl-handler</code> binary. The set above is what XRPL mainnet sees today;
+      the observed quorum sits at roughly two thirds of total signer weight, which is
+      the safety property — not the verifier count itself. When the set rotates,
+      it shows up here as a new <code>SignerListSet</code> transaction on the gateway
+      account, recorded in the timeline above.
+      {%- endtrans %}</p>
+      <p class="dim" style="font-size: 0.85rem;">
+        {{ _('Sources:') }}
+        <a href="https://docs.axelar.dev/dev/amplifier/introduction/" target="_blank" rel="noopener">Axelar Amplifier overview</a> ·
+        <a href="https://docs.axelar.dev/validator/amplifier/verifier-onboarding/" target="_blank" rel="noopener">Verifier onboarding</a> ·
+        <a href="https://docs.xrplevm.org/pages/bridge/general-message-passing" target="_blank" rel="noopener">XRPL EVM bridge — general message passing</a>.
+        {{ _('Methodology:') }} <a href="/methodology#sidechain">/methodology#sidechain</a>.
+      </p>
+    </div>
 
     <div class="footer">
       <a href="/">← {{ _('back to dashboard') }}</a>
