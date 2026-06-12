@@ -2615,6 +2615,147 @@ BOT_PATH_PATTERNS = (
     # path will be mis-bucketed as bot traffic. Avoid that substring.
     "%backup%",
     "%dump.sql",
+    # Credential-probe scanner targets. Real visitors never request
+    # these. Anchored on filenames + leading `/.` so a future legit
+    # route like /credentials, /private/foo, or /idea-tracker can't
+    # collide. Each line covers a behavior CLASS, not just one URL
+    # from one observed scanner. Conservative bias: omit any pattern
+    # whose substring could plausibly appear in a real product route.
+    "%/.bash_history%",
+    "%/.bashrc%",
+    "%/.zshrc%",
+    "%/.profile%",
+    "%/.gitconfig%",
+    "%/.netrc%",
+    "%/.npmrc%",
+    "%/.pypirc%",
+    "%/.htpasswd%",
+    "%/.htaccess%",
+    "%/.user.ini%",
+    "%/.idea/%",
+    "%/.vscode/%",
+    "%/.circleci/%",
+    "%/.drone%",
+    "%/.buildkite/%",
+    "%/.docker/%",
+    "%/.gcloud/%",
+    "%/.config/gcloud%",
+    "%/.kube/%",
+    "%/.azure/%",
+    "%/.github/workflows/%",
+    "%/id_rsa%",
+    "%/id_dsa%",
+    "%/authorized_keys%",
+    "%/credentials.json",
+    "%/credentials.db",
+    "%/credentials.yml",
+    "%/credentials.yaml",
+    "%/secrets.json",
+    "%/secrets.yml",
+    "%/secrets.yaml",
+    "%/secrets.env",
+    "%/private/credentials%",
+    # Cloud / service-account credential blobs.
+    "%/service-account.json",
+    "%/serviceaccount.json",
+    "%/firebase-adminsdk.json",
+    "%-credentials.json",
+    "%_credentials.json",
+    "%/aws.json",
+    "%/gcp.json",
+    "%/azure.json",
+    "%/cloud.json",
+    "%/api-keys.json",
+    "%/api_keys.json",
+    "%/keys.json",
+    "%/secret.json",
+    "%/private.json",
+    "%/private_key.pem",
+    "%/server.key",
+    "%/server.pem",
+    # Web server config files.
+    "%/nginx.conf",
+    "%/nginx.config",
+    "%/server.xml",
+    "%/web.config",
+    # JEE leaks — Flask never serves these directory roots.
+    "%/META-INF/%",
+    "%/WEB-INF/%",
+    # Framework debug/management endpoints (Spring Boot, Symfony).
+    "%/actuator/%",
+    "%/_profiler%",
+    "%/profiler/phpinfo%",
+    "%/heapdump",
+    "%/threaddump",
+    "%/configprops",
+    # DevOps/CI/Container/Terraform files.
+    "%/Dockerfile",
+    "%/Jenkinsfile",
+    "%/docker-compose%",
+    "%/k8s.yml",
+    "%/k8s.yaml",
+    "%/kubernetes.yml",
+    "%/kubernetes.yaml",
+    "%/helm/values%",
+    "%/azure-pipelines.yml",
+    "%/bitbucket-pipelines.yml",
+    "%/.travis.yml",
+    "%/terraform.tfstate%",
+    "%/terraform.tfvars%",
+    "%/.terraform/%",
+    # Settings/config file names (anchored — won't match legit routes).
+    "%/application.yml",
+    "%/application.yaml",
+    "%/application.properties",
+    "%/appsettings.json",
+    "%/appsettings.Development.json",
+    "%/appsettings.Production.json",
+    "%/database.yml",
+    "%/database.yaml",
+    "%/database.json",
+    "%/database.ini",
+    "%/database.sql",
+    "%/parameters.yml",
+    "%/parameters.yaml",
+    "%/config.yml",
+    "%/config.yaml",
+    "%/config.ini",
+    "%/config.env",
+    "%/configuration.yml",
+    "%/configuration.json",
+    "%/settings.yml",
+    "%/settings.ini",
+    "%/settings.py",
+    # Server / app log files at URL root.
+    "%/access.log",
+    "%/error.log",
+    "%/debug.log",
+    "%/trace.log",
+    "%/app.log",
+    "%/server.log",
+    "%/application.log",
+    "%/laravel.log",
+    # DB / archive dumps probed at URL root.
+    "%/db.sql",
+    "%/db.sql.gz",
+    "%/dump.sql.gz",
+    "%/data.sql",
+    "%/db.zip",
+    "%/db.yml",
+    "%/site.zip",
+    "%/www.zip",
+    "%/web.zip",
+    "%/dump.zip",
+    # WP backup variants that bypass the existing %wp-* path filter.
+    "%/wp-config.bak",
+    "%/wp-config.txt",
+    "%/wp-config.php.bak",
+    "%/wp-config.php.old",
+    "%/wp-config.php~",
+    # Bare /env (the /.env case is covered above).
+    "%/env",
+    # /trace as Spring management probe (not part of /actuator/ path).
+    "%/trace",
 )
 
 
@@ -2668,8 +2809,12 @@ def _bot_filter_sql(kind):
     """Builds a WHERE-clause fragment that selects human / bot / all rows.
     Returns (fragment, params). Fragment starts with `AND ` so it can be
     appended to an existing WHERE. `kind` is "human", "bot", or "all".
-    A row counts as bot if EITHER its path matches BOT_PATH_PATTERNS or
-    its user_agent matches BOT_UA_PATTERNS."""
+    A row counts as bot if EITHER (a) the row itself matches the path or
+    user_agent patterns, or (b) its visitor_hash appears on ANY bot-shaped
+    row anywhere in page_views. Clause (b) catches rotating-IP scanners
+    that mix credential-probe paths with legit-page reconnaissance under
+    the same (IP, UA) hash — the legit-page rows alone don't trip the
+    row predicate but the session does."""
     if kind == "all":
         return "", []
     path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
@@ -2679,10 +2824,22 @@ def _bot_filter_sql(kind):
     ua_likes = " OR ".join(
         "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
     )
+    row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    # COALESCE on visitor_hash too — NULL-hash rows can't be retroactively
+    # classified by session and shouldn't poison the IN comparison.
+    session_pred = (
+        f"COALESCE(visitor_hash, '') IN ("
+        f"  SELECT visitor_hash FROM page_views "
+        f"  WHERE visitor_hash IS NOT NULL AND {row_pred}"
+        f")"
+    )
+    full_pred = f"({row_pred} OR {session_pred})"
+    # Params: once for row_pred, once for the session subquery's row_pred.
     params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+    params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     if kind == "bot":
-        return f"AND (({path_likes}) OR ({ua_likes}))", params
-    return f"AND NOT (({path_likes}) OR ({ua_likes}))", params
+        return f"AND {full_pred}", params
+    return f"AND NOT {full_pred}", params
 
 
 def log_page_view(path, visitor_hash=None, referrer=None,
