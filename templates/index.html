@@ -593,9 +593,11 @@
         <a href="/lending"{% if _p.startswith('/lending') %} class="active" aria-current="page"{% endif %}>{{ _('lending') }}</a>
         <a href="/amendments"{% if _p.startswith('/amendments') %} class="active" aria-current="page"{% endif %}>{{ _('amendments') }}</a>
         <a href="/network"{% if _p.startswith('/network') %} class="active" aria-current="page"{% endif %}>{{ _('network') }}</a>
+        <a href="/sidechain"{% if _p.startswith('/sidechain') %} class="active" aria-current="page"{% endif %}>{{ _('sidechain') }}</a>
         <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
         <a href="/methodology"{% if _p == '/methodology' %} class="active" aria-current="page"{% endif %}>{{ _('methodology') }}</a>
         <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
+        <a href="/institutional"{% if _p.startswith('/institutional') %} class="active" aria-current="page"{% endif %}>{{ _('institutional') }}</a>
         {% include "_liveness_chip.html" %}
         {# Language switcher — mirrors the one in _nav.html so users stuck
            in the wrong locale can flip back from the homepage. #}
