@@ -35,6 +35,8 @@ from urllib.error import URLError
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountTx, GatewayBalances
 
+import xrpl_client
+
 # macOS Python installs ship without a populated system cert store, so
 # urllib's default SSLContext can't verify HTTPS. certifi ships with the
 # Mozilla CA bundle and is already a transitive dependency via xrpl-py →
@@ -419,7 +421,7 @@ def fetch_xrpl() -> dict:
         "burns_24h": 0.0,
         "error": None,
     }
-    client = JsonRpcClient(XRPL_NODE)
+    client = xrpl_client.get_client(walker_name="rlusd_refresher")
 
     # gateway_balances → total RLUSD obligations (= circulating supply).
     try:

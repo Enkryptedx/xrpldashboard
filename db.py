@@ -557,6 +557,17 @@ CREATE TABLE IF NOT EXISTS bridge_signer_history (
 );
 CREATE INDEX IF NOT EXISTS bridge_signer_history_ledger_desc_idx
     ON bridge_signer_history (ledger_index DESC);
+
+CREATE TABLE IF NOT EXISTS walker_node_fallback (
+    id          BIGSERIAL PRIMARY KEY,
+    ts          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    walker_name TEXT NOT NULL,
+    reason      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS walker_node_fallback_ts_idx
+    ON walker_node_fallback (ts DESC);
+CREATE INDEX IF NOT EXISTS walker_node_fallback_walker_idx
+    ON walker_node_fallback (walker_name, ts DESC);
 """
 
 
@@ -3342,3 +3353,23 @@ def read_signed_snapshot_dates():
                 return [r[0].isoformat() for r in cur.fetchall()]
     except Exception:
         return []
+
+
+def write_walker_node_fallback(walker_name, reason):
+    """Append one row when xrpl_client.XrplClient falls back from the
+    local rippled node to a public endpoint. Used to monitor fallback
+    rate during/after the local-node cutover. Silent no-op when PG isn't
+    configured."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO walker_node_fallback (walker_name, reason) "
+                "VALUES (%s, %s)",
+                (walker_name, reason),
+            )
+    except Exception as e:
+        _log_err(f"write_walker_node_fallback_failed[{walker_name}]", e)
+        _drop_writer_conn()
