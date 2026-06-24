@@ -1943,5 +1943,65 @@
     "name": "Valtorum USD",
     "desc": "Valtorum USD is a permissioned reserve-backed synthetic stable-dollar. Participation requires issuer authorization, but USDV is intentionally designed without centralized freeze powers.",
     "issuer_name": "Valtorum"
+  },
+  "063F0B532C28B1B9B5305AB5316904C14A5BB2DA09B430FE:rnpV7v65kpk4RExbx9TMSGP1trhu9GXkLH": {
+    "currency_hex": "063F0B532C28B1B9B5305AB5316904C14A5BB2DA09B430FE",
+    "currency_display": "tBRL",
+    "issuer": "rnpV7v65kpk4RExbx9TMSGP1trhu9GXkLH",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tokeniza",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
+    "issuer_name": "Tokeniza"
+  },
+  "063F0B585069F82556F862DD9D3248783323D1B7F841BEFD:r3LUrDzpt7eaoVZi5arepjqhMycTxjkTQi": {
+    "currency_hex": "063F0B585069F82556F862DD9D3248783323D1B7F841BEFD",
+    "currency_display": "tBRL",
+    "issuer": "r3LUrDzpt7eaoVZi5arepjqhMycTxjkTQi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tokeniza",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
+    "issuer_name": "Tokeniza"
+  },
+  "063F0B4E3FD4CDD965C736890406D541BC0B3C24132710BB:raFWVyTwpks1hd2rEbi85AtPPnJ3DuwrA9": {
+    "currency_hex": "063F0B4E3FD4CDD965C736890406D541BC0B3C24132710BB",
+    "currency_display": "tBRL",
+    "issuer": "raFWVyTwpks1hd2rEbi85AtPPnJ3DuwrA9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tokeniza",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
+    "issuer_name": "Tokeniza"
+  },
+  "063F7A81620CCBFC064572BB8526F83C38551E59BD6DFF1F:r9ASYAPBCyzW5zEy5H4e66t2oigUdZN14p": {
+    "currency_hex": "063F7A81620CCBFC064572BB8526F83C38551E59BD6DFF1F",
+    "currency_display": "ACME",
+    "issuer": "r9ASYAPBCyzW5zEy5H4e66t2oigUdZN14p",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Acme Corp Token",
+    "desc": "Utility token issued by Acme Corp for internal settlements",
+    "issuer_name": "Acme Corp"
+  },
+  "064178D0A40119AD76298FE42EF89C996A3B02696232C21D:rExB3uFDE92wKYP6vfjt31Lbi6tXpFobUT": {
+    "currency_hex": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+    "currency_display": "VCORE",
+    "issuer": "rExB3uFDE92wKYP6vfjt31Lbi6tXpFobUT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "VGOLD CORE+",
+    "desc": "Gold-backed RWA token on XRP Ledger. Backed by 8.4M oz JORC-certified in-situ gold reserves plus vaulted physical gold.",
+    "issuer_name": "QGP SPC"
+  },
+  "064178BEA40119AD76298FE42EF89C996A3B02696232C21D:rExB3uFDE92wKYP6vfjt31Lbi6tXpFobUT": {
+    "currency_hex": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+    "currency_display": "VCORE",
+    "issuer": "rExB3uFDE92wKYP6vfjt31Lbi6tXpFobUT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "VGOLD CORE+",
+    "desc": "Gold-backed RWA token on XRP Ledger. Backed by 8.4M oz JORC-certified in-situ gold reserves plus vaulted physical gold.",
+    "issuer_name": "QGP SPC"
   }
 }
