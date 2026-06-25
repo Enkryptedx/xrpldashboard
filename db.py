@@ -138,14 +138,23 @@ CREATE TABLE IF NOT EXISTS page_views (
     referrer      TEXT,
     user_agent    TEXT,
     country       TEXT,
-    utm_source    TEXT
+    utm_source    TEXT,
+    ip_day_hash   TEXT
 );
 ALTER TABLE page_views ADD COLUMN IF NOT EXISTS utm_source TEXT;
+-- ip_day_hash links requests from the same client IP across UA rotation,
+-- so a single scanner cycling through Chrome/Firefox/Safari UA strings
+-- gets bucketed as one bot session instead of N distinct "people".
+-- Backfilled NULL on pre-rollout rows; the bot-filter session join uses
+-- COALESCE so NULLs do not poison classification.
+ALTER TABLE page_views ADD COLUMN IF NOT EXISTS ip_day_hash TEXT;
 CREATE INDEX IF NOT EXISTS page_views_ts_idx ON page_views (ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
     ON page_views (path, ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_visitor_idx
     ON page_views (visitor_hash, ts DESC);
+CREATE INDEX IF NOT EXISTS page_views_ip_day_idx
+    ON page_views (ip_day_hash, ts DESC);
 
 -- Single-row JSONB blob mirroring mpt_snapshot.json. Mac worker writes;
 -- Render Flask reads. Render has no local snapshot file so PG is the
@@ -2767,6 +2776,11 @@ BOT_PATH_PATTERNS = (
     "%/env",
     # /trace as Spring management probe (not part of /actuator/ path).
     "%/trace",
+    # WordPress JSON API + RSS/Atom feed paths. xrpldashboard serves no
+    # /wp-json/ or /feed/ routes, so any hit is a recon scanner.
+    "%/wp-json/%",
+    "%/feed/rss%",
+    "%/feed/atom%",
 )
 
 
@@ -2821,11 +2835,13 @@ def _bot_filter_sql(kind):
     Returns (fragment, params). Fragment starts with `AND ` so it can be
     appended to an existing WHERE. `kind` is "human", "bot", or "all".
     A row counts as bot if EITHER (a) the row itself matches the path or
-    user_agent patterns, or (b) its visitor_hash appears on ANY bot-shaped
-    row anywhere in page_views. Clause (b) catches rotating-IP scanners
-    that mix credential-probe paths with legit-page reconnaissance under
-    the same (IP, UA) hash — the legit-page rows alone don't trip the
-    row predicate but the session does."""
+    user_agent patterns, or (b) its visitor_hash OR ip_day_hash appears on
+    ANY bot-shaped row anywhere in page_views. Clause (b)'s two-key form
+    catches both rotating-IP scanners (same UA, many IPs → linked by
+    visitor_hash) and rotating-UA scanners (same IP, many UAs → linked by
+    ip_day_hash). Pre-rollout rows have NULL ip_day_hash; COALESCE keeps
+    them out of the join entirely rather than collapsing to '' which would
+    falsely link unrelated NULL-hash rows."""
     if kind == "all":
         return "", []
     path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
@@ -2836,17 +2852,24 @@ def _bot_filter_sql(kind):
         "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
     )
     row_pred = f"(({path_likes}) OR ({ua_likes}))"
-    # COALESCE on visitor_hash too — NULL-hash rows can't be retroactively
-    # classified by session and shouldn't poison the IN comparison.
+    # Two separate IN subqueries, one per session key. Each only links rows
+    # whose key is NOT NULL on both sides — so NULL ip_day_hash rows (the
+    # entire pre-rollout history) can't collapse into one mega-session.
     session_pred = (
-        f"COALESCE(visitor_hash, '') IN ("
+        f"(visitor_hash IS NOT NULL AND visitor_hash IN ("
         f"  SELECT visitor_hash FROM page_views "
         f"  WHERE visitor_hash IS NOT NULL AND {row_pred}"
-        f")"
+        f"))"
+        f" OR "
+        f"(ip_day_hash IS NOT NULL AND ip_day_hash IN ("
+        f"  SELECT ip_day_hash FROM page_views "
+        f"  WHERE ip_day_hash IS NOT NULL AND {row_pred}"
+        f"))"
     )
     full_pred = f"({row_pred} OR {session_pred})"
-    # Params: once for row_pred, once for the session subquery's row_pred.
+    # Params: once for row_pred, once for each of the two session subqueries.
     params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+    params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     if kind == "bot":
         return f"AND {full_pred}", params
@@ -2854,7 +2877,8 @@ def _bot_filter_sql(kind):
 
 
 def log_page_view(path, visitor_hash=None, referrer=None,
-                  user_agent=None, country=None, utm_source=None):
+                  user_agent=None, country=None, utm_source=None,
+                  ip_day_hash=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
     eat connection-setup latency on every request."""
@@ -2866,10 +2890,10 @@ def log_page_view(path, visitor_hash=None, referrer=None,
             cur.execute(
                 "INSERT INTO page_views "
                 "(ts, path, visitor_hash, referrer, user_agent, country, "
-                " utm_source) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                " utm_source, ip_day_hash) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
-                 referrer, user_agent, country, utm_source),
+                 referrer, user_agent, country, utm_source, ip_day_hash),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)

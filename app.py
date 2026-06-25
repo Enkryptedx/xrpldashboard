@@ -489,6 +489,31 @@ def _visitor_hash(ip, ua):
     return hmac.new(_VISITOR_HASH_KEY, msg, "sha256").hexdigest()[:32]
 
 
+def _ip_day_hash(ip):
+    """Per-(IP, day) fingerprint used ONLY for bot-burst session linking
+    in /analytics. Same key, same truncation as _visitor_hash so the two
+    can be compared in the bot-filter session join without leaking either
+    back to an IP. Drops UA so a single client cycling through Chrome /
+    Firefox / Safari user-agents inside a credential-probe burst collapses
+    to one ip_day_hash row, not N."""
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    msg = f"{ip or '?'}|{day}".encode("utf-8", "replace")
+    return hmac.new(_VISITOR_HASH_KEY, msg, "sha256").hexdigest()[:32]
+
+
+# Internal-traffic exclusion: comma-separated client IPs whose page hits
+# are dropped from page_views entirely. Configure via Render env. Empty
+# (the default) keeps the prior behaviour — all hits logged. IPs are
+# matched against ProxyFix-resolved request.remote_addr (== Cloudflare
+# CF-Connecting-IP after the two-hop strip). Travel/mobile networks fall
+# outside this set by design — exclusion is "while at the Mac mini's home
+# network," not "any device Charlie ever uses."
+_ANALYTICS_EXCLUDED_IPS = frozenset(
+    ip.strip() for ip in os.environ.get("ANALYTICS_EXCLUDE_IPS", "").split(",")
+    if ip.strip()
+)
+
+
 _BLOCKED_UA_FRAGMENTS = ("meta-externalagent",)
 
 
@@ -520,6 +545,8 @@ def _log_page_view():
         if not db.pg_available():
             return
         ip = request.remote_addr or ""
+        if ip and ip in _ANALYTICS_EXCLUDED_IPS:
+            return
         ua = (request.user_agent.string or "")[:300] or None
         ref = (request.referrer or "")[:300] or None
         country = request.headers.get("CF-IPCountry") \
@@ -534,6 +561,7 @@ def _log_page_view():
             user_agent=ua,
             country=country,
             utm_source=utm,
+            ip_day_hash=_ip_day_hash(ip),
         )
     except Exception:
         # Logging must never break a page render.
