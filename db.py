@@ -2866,11 +2866,28 @@ def _bot_filter_sql(kind):
         f"  WHERE ip_day_hash IS NOT NULL AND {row_pred}"
         f"))"
     )
-    full_pred = f"({row_pred} OR {session_pred})"
-    # Params: once for row_pred, once for each of the two session subqueries.
+    # Catches rotating-IP scanners that share one UA: any (path, user_agent)
+    # combo where the SAME ua dominated the SAME path with >=30 distinct
+    # visitors in the last 7d AND hits ≈ visitors (mean ≤ 1.10 hits/visitor).
+    # Real shared links produce repeat visits; scanner farms hit each
+    # rotated IP exactly once. Inverse of the ip_day_hash signal, which
+    # catches same-IP rotating-UA scanners.
+    scanner_pred = (
+        "(user_agent IS NOT NULL AND (path, user_agent) IN ("
+        "  SELECT path, user_agent FROM page_views "
+        "  WHERE user_agent IS NOT NULL AND ts > %s "
+        "  GROUP BY path, user_agent "
+        "  HAVING COUNT(*) >= 30 "
+        "     AND COUNT(*) <= COUNT(DISTINCT visitor_hash) * 1.10"
+        "))"
+    )
+    full_pred = f"({row_pred} OR {session_pred} OR {scanner_pred})"
+    # Params: once for row_pred, once for each of the two session subqueries,
+    # plus the scanner_pred ts threshold (7d ago).
     params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+    params.append(int(time.time()) - 7 * 86400)
     if kind == "bot":
         return f"AND {full_pred}", params
     return f"AND NOT {full_pred}", params
