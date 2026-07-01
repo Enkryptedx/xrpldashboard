@@ -577,6 +577,30 @@ CREATE INDEX IF NOT EXISTS walker_node_fallback_ts_idx
     ON walker_node_fallback (ts DESC);
 CREATE INDEX IF NOT EXISTS walker_node_fallback_walker_idx
     ON walker_node_fallback (walker_name, ts DESC);
+
+-- On-site institutional contact form submissions. The prior mailto:-only
+-- CTA lost visitors on mobile (no mail app), corporate lockdowns, and
+-- webmail users (21 clicks, 0 emails received May-Jun 2026). This table
+-- backs the /institutional/contact form so submissions land server-side
+-- regardless of the sender's mail-client posture. visitor_hash reuses
+-- the same day-bucketed HMAC as page_views for optional cross-signal.
+CREATE TABLE IF NOT EXISTS institutional_inquiries (
+    id            BIGSERIAL PRIMARY KEY,
+    ts            BIGINT NOT NULL,
+    name          TEXT,
+    email         TEXT NOT NULL,
+    org           TEXT,
+    best_time     TEXT,
+    message       TEXT NOT NULL,
+    ref_param     TEXT,
+    referrer      TEXT,
+    visitor_hash  TEXT,
+    user_agent    TEXT,
+    country       TEXT,
+    email_alerted BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS institutional_inquiries_ts_idx
+    ON institutional_inquiries (ts DESC);
 """
 
 
@@ -3219,6 +3243,89 @@ def read_cta_click_stats(cta_id=None):
     except Exception:
         pass
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Institutional contact form
+# ─────────────────────────────────────────────────────────────────────
+
+def insert_institutional_inquiry(
+    name, email, org, best_time, message,
+    ref_param=None, referrer=None,
+    visitor_hash=None, user_agent=None, country=None,
+):
+    """Insert one /institutional/contact submission. Returns the new row id,
+    or None if Postgres isn't configured. Raises on real DB errors so the
+    caller can surface a submission failure to the visitor (unlike click
+    logging, which is best-effort telemetry)."""
+    if not pg_available():
+        return None
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO institutional_inquiries "
+                "(ts, name, email, org, best_time, message, ref_param, "
+                " referrer, visitor_hash, user_agent, country) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "RETURNING id",
+                (int(time.time()), name, email, org, best_time, message,
+                 ref_param, referrer, visitor_hash, user_agent, country),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return int(row[0]) if row else None
+
+
+def mark_institutional_inquiry_alerted(row_id):
+    """Flip email_alerted=TRUE after the Brevo alert send succeeds. Best-
+    effort — a failure here just means the row stays flagged as unalerted."""
+    if not pg_available() or row_id is None:
+        return
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE institutional_inquiries "
+                    "SET email_alerted = TRUE WHERE id = %s",
+                    (row_id,),
+                )
+            conn.commit()
+    except Exception:
+        pass
+
+
+def read_recent_institutional_inquiries(limit=50):
+    """Newest-first list of inquiries. Returns list of dicts."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, ts, name, email, org, best_time, message, "
+                    "       ref_param, referrer, country, email_alerted "
+                    "FROM institutional_inquiries "
+                    "ORDER BY ts DESC LIMIT %s",
+                    (limit,),
+                )
+                return [
+                    {
+                        "id": int(r[0]),
+                        "ts": int(r[1]),
+                        "name": r[2],
+                        "email": r[3],
+                        "org": r[4],
+                        "best_time": r[5],
+                        "message": r[6],
+                        "ref_param": r[7],
+                        "referrer": r[8],
+                        "country": r[9],
+                        "email_alerted": bool(r[10]),
+                    }
+                    for r in cur.fetchall()
+                ]
+    except Exception:
+        return []
 
 
 # ─────────────────────────────────────────────────────────────────────

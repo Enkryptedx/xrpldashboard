@@ -3197,17 +3197,13 @@ _INSTITUTIONAL_MAILTO = (
 @app.route("/click/institutional-contact")
 def click_institutional_contact():
     """Server-side click logger for the /institutional launch-partner CTA.
-    Logs the click event (timestamp, referrer, optional ?ref= channel tag,
-    visitor hash, country) then 302-redirects to the fixed mailto: target.
-
-    Why server-side: gives durable forensic detail (referrer, channel
-    attribution via ?ref=, country) that the analytics tool alone won't
-    surface, and works with JavaScript disabled. The redirect is pure
-    HTTP — no client JS required — so the user's email client opens
-    without any perceptible delay beyond a single round-trip.
-
-    The mailto target is hard-coded above; the endpoint ignores any
-    user-supplied destination so it can't be used as an open redirector."""
+    Logs the click, then 302-redirects to the on-site contact form. The
+    previous target was a pre-filled mailto: URL, which silently failed on
+    mobile devices without a configured mail app, corporate lockdowns, and
+    webmail-only users (21 unique clicks, 0 emails received May–Jun 2026).
+    The form path works on every device without requiring a mail client;
+    the mailto: fallback stays visible inside the form for founders who
+    prefer direct email."""
     try:
         ip = request.remote_addr or ""
         ua = (request.user_agent.string or "")[:300] or None
@@ -3226,7 +3222,168 @@ def click_institutional_contact():
         )
     except Exception:
         pass
-    return redirect(_INSTITUTIONAL_MAILTO, code=302)
+    ref = (request.args.get("ref") or "").strip()[:64]
+    dest = url_for("institutional_contact_form")
+    if ref:
+        dest = f"{dest}?ref={ref}"
+    return redirect(dest, code=302)
+
+
+def _send_institutional_alert(inquiry):
+    """Best-effort Brevo SMTP alert to Charlie when a new inquiry lands.
+    No-op if SMTP env vars aren't set — the DB row is authoritative, the
+    alert is a convenience.
+
+    Env vars (all required to enable): SMTP_HOST, SMTP_PORT, SMTP_USER,
+    SMTP_PASS, SMTP_FROM, SMTP_TO. Squarespace-preset DMARC (p=reject) on
+    xrpldashboard.com means SMTP_FROM must be a Brevo-verified sender."""
+    host = os.environ.get("SMTP_HOST", "").strip()
+    port = os.environ.get("SMTP_PORT", "").strip()
+    user = os.environ.get("SMTP_USER", "").strip()
+    pw = os.environ.get("SMTP_PASS", "").strip()
+    sender = os.environ.get("SMTP_FROM", "").strip()
+    to = os.environ.get("SMTP_TO", "").strip()
+    if not (host and port and user and pw and sender and to):
+        return False
+    try:
+        import smtplib
+        from email.message import EmailMessage
+        msg = EmailMessage()
+        msg["Subject"] = (
+            f"[xrpldashboard] Institutional inquiry: "
+            f"{inquiry.get('org') or inquiry.get('name') or inquiry['email']}"
+        )
+        msg["From"] = sender
+        msg["To"] = to
+        msg["Reply-To"] = inquiry["email"]
+        lines = [
+            f"Name:      {inquiry.get('name') or '—'}",
+            f"Email:     {inquiry['email']}",
+            f"Org:       {inquiry.get('org') or '—'}",
+            f"Best time: {inquiry.get('best_time') or '—'}",
+            f"Country:   {inquiry.get('country') or '?'}",
+            f"Ref:       {inquiry.get('ref_param') or '—'}",
+            f"Referrer:  {inquiry.get('referrer') or '—'}",
+            "",
+            "Message:",
+            inquiry["message"],
+            "",
+            f"— row id {inquiry.get('id')}",
+        ]
+        msg.set_content("\n".join(lines))
+        with smtplib.SMTP(host, int(port), timeout=10) as s:
+            s.starttls()
+            s.login(user, pw)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+def _looks_like_email(s):
+    """Cheap syntactic check — no MX lookup, no RFC parse. Rejects the
+    obviously-broken inputs without over-blocking valid oddities. The DB
+    is authoritative; false-positives waste at most one DB row."""
+    if not s or "@" not in s or " " in s:
+        return False
+    local, _, domain = s.rpartition("@")
+    return bool(local) and "." in domain and len(s) <= 254
+
+
+@app.route("/institutional/contact", methods=["GET"])
+@limiter.limit("60 per minute")
+def institutional_contact_form():
+    """On-site contact form for launch-partner inquiries. Replaces the
+    prior mailto:-only path, which lost visitors on mobile / corporate /
+    webmail (see /click/institutional-contact for context)."""
+    ref = (request.args.get("ref") or "").strip()[:64] or None
+    return render_template(
+        "institutional_contact.html",
+        ref_param=ref,
+        submitted=False,
+    )
+
+
+@app.route("/institutional/contact", methods=["POST"])
+@limiter.limit("6 per hour")
+def institutional_contact_submit():
+    """Validate and persist one inquiry, fire the optional Brevo alert,
+    then render the same template in a 'submitted' state.
+
+    Rate limit is aggressive (6/hour/IP) because this endpoint writes to
+    a table Charlie reads by hand — a spam flood would drown legitimate
+    inquiries. Honeypot field 'website' (invisible in the UI) catches the
+    naive bot floor; the limiter catches the rest."""
+    if (request.form.get("website") or "").strip():
+        return render_template(
+            "institutional_contact.html",
+            submitted=True,
+            ref_param=None,
+        )
+
+    name = (request.form.get("name") or "").strip()[:200] or None
+    email = (request.form.get("email") or "").strip()[:254]
+    org = (request.form.get("org") or "").strip()[:200] or None
+    best_time = (request.form.get("best_time") or "").strip()[:120] or None
+    message = (request.form.get("message") or "").strip()[:5000]
+    ref_param = (request.form.get("ref") or "").strip()[:64] or None
+
+    errors = []
+    if not _looks_like_email(email):
+        errors.append("Please enter a valid email address.")
+    if len(message) < 10:
+        errors.append("Please include a short message (10+ characters).")
+
+    if errors:
+        return render_template(
+            "institutional_contact.html",
+            submitted=False,
+            ref_param=ref_param,
+            errors=errors,
+            form={"name": name, "email": email, "org": org,
+                  "best_time": best_time, "message": message},
+        ), 400
+
+    ip = request.remote_addr or ""
+    ua = (request.user_agent.string or "")[:300] or None
+    referrer = (request.referrer or "")[:300] or None
+    country = request.headers.get("CF-IPCountry") \
+        or request.headers.get("X-Vercel-IP-Country") \
+        or request.headers.get("X-Country-Code")
+
+    try:
+        row_id = db.insert_institutional_inquiry(
+            name=name, email=email, org=org,
+            best_time=best_time, message=message,
+            ref_param=ref_param, referrer=referrer,
+            visitor_hash=_visitor_hash(ip, ua),
+            user_agent=ua, country=country,
+        )
+    except Exception:
+        return render_template(
+            "institutional_contact.html",
+            submitted=False,
+            ref_param=ref_param,
+            errors=["Something went wrong saving your message. "
+                    "Please email contact@xrpldashboard.com directly."],
+            form={"name": name, "email": email, "org": org,
+                  "best_time": best_time, "message": message},
+        ), 500
+
+    if row_id is not None:
+        sent = _send_institutional_alert({
+            "id": row_id, "name": name, "email": email, "org": org,
+            "best_time": best_time, "message": message,
+            "ref_param": ref_param, "referrer": referrer, "country": country,
+        })
+        if sent:
+            db.mark_institutional_inquiry_alerted(row_id)
+
+    return render_template(
+        "institutional_contact.html",
+        submitted=True,
+        ref_param=ref_param,
+    )
 
 
 def _rank_status_order(r):

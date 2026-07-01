@@ -212,9 +212,10 @@
     <a class="cta"
        href="/click/institutional-contact{% if request.args.get('ref') %}?ref={{ request.args.get('ref')|urlencode }}{% endif %}">{{ _('Become a launch partner') }} →</a>
     <p class="contact-note">
-      {{ _('Charlie reads every message personally. Reply time is usually within a day. Founders prefer direct email over forms.') }}
+      {{ _('Charlie reads every message personally. Reply time is usually within a day.') }}
     </p>
     <p class="contact-note">
+      {{ _('Prefer direct email or DM?') }}
       <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a> · <a href="https://x.com/xrpldashboardx" rel="noopener" target="_blank">@xrpldashboardx</a>
     </p>
   </div>
