@@ -305,6 +305,12 @@
       {%- endtrans %}
     </li>
     <li>
+      <strong>{{ _('Native price oracles (XLS-47).') }}</strong>
+      {% trans -%}
+      Accounts can publish signed price feeds — pairs like XRP/USD or BTC/USD — directly as ledger objects. Consumers read prices from the ledger without trusting an off-chain relay. One production provider (DIA) is live on mainnet now. <a href="/price-data">See the live decoded feed →</a>
+      {%- endtrans %}
+    </li>
+    <li>
       <strong>{{ _('Lending (in progress).') }}</strong>
       {% trans -%}
       The native lending amendment (XLS-66d) is in development. See <a href="/amendments">/amendments</a> for current status. Once it activates, it will let token holders lend and borrow against ledger-resident assets without leaving the network.
