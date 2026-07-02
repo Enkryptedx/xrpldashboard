@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.oracle_walker</string>
+
+    <key>Comment</key>
+    <string>One-shot PriceOracle snapshotter for /price-data. Iterates the tracked oracle cohort (category=oracle in named_accounts.json — DIA at rP24Lp7bcUHvEW7T7c8xkxtQKKd9fZyra7 as of v1) via account_objects(type=oracle), routed through xrpl_client.get_client() so a load-shedding local rippled cascades to s1/s2. Decodes hex Provider/URI/AssetClass and hex-encoded AssetPrice (int / 10^Scale) before writing so the reader/template never touch hex. Replaces the oracles_snapshot table in Neon each pass; the /price-data route reads via oracle_snapshot.py (5-min TTL). 2026-07-02 full-ledger walk confirmed DIA is the one production provider on mainnet; other tag=oracle owners found were hobby-flavor (never added to the tracked cohort). New production providers get added by editing named_accounts.json with category=oracle — walker picks them up next cycle.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_oracle_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 30 minutes. DIA publishes at their own cadence (typically
+         a few times per hour when markets move); 30-min freshness is a
+         reasonable floor for an explainer surface. StartInterval
+         (rolling) preferred over StartCalendarInterval per the daily
+         sleep/wake fix codified in feedback_macos_launchd_startinterval. -->
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/oracle_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/oracle_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

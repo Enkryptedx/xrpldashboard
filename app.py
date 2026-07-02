@@ -106,6 +106,7 @@ PUBLIC_ROUTES = [
     "/mpts",
     "/rlusd",
     "/cold-storage",
+    "/price-data",
     "/health",
     "/about",
     "/institutional",
@@ -3659,6 +3660,24 @@ def cold_storage():
         escrows=escrows,
         cache_ttl_seconds=cold_storage_module.CACHE_TTL,
     )
+
+
+@app.route("/price-data")
+def price_data():
+    """XRPL price-data explainer — XLS-47 PriceOracle amendment.
+
+    Framed as "here is the one production feed on mainnet, decoded and
+    dated," not as a directory. XRPLWin runs the full raw directory
+    (linked in the template) — we curate for signal quality. Walker
+    (oracle_walker.py) populates oracles_snapshot; oracle_snapshot.py
+    is the 5-min TTL cached read layer used here. Never touches the
+    XRPL node from this route."""
+    try:
+        from oracle_snapshot import fetch_oracle_snapshot_cached
+        data = fetch_oracle_snapshot_cached()
+    except Exception:
+        data = None
+    return render_template("price_data.html", data=data)
 
 
 @app.route("/lending")

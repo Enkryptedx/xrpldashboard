@@ -171,5 +171,11 @@
     "category": "bridge",
     "verified_via": "https://docs.axelar.dev/dev/general-message-passing/xrpl/xrpl-gmp/",
     "_note": "Multisig gateway operated by the Axelar verifier set. Dual-purpose: General Message Passing (GMP) destination and Interchain Token Service (ITS) custody. Bridges XRPL to Axelar-connected chains. Primary source quotes: \"The mainnet address for the XRPL Gateway is: rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw\". Bithomp labels this account \"Axelar Bridge\" and TOML-verifies via axelar.foundation."
+  },
+  "rP24Lp7bcUHvEW7T7c8xkxtQKKd9fZyra7": {
+    "name": "DIA (diadata)",
+    "category": "oracle",
+    "verified_via": "https://xrpl.org/docs/tutorials/how-tos/build-apps/build-a-priceoracle",
+    "_note": "The one production PriceOracle provider currently publishing to XRPL mainnet (XLS-47). Provider tag 'diadata'; feed includes XRP/USD, BTC/USD, ETH/USD, RLUSD/USD and more. Confirmed via account_objects(type=oracle) parity check on local + s1."
   }
 }

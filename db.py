@@ -623,6 +623,37 @@ CREATE INDEX IF NOT EXISTS escrows_snapshot_denom_idx
 CREATE INDEX IF NOT EXISTS escrows_snapshot_owner_idx
     ON escrows_snapshot (owner);
 
+-- oracles_snapshot: per-Oracle-object rows from oracle_walker (XLS-47
+-- PriceOracle). v1 seed = DIA (rP24...) — the one production provider
+-- currently publishing to mainnet. Full ledger walk 2026-07-02 covered
+-- ~10% of state and found only hobby providers (NexusESP32 microcontroller,
+-- threexrp, ripitlabs, Ctrl Alt) — signal quality justifies curated scope
+-- over XRPLWin's raw directory. If a new production provider ever needs
+-- adding, drop it in named_accounts.json with category="oracle" and the
+-- walker picks it up next cycle.
+-- price_data_json is a pre-decoded list [{base, quote, price_raw_hex,
+-- scale, price_float}] so the read layer and template do no math.
+CREATE TABLE IF NOT EXISTS oracles_snapshot (
+    ledger_index_hash     TEXT PRIMARY KEY,     -- Oracle object's `index`
+    owner                 TEXT NOT NULL,
+    owner_name            TEXT,
+    document_id           BIGINT,               -- OracleDocumentID (uint32)
+    provider              TEXT,                 -- decoded from hex ASCII
+    uri                   TEXT,                 -- decoded, optional
+    asset_class           TEXT,                 -- decoded, optional
+    last_update_time      BIGINT,               -- Unix seconds (XLS-47)
+    price_data_json       JSONB NOT NULL,
+    pair_count            INTEGER NOT NULL,
+    previous_txn_id       TEXT,
+    previous_txn_lgr_seq  BIGINT,
+    snapshot_ledger_index BIGINT,
+    fetched_at            BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS oracles_snapshot_owner_idx
+    ON oracles_snapshot (owner);
+CREATE INDEX IF NOT EXISTS oracles_snapshot_last_update_idx
+    ON oracles_snapshot (last_update_time DESC);
+
 -- On-site institutional contact form submissions. The prior mailto:-only
 -- CTA lost visitors on mobile (no mail app), corporate lockdowns, and
 -- webmail users (21 clicks, 0 emails received May-Jun 2026). This table
@@ -3692,3 +3723,93 @@ def read_upcoming_escrow_releases(limit=50, now_ripple_seconds=None):
     except Exception as e:
         _log_err("read_upcoming_escrow_releases_failed", e)
         return []
+
+
+def replace_oracles_snapshot(rows, snapshot_ledger_index=None):
+    """Replace-on-write full refresh of oracles_snapshot. `rows` is a list
+    of dicts with keys: ledger_index_hash (PK), owner, owner_name,
+    document_id (int|None), provider (decoded str|None), uri (decoded
+    str|None), asset_class (decoded str|None), last_update_time (Unix
+    seconds|None), price_data_json (list of decoded pair dicts),
+    pair_count (int), previous_txn_id, previous_txn_lgr_seq.
+
+    All in one transaction — a partial failure leaves the prior snapshot
+    intact. Returns True on success, False on error / PG-unavailable.
+    Walker treats False as soft-fail and walker_health_end records it."""
+    if not pg_available():
+        return False
+    fetched_at = int(time.time())
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM oracles_snapshot")
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO oracles_snapshot "
+                        "  (ledger_index_hash, owner, owner_name, document_id, "
+                        "   provider, uri, asset_class, last_update_time, "
+                        "   price_data_json, pair_count, previous_txn_id, "
+                        "   previous_txn_lgr_seq, snapshot_ledger_index, "
+                        "   fetched_at) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, "
+                        "        %s, %s, %s, %s, %s)",
+                        (
+                            r["ledger_index_hash"],
+                            r["owner"],
+                            r.get("owner_name"),
+                            r.get("document_id"),
+                            r.get("provider"),
+                            r.get("uri"),
+                            r.get("asset_class"),
+                            r.get("last_update_time"),
+                            json.dumps(r["price_data_json"]),
+                            r["pair_count"],
+                            r.get("previous_txn_id"),
+                            r.get("previous_txn_lgr_seq"),
+                            snapshot_ledger_index,
+                            fetched_at,
+                        ),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("replace_oracles_snapshot_failed", e)
+        return False
+
+
+def read_oracles_snapshot():
+    """Return oracles_snapshot as {rows, fetched_at, snapshot_age_seconds,
+    snapshot_ledger_index}. Sorted by (owner_name, last_update_time DESC)
+    so the freshest per-owner oracle leads. Empty rows list when PG
+    unavailable / table empty — template renders "no data yet"."""
+    empty = {"rows": [], "fetched_at": None, "snapshot_age_seconds": None,
+             "snapshot_ledger_index": None}
+    if not pg_available():
+        return empty
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ledger_index_hash, owner, owner_name, document_id, "
+                    "       provider, uri, asset_class, last_update_time, "
+                    "       price_data_json, pair_count, previous_txn_id, "
+                    "       previous_txn_lgr_seq, snapshot_ledger_index, "
+                    "       fetched_at "
+                    "  FROM oracles_snapshot "
+                    " ORDER BY owner_name NULLS LAST, "
+                    "          last_update_time DESC NULLS LAST"
+                )
+                cols = [d.name for d in cur.description]
+                raw = [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_oracles_snapshot_failed", e)
+        return empty
+    fetched_at = raw[0]["fetched_at"] if raw else None
+    snap_ledger = raw[0]["snapshot_ledger_index"] if raw else None
+    age = (int(time.time()) - fetched_at) if fetched_at else None
+    return {
+        "rows": raw,
+        "fetched_at": fetched_at,
+        "snapshot_age_seconds": age,
+        "snapshot_ledger_index": snap_ledger,
+    }
