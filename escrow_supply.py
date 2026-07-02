@@ -9,19 +9,20 @@ while this module sums the *locked* EscrowCreate objects they own — i.e.
 the multi-year contracted-but-not-yet-released supply.
 
 Hourly cache because the locked total only changes once a month on Ripple's
-release schedule. Thread-safe.
+release schedule. Reads route through xrpl_client.get_client() (local
+rippled primary, s1/s2 fallback) so a load-shedding local node cascades
+cleanly instead of returning partial data. Thread-safe.
 """
 
 import os
 import threading
 import time
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountObjects
 
 from cold_storage import _load_named  # reuse named_accounts.json loader
+from xrpl_client import get_client
 
-XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("ESCROW_CACHE_TTL", "3600"))
 
 _cache_lock = threading.Lock()
@@ -72,7 +73,7 @@ def fetch_escrow_locked():
         and "RLUSD" not in (meta.get("name") or "")
     ]
 
-    client = JsonRpcClient(XRPL_NODE)
+    client = get_client("escrow_supply")
     total_xrp = 0.0
     object_count = 0
     fetched_ok = 0

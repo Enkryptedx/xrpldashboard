@@ -7,8 +7,10 @@ cohort on XRPL: balances only change on the published release schedule.
 Future scope (not yet wired): exchange cold wallets, foundation reserves.
 The page framing makes the current scope explicit.
 
-Live data via account_info — cached 5 min so reloads don't hammer the
-public node. Thread-safe.
+Live data via account_info through xrpl_client.get_client() — local
+rippled primary, s1/s2 fallback. Cached 5 min so reloads don't hammer
+the fallback path when the local node is refusing under load.
+Thread-safe.
 """
 
 import json
@@ -16,10 +18,9 @@ import os
 import threading
 import time
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountInfo
 
-XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+from xrpl_client import get_client
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
@@ -75,7 +76,7 @@ def fetch_cold_storage():
     ]
     addresses.sort(key=lambda x: x[1].get("name") or x[0])
 
-    client = JsonRpcClient(XRPL_NODE)
+    client = get_client("cold_storage")
     rows = []
     total_xrp = 0.0
     fetched_ok = 0

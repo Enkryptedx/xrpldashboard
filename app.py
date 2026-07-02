@@ -3638,18 +3638,25 @@ def token_detail(currency, issuer):
 @app.route("/cold-storage")
 def cold_storage():
     """Cold-storage tracker — currently scoped to Ripple monthly-release escrows.
-    See cold_storage.py for the liquid-balance data layer and escrow_supply.py
-    for the EscrowCreate-summed locked total."""
+    See cold_storage.py for the liquid-balance data layer, escrow_supply.py
+    for the EscrowCreate-summed locked total, and escrow_snapshot.py for the
+    per-escrow browser + upcoming-releases calendar (walker-populated)."""
     data = fetch_cold_storage_cached()
     try:
         locked = fetch_escrow_locked_cached()
     except Exception:
         locked = None
+    try:
+        from escrow_snapshot import fetch_escrow_snapshot_cached
+        escrows = fetch_escrow_snapshot_cached()
+    except Exception:
+        escrows = None
     import cold_storage as cold_storage_module
     return render_template(
         "cold_storage.html",
         data=data,
         locked=locked,
+        escrows=escrows,
         cache_ttl_seconds=cold_storage_module.CACHE_TTL,
     )
 

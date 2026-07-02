@@ -578,6 +578,51 @@ CREATE INDEX IF NOT EXISTS walker_node_fallback_ts_idx
 CREATE INDEX IF NOT EXISTS walker_node_fallback_walker_idx
     ON walker_node_fallback (walker_name, ts DESC);
 
+-- Escrows snapshot — one row per active EscrowCreate ledger object owned
+-- by a tracked named-account. Backs the /cold-storage per-escrow browser
+-- and the upcoming-releases calendar. Populated by escrow_walker.py on
+-- a 30-min launchd cadence; /cold-storage reads through the 5-min TTL
+-- cache in escrow_snapshot.py.
+--
+-- v1 scope: replace-on-write (the walker deletes every row and inserts
+-- fresh state each pass). Fine for ~102 rows and a current-state view.
+-- If a "realized releases per month" chart is ever wanted, extend to
+-- an append-with-history sibling table keyed by (owner, sequence,
+-- observed_ledger_index) rather than reworking this one — door marked
+-- in escrow_walker.py.
+--
+-- amount_json holds the full XRPL Amount value: a string of drops for
+-- XRP escrows, a {currency, issuer, value} object for IOU escrows,
+-- a {mpt_issuance_id, value} object for MPT escrows. denom is a
+-- convenience column derived at write time so the read path can
+-- filter without JSON parsing.
+-- PK is the ledger entry hash (`index`), a 64-char hex unique per Escrow
+-- object. Ledger objects don't carry a top-level Sequence field —
+-- reconstructing one would require a follow-up account_tx lookup per
+-- object, which is not worth the round trips for a snapshot table.
+CREATE TABLE IF NOT EXISTS escrows_snapshot (
+    ledger_index_hash     TEXT PRIMARY KEY,     -- Escrow object's `index`
+    owner                 TEXT NOT NULL,
+    owner_name            TEXT,
+    destination           TEXT,
+    denom                 TEXT NOT NULL,        -- 'XRP' | 'IOU' | 'MPT'
+    amount_drops          BIGINT,               -- XRP only; NULL for IOU/MPT
+    amount_json           JSONB NOT NULL,
+    finish_after          BIGINT,               -- ripple-time seconds
+    cancel_after          BIGINT,               -- ripple-time seconds
+    condition_present     BOOLEAN NOT NULL,
+    previous_txn_id       TEXT,
+    previous_txn_lgr_seq  BIGINT,
+    snapshot_ledger_index BIGINT,
+    fetched_at            BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS escrows_snapshot_finish_after_idx
+    ON escrows_snapshot (finish_after ASC);
+CREATE INDEX IF NOT EXISTS escrows_snapshot_denom_idx
+    ON escrows_snapshot (denom);
+CREATE INDEX IF NOT EXISTS escrows_snapshot_owner_idx
+    ON escrows_snapshot (owner);
+
 -- On-site institutional contact form submissions. The prior mailto:-only
 -- CTA lost visitors on mobile (no mail app), corporate lockdowns, and
 -- webmail users (21 clicks, 0 emails received May-Jun 2026). This table
@@ -3521,3 +3566,129 @@ def write_walker_node_fallback(walker_name, reason):
     except Exception as e:
         _log_err(f"write_walker_node_fallback_failed[{walker_name}]", e)
         _drop_writer_conn()
+
+
+def replace_escrows_snapshot(rows, snapshot_ledger_index=None):
+    """Replace-on-write full refresh of the escrows_snapshot table.
+    `rows` is a list of dicts with keys: ledger_index_hash (str, the
+    Escrow object's `index` field, PK), owner, owner_name, destination,
+    denom ('XRP'|'IOU'|'MPT'), amount_drops (int or None), amount_json
+    (JSON-serializable), finish_after, cancel_after, condition_present,
+    previous_txn_id, previous_txn_lgr_seq.
+
+    All in one transaction so a partial failure leaves the previous
+    snapshot intact. Returns True on success, False on any error /
+    PG-unavailable — walker treats False as a soft-fail and
+    walker_health_end records it.
+
+    v1 = replace. If a future "realized releases per month" chart is
+    wanted, add a sibling escrows_history append table rather than
+    reworking this one (see SCHEMA_DDL note)."""
+    if not pg_available():
+        return False
+    fetched_at = int(time.time())
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM escrows_snapshot")
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO escrows_snapshot "
+                        "  (ledger_index_hash, owner, owner_name, destination, "
+                        "   denom, amount_drops, amount_json, finish_after, "
+                        "   cancel_after, condition_present, previous_txn_id, "
+                        "   previous_txn_lgr_seq, snapshot_ledger_index, "
+                        "   fetched_at) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, "
+                        "        %s, %s, %s, %s)",
+                        (
+                            r["ledger_index_hash"],
+                            r["owner"],
+                            r.get("owner_name"),
+                            r.get("destination"),
+                            r["denom"],
+                            r.get("amount_drops"),
+                            json.dumps(r["amount_json"]),
+                            r.get("finish_after"),
+                            r.get("cancel_after"),
+                            bool(r.get("condition_present")),
+                            r.get("previous_txn_id"),
+                            r.get("previous_txn_lgr_seq"),
+                            snapshot_ledger_index,
+                            fetched_at,
+                        ),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("replace_escrows_snapshot_failed", e)
+        return False
+
+
+def read_escrows_snapshot():
+    """Return the full escrows_snapshot as a list of dicts sorted by
+    (owner_name, finish_after). Includes derived `token_escrow_observed`
+    (any denom != 'XRP') and the shared fetched_at. Empty list when PG
+    unavailable / table empty — caller renders "no data yet"."""
+    if not pg_available():
+        return {"rows": [], "fetched_at": None, "token_escrow_observed": False,
+                "snapshot_age_seconds": None, "snapshot_ledger_index": None}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ledger_index_hash, owner, owner_name, destination, "
+                    "       denom, amount_drops, amount_json, finish_after, "
+                    "       cancel_after, condition_present, "
+                    "       previous_txn_id, previous_txn_lgr_seq, "
+                    "       snapshot_ledger_index, fetched_at "
+                    "  FROM escrows_snapshot "
+                    " ORDER BY owner_name NULLS LAST, finish_after NULLS LAST"
+                )
+                cols = [d.name for d in cur.description]
+                raw = [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_escrows_snapshot_failed", e)
+        return {"rows": [], "fetched_at": None, "token_escrow_observed": False,
+                "snapshot_age_seconds": None, "snapshot_ledger_index": None}
+    fetched_at = raw[0]["fetched_at"] if raw else None
+    snap_ledger = raw[0]["snapshot_ledger_index"] if raw else None
+    age = (int(time.time()) - fetched_at) if fetched_at else None
+    return {
+        "rows": raw,
+        "fetched_at": fetched_at,
+        "snapshot_age_seconds": age,
+        "snapshot_ledger_index": snap_ledger,
+        "token_escrow_observed": any(r["denom"] != "XRP" for r in raw),
+    }
+
+
+def read_upcoming_escrow_releases(limit=50, now_ripple_seconds=None):
+    """Return upcoming (FinishAfter in the future) escrows ordered by
+    FinishAfter ASC, capped at `limit`. `now_ripple_seconds` optional
+    for tests; defaults to now converted to ripple-time. Same row
+    shape as read_escrows_snapshot.rows."""
+    if not pg_available():
+        return []
+    if now_ripple_seconds is None:
+        RIPPLE_EPOCH = 946684800
+        now_ripple_seconds = int(time.time()) - RIPPLE_EPOCH
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ledger_index_hash, owner, owner_name, destination, "
+                    "       denom, amount_drops, amount_json, finish_after, "
+                    "       cancel_after, condition_present "
+                    "  FROM escrows_snapshot "
+                    " WHERE finish_after IS NOT NULL "
+                    "   AND finish_after > %s "
+                    " ORDER BY finish_after ASC "
+                    " LIMIT %s",
+                    (now_ripple_seconds, limit),
+                )
+                cols = [d.name for d in cur.description]
+                return [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_upcoming_escrow_releases_failed", e)
+        return []

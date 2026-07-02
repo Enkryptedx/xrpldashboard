@@ -60,10 +60,43 @@ def _log_fallback(walker_name, reason):
         logger.exception("walker_node_fallback write failed")
 
 
+# Result-level error strings that mean "local node can't answer this
+# right now" rather than "the request itself is bad" (e.g. actNotFound).
+# When any of these appear in resp.result.error, treat the local response
+# as unusable and cascade to public. Surfaced 2026-07-01 during the
+# escrow_walker rollout: the local node was reporting server_state=full
+# via server_info but returning notSynced on every account_objects call
+# (load_factor ~600). The wrapper previously only cascaded on transport
+# exceptions, so walkers saw notSynced as a per-request failure and lost
+# every response.
+_NODE_HEALTH_ERRORS = frozenset({
+    "notSynced",
+    "noNetwork",
+    "noCurrent",
+    "noClosed",
+    "tooBusy",
+    "amendmentBlocked",
+    "InsufficientNetworkMode",
+})
+
+
+def _is_node_health_error(resp):
+    try:
+        result = resp.result or {}
+    except Exception:
+        return False
+    err = result.get("error")
+    if not err:
+        return False
+    return err in _NODE_HEALTH_ERRORS
+
+
 class XrplClient:
     """Drop-in for xrpl.clients.JsonRpcClient. .request(req) tries local
-    first; on health-fail or local request error, cascades through
-    PUBLIC_NODES in order. Each fallback writes one walker_node_fallback
+    first; on health-fail, transport error, or a result-level node-health
+    error, cascades through PUBLIC_NODES in order. Non-health application
+    errors (e.g. actNotFound) return normally — those are valid answers,
+    not a node problem. Each fallback writes one walker_node_fallback
     row."""
 
     def __init__(self, walker_name="unknown"):
@@ -73,10 +106,18 @@ class XrplClient:
         ok, reason = _get_health()
         if ok:
             try:
-                return JsonRpcClient(LOCAL_NODE).request(req)
+                resp = JsonRpcClient(LOCAL_NODE).request(req)
             except Exception as e:
                 _health["checked_at"] = 0.0
                 _log_fallback(self.walker_name, f"local_request_error:{type(e).__name__}")
+            else:
+                if not _is_node_health_error(resp):
+                    return resp
+                _health["checked_at"] = 0.0
+                _log_fallback(
+                    self.walker_name,
+                    f"local_result_error:{(resp.result or {}).get('error')}",
+                )
         else:
             _log_fallback(self.walker_name, reason)
         last = None

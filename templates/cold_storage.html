@@ -131,6 +131,58 @@
     .link-pill:hover { border-color: rgba(34,211,238,0.4); color: var(--cyan);
                        text-decoration: none; }
 
+    /* Escrow browser (walker-populated) */
+    details.esc-browser { margin-top: 0.8em; }
+    details.esc-browser > summary { cursor: pointer; color: var(--cyan);
+      font-size: var(--fs-sm); font-weight: 600; padding: 0.4em 0;
+      list-style: none; }
+    details.esc-browser > summary::-webkit-details-marker { display: none; }
+    details.esc-browser > summary::before { content: "▸"; display: inline-block;
+      margin-right: 6px; transition: transform .15s ease; }
+    details.esc-browser[open] > summary::before { transform: rotate(90deg); }
+    .esc-browser-note { font-size: var(--fs-xs); color: var(--muted);
+      margin: 0.2em 0 0.8em; }
+    .browser-row { display: grid;
+      grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr 0.3fr;
+      gap: 0.6em; align-items: center; padding: 0.5em 0;
+      border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+    .browser-row.head { color: var(--muted); font-size: var(--fs-2xs);
+      text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .browser-row .owner { font-weight: 500; }
+    .browser-row .owner .sub { display: block; font-family: var(--mono);
+      font-size: var(--fs-2xs); color: var(--muted); }
+    .browser-row .amount { font-family: var(--mono); text-align: right; }
+    .browser-row .amount .denom { color: var(--muted); font-size: var(--fs-2xs);
+      margin-left: 4px; }
+    .browser-row .when { font-family: var(--mono); font-size: var(--fs-xs);
+      color: var(--muted); }
+    .browser-row .dest { font-family: var(--mono); font-size: var(--fs-xs);
+      color: var(--muted); }
+    .browser-row .flag { text-align: center; color: var(--amber);
+      font-size: var(--fs-2xs); }
+    .browser-empty { color: var(--muted); font-size: var(--fs-xs);
+      padding: 0.6em 0; }
+
+    /* Upcoming-releases calendar */
+    .calendar-grid { display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.7em; margin-top: 0.6em; }
+    .cal-month { background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.7em 0.9em; }
+    .cal-month .m-label { font-size: var(--fs-xs); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+      margin-bottom: 0.25em; }
+    .cal-month .m-xrp { font-family: var(--mono); font-size: var(--fs-md);
+      color: var(--text); font-weight: 600; }
+    .cal-month .m-sub { font-size: var(--fs-2xs); color: var(--dim);
+      margin-top: 0.2em; }
+
+    .token-escrow-note { margin-top: 0.9em; padding: 0.7em 1em;
+      background: rgba(59,130,246,0.05); border-left: 2px solid var(--blue);
+      border-radius: 0 6px 6px 0; font-size: var(--fs-xs); color: var(--muted);
+      line-height: 1.6; }
+    .token-escrow-note strong { color: var(--text); }
+
     footer { margin-top: 2.5em; padding-top: 1.5em;
              border-top: 1px solid var(--border);
              color: var(--dim); font-size: var(--fs-xs); }
@@ -280,6 +332,107 @@
       </a>
     </div>
   </div>
+
+  {% if escrows and escrows.calendar %}
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.4em;">
+      <h2>{{ _('Upcoming releases') }}</h2>
+      <span class="meta">
+        {% if escrows.snapshot_age_seconds is not none %}
+          {{ _('snapshot') }} {{ (escrows.snapshot_age_seconds // 60) | int }}{{ _('m ago') }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="scope-note">
+      {{ _('Forward-looking schedule of when tracked escrows unlock. Ripple\'s monthly release accounts publish contracted unlocks; each month\'s block shows the aggregate XRP that becomes finishable that month.') }}
+    </div>
+    <div class="calendar-grid">
+      {% for m in escrows.calendar[:12] %}
+        <div class="cal-month">
+          <div class="m-label">{{ m.month_key }}</div>
+          <div class="m-xrp">{{ "{:,.0f}".format(m.total_xrp) }} XRP</div>
+          <div class="m-sub">
+            {{ m.object_count }} {{ _('escrow') if m.object_count == 1 else _('escrows') }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if escrows and escrows.rows %}
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.4em;">
+      <h2>{{ _('Escrow browser') }}</h2>
+      <span class="meta">
+        {{ escrows.row_count }} {{ _('objects') }} ·
+        {{ escrows.tracked_owner_count }} {{ _('owners') }}
+      </span>
+    </div>
+    <div class="scope-note">
+      {{ _('Every active escrow object across the tracked accounts — owner, amount, unlock date, destination. Ledger-wide escrow enumeration (beyond the Ripple monthly cohort) is a planned expansion; see the note below.') }}
+    </div>
+
+    <details class="esc-browser">
+      <summary>{{ _('Show all') }} {{ escrows.row_count }} {{ _('escrows') }}</summary>
+      <div class="esc-browser-note">
+        {{ _('Sorted by owner, then sequence. Amounts in XRP unless flagged IOU/MPT.') }}
+      </div>
+
+      <div class="browser-row head">
+        <div>{{ _('Owner') }}</div>
+        <div style="text-align: right;">{{ _('Amount') }}</div>
+        <div>{{ _('Unlocks (UTC)') }}</div>
+        <div>{{ _('Destination') }}</div>
+        <div title="{{ _('Crypto-condition or CancelAfter present') }}">⚑</div>
+      </div>
+
+      {% for r in escrows.rows %}
+        <div class="browser-row">
+          <div class="owner">
+            {{ r.owner_name or r.owner_short }}
+            <span class="sub">{{ r.hash_short }}</span>
+          </div>
+          <div class="amount">
+            {% if r.denom == 'XRP' and r.amount_xrp is not none %}
+              {{ "{:,.0f}".format(r.amount_xrp) }}<span class="denom">XRP</span>
+            {% elif r.denom == 'IOU' %}
+              <span class="denom">IOU</span>
+            {% elif r.denom == 'MPT' %}
+              <span class="denom">MPT</span>
+            {% else %}
+              —
+            {% endif %}
+          </div>
+          <div class="when">
+            {% if r.finish_after_iso %}
+              {{ r.finish_after_iso[:10] }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+          <div class="dest">
+            {{ r.destination_short or '—' }}
+          </div>
+          <div class="flag">
+            {% if r.condition_present %}✱{% endif %}
+            {% if r.cancel_after_iso %}⧗{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </details>
+
+    <div class="token-escrow-note">
+      {% if escrows.token_escrow_observed %}
+        <strong>{{ _('TokenEscrow observed:') }}</strong>
+        {{ _('at least one IOU or MPT-denominated escrow is present in the tracked cohort. Expand the browser above to view.') }}
+      {% else %}
+        <strong>{{ _('TokenEscrow: no adoption observed in tracked accounts.') }}</strong>
+        {{ _('The amendment enabling escrows of issued tokens (IOU) and multi-purpose tokens (MPT) is active on mainnet, but zero such escrows exist among the accounts this page tracks. Ledger-wide adoption is unknown — pending a broader walk.') }}
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <footer>
     {{ _('Data: live') }} <code style="color: var(--cyan);">account_objects(type=escrow)</code> {{ _('for locked totals and') }} <code style="color: var(--cyan);">account_info</code> {{ _('for liquid balances, against') }} {{ data.tracked_count }}

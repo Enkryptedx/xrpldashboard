@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.escrow_walker</string>
+
+    <key>Comment</key>
+    <string>One-shot escrow snapshotter for /cold-storage. Iterates the Ripple monthly-release cohort in named_accounts.json (minus the RLUSD issuer) via account_objects(type=escrow), routed through xrpl_client.get_client() so a load-shedding local rippled cascades to s1/s2. Replaces the escrows_snapshot table in Neon each pass; the /cold-storage route reads via escrow_snapshot.py (5-min TTL). TokenEscrow adoption in the cohort is auto-surfaced by inspecting Amount shape — no separate build. v1 = replace-on-write; append-with-history door is marked in escrow_walker.py if a realized-releases chart is ever wanted.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_escrow_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 30 minutes. Ripple's release schedule is monthly-precision;
+         30-min freshness is more than adequate and cheap. account_objects
+         across ~20 accounts is a few seconds at worst. StartInterval
+         (rolling) preferred over StartCalendarInterval per the daily
+         sleep/wake fix codified in feedback_macos_launchd_startinterval. -->
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/escrow_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/escrow_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
