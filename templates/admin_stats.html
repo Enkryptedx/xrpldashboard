@@ -35,12 +35,25 @@
     @media (max-width: 720px) {
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    /* Nested Reach grid holds 3 stat cards inside a half-width panel; the
+       top-level 5-col rule shrinks each cell so tightly that "3,518 humans"
+       and "people · all-time" overflow. Scope to 3 cols + stack on narrow. */
+    .panel .grid { grid-template-columns: repeat(3, minmax(0, 1fr));
+                   margin-bottom: 0; gap: 8px; }
+    @media (max-width: 720px) {
+      .panel .grid { grid-template-columns: 1fr; }
+    }
     .stat { background: var(--card); border: 1px solid var(--border);
-            border-radius: 10px; padding: 12px 14px; }
+            border-radius: 10px; padding: 12px 14px; min-width: 0; }
     .stat .lbl { color: var(--muted); font-size: 0.7rem;
-                 text-transform: uppercase; letter-spacing: 0.06em; }
-    .stat .v   { font-family: var(--mono); font-size: 1.5rem; margin-top: 4px;
-                 color: var(--text); }
+                 text-transform: uppercase; letter-spacing: 0.06em;
+                 overflow-wrap: anywhere; }
+    .stat .v   { font-family: var(--mono); font-size: 1.35rem; margin-top: 4px;
+                 color: var(--text); overflow-wrap: anywhere;
+                 word-break: break-word; line-height: 1.15; }
+    /* Panels are narrower than the outer strip — trim the big number a
+       touch more so all-time counts don't bleed past the card edge. */
+    .panel .stat .v { font-size: 1.05rem; }
     .stat .v.now { color: var(--green); }
     .stat .sub2 { color: var(--dim); font-size: 0.72rem; margin-top: 2px;
                   font-family: var(--mono); }
@@ -92,6 +105,12 @@
     .legend strong { color: var(--text); font-weight: 600; }
     .stat .v .unit { font-family: var(--sys); font-size: 0.62em;
                      color: var(--muted); margin-left: 6px; font-weight: 400; }
+    /* On narrow viewports, stack the unit label under the number so
+       "3,518" and "humans" never contend for the same row width. */
+    @media (max-width: 480px) {
+      .stat .v .unit { display: block; margin-left: 0; margin-top: 1px;
+                       font-size: 0.7em; }
+    }
   </style>
 </head>
 <body>
