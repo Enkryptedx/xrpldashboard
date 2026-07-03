@@ -59,6 +59,318 @@
     .token-hero { margin-bottom: 14px; }
     .token-hero .lede { margin-bottom: 0; }
 
+    /* D1 v5 hero — walled Zone A (30-day trade counts) + Zone B (LP TVL
+       in $USD). Mixed-unit label is intentional per Fable's spec; the
+       wall + separate section labels signal to visitors that Zone A and
+       Zone B answer different questions. */
+    .v5-hero {
+      margin: 0 0 20px;
+      display: grid; gap: 14px;
+    }
+    .v5-hero-head h2 {
+      font-size: 1.05rem; margin: 0 0 4px;
+      color: var(--text); font-weight: 700; letter-spacing: -0.01em;
+    }
+    .v5-hero-head .v5-hero-lede {
+      color: var(--muted); font-size: 0.85rem; margin: 0;
+      max-width: 640px;
+    }
+    .v5-zone {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px 12px;
+      position: relative;
+    }
+    .v5-zone::before {
+      content: attr(data-zone-label);
+      position: absolute; top: 10px; right: 14px;
+      font-family: var(--mono); font-size: 0.62rem; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.14em;
+    }
+    .v5-zone-title {
+      font-size: 0.78rem; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0 0 10px;
+    }
+    .v5-bars { display: grid; gap: 6px; }
+    .v5-bar-row {
+      display: grid;
+      grid-template-columns: 155px 1fr 60px;
+      align-items: center; gap: 10px;
+    }
+    .v5-bar-label {
+      font-size: 0.85rem; color: var(--text);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .v5-bar-label .v5-bar-count {
+      font-family: var(--mono); font-size: 0.7rem; color: var(--dim);
+    }
+    .v5-bar-track {
+      background: rgba(255,255,255,0.03);
+      border-radius: 5px;
+      height: 22px; position: relative; overflow: hidden;
+    }
+    .v5-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg,
+        rgba(var(--bar-rgb), 0.65),
+        rgba(var(--bar-rgb), 0.35));
+      border-right: 1px solid rgba(var(--bar-rgb), 0.55);
+      transition: width 0.4s ease;
+    }
+    .v5-bar-share {
+      font-family: var(--mono); font-size: 0.85rem; color: var(--text);
+      text-align: right; font-weight: 600;
+    }
+    .v5-bar-share .v5-bar-share-sub {
+      display: block; color: var(--dim); font-size: 0.66rem;
+      font-family: var(--mono); font-weight: 400; margin-top: 1px;
+    }
+    /* "Named ↑ · No identity ↓" wall — visually asserts the split
+       between the 7 named-category bars and the Unlabeled bar. */
+    .v5-bars-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0 2px; color: var(--dim);
+      font-family: var(--mono); font-size: 0.66rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .v5-bars-divider::before, .v5-bars-divider::after {
+      content: ""; flex: 1;
+      border-top: 1px dashed rgba(255,255,255,0.10);
+    }
+    .v5-bar-row--unlabeled .v5-bar-fill {
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(100,116,139,0.30) 0 4px,
+        rgba(100,116,139,0.18) 4px 8px
+      );
+      border-right-color: rgba(100,116,139,0.55);
+      position: relative;
+    }
+    .v5-bar-row--unlabeled .v5-bar-label { color: var(--muted); }
+    /* Floor-inside-the-bar (Gate 3 v2). The dark inner block sits at the
+       left of the Unlabeled bar and represents the pragmatic floor as a
+       subset of Unlabeled, not a competing total. Width is % of the
+       hatched outer fill (not % of the total track), so the visual math
+       stays honest: floor is a chunk INSIDE Unlabeled. */
+    .v5-bar-fill-floor {
+      position: absolute; top: 0; left: 0; height: 100%;
+      background: linear-gradient(90deg,
+        rgba(15,23,42,0.92),
+        rgba(30,41,59,0.78));
+      border-right: 1px solid rgba(245,158,11,0.55);
+      display: flex; align-items: center;
+      padding: 0 8px; overflow: hidden;
+      transition: width 0.4s ease;
+    }
+    .v5-bar-fill-floor-label {
+      font-family: var(--mono); font-size: 0.66rem;
+      color: rgba(245,158,11,0.95); font-weight: 700;
+      letter-spacing: 0.04em; white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    }
+    /* On narrow bars the inline label overflows; hide it and rely on the
+       floor-scope note below the bar. */
+    @media (max-width: 720px) {
+      .v5-bar-fill-floor-label { display: none; }
+    }
+    /* Quiet note under the Unlabeled bar explaining what the memecoin
+       absence really means. Fills the "no memecoin bar + huge unlabeled
+       bar" gap that a visitor would otherwise read as inconsistency. */
+    .v5-unlabeled-note {
+      color: var(--dim); font-size: 0.74rem; margin: 6px 0 0;
+      padding: 0 2px; font-style: italic; line-height: 1.5;
+    }
+    .v5-unlabeled-note strong {
+      color: var(--muted); font-style: normal; font-weight: 600;
+    }
+    .v5-floor-scope-note {
+      color: var(--muted); font-size: 0.78rem; margin: 4px 0 0;
+      padding: 0 2px; line-height: 1.5;
+    }
+    .v5-floor-scope-note strong {
+      color: rgba(245,158,11,0.95); font-family: var(--mono);
+      font-weight: 700;
+    }
+    /* "?" tooltip pill next to the "Other named tokens" label — this is
+       the load-bearing spot Charlie will look at hardest. Copy must
+       distinguish "we can identify these" from unlabeled ("no identity"). */
+    .v5-tip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.62rem; cursor: help;
+      font-family: var(--mono); font-weight: 600;
+    }
+    .v5-tip:hover { color: var(--text); border-color: rgba(34,211,238,0.4); }
+
+    .v5-zone-foot {
+      color: var(--dim); font-size: 0.72rem; margin-top: 10px;
+      font-family: var(--mono);
+    }
+
+    /* Zone B — LP TVL bar. Single wide bar, colored segments by pool,
+       82% of it is one XRP/RLUSD pool so the concentration hover is
+       non-negotiable per v5 §3a. */
+    .v5-lp {
+      display: grid; gap: 8px;
+    }
+    .v5-lp-label {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .v5-lp-label .v5-lp-title {
+      color: var(--text); font-weight: 600; font-size: 0.95rem;
+    }
+    .v5-lp-label .v5-lp-total {
+      font-family: var(--mono); color: var(--cyan); font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .v5-lp-label .v5-lp-total-unit {
+      color: var(--muted); font-family: var(--mono); font-weight: 400;
+      font-size: 0.72rem; letter-spacing: 0.04em; margin-left: 4px;
+    }
+    .v5-lp-track {
+      display: flex; height: 30px; border-radius: 5px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .v5-lp-seg {
+      height: 100%;
+      transition: filter 0.15s;
+    }
+    .v5-lp-seg:hover { filter: brightness(1.3); }
+    .v5-lp-seg--rlusd { background: linear-gradient(180deg, rgba(34,211,238,0.75), rgba(34,211,238,0.45)); }
+    .v5-lp-seg--usdc  { background: linear-gradient(180deg, rgba(59,130,246,0.75), rgba(59,130,246,0.45)); }
+    .v5-lp-seg--btc   { background: linear-gradient(180deg, rgba(245,158,11,0.75), rgba(245,158,11,0.45)); }
+    .v5-lp-seg--solo  { background: linear-gradient(180deg, rgba(236,72,153,0.75), rgba(236,72,153,0.45)); }
+    .v5-lp-seg--soil  { background: linear-gradient(180deg, rgba(168,85,247,0.75), rgba(168,85,247,0.45)); }
+    .v5-lp-seg--zrp   { background: linear-gradient(180deg, rgba(140,150,170,0.75), rgba(140,150,170,0.45)); }
+    .v5-lp-seg--tbill { background: linear-gradient(180deg, rgba(16,185,129,0.75), rgba(16,185,129,0.45)); }
+    .v5-lp-seg--other { background: linear-gradient(180deg, rgba(100,116,139,0.55), rgba(100,116,139,0.25)); }
+
+    .v5-lp-hover {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .v5-lp-hover summary {
+      cursor: pointer; padding: 8px 12px; font-size: 0.82rem;
+      color: var(--muted); list-style: none;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .v5-lp-hover summary::-webkit-details-marker { display: none; }
+    .v5-lp-hover summary::before {
+      content: "▸"; color: var(--dim); font-size: 0.75rem;
+      transition: transform 0.15s;
+    }
+    .v5-lp-hover[open] summary::before { transform: rotate(90deg); }
+    .v5-lp-hover summary:hover { color: var(--text); }
+    .v5-lp-hover summary strong { color: var(--cyan); }
+    .v5-lp-hover .v5-lp-table {
+      width: 100%; border-collapse: collapse; margin: 0;
+      font-size: 0.8rem;
+    }
+    .v5-lp-hover .v5-lp-table th,
+    .v5-lp-hover .v5-lp-table td {
+      padding: 6px 12px; text-align: left;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    .v5-lp-hover .v5-lp-table th {
+      color: var(--dim); font-weight: 500; text-transform: uppercase;
+      font-size: 0.62rem; letter-spacing: 0.08em;
+    }
+    .v5-lp-hover .v5-lp-table td.num {
+      text-align: right; color: var(--text);
+    }
+    .v5-lp-hover .v5-lp-table td.pair {
+      color: var(--text); font-weight: 600;
+    }
+
+    /* Attestation strip — three-state summary (verified / self-described
+       / bare). Sits below Zone A + B for the visitor to scan while the
+       bars are still in view. */
+    .v5-tier-strip {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.82rem;
+    }
+    .v5-tier-strip .v5-tier-label {
+      color: var(--muted); font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-right: 6px;
+    }
+    .v5-tier {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 500;
+    }
+    .v5-tier--verified {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.35);
+      color: var(--green);
+    }
+    .v5-tier--self {
+      background: rgba(148,163,184,0.10);
+      border: 1px solid rgba(148,163,184,0.30);
+      color: #cbd5e1;
+    }
+    .v5-tier--bare {
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.14);
+      color: var(--muted);
+    }
+    .v5-tier .v5-tier-n { font-family: var(--mono); font-weight: 700; }
+    .v5-tier-strip .v5-tier-note {
+      color: var(--dim); font-family: var(--mono); font-size: 0.7rem;
+      margin-left: auto;
+    }
+
+    /* RWA + floor + footnote — the paragraphs that answer visitor-side
+       questions the bars raise. */
+    .v5-caption-strip {
+      background: rgba(140,150,170,0.06);
+      border: 1px solid var(--border); border-left: 3px solid var(--dim);
+      border-radius: 6px;
+      padding: 10px 14px; color: var(--muted); font-size: 0.86rem;
+    }
+    .v5-caption-strip strong { color: var(--text); font-weight: 600; }
+    .v5-caption-strip a { color: var(--cyan); }
+    .v5-footnote {
+      color: var(--dim); font-size: 0.72rem; font-family: var(--mono);
+      margin: 0; padding: 4px 2px;
+    }
+
+    @media (max-width: 620px) {
+      .v5-bar-row { grid-template-columns: 105px 1fr 52px; gap: 6px; }
+      .v5-bar-label { font-size: 0.78rem; }
+      .v5-lp-label { flex-direction: column; align-items: flex-start; gap: 4px; }
+    }
+
+    /* Per-row attestation pill on the token list rows below the hero.
+       Sits next to the currency name in .name, echoes the tier strip so
+       the visitor can trace a row → its bar → the aggregate summary. */
+    .attest-pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 1px 6px; border-radius: 999px;
+      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: var(--sys);
+    }
+    .attest-pill--verified {
+      background: rgba(34,197,94,0.12); color: var(--green);
+    }
+    .attest-pill--self {
+      background: rgba(148,163,184,0.10); color: #cbd5e1;
+      border: 1px solid rgba(148,163,184,0.20);
+    }
+
     /* Live trade Tron grid. Perspective floor of glowing grid lines
        receding to a vanishing point. Each validated trade fires a colored
        pulse that travels from the horizon down its category's lane toward
@@ -290,10 +602,14 @@
                  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
                  text-transform: uppercase; }
     .cat-stablecoin     { background: rgba(34,197,94,0.12);  color: var(--green); }
-    .cat-fiat           { background: rgba(34,197,94,0.10);  color: var(--green); }
+    .cat-fiat           { background: rgba(16,185,129,0.10); color: #34d399; }
     .cat-wrapped_major  { background: rgba(245,158,11,0.12); color: var(--amber); }
     .cat-native_utility { background: rgba(34,211,238,0.12); color: var(--cyan); }
     .cat-memecoin       { background: rgba(236,72,153,0.12); color: var(--pink); }
+    .cat-bridge         { background: rgba(168,85,247,0.12); color: #c084fc; }
+    .cat-other          { background: rgba(148,163,184,0.10); color: #cbd5e1; }
+    .cat-rwa            { background: rgba(59,130,246,0.10); color: #93c5fd; }
+    .cat-lp_token       { background: rgba(34,211,238,0.08); color: #67e8f9; }
 
     .trades { font-family: var(--mono); font-size: 0.95rem; color: var(--text);
               text-align: right; font-weight: 600; }
@@ -355,6 +671,188 @@
     </p>
     {{ freshness_badge(data_age_label) }}
   </div>
+
+  {# D1 v5 hero — walled Zone A (30d trade shares) + Zone B (LP TVL in
+     USD). Renders only when the spec snapshot loaded successfully; a
+     missing snapshot is treated as an ops signal, not a UI fallback. #}
+  {% if category_bars %}
+  <section class="v5-hero" aria-label="{{ _('Token composition — last 30 days') }}">
+    <div class="v5-hero-head">
+      <h2>{{ _('What XRPL tokens are people using right now?') }}</h2>
+      <p class="v5-hero-lede">
+        {{ _('Zone A counts trades. Zone B counts the dollars sitting in liquidity pools. Two different questions, two different units — deliberately.') }}
+      </p>
+    </div>
+
+    <div class="v5-zone" data-zone-label="{{ _('zone a · trade counts') }}">
+      <div class="v5-zone-title">{{ _('30-day trade share by token type') }}</div>
+      <div class="v5-bars">
+        {% for bar in category_bars %}
+          <div class="v5-bar-row" style="--bar-rgb: {{ bar.rgb }}">
+            <div class="v5-bar-label">
+              {% if bar.key == "other" %}
+                {{ _('other named tokens') }}
+                <span class="v5-tip" title="{{ _('Tokens we can identify (they have a public issuer profile) but that don\'t fit a standard category like stablecoin or memecoin. These have identities — they\'re not the same as Unlabeled.') }}">?</span>
+              {% elif bar.key == "bridge" %}
+                {{ _('bridge tokens') }}
+                <span class="v5-tip" title="{{ _('Tokens issued by cross-chain bridges (Axelar today). Every currency issued by the bridge gateway counts here, whether or not it\'s hand-tagged.') }}">?</span>
+              {% else %}
+                {{ bar.label }}
+              {% endif %}
+              <span class="v5-bar-count">· {{ bar.token_count }}</span>
+            </div>
+            <div class="v5-bar-track">
+              <div class="v5-bar-fill" style="width: {{ '%.2f'|format(bar.share_pct) }}%;"></div>
+            </div>
+            <div class="v5-bar-share">
+              {{ '%.2f'|format(bar.share_pct) }}%
+              <span class="v5-bar-share-sub">{{ '{:,}'.format(bar.trades) }}</span>
+            </div>
+          </div>
+        {% endfor %}
+
+        {% if unlabeled_bar %}
+          <div class="v5-bars-divider">
+            <span>{{ _('named ↑  ·  no identity ↓') }}</span>
+          </div>
+          <div class="v5-bar-row v5-bar-row--unlabeled" style="--bar-rgb: {{ unlabeled_bar.rgb }}">
+            <div class="v5-bar-label">
+              {{ _('unlabeled') }}
+              <span class="v5-tip" title="{{ _('Tokens with no attestation on the ledger — no domain, no TOML, no first-party source we can verify. Unlike Other named tokens, these have NO identity we could show you.') }}">?</span>
+              <span class="v5-bar-count">· {{ unlabeled_bar.token_count }}</span>
+            </div>
+            <div class="v5-bar-track">
+              <div class="v5-bar-fill" style="width: {{ '%.2f'|format(unlabeled_bar.share_pct) }}%;">
+                {% if unlabeled_bar.floor_seg_share_of_bar %}
+                  <div class="v5-bar-fill-floor"
+                       style="width: {{ '%.2f'|format(unlabeled_bar.floor_seg_share_of_bar) }}%;"
+                       title="{{ _('Of the highest-volume tokens we deep-checked, at least') }} {{ '%.1f'|format(unlabeled_bar.floor_pct) }}% {{ _('are permanently anonymous — no domain, no TOML, no way to verify identity. This dark chunk sits INSIDE the wider Unlabeled bar; it is a subset of Unlabeled, not a competing total.') }}">
+                    <span class="v5-bar-fill-floor-label">
+                      {{ '%.1f'|format(unlabeled_bar.floor_pct) }}% {{ _('permanently anonymous') }}
+                    </span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="v5-bar-share">
+              {{ '%.2f'|format(unlabeled_bar.share_pct) }}%
+              <span class="v5-bar-share-sub">{{ '{:,}'.format(unlabeled_bar.trades) }}</span>
+            </div>
+          </div>
+          {% if unlabeled_bar.floor_seg_share_of_bar %}
+            <p class="v5-floor-scope-note">
+              {{ _('The dark inner chunk') }}
+              (<strong>{{ '%.1f'|format(unlabeled_bar.floor_pct) }}%</strong>)
+              {{ _('is a subset of the Unlabeled bar, not a competing total: of the highest-volume tokens we deep-checked, at least that share are permanently anonymous — bare, no attestation the ledger can point at.') }}
+            </p>
+          {% endif %}
+          <p class="v5-unlabeled-note">
+            <strong>{{ _('No memecoin bar above?') }}</strong>
+            {{ _('Most XRPL memecoins live in this Unlabeled bar — they exist and they trade, they just haven\'t been curated into a named category yet. Zero labeled memecoins ≠ no memecoins on XRPL.') }}
+          </p>
+        {% endif %}
+      </div>
+      <div class="v5-zone-foot">
+        {{ _('counts every Payment + AMM deposit/withdraw on the public ledger stream · one tx = one trade') }}
+      </div>
+    </div>
+
+    {% if zone_b_lp and zone_b_lp.total_usd %}
+    <div class="v5-zone" data-zone-label="{{ _('zone b · dollar depth') }}">
+      <div class="v5-zone-title">{{ _('$ sitting in AMM liquidity pools') }}</div>
+      <div class="v5-lp">
+        <div class="v5-lp-label">
+          <span class="v5-lp-title">{{ _('LP token TVL — all XRPL AMMs with a named side') }}</span>
+          <span>
+            <span class="v5-lp-total">${{ '{:,.0f}'.format(zone_b_lp.total_usd) }}</span>
+            <span class="v5-lp-total-unit">{{ _('USD · spec-locked') }}</span>
+          </span>
+        </div>
+        <div class="v5-lp-track" role="img"
+             aria-label="{{ _('LP TVL concentration:') }} {{ zone_b_lp.top_pool_share_pct|round(1) }}% {{ zone_b_lp.top_pool_pair }}">
+          {% for pool in zone_b_lp.pools %}
+            {% set klass = 'v5-lp-seg--other' %}
+            {% if 'RLUSD' in pool.pair %}{% set klass = 'v5-lp-seg--rlusd' %}
+            {% elif 'USDC' in pool.pair %}{% set klass = 'v5-lp-seg--usdc' %}
+            {% elif 'BTC' in pool.pair %}{% set klass = 'v5-lp-seg--btc' %}
+            {% elif 'SOLO' in pool.pair %}{% set klass = 'v5-lp-seg--solo' %}
+            {% elif 'SOIL' in pool.pair %}{% set klass = 'v5-lp-seg--soil' %}
+            {% elif 'ZRP' in pool.pair %}{% set klass = 'v5-lp-seg--zrp' %}
+            {% elif 'TBILL' in pool.pair %}{% set klass = 'v5-lp-seg--tbill' %}
+            {% endif %}
+            <div class="v5-lp-seg {{ klass }}"
+                 style="width: {{ '%.3f'|format(pool.share_pct) }}%;"
+                 title="{{ pool.pair }} · ${{ '{:,.0f}'.format(pool.tvl_usd) }} · {{ '%.1f'|format(pool.share_pct) }}%"></div>
+          {% endfor %}
+        </div>
+        <details class="v5-lp-hover">
+          <summary>
+            <span>
+              {{ _('concentration:') }}
+              <strong>{{ zone_b_lp.top_pool_pair }}</strong>
+              = {{ '%.1f'|format(zone_b_lp.top_pool_share_pct) }}% {{ _('of the LP bar') }}
+              — {{ _('see full pool breakdown') }}
+            </span>
+          </summary>
+          <table class="v5-lp-table">
+            <thead>
+              <tr>
+                <th>{{ _('pool pair') }}</th>
+                <th class="num">{{ _('TVL (USD)') }}</th>
+                <th class="num">{{ _('share of LP bar') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pool in zone_b_lp.pools %}
+                <tr>
+                  <td class="pair">{{ pool.pair }}</td>
+                  <td class="num">${{ '{:,.2f}'.format(pool.tvl_usd) }}</td>
+                  <td class="num">{{ '%.2f'|format(pool.share_pct) }}%</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
+      </div>
+      <div class="v5-zone-foot">
+        {{ _('sourced from amm_ranked_pools · one entry per AMM · TVL priced against XRP + pegged stables') }}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if rwa_caption and rwa_caption.named_count %}
+    <div class="v5-caption-strip">
+      <strong>{{ rwa_caption.named_count }}</strong>
+      {{ _('real-world-asset tokens issued on XRPL — held on-chain, not actively traded, no on-chain market anchor available.') }}
+      <a href="/tokens?category=rwa">{{ _('see list →') }}</a>
+    </div>
+    {% endif %}
+
+    <div class="v5-tier-strip">
+      <span class="v5-tier-label">{{ _('attestation of top {} pairs:').format(tier_summary.total_pairs) }}</span>
+      <span class="v5-tier v5-tier--verified" title="{{ _('cryptographically anchored via canonical TOML [[ACCOUNTS]] block on the issuer\'s own domain') }}">
+        <span>✓</span>
+        <span>{{ _('verified') }}</span>
+        <span class="v5-tier-n">{{ tier_summary.verified }}</span>
+      </span>
+      <span class="v5-tier v5-tier--self" title="{{ _('publishes an XRPL TOML but not in the canonical shape — treated as a self-report, never as verification') }}">
+        <span>ⓘ</span>
+        <span>{{ _('self-described') }}</span>
+        <span class="v5-tier-n">{{ tier_summary.self_described }}</span>
+      </span>
+      <span class="v5-tier v5-tier--bare" title="{{ _('no TOML we could verify — either domain-only or fully anonymous') }}">
+        <span>—</span>
+        <span>{{ _('bare') }}</span>
+        <span class="v5-tier-n">{{ tier_summary.bare }}</span>
+      </span>
+      <span class="v5-tier-note">{{ _('methodology →') }} <a href="/methodology" style="color: inherit; text-decoration: underline;">/methodology</a></span>
+    </div>
+
+    <p class="v5-footnote">
+      {{ _('Zone A counts trades (activity). Zone B counts dollars where they sit (depth). Mixed units are intentional — activity and depth are different signals, and one bar showing both would lie about both.') }}
+    </p>
+  </section>
+  {% endif %}
 
   <div class="tron-grid" data-tron-grid aria-label="{{ _('Live token trade grid') }}">
     <canvas class="tron-grid-canvas" data-tron-canvas></canvas>
@@ -444,6 +942,11 @@
       <div class="name-block">
         <div class="name">
           <span class="display{% if not t.labeled %} unnamed{% endif %}">{{ t.display }}</span>
+          {% if t.attestation == 'verified' %}
+            <span class="attest-pill attest-pill--verified" title="{{ _('cryptographically anchored via canonical TOML [[ACCOUNTS]]') }}">✓ {{ _('verified') }}</span>
+          {% elif t.attestation == 'self-described' %}
+            <span class="attest-pill attest-pill--self" title="{{ _('publishes an XRPL TOML but not in the canonical shape — self-report, not verified') }}">ⓘ {{ _('self-described') }}</span>
+          {% endif %}
           {% if t.category %}
             <span class="cat-badge cat-{{ t.category }}">{{ t.category|replace("_"," ") }}</span>
           {% endif %}
