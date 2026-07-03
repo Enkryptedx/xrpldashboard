@@ -343,6 +343,14 @@ _TOKEN_PRICE_CACHE = {}
 _TOKEN_PRICE_CACHE_LAST_REFRESH = 0.0
 _TOKEN_PRICE_CACHE_TTL_SECS = 300  # 5 min
 
+# Hard sanity ceiling on per-leg XRP-equivalent. 1e11 XRP = total XRPL
+# supply (100B). Any leg computing above this is definitionally impossible
+# and gets skipped with a log line so we can see if the ceiling ever fires
+# in normal operation. Codified 2026-07-03 after Gate 4 exposed 1.66e+95
+# writes from max-IOU-exponent Amount.value leaks.
+_XRP_DELTA_CEILING = 1e11
+_XRP_DELTA_CEILING_HITS = 0
+
 
 def _refresh_token_price_cache_if_stale():
     """Reload _TOKEN_PRICE_CACHE from token_prices if TTL expired. Records
@@ -376,26 +384,51 @@ def _refresh_token_price_cache_if_stale():
 def _payment_xrp_delta(cur, iss, amount_value):
     """Return the XRP-equivalent for a Payment leg, or 0.0 when the pair
     has no priced row (no XRP pool above the dust gate). 0.0 is the honest
-    signal — never fabricate a value from stale or derived data."""
+    signal — never fabricate a value from stale or derived data.
+
+    Skip and log any leg whose computed xrp_delta > _XRP_DELTA_CEILING
+    (100B XRP = total supply). That upper bound is definitionally
+    impossible and typically comes from max-IOU-exponent limit shapes
+    that leaked past the delivered-amount check."""
+    global _XRP_DELTA_CEILING_HITS
     if amount_value is None:
         return 0.0
     price = _TOKEN_PRICE_CACHE.get((cur, iss))
     if price is None:
         return 0.0
     try:
-        return float(amount_value) * float(price)
+        delta = float(amount_value) * float(price)
     except (TypeError, ValueError):
         return 0.0
+    if delta > _XRP_DELTA_CEILING or delta < 0.0:
+        _XRP_DELTA_CEILING_HITS += 1
+        log(
+            f"xrp_delta ceiling: cur={cur} iss={iss[:12]}... "
+            f"value={amount_value} price={price} delta={delta:.3e} skipped"
+        )
+        return 0.0
+    return delta
 
 
 def token_event_handler(msg, state):
     """Token Payments + AMM deposit/withdraw → volumes.db hourly buckets.
 
-    Payments: extract Amount.value, look up XRP-per-token in the cached
-    token_prices map, write both trade_count += 1 and volume_xrp +=
-    (value × price). When no priced row exists for the pair (thin pool
-    or no XRP pool), volume_xrp += 0.0 — the deliberate absence signal
-    from token_prices.py.
+    Payments: read the TRUE delivered amount, look up XRP-per-token in
+    the cached token_prices map, write both trade_count += 1 and
+    volume_xrp += (delivered × price). When no priced row exists for the
+    pair (thin pool or no XRP pool), volume_xrp += 0.0 — the deliberate
+    absence signal from token_prices.py.
+
+    Amount source discipline (same as whale_handler._resolved_amount):
+      - meta.delivered_amount when present (post-tx truth, respects
+        tfPartialPayment; the ONLY correct value for cross-currency)
+      - else Amount / DeliverMax when SendMax is absent
+      - if SendMax is set and delivered_amount is missing → skip
+        (Amount is only an upper bound, using it fabricates value)
+
+    Also gated by _payment_xrp_delta's 100B-XRP ceiling for defense in
+    depth against max-IOU-exponent leaks. Codified after Gate 4 caught
+    1.66e+95 XRP writes with the naive Amount.value path.
 
     AMM deposit/withdraw: still counts as one trade per token side, but
     volume_xrp += 0.0 (Asset/Asset2 identify the pair without carrying
@@ -406,7 +439,13 @@ def token_event_handler(msg, state):
 
     entries = []  # list of (cur, iss, xrp_delta)
     if ttype == "Payment":
-        amount = tx.get("Amount") or tx.get("DeliverMax")
+        delivered = (msg.get("meta") or {}).get("delivered_amount")
+        if delivered is not None:
+            amount = delivered
+        elif "SendMax" in tx:
+            amount = None  # cross-currency w/o delivered_amount → skip
+        else:
+            amount = tx.get("Amount") or tx.get("DeliverMax")
         if isinstance(amount, dict):
             cur = amount.get("currency")
             iss = amount.get("issuer")
