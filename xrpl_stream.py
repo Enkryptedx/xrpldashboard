@@ -335,25 +335,85 @@ def whale_handler(msg, state):
     state["whale_events_seen"] = state.get("whale_events_seen", 0) + 1
 
 
+# In-process XRP-per-token price cache, refreshed from the token_prices
+# table populated by rank_amms → token_prices.py (dust-gated at
+# MIN_POOL_XRP_RESERVE per that module's editorial floor). Absent price
+# is the deliberate signal — write 0.0, never fabricate.
+_TOKEN_PRICE_CACHE = {}
+_TOKEN_PRICE_CACHE_LAST_REFRESH = 0.0
+_TOKEN_PRICE_CACHE_TTL_SECS = 300  # 5 min
+
+
+def _refresh_token_price_cache_if_stale():
+    """Reload _TOKEN_PRICE_CACHE from token_prices if TTL expired. Records
+    a walker_health row so the /walker_health page tracks this refresher.
+    Safe to call every event — the TTL check is the throttle."""
+    global _TOKEN_PRICE_CACHE, _TOKEN_PRICE_CACHE_LAST_REFRESH
+    now = time.time()
+    if now - _TOKEN_PRICE_CACHE_LAST_REFRESH < _TOKEN_PRICE_CACHE_TTL_SECS:
+        return
+    pgbridge.write_walker_health_start(
+        "token_price_ratio_cache",
+        cadence_seconds=_TOKEN_PRICE_CACHE_TTL_SECS,
+    )
+    try:
+        fresh = pgbridge.read_token_prices_map() or {}
+        _TOKEN_PRICE_CACHE = fresh
+        _TOKEN_PRICE_CACHE_LAST_REFRESH = now
+        pgbridge.write_walker_health_end(
+            "token_price_ratio_cache",
+            ok=True,
+            message=f"loaded {len(fresh)} priced tokens",
+        )
+    except Exception as e:
+        pgbridge.write_walker_health_end(
+            "token_price_ratio_cache",
+            ok=False,
+            message=str(e)[:200],
+        )
+
+
+def _payment_xrp_delta(cur, iss, amount_value):
+    """Return the XRP-equivalent for a Payment leg, or 0.0 when the pair
+    has no priced row (no XRP pool above the dust gate). 0.0 is the honest
+    signal — never fabricate a value from stale or derived data."""
+    if amount_value is None:
+        return 0.0
+    price = _TOKEN_PRICE_CACHE.get((cur, iss))
+    if price is None:
+        return 0.0
+    try:
+        return float(amount_value) * float(price)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def token_event_handler(msg, state):
     """Token Payments + AMM deposit/withdraw → volumes.db hourly buckets.
 
-    Phase 0 of TOKEN_ECONOMY.md: count trades per (currency, issuer, hour).
-    volume_xrp is recorded as 0.0 placeholder until token_prices.py can
-    derive XRP-equivalents from the AMM index. trade_count alone is
-    already useful for the new-token activity surface.
+    Payments: extract Amount.value, look up XRP-per-token in the cached
+    token_prices map, write both trade_count += 1 and volume_xrp +=
+    (value × price). When no priced row exists for the pair (thin pool
+    or no XRP pool), volume_xrp += 0.0 — the deliberate absence signal
+    from token_prices.py.
+
+    AMM deposit/withdraw: still counts as one trade per token side, but
+    volume_xrp += 0.0 (Asset/Asset2 identify the pair without carrying
+    a per-leg amount; pricing those is deferred).
     """
     tx = extract_tx(msg)
     ttype = tx.get("TransactionType")
 
-    pairs = []
+    entries = []  # list of (cur, iss, xrp_delta)
     if ttype == "Payment":
         amount = tx.get("Amount") or tx.get("DeliverMax")
         if isinstance(amount, dict):
             cur = amount.get("currency")
             iss = amount.get("issuer")
+            val = amount.get("value")
             if cur and iss:
-                pairs.append((cur, iss))
+                _refresh_token_price_cache_if_stale()
+                entries.append((cur, iss, _payment_xrp_delta(cur, iss, val)))
     elif ttype in ("AMMDeposit", "AMMWithdraw"):
         for key in ("Asset", "Asset2"):
             asset = tx.get(key) or {}
@@ -361,30 +421,34 @@ def token_event_handler(msg, state):
                 cur = asset.get("currency")
                 iss = asset.get("issuer")
                 if cur and cur != "XRP" and iss:
-                    pairs.append((cur, iss))
+                    entries.append((cur, iss, 0.0))
 
-    if not pairs:
+    if not entries:
         return
 
     hour_bucket = int(time.time() // 3600)
     try:
-        for cur, iss in pairs:
+        for cur, iss, xrp_delta in entries:
             _volumes_conn.execute(
                 "INSERT INTO token_volume "
                 "(currency, issuer, hour_bucket, volume_xrp, trade_count) "
-                "VALUES (?, ?, ?, 0.0, 1) "
+                "VALUES (?, ?, ?, ?, 1) "
                 "ON CONFLICT(currency, issuer, hour_bucket) DO UPDATE SET "
-                "trade_count = trade_count + 1",
-                (cur, iss, hour_bucket),
+                "trade_count = trade_count + 1, "
+                "volume_xrp = volume_xrp + excluded.volume_xrp",
+                (cur, iss, hour_bucket, xrp_delta),
             )
     except Exception as e:
         log(f"token_event_handler db error: {e}")
         return
 
-    for cur, iss in pairs:
-        pgbridge.upsert_token_volume(cur, iss, hour_bucket, trade_delta=1)
+    for cur, iss, xrp_delta in entries:
+        pgbridge.upsert_token_volume(
+            cur, iss, hour_bucket,
+            trade_delta=1, volume_xrp_delta=xrp_delta,
+        )
 
-    state["token_events_seen"] = state.get("token_events_seen", 0) + len(pairs)
+    state["token_events_seen"] = state.get("token_events_seen", 0) + len(entries)
 
 
 def new_token_handler(msg, state):

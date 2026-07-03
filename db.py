@@ -812,10 +812,11 @@ def write_event(
         _drop_writer_conn()
 
 
-def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1):
-    """Increment trade_count for a (currency, issuer, hour_bucket) bucket.
-    Mirrors the SQLite ON CONFLICT … DO UPDATE pattern in
-    xrpl_stream.token_event_handler. Silent no-op when PG isn't
+def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1, volume_xrp_delta=0.0):
+    """Increment trade_count and volume_xrp for a (currency, issuer, hour_bucket)
+    bucket. volume_xrp_delta defaults to 0.0 for callers that don't have a
+    priced value (AMM deposit/withdraw, or Payment for a token with no XRP
+    pool above the token_prices dust gate). Silent no-op when PG isn't
     configured."""
     conn = _get_writer_conn()
     if conn is None:
@@ -825,10 +826,11 @@ def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1):
             cur.execute(
                 "INSERT INTO token_volume "
                 "(currency, issuer, hour_bucket, volume_xrp, trade_count) "
-                "VALUES (%s, %s, %s, 0.0, %s) "
+                "VALUES (%s, %s, %s, %s, %s) "
                 "ON CONFLICT (currency, issuer, hour_bucket) DO UPDATE "
-                "SET trade_count = token_volume.trade_count + EXCLUDED.trade_count",
-                (currency, issuer, hour_bucket, trade_delta),
+                "SET trade_count = token_volume.trade_count + EXCLUDED.trade_count, "
+                "    volume_xrp = token_volume.volume_xrp + EXCLUDED.volume_xrp",
+                (currency, issuer, hour_bucket, volume_xrp_delta, trade_delta),
             )
     except Exception as e:
         _log_err("upsert_token_volume_failed", e)
