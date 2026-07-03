@@ -677,6 +677,34 @@ CREATE TABLE IF NOT EXISTS institutional_inquiries (
 );
 CREATE INDEX IF NOT EXISTS institutional_inquiries_ts_idx
     ON institutional_inquiries (ts DESC);
+
+-- General on-site contact form (bug reports, feedback, questions,
+-- corrections). Complements institutional_inquiries (which is qualified
+-- sales leads only). Same landing model: mailto: lost visitors on mobile
+-- (no mail app), corporate lockdowns, and webmail-only users; the form
+-- catches submissions server-side regardless of the sender's mail-client
+-- posture. purpose enumerates the CTA source so click analytics + inbox
+-- routing can segment by intent (bug-report, donation, general,
+-- learn-feedback, verify-attestation, rwa-attestation, subprocessor-404,
+-- methodology-discrepancy, data-correction, institutional-general).
+CREATE TABLE IF NOT EXISTS contact_inquiries (
+    id            BIGSERIAL PRIMARY KEY,
+    ts            BIGINT NOT NULL,
+    purpose       TEXT NOT NULL,
+    name          TEXT,
+    email         TEXT NOT NULL,
+    message       TEXT NOT NULL,
+    ref_param     TEXT,
+    referrer      TEXT,
+    visitor_hash  TEXT,
+    user_agent    TEXT,
+    country       TEXT,
+    email_alerted BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS contact_inquiries_ts_idx
+    ON contact_inquiries (ts DESC);
+CREATE INDEX IF NOT EXISTS contact_inquiries_purpose_idx
+    ON contact_inquiries (purpose);
 """
 
 
@@ -3364,6 +3392,56 @@ def mark_institutional_inquiry_alerted(row_id):
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE institutional_inquiries "
+                    "SET email_alerted = TRUE WHERE id = %s",
+                    (row_id,),
+                )
+            conn.commit()
+    except Exception:
+        pass
+
+
+# ─────────────────────────────────────────────────────────────────────
+# General contact form (B1 — /contact)
+# ─────────────────────────────────────────────────────────────────────
+
+def insert_contact_inquiry(
+    purpose, name, email, message,
+    ref_param=None, referrer=None,
+    visitor_hash=None, user_agent=None, country=None,
+):
+    """Insert one /contact submission. Returns the new row id, or None if
+    Postgres isn't configured. Raises on real DB errors so the caller can
+    surface a submission failure to the visitor (unlike click logging,
+    which is best-effort telemetry)."""
+    if not pg_available():
+        return None
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO contact_inquiries "
+                "(ts, purpose, name, email, message, ref_param, "
+                " referrer, visitor_hash, user_agent, country) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "RETURNING id",
+                (int(time.time()), purpose, name, email, message,
+                 ref_param, referrer, visitor_hash, user_agent, country),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return int(row[0]) if row else None
+
+
+def mark_contact_inquiry_alerted(row_id):
+    """Flip email_alerted=TRUE after the Brevo alert send succeeds. Best-
+    effort — a failure here leaves the row flagged as unalerted for later
+    reconciliation."""
+    if not pg_available() or row_id is None:
+        return
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE contact_inquiries "
                     "SET email_alerted = TRUE WHERE id = %s",
                     (row_id,),
                 )

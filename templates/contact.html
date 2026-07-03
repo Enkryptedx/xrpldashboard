@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Contact') }} · xrpldashboard</title>
+  {% set meta_title = "Contact · xrpldashboard" %}
+  {% set meta_description = "Reach xrpldashboard — bug reports, data corrections, attestations, feedback. Charlie reads every message." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --err: #f87171;
+      --ok: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.7rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .purpose-pill { display: inline-block; background: rgba(34,211,238,0.12);
+                    border: 1px solid rgba(34,211,238,0.35);
+                    color: var(--cyan); padding: 4px 12px; border-radius: 999px;
+                    font-size: 0.82rem; margin-bottom: 12px;
+                    font-family: var(--mono); }
+    .lede { color: var(--muted); font-size: 1.02rem; margin: 0 0 24px; }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 20px 0; }
+
+    form label { display: block; margin: 14px 0 6px; font-size: 0.92rem;
+                 color: var(--muted); font-weight: 500; }
+    form label .req { color: var(--cyan); margin-left: 3px; }
+    form input, form textarea, form select {
+      width: 100%; background: rgba(0,0,0,0.25); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 11px 13px; font-family: var(--sys); font-size: 0.98rem;
+      line-height: 1.4;
+    }
+    form input:focus, form textarea:focus, form select:focus {
+      outline: none; border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34,211,238,0.15);
+    }
+    form textarea { resize: vertical; min-height: 130px; }
+    /* Honeypot — invisible to humans, present in DOM for bots. */
+    .hp { position: absolute; left: -9999px; top: -9999px;
+          width: 1px; height: 1px; opacity: 0; }
+
+    .submit-row { margin-top: 22px; display: flex; align-items: center;
+                  gap: 16px; flex-wrap: wrap; }
+    button.submit {
+      background: var(--cyan); color: #0a0e27; border: 0;
+      font-weight: 600; font-size: 1rem; padding: 12px 26px;
+      border-radius: 8px; cursor: pointer; letter-spacing: -0.005em;
+    }
+    button.submit:hover { background: #5ee0f0; }
+
+    .fallback { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+    .fallback code { font-family: var(--mono); color: var(--text); }
+
+    .errors { background: rgba(248,113,113,0.08);
+              border: 1px solid rgba(248,113,113,0.35);
+              border-radius: 8px; padding: 12px 16px; margin: 0 0 16px;
+              color: var(--err); font-size: 0.95rem; }
+    .errors ul { margin: 6px 0 0; padding-left: 20px; }
+
+    .ok-pill { display: inline-flex; align-items: center; gap: 8px;
+               background: rgba(74,222,128,0.1);
+               border: 1px solid rgba(74,222,128,0.35);
+               color: var(--ok); padding: 6px 12px; border-radius: 999px;
+               font-size: 0.85rem; margin-bottom: 12px; }
+    .ok-pill .dot { width: 8px; height: 8px; border-radius: 50%;
+                    background: var(--ok); }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 40px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  {% if submitted %}
+    <h1>{{ _('Message received') }}</h1>
+    <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to Charlie') }}</div>
+    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} contact@xrpldashboard.com {{ _('directly.') }}</p>
+    <p><a href="/">← {{ _('back to dashboard') }}</a></p>
+  {% else %}
+    <div class="purpose-pill">{{ purpose_label }}</div>
+    <h1>{{ _('Get in touch') }}</h1>
+    <p class="lede">
+      {{ _('Bug reports, data corrections, attestations, feedback — pick a purpose or edit the dropdown. Charlie reads every message personally.') }}
+    </p>
+
+    <div class="card">
+      {% if errors %}
+        <div class="errors">
+          <strong>{{ _('Please fix:') }}</strong>
+          <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+
+      <form method="POST" action="/contact" autocomplete="on">
+        {% if ref_param %}<input type="hidden" name="ref" value="{{ ref_param }}">{% endif %}
+
+        {# Honeypot: real users leave this empty; bots fill every field. #}
+        <div class="hp" aria-hidden="true">
+          <label for="website">Website</label>
+          <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <label for="purpose">{{ _('Purpose') }}</label>
+        <select name="purpose" id="purpose">
+          {% for key, label in purposes.items() %}
+            <option value="{{ key }}"{% if key == purpose %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="name">{{ _('Your name (optional)') }}</label>
+        <input type="text" name="name" id="name" maxlength="200"
+               value="{{ form.name if form else '' }}">
+
+        <label for="email">{{ _('Email') }}<span class="req">*</span></label>
+        <input type="email" name="email" id="email" required maxlength="254"
+               value="{{ form.email if form else '' }}">
+
+        <label for="message">{{ _('Your message') }}<span class="req">*</span></label>
+        <textarea name="message" id="message" required minlength="10" maxlength="5000"
+                  placeholder="{{ _('One or two sentences is fine. Include a link or transaction hash if it\'s a data issue.') }}">{{ form.message if form else '' }}</textarea>
+
+        <div class="submit-row">
+          <button type="submit" class="submit">{{ _('Send message') }}</button>
+          <span class="fallback">
+            {{ _('Charlie personally reads every message.') }}
+          </span>
+        </div>
+      </form>
+    </div>
+
+    <p class="fallback">
+      {{ _('Your message is saved to xrpldashboard\'s database and Charlie is emailed a copy. No third-party form processor, no marketing pixel.') }}
+    </p>
+  {% endif %}
+
+  <div class="footer">
+    <a href="/">{{ _('dashboard') }}</a> ·
+    <a href="/privacy">{{ _('privacy') }}</a> ·
+    <a href="/security">{{ _('security') }}</a> ·
+    <a href="/about">{{ _('about') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

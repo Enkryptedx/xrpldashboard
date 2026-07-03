@@ -3572,6 +3572,218 @@ def institutional_contact_submit():
     )
 
 
+# ─────────────────────────────────────────────────────────────────────
+# B1 — /click/contact + /contact form. Extends the institutional-contact
+# pattern to every other on-site mailto: link (bug reports, feedback,
+# corrections, RWA attestations, etc.). Same rationale: mailto: silently
+# fails on mobile without a mail app, corporate-lockdown browsers, and
+# webmail-only users; the form lands submissions server-side regardless.
+# security / legal / privacy addresses stay plain-text — legal precedent
+# for coordinated disclosure + GDPR/CCPA rights requests treats the
+# posted address as the primary channel, not a redirect.
+# ─────────────────────────────────────────────────────────────────────
+
+CONTACT_PURPOSES = {
+    "bug-report":              "Bug report or data issue",
+    "donation":                "Donation inquiry",
+    "general":                 "General contact",
+    "learn-feedback":          "Feedback on the /learn page",
+    "verify-attestation":      "Verified-issuer attestation submission",
+    "rwa-attestation":         "RWA issuer TOML attestation submission",
+    "subprocessor-404":        "Broken subprocessor link",
+    "methodology-discrepancy": "Methodology discrepancy",
+    "data-correction":         "Data or number correction",
+    "institutional-general":   "Institutional inquiry (form fallback)",
+}
+
+
+@app.route("/click/contact")
+def click_contact():
+    """Click logger + purpose-routed redirect to /contact. purpose is
+    baked into cta_id so click analytics segment by intent."""
+    purpose = (request.args.get("purpose") or "general").strip().lower()
+    if purpose not in CONTACT_PURPOSES:
+        purpose = "general"
+    try:
+        ip = request.remote_addr or ""
+        ua = (request.user_agent.string or "")[:300] or None
+        ref_param = (request.args.get("ref") or "").strip()[:64] or None
+        referrer = (request.referrer or "")[:300] or None
+        country = request.headers.get("CF-IPCountry") \
+            or request.headers.get("X-Vercel-IP-Country") \
+            or request.headers.get("X-Country-Code")
+        db.log_cta_click(
+            cta_id=f"contact:{purpose}",
+            ref_param=ref_param,
+            referrer=referrer,
+            visitor_hash=_visitor_hash(ip, ua),
+            user_agent=ua,
+            country=country,
+        )
+    except Exception:
+        pass
+    dest = f"{url_for('contact_form')}?purpose={purpose}"
+    ref = (request.args.get("ref") or "").strip()[:64]
+    if ref:
+        dest = f"{dest}&ref={ref}"
+    return redirect(dest, code=302)
+
+
+def _send_contact_alert(inquiry):
+    """Best-effort Brevo SMTP alert for new /contact submissions. Same
+    env-vars gate as the institutional alert; no-op if unset."""
+    host = os.environ.get("SMTP_HOST", "").strip()
+    port = os.environ.get("SMTP_PORT", "").strip()
+    user = os.environ.get("SMTP_USER", "").strip()
+    pw = os.environ.get("SMTP_PASS", "").strip()
+    sender = os.environ.get("SMTP_FROM", "").strip()
+    to = os.environ.get("SMTP_TO", "").strip()
+    if not (host and port and user and pw and sender and to):
+        return False
+    try:
+        import smtplib
+        from email.message import EmailMessage
+        purpose_label = CONTACT_PURPOSES.get(
+            inquiry["purpose"], inquiry["purpose"]
+        )
+        msg = EmailMessage()
+        msg["Subject"] = (
+            f"[xrpldashboard] {purpose_label}: "
+            f"{inquiry.get('name') or inquiry['email']}"
+        )
+        msg["From"] = sender
+        msg["To"] = to
+        msg["Reply-To"] = inquiry["email"]
+        lines = [
+            f"Purpose:   {purpose_label} ({inquiry['purpose']})",
+            f"Name:      {inquiry.get('name') or '—'}",
+            f"Email:     {inquiry['email']}",
+            f"Country:   {inquiry.get('country') or '?'}",
+            f"Ref:       {inquiry.get('ref_param') or '—'}",
+            f"Referrer:  {inquiry.get('referrer') or '—'}",
+            "",
+            "Message:",
+            inquiry["message"],
+            "",
+            f"— row id {inquiry.get('id')}",
+        ]
+        msg.set_content("\n".join(lines))
+        with smtplib.SMTP(host, int(port), timeout=10) as s:
+            s.starttls()
+            s.login(user, pw)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/contact", methods=["GET"])
+@limiter.limit("60 per minute")
+def contact_form():
+    """Render the on-site general contact form. purpose enum drives the
+    headline; unknown values fall back to 'general'."""
+    purpose = (request.args.get("purpose") or "general").strip().lower()
+    if purpose not in CONTACT_PURPOSES:
+        purpose = "general"
+    ref = (request.args.get("ref") or "").strip()[:64] or None
+    return render_template(
+        "contact.html",
+        purpose=purpose,
+        purpose_label=CONTACT_PURPOSES[purpose],
+        purposes=CONTACT_PURPOSES,
+        ref_param=ref,
+        submitted=False,
+    )
+
+
+@app.route("/contact", methods=["POST"])
+@limiter.limit("6 per hour")
+def contact_submit():
+    """Validate + persist + fire Brevo alert. Same aggressive rate limit
+    as the institutional form because Charlie reads by hand. Honeypot
+    field 'website' (invisible in the UI) catches naive bots."""
+    if (request.form.get("website") or "").strip():
+        return render_template(
+            "contact.html",
+            submitted=True,
+            purpose="general",
+            purpose_label=CONTACT_PURPOSES["general"],
+            purposes=CONTACT_PURPOSES,
+            ref_param=None,
+        )
+
+    purpose = (request.form.get("purpose") or "general").strip().lower()
+    if purpose not in CONTACT_PURPOSES:
+        purpose = "general"
+    name = (request.form.get("name") or "").strip()[:200] or None
+    email = (request.form.get("email") or "").strip()[:254]
+    message = (request.form.get("message") or "").strip()[:5000]
+    ref_param = (request.form.get("ref") or "").strip()[:64] or None
+
+    errors = []
+    if not _looks_like_email(email):
+        errors.append("Please enter a valid email address.")
+    if len(message) < 10:
+        errors.append("Please include a short message (10+ characters).")
+
+    if errors:
+        return render_template(
+            "contact.html",
+            submitted=False,
+            purpose=purpose,
+            purpose_label=CONTACT_PURPOSES[purpose],
+            purposes=CONTACT_PURPOSES,
+            ref_param=ref_param,
+            errors=errors,
+            form={"name": name, "email": email, "message": message},
+        ), 400
+
+    ip = request.remote_addr or ""
+    ua = (request.user_agent.string or "")[:300] or None
+    referrer = (request.referrer or "")[:300] or None
+    country = request.headers.get("CF-IPCountry") \
+        or request.headers.get("X-Vercel-IP-Country") \
+        or request.headers.get("X-Country-Code")
+
+    try:
+        row_id = db.insert_contact_inquiry(
+            purpose=purpose, name=name, email=email, message=message,
+            ref_param=ref_param, referrer=referrer,
+            visitor_hash=_visitor_hash(ip, ua),
+            user_agent=ua, country=country,
+        )
+    except Exception:
+        return render_template(
+            "contact.html",
+            submitted=False,
+            purpose=purpose,
+            purpose_label=CONTACT_PURPOSES[purpose],
+            purposes=CONTACT_PURPOSES,
+            ref_param=ref_param,
+            errors=["Something went wrong saving your message. "
+                    "Please email contact@xrpldashboard.com directly."],
+            form={"name": name, "email": email, "message": message},
+        ), 500
+
+    if row_id is not None:
+        sent = _send_contact_alert({
+            "id": row_id, "purpose": purpose, "name": name, "email": email,
+            "message": message, "ref_param": ref_param,
+            "referrer": referrer, "country": country,
+        })
+        if sent:
+            db.mark_contact_inquiry_alerted(row_id)
+
+    return render_template(
+        "contact.html",
+        submitted=True,
+        purpose=purpose,
+        purpose_label=CONTACT_PURPOSES[purpose],
+        purposes=CONTACT_PURPOSES,
+        ref_param=ref_param,
+    )
+
+
 def _rank_status_order(r):
     """Sort: exact USD-pegged > estimated XRP-paired > non-XRP > error.
     Within each group, descending TVL."""
