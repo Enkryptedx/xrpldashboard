@@ -80,6 +80,7 @@ EVENTS_DB_PATH = os.path.join(HERE, "events.db")
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
+ISO_CONTINENT_PATH = os.path.join(HERE, "iso_country_to_continent.json")
 SNAPSHOT_DIR = os.path.join(HERE, "historical_snapshots")
 SIGNED_SNAPSHOTS_DIR = os.path.join(HERE, "signed_snapshots")
 SNAPSHOT_PUBKEY_PEM_PATH = os.path.join(HERE, "snapshot_pubkey.pem")
@@ -1493,6 +1494,38 @@ def health():
 @ttl_cache(seconds=60)
 def _load_named_accounts_dict():
     return _safe_load_json(NAMED_ACCOUNTS_PATH) or {}
+
+
+@ttl_cache(seconds=3600)
+def _load_continent_map():
+    """ISO-3166 alpha-2 → continent (UN M49 5-region + Antarctica).
+    Cloudflare special codes (T1 Tor, ? no header) are handled by the
+    caller — this map only covers real ISO codes."""
+    raw = _safe_load_json(ISO_CONTINENT_PATH) or {}
+    return {k: v for k, v in raw.items() if len(k) == 2 and k.isupper()}
+
+
+def _continent_aggregate(country_rows):
+    """Fold a (country, views, uniques) breakdown into a continent
+    breakdown. `country_rows` is what read_country_breakdown returns
+    with a high limit (so the aggregate covers ALL origins, not just
+    the top-10 table). Tor exit nodes (T1) and rows with no CF header
+    (?) are bucketed as 'Unknown' — they're real people but their
+    physical continent is unknowable from the data we have. Returned
+    list is sorted by uniques desc."""
+    cmap = _load_continent_map()
+    agg = {}
+    for country, views, uniques in country_rows:
+        continent = cmap.get(country) if country else None
+        if not continent:
+            continent = "Unknown"
+        entry = agg.setdefault(continent, {"views": 0, "uniques": 0})
+        entry["views"] += int(views or 0)
+        entry["uniques"] += int(uniques or 0)
+    return sorted(
+        [(c, v["views"], v["uniques"]) for c, v in agg.items()],
+        key=lambda r: -r[2],
+    )
 
 
 @ttl_cache(seconds=60)
@@ -4562,6 +4595,17 @@ def analytics():
     countries_all = db.read_country_breakdown(None, limit=500, kind="human")
     countries_all_count = db.read_country_count(None, kind="human")
 
+    # Reach panel — same bot filter, same population as the tables. Pulls
+    # ALL 24h countries (not just the top 10 the table renders) so continent
+    # aggregation covers every origin. Continent counts exclude 'Unknown'
+    # (Tor + no-CF-header rows) because their real continent is unknowable.
+    countries_24h_all = db.read_country_breakdown(24 * 60 * 60, limit=500,
+                                                  kind="human")
+    continent_24h = _continent_aggregate(countries_24h_all)
+    continent_all = _continent_aggregate(countries_all)
+    continent_24h_count = sum(1 for c, _, _ in continent_24h if c != "Unknown")
+    continent_all_count = sum(1 for c, _, _ in continent_all if c != "Unknown")
+
     external_refs_7d = db.read_external_referrers(7 * 24 * 60 * 60, limit=15)
     utm_landings_7d = db.read_utm_landings(7 * 24 * 60 * 60, limit=15)
 
@@ -4605,6 +4649,10 @@ def analytics():
         countries_24h_count=countries_24h_count,
         countries_all=countries_all,
         countries_all_count=countries_all_count,
+        continent_24h=continent_24h,
+        continent_all=continent_all,
+        continent_24h_count=continent_24h_count,
+        continent_all_count=continent_all_count,
         external_refs_7d=external_refs_7d,
         utm_landings_7d=utm_landings_7d,
         cta_stats=cta_stats,

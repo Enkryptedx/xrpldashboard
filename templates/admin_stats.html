@@ -138,6 +138,80 @@
       </div>
     </div>
 
+    {# Reach panel — where visitors are coming from. Same bot filter as the
+       rollup grid above; counts here match the country/continent tables
+       below. 'Unknown' bucket is Tor + no-CF-header — real people whose
+       physical continent isn't in the data. #}
+    <div class="row">
+      <div class="panel">
+        <h2>Reach · 24h</h2>
+        <div class="grid" role="group" aria-label="24h reach summary">
+          <div class="stat">
+            <div class="lbl">countries</div>
+            <div class="v">{{ "{:,}".format(countries_24h_count) }} <span class="unit">origins</span></div>
+            <div class="sub2">post bot filter</div>
+          </div>
+          <div class="stat">
+            <div class="lbl">continents</div>
+            <div class="v">{{ continent_24h_count }} <span class="unit">of 6</span></div>
+            <div class="sub2">excludes Tor + unmapped</div>
+          </div>
+          <div class="stat">
+            <div class="lbl">people · 24h</div>
+            <div class="v">{{ "{:,}".format(rollups.today.uniques) }} <span class="unit">humans</span></div>
+            <div class="sub2">
+              scanner probes: <a href="#bots">{{ "{:,}".format(bot_rollups.today.views) }}</a>
+            </div>
+          </div>
+        </div>
+        {% if continent_24h %}
+        <table style="margin-top: 6px;">
+          <tr><th>continent · 24h</th><th class="num">page loads</th><th class="uniq">people</th></tr>
+          {% for cont, views, uniques in continent_24h %}
+          <tr>
+            <td class="path">{{ cont }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no continent data in the last 24h</div>{% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Reach · all-time</h2>
+        <div class="grid" role="group" aria-label="all-time reach summary">
+          <div class="stat">
+            <div class="lbl">countries</div>
+            <div class="v">{{ "{:,}".format(countries_all_count) }} <span class="unit">origins</span></div>
+            <div class="sub2">including T1 (Tor) + ?</div>
+          </div>
+          <div class="stat">
+            <div class="lbl">continents</div>
+            <div class="v">{{ continent_all_count }} <span class="unit">of 6</span></div>
+            <div class="sub2">excludes Tor + unmapped</div>
+          </div>
+          <div class="stat">
+            <div class="lbl">people · all-time</div>
+            <div class="v">{{ "{:,}".format(rollups.all_time.uniques) }} <span class="unit">humans</span></div>
+            <div class="sub2">scanner probes: <a href="#bots">{{ "{:,}".format(bot_rollups.all_time.views) }}</a></div>
+          </div>
+        </div>
+        {% if continent_all %}
+        <table style="margin-top: 6px;">
+          <tr><th>continent · all-time</th><th class="num">page loads</th><th class="uniq">people</th></tr>
+          {% for cont, views, uniques in continent_all %}
+          <tr>
+            <td class="path">{{ cont }}</td>
+            <td class="num">{{ "{:,}".format(views) }}</td>
+            <td class="uniq">{{ "{:,}".format(uniques) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no continent data yet</div>{% endif %}
+      </div>
+    </div>
+
     <div class="row">
       <div class="panel">
         <h2>Top pages · 24h</h2>
@@ -333,7 +407,7 @@
       </div>
     </div>
 
-    <h1 style="margin-top: 36px;">bot probes
+    <h1 id="bots" style="margin-top: 36px;">bot probes
       <span class="pill warn">noise</span>
     </h1>
     <div class="sub">
