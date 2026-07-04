@@ -201,6 +201,13 @@ def _fetch_ledger_txs(client, ledger_seq):
     ledger = result.get("ledger") or {}
     close_time = ledger.get("close_time")
     txs = ledger.get("transactions") or []
+    if close_time is None:
+        # Malformed response: closed ledger with no close_time. Treat as
+        # a fetch failure so the caller skips and retries next cycle,
+        # rather than building rows that hit NotNullViolation on insert.
+        logger.warning("ledger missing close_time seq=%s (treated as fetch fail)",
+                       ledger_seq)
+        return None, None
     return close_time, txs
 
 
@@ -355,7 +362,12 @@ def _fetch_ledger_txs_from(client, ledger_seq):
                        ledger_seq, result.get("error"))
         return None, None
     ledger = result.get("ledger") or {}
-    return ledger.get("close_time"), ledger.get("transactions") or []
+    close_time = ledger.get("close_time")
+    if close_time is None:
+        logger.warning("backfill ledger missing close_time seq=%s "
+                       "(treated as fetch fail)", ledger_seq)
+        return None, None
+    return close_time, ledger.get("transactions") or []
 
 
 def run_backfill():
