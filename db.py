@@ -705,6 +705,95 @@ CREATE INDEX IF NOT EXISTS contact_inquiries_ts_idx
     ON contact_inquiries (ts DESC);
 CREATE INDEX IF NOT EXISTS contact_inquiries_purpose_idx
     ON contact_inquiries (purpose);
+
+-- NFT tables — back /nfts (Fable funnel + active/quiet + churn badge).
+-- All figures counted from a cutoff ledger forward. True full-history
+-- existing count lives in a separate stock table (nft_existing_snapshot);
+-- the funnel flow numbers here are strictly since-cutoff. Two truths,
+-- surfaced separately on the page — never blended. Cutoff configured at
+-- walker start via nft_walker_state.backfill_target (immutable once set).
+--
+-- Per-tx append log. One row per NFT tx we observe inside the window.
+-- Unique tx_hash makes ingest idempotent so re-runs (backfill overlap,
+-- retry after node error) can't dupe rows. raw JSONB kept through v1
+-- for re-derivation without re-fetching Clio; v2 disk optimization
+-- decides whether to drop it once extraction is settled.
+CREATE TABLE IF NOT EXISTS nft_activity (
+    id              BIGSERIAL PRIMARY KEY,
+    ledger_index    BIGINT       NOT NULL,
+    close_time      TIMESTAMPTZ  NOT NULL,   -- ledger close_time, not ingest
+    tx_hash         TEXT         NOT NULL UNIQUE,
+    tx_type         TEXT         NOT NULL,   -- Mint | Burn | CreateOffer |
+                                             --   AcceptOffer | CancelOffer
+    nftoken_id      TEXT,                    -- null on some pre-Accept offers
+    issuer          TEXT,                    -- decoded from nftoken_id
+    taxon           BIGINT,                  -- decoded from nftoken_id
+    buyer           TEXT,                    -- AcceptOffer only
+    seller          TEXT,                    -- AcceptOffer only
+    price_drops     BIGINT,                  -- XRP-denominated sales
+    currency        TEXT,                    -- 'XRP' or issued-currency code
+    currency_issuer TEXT,                    -- null for XRP
+    is_broker       BOOLEAN,                 -- AcceptOffer w/ Broker present
+    raw             JSONB                    -- full tx for later re-derivation
+);
+CREATE INDEX IF NOT EXISTS nft_activity_collection_time_idx
+    ON nft_activity (issuer, taxon, close_time);
+CREATE INDEX IF NOT EXISTS nft_activity_type_time_idx
+    ON nft_activity (tx_type, close_time);
+CREATE INDEX IF NOT EXISTS nft_activity_nftoken_idx
+    ON nft_activity (nftoken_id);
+
+-- Rolled-up per-collection stats. Recomputed by walker --mode rollup from
+-- nft_activity. net_minted_since_cutoff (mints - burns since the cutoff
+-- ledger) is a flow — NOT true existing NFT count. True stock lives in
+-- nft_existing_snapshot. The name carries the truth so downstream code
+-- can't misread it. Two numbers, two labels, never blended.
+CREATE TABLE IF NOT EXISTS nft_collection_stats (
+    issuer                    TEXT   NOT NULL,
+    taxon                     BIGINT NOT NULL,
+    mints_total               BIGINT NOT NULL DEFAULT 0,   -- since cutoff
+    burns_total               BIGINT NOT NULL DEFAULT 0,   -- since cutoff
+    net_minted_since_cutoff   BIGINT NOT NULL DEFAULT 0,   -- FLOW, not stock
+    sales_30d                 BIGINT NOT NULL DEFAULT 0,
+    distinct_buyers_30d       BIGINT NOT NULL DEFAULT 0,
+    distinct_sellers_30d      BIGINT NOT NULL DEFAULT 0,
+    last_sale_at              TIMESTAMPTZ,
+    floor_bands_json          JSONB,                       -- top-5 asks snap
+    churn_metrics_json        JSONB,                       -- intra-collection
+    is_active                 BOOLEAN NOT NULL DEFAULT FALSE, -- buyers_30d≥5
+    updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (issuer, taxon)
+);
+CREATE INDEX IF NOT EXISTS nft_collection_stats_active_sales_idx
+    ON nft_collection_stats (is_active, sales_30d DESC);
+
+-- Walker cursor. Single row keyed by walker_name (only 'nft_activity' for
+-- now, but scoped so a future --mode ledger-index or per-issuer walker
+-- can share the shape). backfill_target is set once on first run and
+-- must never change — mutating it retroactively would drift the cutoff
+-- label. backfill_ledger walks DOWN from cursor_ledger's start toward
+-- backfill_target; NULL when backfill is complete.
+CREATE TABLE IF NOT EXISTS nft_walker_state (
+    walker_name       TEXT PRIMARY KEY,
+    cursor_ledger     BIGINT NOT NULL,   -- next ledger to ingest (forward)
+    backfill_ledger   BIGINT,            -- next ledger to backfill (down)
+    backfill_target   BIGINT,            -- cutoff ledger; immutable once set
+    last_run_at       TIMESTAMPTZ,
+    last_success_at   TIMESTAMPTZ
+);
+
+-- One-time (initially) full-state count via Clio ledger_data(NFTokenPage).
+-- Refresh cadence stays MANUAL until change-rate observed for ~2 weeks —
+-- verify-before-automating discipline. This is the STOCK number (true
+-- existing NFTs on ledger right now), separate from the funnel FLOW.
+CREATE TABLE IF NOT EXISTS nft_existing_snapshot (
+    snapshot_at          TIMESTAMPTZ PRIMARY KEY,
+    ledger_index         BIGINT  NOT NULL,
+    total_existing_nfts  BIGINT  NOT NULL,
+    total_pages_walked   BIGINT  NOT NULL,
+    walk_duration_sec    INTEGER NOT NULL,
+    source               TEXT    NOT NULL   -- e.g. 's2-clio.ripple.com'
+);
 """
 
 
@@ -3893,3 +3982,224 @@ def read_oracles_snapshot():
         "snapshot_age_seconds": age,
         "snapshot_ledger_index": snap_ledger,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# NFT walker helpers — back /nfts (funnel + active/quiet + churn badge).
+# nft_activity is append-only with a unique tx_hash so backfill/retry
+# overlap is safe. nft_walker_state is single-row-per-walker; the walker
+# reads it at run start and writes it back at run end (or on batch
+# boundaries during a long backfill).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def read_nft_walker_state(walker_name):
+    """Return the walker's state row as a dict, or None if it doesn't
+    exist yet (walker's first run — caller seeds it). None also on
+    PG-unavailable."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT walker_name, cursor_ledger, backfill_ledger, "
+                    "       backfill_target, last_run_at, last_success_at "
+                    "  FROM nft_walker_state "
+                    " WHERE walker_name = %s",
+                    (walker_name,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                cols = [d.name for d in cur.description]
+                return dict(zip(cols, row))
+    except Exception as e:
+        _log_err(f"read_nft_walker_state_failed[{walker_name}]", e)
+        return None
+
+
+def seed_nft_walker_state(walker_name, cursor_ledger, backfill_target):
+    """Insert the initial walker_state row. INSERT ... DO NOTHING so a
+    re-seed can't overwrite an in-progress cursor (or the immutable
+    backfill_target). backfill_ledger is set to cursor_ledger initially —
+    backfill mode walks it downward toward backfill_target. Returns True
+    if a fresh row was created, False if a row already existed."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO nft_walker_state "
+                    "  (walker_name, cursor_ledger, backfill_ledger, "
+                    "   backfill_target, last_run_at, last_success_at) "
+                    "VALUES (%s, %s, %s, %s, NULL, NULL) "
+                    "ON CONFLICT (walker_name) DO NOTHING",
+                    (walker_name, cursor_ledger, cursor_ledger, backfill_target),
+                )
+                created = cur.rowcount > 0
+            conn.commit()
+        return created
+    except Exception as e:
+        _log_err(f"seed_nft_walker_state_failed[{walker_name}]", e)
+        return False
+
+
+def write_nft_walker_cursor(walker_name, cursor_ledger, success=True):
+    """Advance cursor_ledger (forward-mode) and stamp last_run_at (and
+    last_success_at when success=True). backfill_ledger and
+    backfill_target are untouched by forward-mode runs. Silent no-op
+    when PG unavailable."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                if success:
+                    cur.execute(
+                        "UPDATE nft_walker_state SET "
+                        "  cursor_ledger = %s, "
+                        "  last_run_at = now(), "
+                        "  last_success_at = now() "
+                        "WHERE walker_name = %s",
+                        (cursor_ledger, walker_name),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE nft_walker_state SET "
+                        "  last_run_at = now() "
+                        "WHERE walker_name = %s",
+                        (walker_name,),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err(f"write_nft_walker_cursor_failed[{walker_name}]", e)
+        return False
+
+
+def set_nft_walker_backfill_target(walker_name, backfill_target):
+    """Set backfill_target once. Refuses to overwrite a non-NULL value —
+    the cutoff label is immutable so /nfts callouts like
+    'since 2026-04-01' don't drift retroactively. Returns True if the
+    write happened, False if already set (or PG unavailable)."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE nft_walker_state SET backfill_target = %s "
+                    "WHERE walker_name = %s AND backfill_target IS NULL",
+                    (backfill_target, walker_name),
+                )
+                written = cur.rowcount > 0
+            conn.commit()
+        return written
+    except Exception as e:
+        _log_err(f"set_nft_walker_backfill_target_failed[{walker_name}]", e)
+        return False
+
+
+def write_nft_walker_backfill_cursor(walker_name, backfill_ledger, success=True):
+    """Advance backfill_ledger DOWNWARD (walker walks from higher ledger
+    toward backfill_target). Stamps last_run_at (and last_success_at when
+    success=True). Silent no-op when PG unavailable."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                if success:
+                    cur.execute(
+                        "UPDATE nft_walker_state SET "
+                        "  backfill_ledger = %s, "
+                        "  last_run_at = now(), "
+                        "  last_success_at = now() "
+                        "WHERE walker_name = %s",
+                        (backfill_ledger, walker_name),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE nft_walker_state SET "
+                        "  last_run_at = now() "
+                        "WHERE walker_name = %s",
+                        (walker_name,),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err(f"write_nft_walker_backfill_cursor_failed[{walker_name}]", e)
+        return False
+
+
+def insert_nft_activity_batch(rows):
+    """Batched INSERT of nft_activity rows. Each row is a dict with keys:
+    ledger_index, close_time (datetime | int-unix), tx_hash, tx_type,
+    nftoken_id, issuer, taxon, buyer, seller, price_drops, currency,
+    currency_issuer, is_broker, raw (JSON-serializable). ON CONFLICT
+    (tx_hash) DO NOTHING so backfill/forward overlap and per-invocation
+    retries are safe. Returns count of rows actually inserted."""
+    if not pg_available() or not rows:
+        return 0
+    inserted = 0
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for r in rows:
+                    ct = r["close_time"]
+                    if isinstance(ct, (int, float)):
+                        # Ledger close_time is ripple-epoch seconds; upstream
+                        # helper is expected to convert to unix epoch. Accept
+                        # either datetime or unix-int for flexibility.
+                        ct = datetime.datetime.fromtimestamp(
+                            int(ct), tz=datetime.timezone.utc
+                        )
+                    cur.execute(
+                        "INSERT INTO nft_activity "
+                        "  (ledger_index, close_time, tx_hash, tx_type, "
+                        "   nftoken_id, issuer, taxon, buyer, seller, "
+                        "   price_drops, currency, currency_issuer, is_broker, "
+                        "   raw) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                        "        %s, %s, %s, %s::jsonb) "
+                        "ON CONFLICT (tx_hash) DO NOTHING",
+                        (
+                            r["ledger_index"],
+                            ct,
+                            r["tx_hash"],
+                            r["tx_type"],
+                            r.get("nftoken_id"),
+                            r.get("issuer"),
+                            r.get("taxon"),
+                            r.get("buyer"),
+                            r.get("seller"),
+                            r.get("price_drops"),
+                            r.get("currency"),
+                            r.get("currency_issuer"),
+                            r.get("is_broker"),
+                            json.dumps(r.get("raw")) if r.get("raw") is not None else None,
+                        ),
+                    )
+                    inserted += cur.rowcount
+            conn.commit()
+        return inserted
+    except Exception as e:
+        _log_err("insert_nft_activity_batch_failed", e)
+        return 0
+
+
+def count_nft_activity():
+    """Return total nft_activity row count. Cheap tap-check for D1
+    status ping and per-run logging. 0 on PG-unavailable."""
+    if not pg_available():
+        return 0
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT count(*) FROM nft_activity")
+                return int(cur.fetchone()[0])
+    except Exception as e:
+        _log_err("count_nft_activity_failed", e)
+        return 0

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.nft_activity_walker</string>
+
+    <key>Comment</key>
+    <string>Forward-ingest NFT activity (Mint/Burn/CreateOffer/AcceptOffer/CancelOffer) from cursor_ledger toward HEAD-3 in 200-ledger batches. Writes to nft_activity + advances nft_walker_state.cursor_ledger in Neon. Backs /nfts funnel + active/quiet collections + churn badge. Routes through xrpl_client.get_client() (local rippled primary, s1/s2 fallback). Backfill (2026-04-01 cutoff) and rollup modes arrive in D2/D3 on separate plists. CHURN STAYS INTRA-COLLECTION — see compute_churn_metrics() standing rule.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_nft_activity_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 5 minutes. Market is quiet (~540 mints/day); 300s is plenty
+         fresh. 60s would be near-empty polls — Gate 1 call #4 explicitly.
+         StartInterval (rolling) per feedback_macos_launchd_startinterval. -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/nft_activity_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/nft_activity_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

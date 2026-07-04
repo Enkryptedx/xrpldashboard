@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.nft_activity_backfill</string>
+
+    <key>Comment</key>
+    <string>Backfill NFT activity from nft_walker_state.backfill_ledger DOWN toward backfill_target (2026-04-01 cutoff = ledger 103252853). Uses public Clio (s2-clio.ripple.com) because local rippled ledger_history is ~10k. Each invocation walks BATCH_LEDGERS-sized chunks up to BACKFILL_MAX_RUNTIME_SECONDS, persisting backfill_ledger on every chunk boundary. Runs on a 900s cadence separate from activity mode so forward-freshness is never delayed by historic catchup. Writes into nft_activity with ON CONFLICT (tx_hash) DO NOTHING so overlap with forward mode is safe.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_nft_activity_backfill.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 15 minutes. Backfill covers ~2.1M ledgers back to 2026-04-01.
+         Higher cadence would risk Clio rate-pressure; each invocation has
+         its own 600s runtime budget so pace can rise or fall inside the
+         slot without overlapping the next one.
+         StartInterval (rolling) per feedback_macos_launchd_startinterval. -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/nft_activity_backfill.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/nft_activity_backfill.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
