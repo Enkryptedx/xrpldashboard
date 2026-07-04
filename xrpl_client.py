@@ -77,6 +77,14 @@ _NODE_HEALTH_ERRORS = frozenset({
     "tooBusy",
     "amendmentBlocked",
     "InsufficientNetworkMode",
+    # Local rippled can develop gaps in complete_ledgers (observed 2026-07-03
+    # during nft_activity_walker rollout: complete_ledgers reported
+    # "…-105354442,105354497-…" and every request into the 54-ledger hole
+    # returned lgrNotFound while server_state=full). Structurally this is a
+    # "local node can't answer this ledger" case, not a "request is bad" case.
+    # Public nodes with full history will return the ledger; if both fail,
+    # the caller still receives lgrNotFound as the honest answer.
+    "lgrNotFound",
 })
 
 
