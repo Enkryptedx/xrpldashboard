@@ -497,6 +497,26 @@
     footer a { color: var(--text-2); }
     footer a:hover { color: var(--cyan); }
 
+    /* ---------- Safety strip (slim, calm — below hero, above institutional) ---------- */
+    .row-safety {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.9em; flex-wrap: wrap;
+      padding: 0.7em 1em; margin: 0 0 1.1em;
+      border: 1px solid var(--border, rgba(255,255,255,0.08));
+      border-radius: 10px;
+      background: rgba(140,150,170,0.04);
+    }
+    .row-safety .safety-text {
+      color: var(--text-2, #8090b0); font-size: var(--fs-sm, 0.92rem);
+      line-height: 1.5; margin: 0;
+    }
+    .row-safety .safety-cta {
+      color: var(--cyan, #22d3ee); text-decoration: none;
+      font-size: var(--fs-sm, 0.92rem); font-weight: 500;
+      white-space: nowrap;
+    }
+    .row-safety .safety-cta:hover { text-decoration: underline; }
+
     /* ---------- Institutional strip (between hero and row-primary) ---------- */
     .row-institutional { display: grid; grid-template-columns: 1fr 1fr;
                          gap: 1em; margin-bottom: 1.2em; }
@@ -661,6 +681,16 @@
       <div class="hero-globe" aria-hidden="true">
         <canvas id="xrpl-globe"></canvas>
         <div class="hero-globe-cap">{{ _('XRP · global ledger') }}</div>
+      </div>
+    </section>
+
+    {# ========== Safety strip — slim, calm; a scared user finds /check from the front door ========== #}
+    <section aria-label="{{ _('Check a suspicious token, address, or link') }}">
+      <div class="row-safety">
+        <p class="safety-text">
+          {{ _('Suspicious of a token, address, or link? See what identity claim is on file — sources and timestamps, not a verdict.') }}
+        </p>
+        <a class="safety-cta" href="/check">{{ _('Check it') }} →</a>
       </div>
     </section>
 

@@ -954,6 +954,9 @@
                href="https://xrpscan.com/account/{{ data.address }}"
                target="_blank" rel="noopener noreferrer"
                title="{{ _('Verify this wallet\'s history on XRPSCAN') }}">{{ _('Verify on XRPSCAN') }} ↗</a>
+            <a class="identity-verify"
+               href="/check?q={{ data.address }}"
+               title="{{ _('See what identity claim is on file for this address — sources and timestamps, not a verdict.') }}">{{ _('Get honest signals about this address') }} →</a>
           </div>
           <span class="identity-label">{{ _('Snapshot · pulled from XRP Ledger') }}</span>
           {% if data.xrp_usd %}

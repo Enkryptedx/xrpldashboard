@@ -223,6 +223,9 @@
         {% if data.last_seen_age and data.last_seen_age != "—" %}
           {{ freshness_badge(data.last_seen_age) }}
         {% endif %}
+        <a href="/check?q={{ (data.currency_raw or data.display) }}.{{ data.issuer }}"
+           style="color: var(--cyan, #22d3ee); text-decoration: none; font-size: 0.9em; margin-left: 0.6em;"
+           title="{{ _('See what identity claim is on file for this token — sources and timestamps, not a verdict.') }}">{{ _('Get honest signals about this token') }} →</a>
       </div>
     </div>
   </div>
