@@ -187,16 +187,8 @@
     }
     .card-inspector .wallet-form { margin-top: auto; }
 
-    /* ---------- XRP supply distribution: reservoir gauge (CP1) ----------
-       Three equal-width basins — Escrowed / AMM-locked / Circulating —
-       where water HEIGHT = share of total supply. The honesty principle:
-         SHIMMER  = "site is awake"  (ambient CSS wave scroll)
-         LEVEL    = "the reading"    (transition on real refresh delta)
-         STALE    = surface calms + freshness stamp turns amber
-       Rain (per real ledger close) is CP2, not shipped in CP1.
-       The banned patterns list is deliberate: no idle current, no random
-       level jitter, no drops on setInterval — see the D4 handoff. */
-    .reservoir {
+    /* ---------- XRP supply distribution constellation ---------- */
+    .xrp-constellation {
       position: relative;
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -205,170 +197,107 @@
       margin-bottom: 1.4em;
       overflow: hidden;
     }
-    .reservoir::before {
+    .xrp-constellation::before {
       content: "";
       position: absolute; inset: 0;
       background:
-        radial-gradient(circle at 15% 10%, rgba(168,85,247,0.06), transparent 45%),
-        radial-gradient(circle at 50% 10%, rgba(34,197,94,0.05), transparent 45%),
-        radial-gradient(circle at 85% 10%, rgba(245,158,11,0.06), transparent 45%);
+        radial-gradient(circle at 30% 35%, rgba(168,85,247,0.07), transparent 45%),
+        radial-gradient(circle at 70% 30%, rgba(34,197,94,0.07), transparent 45%),
+        radial-gradient(circle at 50% 95%, rgba(245,158,11,0.07), transparent 45%);
       pointer-events: none;
     }
-    .reservoir-head {
+    .xrp-constell-head {
       position: relative; z-index: 1;
       display: flex; justify-content: space-between; align-items: baseline;
-      flex-wrap: wrap; gap: 0.5em; margin-bottom: 0.4em;
+      flex-wrap: wrap; gap: 0.5em; margin-bottom: 0.8em;
     }
-    .reservoir-head h2 {
+    .xrp-constell-head h2 {
       font-size: var(--fs-md); font-weight: 600; margin: 0;
       color: var(--text); letter-spacing: -0.015em;
     }
-    .reservoir-head .r-sub {
+    .xrp-constell-head .xc-sub {
       font-size: var(--fs-xs); color: var(--text-3);
     }
-    .reservoir-tooltip-btn {
-      background: none; border: 1px solid var(--border);
-      color: var(--text-3);
-      width: 20px; height: 20px; border-radius: 50%;
-      font-family: var(--mono); font-size: 11px; line-height: 18px;
-      cursor: help;
-      display: inline-flex; align-items: center; justify-content: center;
-      margin-left: 0.5em;
-      transition: color 0.18s, border-color 0.18s;
-    }
-    .reservoir-tooltip-btn:hover,
-    .reservoir-tooltip-btn:focus {
-      color: var(--text); border-color: var(--text-2);
-      outline: none;
-    }
-    .reservoir-tooltip {
-      display: none;
-      position: relative; z-index: 2;
-      background: var(--bg-card-2);
-      border: 1px solid var(--border-strong);
-      border-radius: 8px;
-      padding: 0.8em 1em;
-      margin: 0.4em 0 0.8em;
-      font-size: var(--fs-xs); color: var(--text-2); line-height: 1.55;
-    }
-    .reservoir-tooltip.open { display: block; }
-    .reservoir-tooltip strong { color: var(--text); }
-
-    .reservoir-basins {
+    .xrp-constell-svg-wrap {
       position: relative; z-index: 1;
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 1em;
-      padding: 0.6em 0 0.4em;
+      display: flex; justify-content: center;
+      padding: 0.3em 0 0.8em;
     }
-    .basin {
-      display: flex; flex-direction: column;
-      align-items: center;
-      color: inherit; text-decoration: none;
-    }
-    .basin-title {
-      font-size: var(--fs-2xs); color: var(--text-2);
-      text-transform: uppercase; letter-spacing: 0.08em;
-      font-weight: 600; text-align: center;
-      margin: 0 0 0.5em;
-    }
-    /* Basin box: viewBox 100x140. Height=value proportion. */
-    .basin-svg {
-      width: 100%; max-width: 220px; height: auto;
+    .xrp-constell-svg {
+      width: 100%; max-width: 520px; height: auto;
       display: block;
     }
-    .basin-frame {
-      fill: rgba(255,255,255,0.02);
-      stroke: rgba(255,255,255,0.14);
+    .xrp-constell-svg .sat-label {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;
+    }
+    .xrp-constell-svg .sat-val {
+      font-family: var(--mono); font-size: 13px; fill: var(--text); font-weight: 600;
+    }
+    .xrp-constell-svg .sat-pct {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-3);
+    }
+    .xrp-constell-svg .center-label {
+      font-family: var(--mono); font-size: 10px; fill: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
+    }
+    .xrp-constell-svg .center-val {
+      font-family: var(--mono); font-size: 16px; fill: var(--text); font-weight: 700;
+    }
+    .xrp-constell-svg .connector {
+      stroke-dasharray: 3 4;
       stroke-width: 1;
+      stroke: rgba(255,255,255,0.18);
+      fill: none;
     }
-    /* Water body is a rectangle taller than the basin so that a
-       translate on the enclosing group cleanly reveals fill without
-       geometry re-calc. Transition ONLY the group transform on refresh
-       (banned: level jitter, per Charlie's anti-patterns list). */
-    .water-group {
-      transform: translate(0px, 100%);
-      transition: transform 900ms cubic-bezier(0.4, 0, 0.2, 1);
-      will-change: transform;
-    }
-    .water-body {
-      transition: opacity 400ms ease;
-    }
-    .basin.escrow .water-body { fill: url(#water-escrow-grad); }
-    .basin.amm    .water-body { fill: url(#water-amm-grad); }
-    .basin.circ   .water-body { fill: url(#water-circ-grad); }
+    .xrp-constell-svg .sat-disc { transition: filter 0.25s; }
+    .xrp-constell-svg a:hover .sat-disc { filter: brightness(1.18); }
+    .xrp-constell-svg a { cursor: pointer; }
 
-    /* Waves — TWO overlapping paths at the water surface, animated in
-       opposite directions. Amplitude 3px (spec: 2-4px). Compositor-only
-       transform. Ambient shimmer = site awake, NOT a data claim. */
-    .wave-track {
-      transform-origin: center;
-      animation-duration: 7s;
-      animation-timing-function: linear;
-      animation-iteration-count: infinite;
-      will-change: transform;
+    .xrp-constell-chips {
+      position: relative; z-index: 1;
+      display: flex; flex-wrap: wrap; gap: 0.5em;
+      justify-content: center;
     }
-    .wave-1 { animation-name: waveScrollA; }
-    .wave-2 { animation-name: waveScrollB; animation-duration: 9s; }
-
-    @keyframes waveScrollA {
-      from { transform: translate3d(0px, 0px, 0); }
-      to   { transform: translate3d(-100px, 0px, 0); }
+    .xrp-chip {
+      display: inline-flex; align-items: center; gap: 0.5em;
+      background: var(--bg-card-2, rgba(255,255,255,0.03));
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35em 0.85em;
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: var(--fs-xs);
+      transition: border-color 0.18s, color 0.18s, transform 0.18s;
     }
-    @keyframes waveScrollB {
-      from { transform: translate3d(-100px, 0px, 0); }
-      to   { transform: translate3d(0px, 0px, 0); }
+    .xrp-chip:hover {
+      border-color: rgba(34,211,238,0.4);
+      color: var(--text);
+      transform: translateY(-1px);
     }
-
-    /* Stale: surface calms to still (visibly), freshness stamp goes
-       amber. Truth-first — a stalled walker MUST be visible, not
-       hidden by ongoing animation. */
-    .basin.is-stale .wave-track { animation-play-state: paused; opacity: 0.35; }
-    .basin.is-stale .water-body { opacity: 0.72; }
-    .basin.is-stale .freshness  { color: var(--warning); }
-
-    .waterline-labels {
-      pointer-events: none;
+    .xrp-chip .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block;
     }
-    .waterline-pct {
-      font-family: var(--mono);
-      font-size: 13px; font-weight: 700;
-      fill: var(--text);
-      paint-order: stroke; stroke: rgba(10, 14, 39, 0.9); stroke-width: 3px;
+    .xrp-chip .dot.escrow    { background: #a855f7; box-shadow: 0 0 6px rgba(168,85,247,0.6); }
+    .xrp-chip .dot.amm       { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.6); }
+    .xrp-chip .dot.circ      { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.6); }
+    .xrp-chip .v {
+      font-family: var(--mono); color: var(--text); font-weight: 600;
     }
-    .waterline-xrp {
-      font-family: var(--mono);
-      font-size: 9.5px; font-weight: 600;
-      fill: var(--text-2);
-      paint-order: stroke; stroke: rgba(10, 14, 39, 0.85); stroke-width: 2.5px;
-    }
-    .basin-caption {
-      margin-top: 0.55em; text-align: center;
-      font-size: var(--fs-xs); color: var(--text-2);
-      line-height: 1.35;
-    }
-    .basin-caption .caption-title { color: var(--text); font-weight: 600; }
-    .freshness {
-      display: block; margin-top: 0.25em;
-      font-family: var(--mono); font-size: var(--fs-2xs);
-      color: var(--text-3); letter-spacing: 0.03em;
-      transition: color 0.3s;
-    }
-    a.basin { cursor: pointer; }
-    a.basin:hover .basin-frame { stroke: rgba(34,211,238,0.4); }
-
-    /* prefers-reduced-motion → static render, freshness text alone
-       carries the honesty. Level transitions still happen (a real data
-       change deserves a visible shift; but no animation duration). */
-    @media (prefers-reduced-motion: reduce) {
-      .wave-track { animation: none !important; }
-      .water-group { transition: none !important; }
+    /* Compact qualifier that resolves the "13.1M XRP vs $37.49M" reader
+       confusion — constellation measures XRP-side only, the stat pill
+       below measures both sides of each pool. */
+    .xrp-chip-qual {
+      font-size: 0.78em; color: var(--text-3);
+      font-style: italic; margin-left: 0.25em;
     }
 
     @media (max-width: 640px) {
-      .reservoir-basins { gap: 0.5em; }
-      .basin-title { font-size: 9px; }
-      .waterline-pct { font-size: 11px; }
-      .waterline-xrp { font-size: 8.5px; }
+      .xrp-constell-svg .sat-label { font-size: 9px; }
+      .xrp-constell-svg .sat-val { font-size: 11px; }
+      .xrp-constell-svg .sat-pct { font-size: 9px; }
+      .xrp-constell-svg .center-val { font-size: 14px; }
     }
 
     /* ---------- Compact stats strip (where XRP is locked) ---------- */
@@ -861,410 +790,96 @@
 
     </section>
 
-    {# ========== Where Is XRP? Reservoir gauge (CP1) ==========
-       Three equal-width basins — Escrowed / AMM-locked / Circulating.
-       Water HEIGHT = share of total supply. Shimmer = "site awake"
-       (CSS wave scroll). Level moves ONLY on a real refresh delta
-       (client polls /api/xrp-distribution every 5min, transitions on
-       change). Freshness stamps turn amber + surface calms when a
-       walker's snapshot goes stale. #}
+    {# ========== Where Is XRP? supply constellation ========== #}
     {% if xrp_distribution %}
     {% set xd = xrp_distribution %}
-    {# Basin geometry (viewBox coords):
-         box height = 140 (100=water body cap for %, 40=headroom for label)
-         Water Y offset = (100 - pct) — 0 pct → full below the frame,
-         100 pct → water at the top. Water level 5px minimum so a
-         truly-zero basin still shows the base color; label sits at the
-         waterline so the eye lands on % + XRP together. #}
-    {% set esc_water_y = (100 - xd.escrowed_pct)|round(2) %}
-    {% set amm_water_y = (100 - xd.amm_pct)|round(2) %}
-    {% set wal_water_y = (100 - xd.wallets_pct)|round(2) %}
-    <section class="reservoir"
-             aria-label="{{ _('XRP supply distribution') }}"
-             data-xd-server-time="{{ xd.server_time }}">
-      <div class="reservoir-head">
-        <h2>
-          {{ _('XRP supply distribution') }}
-          <button type="button"
-                  class="reservoir-tooltip-btn"
-                  aria-expanded="false"
-                  aria-controls="reservoir-tooltip"
-                  aria-label="{{ _('About this reading') }}">?</button>
-        </h2>
-        <div class="r-sub">{{ _('100B design supply · readings every 30–60 min · level moves only when the real numbers move') }}</div>
+    {# sqrt-scaled satellite radii so a 60%+ wallet slice still fits beside a 0.01% AMM slice #}
+    {% set esc_r  = (14 + 16 * (xd.escrowed_pct / 100)**0.5)|round(1) %}
+    {% set amm_r  = (14 + 16 * (xd.amm_pct      / 100)**0.5)|round(1) %}
+    {% set wal_r  = (14 + 16 * (xd.wallets_pct  / 100)**0.5)|round(1) %}
+    <section class="xrp-constellation" aria-label="{{ _('XRP supply distribution') }}">
+      <div class="xrp-constell-head">
+        <h2>{{ _('XRP supply distribution') }}</h2>
+        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share read live from the ledger') }}</div>
       </div>
+      <div class="xrp-constell-svg-wrap">
+        <svg class="xrp-constell-svg" viewBox="0 0 520 320" role="img"
+             aria-label="{{ _('XRP supply constellation showing escrowed, AMM-locked, and circulating XRP') }}">
+          <defs>
+            <radialGradient id="grad-center" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.75"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-escrow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#c084fc" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#a855f7" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#a855f7" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-amm" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#4ade80" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#22c55e" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0.15"/>
+            </radialGradient>
+            <radialGradient id="grad-circ" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#fbbf24" stop-opacity="0.95"/>
+              <stop offset="60%" stop-color="#f59e0b" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.15"/>
+            </radialGradient>
+          </defs>
 
-      <div id="reservoir-tooltip" class="reservoir-tooltip" role="region">
-        <p>
-          <strong>{{ _('How to read this.') }}</strong>
-          {{ _('Water HEIGHT = share of total XRP supply. The water levels are readings we take every 30–60 minutes — they move only when the real numbers move. The surface shimmer is just to show the site is awake; if a reading goes stale, the shimmer stops and the freshness stamp turns amber.') }}
-        </p>
-        <p style="margin: 0.6em 0 0;">
-          <strong>{{ _('Escrow scope.') }}</strong>
-          {{ _("‘Locked in escrow’ shows Ripple's monthly-release accounts — more than 99 out of every 100 XRP escrowed on the ledger. The small non-Ripple remainder is currently included inside Circulating; a full-escrow walker is a future addition.") }}
-        </p>
+          {# connectors #}
+          <line class="connector" x1="260" y1="140" x2="120" y2="80"/>
+          <line class="connector" x1="260" y1="140" x2="400" y2="80"/>
+          <line class="connector" x1="260" y1="140" x2="260" y2="255"/>
+
+          {# center: total #}
+          <circle cx="260" cy="140" r="46" fill="url(#grad-center)"/>
+          <circle cx="260" cy="140" r="46" fill="none" stroke="rgba(34,211,238,0.4)" stroke-width="1"/>
+          <text class="center-label" x="260" y="132" text-anchor="middle">{{ _('TOTAL') }}</text>
+          <text class="center-val"   x="260" y="152" text-anchor="middle">100B XRP</text>
+
+          {# top-left: in escrow → /cold-storage (closest existing page) #}
+          <a href="/cold-storage" aria-label="{{ _('XRP locked in escrow') }}">
+            <circle class="sat-disc" cx="120" cy="80" r="{{ esc_r }}" fill="url(#grad-escrow)"/>
+            <text class="sat-label" x="120" y="30" text-anchor="middle">{{ _('IN ESCROW') }}</text>
+            <text class="sat-val"   x="120" y="46" text-anchor="middle">{% if xd.escrowed_xrp >= 1000000000 %}{{ "%.1f"|format(xd.escrowed_xrp/1000000000) }}B{% else %}{{ "%.0f"|format(xd.escrowed_xrp/1000000) }}M{% endif %} XRP</text>
+            <text class="sat-pct"   x="120" y="60" text-anchor="middle">{{ "%.1f"|format(xd.escrowed_pct) }}%</text>
+          </a>
+
+          {# top-right: AMM → /pools #}
+          <a href="/pools" aria-label="{{ _('AMM pools') }}">
+            <circle class="sat-disc" cx="400" cy="80" r="{{ amm_r }}" fill="url(#grad-amm)"/>
+            <text class="sat-label" x="400" y="30" text-anchor="middle">{{ _('AMM POOLS') }}</text>
+            <text class="sat-val"   x="400" y="46" text-anchor="middle">{% if xd.amm_xrp >= 1000000 %}{{ "%.1f"|format(xd.amm_xrp/1000000) }}M{% else %}{{ "%.0f"|format(xd.amm_xrp/1000) }}K{% endif %} XRP</text>
+            <text class="sat-pct"   x="400" y="60" text-anchor="middle">{{ "%.2f"|format(xd.amm_pct) }}%</text>
+          </a>
+
+          {# bottom: held by wallets (free-float — retail wallets, exchanges, treasuries) #}
+          <circle class="sat-disc" cx="260" cy="255" r="{{ wal_r }}" fill="url(#grad-circ)"/>
+          <text class="sat-label" x="260" y="305" text-anchor="middle">{{ _('HELD BY WALLETS') }}</text>
+          <text class="sat-val"   x="260" y="251" text-anchor="middle" fill="rgba(255,255,255,0.95)" style="font-family: var(--mono); font-size: 13px; font-weight: 700">~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP</text>
+          <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
+        </svg>
       </div>
-
-      <div class="reservoir-basins">
-        {# ---- ESCROW BASIN ---- #}
-        <a href="/cold-storage"
-           class="basin escrow"
-           data-basin="escrow"
-           data-age-seconds="{% if xd.escrow_age_seconds is not none %}{{ xd.escrow_age_seconds|round|int }}{% endif %}"
-           data-is-stale="{{ 'true' if xd.escrow_stale else 'false' }}"
-           aria-label="{{ _('XRP locked in escrow (Ripple monthly-release accounts)') }}">
-          <p class="basin-title">{{ _('Locked in escrow') }}</p>
-          <svg class="basin-svg" viewBox="0 0 100 140" preserveAspectRatio="none" role="img">
-            <defs>
-              <linearGradient id="water-escrow-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"  stop-color="#c084fc" stop-opacity="0.85"/>
-                <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.55"/>
-              </linearGradient>
-              <clipPath id="basin-clip-escrow">
-                <rect x="1" y="1" width="98" height="98" rx="6"/>
-              </clipPath>
-            </defs>
-            {# basin frame #}
-            <rect class="basin-frame" x="1" y="1" width="98" height="98" rx="6"/>
-            {# clipped water — group translated by pct, wave paths sit at group's y=0 (the surface) #}
-            <g clip-path="url(#basin-clip-escrow)">
-              <g class="water-group" style="transform: translate(0px, {{ esc_water_y }}px);">
-                <rect class="water-body" x="0" y="0" width="100" height="140"/>
-                <g class="wave-track wave-1">
-                  <path d="M0,3 Q12.5,0 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.14)"/>
-                </g>
-                <g class="wave-track wave-2">
-                  <path d="M0,3 Q12.5,6 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.09)"/>
-                </g>
-              </g>
-              <g class="waterline-labels">
-                <text class="waterline-pct"
-                      x="50" y="{{ (esc_water_y + 8)|round(2) }}"
-                      text-anchor="middle">{{ "%.1f"|format(xd.escrowed_pct) }}%</text>
-                <text class="waterline-xrp"
-                      x="50" y="{{ (esc_water_y + 19)|round(2) }}"
-                      text-anchor="middle">{% if xd.escrowed_xrp >= 1000000000 %}{{ "%.1f"|format(xd.escrowed_xrp/1000000000) }}B XRP{% else %}{{ "%.0f"|format(xd.escrowed_xrp/1000000) }}M XRP{% endif %}</text>
-              </g>
-            </g>
-          </svg>
-          <div class="basin-caption">
-            <div class="caption-title">{{ _('Escrow') }}</div>
-            <div>{{ _("Ripple's monthly-release accounts") }}</div>
-            <span class="freshness" data-freshness>—</span>
-          </div>
+      <div class="xrp-constell-chips">
+        <a class="xrp-chip" href="/cold-storage">
+          <span class="dot escrow"></span>
+          <span>{{ _('Locked in escrow ledger objects') }}</span>
+          <span class="v">{{ "%.1f"|format(xd.escrowed_pct) }}%</span>
         </a>
-
-        {# ---- AMM BASIN ---- #}
-        <a href="/pools"
-           class="basin amm"
-           data-basin="amm"
-           data-age-seconds="{% if xd.amm_age_seconds is not none %}{{ xd.amm_age_seconds|round|int }}{% endif %}"
-           data-is-stale="{{ 'true' if xd.amm_stale else 'false' }}"
-           aria-label="{{ _('XRP locked in AMM pools') }}">
-          <p class="basin-title">{{ _('In AMM pools') }}</p>
-          <svg class="basin-svg" viewBox="0 0 100 140" preserveAspectRatio="none" role="img">
-            <defs>
-              <linearGradient id="water-amm-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"  stop-color="#4ade80" stop-opacity="0.85"/>
-                <stop offset="100%" stop-color="#16a34a" stop-opacity="0.55"/>
-              </linearGradient>
-              <clipPath id="basin-clip-amm">
-                <rect x="1" y="1" width="98" height="98" rx="6"/>
-              </clipPath>
-            </defs>
-            <rect class="basin-frame" x="1" y="1" width="98" height="98" rx="6"/>
-            <g clip-path="url(#basin-clip-amm)">
-              <g class="water-group" style="transform: translate(0px, {{ amm_water_y }}px);">
-                <rect class="water-body" x="0" y="0" width="100" height="140"/>
-                <g class="wave-track wave-1">
-                  <path d="M0,3 Q12.5,0 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.14)"/>
-                </g>
-                <g class="wave-track wave-2">
-                  <path d="M0,3 Q12.5,6 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.09)"/>
-                </g>
-              </g>
-              <g class="waterline-labels">
-                <text class="waterline-pct"
-                      x="50" y="{{ (amm_water_y + 8)|round(2) }}"
-                      text-anchor="middle">{{ "%.2f"|format(xd.amm_pct) }}%</text>
-                <text class="waterline-xrp"
-                      x="50" y="{{ (amm_water_y + 19)|round(2) }}"
-                      text-anchor="middle">{% if xd.amm_xrp >= 1000000 %}{{ "%.1f"|format(xd.amm_xrp/1000000) }}M XRP{% else %}{{ "%.0f"|format(xd.amm_xrp/1000) }}K XRP{% endif %}</text>
-              </g>
-            </g>
-          </svg>
-          <div class="basin-caption">
-            <div class="caption-title">{{ _('AMM pools') }}</div>
-            <div>{{ _('XRP-side of every pool') }}</div>
-            <span class="freshness" data-freshness>—</span>
-          </div>
+        <a class="xrp-chip" href="/pools">
+          <span class="dot amm"></span>
+          <span>{{ _('AMM pools') }} <span class="xrp-chip-qual">{{ _('XRP only') }}</span></span>
+          <span class="v">{{ "%.2f"|format(xd.amm_pct) }}%</span>
         </a>
-
-        {# ---- CIRCULATING BASIN ---- #}
-        <div class="basin circ"
-             data-basin="circ"
-             data-age-seconds="{% if xd.wallets_age_seconds is not none %}{{ xd.wallets_age_seconds|round|int }}{% endif %}"
-             data-is-stale="{{ 'true' if xd.wallets_stale else 'false' }}"
-             aria-label="{{ _('XRP held in wallets, exchanges, and treasuries') }}">
-          <p class="basin-title">{{ _('Held by wallets') }}</p>
-          <svg class="basin-svg" viewBox="0 0 100 140" preserveAspectRatio="none" role="img">
-            <defs>
-              <linearGradient id="water-circ-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"  stop-color="#fbbf24" stop-opacity="0.85"/>
-                <stop offset="100%" stop-color="#d97706" stop-opacity="0.55"/>
-              </linearGradient>
-              <clipPath id="basin-clip-circ">
-                <rect x="1" y="1" width="98" height="98" rx="6"/>
-              </clipPath>
-            </defs>
-            <rect class="basin-frame" x="1" y="1" width="98" height="98" rx="6"/>
-            <g clip-path="url(#basin-clip-circ)">
-              <g class="water-group" style="transform: translate(0px, {{ wal_water_y }}px);">
-                <rect class="water-body" x="0" y="0" width="100" height="140"/>
-                <g class="wave-track wave-1">
-                  <path d="M0,3 Q12.5,0 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.14)"/>
-                </g>
-                <g class="wave-track wave-2">
-                  <path d="M0,3 Q12.5,6 25,3 T50,3 T75,3 T100,3 T125,3 T150,3 T175,3 T200,3 L200,10 L0,10 Z"
-                        fill="rgba(255,255,255,0.09)"/>
-                </g>
-              </g>
-              <g class="waterline-labels">
-                <text class="waterline-pct"
-                      x="50" y="{{ (wal_water_y + 8)|round(2) }}"
-                      text-anchor="middle">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
-                <text class="waterline-xrp"
-                      x="50" y="{{ (wal_water_y + 19)|round(2) }}"
-                      text-anchor="middle">~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP</text>
-              </g>
-            </g>
-          </svg>
-          <div class="basin-caption">
-            <div class="caption-title">{{ _('Circulating') }}</div>
-            <div>{{ _('Wallets · exchanges · treasuries') }}</div>
-            <span class="freshness" data-freshness>—</span>
-          </div>
-        </div>
+        <span class="xrp-chip" style="cursor:default">
+          <span class="dot circ"></span>
+          <span>{{ _('Wallets, exchanges, treasuries') }}</span>
+          <span class="v">{{ "%.1f"|format(xd.wallets_pct) }}%</span>
+        </span>
       </div>
     </section>
-
-    <script>
-    (function () {
-      var section = document.querySelector('.reservoir');
-      if (!section) return;
-
-      // ---- Tooltip toggle ----
-      var btn = section.querySelector('.reservoir-tooltip-btn');
-      var tooltip = section.querySelector('#reservoir-tooltip');
-      if (btn && tooltip) {
-        btn.addEventListener('click', function () {
-          var open = tooltip.classList.toggle('open');
-          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        });
-      }
-
-      // ---- Freshness stamp formatter ----
-      // We anchor age to the server's server_time at render, then
-      // continuously drift it locally without ever fabricating change.
-      var serverTimeAtRender = parseInt(
-        section.getAttribute('data-xd-server-time') || '0', 10);
-      var clientRenderTs = Math.floor(Date.now() / 1000);
-      // Basin state: for each basin we track the AGE AT SERVER TIME and
-      // let the ticker add real elapsed seconds since. That way if a
-      // poll returns unchanged data we do NOT reset the age to zero.
-      var basins = Array.prototype.slice.call(
-        section.querySelectorAll('.basin'));
-
-      function readInitialAge(basin) {
-        var attr = basin.getAttribute('data-age-seconds');
-        if (attr === '' || attr === null) return null;
-        var n = parseInt(attr, 10);
-        return isNaN(n) ? null : n;
-      }
-
-      basins.forEach(function (b) {
-        b.__ageAtServerTime = readInitialAge(b);
-        b.__serverTimeAtRead = serverTimeAtRender;
-        b.__clientAtRead = clientRenderTs;
-      });
-
-      function fmtAge(seconds) {
-        if (seconds === null || seconds === undefined || isNaN(seconds)) {
-          return '{{ _("no reading yet") }}';
-        }
-        var s = Math.max(0, Math.round(seconds));
-        if (s < 60)   return s + 's {{ _("ago") }}';
-        var m = Math.round(s / 60);
-        if (m < 60)  return m + ' min {{ _("ago") }}';
-        var h = Math.floor(m / 60);
-        var mr = m % 60;
-        return h + 'h ' + (mr > 0 ? mr + 'm ' : '') + '{{ _("ago") }}';
-      }
-
-      function currentAge(basin) {
-        if (basin.__ageAtServerTime === null) return null;
-        var elapsed = Math.floor(Date.now() / 1000) - basin.__clientAtRead;
-        return basin.__ageAtServerTime + Math.max(0, elapsed);
-      }
-
-      function renderFreshness() {
-        basins.forEach(function (b) {
-          var el = b.querySelector('[data-freshness]');
-          if (!el) return;
-          el.textContent = '{{ _("reading taken") }} ' +
-            fmtAge(currentAge(b));
-        });
-      }
-      renderFreshness();
-      var freshTicker = setInterval(renderFreshness, 15000);
-
-      // ---- Poll /api/xrp-distribution every 5 min ----
-      // On response, if a basin's server-side age dropped (walker
-      // landed a new snapshot), reset our anchor; if pct changed,
-      // transition the water level. If the request 5xx's or a basin
-      // returns is_stale, mark stale and calm the surface.
-      var pollInterval = 5 * 60 * 1000;
-      var poller = null;
-      var lastPolledPcts = {
-        escrow: {{ xd.escrowed_pct }},
-        amm:    {{ xd.amm_pct }},
-        circ:   {{ xd.wallets_pct }}
-      };
-
-      function setLevel(basinKey, pct) {
-        var b = section.querySelector('.basin.' + basinKey);
-        if (!b) return;
-        var group = b.querySelector('.water-group');
-        if (!group) return;
-        var y = Math.max(0, Math.min(100, 100 - pct));
-        group.style.transform = 'translate(0px, ' + y + 'px)';
-        // Move the waterline labels alongside the surface.
-        var pctText = b.querySelector('.waterline-pct');
-        var xrpText = b.querySelector('.waterline-xrp');
-        if (pctText) pctText.setAttribute('y', (y + 8).toFixed(2));
-        if (xrpText) xrpText.setAttribute('y', (y + 19).toFixed(2));
-      }
-
-      function fmtPct(basinKey, pct) {
-        if (basinKey === 'amm') return pct.toFixed(2) + '%';
-        return pct.toFixed(1) + '%';
-      }
-
-      function fmtXrp(basinKey, xrp) {
-        if (basinKey === 'escrow') {
-          if (xrp >= 1e9) return (xrp / 1e9).toFixed(1) + 'B XRP';
-          return Math.round(xrp / 1e6) + 'M XRP';
-        }
-        if (basinKey === 'amm') {
-          if (xrp >= 1e6) return (xrp / 1e6).toFixed(1) + 'M XRP';
-          return Math.round(xrp / 1e3) + 'K XRP';
-        }
-        return '~' + Math.round(xrp / 1e9) + 'B XRP';
-      }
-
-      function applyBasinUpdate(basinKey, xrp, pct, ageSeconds, isStale, prefix) {
-        var b = section.querySelector('.basin.' + basinKey);
-        if (!b) return;
-        var prev = lastPolledPcts[basinKey];
-        if (Math.abs(pct - prev) > 0.001) {
-          setLevel(basinKey, pct);
-          var pctText = b.querySelector('.waterline-pct');
-          var xrpText = b.querySelector('.waterline-xrp');
-          if (pctText) pctText.textContent = fmtPct(basinKey, pct);
-          if (xrpText) xrpText.textContent = (prefix || '') + fmtXrp(basinKey, xrp).replace(/^~/, '');
-          lastPolledPcts[basinKey] = pct;
-        }
-        // Only reset the age anchor if the server's age dropped
-        // (i.e. a new walker snapshot landed). If age is unchanged or
-        // grew, our local ticker already handled it — do NOT reset,
-        // that would be a fake freshness event.
-        if (ageSeconds !== null && ageSeconds !== undefined) {
-          if (b.__ageAtServerTime === null ||
-              ageSeconds < b.__ageAtServerTime - 30) {
-            b.__ageAtServerTime = ageSeconds;
-            b.__clientAtRead = Math.floor(Date.now() / 1000);
-          }
-        }
-        b.setAttribute('data-is-stale', isStale ? 'true' : 'false');
-        b.classList.toggle('is-stale', !!isStale);
-      }
-
-      function poll() {
-        fetch('/api/xrp-distribution', {credentials: 'same-origin'})
-          .then(function (r) {
-            if (!r.ok) throw new Error('poll ' + r.status);
-            return r.json();
-          })
-          .then(function (data) {
-            applyBasinUpdate('escrow', data.escrowed_xrp,
-              data.escrowed_pct, data.escrow_age_seconds, data.escrow_stale);
-            applyBasinUpdate('amm', data.amm_xrp,
-              data.amm_pct, data.amm_age_seconds, data.amm_stale);
-            applyBasinUpdate('circ', data.wallets_xrp,
-              data.wallets_pct, data.wallets_age_seconds, data.wallets_stale, '~');
-            renderFreshness();
-          })
-          .catch(function () {
-            // Silent failure — last-good level persists client-side.
-            // If our current age crosses the stale threshold, the
-            // client marks the basin stale below.
-          });
-
-        // Client-side stale check as a defense-in-depth: if the server
-        // is unreachable and our anchored age would exceed the
-        // threshold, calm the surface anyway. Truth-first: stale must
-        // be visible even when we can't reach the server.
-        var thresholds = { escrow: 3600, amm: 28800, circ: 28800 };
-        basins.forEach(function (b) {
-          var key = b.getAttribute('data-basin');
-          var age = currentAge(b);
-          var t = thresholds[key] || 3600;
-          if (age !== null && age > t) {
-            b.classList.add('is-stale');
-            b.setAttribute('data-is-stale', 'true');
-          }
-        });
-      }
-
-      // ---- Performance discipline: pause everything when tab hidden
-      //      or the reservoir is off-screen. ----
-      var visible = true;
-      var onScreen = true;
-      function updateActive() {
-        var active = visible && onScreen;
-        if (active && !poller) {
-          poll(); // fire once on becoming active
-          poller = setInterval(poll, pollInterval);
-        } else if (!active && poller) {
-          clearInterval(poller);
-          poller = null;
-        }
-      }
-
-      document.addEventListener('visibilitychange', function () {
-        visible = !document.hidden;
-        updateActive();
-      });
-
-      if ('IntersectionObserver' in window) {
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            onScreen = e.isIntersecting;
-            updateActive();
-          });
-        }, { threshold: 0.05 });
-        io.observe(section);
-      } else {
-        onScreen = true;
-        updateActive();
-      }
-    })();
-    </script>
     {% endif %}
 
     {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}

@@ -892,13 +892,14 @@ _XRP_AMM_STALE_AFTER = 28800    # 8 h
 
 
 def _build_xrp_distribution(ranked_full):
-    """Build the reservoir-gauge payload shared by the index render and
-    the /api/xrp-distribution poll endpoint. Backed by the same in-
-    process caches the rest of the homepage uses, so calling it is
-    essentially free on the hot path unless a walker landed a new
-    snapshot since the last hit. Every basin carries an age_seconds
-    and is_stale flag so the client can render honest freshness stamps
-    without recomputing thresholds."""
+    """Build the XRP supply-distribution payload shared by the index
+    render (constellation viz) and the /api/xrp-distribution endpoint.
+    Backed by the same in-process caches the rest of the homepage uses,
+    so calling it is essentially free on the hot path unless a walker
+    landed a new snapshot since the last hit. Every bucket carries an
+    age_seconds and is_stale flag; the endpoint uses them, the current
+    homepage viz does not (retained shape in case a future viz wants
+    the freshness signal without recomputing it)."""
     try:
         esc = fetch_escrow_locked_cached()
     except Exception:
@@ -1101,16 +1102,15 @@ def index():
     except Exception:
         cold = None
 
-    # "Where is XRP?" reservoir gauge — three on-ledger buckets:
+    # "Where is XRP?" supply constellation — three on-ledger buckets:
     #   - escrowed:  sum of EscrowCreate objects owned by Ripple's ~20
     #                monthly-release accounts (escrow_supply.py). >99%
     #                of all XRP escrow on the ledger; the small non-
-    #                Ripple remainder sits inside Circulating (CP1
-    #                honesty edge — see reservoir tooltip copy).
+    #                Ripple remainder sits inside "Held by wallets."
     #   - amm:       XRP-side of every AMM pool's reserves
-    #   - circulating: 100B design supply − the two locked buckets above
-    # The design constant is used for CP1; CP3 swaps in the live
-    # total_coins from a ledger command (drifts down ~0.02%/yr from burns).
+    #   - wallets:   100B design supply − the two locked buckets above.
+    # The design supply is a known constant; the live total drifts down
+    # by ~0.02%/year via transaction-fee burns, well below display rounding.
     xrp_distribution = _build_xrp_distribution(ranked_full)
 
     return render_template(
@@ -4826,14 +4826,16 @@ def api_heartbeat_age():
 @app.route("/api/xrp-distribution")
 @limiter.limit("60 per minute")
 def api_xrp_distribution():
-    """Client-side poll target for the homepage reservoir gauge.
-    Returns the same three-basin payload the index render bakes in,
-    plus per-basin age_seconds and is_stale flags so the gauge can
-    render honest freshness stamps and switch to amber+calm surface
-    when a walker has stalled. Cheap — reads the same in-process
-    caches the homepage uses; no walker is triggered by a poll.
-    Client polls at 5-minute intervals; failure mode is last-good
-    persists client-side and stamps go amber."""
+    """Public JSON of the three XRP supply buckets (escrowed / AMM /
+    circulating) with per-bucket age_seconds and is_stale flags.
+    Currently has NO in-app UI consumer — the homepage reservoir
+    gauge that consumed this was reverted (8c2d8b9 → HEAD) after a
+    visual review. Endpoint retained deliberately: cheap (reads the
+    same in-process caches the homepage already uses, no walker is
+    triggered by a poll), well-scoped, and a natural fit for any
+    future viz or third-party dashboard that wants a small honest
+    supply-distribution feed. Delete if it's still unused after the
+    next content pass."""
     try:
         ranked_full, _meta = _ranked_amm_snapshot()
     except Exception:
