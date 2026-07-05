@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- /check-only referrer override: outbound clicks from this page send
+       no Referer at all, so the pasted ?q=… never reaches the next
+       page_view row's referrer column. Backs the /privacy claim that
+       we don't store pasted content anywhere. Do NOT remove without a
+       matching update to /privacy §2b. -->
+  <meta name="referrer" content="no-referrer">
   <title>{{ _('Check an XRPL address') }} · xrpldashboard</title>
   {% set meta_title = "Check an XRPL address · xrpldashboard" %}
   {% set meta_description = "Paste an XRPL wallet address to see who — if anyone — has claimed it publicly. Facts with sources and timestamps. Not a scam verdict." %}
@@ -297,6 +303,9 @@
 
     <p class="disclaimer">
       {{ _('This is guidance, not a legal determination. We report facts we can source, at the time we checked them — not a verdict on whether it is safe to send money.') }}
+    </p>
+    <p class="disclaimer" style="border-left-color: rgba(255,255,255,0.10); font-size: 0.8rem; color: var(--dim); margin-top: 10px;">
+      {{ _('All trademarks are property of their respective owners; use is factual reference (nominative fair use).') }}
     </p>
 
   {% endif %}

@@ -62,7 +62,7 @@
   {% include "_nav.html" %}
 
   <h1>{{ _('Terms of service') }}</h1>
-  <p class="updated">{{ _('Last updated:') }} 2026-05-12</p>
+  <p class="updated">{{ _('Last updated:') }} 2026-07-05</p>
   <p class="lede">
     {{ _('xrpldashboard is a free, public-good website for reading the XRP Ledger. There are no accounts, no payments, and no tokens. These terms keep the project usable for everyone.') }}
   </p>
@@ -99,10 +99,20 @@
     <a href="https://bithomp.com" target="_blank" rel="noopener noreferrer">Bithomp</a>
     {{ _('before acting on anything you see here.') }}
   </p>
+  <p>
+    {{ _('If you spot an error, use the') }}
+    <a href="/click/contact?purpose=data-correction">{{ _('report-an-error link') }}</a>
+    {{ _('and cite the specific URL and value. Corrections are typically actioned within 5 business days.') }}
+  </p>
 
   <h2>4. {{ _('No warranty') }}</h2>
   <p>
-    {{ _('The site is provided "as is" and "as available", without warranties of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement. We don\'t guarantee that the site will be uninterrupted, error-free, or available at any given time.') }}
+    {{ _('The site is provided "as is" and "as available", without warranties of any kind, express, implied, or statutory, including but not limited to warranties of merchantability, fitness for a particular purpose, availability, ongoing functionality, quality, accuracy, reliability, security, or non-infringement. We don\'t guarantee that the site will be uninterrupted, error-free, complete, or available at any given time.') }}
+  </p>
+
+  <h2>4a. {{ _('Your responsibility') }}</h2>
+  <p>
+    {{ _('The signals, labels, and factual observations we publish do not constitute, and do not substitute for, professional advice — including legal, security, or financial advice. You are solely responsible for any decision you take in response to information shown on the site. Review the data, verify against independent sources, and decide for yourself. This is especially true for the /check tool: a "verified identity on file" is a factual observation about an on-chain attestation, not a safety endorsement, and "no identity claim on file" is not a scam warning. Neither is a recommendation to send or not send money to any address, token, or domain.') }}
   </p>
 
   <h2>5. {{ _('Acceptable use') }}</h2>
@@ -138,7 +148,12 @@
     {{ _('we\'ll try to resolve it informally before anyone reaches for lawyers.') }}
   </p>
 
-  <h2>10. {{ _('Contact') }}</h2>
+  <h2>10. {{ _('Trademarks') }}</h2>
+  <p>
+    {{ _('All trademarks, service marks, and brand names referenced on the site (including exchange names, project names, and issuer names displayed in signals or attestation labels) are the property of their respective owners. Use on this site is factual reference under nominative fair use — we name entities only to identify them accurately in the context of publicly available on-chain data. No sponsorship, endorsement, or affiliation is implied.') }}
+  </p>
+
+  <h2>11. {{ _('Contact') }}</h2>
   <p>
     {{ _('Questions, corrections, or anything else:') }}
     contact@xrpldashboard.com.

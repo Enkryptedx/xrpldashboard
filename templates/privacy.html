@@ -62,7 +62,7 @@
   {% include "_nav.html" %}
 
   <h1>{{ _('Privacy policy') }}</h1>
-  <p class="updated">{{ _('Last updated:') }} 2026-05-12</p>
+  <p class="updated">{{ _('Last updated:') }} 2026-07-05</p>
   <p class="lede">
     {{ _('xrpldashboard is a public website with no accounts, no analytics tracker, and no fingerprinting. We collect the minimum data needed to serve a webpage, and nothing else.') }}
   </p>
@@ -102,6 +102,24 @@
       {{ _('reads public ledger data and isn\'t tied to the IP that asked.') }}</li>
     <li>{{ _('No advertising. No retargeting. Ever.') }}</li>
   </ul>
+
+  <h2>2b. {{ _('When you use /check') }}</h2>
+  <p>
+    <strong>{{ _('The pasted content is not stored.') }}</strong>
+    {{ _('When you paste a wallet address, token (SYMBOL.rIssuer), URL, or domain into the /check tool, it is processed in-request to look up on-chain signals and public TOML metadata, and the result is rendered back to you.') }}
+  </p>
+  <ul>
+    <li>{{ _('We do not store the pasted content in our database.') }}</li>
+    <li>{{ _('We do not store the pasted content in our application logs — our page-view logger records only the path (') }}<code>/check</code>{{ _(') and standard request metadata, never the query string.') }}</li>
+    <li>{{ _('We do not share the pasted content with any third party.') }}</li>
+  </ul>
+  <p>
+    {{ _('Because /check is a permalink URL (') }}<code>?q=…</code>{{ _('), the pasted content is visible in your browser\'s address bar and history, and appears in standard HTTP access logs at our hosting provider (Render) and CDN (Cloudflare) alongside every other request URL. Those logs are retained by our providers for a short operational window and are used only for security and uptime, per each provider\'s privacy policy linked above.') }}
+  </p>
+  <p>
+    <strong>{{ _('Legal basis (EEA/UK visitors):') }}</strong>
+    {{ _('legitimate interest in providing a free anti-fraud information tool (GDPR Art. 6(1)(f)). The processing is minimal (paste plus result), ephemeral (in-request), and pursues an interest — helping visitors evaluate identity claims about XRPL assets they were considering interacting with — that outweighs the minor privacy impact of temporary URL logging by the platforms above.') }}
+  </p>
 
   <h2>3. {{ _('Children') }}</h2>
   <p>
