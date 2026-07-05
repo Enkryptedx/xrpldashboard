@@ -27,9 +27,31 @@ from datetime import datetime, timezone
 from typing import Any
 
 import db
+import re
+import ssl
+import tomllib
+import urllib.error
+import urllib.request
+from urllib.parse import urlparse
+
+import certifi
 from xrpl.models.requests import AccountInfo
 
 from xrpl_client import get_client
+
+# D3 URL/domain check: reuse the battle-tested SSRF gate from the
+# walker. _is_safe_domain rejects IPs, control chars, and off-shape
+# names BEFORE any HTTP fetch, so a hostile on-chain Domain or paste
+# can't SSRF via https://<rfc1918>/.well-known/xrp-ledger.toml. Do not
+# roll our own gate here — drift on this is a footgun.
+from verify_toml_accounts import _is_safe_domain as _domain_is_safe
+
+# D3 URL check: keep the request-path HTTP fetch quick. 5s is enough
+# for any well-configured TOML endpoint; anything longer belongs in
+# couldnt_check, not blocking the paste-box.
+_D3_HTTP_TIMEOUT = 5
+_D3_USER_AGENT = "xrpldashboard-check-page/1.0 (+https://xrpldashboard.com/check)"
+_D3_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _NAMED_PATH = os.path.join(_HERE, "named_accounts.json")
@@ -567,10 +589,715 @@ def check_token(currency: str, issuer: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# URL / domain check (D3). Input = a domain or URL. Same tier
+# discipline as D1/D2. The traps:
+#   - TOML present ≠ safe: anyone can publish an xrp-ledger.toml.
+#     Verified requires the TWO-WAY proof — declared account's
+#     on-chain Domain field points back to this domain.
+#   - Lookalike (URL-version of the Bitstamp trap): a domain that
+#     contains a well-known brand name but ISN'T that brand's
+#     published domain. Surface it honestly, without accusing.
+# ─────────────────────────────────────────────────────────────────────
+
+def _extract_hostname(raw: str) -> str | None:
+    """Turn a paste like `https://Bitstamp.NET/foo?a=1` into
+    `bitstamp.net`. Returns None if the input isn't a plausibly
+    parseable URL/host. Rejects userinfo (`user@host`) and non-ASCII."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if not s or "@" in s:
+        return None
+    if "://" in s:
+        try:
+            parsed = urlparse(s)
+        except Exception:
+            return None
+        host = (parsed.hostname or "").strip().lower()
+    else:
+        # Bare host — strip any accidental trailing /path or :port
+        host = s.split("/", 1)[0].split(":", 1)[0].strip().lower()
+    if not host or not host.isascii():
+        return None
+    return host
+
+
+# Category allowlist for brand map — descriptions like "User Withdraw
+# Account" / "Evan Wyn Evans" / "EBIT Token Issuer" aren't brands. Only
+# categories that actually name a well-known brand get in.
+_BRAND_CATEGORY_ALLOW = {"exchange", "issuer", "ripple", "bridge", "yield", "oracle"}
+
+# Name patterns that mark an entry as a per-account instance of a
+# larger brand ("Ripple Escrow #04") — strip these before deriving the
+# brand's first-word probe.
+_BRAND_NAME_STRIP_RE = re.compile(
+    r"\s*(?:—|-|#\d+|escrow|deposit|withdrawal|treasury|account|issuer)\b.*$",
+    re.IGNORECASE,
+)
+
+
+def _registered_root(host: str) -> str:
+    """Approximate registered domain: last two labels of the host.
+    Wrong for two-label public suffixes like `co.uk`, but good enough
+    for the brand-family match used by the lookalike check."""
+    parts = (host or "").lower().split(".")
+    if len(parts) < 2:
+        return host or ""
+    return ".".join(parts[-2:])
+
+
+def _load_brand_domains() -> dict[str, set[str]]:
+    """Build brand-name → {registered-domain roots} map from
+    named_accounts.json entries with a `verified_via` URL. Filters:
+      - category must be in _BRAND_CATEGORY_ALLOW
+      - name-first-word (post-strip) must be ≥4 chars, alphanumeric
+      - brand's first-word must appear in one of its verified_via roots
+        (kills mismatches where verified_via points at a Medium article
+        or a xrpl.org doc rather than the brand's own domain)
+    Values are registered-domain roots (blog.bitstamp.net → bitstamp.net)
+    so a lookalike check treats `bitstamp.net` and `www.bitstamp.net`
+    as legitimate family members, not typosquats."""
+    brands: dict[str, set[str]] = {}
+
+    for entry in _load_named().values():
+        via = (entry or {}).get("verified_via")
+        name = (entry or {}).get("name")
+        category = (entry or {}).get("category") or (entry or {}).get("role")
+        if not (via and name):
+            continue
+        if category not in _BRAND_CATEGORY_ALLOW:
+            continue
+        cleaned = _BRAND_NAME_STRIP_RE.sub("", name).strip().lower()
+        if not cleaned:
+            continue
+        first_word = cleaned.split()[0]
+        if len(first_word) < 4 or not first_word.isalnum():
+            continue
+        try:
+            host = urlparse(via).netloc.split(":")[0].lower()
+        except Exception:
+            host = ""
+        if not host:
+            continue
+        root = _registered_root(host)
+        # Sanity: brand's first-word should appear in its own root; else
+        # verified_via points somewhere else (article, docs, etc.) and
+        # that root would produce nonsense lookalike calls.
+        if first_word not in root:
+            continue
+        brands.setdefault(first_word, set()).add(root)
+
+    return brands
+
+
+def _find_lookalike(domain: str, brands: dict[str, set[str]]) -> tuple[str, set[str]] | None:
+    """Return (brand_first_word, known_roots) if `domain` contains a
+    brand's first-word substring AND is NOT within any of that brand's
+    known registered-domain families. Legit if `domain == root` or
+    `domain.endswith("." + root)` for any root.
+
+    Multi-brand safety: if the input is legit for one brand it won't
+    fire for another (early return covers that)."""
+    d = domain.lower()
+    for probe, roots in brands.items():
+        # Legitimate family member for this brand? Not a lookalike.
+        if any(d == r or d.endswith("." + r) for r in roots):
+            return None
+        if probe in d:
+            return probe, roots
+    return None
+
+
+def _fetch_toml_fast(domain: str) -> tuple[str, dict | None, str | None]:
+    """Request-path TOML fetch. Mirrors verify_toml_accounts.fetch_toml
+    but with a shorter timeout (5s vs 10s) so the paste-box doesn't
+    hang. Returns (final_url, parsed_toml_or_None, error_reason_or_None).
+    Same SSRF, off-host-redirect, and HTML-masquerade defenses."""
+    if not _domain_is_safe(domain):
+        return (
+            f"https://{domain}/.well-known/xrp-ledger.toml",
+            None,
+            "rejected by domain regex gate",
+        )
+    url = f"https://{domain}/.well-known/xrp-ledger.toml"
+    req = urllib.request.Request(url, headers={"User-Agent": _D3_USER_AGENT})
+    try:
+        with urllib.request.urlopen(
+            req, timeout=_D3_HTTP_TIMEOUT, context=_D3_SSL_CTX,
+        ) as resp:
+            ctype = (resp.headers.get("Content-Type") or "").lower()
+            body = resp.read(512_000)
+            final_url = resp.geturl()
+    except urllib.error.HTTPError as e:
+        return url, None, f"HTTP {e.code}"
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        return url, None, f"fetch failed ({type(e).__name__})"
+    except Exception as e:
+        return url, None, f"unexpected fetch error ({type(e).__name__})"
+
+    final_host = urlparse(final_url).netloc.split(":")[0].lower()
+    if not (
+        final_host == domain
+        or final_host.endswith("." + domain)
+        or domain.endswith("." + final_host)
+        or final_host == "www." + domain
+    ):
+        return final_url, None, f"redirected off-host to {final_host}"
+
+    head = body[:512].lstrip().lower()
+    if (
+        head.startswith(b"<!doctype")
+        or head.startswith(b"<html")
+        or "text/html" in ctype
+    ):
+        return final_url, None, "served HTML, not a TOML file"
+
+    try:
+        parsed = tomllib.loads(body.decode("utf-8", errors="replace"))
+    except tomllib.TOMLDecodeError as e:
+        return final_url, None, f"TOML parse error ({e})"
+    return final_url, parsed, None
+
+
+def _matchback_for_account(address: str, target_domain: str) -> tuple[bool, str | None]:
+    """For a declared account, read its on-chain Domain and check
+    whether it points back to `target_domain`. Returns (matches, decoded_domain_or_None).
+    (False, None) covers both "no Domain set" and "account not found";
+    (False, "otherdomain.com") means Domain is set but points elsewhere.
+
+    A match is any within-family relation: exact, subdomain either way,
+    or same registered root. So target `xrpl-labs.com` matches on-chain
+    `validator.xrpl-labs.com` and vice versa."""
+    account_data, err = _query_ledger(address)
+    if err or not account_data:
+        return False, None
+    domain = _decode_domain_hex(account_data.get("Domain"))
+    if not domain:
+        return False, None
+    d = domain.lower()
+    t = target_domain.lower()
+    if d == t:
+        return True, domain
+    if d.endswith("." + t) or t.endswith("." + d):
+        return True, domain
+    if _registered_root(d) == _registered_root(t):
+        return True, domain
+    return False, domain
+
+
+def check_url(raw_input: str) -> dict:
+    """Build the /check D3 result for a URL or bare domain.
+
+    Tiers:
+      verified — TOML present with [[ACCOUNTS]] block, and at least one
+                 declared account's on-chain Domain field points back
+                 to this domain. Two-way proof — the only tier that
+                 justifies a green pill for a URL.
+      self     — TOML present but no two-way match, OR domain matches
+                 an issuer's on-chain Domain but hosts no TOML we can
+                 verify. Half of the two-way proof only.
+      bare     — no TOML, no on-chain Domain pointing here, no
+                 lookalike issue. No identity claim on file.
+
+    Lookalike override (applies to any tier): if the input domain
+    contains a known brand name AND is not one of that brand's known
+    domains, the top signal + status line actively decouple.
+    """
+    host = _extract_hostname(raw_input)
+    if not host:
+        return {
+            "kind": "url",
+            "subject": raw_input,
+            "ref": raw_input,
+            "tier": "bare",
+            "status_line": "That does not look like a domain or URL we can check.",
+            "signals": [],
+            "couldnt_check": [],
+            "checked_at_utc": _now_iso(),
+            "next_action": None,
+        }
+    if not _domain_is_safe(host):
+        return {
+            "kind": "url",
+            "subject": host,
+            "ref": host,
+            "tier": "bare",
+            "status_line": (
+                "That domain fails a basic safety gate (private-network "
+                "IP, invalid shape, or off-standard characters). "
+                "Nothing to check."
+            ),
+            "signals": [],
+            "couldnt_check": [],
+            "checked_at_utc": _now_iso(),
+            "next_action": None,
+        }
+
+    signals: list[dict] = []
+    couldnt_check: list[dict] = []
+
+    # --- TOML fetch ---------------------------------------------------
+    toml_url, toml_data, toml_err = _fetch_toml_fast(host)
+    accounts_declared: list[dict] = []
+    if toml_data is not None:
+        raw_accounts = toml_data.get("ACCOUNTS") or []
+        accounts_declared = [b for b in raw_accounts if isinstance(b, dict)]
+        signals.append(_signal(
+            label="XRPL identity file",
+            value=(
+                f"{host} publishes an xrp-ledger.toml with "
+                f"{len(accounts_declared)} declared account(s)."
+            ),
+            source_label=toml_url,
+            source_url=toml_url,
+        ))
+    else:
+        couldnt_check.append(_couldnt(
+            label="XRPL identity file (xrp-ledger.toml)",
+            reason=toml_err or "unreachable",
+        ))
+
+    # --- Two-way check: up to 10 declared accounts. Cheap when local
+    # rippled is up, still bounded by request-latency budget. Short-circuit
+    # once we've found a match — one confirmed pair proves ownership.
+    matched_count = 0
+    checked_pairs: list[tuple[str, bool, str | None]] = []
+    _CHECK_CAP = 10
+    for block in accounts_declared[:_CHECK_CAP]:
+        addr = (block or {}).get("address")
+        if not addr:
+            continue
+        matches, decoded = _matchback_for_account(addr, host)
+        checked_pairs.append((addr, matches, decoded))
+        if matches:
+            matched_count += 1
+            break  # one is enough
+
+    if checked_pairs:
+        lines = []
+        for addr, matches, decoded in checked_pairs:
+            if matches:
+                if decoded and decoded.lower() != host:
+                    lines.append(
+                        f"{_short_addr(addr)}: on-chain Domain = {decoded} "
+                        f"(same domain family as {host}) ✓"
+                    )
+                else:
+                    lines.append(f"{_short_addr(addr)}: on-chain Domain = {host} ✓")
+            elif decoded:
+                lines.append(
+                    f"{_short_addr(addr)}: on-chain Domain = {decoded} "
+                    f"(does not match {host})"
+                )
+            else:
+                lines.append(
+                    f"{_short_addr(addr)}: no on-chain Domain field set"
+                )
+        checked_n = len(checked_pairs)
+        declared_n = len(accounts_declared)
+        overflow = ""
+        if matched_count > 0 and declared_n > checked_n:
+            overflow = (
+                f" (stopped at first match — {checked_n} of "
+                f"{declared_n} declared checked)"
+            )
+        elif declared_n > checked_n:
+            overflow = f" (checked first {checked_n} of {declared_n} declared)"
+        signals.append(_signal(
+            label="Two-way match on the ledger",
+            value=" · ".join(lines) + overflow,
+            source_label="XRPL AccountInfo (validated ledger) per declared account",
+            source_url=None,
+        ))
+
+    # --- Lookalike detection -----------------------------------------
+    brands = _load_brand_domains()
+    lookalike = _find_lookalike(host, brands)
+
+    # --- Tier decision -----------------------------------------------
+    if matched_count > 0:
+        tier = "verified"
+    elif toml_data is not None or _is_domain_on_chain_for_some_issuer(host):
+        tier = "self"
+    else:
+        tier = "bare"
+
+    # Lookalike trap: prepend a dedicated top signal + override status.
+    # The tier itself stays honest (green stays green if the two-way
+    # match exists), but a lookalike SHOULD never be verified — that
+    # would only happen if brand-substring matched AND two-way matched,
+    # which by construction can't happen (the two-way match implies
+    # the domain IS the brand's real domain, so it'd be in known set).
+    if lookalike:
+        probe, known_roots = lookalike
+        brand_display = probe.capitalize()
+        known_list = ", ".join(sorted(known_roots)) or "not published"
+        signals.insert(0, _signal(
+            label="Known-brand lookalike",
+            value=(
+                f"This domain contains \u201C{probe}\u201D but is NOT "
+                f"within the domain family {brand_display} publishes its "
+                f"XRPL identity from ({known_list}). Anyone can register "
+                f"a domain containing a well-known name."
+            ),
+            source_label="named_accounts.json (brand → registered-domain map)",
+            source_url=None,
+        ))
+
+    # --- Status line -------------------------------------------------
+    if lookalike:
+        probe, known_roots = lookalike
+        brand_display = probe.capitalize()
+        known_list = ", ".join(sorted(known_roots)) or "not published"
+        status_line = (
+            f"This domain is NOT within the domain family {brand_display} "
+            f"publishes its XRPL identity from ({known_list}). Anyone can "
+            f"register a domain that contains a well-known name — this "
+            f"is not the domain {brand_display} publishes its identity from."
+        )
+    elif tier == "verified":
+        status_line = (
+            "This domain publishes an XRPL identity file, and at least "
+            "one declared account confirms this domain on the ledger. "
+            "Two-way match on file. Verified identity does NOT mean "
+            "the domain is safe to interact with."
+        )
+    elif tier == "self":
+        if toml_data is not None:
+            status_line = (
+                "This domain publishes an XRPL identity file, but none "
+                "of the declared accounts confirm this domain on the "
+                "ledger. The declaration is self-reported — anyone can "
+                "publish an xrp-ledger.toml. Not confirmed by any "
+                "outside source."
+            )
+        else:
+            status_line = (
+                "An XRPL issuer's on-chain Domain field points to this "
+                "domain, but the domain itself does not publish an "
+                "xrp-ledger.toml we can read. Only one side of the "
+                "two-way check is present."
+            )
+    else:
+        status_line = (
+            "No XRPL identity file at this domain, and no on-chain "
+            "issuer points here. No negative signals found in the "
+            "sources we checked."
+        )
+
+    # Domain age is deferred (would require WHOIS/RDAP integration).
+    couldnt_check.append(_couldnt(
+        label="Domain registration age",
+        reason=(
+            "not currently checked — planned once a reliable RDAP/WHOIS "
+            "integration lands (scam domains are often days old, so "
+            "this is a real gap)"
+        ),
+    ))
+
+    return {
+        "kind": "url",
+        "subject": host,
+        "ref": host,
+        "tier": tier,
+        "status_line": status_line,
+        "signals": signals,
+        "couldnt_check": couldnt_check,
+        "checked_at_utc": _now_iso(),
+        "next_action": (
+            {"label": "View the TOML file", "href": toml_url}
+            if toml_data is not None else None
+        ),
+    }
+
+
+def _is_domain_on_chain_for_some_issuer(host: str) -> bool:
+    """Cheap approximate check: does any named_accounts entry with a
+    verified_via URL point at this host? This is the "reverse" side of
+    the two-way check for the case where THIS domain hosts no TOML but
+    an issuer's on-chain Domain still points here."""
+    host = (host or "").lower()
+    if not host:
+        return False
+    for entry in _load_named().values():
+        via = (entry or {}).get("verified_via")
+        if not via:
+            continue
+        try:
+            netloc = urlparse(via).netloc.split(":")[0].lower()
+        except Exception:
+            continue
+        if netloc == host:
+            return True
+    return False
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Unified paste-box dispatcher. The /check route calls this with the
 # raw user input; it returns either a check_address / check_token result
 # or an {"error": ...} sentinel so the route can render the error banner.
 # ─────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────────
+# Message triage (D4). Input = a whole pasted message (SMS, DM, email
+# body) that a scared user is trying to sanity-check. Extract every
+# address / token / URL that looks real, run each through D1/D2/D3.
+#
+# HARD PRIVACY (contract with /privacy §2b):
+#   - Nothing about the pasted content lands in the DB. Not in
+#     page_views (POST is skipped by _log_page_view), not in any new
+#     table (we don't create one), not in curator files.
+#   - No permalink. Results render in-place on POST. Back button hits
+#     the empty paste-box GET, not a rehydrated message.
+#   - The only durable trace of a paste is an input_type='message'
+#     count in the app request log (no content, no preview) — see
+#     app.check_page POST branch. The 120-char preview described in
+#     the design lives ONLY in the transient in-request logger line;
+#     never anywhere queryable.
+#
+# EXTRACTION (conservative, per Gate D4-Q3):
+#   - XRPL address: base58 gate + length 25-35 + 'r' prefix. Strict.
+#   - Token: "SYMBOL.rIssuer" where issuer passes the address gate.
+#   - URL/domain: domain-shaped strings that pass _domain_is_safe.
+#     Bare domains OK (catches "bitstamp-verify.com" without scheme)
+#     but only real domain shapes — no every-word-with-a-dot noise.
+# False positives here aren't just noise, they're MISLEADING signals.
+# ─────────────────────────────────────────────────────────────────────
+
+# XRPL base58 alphabet — Ripple flavour (excludes 0, O, I, l as in
+# Bitcoin's base58 but with the Ripple-specific dictionary permutation).
+_XRPL_BASE58 = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"
+_XRPL_ADDR_RE = re.compile(rf"\br[{_XRPL_BASE58}]{{24,34}}\b")
+
+# Token pattern: SYMBOL then '.' then r-address. SYMBOL is 3-40 chars,
+# ASCII letters/digits (matches _CURRENCY_ASCII_CHARS space in app.py
+# less the punctuation forms which are extremely rare in-message).
+_TOKEN_RE = re.compile(
+    rf"\b([A-Za-z0-9]{{3,40}})\.(r[{_XRPL_BASE58}]{{24,34}})\b"
+)
+
+# Domain/URL pattern: scheme-optional. Requires ≥2 dot-separated labels
+# with a TLD-shaped last label (2-24 alpha chars). Rejects IP-shaped
+# things (all-numeric labels) at extraction; _domain_is_safe re-checks.
+# The (?:https?://)? scheme is captured but the group also matches bare
+# domains — the actual scheme-vs-bare test happens in check_url.
+_URL_RE = re.compile(
+    r"(?<![\w.])"                            # not preceded by word char / dot
+    r"(?:https?://)?"                        # optional scheme
+    r"([a-zA-Z0-9][-a-zA-Z0-9]{0,62}"        # first label
+    r"(?:\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})*"  # middle labels
+    r"\.[a-zA-Z]{2,24})"                     # TLD (alpha only, 2-24)
+    r"(?::\d{1,5})?"                         # optional port
+    r"(?:/[^\s<>\"']*)?"                     # optional path
+    r"(?![\w.])"                             # not followed by word / dot
+)
+
+# TLD stop-list — extremely common false-positive TLDs from filenames
+# and sentence fragments. If a "domain" hits one of these, drop it.
+# Legit .txt/.py/.md-style file extensions get filtered even though
+# they don't appear in the ICANN TLD list (the alpha-only TLD gate
+# already handles most, but explicit skip is cheap insurance).
+_URL_TLD_STOPLIST = {
+    "txt", "py", "md", "js", "css", "html", "htm", "json", "yaml",
+    "yml", "toml", "csv", "tsv", "log", "gz", "zip", "tar", "jpg",
+    "jpeg", "png", "gif", "svg", "pdf", "doc", "docx", "xls", "xlsx",
+    "mp3", "mp4", "mov", "avi",
+}
+
+
+def _extract_addresses(text: str) -> list[str]:
+    """Yield unique XRPL addresses in appearance order. Strict base58
+    gate — an r-prefix word that isn't valid base58 length/charset is
+    silently skipped."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _XRPL_ADDR_RE.finditer(text):
+        addr = m.group(0)
+        if 25 <= len(addr) <= 35 and addr not in seen:
+            seen.add(addr)
+            out.append(addr)
+    return out
+
+
+def _extract_tokens(text: str) -> list[tuple[str, str]]:
+    """Yield unique (symbol, issuer) tokens in appearance order. Uses
+    _TOKEN_RE, then re-checks issuer against the base58 gate. The
+    address-list is deduped against these tokens by the caller — an
+    address that appears INSIDE a token form shouldn't ALSO be listed
+    as a bare wallet address."""
+    seen: set[tuple[str, str]] = set()
+    out: list[tuple[str, str]] = []
+    for m in _TOKEN_RE.finditer(text):
+        symbol, issuer = m.group(1), m.group(2)
+        if not (25 <= len(issuer) <= 35):
+            continue
+        key = (symbol.upper(), issuer)
+        if key not in seen:
+            seen.add(key)
+            out.append((symbol, issuer))
+    return out
+
+
+def _extract_urls(text: str) -> list[str]:
+    """Yield unique domain-shaped strings in appearance order. Returns
+    hostnames (lowercased, path/scheme stripped) so the render is
+    de-noised — pasting "https://Bitstamp-Verify.com/path" and
+    "bitstamp-verify.com" collapses to one card. _domain_is_safe
+    re-gates each candidate so private-IP shapes and control chars
+    can't reach the URL check."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _URL_RE.finditer(text):
+        candidate = m.group(1).lower().strip(".")
+        # Drop obvious file-extension false positives.
+        tld = candidate.rsplit(".", 1)[-1]
+        if tld in _URL_TLD_STOPLIST:
+            continue
+        if not _domain_is_safe(candidate):
+            continue
+        if candidate not in seen:
+            seen.add(candidate)
+            out.append(candidate)
+    return out
+
+
+# Cap displayed cards per type. Total = 5 shown + "view all N" bumper.
+_MESSAGE_DISPLAY_CAP = 5
+
+
+def check_message(text: str) -> dict:
+    """Build the /check D4 message-triage result.
+
+    Extract every plausible address / token / URL from the pasted
+    message and run each through the same D1/D2/D3 pipeline. Group
+    the results by type, cap at 5 per group, and lead with a plain
+    one-line summary orienting the (often scared) user.
+
+    Privacy: neither the text nor any derived preview is written into
+    the returned dict for storage. The caller must NOT persist the
+    incoming `text` to any store. All extracted subjects (addresses,
+    domains, symbols) become part of the rendered page but are not
+    logged beyond that single response.
+    """
+    if not text or not text.strip():
+        return {
+            "kind": "message",
+            "subject": "message",
+            "ref": "message",
+            "tier": "bare",
+            "status_line": (
+                "That looks empty. Paste the message you want to check."
+            ),
+            "summary": "",
+            "groups": {"addresses": [], "tokens": [], "urls": []},
+            "counts": {"addresses": 0, "tokens": 0, "urls": 0},
+            "checked_at_utc": _now_iso(),
+            "next_action": None,
+        }
+
+    # --- extract, dedupe address ⇢ token overlap ---------------------
+    tokens = _extract_tokens(text)
+    token_issuers = {issuer for _, issuer in tokens}
+    addresses = [a for a in _extract_addresses(text) if a not in token_issuers]
+    urls = _extract_urls(text)
+
+    counts = {
+        "addresses": len(addresses),
+        "tokens": len(tokens),
+        "urls": len(urls),
+    }
+
+    # --- per-target lookups (capped) --------------------------------
+    address_results = [
+        check_address(a) for a in addresses[:_MESSAGE_DISPLAY_CAP]
+    ]
+    token_results = [
+        check_token(sym, iss) for sym, iss in tokens[:_MESSAGE_DISPLAY_CAP]
+    ]
+    url_results = [
+        check_url(u) for u in urls[:_MESSAGE_DISPLAY_CAP]
+    ]
+
+    # --- summary line -----------------------------------------------
+    parts = []
+    if counts["addresses"]:
+        parts.append(
+            f"{counts['addresses']} address"
+            + ("es" if counts["addresses"] != 1 else "")
+        )
+    if counts["tokens"]:
+        parts.append(
+            f"{counts['tokens']} token"
+            + ("s" if counts["tokens"] != 1 else "")
+        )
+    if counts["urls"]:
+        parts.append(
+            f"{counts['urls']} link"
+            + ("s" if counts["urls"] != 1 else "")
+        )
+
+    if not parts:
+        summary = (
+            "We didn't find any XRPL addresses, tokens, or domains in "
+            "that message. There is nothing for us to check on."
+        )
+        status_line = (
+            "Nothing checkable in this message. If it contains a "
+            "wallet address, token, or link that we missed, paste "
+            "that specific thing on its own."
+        )
+    else:
+        if len(parts) == 1:
+            joined = parts[0]
+        elif len(parts) == 2:
+            joined = f"{parts[0]} and {parts[1]}"
+        else:
+            joined = f"{parts[0]}, {parts[1]}, and {parts[2]}"
+        summary = (
+            f"This message contains {joined}. "
+            f"Here's what we found on each."
+        )
+        status_line = (
+            "We checked each XRPL address, token, and domain we could "
+            "find in the message. Each has its own signals below. "
+            "This is not a scam verdict — read the individual findings."
+        )
+
+    # --- tier: use the "worst" of the per-target tiers as the group
+    # tier, but never verdict. verified > self > bare in the sense
+    # that self/bare gets a neutral pill; we don't downgrade to a
+    # warning color because a lookalike appeared. See feedback memory
+    # feedback_check_lookalike_neutral_pill_only.
+    all_results = address_results + token_results + url_results
+    if not all_results:
+        tier = "bare"
+    elif all(r.get("tier") == "verified" for r in all_results):
+        tier = "verified"
+    elif any(r.get("tier") == "verified" for r in all_results):
+        tier = "self"  # mixed; use neutral pill
+    else:
+        tier = "self" if any(r.get("tier") == "self" for r in all_results) else "bare"
+
+    return {
+        "kind": "message",
+        "subject": "pasted message",
+        "ref": "message",
+        "tier": tier,
+        "status_line": status_line,
+        "summary": summary,
+        "groups": {
+            "addresses": address_results,
+            "tokens": token_results,
+            "urls": url_results,
+        },
+        "counts": counts,
+        "display_cap": _MESSAGE_DISPLAY_CAP,
+        "checked_at_utc": _now_iso(),
+        # NO permalink — messages never get a shareable link (privacy).
+        # NO next_action — the individual sub-cards each carry their own.
+        "next_action": None,
+    }
+
 
 def check(raw_input: str) -> dict:
     """Parse the paste-box input and dispatch to the right lookup.

@@ -3088,6 +3088,17 @@ def security():
     return render_template("security.html")
 
 
+@app.route("/help/already-sent-money")
+def help_already_sent_money():
+    """Calm crisis-design page for someone who has already sent XRP or
+    a token to a scammer. Linked from every /check result footer. The
+    hardest tone in the codebase: plain, non-judgmental, actionable.
+    The recovery-scam warning is the emotional centerpiece — never
+    remove it and never soften the "we are NOT a recovery service"
+    line. See D4 Gate 3 for the design rationale."""
+    return render_template("help_already_sent_money.html")
+
+
 @app.route("/subprocessors")
 def subprocessors():
     return render_template("subprocessors.html")
@@ -3969,49 +3980,107 @@ def wallet(address):
     )
 
 
-@app.route("/check")
+@app.route("/check", methods=["GET", "POST"])
 @limiter.limit("60 per minute")
 def check_page():
-    """D1 + D2: paste an XRPL address or a token (SYMBOL.rIssuer), get
-    timestamped/sourced signals.
+    """D1 + D2 + D3 + D4: paste an XRPL address, token, URL, or a whole
+    message, get timestamped/sourced signals.
 
     Facts-not-verdicts by construction — every returned signal carries
     label + source + checked_at_utc, and status pill summarizes WHAT
     IDENTITY CLAIM EXISTS ON THE LEDGER, not whether the subject is
-    safe to interact with. Query-string permalink (`?q=…`) is the
-    shareable form; POST body deliberately unused so URLs are the
-    only surface (pasted messages never enter the URL, D4 concern)."""
+    safe to interact with.
+
+    Two input modes:
+      GET  ?q=…         — permalink form for address / token / URL.
+      POST body m=…     — message triage (D4). NEVER a permalink.
+                          Message contents are not stored anywhere;
+                          _log_page_view skips POST so no page_view
+                          row lands with the message in the URL. Back-
+                          button hits the empty GET, not a rehydrated
+                          message. This is a hard privacy contract
+                          with /privacy §2b — do not change it without
+                          updating that section.
+    """
+    # --- D4 message triage (POST) ------------------------------------
+    if request.method == "POST":
+        # Read message from form, clamp to a bounded size. NEVER store
+        # this value beyond the request scope — no DB write, no cache,
+        # no log line containing the full message. The 120-char preview
+        # in the app request log is the only durable trace; a text
+        # preview of an INPUT TYPE, not the input's content.
+        raw_message = (request.form.get("m") or "").strip()
+        if len(raw_message) > 8000:
+            raw_message = raw_message[:8000]
+        # Ephemeral request-log breadcrumb: type + short preview only.
+        # Goes through gunicorn's stderr, not a queryable store. See
+        # /privacy §2b: pasted content is NOT stored in the database.
+        preview = raw_message[:120].replace("\n", " ")
+        app.logger.info(
+            "check_message input: len=%d preview=%r",
+            len(raw_message), preview,
+        )
+        import check_data
+        try:
+            result = check_data.check_message(raw_message)
+            input_error = None
+        except Exception:
+            app.logger.exception("check_page: message triage failed")
+            result = None
+            input_error = babel_gettext(
+                "Something went wrong checking that message. "
+                "Try again in a moment."
+            )
+        # Deliberately pass query="" so back-button rehydration does
+        # not resurface the message. Empty paste box + "paste again"
+        # is the graceful path (Charlie's D4a-Q1 answer).
+        return render_template(
+            "check.html",
+            query="",
+            result=result,
+            input_error=input_error,
+        )
+
+    # --- GET fallthrough: D1/D2/D3 permalink path --------------------
     q = (request.args.get("q") or "").strip()
     result = None
     input_error = None
 
     if q:
-        # Token form takes precedence: split on the first "." only.
-        # SYMBOL.rIssuer — both sides must be non-empty and issuer must
-        # pass strict r-address validation.
-        symbol = issuer = None
-        if "." in q:
-            symbol, _, issuer = q.partition(".")
-            symbol = symbol.strip()
-            issuer = issuer.strip()
-
         try:
             import check_data
-            if symbol is not None and issuer is not None:
-                if not symbol or not _is_xrpl_address(issuer):
-                    input_error = babel_gettext(
-                        "Token form is SYMBOL.rIssuer \u2014 e.g. "
-                        "USD.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B. "
-                        "The issuer must be a valid r-address."
-                    )
+            # URL form has highest precedence when scheme is explicit.
+            if "://" in q:
+                host = check_data._extract_hostname(q)
+                if host and check_data._domain_is_safe(host):
+                    result = check_data.check_url(q)
                 else:
-                    result = check_data.check_token(symbol, issuer)
+                    input_error = babel_gettext(
+                        "That URL fails a basic safety gate (private-network "
+                        "IP, invalid shape, or off-standard characters)."
+                    )
+            elif "." in q:
+                # Token form: SYMBOL.rIssuer — issuer must be a valid r-address.
+                symbol, _, rest = q.partition(".")
+                symbol = symbol.strip()
+                rest = rest.strip()
+                if symbol and _is_xrpl_address(rest):
+                    result = check_data.check_token(symbol, rest)
+                elif check_data._domain_is_safe(q):
+                    # Bare domain (e.g. "bitstamp.com") — treat as URL form.
+                    result = check_data.check_url(q)
+                else:
+                    input_error = babel_gettext(
+                        "That doesn't look like an XRPL wallet address, "
+                        "a token (SYMBOL.rIssuer), or a URL/domain."
+                    )
             elif _is_xrpl_address(q):
                 result = check_data.check_address(q)
             else:
                 input_error = babel_gettext(
                     "That doesn't look like an XRPL wallet address "
-                    "(starts with 'r') or a token (SYMBOL.rIssuer)."
+                    "(starts with 'r'), a token (SYMBOL.rIssuer), "
+                    "or a URL/domain."
                 )
         except Exception:
             app.logger.exception("check_page: lookup failed")

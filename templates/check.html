@@ -61,14 +61,19 @@
       color: var(--muted); font-weight: 500;
     }
     .paste-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .paste-row input[type="text"] {
+    .paste-row input[type="text"], .paste-row textarea {
       flex: 1 1 320px; min-width: 0;
       background: rgba(0,0,0,0.28); color: var(--text);
       border: 1px solid var(--border); border-radius: 10px;
       padding: 13px 14px; font-family: var(--mono); font-size: 0.98rem;
       line-height: 1.4;
     }
-    .paste-row input[type="text"]:focus {
+    .paste-row textarea {
+      resize: vertical; min-height: 130px; max-height: 400px;
+      width: 100%; flex-basis: 100%;
+    }
+    .paste-row input[type="text"]:focus,
+    .paste-row textarea:focus {
       outline: none; border-color: var(--cyan);
       box-shadow: 0 0 0 3px rgba(34,211,238,0.15);
     }
@@ -80,6 +85,51 @@
     .paste-row button:hover { background: #5ee0f0; }
     .form-note { color: var(--dim); font-size: 0.82rem; margin: 8px 0 0;
                  font-family: var(--mono); }
+
+    /* --- mode toggle ---------------------------------------------- */
+    .mode-tabs { display: flex; gap: 4px; margin: 0 0 14px;
+                 border-bottom: 1px solid var(--border); }
+    .mode-tab {
+      background: transparent; border: 0; border-bottom: 2px solid transparent;
+      color: var(--muted); font-size: 0.9rem; font-weight: 500;
+      padding: 8px 14px 10px; cursor: pointer; margin-bottom: -1px;
+      font-family: var(--sys);
+    }
+    .mode-tab:hover { color: var(--text); }
+    .mode-tab.is-active {
+      color: var(--cyan); border-bottom-color: var(--cyan);
+    }
+    .mode-panel { display: none; }
+    .mode-panel.is-active { display: block; }
+
+    /* --- message summary + groups --------------------------------- */
+    .msg-summary {
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.20);
+      border-radius: 10px; padding: 14px 18px; margin: 0 0 18px;
+      color: var(--text); font-size: 1.0rem; line-height: 1.55;
+    }
+    .msg-group { margin: 22px 0 8px; }
+    .msg-group-heading {
+      color: var(--muted); font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      font-weight: 600; margin: 0 0 10px;
+    }
+    .msg-subcard {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px; margin: 0 0 10px;
+    }
+    .msg-subcard .result-head { margin-bottom: 6px; }
+    .msg-subcard .signals { margin-top: 4px; }
+    .msg-viewall {
+      color: var(--dim); font-size: 0.85rem; margin: 6px 0 0;
+      font-style: italic;
+    }
+    .no-findings {
+      color: var(--muted); font-size: 0.95rem;
+      padding: 14px 0 8px;
+    }
 
     /* --- error banner --------------------------------------------- */
     .errbox { background: rgba(248,113,113,0.08);
@@ -186,61 +236,253 @@
 
   {% include "_nav.html" %}
 
-  <h1>{{ _('Check an XRPL address or token') }}</h1>
+  <h1>{{ _('Check an XRPL address, token, URL, or message') }}</h1>
   <p class="lede">
-    {{ _('Paste an XRPL wallet address, or a token as SYMBOL.rIssuer, to see who — if anyone — has publicly claimed it. We report facts with sources and timestamps, not a scam verdict.') }}
+    {{ _('Paste an XRPL wallet address, a token as SYMBOL.rIssuer, a URL/domain, or a whole message to see who — if anyone — has publicly claimed it. We report facts with sources and timestamps, not a scam verdict.') }}
   </p>
 
-  <form class="check-form" method="GET" action="/check" autocomplete="off">
-    <label for="q">{{ _('XRPL address or token') }}</label>
-    <div class="paste-row">
-      <input type="text" name="q" id="q"
-             value="{{ query or '' }}"
-             placeholder="r… or USD.rIssuer"
-             maxlength="80"
-             autocomplete="off"
-             autocorrect="off"
-             spellcheck="false"
-             autocapitalize="off"
-             inputmode="text">
-      <button type="submit">{{ _('Check') }}</button>
-    </div>
-    <p class="form-note">
-      {{ _('Wallets (r…) and tokens (SYMBOL.rIssuer) supported. URLs and pasted messages come next.') }}
-    </p>
-  </form>
+  {% set active_mode = 'message' if (result and result.kind == 'message') else 'single' %}
+
+  <div class="mode-tabs" role="tablist">
+    <button type="button" class="mode-tab {% if active_mode == 'single' %}is-active{% endif %}"
+            data-mode="single" role="tab"
+            aria-selected="{% if active_mode == 'single' %}true{% else %}false{% endif %}">
+      {{ _('Address, token, or URL') }}
+    </button>
+    <button type="button" class="mode-tab {% if active_mode == 'message' %}is-active{% endif %}"
+            data-mode="message" role="tab"
+            aria-selected="{% if active_mode == 'message' %}true{% else %}false{% endif %}">
+      {{ _('Paste a message') }}
+    </button>
+  </div>
+
+  <div class="mode-panel {% if active_mode == 'single' %}is-active{% endif %}" data-mode-panel="single">
+    <form class="check-form" method="GET" action="/check" autocomplete="off">
+      <label for="q">{{ _('XRPL address, token, or URL') }}</label>
+      <div class="paste-row">
+        <input type="text" name="q" id="q"
+               value="{{ query or '' }}"
+               placeholder="r…, USD.rIssuer, or a URL/domain"
+               maxlength="200"
+               autocomplete="off"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               inputmode="text">
+        <button type="submit">{{ _('Check') }}</button>
+      </div>
+      <p class="form-note">
+        {{ _('Wallets (r…), tokens (SYMBOL.rIssuer), and URLs/domains supported.') }}
+      </p>
+    </form>
+  </div>
+
+  <div class="mode-panel {% if active_mode == 'message' %}is-active{% endif %}" data-mode-panel="message">
+    <form class="check-form" method="POST" action="/check" autocomplete="off">
+      <label for="m">{{ _('Paste the message you want to check') }}</label>
+      <div class="paste-row">
+        <textarea name="m" id="m"
+                  placeholder="{{ _('Paste an email, DM, SMS, or any message. We\'ll pull out every XRPL address, token, and domain in it and check each one.') }}"
+                  maxlength="8000"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  autocapitalize="off"></textarea>
+      </div>
+      <div class="paste-row" style="margin-top: 10px;">
+        <button type="submit">{{ _('Check message') }}</button>
+      </div>
+      <p class="form-note">
+        {{ _('Pasted messages are checked in place and never stored. There is no shareable link for a message check — refreshing or coming back later shows an empty box.') }}
+      </p>
+    </form>
+  </div>
 
   {% if input_error %}
     <div class="errbox">{{ input_error }}</div>
   {% endif %}
 
-  {% if result %}
+  {% if result and result.kind == 'message' %}
+    <div class="result">
+
+      <div class="result-head">
+        <span class="addr-mono">{{ _('Message triage') }}</span>
+        {% if result.tier == 'verified' %}
+          <span class="status-pill status-pill--verified">
+            {{ _('All findings verified') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('Every checkable item in the message has a first-party identity claim on file. Verified does NOT mean it is safe to send money to.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% elif result.tier == 'self' %}
+          <span class="status-pill status-pill--self">
+            {{ _('Mixed findings') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('The message contains a mix of identity claims. Read each finding on its own — a verified item next to a lookalike does not average out.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% else %}
+          <span class="status-pill status-pill--bare">
+            {{ _('No identity claims found') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('Nothing in this message has a first-party identity claim on file. Absence of a claim is not a warning and not an all-clear.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% endif %}
+      </div>
+
+      <p class="status-line">{{ result.status_line }}</p>
+
+      {% if result.summary %}
+        <div class="msg-summary">{{ result.summary }}</div>
+      {% endif %}
+
+      {% if result.counts.addresses == 0 and result.counts.tokens == 0 and result.counts.urls == 0 %}
+        <p class="no-findings">
+          {{ _('No XRPL addresses, tokens, or domains detected in the pasted text. If the message contains one that we missed, paste that specific item on its own in the other tab.') }}
+        </p>
+      {% endif %}
+
+      {% macro render_subcard(sub) %}
+        <div class="msg-subcard">
+          <div class="result-head">
+            <span class="addr-mono">{{ sub.subject }}</span>
+            {% if sub.tier == 'verified' %}
+              <span class="status-pill status-pill--verified">
+                {% if sub.kind == 'token' %}{{ _('Token attestation on file') }}{% elif sub.kind == 'url' %}{{ _('Domain identity confirmed') }}{% else %}{{ _('Identity on file') }}{% endif %}
+              </span>
+            {% elif sub.tier == 'self' %}
+              <span class="status-pill status-pill--self">
+                {% if sub.kind == 'token' %}{{ _('Self-described') }}{% elif sub.kind == 'url' %}{{ _('Domain claim only') }}{% else %}{{ _('Label on file') }}{% endif %}
+              </span>
+            {% else %}
+              <span class="status-pill status-pill--bare">
+                {% if sub.kind == 'url' %}{{ _('No identity file at this domain') }}{% else %}{{ _('No identity claim on file') }}{% endif %}
+              </span>
+            {% endif %}
+          </div>
+          <p class="status-line" style="font-size: 0.95rem; margin: 4px 0 10px;">{{ sub.status_line }}</p>
+          <ul class="signals">
+            {% for s in sub.signals %}
+              <li class="signal">
+                <p class="signal-label">{{ s.label }}</p>
+                <p class="signal-value">{{ s.value }}</p>
+                <p class="signal-meta">
+                  <span class="source">
+                    {{ _('Source:') }}
+                    {% if s.source_url %}
+                      <a href="{{ s.source_url }}" rel="nofollow noopener" target="_blank">{{ s.source_label }}</a>
+                    {% else %}
+                      {{ s.source_label }}
+                    {% endif %}
+                  </span>
+                  <span class="sep">·</span>
+                  <span class="checked">{{ _('Checked:') }} {{ s.checked_at_utc }}</span>
+                  <span class="sep">·</span>
+                  <span class="report-err">
+                    <a href="/contact?purpose=data-correction&ref=check:{{ sub.ref }}">
+                      {{ _('Report an error') }}
+                    </a>
+                  </span>
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if sub.next_action %}
+            <p class="next-action" style="margin-top: 8px;">
+              <a href="{{ sub.next_action.href }}">{{ sub.next_action.label }} →</a>
+            </p>
+          {% endif %}
+        </div>
+      {% endmacro %}
+
+      {% if result.groups.addresses %}
+        <div class="msg-group">
+          <h2 class="msg-group-heading">
+            {{ _('Wallet addresses') }} ({{ result.counts.addresses }})
+          </h2>
+          {% for sub in result.groups.addresses %}{{ render_subcard(sub) }}{% endfor %}
+          {% if result.counts.addresses > result.display_cap %}
+            <p class="msg-viewall">
+              {{ _('Showing first %(shown)d of %(total)d addresses. Paste any specific address in the other tab to check the rest.', shown=result.display_cap, total=result.counts.addresses) }}
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if result.groups.tokens %}
+        <div class="msg-group">
+          <h2 class="msg-group-heading">
+            {{ _('Tokens') }} ({{ result.counts.tokens }})
+          </h2>
+          {% for sub in result.groups.tokens %}{{ render_subcard(sub) }}{% endfor %}
+          {% if result.counts.tokens > result.display_cap %}
+            <p class="msg-viewall">
+              {{ _('Showing first %(shown)d of %(total)d tokens. Paste any specific token in the other tab to check the rest.', shown=result.display_cap, total=result.counts.tokens) }}
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if result.groups.urls %}
+        <div class="msg-group">
+          <h2 class="msg-group-heading">
+            {{ _('Links and domains') }} ({{ result.counts.urls }})
+          </h2>
+          {% for sub in result.groups.urls %}{{ render_subcard(sub) }}{% endfor %}
+          {% if result.counts.urls > result.display_cap %}
+            <p class="msg-viewall">
+              {{ _('Showing first %(shown)d of %(total)d links. Paste any specific link in the other tab to check the rest.', shown=result.display_cap, total=result.counts.urls) }}
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    </div>
+
+    <p class="disclaimer">
+      {{ _('This is guidance, not a legal determination. We report facts we can source, at the time we checked them — not a verdict on whether it is safe to send money.') }}
+    </p>
+
+    <p class="disclaimer" style="background: rgba(140,150,170,0.06); border-left-color: rgba(140,150,170,0.35); margin-top: 10px;">
+      {{ _('Already sent money to someone you\'re worried about?') }}
+      <a href="/help/already-sent-money">{{ _('Here\'s what to do →') }}</a>
+    </p>
+
+    <p class="disclaimer" style="border-left-color: rgba(255,255,255,0.10); font-size: 0.8rem; color: var(--dim); margin-top: 10px;">
+      {{ _('All trademarks are property of their respective owners; use is factual reference (nominative fair use).') }}
+    </p>
+
+  {% elif result %}
     <div class="result">
 
       <div class="result-head">
         <span class="addr-mono">{{ result.subject }}</span>
         {% if result.tier == 'verified' %}
           <span class="status-pill status-pill--verified">
-            {% if result.kind == 'token' %}{{ _('Token attestation on file') }}{% else %}{{ _('Identity on file') }}{% endif %}
+            {% if result.kind == 'token' %}{{ _('Token attestation on file') }}{% elif result.kind == 'url' %}{{ _('Domain identity confirmed') }}{% else %}{{ _('Identity on file') }}{% endif %}
           </span>
           <span class="status-tip"
-                title="{{ _('We know who issued this. This does not mean it is safe to send money to.') }}">
+                title="{% if result.kind == 'url' %}{{ _('The domain publishes an XRPL identity file and at least one declared account confirms it on-chain. This proves ownership of the identity claim — not that the domain is safe to visit or send money through.') }}{% else %}{{ _('We know who issued this. This does not mean it is safe to send money to.') }}{% endif %}">
             {{ _('what this means') }}
           </span>
         {% elif result.tier == 'self' %}
           <span class="status-pill status-pill--self">
-            {% if result.kind == 'token' %}{{ _('Self-described') }}{% else %}{{ _('Label on file') }}{% endif %}
+            {% if result.kind == 'token' %}{{ _('Self-described') }}{% elif result.kind == 'url' %}{{ _('Domain claim only') }}{% else %}{{ _('Label on file') }}{% endif %}
           </span>
           <span class="status-tip"
-                title="{% if result.kind == 'token' %}{{ _('Self-reported details are not a safety signal. A scammer can fill in a website and a name just as easily as a legitimate project can.') }}{% else %}{{ _('A label exists, but no first-party attestation. Treat as informational only.') }}{% endif %}">
+                title="{% if result.kind == 'token' %}{{ _('Self-reported details are not a safety signal. A scammer can fill in a website and a name just as easily as a legitimate project can.') }}{% elif result.kind == 'url' %}{{ _('A domain publishing an xrp-ledger.toml is not a safety signal. Anyone can publish one, and the file does not prove ownership on its own — only a two-way match with the ledger does.') }}{% else %}{{ _('A label exists, but no first-party attestation. Treat as informational only.') }}{% endif %}">
             {{ _('what this means') }}
           </span>
         {% else %}
           <span class="status-pill status-pill--bare">
-            {{ _('No identity claim on file') }}
+            {% if result.kind == 'url' %}{{ _('No identity file at this domain') }}{% else %}{{ _('No identity claim on file') }}{% endif %}
           </span>
           <span class="status-tip"
-                title="{{ _('We found no identity claim in the sources we checked. Absence of a claim is not a warning and not an all-clear.') }}">
+                title="{% if result.kind == 'url' %}{{ _('No XRPL identity file at this domain and no on-chain issuer points here. Absence of a claim is not a warning and not an all-clear.') }}{% else %}{{ _('We found no identity claim in the sources we checked. Absence of a claim is not a warning and not an all-clear.') }}{% endif %}">
             {{ _('what this means') }}
           </span>
         {% endif %}
@@ -304,6 +546,12 @@
     <p class="disclaimer">
       {{ _('This is guidance, not a legal determination. We report facts we can source, at the time we checked them — not a verdict on whether it is safe to send money.') }}
     </p>
+
+    <p class="disclaimer" style="background: rgba(140,150,170,0.06); border-left-color: rgba(140,150,170,0.35); margin-top: 10px;">
+      {{ _('Already sent money to someone you\'re worried about?') }}
+      <a href="/help/already-sent-money">{{ _('Here\'s what to do →') }}</a>
+    </p>
+
     <p class="disclaimer" style="border-left-color: rgba(255,255,255,0.10); font-size: 0.8rem; color: var(--dim); margin-top: 10px;">
       {{ _('All trademarks are property of their respective owners; use is factual reference (nominative fair use).') }}
     </p>
@@ -314,10 +562,33 @@
     <a href="/">{{ _('dashboard') }}</a> ·
     <a href="/about">{{ _('about') }}</a> ·
     <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/help/already-sent-money">{{ _('already sent money?') }}</a> ·
     <a href="/contact?purpose=data-correction">{{ _('report an error') }}</a>
   </div>
 
 </div>
+<script>
+  // Mode-tab toggle: no page reload, no query-string, no rehydration.
+  // Just show/hide the two panels. Server picks the active tab from
+  // the result kind on POST/GET; this handles pre-submit switching.
+  (function () {
+    var tabs = document.querySelectorAll(".mode-tab");
+    var panels = document.querySelectorAll("[data-mode-panel]");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        var mode = tab.getAttribute("data-mode");
+        tabs.forEach(function (t) {
+          var on = t.getAttribute("data-mode") === mode;
+          t.classList.toggle("is-active", on);
+          t.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        panels.forEach(function (p) {
+          p.classList.toggle("is-active", p.getAttribute("data-mode-panel") === mode);
+        });
+      });
+    });
+  })();
+</script>
 {% include "_vibes_scripts.html" %}
 </body>
 </html>

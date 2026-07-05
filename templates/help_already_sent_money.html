@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('If you\'ve already sent money') }} · xrpldashboard</title>
+  {% set meta_title = "if you've already sent money · xrpldashboard" %}
+  {% set meta_description = "Calm, practical steps if you\'ve sent XRP or a token to someone you\'re now worried about. Includes what to do next and how to recognize the second scam that targets people in your situation." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.05), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.04), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.8rem; margin: 0 0 10px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    h2 { font-size: 1.15rem; margin: 34px 0 10px; font-weight: 600;
+         letter-spacing: -0.01em; }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 8px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 6px 0 28px;
+            max-width: 640px; }
+
+    /* Calm callouts. No red. No warning icons. Deliberately quiet. */
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 0 0 14px;
+    }
+    .step-num {
+      display: inline-block;
+      font-family: var(--mono); color: var(--dim);
+      font-size: 0.82rem; margin-bottom: 6px;
+    }
+    .step h3 {
+      margin: 0 0 8px; font-size: 1.05rem; font-weight: 600;
+      color: var(--text); letter-spacing: -0.01em;
+    }
+    .step p { margin: 0 0 8px; }
+    .step p:last-child { margin-bottom: 0; }
+    .step a { color: var(--cyan); }
+
+    /* Recovery-scam warning: neutral surface. NOT red, NOT alarm. But
+       set apart with a distinct blue-grey so it reads as "read this"
+       rather than blending into the numbered steps. */
+    .recovery-warn {
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-left: 3px solid var(--blue);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 24px 0 14px;
+    }
+    .recovery-warn h2 {
+      margin: 0 0 10px; font-size: 1.1rem; color: var(--text);
+    }
+    .recovery-warn p { margin: 0 0 10px; }
+    .recovery-warn p:last-child { margin-bottom: 0; }
+    .recovery-warn ul { margin: 6px 0 10px; }
+
+    /* What we are NOT — placed inside the recovery block, styled quietly. */
+    .not-us {
+      color: var(--muted); font-size: 0.92rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px; margin: 12px 0 0;
+    }
+    .not-us strong { color: var(--text); }
+
+    .quiet-note {
+      color: var(--muted); font-size: 0.92rem;
+      margin: 8px 0 0;
+    }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 44px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('If you\'ve already sent money') }}</h1>
+  <p class="lede">
+    {{ _('This page is for anyone who has sent XRP or a token to someone they\'re now worried about. Take a breath. Below are the practical steps that actually help, in the order that matters. None of them cost money.') }}
+  </p>
+
+  <div class="step">
+    <p class="step-num">1</p>
+    <h3>{{ _('Do not send more money — for any reason') }}</h3>
+    <p>
+      {{ _('The single most common follow-on: the same person, or someone claiming to be new, asks for one more payment to \"unlock,\" \"release,\" \"tax,\" \"verify,\" or \"recover\" what you already sent. That is always part of the same scam. No legitimate process requires more crypto to release crypto you\'ve already paid.') }}
+    </p>
+  </div>
+
+  <div class="step">
+    <p class="step-num">2</p>
+    <h3>{{ _('Write down what you know, before it\'s harder to remember') }}</h3>
+    <p>
+      {{ _('You will be asked for these details by anyone who can actually help. Save them somewhere safe:') }}
+    </p>
+    <ul>
+      <li>{{ _('Every XRPL address you sent to, and the amounts.') }}</li>
+      <li>{{ _('The transaction hashes (long strings starting with a mix of letters and numbers) — from your wallet\'s history or your exchange\'s withdrawal log.') }}</li>
+      <li>{{ _('How you first came into contact with the other party (dating app, social platform, message received, website you were directed to).') }}</li>
+      <li>{{ _('Screenshots of the conversation, especially where money was requested.') }}</li>
+      <li>{{ _('Any names, usernames, phone numbers, or emails the other party used.') }}</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <p class="step-num">3</p>
+    <h3>{{ _('Contact your exchange right away') }}</h3>
+    <p>
+      {{ _('If the payment left an exchange (Coinbase, Kraken, Bitstamp, Binance, Uphold, and so on), open a support ticket in the exchange\'s app or website. Provide the transaction hashes and the destination address. Ask them to:') }}
+    </p>
+    <ul>
+      <li>{{ _('Flag the destination address across their compliance systems.') }}</li>
+      <li>{{ _('Log the report so any downstream investigator can follow the paper trail.') }}</li>
+      <li>{{ _('Share whatever they can from their fraud team — most large exchanges have one.') }}</li>
+    </ul>
+    <p class="quiet-note">
+      {{ _('Being honest that the transfer was authorized (you clicked \"send\") is important. Exchanges have seen this pattern many times and it does not change your standing with them.') }}
+    </p>
+  </div>
+
+  <div class="step">
+    <p class="step-num">4</p>
+    <h3>{{ _('File a report with law enforcement') }}</h3>
+    <p>
+      {{ _('This creates the official record that lets investigators, exchanges, and legitimate recovery paths coordinate. In the US:') }}
+    </p>
+    <ul>
+      <li>
+        <strong>{{ _('IC3 (FBI Internet Crime Complaint Center):') }}</strong>
+        <a href="https://www.ic3.gov" target="_blank" rel="noopener noreferrer">ic3.gov</a> —
+        {{ _('the primary channel for internet-facilitated crypto fraud in the US. Free.') }}
+      </li>
+      <li>
+        <strong>{{ _('Your local police department:') }}</strong>
+        {{ _('file a report even if they seem out of their depth on crypto — the report number matters later.') }}
+      </li>
+      <li>
+        <strong>{{ _('FTC (Federal Trade Commission):') }}</strong>
+        <a href="https://reportfraud.ftc.gov" target="_blank" rel="noopener noreferrer">reportfraud.ftc.gov</a>.
+      </li>
+    </ul>
+    <p>
+      {{ _('Outside the US, search for your country\'s national fraud reporting service (UK: Action Fraud, Canada: Canadian Anti-Fraud Centre, Australia: Scamwatch, EU: your national police cybercrime unit).') }}
+    </p>
+  </div>
+
+  <div class="step">
+    <p class="step-num">5</p>
+    <h3>{{ _('Tell someone you trust') }}</h3>
+    <p>
+      {{ _('Scams like this are designed to isolate you. That is not accidental — isolation is part of what makes the follow-on ask work. Telling one person you trust — a family member, a close friend, your bank\'s fraud line — is often the single most protective step you can take right now.') }}
+    </p>
+  </div>
+
+  <div class="recovery-warn">
+    <h2>{{ _('Please read: about people offering to \"recover\" your money') }}</h2>
+    <p>
+      {{ _('In the days and weeks after a crypto loss, many people are contacted by strangers offering to help recover the funds. Almost none of these are real. This is one of the most reliable follow-on scams, and it exists specifically to target people in your situation.') }}
+    </p>
+    <p>
+      {{ _('How to recognize a recovery scam:') }}
+    </p>
+    <ul>
+      <li>
+        {{ _('They contact you first — through Telegram, Instagram, WhatsApp, a comment on a post you made about the loss, or an email. Legitimate investigators do not cold-message victims.') }}
+      </li>
+      <li>
+        {{ _('They ask for money upfront — an \"activation fee,\" a \"gas fee,\" a \"tax,\" a \"deposit,\" or a percentage. Any upfront payment request is the scam.') }}
+      </li>
+      <li>
+        {{ _('They show you screenshots of \"traced\" wallets, name-drop government agencies, or claim insider access at exchanges. None of these are how real recovery works.') }}
+      </li>
+      <li>
+        {{ _('They pressure you to act quickly — \"the funds will be moved,\" \"the window is closing.\" Urgency is a manipulation, not a fact.') }}
+      </li>
+    </ul>
+    <p>
+      {{ _('If you are contacted by someone matching this pattern: do not respond, do not send anything, do not click any link they send. Report them to the same authorities in step 4.') }}
+    </p>
+
+    <div class="not-us">
+      <p style="margin: 0;">
+        <strong>{{ _('xrpldashboard is not a recovery service.') }}</strong>
+        {{ _('We cannot recover funds, freeze wallets, contact exchanges on your behalf, or trace money in a way that gets it returned. Anyone claiming to be from xrpldashboard offering to recover your money is impersonating us. The steps above (exchange support, IC3, local police) are the legitimate paths.') }}
+      </p>
+    </div>
+  </div>
+
+  <h2>{{ _('A few honest things about outcomes') }}</h2>
+  <p>
+    {{ _('Most crypto that\'s sent in a scam is not recovered. That is the truth, and hearing it up front is more useful than false hope. The steps above are worth doing anyway — they create a record, they help other people who might be targeted by the same operator, and occasionally they do lead to a recovery, especially when the funds are still sitting at a compliant exchange.') }}
+  </p>
+  <p>
+    {{ _('The best outcome you can guarantee for yourself right now is that you don\'t lose more. Steps 1 and the recovery-scam warning above are the two that matter most in the next 48 hours.') }}
+  </p>
+
+  <h2>{{ _('Look after yourself') }}</h2>
+  <p>
+    {{ _('This is a hard thing to go through. The financial loss is real, and the shame that people feel afterwards is real too — even though the scam was designed by professionals to work on smart, careful people. If you are struggling, please reach out to someone. In the US, the') }}
+    <a href="https://988lifeline.org" target="_blank" rel="noopener noreferrer">988 Suicide &amp; Crisis Lifeline</a>
+    {{ _('is free and confidential; internationally, the') }}
+    <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">Find A Helpline</a>
+    {{ _('directory lists free crisis lines in over 130 countries. You are not the first person this has happened to, and it does not say anything about who you are.') }}
+  </p>
+
+  <div class="footer">
+    <a href="/check">{{ _('back to /check') }}</a> ·
+    <a href="/">{{ _('dashboard') }}</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/contact?purpose=general">{{ _('contact') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>
