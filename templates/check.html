@@ -180,18 +180,18 @@
 
   {% include "_nav.html" %}
 
-  <h1>{{ _('Check an XRPL address') }}</h1>
+  <h1>{{ _('Check an XRPL address or token') }}</h1>
   <p class="lede">
-    {{ _('Paste an XRPL wallet address to see who — if anyone — has publicly claimed it. We report facts with sources and timestamps, not a scam verdict.') }}
+    {{ _('Paste an XRPL wallet address, or a token as SYMBOL.rIssuer, to see who — if anyone — has publicly claimed it. We report facts with sources and timestamps, not a scam verdict.') }}
   </p>
 
   <form class="check-form" method="GET" action="/check" autocomplete="off">
-    <label for="q">{{ _('XRPL address') }}</label>
+    <label for="q">{{ _('XRPL address or token') }}</label>
     <div class="paste-row">
       <input type="text" name="q" id="q"
              value="{{ query or '' }}"
-             placeholder="r…"
-             maxlength="40"
+             placeholder="r… or USD.rIssuer"
+             maxlength="80"
              autocomplete="off"
              autocorrect="off"
              spellcheck="false"
@@ -200,7 +200,7 @@
       <button type="submit">{{ _('Check') }}</button>
     </div>
     <p class="form-note">
-      {{ _('D1 covers XRPL wallet addresses (r…). URLs, tokens, and pasted messages come next.') }}
+      {{ _('Wallets (r…) and tokens (SYMBOL.rIssuer) supported. URLs and pasted messages come next.') }}
     </p>
   </form>
 
@@ -212,10 +212,10 @@
     <div class="result">
 
       <div class="result-head">
-        <span class="addr-mono">{{ result.address_short }}</span>
+        <span class="addr-mono">{{ result.subject }}</span>
         {% if result.tier == 'verified' %}
           <span class="status-pill status-pill--verified">
-            {{ _('Identity on file') }}
+            {% if result.kind == 'token' %}{{ _('Token attestation on file') }}{% else %}{{ _('Identity on file') }}{% endif %}
           </span>
           <span class="status-tip"
                 title="{{ _('We know who issued this. This does not mean it is safe to send money to.') }}">
@@ -223,10 +223,10 @@
           </span>
         {% elif result.tier == 'self' %}
           <span class="status-pill status-pill--self">
-            {{ _('Label on file') }}
+            {% if result.kind == 'token' %}{{ _('Self-described') }}{% else %}{{ _('Label on file') }}{% endif %}
           </span>
           <span class="status-tip"
-                title="{{ _('A label exists, but no first-party attestation. Treat as informational only.') }}">
+                title="{% if result.kind == 'token' %}{{ _('Self-reported details are not a safety signal. A scammer can fill in a website and a name just as easily as a legitimate project can.') }}{% else %}{{ _('A label exists, but no first-party attestation. Treat as informational only.') }}{% endif %}">
             {{ _('what this means') }}
           </span>
         {% else %}
@@ -269,7 +269,7 @@
               <span class="checked">{{ _('Checked:') }} {{ s.checked_at_utc }}</span>
               <span class="sep">·</span>
               <span class="report-err">
-                <a href="/contact?purpose=data-correction&ref=check:{{ result.address }}">
+                <a href="/contact?purpose=data-correction&ref=check:{{ result.ref }}">
                   {{ _('Report an error') }}
                 </a>
               </span>

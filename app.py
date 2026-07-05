@@ -3972,12 +3972,13 @@ def wallet(address):
 @app.route("/check")
 @limiter.limit("60 per minute")
 def check_page():
-    """D1: paste an XRPL address, get timestamped/sourced signals.
+    """D1 + D2: paste an XRPL address or a token (SYMBOL.rIssuer), get
+    timestamped/sourced signals.
 
     Facts-not-verdicts by construction — every returned signal carries
     label + source + checked_at_utc, and status pill summarizes WHAT
-    IDENTITY CLAIM EXISTS ON THE LEDGER, not whether the account is
-    safe to send money to. Query-string permalink (`?q=r…`) is the
+    IDENTITY CLAIM EXISTS ON THE LEDGER, not whether the subject is
+    safe to interact with. Query-string permalink (`?q=…`) is the
     shareable form; POST body deliberately unused so URLs are the
     only surface (pasted messages never enter the URL, D4 concern)."""
     q = (request.args.get("q") or "").strip()
@@ -3985,21 +3986,37 @@ def check_page():
     input_error = None
 
     if q:
-        if _is_xrpl_address(q):
-            try:
-                import check_data
+        # Token form takes precedence: split on the first "." only.
+        # SYMBOL.rIssuer — both sides must be non-empty and issuer must
+        # pass strict r-address validation.
+        symbol = issuer = None
+        if "." in q:
+            symbol, _, issuer = q.partition(".")
+            symbol = symbol.strip()
+            issuer = issuer.strip()
+
+        try:
+            import check_data
+            if symbol is not None and issuer is not None:
+                if not symbol or not _is_xrpl_address(issuer):
+                    input_error = babel_gettext(
+                        "Token form is SYMBOL.rIssuer \u2014 e.g. "
+                        "USD.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B. "
+                        "The issuer must be a valid r-address."
+                    )
+                else:
+                    result = check_data.check_token(symbol, issuer)
+            elif _is_xrpl_address(q):
                 result = check_data.check_address(q)
-            except Exception:
-                app.logger.exception("check_page: check_address failed")
+            else:
                 input_error = babel_gettext(
-                    "Something went wrong checking that address. "
-                    "Try again in a moment."
+                    "That doesn't look like an XRPL wallet address "
+                    "(starts with 'r') or a token (SYMBOL.rIssuer)."
                 )
-        else:
+        except Exception:
+            app.logger.exception("check_page: lookup failed")
             input_error = babel_gettext(
-                "That does not look like an XRPL wallet address. "
-                "Addresses start with 'r' and are 25\u201335 characters "
-                "(base58, no 0/O/I/l)."
+                "Something went wrong checking that. Try again in a moment."
             )
 
     return render_template(
