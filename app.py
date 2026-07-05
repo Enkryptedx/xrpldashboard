@@ -881,6 +881,80 @@ def _ranked_amm_snapshot():
     }
 
 
+XRP_DESIGN_SUPPLY = 100_000_000_000.0
+# Freshness thresholds for the reservoir gauge — a basin goes "stale"
+# (amber stamp, surface calms to still) when its reading is older than
+# 2× the walker cadence. Escrow walker is 30min → 60min stale.
+# AMM ranker is 4h in CP1 → 8h stale (CP3 tightens the walker to 1h
+# → 2h stale; keep this threshold in lockstep with the plist change).
+_XRP_ESCROW_STALE_AFTER = 3600  # 60 min
+_XRP_AMM_STALE_AFTER = 28800    # 8 h
+
+
+def _build_xrp_distribution(ranked_full):
+    """Build the reservoir-gauge payload shared by the index render and
+    the /api/xrp-distribution poll endpoint. Backed by the same in-
+    process caches the rest of the homepage uses, so calling it is
+    essentially free on the hot path unless a walker landed a new
+    snapshot since the last hit. Every basin carries an age_seconds
+    and is_stale flag so the client can render honest freshness stamps
+    without recomputing thresholds."""
+    try:
+        esc = fetch_escrow_locked_cached()
+    except Exception:
+        esc = None
+    escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
+    escrow_age = float(esc.get("cached_age_seconds")) if esc and esc.get(
+        "cached_age_seconds") is not None else None
+
+    amm_xrp = 0.0
+    amm_snap_ts = None
+    try:
+        _rows, meta = _ranked_amm_snapshot()
+        amm_snap_ts = meta.get("snapshot_ts") if isinstance(meta, dict) else None
+        for p in ranked_full or []:
+            a = p.get("asset_a") or {}
+            b = p.get("asset_b") or {}
+            if a.get("currency") == "XRP":
+                amm_xrp += float(p.get("amount_a") or 0)
+            elif b.get("currency") == "XRP":
+                amm_xrp += float(p.get("amount_b") or 0)
+    except Exception:
+        pass
+    amm_age = (time.time() - amm_snap_ts) if amm_snap_ts else None
+
+    locked = escrowed_xrp + amm_xrp
+    wallets_xrp = max(0.0, XRP_DESIGN_SUPPLY - locked)
+
+    # Derived-basin age tracks the STALER of its two inputs — an honest
+    # answer to "when was this reading taken." If either input is
+    # missing, we can't honestly stamp the derivation.
+    ages = [a for a in (escrow_age, amm_age) if a is not None]
+    wallets_age = max(ages) if ages else None
+
+    escrow_stale = escrow_age is not None and escrow_age > _XRP_ESCROW_STALE_AFTER
+    amm_stale = amm_age is not None and amm_age > _XRP_AMM_STALE_AFTER
+    wallets_stale = escrow_stale or amm_stale
+
+    return {
+        "total_xrp": XRP_DESIGN_SUPPLY,
+        "escrowed_xrp": escrowed_xrp,
+        "amm_xrp": amm_xrp,
+        "wallets_xrp": wallets_xrp,
+        "escrowed_pct": (escrowed_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "amm_pct": (amm_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "wallets_pct": (wallets_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "escrow_object_count": (esc.get("object_count") if esc else 0) or 0,
+        "escrow_age_seconds": escrow_age,
+        "amm_age_seconds": amm_age,
+        "wallets_age_seconds": wallets_age,
+        "escrow_stale": escrow_stale,
+        "amm_stale": amm_stale,
+        "wallets_stale": wallets_stale,
+        "server_time": int(time.time()),
+    }
+
+
 def _pools_snapshot_label():
     """Friendly date the AMM ranking last completed. Tries local rank/scan
     state first (Mac), then falls back to the ranker's heartbeat in Postgres
@@ -1027,42 +1101,17 @@ def index():
     except Exception:
         cold = None
 
-    # "Where is XRP?" supply constellation — three live on-ledger buckets:
-    #   - escrowed:  sum of EscrowCreate objects owned by Ripple's 20
-    #                monthly-release accounts (escrow_supply.py)
+    # "Where is XRP?" reservoir gauge — three on-ledger buckets:
+    #   - escrowed:  sum of EscrowCreate objects owned by Ripple's ~20
+    #                monthly-release accounts (escrow_supply.py). >99%
+    #                of all XRP escrow on the ledger; the small non-
+    #                Ripple remainder sits inside Circulating (CP1
+    #                honesty edge — see reservoir tooltip copy).
     #   - amm:       XRP-side of every AMM pool's reserves
-    #   - wallets:   100B design supply − the two locked buckets above
-    # The design supply is a known constant; the live total drifts down
-    # by ~0.02%/year via transaction-fee burns, well below display rounding.
-    try:
-        esc = fetch_escrow_locked_cached()
-    except Exception:
-        esc = None
-    escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
-    amm_xrp = 0.0
-    try:
-        for p in ranked_full:
-            a = p.get("asset_a") or {}
-            b = p.get("asset_b") or {}
-            if a.get("currency") == "XRP":
-                amm_xrp += float(p.get("amount_a") or 0)
-            elif b.get("currency") == "XRP":
-                amm_xrp += float(p.get("amount_b") or 0)
-    except Exception:
-        amm_xrp = 0.0
-    XRP_DESIGN_SUPPLY = 100_000_000_000.0
-    locked = escrowed_xrp + amm_xrp
-    wallets_xrp = max(0.0, XRP_DESIGN_SUPPLY - locked)
-    xrp_distribution = {
-        "total_xrp": XRP_DESIGN_SUPPLY,
-        "escrowed_xrp": escrowed_xrp,
-        "amm_xrp": amm_xrp,
-        "wallets_xrp": wallets_xrp,
-        "escrowed_pct": (escrowed_xrp / XRP_DESIGN_SUPPLY) * 100,
-        "amm_pct": (amm_xrp / XRP_DESIGN_SUPPLY) * 100,
-        "wallets_pct": (wallets_xrp / XRP_DESIGN_SUPPLY) * 100,
-        "escrow_object_count": (esc.get("object_count") if esc else 0) or 0,
-    }
+    #   - circulating: 100B design supply − the two locked buckets above
+    # The design constant is used for CP1; CP3 swaps in the live
+    # total_coins from a ledger command (drifts down ~0.02%/yr from burns).
+    xrp_distribution = _build_xrp_distribution(ranked_full)
 
     return render_template(
         "index.html",
@@ -4772,6 +4821,25 @@ def api_heartbeat_age():
     return ({"status": "ok",
              "age_seconds": age,
              "threshold_seconds": STALE_SECONDS}, 200, headers)
+
+
+@app.route("/api/xrp-distribution")
+@limiter.limit("60 per minute")
+def api_xrp_distribution():
+    """Client-side poll target for the homepage reservoir gauge.
+    Returns the same three-basin payload the index render bakes in,
+    plus per-basin age_seconds and is_stale flags so the gauge can
+    render honest freshness stamps and switch to amber+calm surface
+    when a walker has stalled. Cheap — reads the same in-process
+    caches the homepage uses; no walker is triggered by a poll.
+    Client polls at 5-minute intervals; failure mode is last-good
+    persists client-side and stamps go amber."""
+    try:
+        ranked_full, _meta = _ranked_amm_snapshot()
+    except Exception:
+        ranked_full = []
+    payload = _build_xrp_distribution(ranked_full)
+    return (payload, 200, {"Cache-Control": "no-store"})
 
 
 @app.route("/api/xrp-price")
