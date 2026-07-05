@@ -3969,6 +3969,47 @@ def wallet(address):
     )
 
 
+@app.route("/check")
+@limiter.limit("60 per minute")
+def check_page():
+    """D1: paste an XRPL address, get timestamped/sourced signals.
+
+    Facts-not-verdicts by construction — every returned signal carries
+    label + source + checked_at_utc, and status pill summarizes WHAT
+    IDENTITY CLAIM EXISTS ON THE LEDGER, not whether the account is
+    safe to send money to. Query-string permalink (`?q=r…`) is the
+    shareable form; POST body deliberately unused so URLs are the
+    only surface (pasted messages never enter the URL, D4 concern)."""
+    q = (request.args.get("q") or "").strip()
+    result = None
+    input_error = None
+
+    if q:
+        if _is_xrpl_address(q):
+            try:
+                import check_data
+                result = check_data.check_address(q)
+            except Exception:
+                app.logger.exception("check_page: check_address failed")
+                input_error = babel_gettext(
+                    "Something went wrong checking that address. "
+                    "Try again in a moment."
+                )
+        else:
+            input_error = babel_gettext(
+                "That does not look like an XRPL wallet address. "
+                "Addresses start with 'r' and are 25\u201335 characters "
+                "(base58, no 0/O/I/l)."
+            )
+
+    return render_template(
+        "check.html",
+        query=q,
+        result=result,
+        input_error=input_error,
+    )
+
+
 _CURRENCY_HEX_CHARS = set("0123456789abcdefABCDEF")
 _CURRENCY_ASCII_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"

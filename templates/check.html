@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('Check an XRPL address') }} · xrpldashboard</title>
+  {% set meta_title = "Check an XRPL address · xrpldashboard" %}
+  {% set meta_description = "Paste an XRPL wallet address to see who — if anyone — has claimed it publicly. Facts with sources and timestamps. Not a scam verdict." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --err: #f87171;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.7rem; margin: 0 0 6px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    h2 { font-size: 0.78rem; margin: 22px 0 10px; color: var(--muted);
+         text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600; }
+    p  { color: var(--text); margin: 0 0 12px; }
+    a  { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); color: var(--text);
+           background: rgba(255,255,255,0.04); padding: 1px 6px;
+           border-radius: 4px; font-size: 0.9em; }
+
+    .lede { color: var(--muted); font-size: 1.02rem; margin: 4px 0 22px;
+            max-width: 640px; }
+
+    /* --- paste box ------------------------------------------------- */
+    .check-form { margin: 0 0 28px; }
+    .check-form label {
+      display: block; margin: 0 0 6px; font-size: 0.85rem;
+      color: var(--muted); font-weight: 500;
+    }
+    .paste-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .paste-row input[type="text"] {
+      flex: 1 1 320px; min-width: 0;
+      background: rgba(0,0,0,0.28); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 13px 14px; font-family: var(--mono); font-size: 0.98rem;
+      line-height: 1.4;
+    }
+    .paste-row input[type="text"]:focus {
+      outline: none; border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34,211,238,0.15);
+    }
+    .paste-row button {
+      background: var(--cyan); color: #0a0e27; border: 0;
+      font-weight: 600; font-size: 0.98rem; padding: 12px 22px;
+      border-radius: 10px; cursor: pointer; letter-spacing: -0.005em;
+    }
+    .paste-row button:hover { background: #5ee0f0; }
+    .form-note { color: var(--dim); font-size: 0.82rem; margin: 8px 0 0;
+                 font-family: var(--mono); }
+
+    /* --- error banner --------------------------------------------- */
+    .errbox { background: rgba(248,113,113,0.08);
+              border: 1px solid rgba(248,113,113,0.35);
+              border-radius: 10px; padding: 12px 16px; margin: 0 0 20px;
+              color: var(--err); font-size: 0.95rem; }
+
+    /* --- result card ---------------------------------------------- */
+    .result { background: var(--card); border: 1px solid var(--border);
+              border-radius: 14px; padding: 22px 22px 18px; margin: 0 0 18px; }
+
+    .result-head { display: flex; flex-wrap: wrap; align-items: center;
+                   gap: 10px 14px; margin: 0 0 10px; }
+    .addr-mono { font-family: var(--mono); font-size: 0.95rem;
+                 color: var(--text); }
+
+    /* status pill — three tiers. Green never renders alone; it always
+       carries the "does not mean safe" tooltip via .status-tip[title]. */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 500;
+    }
+    .status-pill--verified {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.35);
+      color: var(--green);
+    }
+    .status-pill--self {
+      background: rgba(148,163,184,0.10);
+      border: 1px solid rgba(148,163,184,0.30);
+      color: #cbd5e1;
+    }
+    .status-pill--bare {
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.18);
+      color: var(--muted);
+    }
+    .status-tip {
+      color: var(--dim); font-size: 0.75rem; margin-left: 4px;
+      cursor: help; border-bottom: 1px dotted var(--dim);
+    }
+
+    .status-line { color: var(--text); font-size: 1.02rem; margin: 6px 0 14px;
+                   max-width: 640px; }
+    .next-action a {
+      display: inline-block; padding: 8px 14px;
+      background: rgba(34,211,238,0.10);
+      border: 1px solid rgba(34,211,238,0.35);
+      border-radius: 8px; font-size: 0.9rem; color: var(--cyan);
+    }
+    .next-action a:hover { text-decoration: none;
+                           background: rgba(34,211,238,0.18); }
+
+    /* --- signals list --------------------------------------------- */
+    .signals { list-style: none; padding: 0; margin: 6px 0 0; }
+    .signal {
+      padding: 12px 0; border-top: 1px solid var(--border);
+    }
+    .signal:first-child { border-top: 0; }
+    .signal-label { color: var(--muted); font-size: 0.72rem;
+                    text-transform: uppercase; letter-spacing: 0.08em;
+                    font-weight: 600; margin: 0 0 4px; }
+    .signal-value { color: var(--text); font-size: 0.98rem;
+                    line-height: 1.55; margin: 0 0 6px; }
+    .signal-meta { color: var(--dim); font-size: 0.78rem;
+                   font-family: var(--mono); line-height: 1.5;
+                   display: flex; flex-wrap: wrap; gap: 4px 10px; }
+    .signal-meta a { color: var(--muted); }
+    .signal-meta a:hover { color: var(--cyan); }
+    .signal-meta .sep { color: rgba(255,255,255,0.15); }
+    .signal-meta .report-err a { color: var(--muted); }
+
+    /* --- couldn't-check list -------------------------------------- */
+    .couldnt { background: rgba(250,204,21,0.05);
+               border: 1px solid rgba(250,204,21,0.22);
+               border-radius: 12px; padding: 14px 18px; margin: 14px 0 0;
+               color: var(--muted); font-size: 0.9rem; }
+    .couldnt h3 { margin: 0 0 6px; color: #facc15; font-size: 0.78rem;
+                  text-transform: uppercase; letter-spacing: 0.08em;
+                  font-weight: 600; }
+    .couldnt ul { margin: 4px 0 0; padding-left: 18px; }
+    .couldnt li { margin: 4px 0; }
+    .couldnt li .reason { color: var(--dim); font-family: var(--mono);
+                          font-size: 0.82rem; }
+
+    /* --- persistent disclaimer ------------------------------------ */
+    .disclaimer {
+      background: rgba(140,150,170,0.06);
+      border: 1px solid var(--border); border-left: 3px solid var(--dim);
+      border-radius: 6px;
+      padding: 10px 14px; color: var(--muted); font-size: 0.85rem;
+      margin: 22px 0 0;
+    }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 40px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>{{ _('Check an XRPL address') }}</h1>
+  <p class="lede">
+    {{ _('Paste an XRPL wallet address to see who — if anyone — has publicly claimed it. We report facts with sources and timestamps, not a scam verdict.') }}
+  </p>
+
+  <form class="check-form" method="GET" action="/check" autocomplete="off">
+    <label for="q">{{ _('XRPL address') }}</label>
+    <div class="paste-row">
+      <input type="text" name="q" id="q"
+             value="{{ query or '' }}"
+             placeholder="r…"
+             maxlength="40"
+             autocomplete="off"
+             autocorrect="off"
+             spellcheck="false"
+             autocapitalize="off"
+             inputmode="text">
+      <button type="submit">{{ _('Check') }}</button>
+    </div>
+    <p class="form-note">
+      {{ _('D1 covers XRPL wallet addresses (r…). URLs, tokens, and pasted messages come next.') }}
+    </p>
+  </form>
+
+  {% if input_error %}
+    <div class="errbox">{{ input_error }}</div>
+  {% endif %}
+
+  {% if result %}
+    <div class="result">
+
+      <div class="result-head">
+        <span class="addr-mono">{{ result.address_short }}</span>
+        {% if result.tier == 'verified' %}
+          <span class="status-pill status-pill--verified">
+            {{ _('Identity on file') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('We know who issued this. This does not mean it is safe to send money to.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% elif result.tier == 'self' %}
+          <span class="status-pill status-pill--self">
+            {{ _('Label on file') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('A label exists, but no first-party attestation. Treat as informational only.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% else %}
+          <span class="status-pill status-pill--bare">
+            {{ _('No identity claim on file') }}
+          </span>
+          <span class="status-tip"
+                title="{{ _('We found no identity claim in the sources we checked. Absence of a claim is not a warning and not an all-clear.') }}">
+            {{ _('what this means') }}
+          </span>
+        {% endif %}
+      </div>
+
+      <p class="status-line">{{ result.status_line }}</p>
+
+      {% if result.next_action %}
+        <p class="next-action">
+          <a href="{{ result.next_action.href }}">
+            {{ result.next_action.label }} →
+          </a>
+        </p>
+      {% endif %}
+
+      <h2>{{ _('What we checked') }}</h2>
+      <ul class="signals">
+        {% for s in result.signals %}
+          <li class="signal">
+            <p class="signal-label">{{ s.label }}</p>
+            <p class="signal-value">{{ s.value }}</p>
+            <p class="signal-meta">
+              <span class="source">
+                {{ _('Source:') }}
+                {% if s.source_url %}
+                  <a href="{{ s.source_url }}" rel="nofollow noopener" target="_blank">{{ s.source_label }}</a>
+                {% else %}
+                  {{ s.source_label }}
+                {% endif %}
+              </span>
+              <span class="sep">·</span>
+              <span class="checked">{{ _('Checked:') }} {{ s.checked_at_utc }}</span>
+              <span class="sep">·</span>
+              <span class="report-err">
+                <a href="/contact?purpose=data-correction&ref=check:{{ result.address }}">
+                  {{ _('Report an error') }}
+                </a>
+              </span>
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if result.couldnt_check %}
+        <div class="couldnt">
+          <h3>{{ _('Sources we tried but could not reach') }}</h3>
+          <ul>
+            {% for c in result.couldnt_check %}
+              <li>
+                <strong>{{ c.label }}</strong> —
+                <span class="reason">{{ c.reason }}</span>
+                <span class="checked">({{ _('at') }} {{ c.checked_at_utc }})</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+    </div>
+
+    <p class="disclaimer">
+      {{ _('This is guidance, not a legal determination. We report facts we can source, at the time we checked them — not a verdict on whether it is safe to send money.') }}
+    </p>
+
+  {% endif %}
+
+  <div class="footer">
+    <a href="/">{{ _('dashboard') }}</a> ·
+    <a href="/about">{{ _('about') }}</a> ·
+    <a href="/methodology">{{ _('methodology') }}</a> ·
+    <a href="/contact?purpose=data-correction">{{ _('report an error') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>
