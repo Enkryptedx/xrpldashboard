@@ -100,13 +100,28 @@ def fetch_escrow_locked_cached(ttl=None):
         if _cache["data"] is not None and (now - _cache["fetched_at"]) < ttl:
             data = dict(_cache["data"])
             data["cached_age_seconds"] = round(now - _cache["fetched_at"], 1)
+            data["is_fallback"] = False
             return data
         fresh = fetch_escrow_locked()
         if fresh.get("accounts_scanned", 0) > 0:
             _cache["fetched_at"] = now
             _cache["data"] = fresh
+            result = dict(fresh)
+            result["cached_age_seconds"] = 0.0
+            result["is_fallback"] = False
+            return result
+        # All-fail path: upstream unreachable / partial. Serve last-good with
+        # its REAL age (not 0), else honest empty flagged as fallback. Prior
+        # code set cached_age_seconds=0.0 here too, making stale data render
+        # as "just now" — silent-truth bug caught in 2026-07-06 audit.
+        if _cache["data"] is not None:
+            data = dict(_cache["data"])
+            data["cached_age_seconds"] = round(now - _cache["fetched_at"], 1)
+            data["is_fallback"] = True
+            return data
         result = dict(fresh)
-        result["cached_age_seconds"] = 0.0
+        result["cached_age_seconds"] = None
+        result["is_fallback"] = True
         return result
 
 

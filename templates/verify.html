@@ -120,6 +120,12 @@
       content: "✓"; position: absolute; left: 4px; top: 0;
       color: var(--green); font-weight: 700;
     }
+    .verify-note {
+      display: block; margin-top: 6px; padding: 8px 10px;
+      background: rgba(148,163,184,0.06); border-left: 2px solid rgba(148,163,184,0.35);
+      color: var(--muted); font-size: 0.86rem; line-height: 1.45;
+    }
+    .verify-note code { color: var(--text); }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -279,6 +285,11 @@ email = "compliance@example.com"</pre>
         {% trans -%}
         the tokens you issue. The <code>issuer</code> field MUST point to a wallet listed above in <code>[[ACCOUNTS]]</code>. The <code>code</code> field is the on-ledger currency ticker. Optional fields include <code>display_decimals</code>, <code>symbol</code>, and <code>network</code> (use <code>"main"</code> for the production XRP Ledger; omit to default to main).
         {%- endtrans %}
+        <span class="verify-note">
+          {% trans -%}
+          Note: attestation on this dashboard reads the <code>[[ACCOUNTS]]</code> block and the on-chain Domain — <code>[[CURRENCIES]]</code> is not required for your wallet to verify. Our current metadata-enrichment walker (which pulls display names for the token registry) reads a legacy <code>[[TOKENS]]</code> section; canonical <code>[[CURRENCIES]]</code> parity is on the roadmap. Publish the canonical block anyway — indexers outside this dashboard follow the spec.
+          {%- endtrans %}
+        </span>
       </li>
       <li>
         <strong><code>[[PRINCIPALS]]</code></strong> —

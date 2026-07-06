@@ -2757,7 +2757,10 @@ def amendments():
         state=state,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
-    resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
+    # refreshes every AMENDMENTS_CACHE_TTL (default 300s), so re-hitting the
+    # origin at 60s just returned the same cached state 5× per real refresh.
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp
 
 
@@ -3105,6 +3108,14 @@ def credentials():
     perm_domains = _shape_permissioned_domains_for_display(perm_domains_raw)
     perm_walker_runs = db.read_permissioned_domain_walker_runs(limit=1)
     perm_walker_last = perm_walker_runs[0] if perm_walker_runs else None
+    # Freshness truthfulness: PD walker cadence is 86400s (daily). Anything past
+    # 48h without a walker row means the walker is genuinely broken/unloaded and
+    # the domain list may have drifted. Surface a plain "stale" label so
+    # visitors don't read a 3-week-old snapshot as current.
+    perm_walker_age_hours = _iso_to_age_seconds(perm_walker_last.get("fetched_at_iso")) / 3600.0 \
+        if perm_walker_last and perm_walker_last.get("fetched_at_iso") \
+        and _iso_to_age_seconds(perm_walker_last.get("fetched_at_iso")) is not None else None
+    perm_walker_is_stale = perm_walker_age_hours is not None and perm_walker_age_hours >= 48.0
 
     resp = make_response(render_template(
         "credentials.html",
@@ -3113,6 +3124,8 @@ def credentials():
         has_collapsed_groups=has_collapsed_groups,
         perm_domains=perm_domains,
         perm_walker_last=perm_walker_last,
+        perm_walker_age_hours=perm_walker_age_hours,
+        perm_walker_is_stale=perm_walker_is_stale,
     ))
     # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
     # see fresh-within-a-minute data; without this header, CF returns
