@@ -30,6 +30,7 @@ from network_pulse import fetch_pulse_cached
 from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
+from total_supply import fetch_total_supply_cached, XRP_DESIGN_SUPPLY_FALLBACK
 import amendments_state
 from amendments_state import fetch_amendments_state_cached
 import network_state
@@ -881,14 +882,8 @@ def _ranked_amm_snapshot():
     }
 
 
-XRP_DESIGN_SUPPLY = 100_000_000_000.0
-# Freshness thresholds for the reservoir gauge — a basin goes "stale"
-# (amber stamp, surface calms to still) when its reading is older than
-# 2× the walker cadence. Escrow walker is 30min → 60min stale.
-# AMM ranker is 4h in CP1 → 8h stale (CP3 tightens the walker to 1h
-# → 2h stale; keep this threshold in lockstep with the plist change).
 _XRP_ESCROW_STALE_AFTER = 3600  # 60 min
-_XRP_AMM_STALE_AFTER = 28800    # 8 h
+_XRP_AMM_STALE_AFTER = 7200     # 2 h (rank_amms cadence is 1h; stay 2× in lockstep with the plist)
 
 
 def _build_xrp_distribution(ranked_full):
@@ -924,8 +919,19 @@ def _build_xrp_distribution(ranked_full):
         pass
     amm_age = (time.time() - amm_snap_ts) if amm_snap_ts else None
 
+    try:
+        tot = fetch_total_supply_cached()
+    except Exception:
+        tot = None
+    total_xrp = float(tot.get("total_xrp") or 0) if tot else 0.0
+    if total_xrp <= 0:
+        total_xrp = XRP_DESIGN_SUPPLY_FALLBACK
+    total_age = float(tot.get("cached_age_seconds")) if tot and tot.get(
+        "cached_age_seconds") is not None else None
+    total_is_fallback = bool(tot.get("is_fallback")) if tot else True
+
     locked = escrowed_xrp + amm_xrp
-    wallets_xrp = max(0.0, XRP_DESIGN_SUPPLY - locked)
+    wallets_xrp = max(0.0, total_xrp - locked)
 
     # Derived-basin age tracks the STALER of its two inputs — an honest
     # answer to "when was this reading taken." If either input is
@@ -938,17 +944,19 @@ def _build_xrp_distribution(ranked_full):
     wallets_stale = escrow_stale or amm_stale
 
     return {
-        "total_xrp": XRP_DESIGN_SUPPLY,
+        "total_xrp": total_xrp,
         "escrowed_xrp": escrowed_xrp,
         "amm_xrp": amm_xrp,
         "wallets_xrp": wallets_xrp,
-        "escrowed_pct": (escrowed_xrp / XRP_DESIGN_SUPPLY) * 100,
-        "amm_pct": (amm_xrp / XRP_DESIGN_SUPPLY) * 100,
-        "wallets_pct": (wallets_xrp / XRP_DESIGN_SUPPLY) * 100,
+        "escrowed_pct": (escrowed_xrp / total_xrp) * 100,
+        "amm_pct": (amm_xrp / total_xrp) * 100,
+        "wallets_pct": (wallets_xrp / total_xrp) * 100,
         "escrow_object_count": (esc.get("object_count") if esc else 0) or 0,
         "escrow_age_seconds": escrow_age,
         "amm_age_seconds": amm_age,
         "wallets_age_seconds": wallets_age,
+        "total_age_seconds": total_age,
+        "total_is_fallback": total_is_fallback,
         "escrow_stale": escrow_stale,
         "amm_stale": amm_stale,
         "wallets_stale": wallets_stale,
