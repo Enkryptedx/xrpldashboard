@@ -38,7 +38,7 @@ import db
 
 # Mirrors ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
 # StartInterval. Read by /walker_health for per-row staleness thresholds.
-WALKER_CADENCE_SECONDS = 14400
+WALKER_CADENCE_SECONDS = 3600
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 XRP_USD_PRICE = 1.44   # mirrors amm_scan_pools.py — single source of truth later

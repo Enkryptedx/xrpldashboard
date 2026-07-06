@@ -837,7 +837,7 @@
           <circle cx="260" cy="140" r="46" fill="url(#grad-center)"/>
           <circle cx="260" cy="140" r="46" fill="none" stroke="rgba(34,211,238,0.4)" stroke-width="1"/>
           <text class="center-label" x="260" y="132" text-anchor="middle">{{ _('TOTAL') }}</text>
-          <text class="center-val"   x="260" y="152" text-anchor="middle">100B XRP</text>
+          <text class="center-val"   x="260" y="152" text-anchor="middle">{{ "%.2f"|format(xd.total_xrp/1000000000) }}B XRP</text>
 
           {# top-left: in escrow → /cold-storage (closest existing page) #}
           <a href="/cold-storage" aria-label="{{ _('XRP locked in escrow') }}">
@@ -861,6 +861,15 @@
           <text class="sat-val"   x="260" y="251" text-anchor="middle" fill="rgba(255,255,255,0.95)" style="font-family: var(--mono); font-size: 13px; font-weight: 700">~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP</text>
           <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
         </svg>
+      </div>
+      <div class="xrp-constell-freshness" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 2px; letter-spacing: 0.02em;">
+        {% if xd.total_is_fallback %}
+        <span style="color: #f59e0b;">{{ _('supply lookup unavailable · showing design constant') }}</span>
+        {% elif xd.total_age_seconds is not none and xd.total_age_seconds < 3600 %}
+        <span style="color: rgba(255,255,255,0.55);">{{ _('live from XRPL ledger') }} · {{ (xd.total_age_seconds // 60)|int }}m {{ _('ago') }}</span>
+        {% elif xd.total_age_seconds is not none %}
+        <span style="color: rgba(255,255,255,0.5);">{{ _('cached') }} · {{ (xd.total_age_seconds // 3600)|int }}h {{ _('ago') }}</span>
+        {% endif %}
       </div>
       <div class="xrp-constell-chips">
         <a class="xrp-chip" href="/cold-storage">

@@ -1459,10 +1459,10 @@ def health():
     # worker even though the ranker cron was keeping a 29k-pool catalogue
     # fresh (2026-05-13 audit). When mode == "ranker", the template surfaces
     # ranker cadence instead of scanner counters. com.charliebruce.xrpldashboard.rank_amms
-    # runs every 14400s (verified via `launchctl print`).
+    # runs every 3600s (verified via `launchctl print`).
     scan_mode = "scanner" if scan_state else "ranker"
     ranker_next_in = (
-        max(0, 14400 - ranker_hb_age) if ranker_hb_age is not None else None
+        max(0, 3600 - ranker_hb_age) if ranker_hb_age is not None else None
     )
 
     # Pool tracker is "finished" (catalogue available) whenever the ranker
