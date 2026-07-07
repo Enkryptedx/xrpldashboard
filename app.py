@@ -933,6 +933,12 @@ def _build_xrp_distribution(ranked_full):
     locked = escrowed_xrp + amm_xrp
     wallets_xrp = max(0.0, total_xrp - locked)
 
+    burned_since_genesis_xrp = None
+    if not total_is_fallback and total_xrp > 0:
+        diff = XRP_DESIGN_SUPPLY_FALLBACK - total_xrp
+        if diff > 0:
+            burned_since_genesis_xrp = diff
+
     # Derived-basin age tracks the STALER of its two inputs — an honest
     # answer to "when was this reading taken." If either input is
     # missing, we can't honestly stamp the derivation.
@@ -957,6 +963,7 @@ def _build_xrp_distribution(ranked_full):
         "wallets_age_seconds": wallets_age,
         "total_age_seconds": total_age,
         "total_is_fallback": total_is_fallback,
+        "burned_since_genesis_xrp": burned_since_genesis_xrp,
         "escrow_stale": escrow_stale,
         "amm_stale": amm_stale,
         "wallets_stale": wallets_stale,

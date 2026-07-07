@@ -876,6 +876,11 @@
         <span style="color: rgba(255,255,255,0.5);">{{ _('cached') }} · {{ (xd.total_age_seconds // 3600)|int }}h {{ _('ago') }}</span>
         {% endif %}
       </div>
+      {% if xd.burned_since_genesis_xrp %}
+      <div class="xrp-constell-burn" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 4px; letter-spacing: 0.02em; color: rgba(255,255,255,0.45);">
+        ≈{{ "%.2f"|format(xd.burned_since_genesis_xrp/1000000) }}M XRP {{ _('burned since genesis (transaction fees, derived from the total above)') }}
+      </div>
+      {% endif %}
       <div class="xrp-constell-chips">
         <a class="xrp-chip" href="/cold-storage">
           <span class="dot escrow"></span>
