@@ -37,6 +37,7 @@ from xrpl.models.requests import (
 from xrpl.models.requests.account_objects import AccountObjectType
 
 import db
+from check_data import _capability_signals
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
@@ -441,7 +442,11 @@ def _safe_request(client, request):
 
 
 def _fetch_account_info(client, address):
-    return _safe_request(client, AccountInfo(account=address, ledger_index="validated"))
+    # signer_lists=True piggybacks multi-sig detection for the /wallet
+    # capability block on the same RPC — no extra round-trip.
+    return _safe_request(client, AccountInfo(
+        account=address, ledger_index="validated", signer_lists=True,
+    ))
 
 
 def _fetch_account_lines(client, address):
@@ -1259,6 +1264,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "escrows": {"sent_external": [], "self_locks": []},
             "offers": [],
             "mpt_holdings": [],
+            "capabilities": [],
         }
     account_data = info.get("account_data", {})
     is_amm, is_vault, amm_pair = _special_account_self_info(client, account_data, address)
@@ -1421,6 +1427,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "escrows": escrows,
         "offers": offers,
         "mpt_holdings": mpt_holdings,
+        "capabilities": _capability_signals(account_data),
     }
 
 

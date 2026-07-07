@@ -1701,6 +1701,27 @@
     </section>
     {% endif %}
 
+    {% if data.capabilities %}
+    <section style="margin-top: 2em;">
+      <div class="card">
+        <div class="section-head">
+          <h2>{{ _('Ledger-level capabilities') }}</h2>
+        </div>
+        <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0 0 1em; line-height: 1.5;">
+          {{ _('A technical inventory of what the ledger allows this account to do. Not a safety judgment — none of these facts, alone or in combination, mean "safe" or "unsafe." The absence of a capability here is also not a reassurance.') }}
+        </p>
+        {% for c in data.capabilities %}
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-left: 3px solid rgba(140,150,170,0.35); border-radius: 6px; padding: 0.8em 1em; margin: 0.6em 0;">
+            <div style="color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin: 0 0 0.3em;">{{ c.label }}</div>
+            <div style="color: var(--text); font-size: var(--fs-sm); line-height: 1.55; margin: 0 0 0.4em;">{{ c.value }}</div>
+            <div style="color: var(--muted); font-size: var(--fs-xs); font-style: italic; line-height: 1.5; margin: 0 0 0.4em;">{{ c.note }}</div>
+            <div style="color: var(--text-3); font-size: var(--fs-2xs); font-family: var(--mono);">{{ _('Source:') }} {{ c.source_label }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
     <footer>
       {{ _('Wallet view · all balances, holdings, AMM positions and pool activity pulled directly from the XRP Ledger via') }} <code style="color: var(--cyan);">account_info</code>,
       <code style="color: var(--cyan);">account_lines</code>, <code style="color: var(--cyan);">account_tx</code>,

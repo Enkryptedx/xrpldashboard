@@ -16,6 +16,9 @@ import time
 from datetime import datetime, timezone
 
 import db
+from check_data import _capability_signals
+from xrpl.models.requests import AccountInfo
+from xrpl_client import get_client
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
@@ -296,6 +299,27 @@ def fetch_token_data(currency, issuer):
         except Exception:
             xrp_price = None
 
+    # 5. Ledger-level capability signals for the issuer AccountRoot.
+    # Softly breaks this module's "no live RPC" convention — a single
+    # AccountInfo call, cached with the rest of the page (CACHE_TTL 120s).
+    # signer_lists=True piggybacks multi-sig detection on the same round-trip.
+    capabilities = []
+    try:
+        client = get_client(walker_name="token_page")
+        resp = client.request(AccountInfo(
+            account=issuer, ledger_index="validated", signer_lists=True,
+        ))
+        acct = (resp.result or {}).get("account_data") or {}
+        signer_lists = (resp.result or {}).get("account_data", {}).get(
+            "signer_lists"
+        ) or (resp.result or {}).get("signer_lists")
+        if signer_lists and "signer_lists" not in acct:
+            acct = dict(acct)
+            acct["signer_lists"] = signer_lists
+        capabilities = _capability_signals(acct)
+    except Exception:
+        capabilities = []
+
     return {
         "currency_raw": currency,
         "currency_decoded": _decode_currency_hex(currency),
@@ -322,6 +346,7 @@ def fetch_token_data(currency, issuer):
         "meaningful_pool_count": meaningful_pool_count,
         "meaningful_lp_threshold": MEANINGFUL_LP_THRESHOLD,
         "history_source": history_source,
+        "capabilities": capabilities,
     }
 
 

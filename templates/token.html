@@ -389,6 +389,23 @@
     </div>
   </div>
 
+  {% if data.capabilities %}
+  <div class="card" style="margin-top: 1.6em;">
+    <h2>{{ _('Ledger-level capabilities') }}</h2>
+    <p style="color: var(--muted); font-size: 0.86rem; margin: 0 0 1em; line-height: 1.5;">
+      {{ _('A technical inventory of what the ledger allows this account to do. Not a safety judgment — none of these facts, alone or in combination, mean "safe" or "unsafe." The absence of a capability here is also not a reassurance.') }}
+    </p>
+    {% for c in data.capabilities %}
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-left: 3px solid rgba(140,150,170,0.35); border-radius: 6px; padding: 0.8em 1em; margin: 0.6em 0;">
+        <div style="color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin: 0 0 0.3em;">{{ c.label }}</div>
+        <div style="color: var(--text); font-size: 0.94rem; line-height: 1.55; margin: 0 0 0.4em;">{{ c.value }}</div>
+        <div style="color: var(--muted); font-size: 0.84rem; font-style: italic; line-height: 1.5; margin: 0 0 0.4em;">{{ c.note }}</div>
+        <div style="color: var(--dim); font-size: 0.76rem; font-family: var(--mono);">{{ _('Source:') }} {{ c.source_label }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <footer>
     {{ _('Token detail · counts from') }}
     {% if data.history_source == 'postgres' %}

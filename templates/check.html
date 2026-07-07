@@ -203,6 +203,33 @@
     .signal-meta .sep { color: rgba(255,255,255,0.15); }
     .signal-meta .report-err a { color: var(--muted); }
 
+    /* --- ledger-level capabilities (Phase 3) ---------------------
+       Flat charcoal. Deliberately NO green/red — the whole framing
+       is that these are neutral facts, not safety signals. Don't add
+       color coding without re-opening the display-honesty gate. */
+    .capabilities { margin: 22px 0 0; }
+    .capabilities-subtitle {
+      color: var(--dim); font-size: 0.85rem; margin: 6px 0 14px;
+      max-width: 640px; line-height: 1.55;
+    }
+    .capability-pill {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-left: 3px solid rgba(140,150,170,0.35);
+      border-radius: 6px;
+      padding: 12px 14px; margin: 8px 0;
+    }
+    .capability-label { color: var(--muted); font-size: 0.72rem;
+                        text-transform: uppercase; letter-spacing: 0.08em;
+                        font-weight: 600; margin: 0 0 4px; }
+    .capability-value { color: var(--text); font-size: 0.96rem;
+                        line-height: 1.55; margin: 0 0 6px; }
+    .capability-note { color: var(--muted); font-size: 0.85rem;
+                       line-height: 1.5; margin: 0 0 6px;
+                       font-style: italic; }
+    .capability-meta { color: var(--dim); font-size: 0.76rem;
+                       font-family: var(--mono); line-height: 1.5; }
+
     /* --- couldn't-check list -------------------------------------- */
     .couldnt { background: rgba(250,204,21,0.05);
                border: 1px solid rgba(250,204,21,0.22);
@@ -525,6 +552,27 @@
           </li>
         {% endfor %}
       </ul>
+
+      {% if result.capabilities %}
+        <div class="capabilities">
+          <h2>{{ _('Ledger-level capabilities') }}</h2>
+          <p class="capabilities-subtitle">
+            {{ _('A technical inventory of what the ledger allows this account to do. Not a safety judgment — none of these facts, alone or in combination, mean "safe" or "unsafe." The absence of a capability here is also not a reassurance.') }}
+          </p>
+          {% for c in result.capabilities %}
+            <div class="capability-pill">
+              <p class="capability-label">{{ c.label }}</p>
+              <p class="capability-value">{{ c.value }}</p>
+              <p class="capability-note">{{ c.note }}</p>
+              <p class="capability-meta">
+                {{ _('Source:') }} {{ c.source_label }}
+                <span class="sep">·</span>
+                {{ _('Checked:') }} {{ c.checked_at_utc }}
+              </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       {% if result.couldnt_check %}
         <div class="couldnt">

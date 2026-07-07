@@ -185,11 +185,19 @@ def _couldnt(label: str, reason: str) -> dict:
 
 def _query_ledger(address: str) -> tuple[dict | None, str | None]:
     """Return (account_data, error_reason). account_data is None if the
-    account doesn't exist on-chain or if all endpoints failed."""
+    account doesn't exist on-chain or if all endpoints failed.
+
+    Requests signer_lists=True so multi-sig detection piggybacks on the
+    same RPC call — no extra round-trip for the capabilities section.
+    """
     try:
         client = get_client(walker_name="check_page")
         resp = client.request(
-            AccountInfo(account=address, ledger_index="validated")
+            AccountInfo(
+                account=address,
+                ledger_index="validated",
+                signer_lists=True,
+            )
         )
     except Exception as e:
         return None, f"XRPL endpoints unreachable ({type(e).__name__})"
@@ -201,7 +209,199 @@ def _query_ledger(address: str) -> tuple[dict | None, str | None]:
     if err:
         return None, f"XRPL returned '{err}'"
 
-    return result.get("account_data") or {}, None
+    account_data = dict(result.get("account_data") or {})
+    # signer_lists is returned as a top-level field in the RPC result,
+    # not inside account_data — fold it in so capability builders can
+    # read it off the same object.
+    if "signer_lists" not in account_data:
+        sl = result.get("signer_lists")
+        if sl:
+            account_data["signer_lists"] = sl
+    return account_data, None
+
+
+# ─── Ledger-level capabilities (Phase 3 issuer flags + account security) ─
+#
+# Bit values from xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/accountroot.
+# The section renders as neutral-facts-only per feedback_check_lookalike_neutral_pill_only:
+# no color coding, no verdicts, no banned safety words. Notes explicitly
+# defuse both directions (freeze-capable ≠ danger; no-freeze ≠ all-clear;
+# absence of a capability ≠ reassurance) — the subtitle carries that too.
+_FLAG_LSF_DEFAULT_RIPPLE            = 0x00800000
+_FLAG_LSF_DEPOSIT_AUTH              = 0x01000000
+_FLAG_LSF_DISABLE_MASTER            = 0x00100000
+_FLAG_LSF_GLOBAL_FREEZE             = 0x00400000
+_FLAG_LSF_NO_FREEZE                 = 0x00200000
+_FLAG_LSF_ALLOW_TRUSTLINE_CLAWBACK  = 0x02000000
+
+_CAPABILITY_SOURCE_LABEL = "XRPL AccountRoot.Flags (via AccountInfo)"
+
+
+def _capability_signals(account_data: dict) -> list[dict]:
+    """Return the ledger-level capabilities list for an account.
+
+    One dict per capability with: label, value, note, source_label,
+    checked_at_utc. Freeze always renders (default, no-freeze, or
+    currently-freezing). Clawback / TransferRate / DisableMaster /
+    RegularKey / SignerList / DepositAuth render only when set. Copy
+    is verbatim from Phase 3 Gate 1 approval — do not edit without
+    a follow-up gate.
+    """
+    if not account_data:
+        return []
+    flags = int(account_data.get("Flags") or 0)
+    now = _now_iso()
+
+    def pill(label: str, value: str, note: str) -> dict:
+        return {
+            "label": label,
+            "value": value,
+            "note": note,
+            "source_label": _CAPABILITY_SOURCE_LABEL,
+            "checked_at_utc": now,
+        }
+
+    out: list[dict] = []
+
+    # --- Freeze family (always renders; mutually exclusive states) ---
+    if flags & _FLAG_LSF_NO_FREEZE:
+        out.append(pill(
+            label="Freeze capability",
+            value=(
+                "This issuer has permanently disabled the freeze "
+                "capability. This flag cannot be reversed by the "
+                "account itself."
+            ),
+            note=(
+                "A technical commitment about what the account can do, "
+                "not a safety signal. Scam tokens can lack freeze too."
+            ),
+        ))
+    elif flags & _FLAG_LSF_GLOBAL_FREEZE:
+        out.append(pill(
+            label="Freeze capability",
+            value=(
+                "This issuer is currently freezing all trustlines for "
+                "this token. Holders cannot send it to each other while "
+                "the flag is set."
+            ),
+            note=(
+                "An active freeze means holders cannot currently "
+                "transfer this token. Issuers freeze for many reasons — "
+                "this flag shows that it is happening, not why. If you "
+                "hold this token, this directly affects you right now."
+            ),
+        ))
+    else:
+        out.append(pill(
+            label="Freeze capability",
+            value=(
+                "This issuer retains the ability to freeze trustlines "
+                "but is not currently doing so."
+            ),
+            note=(
+                "Freeze is a standard AccountRoot capability. Both "
+                "regulated stablecoins (e.g. RLUSD) and bad actors have "
+                "used it — the capability alone is not a warning."
+            ),
+        ))
+
+    # --- Clawback (only when set) ---
+    if flags & _FLAG_LSF_ALLOW_TRUSTLINE_CLAWBACK:
+        out.append(pill(
+            label="Clawback capability",
+            value=(
+                "This issuer can pull tokens back from holders' wallets "
+                "under the ledger's clawback rules."
+            ),
+            note=(
+                "Clawback lets an issuer reverse token holdings after "
+                "the fact. It exists for regulatory and recovery use, "
+                "and can also be misused. The capability is a fact; it "
+                "does not tell you the issuer's intent."
+            ),
+        ))
+
+    # --- TransferRate (only when > 0). Ledger encoding: 1e9 = 0 %,
+    #     1.005e9 = 0.5 %, up to 2e9 = 100 %. See AccountSet reference.
+    tr = account_data.get("TransferRate")
+    if tr:
+        try:
+            tr_int = int(tr)
+            if tr_int > 1_000_000_000:
+                rate_pct = (tr_int / 1_000_000_000 - 1) * 100
+                out.append(pill(
+                    label="Transfer fee",
+                    value=(
+                        f"Every non-issuer transfer of this token pays "
+                        f"a {rate_pct:.3g}% fee to the issuer."
+                    ),
+                    note=(
+                        "This is a real cost, not a subjective signal. "
+                        "Verify the rate against what you expect before "
+                        "transacting."
+                    ),
+                ))
+        except (TypeError, ValueError):
+            pass
+
+    # --- Account security (each conditional) ---
+    if flags & _FLAG_LSF_DISABLE_MASTER:
+        out.append(pill(
+            label="Master key",
+            value=(
+                "The account's master private key has been disabled. "
+                "Transactions must be signed by an alternative key "
+                "(RegularKey or SignerList)."
+            ),
+            note=(
+                "Common on production custody setups; also seen on "
+                "some compromised accounts. Presence alone is not a "
+                "signal."
+            ),
+        ))
+    reg_key = account_data.get("RegularKey")
+    if reg_key:
+        reg_short = _short_addr(reg_key)
+        out.append(pill(
+            label="RegularKey",
+            value=(
+                f"A RegularKey ({reg_short}) is configured, providing "
+                f"an alternative signing key."
+            ),
+            note=(
+                "Standard ledger pattern for key rotation and hot/cold "
+                "separation."
+            ),
+        ))
+    signer_lists = account_data.get("signer_lists") or []
+    if signer_lists:
+        out.append(pill(
+            label="Multi-signature",
+            value=(
+                "This account uses multi-signature authentication. "
+                "Transactions require a quorum of the listed signer "
+                "keys."
+            ),
+            note=(
+                "Multi-signature is a standard ledger feature and does "
+                "not by itself indicate custody type."
+            ),
+        ))
+    if flags & _FLAG_LSF_DEPOSIT_AUTH:
+        out.append(pill(
+            label="DepositAuth",
+            value=(
+                "This account only accepts incoming payments from "
+                "pre-authorized senders."
+            ),
+            note=(
+                "Common on issuer accounts expecting only trust-line "
+                "traffic. Presence does not by itself indicate purpose."
+            ),
+        ))
+
+    return out
 
 
 def check_address(address: str) -> dict:
@@ -323,6 +523,9 @@ def check_address(address: str) -> dict:
             reason=pg_error,
         ))
 
+    # --- Ledger-level capabilities (Phase 3) -------------------------
+    capabilities = _capability_signals(account_data) if account_data else []
+
     # --- Status line — routing, not verdict --------------------------
     if tier == "verified":
         status_line = (
@@ -350,6 +553,7 @@ def check_address(address: str) -> dict:
         "tier": tier,
         "status_line": status_line,
         "signals": signals,
+        "capabilities": capabilities,
         "couldnt_check": couldnt_check,
         "checked_at_utc": _now_iso(),
         # Next-action link for Fold 1 — always /wallet/<addr>, the
@@ -532,6 +736,9 @@ def check_token(currency: str, issuer: str) -> dict:
             reason=ledger_error or "XRPL endpoints didn't answer in time",
         ))
 
+    # --- Ledger-level capabilities (Phase 3) — issuer flags ----------
+    capabilities = _capability_signals(account_data) if account_data else []
+
     # --- Status line — plain language per Charlie's D2 rewrite --------
     if tier == "verified":
         status_line = (
@@ -579,6 +786,7 @@ def check_token(currency: str, issuer: str) -> dict:
         "tier": tier,
         "status_line": status_line,
         "signals": signals,
+        "capabilities": capabilities,
         "couldnt_check": couldnt_check,
         "checked_at_utc": _now_iso(),
         "next_action": {
