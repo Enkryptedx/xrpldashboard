@@ -52,9 +52,44 @@ except ImportError:
 # silent-write failure this helper makes visible.
 _LAST_ERR_LOG = {}  # category -> (last_ts, suppressed_count)
 _ERR_LOG_INTERVAL_S = 60
+_SCHEMA_DRIFT_SEEN = set()  # category -> True once we've stack-dumped
+
+
+def _is_schema_drift(exc):
+    if psycopg is None:
+        return False
+    return isinstance(exc, (
+        psycopg.errors.UndefinedTable,
+        psycopg.errors.UndefinedColumn,
+        psycopg.errors.UndefinedFunction,
+        psycopg.errors.UndefinedObject,
+    ))
 
 
 def _log_err(category, exc):
+    # Schema-drift class NEVER self-heals; treating it like a transient
+    # error hid the tx_type_hourly gap for 6 minutes on 2026-07-07.
+    # Always loud, never rate-limited. First hit dumps the stack so the
+    # caller is grep-able.
+    if _is_schema_drift(exc):
+        if category not in _SCHEMA_DRIFT_SEEN:
+            import traceback
+            tb = "".join(traceback.format_exception(
+                type(exc), exc, exc.__traceback__))
+            print(
+                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc}\n"
+                f"[db]     Won't self-heal — apply init_schema() or the "
+                f"relevant migration.\n{tb}",
+                flush=True,
+            )
+            _SCHEMA_DRIFT_SEEN.add(category)
+        else:
+            print(
+                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+        return
+
     now = time.time()
     last_ts, suppressed = _LAST_ERR_LOG.get(category, (0, 0))
     if now - last_ts < _ERR_LOG_INTERVAL_S:
