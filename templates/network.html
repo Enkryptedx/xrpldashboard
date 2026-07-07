@@ -522,7 +522,10 @@
           <span class="mono" data-iso="{{ tx_mix.since_iso }}">{{ tx_mix.since_iso }}</span>{{ _('.') }}
           {% set hours_covered = tx_mix.hours_covered %}
           {% if hours_covered < 24 %}
-            {{ _('The numbers below cover the last %(hours)s hours, not the full window you selected.', hours=hours_covered) }}
+            {{ ngettext(
+                'The numbers below cover the last %(hours)d hour, not the full window you selected.',
+                'The numbers below cover the last %(hours)d hours, not the full window you selected.',
+                hours_covered, hours=hours_covered) }}
           {% else %}
             {{ _('The numbers below cover the last %(days).1f days, not the full window you selected.', days=(hours_covered / 24)) }}
           {% endif %}
