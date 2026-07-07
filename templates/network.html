@@ -211,6 +211,117 @@
       border-radius: 999px; padding: 4px 12px;
     }
     .links a:hover { background: rgba(34,211,238,0.12); text-decoration: none; }
+
+    /* Ledger activity (transaction-type mix) section */
+    .mix-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 22px 22px 18px; margin: 12px 0 24px;
+    }
+    /* Charlie Gate 3 concern #1: count-not-value label PROMINENT at TOP,
+       before the buckets, not a footnote. Amber accent (matches the
+       page's truth-note colour) so it reads as a caveat, not decoration. */
+    .mix-primary-caveat {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(251,191,36,0.06);
+      border: 1px solid rgba(251,191,36,0.35);
+      border-radius: 10px;
+      padding: 12px 14px; margin: 0 0 14px;
+      color: var(--text); font-size: 0.95rem; line-height: 1.55;
+    }
+    .mix-primary-caveat .mark {
+      flex-shrink: 0; margin-top: 1px;
+      width: 18px; height: 18px; border-radius: 999px;
+      background: rgba(251,191,36,0.15);
+      color: var(--amber);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.78rem;
+    }
+    .mix-primary-caveat strong { color: var(--amber); font-weight: 700; }
+
+    /* Charlie Gate 3 concern #2: "since [date]" honest window,
+       unmissable while data still accrues. Rose accent so it reads
+       as "coverage warning" not styling. */
+    .mix-since-warn {
+      border: 1px solid rgba(251,113,133,0.35);
+      background: rgba(251,113,133,0.05);
+      border-radius: 10px;
+      padding: 10px 14px; margin: 0 0 14px;
+      font-size: 0.9rem; color: var(--text);
+    }
+    .mix-since-warn strong { color: var(--rose); }
+
+    .mix-window {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin: 4px 0 14px;
+      font-size: 0.88rem; color: var(--muted);
+    }
+    .mix-window .pills { display: inline-flex; gap: 6px; }
+    .mix-window .pill {
+      color: var(--muted); background: transparent;
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 3px 12px; font-family: var(--mono);
+      font-size: 0.82rem; text-decoration: none;
+    }
+    .mix-window .pill.on {
+      color: var(--cyan); background: rgba(34,211,238,0.08);
+      border-color: rgba(34,211,238,0.4);
+    }
+    .mix-window .pill:hover { color: var(--text); text-decoration: none; }
+    .mix-window .total {
+      margin-left: auto; font-family: var(--mono);
+      color: var(--text); font-variant-numeric: tabular-nums;
+    }
+
+    .mix-bars { display: grid; gap: 10px; margin: 6px 0 12px; }
+    .mix-bar-row {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) 90px 60px;
+      gap: 10px; align-items: center;
+      padding: 8px 0; border-top: 1px solid var(--border);
+    }
+    .mix-bar-row:first-of-type { border-top: none; }
+    .mix-bar-row .name {
+      font-weight: 600; color: var(--text); font-size: 0.95rem;
+    }
+    .mix-bar-row .blurb {
+      color: var(--muted); font-size: 0.82rem; font-weight: 400;
+      line-height: 1.45; margin-top: 2px;
+    }
+    .mix-bar-row .count {
+      font-family: var(--mono); color: var(--text);
+      font-variant-numeric: tabular-nums; text-align: right;
+      font-size: 0.92rem;
+    }
+    .mix-bar-row .pct {
+      font-family: var(--mono); color: var(--muted);
+      font-variant-numeric: tabular-nums; text-align: right;
+      font-size: 0.88rem;
+    }
+    .mix-bar-row.empty { opacity: 0.55; }
+    .mix-bar-row .bar-track {
+      grid-column: 1 / -1;
+      height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.05);
+      overflow: hidden; margin-top: 4px;
+    }
+    .mix-bar-row .bar-fill {
+      height: 100%; background: linear-gradient(90deg, var(--cyan), var(--blue));
+      border-radius: 2px;
+    }
+
+    .mix-disclosures {
+      display: grid; gap: 8px; margin-top: 10px;
+      padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    .mix-disclosures .row {
+      font-size: 0.85rem; color: var(--muted); line-height: 1.55;
+    }
+    .mix-disclosures .row strong { color: var(--text); font-weight: 600; }
+
+    .mix-empty {
+      color: var(--muted); font-size: 0.92rem;
+      padding: 8px 0 4px; text-align: center;
+    }
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -380,6 +491,90 @@
           {% endif %}
         </div>
       {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if tx_mix %}
+    <h2>{{ _('What XRPL is being used for') }}</h2>
+    <p class="dim" style="font-size: 0.92rem;">
+      {{ _('Every validated transaction on the ledger belongs to one of a small number of built-in types. This section groups the raw types into plain-English buckets so a first-time visitor can see, at a glance, what the ledger is actually being asked to do.') }}
+    </p>
+
+    <div class="mix-wrap">
+      {# ── Gate 3 concern #1: PROMINENT "count, not dollar value" label
+         at the very top, before any bucket data. ── #}
+      <div class="mix-primary-caveat">
+        <span class="mark" aria-hidden="true">i</span>
+        <span>
+          <strong>{{ _('This is a count of transactions, not dollar value.') }}</strong>
+          {{ _('A single trust-line update and a 10-million-XRP payment each count once. The mix says what the ledger is being asked to do, not how much value is moving.') }}
+        </span>
+      </div>
+
+      {# ── Gate 3 concern #2: "since [date]" honest window when
+         the requested window has not fully accrued yet. Skipped on
+         the cold-start empty-state path (total == 0) — the "No
+         transactions counted yet" placeholder covers it. ── #}
+      {% if tx_mix.is_partial and tx_mix.since_iso and tx_mix.total > 0 %}
+        <div class="mix-since-warn">
+          <strong>{{ _('Honest window:') }}</strong>
+          {{ _('this dashboard started counting on') }}
+          <span class="mono" data-iso="{{ tx_mix.since_iso }}">{{ tx_mix.since_iso }}</span>{{ _('.') }}
+          {% set hours_covered = tx_mix.hours_covered %}
+          {% if hours_covered < 24 %}
+            {{ _('The numbers below cover the last %(hours)s hours, not the full window you selected.', hours=hours_covered) }}
+          {% else %}
+            {{ _('The numbers below cover the last %(days).1f days, not the full window you selected.', days=(hours_covered / 24)) }}
+          {% endif %}
+          {{ _('The full window will fill in as more data accrues — no historical backfill is inserted to hide the gap.') }}
+        </div>
+      {% endif %}
+
+      <div class="mix-window">
+        <span>{{ _('Window:') }}</span>
+        <span class="pills">
+          {% for w in tx_mix.windows %}
+            <a class="pill {% if w.key == tx_mix.window %}on{% endif %}"
+               href="?mix={{ w.key }}">{{ w.label }}</a>
+          {% endfor %}
+        </span>
+        <span class="total">
+          {{ _('%(n)s transactions counted', n='{:,}'.format(tx_mix.total)) }}
+        </span>
+      </div>
+
+      {% if tx_mix.total == 0 %}
+        <p class="mix-empty">
+          {{ _('No transactions counted yet in this window. The stream started recently — refresh in a few minutes.') }}
+        </p>
+      {% else %}
+        <div class="mix-bars">
+          {% for b in tx_mix.buckets %}
+            <div class="mix-bar-row {% if b.count == 0 %}empty{% endif %}">
+              <div>
+                <div class="name">{{ b.label }}</div>
+                <div class="blurb">{{ b.blurb }}</div>
+              </div>
+              <div class="count">{{ '{:,}'.format(b.count) }}</div>
+              <div class="pct">{{ '%.1f'|format(b.pct) }}%</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: {{ b.pct }}%;"></div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="mix-disclosures">
+        <div class="row">
+          <strong>{{ _('Routed swaps count as Payments.') }}</strong>
+          {{ _('XRPL lets a Payment transaction route through the order book or an AMM and settle in a different currency than it started in. It still shows up in the Payments row, not DEX or AMM — so those two rows undercount how often on-chain markets are being touched.') }}
+        </div>
+        <div class="row">
+          <strong>{{ _('Trust-line changes are administrative.') }}</strong>
+          {{ _('Opening, closing, or updating a trust line is housekeeping between a holder and an issuer. A high trust-line count says nothing about demand for the underlying token — it counts changes to the relationship, not activity within it.') }}
+        </div>
+      </div>
     </div>
   {% endif %}
 

@@ -27,6 +27,7 @@ from amm_scan_pools import (
     scan_all_pools_cached,
 )
 from network_pulse import fetch_pulse_cached
+from tx_type_mix import fetch_tx_type_mix, WINDOWS as TX_MIX_WINDOWS, DEFAULT_WINDOW as TX_MIX_DEFAULT_WINDOW
 from xrp_price import fetch_xrp_price_cached
 from cold_storage import fetch_cold_storage_cached
 from escrow_supply import fetch_escrow_locked_cached
@@ -2817,11 +2818,17 @@ def network():
         "ripple": build_unl_diff_view("ripple"),
         "xrplf": build_unl_diff_view("xrplf"),
     }
+    valid_windows = {k for k, _h in TX_MIX_WINDOWS}
+    requested_window = request.args.get("mix", TX_MIX_DEFAULT_WINDOW)
+    if requested_window not in valid_windows:
+        requested_window = TX_MIX_DEFAULT_WINDOW
+    tx_mix = fetch_tx_type_mix(requested_window)
     resp = make_response(render_template(
         "network.html",
         state=state,
         diffs=diffs,
         cache_ttl_seconds=network_state.CACHE_TTL,
+        tx_mix=tx_mix,
     ))
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp

@@ -774,6 +774,63 @@ def amm_pool_event_handler(msg, state):
         pgbridge.prune_amm_pool_events(AMM_POOL_CAP_ROWS)
 
 
+# In-memory batching for tx_type_hourly. Every validated tx increments a
+# (tx_type, hour_bucket) counter here; we flush to Postgres every
+# TX_TYPE_FLUSH_SECONDS. Batching matters at ~10-15 tps mainnet — one PG
+# round-trip per tx would drown the writer connection.
+_TX_TYPE_DELTAS: dict[tuple[str, int], int] = {}
+_TX_TYPE_LAST_FLUSH = 0.0
+TX_TYPE_FLUSH_SECONDS = 30
+
+
+def tx_type_bucket_handler(msg, state):
+    """Every validated tx → (TransactionType, hour_bucket) counter → PG.
+
+    Feeds the "Ledger activity" section on /network. Count-only — the
+    honest measure is "share of transactions", NOT dollar value, and the
+    /network template labels it as such. See tx_type_mix.py for the
+    plain-English category mapping.
+
+    Batches in-memory for TX_TYPE_FLUSH_SECONDS then flushes via one
+    executemany. Failed flushes drop the writer conn but keep the batch,
+    so the next tick retries automatically.
+    """
+    global _TX_TYPE_LAST_FLUSH
+
+    if msg.get("validated") is False:
+        return
+    if msg.get("engine_result") != "tesSUCCESS":
+        # Only count successful txns; failed txns still consume ledger
+        # space but shouldn't skew "what is the network being used for".
+        return
+    tx = extract_tx(msg)
+    ttype = tx.get("TransactionType")
+    if not ttype:
+        return
+
+    hour_bucket = int(time.time()) // 3600
+    key = (ttype, hour_bucket)
+    _TX_TYPE_DELTAS[key] = _TX_TYPE_DELTAS.get(key, 0) + 1
+    state["tx_type_counts_batched"] = state.get("tx_type_counts_batched", 0) + 1
+
+    now = time.time()
+    if now - _TX_TYPE_LAST_FLUSH < TX_TYPE_FLUSH_SECONDS:
+        return
+
+    try:
+        pgbridge.upsert_tx_type_counts(_TX_TYPE_DELTAS)
+        state["tx_type_counts_flushed"] = (
+            state.get("tx_type_counts_flushed", 0) + sum(_TX_TYPE_DELTAS.values())
+        )
+        _TX_TYPE_DELTAS.clear()
+    except Exception as e:
+        log(f"tx_type_bucket_handler flush error: {e}")
+        # Keep _TX_TYPE_DELTAS intact — the next tick retries the same
+        # batch. Bounded because hour_bucket rollover naturally caps the
+        # dict at (num_types × hours_since_last_success).
+    _TX_TYPE_LAST_FLUSH = now
+
+
 HANDLERS = [
     amm_create_handler,
     whale_handler,
@@ -781,6 +838,7 @@ HANDLERS = [
     new_token_handler,
     pulse_handler,
     amm_pool_event_handler,
+    tx_type_bucket_handler,
 ]
 
 

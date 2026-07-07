@@ -794,6 +794,21 @@ CREATE TABLE IF NOT EXISTS nft_existing_snapshot (
     walk_duration_sec    INTEGER NOT NULL,
     source               TEXT    NOT NULL   -- e.g. 's2-clio.ripple.com'
 );
+
+-- Per-hour transaction-type counters populated by tx_type_bucket_handler
+-- in xrpl_stream.py. Feeds the "Ledger activity" section on /network:
+-- what share of on-chain activity is Payments vs DEX offers vs AMM vs
+-- NFT ops vs TrustSet vs Escrow/etc. Count-only — no dollar value. The
+-- data-side counterpart of the count-not-value discipline we already
+-- apply on /tokens. Rolling windows (24h/7d/30d) sum hour buckets.
+CREATE TABLE IF NOT EXISTS tx_type_hourly (
+    tx_type      TEXT   NOT NULL,
+    hour_bucket  BIGINT NOT NULL,
+    count        BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (tx_type, hour_bucket)
+);
+CREATE INDEX IF NOT EXISTS tx_type_hourly_bucket_idx
+    ON tx_type_hourly (hour_bucket DESC);
 """
 
 
@@ -952,6 +967,85 @@ def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1, volume_xrp
     except Exception as e:
         _log_err("upsert_token_volume_failed", e)
         _drop_writer_conn()
+
+
+def upsert_tx_type_counts(deltas):
+    """Increment tx_type_hourly counters from an in-memory batch.
+
+    `deltas` is a dict {(tx_type, hour_bucket): count}. Handler batches
+    counts in RAM for 30-60s then flushes here in one round-trip using
+    executemany + ON CONFLICT DO UPDATE. Silent no-op when PG isn't
+    configured. Individual row failure logged via _log_err rate limiter.
+    """
+    if not deltas:
+        return
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    rows = [(t, b, c) for (t, b), c in deltas.items() if c > 0]
+    if not rows:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO tx_type_hourly (tx_type, hour_bucket, count) "
+                "VALUES (%s, %s, %s) "
+                "ON CONFLICT (tx_type, hour_bucket) DO UPDATE "
+                "SET count = tx_type_hourly.count + EXCLUDED.count",
+                rows,
+            )
+    except Exception as e:
+        _log_err("upsert_tx_type_counts_failed", e)
+        _drop_writer_conn()
+
+
+def read_tx_type_counts(hours_back):
+    """Return {tx_type: total_count} summed over the last `hours_back`
+    hour buckets, plus (earliest_bucket, latest_bucket, distinct_buckets)
+    so callers can render an honest window label.
+
+    Returns ({}, None, None, 0) when PG isn't configured or on error —
+    the caller renders the "collecting data" placeholder instead of
+    silently showing zeros.
+    """
+    if not pg_available():
+        return {}, None, None, 0
+    cutoff = int(time.time() // 3600) - int(hours_back)
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT tx_type, SUM(count) FROM tx_type_hourly "
+                "WHERE hour_bucket >= %s GROUP BY tx_type",
+                (cutoff,),
+            )
+            counts = {row[0]: int(row[1] or 0) for row in cur.fetchall()}
+            cur.execute(
+                "SELECT MIN(hour_bucket), MAX(hour_bucket), "
+                "       COUNT(DISTINCT hour_bucket) FROM tx_type_hourly "
+                "WHERE hour_bucket >= %s",
+                (cutoff,),
+            )
+            row = cur.fetchone() or (None, None, 0)
+            return counts, row[0], row[1], int(row[2] or 0)
+    except Exception as e:
+        _log_err("read_tx_type_counts_failed", e)
+        return {}, None, None, 0
+
+
+def read_tx_type_first_bucket():
+    """Earliest hour_bucket ever recorded in tx_type_hourly, or None.
+    Used to render the honest "since [date]" label while windows have
+    not fully accrued yet."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT MIN(hour_bucket) FROM tx_type_hourly")
+            row = cur.fetchone()
+            return row[0] if row else None
+    except Exception as e:
+        _log_err("read_tx_type_first_bucket_failed", e)
+        return None
 
 
 def write_amm_pool_event(ts, amm_account, event_type, magnitude_xrp_drops=None):
