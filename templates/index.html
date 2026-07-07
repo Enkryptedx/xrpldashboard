@@ -442,6 +442,11 @@
     .attest-domain { color: var(--text-2); border-bottom: 1px dotted var(--text-3);
                      text-decoration: none; }
     .attest-domain:hover { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .sibling-pill { display: inline-block; margin-left: 6px;
+                    padding: 1px 6px; border-radius: 8px;
+                    background: var(--surface-2, rgba(255,255,255,0.05));
+                    color: var(--text-3); font-size: 0.7em; font-weight: 400;
+                    letter-spacing: 0.02em; vertical-align: middle; }
     .preview-row .right { color: var(--text-2); font-family: var(--mono);
                           font-size: var(--fs-xs); white-space: nowrap; }
     .preview-row .amt { color: var(--text); font-weight: 600;
@@ -993,7 +998,7 @@
             {% for t in top_tokens %}
             <div class="preview-row">
               <div class="left">
-                <div class="primary">{{ t.display }}</div>
+                <div class="primary">{{ t.display }}{% if t.sibling_of %} <span class="sibling-pill" title="{{ _('Same issuer as %(other)s', other=t.sibling_of) }}">{{ _('same issuer as %(other)s', other=t.sibling_of) }}</span>{% endif %}</div>
                 <div class="secondary">{{ t.issuer_label or t.issuer_short }}{% if t.issuer_attested_domain %} <span class="attest-tick">✓</span> <a href="https://{{ t.issuer_attested_domain }}" target="_blank" rel="noopener noreferrer" class="attest-domain">{{ t.issuer_attested_domain }}</a>{% endif %}</div>
               </div>
               <div class="right">{{ "{:,}".format(t.trades) }} {{ _('trades') }}</div>

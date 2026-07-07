@@ -1042,6 +1042,7 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
         except Exception:
             pg_labels = {}
     out = []
+    seen_issuers: dict[str, str] = {}
     for cur, iss, trades in rows:
         meta = tokens_meta.get((cur, iss)) or {}
         if meta:
@@ -1053,12 +1054,16 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
         attested_domain = None
         if lbl.get("source") == "toml":
             attested_domain = (lbl.get("extra") or {}).get("domain")
+        sibling_of = seen_issuers.get(iss) if iss else None
+        if iss and iss not in seen_issuers:
+            seen_issuers[iss] = display
         out.append({
             "display": display,
             "issuer": iss,
             "issuer_short": _short_addr(iss),
             "issuer_label": lbl.get("name"),
             "issuer_attested_domain": attested_domain,
+            "sibling_of": sibling_of,
             "trades": trades,
         })
     return out

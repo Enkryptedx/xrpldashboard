@@ -106,8 +106,17 @@
     "currency_hex": "RPR",
     "currency_display": "RPR",
     "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
-    "category": "native_utility",
-    "verified_via": "TODO_curation_pass"
+    "category": "defi",
+    "_note": "Reaper Financial DeFi token (Reaper). Issuer runs two tickers (RPR + ASC) off same address.",
+    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
+  },
+  "ASC:r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R": {
+    "currency_hex": "ASC",
+    "currency_display": "ASC",
+    "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
+    "category": "defi",
+    "_note": "Reaper Financial DeFi token (Ascension). Same issuer as RPR.",
+    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
   },
   "5852646F67650000000000000000000000000000:rLqUC2eCPohYvJCEBJ77eCCqVL2uEiczjA": {
     "currency_hex": "5852646F67650000000000000000000000000000",

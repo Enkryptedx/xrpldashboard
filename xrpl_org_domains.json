@@ -9,6 +9,10 @@
     "xrpl-labs.com": {
       "default_category": "other",
       "_note": "XRPL Labs (Xaman/Xumm wallet team)."
+    },
+    "reaper.financial": {
+      "default_category": "issuer",
+      "_note": "Reaper Financial — DeFi issuer running two tickers (RPR + ASC) off r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R. Uses [[TOKENS]] section, no [[ACCOUNTS]] block."
     }
   },
   "_known_failures": {
