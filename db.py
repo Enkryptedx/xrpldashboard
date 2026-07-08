@@ -896,6 +896,70 @@ CREATE TABLE IF NOT EXISTS ledger_definitions_history (
 );
 CREATE INDEX IF NOT EXISTS ledger_definitions_history_ts_idx
     ON ledger_definitions_history (fetched_at DESC);
+
+-- Phase 1b Coverage Register.
+--
+-- coverage_labels — curated editorial mapping from a vocabulary key
+-- (kind, name) to a display label + linked page. Small (~100 rows).
+-- Populated once at ship via seed_coverage_labels.py so day-one doesn't
+-- open with every seen type in the amber "unlabeled" state drowning the
+-- genuinely interesting defined-but-unseen greys (Loan, Vault, Delegate,
+-- Batch et al. awaiting first-ever XRPL sighting).
+CREATE TABLE IF NOT EXISTS coverage_labels (
+    kind        TEXT NOT NULL CHECK (kind IN ('tx','entry')),
+    name        TEXT NOT NULL,
+    label       TEXT NOT NULL,
+    short_desc  TEXT NOT NULL,
+    linked_page TEXT,
+    updated_at  BIGINT NOT NULL,
+    PRIMARY KEY (kind, name)
+);
+
+-- Escrow-lesson enforcement table. Every walker that reads from the XRPL
+-- MUST have a row here; register renders UNDECLARED (its own alarm class)
+-- for any walker in walker_health missing from this table. The register's
+-- opening honesty concession — cold_storage's 20-account seed, the
+-- credentials+PD 14-account seed, the nft_activity 2026-04-01 time cutoff
+-- — surfaces as declared PARTIAL rows rather than the tool announcing
+-- more coverage than it has.
+--
+-- updated_at is informational only, rendered as "declared: YYYY-MM-DD".
+-- Never freshness-gated — a declaration has no cadence, and 2× staleness
+-- makes no sense for a curation fact. Staleness comes only from
+-- walker_health.last_success_at on the walker itself.
+CREATE TABLE IF NOT EXISTS walker_scope_declarations (
+    walker_name     TEXT PRIMARY KEY,
+    declared_scope  TEXT NOT NULL,
+    filter_note     TEXT NOT NULL,
+    honest_partial  BOOLEAN NOT NULL,
+    updated_at      BIGINT NOT NULL
+);
+
+-- Append-only history of the coverage-register state. Written by the
+-- dedicated coverage_register_walker (own walker_health row), NOT by
+-- request-side reads — computed-on-read gives a live view but the
+-- artifact of the week nobody visited needs its own owner. Per the
+-- HIGH-RISK-writer discipline codified 2026-07: named writer, watermark,
+-- not an implication.
+--
+-- Writer appends when state differs from the most recent row OR >24h
+-- has elapsed (guarantee floor so the record exists even in quiescent
+-- weeks). Day-zero row seeded from the first_seen_baseline artifact.
+CREATE TABLE IF NOT EXISTS coverage_register_history (
+    id                    BIGSERIAL PRIMARY KEY,
+    fetched_at            BIGINT NOT NULL,
+    definitions_hash      TEXT NOT NULL,
+    defined_tx_count      INT NOT NULL,
+    defined_entry_count   INT NOT NULL,
+    seen_tx_count         INT NOT NULL,
+    seen_entry_count      INT NOT NULL,
+    undefined_tx          JSONB NOT NULL,
+    undefined_entry       JSONB NOT NULL,
+    new_since_last        JSONB NOT NULL,
+    stale_walkers         JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS coverage_register_history_ts_idx
+    ON coverage_register_history (fetched_at DESC);
 """
 
 
@@ -1370,6 +1434,397 @@ def write_ledger_definitions(hash_val, fetched_at, build_version,
         return {"changed": False, "hash_prev": None,
                 "tx_types_added": [], "tx_types_removed": [],
                 "entry_types_added": [], "entry_types_removed": []}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 1b Coverage Register helpers
+# ─────────────────────────────────────────────────────────────────────
+
+
+def read_walker_scope_declarations():
+    """Return {walker_name: dict} of every declared scope. Consumed by the
+    Coverage Register to render PARTIAL badges and by the walker itself to
+    flag walker_health rows lacking a declaration (UNDECLARED — its own
+    alarm class, discharges the escrow-lesson obligation)."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT walker_name, declared_scope, filter_note, "
+                "honest_partial, updated_at "
+                "FROM walker_scope_declarations"
+            )
+            return {
+                row[0]: {
+                    "walker_name": row[0],
+                    "declared_scope": row[1],
+                    "filter_note": row[2],
+                    "honest_partial": bool(row[3]),
+                    "updated_at": int(row[4]),
+                }
+                for row in cur.fetchall()
+            }
+    except Exception as e:
+        _log_err("read_walker_scope_declarations_failed", e)
+        return {}
+
+
+def upsert_walker_scope_declaration(walker_name, declared_scope,
+                                    filter_note, honest_partial):
+    """Seed / update a single walker's declared scope. `updated_at` is
+    stamped from time.time() at write; rendered informationally on the
+    register, never freshness-gated."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO walker_scope_declarations "
+                "(walker_name, declared_scope, filter_note, honest_partial, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s) "
+                "ON CONFLICT (walker_name) DO UPDATE SET "
+                " declared_scope = EXCLUDED.declared_scope, "
+                " filter_note    = EXCLUDED.filter_note, "
+                " honest_partial = EXCLUDED.honest_partial, "
+                " updated_at     = EXCLUDED.updated_at",
+                (walker_name, declared_scope, filter_note,
+                 bool(honest_partial), int(time.time())),
+            )
+            conn.commit()
+            return True
+    except Exception as e:
+        _log_err("upsert_walker_scope_declaration_failed", e)
+        return False
+
+
+def read_coverage_labels():
+    """Return {(kind, name): dict} of curated display labels."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT kind, name, label, short_desc, linked_page, updated_at "
+                "FROM coverage_labels"
+            )
+            return {
+                (row[0], row[1]): {
+                    "kind": row[0],
+                    "name": row[1],
+                    "label": row[2],
+                    "short_desc": row[3],
+                    "linked_page": row[4],
+                    "updated_at": int(row[5]),
+                }
+                for row in cur.fetchall()
+            }
+    except Exception as e:
+        _log_err("read_coverage_labels_failed", e)
+        return {}
+
+
+def upsert_coverage_label(kind, name, label, short_desc, linked_page=None):
+    """Seed / update a curated (kind, name) label. Idempotent."""
+    if not pg_available():
+        return False
+    if kind not in ("tx", "entry"):
+        raise ValueError(f"kind must be 'tx' or 'entry', got {kind!r}")
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO coverage_labels "
+                "(kind, name, label, short_desc, linked_page, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (kind, name) DO UPDATE SET "
+                " label       = EXCLUDED.label, "
+                " short_desc  = EXCLUDED.short_desc, "
+                " linked_page = EXCLUDED.linked_page, "
+                " updated_at  = EXCLUDED.updated_at",
+                (kind, name, label, short_desc, linked_page, int(time.time())),
+            )
+            conn.commit()
+            return True
+    except Exception as e:
+        _log_err("upsert_coverage_label_failed", e)
+        return False
+
+
+def read_coverage_register_state():
+    """Compute the three-way diff on read from Phase 0 (vocabulary),
+    Phase 1a (seen tables), coverage_labels, walker_scope_declarations,
+    and walker_health.
+
+    Returns dict:
+      {
+        "definitions": {hash, build_version, fetched_at,
+                        defined_tx_names, defined_entry_names},
+        "seen_tx":     [{name, first_seen_ledger, last_seen_ledger,
+                         last_seen_ts, count_total, label?, short_desc?,
+                         linked_page?}, ...],
+        "seen_entry":  [{name, ..., count_created, count_modified,
+                         count_deleted, label?, ...}, ...],
+        "defined_but_unseen_tx":    [name, ...],
+        "defined_but_unseen_entry": [name, ...],
+        "seen_but_undefined_tx":    [name, ...],  # SCREAM state
+        "seen_but_undefined_entry": [name, ...],
+        "unlabeled_tx":             [name, ...],  # amber curation-debt
+        "unlabeled_entry":          [name, ...],
+        "walker_scopes":            {walker_name: {...}},
+        "walker_health":            {walker_name: {ok, last_success_at,
+                                                   cadence_seconds,
+                                                   is_stale, undeclared}},
+      }
+
+    Returns None if PG unreachable — caller should render "REGISTER
+    UNAVAILABLE" as the honest degrade state.
+    """
+    if not pg_available():
+        return None
+    try:
+        defs = read_ledger_definitions()
+        if defs is None:
+            return None
+        defined_tx = set((defs.get("tx_types") or {}).keys())
+        defined_entry = set((defs.get("entry_types") or {}).keys())
+
+        labels = read_coverage_labels()
+        scopes = read_walker_scope_declarations()
+
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT tx_type, first_seen_ledger, first_seen_ts, "
+                "last_seen_ledger, last_seen_ts, count_total "
+                "FROM tx_type_seen ORDER BY tx_type"
+            )
+            seen_tx_rows = cur.fetchall()
+
+            cur.execute(
+                "SELECT entry_type, first_seen_ledger, first_seen_ts, "
+                "last_seen_ledger, last_seen_ts, "
+                "count_created, count_modified, count_deleted "
+                "FROM ledger_entry_type_seen ORDER BY entry_type"
+            )
+            seen_entry_rows = cur.fetchall()
+
+            cur.execute(
+                "SELECT walker_name, last_run_ok, last_success_at, "
+                "cadence_seconds, consecutive_failures "
+                "FROM walker_health"
+            )
+            wh_rows = cur.fetchall()
+
+        seen_tx_names = {r[0] for r in seen_tx_rows}
+        seen_entry_names = {r[0] for r in seen_entry_rows}
+
+        def _tx_row(r):
+            name = r[0]
+            lab = labels.get(("tx", name))
+            return {
+                "name": name,
+                "first_seen_ledger": int(r[1]),
+                "first_seen_ts": int(r[2]),
+                "last_seen_ledger": int(r[3]),
+                "last_seen_ts": int(r[4]),
+                "count_total": int(r[5]),
+                "label": lab["label"] if lab else None,
+                "short_desc": lab["short_desc"] if lab else None,
+                "linked_page": lab["linked_page"] if lab else None,
+                "labeled": lab is not None,
+                "defined": name in defined_tx,
+            }
+
+        def _entry_row(r):
+            name = r[0]
+            lab = labels.get(("entry", name))
+            return {
+                "name": name,
+                "first_seen_ledger": int(r[1]),
+                "first_seen_ts": int(r[2]),
+                "last_seen_ledger": int(r[3]),
+                "last_seen_ts": int(r[4]),
+                "count_created": int(r[5]),
+                "count_modified": int(r[6]),
+                "count_deleted": int(r[7]),
+                "label": lab["label"] if lab else None,
+                "short_desc": lab["short_desc"] if lab else None,
+                "linked_page": lab["linked_page"] if lab else None,
+                "labeled": lab is not None,
+                "defined": name in defined_entry,
+            }
+
+        seen_tx = [_tx_row(r) for r in seen_tx_rows]
+        seen_entry = [_entry_row(r) for r in seen_entry_rows]
+
+        now = int(time.time())
+        wh = {}
+        for r in wh_rows:
+            wname = r[0]
+            last_success = r[2]
+            cadence = r[3]
+            last_success_ts = (
+                int(last_success.timestamp()) if last_success else None
+            )
+            is_stale = False
+            if cadence and last_success_ts is not None:
+                is_stale = (now - last_success_ts) > (2 * int(cadence))
+            elif last_success_ts is None:
+                is_stale = True
+            wh[wname] = {
+                "walker_name": wname,
+                "last_run_ok": bool(r[1]),
+                "last_success_ts": last_success_ts,
+                "cadence_seconds": int(cadence) if cadence else None,
+                "consecutive_failures": int(r[4]),
+                "is_stale": is_stale,
+                "undeclared": wname not in scopes,
+            }
+
+        # Flat lookup maps so the template can resolve labels for
+        # defined-but-unseen rows without re-scanning seen_tx / seen_entry.
+        labels_tx = {
+            name: {
+                "label": lab["label"],
+                "short_desc": lab["short_desc"],
+                "linked_page": lab["linked_page"],
+            }
+            for (k, name), lab in labels.items() if k == "tx"
+        }
+        labels_entry = {
+            name: {
+                "label": lab["label"],
+                "short_desc": lab["short_desc"],
+                "linked_page": lab["linked_page"],
+            }
+            for (k, name), lab in labels.items() if k == "entry"
+        }
+
+        return {
+            "definitions": {
+                "hash": defs.get("hash"),
+                "build_version": defs.get("build_version"),
+                "fetched_at": defs.get("fetched_at"),
+                "defined_tx_names": sorted(defined_tx),
+                "defined_entry_names": sorted(defined_entry),
+                "defined_tx_count": len(defined_tx),
+                "defined_entry_count": len(defined_entry),
+            },
+            "seen_tx": seen_tx,
+            "seen_entry": seen_entry,
+            "defined_but_unseen_tx": sorted(defined_tx - seen_tx_names),
+            "defined_but_unseen_entry": sorted(defined_entry - seen_entry_names),
+            "seen_but_undefined_tx": sorted(seen_tx_names - defined_tx),
+            "seen_but_undefined_entry": sorted(seen_entry_names - defined_entry),
+            "unlabeled_tx": [
+                r["name"] for r in seen_tx if not r["labeled"]
+            ],
+            "unlabeled_entry": [
+                r["name"] for r in seen_entry if not r["labeled"]
+            ],
+            "labels_tx": labels_tx,
+            "labels_entry": labels_entry,
+            "walker_scopes": scopes,
+            "walker_health": wh,
+        }
+    except Exception as e:
+        _log_err("read_coverage_register_state_failed", e)
+        return None
+
+
+def append_coverage_register_history(state, min_interval_seconds=86400):
+    """Append a snapshot row iff state differs from the most recent row
+    OR min_interval_seconds elapsed since last row (guarantee floor for
+    the record artifact in quiescent weeks). Called only by
+    coverage_register_walker — no request-side writers.
+
+    Returns dict: {"appended": bool, "reason": str}."""
+    if not pg_available() or state is None:
+        return {"appended": False, "reason": "unavailable"}
+    now = int(time.time())
+    payload = {
+        "definitions_hash": state["definitions"]["hash"],
+        "defined_tx_count": state["definitions"]["defined_tx_count"],
+        "defined_entry_count": state["definitions"]["defined_entry_count"],
+        "seen_tx_count": len(state["seen_tx"]),
+        "seen_entry_count": len(state["seen_entry"]),
+        "undefined_tx": state["seen_but_undefined_tx"],
+        "undefined_entry": state["seen_but_undefined_entry"],
+        "stale_walkers": sorted(
+            w for w, h in state["walker_health"].items() if h["is_stale"]
+        ),
+    }
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT fetched_at, definitions_hash, defined_tx_count, "
+                "defined_entry_count, seen_tx_count, seen_entry_count, "
+                "undefined_tx, undefined_entry, stale_walkers "
+                "FROM coverage_register_history "
+                "ORDER BY fetched_at DESC LIMIT 1"
+            )
+            prev = cur.fetchone()
+
+            new_since_last = []
+            if prev is None:
+                reason = "seed"
+                new_since_last = sorted(
+                    [f"tx:{r['name']}" for r in state["seen_tx"]]
+                    + [f"entry:{r['name']}" for r in state["seen_entry"]]
+                )
+            else:
+                prev_state = {
+                    "definitions_hash": prev[1],
+                    "defined_tx_count": int(prev[2]),
+                    "defined_entry_count": int(prev[3]),
+                    "seen_tx_count": int(prev[4]),
+                    "seen_entry_count": int(prev[5]),
+                    "undefined_tx": list(prev[6] or []),
+                    "undefined_entry": list(prev[7] or []),
+                    "stale_walkers": list(prev[8] or []),
+                }
+                differs = any(
+                    payload[k] != prev_state[k] for k in prev_state
+                )
+                elapsed = now - int(prev[0])
+                if differs:
+                    reason = "state_changed"
+                    prev_tx_count = prev_state["seen_tx_count"]
+                    prev_entry_count = prev_state["seen_entry_count"]
+                    if (payload["seen_tx_count"] > prev_tx_count
+                            or payload["seen_entry_count"] > prev_entry_count):
+                        new_since_last = [
+                            f"tx_delta:+{payload['seen_tx_count']-prev_tx_count}",
+                            f"entry_delta:+{payload['seen_entry_count']-prev_entry_count}",
+                        ]
+                elif elapsed >= min_interval_seconds:
+                    reason = "24h_floor"
+                else:
+                    return {"appended": False, "reason": "no_change"}
+
+            cur.execute(
+                "INSERT INTO coverage_register_history "
+                "(fetched_at, definitions_hash, defined_tx_count, "
+                " defined_entry_count, seen_tx_count, seen_entry_count, "
+                " undefined_tx, undefined_entry, new_since_last, "
+                " stale_walkers) "
+                "VALUES (%s, %s, %s, %s, %s, %s, "
+                "        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb)",
+                (now,
+                 payload["definitions_hash"],
+                 payload["defined_tx_count"],
+                 payload["defined_entry_count"],
+                 payload["seen_tx_count"],
+                 payload["seen_entry_count"],
+                 json.dumps(payload["undefined_tx"]),
+                 json.dumps(payload["undefined_entry"]),
+                 json.dumps(new_since_last),
+                 json.dumps(payload["stale_walkers"])),
+            )
+            conn.commit()
+            return {"appended": True, "reason": reason}
+    except Exception as e:
+        _log_err("append_coverage_register_history_failed", e)
+        return {"appended": False, "reason": f"exception:{type(e).__name__}"}
 
 
 def write_amm_pool_event(ts, amm_account, event_type, magnitude_xrp_drops=None):

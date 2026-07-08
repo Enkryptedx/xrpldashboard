@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.coverage_register_walker</string>
+
+    <key>Comment</key>
+    <string>Phase 1b history writer for the Coverage Register. Reads Phase 0 (ledger_definitions), Phase 1a (tx_type_seen + ledger_entry_type_seen), coverage_labels, walker_scope_declarations, and walker_health; computes the three-way diff; appends to coverage_register_history when state differs OR >24h has elapsed. Own walker_health row (walker_name=coverage_register_walker) so the register's own freshness is legibly stamped separate from ledger_definitions_walker. StartInterval (rolling) preferred over StartCalendarInterval per feedback_macos_launchd_startinterval_over_calendar.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_coverage_register_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 6 hours — mirrors ledger_definitions_walker cadence so the
+         "definitions_hash still current" invariant holds at write time.
+         If Phase 0 lags, this walker records state honestly against the
+         last-known-good vocabulary. 24h floor in write logic guarantees
+         at least one history row per calendar day. -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/coverage_register_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/coverage_register_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

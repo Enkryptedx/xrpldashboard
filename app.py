@@ -5039,6 +5039,143 @@ def api_whales_radar_stats():
     )
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Phase 1b Coverage Register — internal-first surface.
+#
+# Charlie call at Gate 1: internal-first for one week of clean three-way
+# diff before flipping to public /coverage. The register is the brand's
+# boldest honesty claim; it should demonstrably not lie before it gets a
+# public URL.
+#
+# Auth: HTTP Basic against INTERNAL_ADMIN_USER + INTERNAL_ADMIN_PASS.
+# NOT a query-param secret — those leak into access logs, referrer
+# headers, and pasted URLs, which is exactly the wrong look on the
+# honesty page. When creds are unset OR wrong, return 404 (not 401) so
+# the endpoint's existence isn't confirmed to unauthenticated pokes.
+#
+# Publishability: unknown-type samples show field NAMES only, never
+# values. Memo/URI/Blob/Signature/TxnSignature explicitly excluded by
+# name allowlist. Fails safe on novelty (unrecognized field name with
+# unsafe-suffix pattern → blocked by name too).
+# ─────────────────────────────────────────────────────────────────────
+
+# Field names blocked from even name-level display for unknown-type
+# rendering. Memos/URIs/Blobs can carry arbitrary user payload; even the
+# field name is defensible to omit since the same content is available
+# via public explorers if a genuine forensic need arises.
+_UNKNOWN_TYPE_UNSAFE_FIELDS = frozenset({
+    "Memos", "Memo", "URI", "Blob",
+    "Signature", "TxnSignature", "Signers", "SigningPubKey",
+})
+_UNKNOWN_TYPE_UNSAFE_SUFFIXES = ("Memo", "URI", "Blob", "Signature", "Sig")
+
+
+def _publishable_field_names(names):
+    """Return the sanitized field-name list for an unknown-type sample.
+    Blocks the explicit unsafe set and anything matching an unsafe
+    suffix pattern (defense against a novel field name we haven't seen)."""
+    safe = []
+    for n in names or []:
+        if n in _UNKNOWN_TYPE_UNSAFE_FIELDS:
+            continue
+        if any(n.endswith(suf) for suf in _UNKNOWN_TYPE_UNSAFE_SUFFIXES):
+            continue
+        safe.append(n)
+    return sorted(safe)
+
+
+def _internal_admin_ok():
+    """HTTP Basic auth gate for /internal/*. Env-driven; when either var
+    is unset the route acts as if it doesn't exist (returns 404 to the
+    caller). Constant-time compare on both fields to avoid timing
+    oracles on the username."""
+    user = os.environ.get("INTERNAL_ADMIN_USER", "").strip()
+    pw = os.environ.get("INTERNAL_ADMIN_PASS", "").strip()
+    if not user or not pw:
+        return False
+    auth = request.authorization
+    if not auth or not auth.username or not auth.password:
+        return False
+    return (
+        hmac.compare_digest(auth.username, user)
+        and hmac.compare_digest(auth.password, pw)
+    )
+
+
+@app.route("/internal/coverage")
+def internal_coverage():
+    """Coverage Register — three-way diff between the vocabulary the
+    local rippled node advertises (Phase 0) and the types the live stream
+    has actually observed (Phase 1a), cross-referenced against the
+    curated coverage_labels and the walker_scope_declarations escrow-
+    lesson inventory.
+
+    Row states rendered:
+      • defined-but-unseen — grey; awaiting first-ever XRPL sighting
+      • seen-and-labeled — green; live count + last_seen + linked_page
+      • seen-and-unlabeled — amber; curation debt (pressure to keep
+        labels current)
+      • seen-but-undefined — RED, persistent; the 1a SCREAM state
+        finally gets its durable surface here
+      • walker STALE — struck-through if walker_health.last_success_at
+        is >2× cadence_seconds ago
+      • walker UNDECLARED — RED; any walker in walker_health missing a
+        walker_scope_declarations row (structural version of the escrow
+        lesson: undeclared filter is undeclared coverage)
+
+    Freshness: every row footprints its provenance chain and greys out
+    when any hop is stale.
+    """
+    if not _internal_admin_ok():
+        # Return 404 (not 401) so unauthenticated pokes can't confirm
+        # the endpoint exists. Authenticated failures via curl/browser
+        # will look like the page just doesn't exist.
+        abort(404)
+
+    state = db.read_coverage_register_state()
+    if state is None:
+        # Honest degrade — never claim awareness the sensors aren't
+        # currently delivering.
+        return render_template(
+            "coverage_register.html",
+            state=None,
+            unavailable_reason=(
+                "Postgres unreachable or Phase 0 singleton missing. "
+                "Register cannot be computed. Check "
+                "ledger_definitions_walker health first."
+            ),
+        )
+
+    # Compose the render packet. Row-level provenance so the template
+    # doesn't have to compute freshness inline.
+    now = int(time.time())
+
+    def _stale_for(walker_name):
+        wh = state["walker_health"].get(walker_name)
+        if wh is None:
+            return {"stale": True, "reason": "no walker_health row",
+                    "undeclared": walker_name not in state["walker_scopes"]}
+        return {
+            "stale": wh["is_stale"],
+            "reason": None if not wh["is_stale"] else "past 2× cadence",
+            "undeclared": wh["undeclared"],
+        }
+
+    # Enrich unknown-type rows (SCREAM state) with sanitized field-name
+    # samples pulled from the seen_entry / seen_tx rows. First revision:
+    # no per-object sample payload yet — Phase 1a doesn't archive
+    # examples. When it does (backlog), the same _publishable_field_names
+    # rule applies here.
+    return render_template(
+        "coverage_register.html",
+        state=state,
+        now=now,
+        stale_for=_stale_for,
+        publishable_field_names=_publishable_field_names,
+        unavailable_reason=None,
+    )
+
+
 @app.route("/healthz")
 @app.route("/api/health")
 def healthz():

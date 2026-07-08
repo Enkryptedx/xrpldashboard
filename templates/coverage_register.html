@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>coverage register · internal · xrpldashboard</title>
+  <meta name="robots" content="noindex,nofollow">
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2; --muted: #8090b0; --dim: #7a8ca8;
+      --cyan: #22d3ee; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+      --grey: #4a5468;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 14px; line-height: 1.55; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px 0; }
+    h2 { font-size: 1.05rem; margin: 28px 0 10px 0; color: var(--text); }
+    h2 .count { color: var(--muted); font-weight: 400; font-size: 0.9rem; margin-left: 6px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+    .banner { padding: 12px 16px; border-radius: 10px; margin-bottom: 14px;
+              font-family: var(--mono); font-size: 0.9rem; }
+    .banner.scream { background: rgba(239,68,68,0.12); border: 1px solid var(--red);
+                     color: #ffb4b4; }
+    .banner.warn   { background: rgba(245,158,11,0.10); border: 1px solid var(--amber);
+                     color: #ffd88a; }
+    .banner.ok     { background: rgba(34,197,94,0.10); border: 1px solid var(--green);
+                     color: #a3e9b8; }
+    .banner.info   { background: rgba(34,211,238,0.08); border: 1px solid var(--cyan);
+                     color: #a5edf6; }
+    .kv { display: grid; grid-template-columns: 180px 1fr; gap: 4px 12px; font-size: 0.9rem; }
+    .kv .k { color: var(--muted); }
+    .kv .v { color: var(--text); font-family: var(--mono); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left;
+             vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; font-size: 0.78rem;
+         text-transform: uppercase; letter-spacing: 0.03em; }
+    td.name { font-family: var(--mono); color: var(--text); }
+    td.short { color: var(--muted); font-size: 0.85rem; }
+    td.num { font-family: var(--mono); color: var(--dim); text-align: right; white-space: nowrap; }
+    tr.stale td { text-decoration: line-through; color: var(--dim); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+            font-family: var(--mono); }
+    .pill.green { background: rgba(34,197,94,0.15); color: var(--green); }
+    .pill.amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .pill.red   { background: rgba(239,68,68,0.15); color: var(--red); }
+    .pill.grey  { background: rgba(122,140,168,0.15); color: var(--dim); }
+    .pill.cyan  { background: rgba(34,211,238,0.15); color: var(--cyan); }
+    .footprint { color: var(--dim); font-family: var(--mono); font-size: 0.72rem; }
+    .foot { margin-top: 40px; color: var(--dim); font-size: 0.75rem; text-align: center; }
+    .field-list { font-family: var(--mono); color: var(--muted); font-size: 0.78rem;
+                  word-break: break-word; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+    <div>
+      <h1>Coverage Register <span style="color:var(--muted);font-weight:400;font-size:0.75em;">internal · pre-public soak</span></h1>
+      <div class="sub">Three-way diff: what the node knows vs. what the stream has seen vs. what the site has curated.</div>
+    </div>
+    <div class="footprint">rendered {{ now }} · <a href="/health">/health</a></div>
+  </div>
+
+  {% if unavailable_reason %}
+    <div class="banner scream">REGISTER UNAVAILABLE — {{ unavailable_reason }}</div>
+  {% else %}
+
+    {# ─── SCREAM-tier: seen-but-undefined types ───────────────────── #}
+    {% set undef_tx = state.seen_but_undefined_tx %}
+    {% set undef_entry = state.seen_but_undefined_entry %}
+    {% if undef_tx or undef_entry %}
+      <div class="banner scream">
+        !!! SEEN-BUT-UNDEFINED &mdash; {{ (undef_tx|length) + (undef_entry|length) }}
+        type(s) observed on-chain but absent from the node's vocabulary snapshot.
+        Persistent alarm until Phase 0 walker catches up with a rippled version bump
+        OR (rare) the observation was a stream / parser bug.
+        <div style="margin-top:6px;">
+          {% if undef_tx %}tx: <span class="field-list">{{ undef_tx|join(', ') }}</span><br>{% endif %}
+          {% if undef_entry %}entry: <span class="field-list">{{ undef_entry|join(', ') }}</span>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# ─── SCREAM-tier: undeclared walkers ─────────────────────────── #}
+    {% set undecl = [] %}
+    {% for wname, wh in state.walker_health.items() if wh.undeclared %}{% set _ = undecl.append(wname) %}{% endfor %}
+    {% if undecl %}
+      <div class="banner scream">
+        !!! UNDECLARED WALKERS &mdash; walker_health rows without a
+        walker_scope_declarations entry. This is the escrow lesson recurring
+        inside the tool built to prevent it.
+        <div style="margin-top:6px;"><span class="field-list">{{ undecl|join(', ') }}</span></div>
+      </div>
+    {% endif %}
+
+    {# ─── Definitions provenance ──────────────────────────────────── #}
+    <div class="card">
+      <h2 style="margin-top:0;">Vocabulary snapshot (Phase 0)</h2>
+      <div class="kv">
+        <div class="k">definitions_hash</div>
+        <div class="v">{{ state.definitions.hash[:16] }}..</div>
+        <div class="k">build_version</div>
+        <div class="v">{{ state.definitions.build_version or '—' }}</div>
+        <div class="k">fetched_at</div>
+        <div class="v">{{ state.definitions.fetched_at }} ({{ (now - state.definitions.fetched_at) // 60 }} min ago)</div>
+        <div class="k">defined_tx_types</div>
+        <div class="v">{{ state.definitions.defined_tx_count }}</div>
+        <div class="k">defined_entry_types</div>
+        <div class="v">{{ state.definitions.defined_entry_count }}</div>
+      </div>
+    </div>
+
+    {# ─── Escrow-lesson inventory: walker scope declarations ─────── #}
+    <h2>Walker inventory <span class="count">— {{ state.walker_scopes|length }} declared, {{ undecl|length }} undeclared, {{ state.walker_health.values()|selectattr('is_stale')|list|length }} stale</span></h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>walker</th>
+            <th>scope</th>
+            <th>filter</th>
+            <th>freshness</th>
+            <th>class</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wname, scope in state.walker_scopes.items()|sort %}
+            {% set wh = state.walker_health.get(wname) %}
+            {% set is_stale = wh and wh.is_stale %}
+            <tr {% if is_stale %}class="stale"{% endif %}>
+              <td class="name">{{ wname }}</td>
+              <td>{{ scope.declared_scope }}</td>
+              <td class="short">{{ scope.filter_note }}</td>
+              <td class="footprint">
+                {% if wh and wh.last_success_ts %}
+                  {{ (now - wh.last_success_ts) // 60 }} min ago
+                  {% if wh.cadence_seconds %} · cadence {{ wh.cadence_seconds // 60 }}m{% endif %}
+                {% elif wh %}
+                  never
+                {% else %}
+                  no walker_health row
+                {% endif %}
+              </td>
+              <td>
+                {% if scope.honest_partial %}
+                  <span class="pill amber">PARTIAL</span>
+                {% else %}
+                  <span class="pill green">FULL</span>
+                {% endif %}
+                {% if is_stale %}<span class="pill red">STALE</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          {# UNDECLARED walkers rendered at the bottom in RED #}
+          {% for wname, wh in state.walker_health.items() if wh.undeclared %}
+            <tr>
+              <td class="name">{{ wname }}</td>
+              <td colspan="3" class="short" style="color:var(--red);">
+                No walker_scope_declarations row. This walker's coverage claim is unverified —
+                add a row via seed_walker_scope_declarations.py before the next ship.
+              </td>
+              <td><span class="pill red">UNDECLARED</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ─── LedgerEntryType three-way diff ──────────────────────────── #}
+    <h2>LedgerEntryType coverage
+      <span class="count">— {{ state.seen_entry|length }} seen / {{ state.definitions.defined_entry_count }} defined ({{ state.defined_but_unseen_entry|length }} awaiting first sighting)</span>
+    </h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>type</th>
+            <th>label / status</th>
+            <th class="num">c</th>
+            <th class="num">m</th>
+            <th class="num">d</th>
+            <th class="footprint">first seen · last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# 1. seen-but-undefined (SCREAM row, up top) #}
+          {% for name in state.seen_but_undefined_entry %}
+            {% set row = state.seen_entry|selectattr('name','equalto',name)|first %}
+            <tr style="background:rgba(239,68,68,0.06);">
+              <td class="name">{{ name }} <span class="pill red">SEEN-BUT-UNDEFINED</span></td>
+              <td class="short">
+                Observed on-chain but not in vocabulary snapshot. Fields (sanitized):
+                <span class="field-list">— (Phase 1a does not yet archive samples)</span>
+              </td>
+              <td class="num">{{ row.count_created }}</td>
+              <td class="num">{{ row.count_modified }}</td>
+              <td class="num">{{ row.count_deleted }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {# 2. seen + labeled (green) #}
+          {% for row in state.seen_entry if row.labeled and row.defined %}
+            <tr>
+              <td class="name">
+                {% if row.linked_page %}<a href="{{ row.linked_page }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}
+                <span class="pill green">SEEN</span>
+              </td>
+              <td class="short"><strong style="color:var(--text);">{{ row.label }}</strong> — {{ row.short_desc }}</td>
+              <td class="num">{{ row.count_created }}</td>
+              <td class="num">{{ row.count_modified }}</td>
+              <td class="num">{{ row.count_deleted }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {# 3. seen + unlabeled (amber curation debt) #}
+          {% for row in state.seen_entry if not row.labeled and row.defined %}
+            <tr>
+              <td class="name">{{ row.name }} <span class="pill amber">UNLABELED</span></td>
+              <td class="short">Defined in vocabulary but no coverage_labels row. Add via seed_coverage_labels.py.</td>
+              <td class="num">{{ row.count_created }}</td>
+              <td class="num">{{ row.count_modified }}</td>
+              <td class="num">{{ row.count_deleted }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {# 4. defined-but-unseen (grey editorial) #}
+          {% for name in state.defined_but_unseen_entry %}
+            {% set lab = state.labels_entry.get(name) %}
+            <tr>
+              <td class="name">
+                {% if lab and lab.linked_page %}<a href="{{ lab.linked_page }}">{{ name }}</a>{% else %}{{ name }}{% endif %}
+                <span class="pill grey">DEFINED · UNSEEN</span>
+              </td>
+              <td class="short" style="color:var(--dim);">
+                {% if lab %}<strong style="color:var(--muted);">{{ lab.label }}</strong> — {{ lab.short_desc }}
+                {% else %}Awaiting first-ever XRPL sighting.{% endif %}
+              </td>
+              <td class="num">—</td>
+              <td class="num">—</td>
+              <td class="num">—</td>
+              <td class="footprint">—</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ─── TransactionType three-way diff ─────────────────────────── #}
+    <h2>TransactionType coverage
+      <span class="count">— {{ state.seen_tx|length }} seen / {{ state.definitions.defined_tx_count }} defined ({{ state.defined_but_unseen_tx|length }} awaiting first sighting)</span>
+    </h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>type</th>
+            <th>label / status</th>
+            <th class="num">count</th>
+            <th class="footprint">first seen · last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name in state.seen_but_undefined_tx %}
+            {% set row = state.seen_tx|selectattr('name','equalto',name)|first %}
+            <tr style="background:rgba(239,68,68,0.06);">
+              <td class="name">{{ name }} <span class="pill red">SEEN-BUT-UNDEFINED</span></td>
+              <td class="short">Observed on-chain but not in vocabulary snapshot.</td>
+              <td class="num">{{ row.count_total }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {% for row in state.seen_tx if row.labeled and row.defined %}
+            <tr>
+              <td class="name">
+                {% if row.linked_page %}<a href="{{ row.linked_page }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}
+                <span class="pill green">SEEN</span>
+              </td>
+              <td class="short"><strong style="color:var(--text);">{{ row.label }}</strong> — {{ row.short_desc }}</td>
+              <td class="num">{{ row.count_total }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {% for row in state.seen_tx if not row.labeled and row.defined %}
+            <tr>
+              <td class="name">{{ row.name }} <span class="pill amber">UNLABELED</span></td>
+              <td class="short">Defined in vocabulary but no coverage_labels row.</td>
+              <td class="num">{{ row.count_total }}</td>
+              <td class="footprint">L{{ row.first_seen_ledger }} · L{{ row.last_seen_ledger }}</td>
+            </tr>
+          {% endfor %}
+          {% for name in state.defined_but_unseen_tx %}
+            {% set lab = state.labels_tx.get(name) %}
+            <tr>
+              <td class="name">
+                {% if lab and lab.linked_page %}<a href="{{ lab.linked_page }}">{{ name }}</a>{% else %}{{ name }}{% endif %}
+                <span class="pill grey">DEFINED · UNSEEN</span>
+              </td>
+              <td class="short" style="color:var(--dim);">
+                {% if lab %}<strong style="color:var(--muted);">{{ lab.label }}</strong> — {{ lab.short_desc }}
+                {% else %}Awaiting first-ever XRPL sighting.{% endif %}
+              </td>
+              <td class="num">—</td>
+              <td class="footprint">—</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="foot">
+      Phase 1b Coverage Register · dedicated writer: coverage_register_walker · appends
+      to coverage_register_history when state changes or every 24h floor · internal-only
+      until 1-week soak clean. HTTP Basic guard, no query-string secrets.
+    </div>
+  {% endif %}
+</div>
+</body>
+</html>
