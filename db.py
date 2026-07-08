@@ -3017,7 +3017,12 @@ def upsert_account_label(address, name, source, category=None,
                          confidence=None, extra=None):
     """Insert or update one account label.
     - Curated sources (manual / xrpscan / bithomp) always win: they
-      overwrite anything, including older curated labels.
+      overwrite anything, including older curated labels — EXCEPT when
+      the existing row carries `extra.name_locked = true`, in which case
+      the name is preserved (metadata still refreshes). This protects
+      hand-cleaned names (e.g., "Reaper Financial") from being clobbered
+      by the weekly TOML rerun's auto-derived shape (e.g., "reaper.financial
+      (Ascension issuer)" — last-write-wins across multi-token issuers).
     - Derived sources (derived:amm, derived:mpt) only write when the
       existing row is also derived (or absent). They MUST NOT shadow a
       curated label, even when the importer would generate a better
@@ -3036,16 +3041,25 @@ def upsert_account_label(address, name, source, category=None,
     try:
         with conn.cursor() as cur:
             if is_curated:
+                # name_locked path: preserve existing name + merge extra
+                # so the lock flag itself survives. jsonb `||` favors right
+                # side on key collision, so walker's fresh {mode, domain,
+                # verified_via, verified_at_unix} still refreshes; existing
+                # `name_locked` stays because walker's extra doesn't set it.
                 cur.execute(
                     "INSERT INTO account_labels "
                     "(address, name, category, source, confidence, extra, updated_at) "
                     "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s) "
                     "ON CONFLICT (address) DO UPDATE SET "
-                    "  name = EXCLUDED.name, "
+                    "  name = CASE WHEN (account_labels.extra->>'name_locked')::boolean IS TRUE "
+                    "              THEN account_labels.name "
+                    "              ELSE EXCLUDED.name END, "
                     "  category = EXCLUDED.category, "
                     "  source = EXCLUDED.source, "
                     "  confidence = EXCLUDED.confidence, "
-                    "  extra = EXCLUDED.extra, "
+                    "  extra = CASE WHEN (account_labels.extra->>'name_locked')::boolean IS TRUE "
+                    "               THEN account_labels.extra || EXCLUDED.extra "
+                    "               ELSE EXCLUDED.extra END, "
                     "  updated_at = EXCLUDED.updated_at",
                     (address, name, category, source,
                      confidence if confidence is not None else 1.0,
