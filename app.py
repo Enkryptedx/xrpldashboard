@@ -5087,8 +5087,20 @@ def _publishable_field_names(names):
 def _internal_admin_ok():
     """HTTP Basic auth gate for /internal/*. Env-driven; when either var
     is unset the route acts as if it doesn't exist (returns 404 to the
-    caller). Constant-time compare on both fields to avoid timing
-    oracles on the username."""
+    caller).
+
+    Both hmac.compare_digest calls are evaluated unconditionally, then
+    AND'd — Python's `and` short-circuits, so `check_user and check_pw`
+    would run only ONE compare on wrong-user (fast) and TWO on
+    valid-user+wrong-pass (slow), leaking username validity. Assigning
+    both results first forces both calls every request.
+
+    Note: hmac.compare_digest still leaks length via early exit on
+    unequal-length inputs; mitigating that would require hashing both
+    sides to a fixed width. For an env-configured credential shipped in
+    Render's dashboard, treating the username length as semi-public is
+    acceptable — the timing-parity fix here is what closes the
+    actionable side-channel."""
     user = os.environ.get("INTERNAL_ADMIN_USER", "").strip()
     pw = os.environ.get("INTERNAL_ADMIN_PASS", "").strip()
     if not user or not pw:
@@ -5096,10 +5108,9 @@ def _internal_admin_ok():
     auth = request.authorization
     if not auth or not auth.username or not auth.password:
         return False
-    return (
-        hmac.compare_digest(auth.username, user)
-        and hmac.compare_digest(auth.password, pw)
-    )
+    user_ok = hmac.compare_digest(auth.username, user)
+    pw_ok = hmac.compare_digest(auth.password, pw)
+    return user_ok and pw_ok
 
 
 @app.route("/internal/coverage")
