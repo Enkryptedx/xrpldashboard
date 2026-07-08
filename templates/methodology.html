@@ -487,6 +487,20 @@
     <li><strong>{{ _('RLUSD mint/burn window.') }}</strong> {{ _('The 24h activity cells on /rlusd reflect the events surfaced in our query window — public Ethereum RPCs cap eth_getLogs at ~1024 blocks (≈ 3.3 hours), and the XRPL account_tx call returns the most recent 80 issuer-touching transactions, which on a highly-traded issuer like RLUSD can span only minutes. Treasury-level mint/burn events are themselves sparse (often only a handful per week), so these cells read $0 most of the time. The cross-chain supply totals on the same page are not affected — they come from totalSupply and gateway_balances and are always current.') }}</li>
   </ul>
 
+  <h2 id="analytics-bot-filter">{{ _('/analytics bot filter') }}</h2>
+  <p>
+    {{ _('The') }} <a href="/analytics">/analytics</a> {{ _('page renders the same visitor counts twice: filtered ("humans") and unfiltered ("bots"). Both series come from') }} <code>page_views</code> {{ _('rows; the filter is a query-time predicate, not a stored label, so the rule is transparent and reversible.') }}
+  </p>
+  <p>
+    <strong>{{ _('Rule.') }}</strong> {{ _('A row is classified as bot if its (path, user-agent) pair has appeared') }} <strong>{{ _('≥ 30 times in the trailing 7 days') }}</strong> {{ _('AND the total hit count is') }} <strong>{{ _('≤ 1.10 × distinct visitor identifiers') }}</strong> {{ _('for that pair. The volume threshold isolates aggregate scanner activity from ambient traffic; the ratio clause distinguishes rotating-IP proxies (many one-shot visitors) from viral human bursts arriving from a shared link (also many one-shot visitors, but usually staying below the volume floor).') }}
+  </p>
+  <p>
+    <strong>{{ _('Retrospective flip.') }}</strong> {{ _('Because the rule reads the current 7-day aggregate on every query, rows can reclassify as evidence accrues. A burst in progress is counted as human for its first ~29 hits, then flips to bot the moment the 30th hit lands. Recent counts converge on the honest answer rather than committing to an early classification.') }}
+  </p>
+  <p>
+    <strong>{{ _('Declared boundary.') }}</strong> {{ _('The rule keys on repeated (path, user-agent) volume. A scanner rotating user-agent strings as well as IPs — one hit per (ip, ua) cell — keeps every cell below the volume floor and is not caught by this rule. We accept the boundary at current traffic (the arms-race cost isn\'t worth the accuracy gain); if scanner behaviour shifts, the rule will be extended and this section updated.') }}
+  </p>
+
   <h2>{{ _('Infrastructure') }}</h2>
   <ul>
     <li><strong>{{ _('Web app:') }}</strong> {{ _('Render. Source on GitHub, MIT-licensed.') }}</li>
