@@ -844,6 +844,34 @@ CREATE TABLE IF NOT EXISTS tx_type_hourly (
 );
 CREATE INDEX IF NOT EXISTS tx_type_hourly_bucket_idx
     ON tx_type_hourly (hour_bucket DESC);
+
+-- Ledger-vocabulary source of truth from local rippled's server_definitions.
+-- Singleton (id=1) + append-only history on hash change. Feeds the Coverage
+-- Register's "defined" column in Phase 1b's three-way diff.
+CREATE TABLE IF NOT EXISTS ledger_definitions (
+    id             INT PRIMARY KEY DEFAULT 1,
+    hash           TEXT NOT NULL,
+    fetched_at     BIGINT NOT NULL,
+    build_version  TEXT,
+    tx_types       JSONB NOT NULL,
+    entry_types    JSONB NOT NULL,
+    payload        JSONB NOT NULL,
+    CONSTRAINT ledger_definitions_singleton CHECK (id = 1)
+);
+CREATE TABLE IF NOT EXISTS ledger_definitions_history (
+    id                   BIGSERIAL PRIMARY KEY,
+    fetched_at           BIGINT NOT NULL,
+    hash                 TEXT   NOT NULL,
+    hash_prev            TEXT,
+    build_version        TEXT,
+    tx_types_added       JSONB,
+    tx_types_removed     JSONB,
+    entry_types_added    JSONB,
+    entry_types_removed  JSONB,
+    payload              JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ledger_definitions_history_ts_idx
+    ON ledger_definitions_history (fetched_at DESC);
 """
 
 
@@ -1081,6 +1109,120 @@ def read_tx_type_first_bucket():
     except Exception as e:
         _log_err("read_tx_type_first_bucket_failed", e)
         return None
+
+
+def read_ledger_definitions():
+    """Return the current ledger_definitions singleton as a dict, or None.
+    Consumed by the Coverage Register (Phase 1b) as the authoritative
+    "what the node knows" column of the three-way diff."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT hash, fetched_at, build_version, tx_types, "
+                "entry_types, payload FROM ledger_definitions WHERE id = 1"
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "hash": row[0],
+                "fetched_at": row[1],
+                "build_version": row[2],
+                "tx_types": row[3],
+                "entry_types": row[4],
+                "payload": row[5],
+            }
+    except Exception as e:
+        _log_err("read_ledger_definitions_failed", e)
+        return None
+
+
+def write_ledger_definitions(hash_val, fetched_at, build_version,
+                             tx_types, entry_types, payload):
+    """Upsert the ledger_definitions singleton. If hash_val differs from
+    the previous row, append a delta row to ledger_definitions_history
+    with the full payload for forensic recovery of field-level changes
+    that don't show up in add/remove sets.
+
+    Returns dict:
+      {"changed": bool, "hash_prev": str|None,
+       "tx_types_added": [str], "tx_types_removed": [str],
+       "entry_types_added": [str], "entry_types_removed": [str]}
+    Caller uses this to loud-log the change (with a distinct louder tag
+    for removals, per operator note — removals mean node downgrade or
+    something genuinely wrong)."""
+    if not pg_available():
+        return {"changed": False, "hash_prev": None,
+                "tx_types_added": [], "tx_types_removed": [],
+                "entry_types_added": [], "entry_types_removed": []}
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT hash, tx_types, entry_types "
+                "FROM ledger_definitions WHERE id = 1"
+            )
+            prev = cur.fetchone()
+            prev_hash = prev[0] if prev else None
+            prev_tx = set((prev[1] or {}).keys()) if prev else set()
+            prev_entry = set((prev[2] or {}).keys()) if prev else set()
+            new_tx = set(tx_types.keys())
+            new_entry = set(entry_types.keys())
+
+            changed = (prev_hash != hash_val)
+            tx_added = sorted(new_tx - prev_tx)
+            tx_removed = sorted(prev_tx - new_tx)
+            entry_added = sorted(new_entry - prev_entry)
+            entry_removed = sorted(prev_entry - new_entry)
+
+            payload_json = json.dumps(payload)
+            tx_types_json = json.dumps(tx_types)
+            entry_types_json = json.dumps(entry_types)
+
+            cur.execute(
+                "INSERT INTO ledger_definitions "
+                "(id, hash, fetched_at, build_version, tx_types, "
+                " entry_types, payload) "
+                "VALUES (1, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                " hash          = EXCLUDED.hash, "
+                " fetched_at    = EXCLUDED.fetched_at, "
+                " build_version = EXCLUDED.build_version, "
+                " tx_types      = EXCLUDED.tx_types, "
+                " entry_types   = EXCLUDED.entry_types, "
+                " payload       = EXCLUDED.payload",
+                (hash_val, fetched_at, build_version,
+                 tx_types_json, entry_types_json, payload_json),
+            )
+            if changed:
+                cur.execute(
+                    "INSERT INTO ledger_definitions_history "
+                    "(fetched_at, hash, hash_prev, build_version, "
+                    " tx_types_added, tx_types_removed, "
+                    " entry_types_added, entry_types_removed, payload) "
+                    "VALUES (%s, %s, %s, %s, "
+                    "        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, "
+                    "        %s::jsonb)",
+                    (fetched_at, hash_val, prev_hash, build_version,
+                     json.dumps(tx_added), json.dumps(tx_removed),
+                     json.dumps(entry_added), json.dumps(entry_removed),
+                     payload_json),
+                )
+            conn.commit()
+            return {
+                "changed": changed,
+                "hash_prev": prev_hash,
+                "tx_types_added": tx_added,
+                "tx_types_removed": tx_removed,
+                "entry_types_added": entry_added,
+                "entry_types_removed": entry_removed,
+            }
+    except Exception as e:
+        _log_err("write_ledger_definitions_failed", e)
+        return {"changed": False, "hash_prev": None,
+                "tx_types_added": [], "tx_types_removed": [],
+                "entry_types_added": [], "entry_types_removed": []}
 
 
 def write_amm_pool_event(ts, amm_account, event_type, magnitude_xrp_drops=None):

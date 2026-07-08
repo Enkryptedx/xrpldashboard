@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.ledger_definitions_walker</string>
+
+    <key>Comment</key>
+    <string>Phase 0 of Total Ledger Awareness. Pulls server_definitions + server_info from the LOCAL rippled node every 6h and refreshes the ledger_definitions singleton in Neon (append-only history on hash change). Local-only by design — a public node would return a different build's vocabulary. If localhost:5005 is unreachable, walker_health flags STALE; no public fallback. Sentinels (Invalid: -1) are stripped in the walker so downstream three-way diffs stay alarm-only. StartInterval (rolling) preferred over StartCalendarInterval per feedback_macos_launchd_startinterval_over_calendar.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_ledger_definitions_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- Every 6 hours. server_definitions only changes on rippled version
+         bumps — 6h caps the drift window between an upgrade and the
+         Coverage Register seeing it. -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/ledger_definitions_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/ledger_definitions_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
