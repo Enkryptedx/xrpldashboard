@@ -782,6 +782,19 @@ _TX_TYPE_DELTAS: dict[tuple[str, int], int] = {}
 _TX_TYPE_LAST_FLUSH = 0.0
 TX_TYPE_FLUSH_SECONDS = 30
 
+# Sensor 2 — the never-blind guarantee. Per-type buckets carry the batch's
+# earliest and latest observation so first_seen_* is stamped from actual
+# sighting, not the flush moment (up to 30s later). Same 30s cadence as
+# _TX_TYPE_DELTAS. Keyed by name only — buckets absorb every observation
+# within the window and emit one upsert row per type per flush.
+_ENTRY_TYPE_DELTAS: dict[str, dict] = {}
+_TX_TYPE_SEEN_DELTAS: dict[str, dict] = {}
+_NOVELTY_LAST_FLUSH = 0.0
+NOVELTY_FLUSH_SECONDS = 30
+# Heartbeat counter — flat across two heartbeats = handler dead (every
+# validated tx touches at least one AffectedNode, no innocent explanation).
+_NOVELTY_FLUSHED_SINCE_HEARTBEAT = 0
+
 
 def tx_type_bucket_handler(msg, state):
     """Every validated tx → (TransactionType, hour_bucket) counter → PG.
@@ -831,6 +844,148 @@ def tx_type_bucket_handler(msg, state):
     _TX_TYPE_LAST_FLUSH = now
 
 
+def _bump_type_delta(bucket, key, ledger, ts, count_field):
+    """Accumulate a per-type observation into a batch bucket.
+    first_seen becomes min(observed); last_seen becomes max(observed).
+    Both are computed from the actual sighting, not the flush moment."""
+    row = bucket.get(key)
+    if row is None:
+        bucket[key] = {
+            "min_ledger": ledger, "min_ts": ts,
+            "max_ledger": ledger, "max_ts": ts,
+            "count_created": 0, "count_modified": 0, "count_deleted": 0,
+            "count_total": 0,
+        }
+        row = bucket[key]
+    if ledger < row["min_ledger"]:
+        row["min_ledger"] = ledger
+        row["min_ts"] = ts
+    if ledger > row["max_ledger"]:
+        row["max_ledger"] = ledger
+        row["max_ts"] = ts
+    row[count_field] += 1
+
+
+def _fire_novelty_result(kind, name, was_insert, first_seen_ledger):
+    """After upsert, decide which loud line (if any) to emit.
+
+    kind: "tx" | "entry".  name: type name.
+    was_insert True = first-time observation of this type ever.
+
+    Three outcomes:
+      * defined + first-seen   → NEW TYPE OBSERVED (defined) — expected
+        milestone when an amendment activates. Loud because it's genuine.
+      * undefined + first-seen → SEEN-BUT-UNDEFINED — the write-time canary.
+        Our node validated a tx whose type our node's definitions don't
+        declare. Should never fire; not rate-limited.
+      * definitions unreachable + first-seen → CANARY CHECK UNAVAILABLE.
+        Distinct third tag so a broken lookup path never cries wolf on
+        the loudest alarm nor silently skips.
+      * known type, subsequent observation → no log.
+    """
+    if not was_insert:
+        return
+    defined = pgbridge.check_type_defined(kind, name)
+    label = "tx_type" if kind == "tx" else "entry_type"
+    if defined is None:
+        log(f"[ledger_awareness] !!! CANARY CHECK UNAVAILABLE "
+            f"{label}={name} first_seen_ledger={first_seen_ledger} "
+            f"(ledger_definitions singleton unreachable or empty; "
+            f"Phase 0 walker health?)")
+    elif defined:
+        log(f"[ledger_awareness] !!! NEW TYPE OBSERVED (defined) "
+            f"{label}={name} first_seen_ledger={first_seen_ledger}")
+    else:
+        log(f"[ledger_awareness] !!! SEEN-BUT-UNDEFINED "
+            f"{label}={name} first_seen_ledger={first_seen_ledger} "
+            f"(node vocab doesn't declare this type — node skew or "
+            f"parser corruption; NOT a routine amendment activation)")
+
+
+def ledger_entry_type_witness_handler(msg, state):
+    """Sensor 2 of Total Ledger Awareness.
+
+    For every validated tx, walk meta.AffectedNodes and count each
+    LedgerEntryType touched (created / modified / deleted). Also bucket
+    the tx's own TransactionType with a first-seen ledger. Batches for
+    NOVELTY_FLUSH_SECONDS then upserts, firing loud logs on first
+    observation per type.
+
+    Zero additional RPC calls — the metadata is already in every message.
+    Rejected txns still get counted for novelty purposes: a failed tx of
+    a brand-new type still tells us the type exists on-chain (the whole
+    point of never-blind is "did the ledger vocabulary just grow", not
+    "was this particular tx successful").
+    """
+    global _NOVELTY_LAST_FLUSH, _NOVELTY_FLUSHED_SINCE_HEARTBEAT
+
+    if msg.get("validated") is False:
+        return
+
+    tx = extract_tx(msg)
+    ledger = msg.get("ledger_index") or tx.get("ledger_index")
+    if not isinstance(ledger, int):
+        # Every validated stream message carries ledger_index; missing it
+        # means the message shape is unexpected. Skip rather than stamp
+        # a fabricated 0 into first_seen_ledger.
+        return
+    ts = int(time.time())
+
+    ttype = tx.get("TransactionType")
+    if ttype:
+        _bump_type_delta(_TX_TYPE_SEEN_DELTAS, ttype, ledger, ts, "count_total")
+
+    for node in (msg.get("meta") or {}).get("AffectedNodes") or []:
+        wrapper = (node.get("CreatedNode")
+                   or node.get("ModifiedNode")
+                   or node.get("DeletedNode"))
+        if not wrapper:
+            continue
+        etype = wrapper.get("LedgerEntryType")
+        if not etype:
+            continue
+        if "CreatedNode" in node:
+            field = "count_created"
+        elif "DeletedNode" in node:
+            field = "count_deleted"
+        else:
+            field = "count_modified"
+        _bump_type_delta(_ENTRY_TYPE_DELTAS, etype, ledger, ts, field)
+
+    now = time.time()
+    if now - _NOVELTY_LAST_FLUSH < NOVELTY_FLUSH_SECONDS:
+        return
+
+    # Flush both novelty tables together.
+    entry_deltas = [
+        {"entry_type": name, **row}
+        for name, row in _ENTRY_TYPE_DELTAS.items()
+    ]
+    tx_deltas = [
+        {"tx_type": name, **row}
+        for name, row in _TX_TYPE_SEEN_DELTAS.items()
+    ]
+    try:
+        entry_results = pgbridge.upsert_ledger_entry_type_seen(entry_deltas)
+        tx_results = pgbridge.upsert_tx_type_seen(tx_deltas)
+        for r in entry_results:
+            _fire_novelty_result("entry", r["entry_type"],
+                                 r["was_insert"], r["first_seen_ledger"])
+        for r in tx_results:
+            _fire_novelty_result("tx", r["tx_type"],
+                                 r["was_insert"], r["first_seen_ledger"])
+        _NOVELTY_FLUSHED_SINCE_HEARTBEAT += (
+            sum(row["count_created"] + row["count_modified"] + row["count_deleted"]
+                for row in _ENTRY_TYPE_DELTAS.values())
+        )
+        _ENTRY_TYPE_DELTAS.clear()
+        _TX_TYPE_SEEN_DELTAS.clear()
+    except Exception as e:
+        log(f"ledger_entry_type_witness_handler flush error: {e}")
+        # Buckets kept intact — next tick retries.
+    _NOVELTY_LAST_FLUSH = now
+
+
 HANDLERS = [
     amm_create_handler,
     whale_handler,
@@ -839,6 +994,7 @@ HANDLERS = [
     pulse_handler,
     amm_pool_event_handler,
     tx_type_bucket_handler,
+    ledger_entry_type_witness_handler,
 ]
 
 
@@ -874,6 +1030,7 @@ def run_session(state):
                 "whale_events_seen": state.get("whale_events_seen", 0),
                 "token_events_seen": state.get("token_events_seen", 0),
                 "new_tokens_seen": state.get("new_tokens_seen", 0),
+                "entry_type_deltas_flushed_since_last_heartbeat": 0,
             },
         )
 
@@ -935,6 +1092,7 @@ def run_session(state):
                     # Cross-machine liveness signal: Render reads this row
                     # to know the Mac-hosted worker is alive (local file
                     # mtimes don't cross hosts).
+                    global _NOVELTY_FLUSHED_SINCE_HEARTBEAT
                     pgbridge.write_heartbeat(
                         "xrpl_stream:mac",
                         txns_seen=state.get("txns_seen"),
@@ -946,8 +1104,11 @@ def run_session(state):
                             "whale_events_seen": state.get("whale_events_seen", 0),
                             "token_events_seen": state.get("token_events_seen", 0),
                             "new_tokens_seen": state.get("new_tokens_seen", 0),
+                            "entry_type_deltas_flushed_since_last_heartbeat":
+                                _NOVELTY_FLUSHED_SINCE_HEARTBEAT,
                         },
                     )
+                    _NOVELTY_FLUSHED_SINCE_HEARTBEAT = 0
                     last_heartbeat = now
                     txns_at_last_heartbeat = state["txns_seen"]
         finally:

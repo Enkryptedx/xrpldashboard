@@ -845,6 +845,30 @@ CREATE TABLE IF NOT EXISTS tx_type_hourly (
 CREATE INDEX IF NOT EXISTS tx_type_hourly_bucket_idx
     ON tx_type_hourly (hour_bucket DESC);
 
+-- Novelty layer for the never-blind guarantee. One row per LedgerEntryType
+-- ever observed on the stream via meta.AffectedNodes; one row per
+-- TransactionType ever observed. first_seen_* is set at INSERT and never
+-- moved thereafter — batch buckets carry the min-ledger seen in the window
+-- so a first-seen record isn't stamped up to a flush-window late.
+CREATE TABLE IF NOT EXISTS ledger_entry_type_seen (
+    entry_type         TEXT PRIMARY KEY,
+    first_seen_ledger  BIGINT NOT NULL,
+    first_seen_ts      BIGINT NOT NULL,
+    last_seen_ledger   BIGINT NOT NULL,
+    last_seen_ts       BIGINT NOT NULL,
+    count_created      BIGINT NOT NULL DEFAULT 0,
+    count_modified     BIGINT NOT NULL DEFAULT 0,
+    count_deleted      BIGINT NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS tx_type_seen (
+    tx_type            TEXT PRIMARY KEY,
+    first_seen_ledger  BIGINT NOT NULL,
+    first_seen_ts      BIGINT NOT NULL,
+    last_seen_ledger   BIGINT NOT NULL,
+    last_seen_ts       BIGINT NOT NULL,
+    count_total        BIGINT NOT NULL DEFAULT 0
+);
+
 -- Ledger-vocabulary source of truth from local rippled's server_definitions.
 -- Singleton (id=1) + append-only history on hash change. Feeds the Coverage
 -- Register's "defined" column in Phase 1b's three-way diff.
@@ -1108,6 +1132,129 @@ def read_tx_type_first_bucket():
             return row[0] if row else None
     except Exception as e:
         _log_err("read_tx_type_first_bucket_failed", e)
+        return None
+
+
+def upsert_ledger_entry_type_seen(deltas):
+    """Batch upsert of LedgerEntryType observations.
+
+    deltas: list[dict] each with keys
+      entry_type, count_created, count_modified, count_deleted,
+      min_ledger, min_ts, max_ledger, max_ts
+    (min_* carries the batch's earliest observation so first_seen_* is
+    stamped from the actual sighting, not the flush moment.)
+
+    Returns list[dict] each with keys
+      entry_type, was_insert (bool), first_seen_ledger
+    so the caller can fire the novelty / canary logs. first_seen_* is
+    NEVER moved backward on conflict — it belongs to the INSERT only.
+    """
+    if not pg_available() or not deltas:
+        return []
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            results = []
+            for d in deltas:
+                cur.execute(
+                    "INSERT INTO ledger_entry_type_seen "
+                    "(entry_type, first_seen_ledger, first_seen_ts, "
+                    " last_seen_ledger, last_seen_ts, "
+                    " count_created, count_modified, count_deleted) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (entry_type) DO UPDATE SET "
+                    " last_seen_ledger = GREATEST("
+                    "   ledger_entry_type_seen.last_seen_ledger, EXCLUDED.last_seen_ledger), "
+                    " last_seen_ts     = GREATEST("
+                    "   ledger_entry_type_seen.last_seen_ts,     EXCLUDED.last_seen_ts), "
+                    " count_created  = ledger_entry_type_seen.count_created  + EXCLUDED.count_created, "
+                    " count_modified = ledger_entry_type_seen.count_modified + EXCLUDED.count_modified, "
+                    " count_deleted  = ledger_entry_type_seen.count_deleted  + EXCLUDED.count_deleted "
+                    "RETURNING (xmax = 0) AS was_insert, first_seen_ledger",
+                    (d["entry_type"], d["min_ledger"], d["min_ts"],
+                     d["max_ledger"], d["max_ts"],
+                     int(d.get("count_created", 0)),
+                     int(d.get("count_modified", 0)),
+                     int(d.get("count_deleted", 0))),
+                )
+                row = cur.fetchone()
+                results.append({
+                    "entry_type": d["entry_type"],
+                    "was_insert": bool(row[0]),
+                    "first_seen_ledger": int(row[1]),
+                })
+            conn.commit()
+            return results
+    except Exception as e:
+        _log_err("upsert_ledger_entry_type_seen_failed", e)
+        return []
+
+
+def upsert_tx_type_seen(deltas):
+    """Batch upsert of TransactionType observations. Same contract as
+    upsert_ledger_entry_type_seen — first_seen_* stamped from the batch's
+    earliest sighting, never moved on conflict; returns was_insert per
+    row so the caller can fire canary logic on first-appearance."""
+    if not pg_available() or not deltas:
+        return []
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            results = []
+            for d in deltas:
+                cur.execute(
+                    "INSERT INTO tx_type_seen "
+                    "(tx_type, first_seen_ledger, first_seen_ts, "
+                    " last_seen_ledger, last_seen_ts, count_total) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (tx_type) DO UPDATE SET "
+                    " last_seen_ledger = GREATEST("
+                    "   tx_type_seen.last_seen_ledger, EXCLUDED.last_seen_ledger), "
+                    " last_seen_ts     = GREATEST("
+                    "   tx_type_seen.last_seen_ts,     EXCLUDED.last_seen_ts), "
+                    " count_total = tx_type_seen.count_total + EXCLUDED.count_total "
+                    "RETURNING (xmax = 0) AS was_insert, first_seen_ledger",
+                    (d["tx_type"], d["min_ledger"], d["min_ts"],
+                     d["max_ledger"], d["max_ts"],
+                     int(d.get("count_total", 0))),
+                )
+                row = cur.fetchone()
+                results.append({
+                    "tx_type": d["tx_type"],
+                    "was_insert": bool(row[0]),
+                    "first_seen_ledger": int(row[1]),
+                })
+            conn.commit()
+            return results
+    except Exception as e:
+        _log_err("upsert_tx_type_seen_failed", e)
+        return []
+
+
+def check_type_defined(kind, name):
+    """Look up whether `name` is in the current ledger_definitions singleton.
+    kind is "tx" or "entry".
+
+    Returns True/False on a successful lookup, or None when the singleton
+    is unreachable or empty at check time — which the caller must render
+    as `!!! CANARY CHECK UNAVAILABLE`, distinct from a false positive.
+    Neither cry-wolf on the loudest alarm nor silently skip.
+    """
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            col = "tx_types" if kind == "tx" else "entry_types"
+            cur.execute(
+                f"SELECT {col} ? %s FROM ledger_definitions WHERE id = 1",
+                (name,),
+            )
+            row = cur.fetchone()
+            if not row:
+                # Singleton missing — Phase 0 walker hasn't run since a
+                # DB wipe. Distinct from "type genuinely absent from vocab."
+                return None
+            return bool(row[0])
+    except Exception as e:
+        _log_err("check_type_defined_failed", e)
         return None
 
 
