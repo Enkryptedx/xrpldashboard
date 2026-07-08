@@ -8,10 +8,14 @@
     <key>Comment</key>
     <string>Weekly token name enrichment: MPT on-ledger metadata + IOU issuer TOML lookup → token_names.json.</string>
 
+    <!-- Wrapper sources ~/.config/xrpldashboard/env before invoking
+         python. Calling python directly leaves DATABASE_URL unset —
+         both walker_health and token_names writes silently no-op.
+         Caught by plist sweep 2026-07-08 alongside lending_snapshot +
+         verify_toml. See run_enrich_token_names.sh. -->
     <key>ProgramArguments</key>
     <array>
-      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin/python3</string>
-      <string>/Users/charliebruce/xrpl_test/enrich_token_names.py</string>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_enrich_token_names.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
