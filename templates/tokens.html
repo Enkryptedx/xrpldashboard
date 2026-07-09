@@ -575,13 +575,23 @@
                     border-radius: 8px; margin-top: 4px; }
     .search-empty.visible { display: block; }
 
+    .row-wrap { position: relative; margin-bottom: 6px; }
     .row { display: grid; grid-template-columns: 36px 1fr auto;
            gap: 10px; align-items: center;
            background: var(--card); border: 1px solid var(--border);
-           border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
+           border-radius: 8px; padding: 10px 14px;
            text-decoration: none; color: inherit;
            transition: border-color 0.12s, transform 0.12s; }
     a.row:hover { border-color: rgba(34,211,238,0.4); transform: translateY(-1px); }
+    /* Sibling correction chip — routes to /contact?purpose=attestation-dispute
+       with a ref identifying the disputed token. Sibling of .row (not
+       nested) so HTML is valid and middle-click works on both anchors. */
+    .row-correct { position: absolute; top: 6px; right: 10px;
+                   font-family: var(--mono); font-size: 0.62rem;
+                   color: var(--dim); text-decoration: none;
+                   letter-spacing: 0.04em;
+                   opacity: 0.55; transition: opacity 0.12s, color 0.12s; }
+    .row-correct:hover { opacity: 1; color: var(--text); }
     /* Sibling-issuer accent: rows whose issuer mints multiple tokens get
        a colored left border keyed by issuer. Pad-left compensation keeps
        content alignment unchanged when the left border widens from 1→3px. */
@@ -937,29 +947,34 @@
 
   {% if tokens %}
     {% for t in tokens %}
-    <a class="row vibes-spot" href="/token/{{ t.currency_raw }}/{{ t.issuer }}"
-       {% if t.sibling_color %}data-sibling style="--sibling-color: {{ t.sibling_color }};"{% endif %}>
-      <div class="rank">{{ t.rank }}</div>
-      <div class="name-block">
-        <div class="name">
-          <span class="display{% if not t.labeled %} unnamed{% endif %}">{{ t.display }}</span>
-          {% if t.attestation == 'verified' %}
-            <span class="attest-pill attest-pill--verified" title="{{ _('cryptographically anchored via canonical TOML [[ACCOUNTS]]') }}">✓ {{ _('verified') }}</span>
-          {% elif t.attestation == 'self-described' %}
-            <span class="attest-pill attest-pill--self" title="{{ _('publishes an XRPL TOML but not in the canonical shape — self-report, not verified') }}">ⓘ {{ _('self-described') }}</span>
-          {% endif %}
-          {% if t.category %}
-            <span class="cat-badge cat-{{ t.category }}">{{ t.category|replace("_"," ") }}</span>
-          {% endif %}
+    <div class="row-wrap">
+      <a class="row vibes-spot" href="/token/{{ t.currency_raw }}/{{ t.issuer }}"
+         {% if t.sibling_color %}data-sibling style="--sibling-color: {{ t.sibling_color }};"{% endif %}>
+        <div class="rank">{{ t.rank }}</div>
+        <div class="name-block">
+          <div class="name">
+            <span class="display{% if not t.labeled %} unnamed{% endif %}">{{ t.display }}</span>
+            {% if t.attestation == 'verified' %}
+              <span class="attest-pill attest-pill--verified" title="{{ _('cryptographically anchored via canonical TOML [[ACCOUNTS]]') }}">✓ {{ _('verified') }}</span>
+            {% elif t.attestation == 'self-described' %}
+              <span class="attest-pill attest-pill--self" title="{{ _('publishes an XRPL TOML but not in the canonical shape — self-report, not verified') }}">ⓘ {{ _('self-described') }}</span>
+            {% endif %}
+            {% if t.category %}
+              <span class="cat-badge cat-{{ t.category }}">{{ t.category|replace("_"," ") }}</span>
+            {% endif %}
+          </div>
+          <div class="iss">{{ t.issuer_short }}</div>
         </div>
-        <div class="iss">{{ t.issuer_short }}</div>
-      </div>
-      <div class="trades">
-        {{ "{:,}".format(t.trades) }} <span class="trades-unit">{{ _('trades') }}</span>
-        <span class="sub">{{ t.hours_active }}{{ _('h active') }}</span>
-        <span class="sub">{% if t.xrp_price_str %}{{ t.xrp_price_str }} {{ _('XRP') }}{% else %}—{% endif %}</span>
-      </div>
-    </a>
+        <div class="trades">
+          {{ "{:,}".format(t.trades) }} <span class="trades-unit">{{ _('trades') }}</span>
+          <span class="sub">{{ t.hours_active }}{{ _('h active') }}</span>
+          <span class="sub">{% if t.xrp_price_str %}{{ t.xrp_price_str }} {{ _('XRP') }}{% else %}—{% endif %}</span>
+        </div>
+      </a>
+      <a class="row-correct"
+         href="/contact?purpose=attestation-dispute&ref=token:{{ t.currency_raw }}.{{ t.issuer }}"
+         title="{{ _('Report a labeling, category, or attestation error for this token') }}">{{ _('correct') }}</a>
+    </div>
     {% endfor %}
   {% else %}
     <div class="empty">
@@ -990,6 +1005,7 @@
     <br><br>
     <a href="/whales">{{ _('whales') }}</a> · <a href="/about">{{ _('about') }}</a> ·
     <a href="/click/contact?purpose=general">{{ _('contact') }}</a> ·
+    <a href="/contact?purpose=attestation-dispute&ref=tokens">{{ _('dispute a label') }}</a> ·
     <a href="/">{{ _('back to dashboard') }}</a>
   </div>
 
@@ -1002,7 +1018,7 @@
     var stats = document.getElementById('token-search-stats');
     var empty = document.getElementById('token-search-empty');
     if (!input) return;
-    var rows = Array.prototype.slice.call(document.querySelectorAll('.row'));
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.row-wrap'));
     function apply() {
       var q = input.value.trim().toLowerCase();
       var visible = 0;

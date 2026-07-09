@@ -3693,6 +3693,7 @@ CONTACT_PURPOSES = {
     "subprocessor-404":        "Broken subprocessor link",
     "methodology-discrepancy": "Methodology discrepancy",
     "data-correction":         "Data or number correction",
+    "attestation-dispute":     "Attestation or label dispute",
     "institutional-general":   "Institutional inquiry (form fallback)",
 }
 

@@ -226,6 +226,9 @@
         <a href="/check?q={{ (data.currency_raw or data.display) }}.{{ data.issuer }}"
            style="color: var(--cyan, #22d3ee); text-decoration: none; font-size: 0.9em; margin-left: 0.6em;"
            title="{{ _('See what identity claim is on file for this token — sources and timestamps, not a verdict.') }}">{{ _('Get honest signals about this token') }} →</a>
+        <a href="/contact?purpose=attestation-dispute&ref=token:{{ data.currency_raw }}.{{ data.issuer }}"
+           style="color: var(--muted); text-decoration: none; font-size: 0.82em; margin-left: 0.9em; font-family: var(--mono); letter-spacing: 0.04em;"
+           title="{{ _('Report a labeling, category, or attestation error for this token') }}">{{ _('dispute label') }}</a>
       </div>
     </div>
   </div>
@@ -420,6 +423,7 @@
     <br><br>
     <a href="/tokens">{{ _('all tokens') }}</a>
     · <a href="/click/contact?purpose=general">{{ _('contact') }}</a>
+    · <a href="/contact?purpose=attestation-dispute&ref=token:{{ data.currency_raw }}.{{ data.issuer }}">{{ _('dispute label') }}</a>
     · <a href="/">{{ _('dashboard') }}</a>
   </footer>
 
