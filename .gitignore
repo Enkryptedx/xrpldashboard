@@ -69,6 +69,16 @@ partner_conversations.md
 # Outreach log contains PII (real names, emails, reply notes) — keep local
 OUTREACH_LOG.md
 
+# Private archives: user-submitted content from dead tables, contact-form
+# exports, anything with rows that came from third parties. DDL/schema
+# archives go in migrations/archived/ (repo); row data lands here (local).
+# Rule codified 2026-07-08 during feedback-table orphan drop.
+_private/
+
+# Scratch space — investigation output, one-off scripts, JSON dumps.
+# Was untracked-but-unignored, meaning a git add . would sweep it in.
+scratch/
+
 # OS
 .DS_Store
 Thumbs.db
