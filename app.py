@@ -5114,8 +5114,8 @@ def _internal_admin_ok():
     return user_ok and pw_ok
 
 
-@app.route("/internal/coverage")
-def internal_coverage():
+@app.route("/coverage")
+def coverage():
     """Coverage Register — three-way diff between the vocabulary the
     local rippled node advertises (Phase 0) and the types the live stream
     has actually observed (Phase 1a), cross-referenced against the
@@ -5137,13 +5137,9 @@ def internal_coverage():
 
     Freshness: every row footprints its provenance chain and greys out
     when any hop is stale.
-    """
-    if not _internal_admin_ok():
-        # Return 404 (not 401) so unauthenticated pokes can't confirm
-        # the endpoint exists. Authenticated failures via curl/browser
-        # will look like the page just doesn't exist.
-        abort(404)
 
+    Flipped public 2026-07-15 after 7d soak (all 5 evidence checks green).
+    """
     state = db.read_coverage_register_state()
     if state is None:
         # Honest degrade — never claim awareness the sensors aren't
@@ -5188,6 +5184,13 @@ def internal_coverage():
     )
 
 
+@app.route("/internal/coverage")
+def internal_coverage_redirect():
+    """Legacy internal path — kept as a 302 to preserve link continuity
+    for anyone still pointing at the pre-flip URL."""
+    return redirect(url_for("coverage"), code=302)
+
+
 @app.route("/healthz")
 @app.route("/api/health")
 def healthz():
@@ -5227,6 +5230,7 @@ def robots_txt():
         "User-agent: *\n"
         "Allow: /\n"
         "Allow: /mpt/\n"
+        "Allow: /coverage\n"
         "Disallow: /healthz\n"
         "Disallow: /api/\n"
         "Disallow: /lookup\n"
