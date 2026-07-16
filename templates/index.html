@@ -911,7 +911,7 @@
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">{{ _('XRP locked in escrows') }}</div>
-          <div class="stat-sub">{{ xrp_distribution.escrow_object_count }} {{ _('escrow objects across') }} {{ cold_storage.escrow_account_count if cold_storage else 20 }} {{ _('Ripple monthly-release accounts') }}</div>
+          <div class="stat-sub">{{ xrp_distribution.escrow_object_count }} {{ _('escrow objects across') }} {{ cold_storage.escrow_account_count if cold_storage else 20 }} {{ _('Ripple monthly-release accounts — full escrow universe coming') }}</div>
         </div>
         {% if xrp_distribution.escrowed_xrp >= 1000000000 %}
         <div class="stat-v" data-countup="{{ xrp_distribution.escrowed_xrp / 1000000000 }}" data-countup-decimals="1" data-countup-suffix="B XRP">{{ "%.1f"|format(xrp_distribution.escrowed_xrp / 1000000000) }}B XRP</div>

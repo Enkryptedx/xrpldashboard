@@ -108,8 +108,12 @@ SCOPES = [
         "category='ripple' in named_accounts.json minus RLUSD issuer",
         "AccountObjects(type='escrow') for the Ripple monthly-release "
         "cohort defined by category='ripple' in named_accounts.json, "
-        "with the RLUSD issuer excluded. ~102 escrow objects per pass. "
-        "New Ripple-tagged escrows outside this seed are invisible to "
+        "with the RLUSD issuer excluded. ~102 escrow objects per pass — "
+        "Ripple's monthly-release program only, NOT the full XRPL escrow "
+        "universe. The 2026-07-12 full-ledger census found 404 TokenEscrow "
+        "objects total; that fuller walk is in flight and will supersede "
+        "this cohort-only scope. Until then, new Ripple-tagged escrows "
+        "outside this seed and all non-Ripple escrows are invisible to "
         "/cold-storage's browser and calendar. This IS the original "
         "escrow lesson — declaring it here is the fix.",
         True,
