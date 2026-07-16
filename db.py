@@ -3417,23 +3417,42 @@ def prune_amm_pool_events(cap_rows):
 # Flask read helpers (request-scoped connections)
 # ─────────────────────────────────────────────────────────────────────
 
-def read_recent_events(limit=10):
+def read_recent_events(limit=10, tagged_floor_drops=None):
     """Latest N rows from `events`, value-movement only. Mirrors the
     homepage SQLite query so the existing _resolve_event() resolver works
     unchanged. Excludes trustset (signal, not movement) so the homepage
     globe pulse and the institutional /api/whales/recent contract stay
     aligned with "large XRP transfer feed". Returns rows in column order:
     tx_hash, ledger_index, ts, type, from_addr, to_addr, amount_drops,
-    currency, issuer, raw_json."""
-    sql = (
-        "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
-        "amount_drops, currency, issuer, raw_json::text FROM events "
-        "WHERE type != 'trustset' "
-        "ORDER BY ts DESC LIMIT %s"
-    )
+    currency, issuer, raw_json.
+
+    tagged_floor_drops: if not None, tagged rows are only returned when
+    amount_drops IS NULL (token-denominated) OR amount_drops >= this
+    floor. Prevents sub-dollar watchlist activity from dominating the
+    homepage card. Non-tagged types (large_xfer) pass regardless — they
+    were already tier-gated at capture time by xrpl_stream."""
+    if tagged_floor_drops is None:
+        sql = (
+            "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
+            "amount_drops, currency, issuer, raw_json::text FROM events "
+            "WHERE type != 'trustset' "
+            "ORDER BY ts DESC LIMIT %s"
+        )
+        params = (limit,)
+    else:
+        sql = (
+            "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
+            "amount_drops, currency, issuer, raw_json::text FROM events "
+            "WHERE type != 'trustset' "
+            "  AND (type != 'tagged' "
+            "       OR amount_drops IS NULL "
+            "       OR amount_drops >= %s) "
+            "ORDER BY ts DESC LIMIT %s"
+        )
+        params = (tagged_floor_drops, limit)
     with pg_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, (limit,))
+            cur.execute(sql, params)
             return cur.fetchall()
 
 

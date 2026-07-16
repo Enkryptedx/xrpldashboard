@@ -447,6 +447,17 @@
                     background: var(--surface-2, rgba(255,255,255,0.05));
                     color: var(--text-3); font-size: 0.7em; font-weight: 400;
                     letter-spacing: 0.02em; vertical-align: middle; }
+    .row-pill { display: inline-block; margin-left: 6px;
+                padding: 1px 6px; border-radius: 8px;
+                font-size: 0.68em; font-weight: 500;
+                letter-spacing: 0.03em; vertical-align: middle;
+                text-transform: lowercase; }
+    .row-pill-whale { background: rgba(245,158,11,0.15);
+                      color: #f59e0b;
+                      border: 1px solid rgba(245,158,11,0.35); }
+    .row-pill-watchlist { background: var(--surface-2, rgba(255,255,255,0.05));
+                          color: var(--text-3);
+                          border: 1px solid var(--border, rgba(255,255,255,0.12)); }
     .preview-row .right { color: var(--text-2); font-family: var(--mono);
                           font-size: var(--fs-xs); white-space: nowrap; }
     .preview-row .amt { color: var(--text); font-weight: 600;
@@ -951,7 +962,11 @@
         {# ---- Recent whales ---- #}
         <div class="card vibes-spot" data-live="whales">
           <div class="card-label">{{ _('Whale moves') }}</div>
-          <div class="card-title">{{ _('Recent large transfers') }}</div>
+          <div class="card-title">{{ _('Whale + watchlist activity') }}{{ explainer(
+            "whale-watchlist",
+            _("What's on this card"),
+            _("Two kinds of activity, side by side. Whale = any XRP payment of 100,000 XRP or more. Watchlist = a transaction touching one of our named accounts (exchanges, bridges, issuers) — shown for any token movement OR any XRP transfer of 100 XRP or more, not just 100K+ moves. Full whale feed on /whales."),
+          ) }}</div>
           {% if whales_snapshot_at %}
           <div class="card-snapshot-note">{{ _('snapshot · last updated') }} {{ whales_snapshot_at }}</div>
           {% endif %}
@@ -959,7 +974,7 @@
             {% for e in recent_whales %}
             <div class="preview-row">
               <div class="left">
-                <div class="primary"><span class="amt">{{ e.amount_display }}</span></div>
+                <div class="primary"><span class="amt">{{ e.amount_display }}</span>{% if e.row_type_pill %}<span class="row-pill row-pill-{{ e.row_type_pill }}">{% if e.row_type_pill == 'whale' %}{{ _('whale') }}{% else %}{{ _('watchlist') }}{% endif %}</span>{% endif %}</div>
                 <div class="secondary">
                   {{ e.from_label or e.from_addr_short }}{% if e.from_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.from_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.from_attested_domain }}">✓</span>{% endif %}
                   → {{ e.to_label or e.to_addr_short }}{% if e.to_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.to_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.to_attested_domain }}">✓</span>{% endif %}

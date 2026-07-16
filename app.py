@@ -95,6 +95,19 @@ WHALE_XRP_THRESHOLD = 100_000  # editorial display floor (100K).
 # (default 50K). Display filters the wider capture set down to
 # the editorial "whale" tier. See 46334fb for the rename + raise.
 
+TAGGED_XRP_FLOOR = 100  # homepage "watchlist activity" visibility floor.
+# Named accounts (exchanges, bridges, issuers) trigger the homepage
+# Whale-moves card on any token-denominated tx (amount_drops IS NULL —
+# IOU/MPT) OR any XRP tx >= 100 XRP. Meaningful-action floor: ~$200-300
+# at current mid, one order below the 100K whale display floor and
+# three orders above fee-scale dust. Keeps organic watchlist activity
+# visible without letting sub-dollar transfers dominate the card.
+# Homepage-only tonight; /whales predicate untouched by design (see
+# scope guard on the follow-up: extending this to /whales adds rows
+# to a page whose stated contract is "payments over 100,000 XRP", so
+# it needs its own title/copy update in the same commit).
+TAGGED_XRP_FLOOR_DROPS = TAGGED_XRP_FLOOR * 1_000_000
+
 # Canonical production origin. Used for og:url / canonical / sitemap.xml.
 # Override with SITE_URL env var if a preview deploy needs a different host.
 SITE_URL = os.environ.get("SITE_URL", "https://xrpldashboard.com").rstrip("/")
@@ -624,7 +637,9 @@ def _recent_whale_events(limit=3):
     rows = None
     if db.pg_available():
         try:
-            rows = db.read_recent_events(limit)
+            rows = db.read_recent_events(
+                limit, tagged_floor_drops=TAGGED_XRP_FLOOR_DROPS,
+            )
         except Exception:
             rows = None  # fall through to SQLite
     if rows is None:
@@ -637,8 +652,11 @@ def _recent_whale_events(limit=3):
                     "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "
                     "amount_drops, currency, issuer, raw_json FROM events "
                     "WHERE type != 'trustset' "
+                    "  AND (type != 'tagged' "
+                    "       OR amount_drops IS NULL "
+                    "       OR amount_drops >= ?) "
                     "ORDER BY ts DESC LIMIT ?",
-                    (limit,),
+                    (TAGGED_XRP_FLOOR_DROPS, limit),
                 ).fetchall()
             finally:
                 conn.close()
@@ -1783,6 +1801,14 @@ def _resolve_event(row, named_accounts, token_names):
         "tagged":     "tagged",
         "trustset":   "trustline",
     }
+    # Reader-facing pill category. 'tagged' is DB shorthand for "named
+    # account touched this tx"; 'watchlist' is what a first-time visitor
+    # can parse. Kept as its own field so /whales' existing badge (which
+    # still renders type_display) is untouched by this homepage change.
+    row_type_pill = {
+        "large_xfer": "whale",
+        "tagged":     "watchlist",
+    }.get(etype)
 
     from_label_raw = _label(from_addr)
     to_label_raw = _label(to_addr)
@@ -1807,6 +1833,7 @@ def _resolve_event(row, named_accounts, token_names):
         "to_label": to_label,
         "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
+        "row_type_pill": row_type_pill,
         "xrpscan_url": f"https://xrpscan.com/tx/{tx_hash}" if tx_hash else None,
     }
 
