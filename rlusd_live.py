@@ -71,19 +71,29 @@ XRPL_CURRENCY_NAMES = {"RLUSD", XRPL_CURRENCY_HEX}
 # with the standard Unix epoch.
 XRPL_EPOCH_OFFSET = 946_684_800
 
-# Ethereum log lookback. Public RPCs cap eth_getLogs windows (Cloudflare
-# allows ~1024 blocks); ~1000 blocks ≈ 3.3 hours at 12s/block.
-ETH_LOOKBACK_BLOCKS = 1000
+# Ethereum log lookback. Public RPCs tightened eth_getLogs windows in
+# mid-2026 (publicnode.com caps at 100, 1rpc.io at 50). Lowered
+# 1000 → 100 on 2026-07-17 so the live-event feed's single query stays
+# under the sole responding endpoint's ceiling. 100 blocks ≈ 20 min of
+# recent activity — noticeable downgrade from the old 3.3h window, but
+# the alternative is silent all-endpoint-failure and an empty feed.
+ETH_LOOKBACK_BLOCKS = 100
 ETH_MAX_EVENTS = 80
 # Approximate average block time, used to back-fill timestamps from
 # block numbers (logs don't carry timestamps over public RPC, and we
 # don't want to fan out N+1 eth_getBlockByNumber calls).
 ETH_SECONDS_PER_BLOCK = 12
-# Chunked walk for the 24h mint/burn aggregates. 8 × 1000-block chunks
-# covers ~26h at 12s/block — a margin above 24h so we don't miss events
-# clipped by long blocks or RPC-side block-time variance.
-ETH_AGGREGATE_BLOCKS = 8000
-ETH_AGGREGATE_CHUNK = 1000
+# Chunked walk for the 24h mint/burn aggregates. ETH_AGGREGATE_CHUNK
+# lowered 1000 → 100 on 2026-07-17 after public RPCs tightened
+# eth_getLogs limits below the old chunk size (ethereum-rpc.publicnode.com
+# hard-caps at 100; llamarpc/ankr/1rpc were down or rate-limited at
+# probe time). 100-block chunks × 7200-block window = 72 chunks × 2
+# topic-filtered queries = 144 requests per aggregate walk, throttled
+# to max_workers=6 in _fetch_eth_24h_aggregates to stay gentle on the
+# sole responding endpoint. See project_xrpldashboard_rlusd_false_flat_2026-07-17
+# for the incident context.
+ETH_AGGREGATE_BLOCKS = 7200
+ETH_AGGREGATE_CHUNK = 100
 
 XRPL_TX_LIMIT = 80
 XRPL_MAX_EVENTS = 80
@@ -234,7 +244,13 @@ def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float |
     mints = 0.0
     burns = 0.0
     any_failure = False
-    with ThreadPoolExecutor(max_workers=16, thread_name_prefix="rlusd-eth") as ex:
+    # max_workers=6 (was 16): 144 total requests × 16-wide = burst that
+    # tripped publicnode's rate limiter. 6-wide is still gentle but
+    # doesn't rescue us from the underlying constraint — publicnode
+    # 403s after ~1 request per burst regardless of concurrency, so
+    # a real fix requires an API-key path (Alchemy free tier, Infura,
+    # etc.) that raises the per-caller ceiling. Codified 2026-07-17.
+    with ThreadPoolExecutor(max_workers=6, thread_name_prefix="rlusd-eth") as ex:
         futures = [
             (kind, ex.submit(_eth_chunk_aggregate, fb, tb, kind, topics,
                              latest_block, now_unix, cutoff_ts))
