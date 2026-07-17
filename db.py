@@ -960,6 +960,60 @@ CREATE TABLE IF NOT EXISTS coverage_register_history (
 );
 CREATE INDEX IF NOT EXISTS coverage_register_history_ts_idx
     ON coverage_register_history (fetched_at DESC);
+
+-- API v1 key issuance. One row per issued key. Full plaintext key is
+-- displayed once at generation and never stored — only SHA-256(key). Lookup
+-- path is SHA-256(bearer) -> key_hash unique index -> row. key_prefix is
+-- the human-recognizable head of the key ("xd_live_abcd1234") shown on the
+-- account page so users can identify which key is which without ever seeing
+-- the full secret again. Anchored in project_xrpldashboard_api_v1_anchors.
+CREATE TABLE IF NOT EXISTS api_keys (
+    id                     BIGSERIAL PRIMARY KEY,
+    created_at             BIGINT NOT NULL,
+    email                  TEXT NOT NULL,
+    key_hash               TEXT NOT NULL UNIQUE,
+    key_prefix             TEXT NOT NULL,
+    tier                   TEXT NOT NULL DEFAULT 'free',
+    status                 TEXT NOT NULL DEFAULT 'active',
+    revoked_at             BIGINT,
+    stripe_customer_id     TEXT,
+    stripe_subscription_id TEXT,
+    last_used_at           BIGINT
+);
+CREATE INDEX IF NOT EXISTS api_keys_email_status_idx
+    ON api_keys (email, status);
+CREATE INDEX IF NOT EXISTS api_keys_hash_idx
+    ON api_keys (key_hash);
+
+-- Stripe webhook event log. Stub for the billing rollout; empty tonight.
+-- stripe_event_id UNIQUE gives replay idempotency (Stripe retries deliver
+-- the same event id). processed_at NULL = unprocessed, non-null = handled.
+CREATE TABLE IF NOT EXISTS stripe_events (
+    id              BIGSERIAL PRIMARY KEY,
+    stripe_event_id TEXT NOT NULL UNIQUE,
+    event_type      TEXT NOT NULL,
+    payload         JSONB NOT NULL,
+    processed_at    BIGINT,
+    created_at      BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS stripe_events_type_idx
+    ON stripe_events (event_type);
+CREATE INDEX IF NOT EXISTS stripe_events_processed_idx
+    ON stripe_events (processed_at NULLS FIRST);
+
+-- Per-key per-hour request counter. Neon-backed so the count survives
+-- process restarts and is authoritative across Gunicorn workers. Hour
+-- bucket = unix_ts // 3600. Old rows are cheap to sweep with a periodic
+-- DELETE WHERE hour_bucket < now/3600 - 168 (7d retention is plenty for
+-- rate-limit purposes).
+CREATE TABLE IF NOT EXISTS api_request_counters (
+    key_id        BIGINT NOT NULL,
+    hour_bucket   BIGINT NOT NULL,
+    request_count INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (key_id, hour_bucket)
+);
+CREATE INDEX IF NOT EXISTS api_request_counters_bucket_idx
+    ON api_request_counters (hour_bucket);
 """
 
 
@@ -993,6 +1047,56 @@ def pg_connect():
         yield conn
     finally:
         conn.close()
+
+
+@contextmanager
+def rpc_loop_safe_pg_connect():
+    """Use ONLY when a Postgres conn MUST survive across external RPC calls
+    (e.g., a walker paginating XRPL AccountTx). This is the last-resort
+    connection helper.
+
+    Preferred hierarchy (top to bottom):
+      1. write_* helpers in this module (write_event, write_signer_row,
+         write_signed_snapshot, ...) — go through the cached, keepalived,
+         autocommit _get_writer_conn(). Use these whenever possible.
+      2. pg_connect() — short-lived, request-scope. Open, run your SQL,
+         exit the context. Never hold across a network call.
+      3. rpc_loop_safe_pg_connect() — THIS one. Only when 1 and 2 don't fit
+         because the caller genuinely needs one conn open across many RPCs
+         (e.g., writing one row per XRPL page as pagination advances).
+
+    Why this exists (invariant this helper defends):
+      A plain pg_connect() held across a long RPC loop is fatal against
+      Neon Postgres: the socket goes idle during the network wait, Neon's
+      pooler closes it, and the eventual conn.commit() dies with
+      ProtocolViolation. Bridge_signer_walker crashed hourly for 37h on
+      exactly this pattern (2026-07-16 → 2026-07-17).
+
+    Fix mechanics: autocommit=True (every row commits immediately, no
+    within-run window to lose data) + TCP keepalives (Neon's pooler sees
+    traffic on the socket during long RPC gaps and leaves it open).
+
+    Callers must still gate with pg_available() or catch RuntimeError."""
+    if not pg_available():
+        raise RuntimeError(
+            "Postgres not configured: set DATABASE_URL and install psycopg[binary]."
+        )
+    conn = psycopg.connect(
+        pg_url(),
+        autocommit=True,
+        connect_timeout=10,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=3,
+    )
+    try:
+        yield conn
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def init_schema():
@@ -5109,3 +5213,165 @@ def count_nft_activity():
     except Exception as e:
         _log_err("count_nft_activity_failed", e)
         return 0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# API v1 — key issuance, lookup, rate-limit counter
+# Anchors: project_xrpldashboard_api_v1_anchors.md
+# ─────────────────────────────────────────────────────────────────────
+
+def insert_api_key(email, key_hash, key_prefix, tier="free"):
+    """Insert a new API key row. Returns the new row's id, or None on failure."""
+    if not pg_available():
+        return None
+    try:
+        conn = _get_writer_conn()
+        if conn is None:
+            return None
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO api_keys
+                     (created_at, email, key_hash, key_prefix, tier, status)
+                   VALUES (%s, %s, %s, %s, %s, 'active')
+                   RETURNING id""",
+                (int(time.time()), email.lower(), key_hash, key_prefix, tier),
+            )
+            return int(cur.fetchone()[0])
+    except Exception as e:
+        _log_err("insert_api_key_failed", e)
+        _drop_writer_conn()
+        return None
+
+
+def read_api_key_by_hash(key_hash):
+    """Look up an API key by its SHA-256 hash. Returns dict (id, email,
+    key_prefix, tier, status) or None. This is the hot-path auth call —
+    called on every /api/v1/* request."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT id, email, key_prefix, tier, status
+                       FROM api_keys WHERE key_hash = %s""",
+                    (key_hash,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                return {
+                    "id": int(row[0]),
+                    "email": row[1],
+                    "key_prefix": row[2],
+                    "tier": row[3],
+                    "status": row[4],
+                }
+    except Exception as e:
+        _log_err("read_api_key_by_hash_failed", e)
+        return None
+
+
+def read_active_api_key_for_email(email):
+    """Return the most recent active API key row for an email, or None."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT id, email, key_prefix, tier, status, created_at,
+                              last_used_at
+                       FROM api_keys
+                       WHERE email = %s AND status = 'active'
+                       ORDER BY created_at DESC
+                       LIMIT 1""",
+                    (email.lower(),),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                return {
+                    "id": int(row[0]),
+                    "email": row[1],
+                    "key_prefix": row[2],
+                    "tier": row[3],
+                    "status": row[4],
+                    "created_at": int(row[5]) if row[5] else None,
+                    "last_used_at": int(row[6]) if row[6] else None,
+                }
+    except Exception as e:
+        _log_err("read_active_api_key_for_email_failed", e)
+        return None
+
+
+def revoke_api_keys_for_email(email):
+    """Mark all active keys for an email as revoked. Returns count revoked."""
+    if not pg_available():
+        return 0
+    try:
+        conn = _get_writer_conn()
+        if conn is None:
+            return 0
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE api_keys
+                   SET status = 'revoked', revoked_at = %s
+                   WHERE email = %s AND status = 'active'""",
+                (int(time.time()), email.lower()),
+            )
+            return cur.rowcount
+    except Exception as e:
+        _log_err("revoke_api_keys_for_email_failed", e)
+        _drop_writer_conn()
+        return 0
+
+
+def touch_api_key_last_used(key_id):
+    """Best-effort update of last_used_at. Silently no-ops on failure —
+    we don't want a stale-writer error to 500 a successful API request."""
+    if not pg_available():
+        return
+    try:
+        conn = _get_writer_conn()
+        if conn is None:
+            return
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE api_keys SET last_used_at = %s WHERE id = %s",
+                (int(time.time()), key_id),
+            )
+    except Exception as e:
+        _log_err("touch_api_key_last_used_failed", e)
+        _drop_writer_conn()
+
+
+def increment_api_request_counter(key_id):
+    """Atomically increment the (key_id, current_hour_bucket) counter and
+    return the new count. On PG failure returns None so the caller can
+    fail-open with a warning header (better than 500ing everyone if Neon
+    hiccups). The counter is authoritative across Gunicorn workers."""
+    if not pg_available():
+        return None
+    now = int(time.time())
+    bucket = now // 3600
+    try:
+        conn = _get_writer_conn()
+        if conn is None:
+            return None
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO api_request_counters
+                     (key_id, hour_bucket, request_count)
+                   VALUES (%s, %s, 1)
+                   ON CONFLICT (key_id, hour_bucket)
+                   DO UPDATE SET request_count =
+                     api_request_counters.request_count + 1
+                   RETURNING request_count""",
+                (key_id, bucket),
+            )
+            return int(cur.fetchone()[0])
+    except Exception as e:
+        _log_err("increment_api_request_counter_failed", e)
+        _drop_writer_conn()
+        return None

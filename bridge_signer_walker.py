@@ -324,8 +324,8 @@ def scan_signerlistset_events(client, conn, from_ledger, to_ledger, dry_run=Fals
         marker = result.get("marker")
         if not marker:
             break
-    if not dry_run:
-        conn.commit()
+    # No explicit commit — rpc_loop_safe_pg_connect is autocommit=True,
+    # so each write_signer_row() is durable when it returns.
     return added
 
 
@@ -359,7 +359,11 @@ def main():
     try:
         client = JsonRpcClient(XRPL_NODE)
 
-        with db.pg_connect() as conn:
+        # rpc_loop_safe_pg_connect: this scan holds one conn across a long
+        # AccountTx pagination loop; a plain pg_connect() socket goes idle
+        # during RPC waits and Neon closes it. Autocommit + keepalives
+        # keep each row durable and the socket alive.
+        with db.rpc_loop_safe_pg_connect() as conn:
             if not has_bootstrap_row(conn):
                 snap = fetch_current_signer_list(client)
                 if not snap or not snap.get("ledger_index"):
@@ -373,7 +377,7 @@ def main():
                           f"signers={snap['signer_count']}")
                 else:
                     bootstrap_written = write_bootstrap_row(conn, snap)
-                    conn.commit()
+                    # autocommit — write_bootstrap_row is durable on return
                     print(f"bootstrap: wrote {bootstrap_written} row "
                           f"@ ledger={snap['ledger_index']} "
                           f"quorum={snap['quorum']} "
