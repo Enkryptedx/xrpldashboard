@@ -35,7 +35,16 @@ def main():
     try:
         ok = bool(rlusd_live._refresh_cache_once())
         if ok:
-            message = "refreshed"
+            # Surface partial failures (e.g. aggregate fetch failed while
+            # supply succeeded) so walker_health isn't clean-green while
+            # the page shows '—'. The payload's error field records which
+            # sub-fetch failed; read it back from the cache we just wrote.
+            try:
+                payload, _ = db.read_rlusd_state_cache()
+                err = payload.get("error") if payload else None
+            except Exception:
+                err = None
+            message = f"refreshed (partial: {err})" if err else "refreshed"
         else:
             # Soft fail: _refresh_cache_once returned False (upstream RPC
             # error). Previous cache row stays in place; next 5-min cycle
