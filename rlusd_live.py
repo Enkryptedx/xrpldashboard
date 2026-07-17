@@ -181,19 +181,20 @@ def _eth_chunk_aggregate(from_block: int, to_block: int, kind: str, topics: list
                          latest_block: int, now_unix: int, cutoff_ts: int) -> float:
     """One chunk of the 24h walk — issues a single topic-filtered getLogs and
     sums the amounts that fall inside the 24h window. Returns USD-equivalent
-    (RLUSD is 1:1 USD). Swallows errors so a single chunk failure doesn't
-    blank the whole aggregate."""
-    try:
-        logs = _eth_rpc("eth_getLogs", [{
-            "address": ETH_CONTRACT,
-            "topics": topics,
-            "fromBlock": hex(from_block),
-            "toBlock": hex(to_block),
-        }])
-    except Exception:
-        return 0.0
+    (RLUSD is 1:1 USD). Raises on RPC failure so the caller can distinguish
+    "no matching events in this chunk" (return 0.0) from "we couldn't tell"
+    (raises → aggregate returns None → page shows '—' instead of $0).
+    Codified 2026-07-17 after a silent-fabricate bug produced 28 days of
+    false-flat $0 aggregates when public RPCs tightened eth_getLogs block
+    ranges below our chunk size."""
+    logs = _eth_rpc("eth_getLogs", [{
+        "address": ETH_CONTRACT,
+        "topics": topics,
+        "fromBlock": hex(from_block),
+        "toBlock": hex(to_block),
+    }])
     if not isinstance(logs, list):
-        return 0.0
+        raise RuntimeError(f"eth_getLogs {kind} {from_block}-{to_block}: bad shape {type(logs).__name__}")
     total = 0.0
     for log in logs:
         blk_hex = log.get("blockNumber", "0x0")
@@ -205,13 +206,17 @@ def _eth_chunk_aggregate(from_block: int, to_block: int, kind: str, topics: list
     return total
 
 
-def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float, float]:
+def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float | None, float | None]:
     """Sum RLUSD mints (Transfer from 0x0) and burns (Transfer to 0x0) over
-    the trailing 24h. Walks eth_getLogs in 1000-block chunks (under the
-    Cloudflare/1rpc.io 1024-block range cap), fanned out in parallel so the
-    total wall-clock is one RPC RTT, not 16. Returns (mints_usd, burns_usd).
-    Per-chunk failures are swallowed — partial totals beat raising and
-    showing dashes."""
+    the trailing 24h. Walks eth_getLogs in ETH_AGGREGATE_CHUNK-block chunks,
+    fanned out in parallel so total wall-clock is one RPC RTT, not N.
+
+    Returns (mints_usd, burns_usd) on full success. Returns (None, None) if
+    any chunk failed — refusing to synthesize a plausible-looking partial
+    total from a hole. Callers must record the error on the caller's error
+    field and write NULL (not $0) to the cache; the page then renders '—'
+    with a correction note. Codified 2026-07-17 after eth_getLogs limits
+    tightened below our chunk size and 28 days of false-flat $0 shipped."""
     cutoff_ts = now_unix - 86_400
     chunks = ETH_AGGREGATE_BLOCKS // ETH_AGGREGATE_CHUNK
     # Two queries per chunk × N chunks = 2N parallel jobs. Mints filtered
@@ -228,8 +233,7 @@ def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float, 
 
     mints = 0.0
     burns = 0.0
-    # max_workers=16 = 2 × chunk count; cheap because each thread is mostly
-    # blocked on the public-RPC socket.
+    any_failure = False
     with ThreadPoolExecutor(max_workers=16, thread_name_prefix="rlusd-eth") as ex:
         futures = [
             (kind, ex.submit(_eth_chunk_aggregate, fb, tb, kind, topics,
@@ -240,21 +244,26 @@ def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float, 
             try:
                 amt = fut.result(timeout=HTTP_TIMEOUT * 2)
             except Exception:
-                amt = 0.0
+                any_failure = True
+                continue
             if kind == "mint":
                 mints += amt
             else:
                 burns += amt
+    if any_failure:
+        return None, None
     return mints, burns
 
 
 def fetch_eth() -> dict:
-    """Returns {supply, events, mints_24h, burns_24h, error}."""
+    """Returns {supply, events, mints_24h, burns_24h, error}. mints_24h and
+    burns_24h are None when the aggregate walk couldn't complete — the page
+    then renders '—' instead of a fabricated $0."""
     out: dict[str, Any] = {
         "supply": None,
         "events": [],
-        "mints_24h": 0.0,
-        "burns_24h": 0.0,
+        "mints_24h": None,
+        "burns_24h": None,
         "error": None,
     }
 
@@ -321,14 +330,21 @@ def fetch_eth() -> dict:
 
     # 24h mint/burn aggregates — paginate getLogs over ~24h so the page's
     # "24H" label is honest. Best-effort; uses the latest block we already
-    # fetched above to keep the time-from-block math consistent.
+    # fetched above to keep the time-from-block math consistent. mints_24h /
+    # burns_24h stay None on any failure (including a partial chunk hole);
+    # the template renders '—' rather than a fabricated $0.
     try:
         latest_hex = _eth_rpc("eth_blockNumber", [])
         latest = int(latest_hex, 16)
         now_unix = int(time.time())
         mints_24h, burns_24h = _fetch_eth_24h_aggregates(latest, now_unix)
-        out["mints_24h"] = mints_24h
-        out["burns_24h"] = burns_24h
+        if mints_24h is None or burns_24h is None:
+            prev = out["error"]
+            msg = "eth_24h: aggregate incomplete (chunk RPC failure)"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+        else:
+            out["mints_24h"] = mints_24h
+            out["burns_24h"] = burns_24h
     except Exception as e:
         prev = out["error"]
         out["error"] = (
@@ -413,12 +429,17 @@ def _fetch_xrpl_24h_aggregates(client, now_unix: int) -> tuple[float, float]:
 
 
 def fetch_xrpl() -> dict:
-    """Returns {supply, events, mints_24h, burns_24h, error}."""
+    """Returns {supply, events, mints_24h, burns_24h, error}. mints_24h and
+    burns_24h are held at None pending the Step 3 detection rewrite — a
+    Payment-based sweep against the issuer produced 53 days (2026-05-25 →
+    2026-07-17) of false-flat $0. Root-cause + corrected logic land under
+    Fable's Step 3 gate; until then the page shows '—' rather than a
+    fabricated zero."""
     out: dict[str, Any] = {
         "supply": None,
         "events": [],
-        "mints_24h": 0.0,
-        "burns_24h": 0.0,
+        "mints_24h": None,
+        "burns_24h": None,
         "error": None,
     }
     client = xrpl_client.get_client(walker_name="rlusd_refresher")
@@ -519,19 +540,29 @@ def fetch_xrpl() -> dict:
             if prev else f"xrpl_events: {type(e).__name__}: {e}"
         )
 
-    # 24h mint/burn aggregates — paginate account_tx so the page's "24H"
-    # label is honest about its window. Best-effort.
-    try:
-        now_unix = int(time.time())
-        mints_24h, burns_24h = _fetch_xrpl_24h_aggregates(client, now_unix)
-        out["mints_24h"] = mints_24h
-        out["burns_24h"] = burns_24h
-    except Exception as e:
-        prev = out["error"]
-        out["error"] = (
-            f"{prev} | xrpl_24h: {type(e).__name__}: {e}"
-            if prev else f"xrpl_24h: {type(e).__name__}: {e}"
-        )
+    # 24h mint/burn aggregate DISABLED — the Payment-only sweep silently
+    # returned 0.0 for 53 straight days (2026-05-25 → 2026-07-17) because
+    # RLUSD supply changes on XRPL don't ride solely on issuer-side Payments
+    # under the currently-monitored surface. Held None until Step 3 lands a
+    # detection path anchored to actual supply-delta days (identified via
+    # rlusd_supply_history) with sample mint tx pulled from Clio as
+    # regression fixtures. Codified 2026-07-17.
+    # Legacy call preserved below for reference; do not re-enable without
+    # the Step 3 rewrite.
+    # try:
+    #     now_unix = int(time.time())
+    #     mints_24h, burns_24h = _fetch_xrpl_24h_aggregates(client, now_unix)
+    #     out["mints_24h"] = mints_24h
+    #     out["burns_24h"] = burns_24h
+    # except Exception as e:
+    #     prev = out["error"]
+    #     out["error"] = (
+    #         f"{prev} | xrpl_24h: {type(e).__name__}: {e}"
+    #         if prev else f"xrpl_24h: {type(e).__name__}: {e}"
+    #     )
+    prev = out["error"]
+    msg = "xrpl_24h: disabled pending detection rewrite (Step 3)"
+    out["error"] = f"{prev} | {msg}" if prev else msg
 
     return out
 

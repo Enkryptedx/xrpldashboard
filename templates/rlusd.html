@@ -563,8 +563,8 @@
       <span>Activity · last 24 hours</span>
       {{ explainer(
         'rlusd-activity',
-        'Why is this usually $0?',
-        'Mints and burns are when Ripple itself creates new RLUSD or pulls it out of circulation — treasury operations, not user transfers. These events are genuinely rare (often only a handful per week), so this row reads $0 most of the time. That is accurate, not a bug. The live supply totals on the orbs above are pulled directly from Ethereum and the XRP Ledger every ' ~ refresh_interval_minutes ~ ' minutes by a background walker; the page reads the latest cached values from Postgres.'
+        'Why does this show "—"?',
+        'Correction (2026-07-17): the mint/burn detection here was reporting $0 due to bugs — XRPL side since 2026-05-25, Ethereum side since 2026-06-20. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0. On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path. Rather than keep displaying false zeros while we fix it, we now show "—" (unavailable) and have back-filled the affected history rows the same way. The live supply totals on the orbs above are unaffected — those come from totalSupply() on Ethereum and gateway_balances on XRPL, both of which have kept working. Detection fix is landing in stages; the Ethereum side ships first.'
       ) }}
     </div>
 
@@ -814,12 +814,12 @@
    to null when the SSR fetch failed; the client poller then drives state
    the way it always did. */
 window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply is not none and initial.xrpl and initial.xrpl.supply is not none %}{
-  ethSupply: {{ initial.eth.supply or 0 }},
-  xrplSupply: {{ initial.xrpl.supply or 0 }},
-  ethMints24h: {{ initial.eth.mints_24h or 0 }},
-  ethBurns24h: {{ initial.eth.burns_24h or 0 }},
-  xrplMints24h: {{ initial.xrpl.mints_24h or 0 }},
-  xrplBurns24h: {{ initial.xrpl.burns_24h or 0 }},
+  ethSupply: {{ initial.eth.supply }},
+  xrplSupply: {{ initial.xrpl.supply }},
+  ethMints24h: {% if initial.eth.mints_24h is not none %}{{ initial.eth.mints_24h }}{% else %}null{% endif %},
+  ethBurns24h: {% if initial.eth.burns_24h is not none %}{{ initial.eth.burns_24h }}{% else %}null{% endif %},
+  xrplMints24h: {% if initial.xrpl.mints_24h is not none %}{{ initial.xrpl.mints_24h }}{% else %}null{% endif %},
+  xrplBurns24h: {% if initial.xrpl.burns_24h is not none %}{{ initial.xrpl.burns_24h }}{% else %}null{% endif %},
   events: {{ (initial.events or [])|tojson }},
   cachedAt: {{ cached_at or 0 }},
   fresh: {{ 'true' if fresh else 'false' }}
@@ -1276,13 +1276,21 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
   }
 
   function fmtUSD(n) {
+    if (n == null) return '—';
     if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
     if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
     if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
     return '$' + Math.round(n).toLocaleString();
   }
   function fmtSigned(n) {
+    if (n == null) return '—';
     return (n >= 0 ? '+' : '−') + fmtUSD(Math.abs(n));
+  }
+  /* null-aware sum: null + number = null. A single unavailable side must
+     poison the total rather than quietly imply "the other side was zero". */
+  function sumOrNull(a, b) {
+    if (a == null || b == null) return null;
+    return a + b;
   }
   function renderState() {
     if (!LIVE_DATA) return;
@@ -1295,12 +1303,13 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
     document.getElementById('ethPct').textContent  = (100 * state.ethSupply / total).toFixed(1) + '% of supply';
     document.getElementById('xrplPct').textContent = (100 * state.xrplSupply / total).toFixed(1) + '% of supply';
     document.getElementById('totalSupply').textContent = fmtUSD(total);
-    const m24 = state.ethMints24h + state.xrplMints24h;
-    const b24 = state.ethBurns24h + state.xrplBurns24h;
+    const m24 = sumOrNull(state.ethMints24h, state.xrplMints24h);
+    const b24 = sumOrNull(state.ethBurns24h, state.xrplBurns24h);
+    const net = sumOrNull(m24, b24 == null ? null : -b24);
     document.getElementById('mints24h').textContent = fmtUSD(m24);
     document.getElementById('burns24h').textContent = fmtUSD(b24);
-    document.getElementById('net24h').textContent   = fmtSigned(m24 - b24);
-    document.getElementById('net24h').className = 'value ' + ((m24 - b24) >= 0 ? 'mint' : 'burn');
+    document.getElementById('net24h').textContent   = fmtSigned(net);
+    document.getElementById('net24h').className = 'value' + (net == null ? '' : (net >= 0 ? ' mint' : ' burn'));
     document.getElementById('ethMints').textContent  = fmtUSD(state.ethMints24h);
     document.getElementById('ethBurns').textContent  = fmtUSD(state.ethBurns24h);
     document.getElementById('xrplMints').textContent = fmtUSD(state.xrplMints24h);
@@ -1517,14 +1526,17 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
 
     /* 24h mint/burn aggregates come straight from the server now — it
        paginates the full 24h window of on-chain logs/txns. Re-anchor on
-       every poll so client-side drift can't accumulate. */
+       every poll so client-side drift can't accumulate. null is preserved
+       (not coerced to 0) so the detection-broken state renders as "—"
+       instead of a fabricated $0. Codified 2026-07-17. */
+    const toNum = v => (v == null ? null : Number(v));
     if (data.eth) {
-      state.ethMints24h = Number(data.eth.mints_24h) || 0;
-      state.ethBurns24h = Number(data.eth.burns_24h) || 0;
+      state.ethMints24h = toNum(data.eth.mints_24h);
+      state.ethBurns24h = toNum(data.eth.burns_24h);
     }
     if (data.xrpl) {
-      state.xrplMints24h = Number(data.xrpl.mints_24h) || 0;
-      state.xrplBurns24h = Number(data.xrpl.burns_24h) || 0;
+      state.xrplMints24h = toNum(data.xrpl.mints_24h);
+      state.xrplBurns24h = toNum(data.xrpl.burns_24h);
     }
 
     const events = Array.isArray(data.events) ? data.events.filter(e => e && e.tx) : [];
