@@ -23,6 +23,7 @@ route stays cheap regardless of how often clients poll.
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import ssl
@@ -83,17 +84,6 @@ ETH_MAX_EVENTS = 80
 # block numbers (logs don't carry timestamps over public RPC, and we
 # don't want to fan out N+1 eth_getBlockByNumber calls).
 ETH_SECONDS_PER_BLOCK = 12
-# Chunked walk for the 24h mint/burn aggregates. ETH_AGGREGATE_CHUNK
-# lowered 1000 → 100 on 2026-07-17 after public RPCs tightened
-# eth_getLogs limits below the old chunk size (ethereum-rpc.publicnode.com
-# hard-caps at 100; llamarpc/ankr/1rpc were down or rate-limited at
-# probe time). 100-block chunks × 7200-block window = 72 chunks × 2
-# topic-filtered queries = 144 requests per aggregate walk, throttled
-# to max_workers=6 in _fetch_eth_24h_aggregates to stay gentle on the
-# sole responding endpoint. See project_xrpldashboard_rlusd_false_flat_2026-07-17
-# for the incident context.
-ETH_AGGREGATE_BLOCKS = 7200
-ETH_AGGREGATE_CHUNK = 100
 
 XRPL_TX_LIMIT = 80
 XRPL_MAX_EVENTS = 80
@@ -187,99 +177,44 @@ def _decode_eth_amount(data_hex: str) -> float:
     return raw / (10 ** ETH_DECIMALS)
 
 
-def _eth_chunk_aggregate(from_block: int, to_block: int, kind: str, topics: list,
-                         latest_block: int, now_unix: int, cutoff_ts: int) -> float:
-    """One chunk of the 24h walk — issues a single topic-filtered getLogs and
-    sums the amounts that fall inside the 24h window. Returns USD-equivalent
-    (RLUSD is 1:1 USD). Raises on RPC failure so the caller can distinguish
-    "no matching events in this chunk" (return 0.0) from "we couldn't tell"
-    (raises → aggregate returns None → page shows '—' instead of $0).
-    Codified 2026-07-17 after a silent-fabricate bug produced 28 days of
-    false-flat $0 aggregates when public RPCs tightened eth_getLogs block
-    ranges below our chunk size."""
-    logs = _eth_rpc("eth_getLogs", [{
-        "address": ETH_CONTRACT,
-        "topics": topics,
-        "fromBlock": hex(from_block),
-        "toBlock": hex(to_block),
-    }])
-    if not isinstance(logs, list):
-        raise RuntimeError(f"eth_getLogs {kind} {from_block}-{to_block}: bad shape {type(logs).__name__}")
-    total = 0.0
-    for log in logs:
-        blk_hex = log.get("blockNumber", "0x0")
-        blk = int(blk_hex, 16) if isinstance(blk_hex, str) else int(blk_hex)
-        ts = now_unix - max(0, latest_block - blk) * ETH_SECONDS_PER_BLOCK
-        if ts < cutoff_ts:
-            continue
-        total += _decode_eth_amount(log.get("data", "0x0"))
-    return total
-
-
-def _fetch_eth_24h_aggregates(latest_block: int, now_unix: int) -> tuple[float | None, float | None]:
-    """Sum RLUSD mints (Transfer from 0x0) and burns (Transfer to 0x0) over
-    the trailing 24h. Walks eth_getLogs in ETH_AGGREGATE_CHUNK-block chunks,
-    fanned out in parallel so total wall-clock is one RPC RTT, not N.
-
-    Returns (mints_usd, burns_usd) on full success. Returns (None, None) if
-    any chunk failed — refusing to synthesize a plausible-looking partial
-    total from a hole. Callers must record the error on the caller's error
-    field and write NULL (not $0) to the cache; the page then renders '—'
-    with a correction note. Codified 2026-07-17 after eth_getLogs limits
-    tightened below our chunk size and 28 days of false-flat $0 shipped."""
-    cutoff_ts = now_unix - 86_400
-    chunks = ETH_AGGREGATE_BLOCKS // ETH_AGGREGATE_CHUNK
-    # Two queries per chunk × N chunks = 2N parallel jobs. Mints filtered
-    # by topic1 = zero; burns by topic2 = zero. Both topic-filters at the
-    # node level so per-response payloads stay tiny.
-    jobs: list = []
-    for i in range(chunks):
-        to_block = latest_block - (i * ETH_AGGREGATE_CHUNK)
-        from_block = max(0, to_block - ETH_AGGREGATE_CHUNK + 1)
-        if to_block <= 0:
-            break
-        jobs.append(("mint", from_block, to_block, [TRANSFER_TOPIC, ZERO_TOPIC]))
-        jobs.append(("burn", from_block, to_block, [TRANSFER_TOPIC, None, ZERO_TOPIC]))
-
-    mints = 0.0
-    burns = 0.0
-    any_failure = False
-    # max_workers=6 (was 16): 144 total requests × 16-wide = burst that
-    # tripped publicnode's rate limiter. 6-wide is still gentle but
-    # doesn't rescue us from the underlying constraint — publicnode
-    # 403s after ~1 request per burst regardless of concurrency, so
-    # a real fix requires an API-key path (Alchemy free tier, Infura,
-    # etc.) that raises the per-caller ceiling. Codified 2026-07-17.
-    with ThreadPoolExecutor(max_workers=6, thread_name_prefix="rlusd-eth") as ex:
-        futures = [
-            (kind, ex.submit(_eth_chunk_aggregate, fb, tb, kind, topics,
-                             latest_block, now_unix, cutoff_ts))
-            for (kind, fb, tb, topics) in jobs
-        ]
-        for kind, fut in futures:
-            try:
-                amt = fut.result(timeout=HTTP_TIMEOUT * 2)
-            except Exception:
-                any_failure = True
-                continue
-            if kind == "mint":
-                mints += amt
-            else:
-                burns += amt
-    if any_failure:
-        return None, None
-    return mints, burns
+# Aggregate mint/burn walks moved to rlusd_etherscan (Etherscan V2 tokentx).
+# Reason: eth_getLogs over public RPCs shipped 28 days of false-flat $0 in
+# summer 2026 — providers tightened block-range limits and the chunked
+# fanout hit rate-limits it couldn't back off from. See
+# project_xrpldashboard_rlusd_false_flat_2026-07-17. The Etherscan path
+# uses one HTTP call per aggregate walk (up to a few for paginated days),
+# rate-limits itself at 5 req/sec, and is the same source Charlie
+# spot-checks against in the Etherscan UI.
 
 
 def fetch_eth() -> dict:
-    """Returns {supply, events, mints_24h, burns_24h, error}. mints_24h and
-    burns_24h are None when the aggregate walk couldn't complete — the page
-    then renders '—' instead of a fabricated $0."""
+    """Returns {supply, events, mints_24h, burns_24h, mints_calendar_today,
+    burns_calendar_today, mints_calendar_prev, burns_calendar_prev, error}.
+
+    `mints_24h` / `burns_24h` are the *rolling* trailing-24h totals used by
+    the live /rlusd footer (labeled "last 24 hours (rolling)" on-page).
+
+    `mints_calendar_today` / `burns_calendar_today` are today's UTC calendar
+    day mints/burns *so far* — used by the history writer for today's row.
+    `mints_calendar_prev` / `burns_calendar_prev` are yesterday's UTC calendar
+    day, fully finalized — the writer also UPDATEs yesterday's row each cycle
+    so the last-committed calendar day is always the true full-day total,
+    even if the walker didn't run right at 00:00Z.
+
+    All aggregate fields are None when the Etherscan V2 tokentx path can't
+    complete; the page renders '—' with a correction note rather than a
+    fabricated $0. See rlusd_etherscan and
+    project_xrpldashboard_rlusd_false_flat_2026-07-17 for the anti-pattern
+    this replaced."""
     out: dict[str, Any] = {
         "supply": None,
         "events": [],
         "mints_24h": None,
         "burns_24h": None,
+        "mints_calendar_today": None,
+        "burns_calendar_today": None,
+        "mints_calendar_prev": None,
+        "burns_calendar_prev": None,
         "error": None,
     }
 
@@ -344,28 +279,51 @@ def fetch_eth() -> dict:
             if prev else f"eth_events: {type(e).__name__}: {e}"
         )
 
-    # 24h mint/burn aggregates — paginate getLogs over ~24h so the page's
-    # "24H" label is honest. Best-effort; uses the latest block we already
-    # fetched above to keep the time-from-block math consistent. mints_24h /
-    # burns_24h stay None on any failure (including a partial chunk hole);
-    # the template renders '—' rather than a fabricated $0.
+    # Rolling 24h (for the live footer) + today's + yesterday's calendar-day
+    # totals (for the history writer). Two distinct semantics rendered in two
+    # distinct places, both derived from Etherscan V2 tokentx. Any failure
+    # leaves the affected aggregate at None; history row + live footer render
+    # '—' rather than a synthesized $0.
     try:
-        latest_hex = _eth_rpc("eth_blockNumber", [])
-        latest = int(latest_hex, 16)
+        import rlusd_etherscan as _rle
         now_unix = int(time.time())
-        mints_24h, burns_24h = _fetch_eth_24h_aggregates(latest, now_unix)
-        if mints_24h is None or burns_24h is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        prev_day = today - datetime.timedelta(days=1)
+
+        # Rolling 24h — one boundary call + one tokentx paginate.
+        try:
+            r_m, r_b = _rle.aggregate_rolling_24h(now_unix)
+            out["mints_24h"] = r_m
+            out["burns_24h"] = r_b
+        except Exception as e:
             prev = out["error"]
-            msg = "eth_24h: aggregate incomplete (chunk RPC failure)"
+            msg = f"eth_rolling_24h: {type(e).__name__}: {e}"
             out["error"] = f"{prev} | {msg}" if prev else msg
-        else:
-            out["mints_24h"] = mints_24h
-            out["burns_24h"] = burns_24h
+
+        # Today calendar-day so-far.
+        try:
+            t_m, t_b = _rle.aggregate_calendar_day(today)
+            out["mints_calendar_today"] = t_m
+            out["burns_calendar_today"] = t_b
+        except Exception as e:
+            prev = out["error"]
+            msg = f"eth_cal_today: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+
+        # Previous calendar-day (fully closed).
+        try:
+            p_m, p_b = _rle.aggregate_calendar_day(prev_day)
+            out["mints_calendar_prev"] = p_m
+            out["burns_calendar_prev"] = p_b
+        except Exception as e:
+            prev = out["error"]
+            msg = f"eth_cal_prev: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
     except Exception as e:
         prev = out["error"]
         out["error"] = (
-            f"{prev} | eth_24h: {type(e).__name__}: {e}"
-            if prev else f"eth_24h: {type(e).__name__}: {e}"
+            f"{prev} | eth_aggregates: {type(e).__name__}: {e}"
+            if prev else f"eth_aggregates: {type(e).__name__}: {e}"
         )
 
     return out
@@ -606,8 +564,16 @@ def _build_state() -> dict:
     return {
         "eth": {
             "supply": eth["supply"],
-            "mints_24h": eth.get("mints_24h", 0.0),
-            "burns_24h": eth.get("burns_24h", 0.0),
+            # Rolling — used by the live /rlusd footer.
+            "mints_24h": eth.get("mints_24h"),
+            "burns_24h": eth.get("burns_24h"),
+            # Calendar-day (UTC) — used by write_rlusd_supply_history to
+            # keep the history rows honest to their date labels. See
+            # feedback_history_flip_cadence_rule (title-is-a-contract).
+            "mints_calendar_today": eth.get("mints_calendar_today"),
+            "burns_calendar_today": eth.get("burns_calendar_today"),
+            "mints_calendar_prev": eth.get("mints_calendar_prev"),
+            "burns_calendar_prev": eth.get("burns_calendar_prev"),
             "error": eth["error"],
         },
         "xrpl": {

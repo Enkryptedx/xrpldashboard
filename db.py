@@ -2955,6 +2955,17 @@ def write_rlusd_supply_history(payload):
         return False
     snapshot_date = fetched_dt.date()
     written_at_iso = fetched_dt.isoformat()
+    # eth_mints_24h / eth_burns_24h in the history table mean UTC calendar day
+    # for the row's snapshot_date, NOT the trailing-24h rolling number the live
+    # /rlusd footer shows. The eth_branch payload carries both: `mints_24h`
+    # (rolling, for live) and `mints_calendar_today` (today's UTC day so far,
+    # for the row we're writing here). Same for burns. See
+    # project_xrpldashboard_rlusd_false_flat_2026-07-17 + Charlie's 2026-07-18
+    # calendar-day mandate ("row labeled with a date is a claim about that
+    # date"). Old rows carried trailing-24h wearing date labels — accidentally
+    # correct on days near midnight, off by up to a full day otherwise.
+    eth_mints_today = eth_branch.get("mints_calendar_today")
+    eth_burns_today = eth_branch.get("burns_calendar_today")
     conn = _get_writer_conn()
     if conn is None:
         return False
@@ -2988,11 +2999,29 @@ def write_rlusd_supply_history(payload):
                     eth_branch.get("holders"),
                     xrpl_branch.get("mints_24h"),
                     xrpl_branch.get("burns_24h"),
-                    eth_branch.get("mints_24h"),
-                    eth_branch.get("burns_24h"),
+                    eth_mints_today,
+                    eth_burns_today,
                     written_at_iso,
                 ),
             )
+            # Finalize yesterday's row with its fully-closed calendar-day
+            # totals — if the walker didn't happen to run exactly at 00:00Z,
+            # yesterday's row was written with "today so far" values that
+            # under-count the last few minutes of the day. Each cycle we
+            # overwrite yesterday's ETH cells with the finalized numbers.
+            # Idempotent by construction (Etherscan returns the same figures
+            # for a closed day every time).
+            eth_mints_prev = eth_branch.get("mints_calendar_prev")
+            eth_burns_prev = eth_branch.get("burns_calendar_prev")
+            if eth_mints_prev is not None and eth_burns_prev is not None:
+                prev_date = snapshot_date - datetime.timedelta(days=1)
+                cur.execute(
+                    "UPDATE rlusd_supply_history SET "
+                    "  eth_mints_24h = %s, "
+                    "  eth_burns_24h = %s "
+                    "WHERE snapshot_date = %s",
+                    (eth_mints_prev, eth_burns_prev, prev_date),
+                )
         return True
     except Exception:
         return False

@@ -560,11 +560,11 @@
     </div>
 
     <div class="press-caption">
-      <span>Activity · last 24 hours</span>
+      <span>Activity · last 24 hours (rolling)</span>
       {{ explainer(
         'rlusd-activity',
-        'Why does this show "—"?',
-        'Correction (2026-07-17): the mint/burn detection here was reporting $0 due to bugs — XRPL side since 2026-05-25, Ethereum side since 2026-06-20. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0. On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path. Rather than keep displaying false zeros while we fix it, we now show "—" (unavailable) and have back-filled the affected history rows the same way. The live supply totals on the orbs above are unaffected — those come from totalSupply() on Ethereum and gateway_balances on XRPL, both of which have kept working. Detection fix is landing in stages; the Ethereum side ships first.'
+        'What do these numbers mean?',
+        'These four cells show the last 24 hours on a rolling window ending right now — the number rolls forward continuously as new blocks land, not at midnight UTC. The dated history rows below use a different, complementary semantic: each row is one UTC calendar day. Same underlying source (Etherscan on the Ethereum side, the XRPL directly on the other) — different clock. Correction (2026-07-17, ETH side fixed 2026-07-18): the mint/burn detection here was previously reporting $0 due to bugs. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0; that path is now retired in favor of Etherscan V2 tokentx (same source Charlie spot-checks against). On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path — the XRPL side still shows "—" pending the corrected detection logic (Option A, in progress). The live supply totals on the orbs above were unaffected throughout — those come from totalSupply() on Ethereum and gateway_balances on XRPL.'
       ) }}
     </div>
 
