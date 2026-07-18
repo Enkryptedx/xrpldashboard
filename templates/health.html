@@ -271,35 +271,6 @@
     }
     .footer a { color: var(--muted); }
 
-    /* Incident notice — dated, removed once the entry rotates out (~30 days). */
-    .incident {
-      background: rgba(251,191,36,0.06);
-      border: 1px solid rgba(251,191,36,0.28);
-      border-radius: 10px;
-      padding: 14px 18px;
-      margin: 0 0 1.4em;
-      font-size: 0.92rem; line-height: 1.6;
-    }
-    .incident summary {
-      cursor: pointer; color: var(--text); font-weight: 600;
-      list-style: none; outline: none;
-    }
-    .incident summary::-webkit-details-marker { display: none; }
-    .incident summary::after {
-      content: "▾"; color: var(--dim); margin-left: 8px;
-      transition: transform 0.18s; display: inline-block;
-    }
-    .incident[open] summary::after { transform: rotate(180deg); }
-    .incident .inc-tag {
-      display: inline-block; font-size: 0.72rem; font-weight: 700;
-      color: #fbbf24; letter-spacing: 0.08em; text-transform: uppercase;
-      margin-right: 8px;
-    }
-    .incident .inc-body { color: var(--muted); margin-top: 10px; }
-    .incident .inc-body p { margin: 0.5em 0; }
-    .incident .inc-body code { font-family: var(--mono); font-size: 0.86em;
-      background: rgba(255,255,255,0.04); padding: 1px 5px; border-radius: 3px;
-      color: var(--text); }
 
     @media (max-width: 540px) {
       .card { grid-template-columns: auto 1fr; }
@@ -347,17 +318,6 @@
       <span class="bpm {{ '' if network_ok else 'deg' }}" id="ekg-bpm" data-network-bpm>{% if pulse and pulse.avg_close_seconds %}{{ (60 / pulse.avg_close_seconds)|round|int }}{% else %}—{% endif %} {{ _('bpm') }}</span>
     </div>
   </div>
-
-  {# ========== Recent incident (dated; remove after ~30 days) ========== #}
-  <details class="incident">
-    <summary><span class="inc-tag">Dashboard incident</span>2026-05-19 04:02 EDT — ~2-minute serving outage, resolved. XRP Ledger was unaffected.</summary>
-    <div class="inc-body">
-      <p>For roughly two minutes around 04:02 EDT (08:02 UTC) the site returned 502 errors. Better Stack's uptime monitor flagged it; the service self-recovered within ~2 minutes.</p>
-      <p><strong>Cause.</strong> Meta's AI training crawler (User-Agent <code>meta-externalagent/1.1</code>, source IP range <code>57.141.18.0/24</code>) hit the wallet pages faster than our workers could serve them. The wallet route walks the on-chain transfer graph and can take 5-25 seconds per request, so a sustained burst exhausted the gunicorn worker pool and tripped its 30-second timeout.</p>
-      <p><strong>Fix shipped 08:18 EDT.</strong> An application-layer block now returns HTTP 403 for any request whose User-Agent contains <code>meta-externalagent</code>, before the request reaches a route handler. Normal browsers are unaffected. Deeper structural work — promoting the credentials-walker thread out of the gunicorn worker process — is tracked separately and not on the path of this incident.</p>
-      <p><strong>Why we're telling you.</strong> Truth-first applies to our own outages, not just to the on-chain data. If you hit the site at 04:02 EDT and got an error, this is what happened and what we did about it.</p>
-    </div>
-  </details>
 
   {# ========== Card 1: XRPL Network ========== #}
   <details class="card-expandable">
