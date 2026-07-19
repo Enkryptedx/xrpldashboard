@@ -337,17 +337,18 @@ CREATE TABLE IF NOT EXISTS rlusd_state_cache (
 -- 30s noise. See migrations/2026_05_25_rlusd_supply_history.sql and
 -- feedback_history_flip_cadence_rule.md.
 CREATE TABLE IF NOT EXISTS rlusd_supply_history (
-    snapshot_date    DATE     NOT NULL,
-    xrpl_supply      NUMERIC  NOT NULL,
-    eth_supply       NUMERIC  NOT NULL,
-    total_supply     NUMERIC  NOT NULL,
-    xrpl_holders     INTEGER,
-    eth_holders      INTEGER,
-    xrpl_mints_24h   NUMERIC,
-    xrpl_burns_24h   NUMERIC,
-    eth_mints_24h    NUMERIC,
-    eth_burns_24h    NUMERIC,
-    written_at_iso   TEXT     NOT NULL,
+    snapshot_date        DATE     NOT NULL,
+    xrpl_supply          NUMERIC  NOT NULL,
+    eth_supply           NUMERIC  NOT NULL,
+    total_supply         NUMERIC  NOT NULL,
+    xrpl_holders         INTEGER,
+    eth_holders          INTEGER,
+    xrpl_mints_24h       NUMERIC,  -- historical; NULL from 2026-05-25 onward
+    xrpl_burns_24h       NUMERIC,  -- historical; NULL from 2026-05-25 onward
+    xrpl_net_change_24h  NUMERIC,  -- Option A: gateway_balances snapshot-diff
+    eth_mints_24h        NUMERIC,
+    eth_burns_24h        NUMERIC,
+    written_at_iso       TEXT     NOT NULL,
     PRIMARY KEY (snapshot_date)
 );
 CREATE INDEX IF NOT EXISTS rlusd_supply_history_date_idx
@@ -2966,6 +2967,11 @@ def write_rlusd_supply_history(payload):
     # correct on days near midnight, off by up to a full day otherwise.
     eth_mints_today = eth_branch.get("mints_calendar_today")
     eth_burns_today = eth_branch.get("burns_calendar_today")
+    # XRPL side: net supply change from gateway_balances snapshot-diff
+    # (Option A). Mirrors ETH structure — the "_today" value is used for
+    # today's row, "_prev" finalizes yesterday's row below. See
+    # rlusd_xrpl_option_a.py for the boundary semantics.
+    xrpl_net_change_today = xrpl_branch.get("net_change_calendar_today")
     conn = _get_writer_conn()
     if conn is None:
         return False
@@ -2975,21 +2981,22 @@ def write_rlusd_supply_history(payload):
                 "INSERT INTO rlusd_supply_history ("
                 "    snapshot_date, xrpl_supply, eth_supply, total_supply, "
                 "    xrpl_holders, eth_holders, "
-                "    xrpl_mints_24h, xrpl_burns_24h, "
+                "    xrpl_mints_24h, xrpl_burns_24h, xrpl_net_change_24h, "
                 "    eth_mints_24h, eth_burns_24h, "
                 "    written_at_iso"
-                ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "ON CONFLICT (snapshot_date) DO UPDATE SET "
-                "    xrpl_supply    = EXCLUDED.xrpl_supply, "
-                "    eth_supply     = EXCLUDED.eth_supply, "
-                "    total_supply   = EXCLUDED.total_supply, "
-                "    xrpl_holders   = EXCLUDED.xrpl_holders, "
-                "    eth_holders    = EXCLUDED.eth_holders, "
-                "    xrpl_mints_24h = EXCLUDED.xrpl_mints_24h, "
-                "    xrpl_burns_24h = EXCLUDED.xrpl_burns_24h, "
-                "    eth_mints_24h  = EXCLUDED.eth_mints_24h, "
-                "    eth_burns_24h  = EXCLUDED.eth_burns_24h, "
-                "    written_at_iso = EXCLUDED.written_at_iso",
+                "    xrpl_supply         = EXCLUDED.xrpl_supply, "
+                "    eth_supply          = EXCLUDED.eth_supply, "
+                "    total_supply        = EXCLUDED.total_supply, "
+                "    xrpl_holders        = EXCLUDED.xrpl_holders, "
+                "    eth_holders         = EXCLUDED.eth_holders, "
+                "    xrpl_mints_24h      = EXCLUDED.xrpl_mints_24h, "
+                "    xrpl_burns_24h      = EXCLUDED.xrpl_burns_24h, "
+                "    xrpl_net_change_24h = EXCLUDED.xrpl_net_change_24h, "
+                "    eth_mints_24h       = EXCLUDED.eth_mints_24h, "
+                "    eth_burns_24h       = EXCLUDED.eth_burns_24h, "
+                "    written_at_iso      = EXCLUDED.written_at_iso",
                 (
                     snapshot_date,
                     float(xrpl_supply),
@@ -2997,8 +3004,13 @@ def write_rlusd_supply_history(payload):
                     float(xrpl_supply) + float(eth_supply),
                     xrpl_branch.get("holders"),
                     eth_branch.get("holders"),
-                    xrpl_branch.get("mints_24h"),
-                    xrpl_branch.get("burns_24h"),
+                    # xrpl_mints_24h / xrpl_burns_24h intentionally None:
+                    # the Option A net-change column replaces them
+                    # semantically. Historical rows keep whatever they had
+                    # (NULL after the 2026-07-17 migration).
+                    None,
+                    None,
+                    xrpl_net_change_today,
                     eth_mints_today,
                     eth_burns_today,
                     written_at_iso,
@@ -3008,19 +3020,32 @@ def write_rlusd_supply_history(payload):
             # totals — if the walker didn't happen to run exactly at 00:00Z,
             # yesterday's row was written with "today so far" values that
             # under-count the last few minutes of the day. Each cycle we
-            # overwrite yesterday's ETH cells with the finalized numbers.
-            # Idempotent by construction (Etherscan returns the same figures
-            # for a closed day every time).
+            # overwrite yesterday's cells with the finalized numbers.
+            # Idempotent by construction (both Etherscan and gateway_balances
+            # return the same figures for a closed day every time).
             eth_mints_prev = eth_branch.get("mints_calendar_prev")
             eth_burns_prev = eth_branch.get("burns_calendar_prev")
+            xrpl_net_prev = xrpl_branch.get("net_change_calendar_prev")
+            prev_date = snapshot_date - datetime.timedelta(days=1)
+            # ETH pair — updated together (both derived from the same
+            # Etherscan call). Skip if either failed.
             if eth_mints_prev is not None and eth_burns_prev is not None:
-                prev_date = snapshot_date - datetime.timedelta(days=1)
                 cur.execute(
                     "UPDATE rlusd_supply_history SET "
                     "  eth_mints_24h = %s, "
                     "  eth_burns_24h = %s "
                     "WHERE snapshot_date = %s",
                     (eth_mints_prev, eth_burns_prev, prev_date),
+                )
+            # XRPL net change — independent RPC path, skip if it failed.
+            # Split from the ETH UPDATE so a single-chain outage doesn't
+            # hold up the other chain's finalization.
+            if xrpl_net_prev is not None:
+                cur.execute(
+                    "UPDATE rlusd_supply_history SET "
+                    "  xrpl_net_change_24h = %s "
+                    "WHERE snapshot_date = %s",
+                    (xrpl_net_prev, prev_date),
                 )
         return True
     except Exception:

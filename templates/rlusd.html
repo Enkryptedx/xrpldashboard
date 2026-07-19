@@ -8,12 +8,13 @@
 {% set xrpl_supply = (initial.xrpl.supply if initial and initial.xrpl else None) %}
 {% set eth_mints = (initial.eth.mints_24h if initial and initial.eth else None) %}
 {% set eth_burns = (initial.eth.burns_24h if initial and initial.eth else None) %}
-{% set xrpl_mints = (initial.xrpl.mints_24h if initial and initial.xrpl else None) %}
-{% set xrpl_burns = (initial.xrpl.burns_24h if initial and initial.xrpl else None) %}
+{% set xrpl_net = (initial.xrpl.net_change_24h if initial and initial.xrpl else None) %}
 {% set total_supply = (eth_supply + xrpl_supply) if (eth_supply is not none and xrpl_supply is not none) else None %}
-{% set total_mints = (eth_mints + xrpl_mints) if (eth_mints is not none and xrpl_mints is not none) else None %}
-{% set total_burns = (eth_burns + xrpl_burns) if (eth_burns is not none and xrpl_burns is not none) else None %}
-{% set net_24h = (total_mints - total_burns) if (total_mints is not none and total_burns is not none) else None %}
+{# ETH-side net is derivable directly (mints - burns). Total net across
+   both chains is the SUM of the ETH net and the XRPL net — same
+   semantic on both sides now (both are signed supply-change scalars). #}
+{% set eth_net = (eth_mints - eth_burns) if (eth_mints is not none and eth_burns is not none) else None %}
+{% set net_24h = (eth_net + xrpl_net) if (eth_net is not none and xrpl_net is not none) else None %}
 {% macro fmt_usd(n) -%}
   {%- if n is none -%}—
   {%- elif n >= 1000000000 -%}${{ "%.2f"|format(n / 1000000000) }}B
@@ -295,6 +296,7 @@
       display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
       font-size: 0.86rem;
     }
+    .chain-card .breakdown .item.wide { grid-column: 1 / -1; }
     .chain-card .breakdown .item .l {
       font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
       letter-spacing: 0.08em; font-weight: 600;
@@ -564,21 +566,13 @@
       {{ explainer(
         'rlusd-activity',
         'What do these numbers mean?',
-        'These four cells show the last 24 hours on a rolling window ending right now — the number rolls forward continuously as new blocks land, not at midnight UTC. The dated history rows below use a different, complementary semantic: each row is one UTC calendar day. Same underlying source (Etherscan on the Ethereum side, the XRPL directly on the other) — different clock. Correction (2026-07-17, ETH side fixed 2026-07-18): the mint/burn detection here was previously reporting $0 due to bugs. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0; that path is now retired in favor of Etherscan V2 tokentx (same source the contract link above resolves to). On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path — the XRPL side still shows "—" pending the corrected detection logic (Option A, in progress). The live supply totals on the orbs above were unaffected throughout — those come from totalSupply() on Ethereum and gateway_balances on XRPL.'
+        'These cells show the last 24 hours on a rolling window ending right now — the number rolls forward continuously as new blocks land, not at midnight UTC. The dated history rows below use a different, complementary semantic: each row is one UTC calendar day. Same underlying source (Etherscan on the Ethereum side, the XRPL directly on the other) — different clock. Correction (2026-07-17, ETH side fixed 2026-07-18, XRPL side fixed 2026-07-19): the mint/burn detection here was previously reporting $0 due to bugs. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0; that path is now retired in favor of Etherscan V2 tokentx (same source the contract link above resolves to). On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path — replaced by gateway_balances snapshot-diff at UTC-day-boundary ledgers, which measures the issued obligation total directly. XRPL is shown as a single "net supply change" (mints minus redemptions) rather than separate mints/burns because the ledger proves the net directly; separate components would require a full transaction enumeration that we don\'t ship. The live supply totals on the orbs above were unaffected throughout — those come from totalSupply() on Ethereum and gateway_balances on XRPL.'
       ) }}
     </div>
 
     <div class="press-footer">
       <div class="cell">
-        <div class="label">Mints · 24h</div>
-        <div class="value mint" id="mints24h">{{ fmt_usd(total_mints) }}</div>
-      </div>
-      <div class="cell">
-        <div class="label">Burns · 24h</div>
-        <div class="value burn" id="burns24h">{{ fmt_usd(total_burns) }}</div>
-      </div>
-      <div class="cell">
-        <div class="label">Net change · 24h</div>
+        <div class="label">Net supply change · 24h</div>
         <div class="value {% if net_24h is not none %}{{ 'mint' if net_24h >= 0 else 'burn' }}{% endif %}" id="net24h">{{ fmt_signed(net_24h) }}</div>
       </div>
       <div class="cell">
@@ -616,8 +610,10 @@
       <div class="supply" id="xrplSupplyBig">{{ fmt_usd(xrpl_supply) }}</div>
       <div class="supply-label">RLUSD circulating on the XRPL</div>
       <div class="breakdown">
-        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="xrplMints">{{ fmt_usd(xrpl_mints) }}</div></div>
-        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="xrplBurns">{{ fmt_usd(xrpl_burns) }}</div></div>
+        <div class="item wide" title="Mints minus redemptions — we show the net because it's what the ledger proves directly. Computed from gateway_balances at UTC-day-boundary ledgers.">
+          <div class="l">Net supply change · 24h</div>
+          <div class="v {% if xrpl_net is not none %}{{ 'mint' if xrpl_net >= 0 else 'burn' }}{% endif %}" id="xrplNet">{{ fmt_signed(xrpl_net) }}</div>
+        </div>
       </div>
       <div class="source">
         Issuer
@@ -818,8 +814,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
   xrplSupply: {{ initial.xrpl.supply }},
   ethMints24h: {% if initial.eth.mints_24h is not none %}{{ initial.eth.mints_24h }}{% else %}null{% endif %},
   ethBurns24h: {% if initial.eth.burns_24h is not none %}{{ initial.eth.burns_24h }}{% else %}null{% endif %},
-  xrplMints24h: {% if initial.xrpl.mints_24h is not none %}{{ initial.xrpl.mints_24h }}{% else %}null{% endif %},
-  xrplBurns24h: {% if initial.xrpl.burns_24h is not none %}{{ initial.xrpl.burns_24h }}{% else %}null{% endif %},
+  xrplNet24h:  {% if initial.xrpl.net_change_24h is not none %}{{ initial.xrpl.net_change_24h }}{% else %}null{% endif %},
   events: {{ (initial.events or [])|tojson }},
   cachedAt: {{ cached_at or 0 }},
   fresh: {{ 'true' if fresh else 'false' }}
@@ -875,13 +870,12 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
     xrplSupply:   SSR.xrplSupply,
     ethMints24h:  SSR.ethMints24h,
     ethBurns24h:  SSR.ethBurns24h,
-    xrplMints24h: SSR.xrplMints24h,
-    xrplBurns24h: SSR.xrplBurns24h,
+    xrplNet24h:   SSR.xrplNet24h,
   } : {
     ethSupply:  660_000_000,
     xrplSupply:  90_000_000,
     ethMints24h: 0, ethBurns24h: 0,
-    xrplMints24h: 0, xrplBurns24h: 0,
+    xrplNet24h:  0,
   };
 
   /* Two orbs; areas proportional to RLUSD supply on each chain.
@@ -1303,17 +1297,19 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
     document.getElementById('ethPct').textContent  = (100 * state.ethSupply / total).toFixed(1) + '% of supply';
     document.getElementById('xrplPct').textContent = (100 * state.xrplSupply / total).toFixed(1) + '% of supply';
     document.getElementById('totalSupply').textContent = fmtUSD(total);
-    const m24 = sumOrNull(state.ethMints24h, state.xrplMints24h);
-    const b24 = sumOrNull(state.ethBurns24h, state.xrplBurns24h);
-    const net = sumOrNull(m24, b24 == null ? null : -b24);
-    document.getElementById('mints24h').textContent = fmtUSD(m24);
-    document.getElementById('burns24h').textContent = fmtUSD(b24);
-    document.getElementById('net24h').textContent   = fmtSigned(net);
-    document.getElementById('net24h').className = 'value' + (net == null ? '' : (net >= 0 ? ' mint' : ' burn'));
+    /* Total net = ETH mints - ETH burns + XRPL net (all signed, same
+       semantic on both sides post Option A). Any component being null
+       makes the total null — the cell renders '—' rather than a partial
+       truth. */
+    const ethNet = sumOrNull(state.ethMints24h, state.ethBurns24h == null ? null : -state.ethBurns24h);
+    const net    = sumOrNull(ethNet, state.xrplNet24h);
+    document.getElementById('net24h').textContent = fmtSigned(net);
+    document.getElementById('net24h').className   = 'value' + (net == null ? '' : (net >= 0 ? ' mint' : ' burn'));
     document.getElementById('ethMints').textContent  = fmtUSD(state.ethMints24h);
     document.getElementById('ethBurns').textContent  = fmtUSD(state.ethBurns24h);
-    document.getElementById('xrplMints').textContent = fmtUSD(state.xrplMints24h);
-    document.getElementById('xrplBurns').textContent = fmtUSD(state.xrplBurns24h);
+    const xn = document.getElementById('xrplNet');
+    xn.textContent = fmtSigned(state.xrplNet24h);
+    xn.className   = 'v' + (state.xrplNet24h == null ? '' : (state.xrplNet24h >= 0 ? ' mint' : ' burn'));
   }
 
   function eventLabel(ev) {
@@ -1535,8 +1531,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
       state.ethBurns24h = toNum(data.eth.burns_24h);
     }
     if (data.xrpl) {
-      state.xrplMints24h = toNum(data.xrpl.mints_24h);
-      state.xrplBurns24h = toNum(data.xrpl.burns_24h);
+      state.xrplNet24h = toNum(data.xrpl.net_change_24h);
     }
 
     const events = Array.isArray(data.events) ? data.events.filter(e => e && e.tx) : [];

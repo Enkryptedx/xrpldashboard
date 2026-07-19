@@ -87,12 +87,6 @@ ETH_SECONDS_PER_BLOCK = 12
 
 XRPL_TX_LIMIT = 80
 XRPL_MAX_EVENTS = 80
-# 24h mint/burn aggregate walk. account_tx paginates with marker; we walk
-# newest-first and stop as soon as a page's oldest tx falls past the
-# cutoff. 400 is rippled's per-call max. The page cap is a safety net
-# for a hyperactive issuer day.
-XRPL_AGGREGATE_PAGE = 400
-XRPL_AGGREGATE_MAX_PAGES = 20
 
 # Refresher cadence. The launchd walker (rlusd_refresher_walker) invokes
 # _refresh_cache_once on this interval and writes the result to Neon. The
@@ -335,85 +329,22 @@ def _xrpl_currency_match(cur: str | None) -> bool:
     return cur in XRPL_CURRENCY_NAMES if cur else False
 
 
-def _fetch_xrpl_24h_aggregates(client, now_unix: int) -> tuple[float, float]:
-    """Walk account_tx on the issuer until we cross the 24h cutoff, summing
-    Payment-based mints (issuer → other) and burns (other → issuer). Trades
-    (OfferCreate) are ignored — they don't change supply. Stops as soon as
-    a page's oldest tx is older than the cutoff; capped at
-    XRPL_AGGREGATE_MAX_PAGES so a runaway day can't stall the request."""
-    cutoff_ts = now_unix - 86_400
-    mints = 0.0
-    burns = 0.0
-    marker = None
-    for _ in range(XRPL_AGGREGATE_MAX_PAGES):
-        kwargs = {
-            "account": XRPL_ISSUER,
-            "ledger_index_min": -1,
-            "ledger_index_max": -1,
-            "limit": XRPL_AGGREGATE_PAGE,
-            "binary": False,
-        }
-        if marker is not None:
-            kwargs["marker"] = marker
-        try:
-            resp = client.request(AccountTx(**kwargs))
-        except Exception:
-            break
-        result = resp.result or {}
-        txs = result.get("transactions", []) or []
-        if not txs:
-            break
-        oldest_ts = None
-        for entry in txs:
-            tx = entry.get("tx") or entry.get("tx_json") or {}
-            ts = int(tx.get("date", 0)) + XRPL_EPOCH_OFFSET
-            if oldest_ts is None or ts < oldest_ts:
-                oldest_ts = ts
-            if ts < cutoff_ts:
-                continue
-            if tx.get("TransactionType") != "Payment":
-                continue
-            meta = entry.get("meta") or {}
-            delivered = meta.get("delivered_amount")
-            if not isinstance(delivered, dict):
-                src = tx.get("Amount")
-                delivered = src if isinstance(src, dict) else None
-            if not isinstance(delivered, dict):
-                continue
-            if not _xrpl_currency_match(delivered.get("currency")):
-                continue
-            if delivered.get("issuer") != XRPL_ISSUER:
-                continue
-            try:
-                amount = float(delivered.get("value", "0"))
-            except (TypeError, ValueError):
-                continue
-            sender = tx.get("Account", "")
-            destination = tx.get("Destination", "")
-            if sender == XRPL_ISSUER and destination != XRPL_ISSUER:
-                mints += amount
-            elif destination == XRPL_ISSUER and sender != XRPL_ISSUER:
-                burns += amount
-        if oldest_ts is not None and oldest_ts < cutoff_ts:
-            break
-        marker = result.get("marker")
-        if not marker:
-            break
-    return mints, burns
-
-
 def fetch_xrpl() -> dict:
-    """Returns {supply, events, mints_24h, burns_24h, error}. mints_24h and
-    burns_24h are held at None pending the Step 3 detection rewrite — a
-    Payment-based sweep against the issuer produced 53 days (2026-05-25 →
-    2026-07-17) of false-flat $0. Root-cause + corrected logic land under
-    Fable's Step 3 gate; until then the page shows '—' rather than a
-    fabricated zero."""
+    """Returns {supply, events, net_change_24h, net_change_calendar_today,
+    net_change_calendar_prev, error}.
+
+    net_change_24h is the trailing-24h net supply change (mints minus
+    redemptions) computed via gateway_balances snapshot-diff at the
+    boundary ledgers. net_change_calendar_today and _prev are the same
+    quantity computed against UTC-day-boundary ledgers, used by the
+    history writer. Replaces the 2026-05-25 → 2026-07-17 Payment-only
+    sweep that produced 53 days of silent-fabricate $0."""
     out: dict[str, Any] = {
         "supply": None,
         "events": [],
-        "mints_24h": None,
-        "burns_24h": None,
+        "net_change_24h": None,
+        "net_change_calendar_today": None,
+        "net_change_calendar_prev": None,
         "error": None,
     }
     client = xrpl_client.get_client(walker_name="rlusd_refresher")
@@ -514,29 +445,52 @@ def fetch_xrpl() -> dict:
             if prev else f"xrpl_events: {type(e).__name__}: {e}"
         )
 
-    # 24h mint/burn aggregate DISABLED — the Payment-only sweep silently
-    # returned 0.0 for 53 straight days (2026-05-25 → 2026-07-17) because
-    # RLUSD supply changes on XRPL don't ride solely on issuer-side Payments
-    # under the currently-monitored surface. Held None until Step 3 lands a
-    # detection path anchored to actual supply-delta days (identified via
-    # rlusd_supply_history) with sample mint tx pulled from Clio as
-    # regression fixtures. Codified 2026-07-17.
-    # Legacy call preserved below for reference; do not re-enable without
-    # the Step 3 rewrite.
-    # try:
-    #     now_unix = int(time.time())
-    #     mints_24h, burns_24h = _fetch_xrpl_24h_aggregates(client, now_unix)
-    #     out["mints_24h"] = mints_24h
-    #     out["burns_24h"] = burns_24h
-    # except Exception as e:
-    #     prev = out["error"]
-    #     out["error"] = (
-    #         f"{prev} | xrpl_24h: {type(e).__name__}: {e}"
-    #         if prev else f"xrpl_24h: {type(e).__name__}: {e}"
-    #     )
-    prev = out["error"]
-    msg = "xrpl_24h: disabled pending detection rewrite (Step 3)"
-    out["error"] = f"{prev} | {msg}" if prev else msg
+    # Net supply change aggregates via gateway_balances snapshot-diff
+    # (Option A). Replaces the 2026-07-17 disabled Payment-only sweep,
+    # which produced 53 days of silent-fabricate $0 because the actual
+    # supply-change path on XRPL isn't solely issuer-side Payments.
+    #
+    # Three semantics, same pattern as ETH:
+    #   * net_change_24h — rolling trailing-24h, live footer
+    #   * net_change_calendar_today — today UTC so far, for history row
+    #   * net_change_calendar_prev — yesterday UTC finalized, for history
+    #     row finalize pass
+    #
+    # Any failure leaves the affected aggregate at None; history row + live
+    # footer render '—' rather than a synthesized $0. See
+    # project_xrpldashboard_rlusd_false_flat_2026-07-17.
+    try:
+        import rlusd_xrpl_option_a as _rxo
+        now_unix = int(time.time())
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        prev_day = today - datetime.timedelta(days=1)
+
+        try:
+            out["net_change_24h"] = _rxo.aggregate_rolling_24h(now_unix)
+        except Exception as e:
+            prev = out["error"]
+            msg = f"xrpl_rolling_24h: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+
+        try:
+            out["net_change_calendar_today"] = _rxo.aggregate_calendar_day(today)
+        except Exception as e:
+            prev = out["error"]
+            msg = f"xrpl_cal_today: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+
+        try:
+            out["net_change_calendar_prev"] = _rxo.aggregate_calendar_day(prev_day)
+        except Exception as e:
+            prev = out["error"]
+            msg = f"xrpl_cal_prev: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+    except Exception as e:
+        prev = out["error"]
+        out["error"] = (
+            f"{prev} | xrpl_aggregates: {type(e).__name__}: {e}"
+            if prev else f"xrpl_aggregates: {type(e).__name__}: {e}"
+        )
 
     return out
 
@@ -578,8 +532,13 @@ def _build_state() -> dict:
         },
         "xrpl": {
             "supply": xrpl["supply"],
-            "mints_24h": xrpl.get("mints_24h", 0.0),
-            "burns_24h": xrpl.get("burns_24h", 0.0),
+            # Rolling — used by the live /rlusd footer.
+            "net_change_24h": xrpl.get("net_change_24h"),
+            # Calendar-day (UTC) — used by write_rlusd_supply_history to keep
+            # the history row honest to its date label. Mirrors the ETH
+            # pattern landed 2026-07-18.
+            "net_change_calendar_today": xrpl.get("net_change_calendar_today"),
+            "net_change_calendar_prev": xrpl.get("net_change_calendar_prev"),
             "error": xrpl["error"],
         },
         "events": events[:120],
