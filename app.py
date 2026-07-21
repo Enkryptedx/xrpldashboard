@@ -720,14 +720,21 @@ _ANALYTICS_EXCLUDED_IPS = frozenset(
 )
 
 
+# AI training-only crawlers blocked per three-audience policy (2026-07-21):
+# "AI retrieval crawlers (fetch-to-cite): NEVER blocked. AI training-only
+# crawlers (bulk-ingest, no citation path): Charlie's discretion, per-crawler,
+# documented." meta-externalagent = Meta AI training; no citation path. Every
+# entry here must be explicitly approved and noted. See memory:
+# feedback_three_audience_rule.md.
 _BLOCKED_UA_FRAGMENTS = ("meta-externalagent",)
 
 
 @app.before_request
 def _block_ai_crawlers():
-    """Fast-path 403 for AI training crawlers. Their UA is unique enough that
-    a substring match is safe; legitimate browsers never include these tokens.
-    Runs before page-view logging so denied requests aren't counted."""
+    """Fast-path 403 for AI training-only crawlers (no citation path). UA is
+    unique enough that a substring match is safe; legitimate browsers and
+    retrieval crawlers never include these tokens. Runs before page-view
+    logging so denied requests aren't counted."""
     ua = (request.headers.get("User-Agent") or "").lower()
     for fragment in _BLOCKED_UA_FRAGMENTS:
         if fragment in ua:
