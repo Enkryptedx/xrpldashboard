@@ -601,6 +601,10 @@ _PAGEVIEW_SKIP_PREFIXES = (
     "/api/",
     "/admin/",
     "/og/",
+    # Delta-polling endpoint — fires every 15s from the /analytics JS
+    # interval; must not appear in page_views or it inflates RIGHT NOW
+    # counts and clogs the Recent Visits feed.
+    "/analytics/live",
     # CTA click trackers — logged separately via cta_clicks so they don't
     # double-count in page_views.
     "/click/",
