@@ -94,7 +94,10 @@ except Exception as e:
 # is always against the live file.
 count_missing_nodes() {
   if [ ! -f "$DEBUG_LOG" ]; then echo 0; return; fi
-  grep -c 'SHAMapStore.*Missing node while copying' "$DEBUG_LOG" 2>/dev/null || echo 0
+  # grep -c prints "0" on no-matches and exits 1; the trailing `|| true`
+  # swallows the exit code without emitting a second "0" (previous
+  # `|| echo 0` produced "0\n0" which broke WATCH arithmetic on 2026-07-19).
+  grep -c 'SHAMapStore.*Missing node while copying' "$DEBUG_LOG" 2>/dev/null || true
 }
 
 capture_log_inode() {
@@ -138,7 +141,7 @@ baseline() {
   log "  inode=$start_inode  size=$(stat -f '%z' "$DEBUG_LOG" 2>/dev/null || echo 0)"
   log "  SHAMapStore_missing_lifetime=$start_missing (frozen; WATCH shows delta since rebuild)"
   log "-- rippled fd inventory (looking for ghost stderr inode) --"
-  lsof -p "$(pgrep -f rippled | head -1)" 2>/dev/null \
+  lsof -p "$(pgrep -x rippled | head -1)" 2>/dev/null \
     | grep -E "\.log|launchd-err" | tee -a "$RUN_LOG" || log "  (no rippled PID or no log fds)"
   log "-- disk free --"
   df -h ~ | tee -a "$RUN_LOG"
@@ -163,7 +166,7 @@ post_restart_report() {
   log "  debug.log new inode=$new_inode (baseline inode was $(python3 -c 'import json; print(json.load(open("'"$STATE_FILE"'"))["start_inode"])'))"
   log "  disk_free delta since baseline: ${delta_gb} GiB"
   log "  ghost stderr inode from pre-newsyslog era should have released on bootout."
-  log "  new rippled PID: $(pgrep -f rippled | head -1)"
+  log "  new rippled PID: $(pgrep -x rippled | head -1)"
 }
 
 do_rebuild() {
