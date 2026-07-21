@@ -287,6 +287,61 @@ def _maybe_flush_whales_receipts(force):
         pass
 
 
+# /analytics 60s in-process cache — mirrors the whales pattern above.
+# Key space is a single bucket (no query params vary the view), so the dict
+# is effectively single-slot; keeping the dict shape matches whales for
+# consistency and leaves room if we ever add ?kind=bot as a variant later.
+# The view is expensive (28 DB queries incl. 4 all-time scans + 22 through
+# the heavy _bot_filter_sql with two IN-subqueries on page_views). One
+# origin render per 60s is the goal; delta polling for right-now counts
+# goes through the separate /analytics/live endpoint.
+_ANALYTICS_CACHE_LOCK = threading.Lock()
+_ANALYTICS_CACHE = {}  # "full" -> (expiry_ts, body_str, gen_ms)
+_ANALYTICS_CACHE_TTL_S = 60
+_ANALYTICS_CACHE_STATS = {
+    "hits": 0,
+    "misses": 0,
+    "hits_flushed": 0,
+    "misses_flushed": 0,
+    "last_flush_ts": 0.0,
+}
+_ANALYTICS_CACHE_FLUSH_INTERVAL_S = 300
+
+
+def _maybe_flush_analytics_receipts(force):
+    """Same shape as _maybe_flush_whales_receipts, separate table
+    (analytics_cache_daily). See that docstring for semantics."""
+    now = time.time()
+    with _ANALYTICS_CACHE_LOCK:
+        hits_delta = (
+            _ANALYTICS_CACHE_STATS["hits"]
+            - _ANALYTICS_CACHE_STATS["hits_flushed"]
+        )
+        misses_delta = (
+            _ANALYTICS_CACHE_STATS["misses"]
+            - _ANALYTICS_CACHE_STATS["misses_flushed"]
+        )
+        if hits_delta == 0 and misses_delta == 0:
+            return
+        if not force:
+            if hits_delta == 0:
+                return
+            if (
+                now - _ANALYTICS_CACHE_STATS["last_flush_ts"]
+                < _ANALYTICS_CACHE_FLUSH_INTERVAL_S
+            ):
+                return
+        _ANALYTICS_CACHE_STATS["hits_flushed"] = _ANALYTICS_CACHE_STATS["hits"]
+        _ANALYTICS_CACHE_STATS["misses_flushed"] = (
+            _ANALYTICS_CACHE_STATS["misses"]
+        )
+        _ANALYTICS_CACHE_STATS["last_flush_ts"] = now
+    try:
+        db.write_analytics_cache_daily_delta(hits_delta, misses_delta)
+    except Exception:
+        pass
+
+
 @app.context_processor
 def inject_snapshot_fingerprint():
     """Expose the Ed25519 signed-snapshot pubkey fingerprint to every
@@ -5465,6 +5520,24 @@ def analytics():
     enough (comparable to Plausible.io public stats) that no individual
     visit is identifiable to third parties. Referrer is stored in the DB
     but intentionally not rendered here."""
+    # 60s cache — heavy view (28 queries, 22 heavy _bot_filter_sql, 4
+    # all-time scans) was blowing past Cloudflare's 25s origin timeout
+    # under load 2026-07-21. Right-now counts move via /analytics/live
+    # instead of a full re-render.
+    _analytics_cache_key = "full"
+    _analytics_now = time.time()
+    with _ANALYTICS_CACHE_LOCK:
+        _cached_entry = _ANALYTICS_CACHE.get(_analytics_cache_key)
+        if _cached_entry and _cached_entry[0] > _analytics_now:
+            _ANALYTICS_CACHE_STATS["hits"] += 1
+            _cached_body = _cached_entry[1]
+        else:
+            _cached_body = None
+    if _cached_body is not None:
+        _maybe_flush_analytics_receipts(force=False)
+        return _cached_body
+    _analytics_render_start = time.perf_counter()
+
     rollups = db.read_page_view_stats(kind="human")
     top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human")
     top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human")
@@ -5523,7 +5596,7 @@ def analytics():
         for r in cta_recent_raw
     ]
 
-    return render_template(
+    _analytics_body = render_template(
         "admin_stats.html",
         rollups=rollups,
         top_24h=top_24h,
@@ -5546,6 +5619,56 @@ def analytics():
         recent=recent_view,
         pg_ok=db.pg_available(),
     )
+    _analytics_gen_ms = int(
+        (time.perf_counter() - _analytics_render_start) * 1000
+    )
+    with _ANALYTICS_CACHE_LOCK:
+        _ANALYTICS_CACHE[_analytics_cache_key] = (
+            _analytics_now + _ANALYTICS_CACHE_TTL_S,
+            _analytics_body,
+            _analytics_gen_ms,
+        )
+        _ANALYTICS_CACHE_STATS["misses"] += 1
+        _hits_total = _ANALYTICS_CACHE_STATS["hits"]
+        _misses_total = _ANALYTICS_CACHE_STATS["misses"]
+    app.logger.info(
+        "analytics_cache: hit=%d miss=%d gen_ms=%d key=%s",
+        _hits_total, _misses_total, _analytics_gen_ms, _analytics_cache_key,
+    )
+    _maybe_flush_analytics_receipts(force=True)
+    return _analytics_body
+
+
+@app.route("/analytics/live")
+@limiter.limit("120 per minute")
+def analytics_live():
+    """Small JSON endpoint for the /analytics page's JS refresh interval.
+    Returns only the truly-live sections: right-now counts (5min + 1h) and
+    the last N recent visits. NOT cached — the whole point is delta polling
+    that dodges the 60s /analytics cache. Uses _bot_filter_sql_lite (path
+    LIKE + UA ILIKE only, no session subqueries) so it stays sub-100ms."""
+    try:
+        stats = db.read_page_view_stats_live(kind="human")
+        recent = db.read_recent_page_views(limit=25)
+        now = int(time.time())
+        recent_view = [
+            {
+                "age": _humanize_seconds(now - r["ts"]),
+                "path": r["path"],
+                "country": r["country"] or "?",
+                "ua_short": _short_ua(r.get("user_agent")),
+            }
+            for r in recent
+        ]
+        return jsonify({
+            "ok": True,
+            "as_of": now,
+            "now": stats.get("now", {"views": 0, "uniques": 0}),
+            "hour": stats.get("hour", {"views": 0, "uniques": 0}),
+            "recent": recent_view,
+        })
+    except Exception:
+        return jsonify({"ok": False}), 503
 
 
 @app.route("/admin/stats")

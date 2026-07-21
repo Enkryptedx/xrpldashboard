@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>analytics · xrpldashboard</title>
-  <meta http-equiv="refresh" content="15">
   <style>
     :root {
       --bg: #0a0e27;
@@ -98,6 +97,7 @@
             text-transform: uppercase; }
     .pill.ok { background: rgba(34,197,94,0.14); color: var(--green); }
     .pill.warn { background: rgba(245,158,11,0.14); color: var(--amber); }
+    #live-status.paused { color: var(--amber); }
 
     .legend { background: var(--card); border: 1px solid var(--border);
               border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
@@ -120,7 +120,7 @@
     </span></h1>
     <div class="sub">
       public · includes bots and scanner probes ·
-      <span class="auto">auto-refreshes every 15s</span>
+      <span class="auto" id="live-status">live · updating every 15s</span>
     </div>
 
     <div class="legend">
@@ -139,13 +139,13 @@
     <div class="grid" role="group" aria-label="Visitor traffic statistics">
       <div class="stat">
         <div class="lbl">right now</div>
-        <div class="v now">{{ "{:,}".format(rollups.now.uniques) }} <span class="unit">people</span></div>
-        <div class="sub2">{{ "{:,}".format(rollups.now.views) }} page loads · last 5 min</div>
+        <div class="v now"><span id="live-now-uniques">{{ "{:,}".format(rollups.now.uniques) }}</span> <span class="unit">people</span></div>
+        <div class="sub2"><span id="live-now-views">{{ "{:,}".format(rollups.now.views) }}</span> page loads · last 5 min</div>
       </div>
       <div class="stat">
         <div class="lbl">last hour</div>
-        <div class="v">{{ "{:,}".format(rollups.hour.uniques) }} <span class="unit">people</span></div>
-        <div class="sub2">{{ "{:,}".format(rollups.hour.views) }} page loads</div>
+        <div class="v"><span id="live-hour-uniques">{{ "{:,}".format(rollups.hour.uniques) }}</span> <span class="unit">people</span></div>
+        <div class="sub2"><span id="live-hour-views">{{ "{:,}".format(rollups.hour.views) }}</span> page loads</div>
       </div>
       <div class="stat">
         <div class="lbl">last 24 hours</div>
@@ -291,6 +291,7 @@
 
       <div class="panel">
         <h2>Recent visits · last 100</h2>
+        <div id="live-recent-container">
         {% if recent %}
         <div class="feed">
           {% for r in recent %}
@@ -303,6 +304,7 @@
           {% endfor %}
         </div>
         {% else %}<div class="empty">no visits recorded yet</div>{% endif %}
+        </div>
       </div>
     </div>
 
@@ -493,7 +495,81 @@
       </div>
     </div>
   </div>
+  <script>
+    // Delta poller — swaps the meta-refresh full-page reload for a tiny
+    // JSON fetch. Cadence: every 15s. Hits /analytics/live which uses the
+    // lite bot filter (path LIKE + UA ILIKE only, no session subqueries)
+    // and returns just what visibly moves: right-now counts, last-hour
+    // counts, and the most recent visits. Failure -> "updating paused"
+    // pill, next tick tries again. No exponential backoff — a 503 usually
+    // means Neon blipped, and 15s is already a mild rate.
+    (function () {
+      var statusEl = document.getElementById("live-status");
+      var nowU = document.getElementById("live-now-uniques");
+      var nowV = document.getElementById("live-now-views");
+      var hourU = document.getElementById("live-hour-uniques");
+      var hourV = document.getElementById("live-hour-views");
+      var recentBox = document.getElementById("live-recent-container");
+      function fmt(n) { return (n || 0).toLocaleString(); }
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                   "\"": "&quot;", "'": "&#39;" }[c];
+        });
+      }
+      function paused() {
+        if (statusEl) {
+          statusEl.textContent = "updating paused · retrying";
+          statusEl.classList.add("paused");
+        }
+      }
+      function running() {
+        if (statusEl) {
+          statusEl.textContent = "live · updating every 15s";
+          statusEl.classList.remove("paused");
+        }
+      }
+      function renderRecent(rows) {
+        if (!recentBox) return;
+        if (!rows || rows.length === 0) {
+          recentBox.innerHTML =
+            '<div class="empty">no visits recorded yet</div>';
+          return;
+        }
+        var parts = ['<div class="feed">'];
+        for (var i = 0; i < rows.length; i++) {
+          var r = rows[i];
+          parts.push(
+            '<div class="row-line">' +
+              '<div class="age">' + esc(r.age) + '</div>' +
+              '<div class="pth">' + esc(r.path) + '</div>' +
+              '<div class="ctry">' + esc(r.country) + '</div>' +
+              '<div class="ua">' + esc(r.ua_short) + '</div>' +
+            '</div>'
+          );
+        }
+        parts.push('</div>');
+        recentBox.innerHTML = parts.join("");
+      }
+      function tick() {
+        fetch("/analytics/live", { credentials: "same-origin" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("bad status " + r.status);
+            return r.json();
+          })
+          .then(function (d) {
+            if (!d || !d.ok) throw new Error("payload not ok");
+            if (nowU) nowU.textContent = fmt(d.now && d.now.uniques);
+            if (nowV) nowV.textContent = fmt(d.now && d.now.views);
+            if (hourU) hourU.textContent = fmt(d.hour && d.hour.uniques);
+            if (hourV) hourV.textContent = fmt(d.hour && d.hour.views);
+            renderRecent(d.recent);
+            running();
+          })
+          .catch(function () { paused(); });
+      }
+      setInterval(tick, 15000);
+    })();
+  </script>
 </body>
 </html>
-</content>
-</invoke>

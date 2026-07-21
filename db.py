@@ -2944,6 +2944,47 @@ def write_whales_cache_daily_delta(hits_delta, misses_delta):
         return False
 
 
+def write_analytics_cache_daily_delta(hits_delta, misses_delta):
+    """Roll /analytics in-process cache hit/miss deltas into a daily receipts row.
+
+    Deliberately parallel to write_whales_cache_daily_delta — same shape,
+    separate table. Two mirror tables is minimal build; consolidation into a
+    single page_cache_daily with a page column can happen if a third mirror
+    ever appears. Row shape: (date, hits, misses, last_updated). Upsert
+    does += delta, so multi-worker safe."""
+    if not pg_available():
+        return False
+    if hits_delta == 0 and misses_delta == 0:
+        return False
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS analytics_cache_daily ("
+                "    date DATE PRIMARY KEY,"
+                "    hits BIGINT NOT NULL DEFAULT 0,"
+                "    misses BIGINT NOT NULL DEFAULT 0,"
+                "    last_updated TIMESTAMPTZ"
+                ")"
+            )
+            cur.execute(
+                "INSERT INTO analytics_cache_daily "
+                "    (date, hits, misses, last_updated) "
+                "VALUES (CURRENT_DATE, %s, %s, NOW()) "
+                "ON CONFLICT (date) DO UPDATE SET "
+                "    hits = analytics_cache_daily.hits + EXCLUDED.hits, "
+                "    misses = analytics_cache_daily.misses + EXCLUDED.misses, "
+                "    last_updated = EXCLUDED.last_updated",
+                (hits_delta, misses_delta),
+            )
+        return True
+    except Exception as e:
+        _log_err("write_analytics_cache_daily_delta", e)
+        return False
+
+
 def write_rlusd_state_cache(payload):
     """Upsert the single-row last-good cache. Called from rlusd_live's
     refresh loop after every successful full-supply build. Best-effort —
@@ -4224,6 +4265,34 @@ def _bot_filter_sql(kind):
     return f"AND NOT {full_pred}", params
 
 
+def _bot_filter_sql_lite(kind):
+    """Row-level-only bot filter — path LIKE + UA ILIKE, NO session-key
+    subqueries and NO scanner-detection subquery. Used by the /analytics/live
+    delta endpoint where we need sub-100ms latency and can accept a slight
+    undercount (a scanner whose row-level heuristics don't fire may register
+    as human for 5-min purposes until it's classified retrospectively).
+
+    The full filter's IN-subqueries scan the whole page_views table per
+    query (~100k rows). At 15s polling cadence per open tab, that turns
+    /analytics/live into the same DB-hammering shape we're solving here.
+    The lite filter costs microseconds against the row set already narrowed
+    by the ts-DESC index.
+
+    Same interface as _bot_filter_sql: returns (fragment, params). Fragment
+    starts with `AND ` so it appends to an existing WHERE."""
+    if kind == "all":
+        return "", []
+    path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
+    ua_likes = " OR ".join(
+        "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
+    )
+    row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+    if kind == "bot":
+        return f"AND {row_pred}", params
+    return f"AND NOT {row_pred}", params
+
+
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None, utm_source=None,
                   ip_day_hash=None):
@@ -4283,6 +4352,39 @@ def read_page_view_stats(kind="human"):
                 )
                 v, u = cur.fetchone() or (0, 0)
                 out["all_time"] = {"views": int(v or 0), "uniques": int(u or 0)}
+    except Exception:
+        pass
+    return out
+
+
+def read_page_view_stats_live(kind="human"):
+    """Lite variant for /analytics/live — only the `now` (5-min) and `hour`
+    windows, using _bot_filter_sql_lite so each query costs microseconds
+    against the ts-index-narrowed row set. Sub-100ms even at 240 polls/hr.
+
+    Returns the same shape as read_page_view_stats' `now` + `hour` slots:
+    {"now": {"views": N, "uniques": M}, "hour": {"views": N, "uniques": M}}.
+    """
+    out = {
+        "now":  {"views": 0, "uniques": 0},
+        "hour": {"views": 0, "uniques": 0},
+    }
+    if not pg_available():
+        return out
+    now_ts = int(time.time())
+    windows = {"now": 5 * 60, "hour": 60 * 60}
+    bot_frag, bot_params = _bot_filter_sql_lite(kind)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for key, sec in windows.items():
+                    cur.execute(
+                        "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                        f"FROM page_views WHERE ts >= %s {bot_frag}",
+                        [now_ts - sec, *bot_params],
+                    )
+                    v, u = cur.fetchone() or (0, 0)
+                    out[key] = {"views": int(v or 0), "uniques": int(u or 0)}
     except Exception:
         pass
     return out
