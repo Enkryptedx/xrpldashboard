@@ -4,10 +4,12 @@ Local dev:    python app.py  (binds 127.0.0.1:5001)
 Production:   gunicorn app:app  (PORT from env, set by host)
 """
 
+import hashlib
 import hmac
 import json
 import math
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -17,6 +19,7 @@ from datetime import date, datetime, timezone
 
 from flask import Flask, Response, abort, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from amm_scan_pools import (
@@ -5360,6 +5363,7 @@ def robots_txt():
         "Allow: /\n"
         "Allow: /mpt/\n"
         "Allow: /coverage\n"
+        "Allow: /api/v1/\n"
         "Disallow: /healthz\n"
         "Disallow: /api/\n"
         "Disallow: /lookup\n"
@@ -5578,6 +5582,401 @@ def _short_ua(ua):
             os_ = label
             break
     return f"{browser} · {os_}"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# API v1 — scaffold. Anchors: memory/project_xrpldashboard_api_v1_anchors.md
+#
+# Route surface (Gate 1):
+#   /api/v1/attestation      (Category A — flagship, not shipped tonight)
+#   /api/v1/tokens           (companion — not shipped tonight)
+#   /api/v1/pools            (companion — not shipped tonight)
+#   /api/v1/label/<address>  (companion — PROOF ENDPOINT, this scaffold)
+#
+# Free tier: 60 req/hr per key. Attribution required (meta.source).
+# Developer tier: $99/mo, higher limit, no attribution. Not billed yet.
+# Rate-limiter: Neon-counting (hour_bucket), authoritative across workers.
+# ─────────────────────────────────────────────────────────────────────
+
+_XRPL_ADDR_RE = re.compile(r"^r[1-9A-HJ-NP-Za-km-z]{25,34}$")
+
+# Depth-not-honesty fence: this dict encodes rate *depth* per tier only.
+# It has NOTHING to do with data payload correctness — a rate-throttled
+# response and an unthrottled response return the same JSON shape,
+# sourced from the same walkers, with the same meta.checked_at_utc.
+# Never colocate tier gates with data-shape gates. See anchors memory.
+_TIER_LIMITS = {
+    "free": 60,          # 60 req/hr
+    "dev": 6000,         # placeholder — real cap set when billing lands
+    "institutional": None,  # None = unbounded
+}
+
+_MAGIC_LINK_MAX_AGE_S = 15 * 60
+_magic_serializer = URLSafeTimedSerializer(
+    secret_key=app.secret_key,
+    salt="xrpldashboard.api-key.magic-link.v1",
+)
+
+
+def _api_meta(cache_ttl_s):
+    """Meta block appended to every /api/v1 response. `source` is the
+    attribution requirement for the free tier — visitors publishing our
+    data are expected to link back to the main domain."""
+    return {
+        "data_version": "v1",
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
+        ).replace("+00:00", "Z"),
+        "cache_ttl_s": int(cache_ttl_s),
+        "source": SITE_URL,
+    }
+
+
+def api_response(data, cache_ttl_s=60):
+    """Wrap a data payload in the canonical envelope + meta."""
+    payload = {"data": data, "meta": _api_meta(cache_ttl_s)}
+    resp = make_response(jsonify(payload))
+    resp.headers["Cache-Control"] = f"public, max-age={int(cache_ttl_s)}"
+    return resp
+
+
+def api_error_response(status, code, message):
+    """JSON-shaped error with the same meta envelope. Callers should return
+    (response, status) — Flask threads the status through unchanged."""
+    payload = {
+        "error": {"code": code, "message": message},
+        "meta": _api_meta(0),
+    }
+    resp = make_response(jsonify(payload), status)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def _generate_api_key():
+    """Return (plaintext, sha256_hash, prefix). Plaintext is shown to the
+    user exactly once; only the hash is persisted. Prefix (12 chars, incl.
+    the `xd_live_` marker) is stored so users can recognize their own key
+    in the account page without us having to store the secret."""
+    token = secrets.token_urlsafe(32)
+    plaintext = f"xd_live_{token}"
+    key_hash = hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
+    prefix = plaintext[:12]
+    return plaintext, key_hash, prefix
+
+
+def _extract_api_key():
+    """Pull the API key from the request. Preference order:
+      1. Authorization: Bearer <key>
+      2. X-API-Key: <key>
+    Returns the plaintext key or None."""
+    auth = request.headers.get("Authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth.split(None, 1)[1].strip() or None
+    xk = request.headers.get("X-API-Key", "").strip()
+    return xk or None
+
+
+def _apply_ratelimit_headers(resp, limit, remaining, reset_epoch):
+    """Standard rate-limit headers. `remaining` may be None if the tier is
+    unbounded — in that case we omit the header rather than lie."""
+    if limit is None:
+        resp.headers["X-RateLimit-Limit"] = "unbounded"
+        return resp
+    resp.headers["X-RateLimit-Limit"] = str(limit)
+    if remaining is not None:
+        resp.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
+    resp.headers["X-RateLimit-Reset"] = str(int(reset_epoch))
+    return resp
+
+
+def _authenticate_and_rate_limit():
+    """Auth + rate-limit for /api/v1/* endpoints.
+
+    Returns a 3-tuple:
+      (key_row, limit, remaining)  on success (caller proceeds)
+      (None,    None,  None)       on already-responded error (caller returns)
+
+    On error the function has NOT yet built a Flask response — instead the
+    caller checks for key_row is None, and if so, calls the returned error
+    factory (attached to `flask.g`)... actually let's keep it simpler:
+    on error, we stash the (response, status) on `flask.g._api_error` and
+    the caller returns it. Simpler still: return the error tuple as the
+    first element and let the caller decide.
+    """
+    key = _extract_api_key()
+    if not key:
+        return None, None, api_error_response(
+            401, "missing_api_key",
+            "Provide an API key via `Authorization: Bearer <key>` "
+            "or `X-API-Key: <key>`. Free tier: 60 req/hr. "
+            "Sign up at /account/api-keys."
+        )
+
+    key_hash = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    row = db.read_api_key_by_hash(key_hash)
+    if row is None or row.get("status") != "active":
+        return None, None, api_error_response(
+            401, "invalid_api_key",
+            "This API key is not recognized or has been revoked."
+        )
+
+    tier = row.get("tier", "free")
+    limit = _TIER_LIMITS.get(tier)
+
+    # Hour bucket reset: next epoch-hour boundary.
+    now = int(time.time())
+    reset_epoch = ((now // 3600) + 1) * 3600
+
+    if limit is None:
+        db.touch_api_key_last_used(row["id"])
+        return row, {"limit": None, "remaining": None, "reset": reset_epoch}, None
+
+    count = db.increment_api_request_counter(row["id"])
+    if count is None:
+        # Counter write failed. Fail-open with a header rather than 500
+        # the customer — but flag it in the response so we notice.
+        db.touch_api_key_last_used(row["id"])
+        return row, {
+            "limit": limit,
+            "remaining": None,
+            "reset": reset_epoch,
+            "counter_unavailable": True,
+        }, None
+
+    if count > limit:
+        err = api_error_response(
+            429, "rate_limited",
+            f"Rate limit exceeded for tier '{tier}': "
+            f"{limit} req/hr. Resets at {reset_epoch} (epoch seconds)."
+        )
+        _apply_ratelimit_headers(err, limit, 0, reset_epoch)
+        err.headers["Retry-After"] = str(max(1, reset_epoch - now))
+        return None, None, err
+
+    db.touch_api_key_last_used(row["id"])
+    return row, {
+        "limit": limit,
+        "remaining": limit - count,
+        "reset": reset_epoch,
+    }, None
+
+
+def _send_api_key_magic_link(email, magic_url):
+    """Best-effort Brevo SMTP delivery of the API-key claim link.
+    Same env-var pattern as `_send_institutional_alert`. Returns True/False."""
+    host = os.environ.get("SMTP_HOST", "").strip()
+    port = os.environ.get("SMTP_PORT", "").strip()
+    user = os.environ.get("SMTP_USER", "").strip()
+    pw = os.environ.get("SMTP_PASS", "").strip()
+    sender = os.environ.get("SMTP_FROM", "").strip()
+    if not (host and port and user and pw and sender):
+        return False
+    try:
+        import smtplib
+        from email.message import EmailMessage
+        msg = EmailMessage()
+        msg["Subject"] = "Your xrpldashboard API key"
+        msg["From"] = sender
+        msg["To"] = email
+        msg.set_content(
+            "Click the link below within 15 minutes to view your API key.\n"
+            "This link works once and expires quickly.\n\n"
+            f"{magic_url}\n\n"
+            "If you didn't request this, you can safely ignore the email.\n\n"
+            "— xrpldashboard.com\n"
+        )
+        with smtplib.SMTP(host, int(port), timeout=10) as s:
+            s.starttls()
+            s.login(user, pw)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/api/v1/label/<address>")
+@limiter.exempt
+def api_v1_label(address):
+    """Proof endpoint. Returns the account-labels row for one XRPL address.
+    Auth: any active API key. Rate-limit: per-tier hour bucket in Neon.
+
+    SQLi outer fence: the address MUST match XRPL's base58 shape before it
+    reaches the parameterized SQL layer. psycopg parameters are the actual
+    injection defense; the regex is defense-in-depth + a shape-check that
+    keeps garbage out of the counter table."""
+    key_row, ratelimit, err = _authenticate_and_rate_limit()
+    if key_row is None:
+        return err
+
+    if not _XRPL_ADDR_RE.match(address or ""):
+        resp = api_error_response(
+            400, "invalid_address",
+            "Address must match XRPL classic-address shape "
+            "(base58, starts with 'r', 25–35 chars total)."
+        )
+        _apply_ratelimit_headers(
+            resp, ratelimit["limit"], ratelimit.get("remaining"),
+            ratelimit["reset"],
+        )
+        return resp
+
+    row = db.read_account_label(address)
+    if row is None:
+        data = {"address": address, "labeled": False}
+    else:
+        extra = row.get("extra") or {}
+        data = {
+            "address": row["address"],
+            "labeled": True,
+            "name": row.get("name"),
+            "category": row.get("category"),
+            "source": row.get("source"),
+            "confidence": row.get("confidence"),
+            "extra": extra if isinstance(extra, dict) else {},
+            "updated_at": row.get("updated_at"),
+        }
+
+    resp = api_response(data, cache_ttl_s=300)
+    _apply_ratelimit_headers(
+        resp, ratelimit["limit"], ratelimit.get("remaining"),
+        ratelimit["reset"],
+    )
+    if ratelimit.get("counter_unavailable"):
+        resp.headers["X-RateLimit-Counter"] = "unavailable"
+    return resp
+
+
+@app.route("/account/api-keys", methods=["GET", "POST"])
+@limiter.limit("20 per hour")
+def account_api_keys():
+    """Self-serve API-key management. No password — proof of email
+    ownership via a short-lived signed magic link. The claim page shows
+    the plaintext key exactly once; only its SHA-256 hash is stored.
+
+    States:
+      GET   with no token         → email-entry form
+      POST  {email}               → send magic link (always returns "sent",
+                                    to avoid enumerating who has an account)
+      GET   ?token=... (fresh)    → mint or reveal key
+      GET   ?token=... (expired)  → back to form with a note
+    """
+    token = (request.args.get("token") or "").strip()
+    email_arg = None
+
+    if token:
+        try:
+            email_arg = _magic_serializer.loads(
+                token, max_age=_MAGIC_LINK_MAX_AGE_S
+            )
+        except SignatureExpired:
+            return render_template(
+                "account_api_keys.html", state="expired",
+            )
+        except BadSignature:
+            return render_template(
+                "account_api_keys.html", state="invalid_token",
+            )
+
+        email_arg = (email_arg or "").strip().lower()
+        if not _looks_like_email(email_arg):
+            return render_template(
+                "account_api_keys.html", state="invalid_token",
+            )
+
+        existing = db.read_active_api_key_for_email(email_arg)
+        plaintext = None
+        if existing is None:
+            plaintext, key_hash, prefix = _generate_api_key()
+            new_id = db.insert_api_key(email_arg, key_hash, prefix, tier="free")
+            if new_id is None:
+                return render_template(
+                    "account_api_keys.html", state="error",
+                    email=email_arg,
+                ), 500
+            existing = db.read_active_api_key_for_email(email_arg)
+
+        return render_template(
+            "account_api_keys.html",
+            state="key",
+            email=email_arg,
+            key_prefix=existing.get("key_prefix") if existing else None,
+            plaintext=plaintext,
+            tier=(existing or {}).get("tier", "free"),
+            tier_limit=_TIER_LIMITS.get(
+                (existing or {}).get("tier", "free")
+            ),
+            magic_token=token,
+        )
+
+    if request.method == "POST":
+        # Honeypot: bots fill hidden fields.
+        if (request.form.get("website") or "").strip():
+            return render_template(
+                "account_api_keys.html", state="link_sent",
+            )
+
+        email = (request.form.get("email") or "").strip().lower()[:254]
+        if not _looks_like_email(email):
+            return render_template(
+                "account_api_keys.html", state="bad_email",
+                email_input=email,
+            ), 400
+
+        token = _magic_serializer.dumps(email)
+        magic_url = f"{SITE_URL}/account/api-keys?token={token}"
+        _send_api_key_magic_link(email, magic_url)
+        # Always render the same "check your email" state — do NOT signal
+        # whether the address is known, to avoid trivial account enumeration.
+        return render_template(
+            "account_api_keys.html", state="link_sent", email=email,
+        )
+
+    return render_template("account_api_keys.html", state="form")
+
+
+@app.route("/account/api-keys/regenerate", methods=["POST"])
+@limiter.limit("10 per hour")
+def account_api_keys_regenerate():
+    """Rotate: revoke all active keys for this email and mint a new one.
+    Requires a fresh magic-link token — same 15-minute window as claim."""
+    token = (request.form.get("token") or "").strip()
+    if not token:
+        return render_template(
+            "account_api_keys.html", state="invalid_token",
+        ), 400
+
+    try:
+        email = _magic_serializer.loads(
+            token, max_age=_MAGIC_LINK_MAX_AGE_S
+        )
+    except SignatureExpired:
+        return render_template("account_api_keys.html", state="expired")
+    except BadSignature:
+        return render_template("account_api_keys.html", state="invalid_token")
+
+    email = (email or "").strip().lower()
+    if not _looks_like_email(email):
+        return render_template("account_api_keys.html", state="invalid_token")
+
+    db.revoke_api_keys_for_email(email)
+    plaintext, key_hash, prefix = _generate_api_key()
+    new_id = db.insert_api_key(email, key_hash, prefix, tier="free")
+    if new_id is None:
+        return render_template(
+            "account_api_keys.html", state="error", email=email,
+        ), 500
+
+    row = db.read_active_api_key_for_email(email)
+    return render_template(
+        "account_api_keys.html",
+        state="key",
+        email=email,
+        key_prefix=row.get("key_prefix") if row else prefix,
+        plaintext=plaintext,
+        tier=(row or {}).get("tier", "free"),
+        tier_limit=_TIER_LIMITS.get((row or {}).get("tier", "free")),
+        regenerated=True,
+    )
 
 
 @app.errorhandler(404)

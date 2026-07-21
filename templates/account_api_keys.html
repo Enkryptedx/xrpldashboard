@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{{ _('API keys') }} · xrpldashboard</title>
+  {% set meta_title = "API keys · xrpldashboard" %}
+  {% set meta_description = "Manage your xrpldashboard API key." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --err: #f87171;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    h1 { font-size: 1.7rem; margin: 0 0 8px; font-weight: 700;
+         letter-spacing: -0.02em; }
+    .purpose-pill { display: inline-block; background: rgba(34,211,238,0.12);
+                    border: 1px solid rgba(34,211,238,0.35);
+                    color: var(--cyan); padding: 4px 12px; border-radius: 999px;
+                    font-size: 0.82rem; margin-bottom: 12px;
+                    font-family: var(--mono); }
+    .lede { color: var(--muted); font-size: 1.02rem; margin: 0 0 24px; }
+    p { color: var(--text); margin: 0 0 14px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin: 20px 0; }
+
+    form label { display: block; margin: 14px 0 6px; font-size: 0.92rem;
+                 color: var(--muted); font-weight: 500; }
+    form input {
+      width: 100%; background: rgba(0,0,0,0.25); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 11px 13px; font-family: var(--sys); font-size: 0.98rem;
+      line-height: 1.4;
+    }
+    form input:focus { outline: none; border-color: var(--cyan);
+                       box-shadow: 0 0 0 3px rgba(34,211,238,0.15); }
+    .hp { position: absolute; left: -9999px; top: -9999px;
+          width: 1px; height: 1px; opacity: 0; }
+
+    button.submit {
+      background: var(--cyan); color: #0a0e27; border: 0;
+      font-weight: 600; font-size: 1rem; padding: 12px 26px;
+      border-radius: 8px; cursor: pointer; margin-top: 18px;
+    }
+    button.submit:hover { background: #5ee0f0; }
+    button.danger {
+      background: transparent; color: var(--err);
+      border: 1px solid rgba(248,113,113,0.35);
+      font-size: 0.92rem; padding: 8px 16px; border-radius: 8px;
+      cursor: pointer; margin-top: 12px;
+    }
+    button.danger:hover { background: rgba(248,113,113,0.08); }
+
+    .ok-pill { display: inline-flex; align-items: center; gap: 8px;
+               background: rgba(74,222,128,0.1);
+               border: 1px solid rgba(74,222,128,0.35);
+               color: var(--ok); padding: 6px 12px; border-radius: 999px;
+               font-size: 0.85rem; margin-bottom: 12px; }
+    .ok-pill .dot { width: 8px; height: 8px; border-radius: 50%;
+                    background: var(--ok); }
+    .warn-pill { display: inline-flex; align-items: center; gap: 8px;
+                 background: rgba(251,191,36,0.10);
+                 border: 1px solid rgba(251,191,36,0.35);
+                 color: var(--warn); padding: 6px 12px; border-radius: 999px;
+                 font-size: 0.85rem; margin-bottom: 12px; }
+    .err-pill { display: inline-flex; align-items: center; gap: 8px;
+                background: rgba(248,113,113,0.10);
+                border: 1px solid rgba(248,113,113,0.35);
+                color: var(--err); padding: 6px 12px; border-radius: 999px;
+                font-size: 0.85rem; margin-bottom: 12px; }
+
+    .key-box {
+      background: rgba(0,0,0,0.32); border: 1px solid rgba(34,211,238,0.35);
+      border-radius: 10px; padding: 14px 16px; margin: 16px 0;
+      font-family: var(--mono); font-size: 0.95rem; color: var(--cyan);
+      word-break: break-all; user-select: all;
+    }
+    .prefix-box {
+      background: rgba(0,0,0,0.20); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; margin: 12px 0;
+      font-family: var(--mono); font-size: 0.92rem; color: var(--muted);
+    }
+    .tier-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0 4px;
+                color: var(--muted); font-size: 0.9rem; }
+    .tier-row strong { color: var(--text); font-weight: 600; }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 40px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--muted); }
+    code { font-family: var(--mono); background: rgba(0,0,0,0.25);
+           padding: 1px 6px; border-radius: 4px; color: var(--text); }
+  </style>
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <div class="purpose-pill">API keys</div>
+  <h1>{{ _('xrpldashboard API — v1') }}</h1>
+
+  {% if state == "form" %}
+    <p class="lede">
+      {{ _('Enter your email. We\'ll send a one-time link to view your API key. No password.') }}
+    </p>
+    <div class="card">
+      <form method="POST" action="/account/api-keys" autocomplete="on">
+        <div class="hp" aria-hidden="true">
+          <label for="website">Website</label>
+          <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+        </div>
+        <label for="email">{{ _('Email') }}</label>
+        <input type="email" name="email" id="email" required maxlength="254"
+               placeholder="you@example.com">
+        <button type="submit" class="submit">{{ _('Send link') }}</button>
+      </form>
+    </div>
+    <p style="color: var(--muted); font-size: 0.9rem;">
+      {{ _('Free tier: 60 requests per hour. Attribution required (a visible link back to xrpldashboard.com in whatever surface uses the data). Developer tier ($99/mo) removes attribution and raises the limit.') }}
+    </p>
+
+  {% elif state == "link_sent" %}
+    <div class="ok-pill"><span class="dot"></span>{{ _('If that address has an account, a link is on its way.') }}</div>
+    <p>{{ _('Check your inbox (and spam folder). The link is good for 15 minutes and works once.') }}</p>
+    <p><a href="/account/api-keys">← {{ _('back') }}</a></p>
+
+  {% elif state == "bad_email" %}
+    <div class="err-pill">{{ _('That doesn\'t look like a valid email.') }}</div>
+    <div class="card">
+      <form method="POST" action="/account/api-keys">
+        <label for="email">{{ _('Email') }}</label>
+        <input type="email" name="email" id="email" required maxlength="254"
+               value="{{ email_input or '' }}">
+        <button type="submit" class="submit">{{ _('Send link') }}</button>
+      </form>
+    </div>
+
+  {% elif state == "expired" %}
+    <div class="warn-pill">{{ _('That link expired.') }}</div>
+    <p>{{ _('Magic links are good for 15 minutes. Request a new one below.') }}</p>
+    <div class="card">
+      <form method="POST" action="/account/api-keys">
+        <label for="email">{{ _('Email') }}</label>
+        <input type="email" name="email" id="email" required maxlength="254">
+        <button type="submit" class="submit">{{ _('Send link') }}</button>
+      </form>
+    </div>
+
+  {% elif state == "invalid_token" %}
+    <div class="err-pill">{{ _('That link isn\'t valid.') }}</div>
+    <p>{{ _('Request a fresh one below.') }}</p>
+    <div class="card">
+      <form method="POST" action="/account/api-keys">
+        <label for="email">{{ _('Email') }}</label>
+        <input type="email" name="email" id="email" required maxlength="254">
+        <button type="submit" class="submit">{{ _('Send link') }}</button>
+      </form>
+    </div>
+
+  {% elif state == "error" %}
+    <div class="err-pill">{{ _('Something went wrong on our side.') }}</div>
+    <p>{{ _('The API-key store isn\'t reachable right now. Try again in a minute; if it keeps failing, drop a note via /contact.') }}</p>
+
+  {% elif state == "key" %}
+    {% if plaintext %}
+      {% if regenerated %}
+        <div class="warn-pill">{{ _('Old keys revoked. New key issued.') }}</div>
+      {% else %}
+        <div class="ok-pill"><span class="dot"></span>{{ _('New API key issued.') }}</div>
+      {% endif %}
+      <p>
+        <strong>{{ _('Copy this key now.') }}</strong>
+        {{ _('This is the only time it will be shown. We only store its hash — we cannot recover it.') }}
+      </p>
+      <div class="key-box">{{ plaintext }}</div>
+    {% else %}
+      <div class="ok-pill"><span class="dot"></span>{{ _('Signed in as') }} {{ email }}</div>
+      <p>
+        {{ _('Your API key exists but we don\'t store the plaintext — so we can\'t show it again. You can regenerate below (this will revoke the old key immediately).') }}
+      </p>
+      <div class="prefix-box">
+        {{ _('Prefix') }}: <strong style="color: var(--cyan);">{{ key_prefix }}…</strong>
+      </div>
+    {% endif %}
+
+    <div class="tier-row">
+      <span>{{ _('Tier') }}: <strong>{{ tier }}</strong></span>
+      {% if tier_limit %}
+        <span>{{ _('Rate limit') }}: <strong>{{ tier_limit }}/hr</strong></span>
+      {% else %}
+        <span>{{ _('Rate limit') }}: <strong>{{ _('unbounded') }}</strong></span>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <p style="margin-top: 0;"><strong>{{ _('Quick start') }}</strong></p>
+      <p style="font-family: var(--mono); font-size: 0.9rem; color: var(--muted); background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: 8px; overflow-x: auto;">
+curl -H "Authorization: Bearer YOUR_KEY" \<br>
+&nbsp;&nbsp;{{ site_url }}/api/v1/label/rEXAMPLE...
+      </p>
+      <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 0;">
+        {{ _('Every response carries a') }} <code>meta.source</code>
+        {{ _('field. Free-tier attribution: link back to xrpldashboard.com in any surface that shows this data.') }}
+      </p>
+    </div>
+
+    {% if magic_token and not plaintext %}
+      <form method="POST" action="/account/api-keys/regenerate"
+            onsubmit="return confirm('{{ _('This will revoke your current key immediately and issue a new one. Continue?') }}');">
+        <input type="hidden" name="token" value="{{ magic_token }}">
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 20px; margin-bottom: 6px;">
+          {{ _('Lost the key or need to rotate?') }}
+        </p>
+        <button type="submit" class="danger">{{ _('Revoke and generate new key') }}</button>
+      </form>
+    {% endif %}
+
+  {% endif %}
+
+  <div class="footer">
+    <a href="/">{{ _('dashboard') }}</a> ·
+    <a href="/privacy">{{ _('privacy') }}</a> ·
+    <a href="/security">{{ _('security') }}</a> ·
+    <a href="/contact">{{ _('contact') }}</a>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>
