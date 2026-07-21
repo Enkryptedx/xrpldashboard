@@ -342,6 +342,41 @@ def _maybe_flush_analytics_receipts(force):
         pass
 
 
+def _analytics_warmer_loop():
+    """Background daemon: keeps the /analytics cache perpetually warm so
+    no human visitor ever hits a cold 28-query render.
+
+    Logic: every 30s check whether the cache entry expires within 30s (or
+    is already expired). If so, rebuild by calling analytics() inside a
+    test_request_context — that provides the app + request context the
+    template render needs. analytics() itself has the cache-miss guard, so
+    a concurrent hit from a real visitor while we're rebuilding is safe:
+    the first to finish stores, the other returns immediately on the next
+    lock check. Rate limiter sees 127.0.0.1 (2 hits/min, far under cap).
+
+    Eliminates the recurring ~seconds-wait the first visitor each 60s
+    window previously got — the original /analytics complaint (CF 25s
+    timeout under load).
+    """
+    time.sleep(10)  # let gunicorn worker fully start before first build
+    while True:
+        try:
+            with _ANALYTICS_CACHE_LOCK:
+                entry = _ANALYTICS_CACHE.get("full")
+                expiry = entry[0] if entry else 0
+            if time.time() + 30 >= expiry:
+                with app.test_request_context("/analytics"):
+                    analytics()
+        except Exception:
+            pass
+        time.sleep(30)
+
+
+threading.Thread(
+    target=_analytics_warmer_loop, daemon=True, name="analytics-warmer"
+).start()
+
+
 @app.context_processor
 def inject_snapshot_fingerprint():
     """Expose the Ed25519 signed-snapshot pubkey fingerprint to every
