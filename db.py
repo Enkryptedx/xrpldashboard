@@ -2896,6 +2896,54 @@ def read_rlusd_state_cache():
     return None, None
 
 
+def write_whales_cache_daily_delta(hits_delta, misses_delta):
+    """Roll /whales in-process cache hit/miss deltas into a daily receipts row.
+
+    Called on every cache miss (deltas since last flush) and opportunistically
+    on cache hits when the last flush was >5min ago, so worker recycling only
+    takes at most ~5min of unflushed hits to the grave. Residual undercount is
+    honest and bounded; the whole point of these receipts is decision-grade
+    evidence for the future API-gate conversation, so they need to be
+    trustworthy rather than pretty.
+
+    Table auto-creates on first call — schema is tiny and this is best-effort
+    telemetry, no separate migration warranted. Row shape:
+    (date, hits, misses, last_updated). Multi-worker safe because the upsert
+    does += delta, not = total.
+    """
+    if not pg_available():
+        return False
+    if hits_delta == 0 and misses_delta == 0:
+        return False
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS whales_cache_daily ("
+                "    date DATE PRIMARY KEY,"
+                "    hits BIGINT NOT NULL DEFAULT 0,"
+                "    misses BIGINT NOT NULL DEFAULT 0,"
+                "    last_updated TIMESTAMPTZ"
+                ")"
+            )
+            cur.execute(
+                "INSERT INTO whales_cache_daily "
+                "    (date, hits, misses, last_updated) "
+                "VALUES (CURRENT_DATE, %s, %s, NOW()) "
+                "ON CONFLICT (date) DO UPDATE SET "
+                "    hits = whales_cache_daily.hits + EXCLUDED.hits, "
+                "    misses = whales_cache_daily.misses + EXCLUDED.misses, "
+                "    last_updated = EXCLUDED.last_updated",
+                (hits_delta, misses_delta),
+            )
+        return True
+    except Exception as e:
+        _log_err("write_whales_cache_daily_delta", e)
+        return False
+
+
 def write_rlusd_state_cache(payload):
     """Upsert the single-row last-good cache. Called from rlusd_live's
     refresh loop after every successful full-supply build. Best-effort —

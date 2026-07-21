@@ -10,6 +10,7 @@ import math
 import os
 import secrets
 import sqlite3
+import threading
 import time
 from collections import Counter
 from datetime import date, datetime, timezone
@@ -220,6 +221,70 @@ def inject_site_url():
 
 
 _SNAPSHOT_FP_CACHE = {"path_mtime": None, "value": None}
+
+
+# In-process 60s cache for /whales, keyed on the already-normalized
+# (tier, filter_type) tuple — a closed 12-bucket address space (3 tiers ×
+# 4 filter types incl. empty). Query-string salting can't mint new cache
+# entries because unknown values snap to defaults before the key is built;
+# scanners CAN'T address anything outside the 12 legit buckets. This is a
+# tighter defense than canonical-path keying — the key space is closed.
+# Shipped 2026-07-21 in response to observed distributed crawl (944 sources
+# hitting /whales at ~1:1 probes/sources ratio). See feedback memories
+# defenses_deploy_against_observed_attacks + adversary_behavior_not_
+# mission_driver: this is CPU cost defense, not anti-scrape gate.
+_WHALES_CACHE_LOCK = threading.Lock()
+_WHALES_CACHE = {}  # (tier, filter_type) -> (expiry_ts, body_str, gen_ms)
+_WHALES_CACHE_TTL_S = 60
+_WHALES_CACHE_STATS = {
+    "hits": 0,
+    "misses": 0,
+    "hits_flushed": 0,
+    "misses_flushed": 0,
+    "last_flush_ts": 0.0,
+}
+# Opportunistic hit-path flush interval. Miss-path-only flushing would
+# systematically undercount hits on a warm cache day, and worker recycling
+# would take unflushed residuals to the grave. Flushing on hit path too
+# when it's been >5min bounds the residual undercount at ~5min of hits per
+# recycle — honest and small enough that receipts stay decision-grade.
+_WHALES_CACHE_FLUSH_INTERVAL_S = 300
+
+
+def _maybe_flush_whales_receipts(force):
+    """Flush accumulated hit/miss deltas to whales_cache_daily.
+
+    force=True: always attempt (used from miss path — a miss just happened,
+        so misses_delta is at least 1).
+    force=False: only flush if hits_delta > 0 AND >_FLUSH_INTERVAL_S since
+        last flush (opportunistic hit-path drain so worker recycles don't
+        drop the accumulated hit tally).
+
+    Best-effort; PG hiccup = no-op, deltas stay unflushed and roll into
+    the next attempt.
+    """
+    now = time.time()
+    with _WHALES_CACHE_LOCK:
+        hits_delta = (
+            _WHALES_CACHE_STATS["hits"] - _WHALES_CACHE_STATS["hits_flushed"]
+        )
+        misses_delta = (
+            _WHALES_CACHE_STATS["misses"] - _WHALES_CACHE_STATS["misses_flushed"]
+        )
+        if hits_delta == 0 and misses_delta == 0:
+            return
+        if not force:
+            if hits_delta == 0:
+                return
+            if now - _WHALES_CACHE_STATS["last_flush_ts"] < _WHALES_CACHE_FLUSH_INTERVAL_S:
+                return
+        _WHALES_CACHE_STATS["hits_flushed"] = _WHALES_CACHE_STATS["hits"]
+        _WHALES_CACHE_STATS["misses_flushed"] = _WHALES_CACHE_STATS["misses"]
+        _WHALES_CACHE_STATS["last_flush_ts"] = now
+    try:
+        db.write_whales_cache_daily_delta(hits_delta, misses_delta)
+    except Exception:
+        pass
 
 
 @app.context_processor
@@ -1867,6 +1932,25 @@ def whales():
         tier = "100k"
     tier_label, tier_drops = tier_map[tier]
 
+    # 60s in-process cache — closed 12-bucket key space, see module-level
+    # _WHALES_CACHE comment. Lookup happens after normalization so the key
+    # is guaranteed to be one of the 12 legit tuples regardless of what
+    # the client sent. Hit path returns the cached response body directly;
+    # miss path continues into the render logic below and caches at return.
+    _whales_cache_key = (tier, filter_type)
+    _whales_now = time.time()
+    with _WHALES_CACHE_LOCK:
+        _cached_entry = _WHALES_CACHE.get(_whales_cache_key)
+        if _cached_entry and _cached_entry[0] > _whales_now:
+            _WHALES_CACHE_STATS["hits"] += 1
+            _cached_body = _cached_entry[1]
+        else:
+            _cached_body = None
+    if _cached_body is not None:
+        _maybe_flush_whales_receipts(force=False)
+        return _cached_body
+    _whales_render_start = time.perf_counter()
+
     # Default view = value movement. Trustset events have no Amount and are
     # signal, not movement — they read as noise alongside ≥1M XRP transfers.
     # Users opt in to them via the "trustlines" pill (filter_type='trustset'),
@@ -2063,7 +2147,7 @@ def whales():
     else:
         radar_stats["last_label"] = "—"
 
-    return render_template(
+    _whales_body = render_template(
         "whales.html",
         events=events,
         filter_type=filter_type,
@@ -2077,6 +2161,24 @@ def whales():
         radar_stats=radar_stats,
         data_age_label=_format_age_seconds(_events_db_age_seconds()),
     )
+    _whales_gen_ms = int(
+        (time.perf_counter() - _whales_render_start) * 1000
+    )
+    with _WHALES_CACHE_LOCK:
+        _WHALES_CACHE[_whales_cache_key] = (
+            _whales_now + _WHALES_CACHE_TTL_S,
+            _whales_body,
+            _whales_gen_ms,
+        )
+        _WHALES_CACHE_STATS["misses"] += 1
+        _hits_total = _WHALES_CACHE_STATS["hits"]
+        _misses_total = _WHALES_CACHE_STATS["misses"]
+    app.logger.info(
+        "whales_cache: hit=%d miss=%d gen_ms=%d key=%s",
+        _hits_total, _misses_total, _whales_gen_ms, _whales_cache_key,
+    )
+    _maybe_flush_whales_receipts(force=True)
+    return _whales_body
 
 
 @app.route("/tokens")
