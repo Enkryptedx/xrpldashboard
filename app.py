@@ -377,6 +377,34 @@ threading.Thread(
 ).start()
 
 
+def _burst_cohort_scanner_loop():
+    """Background daemon: runs scan_burst_cohorts() at startup (after a brief
+    grace period) and then every 24h. Sets db._burst_cohort_table_ready = True
+    on first success so _bot_filter_sql starts including the cohort predicate.
+    Receipts: logs reclassified-row count at INFO level for evidence tracking.
+    Review trigger: re-audit threshold when daily human traffic exceeds 1,000."""
+    time.sleep(15)  # let Neon connection warm before the first scan
+    while True:
+        try:
+            result = db.scan_burst_cohorts(lookback_days=90)
+            if "error" not in result:
+                app.logger.info(
+                    "burst_cohort_scan: cohort_days=%d reclassified_rows=%d "
+                    "inserted_or_updated=%d",
+                    result.get("total_cohort_days", 0),
+                    result.get("reclassified_rows", 0),
+                    result.get("inserted", 0),
+                )
+        except Exception:
+            pass
+        time.sleep(86400)  # re-scan daily
+
+
+threading.Thread(
+    target=_burst_cohort_scanner_loop, daemon=True, name="burst-cohort-scanner"
+).start()
+
+
 @app.context_processor
 def inject_snapshot_fingerprint():
     """Expose the Ed25519 signed-snapshot pubkey fingerprint to every

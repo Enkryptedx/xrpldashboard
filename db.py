@@ -4201,6 +4201,191 @@ BOT_UA_PATTERNS = (
     "%crawler%",
 )
 
+# ── Burst-cohort classifier ───────────────────────────────────────────────────
+# Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
+# once with a stock browser UA — invisible to the session-key linker (no bot
+# paths) and to the (path, ua)-volume classifier (real humans also visit those
+# pages repeatedly, lifting the ratio above the ≤1.10 floor).
+#
+# Signal: a spike in unique IPs for a (country, path) pair far above that
+# combination's 30-day baseline. The IL/whales burst (July 2026 founding
+# example: ~2/day baseline → 774/day peak) is the reference case.
+#
+# Methodology disclosure: the rule classifies by COHORT (day + country + path),
+# not by individual history. A genuine visitor from IL who visited /whales on a
+# burst day is retrospectively classified as bot. We accept this false-positive
+# at the current traffic scale; the review trigger (daily_human_traffic > 1,000)
+# flags when IL/whales genuine single-visits become frequent enough to recheck
+# the threshold. See /methodology#burst-cohort-classifier.
+#
+# Three-audience gate: this rule passes all three tests —
+#   humans: only burst-day cohorts are affected; normal-day IL /whales hits are
+#           unaffected (the cohort entry isn't inserted for normal days).
+#   AI crawlers: they identify themselves in UA and match BOT_UA_PATTERNS first,
+#                so they never reach the cohort predicate. The cohort predicate
+#                can only match declared-browser UAs (Chrome, Safari, etc.),
+#                which is structurally the fleet fingerprint.
+#   scraper fleets: correctly reclassified.
+
+_BURST_COHORT_SPIKE_MULTIPLE = 10   # >10× trailing-30d median fires
+_BURST_COHORT_SPIKE_FLOOR = 50      # absolute minimum unique-IPs to trigger —
+                                    # prevents tiny-baseline countries false-
+                                    # firing (e.g. 1/day baseline → 11 = trigger)
+
+# Module-level flag: True once burst_cohort_days table exists and the initial
+# scan has run. _bot_filter_sql skips the cohort predicate until then so the
+# filter can't error on a missing table at startup.
+_burst_cohort_table_ready = False
+
+
+def scan_burst_cohorts(lookback_days=90):
+    """Scan page_views history for burst-cohort days and upsert into
+    burst_cohort_days. Idempotent: re-running updates multiplier/baseline
+    in place, safe to call daily.
+
+    Algorithm:
+    1. For each (country, path) pair seen in lookback_days, compute
+       daily unique-IP counts (using visitor_hash as the IP proxy).
+    2. For each candidate day, compute the trailing-30-day median of
+       unique-IP counts for that (country, path) *excluding* the candidate.
+    3. Flag days where unique_ips > max(MULTIPLE × median, FLOOR).
+    4. Upsert into burst_cohort_days.
+
+    Sets _burst_cohort_table_ready = True on success.
+
+    Returns dict: {"inserted": N, "total_cohort_days": M, "reclassified_rows": R}
+    """
+    global _burst_cohort_table_ready
+    conn = _get_writer_conn()
+    if conn is None:
+        return {"error": "no_writer_conn"}
+    try:
+        # Create table on first call.
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS burst_cohort_days (
+                    country      TEXT        NOT NULL,
+                    path         TEXT        NOT NULL,
+                    burst_day    DATE        NOT NULL,
+                    unique_ips   INTEGER     NOT NULL,
+                    baseline_med NUMERIC,
+                    multiplier   NUMERIC,
+                    classified_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (country, path, burst_day)
+                )
+            """)
+        _burst_cohort_table_ready = True
+
+        cutoff_ts = int(time.time()) - lookback_days * 86400
+
+        # Step 1+2+3: compute daily unique-IP counts per (country, path),
+        # then for each (country, path, day) compute the trailing-30d median
+        # of the *other* days in the window.  We do this in one pass via a
+        # window function: median of all days in ±30d around the candidate
+        # that are NOT the candidate day itself.
+        with conn.cursor() as cur:
+            cur.execute("""
+                WITH daily_counts AS (
+                    SELECT
+                        country,
+                        path,
+                        date_trunc('day', to_timestamp(ts))::DATE AS day,
+                        COUNT(DISTINCT visitor_hash)              AS unique_ips
+                    FROM page_views
+                    WHERE ts >= %s
+                      AND country IS NOT NULL
+                      AND path IS NOT NULL
+                    GROUP BY 1, 2, 3
+                ),
+                with_baseline AS (
+                    SELECT
+                        d.country,
+                        d.path,
+                        d.day,
+                        d.unique_ips,
+                        PERCENTILE_CONT(0.5) WITHIN GROUP (
+                            ORDER BY b.unique_ips
+                        ) AS baseline_med
+                    FROM daily_counts d
+                    LEFT JOIN daily_counts b
+                        ON  b.country = d.country
+                        AND b.path    = d.path
+                        AND b.day    != d.day
+                        AND b.day BETWEEN d.day - INTERVAL '30 days'
+                                      AND d.day + INTERVAL '30 days'
+                    GROUP BY d.country, d.path, d.day, d.unique_ips
+                )
+                SELECT
+                    country, path, day, unique_ips, baseline_med,
+                    CASE WHEN baseline_med > 0
+                         THEN ROUND(unique_ips::NUMERIC / baseline_med::NUMERIC, 1)
+                         ELSE NULL END AS multiplier
+                FROM with_baseline
+                WHERE unique_ips >= %s
+                  AND (
+                      baseline_med IS NULL
+                      OR unique_ips > baseline_med * %s
+                  )
+                  AND unique_ips >= %s
+                ORDER BY multiplier DESC NULLS FIRST
+            """, (
+                cutoff_ts,
+                _BURST_COHORT_SPIKE_FLOOR,
+                _BURST_COHORT_SPIKE_MULTIPLE,
+                _BURST_COHORT_SPIKE_FLOOR,
+            ))
+            burst_rows = cur.fetchall()
+
+        if not burst_rows:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM burst_cohort_days")
+                total = cur.fetchone()[0]
+            return {"inserted": 0, "total_cohort_days": total, "reclassified_rows": 0}
+
+        # Upsert cohort days.
+        with conn.cursor() as cur:
+            cur.executemany("""
+                INSERT INTO burst_cohort_days
+                    (country, path, burst_day, unique_ips, baseline_med, multiplier,
+                     classified_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (country, path, burst_day) DO UPDATE SET
+                    unique_ips    = EXCLUDED.unique_ips,
+                    baseline_med  = EXCLUDED.baseline_med,
+                    multiplier    = EXCLUDED.multiplier,
+                    classified_at = EXCLUDED.classified_at
+            """, [
+                (r[0], r[1], r[2], r[3], r[4], r[5])
+                for r in burst_rows
+            ])
+            inserted = cur.rowcount
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM burst_cohort_days")
+            total = cur.fetchone()[0]
+
+        # Count rows that will now be reclassified (for receipts).
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT COUNT(*)
+                FROM page_views p
+                WHERE p.country IS NOT NULL
+                  AND (p.country, p.path,
+                       date_trunc('day', to_timestamp(p.ts))::DATE)
+                       IN (SELECT country, path, burst_day
+                           FROM burst_cohort_days)
+            """)
+            reclassified = cur.fetchone()[0]
+
+        return {
+            "inserted": inserted,
+            "total_cohort_days": total,
+            "reclassified_rows": reclassified,
+        }
+    except Exception as e:
+        _log_err("scan_burst_cohorts", e)
+        return {"error": str(e)}
+
 
 def _bot_filter_sql(kind):
     """Builds a WHERE-clause fragment that selects human / bot / all rows.
@@ -4253,9 +4438,24 @@ def _bot_filter_sql(kind):
         "     AND COUNT(*) <= COUNT(DISTINCT visitor_hash) * 1.10"
         "))"
     )
-    full_pred = f"({row_pred} OR {session_pred} OR {scanner_pred})"
+    # Burst-cohort predicate: classify all rows whose (country, path, day)
+    # appears in burst_cohort_days as bot. The table is tiny (≤50 rows
+    # typical), so Postgres materialises it as a hash-set — no seq-scan
+    # cost on page_views beyond what's already happening. Only active when
+    # _burst_cohort_table_ready is True (set after the first successful scan
+    # so the filter can't error at startup before the table exists).
+    if _burst_cohort_table_ready:
+        cohort_pred = (
+            "(country IS NOT NULL "
+            " AND (country, path, date_trunc('day', to_timestamp(ts))::DATE)"
+            "     IN (SELECT country, path, burst_day FROM burst_cohort_days))"
+        )
+        full_pred = f"({row_pred} OR {session_pred} OR {scanner_pred} OR {cohort_pred})"
+    else:
+        full_pred = f"({row_pred} OR {session_pred} OR {scanner_pred})"
     # Params: once for row_pred, once for each of the two session subqueries,
-    # plus the scanner_pred ts threshold (7d ago).
+    # plus the scanner_pred ts threshold (7d ago). cohort_pred has no params
+    # (the subquery is parameter-free; the table holds the values).
     params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
     params += list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)

@@ -501,6 +501,25 @@
     <strong>{{ _('Declared boundary.') }}</strong> {{ _('The rule keys on repeated (path, user-agent) volume. A scanner rotating user-agent strings as well as IPs — one hit per (ip, ua) cell — keeps every cell below the volume floor and is not caught by this rule. We accept the boundary at current traffic (the arms-race cost isn\'t worth the accuracy gain); if scanner behaviour shifts, the rule will be extended and this section updated.') }}
   </p>
 
+  <h2 id="burst-cohort-classifier">{{ _('Burst-cohort classifier') }}</h2>
+  <p>
+    {{ _('A third rule catches rotating-IP fleet attacks where each IP hits a real page exactly once with a stock browser user-agent — invisible to both prior rules.') }}
+  </p>
+  <p>
+    <strong>{{ _('Signal.') }}</strong> {{ _('A spike in unique IPs for a (country, path) pair far above that combination\'s 30-day baseline. Example: Israel + /whales averaging ~2 unique IPs/day spiked to 774 unique IPs in one day — a 387× multiplier. The rule fires when unique IPs exceed') }}
+    <strong>{{ _('10× the trailing-30-day median') }}</strong> {{ _('AND exceed an absolute floor of') }}
+    <strong>{{ _('50 unique IPs') }}</strong> {{ _('(prevents small-baseline countries from triggering on noise).') }}
+  </p>
+  <p>
+    <strong>{{ _('Scope.') }}</strong> {{ _('Classification is by cohort (country + path + day), not by individual history. All visits matching the cohort fingerprint on a burst day are reclassified as bot — including any genuine visitor from that country who happened to visit that path on that day. The rule is retroactive: once a burst day is confirmed, historical rows reclassify automatically the next time /analytics is queried.') }}
+  </p>
+  <p>
+    <strong>{{ _('Declared boundary.') }}</strong> {{ _('A genuine visitor from Israel who visited /whales on a burst day is retrospectively classified as bot. We accept this false-positive at current traffic scale — on a day with 774 IL/whales hits, the probability that any of them were genuine non-fleet visitors is low, and growing with evidence. The rule distinguishes on the COHORT shape (deceptive UAs, real pages, one hit per IP, country-concentrated) rather than on being a bot — declared AI crawlers identify themselves in their user-agent and are classified by the existing UA pattern rule before this predicate is checked.') }}
+  </p>
+  <p>
+    <strong>{{ _('Review trigger.') }}</strong> {{ _('Re-audit thresholds when daily human traffic exceeds 1,000 unique visitors. At that scale, genuine single-visit /whales traffic from any country becomes frequent enough that the absolute-floor and multiplier math needs rechecking against the false-positive rate.') }}
+  </p>
+
   <h2>{{ _('Infrastructure') }}</h2>
   <ul>
     <li><strong>{{ _('Web app:') }}</strong> {{ _('Render. Source on GitHub, MIT-licensed.') }}</li>
