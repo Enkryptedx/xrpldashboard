@@ -363,3 +363,553 @@ pages:
           - "templates/admin_stats.html:382 Outbound clicks · /institutional contact"
         behavior: MONOTONIC_GROW
         layer3_source: self-attested-only
+
+  # ─────────────────────────────────────────────────────────────────
+  # Phase 4 — manifest expansion to remaining public pages
+  # Catalogued 2026-07-22. Same discipline: needs-trace where data
+  # paths are uncertain; founding-case risk_notes where history exists.
+  # Interrupt rule was armed — no live-false claims surfaced during
+  # this pass that required halting (see full audit run for findings).
+  # ─────────────────────────────────────────────────────────────────
+
+  /:
+    template: templates/index.html
+    route: "app.py:1292 index()"
+    claims:
+
+      - id: homepage_amm_pool_tvl
+        label: "AMM pool table: TVL figures for each pool from on-chain reserves"
+        data_paths:
+          - "db.py:read_amm_ranked_pools"
+          - "rank_amms walker (5min cadence)"
+          - "templates/index.html: AMM pool rows"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          TVL = (xrp_reserves × xrp_price) + (token_reserves × token_price).
+          Price is AMM-derived. Between rank_amms cycles, new AMMs
+          are absent. If xrp_price stalens, all TVL figures stale
+          silently — R3 coverage via rank_amms walker_health.
+
+      - id: homepage_xrp_distribution
+        label: "XRP distribution breakdown (escrow / AMM / wallets)"
+        data_paths:
+          - "templates/index.html: distribution panel"
+          - "db.py: (needs-trace — multiple helpers contribute)"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Distribution figures combine escrow_walker (Ripple cohort only),
+          AMM walker, and daily_snapshot. Each source's scope constraints
+          propagate silently into the headline. Distribution total must
+          sum to ≤ XRP circulating supply; over-count is a live-false
+          claim. Scope-partial escrow (Ripple cohort only) is not labeled
+          as a limitation in the current UI.
+
+  # ─────────────────────────────────────────────────────────────────
+  /tokens:
+    template: templates/tokens.html
+    route: "app.py:2313 tokens()"
+    claims:
+
+      - id: tokens_ranking_scope
+        label: "Token ranking covers XRPL DEX trade volume only — no OTC or off-ledger"
+        data_paths:
+          - "db.py:read_token_volume_aggregates"
+          - "db.py:read_token_volume_bucket_stats"
+          - "xrpl_stream.py: trade ingest (full firehose)"
+          - "templates/tokens.html: ranking table"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Ranking is XRPL DEX only. Tokens with zero DEX trades are
+          absent from ranking (not shown as zero — correct). OTC/off-ledger
+          volume is not captured and not disclosed as a limitation on the
+          page. If a token is known to have significant off-ledger
+          activity, the ranking understates it without disclosure.
+
+      - id: tokens_xrp_price
+        label: "Per-token XRP price is the latest AMM-derived cached value"
+        data_paths:
+          - "db.py:read_token_prices_map"
+          - "db.py:read_token_price"
+          - "xrpl_stream.py: token_price_ratio_cache (5min TTL)"
+          - "templates/tokens.html: price column"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Price is XRP-denominated from the best AMM pool; USD conversion
+          applies xrp_price (AMM/RLUSD). Tokens without an active AMM
+          pool show no price — not a zero price. Stale if stream stops
+          and cache TTL has not expired.
+
+  # ─────────────────────────────────────────────────────────────────
+  /pools:
+    template: templates/pools.html
+    route: "app.py:4154 pools()"
+    claims:
+
+      - id: pools_tvl_and_ranking
+        label: "AMM pool TVL and ranking within each tier (top 100/500/all)"
+        data_paths:
+          - "db.py:read_amm_ranked_pools"
+          - "rank_amms walker (5min cadence)"
+          - "templates/pools.html: tier display + TVL rows"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Ranking uses the last rank_amms walker snapshot. New AMMs
+          between walk cycles are absent until the next 5-min cycle.
+          TVL = on-ledger reserves × prices from token_prices table
+          (AMM-derived, 5-min TTL). If a pool's LP token price is
+          unavailable, TVL shows partial-only.
+
+      - id: pools_indexed_count
+        label: "Count of indexed AMM pools shown in the page header"
+        data_paths:
+          - "templates/pools.html: indexed-count hero"
+          - "app.py:4154 pools() context (amm_count)"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+
+  # ─────────────────────────────────────────────────────────────────
+  /amendments:
+    template: templates/amendments.html
+    route: "app.py:3013 amendments()"
+    claims:
+
+      - id: amendments_enabled_count
+        label: "Hero count: N amendments currently enabled on mainnet"
+        data_paths:
+          - "amendments_state.py:fetch_amendments_state_cached"
+          - "app.py:3013 amendments()"
+          - "templates/amendments.html: enabled-count hero"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: xrpl_amendments_ledger_object
+        risk_note: >
+          Count from the Amendments ledger object (canonical on-chain
+          source), not from feature-RPC name matches. Unrecognized
+          hashes still count — the code correctly reads the on-ledger
+          Amendments field length. Cross-checked by cross_check_walker
+          pair amendments_local_vs_mainnet.
+
+      - id: amendments_in_flight
+        label: "In-flight list: amendments in the active 14-day Majorities window"
+        data_paths:
+          - "amendments_state.py:fetch_amendments_state_cached"
+          - "templates/amendments.html: in-flight section"
+        behavior: STEP_CHANGE
+        layer3_source: xrpl_amendments_ledger_object
+        risk_note: >
+          In-flight = supported by the responding node AND has a Majority
+          entry in the Amendments ledger object. Cache TTL=300s max delay
+          before new entries surface. An amendment that reaches majority
+          while the cache is cold appears absent until next refresh.
+
+      - id: amendments_editorial_summaries
+        label: "Plain-English amendment descriptions are factually accurate"
+        data_paths:
+          - "templates/amendments.html: amendment descriptions"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Hand-authored copy per amendment. No automated comparison to
+          xrpl.org/known-amendments. Re-verify on every content pass
+          (sibling of content_pass_reverify memory). Interrupt-rule class:
+          a material factual error in an amendment's description is a
+          live-false claim.
+
+  # ─────────────────────────────────────────────────────────────────
+  /network:
+    template: templates/network.html
+    route: "app.py:3065 network()"
+    claims:
+
+      - id: network_unl_counts
+        label: "Validator count and UNL composition from both Ripple and Foundation lists"
+        data_paths:
+          - "db.py:read_recent_unl_snapshots('vl.ripple.com')"
+          - "db.py:read_recent_unl_snapshots('vl.xrplf.org')"
+          - "unl_snapshot.py walker (daily 02:23)"
+          - "templates/network.html: UNL validator counts"
+        behavior: STEP_CHANGE
+        layer3_source: vl_ripple_com_vl_xrplf_org
+        risk_note: >
+          XRPLF list expired 2026-01-18 — if the page displays count
+          from an expired list, it should disclose the expiry. The signed
+          manifest content is still decodeable post-expiry, but the list
+          itself is no longer being updated by its publisher. Cross-checked
+          by cross_check_walker pair validator_unl_live_vs_stored.
+
+      - id: network_unl_history
+        label: "Validator-set change history chart is accurate and ordered"
+        data_paths:
+          - "db.py:read_recent_unl_snapshots (limit=30)"
+          - "templates/network.html: history chart"
+        behavior: MONOTONIC_GROW
+        layer3_source: vl_ripple_com_vl_xrplf_org
+        risk_note: >
+          History is daily snapshots from unl_snapshot.py; gaps if the
+          walker missed a day. First-ever snapshot date is the real
+          start of the history, not XRPL genesis.
+
+  # ─────────────────────────────────────────────────────────────────
+  /lending:
+    template: templates/lending.html
+    route: "app.py:4555 lending()"
+    claims:
+
+      - id: lending_amendment_status
+        label: "Amendment activation status (pre/post-activation view) is accurate"
+        data_paths:
+          - "lending_amendment.py"
+          - "app.py:4555 lending() — amendment check"
+          - "templates/lending.html: amendment-activated conditional"
+        behavior: BINARY
+        layer3_source: xrpl_amendments_ledger_object
+
+      - id: lending_broker_tvl
+        label: "LoanBroker/Vault broker table TVL and counts (post-activation only)"
+        data_paths:
+          - "db.py:fetch_lending_status_cached (needs-trace)"
+          - "lending_snapshot.py walker"
+          - "templates/lending.html: broker table"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Scope = XLS-66 native lending protocol only. Third-party or
+          off-ledger lending is out of scope and not disclosed on the
+          page. If scope expands, the page title must move with it.
+
+  # ─────────────────────────────────────────────────────────────────
+  /mpts:
+    template: templates/mpts.html
+    route: "app.py:4687 mpts()"
+    claims:
+
+      - id: mpts_issuance_count
+        label: "Total MPTokenIssuance count on XRPL mainnet"
+        data_paths:
+          - "db.py:read_mpt_snapshot"
+          - "mpt_snapshot.py walker (daily)"
+          - "templates/mpts.html: total-count hero"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+        risk_note: >
+          Count bounded by last mpt_snapshot (daily). Issuances created
+          between runs are absent until the next daily. Stale silently
+          if the walker misses a day — R3 via walker_health.
+
+      - id: mpts_classification
+        label: "MPT classification (RWA/Stablecoin/Utility/Other) per XLS-89 metadata"
+        data_paths:
+          - "db.py:read_mpt_snapshot"
+          - "mpt_snapshot.py: XLS-89 decode"
+          - "templates/mpts.html: classification pills"
+        behavior: STEP_CHANGE
+        layer3_source: self-attested-only
+        risk_note: >
+          Classification from on-ledger XLS-89 metadata. Issuers can
+          set metadata to misrepresent category — the site reflects the
+          claimed metadata, not a verified fact. Classification logic
+          in mpt_snapshot.py; existing rows stale until next daily walk
+          if the decode logic changes.
+
+      - id: mpts_supply_history
+        label: "Outstanding supply chart per issuance (hourly refresh)"
+        data_paths:
+          - "db.py:read_mpt_supply_history"
+          - "mpt_holders_refresh walker (hourly)"
+          - "templates/mpts.html: supply chart"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+
+  # ─────────────────────────────────────────────────────────────────
+  /rwa:
+    template: templates/rwa.html
+    route: "app.py:2832 rwa()"
+    claims:
+
+      - id: rwa_issuer_families
+        label: "RWA issuers listed are TOML-attested XRPL issuers with verified domain identity"
+        data_paths:
+          - "app.py:2832 rwa() — rwa_family table query"
+          - "verify_toml walker (weekly)"
+          - "templates/rwa.html: issuer family list"
+        behavior: STEP_CHANGE
+        layer3_source: toml_attested
+        risk_note: >
+          TOML-attestation = issuer controls the domain that publishes
+          the .toml file linking to their XRPL account. Weakest ownership
+          proof (DNS can be hijacked). If an issuer loses TOML attestation,
+          they should be removed or flagged — no automated check today.
+
+      - id: rwa_on_chain_liquidity
+        label: "On-chain liquidity figures (AMM TVL, trustline counts) are accurate for RWA issuers"
+        data_paths:
+          - "db.py:read_amm_ranked_pools (filtered by rwa issuers)"
+          - "templates/rwa.html: liquidity column"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          AMM liquidity from rank_amms snapshot (5-min cadence). Only
+          pools indexed in amm_index.json are covered; new RWA AMM pools
+          between bootstrap scans are absent.
+
+      - id: rwa_exclusion_disclosure
+        label: "Exclusion list names omitted issuers and states reason"
+        data_paths:
+          - "templates/rwa.html: exclusion section"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Editorial copy. If an excluded issuer's status changes (gets
+          attested, or shuts down), the copy should update — manual
+          maintenance, no automated trigger.
+
+  # ─────────────────────────────────────────────────────────────────
+  /learn:
+    template: templates/learn.html
+    route: "app.py:2989 learn()"
+    claims:
+
+      - id: learn_ledger_index
+        label: "Current validated ledger index displayed as a live data point"
+        data_paths:
+          - "app.py:2989 learn() — fetch_pulse_cached()"
+          - "templates/learn.html: ledger index widget"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+
+      - id: learn_protocol_facts
+        label: "XRPL protocol facts (consensus, ledger structure, amendment mechanics) are accurate"
+        data_paths:
+          - "templates/learn.html: educational content blocks"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Static editorial copy. Protocol facts drift as XRPL evolves
+          (amendments change mechanics). Re-verify against xrpl.org on
+          every content pass. Interrupt-rule class: a material protocol
+          misstatement is a live-false claim.
+
+  # ─────────────────────────────────────────────────────────────────
+  /about:
+    template: templates/about.html
+    route: "app.py:2711 about()"
+    claims:
+
+      - id: about_attested_account_count
+        label: "Count of TOML-attested named accounts"
+        data_paths:
+          - "app.py:2711 about() — named_accounts.json count"
+          - "templates/about.html: attested-accounts count"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: toml_attested
+
+      - id: about_rwa_family_count
+        label: "Count of tracked RWA issuer families"
+        data_paths:
+          - "app.py:2711 about() — rwa_family count query"
+          - "templates/about.html: rwa-family count"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+
+      - id: about_site_principles
+        label: "Stated principles (truth-first, no fabrication, full coverage) are operationally observed"
+        data_paths:
+          - "templates/about.html: principles section"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Meta-claim: the principles section asserts standards that the
+          truth-audit design exists to verify. If the audit surfaces a
+          live-false claim on any page that isn't immediately fixed,
+          the principles section itself becomes false. This manifest (CLAIMS.yaml)
+          and the four-layer audit are the operational proof of the claim.
+
+  # ─────────────────────────────────────────────────────────────────
+  /methodology:
+    template: templates/methodology.html
+    route: "app.py:2981 methodology()"
+    claims:
+
+      - id: methodology_freshness_cadences
+        label: "Documented cache TTLs and refresh cadences match the actual code constants"
+        data_paths:
+          - "templates/methodology.html: freshness table"
+          - "rlusd_live.py:REFRESH_INTERVAL (300s)"
+          - "xrp_price.py:PRICE_CACHE_TTL (20s default)"
+          - "amendments_state.py:CACHE_TTL (300s)"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Code-vs-copy alignment risk. If a cache TTL changes in code,
+          /methodology must update in the same commit — no automated link
+          between the two today. High-severity if wrong: users trusting
+          the stated freshness for time-sensitive lookups are misled.
+
+      - id: methodology_scope_limitations
+        label: "Known limitations (escrow scope, backfill cutoff, etc.) disclosed and current"
+        data_paths:
+          - "templates/methodology.html: limitations section"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          As scope changes (new walkers, escrow census completes), the
+          limitations section must keep pace. A resolved limitation that
+          still shows as outstanding is confusing; a removed limitation
+          that's still real is a live-false claim.
+
+  # ─────────────────────────────────────────────────────────────────
+  /check:
+    template: templates/check.html
+    route: "app.py:4331 check()"
+    claims:
+
+      - id: check_signals_are_sourced
+        label: "Every identity signal carries a source label and checked_at timestamp"
+        data_paths:
+          - "templates/check.html: signal cards"
+          - "app.py:4331 check() — D1-D4 signal assembly"
+        behavior: STEP_CHANGE
+        layer3_source: self-attested-only
+        risk_note: >
+          Source + checked_at are the honesty contract on /check. Any
+          signal displayed without an attributed source is a fabrication
+          risk. /check v2 design brief is queued behind Lenovo migration.
+
+      - id: check_no_verdicts
+        label: "Lookalike cards use neutral pills only — no risk scores or warning iconography"
+        data_paths:
+          - "templates/check.html: lookalike card CSS + signal rendering"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          feedback_check_lookalike_neutral_pill_only.md hard line: grey
+          dashed pills ONLY on lookalike cards. No red badges, no 'risk
+          score', no warning iconography. Defamation-by-implication legal
+          risk if broken (codified 2026-07-05 after legal research).
+
+      - id: check_d4_not_stored
+        label: "Pasted/referred message content (D4) is NOT written to the database"
+        data_paths:
+          - "app.py:4331 check() — D4 message path"
+          - "templates/privacy.html §2b"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          /privacy §2b claims paste/referrer content is never stored.
+          project_xrpldashboard_check_referrer_empirical_pending.md: the
+          meta-tag is served per spec but the browser→DB trip has not been
+          empirically confirmed. If D4 ever persists paste content, §2b
+          becomes a live-false claim.
+
+  # ─────────────────────────────────────────────────────────────────
+  /health:
+    template: templates/health.html
+    route: "app.py:1626 health()"
+    claims:
+
+      - id: health_stream_freshness
+        label: "Stream age / TX-per-minute indicator reflects actual xrpl_stream activity"
+        data_paths:
+          - "app.py:1626 health() — _health_degrade_state()"
+          - "db.py:read_heartbeat_prefix"
+          - "db.py:read_max_event_ts"
+          - "templates/health.html: stream status"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          /health is the primary human-readable alarm surface. If /health
+          itself is wrong (shows OK while stream is stale), it defeats
+          the monitoring layer. The four-layer audit treats /health
+          indicators as the highest-trust assertions — if L2/L3 alarms
+          exist but /health shows OK, alarm propagation is broken.
+
+      - id: health_data_counts
+        label: "Accumulated data counts (events, snapshots) shown on /health"
+        data_paths:
+          - "app.py:1626 health() — aggregated count helpers (needs-trace)"
+          - "templates/health.html: count section"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+        needs-trace: true
+
+  # ─────────────────────────────────────────────────────────────────
+  /cold-storage:
+    template: templates/cold_storage.html
+    route: "app.py:4511 cold_storage()"
+    claims:
+
+      - id: cold_storage_liquid_balance
+        label: "Ripple liquid XRP balance (non-escrow holdings)"
+        data_paths:
+          - "cold_storage.py:fetch_cold_storage_cached"
+          - "app.py:4511 cold_storage() context"
+          - "templates/cold_storage.html: liquid balance"
+        behavior: STEP_CHANGE
+        layer3_source: self-attested-only
+        risk_note: >
+          Scope = hardcoded Ripple account list in cold_storage.py. If
+          Ripple uses a new cold wallet not in the list, it's silently
+          absent. The page should note it shows "known" cold-storage
+          accounts, not a guaranteed-complete inventory.
+
+      - id: cold_storage_escrow_locked
+        label: "Total locked escrow XRP and per-escrow release calendar"
+        data_paths:
+          - "escrow_supply.py:fetch_escrow_locked_cached"
+          - "escrow_snapshot.py (escrow_walker)"
+          - "templates/cold_storage.html: escrow locked + calendar"
+        behavior: STEP_CHANGE
+        layer3_source: self-attested-only
+        risk_note: >
+          ESCROW SCOPE: escrow_walker covers only category='ripple' in
+          named_accounts.json (Ripple monthly-release cohort, ~102 objects).
+          The 2026-07-13 census found 404 TokenEscrow objects on mainnet
+          total; those are a DIFFERENT type (TokenEscrow vs Escrow) and
+          different issuers — not in scope for this page. The scope
+          declaration in seed_walker_scope_declarations.py is the honest
+          disclosure. Sibling: cold-storage counts may under-report if
+          Ripple adds escrows outside the named_accounts.json seed.
+
+  # ─────────────────────────────────────────────────────────────────
+  # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
+  # ─────────────────────────────────────────────────────────────────
+  # /nfts:
+  #   NO ROUTE as of 2026-07-22. NFT data collected by nft_activity_walker
+  #   + backfill (ETA ~2026-08-05). Public page gates on Charlie after
+  #   NFT anomaly scan completes. Claims to be added when route ships.
+  #
+  # /wallet/<address>:
+  #   Per-wallet detail page. Data claims include balance, tx history,
+  #   token holdings. Needs own claim set when included in manifest
+  #   scope expansion.
+  #
+  # /price-data:
+  #   XRP price oracle data. Oracle source, staleness disclosure.
+  #
+  # /credentials and /verify:
+  #   Credential-issuer curated set claims. 14-account seed scope
+  #   is already declared in seed_walker_scope_declarations.py.
+  #
+  # /walker_health (internal admin surface, publicly accessible):
+  #   Walker health dashboard — makes claims about walker status.
+  #   Low public-audience risk but could be misread. Pending.
+  #
+  # /sidechain:
+  #   Sidechain bridge data. Scope and freshness claims TBD.
