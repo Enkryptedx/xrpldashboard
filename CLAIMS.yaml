@@ -1,0 +1,359 @@
+# CLAIMS.yaml — Truth-Audit Layer 4 (Change-Safety) manifest.
+#
+# One entry per meaningful public claim per page. When a diff touches
+# a listed data_path, scripts/claims_check.sh names the claim(s) so a
+# human can eyeball whether the claim still holds before pushing.
+#
+# Visibility, not a gate — the script exits 0 always. Blocking gets
+# bypassed; honest surfacing does not (see docs/TRUTH_AUDIT_DESIGN.md
+# Phase 2, 706bc0a). Where a claim's data path is uncertain during
+# cataloguing, it is marked `needs-trace` rather than guessed — an
+# honest incomplete manifest beats a confident wrong one.
+#
+# Population honesty:
+# - Founding-case incidents (whale-title, escrow-copy) are included
+#   explicitly with `risk_note`.
+# - `behavior` and `layer2_rules` mirror the taxonomy + rule set in
+#   docs/TRUTH_AUDIT_DESIGN.md — this file is derivative of that spine.
+# - `layer3_source: self-attested-only` is a declared choice, not an
+#   omission (see Layer 3 §Self-attested only in the design doc).
+#
+# First four pages catalogued 2026-07-22 (Phase 2 ship). Remaining
+# public pages are Phase 4 (manifest expansion).
+
+pages:
+
+  # ─────────────────────────────────────────────────────────────────
+  /rlusd:
+    template: templates/rlusd.html
+    route: "app.py:2752 rlusd_landing()"
+    claims:
+
+      - id: rlusd_page_title
+        label: "Page title: 'RLUSD · cross-chain treasury watch'"
+        data_paths:
+          - "templates/rlusd.html:37  <title>"
+          - "templates/rlusd.html:454 <h1>RLUSD · live across two chains</h1>"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy-class claim. If cross-chain scope changes (chain added or
+          removed) the title/H1 must move with it — sibling of the
+          whale-title founding case. `templates/rlusd.html` §Multi-chain
+          roadmap block (lines 548-554) declares Base/Optimism/Unichain
+          /Ink as `testing`; those status labels are self-attested.
+
+      - id: rlusd_xrpl_supply
+        label: "Total RLUSD supply on XRPL"
+        data_paths:
+          - "db.py:read_rlusd_state_cache"
+          - "db.py:read_rlusd_supply_history"
+          - "rlusd_refresher_walker.py (5min cadence)"
+          - "templates/rlusd.html: XRPL supply card block"
+        behavior: STEP_CHANGE
+        layer2_rules: [R1, R2]
+        layer3_source: xrpl_gateway_balances_rpc
+        finalized_window: true  # rule R1+R2 evaluate history[snapshot_date<today-UTC]
+
+      - id: rlusd_eth_supply
+        label: "Total RLUSD supply on Ethereum"
+        data_paths:
+          - "db.py:read_rlusd_state_cache"
+          - "db.py:read_rlusd_supply_history"
+          - "rlusd_refresher_walker.py (5min cadence)"
+          - "templates/rlusd.html: Ethereum supply card block"
+        behavior: STEP_CHANGE
+        layer2_rules: [R1, R2]
+        layer3_source: etherscan_totalSupply
+
+      - id: rlusd_xrpl_net_change_24h
+        label: "RLUSD 24h net-change on XRPL"
+        data_paths:
+          - "db.py:read_rlusd_supply_history"
+          - "rlusd_refresher_walker.py"
+          - "templates/rlusd.html: net-change display"
+        behavior: DAILY_WIGGLE
+        layer2_rules: [R1, R2]
+        layer3_source: self-attested-only  # Option A gateway_balances diff
+        finalized_window: true
+        note: >
+          Founding case for R2 finalized-window rule (see commit
+          9418032 + memory project_xrpldashboard_r2_finalized_window_patch.md).
+
+      - id: rlusd_freshness_chip
+        label: "Freshness chip: 'Live · updated Ns ago' vs 'Last updated · reconnecting'"
+        data_paths:
+          - "templates/rlusd.html:510 freshness data attributes"
+          - "app.py:rlusd_landing() context (rlusd_state_cache.written_at_iso)"
+          - "static/js/rlusd_live.js (freshness renderer — needs-trace)"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          If the walker stops but cache holds a value, the chip must
+          flip to `Last updated · reconnecting`. Coverage handoff to
+          R3/freshness (walker_health).
+
+      - id: rlusd_multi_chain_roadmap
+        label: "Multi-chain roadmap: Base/Optimism/Unichain/Ink shown as `testing`"
+        data_paths:
+          - "templates/rlusd.html:548-554 chain-badge block"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          `testing` status is a public claim about external partners.
+          No live source poll behind these labels — copy-only. If Ripple
+          announces any of these chains live (see MXNB memory precedent
+          for MXNB-on-XRPL 2026-06-13), the label must move to `live`
+          in the same commit that receives the news. Sibling of the
+          whale-title / escrow-copy founding-case class.
+
+      - id: rlusd_supply_archive_since
+        label: "Copy: 'Supply data archived daily since 2026-05-25'"
+        data_paths:
+          - "templates/rlusd.html:801"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: Date-fact copy — will silently rot if archive start moves.
+
+  # ─────────────────────────────────────────────────────────────────
+  /whales:
+    template: templates/whales.html
+    route: "app.py:2036 whales()"
+    claims:
+
+      - id: whale_page_title_and_scope
+        label: "Page title 'whales' / H1 'Whale watch' — displayed events match the declared scope"
+        data_paths:
+          - "templates/whales.html:6 <title>"
+          - "templates/whales.html:266 <h1>Whale watch</h1>"
+          - "templates/whales.html:268-270 explainer copy declaring scope"
+          - "db.py:read_whale_events"
+          - "xrpl_stream.py: whale_event_handler (dual-writes events table)"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          FOUNDING CASE. Title + explainer are load-bearing claims
+          about what the page shows. Watchlist admission was the
+          near-miss (backlog project_xrpldashboard_backlog_whales_watchlist_admission.md,
+          commit 52e9ad0 held the /whales scope guard). If /whales
+          admits watchlist events, the title / explainer / pill copy /
+          type_labels all move in ONE commit — not just the predicate.
+
+      - id: whale_tier_threshold
+        label: "Every displayed large_xfer/tagged event satisfies the selected tier threshold (default ≥100K XRP)"
+        data_paths:
+          - "templates/whales.html:326-338 tier pills (1m / 100k / 50k)"
+          - "templates/whales.html:363 'Streaming validated XRPL transactions ≥ N XRP'"
+          - "db.py:read_whale_events (tier_drops arg)"
+          - "xrpl_stream.py: amount_drops calculation"
+        behavior: BOUNDED
+        layer2_rules: [R6]  # not yet implemented in the walker
+        layer3_source: self-attested-only
+        risk_note: >
+          Rows displayed with amount_drops < tier_drops violate the
+          pill's claim. R6 will catch this once implemented. Trustset
+          events legitimately bypass the tier per the explainer copy
+          (line 330) — R6 must exempt type='trustset'.
+
+      - id: whale_type_labels
+        label: "Type pill labels ('whale', 'tagged', 'trustlines') match the DB event `type` values (large_xfer, tagged, trustset)"
+        data_paths:
+          - "templates/whales.html:340-349 type pills"
+          - "db.py:read_whale_type_counts"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy-vs-schema alignment. Renaming a type on either side
+          without touching the other = clobber-class bug.
+
+      - id: whale_named_account_labels
+        label: "Named-account labels are unique per address (no clobber)"
+        data_paths:
+          - "db.py:read_account_labels"
+          - "named_accounts.json"
+          - "token_names.json"
+        behavior: LEGITIMATELY_FLAT
+        layer2_rules: [R7]  # duplicate-label rule
+        layer3_source: self-attested-only
+        note: >
+          Reaper-clobber founding case (memory project_xrpldashboard_r3qWgp_reaper_financial.md).
+          Fix shipped via extra.name_locked (commit 8176cca).
+
+      - id: whale_hud_tracking_floor
+        label: "HUD tile 'tracking floor ≥N XRP' matches the tier_drops the query uses"
+        data_paths:
+          - "templates/whales.html:280 tracking-floor tile"
+          - "app.py:whales() context (threshold_xrp, tier_drops)"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Two-source display — the HUD value and the SQL filter both
+          derive from `threshold_xrp` / `tier_drops`. Divergence would
+          be a visible truth-vs-filter mismatch.
+
+  # ─────────────────────────────────────────────────────────────────
+  /coverage:
+    template: templates/coverage_register.html
+    route: "app.py:5376 coverage_register()"
+    claims:
+
+      - id: coverage_page_title_scope
+        label: "'Coverage Register · internal · pre-public soak' — scope declared as internal"
+        data_paths:
+          - "templates/coverage_register.html:6 <title>"
+          - "templates/coverage_register.html:70 <h1>Coverage Register</h1>"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          `internal · pre-public soak` disclaims that this is not a
+          public-audience page. If /coverage ever admits a public
+          audience, the disclaimer copy must move in the same commit
+          as the scope change.
+
+      - id: coverage_ledger_entry_types
+        label: "LedgerEntryType coverage — every type mainnet uses is listed as defined + seen or explicitly annotated"
+        data_paths:
+          - "templates/coverage_register.html:182 LedgerEntryType section"
+          - "db.py:read_coverage_register_state"
+          - "db.py:read_ledger_definitions"
+          - "ledger_definitions_walker.py (6h cadence)"
+          - "coverage_register_walker.py (6h cadence)"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R6]  # coverage-fraction bounded [0, 1]
+        layer3_source: self-attested-only
+        risk_note: >
+          ESCROW-COPY FOUNDING CASE. Definitions come from the local
+          rippled build's `feature`/`server_definitions` — types active
+          on mainnet but absent from the local build silently omit
+          (verified 2026-07-22: TokenEscrow amendment active on
+          mainnet since 2026-02-12 with ~404 census objects; local
+          rippled defined_entry_names has `Escrow` but no `TokenEscrow`
+          → /coverage does not surface the type at all). Sibling class:
+          the walker-scope declaration must expand every time rippled
+          upgrades OR a new type is amendment-activated. Any diff
+          touching the LedgerEntryType section, the coverage walker,
+          or the definitions cache triggers this claim.
+
+      - id: coverage_transaction_types
+        label: "TransactionType coverage — every mainnet tx type is defined + seen or annotated"
+        data_paths:
+          - "templates/coverage_register.html:261 TransactionType section"
+          - "db.py:read_coverage_register_state"
+          - "ledger_definitions_walker.py"
+          - "coverage_register_walker.py"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R6]
+        layer3_source: self-attested-only
+        risk_note: Same class as ledger-entry above — local-rippled-build risk.
+
+      - id: coverage_walker_inventory
+        label: "Walker inventory counts (N declared, N undeclared, N stale)"
+        data_paths:
+          - "templates/coverage_register.html:126 walker inventory h2"
+          - "db.py:read_walker_scope_declarations"
+          - "db.py: walker_health scan"
+          - "seed_walker_scope_declarations.py"
+        behavior: DAILY_WIGGLE
+        layer2_rules: [R6]
+        layer3_source: self-attested-only
+        note: >
+          UNDECLARED_WALKER rider (answer_plausibility_walker.py) already
+          catches new walkers missing scope declarations. Stale-count
+          feeds R3/freshness. Deployment gap risk if a new walker's
+          scope entry doesn't ship in the same commit as the walker.
+
+      - id: coverage_labeled_status
+        label: "Labels shown per type (label / short_desc / linked_page) match coverage_labels table"
+        data_paths:
+          - "templates/coverage_register.html:110 Vocabulary snapshot h2"
+          - "db.py:read_coverage_labels"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+
+  # ─────────────────────────────────────────────────────────────────
+  /analytics:
+    template: templates/admin_stats.html
+    route: "app.py:5587 analytics()"
+    claims:
+
+      - id: analytics_page_title_scope
+        label: "'analytics' / 'visitor stats' — declared as human-only stats (bots section separate)"
+        data_paths:
+          - "templates/admin_stats.html:6 <title>"
+          - "templates/admin_stats.html:118 <h1>visitor stats</h1>"
+          - "templates/admin_stats.html:438 <h1 id='bots'>bot probes</h1>"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          The `visitor stats` H1 asserts the numbers below are
+          humans-only. Any change to bot-classification logic that
+          moves the boundary must flip the counts consistently — see
+          public-stat reclassification gate memory
+          (feedback_public_stat_reclassification_gate.md, ≤30% ships,
+          >30% surfaces to Charlie first).
+
+      - id: analytics_all_time_human_views
+        label: "All-time human views count"
+        data_paths:
+          - "db.py:read_page_view_stats(kind='human')"
+          - "app.py:log_page_view (inline on request)"
+          - "db.py: burst_cohort classifier + burst_cohort_days table"
+          - "templates/admin_stats.html:208 Reach · all-time"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]  # accepted decrease = burst-cohort reclassification delta
+        layer3_source: self-attested-only
+
+      - id: analytics_all_time_human_uniques
+        label: "All-time human unique visitors count"
+        data_paths:
+          - "db.py:read_page_view_stats(kind='human')"
+          - "app.py:log_page_view"
+          - "templates/admin_stats.html:208 Reach · all-time"
+        behavior: MONOTONIC_GROW
+        layer2_rules: [R4]
+        layer3_source: self-attested-only
+
+      - id: analytics_country_geolocation_scope
+        label: "Country display is country-only (no sub-country region)"
+        data_paths:
+          - "templates/admin_stats.html:277 Countries · 24h heading"
+          - "templates/admin_stats.html:313 Countries · all-time heading"
+          - "db.py:read_country_breakdown"
+          - "db.py:read_country_count"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: cf_ipcountry_header
+        risk_note: >
+          feedback_geolocation_country_only.md: CF-IPCountry only, no
+          MaxMind/IP→region until traffic ~50x AND decision needs
+          sub-country splits. Any code path that reads a region/city
+          would violate this declared scope.
+
+      - id: analytics_bot_probe_all_time
+        label: "Bot probe counts — all-time never zero (probes have run)"
+        data_paths:
+          - "db.py:read_page_view_stats(kind='bot')"
+          - "templates/admin_stats.html:466 Probed paths · 24h"
+          - "templates/admin_stats.html:482 Bot countries · 24h"
+        behavior: DAILY_WIGGLE
+        layer2_rules: [R2]  # all-time = 0 impossible per design taxonomy
+        layer3_source: self-attested-only
+
+      - id: analytics_referrer_and_utm
+        label: "External referrer + UTM landing counts — attribution reflects real inbound clicks"
+        data_paths:
+          - "db.py:read_external_referrers"
+          - "db.py:read_utm_landings"
+          - "templates/admin_stats.html:334 External referrers · 7 days"
+          - "templates/admin_stats.html:354 UTM-attributed landings · 7 days"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+
+      - id: analytics_cta_clicks
+        label: "Outbound CTA clicks (/institutional contact) count matches cta_clicks table"
+        data_paths:
+          - "db.py:read_cta_click_stats"
+          - "db.py:read_recent_cta_clicks"
+          - "templates/admin_stats.html:382 Outbound clicks · /institutional contact"
+        behavior: MONOTONIC_GROW
+        layer3_source: self-attested-only
