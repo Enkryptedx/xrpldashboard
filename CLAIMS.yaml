@@ -750,16 +750,27 @@ pages:
         data_paths:
           - "templates/methodology.html: freshness table"
           - "rlusd_live.py:REFRESH_INTERVAL (300s)"
+          - "cold_storage.py:CACHE_TTL (300s)"
+          - "lending_data.py:CACHE_TTL (300s)"
           - "xrp_price.py:PRICE_CACHE_TTL (20s default)"
           - "amendments_state.py:CACHE_TTL (300s)"
+          - "launchd/com.charliebruce.xrpldashboard.rlusd_refresher.plist:StartInterval (300)"
+          - "launchd/com.charliebruce.xrpldashboard.mpt_holders_refresh.plist:StartInterval (3600)"
+          - "launchd/com.charliebruce.xrpldashboard.mpt_snapshot.plist:StartInterval (86400)"
+          - "launchd/com.charliebruce.xrpldashboard.bridge_signer_walker.plist:StartInterval (3600)"
         behavior: LEGITIMATELY_FLAT
         layer3_source: self-attested-only
-        needs-trace: true
+        # Verified 2026-07-22 cadence audit: all claims match. Note: /cold-storage and
+        # /lending read LIVE from XRPL node (CACHE_TTL=in-process TTL), not from walker DB.
+        # The walkers write historical DB; the live fetchers are independent.
+        # Trigger: if any listed plist StartInterval or CACHE_TTL constant changes,
+        # re-verify the methodology freshness table before pushing.
         risk_note: >
           Code-vs-copy alignment risk. If a cache TTL changes in code,
           /methodology must update in the same commit — no automated link
           between the two today. High-severity if wrong: users trusting
           the stated freshness for time-sensitive lookups are misled.
+          Verified clean 2026-07-22 (all nine cadence claims match code).
 
       - id: methodology_scope_limitations
         label: "Known limitations (escrow scope, backfill cutoff, etc.) disclosed and current"

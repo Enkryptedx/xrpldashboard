@@ -1093,6 +1093,9 @@ def run_session(state):
                     # to know the Mac-hosted worker is alive (local file
                     # mtimes don't cross hosts).
                     global _NOVELTY_FLUSHED_SINCE_HEARTBEAT
+                    pgbridge.write_walker_health_start(
+                        "xrpl_stream", cadence_seconds=HEARTBEAT_EVERY_SECONDS
+                    )
                     pgbridge.write_heartbeat(
                         "xrpl_stream:mac",
                         txns_seen=state.get("txns_seen"),
@@ -1107,6 +1110,12 @@ def run_session(state):
                             "entry_type_deltas_flushed_since_last_heartbeat":
                                 _NOVELTY_FLUSHED_SINCE_HEARTBEAT,
                         },
+                    )
+                    pgbridge.write_walker_health_end(
+                        "xrpl_stream", ok=True,
+                        message=(f"rate={rate:.1f}tx/s whales={state.get('whale_events_seen',0)} "
+                                 f"token_evts={state.get('token_events_seen',0)} "
+                                 f"ledger={state.get('last_ledger_index')}"),
                     )
                     _NOVELTY_FLUSHED_SINCE_HEARTBEAT = 0
                     last_heartbeat = now

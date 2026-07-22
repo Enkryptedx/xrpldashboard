@@ -31,6 +31,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import sys
 from typing import Any
 
@@ -52,24 +53,23 @@ XRPL_CURRENCY_HEX = "524C555344000000000000000000000000000000"
 
 # External endpoints — deliberately different from the primaries rlusd_live
 # uses, so we're not just confirming the same node/RPC agrees with itself.
-# Multiple fallbacks in case one is down; first that responds is used.
-# ETH cross-check source list. The free public RPC landscape tightened in
-# mid-2026 (ankr now requires API key; llamarpc flaky; cloudflare rejects
-# eth_call for unknown contracts). Etherscan tokensupply is the most reliable
-# keyless independent option but is rate-limited to 1 req/5s. If all fail
-# the pair records external_unreachable and the audit notes the limitation.
 # ETH cross-check source list — ordered by independence from our primary.
-# rlusd_live uses publicnode.com first; we use everything else first.
-# Mid-2026 free-RPC landscape: ankr requires key, llamarpc flaky,
-# cloudflare rejects eth_call for some contracts, etherscan v1 deprecated.
-# publicnode.com is listed LAST as a same-source fallback — still checks
-# parse/format correctness but notes reduced independence.
-ETH_XCHECK_RPCS = [
-    "https://cloudflare-eth.com",
-    "https://1rpc.io/eth",
-    "https://eth.llamarpc.com",
-    "https://ethereum-rpc.publicnode.com",  # same-source fallback
-]
+# rlusd_live uses publicnode.com as its primary; we use everything else first.
+# Tested 2026-07-22 with eth_call/totalSupply() on 0x8292bb...ed:
+#   Alchemy (env ETH_RPC): OK — most reliable, keyed endpoint
+#   drpc.org (keyless): OK
+#   publicnode.com: OK (same-source fallback — still checks correctness)
+#   cloudflare-eth.com: FAIL -32603
+#   1rpc.io/eth: FAIL 503
+#   eth.llamarpc.com: FAIL 521
+# ETH_RPC env var is sourced from ~/.config/xrpldashboard/env and exported
+# by run_cross_check_walker.sh; absent → skipped (graceful degradation).
+_ALCHEMY_ETH = os.environ.get("ETH_RPC")
+ETH_XCHECK_RPCS = [u for u in [
+    _ALCHEMY_ETH,                                     # Alchemy (keyed, best)
+    "https://eth.drpc.org",                           # keyless, confirmed working
+    "https://ethereum-rpc.publicnode.com",            # same-source fallback
+] if u]
 XRPL_XCHECK_NODE = "https://xrplcluster.com"          # independent from s1.ripple.com
 XRPL_LOCAL_NODE = "http://localhost:5005"             # our node — used for vocab/amend checks
 XRPL_PUBLIC_NODE = "https://s1.ripple.com:51234"      # mainnet reference (amendments ledger)

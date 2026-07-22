@@ -15,6 +15,7 @@ fi
 
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+export ETH_RPC  # make available to Python subprocess (env file sets but doesn't export)
 
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/cross_check_walker.py"
