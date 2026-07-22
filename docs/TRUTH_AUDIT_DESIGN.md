@@ -150,9 +150,17 @@ Every displayed metric is assigned one of these types:
 
 ### Rule set
 
-**R1 — flat-when-should-wiggle.** Metric declared CONTINUOUS_WIGGLE or DAILY_WIGGLE identical across N cycles (N=5 for CONTINUOUS, 24h window for DAILY). *Founding case: RLUSD XRPL/ETH supply.*
+**Finalized-window rule (applies to all rules over DAILY_WIGGLE / STEP_CHANGE metrics).** Rules evaluating metrics of type DAILY_WIGGLE or STEP_CHANGE operate on the last finalized window — yesterday-UTC and earlier — never on the in-flight partial day. The current day's row is provisional by construction: writers overwrite it each cycle with "today so far" values and only finalize it once the calendar day closes. Judging that row as complete is a rule-semantics bug, not a legitimate finding.
 
-**R2 — zero-with-large-denominator.** Metric is exactly 0 while a related denominator is non-zero and active. *Examples: RLUSD 24h net-change = $0.00 while supply > $100M and prior 3-day history was non-zero; Midas RWA = $0.00 while active credentials present.*
+*Coverage handoff:* same-day walker stoppage stays caught by R3 (frozen row across cycles); the finalized-window rules' job is finalized-day impossible-zeros / stuck-supply, delivered with ≤24h + one cycle delay. The bound assumes the walker is on-cadence at rollover; a walker-down case is R3's jurisdiction, not R2's.
+
+*Tuning history (2026-07-22 — first live application):* R2 fired on today's in-flight partial-day RLUSD net-change (~0 while yesterday's finalized row was $-400K real activity). Rule-correction, not alarm-suppression — R2 still catches the RLUSD 53-day-flat class one finalized day later. R1 was patched in the same commit for consistency, though its window-based semantics were less at-risk. See `answer_plausibility_walker.py` `_evaluate_rlusd()` for the implementation.
+
+*Rule-set sweep at time of finalized-window addition:* R1 (fixed here), R2 (fixed here), R4 (evaluates cumulative all-time counters — unaffected). R3, R5, R6, R7 are not yet implemented; they inherit this rule at build time.
+
+**R1 — flat-when-should-wiggle.** Metric declared CONTINUOUS_WIGGLE or DAILY_WIGGLE identical across N cycles (N=5 for CONTINUOUS, 24h window for DAILY). *Founding case: RLUSD XRPL/ETH supply.* Subject to the finalized-window rule above for DAILY_WIGGLE metrics.
+
+**R2 — zero-with-large-denominator.** Metric is exactly 0 while a related denominator is non-zero and active. *Examples: RLUSD 24h net-change = $0.00 while supply > $100M and prior 3-day history was non-zero; Midas RWA = $0.00 while active credentials present.* Subject to the finalized-window rule above for DAILY_WIGGLE metrics.
 
 **R3 — frozen-across-N-cycles.** Time-windowed metric (last 24h, last 7d) returns identical result across cycles spanning more than the window. Catches walker writes that stopped mid-window.
 

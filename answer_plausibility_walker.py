@@ -1,19 +1,29 @@
 """Layer 2 (Answer Plausibility) walker — Phase 1 seed.
 
 Reads live Neon and evaluates the highest-value trio from
-docs/TRUTH_AUDIT_DESIGN.md against the metric inventory:
+docs/TRUTH_AUDIT_DESIGN.md against the metric inventory. Rules
+evaluating metrics of type DAILY_WIGGLE / STEP_CHANGE operate on the
+last finalized window (yesterday-UTC and earlier); today's partial row
+is provisional by construction — see db.write_rlusd_supply_history,
+which overwrites yesterday's row with fully-closed calendar totals each
+cycle. Coverage handoff: same-day walker stoppage is R3/freshness's
+jurisdiction (frozen row across cycles); the finalized-window rules'
+job is finalized-day impossible-zeros / stuck-supply, delivered with
+≤24h + one cycle delay (bound assumes walker on-cadence at rollover;
+walker-down case is R3's).
 
   R1 — flat-when-should-wiggle:
-       RLUSD xrpl_supply + eth_supply. If the most recent 30-day window
-       had ≥1 non-zero change event AND the trailing 7 days are frozen
-       (all values equal), fire. The founding 53-day RLUSD flat would
-       have been caught at day 7 by this rule.
+       RLUSD xrpl_supply + eth_supply, evaluated over the last
+       R1_WINDOW_DAYS finalized rows. If the window had ≥1 non-zero
+       change event AND the trailing 7 finalized days are frozen (all
+       values equal), fire. The founding 53-day RLUSD flat would have
+       been caught at day 7 by this rule.
 
   R2 — zero-with-large-denominator:
-       RLUSD xrpl_net_change_24h + eth_net_change_24h. If today's
-       net-change is dust (|Δ| < $1) AND supply is significant
-       (> $10M) AND ≥1 of the prior 3 days had real activity
-       (|Δ| ≥ $1000), fire.
+       RLUSD xrpl_net_change_24h + eth_net_change_24h evaluated against
+       the last finalized daily row. If that row's net-change is dust
+       (|Δ| < $1) AND supply is significant (> $10M) AND ≥1 of the 3
+       prior finalized days had real activity (|Δ| ≥ $1000), fire.
 
   R4 — monotonic-violated:
        Analytics all-time human views + uniques (from /admin/stats
@@ -39,6 +49,7 @@ cadence given how tiny the working set is (<30 rows).
 
 from __future__ import annotations
 
+import datetime
 import logging
 import sys
 
@@ -105,10 +116,18 @@ def _emit(alarms, metric, rule, observed, expected_behavior,
 
 # ── R1 & R2: RLUSD ───────────────────────────────────────────────────────
 def _evaluate_rlusd(alarms):
-    history = db.read_rlusd_supply_history(days=R1_WINDOW_DAYS)
+    # Fetch one extra row so we can drop the in-flight partial day and
+    # still evaluate a full R1_WINDOW_DAYS-day finalized window.
+    raw_history = db.read_rlusd_supply_history(days=R1_WINDOW_DAYS + 1)
+    today_utc = datetime.datetime.now(datetime.timezone.utc).date()
+    # Finalized-window filter: keep rows strictly before today-UTC. This
+    # handles both "today's row present" (skip it) and "walker hasn't
+    # written today yet" (nothing to skip) uniformly.
+    history = [r for r in raw_history if r["snapshot_date"] < today_utc]
     if len(history) < R1_FROZEN_TAIL_DAYS + 1:
         logger.info(
-            "rlusd history too short for evaluation (rows=%d, need=%d)",
+            "rlusd finalized history too short for evaluation "
+            "(rows=%d, need=%d)",
             len(history), R1_FROZEN_TAIL_DAYS + 1,
         )
         return
@@ -122,7 +141,7 @@ def _evaluate_rlusd(alarms):
             continue
         tail = values[:R1_FROZEN_TAIL_DAYS]
         prior = values[R1_FROZEN_TAIL_DAYS:]
-        # Frozen tail = all identical.
+        # Frozen tail = all identical finalized values.
         tail_frozen = all(v == tail[0] for v in tail)
         # Prior window = any change observed.
         prior_changed = any(v != prior[0] for v in prior[1:])
@@ -148,8 +167,9 @@ def _evaluate_rlusd(alarms):
                 note=f"frozen {R1_FROZEN_TAIL_DAYS}d after prior change in {R1_WINDOW_DAYS}d window",
             )
 
-    # R2 on net-change fields.
-    today = history[0]
+    # R2 on net-change fields — evaluates yesterday-finalized (or the
+    # most recent finalized row), never today's in-flight partial day.
+    latest_finalized = history[0]
     prior_days = history[1:1 + R2_LOOKBACK_DAYS]
 
     # Companion supply lookup by field.
@@ -158,8 +178,8 @@ def _evaluate_rlusd(alarms):
         # eth net-change isn't stored in the current schema yet; skip
         # gracefully if absent so R2 can extend later without a rewrite.
     ):
-        change = today.get(change_field)
-        supply = today.get(supply_field)
+        change = latest_finalized.get(change_field)
+        supply = latest_finalized.get(supply_field)
         if change is None or supply is None:
             continue
         if abs(change) < R2_NET_CHANGE_DUST and supply > R2_SUPPLY_MIN:
@@ -178,7 +198,7 @@ def _evaluate_rlusd(alarms):
                         f"DAILY_WIGGLE (supply={float(supply):,.2f} > ${R2_SUPPLY_MIN:,})"
                     ),
                     consecutive_cycles=1,
-                    last_change_at=today["snapshot_date"],
+                    last_change_at=latest_finalized["snapshot_date"],
                     note=(
                         f"prior {R2_LOOKBACK_DAYS}d had ≥1 day with "
                         f"|Δ| >= ${R2_LOOKBACK_ACTIVITY_FLOOR}"
