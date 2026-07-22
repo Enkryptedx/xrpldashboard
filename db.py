@@ -4466,6 +4466,78 @@ def write_plausibility_watermark(metric, value, extra=None):
         return False
 
 
+# ── Layer 3 (External Legitimacy) ────────────────────────────────────────────
+# See migrations/2026_07_22_cross_check.sql for the schema.
+
+def write_cross_check_result(
+    pair_key, check_type, external_source,
+    local_value=None, external_value=None,
+    tolerance=None, delta=None, status="agree", note=None,
+):
+    """Append one cross-check result row. Append-only per design doc."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO cross_check_results "
+                "  (pair_key, check_type, local_value, external_value, "
+                "   external_source, tolerance, delta, status, note) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (pair_key, check_type, local_value, external_value,
+                 external_source, tolerance, delta, status, note),
+            )
+        return True
+    except Exception as e:
+        _log_err(f"write_cross_check_result[{pair_key}]", e)
+        _drop_writer_conn()
+        return False
+
+
+def read_recent_cross_check_results(hours=48, status_filter=None):
+    """Return rows from cross_check_results ordered newest first.
+
+    When status_filter is provided (e.g. 'disagree'), only those rows are
+    returned. Covers the Sunday queue audit opening act and /health surface.
+    """
+    import datetime
+    if not pg_available():
+        return []
+    try:
+        cutoff = (datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(hours=hours))
+        with pg_connect() as conn, conn.cursor() as cur:
+            if status_filter:
+                cur.execute(
+                    "SELECT id, run_at, pair_key, check_type, local_value, "
+                    "  external_value, external_source, tolerance, delta, "
+                    "  status, note "
+                    "FROM cross_check_results "
+                    "WHERE status = %s AND run_at > %s "
+                    "ORDER BY run_at DESC",
+                    (status_filter, cutoff),
+                )
+            else:
+                cur.execute(
+                    "SELECT id, run_at, pair_key, check_type, local_value, "
+                    "  external_value, external_source, tolerance, delta, "
+                    "  status, note "
+                    "FROM cross_check_results "
+                    "WHERE run_at > %s "
+                    "ORDER BY run_at DESC",
+                    (cutoff,),
+                )
+            rows = cur.fetchall()
+        cols = ("row_id", "run_at", "pair_key", "check_type", "local_value",
+                "external_value", "external_source", "tolerance", "delta",
+                "status", "note")
+        return [dict(zip(cols, r)) for r in rows]
+    except Exception as e:
+        _log_err("read_recent_cross_check_results_failed", e)
+        return []
+
+
 def read_rlusd_supply_history(days=30):
     """Return list of dicts with the fields R1/R2 evaluate against, most-
     recent first. Bounded by ``days`` (most recent N calendar rows).

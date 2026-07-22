@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.cross_check_walker</string>
+
+    <key>Comment</key>
+    <string>Truth Audit Layer 3 (External Legitimacy) cross-check walker. Compares site values against independent public sources: RLUSD-ETH (penny-exact vs Ankr ETH RPC), RLUSD-XRPL (penny-exact vs xrplcluster.com gateway_balances), XRP price (band ±2% vs CoinGecko), amendments (count-exact vs mainnet Amendments ledger), validator UNL (count-exact live vs stored), ledger vocabulary (set-equal local vs s1.ripple.com). Disagreements write status=disagree to cross_check_results; walker_health.ok = FALSE only on internal exception.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_cross_check_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- 10 minutes — matches the CONTINUOUS rule cadence per the design.
+         Six external HTTP calls per cycle; all have 12s timeouts and are
+         individually isolated so one slow endpoint can't block the rest. -->
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/cross_check_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/cross_check_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

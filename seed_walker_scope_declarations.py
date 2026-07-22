@@ -59,6 +59,25 @@ SCOPES = [
         False,
     ),
     (
+        "cross_check_walker",
+        "Layer 3 external-legitimacy cross-checker (Phase 3: 6 pairs)",
+        "Compares site values against independent public sources. "
+        "Pairs: (1) RLUSD-ETH penny-exact vs Ankr/llamarpc eth_call totalSupply() "
+        "(independent from publicnode.com primary); (2) RLUSD-XRPL penny-exact vs "
+        "xrplcluster.com gateway_balances (independent from s1.ripple.com primary); "
+        "(3) XRP price band ±2% vs CoinGecko simple/price; (4) amendment count-exact: "
+        "localhost:5005 feature RPC enabled set vs mainnet Amendments ledger object "
+        "on s1.ripple.com; (5) validator UNL count-exact live vl.ripple.com vs stored "
+        "unl_snapshots; (6) ledger vocabulary set-equal: local ledger_definitions "
+        "(from ledger_definitions_walker) vs s1.ripple.com server_definitions. "
+        "Disagreement = investigation trigger, never auto-correction. Results land in "
+        "cross_check_results (append-only); status='disagree' rows are the alarm "
+        "surface. walker_health.ok = False only on internal exception. 10-min cadence. "
+        "Does NOT audit itself — if this walker goes undeclared, "
+        "answer_plausibility_walker's UNDECLARED_WALKER rule fires.",
+        False,
+    ),
+    (
         "answer_plausibility_walker",
         "Layer 2 rule evaluator (Phase 1 seed: R1/R2/R4 + UNDECLARED)",
         "Reads live Neon and evaluates the rule set from "
