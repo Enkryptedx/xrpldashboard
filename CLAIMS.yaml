@@ -229,11 +229,17 @@ pages:
           (verified 2026-07-22: TokenEscrow amendment active on
           mainnet since 2026-02-12 with ~404 census objects; local
           rippled defined_entry_names has `Escrow` but no `TokenEscrow`
-          → /coverage does not surface the type at all). Sibling class:
-          the walker-scope declaration must expand every time rippled
+          → /coverage does not surface the type at all). 2026-07-22:
+          declared-gap SCREAM banner shipped so the omission is loud,
+          not silent (templates/coverage_register.html, "DECLARED GAP"
+          block near the top). Permanent fix = node upgrade (rides
+          Lenovo migration); banner deletes itself when rippled build
+          ships definitions for TokenEscrow. Sibling class: the
+          walker-scope declaration must expand every time rippled
           upgrades OR a new type is amendment-activated. Any diff
           touching the LedgerEntryType section, the coverage walker,
-          or the definitions cache triggers this claim.
+          the definitions cache, or the declared-gap banner triggers
+          this claim.
 
       - id: coverage_transaction_types
         label: "TransactionType coverage — every mainnet tx type is defined + seen or annotated"

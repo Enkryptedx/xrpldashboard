@@ -93,6 +93,23 @@
       </div>
     {% endif %}
 
+    {# ─── SCREAM-tier: declared known gaps ────────────────────────── #}
+    {# Types active on mainnet whose definitions are absent from this
+       node's vocabulary snapshot. The three-way diff below cannot see
+       them (walker filters on defined_entry_names) so they are declared
+       here explicitly. The gap closes on node upgrade. #}
+    <div class="banner scream">
+      !!! DECLARED GAP &mdash; 1 type active on mainnet but absent from this node's
+      vocabulary snapshot. Silently omitted from the three-way diff below until
+      the local node upgrades.
+      <div style="margin-top:6px;">
+        <span class="field-list">TokenEscrow</span> &mdash; active on mainnet
+        since 2026-02-12 (~404 objects per 07-13 census); definition absent
+        from local node vocabulary (from-source build predates amendment);
+        permanent fix = node upgrade (rides Lenovo migration).
+      </div>
+    </div>
+
     {# ─── SCREAM-tier: undeclared walkers ─────────────────────────── #}
     {% set undecl = [] %}
     {% for wname, wh in state.walker_health.items() if wh.undeclared %}{% set _ = undecl.append(wname) %}{% endfor %}
