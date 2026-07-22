@@ -416,7 +416,7 @@ def _check_validator_unl() -> None:
         return
 
     # Local: most recent stored snapshot.
-    stored = db.read_recent_unl_snapshots("vl.ripple.com", limit=1)
+    stored = db.read_recent_unl_snapshots("ripple", limit=1)
     if not stored:
         _record(PAIR, "count_exact", SRC,
                 None, str(live_count), "local_unavailable",
