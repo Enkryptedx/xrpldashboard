@@ -4387,6 +4387,134 @@ def scan_burst_cohorts(lookback_days=90):
         return {"error": str(e)}
 
 
+# ─── Layer 2 (Answer Plausibility) storage helpers ───────────────────────
+# See migrations/2026_07_21_answer_plausibility.sql for the schema.
+# The alarms table is append-only; watermarks are upserted per metric.
+
+def write_plausibility_alarm(
+    metric,
+    rule,
+    observed,
+    expected_behavior,
+    consecutive_cycles=None,
+    last_change_at=None,
+    note=None,
+):
+    """Append one alarm row. Named-failure format per TRUTH_AUDIT_DESIGN.md."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO answer_plausibility_alarms "
+                "  (metric, rule, observed, expected_behavior, "
+                "   consecutive_cycles, last_change_at, note) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (metric, rule, str(observed), expected_behavior,
+                 consecutive_cycles, last_change_at, note),
+            )
+        return True
+    except Exception as e:
+        _log_err(f"write_plausibility_alarm[{metric}/{rule}]", e)
+        _drop_writer_conn()
+        return False
+
+
+def read_plausibility_watermark(metric):
+    """Return (last_value, last_seen_at, extra) or (None, None, None)."""
+    if not pg_available():
+        return (None, None, None)
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT last_value, last_seen_at, extra "
+                "FROM answer_plausibility_watermarks WHERE metric=%s",
+                (metric,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return (None, None, None)
+            return (row[0], row[1], row[2])
+    except Exception:
+        return (None, None, None)
+
+
+def write_plausibility_watermark(metric, value, extra=None):
+    """Upsert the watermark for one metric."""
+    import json
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO answer_plausibility_watermarks "
+                "  (metric, last_value, last_seen_at, extra) "
+                "VALUES (%s, %s, NOW(), %s) "
+                "ON CONFLICT (metric) DO UPDATE SET "
+                "  last_value = EXCLUDED.last_value, "
+                "  last_seen_at = EXCLUDED.last_seen_at, "
+                "  extra = EXCLUDED.extra",
+                (metric, value,
+                 json.dumps(extra) if extra is not None else None),
+            )
+        return True
+    except Exception as e:
+        _log_err(f"write_plausibility_watermark[{metric}]", e)
+        _drop_writer_conn()
+        return False
+
+
+def read_rlusd_supply_history(days=30):
+    """Return list of dicts with the fields R1/R2 evaluate against, most-
+    recent first. Bounded by ``days`` (most recent N calendar rows).
+    Empty list if PG unreachable or table empty."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT snapshot_date, xrpl_supply, eth_supply, "
+                "       xrpl_net_change_24h "
+                "FROM rlusd_supply_history "
+                "ORDER BY snapshot_date DESC "
+                "LIMIT %s",
+                (int(days),),
+            )
+            rows = cur.fetchall()
+        return [
+            {
+                "snapshot_date": r[0],
+                "xrpl_supply": r[1],
+                "eth_supply": r[2],
+                "xrpl_net_change_24h": r[3],
+            }
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def count_burst_cohort_reclassified_rows():
+    """Total page_view rows currently reclassified as bot by burst-cohort
+    membership. Feeds R4's accepted-cause path: an all-time human count
+    that drops by ~this delta is an accepted classifier update, not a
+    real regression."""
+    if not pg_available():
+        return 0
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(SUM(unique_ips), 0) "
+                "FROM burst_cohort_days"
+            )
+            row = cur.fetchone()
+            return int(row[0] or 0)
+    except Exception:
+        return 0
+
+
 def _bot_filter_sql(kind):
     """Builds a WHERE-clause fragment that selects human / bot / all rows.
     Returns (fragment, params). Fragment starts with `AND ` so it can be

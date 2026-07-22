@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.answer_plausibility_walker</string>
+
+    <key>Comment</key>
+    <string>Truth Audit Layer 2 (Answer Plausibility) walker — Phase 1 seed. Reads live Neon and evaluates R1/R2/R4 + UNDECLARED_WALKER against the metric inventory in docs/TRUTH_AUDIT_DESIGN.md. Alarms append to answer_plausibility_alarms; walker_health.ok reflects only whether the walker ran cleanly (business alarms are not walker crashes). 10-minute cadence per the CONTINUOUS rule bar in the design.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_answer_plausibility_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <!-- 10 minutes — matches the CONTINUOUS rule cadence per the design.
+         Working set is tiny (30-row RLUSD history + one all-time analytics
+         aggregation + walker_health scan) so this cadence costs pennies
+         against Neon while catching the RLUSD 53-day flat within a day
+         of the frozen-tail threshold. -->
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/answer_plausibility_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/answer_plausibility_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

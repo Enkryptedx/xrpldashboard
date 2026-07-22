@@ -39,11 +39,26 @@ def main():
             # supply succeeded) so walker_health isn't clean-green while
             # the page shows '—'. The payload's error field records which
             # sub-fetch failed; read it back from the cache we just wrote.
+            payload = None
             try:
                 payload, _ = db.read_rlusd_state_cache()
                 err = payload.get("error") if payload else None
             except Exception:
                 err = None
+            # Refresh today's rlusd_supply_history row on the 5-min cadence
+            # (was daily via signed_snapshot until 2026-07-22). Prevents the
+            # partial-day capture that caused Layer 2's first live catch:
+            # signed_snapshot ran at 00:07 UTC, wrote ~7-min supply-delta
+            # into xrpl_net_change_24h, and left it there for ~24h until
+            # next day's cron finalized it via net_change_calendar_prev.
+            # UPSERT on snapshot_date makes 5-min re-runs safe; the prev-day
+            # finalize UPDATE inside write_rlusd_supply_history also runs
+            # per cycle (idempotent on closed-day values).
+            if payload:
+                try:
+                    db.write_rlusd_supply_history(payload)
+                except Exception:
+                    pass
             message = f"refreshed (partial: {err})" if err else "refreshed"
         else:
             # Soft fail: _refresh_cache_once returned False (upstream RPC

@@ -59,6 +59,22 @@ SCOPES = [
         False,
     ),
     (
+        "answer_plausibility_walker",
+        "Layer 2 rule evaluator (Phase 1 seed: R1/R2/R4 + UNDECLARED)",
+        "Reads live Neon and evaluates the rule set from "
+        "docs/TRUTH_AUDIT_DESIGN.md against the metric inventory. Phase 1 "
+        "seed covers R1 (flat-when-should-wiggle) on RLUSD xrpl_supply + "
+        "eth_supply, R2 (zero-with-large-denominator) on RLUSD "
+        "xrpl_net_change_24h, R4 (monotonic-violated) on analytics "
+        "all-time human views + uniques with burst-cohort delta as "
+        "accepted cause, and UNDECLARED_WALKER on any walker in "
+        "walker_health missing a scope declaration. This walker audits "
+        "others; it does not get to be undeclared itself. Alarms land in "
+        "answer_plausibility_alarms (append-only); walker_health.ok "
+        "reflects only whether the walker itself ran cleanly.",
+        True,
+    ),
+    (
         "nft_activity_activity",
         "forward-only from cursor toward HEAD-3 (all NFT tx types)",
         "Cursor-tracked forward-only ingest of all NFT-related tx types "
@@ -252,6 +268,40 @@ SCOPES = [
         "address listed in [[ACCOUNTS]]. Discovery of new orgs relies on "
         "manual curation of xrpl_org_domains.json + Foundation registry "
         "polling. Ownership proof = the toml URL. Weekly cadence.",
+        True,
+    ),
+    (
+        "enrich_token_names",
+        "MPT (all) + IOU-TOML (top-200 unlabeled) + AMM LP (derived)",
+        "Populates token_names.json from three sources: (A) mpt_snapshot.json "
+        "→ source='mpt_metadata' for every named MPT issuance (XLS-89 "
+        "on-ledger, highest trust tier); (B) top-N unlabeled IOU issuers "
+        "from token_volume (--limit default 200) with account_info Domain "
+        "lookup → external xrp-ledger.toml fetch → match on (code, issuer) "
+        "in [[CURRENCIES]] → source='toml' on full match, source="
+        "'domain_fallback' when Domain resolves but TOML lacks the currency "
+        "block; (C) amm_index.json → protocol-deterministic LP token code "
+        "derivation → source='lp_derived'. INSERT-ONLY: never overwrites "
+        "existing entries, so an issuer that migrates domain or renames a "
+        "token keeps its stale name until the entry is manually cleared. "
+        "IOU issuers beyond the 200-per-pass window and issuers without a "
+        "Domain field are invisible until the unlabeled population shrinks "
+        "or the limit is raised. Weekly cadence.",
+        True,
+    ),
+    (
+        "census_watcher",
+        "dormant / on-demand condition-triggered launcher",
+        "Not scheduled. Manual launcher that polls localhost:5005 "
+        "server_info and fires census_escrow_phase1c once when "
+        "load_factor <= 5.0 AND server_state in {full, proposing} for "
+        "10 consecutive 60s polls. Self-registers in walker_health at "
+        "kickoff. Last fired 2026-07-13 (74 polls, 10-good streak) — the "
+        "escrow census question (404 TokenEscrow objects) was answered "
+        "there. Hardcoded DEADLINE_UTC 2026-07-16 has since passed; walker "
+        "will refuse to arm without a source bump. Row kept declared so "
+        "re-arming for a future census pass doesn't trip UNDECLARED_WALKER "
+        "on answer_plausibility_walker.",
         True,
     ),
 ]
