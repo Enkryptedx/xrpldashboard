@@ -525,7 +525,7 @@
     <li><strong>{{ _('Web app:') }}</strong> {{ _('Render. Source on GitHub, MIT-licensed.') }}</li>
     <li><strong>{{ _('Worker:') }}</strong> {{ _('Self-hosted Python process streaming XRPL → Postgres 24/7. Heartbeat monitored externally; hot-standby failover planned.') }}</li>
     <li><strong>{{ _('Database:') }}</strong> {{ _('Neon Postgres.') }}</li>
-    <li><strong>{{ _('CDN:') }}</strong> {{ _('Cloudflare in front of Render.') }}</li>
+    <li><strong>{{ _('CDN + access control:') }}</strong> {{ _('Cloudflare in front of Render. Automated access to /whales passes a Managed Challenge; verified search and AI crawlers (Googlebot, Bingbot, GPTBot, ClaudeBot, PerplexityBot and others on Cloudflare\'s verified-bot list) are exempt and pass through unchallenged. Human visitors see at most a brief one-time interstitial. This is cost-defense against extraction fleets, not content restriction — the data is freely available to humans and identified crawlers.') }}</li>
     <li><strong>{{ _('Status:') }}</strong> <a href="/health">/health</a> — {{ _('public uptime + ledger-sync indicator.') }}</li>
     <li><strong>{{ _('Monitoring:') }}</strong> {{ _('An external uptime service checks the worker heartbeat every 3 minutes; staleness over 10 minutes pages the maintainer.') }}</li>
   </ul>
