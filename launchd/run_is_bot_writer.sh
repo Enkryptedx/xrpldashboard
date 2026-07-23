@@ -24,4 +24,12 @@ PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/scripts/is_bot_writer.py"
 LOCKFILE="/tmp/is_bot_writer.lock"
 
-exec flock -n "$LOCKFILE" "$PYTHON" "$SCRIPT"
+# macOS: use mkdir as an atomic lock (mkdir fails if dir exists).
+# If a previous run is still in progress, exit cleanly — launchd will retry.
+if ! mkdir "$LOCKFILE" 2>/dev/null; then
+  echo "[$(date '+%F %T')] is_bot_writer already running — skipping" >&2
+  exit 0
+fi
+trap 'rmdir "$LOCKFILE" 2>/dev/null' EXIT
+
+"$PYTHON" "$SCRIPT"
