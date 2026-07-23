@@ -239,8 +239,10 @@ _WHALES_CACHE_TTL_S = 60
 _WHALES_CACHE_STATS = {
     "hits": 0,
     "misses": 0,
+    "blocked": 0,
     "hits_flushed": 0,
     "misses_flushed": 0,
+    "blocked_flushed": 0,
     "last_flush_ts": 0.0,
 }
 # Opportunistic hit-path flush interval. Miss-path-only flushing would
@@ -271,18 +273,22 @@ def _maybe_flush_whales_receipts(force):
         misses_delta = (
             _WHALES_CACHE_STATS["misses"] - _WHALES_CACHE_STATS["misses_flushed"]
         )
-        if hits_delta == 0 and misses_delta == 0:
+        blocked_delta = (
+            _WHALES_CACHE_STATS["blocked"] - _WHALES_CACHE_STATS["blocked_flushed"]
+        )
+        if hits_delta == 0 and misses_delta == 0 and blocked_delta == 0:
             return
         if not force:
-            if hits_delta == 0:
+            if hits_delta == 0 and blocked_delta == 0:
                 return
             if now - _WHALES_CACHE_STATS["last_flush_ts"] < _WHALES_CACHE_FLUSH_INTERVAL_S:
                 return
         _WHALES_CACHE_STATS["hits_flushed"] = _WHALES_CACHE_STATS["hits"]
         _WHALES_CACHE_STATS["misses_flushed"] = _WHALES_CACHE_STATS["misses"]
+        _WHALES_CACHE_STATS["blocked_flushed"] = _WHALES_CACHE_STATS["blocked"]
         _WHALES_CACHE_STATS["last_flush_ts"] = now
     try:
-        db.write_whales_cache_daily_delta(hits_delta, misses_delta)
+        db.write_whales_cache_daily_delta(hits_delta, misses_delta, blocked_delta)
     except Exception:
         pass
 
@@ -2060,6 +2066,19 @@ def whales():
     if tier not in tier_map:
         tier = "100k"
     tier_label, tier_drops = tier_map[tier]
+
+    # TEMPORARY FLEET BLOCK — revert when CF Managed Challenge is live on /whales.
+    # Fingerprint: IL country + Chrome/142 UA = rotating residential proxy fleet
+    # confirmed 2026-07-22 (2,036 unique IPs, single UA string, 3am-7am IDT cron).
+    # Retry-After: 86400 tells well-behaved scrapers to back off 24h; evidence of
+    # compliance lands in whales_cache_daily.blocked each morning.
+    _req_country = request.headers.get("CF-IPCountry", "")
+    _req_ua = request.headers.get("User-Agent", "")
+    if _req_country == "IL" and "Chrome/142" in _req_ua:
+        with _WHALES_CACHE_LOCK:
+            _WHALES_CACHE_STATS["blocked"] += 1
+        _maybe_flush_whales_receipts(force=True)
+        return Response("", status=429, headers={"Retry-After": "86400"})
 
     # 60s in-process cache — closed 12-bucket key space, see module-level
     # _WHALES_CACHE comment. Lookup happens after normalization so the key

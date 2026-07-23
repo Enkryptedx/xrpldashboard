@@ -2896,7 +2896,7 @@ def read_rlusd_state_cache():
     return None, None
 
 
-def write_whales_cache_daily_delta(hits_delta, misses_delta):
+def write_whales_cache_daily_delta(hits_delta, misses_delta, blocked_delta=0):
     """Roll /whales in-process cache hit/miss deltas into a daily receipts row.
 
     Called on every cache miss (deltas since last flush) and opportunistically
@@ -2906,14 +2906,17 @@ def write_whales_cache_daily_delta(hits_delta, misses_delta):
     evidence for the future API-gate conversation, so they need to be
     trustworthy rather than pretty.
 
+    blocked_delta counts requests turned away by the temporary IL/Chrome-142
+    fleet block before the cache is even consulted.
+
     Table auto-creates on first call — schema is tiny and this is best-effort
     telemetry, no separate migration warranted. Row shape:
-    (date, hits, misses, last_updated). Multi-worker safe because the upsert
-    does += delta, not = total.
+    (date, hits, misses, blocked, last_updated). Multi-worker safe because the
+    upsert does += delta, not = total.
     """
     if not pg_available():
         return False
-    if hits_delta == 0 and misses_delta == 0:
+    if hits_delta == 0 and misses_delta == 0 and blocked_delta == 0:
         return False
     conn = _get_writer_conn()
     if conn is None:
@@ -2925,18 +2928,20 @@ def write_whales_cache_daily_delta(hits_delta, misses_delta):
                 "    date DATE PRIMARY KEY,"
                 "    hits BIGINT NOT NULL DEFAULT 0,"
                 "    misses BIGINT NOT NULL DEFAULT 0,"
+                "    blocked BIGINT NOT NULL DEFAULT 0,"
                 "    last_updated TIMESTAMPTZ"
                 ")"
             )
             cur.execute(
                 "INSERT INTO whales_cache_daily "
-                "    (date, hits, misses, last_updated) "
-                "VALUES (CURRENT_DATE, %s, %s, NOW()) "
+                "    (date, hits, misses, blocked, last_updated) "
+                "VALUES (CURRENT_DATE, %s, %s, %s, NOW()) "
                 "ON CONFLICT (date) DO UPDATE SET "
                 "    hits = whales_cache_daily.hits + EXCLUDED.hits, "
                 "    misses = whales_cache_daily.misses + EXCLUDED.misses, "
+                "    blocked = whales_cache_daily.blocked + EXCLUDED.blocked, "
                 "    last_updated = EXCLUDED.last_updated",
-                (hits_delta, misses_delta),
+                (hits_delta, misses_delta, blocked_delta),
             )
         return True
     except Exception as e:
