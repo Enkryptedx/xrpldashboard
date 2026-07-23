@@ -5742,25 +5742,46 @@ def analytics():
         return _cached_body
     _analytics_render_start = time.perf_counter()
 
-    rollups = db.read_page_view_stats(kind="human")
-    top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human")
-    top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human")
-    countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
-                                              kind="human")
-    countries_24h_count = db.read_country_count(24 * 60 * 60, kind="human")
+    # Precompute the bot visitor_hash + ip_day_hash sets ONCE for the whole
+    # render. Every downstream _bot_filter_sql call (rollups + top_pages +
+    # country_breakdown + country_count, both human and bot) will use IN
+    # literals instead of the two ~2.4s IN-subqueries. Measured 2026-07-23:
+    # 22× subquery form = 52.6s / 22× literal form = ~15s / precompute
+    # itself = ~1.5s. Net: cold render 15-17s vs 52.6s.
+    _precomputed_bots = None
+    if db.pg_available():
+        try:
+            with db.pg_connect() as _bot_conn:
+                _precomputed_bots = db.compute_bot_hash_sets(_bot_conn)
+        except Exception:
+            _precomputed_bots = None  # falls back to legacy subquery form
+
+    rollups = db.read_page_view_stats(kind="human",
+                                      precomputed_bots=_precomputed_bots)
+    top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="human",
+                                precomputed_bots=_precomputed_bots)
+    top_7d = db.read_top_pages(7 * 24 * 60 * 60, limit=15, kind="human",
+                               precomputed_bots=_precomputed_bots)
+    # Fetch limit=500 for the 24h list ONCE; the top-10 table just slices
+    # from it. Previously two separate queries hit the same window twice.
+    countries_24h_all = db.read_country_breakdown(24 * 60 * 60, limit=500,
+                                                  kind="human",
+                                                  precomputed_bots=_precomputed_bots)
+    countries_24h = countries_24h_all[:10]
+    countries_24h_count = db.read_country_count(24 * 60 * 60, kind="human",
+                                                precomputed_bots=_precomputed_bots)
 
     # All-time origin list. limit=500 is a no-op ceiling vs the ~250
     # ISO 3166-1 codes plus a handful of Cloudflare special codes
     # (T1 = Tor, ? = no header) — sized to never truncate in practice.
-    countries_all = db.read_country_breakdown(None, limit=500, kind="human")
-    countries_all_count = db.read_country_count(None, kind="human")
+    countries_all = db.read_country_breakdown(None, limit=500, kind="human",
+                                              precomputed_bots=_precomputed_bots)
+    countries_all_count = db.read_country_count(None, kind="human",
+                                                precomputed_bots=_precomputed_bots)
 
-    # Reach panel — same bot filter, same population as the tables. Pulls
-    # ALL 24h countries (not just the top 10 the table renders) so continent
-    # aggregation covers every origin. Continent counts exclude 'Unknown'
-    # (Tor + no-CF-header rows) because their real continent is unknowable.
-    countries_24h_all = db.read_country_breakdown(24 * 60 * 60, limit=500,
-                                                  kind="human")
+    # Reach panel — same bot filter, same population as the tables.
+    # Continent counts exclude 'Unknown' (Tor + no-CF-header rows) because
+    # their real continent is unknowable.
     continent_24h = _continent_aggregate(countries_24h_all)
     continent_all = _continent_aggregate(countries_all)
     continent_24h_count = sum(1 for c, _, _ in continent_24h if c != "Unknown")
@@ -5773,10 +5794,13 @@ def analytics():
     cta_recent_raw = db.read_recent_cta_clicks(limit=10,
                                                cta_id="institutional-contact")
 
-    bot_rollups = db.read_page_view_stats(kind="bot")
-    bot_top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="bot")
+    bot_rollups = db.read_page_view_stats(kind="bot",
+                                          precomputed_bots=_precomputed_bots)
+    bot_top_24h = db.read_top_pages(24 * 60 * 60, limit=15, kind="bot",
+                                    precomputed_bots=_precomputed_bots)
     bot_countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
-                                                  kind="bot")
+                                                  kind="bot",
+                                                  precomputed_bots=_precomputed_bots)
 
     recent = db.read_recent_page_views(limit=100)
 
