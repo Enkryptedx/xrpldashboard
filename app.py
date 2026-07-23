@@ -451,6 +451,11 @@ def _analytics_warmer_loop():
     time.sleep(10)  # let gunicorn worker fully start before first build
     while True:
         try:
+            # Refresh bot hash tables before the analytics rebuild so the
+            # render can use the fast table-subquery path. Runs every cycle
+            # (~30s) to keep scanner detection fresh (7d rolling window).
+            db.refresh_bot_hash_tables()
+
             with _ANALYTICS_CACHE_LOCK:
                 entry = _ANALYTICS_CACHE.get("full")
                 expiry = entry[0] if entry else 0
@@ -5742,14 +5747,16 @@ def analytics():
         return _cached_body
     _analytics_render_start = time.perf_counter()
 
-    # Precompute the bot visitor_hash + ip_day_hash sets ONCE for the whole
-    # render. Every downstream _bot_filter_sql call (rollups + top_pages +
-    # country_breakdown + country_count, both human and bot) will use IN
-    # literals instead of the two ~2.4s IN-subqueries. Measured 2026-07-23:
-    # 22× subquery form = 52.6s / 22× literal form = ~15s / precompute
-    # itself = ~1.5s. Net: cold render 15-17s vs 52.6s.
+    # Bot classification tiers (fastest first):
+    # 1. Table path (db._bot_hash_table_ready=True): _bot_filter_sql uses
+    #    indexed subqueries against page_view_bot_hashes + scanner_combos.
+    #    No Python params bound. Warmer refreshes tables every ~30s.
+    # 2. Precomputed literals (fallback during first warmer cycle): bind
+    #    visitor/ip_day hash sets as literal IN params — 2.5x faster than
+    #    legacy subqueries but still ~13s cold.
+    # 3. Legacy subquery form: if pg unavailable or precompute fails.
     _precomputed_bots = None
-    if db.pg_available():
+    if db.pg_available() and not db._bot_hash_table_ready:
         try:
             with db.pg_connect() as _bot_conn:
                 _precomputed_bots = db.compute_bot_hash_sets(_bot_conn)

@@ -4241,6 +4241,7 @@ _BURST_COHORT_SPIKE_FLOOR = 50      # absolute minimum unique-IPs to trigger —
 # scan has run. _bot_filter_sql skips the cohort predicate until then so the
 # filter can't error on a missing table at startup.
 _burst_cohort_table_ready = False
+_bot_hash_table_ready = False
 
 
 def scan_burst_cohorts(lookback_days=90):
@@ -4592,6 +4593,120 @@ def count_burst_cohort_reclassified_rows():
         return 0
 
 
+def refresh_bot_hash_tables():
+    """Materialise bot classification data into two small Postgres tables so
+    every analytics() render can filter against an indexed join instead of
+    binding ~11k literal params or scanning page_views twice per query.
+
+    Table 1 — page_view_bot_hashes (hash_type TEXT, hash TEXT PK):
+      Stores visitor_hash and ip_day_hash values of rows that match
+      BOT_PATH_PATTERNS / BOT_UA_PATTERNS (row_pred). Mirrors exactly what
+      the legacy session_pred IN-subqueries select against, so classification
+      is identical to the legacy path.
+
+    Table 2 — page_view_scanner_combos (path TEXT, user_agent TEXT PK):
+      Stores (path, user_agent) pairs that meet the scanner-fleet criteria
+      (≥30 hits, hits ≈ visitors in the last 7d). Replaces the per-query
+      GROUP BY / HAVING subquery with a single indexed lookup.
+
+    Both tables are truncated + reinserted on each call (full refresh).
+    Creates the tables on first run — no separate migration needed.
+
+    Sets _bot_hash_table_ready = True on success so _bot_filter_sql can
+    switch to the table path. Safe to call from a background thread.
+    """
+    global _bot_hash_table_ready
+    if not pg_available():
+        return
+    path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
+    ua_likes = " OR ".join(
+        "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
+    )
+    row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    row_params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+    scanner_ts = int(time.time()) - 7 * 86400
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                # Create tables idempotently
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS page_view_bot_hashes ("
+                    "  hash_type TEXT NOT NULL,"
+                    "  hash TEXT NOT NULL,"
+                    "  PRIMARY KEY (hash_type, hash)"
+                    ")"
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_pvbh_lookup "
+                    "ON page_view_bot_hashes (hash_type, hash)"
+                )
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS page_view_scanner_combos ("
+                    "  path TEXT NOT NULL,"
+                    "  user_agent TEXT NOT NULL,"
+                    "  PRIMARY KEY (path, user_agent)"
+                    ")"
+                )
+
+                # Visitor hashes from row_pred
+                cur.execute(
+                    f"SELECT DISTINCT visitor_hash FROM page_views "
+                    f"WHERE visitor_hash IS NOT NULL AND {row_pred}",
+                    row_params,
+                )
+                visitor_hashes = [r[0] for r in cur.fetchall()]
+
+                # IP-day hashes from row_pred
+                cur.execute(
+                    f"SELECT DISTINCT ip_day_hash FROM page_views "
+                    f"WHERE ip_day_hash IS NOT NULL AND {row_pred}",
+                    row_params,
+                )
+                ip_day_hashes = [r[0] for r in cur.fetchall()]
+
+                # Scanner (path, ua) combos
+                cur.execute(
+                    "SELECT path, user_agent FROM page_views "
+                    "WHERE user_agent IS NOT NULL AND ts > %s "
+                    "GROUP BY path, user_agent "
+                    "HAVING COUNT(*) >= 30 "
+                    "   AND COUNT(*) <= COUNT(DISTINCT visitor_hash) * 1.10",
+                    [scanner_ts],
+                )
+                scanner_combos = cur.fetchall()
+
+                # Atomic refresh: truncate + reinsert in one transaction.
+                # Flattened single-statement INSERT keeps round-trips to one.
+                cur.execute("TRUNCATE page_view_bot_hashes")
+                all_hash_rows = (
+                    [("visitor", h) for h in visitor_hashes]
+                    + [("ip_day", h) for h in ip_day_hashes]
+                )
+                if all_hash_rows:
+                    ph = ",".join(["(%s,%s)"] * len(all_hash_rows))
+                    flat = [v for row in all_hash_rows for v in row]
+                    cur.execute(
+                        f"INSERT INTO page_view_bot_hashes (hash_type, hash) "
+                        f"VALUES {ph}",
+                        flat,
+                    )
+
+                cur.execute("TRUNCATE page_view_scanner_combos")
+                if scanner_combos:
+                    ph = ",".join(["(%s,%s)"] * len(scanner_combos))
+                    flat = [v for row in scanner_combos for v in row]
+                    cur.execute(
+                        f"INSERT INTO page_view_scanner_combos (path, user_agent) "
+                        f"VALUES {ph}",
+                        flat,
+                    )
+
+            conn.commit()
+        _bot_hash_table_ready = True
+    except Exception as e:
+        _log_err("refresh_bot_hash_tables_failed", e)
+
+
 def compute_bot_hash_sets(conn):
     """Materialize the visitor_hash and ip_day_hash sets that _bot_filter_sql's
     session_pred IN-subqueries would otherwise re-evaluate on every call.
@@ -4662,12 +4777,44 @@ def _bot_filter_sql(kind, precomputed=None):
         "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
     )
     row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    if _bot_hash_table_ready:
+        # Fastest path: all session/scanner state lives in small Postgres
+        # tables refreshed every warmer cycle (~30s). Postgres materialises
+        # each as a hash-set — O(1) per page_views row, no param binding.
+        # No Python-side params needed beyond row_pred + cohort_pred.
+        parts = [row_pred]
+        params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
+        parts.append(
+            "(visitor_hash IS NOT NULL AND visitor_hash IN ("
+            "  SELECT hash FROM page_view_bot_hashes"
+            "  WHERE hash_type = 'visitor'"
+            "))"
+        )
+        parts.append(
+            "(ip_day_hash IS NOT NULL AND ip_day_hash IN ("
+            "  SELECT hash FROM page_view_bot_hashes"
+            "  WHERE hash_type = 'ip_day'"
+            "))"
+        )
+        parts.append(
+            "(user_agent IS NOT NULL AND (path, user_agent) IN ("
+            "  SELECT path, user_agent FROM page_view_scanner_combos"
+            "))"
+        )
+        if _burst_cohort_table_ready:
+            parts.append(
+                "(country IS NOT NULL "
+                " AND (country, path, date_trunc('day', to_timestamp(ts))::DATE)"
+                "     IN (SELECT country, path, burst_day FROM burst_cohort_days))"
+            )
+        full_pred = "(" + " OR ".join(parts) + ")"
+        if kind == "bot":
+            return f"AND {full_pred}", params
+        return f"AND NOT {full_pred}", params
     if precomputed is not None:
-        # Fast path: the two session_pred IN-subqueries collapse to literal
-        # IN lists from compute_bot_hash_sets(). row_pred still per-row.
-        # scanner_pred remains as an IN-materialized subquery — Postgres
-        # hashes (path,UA) once per query and it needs a fresh ts threshold.
-        # cohort_pred stays per-query (tiny table).
+        # Mid-tier: session_pred subqueries replaced with literal IN lists
+        # from compute_bot_hash_sets(). scanner_pred stays per-query.
+        # Active during the window between worker start and first warmer cycle.
         visitor_hashes, ip_day_hashes = precomputed
         parts = [row_pred]
         params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
