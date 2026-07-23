@@ -240,11 +240,18 @@ _WHALES_CACHE_STATS = {
     "hits": 0,
     "misses": 0,
     "blocked": 0,
+    "stale_serves": 0,  # SWR: stale body served + async rebuild triggered
     "hits_flushed": 0,
     "misses_flushed": 0,
     "blocked_flushed": 0,
     "last_flush_ts": 0.0,
 }
+# SWR (stale-while-revalidate): rebuild-in-flight guard per cache key. A stale
+# hit serves the expired body immediately and fires ONE background rebuild;
+# subsequent stale hits for the same key just serve stale until in_flight
+# clears. Prevents a thundering herd from spawning N concurrent rebuilds.
+_WHALES_REBUILD_LOCK = threading.Lock()
+_WHALES_REBUILD_IN_FLIGHT = set()  # elements: (tier, filter_type) tuples
 # Opportunistic hit-path flush interval. Miss-path-only flushing would
 # systematically undercount hits on a warm cache day, and worker recycling
 # would take unflushed residuals to the grave. Flushing on hit path too
@@ -307,11 +314,21 @@ _ANALYTICS_CACHE_TTL_S = 60
 _ANALYTICS_CACHE_STATS = {
     "hits": 0,
     "misses": 0,
+    "stale_serves": 0,  # SWR: stale body served + async rebuild triggered
     "hits_flushed": 0,
     "misses_flushed": 0,
     "last_flush_ts": 0.0,
 }
 _ANALYTICS_CACHE_FLUSH_INTERVAL_S = 300
+# SWR guard — see _WHALES_REBUILD_LOCK. Single-key cache so a plain bool is
+# enough; kept in a dict for stable identity across the closure.
+_ANALYTICS_REBUILD_LOCK = threading.Lock()
+_ANALYTICS_REBUILD_STATE = {"in_flight": False}
+# Thread-local flag set by the SWR rebuild + warmer threads before they
+# re-invoke the cached view. When True, the view skips the cache-read
+# short-circuit and forces a real render — otherwise the background
+# rebuild would itself take the stale-serve branch and never repopulate.
+_CACHE_REBUILD_LOCAL = threading.local()
 
 
 def _maybe_flush_analytics_receipts(force):
@@ -348,6 +365,73 @@ def _maybe_flush_analytics_receipts(force):
         pass
 
 
+def _trigger_analytics_rebuild():
+    """SWR: fire a background rebuild of the analytics cache iff no rebuild
+    is already in flight. Called from the analytics() view when it detects
+    a stale (expired) cache entry — the stale body is served immediately
+    and this repopulates the cache asynchronously so the NEXT visitor gets
+    a fresh body without paying the render cost themselves.
+
+    The in_flight guard prevents thundering-herd: N concurrent stale hits
+    fire ONE rebuild, not N. `finally` clears the flag so a rebuild error
+    can't wedge the guard shut.
+    """
+    with _ANALYTICS_REBUILD_LOCK:
+        if _ANALYTICS_REBUILD_STATE["in_flight"]:
+            return
+        _ANALYTICS_REBUILD_STATE["in_flight"] = True
+
+    def _run():
+        try:
+            _CACHE_REBUILD_LOCAL.bypass = True
+            with app.test_request_context("/analytics"):
+                analytics()
+        except Exception:
+            pass
+        finally:
+            _CACHE_REBUILD_LOCAL.bypass = False
+            with _ANALYTICS_REBUILD_LOCK:
+                _ANALYTICS_REBUILD_STATE["in_flight"] = False
+
+    threading.Thread(
+        target=_run, daemon=True, name="analytics-swr-rebuild"
+    ).start()
+
+
+def _trigger_whales_rebuild(tier, filter_type):
+    """SWR twin of _trigger_analytics_rebuild — see that docstring. Guard
+    is per cache key (tier, filter_type) so a stale hit on one tier can't
+    block a rebuild on another. filter_type may be '' (default view) — the
+    test_request_context omits the query param in that case so the rebuild
+    parses to the same normalized key the read path saw."""
+    key = (tier, filter_type)
+    with _WHALES_REBUILD_LOCK:
+        if key in _WHALES_REBUILD_IN_FLIGHT:
+            return
+        _WHALES_REBUILD_IN_FLIGHT.add(key)
+
+    qs_parts = [f"tier={tier}"]
+    if filter_type:
+        qs_parts.append(f"type={filter_type}")
+    path = "/whales?" + "&".join(qs_parts)
+
+    def _run():
+        try:
+            _CACHE_REBUILD_LOCAL.bypass = True
+            with app.test_request_context(path):
+                whales()
+        except Exception:
+            pass
+        finally:
+            _CACHE_REBUILD_LOCAL.bypass = False
+            with _WHALES_REBUILD_LOCK:
+                _WHALES_REBUILD_IN_FLIGHT.discard(key)
+
+    threading.Thread(
+        target=_run, daemon=True, name=f"whales-swr-rebuild-{tier}-{filter_type or 'default'}"
+    ).start()
+
+
 def _analytics_warmer_loop():
     """Background daemon: keeps the /analytics cache perpetually warm so
     no human visitor ever hits a cold 28-query render.
@@ -371,8 +455,15 @@ def _analytics_warmer_loop():
                 entry = _ANALYTICS_CACHE.get("full")
                 expiry = entry[0] if entry else 0
             if time.time() + 30 >= expiry:
-                with app.test_request_context("/analytics"):
-                    analytics()
+                # Bypass the SWR short-circuit: with stale-while-revalidate
+                # in place, the read path would otherwise return the stale
+                # body without repopulating.
+                _CACHE_REBUILD_LOCAL.bypass = True
+                try:
+                    with app.test_request_context("/analytics"):
+                        analytics()
+                finally:
+                    _CACHE_REBUILD_LOCAL.bypass = False
         except Exception:
             pass
         time.sleep(30)
@@ -2087,14 +2178,22 @@ def whales():
     # miss path continues into the render logic below and caches at return.
     _whales_cache_key = (tier, filter_type)
     _whales_now = time.time()
-    with _WHALES_CACHE_LOCK:
-        _cached_entry = _WHALES_CACHE.get(_whales_cache_key)
-        if _cached_entry and _cached_entry[0] > _whales_now:
-            _WHALES_CACHE_STATS["hits"] += 1
-            _cached_body = _cached_entry[1]
-        else:
-            _cached_body = None
+    _whales_serve_stale = False
+    _cached_body = None
+    if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
+        with _WHALES_CACHE_LOCK:
+            _cached_entry = _WHALES_CACHE.get(_whales_cache_key)
+            if _cached_entry:
+                _cached_body = _cached_entry[1]
+                if _cached_entry[0] > _whales_now:
+                    _WHALES_CACHE_STATS["hits"] += 1
+                else:
+                    # SWR: expired but body exists — serve it now, rebuild in bg.
+                    _WHALES_CACHE_STATS["stale_serves"] += 1
+                    _whales_serve_stale = True
     if _cached_body is not None:
+        if _whales_serve_stale:
+            _trigger_whales_rebuild(tier, filter_type)
         _maybe_flush_whales_receipts(force=False)
         return _cached_body
     _whales_render_start = time.perf_counter()
@@ -5619,14 +5718,26 @@ def analytics():
     # instead of a full re-render.
     _analytics_cache_key = "full"
     _analytics_now = time.time()
-    with _ANALYTICS_CACHE_LOCK:
-        _cached_entry = _ANALYTICS_CACHE.get(_analytics_cache_key)
-        if _cached_entry and _cached_entry[0] > _analytics_now:
-            _ANALYTICS_CACHE_STATS["hits"] += 1
-            _cached_body = _cached_entry[1]
-        else:
-            _cached_body = None
+    _analytics_serve_stale = False
+    _cached_body = None
+    if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
+        with _ANALYTICS_CACHE_LOCK:
+            _cached_entry = _ANALYTICS_CACHE.get(_analytics_cache_key)
+            if _cached_entry:
+                _cached_body = _cached_entry[1]
+                if _cached_entry[0] > _analytics_now:
+                    _ANALYTICS_CACHE_STATS["hits"] += 1
+                else:
+                    # SWR: expired but body exists — serve it now, rebuild
+                    # in bg. Live-updating panels (right-now, last-hour,
+                    # recent visits) get overwritten by /analytics/live JS
+                    # every 15s, so a visitor only sees stale aggregates
+                    # (24h / 7d / all-time) — inherently slow-moving.
+                    _ANALYTICS_CACHE_STATS["stale_serves"] += 1
+                    _analytics_serve_stale = True
     if _cached_body is not None:
+        if _analytics_serve_stale:
+            _trigger_analytics_rebuild()
         _maybe_flush_analytics_receipts(force=False)
         return _cached_body
     _analytics_render_start = time.perf_counter()
