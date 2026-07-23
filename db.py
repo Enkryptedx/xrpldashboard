@@ -4206,6 +4206,11 @@ BOT_UA_PATTERNS = (
     "%crawler%",
 )
 
+# Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
+# or any other _bot_filter_sql input changes. The is_bot writer detects a
+# mismatch vs the last stored version and triggers a full resync pass.
+BOT_CLASSIFIER_VERSION = 1
+
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
 # once with a stock browser UA — invisible to the session-key linker (no bot
@@ -4242,6 +4247,10 @@ _BURST_COHORT_SPIKE_FLOOR = 50      # absolute minimum unique-IPs to trigger —
 # filter can't error on a missing table at startup.
 _burst_cohort_table_ready = False
 _bot_hash_table_ready = False
+# Set True by the is_bot writer after the backfill completes and the
+# canary has soaked for 3 days. Flip is a separate deploy step; this
+# stays False until that confirmation lands.
+_is_bot_column_ready = False
 
 
 def scan_burst_cohorts(lookback_days=90):
@@ -4593,6 +4602,86 @@ def count_burst_cohort_reclassified_rows():
         return 0
 
 
+def ensure_is_bot_schema():
+    """Idempotent: add is_bot column + partial index + classification meta
+    table if they don't exist. Safe to call on every writer run.
+    CREATE INDEX CONCURRENTLY requires autocommit — handled separately."""
+    if not pg_available():
+        return
+    try:
+        with rpc_loop_safe_pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "ALTER TABLE page_views "
+                    "ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT NULL"
+                )
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS page_view_classification_meta ("
+                    "  key TEXT PRIMARY KEY,"
+                    "  value TEXT NOT NULL,"
+                    "  updated_at TIMESTAMPTZ DEFAULT NOW()"
+                    ")"
+                )
+        # CREATE INDEX CONCURRENTLY needs autocommit (outside transaction)
+        dsn = pg_url()
+        idx_conn = psycopg.connect(dsn, autocommit=True)
+        try:
+            with idx_conn.cursor() as cur:
+                cur.execute(
+                    "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_page_views_human "
+                    "ON page_views (ts) WHERE is_bot IS NOT TRUE"
+                )
+        finally:
+            idx_conn.close()
+    except Exception as e:
+        _log_err("ensure_is_bot_schema_failed", e)
+
+
+def get_classification_meta(keys=None):
+    """Read page_view_classification_meta rows. Returns dict of key→value.
+    If keys is provided, filters to those keys only."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                if keys:
+                    ph = ",".join(["%s"] * len(keys))
+                    cur.execute(
+                        f"SELECT key, value FROM page_view_classification_meta "
+                        f"WHERE key IN ({ph})",
+                        list(keys),
+                    )
+                else:
+                    cur.execute(
+                        "SELECT key, value FROM page_view_classification_meta"
+                    )
+                return dict(cur.fetchall())
+    except Exception:
+        return {}
+
+
+def set_classification_meta(updates):
+    """Upsert key→value pairs into page_view_classification_meta.
+    `updates` is a dict of {key: value} (all values stored as text)."""
+    if not pg_available() or not updates:
+        return
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for key, value in updates.items():
+                    cur.execute(
+                        "INSERT INTO page_view_classification_meta (key, value) "
+                        "VALUES (%s, %s) "
+                        "ON CONFLICT (key) DO UPDATE SET "
+                        "  value = EXCLUDED.value, updated_at = NOW()",
+                        (key, str(value)),
+                    )
+            conn.commit()
+    except Exception as e:
+        _log_err("set_classification_meta_failed", e)
+
+
 def refresh_bot_hash_tables():
     """Materialise bot classification data into two small Postgres tables so
     every analytics() render can filter against an indexed join instead of
@@ -4777,6 +4866,13 @@ def _bot_filter_sql(kind, precomputed=None):
         "COALESCE(user_agent, '') ILIKE %s" for _ in BOT_UA_PATTERNS
     )
     row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    if _is_bot_column_ready:
+        # Fastest path: is_bot column + partial index on page_views.
+        # Each query is a simple index scan — no filter evaluation per row.
+        # The column is maintained by the is_bot writer and canary-verified.
+        if kind == "bot":
+            return "AND is_bot = TRUE", []
+        return "AND is_bot IS NOT TRUE", []
     if _bot_hash_table_ready:
         # Fastest path: all session/scanner state lives in small Postgres
         # tables refreshed every warmer cycle (~30s). Postgres materialises
