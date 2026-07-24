@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('regulation') }} · xrpldashboard</title>
+  {% set meta_title = "regulation · xrpldashboard" %}
+  {% set meta_description = "What the CLARITY Act (H.R. 3633) actually says, where it stands in Congress, and what's still contested. Primary sources only. No predictions. No advice." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 28px; max-width: 720px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600; letter-spacing: -0.01em; }
+    h3 { font-size: 1rem; margin: 22px 0 8px; font-weight: 600; color: var(--text); }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); font-weight: 600; }
+    em { color: var(--muted); }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 20px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    blockquote { margin: 14px 0; padding: 12px 18px; border-left: 3px solid var(--cyan);
+                 background: rgba(34,211,238,0.04); color: var(--text); font-style: normal; }
+    blockquote p { margin: 0; }
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer p { margin: 0 0 10px; }
+    .footer a { color: var(--muted); }
+
+    .fresh-banner {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 24px;
+      color: var(--muted); font-size: 0.92rem;
+    }
+    .fresh-banner strong { color: var(--text); }
+
+    table.timeline { width: 100%; border-collapse: collapse; margin: 12px 0 14px; font-size: 0.92rem; }
+    table.timeline th, table.timeline td {
+      padding: 10px 12px; text-align: left; vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    table.timeline th { color: var(--muted); font-weight: 600; font-size: 0.76rem;
+                        text-transform: uppercase; letter-spacing: 0.06em; }
+    table.timeline td.date { font-family: var(--mono); color: var(--text); white-space: nowrap; }
+
+    .not-happened { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.22);
+                    border-radius: 8px; padding: 14px 18px; margin: 12px 0 8px; }
+    .not-happened h4 { margin: 0 0 8px; font-size: 0.85rem; text-transform: uppercase;
+                       letter-spacing: 0.06em; color: var(--amber); font-weight: 600; }
+    .not-happened ul { margin: 0; padding-left: 20px; }
+
+    .position { margin: 6px 0 10px; }
+    .position .who { color: var(--muted); font-size: 0.85rem;
+                     text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  </style>
+  {% from "_regulation_freshness.html" import regulation_freshness, regulation_freshness_css %}
+  {{ regulation_freshness_css() }}
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>The CLARITY Act — where it stands, in plain English</h1>
+
+  {{ regulation_freshness(last_verified_iso, days_since, staleness_days=7) }}
+
+  <div class="fresh-banner">
+    This page tracks a live legislative fight. Everything below is checked against primary sources — bill text, roll call records, official statements — and dated. <strong>Last verified: {{ last_verified_iso }}.</strong> We update when the status changes. This is not legal advice and it is not investment advice.
+  </div>
+
+  <p class="lede">
+    The CLARITY Act (formally H.R. 3633, the <em>Digital Asset Market Clarity Act of 2025</em>) is the biggest piece of crypto market-structure legislation Congress has taken up. It has passed the House and is sitting in the Senate. This page explains what it actually does, what it doesn't, where it is today, and what's still being fought over — using primary sources, without taking a side.
+  </p>
+
+  <div class="callout">
+    <p>Most coverage of crypto legislation is either cheerleading or panic. This page is neither. Every claim below links to a bill action, a roll call vote, a committee record, or an official statement. If you disagree with a number here, this is where you find out why.</p>
+  </div>
+
+  <h2>1. What CLARITY is</h2>
+  <p>
+    CLARITY is a <strong>market-structure bill</strong>. That means it sets rules for how digital assets are traded, who registers as an exchange, and which federal agency oversees which token. It is not a legalization bill (crypto is already legal in the U.S.), it does not decide which specific tokens are securities, and it does not set a price for anything.
+  </p>
+  <p>
+    The formal name is the <strong>Digital Asset Market Clarity Act of 2025</strong>, introduced as H.R. 3633 in the 119th Congress. It was drafted by the House Financial Services and House Agriculture Committees jointly — the pairing matters, because it's the same jurisdictional split the bill itself creates.
+  </p>
+  <p>Source: <a href="https://www.congress.gov/bill/119th-congress/house-bill/3633" target="_blank" rel="noopener noreferrer">Congress.gov bill page</a></p>
+
+  <h2>2. Where it stands right now</h2>
+  <p><em>(all dates verifiable against primary records)</em></p>
+
+  <table class="timeline">
+    <thead><tr><th>Date</th><th>Action</th><th>Where to verify</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="date">2025-07-17</td>
+        <td><strong>House passed 294–134</strong> (Roll Call #199)</td>
+        <td><a href="https://clerk.house.gov/Votes/2025199" target="_blank" rel="noopener noreferrer">clerk.house.gov/Votes/2025199</a></td>
+      </tr>
+      <tr>
+        <td class="date">2025-09-18</td>
+        <td>Received in Senate; referred to the Committee on Banking, Housing, and Urban Affairs</td>
+        <td>Congress.gov actions list</td>
+      </tr>
+      <tr>
+        <td class="date">2026-05-14</td>
+        <td><strong>Senate Banking Committee ordered reported</strong> with amendment in the nature of a substitute, favorable, <strong>15–9</strong></td>
+        <td><a href="https://www.banking.senate.gov/newsroom/majority/chairman-scott-senate-banking-committee-advance-clarity-act-in-historic-bipartisan-vote" target="_blank" rel="noopener noreferrer">banking.senate.gov</a></td>
+      </tr>
+      <tr>
+        <td class="date">2026-06-01</td>
+        <td>Reported by Sen. Scott (R-SC); <strong>placed on Senate Legislative Calendar under General Orders, Calendar No. 423</strong></td>
+        <td>Congress.gov actions list</td>
+      </tr>
+      <tr>
+        <td class="date">2026-07-22</td>
+        <td><strong>New combined draft</strong> released by Sen. Cynthia Lummis (R-WY), merging Banking and Agriculture Committee work</td>
+        <td><a href="https://www.lummis.senate.gov/press-releases/lummis-releases-updated-clarity-act-text/" target="_blank" rel="noopener noreferrer">lummis.senate.gov</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="not-happened">
+    <h4>What has NOT happened</h4>
+    <ul>
+      <li>No Senate floor vote has been scheduled.</li>
+      <li>No cloture motion has been filed.</li>
+      <li>Under standing Senate rules, the bill needs <strong>60 votes to overcome a filibuster</strong> and reach a final passage vote. Republicans hold 53 seats in the 119th Congress; passage requires at least 7 Democrats.</li>
+    </ul>
+  </div>
+
+  <h2>3. The core question: SEC vs CFTC</h2>
+  <p>Every crypto bill for the last five years has been arguing about the same thing: <strong>which federal agency regulates which digital asset</strong>. CLARITY is Congress's answer.</p>
+  <p><strong>The current situation (no CLARITY):</strong> The SEC has claimed most tokens are unregistered securities. The CFTC has claimed the biggest ones (Bitcoin, Ether) are commodities. Neither has a formal statutory line, so enforcement has run through court cases, one company at a time.</p>
+  <p><strong>Under CLARITY:</strong> the bill creates a new statutory category — <strong>"digital commodity"</strong> — that moves qualifying tokens into CFTC jurisdiction. Tokens that don't qualify stay with the SEC as securities or fall into a narrower "ancillary asset" category the Senate Banking draft addresses separately.</p>
+  <p>The rough test (as reported; <strong>section number to be confirmed against bill text before publishing</strong>): a digital asset is a "digital commodity" when it is intrinsically linked to a blockchain system and its value comes from the use of that blockchain — not from a claim on the issuer's revenue, profits, assets, or debts.</p>
+  <p><strong>What this changes in practice</strong> <em>(if the bill passes as-drafted)</em>:</p>
+  <ul>
+    <li>Exchanges trading digital commodities register with the CFTC, not the SEC.</li>
+    <li>The bill sets specific rulemaking deadlines — for example, the SEC has <strong>270 days</strong> after enactment to write rules for blockchains that fail to mature (<a href="https://www.congress.gov/crs-product/IN12583" target="_blank" rel="noopener noreferrer">CRS report IN12583</a>). Joint SEC-CFTC rules on mixed transactions, portfolio margining, and conflicts of interest are separately required, without a single unified deadline in the current text.</li>
+    <li>Tokens fundraised via securities offerings can transition to "digital commodity" treatment through a defined process.</li>
+    <li>Provisional registration lets platforms operate while the joint rulemaking is in progress.</li>
+  </ul>
+  <p><strong>What this does NOT decide:</strong> which specific existing tokens are commodities and which are securities. That determination happens after enactment, through the joint SEC-CFTC rulemaking process.</p>
+
+  <h2>4. What CLARITY does NOT do</h2>
+  <p><em>(the most useful section on this page)</em></p>
+  <ul>
+    <li><strong>It does not decide any token's price.</strong> No provision affects market price directly.</li>
+    <li><strong>It does not "legalize crypto."</strong> Crypto is already legal in the U.S. What's contested is <em>which agency's rules apply</em> to which token.</li>
+    <li><strong>It does not remove the SEC from crypto.</strong> The SEC keeps jurisdiction over tokens that behave like securities and over anti-fraud enforcement broadly.</li>
+    <li><strong>It does not create a central bank digital currency (CBDC), and it does not ban one.</strong> Those are separate bills.</li>
+    <li><strong>It does not settle whether XRP, ETH, SOL, or any other named token is a commodity or security.</strong> The bill sets the framework; individual token classifications come from the resulting rulemaking.</li>
+    <li><strong>It does not immediately take effect on passage.</strong> Most of the substantive provisions require joint SEC/CFTC rulemaking within statutory deadlines before they bind anyone.</li>
+  </ul>
+
+  <h2>5. What's still being fought over</h2>
+  <p><em>Each position below is stated as its own advocates state it. No editorial "sides."</em></p>
+
+  <h3>5a. Ethics — who enforces, and how permanent</h3>
+  <p>
+    The July 22 combined draft includes a ban on the President, Vice President, senior executive-branch officials, and members of Congress from issuing or sponsoring digital assets. The Department of Justice enforces it, with civil penalties <strong>up to $250,000 per day</strong> per violation (<a href="https://www.cnbc.com/2026/07/22/senate-crypto-bill-would-ban-federal-officials-from-issuing-digital-assets.html" target="_blank" rel="noopener noreferrer">CNBC 2026-07-22</a>).
+  </p>
+  <div class="position">
+    <div class="who">Republican position (per Sen. Lummis's release)</div>
+    <blockquote><p>"This is another step in my years-long journey to ensure the U.S. leads the way on digital assets… likely the last real chance we will have for years to get this right."</p></blockquote>
+  </div>
+  <div class="position">
+    <div class="who">Democratic position (per Sen. Angela Alsobrooks, D-MD)</div>
+    <blockquote><p>"This DOJ enforcing an ethics provision? That's an unserious offer, and I wouldn't support the bill if that's the language."</p></blockquote>
+  </div>
+  <p>Sen. Kirsten Gillibrand (D-NY) has said the bill cannot move without an acceptable ethics provision.</p>
+  <p>The specific point of contention: Democrats argue <strong>state attorneys general should also have enforcement authority</strong>, not only DOJ. The current draft preempts most state enforcement of these provisions.</p>
+  <p>
+    The ethics section is <strong>reported to sunset on 2029-01-20</strong>, which some Democrats characterize as inadequate and some Republicans characterize as a reasonable review point (<a href="https://www.coindesk.com/policy/2026/07/22/new-clarity-act-emerges-that-s-a-start-on-the-final-draft-makes-ethics-rule-temporary" target="_blank" rel="noopener noreferrer">CoinDesk 2026-07-22</a>; date corroborated by Decrypt, The Block, and coindoo 2026-07-22).
+  </p>
+
+  <h3>5b. DeFi and developer liability (the BRCA piece)</h3>
+  <p>The combined draft includes provisions from the <strong>Blockchain Regulatory Certainty Act (BRCA)</strong>. These clarify that non-custodial developers, node operators, and validators — parties that never take control of user funds — are not "money transmitters" and therefore not subject to that regulatory regime.</p>
+  <p><strong>Position for:</strong> developers argue the current legal ambiguity has driven talent offshore.<br>
+     <strong>Position against:</strong> some Democratic senators and consumer advocates argue the language is broader than needed and could shield actors who effectively control user funds through code.</p>
+
+  <h3>5c. Consumer protection</h3>
+  <p>Consumer Reports opposed the House-passed bill, per Programs Director Chuck Bell:</p>
+  <blockquote><p>"This bill prioritizes regulatory certainty for the crypto industry at the expense of consumer protection."</p></blockquote>
+  <p>Their specific list of missing protections (<a href="https://advocacy.consumerreports.org/press_release/house-approves-clarity-act-without-needed-protections-for-consumers-and-investors/" target="_blank" rel="noopener noreferrer">Consumer Reports advocacy statement</a>):</p>
+  <ul>
+    <li>One-page plain-language risk disclosures ("nutrition label for digital assets")</li>
+    <li>Stablecoin reserve, redemption, and audit requirements</li>
+    <li>A standardized federal consumer redress process</li>
+    <li>Concrete financial-literacy requirements (not just a study)</li>
+    <li>Preservation of state-level consumer protections beyond antifraud</li>
+  </ul>
+  <p><strong>Position for the bill:</strong> industry and Republican sponsors argue federal preemption is necessary to avoid a 50-state regulatory patchwork.<br>
+     <strong>Position against:</strong> Democrats and consumer advocates argue the preemption strips protections that don't exist at the federal level.</p>
+
+  <h3>5d. State AG enforcement</h3>
+  <p>Related to (5a) and (5c). The bill <strong>broadly preempts state laws regulating the offer or sale of digital assets for federally registered firms</strong>, with a carve-out for general antifraud statutes. Democrats argue state AGs should retain enforcement authority; the current draft largely centralizes enforcement federally.</p>
+
+  <h2>6. The timing reality (calendar mechanics)</h2>
+  <p>The Senate begins its August recess on <strong>2026-08-10</strong> and does not return until <strong>2026-09-14</strong> (2026 Senate calendar, published November 2025).</p>
+  <p>That gives senators roughly the next two-and-a-half weeks to file cloture, hold a floor vote, and pass the bill. Missing that window pushes any vote to mid-September or later, with the November 2026 midterm election increasingly compressing the floor calendar.</p>
+  <p>None of that is a prediction. It's arithmetic against a published calendar.</p>
+
+  <h2>7. What's verifiable regardless</h2>
+  <p>Whatever Washington decides, the XRP Ledger keeps producing blocks every three-to-four seconds. If you want to check that yourself:</p>
+  <ul>
+    <li><strong>Every issuer and stablecoin we display</strong> is sourced directly from public XRPL nodes with the provenance tier disclosed on <a href="/rwa">/rwa</a> and <a href="/methodology">/methodology</a>.</li>
+    <li><strong>Every daily snapshot</strong> is Ed25519-signed with Merkle-chained manifests; the fingerprint is pinned across the site.</li>
+    <li><strong>Any address</strong> can be verified against the ledger at <a href="/check">/check</a>.</li>
+  </ul>
+  <p>Congress moves at its own pace. The ledger doesn't wait, and neither does this site's evidence trail.</p>
+
+  <div class="footer">
+    <p><strong>This page is not legal advice and is not investment advice.</strong> It is a plain-English summary of a public bill and its public legislative status, updated when the status changes. Primary sources are linked throughout.</p>
+    <p>If more than 7 days have passed since the "last verified" date above, an amber banner appears at the top. If the bill's status changes, we update this page within 1–2 days of the Senate action.</p>
+    <p>Page last revised <strong>{{ last_verified_iso }}</strong>. Versioned in git alongside the code that ships this feature.</p>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

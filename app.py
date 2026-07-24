@@ -3109,6 +3109,31 @@ def methodology():
     return render_template("methodology.html")
 
 
+# Manually curated — bump on every fact update. The regulation route's
+# freshness chip and staleness banner are derived from this date; if
+# copy changes without a bump here, the chip lies. Codified in
+# CLAIMS.yaml claim regulation_freshness_chip.
+LAST_VERIFIED_REGULATION = "2026-07-24"
+
+
+@app.route("/regulation")
+def regulation():
+    """Plain-English legislative-status tracker for the CLARITY Act
+    (H.R. 3633). Manually curated. Every claim links to a primary
+    source. Explicitly non-advisory: no price, no prediction, no
+    investment framing. See CLAIMS.yaml /regulation block."""
+    try:
+        last_dt = datetime.strptime(LAST_VERIFIED_REGULATION, "%Y-%m-%d").date()
+        days_since = (date.today() - last_dt).days
+    except Exception:
+        days_since = 0
+    return render_template(
+        "regulation.html",
+        last_verified_iso=LAST_VERIFIED_REGULATION,
+        days_since=days_since,
+    )
+
+
 @app.route("/learn")
 def learn():
     """Plain-language XRPL explainer for visitors who don't already know

@@ -1,0 +1,55 @@
+{# Regulation-page freshness chip. Sibling of _freshness_badge.html —
+   distinct because /regulation is manually curated (no walker cadence).
+   Renders a green "Last verified: YYYY-MM-DD" pill, plus an amber
+   staleness banner if `days_since` exceeds `staleness_days` (default 7).
+
+   The route computes `days_since` and passes it in — keeps template
+   free of datetime arithmetic and Python-side control.
+
+   Usage:
+     {% from "_regulation_freshness.html" import regulation_freshness,
+        regulation_freshness_css %}
+     {{ regulation_freshness_css() }}
+     {{ regulation_freshness(last_verified_iso, days_since, staleness_days=7) }}
+#}
+{% macro regulation_freshness(last_verified_iso, days_since, staleness_days=7) -%}
+<div class="reg-fresh" role="note" aria-label="last verified">
+  <span class="reg-fresh-label">Last verified:</span>
+  <span class="reg-fresh-date">{{ last_verified_iso }}</span>
+</div>
+{% if days_since > staleness_days %}
+<div class="reg-stale" role="alert">
+  <strong>Heads up:</strong> this page hasn't been re-verified in
+  {{ days_since }} days. During an active legislative window that's
+  long enough for the facts below to have moved. We're updating it —
+  check back shortly.
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro regulation_freshness_css() -%}
+<style>
+  .reg-fresh {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.28);
+    font-family: var(--mono); font-size: 0.78rem;
+    color: var(--green);
+    margin: 0 0 18px;
+  }
+  .reg-fresh-label { color: var(--muted); font-weight: 500; }
+  .reg-fresh-date  { color: var(--green); font-weight: 600; letter-spacing: 0.02em; }
+  .reg-stale {
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.32);
+    border-left: 3px solid var(--amber);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 0 0 20px;
+    font-size: 0.92rem;
+  }
+  .reg-stale strong { color: var(--amber); }
+</style>
+{%- endmacro %}

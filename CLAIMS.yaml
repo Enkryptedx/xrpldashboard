@@ -899,6 +899,77 @@ pages:
           Ripple adds escrows outside the named_accounts.json seed.
 
   # ─────────────────────────────────────────────────────────────────
+  /regulation:
+    template: templates/regulation.html
+    route: "app.py:regulation()"
+    claims:
+
+      - id: regulation_page_purpose
+        label: "Page purpose: plain-English legislative-status tracker for H.R. 3633"
+        data_paths:
+          - "templates/regulation.html: lede"
+          - "templates/regulation.html: footer"
+        behavior: MANUAL_CURATION
+        layer3_source: primary-legislative-sources
+        risk_note: >
+          Non-advisory, non-investment page. If copy ever drifts into
+          prediction, endorsement of a side, or advice framing, this
+          claim is violated and the page must be re-scoped before push.
+          Rubric self-declared in Section 5 (each side stated as its own
+          advocates state it — no narrator framing).
+
+      - id: regulation_status_timeline
+        label: "House 294-134 (2025-07-17, RC #199); Senate Banking 15-9 (2026-05-14); Cal. No. 423 (2026-06-01); combined draft 2026-07-22"
+        data_paths:
+          - "templates/regulation.html: Where it stands table"
+        behavior: MANUAL_CURATION
+        layer3_source: primary-legislative-sources
+        recheck_cadence: "≤7 days during active window (through 2026-08-10 recess); ≤14 days off-window"
+        primary_sources:
+          - "clerk.house.gov/Votes/2025199"
+          - "banking.senate.gov Chair Scott 2026-05-14 press release"
+          - "congress.gov H.R.3633 actions list"
+          - "lummis.senate.gov 2026-07-22 press release"
+        risk_note: >
+          Legislative status page. If any listed action date, vote tally,
+          or calendar number here drifts from the primary source, this
+          claim is violated and the page is stale-worse-than-absent.
+          Two hard triggers on the calendar: 2026-08-09 (day before
+          Senate recess) and 2026-09-14 (recess return) — re-verify
+          regardless of whether status appears to have changed.
+
+      - id: regulation_sec_cftc_framework
+        label: "SEC vs CFTC jurisdictional test as described in bill text"
+        data_paths:
+          - "templates/regulation.html: SEC vs CFTC section"
+        behavior: MANUAL_CURATION
+        layer3_source: bill-text-hr-3633
+        recheck_cadence: "on every new draft release"
+        risk_note: >
+          Description of the digital-commodity test. The 270-day figure
+          cited is the SEC-only rulemaking deadline for immature
+          blockchains per CRS report IN12583; NOT a unified joint
+          SEC-CFTC timeline. If the bill is amended, the test description
+          must move with it or be marked "as of [previous draft date]"
+          until re-verified. Section number for "digital commodity"
+          definition remains footnoted (not asserted) pending bill-text
+          confirmation.
+
+      - id: regulation_freshness_chip
+        label: "Last-verified date + staleness warning past 7 days"
+        data_paths:
+          - "templates/_regulation_freshness.html"
+          - "app.py: LAST_VERIFIED_REGULATION constant"
+          - "app.py: regulation() route days_since computation"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Staleness threshold is 7 days during the active window. Any
+          copy update that does not also bump LAST_VERIFIED_REGULATION
+          leaves the freshness chip lying. Codified rule — if the diff
+          touches templates/regulation.html, the constant must move too.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
   # /nfts:
