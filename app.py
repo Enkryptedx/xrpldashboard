@@ -220,37 +220,6 @@ def inject_site_url():
     return {"site_url": SITE_URL}
 
 
-# Manually curated — bump on every /regulation copy update. The page's
-# freshness chip AND the homepage banner both read this via the
-# inject_regulation_freshness context processor. Codified in CLAIMS.yaml
-# claim regulation_freshness_chip.
-LAST_VERIFIED_REGULATION = "2026-07-24"
-
-# CLARITY-window homepage banner self-expires on this date (Senate
-# recess-return day). After this, the strip disappears from any page
-# that reads regulation_banner_live even if no one pulls it manually.
-# Manual pull earlier is still preferred if the bill's status resolves
-# before recess ends — the guard is defense-in-depth, not the plan.
-REGULATION_BANNER_EXPIRES = "2026-09-14"
-
-
-@app.context_processor
-def inject_regulation_freshness():
-    """Expose the /regulation last-verified date + a banner-live flag
-    to every template — so the homepage strip can show the same date
-    the /regulation page shows, without hard-coding it in a second
-    place (would violate the regulation_freshness_chip CLAIMS entry)."""
-    try:
-        expiry = datetime.strptime(REGULATION_BANNER_EXPIRES, "%Y-%m-%d").date()
-        banner_live = date.today() <= expiry
-    except Exception:
-        banner_live = False
-    return {
-        "regulation_last_verified": LAST_VERIFIED_REGULATION,
-        "regulation_banner_live": banner_live,
-    }
-
-
 _SNAPSHOT_FP_CACHE = {"path_mtime": None, "value": None}
 
 
@@ -3138,6 +3107,13 @@ def methodology():
     The differentiator page — no other XRPL dashboard discloses its
     caching/source dependencies in one public document."""
     return render_template("methodology.html")
+
+
+# Manually curated — bump on every fact update. The regulation route's
+# freshness chip and staleness banner are derived from this date; if
+# copy changes without a bump here, the chip lies. Codified in
+# CLAIMS.yaml claim regulation_freshness_chip.
+LAST_VERIFIED_REGULATION = "2026-07-24"
 
 
 @app.route("/regulation")
