@@ -533,8 +533,31 @@
     }
     .row-safety .safety-cta:hover { text-decoration: underline; }
 
+    /* ---------- Regulation window strip — mirrors .row-safety skin with
+       an amber accent so it reads as time-boxed (CLARITY floor-vote
+       window through 2026-09-14) not permanent site chrome. ---------- */
+    .row-regwindow {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.9em; flex-wrap: wrap;
+      padding: 0.7em 1em; margin: 0 0 1.1em;
+      border: 1px solid rgba(245,180,90,0.22);
+      border-radius: 10px;
+      background: rgba(245,180,90,0.04);
+    }
+    .row-regwindow .regwindow-text {
+      color: var(--text-2, #8090b0); font-size: var(--fs-sm, 0.92rem);
+      line-height: 1.5; margin: 0;
+    }
+    .row-regwindow .regwindow-date { color: var(--text-3); font-size: var(--fs-xs); }
+    .row-regwindow .regwindow-cta {
+      color: rgb(245,180,90); text-decoration: none;
+      font-size: var(--fs-sm, 0.92rem); font-weight: 500;
+      white-space: nowrap;
+    }
+    .row-regwindow .regwindow-cta:hover { text-decoration: underline; }
+
     /* ---------- Institutional strip (between hero and row-primary) ---------- */
-    .row-institutional { display: grid; grid-template-columns: 1fr 1fr;
+    .row-institutional { display: grid; grid-template-columns: 1fr 1fr 1fr;
                          gap: 1em; margin-bottom: 1.2em; }
     .row-institutional-eyebrow { font-size: var(--fs-2xs); text-transform: uppercase;
                                   letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
@@ -700,6 +723,24 @@
       </div>
     </section>
 
+    {# ========== CLARITY-window banner — self-expires 2026-09-14 (Senate
+         recess-return). Manual removal earlier if the bill resolves is
+         still preferred; the {% if regulation_banner_live %} guard is
+         defense-in-depth against forgotten cleanup, not the plan. Date
+         is read from context_processor so it can't drift out-of-sync
+         with the /regulation freshness chip. ========== #}
+    {% if regulation_banner_live %}
+    <section aria-label="{{ _('CLARITY Act status — plain English') }}">
+      <div class="row-regwindow">
+        <p class="regwindow-text">
+          {{ _('The CLARITY Act, in plain English — where the crypto bill actually stands.') }}
+          <span class="regwindow-date">{{ _('Last verified') }} {{ regulation_last_verified }}.</span>
+        </p>
+        <a class="regwindow-cta" href="/regulation">{{ _('Read the regulation page') }} →</a>
+      </div>
+    </section>
+    {% endif %}
+
     {# ========== Safety strip — slim, calm; a scared user finds /check from the front door ========== #}
     <section aria-label="{{ _('Check a suspicious token, address, or link') }}">
       <div class="row-safety">
@@ -726,6 +767,13 @@
             <div class="inst-title">{{ _('How data is handled') }}</div>
             <p class="inst-desc">{{ _('Headers, subprocessors, what we do — and what we don\'t do yet. Procurement-ready transparency, not a marketing page.') }}</p>
             <div class="inst-cta">{{ _('Read the security page') }} →</div>
+          </div>
+        </a>
+        <a href="/regulation" class="card vibes-spot card-inst-link">
+          <div class="card-inst">
+            <div class="inst-title">{{ _('The CLARITY Act, in plain English') }}</div>
+            <p class="inst-desc">{{ _('Where H.R. 3633 actually stands — House-passed, Senate committee-advanced, floor vote pending. Primary sources only, no predictions.') }}</p>
+            <div class="inst-cta">{{ _('Read the regulation page') }} →</div>
           </div>
         </a>
       </div>
