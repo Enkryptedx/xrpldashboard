@@ -918,6 +918,20 @@ pages:
           Rubric self-declared in Section 5 (each side stated as its own
           advocates state it — no narrator framing).
 
+      - id: regulation_sourcing_methodology
+        label: "Sourcing split: legislative status verified against primary sources; news cited only for draft provisions/negotiations not yet in the official record"
+        data_paths:
+          - "templates/regulation.html: fresh-banner intro (line 101)"
+          - "templates/regulation.html: callout (line 109)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Two-place methodology claim. If either surface drifts from
+          the split (asserts primary-only when news is cited), the
+          other becomes internally inconsistent. Any diff touching
+          either intro paragraph triggers this claim. Added 2026-07-25
+          after external-audit tightening (Grok + ChatGPT precision pass).
+
       - id: regulation_status_timeline
         label: "House 294-134 (2025-07-17, RC #199); Senate Banking 15-9 (2026-05-14); Cal. No. 423 (2026-06-01); combined draft 2026-07-22"
         data_paths:
