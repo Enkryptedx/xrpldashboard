@@ -6,7 +6,7 @@
     <string>com.charliebruce.xrpldashboard.is_bot_writer</string>
 
     <key>Comment</key>
-    <string>is_bot column writer: classifies page_views.is_bot every 5min via bot hash tables. Runs backfill chunk on each pass until complete. flock prevents concurrent runs during long backfill/resync passes.</string>
+    <string>is_bot column writer: classifies page_views.is_bot every 5min via bot hash tables. Runs backfill chunk on each pass until complete. mkdir-based lock in run_is_bot_writer.sh prevents concurrent runs during long backfill/resync passes; stale locks (dead pid) are auto-recovered and surfaced via walker_health.</string>
 
     <key>ProgramArguments</key>
     <array>

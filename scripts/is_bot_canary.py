@@ -132,17 +132,27 @@ def _check_window(conn, label, ts_start, ts_end):
     pred = _count_human_predicate(conn, ts_start, ts_end)
     delta = col - pred
     start_dt = datetime.datetime.fromtimestamp(ts_start, datetime.timezone.utc).strftime("%Y-%m-%d")
-    end_dt = datetime.datetime.utcfromtimestamp(ts_end).strftime("%Y-%m-%d")
+    end_dt = datetime.datetime.fromtimestamp(ts_end, datetime.timezone.utc).strftime("%Y-%m-%d")
     if delta == 0:
-        detail = f"{label} [{start_dt}→{end_dt}]: column={col} predicate={pred} delta=0 OK"
+        detail = f"{label} [{start_dt}→{end_dt}]: humans-column={col} humans-predicate={pred} delta=0 OK"
         log.info(detail)
         return True, detail
     else:
+        # delta = column-humans − predicate-humans. Both count HUMANS.
+        # delta > 0  → column finds MORE humans (writer under-stamps bots
+        #              vs live classifier — check writer lag, cohort feed,
+        #              or CLASSIFIER_VERSION bump not yet re-swept)
+        # delta < 0  → column finds FEWER humans (writer over-stamps bots
+        #              — likely bot_hashes cache retaining classifications
+        #              the live subquery can no longer rederive, e.g. one-
+        #              off probe UAs linked via visitor/ip_day session)
+        if delta > 0:
+            hint = "writer under-stamps: check backfill/cohort/CLASSIFIER_VERSION"
+        else:
+            hint = "writer over-stamps: check bot_hashes cache-vs-live drift"
         detail = (
-            f"{label} [{start_dt}→{end_dt}]: column={col} predicate={pred} "
-            f"delta={delta:+d} MISMATCH — "
-            f"is_bot stamps disagree with live classifier; "
-            f"check burst_cohort_days advance or CLASSIFIER_VERSION bump"
+            f"{label} [{start_dt}→{end_dt}]: humans-column={col} humans-predicate={pred} "
+            f"delta={delta:+d} MISMATCH — {hint}"
         )
         log.error(detail)
         return False, detail
