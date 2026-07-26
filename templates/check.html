@@ -252,6 +252,25 @@
       margin: 22px 0 0;
     }
 
+    /* --- FCRA disclaimer (Fence 10, docs/CHECK_IT_DESIGN.md) ------ */
+    /* Bold, unmissable, results page + footer. If /check outputs are  */
+    /* used for FCRA-covered decisions (employment / credit / housing  */
+    /* / insurance / tenant screening) we may be classified as a       */
+    /* Consumer Reporting Agency. This disclaimer is not decorative.   */
+    .fcra-disclaimer {
+      background: rgba(248,113,113,0.05);
+      border: 1px solid rgba(248,113,113,0.35);
+      border-left: 4px solid var(--err);
+      border-radius: 8px;
+      padding: 14px 18px; color: var(--text); font-size: 0.92rem;
+      line-height: 1.55; margin: 16px 0 22px; font-weight: 500;
+    }
+    .fcra-disclaimer strong { color: var(--err); font-weight: 700;
+                              letter-spacing: -0.005em; }
+    .fcra-disclaimer.fcra--footer {
+      margin: 26px 0 12px; font-size: 0.85rem; padding: 12px 16px;
+    }
+
     .footer { color: var(--dim); font-size: 0.85rem; margin-top: 40px;
               padding-top: 20px; border-top: 1px solid var(--border); }
     .footer a { color: var(--muted); }
@@ -329,6 +348,15 @@
     <div class="errbox">{{ input_error }}</div>
   {% endif %}
 
+  {# FCRA disclaimer macro — Fence 10 per docs/CHECK_IT_DESIGN.md.
+     Bold, unmissable, results-top + page-footer surfaces (below). #}
+  {% macro fcra_disclaimer(footer=False) %}
+    <div class="fcra-disclaimer{% if footer %} fcra--footer{% endif %}">
+      <strong>{{ _('Not a consumer report.') }}</strong>
+      {{ _('This tool is not a consumer report and must not be used for decisions covered by the Fair Credit Reporting Act — employment, credit, housing, insurance, or tenant screening. Signals here are facts from public sources with timestamps, not a background check.') }}
+    </div>
+  {% endmacro %}
+
   {% if result and result.kind == 'message' %}
     <div class="result">
 
@@ -362,6 +390,8 @@
       </div>
 
       <p class="status-line">{{ result.status_line }}</p>
+
+      {{ fcra_disclaimer() }}
 
       {% if result.summary %}
         <div class="msg-summary">{{ result.summary }}</div>
@@ -517,6 +547,8 @@
 
       <p class="status-line">{{ result.status_line }}</p>
 
+      {{ fcra_disclaimer() }}
+
       {% if result.next_action %}
         <p class="next-action">
           <a href="{{ result.next_action.href }}">
@@ -605,6 +637,9 @@
     </p>
 
   {% endif %}
+
+  {# Page-footer FCRA disclaimer — always rendered, no result required. #}
+  {{ fcra_disclaimer(footer=True) }}
 
   <div class="footer">
     <a href="/">{{ _('dashboard') }}</a> ·

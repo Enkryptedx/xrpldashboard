@@ -828,6 +828,79 @@ pages:
           empirically confirmed. If D4 ever persists paste content, §2b
           becomes a live-false claim.
 
+      # ─── Phase 1 of /check expansion (docs/CHECK_IT_DESIGN.md) ────
+      # Three structural signals added 2026-07-25 alongside the design
+      # doc that governs them. Each signal follows Fence 1 (source +
+      # timestamp) and Fence 2 (no verdicts). The FCRA disclaimer is
+      # Fence 10 — its data path is the check.html template surface
+      # where the fcra_disclaimer() macro is invoked. Bump this claim
+      # set whenever the underlying source shape changes.
+
+      - id: check_ofac_sdn_signal
+        label: "OFAC SDN cross-check surfaces PRESENT/NOT-PRESENT with snapshot date + entity name"
+        data_paths:
+          - "check_data.py:_signal_ofac_sdn_match"
+          - "check_data.py:_load_ofac_snapshot"
+          - "ofac_sdn_addresses.json (local snapshot)"
+          - "scripts/refresh_ofac_sdn.py (refresh path)"
+          - "check_data.py:check_address (wired-in signal call)"
+          - "check_data.py:check_token (wired-in signal call)"
+        behavior: STEP_CHANGE
+        layer3_source: primary-legislative-sources  # U.S. Treasury OFAC
+        risk_note: >
+          The snapshot's publication_date is quoted in every result. If
+          the snapshot ages past the freshness we're comfortable citing,
+          rerun scripts/refresh_ofac_sdn.py. A stale snapshot is not a
+          fabrication risk (the source_label discloses the snapshot date)
+          but it undermines the signal's value. Phase 2 of /check design
+          moves the refresh onto a walker cadence.
+
+      - id: check_domain_age_signal
+        label: "Domain registration age via RDAP surfaces the registered-domain root + days-since-registration"
+        data_paths:
+          - "check_data.py:_signal_domain_age"
+          - "check_data.py:_registered_domain (PSL-backed eTLD+1)"
+          - "check_data.py:check_url (wired-in signal call)"
+        behavior: MONOTONIC_GROW  # age only grows day-over-day
+        layer3_source: primary-legislative-sources  # RDAP → authoritative registry
+        risk_note: >
+          Structural signal only — see Fence 2 in docs/CHECK_IT_DESIGN.md.
+          Domain age is NEVER interpreted as a verdict in copy. RDAP
+          responses degrade to couldnt_check on network failure; the
+          request-path 6s timeout is intentional (do not raise without
+          also revisiting the paste-box latency budget).
+
+      - id: check_earliest_cert_signal
+        label: "Earliest HTTPS certificate for the host from Certificate Transparency logs"
+        data_paths:
+          - "check_data.py:_signal_earliest_ssl_cert"
+          - "check_data.py:check_url (wired-in signal call)"
+        behavior: MONOTONIC_GROW
+        layer3_source: primary-legislative-sources  # crt.sh CT log aggregator
+        risk_note: >
+          Complements domain age with hostname-scoped freshness — a
+          brand-new subdomain on an old parent domain is a common scam
+          shape. Structural fact only. crt.sh returns can be large;
+          the request-path 8s timeout and 2MB body cap are safety fences.
+
+      - id: check_fcra_disclaimer_present
+        label: "FCRA disclaimer is present on results page and page footer"
+        data_paths:
+          - "templates/check.html: fcra_disclaimer macro"
+          - "templates/check.html: results-branch macro invocation (message mode)"
+          - "templates/check.html: results-branch macro invocation (single mode)"
+          - "templates/check.html: page-footer macro invocation"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Fence 10 in docs/CHECK_IT_DESIGN.md. If /check outputs are used
+          for FCRA-covered decisions (employment / credit / housing /
+          insurance / tenant screening) we may be classified as a
+          Consumer Reporting Agency. Removing or softening this
+          disclaimer is not an editorial call — it's a legal-exposure
+          change. Any diff to the fcra_disclaimer macro or its invocation
+          sites trips this claim.
+
   # ─────────────────────────────────────────────────────────────────
   /health:
     template: templates/health.html

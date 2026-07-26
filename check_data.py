@@ -32,9 +32,10 @@ import ssl
 import tomllib
 import urllib.error
 import urllib.request
-from urllib.parse import urlparse
+from urllib.parse import quote as urlquote, urlparse
 
 import certifi
+from publicsuffix2 import get_sld  # Mozilla Public Suffix List, for correct eTLD+1
 from xrpl.models.requests import AccountInfo
 
 from xrpl_client import get_client
@@ -56,6 +57,21 @@ _D3_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _NAMED_PATH = os.path.join(_HERE, "named_accounts.json")
 _TOKEN_NAMES_PATH = os.path.join(_HERE, "token_names.json")
+
+# Phase 1 of the /check expansion (docs/CHECK_IT_DESIGN.md). All three
+# additions below are STRUCTURAL signals — facts we surface with a source
+# label and a checked_at_utc stamp. No verdicts, no scores. The design
+# doc's Fence 1 and Fence 2 govern every field returned from these
+# functions.
+_OFAC_SDN_PATH = os.path.join(_HERE, "ofac_sdn_addresses.json")
+
+# Public services used by Phase 1 signals. Both are free, no-key, and
+# have well-established uptime — but we still budget short timeouts and
+# fall back to couldnt_check on failure (same discipline as _fetch_toml_fast).
+_RDAP_URL_TEMPLATE = "https://rdap.org/domain/{}"
+_CRTSH_URL_TEMPLATE = "https://crt.sh/?q={}&output=json"
+_RDAP_TIMEOUT = 6
+_CRTSH_TIMEOUT = 8
 
 # XRPL ripple-epoch offset: seconds between 1970-01-01 and 2000-01-01 UTC.
 _RIPPLE_EPOCH = 946_684_800
@@ -181,6 +197,320 @@ def _couldnt(label: str, reason: str) -> dict:
         "reason": reason,
         "checked_at_utc": _now_iso(),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 1 signals — /check expansion (docs/CHECK_IT_DESIGN.md).
+#
+# These three producers (_signal_domain_age, _signal_earliest_ssl_cert,
+# _signal_ofac_sdn_match) surface structural facts from named external
+# sources. Same shape as every other signal on the page: (label, value,
+# source_label, checked_at_utc). No verdicts — Fence 2.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _registered_domain(host: str) -> str:
+    """Mozilla PSL-backed eTLD+1 extraction. Correct for co.uk, co.jp,
+    and every other multi-label public suffix. Falls back to the
+    last-two-labels approximation only if PSL cannot classify (very rare).
+    """
+    if not host:
+        return ""
+    try:
+        sld = get_sld(host.lower())
+        if sld:
+            return sld
+    except Exception:
+        pass
+    parts = host.lower().split(".")
+    return ".".join(parts[-2:]) if len(parts) >= 2 else host.lower()
+
+
+_OFAC_SNAPSHOT_CACHE: dict[str, Any] | None = None
+
+
+def _load_ofac_snapshot() -> dict[str, Any]:
+    """Load ofac_sdn_addresses.json once per process. Returns an empty
+    stub if the file is missing so the signal downgrades to couldnt_check
+    rather than crashing — a fresh clone without a snapshot must still
+    render /check."""
+    global _OFAC_SNAPSHOT_CACHE
+    if _OFAC_SNAPSHOT_CACHE is not None:
+        return _OFAC_SNAPSHOT_CACHE
+    try:
+        with open(_OFAC_SDN_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict) or "addresses" not in data:
+            raise ValueError("snapshot missing 'addresses' key")
+    except Exception:
+        data = {
+            "source_url": None,
+            "fetched_at_utc": None,
+            "publication_date": None,
+            "count": 0,
+            "addresses": {},
+            "_load_error": True,
+        }
+    _OFAC_SNAPSHOT_CACHE = data
+    return data
+
+
+def _signal_ofac_sdn_match(address: str, chain: str) -> dict:
+    """OFAC SDN check for a wallet address on any chain the snapshot
+    covers (XRP, ETH, XBT, TRX, USDT, ...). Returns a `_signal(...)`
+    dict either way — "not present" is a real signal, not a null result.
+    If the local snapshot cannot be loaded, returns a `_couldnt(...)` dict.
+    Caller decides where to bucket it (signals vs couldnt_check).
+    """
+    snap = _load_ofac_snapshot()
+    if snap.get("_load_error"):
+        return _couldnt(
+            label="OFAC SDN cross-check",
+            reason="local snapshot unavailable (run scripts/refresh_ofac_sdn.py)",
+        )
+
+    addresses: dict[str, dict] = snap.get("addresses") or {}
+    pub = snap.get("publication_date") or "unknown"
+    fetched = snap.get("fetched_at_utc") or "unknown"
+    count = snap.get("count") or 0
+
+    # ETH-family addresses are case-insensitive; check both original and
+    # lowercased. XRP/BTC are case-sensitive base58 — exact match only.
+    hit = addresses.get(address)
+    if hit is None and chain.upper() in {"ETH", "USDC", "USDT", "ARB", "BSC"}:
+        hit = addresses.get(address.lower())
+        if hit is None:
+            # Snapshot may store checksummed form; scan for a case-insensitive match.
+            lower_addr = address.lower()
+            for k, v in addresses.items():
+                if k.lower() == lower_addr:
+                    hit = v
+                    break
+
+    source_label = (
+        f"OFAC Specially Designated Nationals list "
+        f"(local snapshot from OFAC publication {pub}; fetched {fetched}; "
+        f"{count} digital-currency addresses)"
+    )
+    source_url = snap.get("source_url")
+
+    if hit:
+        entity = hit.get("entity_name") or "(unnamed entry)"
+        programs = ", ".join(hit.get("programs") or []) or "unspecified"
+        return _signal(
+            label="OFAC SDN cross-check",
+            value=(
+                f"PRESENT on the OFAC Specially Designated Nationals list "
+                f"as a “{hit.get('chain')}” digital-currency address for "
+                f"entity “{entity}” (sanctions program(s): {programs})."
+            ),
+            source_label=source_label,
+            source_url=source_url,
+        )
+
+    return _signal(
+        label="OFAC SDN cross-check",
+        value=(
+            f"Not present on the U.S. Treasury OFAC Specially "
+            f"Designated Nationals list (checked against local snapshot "
+            f"of {count} digital-currency addresses from OFAC "
+            f"publication {pub})."
+        ),
+        source_label=source_label,
+        source_url=source_url,
+    )
+
+
+def _signal_domain_age(host: str) -> dict:
+    """RDAP domain-age lookup. Signal: 'Domain registered N days ago
+    (YYYY-MM-DD)' if the registration event is present, else couldnt_check.
+
+    RDAP is the modern replacement for WHOIS and is free, keyless, and
+    well-supported. rdap.org proxies to the correct registry endpoint
+    per TLD.
+
+    IMPORTANT: this is a structural signal, not a verdict. A three-day
+    old domain is not necessarily malicious; a fifteen-year old domain
+    is not necessarily safe. The reader interprets.
+    """
+    if not host or not _domain_is_safe(host):
+        return _couldnt(
+            label="Domain registration age",
+            reason="host failed the SSRF gate before an RDAP lookup",
+        )
+
+    reg_root = _registered_domain(host)
+    if not reg_root:
+        return _couldnt(
+            label="Domain registration age",
+            reason="could not derive a registered-domain root from this host",
+        )
+
+    url = _RDAP_URL_TEMPLATE.format(reg_root)
+    req = urllib.request.Request(url, headers={"User-Agent": _D3_USER_AGENT})
+    try:
+        with urllib.request.urlopen(
+            req, timeout=_RDAP_TIMEOUT, context=_D3_SSL_CTX,
+        ) as resp:
+            body = resp.read(256_000)
+    except urllib.error.HTTPError as e:
+        return _couldnt(
+            label="Domain registration age",
+            reason=f"RDAP responded HTTP {e.code} for {reg_root}",
+        )
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        return _couldnt(
+            label="Domain registration age",
+            reason=f"RDAP fetch failed ({type(e).__name__})",
+        )
+    except Exception as e:
+        return _couldnt(
+            label="Domain registration age",
+            reason=f"RDAP unexpected error ({type(e).__name__})",
+        )
+
+    try:
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+    except (json.JSONDecodeError, ValueError):
+        return _couldnt(
+            label="Domain registration age",
+            reason="RDAP returned non-JSON",
+        )
+
+    events = payload.get("events") or []
+    reg_date: str | None = None
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        if (ev.get("eventAction") or "").lower() == "registration":
+            reg_date = ev.get("eventDate")
+            break
+
+    if not reg_date:
+        return _couldnt(
+            label="Domain registration age",
+            reason="RDAP record has no registration event",
+        )
+
+    # Parse RFC 3339 — RDAP dates are ISO 8601. Strip a trailing 'Z'.
+    iso = reg_date.rstrip("Z").split(".", 1)[0]
+    try:
+        reg_dt = datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return _couldnt(
+            label="Domain registration age",
+            reason=f"RDAP returned unparseable date '{reg_date}'",
+        )
+
+    age_days = max(0, int((datetime.now(timezone.utc) - reg_dt).total_seconds() // 86_400))
+    date_short = reg_dt.strftime("%Y-%m-%d")
+    return _signal(
+        label="Domain registration age",
+        value=(
+            f"{reg_root} was registered {age_days:,} days ago "
+            f"(first registration event: {date_short}). Structural "
+            f"fact only — very-new domains are common in fraud, but "
+            f"age alone is not a verdict."
+        ),
+        source_label=f"RDAP (rdap.org proxy → authoritative registry) for {reg_root}",
+        source_url=url,
+    )
+
+
+def _signal_earliest_ssl_cert(host: str) -> dict:
+    """Earliest SSL certificate for the host per Certificate Transparency
+    (crt.sh). Signal: 'Earliest CT cert seen for this host: YYYY-MM-DD
+    (N certs on record).' If crt.sh is unreachable, degrades to couldnt.
+
+    CT logs are the truest "how long has this host actually been serving
+    HTTPS" measurement — they can't be back-dated because they're
+    append-only Merkle logs run by browser vendors. Complements RDAP
+    (domain age) with hostname-scoped age; a fresh subdomain on an old
+    parent domain is a common scam shape.
+    """
+    if not host or not _domain_is_safe(host):
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason="host failed the SSRF gate before a crt.sh lookup",
+        )
+
+    url = _CRTSH_URL_TEMPLATE.format(urlquote(host, safe=""))
+    req = urllib.request.Request(url, headers={"User-Agent": _D3_USER_AGENT})
+    try:
+        with urllib.request.urlopen(
+            req, timeout=_CRTSH_TIMEOUT, context=_D3_SSL_CTX,
+        ) as resp:
+            body = resp.read(2_000_000)
+    except urllib.error.HTTPError as e:
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason=f"crt.sh responded HTTP {e.code}",
+        )
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason=f"crt.sh fetch failed ({type(e).__name__})",
+        )
+    except Exception as e:
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason=f"crt.sh unexpected error ({type(e).__name__})",
+        )
+
+    try:
+        entries = json.loads(body.decode("utf-8", errors="replace"))
+    except (json.JSONDecodeError, ValueError):
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason="crt.sh returned non-JSON",
+        )
+
+    if not isinstance(entries, list) or not entries:
+        return _signal(
+            label="Earliest HTTPS certificate",
+            value=(
+                f"No public HTTPS certificates found in Certificate "
+                f"Transparency logs for “{host}”. Either the host has "
+                f"never served HTTPS or its certs are unusually recent "
+                f"and not yet indexed."
+            ),
+            source_label="Certificate Transparency search (crt.sh)",
+            source_url=url,
+        )
+
+    earliest: datetime | None = None
+    for entry in entries:
+        raw = (entry or {}).get("not_before")
+        if not raw:
+            continue
+        # crt.sh returns "2023-04-15T00:00:00" — no timezone suffix.
+        try:
+            dt = datetime.fromisoformat(raw).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if earliest is None or dt < earliest:
+            earliest = dt
+
+    if earliest is None:
+        return _couldnt(
+            label="Earliest HTTPS certificate",
+            reason="crt.sh entries had no parseable not_before date",
+        )
+
+    age_days = max(0, int((datetime.now(timezone.utc) - earliest).total_seconds() // 86_400))
+    return _signal(
+        label="Earliest HTTPS certificate",
+        value=(
+            f"Earliest certificate covering “{host}” in Certificate "
+            f"Transparency logs was issued {age_days:,} days ago "
+            f"({earliest.strftime('%Y-%m-%d')}); {len(entries):,} "
+            f"cert record(s) total. Structural fact — a fresh cert on "
+            f"an old parent domain is a common scam shape but not a "
+            f"verdict."
+        ),
+        source_label="Certificate Transparency search (crt.sh)",
+        source_url=url,
+    )
 
 
 def _query_ledger(address: str) -> tuple[dict | None, str | None]:
@@ -523,6 +853,13 @@ def check_address(address: str) -> dict:
             reason=pg_error,
         ))
 
+    # --- Phase 1 signal: OFAC SDN cross-check ------------------------
+    ofac = _signal_ofac_sdn_match(address, "XRP")
+    if "value" in ofac:
+        signals.append(ofac)
+    else:
+        couldnt_check.append(ofac)
+
     # --- Ledger-level capabilities (Phase 3) -------------------------
     capabilities = _capability_signals(account_data) if account_data else []
 
@@ -735,6 +1072,13 @@ def check_token(currency: str, issuer: str) -> dict:
             label="Issuer on-chain existence + Domain field",
             reason=ledger_error or "XRPL endpoints didn't answer in time",
         ))
+
+    # --- Phase 1 signal: OFAC SDN cross-check on the issuer address ---
+    ofac = _signal_ofac_sdn_match(issuer, "XRP")
+    if "value" in ofac:
+        signals.append(ofac)
+    else:
+        couldnt_check.append(ofac)
 
     # --- Ledger-level capabilities (Phase 3) — issuer flags ----------
     capabilities = _capability_signals(account_data) if account_data else []
@@ -1193,15 +1537,20 @@ def check_url(raw_input: str) -> dict:
             "sources we checked."
         )
 
-    # Domain age is deferred (would require WHOIS/RDAP integration).
-    couldnt_check.append(_couldnt(
-        label="Domain registration age",
-        reason=(
-            "not currently checked — planned once a reliable RDAP/WHOIS "
-            "integration lands (scam domains are often days old, so "
-            "this is a real gap)"
-        ),
-    ))
+    # Phase 1 structural signals: domain age (RDAP) + earliest HTTPS
+    # cert (Certificate Transparency). Each degrades to couldnt_check on
+    # network failure — never blocks the paste-box result.
+    age_signal = _signal_domain_age(host)
+    if "value" in age_signal:
+        signals.append(age_signal)
+    else:
+        couldnt_check.append(age_signal)
+
+    cert_signal = _signal_earliest_ssl_cert(host)
+    if "value" in cert_signal:
+        signals.append(cert_signal)
+    else:
+        couldnt_check.append(cert_signal)
 
     return {
         "kind": "url",
