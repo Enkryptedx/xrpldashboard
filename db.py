@@ -1958,6 +1958,20 @@ def write_heartbeat(worker, txns_seen=None, last_ledger=None, extra=None):
     conn = _get_writer_conn()
     if conn is None:
         return
+    # FD-count telemetry — surfaces the FD curve per worker so a leak (steady
+    # climb) is legible in walker_health at a glance vs. a spike (one-time
+    # jump). Diagnostic added after BetterStack alert 2026-07-26 (xrpl_stream
+    # hit macOS's 256-FD default and crashed). listdir('/dev/fd') is the
+    # macOS-portable /proc/self/fd equivalent; best-effort, never raises.
+    try:
+        import resource
+        fd_count = len(os.listdir("/dev/fd"))
+        fd_soft = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+        extra = dict(extra) if extra else {}
+        extra["fd_count"] = fd_count
+        extra["fd_soft"] = fd_soft
+    except Exception:
+        pass
     extra_json = json.dumps(extra, default=str) if extra is not None else None
     try:
         with conn.cursor() as cur:
