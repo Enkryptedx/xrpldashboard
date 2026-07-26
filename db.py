@@ -4223,7 +4223,14 @@ BOT_UA_PATTERNS = (
 # Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
 # or any other _bot_filter_sql input changes. The is_bot writer detects a
 # mismatch vs the last stored version and triggers a full resync pass.
-BOT_CLASSIFIER_VERSION = 1
+# v2 (2026-07-26): scanner arm switched from trailing-7d snapshot
+# (page_view_scanner_combos) to persistent confirmed ledger
+# (page_view_scanner_combos_confirmed). Full resync required so historical
+# rows are re-stamped against the confirmed combo set — otherwise the canary
+# reports positive delta on all historical rows for combos that qualified
+# once but no longer show in the trailing 7d snapshot. See
+# docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §2 deploy-order.
+BOT_CLASSIFIER_VERSION = 2
 
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
@@ -4619,7 +4626,12 @@ def count_burst_cohort_reclassified_rows():
 def ensure_is_bot_schema():
     """Idempotent: add is_bot column + partial index + classification meta
     table if they don't exist. Safe to call on every writer run.
-    CREATE INDEX CONCURRENTLY requires autocommit — handled separately."""
+    CREATE INDEX CONCURRENTLY requires autocommit — handled separately.
+
+    Also ensures page_view_scanner_combos_confirmed exists (see
+    migrations/2026_07_26_scanner_combos_confirmed.sql). Same call-site
+    ownership as the rest of the is_bot schema — one function, one place
+    a future reader looks for classification-related DDL."""
     if not pg_available():
         return
     try:
@@ -4635,6 +4647,34 @@ def ensure_is_bot_schema():
                     "  value TEXT NOT NULL,"
                     "  updated_at TIMESTAMPTZ DEFAULT NOW()"
                     ")"
+                )
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS page_view_scanner_combos_confirmed ("
+                    "  path                  TEXT        NOT NULL,"
+                    "  user_agent            TEXT        NOT NULL,"
+                    "  confirmed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+                    "  confirmed_by          TEXT        NOT NULL,"
+                    "  evidence_ratio        NUMERIC,"
+                    "  evidence_row_count    INTEGER,"
+                    "  evidence_window_start BIGINT,"
+                    "  evidence_window_end   BIGINT,"
+                    "  last_seen_at          TIMESTAMPTZ,"
+                    "  notes                 TEXT,"
+                    "  PRIMARY KEY (path, user_agent),"
+                    "  CHECK (confirmed_by IN ('auto', 'reviewed', 'manual'))"
+                    ")"
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS "
+                    "page_view_scanner_combos_confirmed_by_idx "
+                    "ON page_view_scanner_combos_confirmed "
+                    "(confirmed_by, confirmed_at DESC)"
+                )
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS "
+                    "page_view_scanner_combos_confirmed_last_seen_idx "
+                    "ON page_view_scanner_combos_confirmed "
+                    "(last_seen_at DESC NULLS LAST)"
                 )
         # CREATE INDEX CONCURRENTLY needs autocommit (outside transaction)
         dsn = pg_url()
@@ -4767,16 +4807,21 @@ def refresh_bot_hash_tables():
                 )
                 ip_day_hashes = [r[0] for r in cur.fetchall()]
 
-                # Scanner (path, ua) combos
+                # Scanner (path, ua) combos — capture hits + distinct_visitors
+                # so we can auto-ratchet into page_view_scanner_combos_confirmed
+                # with evidence fields (see block below).
                 cur.execute(
-                    "SELECT path, user_agent FROM page_views "
-                    "WHERE user_agent IS NOT NULL AND ts > %s "
-                    "GROUP BY path, user_agent "
+                    "SELECT path, user_agent, COUNT(*)::int AS hits, "
+                    "       COUNT(DISTINCT visitor_hash)::int AS dv "
+                    "  FROM page_views "
+                    " WHERE user_agent IS NOT NULL AND ts > %s "
+                    " GROUP BY path, user_agent "
                     "HAVING COUNT(*) >= 30 "
                     "   AND COUNT(*) <= COUNT(DISTINCT visitor_hash) * 1.10",
                     [scanner_ts],
                 )
-                scanner_combos = cur.fetchall()
+                scanner_combos_full = cur.fetchall()
+                scanner_combos = [(p, u) for p, u, h, d in scanner_combos_full]
 
                 # Atomic refresh: truncate + reinsert in one transaction.
                 # Flattened single-statement INSERT keeps round-trips to one.
@@ -4802,6 +4847,41 @@ def refresh_bot_hash_tables():
                         f"INSERT INTO page_view_scanner_combos (path, user_agent) "
                         f"VALUES {ph}",
                         flat,
+                    )
+
+                # Auto-ratchet into page_view_scanner_combos_confirmed.
+                # Detection is transient; conviction is permanent. Any combo
+                # that meets the scanner rule gets a confirmed_by='auto' row
+                # on first detection; original evidence is preserved on
+                # conflict (only last_seen_at advances). Reversal is a
+                # governance decision, not automatic. See
+                # docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §4c.
+                if scanner_combos_full:
+                    window_end_ts = int(time.time())
+                    window_start_ts = scanner_ts
+                    ratchet_rows = [
+                        (
+                            p, u,
+                            round(hits / max(dv, 1), 4),  # evidence_ratio
+                            hits,                          # evidence_row_count
+                            window_start_ts,
+                            window_end_ts,
+                        )
+                        for p, u, hits, dv in scanner_combos_full
+                    ]
+                    r_ph = ",".join(
+                        ["(%s,%s,'auto',%s,%s,%s,%s,NOW())"] * len(ratchet_rows)
+                    )
+                    r_flat = [v for row in ratchet_rows for v in row]
+                    cur.execute(
+                        f"INSERT INTO page_view_scanner_combos_confirmed "
+                        f"(path, user_agent, confirmed_by, evidence_ratio, "
+                        f" evidence_row_count, evidence_window_start, "
+                        f" evidence_window_end, last_seen_at) "
+                        f"VALUES {r_ph} "
+                        f"ON CONFLICT (path, user_agent) DO UPDATE "
+                        f"  SET last_seen_at = NOW()",
+                        r_flat,
                     )
 
             conn.commit()

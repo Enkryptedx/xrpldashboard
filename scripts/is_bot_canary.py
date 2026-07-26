@@ -84,13 +84,16 @@ def _legacy_bot_pred():
         f"  WHERE ip_day_hash IS NOT NULL AND {row_pred}"
         f"))"
     )
+    # Scanner arm reads the persistent confirmed ledger, matching the
+    # writer's arm. This is NOT an independence violation:
+    # page_view_scanner_combos_confirmed is a shared EVIDENCE table (like
+    # BOT_UA_PATTERNS), not a shared STAMP table. Both arms still derive
+    # each row's classification independently via row/session/scanner/cohort
+    # logic; the ledger resolves "did this combo ever meet the threshold."
+    # See docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §5 addendum.
     scanner_pred = (
         "(user_agent IS NOT NULL AND (path, user_agent) IN ("
-        "  SELECT path, user_agent FROM page_views "
-        "  WHERE user_agent IS NOT NULL AND ts > %s "
-        "  GROUP BY path, user_agent "
-        "  HAVING COUNT(*) >= 30 "
-        "     AND COUNT(*) <= COUNT(DISTINCT visitor_hash) * 1.10"
+        "  SELECT path, user_agent FROM page_view_scanner_combos_confirmed"
         "))"
     )
     # cohort_pred: always include if the table exists (checked by the canary
@@ -107,7 +110,7 @@ def _legacy_bot_pred():
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # outer row_pred
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # session visitor
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # session ip_day
-    params.append(int(time.time()) - 7 * 86400)                       # scanner ts
+    # scanner_pred no longer parameterised — reads from confirmed ledger.
     return f"AND NOT {full_pred}", params
 
 

@@ -80,8 +80,14 @@ def _bot_update_sql():
         "(p.ip_day_hash IS NOT NULL AND p.ip_day_hash IN ("
         "  SELECT hash FROM page_view_bot_hashes WHERE hash_type = 'ip_day'"
         "))",
+        # Scanner arm reads the persistent confirmed ledger, NOT the trailing
+        # 7-day snapshot in page_view_scanner_combos. This closes the amnesia
+        # gap that caused the 2026-07-26 CheckHost residual (canary delta=-45
+        # on rows 2026-07-19→2026-07-23): once a combo is confirmed, the
+        # verdict persists after the burst decays. See
+        # docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §1, §4b.
         "(p.user_agent IS NOT NULL AND (p.path, p.user_agent) IN ("
-        "  SELECT path, user_agent FROM page_view_scanner_combos"
+        "  SELECT path, user_agent FROM page_view_scanner_combos_confirmed"
         "))",
     ]
     # Burst-cohort predicate — only if the table exists and has rows
@@ -205,6 +211,17 @@ def run():
                 db.set_classification_meta({"last_cohort_version": current_cohort_v})
 
             # ── 6. Forward incremental pass ────────────────────────────────
+            # LANDMINE WARNING (do not widen this window without the confirmed
+            # ledger doing the work): _bot_update_sql produces
+            # CASE WHEN pred THEN TRUE ELSE NULL END. The ELSE NULL branch is
+            # correct for the ~10-minute forward window because the classifier
+            # snapshot barely moves. Widening this window to cover historical
+            # rows activates the ELSE NULL path against rows whose original
+            # TRUE stamp came from a since-evicted scanner combo — the writer
+            # would silently ERASE those correct verdicts, both arms would
+            # agree they're human, and the canary would go green on destroyed
+            # history rather than fixed classifier. See
+            # docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §3.
             window_start = max(0, last_ts - FORWARD_OVERLAP_SECS)
             _classify_window(conn, window_start, now, label="forward-pass")
             db.set_classification_meta({"last_classified_ts": now})

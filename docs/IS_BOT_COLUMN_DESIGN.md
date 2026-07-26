@@ -226,6 +226,22 @@ The identical-output diff (column path vs predicate path over the same data snap
 
 ---
 
+## Addendum — 2026-07-26 (scanner-memory fix)
+
+Cross-reference: `docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md`. Founding incident: the CheckHost residual of 2026-07-26 (canary `delta=-45` on rows 2026-07-19→2026-07-23) — writer had correctly stamped historical bursts as bot; the canary's scanner arm rebuilt over a 7-day window that no longer contained the evidence; both arms disagreed on rows whose stamps were correct. Two additions to this design:
+
+**Comparison arms must share input SCOPE AND input MEMORY.** A classifier whose evidence tables forget confirmed verdicts will disagree with every correct historical stamp — not because its logic is wrong, but because the arm's memory is shorter than the thing it's checking. Fix: any classifier arm whose evidence is time-bounded (currently: `scanner_pred` only, via the trailing-7d `page_view_scanner_combos` snapshot) writes its verdicts to a persistent confirmed ledger (`page_view_scanner_combos_confirmed`), and both writer and canary read from that ledger. The other three arms (`row_pred`, `session_pred` via unbounded scan, `cohort_pred` via append-only cohort table) do not forget and require no confirmed ledger.
+
+**The evidence-table-not-stamp-table distinction (independence preservation).** The canary's independence rule ("must never be replaced by a table-subquery or column path") forbids the canary reading the writer's *verdicts*. It does NOT forbid the canary reading shared *evidence*. The distinction: `BOT_UA_PATTERNS` is a shared input to both arms' independent derivations — nobody would argue the canary must maintain its own copy of the pattern list to preserve independence. The confirmed scanner-combo ledger is the same kind of shared input: an evidence table, not a stamp table. Both arms still derive each row's classification via their own row/session/scanner/cohort logic; the ledger is what "did this combo ever meet the threshold" resolves against. The failure modes the canary catches (writer's `_bot_update_sql` diverging from canonical rules, refresh loop broken, `CLASSIFIER_VERSION` mismatch not resyncing) remain caught.
+
+**Landmine warning (dormant, marked in code).** `_bot_update_sql` returns `CASE WHEN pred THEN TRUE ELSE NULL END`. The `ELSE NULL` path is correct for the ~10-minute forward window — the snapshot barely moves. But if the writer's UPDATE window is ever widened to cover historical rows, `ELSE NULL` becomes silent verdict-erasure: every row whose original TRUE stamp came from a since-evicted snapshot gets set to NULL, both arms agree = human, canary goes green on destroyed history rather than fixed classifier. See the inline comment on `window_start = max(0, last_ts - FORWARD_OVERLAP_SECS)` in `scripts/is_bot_writer.py` and §3 of the scratch note. The mechanism stays; the trigger (ts-window widening) is what carries the warning.
+
+**Auto-ratchet policy.** `refresh_bot_hash_tables()` UPSERTs any detected scanner combo into `page_view_scanner_combos_confirmed` with `confirmed_by='auto'` in the same transaction as the trailing-7d snapshot rebuild. No dwell period: a dwell window is just eviction risk wearing a prudence costume. The `confirmed_by` distinction (`auto` | `reviewed` | `manual`) drives a Sunday audit hook on the past week of `auto` entries; reversal is one explicit decision, always available. Governance is *review*, not *gate*.
+
+**Ledger scope — analytics-only.** The confirmed ledger feeds `_bot_filter_sql` (analytics classification) exclusively. No blocking, WAF, rate-limit, or CF-challenge path reads `is_bot` or `page_view_scanner_combos_confirmed`. The ledger records what things are; it does not decide how we treat them. Any future component that reads `is_bot` for a treatment decision must be surfaced as a separate design change and revalidated against the citation-moat rule (welcome bots like ChatGPT-User, Bingbot).
+
+---
+
 ## Appendix — Files This Touches
 
 | File | Change |
