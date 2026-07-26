@@ -58,9 +58,12 @@ Where personal data enters the product. Legal-consult gate sits between Phase 1 
 
 - **URL blocklist mirrors**: URLhaus (abuse.ch), MetaMask `eth-phishing-detect`, ScamSniffer scam-database. Each mirrored locally with daily refresh, each quoted verbatim with source + fetched-at timestamp. URLhaus terms of use permit non-commercial republish; if the site ever monetizes materially, buy the commercial license.
 - **Chainabuse API** for cross-chain wallet reports (ETH / BTC / SOL / TRON / etc). Free tier. Republish verbatim: *"N Chainabuse reports categorized as [X], most recent [date]."* Same house-style guardrails as any crowdsourced source — never aggregate into a score.
+- **Hosting-infrastructure fingerprint (URL side only)** — for URL checks, resolve the domain and report structural facts about where it is hosted: ASN + hoster name (e.g., "hosted at DigitalOcean, ASN 14061"), country of the hosting IP, and whether origin is masked by a public CDN (Cloudflare / Fastly / Akamai). Sources: MaxMind GeoLite2 ASN (free tier), CAIDA ASN database, DNS + IP-to-ASN lookup. **NOT a "VPN detector"** — that framing fails the base-rate test (privacy-conscious users, journalists, iCloud Private Relay, and everyone in a censored country all use VPNs; a signal that fires on ~half the legitimate internet is noise, not signal). Report infrastructure as evidence-not-verdict: "hosted at Provider X in Country Y, origin masked by Cloudflare" lets the reader draw their own inference from *specific facts* (bulletproof host vs Fortune-500 datacenter, jurisdiction with takedown mechanism vs without). Do **not** ship a "suspicious hosting" pill or aggregate score. Base-rate caveat renders on-page alongside the signal itself: *"Hosting infrastructure alone is not a scam signal — legitimate sites also use CDNs, hide origins, and host in low-cost providers. This describes where the site lives, not what it is doing."*
 - **Sourcify** (optional, deferred) — open-source verified smart contract registry, if we ever check ETH contract addresses.
 
-**Data touched:** URLs and cross-chain wallet addresses. Not personal data under standard interpretations.
+**Data touched:** URLs, cross-chain wallet addresses, and URL-derived hosting infrastructure (ASN, hoster, country, CDN). Not personal data under standard interpretations — hosting facts describe infrastructure, not individuals.
+
+**Hosting-fingerprint legal note:** Labeling infrastructure edges closer to defamation-shaped territory than sanctions lookup (a sanctions match is a government-published fact about a specific address; a hosting note is our characterization of a business relationship). The Phase 3 legal review — which happens whenever URL blocklists ship — expands to cover the exact wording of hosting-fingerprint copy. Neutral factual language only ("hosted at X, ASN Y"), never inference language ("cheap VPS", "bulletproof host", "commonly used by scammers"). If the attorney has any concern, ship blocklists without the hosting fingerprint and revisit.
 
 ---
 
@@ -290,6 +293,8 @@ For clarity when Phase 1 is executed:
 - MetaMask eth-phishing-detect: https://github.com/MetaMask/eth-phishing-detect
 - Scam Sniffer scam-database: https://github.com/scamsniffer/scam-database
 - Chainabuse API: https://docs.chainabuse.com/
+- MaxMind GeoLite2 ASN database: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+- CAIDA AS Rank / ASN metadata: https://asrank.caida.org/
 - Sourcify: https://sourcify.dev/
 
 **Legal:**
