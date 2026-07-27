@@ -1057,6 +1057,180 @@ pages:
           touches templates/regulation.html, the constant must move too.
 
   # ─────────────────────────────────────────────────────────────────
+  /sidechain:
+    template: templates/sidechain.html
+    route: "app.py:sidechain()"
+    claims:
+
+      - id: sidechain_signer_list_current
+        label: "Current Axelar Amplifier verifier set on the XRPL bridge gateway (rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw) — quorum + signer count, M-of-N framing for uniform weights"
+        data_paths:
+          - "app.py:sidechain() — _load_latest_bridge_signers()"
+          - "db.py:read_bridge_signer_history latest row"
+          - "templates/sidechain.html: quorum block"
+        behavior: MANUAL_CURATION
+        layer3_source: xrpl-account-signerlist
+        risk_note: >
+          The gateway r-address is hardcoded in both app.py and
+          bridge_signer_walker.py (AXELAR_GATEWAY constant). If Axelar
+          ever migrates the canonical gateway account, both constants
+          must move together or the page renders the wrong SignerList.
+          Verify against Axelar's own docs before any bridge-account
+          change lands.
+
+      - id: sidechain_freshness_walker_based
+        label: "Freshness pill tracks walker_health.last_success_at (not the table's written_at) — SignerListSet rotations are rare, so written_at would misread as 'months ago' when the walker is working"
+        data_paths:
+          - "app.py:sidechain() — walker_health lookup for bridge_signer_walker"
+          - "templates/sidechain.html: age pill"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          This is the correct freshness semantic for a rare-event
+          table but a footgun if copied to a high-write table without
+          thought — copying the same pattern to /whales would hide
+          data-write staleness because both walker and table update
+          frequently. Rare-event tables only.
+
+      - id: sidechain_rotation_history
+        label: "Historical SignerListSet rotations rendered as an audit trail"
+        data_paths:
+          - "db.py:read_bridge_signer_rotations()"
+          - "templates/sidechain.html: rotations table"
+        behavior: MONOTONIC_GROW
+        layer3_source: xrpl-transaction-history
+        risk_note: >
+          Rotations reflect on-chain SignerListSet events. If Axelar
+          rotates via a different mechanism in the future (e.g., a
+          smart-contract-mediated update on the EVM side), the on-chain
+          record here would show a stale set while the actual verifier
+          set has moved. Watch for cross-chain rotation-model changes.
+
+  # ─────────────────────────────────────────────────────────────────
+  /walker_health:
+    template: templates/walker_health.html
+    route: "app.py:walker_health_page()"
+    claims:
+
+      - id: walker_health_localhost_only_access
+        label: "Route 404s for any request not originating from 127.0.0.1 / ::1 — on Render behind the proxy this is never reachable from the internet; on the Mac it's available at localhost:PORT/walker_health with no token"
+        data_paths:
+          - "app.py:walker_health_page() — request.remote_addr guard"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Load-bearing security property. If Render's proxy ever
+          forwards the client IP as remote_addr (e.g., a config change
+          that strips the proxy layer), this page would become publicly
+          reachable. Any change to the request.remote_addr check must
+          be reviewed against the CF proxy config — the same class of
+          concern as CF_shared_secret and CF_Connecting_IP trust.
+
+      - id: walker_health_severity_per_walker_cadence
+        label: "Row severity (green/yellow/red/idle) computed from each walker's declared cadence_seconds — not from page-wide hardcoded thresholds"
+        data_paths:
+          - "app.py:_walker_severity()"
+          - "db.py:write_walker_health_start(cadence_seconds=...)"
+          - "templates/walker_health.html: severity column"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Severity honesty depends on every walker calling
+          write_walker_health_start with its actual cadence. A walker
+          that omits cadence_seconds shows as idle-or-green when it
+          could be broken. Sunday audit sweeps should verify
+          cadence_seconds is populated for every row.
+
+  # ─────────────────────────────────────────────────────────────────
+  /credentials:
+    template: templates/credentials.html
+    route: "app.py:credentials()"
+    claims:
+
+      - id: credentials_xls70_snapshot
+        label: "XLS-70 Credentials state (issued/pending/revoked) rendered from credentials_walker snapshot, refreshed every ~30 minutes under launchd"
+        data_paths:
+          - "app.py:credentials() — get_credentials_state()"
+          - "credentials_walker.py"
+          - "templates/credentials.html: credentials section"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: xrpl-credentials-rpc
+        risk_note: >
+          Adoption is sparse enough that in-request ledger_data walk is
+          infeasible. Snapshot-based. If credentials_walker stops running
+          (walker_health should catch this), the page silently serves
+          stale state — the walker_health freshness surface is the
+          backstop.
+
+      - id: credentials_permissioned_domains_seed_scope
+        label: "PermissionedDomains (XLS-80) rendered against a 14-account institutional seed — scope is declared, not exhaustive"
+        data_paths:
+          - "app.py:credentials() — db.read_permissioned_domains_latest()"
+          - "permissioned_domains_walker.py"
+          - "seed_walker_scope_declarations.py"
+          - "templates/credentials.html: permissioned domains section"
+        behavior: MANUAL_CURATION
+        layer3_source: xrpl-account-objects
+        risk_note: >
+          Scope is 14 institutional accounts, not the full network.
+          Template must surface "curated seed" framing so readers do
+          not misread the count as "all PermissionedDomains on XRPL."
+          If the seed list expands, the copy needs to move with it.
+          Handoff to seed_walker_scope_declarations.py for the
+          authoritative address list.
+
+      - id: credentials_walker_stale_threshold
+        label: "PermissionedDomains walker rows >48h old surface as 'stale' — daily cadence, 2x-cadence stale threshold"
+        data_paths:
+          - "app.py:credentials() — perm_walker_is_stale computation"
+          - "templates/credentials.html: staleness label"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          48h threshold is 2× the 86400s (daily) walker cadence. If
+          the walker cadence is ever changed (e.g., to 12h), the 48h
+          constant here becomes wrong — either too tight (false
+          staleness) or too loose (hides real staleness). Cadence
+          change must move both constants together.
+
+  # ─────────────────────────────────────────────────────────────────
+  /price-data:
+    template: templates/price_data.html
+    route: "app.py:price_data()"
+    claims:
+
+      - id: price_data_xls47_oracle_snapshot
+        label: "XLS-47 PriceOracle production feed on mainnet, decoded and dated — oracle_walker.py writes oracles_snapshot; page reads via oracle_snapshot.fetch_oracle_snapshot_cached() with 5-min TTL"
+        data_paths:
+          - "app.py:price_data() — fetch_oracle_snapshot_cached()"
+          - "oracle_walker.py"
+          - "oracle_snapshot.py"
+          - "templates/price_data.html: feed section"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: xrpl-priceoracle-rpc
+        risk_note: >
+          Framed as "here is the one production feed" — not as a
+          directory. XRPLWin runs the full raw directory (linked in
+          template); we curate for signal quality. If a second
+          production-grade oracle appears, the "the one" framing
+          silently drifts to wrong. Recheck when oracle adoption
+          crosses a second real issuer.
+
+      - id: price_data_never_touches_node
+        label: "Route never touches the XRPL node — snapshot-based read only, so a stalled node does not slow /price-data"
+        data_paths:
+          - "app.py:price_data() — fetch_oracle_snapshot_cached() only"
+          - "oracle_snapshot.py — no rippled RPC in cached read path"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Load-bearing perf property. If the route ever falls back to
+          a live RPC read on cache-miss, page-load-under-node-load
+          becomes possible — same class of failure that pushed
+          /whales toward the warmer pattern. Cache-miss must resolve
+          to snapshot-null, not to RPC.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
   # /nfts:
@@ -1068,17 +1242,3 @@ pages:
   #   Per-wallet detail page. Data claims include balance, tx history,
   #   token holdings. Needs own claim set when included in manifest
   #   scope expansion.
-  #
-  # /price-data:
-  #   XRP price oracle data. Oracle source, staleness disclosure.
-  #
-  # /credentials and /verify:
-  #   Credential-issuer curated set claims. 14-account seed scope
-  #   is already declared in seed_walker_scope_declarations.py.
-  #
-  # /walker_health (internal admin surface, publicly accessible):
-  #   Walker health dashboard — makes claims about walker status.
-  #   Low public-audience risk but could be misread. Pending.
-  #
-  # /sidechain:
-  #   Sidechain bridge data. Scope and freshness claims TBD.
