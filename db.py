@@ -1167,6 +1167,39 @@ def _drop_writer_conn():
     _writer_conn = None
 
 
+def _writer_execute_with_retry(category, do_write):
+    """Run do_write(conn) against the cached writer conn, retrying on
+    transient connection errors (Neon SSL drops, server-closed-unexpectedly,
+    socket EOF — all surface as psycopg.OperationalError / InterfaceError).
+
+    Drops the cached conn between retries so attempt N+1 gets a fresh
+    socket. On persistent failure or non-transient exception, logs via
+    _log_err — preserving the visible-failure behavior _log_err provides.
+
+    Silent no-op when Postgres isn't configured."""
+    if psycopg is None or not pg_available():
+        return
+    last_exc = None
+    for attempt in range(3):
+        conn = _get_writer_conn()
+        if conn is None:
+            return
+        try:
+            do_write(conn)
+            return
+        except (psycopg.OperationalError, psycopg.InterfaceError) as e:
+            last_exc = e
+            _drop_writer_conn()
+            if attempt < 2:
+                time.sleep(0.2 * (attempt + 1))
+                continue
+        except Exception as e:
+            _log_err(f"{category}_failed", e)
+            _drop_writer_conn()
+            return
+    _log_err(f"{category}_failed_after_retries", last_exc)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Worker-side: write helpers (silent no-ops when DATABASE_URL unset)
 # ─────────────────────────────────────────────────────────────────────
@@ -2504,10 +2537,7 @@ def write_walker_health_start(walker_name, cadence_seconds=None):
     declared walkers).
 
     Silent no-op when PG isn't configured."""
-    conn = _get_writer_conn()
-    if conn is None:
-        return
-    try:
+    def _do(conn):
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO walker_health "
@@ -2521,9 +2551,7 @@ def write_walker_health_start(walker_name, cadence_seconds=None):
                 "  cadence_seconds = COALESCE(EXCLUDED.cadence_seconds, walker_health.cadence_seconds)",
                 (walker_name, cadence_seconds),
             )
-    except Exception as e:
-        _log_err(f"write_walker_health_start_failed[{walker_name}]", e)
-        _drop_writer_conn()
+    _writer_execute_with_retry(f"write_walker_health_start[{walker_name}]", _do)
 
 
 def write_walker_health_end(walker_name, ok, message=None):
@@ -2533,10 +2561,7 @@ def write_walker_health_end(walker_name, ok, message=None):
     The row must already exist (start-of-run write created it); if not,
     we still UPSERT so a walker that forgot to call start isn't invisible.
     Silent no-op when PG isn't configured."""
-    conn = _get_writer_conn()
-    if conn is None:
-        return
-    try:
+    def _do(conn):
         with conn.cursor() as cur:
             if ok:
                 cur.execute(
@@ -2568,9 +2593,7 @@ def write_walker_health_end(walker_name, ok, message=None):
                     "  consecutive_failures = walker_health.consecutive_failures + 1",
                     (walker_name, message),
                 )
-    except Exception as e:
-        _log_err(f"write_walker_health_end_failed[{walker_name}]", e)
-        _drop_writer_conn()
+    _writer_execute_with_retry(f"write_walker_health_end[{walker_name}]", _do)
 
 
 def read_walker_health_all():
