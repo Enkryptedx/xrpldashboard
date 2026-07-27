@@ -226,6 +226,13 @@ def inject_site_url():
 # claim regulation_freshness_chip.
 LAST_VERIFIED_REGULATION = "2026-07-25"
 
+# Manually curated — bump on every /learn/vaults copy update, following
+# the same discipline as LAST_VERIFIED_REGULATION. Freshness chip on the
+# page reads this; staleness threshold is 30 days (protocol/wallet
+# landscape moves slower than legislative status). Codified in CLAIMS.yaml
+# claim vaults_freshness_chip.
+LAST_VERIFIED_VAULTS = "2026-07-26"
+
 # CLARITY-window homepage banner self-expires on this date (Senate
 # recess-return day). After this, the strip disappears from any page
 # that reads regulation_banner_live even if no one pulls it manually.
@@ -3179,6 +3186,26 @@ def learn():
         "learn.html",
         ledger_index=ledger_index,
         as_of_unix=as_of_unix,
+    )
+
+
+@app.route("/learn/vaults")
+def learn_vaults():
+    """Plain-English vault-like-self-custody explainer. Non-advisory,
+    non-tutorial (describes what things ARE, does not walk anyone through
+    a setup). Freshness chip uses LAST_VERIFIED_VAULTS with a 30-day
+    staleness threshold — the vault landscape moves slower than
+    legislative status. See docs/LEARN_VAULTS_DESIGN.md for the
+    liability-reasoning that decided why the page stops where it stops."""
+    try:
+        last_dt = datetime.strptime(LAST_VERIFIED_VAULTS, "%Y-%m-%d").date()
+        days_since = (date.today() - last_dt).days
+    except Exception:
+        days_since = 0
+    return render_template(
+        "learn_vaults.html",
+        last_verified_iso=LAST_VERIFIED_VAULTS,
+        days_since=days_since,
     )
 
 

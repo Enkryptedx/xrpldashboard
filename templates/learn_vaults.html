@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vault-like self-custody · what the protocol supports, what your wallet exposes · xrpldashboard</title>
+  {% set meta_title = "Vault-like self-custody · xrpldashboard" %}
+  {% set meta_description = "What 'vaults' actually are, what XRPL gives you today, why no consumer wallet wires it together yet, and how the concept is being weaponized against holders. Primary sources only. No product recommendations." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --blue: #3b82f6;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --green: #4ade80;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0 0 28px; max-width: 720px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600; letter-spacing: -0.01em; scroll-margin-top: 24px; }
+    h3 { font-size: 1rem; margin: 22px 0 8px; font-weight: 600; color: var(--text); }
+    p, ul, ol { color: var(--text); margin: 0 0 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); font-weight: 600; }
+    em { color: var(--muted); }
+    code { font-family: var(--mono); font-size: 0.92em; color: var(--text);
+           background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; }
+
+    .callout { background: var(--card); border: 1px solid var(--border);
+               border-radius: 10px; padding: 16px 20px; margin: 20px 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    /* Scam-inversion box — up top, non-negotiable. Red-tinted so no
+       skimming reader can miss it. Sibling of /check disclaimer style. */
+    .warn-scam {
+      background: rgba(248,113,113,0.06);
+      border: 1px solid rgba(248,113,113,0.35);
+      border-left: 3px solid var(--red);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 0 0 24px;
+    }
+    .warn-scam h2 { margin: 0 0 8px; font-size: 1rem; color: var(--red);
+                    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    .warn-scam p { margin: 0 0 10px; }
+    .warn-scam ul { margin: 6px 0 0; padding-left: 20px; }
+    .warn-scam li { margin-bottom: 4px; color: var(--text); font-size: 0.95rem; }
+    .warn-scam .src { color: var(--dim); font-size: 0.85em; }
+
+    .toc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.92rem;
+    }
+    .toc .toc-label {
+      color: var(--muted); font-size: 0.74rem; text-transform: uppercase;
+      letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px;
+    }
+    .toc ol { margin: 0; padding-left: 22px; }
+    .toc li { margin-bottom: 2px; }
+    .toc a { color: var(--text); }
+    .toc a:hover { color: var(--cyan); }
+
+    .not-happened { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.22);
+                    border-radius: 8px; padding: 14px 18px; margin: 12px 0 8px; }
+    .not-happened h4 { margin: 0 0 8px; font-size: 0.85rem; text-transform: uppercase;
+                       letter-spacing: 0.06em; color: var(--amber); font-weight: 600; }
+    .not-happened ul { margin: 0; padding-left: 20px; }
+
+    table.feat { width: 100%; border-collapse: collapse; margin: 12px 0 14px; font-size: 0.92rem; }
+    table.feat th, table.feat td {
+      padding: 10px 12px; text-align: left; vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    table.feat th { color: var(--muted); font-weight: 600; font-size: 0.76rem;
+                    text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .footer { color: var(--dim); font-size: 0.85rem; margin-top: 48px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+    .footer p { margin: 0 0 10px; }
+    .footer a { color: var(--muted); }
+  </style>
+  {% from "_regulation_freshness.html" import regulation_freshness, regulation_freshness_css %}
+  {{ regulation_freshness_css() }}
+  {% include "_vibes_head.html" %}
+</head>
+<body>
+<div class="wrap">
+
+  {% include "_nav.html" %}
+
+  <h1>Vault-like self-custody: what the protocol supports, what your wallet exposes, and how the concept is being weaponized</h1>
+
+  {{ regulation_freshness(last_verified_iso, days_since, staleness_days=30) }}
+
+  <p class="lede">
+    A plain-English explanation of what "vaults" actually are in self-custody crypto — the myth, the real mechanism, what the XRP Ledger gives you today, and how the word "vault" is now used as bait in phishing scams. Primary sources throughout. No product recommendations.
+  </p>
+
+  <div class="callout">
+    <p>Somebody told you "coins sent to self-custody get locked or protected after time, making theft harder." That claim is a myth in one specific way and a real thing in another. This page separates the two and shows you honestly what a normal XRP holder can and cannot do about it today.</p>
+  </div>
+
+  <!-- ═══ SCAM-INVERSION WARNING (FIRST — NON-NEGOTIABLE) ═══ -->
+  <div class="warn-scam" role="alert" aria-label="scam warning">
+    <h2>Before you read further — the concept is being weaponized</h2>
+    <p>"Vault" is now a scammer keyword. Legitimate vault setups <strong>never</strong> ask for your seed phrase, private key, or "verification signature" to activate, unlock, protect, or upgrade anything. If a website, wallet pop-up, email, letter, QR code, or "support agent" asks for any of those in the context of protecting or verifying your funds, it is a theft attempt. Six live patterns worth naming — each verified from a primary source:</p>
+    <ul>
+      <li><strong>Approval-phishing drainers.</strong> "Connect wallet to verify" grants unlimited token allowance; drained hours or weeks later. Operation Atlantic froze about $12M in early 2026. <span class="src">Source: <a href="https://crypto.news/what-are-wallet-drainers-approval-phishing-explained/" target="_blank" rel="noopener noreferrer">crypto.news, 2026</a>.</span></li>
+      <li><strong>Fake "Verify Crypto Assets" vault sites.</strong> India's Ministry of Home Affairs named three counterfeit BNB-chain verification vaults in an advisory dated <strong>2026-04-20</strong>. <span class="src">Source: <a href="https://www.cryptotimes.io/2026/04/28/indias-mha-issues-advisory-on-trust-wallet-crypto-drainer-scams/" target="_blank" rel="noopener noreferrer">CryptoTimes summary of MHA advisory</a>.</span></li>
+      <li><strong>"Blockchain Vault Protocol" seed-phrase lure.</strong> Spam-email campaigns direct victims to a fake vault site that asks for the seed phrase to "secure" funds. <span class="src">Source: <a href="https://www.pcrisk.com/removal-guides/34223-fake-blockchain-vault-protocol-scam" target="_blank" rel="noopener noreferrer">pcrisk removal guide</a>.</span></li>
+      <li><strong>Ledger "post-quantum upgrade" physical mail.</strong> Branded letters demand a hardware-wallet "upgrade" via QR code that leads to a seed-capture site. Ledger warning dated <strong>2026-06-05</strong>. This one reaches XRP holders in practice — many use Ledger devices. <span class="src">Source: <a href="https://www.cryptotimes.io/2026/06/05/ledger-warns-of-new-physical-mail-phishing-scam-demanding-post-quantum-upgrade/" target="_blank" rel="noopener noreferrer">CryptoTimes, 2026-06-05</a>.</span></li>
+      <li><strong>Fake "mandatory MetaMask 2026 upgrade."</strong> Late-May 2026 campaign drained EVM wallets across Ethereum, Polygon, Arbitrum, and Base. <span class="src">Source: <a href="https://phemex.com/blogs/evm-wallets-drained-fake-metamask-update-phishing" target="_blank" rel="noopener noreferrer">Phemex writeup</a>.</span></li>
+      <li><strong>"Recover your locked funds" recovery-room scams.</strong> Target victims who already lost funds, demand an upfront fee, sometimes impersonate law enforcement. <span class="src">Source: <a href="https://www.nasaa.org/78036/informed-investor-advisory-crypto-recovery-room-scams/" target="_blank" rel="noopener noreferrer">NASAA investor advisory</a>.</span></li>
+    </ul>
+    <p style="margin-top:12px;"><strong>Rule of thumb:</strong> if the "vault" requires you to reveal a secret to activate it, it isn't a vault. It's a drain.</p>
+  </div>
+
+  <div class="toc">
+    <div class="toc-label">On this page</div>
+    <ol>
+      <li><a href="#myth">The myth, corrected</a></li>
+      <li><a href="#what-vault-is">What a vault actually is</a></li>
+      <li><a href="#bitcoin">The Bitcoin picture (for context)</a></li>
+      <li><a href="#xrpl">XRPL: the primitives you already have</a></li>
+      <li><a href="#xrpl-reality">XRPL: the wallet reality</a></li>
+      <li><a href="#false-friend">False friend: XLS-65 SingleAssetVault is not a personal vault</a></li>
+      <li><a href="#footguns">The refresh trap and other footguns</a></li>
+      <li><a href="#does-not-do">What this page does not do</a></li>
+    </ol>
+  </div>
+
+  <!-- ═══ 1. THE MYTH ═══ -->
+  <h2 id="myth">1. The myth, corrected</h2>
+  <p>
+    <strong>Nothing in standard self-custody locks or protects your coins automatically by aging.</strong> Holding time alone triggers no protective behavior on any live self-custody chain today. There is no "your coins are safer after N months untouched" mechanism.
+  </p>
+  <p>
+    The confusion usually comes from three places:
+  </p>
+  <ul>
+    <li><strong>Staking</strong> (Ethereum, Cardano, and others) is not protection — it is participation. Delegating or staking is a deliberate action the holder takes, not something that happens by aging, and it does not defend against key theft.</li>
+    <li><strong>Ripple's monthly XRP escrow</strong> is a real time-lock, but it was <em>configured</em> that way by Ripple in 2017 as a supply-management commitment. It's not a passive property of holding XRP.</li>
+    <li><strong>"Coin age"</strong> as a protocol concept existed briefly in Peercoin — for staking priority, not theft resistance. Bitcoin removed coin-age priority code entirely (<a href="https://github.com/bitcoin/bitcoin/issues/9601" target="_blank" rel="noopener noreferrer">bitcoin/bitcoin#9601</a>).</li>
+  </ul>
+  <p>
+    The tightened version of the claim: <em>no mechanism protects a passive holder from theft.</em> Protection is always something you set up.
+  </p>
+
+  <!-- ═══ 2. WHAT A VAULT IS ═══ -->
+  <h2 id="what-vault-is">2. What a vault actually is</h2>
+  <p>
+    A vault, in self-custody terms, is a <strong>deliberately-configured wallet whose withdrawals require a mandatory delay</strong>. During that delay, the owner can detect an unauthorized withdrawal attempt and cancel it or sweep the funds via a separate recovery key. Theft becomes a process that can be interrupted, not an instant event.
+  </p>
+  <p>
+    The key ingredient is <strong>time as a security ingredient</strong>. Without the delay, a stolen key equals stolen funds, immediately. With the delay, a stolen key equals a withdrawal attempt that broadcasts to the owner and can be blocked before it settles.
+  </p>
+  <p>
+    In Bitcoin the underlying mechanism is a relative timelock (<code>OP_CHECKSEQUENCEVERIFY</code>, <a href="https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki" target="_blank" rel="noopener noreferrer">BIP-112</a>) expressed through a policy language called Miniscript. In XRPL the closest analog is <code>Escrow</code> with a <code>FinishAfter</code> time — described in detail below.
+  </p>
+
+  <!-- ═══ 3. BITCOIN CONTEXT ═══ -->
+  <h2 id="bitcoin">3. The Bitcoin picture (for context)</h2>
+  <p>
+    Bitcoin has vault tooling today and a proposed protocol upgrade that would make more advanced designs possible. Two are worth naming so you can recognize them if you read further:
+  </p>
+  <ul>
+    <li><strong><a href="https://github.com/wizardsardine/liana" target="_blank" rel="noopener noreferrer">Liana</a></strong> — an open-source Miniscript-based wallet from Wizardsardine that supports timelocked recovery keys and "decaying multisig" quorums (see below). This is the reference implementation of a native-Bitcoin vault today.</li>
+    <li><strong>Decaying multisig</strong> — a spending policy where the quorum required to move funds gets easier over time. The Unchained writeup (<a href="https://www.unchained.com/blog/examining-the-tradeoffs-of-miniscript-timelock-wallets" target="_blank" rel="noopener noreferrer">unchained.com/blog</a>, updated 2026-04-17) walks through a 3-of-3 setup that decays to 2-of-3 after a delay — so that a lost signer doesn't lock funds forever, but a fresh compromise still needs the full quorum.</li>
+    <li><strong>OP_VAULT / <a href="https://github.com/bitcoin/bips/blob/master/bip-0345.mediawiki" target="_blank" rel="noopener noreferrer">BIP-345</a></strong> — a proposal to make advanced vault behavior a first-class Bitcoin opcode. Status as of this page's last-verified date: <strong>not activated</strong>, no longer being pursued as a standalone proposal, effectively superseded by discussion around BIP-443. No soft fork has activated after Taproot. If a page you read elsewhere claims "Bitcoin has vaults built into the protocol," it is wrong.</li>
+  </ul>
+  <p>
+    One consumer app frequently mentioned alongside these is <a href="https://zengo.com" target="_blank" rel="noopener noreferrer">Zengo</a>, which offers a "Vault" feature. Zengo is <strong>MPC-based</strong>, not native Bitcoin self-custody — the timelock is enforced by Zengo's application logic and their multi-party computation, not by Bitcoin consensus. That's not a criticism; it's a durability distinction worth understanding. If Zengo the company goes dark, your timelock is only as durable as their recovery paths.
+  </p>
+  <p>
+    <strong>Scoped out:</strong> broader Bitcoin "covenants" (<a href="https://github.com/bitcoin/bips/blob/master/bip-0119.mediawiki" target="_blank" rel="noopener noreferrer">BIP-119 CTV</a>, <a href="https://github.com/bitcoin/bips/blob/master/bip-0118.mediawiki" target="_blank" rel="noopener noreferrer">BIP-118 ANYPREVOUT</a>) are proposed but not activated; this page does not cover them. That family is where much of the future-vault discussion is happening.
+  </p>
+
+  <!-- ═══ 4. XRPL PRIMITIVES ═══ -->
+  <h2 id="xrpl">4. XRPL: the primitives you already have</h2>
+  <p>
+    <strong>The interesting thing about the XRP Ledger is that the vault ingredients already exist on mainnet, today.</strong> Not proposed. Not in voting. Live. Bitcoin needs protocol changes still unshipped after years of discussion; XRPL's gap is not the protocol — it's the wallet interface layer. That is the quiet contrast this page exists to explain.
+  </p>
+  <p>
+    Four native features together give you meaningful protection when combined:
+  </p>
+
+  <table class="feat">
+    <thead><tr><th>Feature</th><th>What it does</th><th>What it does NOT do</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Escrow</strong><br><a href="https://xrpl.org/docs/concepts/payment-types/escrow" target="_blank" rel="noopener noreferrer">xrpl.org</a></td>
+        <td>Time-lock a payment. XRP (or, since <a href="https://xrpl.org/resources/known-amendments" target="_blank" rel="noopener noreferrer">TokenEscrow</a>, IOU/MPT balances) is held in the ledger until a <code>FinishAfter</code> time, then delivered to a fixed <code>Destination</code>. Self-escrow (Account = Destination) is valid. This is the same protocol primitive Ripple uses for its monthly 1 billion XRP escrow — different scale, same mechanism.</td>
+        <td>Once the <code>FinishAfter</code> time passes, <em>anyone</em> can submit an <code>EscrowFinish</code> and push the funds to the pre-set destination. So escrow-to-self is a <strong>time-locked delivery</strong>, not a key-theft-resistant vault. If a thief holds your key, they cannot redirect an existing escrow (destination is immutable) — but they can create new ones that pay themselves, or spend everything outside the escrow.</td>
+      </tr>
+      <tr>
+        <td><strong>Multisign</strong><br><a href="https://xrpl.org/docs/concepts/accounts/multi-signing" target="_blank" rel="noopener noreferrer">xrpl.org</a></td>
+        <td>Require multiple signers (up to 32, weighted, with a quorum) to authorize transactions. Reserve cost is 0.2 XRP (post-MultiSignReserve amendment). Fee scales linearly with the number of signatures submitted.</td>
+        <td>Does not protect against quorum collusion. Does not protect against losing enough signer keys to break the quorum (funds bricked). Does not protect against a compromised master key removing the entire signer list — unless the master key has been separately disabled.</td>
+      </tr>
+      <tr>
+        <td><strong>RegularKey</strong><br><a href="https://xrpl.org/docs/concepts/accounts/cryptographic-keys" target="_blank" rel="noopener noreferrer">xrpl.org</a></td>
+        <td>Every XRPL account has a master key (derived from the address, cannot be rotated) and can optionally have a second signing pair called a Regular Key that <em>can</em> be rotated freely. This lets you keep the master key offline (hardware, paper, memorized) and use the rotating hot key for daily activity. This is the closest thing XRPL offers to the "hardware vault + hot key" pattern.</td>
+        <td>If the master key is compromised <em>before</em> being disabled, the attacker has full control including the ability to disable your master or overwrite your regular key. The account is lost. If the master is disabled and there is no signer list and the regular key is later compromised, the account is also lost. The pattern is durable only if executed in the right order.</td>
+      </tr>
+      <tr>
+        <td><strong>DepositAuth</strong><br><a href="https://xrpl.org/docs/concepts/accounts/depositauth" target="_blank" rel="noopener noreferrer">xrpl.org</a></td>
+        <td>Blocks all incoming payments and EscrowFinish/CheckCash/PaymentChannelClaim actions unless the sender is on a pre-authorized list (or, post-Credentials amendment, holds a matching credential). It's a spam and compliance filter.</td>
+        <td><strong>Zero theft protection.</strong> DepositAuth controls what comes <em>in</em>, not what goes <em>out</em>. If an attacker holds your key, DepositAuth is irrelevant to the theft. It appears in vault discussions often; it does not belong there. Included here so you know why.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    The best combination for a technically-comfortable XRPL holder is <strong>master key disabled → signer list with keys held on separate hardware devices → optional regular key for daily-use convenience</strong>. That composition gets you the closest to a hardware-backed multisig vault. It is a pattern, not a feature — nothing in XRPL wallets today walks you through it as a guided flow.
+  </p>
+
+  <!-- ═══ 5. XRPL WALLET REALITY ═══ -->
+  <h2 id="xrpl-reality">5. XRPL: the wallet reality</h2>
+  <p>
+    This is the section other explainers skip. The gap between "the protocol supports it" and "a normal person can use it" is the honest finding.
+  </p>
+  <blockquote style="margin:14px 0;padding:12px 18px;border-left:3px solid var(--cyan);background:rgba(34,211,238,0.04);color:var(--text);font-style:normal;">
+    <p style="margin:0;">XRPL gives you the primitives. It does not give you a consumer wallet that wires them together.</p>
+  </blockquote>
+  <ul>
+    <li><strong>Escrow.</strong> Xaman (formerly XUMM) exposes escrow through a third-party mini-app called <code>nixer.escrow</code>; the help page is currently marked "under construction." <a href="https://bithomp.com/en/tools" target="_blank" rel="noopener noreferrer">Bithomp Tools</a> has a web form. Usable by a determined holder; not discoverable in the main wallet UI.</li>
+    <li><strong>Multisign.</strong> Xaman has no native multisign UI. The <a href="https://github.com/XRPL-Labs/Xaman-App/issues/452" target="_blank" rel="noopener noreferrer">tracking issue at XRPL-Labs</a> is open. Retail flow is a mini-app plus coordinating with signers out-of-band. Ops-savvy only.</li>
+    <li><strong>RegularKey rotation and "master disabled" pattern.</strong> No consumer wallet exposes "hardware master in cold storage, hot regular key for spending" as a guided flow. Bithomp Tools has a Regular Key form. The pattern requires manual transaction construction and a clear understanding of the order of operations.</li>
+    <li><strong>Ledger-in-Xaman.</strong> Xaman + a Ledger hardware wallet is the honest baseline for the average XRP holder — the master key sits on the hardware device, everyday signing goes through Xaman. It is not a vault (no timelock, no separate recovery arm), but it eliminates the most common failure mode (hot software wallet with the master key in plaintext).</li>
+  </ul>
+  <p>
+    Put together: <strong>the protocol has it; the interface layer mostly doesn't; only ops-savvy holders currently self-custody with these protections wired up.</strong> That is not a criticism of any wallet — it is a statement of the current state of the ecosystem. If it changes, this page will be updated.
+  </p>
+
+  <!-- ═══ 6. FALSE FRIEND ═══ -->
+  <h2 id="false-friend">6. False friend: XLS-65 SingleAssetVault is not a personal vault</h2>
+  <p>
+    A confusingly-named amendment currently in mainnet validator voting is <a href="https://xrpl.org/resources/known-amendments" target="_blank" rel="noopener noreferrer"><strong>SingleAssetVault (XLS-65)</strong></a>. Despite the name, it is <strong>not</strong> a personal-vault primitive. It creates a pooled-asset container designed to support the paired lending-protocol amendment (XLS-66). It is a piece of DeFi plumbing, not a self-custody protection tool.
+  </p>
+  <p>
+    This is worth naming explicitly because SingleAssetVault may activate while this page is live, and anyone searching "XRPL vault" is going to land on both this page and the amendment page. They are unrelated.
+  </p>
+
+  <!-- ═══ 7. FOOTGUNS ═══ -->
+  <h2 id="footguns">7. The refresh trap and other footguns</h2>
+  <p>
+    Any timelock design comes with real-world failure modes. Two are worth understanding before you build any vault-like setup:
+  </p>
+  <ul>
+    <li><strong>The refresh trap.</strong> In decaying/timelocked designs (Bitcoin Miniscript, XRPL patterns where a signer list weakens over time by design), the primary key holder must periodically move funds — typically every 12–15 months — or the fallback / recovery path silently activates and the funds become spendable by the recovery key alone. Miss a refresh cycle and you have quietly lost your primary protection.</li>
+    <li><strong>Order-of-operations lockout.</strong> On XRPL, disabling the master key before configuring a signer list (or with an invalid signer list) leaves the account unrecoverable. There is no undo. This is a common failure mode when people follow a partial tutorial.</li>
+    <li><strong>Architectural note on mempool alarms.</strong> The Bitcoin vault design assumes you can watch the mempool for an unauthorized withdrawal attempt and race with a recovery-key sweep. XRPL does not have a mempool in the same sense — proposed transactions are validated or rejected within a few seconds. This means Bitcoin's <em>vault design</em> does not port cleanly to XRPL for architectural reasons, independent of tooling. XRPL's protection story is delayed-delivery escrow plus multi-key spending policy, not race-the-attacker.</li>
+    <li><strong>Issued-token caveat.</strong> "Self-custody" on XRPL is absolute for XRP. For issued tokens (IOUs, MPTs), the issuer retains features like Freeze on trustlines that can restrict your balance regardless of what protections you configure. This is a property of every issuer-based token on any chain, not an XRPL-specific weakness — but it belongs in an honest self-custody explanation.</li>
+  </ul>
+
+  <div class="not-happened">
+    <h4>What is NOT in the XRPL amendment pipeline</h4>
+    <ul>
+      <li>No covenant primitive analogous to Bitcoin's OP_VAULT proposal.</li>
+      <li>No social-recovery amendment.</li>
+      <li>No consumer-vault primitive under discussion by protocol maintainers.</li>
+      <li>The pipeline extends existing primitives (TokenEscrow, Credentials); it does not add new vault-shaped ones.</li>
+    </ul>
+  </div>
+
+  <!-- ═══ 8. WHAT THIS PAGE DOES NOT DO ═══ -->
+  <h2 id="does-not-do">8. What this page does not do</h2>
+  <ul>
+    <li><strong>No product recommendations.</strong> Wallets, hardware devices, and Miniscript projects named above are named as examples of what things ARE. Naming is not endorsement.</li>
+    <li><strong>No setup tutorial.</strong> Actual vault construction — disabling a master key, configuring a signer list, choosing timelock durations, planning refresh cycles — is not covered here on purpose. Bad setup is worse than no setup, and a page that half-teaches you is a page that hurts you. If you want to do this, read the official XRPL documentation linked in each section, then work with someone who has done it before.</li>
+    <li><strong>No prediction of when consumer wallets will close the gap.</strong> XRPL-Labs issue #452 has been open. Roadmap timelines are not on this page.</li>
+    <li><strong>No "you should."</strong> Nowhere on this page. Non-advisory absolute, same house rule as <a href="/check">/check</a> and <a href="/regulation">/regulation</a>.</li>
+  </ul>
+
+  <div class="footer">
+    <p><strong>This page is not legal advice, not investment advice, and not a setup tutorial.</strong> It is a plain-English description of what vault-like protections are, what the XRP Ledger currently supports, what consumer wallets currently expose, and how the concept is being weaponized against holders. Updated when the protocol status, wallet reality, or the scam landscape changes.</p>
+    <p>Sources are linked inline throughout. Vendor pages are cited only as claims about themselves. Protocol claims are cited against <a href="https://xrpl.org">xrpl.org</a>, <a href="https://github.com/bitcoin/bips">bitcoin/bips</a>, and primary reporting.</p>
+    <p>Page last revised <strong>{{ last_verified_iso }}</strong>. Versioned in git alongside the code that ships this feature. Catalogued in <code>CLAIMS.yaml</code> at <code>/learn/vaults</code>.</p>
+    <p style="margin-top:16px;">
+      <a href="/">back to dashboard</a> ·
+      <a href="/learn">/learn</a> ·
+      <a href="/check">/check</a> ·
+      <a href="/regulation">/regulation</a> ·
+      <a href="/methodology">/methodology</a>
+    </p>
+  </div>
+
+</div>
+{% include "_vibes_scripts.html" %}
+</body>
+</html>

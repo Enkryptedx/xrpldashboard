@@ -1057,6 +1057,137 @@ pages:
           touches templates/regulation.html, the constant must move too.
 
   # ─────────────────────────────────────────────────────────────────
+  /learn/vaults:
+    template: templates/learn_vaults.html
+    route: "app.py:learn_vaults()"
+    claims:
+
+      - id: vaults_page_purpose
+        label: "Page purpose: plain-English explainer of vault-like self-custody — non-advisory, non-tutorial, describes what things ARE (does not recommend or walk through setup)"
+        data_paths:
+          - "templates/learn_vaults.html: lede"
+          - "templates/learn_vaults.html: section 8 (What this page does not do)"
+          - "templates/learn_vaults.html: footer"
+        behavior: MANUAL_CURATION
+        layer3_source: primary-xrpl-and-bitcoin-sources
+        risk_note: >
+          Non-advisory posture is the load-bearing property. If copy ever
+          drifts into "you should", product endorsement, or step-by-step
+          setup instructions, this claim is violated and the page must be
+          re-scoped before push. See docs/LEARN_VAULTS_DESIGN.md for the
+          liability reasoning behind the "no setup tutorial" line — the
+          page stops there on purpose.
+
+      - id: vaults_scam_inversion_warning
+        label: "Scam-inversion warning is FIRST — six named live patterns, each with a primary-source link"
+        data_paths:
+          - "templates/learn_vaults.html: .warn-scam block"
+        behavior: MANUAL_CURATION
+        layer3_source: primary-scam-reporting
+        recheck_cadence: "≤90 days OR immediately if a new XRPL-specific vault-lure pattern is observed"
+        primary_sources:
+          - "crypto.news wallet-drainer explainer"
+          - "cryptotimes.io India MHA advisory summary (2026-04-20)"
+          - "pcrisk Blockchain Vault Protocol removal guide"
+          - "cryptotimes.io Ledger post-quantum mail phish (2026-06-05)"
+          - "phemex fake MetaMask upgrade writeup (2026-05)"
+          - "nasaa.org recovery-room scam investor advisory"
+        risk_note: >
+          The scam-inversion box is what makes this page net-positive to
+          publish. Without it, publishing a page about "vaults" would
+          amplify the lure keyword. If any of the six pattern-links break
+          or the underlying reporting is retracted, replace the pattern
+          entry with an equivalent primary source — do NOT delete the
+          slot silently. If a new XRPL-network-specific vault-lure pattern
+          is observed (currently none), it MUST be added and the elevation
+          rule from Sunday 2026-07-26 triage applies.
+
+      - id: vaults_myth_correction
+        label: "Myth-correction: nothing in self-custody locks/protects coins automatically by aging (with tightened form: no mechanism protects a passive holder from theft)"
+        data_paths:
+          - "templates/learn_vaults.html: section 1 (The myth, corrected)"
+        behavior: MANUAL_CURATION
+        layer3_source: chain-protocol-docs
+        risk_note: >
+          If any live self-custody chain ships a genuinely-passive
+          aging-protection mechanism, this section must move from
+          "does not exist" to "exists on chain X, with these caveats."
+          Currently absolute. Peercoin coin-age (staking-priority, not
+          protection) is called out explicitly to preempt reader challenge.
+
+      - id: vaults_xrpl_feature_matrix
+        label: "XRPL feature matrix (Escrow, Multisign, RegularKey, DepositAuth) — what each does and does NOT protect against"
+        data_paths:
+          - "templates/learn_vaults.html: table.feat (section 4)"
+        behavior: MANUAL_CURATION
+        layer3_source: xrpl.org
+        recheck_cadence: "on every relevant amendment activation"
+        primary_sources:
+          - "xrpl.org/docs/concepts/payment-types/escrow"
+          - "xrpl.org/docs/concepts/accounts/multi-signing"
+          - "xrpl.org/docs/concepts/accounts/cryptographic-keys"
+          - "xrpl.org/docs/concepts/accounts/depositauth"
+        risk_note: >
+          Four-cell claim. The Escrow row's key finding — "any account
+          may submit EscrowFinish" — is the load-bearing honesty. The
+          DepositAuth row explicitly reclassifies it as a spam/compliance
+          filter with ZERO theft protection; this is a correction to the
+          popular framing and must not drift back into the "vault feature"
+          bucket. Verify against xrpl.org before any content edit touches
+          the table.
+
+      - id: vaults_wallet_reality_gap
+        label: "Wallet-reality section: XRPL primitives exist; consumer wallet UI mostly does not expose them — Xaman nixer.escrow xApp under construction, XRPL-Labs issue #452 open, no guided flows"
+        data_paths:
+          - "templates/learn_vaults.html: section 5 (XRPL: the wallet reality)"
+        behavior: MANUAL_CURATION
+        layer3_source: xaman-docs-and-xrpl-labs-github
+        recheck_cadence: "≤90 days OR when XRPL-Labs issue #452 closes"
+        risk_note: >
+          The core thesis of the page. If Xaman ships a native multisign
+          UI or a guided escrow-to-self flow, this section must be
+          updated within one week or the page's authority collapses.
+          If someone else's wallet ships the same UX first, name it.
+
+      - id: vaults_bip_345_status
+        label: "BIP-345 / OP_VAULT status: proposed, NOT activated; no longer pursued as standalone; effectively superseded by BIP-443 discussion; no post-Taproot soft fork has activated"
+        data_paths:
+          - "templates/learn_vaults.html: section 3 (Bitcoin picture)"
+        behavior: MANUAL_CURATION
+        layer3_source: github.com/bitcoin/bips
+        recheck_cadence: "≤180 days OR on any soft-fork activation news"
+        risk_note: >
+          Bitcoin-side factual claim. If a soft fork activates OP_VAULT
+          or a successor covenant proposal, this section is materially
+          wrong until updated. Also flags Unchained example (3-of-3 →
+          2-of-3) which was previously mis-cited as 3-of-5 → 2-of-5.
+
+      - id: vaults_false_friend_xls65
+        label: "XLS-65 SingleAssetVault is NOT a personal vault — pooled-asset container for lending protocol (XLS-66)"
+        data_paths:
+          - "templates/learn_vaults.html: section 6 (False friend)"
+        behavior: MANUAL_CURATION
+        layer3_source: xrpl.org/resources/known-amendments
+        risk_note: >
+          Disambiguation claim. May activate while this page is live.
+          If it does, the section stays — the point is that even after
+          activation, XLS-65 does NOT provide personal-vault functionality.
+
+      - id: vaults_freshness_chip
+        label: "Last-verified date + 30-day staleness warning"
+        data_paths:
+          - "templates/_regulation_freshness.html"
+          - "app.py: LAST_VERIFIED_VAULTS constant"
+          - "app.py: learn_vaults() route days_since computation"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          30-day staleness threshold (vs 7 for /regulation) reflects that
+          the vault landscape moves slower than legislative status. Any
+          copy edit that does not bump LAST_VERIFIED_VAULTS leaves the
+          freshness chip lying. Same discipline as regulation_freshness_chip.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
   # /nfts:
