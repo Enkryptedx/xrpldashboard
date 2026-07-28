@@ -94,6 +94,42 @@ SCOPES = [
         True,
     ),
     (
+        "is_bot_writer",
+        "forward-classify + backfill page_views.is_bot for all rows",
+        "Reads page_views; writes page_views.is_bot. Also reads/writes "
+        "page_view_classification_meta, page_view_bot_hashes, "
+        "page_view_scanner_combos, burst_cohort_days. Classification "
+        "logic mirrors _bot_filter_sql exactly when _bot_hash_table_ready "
+        "is True. Forward pass processes rows at/after the watermark on a "
+        "5-min cadence; backfill processes one day of unclassified "
+        "history per run until backfill_complete=true. Reconciliation "
+        "triggers on BOT_CLASSIFIER_VERSION mismatch (full resync) or "
+        "burst_cohort_days max(created_at) advance (date-range resync). "
+        "Full scope in intent — every page_views row eventually stamped. "
+        "In-flight window: rows newer than watermark-10min may lag by "
+        "one writer cycle. See scripts/is_bot_writer.py.",
+        False,
+    ),
+    (
+        "is_bot_canary",
+        "Layer 3 drift audit of page_views.is_bot column vs live predicate",
+        "Compares human-row counts between Path A (is_bot column filter, "
+        "WHERE is_bot IS NOT TRUE) and Path B (live _bot_filter_sql "
+        "subquery — the authoritative comparison arm, never deleted). "
+        "Alarm on divergence outside the in-flight window (rows newer "
+        "than now-10min excluded to allow writer to stamp). Two windows "
+        "per daily run: (1) trailing 7 days minus in-flight; (2) "
+        "deterministic rotating historical week — (ISO_week_number % 4) "
+        "+ 2 weeks ago, gated on backfill_complete=true. Results land as "
+        "walker_health rows so the answer_plausibility framework catches "
+        "them without a new alert path. Honest partial: the 4-week "
+        "rotation means 3-of-4 historical weeks are unchecked in any "
+        "given run; trailing-7d covers hot data every run. Flip-to-"
+        "column BLOCKED as of 2026-07-26 pending classifier-drift "
+        "diagnosis (see docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md).",
+        True,
+    ),
+    (
         "nft_activity_activity",
         "forward-only from cursor toward HEAD-3 (all NFT tx types)",
         "Cursor-tracked forward-only ingest of all NFT-related tx types "
