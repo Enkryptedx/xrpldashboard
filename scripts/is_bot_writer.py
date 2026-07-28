@@ -19,6 +19,10 @@ Reconciliation triggers checked on every run:
   2. burst_cohort_days max(classified_at) advance → date-range TRUE-only re-stamp
   3. page_view_scanner_combos_confirmed max(confirmed_at) advance →
      combo-targeted TRUE-only re-stamp
+  4. page_view_bot_hashes content-hash advance → hash-targeted TRUE-only
+     re-stamp. Expected to fire most cycles due to ip_day_hash day-scoping
+     — idempotent, measured (~30ms/fire). See
+     docs/IS_BOT_RECONCILIATION_SURFACES.md.
 
 Backfill: processes one day's oldest unclassified rows per run (rows
 with is_bot IS NULL and ts < forward-pass watermark). Once all
@@ -185,6 +189,7 @@ def run():
         last_cv = int(meta.get("last_classifier_version", "0"))
         last_cohort_v = meta.get("last_cohort_version", "")
         last_scanner_v = meta.get("last_scanner_version", "")
+        last_bot_hashes_v = meta.get("last_bot_hashes_version", "")
         backfill_complete = meta.get("backfill_complete", "false") == "true"
 
         now = int(time.time())
@@ -295,6 +300,70 @@ def run():
                 conn.commit()
                 log.info("scanner-resync (TRUE-only): rows=%d", count)
                 db.set_classification_meta({"last_scanner_version": current_scanner_v})
+
+            # ── 5c. Check page_view_bot_hashes content advance ─────────────
+            # Third sibling in the reconciliation-surface class (see
+            # docs/IS_BOT_RECONCILIATION_SURFACES.md §2 for the law).
+            # refresh_bot_hash_tables() at step 2 TRUNCATE+repopulates this
+            # table every cycle from trailing session data. When a new
+            # (hash_type, hash) lands, historical page_views rows matching
+            # that hash would otherwise not be re-classified until the next
+            # BOT_CLASSIFIER_VERSION bump — hence the 07-28 +25 residue
+            # that eb6c2f1 cleared instance-wise. TRUE-only + hash-targeted:
+            # no time window (hashes are combo-identity like scanner combos).
+            # Already-TRUE rows skipped (idempotent).
+            #
+            # EXPECTED TO FIRE MOST CYCLES. ip_day_hash entries are
+            # day-scoped (a hash is unique per ip × day), so a new UTC day
+            # creates fresh hashes and old ones age out of the trailing
+            # session window; the content-hash therefore changes nearly
+            # every cycle. The UPDATE is TRUE-only + idempotent so
+            # correctness holds regardless of fire frequency. Duration is
+            # logged on every fire so week-one cost stays visible. Prod
+            # EXPLAIN ANALYZE (2026-07-28): ~30ms/fire against 116k
+            # page_views / 13k bot_hashes. Escape hatch if measurement
+            # shows real cost: additions-only versioning via set-difference
+            # against prior hash set (deferred; not built). See §4d of the
+            # doc.
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT MD5(string_agg(hash_type || ':' || hash, ',' "
+                    "                      ORDER BY hash_type, hash)) "
+                    "FROM page_view_bot_hashes"
+                )
+                row = cur.fetchone()
+                current_bot_hashes_v = (row[0] or "") if row else ""
+
+            if current_bot_hashes_v and current_bot_hashes_v != last_bot_hashes_v:
+                _fire_start = time.monotonic()
+                log.info(
+                    "page_view_bot_hashes advanced (%s→%s) — TRUE-only hash re-stamp",
+                    (last_bot_hashes_v or "<empty>")[:12],
+                    current_bot_hashes_v[:12],
+                )
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE page_views p SET is_bot = TRUE "
+                        "WHERE ("
+                        "  (p.visitor_hash IS NOT NULL AND p.visitor_hash IN ("
+                        "    SELECT hash FROM page_view_bot_hashes "
+                        "    WHERE hash_type = 'visitor'))"
+                        "  OR (p.ip_day_hash IS NOT NULL AND p.ip_day_hash IN ("
+                        "    SELECT hash FROM page_view_bot_hashes "
+                        "    WHERE hash_type = 'ip_day'))"
+                        ") "
+                        "AND (p.is_bot IS NULL OR p.is_bot = FALSE)"
+                    )
+                    count = cur.rowcount
+                conn.commit()
+                _fire_ms = int((time.monotonic() - _fire_start) * 1000)
+                log.info(
+                    "bot_hashes-resync (TRUE-only): rows=%d duration_ms=%d",
+                    count, _fire_ms,
+                )
+                db.set_classification_meta(
+                    {"last_bot_hashes_version": current_bot_hashes_v}
+                )
 
             # ── 6. Forward incremental pass ────────────────────────────────
             # LANDMINE WARNING (do not widen this window without the confirmed

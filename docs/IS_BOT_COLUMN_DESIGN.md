@@ -242,6 +242,12 @@ Cross-reference: `docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md`. Founding incide
 
 ---
 
+## Addendum — Reconciliation-Surface Law (2026-07-28)
+
+**Predicate evidence tables are reconciliation surfaces.** Any table the live classifier reads must carry an advance-trigger in the writer that forces re-stamp (TRUE-only, forward-only) when its content changes. Three founding instances (2026-07-28): `burst_cohort_days` (dead trigger, `created_at` typo — fixed `12f2c94`), `page_view_scanner_combos_confirmed` (built Sunday alongside the amnesia-gap fix), `page_view_bot_hashes` (content-hash versioned — see `docs/IS_BOT_RECONCILIATION_SURFACES.md`). The version scheme adapts to the table: append-only ledgers use `MAX(timestamp)`; snapshot tables use content-hash. Static classifier changes (patterns, thresholds, arm additions) remain the domain of `BOT_CLASSIFIER_VERSION` — bumping the version for an evidence-table advance is the hammer-not-mechanism trap this rule closes.
+
+---
+
 ## Appendix — Files This Touches
 
 | File | Change |
