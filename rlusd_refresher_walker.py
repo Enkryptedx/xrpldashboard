@@ -57,8 +57,18 @@ def main():
             if payload:
                 try:
                     db.write_rlusd_supply_history(payload)
-                except Exception:
-                    pass
+                except Exception as write_exc:
+                    # Fleet sweep 2026-07-28: silent-swallow eliminated.
+                    # Surface the failed sub-write through walker_health so
+                    # consecutive_failures climbs, matching the accountability
+                    # bar set after the lending_snapshot silent-no-op.
+                    ok = False
+                    message = (
+                        "refreshed but write_rlusd_supply_history_failed: "
+                        f"{type(write_exc).__name__}: {write_exc}"
+                    )
+                    logging.getLogger("rlusd_refresher_walker").error(message)
+                    return
             message = f"refreshed (partial: {err})" if err else "refreshed"
         else:
             # Soft fail: _refresh_cache_once returned False (upstream RPC
