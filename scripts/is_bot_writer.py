@@ -15,8 +15,10 @@ _bot_hash_table_ready = True (the table-subquery path). The #2 tables
 start of each run so the UPDATE uses fresh session-spread data.
 
 Reconciliation triggers checked on every run:
-  1. BOT_CLASSIFIER_VERSION mismatch → full table resync
-  2. burst_cohort_days max(created_at) advance → date-range resync
+  1. BOT_CLASSIFIER_VERSION mismatch → full table resync (bidirectional)
+  2. burst_cohort_days max(classified_at) advance → date-range TRUE-only re-stamp
+  3. page_view_scanner_combos_confirmed max(confirmed_at) advance →
+     combo-targeted TRUE-only re-stamp
 
 Backfill: processes one day's oldest unclassified rows per run (rows
 with is_bot IS NULL and ts < forward-pass watermark). Once all
@@ -53,17 +55,21 @@ BACKFILL_SLEEP_SECS = 1.0  # polite pause between chunks
 FORWARD_OVERLAP_SECS = 600
 
 
-def _bot_update_sql():
-    """Return (sql_fragment, params) for the CASE WHEN bot_pred THEN TRUE ELSE NULL END
-    expression used in UPDATE page_views SET is_bot = ...
+def _bot_pred_sql():
+    """Return (pred_sql, params) — the full bot detection predicate.
 
-    Uses the table-subquery path (page_view_bot_hashes + page_view_scanner_combos)
-    so the classification is O(1) per row — no full-table subquery.
-    row_pred is included explicitly for NULL-visitor_hash rows (pre-rollout era)
-    that are not reachable via the hash tables.
+    Single source of truth for classification. Wrapped two ways:
+      - _bot_update_sql: CASE WHEN pred THEN TRUE ELSE NULL END for the
+        forward pass (bidirectional; can NULL a stale TRUE).
+      - _restamp_true_only: WHERE pred AND is_bot IS NOT TRUE for the
+        cohort / scanner-combo re-stamp triggers (TRUE-only, safe over
+        historical windows — honors the LANDMINE WARNING in run()).
 
-    The caller must have already called refresh_bot_hash_tables() so the tables
-    are current.
+    Table-subquery path (page_view_bot_hashes + scanner_combos_confirmed)
+    keeps classification O(1) per row — no full-table subquery. row_pred
+    is included explicitly for NULL-visitor_hash rows (pre-rollout era)
+    that are not reachable via the hash tables. Caller must have already
+    called refresh_bot_hash_tables() so the tables are current.
     """
     path_likes = " OR ".join(f"p.path LIKE %s" for _ in db.BOT_PATH_PATTERNS)
     ua_likes = " OR ".join(
@@ -98,15 +104,22 @@ def _bot_update_sql():
         "    AND b.burst_day = date_trunc('day', to_timestamp(p.ts))::DATE"
         "))"
     )
-    full_pred = "(" + " OR ".join(parts) + ")"
-    return (
-        f"CASE WHEN {full_pred} THEN TRUE ELSE NULL END",
-        params,
-    )
+    return "(" + " OR ".join(parts) + ")", params
+
+
+def _bot_update_sql():
+    """Return (case_expr, params) — CASE WHEN pred THEN TRUE ELSE NULL END.
+    Forward-pass classifier that can BOTH stamp TRUE and clear a stale TRUE.
+    Only safe over narrow forward windows; see LANDMINE WARNING in run().
+    """
+    pred, params = _bot_pred_sql()
+    return f"CASE WHEN {pred} THEN TRUE ELSE NULL END", params
 
 
 def _classify_window(conn, ts_start, ts_end, label="window"):
-    """UPDATE is_bot for all rows in [ts_start, ts_end]. Returns row count."""
+    """UPDATE is_bot for all rows in [ts_start, ts_end] — bidirectional
+    (both TRUE and NULL). See LANDMINE WARNING in run(): only the forward
+    pass and full-resync should widen this over historical rows."""
     case_expr, params = _bot_update_sql()
     with conn.cursor() as cur:
         cur.execute(
@@ -117,6 +130,35 @@ def _classify_window(conn, ts_start, ts_end, label="window"):
         count = cur.rowcount
     conn.commit()
     log.info("classified %s: ts=[%d,%d] rows=%d", label, ts_start, ts_end, count)
+    return count
+
+
+def _restamp_true_only(conn, ts_start, ts_end, label="window"):
+    """Forward-only, TRUE-only re-stamp over [ts_start, ts_end].
+
+    Sets is_bot=TRUE only where predicate matches AND row is currently
+    NULL/FALSE. Existing TRUE stamps are never touched — safe over
+    historical windows. This is the correct shape for cohort/scanner
+    trigger events, which reveal NEW bot rows without invalidating old
+    verdicts (the ELSE NULL branch would silently erase TRUE stamps
+    whose original scanner combo has since been evicted — see LANDMINE
+    WARNING in run() and docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §3).
+    """
+    pred, params = _bot_pred_sql()
+    with conn.cursor() as cur:
+        cur.execute(
+            f"UPDATE page_views p SET is_bot = TRUE "
+            f"WHERE p.ts >= %s AND p.ts <= %s "
+            f"AND (p.is_bot IS NULL OR p.is_bot = FALSE) "
+            f"AND {pred}",
+            [int(ts_start), int(ts_end)] + params,
+        )
+        count = cur.rowcount
+    conn.commit()
+    log.info(
+        "re-stamped %s (TRUE-only): ts=[%d,%d] rows=%d",
+        label, ts_start, ts_end, count,
+    )
     return count
 
 
@@ -142,6 +184,7 @@ def run():
         last_ts = int(meta.get("last_classified_ts", "0"))
         last_cv = int(meta.get("last_classifier_version", "0"))
         last_cohort_v = meta.get("last_cohort_version", "")
+        last_scanner_v = meta.get("last_scanner_version", "")
         backfill_complete = meta.get("backfill_complete", "false") == "true"
 
         now = int(time.time())
@@ -169,46 +212,89 @@ def run():
                 return
 
             # ── 5. Check burst_cohort_days advance ─────────────────────────
+            # Was try/except-pass over SELECT MAX(created_at) — but the column
+            # is `classified_at`. The typo raised UndefinedColumn, the except
+            # swallowed it, current_cohort_v defaulted to "" ≠ last_cohort_v="",
+            # so the branch below never fired. Historical rows for the 20
+            # cohort-days added 2026-07-28 08:09 EDT (covering 05-12→07-21)
+            # were never re-classified — that's the +25 canary FAIL that
+            # opened this arc. Same silent-swallow class as fleet sweep
+            # 7f87e72 (both members were db.write_rlusd_supply_history);
+            # named twice in one day. A dead trigger must fail loud via
+            # walker_health, not default-and-carry-on.
             with conn.cursor() as cur:
-                try:
-                    cur.execute(
-                        "SELECT MAX(created_at)::TEXT FROM burst_cohort_days"
-                    )
-                    row = cur.fetchone()
-                    current_cohort_v = (row[0] or "") if row else ""
-                except Exception:
-                    current_cohort_v = ""
+                cur.execute(
+                    "SELECT MAX(classified_at)::TEXT FROM burst_cohort_days"
+                )
+                row = cur.fetchone()
+                current_cohort_v = (row[0] or "") if row else ""
 
             if current_cohort_v and current_cohort_v != last_cohort_v:
                 log.info(
-                    "burst_cohort_days advanced (%s→%s) — re-classifying affected dates",
+                    "burst_cohort_days advanced (%s→%s) — TRUE-only re-stamp of affected dates",
                     last_cohort_v,
                     current_cohort_v,
                 )
                 with conn.cursor() as cur:
-                    try:
-                        cur.execute(
-                            "SELECT MIN(burst_day), MAX(burst_day) FROM burst_cohort_days"
-                        )
-                        row = cur.fetchone()
-                        if row and row[0]:
-                            import datetime
-                            cohort_start = int(
-                                datetime.datetime.combine(
-                                    row[0], datetime.time.min
-                                ).timestamp()
-                            )
-                            cohort_end = int(
-                                datetime.datetime.combine(
-                                    row[1], datetime.time.max
-                                ).timestamp()
-                            )
-                            _classify_window(
-                                conn, cohort_start, cohort_end, label="cohort-resync"
-                            )
-                    except Exception as e:
-                        log.warning("cohort resync failed: %s", e)
+                    cur.execute(
+                        "SELECT MIN(burst_day), MAX(burst_day) FROM burst_cohort_days"
+                    )
+                    row = cur.fetchone()
+                if row and row[0]:
+                    import datetime
+                    cohort_start = int(
+                        datetime.datetime.combine(
+                            row[0], datetime.time.min
+                        ).timestamp()
+                    )
+                    cohort_end = int(
+                        datetime.datetime.combine(
+                            row[1], datetime.time.max
+                        ).timestamp()
+                    )
+                    _restamp_true_only(
+                        conn, cohort_start, cohort_end, label="cohort-resync"
+                    )
                 db.set_classification_meta({"last_cohort_version": current_cohort_v})
+
+            # ── 5b. Check page_view_scanner_combos_confirmed advance ───────
+            # Sibling trigger to cohort-resync. The auto-ratchet block in
+            # refresh_bot_hash_tables() inserts confirmed combos earlier
+            # this same cycle (db.py:4875-4903). Without a trigger here,
+            # historical rows matching a newly-confirmed (path, ua) would
+            # stay unstamped until the next BOT_CLASSIFIER_VERSION bump —
+            # exactly the reconciliation gap the Sunday diagnostic named.
+            # TRUE-only + combo-targeted: no time window needed because a
+            # combo's (path, ua) identity means every matching historical
+            # row should be TRUE. Already-TRUE rows are skipped (idempotent).
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT MAX(confirmed_at)::TEXT "
+                    "FROM page_view_scanner_combos_confirmed"
+                )
+                row = cur.fetchone()
+                current_scanner_v = (row[0] or "") if row else ""
+
+            if current_scanner_v and current_scanner_v != last_scanner_v:
+                log.info(
+                    "scanner_combos_confirmed advanced (%s→%s) — TRUE-only combo re-stamp",
+                    last_scanner_v,
+                    current_scanner_v,
+                )
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE page_views p SET is_bot = TRUE "
+                        "WHERE p.user_agent IS NOT NULL "
+                        "AND (p.path, p.user_agent) IN ("
+                        "  SELECT path, user_agent "
+                        "  FROM page_view_scanner_combos_confirmed"
+                        ") "
+                        "AND (p.is_bot IS NULL OR p.is_bot = FALSE)"
+                    )
+                    count = cur.rowcount
+                conn.commit()
+                log.info("scanner-resync (TRUE-only): rows=%d", count)
+                db.set_classification_meta({"last_scanner_version": current_scanner_v})
 
             # ── 6. Forward incremental pass ────────────────────────────────
             # LANDMINE WARNING (do not widen this window without the confirmed
