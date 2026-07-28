@@ -4253,7 +4253,13 @@ BOT_UA_PATTERNS = (
 # reports positive delta on all historical rows for combos that qualified
 # once but no longer show in the trailing 7d snapshot. See
 # docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md §2 deploy-order.
-BOT_CLASSIFIER_VERSION = 2
+# v3 (2026-07-28): one-time hammer to clear the +25 canary residue after
+# fix 12f2c94 revived the dead cohort trigger and added the scanner
+# sibling. The 26 disputed rows attributed almost entirely to the
+# ip_day_hash arm — page_view_bot_hashes has no advance-trigger (yet;
+# design law + implementation to follow). Bidirectional full-resync
+# clears this instance; the bot_hashes-advance trigger closes the class.
+BOT_CLASSIFIER_VERSION = 3
 
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
