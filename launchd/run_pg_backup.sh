@@ -7,7 +7,10 @@
 # the #1 storage gap from STORAGE_INVENTORY_2026-05-25.md (Neon is
 # not pg_dumped, free tier offers 1 day PITR).
 #
-# Retention: 30 days. Older dumps deleted after a successful upload.
+# Retention: 14 nightly + 3 monthly. After a successful upload, keeps
+# the 14 most-recent dumps unconditionally, plus the newest dump per
+# calendar month for up to 3 older months. Everything else is deleted.
+# Without pruning, uncapped storage accumulates ~3 GB/night indefinitely.
 #
 # DATABASE_URL is sourced from ~/.config/xrpldashboard/env (the same
 # env file every xrpldashboard worker uses, kept outside the repo).
@@ -30,13 +33,14 @@ REMOTE="${BACKUP_REMOTE:-b2crypt}"
 HOST="$(hostname -s)"
 BUCKET_PREFIX="${BACKUP_BUCKET_PREFIX:-xrpldashboard-backup-${HOST}}"
 DEST_PREFIX="${REMOTE}:${BUCKET_PREFIX}/postgres"
-RETENTION_DAYS="${PG_BACKUP_RETENTION_DAYS:-30}"
+PG_BACKUP_NIGHTLY="${PG_BACKUP_NIGHTLY:-14}"
+PG_BACKUP_MONTHLY="${PG_BACKUP_MONTHLY:-3}"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 DUMP_NAME="neondb-${TS}.dump"
 DEST="${DEST_PREFIX}/${DUMP_NAME}"
 
-log "pg_backup start (remote=${REMOTE}, bucket=${BUCKET_PREFIX}, retention=${RETENTION_DAYS}d)"
+log "pg_backup start (remote=${REMOTE}, bucket=${BUCKET_PREFIX}, keep=${PG_BACKUP_NIGHTLY}n+${PG_BACKUP_MONTHLY}m)"
 
 if ! command -v pg_dump >/dev/null 2>&1; then
   log "FAIL: pg_dump not on PATH. Run 'brew install postgresql@17'."
@@ -88,13 +92,67 @@ else
   exit "$rc"
 fi
 
-log "  pruning dumps older than ${RETENTION_DAYS}d"
-if rclone delete "$DEST_PREFIX" --min-age "${RETENTION_DAYS}d" \
-    --log-level INFO --log-file "$LOG_FILE"; then
-  log "  prune ok"
+log "  pruning: keep ${PG_BACKUP_NIGHTLY} nightly + ${PG_BACKUP_MONTHLY} monthly"
+if python3 - "$DEST_PREFIX" "$PG_BACKUP_NIGHTLY" "$PG_BACKUP_MONTHLY" \
+       "$LOG_FILE" <<'PY'
+import subprocess, re, sys, os
+from datetime import datetime, timezone
+
+dest_prefix, nightly, monthly_keep, log_file = \
+    sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+
+def log(msg):
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    line = f"[{ts}] {msg}"
+    print(line)
+    with open(log_file, "a") as f:
+        f.write(line + "\n")
+
+result = subprocess.run(
+    ["rclone", "lsf", dest_prefix, "--files-only", "--include", "neondb-*.dump"],
+    capture_output=True, text=True)
+if result.returncode != 0:
+    log(f"PRUNE FAIL: lsf returned rc={result.returncode}: {result.stderr.strip()}")
+    sys.exit(result.returncode)
+
+pat = re.compile(r"^neondb-(\d{4})(\d{2})\d{2}T\d{6}Z\.dump$")
+files = sorted(
+    [f.strip() for f in result.stdout.splitlines() if pat.match(f.strip())],
+    reverse=True)  # newest first
+
+keep = set(files[:nightly])
+
+monthly_seen: dict[str, str] = {}
+for f in files[nightly:]:
+    m = pat.match(f)
+    if m:
+        ym = f"{m.group(1)}-{m.group(2)}"
+        if ym not in monthly_seen:
+            monthly_seen[ym] = f
+keep.update(list(monthly_seen.values())[:monthly_keep])
+
+to_delete = [f for f in files if f not in keep]
+if not to_delete:
+    log(f"  prune ok (kept {len(keep)}, nothing to delete)")
+    sys.exit(0)
+
+errors = 0
+for f in to_delete:
+    r = subprocess.run(["rclone", "delete", f"{dest_prefix}/{f}"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        log(f"  prune WARN: could not delete {f}: {r.stderr.strip()}")
+        errors += 1
+
+if errors:
+    log(f"  prune partial ({errors} errors, kept {len(keep)}, deleted {len(to_delete)-errors})")
+    sys.exit(1)
+log(f"  prune ok (kept {len(keep)}, deleted {len(to_delete)})")
+PY
+then
+  : # prune logged its own result above
 else
-  rc=$?
-  log "WARN: prune failed rc=${rc} (dump succeeded — non-fatal)"
+  log "WARN: prune script exited non-zero (dump succeeded — non-fatal)"
 fi
 
 log "pg_backup end (rc=0)"

@@ -42,9 +42,13 @@ if ! command -v rclone >/dev/null 2>&1; then
 fi
 
 # rclone lsf with --files-only --include returns plain filenames only.
+# sort -r gives lexicographic descending = chronologically newest first
+# (YYYYMMDDTHHMMSSZ names sort correctly as strings).
+# NOTE: --order-by name,desc is a transfer-order flag in rclone ≥1.59, NOT
+# an lsf output sort — it returned the OLDEST file first on v1.74.1.
 LATEST="$(rclone lsf "$DEST_PREFIX" \
             --files-only --include "neondb-*.dump" \
-            --order-by name,desc 2>/dev/null | head -1)"
+            2>/dev/null | sort -r | head -1)"
 
 if [[ -z "$LATEST" ]]; then
   log "FAIL: no neondb-*.dump files in ${DEST_PREFIX}"
