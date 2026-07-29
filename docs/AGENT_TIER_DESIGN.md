@@ -439,6 +439,14 @@ At Day 60 and Day 90: aggregate summary written to `docs/agent_tier_demand_telem
 
 ---
 
+## Daily build log
+
+One-liner per day; deviations from the sequence surface here before they ship.
+
+- **Day 1 (2026-07-29):** Discovery Layer complete. `/llms.txt` (`0f712a4`), `/.well-known/agents.json` Wildcard-AI flavor (`e2b85d1`), `/methodology` "For AI agents" H2 section (`13bd728`), `LAST_VERIFIED_AGENT_TIER_METHODOLOGY` single-source-of-truth constant with three-surface interpolation (`14ce55a`). Pre-build cleanup: `token_names.json` enrich shipped (`62766c9`); D1/census pile parked to `parked/d1-census-escrow-analysis` (`aeeaec3`, 30 files, 6wk of research); working-tree discipline codified as `docs/WORKING_TREE_DISCIPLINE.md` (`b9e5df1`, four-destination rule + session-close audit line). Canary PASS 06:00 EDT (trailing-7d delta=0, historical-week delta=0) — post-hammer soak continues clean; Friday flip-eligibility on track. Next: Day 1-2 MCP scaffold (envelope function first, heartbeat before any tool).
+
+---
+
 ## Fences (load-bearing, restate on any future edit)
 
 1. **No payments in this tier.** Ever. If a future edit proposes adding x402 to this document, reject and refer to Option B design (which does not yet exist as a doc).
