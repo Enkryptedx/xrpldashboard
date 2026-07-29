@@ -5742,6 +5742,87 @@ def llms_txt():
     return Response(_LLMS_TXT, mimetype="text/markdown; charset=utf-8")
 
 
+# Agent-discovery manifest (Wildcard-AI flavor). Served at the
+# .well-known standard path. Declares site identity, rate limits,
+# trust surfaces, and the proof-annotation envelope agents should
+# expect. Status block is deliberately honest — mcp_ready /
+# openapi_ready / flows_ready stay false until each actually ships,
+# per the Day 1-6 sequence in docs/AGENT_TIER_DESIGN.md.
+_AGENTS_JSON = {
+    "name": "xrpldashboard",
+    "description": (
+        "Public read-only data for the XRP Ledger, computed directly from "
+        "XRPL and Ethereum nodes. Every response is proof-annotated with "
+        "source, freshness stamp, and CLAIMS reference. Free for humans "
+        "and identified agents."
+    ),
+    "site_url": SITE_URL,
+    "documentation": f"{SITE_URL}/methodology#for-ai-agents",
+    "contact": "contact@xrpldashboard.com",
+    "source_code": "https://github.com/Enkryptedx/xrpldashboard",
+    "license": "MIT (source); data derived from public XRPL and Ethereum ledgers",
+    "last_verified": "2026-07-29",
+    "policies": {
+        "auth": "none",
+        "cost": "free at v1 (no accounts, no API keys, no payment rails)",
+        "retention": "no query retention",
+        "backoff": "429 with Retry-After header; no silent throttling",
+    },
+    "rate_limits": {
+        "anonymous": "60 requests/minute/IP",
+        "identified_ai_crawler": (
+            "300 requests/minute (by UA: GPTBot, ClaudeBot, PerplexityBot, "
+            "Google-Extended, and others on Cloudflare's verified-bot list)"
+        ),
+        "mcp_session": "600 tool calls/hour/session (once MCP ships)",
+        "signed_snapshot_verify": "unlimited (stateless, cryptographic-only)",
+    },
+    "trust_surfaces": {
+        "methodology": f"{SITE_URL}/methodology",
+        "claims_manifest_repo": "https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml",
+        "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
+        "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+        "security_contact": f"{SITE_URL}/.well-known/security.txt",
+        "llms_txt": f"{SITE_URL}/llms.txt",
+    },
+    "receipts_envelope": {
+        "shape": {
+            "source": "string — data source identifier (e.g., 'local_rippled', 'neon_postgres', 'ethereum_1rpc')",
+            "as_of": "ISO 8601 timestamp",
+            "methodology_url": "string — deep link to the /methodology section describing this source",
+            "claims_ref": "string? — CLAIMS.yaml claim id where one exists",
+            "snapshot_signature": "string? — Ed25519 signature reference where the datum is snapshot-derived",
+        },
+        "spec_url": f"{SITE_URL}/methodology#for-ai-agents",
+        "note": (
+            "Envelope becomes normative when the MCP server + read-only API "
+            "ship this week (see docs/AGENT_TIER_DESIGN.md). Today's HTML "
+            "surfaces already expose source metadata inline via per-page "
+            "methodology chips and the /methodology page."
+        ),
+    },
+    "mcp_servers": [],
+    "openapi": None,
+    "flows": [],
+    "status": {
+        "phase": "Day 1 of Agent Tier build (2026-07-29)",
+        "discovery_layer_ready": True,
+        "mcp_ready": False,
+        "openapi_ready": False,
+        "flows_ready": False,
+        "reference": "docs/AGENT_TIER_DESIGN.md in the source repo",
+    },
+}
+
+
+@app.route("/.well-known/agents.json")
+def agents_json():
+    """Agent-discovery manifest at the standard well-known path.
+    Wildcard-AI flavor. Every field is verifiable — status booleans
+    stay false until the corresponding surface actually responds."""
+    return jsonify(_AGENTS_JSON)
+
+
 @app.route("/sitemap.xml")
 def sitemap_xml():
     """Static + dynamic sitemap. Curated public pages always included.

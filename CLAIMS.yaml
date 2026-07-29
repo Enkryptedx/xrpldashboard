@@ -1279,6 +1279,66 @@ pages:
           claim with its own data_path — do not let un-audited numbers
           land in the discovery-layer file.
 
+  /.well-known/agents.json:
+    route: "app.py:agents_json()"
+    claims:
+
+      - id: agents_json_status_booleans_are_true
+        label: "status.mcp_ready / status.openapi_ready / status.flows_ready reflect actual live-endpoint responsiveness."
+        data_paths:
+          - "app.py:_AGENTS_JSON (status block)"
+          - "docs/AGENT_TIER_DESIGN.md (Day 1-6 sequence)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Load-bearing honesty. Each boolean flips true ONLY in the
+          same commit that ships the corresponding surface. A `true`
+          flag with no live endpoint behind it is worse than a `false`
+          flag — an agent that trusts `mcp_ready:true` and finds no
+          MCP endpoint will treat this domain as unstable and back off.
+
+      - id: agents_json_rate_limits_match_enforcement
+        label: "Declared rate limits (60/300/600) match what flask-limiter actually enforces."
+        data_paths:
+          - "app.py:_AGENTS_JSON (rate_limits block)"
+          - "flask_limiter configuration — needs-trace once limits are wired in the rate-limit commit"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        needs-trace: true
+        risk_note: >
+          Rate-limit enforcement lands Day 5-6 per the design doc.
+          Until then, the declared numbers are ASPIRATIONAL — copy
+          must land AND enforcement must ship in the same commit
+          (three-audience rule + title-is-contract). If enforcement
+          ships without matching the copy, or vice versa, this claim
+          fires.
+
+      - id: agents_json_receipts_envelope_shape
+        label: "The receipts_envelope.shape here matches what MCP tools + API endpoints actually return."
+        data_paths:
+          - "app.py:_AGENTS_JSON (receipts_envelope block)"
+          - "docs/AGENT_TIER_DESIGN.md (proof-annotation spec)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Envelope spec is the differentiator (see design-doc "The
+          one thesis"). Every MCP tool / API endpoint must produce
+          objects that satisfy this shape. Divergence between the
+          declared envelope and shipped payloads breaks agent
+          verification — same class of failure as an unresolved
+          /llms.txt link, sharper stakes.
+
+      - id: agents_json_trust_surface_urls_live
+        label: "Every URL under trust_surfaces resolves to a live endpoint (200 or documented redirect)."
+        data_paths:
+          - "app.py:_AGENTS_JSON (trust_surfaces block)"
+          - "app.py routes: /methodology, /.well-known/snapshots/chain.json, /.well-known/snapshots/pubkey.pem, /.well-known/security.txt, /llms.txt"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Same class as llms_txt_link_resolvability. If any trust
+          surface moves, the URL here moves in the same commit.
+
   # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
