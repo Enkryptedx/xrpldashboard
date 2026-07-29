@@ -5683,6 +5683,65 @@ def security_txt():
     return Response(body, mimetype="text/plain")
 
 
+# Machine-readable site directory for AI crawlers and agents, following
+# the llmstxt.org convention (markdown, root-served). Title-is-contract
+# with extra teeth: every URL listed here is a promise the file is
+# executed literally by a machine reader. If a route is renamed or
+# removed, this string moves in the same commit. Freshness date is a
+# manual hard-code today; the LAST_VERIFIED_AGENT_TIER_METHODOLOGY
+# constant (Day 1 sequence commit D) will replace it as the single
+# source of truth across llms.txt, agents.json, and the /methodology
+# "For AI agents" section.
+_LLMS_TXT = f"""# xrpldashboard
+
+> Public read-only data for the XRP Ledger, computed directly from XRPL and Ethereum nodes. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+
+Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Signed integrity snapshots are published daily.
+
+## Data pages
+- [/rlusd]({SITE_URL}/rlusd): RLUSD stablecoin cross-chain supply, mint/burn events (XRPL + Ethereum).
+- [/whales]({SITE_URL}/whales): XRP transactions of 100,000+ XRP, live stream.
+- [/rwa]({SITE_URL}/rwa): real-world-asset tokens on XRPL with issuer attestation.
+- [/tokens]({SITE_URL}/tokens): full token registry with domain-attested labels.
+- [/mpts]({SITE_URL}/mpts): MPT (Multi-Purpose Token) registry and issuer roll-ups.
+- [/pools]({SITE_URL}/pools): AMM pools ranked by TVL and volume.
+- [/analytics]({SITE_URL}/analytics): first-party page-view analytics, bot-filtered.
+- [/coverage]({SITE_URL}/coverage): what this site covers versus the XRPL's canonical object-type inventory.
+- [/lending]({SITE_URL}/lending): LendingProtocol amendment status.
+- [/regulation]({SITE_URL}/regulation): plain-English CLARITY Act (H.R. 3633) status tracker.
+- [/check]({SITE_URL}/check): OFAC SDN, domain-age, and earliest-SSL-cert lookup for any XRPL address or URL.
+- [/cold-storage]({SITE_URL}/cold-storage): known cold-wallet balances.
+
+## How this is computed
+- [/methodology]({SITE_URL}/methodology): per-surface freshness contracts, cache TTLs, data sources, known limitations. See especially the "For AI agents" section.
+- [/about]({SITE_URL}/about): mission, funding, principles.
+- [/health]({SITE_URL}/health): live infrastructure status endpoint.
+- [/terms]({SITE_URL}/terms): terms of use.
+- [/privacy]({SITE_URL}/privacy): privacy policy.
+
+## Integrity and verification
+- Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
+- Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification.
+- Security contact: [{SITE_URL}/.well-known/security.txt]({SITE_URL}/.well-known/security.txt).
+- Source code: [github.com/Enkryptedx/xrpldashboard](https://github.com/Enkryptedx/xrpldashboard) (MIT-licensed Flask app).
+
+## For agent authors
+- Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
+- Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, /methodology#for-ai-agents): last verified 2026-07-29. Bumped whenever the agent-tier surface changes.
+- MCP server + read-only API: under construction (see docs/AGENT_TIER_DESIGN.md in the repo). No payment rails; free for identified agents at reasonable volume when live.
+- Every future API response will carry a receipts block: `{{source, as_of, methodology_url, claims_ref?, snapshot_signature?}}` — verify locally against the signed snapshot chain rather than trusting the score.
+"""
+
+
+@app.route("/llms.txt")
+def llms_txt():
+    """Machine-readable site directory for AI crawlers and agents,
+    following the llmstxt.org convention. Every URL listed resolves to
+    a live public surface — this is a title-is-contract file with extra
+    teeth (first artifact written primarily for machine readers)."""
+    return Response(_LLMS_TXT, mimetype="text/markdown; charset=utf-8")
+
+
 @app.route("/sitemap.xml")
 def sitemap_xml():
     """Static + dynamic sitemap. Curated public pages always included.

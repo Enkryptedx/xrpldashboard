@@ -1231,6 +1231,55 @@ pages:
           to snapshot-null, not to RPC.
 
   # ─────────────────────────────────────────────────────────────────
+  # Machine-readable surfaces (Agent Tier — Day 1 Discovery Layer)
+  # Title-is-contract with extra teeth: every promise these files
+  # make is executed literally by a machine reader.
+  # ─────────────────────────────────────────────────────────────────
+  /llms.txt:
+    route: "app.py:llms_txt()"
+    claims:
+
+      - id: llms_txt_link_resolvability
+        label: "Every URL listed in /llms.txt resolves to a live public surface (200 or documented redirect)."
+        data_paths:
+          - "app.py:_LLMS_TXT (module-level string)"
+          - "app.py:PUBLIC_ROUTES + individual @app.route decorators for /rlusd /whales /rwa /tokens /mpts /pools /analytics /coverage /lending /regulation /check /cold-storage /methodology /about /health /terms /privacy"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          FOUNDING CASE for the machine-reader class. If any listed
+          route is renamed, removed, or gated, the _LLMS_TXT string
+          moves in the SAME commit. Sibling of the whale-title /
+          escrow-copy founding cases, with sharper stakes: humans skim
+          past a broken link; an agent may take a 404 as evidence of
+          site instability and back off future reads.
+
+      - id: llms_txt_freshness_stamp
+        label: "'Last verified 2026-07-29' line reflects the true last-verified date of the agent-tier surface set."
+        data_paths:
+          - "app.py:_LLMS_TXT (freshness line — hard-coded pending Day 1 commit D)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Transitional hard-code. Day 1 commit D lands
+          LAST_VERIFIED_AGENT_TIER_METHODOLOGY as the single source of
+          truth across llms.txt, agents.json, and the /methodology
+          "For AI agents" section. Until then, this line is bumped
+          manually alongside any agent-tier surface change.
+
+      - id: llms_txt_no_metric_claims
+        label: "/llms.txt does not itself claim any numeric fact — it is a directory only."
+        data_paths:
+          - "app.py:_LLMS_TXT"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          If a future edit tries to embed a number ("N whale events
+          today", "M tokens tracked"), promote it to a real numeric
+          claim with its own data_path — do not let un-audited numbers
+          land in the discovery-layer file.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
   # /nfts:
