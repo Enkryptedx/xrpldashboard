@@ -2758,5 +2758,156 @@
       }
     ],
     "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0000025F3953B4768139215BBD3BB00BFA4601C987FC1F96:raNf8ibQZECTaiFqkDXKRmM2GfdWK76cSu": {
+    "currency_hex": "0000025F3953B4768139215BBD3BB00BFA4601C987FC1F96",
+    "currency_display": "WAVE",
+    "issuer": "raNf8ibQZECTaiFqkDXKRmM2GfdWK76cSu",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Waves",
+    "issuer_name": "Bithomp"
+  },
+  "064D94DE607A616746E4BF525F17A63A3D266090F95EA90A:r9o37ZXw3VQyvZzYk4p6wEgGZhH14mHmr2": {
+    "currency_hex": "064D94DE607A616746E4BF525F17A63A3D266090F95EA90A",
+    "currency_display": "AUS",
+    "issuer": "r9o37ZXw3VQyvZzYk4p6wEgGZhH14mHmr2",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Aviva Investors US Dollar Liquidity Fund",
+    "desc": "Aviva Investors US Dollar Liquidity Fund Tokenised Share Class.   AAA-rated regulated money market fund providing diversified exposure to banks  other entities in a highly stable  liquid format. Suitable for operating cash needs  targeting SOFR.",
+    "issuer_name": "Aviva Investors Liquidity Funds plc"
+  },
+  "064E1349024332DE8684360E4574B7C6934FD6B4BA772552:rUxiSsPXBhBRznVarw3Vu1Rss8FhHEnDg": {
+    "currency_hex": "064E1349024332DE8684360E4574B7C6934FD6B4BA772552",
+    "currency_display": "ALERIO",
+    "issuer": "rUxiSsPXBhBRznVarw3Vu1Rss8FhHEnDg",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "ALERIO",
+    "desc": "ALERIO Tokenized Fund",
+    "issuer_name": "Franklin Templeton Investments"
+  },
+  "064E273A6D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8:rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR": {
+    "currency_hex": "064E273A6D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8",
+    "currency_display": "USDPEND",
+    "issuer": "rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "SUBSCRIPTION_CASH Receipt - SGBENJI",
+    "issuer_name": "Franklin Templeton"
+  },
+  "0641C75BF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C75BF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tax Implementation Test #2",
+    "issuer_name": "SC.PO"
+  },
+  "064E273C6D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8:rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR": {
+    "currency_hex": "064E273C6D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8",
+    "currency_display": "USDPEND",
+    "issuer": "rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "SUBSCRIPTION_CASH Receipt - SGBENJI",
+    "issuer_name": "Franklin Templeton"
+  },
+  "0641C764F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C764F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO Update",
+    "issuer_name": "SC.PO"
+  },
+  "064E27366D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8:rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR": {
+    "currency_hex": "064E27366D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8",
+    "currency_display": "sgBENJI",
+    "issuer": "rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "sgBENJI",
+    "desc": "sgBENJI represents one share of the Franklin OnChain U.S. Dollar Short-Term Money Market Fund",
+    "issuer_name": "Franklin Templeton Investments"
+  },
+  "0641C760F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C760F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "#3 Tax Test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C750F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C750F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO Information Update Test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C76CF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C76CF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Buyer Profile update test",
+    "issuer_name": "SC.PO"
+  },
+  "000000B1E6597E9EB6015811F47633BDF09AB3666246AF90:rMzydKJUk5tUq3ZuVQGNaRJMh9TQ624PML": {
+    "currency_hex": "000000B1E6597E9EB6015811F47633BDF09AB3666246AF90",
+    "currency_display": "8C01",
+    "issuer": "rMzydKJUk5tUq3ZuVQGNaRJMh9TQ624PML",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Mesin 8 Clean 01 ( CityMall )",
+    "desc": "Token Kepemilikan Mesin 8 Clean Cuci Helm Otomatis 01 Penempatan di Citymall Baturaja",
+    "issuer_name": "8Clean01"
+  },
+  "0641C751F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C751F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO Information Update Test v2",
+    "issuer_name": "SC.PO"
+  },
+  "000000A8E6597E9EB6015811F47633BDF09AB3666246AF90:rMzydKJUk5tUq3ZuVQGNaRJMh9TQ624PML": {
+    "currency_hex": "000000A8E6597E9EB6015811F47633BDF09AB3666246AF90",
+    "currency_display": "8C01",
+    "issuer": "rMzydKJUk5tUq3ZuVQGNaRJMh9TQ624PML",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Mesin 8 Clean 01 ( CityMall )",
+    "desc": "Token Kepemilikan Mesin 8 Clean Cuci Helm Otomatis 01 Penempatan di Citymall Baturaja",
+    "issuer_name": "8Clean01"
+  },
+  "77414D4400000000000000000000000000000000:r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6": {
+    "currency_hex": "77414D4400000000000000000000000000000000",
+    "currency_display": "77414D4400000000000000000000000000000000",
+    "issuer": "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAMD",
+    "desc": "wAMD is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Advanced Micro Devices, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774D52564C000000000000000000000000000000:rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP": {
+    "currency_hex": "774D52564C000000000000000000000000000000",
+    "currency_display": "774D52564C000000000000000000000000000000",
+    "issuer": "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wMRVL",
+    "desc": "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock.",
+    "issuer_name": "WeildX"
   }
 }
