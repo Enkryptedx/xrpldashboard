@@ -35,6 +35,17 @@ from pathlib import Path
 
 PG_BIN = "/opt/homebrew/opt/postgresql@17/bin"
 RCLONE = "/opt/homebrew/bin/rclone"
+
+# Walker health — optional (no-op if db.py not importable or PG not configured)
+_REPO_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+sys.path.insert(0, _REPO_ROOT)
+try:
+    import db as _db
+    _HAS_DB = True
+except ImportError:
+    _HAS_DB = False
+WALKER_NAME = "pg_restore_test"
+WALKER_CADENCE_SECONDS = 604800  # weekly
 B2_REMOTE = os.environ.get("PG_BACKUP_REMOTE", "b2crypt")
 B2_BUCKET = os.environ.get(
     "PG_BACKUP_BUCKET", f"xrpldashboard-backup-{os.uname().nodename.split('.')[0]}"
@@ -218,7 +229,7 @@ def ephemeral_workspace():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def main() -> int:
+def _run() -> int:
     t0 = time.time()
     print(f"[restore_test] starting at {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(t0))}")
     print(f"[restore_test] B2 prefix: {B2_PREFIX}")
@@ -269,6 +280,18 @@ def main() -> int:
     print(f"[restore_test] duration: {duration:.1f}s")
     print(f"[restore_test] result: {'PASS' if all_ok else 'FAIL'}")
     return 0 if all_ok else 3
+
+
+def main() -> int:
+    if _HAS_DB:
+        _db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
+    rc = _run()
+    if _HAS_DB:
+        _db.write_walker_health_end(
+            WALKER_NAME, ok=(rc == 0),
+            message="PASS" if rc == 0 else f"FAIL rc={rc}",
+        )
+    return rc
 
 
 if __name__ == "__main__":

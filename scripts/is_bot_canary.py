@@ -162,11 +162,16 @@ def _check_window(conn, label, ts_start, ts_end):
 
 
 def run():
+    # Write defensive ok=False BEFORE the pg_available bail so the prior
+    # ok=True row can't stay green if we exit early. No-op when PG isn't
+    # configured; staleness threshold catches that case within 48h.
+    db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
     if not db.pg_available():
         log.error("DATABASE_URL not configured — exiting")
+        db.write_walker_health_end(
+            WALKER_NAME, ok=False, message="pg_unavailable at canary start"
+        )
         sys.exit(1)
-
-    db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
     ok, messages = True, []
 
     try:

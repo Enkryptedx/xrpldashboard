@@ -256,6 +256,48 @@ def _evaluate_analytics(alarms):
         )
 
 
+# ── R5: cross_check persistent disagreement ──────────────────────────────
+def _evaluate_cross_check_disagreements(alarms):
+    """Fire when a cross_check pair disagrees on 3+ consecutive cycles.
+
+    Q1 FALSE-GREEN: empty rows → returns without emitting (correct; no
+    disagreement to report). External unreachable rows are status=
+    'external_unreachable', not 'disagree' — they don't count toward
+    the streak, so a 3× external-outage won't false-alarm.
+    Q2 GROUND-TRUTH: SELECT pair_key, status FROM cross_check_results
+      ORDER BY run_at DESC LIMIT 18; any pair with 3 consecutive 'disagree'
+      rows should match alarms here.
+    Q3 WHO-WATCHES: answer_plausibility_walker row in walker_health.
+    """
+    from collections import defaultdict
+    rows = db.read_recent_cross_check_results(hours=1)  # ~6 cycles per pair
+    if not rows:
+        return
+    by_pair: dict = defaultdict(list)
+    for r in rows:  # newest first per db.read_recent_cross_check_results
+        by_pair[r["pair_key"]].append(r)
+    for pair_key, pair_rows in sorted(by_pair.items()):
+        recent = pair_rows[:3]  # last 3 cycles
+        if len(recent) < 3:
+            continue
+        if all(r["status"] == "disagree" for r in recent):
+            latest = recent[0]
+            _emit(
+                alarms,
+                metric=f"cross_check[{pair_key}]",
+                rule="R5_CC_DISAGREE",
+                observed=str(latest.get("delta")),
+                expected_behavior="agree or external_unreachable",
+                consecutive_cycles=len(recent),
+                last_change_at=None,
+                note=(
+                    f"local={latest['local_value']} "
+                    f"ext={latest['external_value']} "
+                    f"src={latest['external_source']}"
+                ),
+            )
+
+
 # ── UNDECLARED_WALKER: machinery-stays-wired ─────────────────────────────
 def _evaluate_undeclared_walkers(alarms):
     state = db.read_coverage_register_state()
@@ -290,6 +332,7 @@ def main():
     try:
         _evaluate_rlusd(alarms)
         _evaluate_analytics(alarms)
+        _evaluate_cross_check_disagreements(alarms)
         _evaluate_undeclared_walkers(alarms)
         rule_counts = {}
         for a in alarms:
