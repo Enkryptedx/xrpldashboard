@@ -45,9 +45,11 @@ Every monitor — existing and new — must answer these three questions. New mo
 | Cross-check pairs (cross_check_walker) | 6 | CC-1…CC-6 |
 | Walker health mechanism | 1 (24 instrumented walkers) | walker_health table + /walker-health + /healthz |
 | Stream heartbeat | 1 | xrpl_stream → worker_heartbeat |
-| External uptime | **0** | BetterStack listed as subprocessor; NOT integrated |
+| External uptime | **1** | BetterStack → /api/heartbeat-age (real account, real monitor, 6 incidents since Jul 14) |
 
-**Notable absences:** claims_check.sh is push-discipline, not a running monitor. BetterStack is named in GDPR disclosures but has no code integration.
+**Notable absences:** claims_check.sh is push-discipline, not a running monitor. BetterStack heartbeat monitors for supervision_walker/pg_backup_canary/pg_restore_test pending (Charlie creates in dashboard, wiring commit follows).
+
+**Amendment 2026-07-29:** Initial census called BetterStack "phantom / not integrated." WRONG — integration is inbound (BetterStack polls purpose-built endpoint), not outbound (no API keys in code). Census method missed this shape. Account real, monitor real, catching real outages.
 
 ---
 
@@ -72,7 +74,7 @@ Every monitor — existing and new — must answer these three questions. New mo
 | M-07 | walker_health mechanism | ~24 instrumented walkers' freshness | age vs 2×cadence (yellow) / 4×cadence (red) | /walker-health UI + /healthz overall | Read on every /health request | If PG down: all reads fail together; /healthz may 503 |
 | M-08 | xrpl_stream heartbeat | XRPL ledger stream alive (Mac→Render) | pg_hb_age < 900s (remote) or log < 600s (local) | worker_heartbeat → /healthz stream_alive | Every 5 min write; continuous | /healthz degrades to 503 after 900s — IF something polls /healthz |
 | M-09 | claims_check.sh | CLAIMS.yaml entries resolve | exit 0 / non-zero on missing target | Stdout only (manual) | Manual pre-push only | Never runs; silent |
-| M-10 | BetterStack | (intended: /healthz polling) | **NOT INTEGRATED** | N/A | N/A | **No external uptime monitor exists** |
+| M-10 | BetterStack → /api/heartbeat-age | xrpl_stream heartbeat freshness + PG reachability | 200 if hb_age < 600s AND PG reachable; 503 on any failure | BetterStack incidents dashboard → email/phone alert | 3 min checks (free tier) | BetterStack platform outage — no code fallback |
 
 ---
 
