@@ -1255,17 +1255,20 @@ pages:
           site instability and back off future reads.
 
       - id: llms_txt_freshness_stamp
-        label: "'Last verified 2026-07-29' line reflects the true last-verified date of the agent-tier surface set."
+        label: "'Last verified <date>' line reflects LAST_VERIFIED_AGENT_TIER_METHODOLOGY, the single source of truth for the agent-tier discovery layer."
         data_paths:
-          - "app.py:_LLMS_TXT (freshness line — hard-coded pending Day 1 commit D)"
+          - "app.py:LAST_VERIFIED_AGENT_TIER_METHODOLOGY (single source)"
+          - "app.py:_LLMS_TXT (interpolates the constant via f-string)"
+          - "app.py:_AGENTS_JSON.last_verified (reads the constant)"
+          - "templates/methodology.html §For AI agents (reads via inject_agent_tier_freshness context_processor)"
         behavior: MANUAL_CURATION
         layer3_source: self-attested-only
         risk_note: >
-          Transitional hard-code. Day 1 commit D lands
-          LAST_VERIFIED_AGENT_TIER_METHODOLOGY as the single source of
-          truth across llms.txt, agents.json, and the /methodology
-          "For AI agents" section. Until then, this line is bumped
-          manually alongside any agent-tier surface change.
+          Three surfaces read from one constant. Bump
+          LAST_VERIFIED_AGENT_TIER_METHODOLOGY on every agent-tier
+          surface change, all three refresh. Any surface reading a
+          different date than the other two = defect in this wiring;
+          fix by re-pointing the drifted surface at the constant.
 
       - id: llms_txt_no_metric_claims
         label: "/llms.txt does not itself claim any numeric fact — it is a directory only."

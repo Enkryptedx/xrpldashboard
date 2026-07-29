@@ -233,6 +233,15 @@ LAST_VERIFIED_REGULATION = "2026-07-25"
 # before recess ends — the guard is defense-in-depth, not the plan.
 REGULATION_BANNER_EXPIRES = "2026-09-14"
 
+# Single source of truth for the agent-tier discovery layer freshness
+# stamp. Read by three surfaces that must move together: _LLMS_TXT
+# (served at /llms.txt), _AGENTS_JSON (served at /.well-known/agents.json),
+# and templates/methodology.html §"For AI agents". Bump on every
+# agent-tier surface change; three surfaces refresh from one edit.
+# Codified in CLAIMS.yaml (agents_json_status_booleans,
+# methodology_for_ai_agents_envelope_matches_agents_json siblings).
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-07-29"
+
 
 @app.context_processor
 def inject_regulation_freshness():
@@ -248,6 +257,18 @@ def inject_regulation_freshness():
     return {
         "regulation_last_verified": LAST_VERIFIED_REGULATION,
         "regulation_banner_live": banner_live,
+    }
+
+
+@app.context_processor
+def inject_agent_tier_freshness():
+    """Expose LAST_VERIFIED_AGENT_TIER_METHODOLOGY to every template
+    so the /methodology "For AI agents" section reads the same date
+    that llms.txt and agents.json read. Single source of truth per
+    the Day 1 commit-D constraint — bump the constant, three surfaces
+    refresh from one edit."""
+    return {
+        "agent_tier_methodology_last_verified": LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
     }
 
 
@@ -5687,11 +5708,10 @@ def security_txt():
 # the llmstxt.org convention (markdown, root-served). Title-is-contract
 # with extra teeth: every URL listed here is a promise the file is
 # executed literally by a machine reader. If a route is renamed or
-# removed, this string moves in the same commit. Freshness date is a
-# manual hard-code today; the LAST_VERIFIED_AGENT_TIER_METHODOLOGY
-# constant (Day 1 sequence commit D) will replace it as the single
-# source of truth across llms.txt, agents.json, and the /methodology
-# "For AI agents" section.
+# removed, this string moves in the same commit. Freshness stamp is
+# interpolated from LAST_VERIFIED_AGENT_TIER_METHODOLOGY — one constant
+# feeds three surfaces (llms.txt, agents.json, /methodology "For AI
+# agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
 > Public read-only data for the XRP Ledger, computed directly from XRPL and Ethereum nodes. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
@@ -5727,7 +5747,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 
 ## For agent authors
 - Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
-- Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, /methodology#for-ai-agents): last verified 2026-07-29. Bumped whenever the agent-tier surface changes.
+- Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
 - MCP server + read-only API: under construction (see docs/AGENT_TIER_DESIGN.md in the repo). No payment rails; free for identified agents at reasonable volume when live.
 - Every future API response will carry a receipts block: `{{source, as_of, methodology_url, claims_ref?, snapshot_signature?}}` — verify locally against the signed snapshot chain rather than trusting the score.
 """
@@ -5761,7 +5781,7 @@ _AGENTS_JSON = {
     "contact": "contact@xrpldashboard.com",
     "source_code": "https://github.com/Enkryptedx/xrpldashboard",
     "license": "MIT (source); data derived from public XRPL and Ethereum ledgers",
-    "last_verified": "2026-07-29",
+    "last_verified": LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
     "policies": {
         "auth": "none",
         "cost": "free at v1 (no accounts, no API keys, no payment rails)",
@@ -5805,7 +5825,7 @@ _AGENTS_JSON = {
     "openapi": None,
     "flows": [],
     "status": {
-        "phase": "Day 1 of Agent Tier build (2026-07-29)",
+        "phase": f"Day 1 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
         "discovery_layer_ready": True,
         "mcp_ready": False,
         "openapi_ready": False,
