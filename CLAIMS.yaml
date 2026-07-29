@@ -1339,6 +1339,64 @@ pages:
           Same class as llms_txt_link_resolvability. If any trust
           surface moves, the URL here moves in the same commit.
 
+  # /methodology page already catalogued elsewhere (Phase 4 backlog).
+  # The Day 1 "For AI agents" section adds its own claim block here.
+  /methodology#for-ai-agents:
+    route: "app.py:3135 methodology() -> templates/methodology.html §For AI agents"
+    claims:
+
+      - id: methodology_for_ai_agents_envelope_matches_agents_json
+        label: "Receipts envelope shown in /methodology#for-ai-agents matches _AGENTS_JSON.receipts_envelope.shape byte-for-byte-equivalent."
+        data_paths:
+          - "templates/methodology.html §For AI agents (envelope <pre> block)"
+          - "app.py:_AGENTS_JSON.receipts_envelope"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Two surfaces publishing the SAME contract. If one is edited
+          without the other, agents that check both will detect the
+          mismatch and lose trust. Any envelope change moves in ONE
+          commit touching both files.
+
+      - id: methodology_for_ai_agents_rate_limits_match_agents_json
+        label: "Rate-limit numbers in /methodology#for-ai-agents match _AGENTS_JSON.rate_limits."
+        data_paths:
+          - "templates/methodology.html §For AI agents (rate-limits <ul>)"
+          - "app.py:_AGENTS_JSON.rate_limits"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Sibling to methodology_for_ai_agents_envelope_matches_agents_json.
+          Any rate-limit copy edit moves both surfaces in one commit,
+          and pairs with the flask-limiter enforcement change
+          (agents_json_rate_limits_match_enforcement).
+
+      - id: methodology_for_ai_agents_discovery_links_resolve
+        label: "All discovery-surface links in /methodology#for-ai-agents (llms.txt, agents.json, snapshot chain/pubkey, security.txt, design-doc GitHub URL) resolve 200."
+        data_paths:
+          - "templates/methodology.html §For AI agents (Discovery surfaces + Signed-snapshot verification blocks)"
+          - "app.py routes: /llms.txt, /.well-known/agents.json, /.well-known/snapshots/chain.json, /.well-known/snapshots/pubkey.pem, /.well-known/security.txt"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Same load-bearing-links class as llms_txt_link_resolvability
+          and agents_json_trust_surface_urls_live. Third surface in
+          the discovery layer promising URL resolution.
+
+      - id: methodology_for_ai_agents_free_v1_promise
+        label: "'Free at v1' framing accurately describes the current state (no accounts, no keys, no payment rails)."
+        data_paths:
+          - "templates/methodology.html §For AI agents (Why this is free block)"
+          - "docs/AGENT_TIER_DESIGN.md (scope contract)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy-class claim on the paid-tier gate. If the paid-tier
+          decision fires (attorney answer + demand telemetry both
+          clear), this copy must move to reflect the paid surface
+          BEFORE any endpoint starts charging. Sibling of the
+          whale-title / escrow-copy founding cases.
+
   # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────

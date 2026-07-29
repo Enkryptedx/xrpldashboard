@@ -533,6 +533,74 @@
     <li><strong>{{ _('Monitoring:') }}</strong> {{ _('An external uptime service checks the worker heartbeat every 3 minutes; staleness over 10 minutes pages the maintainer.') }}</li>
   </ul>
 
+  <h2 id="for-ai-agents">{{ _('For AI agents') }}</h2>
+  <p>
+    {{ _('This site is a public read-only source of XRP Ledger and cross-chain data. Automated retrieval, citation, and machine reading are welcome — anticipated, even. This section is the transparent contract for anything reading this page programmatically.') }}
+  </p>
+
+  <h3>{{ _('Discovery surfaces') }}</h3>
+  <ul>
+    <li><a href="/llms.txt"><code>/llms.txt</code></a> — {{ _('markdown site directory (llmstxt.org convention). Every URL listed resolves to a live public page.') }}</li>
+    <li><a href="/.well-known/agents.json"><code>/.well-known/agents.json</code></a> — {{ _('agent-discovery manifest (Wildcard-AI flavor). Contains site identity, rate limits, trust surfaces, and the proof-annotation envelope agents should expect.') }}</li>
+    <li><a href="/.well-known/security.txt"><code>/.well-known/security.txt</code></a> — {{ _('security disclosure contact.') }}</li>
+  </ul>
+
+  <h3>{{ _('Proof-annotation contract') }}</h3>
+  <p>
+    {{ _('Every JSON payload from the (soon-to-ship) MCP server and read-only API will carry a receipts block. Agents can verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
+    <code>CLAIMS.yaml</code> — {{ _('without a support ticket. Envelope shape:') }}
+  </p>
+  <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; color: var(--text); font-size: 0.85rem;"><code>{
+  "source":              "local_rippled | neon_postgres | ethereum_1rpc | ...",
+  "as_of":               "2026-07-29T15:42:00Z",
+  "methodology_url":     "https://xrpldashboard.com/methodology#...",
+  "claims_ref":          "rlusd_xrpl_supply",            // where a CLAIMS.yaml entry exists
+  "snapshot_signature":  "ed25519:...@chain#N"           // where the datum is snapshot-derived
+}</code></pre>
+  <p>
+    {{ _('MCP surfaces, the read-only OpenAPI spec, and per-tool freshness contracts land later this week under the Agent Tier build') }}
+    (<a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a>).
+    {{ _('Discovery layer — this section, plus') }} <code>llms.txt</code> {{ _('and') }} <code>agents.json</code> — {{ _('is Day 1.') }}
+  </p>
+
+  <h3>{{ _('Signed-snapshot verification') }}</h3>
+  <p>
+    {{ _('A tamper-evident chain of daily Ed25519-signed database snapshots is served under') }}
+    <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>. {{ _('The public key is pinned at') }}
+    <a href="/.well-known/snapshots/pubkey.pem"><code>/.well-known/snapshots/pubkey.pem</code></a>. {{ _('Agents that need audit-grade evidence can verify any snapshot payload cryptographically against this key without trusting the server or the network path in between. See') }} <a href="#signed-snapshots">{{ _('Signed integrity snapshots') }}</a> {{ _('above for details.') }}
+  </p>
+
+  <h3>{{ _('Rate limits') }}</h3>
+  <p>
+    {{ _('Free for humans and identified agents at reasonable volume. Transparent, no silent throttling. Declared shape:') }}
+  </p>
+  <ul>
+    <li><strong>{{ _('Anonymous:') }}</strong> {{ _('60 requests per minute per IP.') }}</li>
+    <li><strong>{{ _('Identified AI crawlers') }}</strong> ({{ _('by user agent — GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and others on Cloudflare\'s verified-bot list') }}): {{ _('300 requests per minute.') }}</li>
+    <li><strong>{{ _('MCP session') }}</strong> ({{ _('long-lived tool connection') }}): {{ _('600 tool calls per hour per session.') }}</li>
+    <li><strong>{{ _('Signed-snapshot verification:') }}</strong> {{ _('unlimited — stateless and cryptographic-only.') }}</li>
+    <li><strong>{{ _('Backoff:') }}</strong> {{ _('HTTP 429 with a') }} <code>Retry-After</code> {{ _('header.') }}</li>
+  </ul>
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    {{ _('Rate-limit enforcement wiring lands with the MCP + API surfaces later this week. The numbers here match') }} <code>/.well-known/agents.json</code> {{ _('and will match what the server actually enforces on ship.') }}
+  </p>
+
+  <h3>{{ _('Retention and privacy') }}</h3>
+  <p>
+    {{ _('We do not retain agent queries. Aggregate demand telemetry (tool-call counts per tool per day, unique anonymous client fingerprints, MCP-server session durations) is kept to inform which surfaces to prioritise. No query bodies, no client identifiers beyond what an anonymous fingerprint provides.') }}
+  </p>
+
+  <h3>{{ _('Why this is free') }}</h3>
+  <p>
+    {{ _('The Agent Tier ships free at v1 by construction — no accounts, no API keys, no payment rails. A paid tier is only a decision on the table after (1) US legal guidance on receiving crypto micropayments as a solo LLC clears, and (2) 60-90 days of observed demand justify the metering. Until then, everything here stays free, and the') }} <em>{{ _('four-zeros posture') }}</em> ({{ _('nothing here receives crypto, holds fiat, or touches user funds') }}) {{ _('is preserved by architecture, not by promise. See the') }}
+    <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('Agent Tier design doc') }}</a>
+    {{ _('for the full scope contract.') }}
+  </p>
+
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    {{ _('Freshness contract for this section and the agent-tier surfaces') }} (<code>llms.txt</code>, <code>agents.json</code>): {{ _('last verified 2026-07-29. Bumped whenever the agent-tier surface changes.') }}
+  </p>
+
   <h2>{{ _('Versioning this page') }}</h2>
   <p>
     {{ _('This methodology page is part of the same git repository as the code. Any time the site\'s caching behavior, data sources, or methodology changes, the corresponding edit lands in this file in the same commit. The commit history of') }} <code>templates/methodology.html</code>
