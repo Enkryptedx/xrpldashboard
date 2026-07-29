@@ -1,0 +1,2447 @@
+{
+  "probe_time": "2026-07-12T09:11:59.353622+00:00",
+  "source_census": "census_escrow_phase1c_2026-07-11.json",
+  "sample_accounts_probed": 16,
+  "token_escrows_discovered": 182,
+  "subtype_split": {
+    "IOU": 169,
+    "MPT": 13
+  },
+  "creation_month_histogram": {
+    "2026-02": 16,
+    "2026-03": 74,
+    "2026-04": 2,
+    "2026-05": 57,
+    "2026-06": 33
+  },
+  "per_account": {
+    "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd": {
+      "total_escrows": 17,
+      "token_escrows": 17
+    },
+    "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd": {
+      "total_escrows": 11,
+      "token_escrows": 11
+    },
+    "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg": {
+      "total_escrows": 12,
+      "token_escrows": 12
+    },
+    "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn": {
+      "total_escrows": 11,
+      "token_escrows": 11
+    },
+    "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE": {
+      "total_escrows": 12,
+      "token_escrows": 12
+    },
+    "rBLEfKHDDPaZhTAgjsLj7McioyWnYQ34Rm": {
+      "total_escrows": 2,
+      "token_escrows": 2
+    },
+    "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J": {
+      "total_escrows": 7,
+      "token_escrows": 7
+    },
+    "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ": {
+      "total_escrows": 11,
+      "token_escrows": 11
+    },
+    "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG": {
+      "total_escrows": 13,
+      "token_escrows": 13
+    },
+    "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn": {
+      "total_escrows": 18,
+      "token_escrows": 17
+    },
+    "rHzP9jF5zK9ivsJeDzMKf6FDKkoqHjFyBd": {
+      "total_escrows": 2,
+      "token_escrows": 2
+    },
+    "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7": {
+      "total_escrows": 16,
+      "token_escrows": 16
+    },
+    "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq": {
+      "total_escrows": 33,
+      "token_escrows": 33
+    },
+    "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm": {
+      "total_escrows": 15,
+      "token_escrows": 15
+    },
+    "rU111r3gEs9LJ99MkeP4Q8JmePhuscjTY": {
+      "total_escrows": 1,
+      "token_escrows": 1
+    },
+    "rs6N6aG2V2Tidbdf2982amLNKc6yTV5JP8": {
+      "total_escrows": 2,
+      "token_escrows": 2
+    }
+  },
+  "objects": [
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928498,
+      "prev_txn_id": "DEA8DCEE3537DEB5E851093987F150C6131EA427468578B0113EBA4AC6CF525D",
+      "created_at": "2026-03-17T09:52:01+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928549,
+      "prev_txn_id": "986C27ED091DB90186FFEA43D88207BB0D8E1B26E6710F54441F3C94EF7A1087",
+      "created_at": "2026-03-17T09:55:20+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928102,
+      "prev_txn_id": "C9F9E1FA17ABFB6F50E9013FAC0BFEFDCA7A04920EE22B69C476CD73C2F71C6F",
+      "created_at": "2026-03-17T09:26:21+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928091,
+      "prev_txn_id": "B9976158C5D7A4E73370D91AF7B63E176F84EF4E9A24CDFC1F2816FE22284997",
+      "created_at": "2026-03-17T09:25:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928537,
+      "prev_txn_id": "D836112E4D18FB810DD5E458A5BCB1AB3608D4828CD3A30C4BCEB38BFB6D3FBB",
+      "created_at": "2026-03-17T09:54:31+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928655,
+      "prev_txn_id": "A7F8DB652F7BA8ADAAAD24BF949A58907940C9B0C507199A7DEAF7622A3D5015",
+      "created_at": "2026-03-17T10:02:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928484,
+      "prev_txn_id": "2F0C538D38A09E94CFD85811C7EAF2A9CE1E5EF5B383A95A429BE30E71B114A4",
+      "created_at": "2026-03-17T09:51:02+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928513,
+      "prev_txn_id": "1E8762AC094C578156DDB030A1245A6DAF70BB7F73B672A2A60CB4ED0E43B6F6",
+      "created_at": "2026-03-17T09:53:00+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928607,
+      "prev_txn_id": "8E74823188B072E6AFDF9A741064373A49233562BE177A1CC0083EF27A75B57C",
+      "created_at": "2026-03-17T09:59:02+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928525,
+      "prev_txn_id": "74E2D7D8ECC05589082E5BE52812F6B78CC74BC2B680A6F94D05A8CDF5D8F55D",
+      "created_at": "2026-03-17T09:53:42+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928666,
+      "prev_txn_id": "89AF74F25E7A3DB95FBE6874947C6EB8A30E75755D194AC6850A628FACC9DA22",
+      "created_at": "2026-03-17T10:02:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928040,
+      "prev_txn_id": "8877723769AE5F2A424C5C145E367F4BC98F146D7CF9C1650D9F4F68A99F7E06",
+      "created_at": "2026-03-17T09:22:21+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928593,
+      "prev_txn_id": "FE11C01D707FF9010EE679B8E420D0231D34935A0611FC4C785AC93A0A9C3693",
+      "created_at": "2026-03-17T09:58:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928471,
+      "prev_txn_id": "D8ACEC68E99CA5D5E57979B363EA32AE2CF20E8AA5F919BB4CFDE3A00C1ED252",
+      "created_at": "2026-03-17T09:50:12+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928620,
+      "prev_txn_id": "13BD5307129006902BC9390572672C9A29FA44BDE776AD04CCD6A164B803C6EA",
+      "created_at": "2026-03-17T09:59:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928577,
+      "prev_txn_id": "2371230FCE0415094F0465561CCD0B587CC88B9A145E6B182968FEEA87267959",
+      "created_at": "2026-03-17T09:57:10+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "prev_txn_lgr_seq": 102928563,
+      "prev_txn_id": "956DDA4A7BD64BA9A9C9CB0F3AFDF12C02BC79A9CD68F768E2DCC9B630BA031F",
+      "created_at": "2026-03-17T09:56:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466879,
+      "prev_txn_id": "FC23C2FB28E73B16E530CC8FBE1F08D000887BB6C3BFD4C6E9D030E997B47C24",
+      "created_at": "2026-05-25T08:38:40+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45837000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466919,
+      "prev_txn_id": "B35EB1670706280BCA9D389A0C5DA0026FD93ADF361A8E2997E01074AB5471A8",
+      "created_at": "2026-05-25T08:41:11+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466737,
+      "prev_txn_id": "CF45564B63AA71A9185FC095B98E069D9C1D598A3DE4EB015DFE1DC2868F6AFB",
+      "created_at": "2026-05-25T08:29:30+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466778,
+      "prev_txn_id": "EB599EBDAE2CB78C5FC9E168CB2965A84E223DD1C514C79778F265FC4DE199E5",
+      "created_at": "2026-05-25T08:32:02+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466899,
+      "prev_txn_id": "333D80FDA87E9E52C43839BB355BB767EACB1B8833B43448CD03A6228C0C939F",
+      "created_at": "2026-05-25T08:39:51+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466798,
+      "prev_txn_id": "E391CA84E503D26BC1DE88A8DC9A4979F368F655E18A367788E59859ED93CA2F",
+      "created_at": "2026-05-25T08:33:21+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466859,
+      "prev_txn_id": "05FBB398251E77FF9FAC6BF57F9432F0914C0A89D5A72648893224FD4F00F2B9",
+      "created_at": "2026-05-25T08:37:20+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466839,
+      "prev_txn_id": "920DA3E952A70B8D616C7D7C9D3F7CF062D84A7560C11582B85F71CFD5348C55",
+      "created_at": "2026-05-25T08:36:01+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466757,
+      "prev_txn_id": "17A63F9A52C0AFE9512E474DC7A80A89B821E2CE72B17EC36F85D04C34617BD4",
+      "created_at": "2026-05-25T08:30:42+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466717,
+      "prev_txn_id": "7CDD71A4FA0DFDD5393670C789988AF7B0D2A8086BB151C134DCD4A1D0F9DC54",
+      "created_at": "2026-05-25T08:28:10+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466818,
+      "prev_txn_id": "EF626098DC71F15F506A15B04AFA169B8CDD644ED0ABFCC4874B0FE7D638765D",
+      "created_at": "2026-05-25T08:34:41+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45837000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466929,
+      "prev_txn_id": "068B59F7C21D0730F1C8C77DA22A877E77696EEC048DE459D305744F41A84EB6",
+      "created_at": "2026-05-25T08:41:50+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466829,
+      "prev_txn_id": "622A6275E5F56DB55B8950A96218C30B65B9E1E461E8B3D8663864424D6C8B18",
+      "created_at": "2026-05-25T08:35:21+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466889,
+      "prev_txn_id": "5312A99E8AC12A13260C4A0138FF4690403D272462451641EA833D7ACA0E010F",
+      "created_at": "2026-05-25T08:39:12+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466747,
+      "prev_txn_id": "37D0254C435948041B363EA3C8B74D1E2B427CD76B4EB217A3624114BA1B0682",
+      "created_at": "2026-05-25T08:30:02+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466767,
+      "prev_txn_id": "6B23DB5228E7AE4288D5769437DBAB28FD5AC0B5FCEFBF0A924A303A9E09D449",
+      "created_at": "2026-05-25T08:31:21+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466707,
+      "prev_txn_id": "361CB2F5C23085EBAD0BB77E5887245ED6AEED861884558DAF9B84B7A21D9EA3",
+      "created_at": "2026-05-25T08:27:31+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466869,
+      "prev_txn_id": "2593CB8852BB868FC031909240C6B1E3ADAAEECE41513E39856A7773DD5FAC29",
+      "created_at": "2026-05-25T08:38:00+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466727,
+      "prev_txn_id": "8816CCA42672348AB9E4E2728E593EAF14EBFD4F9874AF67CE22F5C4F5651AEF",
+      "created_at": "2026-05-25T08:28:50+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466849,
+      "prev_txn_id": "30EF416715F457DF2F6A40A5E20353841EF1EDA13D89D296D05AD01A73242306",
+      "created_at": "2026-05-25T08:36:41+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466788,
+      "prev_txn_id": "0C9DE186382D5835E5AEDAA15AC736C34911A78F423AD2930651EA135EC8C5B6",
+      "created_at": "2026-05-25T08:32:42+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466808,
+      "prev_txn_id": "2DFC39486C8FA0D9A0B063BBB7387B3E7F8F697D15BDBA18DF4AF12EF1CD94C7",
+      "created_at": "2026-05-25T08:34:01+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466909,
+      "prev_txn_id": "D2F02DBEE64663AA28AE978945809B80E1419EF258D44BE4A70783B68919EFE1",
+      "created_at": "2026-05-25T08:40:31+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466774,
+      "prev_txn_id": "761854D0789ACDF622F85F35B51D973715054EB97CBFE8831DDC56F8D5C9003F",
+      "created_at": "2026-05-25T08:31:51+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466713,
+      "prev_txn_id": "B3E1D0B8BFCEBD91D84A1B1FDA0AF3167780A08825E085FDF1CC7460F90E6C23",
+      "created_at": "2026-05-25T08:27:52+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466895,
+      "prev_txn_id": "679CEC29276284C1D8DE5AC40765FB2BF333FE95BEFE671020BBFB7BE259FD07",
+      "created_at": "2026-05-25T08:39:40+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45837000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466915,
+      "prev_txn_id": "E183D8BF6C1E729E7B2A6CB36CFB7164C118EC1FF53393F1389364E9ADB952F4",
+      "created_at": "2026-05-25T08:40:52+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466835,
+      "prev_txn_id": "4A768B142747BC3AB24C52CA8C0041DCD4C8FAB0608259E390AD066CB15F22A1",
+      "created_at": "2026-05-25T08:35:50+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466753,
+      "prev_txn_id": "C0A312D3E21807242C99712744D1A4FB4E25E147AE3B73A80BEAF8ADF028FB7B",
+      "created_at": "2026-05-25T08:30:30+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466794,
+      "prev_txn_id": "8B5A1FC00C8BC5D9EFF95547976F9D4E3A6F8EF63E2719F820B5AAABA6C405AA",
+      "created_at": "2026-05-25T08:33:10+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466733,
+      "prev_txn_id": "99FC135A1B91A1A980C1FCD7014E435DA6529033BA731788C25301A817B4ABF5",
+      "created_at": "2026-05-25T08:29:11+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466814,
+      "prev_txn_id": "9E4D6683569C442ACE48DB0BEBB9B89E5225D742B45F1B585DEFE7AB682A6D8F",
+      "created_at": "2026-05-25T08:34:22+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466875,
+      "prev_txn_id": "57D8E1199A9C604F87502AADFDA1CC43A10AC8E048260F0CCDF104AFCAC20C42",
+      "created_at": "2026-05-25T08:38:21+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466855,
+      "prev_txn_id": "5C301838D0111C95D59300E7E66A55E9793203428C21879C43097D8AC1D4A473",
+      "created_at": "2026-05-25T08:37:01+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466865,
+      "prev_txn_id": "675A547BF43F0163D260900AB66C7E278030754806086F0FE544F01C7EC91CEF",
+      "created_at": "2026-05-25T08:37:41+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466804,
+      "prev_txn_id": "E04F04D3BEEE1ED357B2C498142B7B3950D2BB93978D83616234476F48798082",
+      "created_at": "2026-05-25T08:33:50+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466763,
+      "prev_txn_id": "236EDD8279144E9D4EE0E06D20B7501E114AD96A6F0FAF49C08C8F6F2F97F633",
+      "created_at": "2026-05-25T08:31:10+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45838449"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466925,
+      "prev_txn_id": "8AD2C602FC3A46B9FDC991BB682E9988310A7F712C64C4B422C5C4485C4D4215",
+      "created_at": "2026-05-25T08:41:31+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466703,
+      "prev_txn_id": "382F51D271116E4228B47AEB0165B262A91C5C17FB26020A0D9420C5FD167254",
+      "created_at": "2026-05-25T08:27:12+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466845,
+      "prev_txn_id": "50A292334367B2A231565F424396B422B84B41D9FD922361BC970689BEAB2653",
+      "created_at": "2026-05-25T08:36:22+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466723,
+      "prev_txn_id": "3A22A4F0E99B8180AAF2A9D0B2E6FE7C701DB3027D277CF93F5E42B2009763F7",
+      "created_at": "2026-05-25T08:28:31+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466825,
+      "prev_txn_id": "8BC1998625EFE8541A075BA64356EF326EBCA15874323719E3D24EAC449F8BF0",
+      "created_at": "2026-05-25T08:35:10+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466784,
+      "prev_txn_id": "CEA2C0D2B99C9466C864AE578874C30C389DF254803CA50E06B6C085A52099ED",
+      "created_at": "2026-05-25T08:32:30+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466743,
+      "prev_txn_id": "700DCE7204EBBB8920610FAEBA6D74482ACD832FA71CA114B4B7AFDC6B7D0BDA",
+      "created_at": "2026-05-25T08:29:51+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466885,
+      "prev_txn_id": "4DD94A85FE7460635F87508F968D5986CA0307871AC69C3313C1A91BCE226319",
+      "created_at": "2026-05-25T08:39:00+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466905,
+      "prev_txn_id": "A66AAC501C8185781FF7CB9DD9E1247429111947A77486329F5D2859C9771F48",
+      "created_at": "2026-05-25T08:40:20+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rBLEfKHDDPaZhTAgjsLj7McioyWnYQ34Rm",
+      "amount": {
+        "currency": "4257440000000000000000000000000000000000",
+        "issuer": "rQEq6zdCGUDjtiiKmZQYXRhgGXVaX2JjkM",
+        "value": "7500000"
+      },
+      "destination": "rQD24hCbJ6FaAbSEFancHd8ppCMWy2XE4L",
+      "prev_txn_lgr_seq": 104837006,
+      "prev_txn_id": "89FFA6B66E86D45AAE0CDA34EFE82B3F30BF77A88804E4F020FC5D5D141C9E27",
+      "created_at": "2026-06-10T21:55:30+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rBLEfKHDDPaZhTAgjsLj7McioyWnYQ34Rm",
+      "amount": {
+        "currency": "4257440000000000000000000000000000000000",
+        "issuer": "rQEq6zdCGUDjtiiKmZQYXRhgGXVaX2JjkM",
+        "value": "22500000"
+      },
+      "destination": "rQD24hCbJ6FaAbSEFancHd8ppCMWy2XE4L",
+      "prev_txn_lgr_seq": 104837008,
+      "prev_txn_id": "B3C9D28F54AF65C88665C9958F80167A40C8BEFE713080F927A3F80993426436",
+      "created_at": "2026-06-10T21:55:32+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "3000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102896884,
+      "prev_txn_id": "3947ECEE8961438D7FF0733C81AFFD69FD88F4EAE96FA1CD9CB9AEE53BBDFAFA",
+      "created_at": "2026-03-15T23:45:21+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102896856,
+      "prev_txn_id": "F04D4034204BF3BF63501BE1F771A2EF7C0DFFFDACF6CBDDC1B66AC026D3CF4D",
+      "created_at": "2026-03-15T23:43:31+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102981795,
+      "prev_txn_id": "258A3AE036B557E4E448D05D6C60E1A5E831192E99D625FD6BF706DC956D0D01",
+      "created_at": "2026-03-19T19:24:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "3000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102896896,
+      "prev_txn_id": "649A9D1E2B727451D70BEC7772B4C7A215A0E893707520798A9DABD87AAD9CB0",
+      "created_at": "2026-03-15T23:46:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102981953,
+      "prev_txn_id": "4477C5204CA153A6D078207A962B42DF27FE5BDA2A42078887626A53CA2F3D59",
+      "created_at": "2026-03-19T19:34:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102896845,
+      "prev_txn_id": "58627AC35D67F6AFE2B2D738785E83518508E073EB5354DE0EFE7B652A14D2F4",
+      "created_at": "2026-03-15T23:42:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "3000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "prev_txn_lgr_seq": 102896867,
+      "prev_txn_id": "BFD856C281E4D54074607D968952A685B70E4306E7AA959D7D853FDFD5106192",
+      "created_at": "2026-03-15T23:44:20+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466857,
+      "prev_txn_id": "ED05347859097715AC8DAD6742058B0B4DFBCD39ED336086E406D8A3C3BAD1A3",
+      "created_at": "2026-05-25T08:37:11+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466897,
+      "prev_txn_id": "04B6CA01F60C382530ABF2C35018E4B9339F40A86C00AB87661122DC3E32CBA1",
+      "created_at": "2026-05-25T08:39:42+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466816,
+      "prev_txn_id": "D8DF62F29E0BA1BF9B7A6095CF256169D4B0AE68419C56AFD0146B44F8628EA9",
+      "created_at": "2026-05-25T08:34:31+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466715,
+      "prev_txn_id": "DE93C1B84B7BDEABF80FD40445EEA3E224E983D14387A2BDCD83D1FB0C1722CA",
+      "created_at": "2026-05-25T08:28:01+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466755,
+      "prev_txn_id": "F8DD3D5F19806C4934FBFE6409AA72309B6830F2115884273BF0824C1EC19FCF",
+      "created_at": "2026-05-25T08:30:40+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466796,
+      "prev_txn_id": "76339D9A9AD2F4F42D71ED756937EE7002DC11C88B61038BAA661C09182C5AC1",
+      "created_at": "2026-05-25T08:33:12+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466776,
+      "prev_txn_id": "D914ADB358378E508D841CB42E66C7DE257D2F183149096A0F84651175C89015",
+      "created_at": "2026-05-25T08:32:00+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45837000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466917,
+      "prev_txn_id": "4E1D87B1E266134507150A1BFAE2907B8FB271D0A419D7ED4077343F3633ACD3",
+      "created_at": "2026-05-25T08:41:01+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF",
+      "prev_txn_lgr_seq": 104466837,
+      "prev_txn_id": "EC25CC8BC04243659C989368FE7CBEF792CAD7CDB42CCE188B29677382739808",
+      "created_at": "2026-05-25T08:35:52+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t",
+      "prev_txn_lgr_seq": 104466877,
+      "prev_txn_id": "18DCA5B0C810662BECEC286A03A22AEAC1AFCA2F5CEB82BCA2ABA44E71EE813F",
+      "created_at": "2026-05-25T08:38:30+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC",
+      "prev_txn_lgr_seq": 104466735,
+      "prev_txn_id": "8BDA789F56B1BAA55EA2D0508BB67245E6946A41D1CEAF94888281B6890F0828",
+      "created_at": "2026-05-25T08:29:20+00:00",
+      "created_month": "2026-05"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105026248,
+      "prev_txn_id": "B74F85F2836A1CD97AF749028EBD9FC994B0DD14783B5F661DA4D0141F064163",
+      "created_at": "2026-06-19T07:48:31+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105018420,
+      "prev_txn_id": "A7099F1B49408A81CECA290CF9B8FC1803CAD45C31870E02DEC863CBE282BA69",
+      "created_at": "2026-06-18T23:26:50+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "55000000000"
+      },
+      "destination": "rGjUxQ8nzAmggicEw5Z1cRFPbRgf99spae",
+      "prev_txn_lgr_seq": 105026272,
+      "prev_txn_id": "C4AE2FD8DEFAB38148277DFF69BF60E6CE44A5CBBA0BB5DD4B1E7A619B10FD52",
+      "created_at": "2026-06-19T07:50:02+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105018422,
+      "prev_txn_id": "D64C1B9A33F726742C6FEFE31610047F9ADF90086EE793DFF4249B0BF46ECA6A",
+      "created_at": "2026-06-18T23:27:00+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105026246,
+      "prev_txn_id": "DC918C252935BA3354B098EC96415EB3CDC4739A18B9F9F62103C2AB1CADBE10",
+      "created_at": "2026-06-19T07:48:21+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105026250,
+      "prev_txn_id": "F0DA8DE71F1346A98506EFAC0EFAA041DCEDEA2D832952671B5BB8F582E52C35",
+      "created_at": "2026-06-19T07:48:40+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105018379,
+      "prev_txn_id": "5243F0A8ACF86B41A36BDDEF2DFD747F53CE4925DA8C90B1E3383744C880D929",
+      "created_at": "2026-06-18T23:24:11+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "55000000000"
+      },
+      "destination": "rGjUxQ8nzAmggicEw5Z1cRFPbRgf99spae",
+      "prev_txn_lgr_seq": 105026275,
+      "prev_txn_id": "7470F063B49436CEEF59C06C505F2BCFBAED2B659245E5043E5B11AA5BF85CED",
+      "created_at": "2026-06-19T07:50:12+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "55000000000"
+      },
+      "destination": "rGjUxQ8nzAmggicEw5Z1cRFPbRgf99spae",
+      "prev_txn_lgr_seq": 105026273,
+      "prev_txn_id": "CBB18A570DC982C94E1F43060B582D2C855BA942DDACD109BD652BE870B72E08",
+      "created_at": "2026-06-19T07:50:10+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105018419,
+      "prev_txn_id": "5623C7868FA56713BA6D1A8EC7059BBFB09F79D02DA38E5D9D3C93B6C04050EC",
+      "created_at": "2026-06-18T23:26:42+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178BEA40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105018424,
+      "prev_txn_id": "590350DE1C1F45000E282702C8F4EE405B320D001FC32D27E3995F168D1541A5",
+      "created_at": "2026-06-18T23:27:02+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "55000000000"
+      },
+      "destination": "rGjUxQ8nzAmggicEw5Z1cRFPbRgf99spae",
+      "prev_txn_lgr_seq": 105026277,
+      "prev_txn_id": "53B12E73479FB20129624EAB38696CF0F67207F9682EDE9D2E2C0D18FB6848BE",
+      "created_at": "2026-06-19T07:50:21+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV",
+      "prev_txn_lgr_seq": 105026244,
+      "prev_txn_id": "C0A2D504F63392E47A0F0FEEB0FA5C549B3E7DA0B9A9E8B3B33336D6E5A70682",
+      "created_at": "2026-06-19T07:48:12+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920950,
+      "prev_txn_id": "23DACBD3A9E8835EB40A9276E7738C1273AAC7DE7115FAD0748CD5B2A67E5DC6",
+      "created_at": "2026-03-17T01:43:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920883,
+      "prev_txn_id": "BF08C896749A294A62A8A0101C6B55F3AD9FD895ED17A20E29B5BF460BD66685",
+      "created_at": "2026-03-17T01:39:31+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920867,
+      "prev_txn_id": "69B70D6C8EB35419C9E98C002E47B24A4165939A680AF39D76C9E05916D1F22A",
+      "created_at": "2026-03-17T01:38:30+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920924,
+      "prev_txn_id": "C6E7214BA7608A8981AE7FC4AB7D27F1549CD4DD62A73708F76C2E9B1EB40295",
+      "created_at": "2026-03-17T01:42:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920720,
+      "prev_txn_id": "7607AC89E10ACA69B2A226770246C69352BA41F9C5A0504F6CCF685D102433F8",
+      "created_at": "2026-03-17T01:28:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920824,
+      "prev_txn_id": "D70E98F2B2F0E5A84F5A383F443D94C8CF9EB357DACF34CCED103BFF2B565AE7",
+      "created_at": "2026-03-17T01:35:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920765,
+      "prev_txn_id": "FA01CD6A390F4FA19019E8F7BED4AB6326DA9A3538EE108A4737BD264F51A2C0",
+      "created_at": "2026-03-17T01:31:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920794,
+      "prev_txn_id": "652842FEB29D25E474F9187C3205154E48B87953BD5E04746283D9D0C0796259",
+      "created_at": "2026-03-17T01:33:42+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920809,
+      "prev_txn_id": "3DE3893EEA0BC60FB855D8A979CCE62EDC3DE6EF79768083A51E874D3EA4AEAD",
+      "created_at": "2026-03-17T01:34:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920781,
+      "prev_txn_id": "BCC1EAB56D28CF8CCE40514BED93623685A4725BD318D7461306C5614E85B376",
+      "created_at": "2026-03-17T01:32:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920750,
+      "prev_txn_id": "19F4A32E17A2C7E571E44D015941CD3969A415555CBA53C6A3D8A6FCB52945A2",
+      "created_at": "2026-03-17T01:30:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920839,
+      "prev_txn_id": "42B9D735E401EEA45116613D5894E039027BD883699C57E9A86FF147C0134449",
+      "created_at": "2026-03-17T01:36:40+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920911,
+      "prev_txn_id": "8613D6F1F17A4D6EDAE66270B01B0394625569CE4F2A2A1663B79919FD4CF581",
+      "created_at": "2026-03-17T01:41:20+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920938,
+      "prev_txn_id": "BA0F0562F75F08E974445D9F42D1A82ED3E7D507EB6E49EDF776A9361C72CBB1",
+      "created_at": "2026-03-17T01:43:02+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920897,
+      "prev_txn_id": "57EB97A7FA313BA647B8DC79E694B1C54A6245C3D32C9EA3130461DA571B601F",
+      "created_at": "2026-03-17T01:40:22+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920735,
+      "prev_txn_id": "C43B5385668FDEDE99B55971233089A696F9914C8B5C09DE4C714AF2B925517E",
+      "created_at": "2026-03-17T01:29:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "prev_txn_lgr_seq": 102920855,
+      "prev_txn_id": "48A811C1BCA1ACD169048EF1F0C889C1E9BBC1FA4F2D5581A7A6A65CC486EEC2",
+      "created_at": "2026-03-17T01:37:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rHzP9jF5zK9ivsJeDzMKf6FDKkoqHjFyBd",
+      "amount": {
+        "currency": "4249524400000000000000000000000000000000",
+        "issuer": "roBfrUYW4Z9j1SiZZBAEm2Tgsg94Ct39H",
+        "value": "1234567901.25"
+      },
+      "destination": "rp74TLwCALcgUJgTh4uGQsY2j8piac6nHA",
+      "prev_txn_lgr_seq": 103793426,
+      "prev_txn_id": "4EAA6A270051F77BE4D097294F015DC93AE8C8A87DAEE186F01A4F0127FECED9",
+      "created_at": "2026-04-25T04:45:31+00:00",
+      "created_month": "2026-04"
+    },
+    {
+      "account": "rHzP9jF5zK9ivsJeDzMKf6FDKkoqHjFyBd",
+      "amount": {
+        "currency": "4249524400000000000000000000000000000000",
+        "issuer": "roBfrUYW4Z9j1SiZZBAEm2Tgsg94Ct39H",
+        "value": "1234567901.25"
+      },
+      "destination": "rp74TLwCALcgUJgTh4uGQsY2j8piac6nHA",
+      "prev_txn_lgr_seq": 103793430,
+      "prev_txn_id": "54A27A8E638EC218C0A1CBECBF0F2E265484A43D02469F9E9699A3463969F229",
+      "created_at": "2026-04-25T04:45:50+00:00",
+      "created_month": "2026-04"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226375,
+      "prev_txn_id": "3C823CD3EE23D0C349CB691A8C30896702E8DE784B45B32355D274A52CF6B866",
+      "created_at": "2026-02-13T20:39:31+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226263,
+      "prev_txn_id": "F3790CB53F3C3C34661853B0F2109E9701DDED294DBF969C72F3066DE00A3EA8",
+      "created_at": "2026-02-13T20:32:20+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226351,
+      "prev_txn_id": "CDB34AFD05CE7D550E703E9A5EEC33DD80424438D79D778BF2CD11DFE0B5B723",
+      "created_at": "2026-02-13T20:38:00+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226314,
+      "prev_txn_id": "C8A7E2CA739F270B584D1A4AA4C9D6CB8D9777FB1B6955496DCA325FB99C7445",
+      "created_at": "2026-02-13T20:35:32+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226339,
+      "prev_txn_id": "A1169060B155EF05499F91C21A816499D50A138406E88A9D253919BC1BAAE765",
+      "created_at": "2026-02-13T20:37:11+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226172,
+      "prev_txn_id": "413327772DC95653BA9010C26C1C26D4A3F6BD0BC7BC4EBE76E971EE9EAE24A3",
+      "created_at": "2026-02-13T20:26:21+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226208,
+      "prev_txn_id": "6BA38DD994161C327770EFA930E725A1BD472F5DC5E21C85735C7C7B4D53039E",
+      "created_at": "2026-02-13T20:28:41+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226294,
+      "prev_txn_id": "327A25101F77BE46C1EE78E7547F3323433D705FD61C7E8A1C9931517D1E0DFB",
+      "created_at": "2026-02-13T20:34:20+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226276,
+      "prev_txn_id": "72F650E17E3F5EC988BA5707FA5CD1431DDDD30F6F9ED8853FE668DE2C4C9A21",
+      "created_at": "2026-02-13T20:33:10+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226329,
+      "prev_txn_id": "7EB59E613DFE98A2402CE7564B8FC7394DDC2FD088D616552CC61837CA00ED34",
+      "created_at": "2026-02-13T20:36:31+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "1955928482.368613"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102225830,
+      "prev_txn_id": "E358CA9D84081F0FA314B813376435B06A421CDD2CB90B2DE5F7D1015702CC27",
+      "created_at": "2026-02-13T20:04:01+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226219,
+      "prev_txn_id": "E56A8BE5FF64A44E005CBB68D5692146929DF2C11E7CD19F2462456AC1481CE4",
+      "created_at": "2026-02-13T20:29:22+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226305,
+      "prev_txn_id": "878742D35F6969596ACE685A54C2FF6A1906B545DF66B4C26403310AD9E787B1",
+      "created_at": "2026-02-13T20:35:00+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226251,
+      "prev_txn_id": "1FAB8015D403DAAFFDD0147DC24C52A265C8C9DDD093E59A6DB1E2BDE11ABEFA",
+      "created_at": "2026-02-13T20:31:31+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226364,
+      "prev_txn_id": "3BC43B67927D97FF8B643D0D0B012B57B815298E2CCA98253826CC8360DDB585",
+      "created_at": "2026-02-13T20:38:50+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "prev_txn_lgr_seq": 102226189,
+      "prev_txn_id": "6B742B306EBBF3A2A14852EFD87A5CDD69E1A73B26B91F3C80BC103D61C51673",
+      "created_at": "2026-02-13T20:27:30+00:00",
+      "created_month": "2026-02"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102895997,
+      "prev_txn_id": "C60856C4FBB855A468A1AD5A33B346A6AFBE6489DA604020AE0E98AE3B7D6059",
+      "created_at": "2026-03-15T22:47:31+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896491,
+      "prev_txn_id": "E1098D530A03F81AF702F738ACC82C718623284962743F07FCF304D271102CE7",
+      "created_at": "2026-03-15T23:19:50+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896555,
+      "prev_txn_id": "68A582D3162A123A387BD16D942C496D4E7B420A6DA4D4FF83FBF2EE6E049133",
+      "created_at": "2026-03-15T23:24:00+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896428,
+      "prev_txn_id": "9974236C6E4794D1D17CEFE5F7DF6A0F4BF9721B62345F2E87CB82765FF88211",
+      "created_at": "2026-03-15T23:15:40+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896302,
+      "prev_txn_id": "16DE3BAD71DE9E08C3FCF044100E76F26A627097E57B177A7AEF53A717337F92",
+      "created_at": "2026-03-15T23:07:30+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896169,
+      "prev_txn_id": "F970C7BC2DC8E17BEB3E2AC7A7C9311AA1EC4E286A279034B809546CBD231F1C",
+      "created_at": "2026-03-15T22:58:42+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896577,
+      "prev_txn_id": "493A5A89841DE0A907C9C1C62A1DE71BDB030366FFDBE2AF6D46830F89C4C538",
+      "created_at": "2026-03-15T23:25:21+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896098,
+      "prev_txn_id": "A0216239D9B0BB3D59668A3968E4900A320B3D13F8D560BC12C13AA931130A53",
+      "created_at": "2026-03-15T22:54:02+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896504,
+      "prev_txn_id": "43C8A17386D09B1FD4738367B1260FD7EBB8C82436EDB23B2BED1826C648234F",
+      "created_at": "2026-03-15T23:20:40+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896386,
+      "prev_txn_id": "F562DA0FC2BEFC814DD894786E517107EEDB1BA6C204B030044EBD8333BD4300",
+      "created_at": "2026-03-15T23:12:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896459,
+      "prev_txn_id": "0B105A7C0DF92254CA4B29597329887726162F65107F0D0639B15A03BDC3B523",
+      "created_at": "2026-03-15T23:17:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896444,
+      "prev_txn_id": "E40E41EAC87296396B5E7B3A2F68AA00FA857A133E30347745F9A153ED4A0214",
+      "created_at": "2026-03-15T23:16:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896256,
+      "prev_txn_id": "0D6B068F42F876DE3BF53F3DCA4C13B3FAE9178BB8E966871DC7FB3E8F0A2415",
+      "created_at": "2026-03-15T23:04:30+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896017,
+      "prev_txn_id": "27E392714B98D64D516321D4D573E491D34B67B77E6024AB41BA332EC3064AED",
+      "created_at": "2026-03-15T22:48:50+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896115,
+      "prev_txn_id": "D27BE531A15EF2FE760DC7377545456D4D06C0C110D0203CE9E532C08051B104",
+      "created_at": "2026-03-15T22:55:11+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896365,
+      "prev_txn_id": "FF1A2A18EF7771B6E9DC46839D07C182C61C9207EB4F576B41C76DB196BFEE3A",
+      "created_at": "2026-03-15T23:11:31+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896276,
+      "prev_txn_id": "1672D2DB8B226DC28DA28F5375EF8C9D327C58A75B57543EBBFC10CD9724B70A",
+      "created_at": "2026-03-15T23:05:42+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896347,
+      "prev_txn_id": "D8B610AB30BFE61AE2FDD5F2BFE3B2215B076B202E8E7C7ED8BC086EAD8F5ACE",
+      "created_at": "2026-03-15T23:10:21+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896210,
+      "prev_txn_id": "E2D0C9FEB96E99B50BAF06CE4C40B6D72AAEDFE73C0A2AD04B96329BBFB9C326",
+      "created_at": "2026-03-15T23:01:30+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896537,
+      "prev_txn_id": "A18DBFCB53F1039AA63A6B6B93DC0EB6F27AADD0FC74DB95533A0A871E206477",
+      "created_at": "2026-03-15T23:22:50+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896517,
+      "prev_txn_id": "79F2DC632EBC5A5B57A31898C027E3F951804AAEE2CCAC9F81AA4AC9F8AC985C",
+      "created_at": "2026-03-15T23:21:30+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896136,
+      "prev_txn_id": "8334350B533CDE81002A0A746112F365851E17D80BFDA1444B1664A3EF6C3058",
+      "created_at": "2026-03-15T22:56:40+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896052,
+      "prev_txn_id": "AEC92DCEDE8E95425C75585B680020033B4208AA9D5A5B074B8EE3688088625B",
+      "created_at": "2026-03-15T22:51:02+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896034,
+      "prev_txn_id": "F1E04E57BBBA28A5796B52006CE416B23D1E44087C03136BD3BC90CF621037E7",
+      "created_at": "2026-03-15T22:49:52+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "1000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896475,
+      "prev_txn_id": "2B997E1F4C92456BBE1140E7E1BEDCF6F7895DE452A20F035486EE2EB6B2C79B",
+      "created_at": "2026-03-15T23:18:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896234,
+      "prev_txn_id": "6AA7109DAAE216EE1C05B3369D5D2CF7A8A34A8326C7FDD8E4636BAA33560C26",
+      "created_at": "2026-03-15T23:03:01+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896321,
+      "prev_txn_id": "86F0F4F3B4A53540BB8F149A97092330A93E85AB0735A3E1A66698FF187DA3C4",
+      "created_at": "2026-03-15T23:08:41+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896077,
+      "prev_txn_id": "1A6E921CD37B966D1F64C37ED19993ADEF9EFABD94DAEAF3B9DD733AA00AAD54",
+      "created_at": "2026-03-15T22:52:42+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896413,
+      "prev_txn_id": "768112B0A6D088C73E8CA18205D195BCBB2203C44C84E9C890082A4E381EF39D",
+      "created_at": "2026-03-15T23:14:40+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896186,
+      "prev_txn_id": "DC7A4FE400A47C97B33CF4FCFECECEF3F10680C779EDD5A040E05DC13F691F38",
+      "created_at": "2026-03-15T22:59:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "250000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896155,
+      "prev_txn_id": "945AB93B28738D3448CBA7F774BA108B29443D61D13493FB608A96D0D9C091B5",
+      "created_at": "2026-03-15T22:57:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896614,
+      "prev_txn_id": "F75FA47B0EF58874A398F47539C4CBCC7909685FB4B60E727D1941283160C5C7",
+      "created_at": "2026-03-15T23:27:50+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "prev_txn_lgr_seq": 102896600,
+      "prev_txn_id": "2D922839FD99B601B18BB01DBD7D34DF0F8C0161B14B7BA94C41318E31F648DF",
+      "created_at": "2026-03-15T23:26:51+00:00",
+      "created_month": "2026-03"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969606,
+      "prev_txn_id": "337CA2428B3876A7F70D33E444AD4F46765425147A7A634A1C43E280AE5BA9E1",
+      "created_at": "2026-06-16T19:01:52+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969636,
+      "prev_txn_id": "D1E7AACD0944E905582827A6D25E39293FD66A9B986163903845CD4404E61983",
+      "created_at": "2026-06-16T19:03:50+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969684,
+      "prev_txn_id": "43A1509CC29040F5A44DDD5382E45E8C5396D2CDA3F8BA6F558D668798EF6465",
+      "created_at": "2026-06-16T19:06:52+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969726,
+      "prev_txn_id": "428B89603E5441F3B3E79285BB98EF48243738A3D1562AAFE3545DD35E1F301D",
+      "created_at": "2026-06-16T19:09:32+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "47.12"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969868,
+      "prev_txn_id": "2E0B88C0067D8DE421650C3E4157809300E3B48EC87F5807F47D31331635D267",
+      "created_at": "2026-06-16T19:18:41+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969815,
+      "prev_txn_id": "B70810163FD93AF1ABAA205B5AD6DA4A8178B57643E2F39A3C54B35D8AF8C597",
+      "created_at": "2026-06-16T19:15:11+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969805,
+      "prev_txn_id": "FA3C442B7C4A59D55EF0359C24D1D024CD65BD872F1A36ECBEC21392A39D778C",
+      "created_at": "2026-06-16T19:14:31+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969621,
+      "prev_txn_id": "0175CE4F3B2D12CAA5DEF9272C443C81220C804A1CEDF8BDBC231A5E3461C612",
+      "created_at": "2026-06-16T19:02:51+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969740,
+      "prev_txn_id": "78C370DA6F5A3074B04631D58FF7FCEA65DF1EBB950CC5D3E3B4798FD010173F",
+      "created_at": "2026-06-16T19:10:30+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969645,
+      "prev_txn_id": "6D56FF6497D037ABFDE8DAA651EA7547314FC3F5D6B9BD67694AF91DCFAC8B08",
+      "created_at": "2026-06-16T19:04:22+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969698,
+      "prev_txn_id": "C9B34840375A6FAF15DB0D1FAC2874449DC24361D2FE5E184C621FD143C4207B",
+      "created_at": "2026-06-16T19:07:50+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969655,
+      "prev_txn_id": "99B21B4D3A71533AD6E847B2864DF8A57DBB0A222255F6C62A4C15686A282543",
+      "created_at": "2026-06-16T19:05:01+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969664,
+      "prev_txn_id": "B87BF67C77F2A51D6FBDDA490DAF3527239ACE5C97E319B6B5F323D6CADA1804",
+      "created_at": "2026-06-16T19:05:40+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969827,
+      "prev_txn_id": "63EDD7D04E0A2D3DE9D7D471E59187361817D2371A561CE713C0CBB9C4067502",
+      "created_at": "2026-06-16T19:16:00+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "prev_txn_lgr_seq": 104969710,
+      "prev_txn_id": "02CECE1701024C636DC6A10FBD05B99F5E8499C16971D60D69E41AEE0CE01495",
+      "created_at": "2026-06-16T19:08:31+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rU111r3gEs9LJ99MkeP4Q8JmePhuscjTY",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "2230000"
+      },
+      "destination": "rU111r3gEs9LJ99MkeP4Q8JmePhuscjTY",
+      "prev_txn_lgr_seq": 105022888,
+      "prev_txn_id": "1CAB6B320F8AA3D735F121F26A7D54891E011B96DD17FD0B45A88C3432A119B1",
+      "created_at": "2026-06-19T04:12:50+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rs6N6aG2V2Tidbdf2982amLNKc6yTV5JP8",
+      "amount": {
+        "currency": "4254540000000000000000000000000000000000",
+        "issuer": "rD5xmg73zJnVEbFVLuaNkZKNXCMz1jsunZ",
+        "value": "22500000"
+      },
+      "destination": "rPs674LpSNBPnhxqeSvPevTEik9EjSMcqD",
+      "prev_txn_lgr_seq": 104808809,
+      "prev_txn_id": "18D8E280A9364B75C649B9DBFDFEE2B7790B180983FFA2F2CE84E98F4803273B",
+      "created_at": "2026-06-09T15:47:31+00:00",
+      "created_month": "2026-06"
+    },
+    {
+      "account": "rs6N6aG2V2Tidbdf2982amLNKc6yTV5JP8",
+      "amount": {
+        "currency": "4254540000000000000000000000000000000000",
+        "issuer": "rD5xmg73zJnVEbFVLuaNkZKNXCMz1jsunZ",
+        "value": "7500000"
+      },
+      "destination": "rPs674LpSNBPnhxqeSvPevTEik9EjSMcqD",
+      "prev_txn_lgr_seq": 104808807,
+      "prev_txn_id": "B9C4244851FF19BF8C343EDF12FA49A49C5DA3270667642C4FBB02B0A2CEA755",
+      "created_at": "2026-06-09T15:47:22+00:00",
+      "created_month": "2026-06"
+    }
+  ],
+  "amendment_activation": {
+    "amendment_id": "138B968F25822EFBF54C00F97031221C47B1EAB8321D93C7C2AEAF85F04EC5DF",
+    "amendment_name": "TokenEscrow",
+    "activated_at_ledger": 102204929,
+    "activated_at_utc": "2026-02-12T21:24:40+00:00",
+    "method": "bisect Amendments singleton, s2.ripple.com"
+  },
+  "sample_coverage": "182 of 404 (~45%)",
+  "sample_selection_bias": "Sample = 16 unique owners from the 20 objects the census walker saved as examples. These were the first 20 encountered in ledger hash order (essentially random w.r.t. creation time), so temporal distribution should be roughly representative \u2014 but not verified against the missing 55%."
+}

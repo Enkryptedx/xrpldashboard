@@ -1,0 +1,6 @@
+{
+  "census_type": "phase1c_full_escrow_ABORTED",
+  "started_at": "2026-07-15T19:02:02.236382+00:00",
+  "aborted_at": "2026-07-15T19:02:02.275855+00:00",
+  "reason": "Refusing to start: load_factor=531.73828125 > LOAD_FACTOR_MAX_START=5.0"
+}

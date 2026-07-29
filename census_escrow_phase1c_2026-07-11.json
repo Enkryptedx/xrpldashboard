@@ -1,0 +1,281 @@
+{
+  "census_type": "phase1c_full_escrow",
+  "anchor_ledger": 105532376,
+  "started_at": "2026-07-11T20:29:31.060503+00:00",
+  "finished_at": "2026-07-12T03:32:08.942211+00:00",
+  "elapsed_seconds": 25357.881708,
+  "load_factor_at_start": 1,
+  "summary": {
+    "total_escrow_objects": 12441,
+    "ripple_xrp_objects": 85,
+    "ripple_xrp_total": 27800000000.0,
+    "nonripple_xrp_objects": 11952,
+    "nonripple_xrp_total": 124239497.030604,
+    "token_escrow_objects": 404,
+    "pages_fetched": 40205,
+    "unique_nonripple_owners": 1523
+  },
+  "top_nonripple_owners": [
+    [
+      "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+      585
+    ],
+    [
+      "rUxvHyX1SFQ6iEEFeqgCBuY8eJi8qywqwc",
+      583
+    ],
+    [
+      "rPWrYgiKsSWUAbeV2enBoPZSYaH3Tr7Yg6",
+      563
+    ],
+    [
+      "rJo1srkET8Jbu646a6gAB2YehC9kxYVC2K",
+      553
+    ],
+    [
+      "rEdgNif753e56Yp1pxdp6eEX3UR5FBnafE",
+      478
+    ],
+    [
+      "rK8g99VerS5BNuzzxGgmAwB6NjXUoSsYkB",
+      405
+    ],
+    [
+      "rB8XGnT3iD9NHTSeoxpSrCuqdu9ULKDPbu",
+      339
+    ],
+    [
+      "r45pjiiczezdw2yAy7YscVAKNkwo1rdAtT",
+      214
+    ],
+    [
+      "r3pzUULRxwRF1m5DjBWMk6FMEMwViRMCN5",
+      210
+    ],
+    [
+      "rPiYhumNSjdiFa8f6ZVaVoAGYAK9ZzfmjS",
+      187
+    ],
+    [
+      "rKZ3ZSKXpY3mVAFratjyFZX7oojyLpQ6GH",
+      183
+    ],
+    [
+      "raQHVDABt4CoTpUm3Y2UApVRq1nVSaKL99",
+      178
+    ],
+    [
+      "rLSRfFZ9WK9NRmASRsKcmBcZyN2ftoGATg",
+      166
+    ],
+    [
+      "rJFdqCNVpn7YNMVpLECEGZX48pyCQ26LRv",
+      152
+    ],
+    [
+      "r9KvGgtkmCxHUmWFwk6o8QPMAAx3af8Xiu",
+      112
+    ],
+    [
+      "rQGcty7rcsePaXBk3eVBA4ZEamffHGm4LS",
+      96
+    ],
+    [
+      "r4VoaNLWDdTtrZvXjNDsEPZEymJ1taLBsZ",
+      91
+    ],
+    [
+      "rMAYmRqHW1zY69syGVKaSiasyP5S5DDxHk",
+      90
+    ],
+    [
+      "rBShFbf6BHd4vpvEiQEnvtZYyRdDPWa8xs",
+      83
+    ],
+    [
+      "rUBQbCVt8xYh23VeVfgCYBa8wfD1L14H3J",
+      80
+    ]
+  ],
+  "token_escrow_examples": [
+    {
+      "account": "rBLEfKHDDPaZhTAgjsLj7McioyWnYQ34Rm",
+      "amount": {
+        "currency": "4257440000000000000000000000000000000000",
+        "issuer": "rQEq6zdCGUDjtiiKmZQYXRhgGXVaX2JjkM",
+        "value": "7500000"
+      },
+      "destination": "rQD24hCbJ6FaAbSEFancHd8ppCMWy2XE4L"
+    },
+    {
+      "account": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7",
+      "amount": {
+        "currency": "5844617767730000000000000000000000000000",
+        "issuer": "raKhUVtNw6B892bKtATUT3frX35oawfsey",
+        "value": "125000000"
+      },
+      "destination": "rL88qpfMnJXnPg4vNxX92nbYMB7ZBxUWk7"
+    },
+    {
+      "account": "rU111r3gEs9LJ99MkeP4Q8JmePhuscjTY",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "2230000"
+      },
+      "destination": "rU111r3gEs9LJ99MkeP4Q8JmePhuscjTY"
+    },
+    {
+      "account": "r556Rtn4yfLKNGCjXnygop24Gg6KARpfg",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45837000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC"
+    },
+    {
+      "account": "rs6N6aG2V2Tidbdf2982amLNKc6yTV5JP8",
+      "amount": {
+        "currency": "4254540000000000000000000000000000000000",
+        "issuer": "rD5xmg73zJnVEbFVLuaNkZKNXCMz1jsunZ",
+        "value": "22500000"
+      },
+      "destination": "rPs674LpSNBPnhxqeSvPevTEik9EjSMcqD"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm"
+    },
+    {
+      "account": "r556RVd5xA8rSwR66xp8m11DEC8sgQKLd",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRYBtRBuxibHMLSVVkeZWeKtJnKBxGF"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm"
+    },
+    {
+      "account": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "3000000"
+      },
+      "destination": "rBrT1sVMt6Hn5YVo5F8XgyjwuzE9JP1q1J"
+    },
+    {
+      "account": "rs6N6aG2V2Tidbdf2982amLNKc6yTV5JP8",
+      "amount": {
+        "currency": "4254540000000000000000000000000000000000",
+        "issuer": "rD5xmg73zJnVEbFVLuaNkZKNXCMz1jsunZ",
+        "value": "7500000"
+      },
+      "destination": "rPs674LpSNBPnhxqeSvPevTEik9EjSMcqD"
+    },
+    {
+      "account": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq",
+      "amount": {
+        "currency": "54524C5300000000000000000000000000000000",
+        "issuer": "r9NcytRxC1CX1vERGn9HGR2Bwbuo6tGX1h",
+        "value": "2000000"
+      },
+      "destination": "rLqDnqQSBNRS4YtSrLyuMDhZ22aLptmyTq"
+    },
+    {
+      "account": "rG6YRDrEGbACarxv6VafTgWiGsHNWQm5nG",
+      "amount": {
+        "mpt_issuance_id": "064178D0A40119AD76298FE42EF89C996A3B02696232C21D",
+        "value": "100000000"
+      },
+      "destination": "rsYt6GkBKDwhQJmQMfbZw3Vho2RWvawMkV"
+    },
+    {
+      "account": "rHzP9jF5zK9ivsJeDzMKf6FDKkoqHjFyBd",
+      "amount": {
+        "currency": "4249524400000000000000000000000000000000",
+        "issuer": "roBfrUYW4Z9j1SiZZBAEm2Tgsg94Ct39H",
+        "value": "1234567901.25"
+      },
+      "destination": "rp74TLwCALcgUJgTh4uGQsY2j8piac6nHA"
+    },
+    {
+      "account": "r556iW9qNz1JS4qL36FFwyyyeJVihb6tn",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t"
+    },
+    {
+      "account": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd",
+      "amount": {
+        "currency": "OHC",
+        "issuer": "rajfzRjbPRuGk9shtio9BPYB1brVUKqehK",
+        "value": "11100000000"
+      },
+      "destination": "r4CaD3SzFoAwCqzQcj1EYUp7VAF1PqzCWd"
+    },
+    {
+      "account": "r556mNZNJeabRK35UzzCoiY4hRCDXgyLE",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRVugP21d38EB7FP4FiiJA8BN16P56t"
+    },
+    {
+      "account": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn",
+      "amount": {
+        "currency": "42554D42554E0000000000000000000000000000",
+        "issuer": "rwFZNse1h6wv6WW61Sto2UruRAQzSvVpvU",
+        "value": "11100000000"
+      },
+      "destination": "rGXCKYSynunGqzV9UUk518Ez5Mq94b3qRn"
+    },
+    {
+      "account": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm",
+      "amount": {
+        "currency": "NFG",
+        "issuer": "rNFGBqAKm2xFMsrTDHHJv5Hxq3gfYYWxH1",
+        "value": "17.67"
+      },
+      "destination": "rNFGobbs9MF9jmoZDPHDn6fv2SrDq3QTxm"
+    },
+    {
+      "account": "rCCRtqCQZ7D6wYTF7QvLbsAWjZUhTWVVJ",
+      "amount": {
+        "currency": "CCR",
+        "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
+        "value": "45833000"
+      },
+      "destination": "rCCRSvpkBpMUfkqhsMoYxVJDzRdti3rSC"
+    }
+  ]
+}
