@@ -345,6 +345,21 @@ SCOPES = [
         True,
     ),
     (
+        "mcp_server_heartbeat",
+        "read-only MCP tool proxy over existing Neon tables (Day 1 scaffold: 0 tools)",
+        "Self-writing 60s heartbeat from mcp_server.py's background daemon "
+        "thread. Not an XRPL walker — the row exists so the MCP server's own "
+        "liveness surfaces on /walker_health under the same alarm framework "
+        "as every other walker (goes yellow within 60s, red within ~5min if "
+        "the process dies). Day 1 scaffold registers zero tools; the "
+        "declared_scope will expand to name the 20-tool inventory as tools "
+        "land in Day 2-4. Enforcement: every tool routes through "
+        "mcp_server.wrap_envelope, which is the single response-wrap "
+        "function; no tool bypasses it (docs/AGENT_TIER_DESIGN.md "
+        "§Enforcement).",
+        True,
+    ),
+    (
         "census_watcher",
         "dormant / on-demand condition-triggered launcher",
         "Not scheduled. Manual launcher that polls localhost:5005 "
