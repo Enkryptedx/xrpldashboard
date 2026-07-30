@@ -78,6 +78,14 @@ SERVER_DOCS_URL = "https://xrpldashboard.com/methodology#for-ai-agents"
 WALKER_NAME = "mcp_server_heartbeat"
 HEARTBEAT_CADENCE_SECONDS = 60
 
+# Q1 heartbeat-gap mitigation (see header §Q1). A second walker_health
+# row watermarks the last successful TOOL response — distinct from the
+# heartbeat row which only watermarks the daemon thread. If the HTTP
+# listener crashes but the heartbeat thread survives, the heartbeat row
+# stays fresh while this row goes stale; /walker_health reads the delta
+# and pages on tools-dead-server-alive within one cadence.
+TOOL_CALL_WATERMARK_WALKER = "mcp_server_last_tool_call"
+
 VALID_FRESHNESS_CONTRACTS = {
     "≤ 5min", "≤ 30min", "daily", "finalized_only",
 }
@@ -213,17 +221,73 @@ def stop_heartbeat() -> None:
     _HEARTBEAT_STOP.set()
 
 
-def build_server():
-    """Return a FastMCP server instance with no tools registered yet.
+def stamp_tool_call(tool_name: str) -> None:
+    """Write the `mcp_server_last_tool_call` walker_health watermark.
 
-    Tools land in Day 2-4 build steps; each is a `@mcp.tool()`-decorated
-    function whose body ends with `return wrap_envelope(...)`. This
-    scaffold intentionally exposes zero tools so the surface is a
-    truthful "server up, tool inventory empty" during Day 1.
-    """
+    Called by every tool AFTER a successful envelope emit — the failure
+    path (fetch raised or wrap_envelope raised) intentionally leaves the
+    watermark stale so absence of freshness IS the signal.
+
+    Silent failure of the write itself (e.g. Postgres transiently down)
+    logs a warning but does not raise: refusing to serve tool responses
+    because the health-watermark can't be written would be a Q1 sibling
+    (health infra failure masquerading as tool failure)."""
+    try:
+        import db
+        db.write_walker_health_end(
+            TOOL_CALL_WATERMARK_WALKER,
+            ok=True,
+            message=f"tool={tool_name}",
+        )
+    except Exception as e:  # noqa: BLE001 — watermark write is best-effort
+        log.warning("stamp_tool_call[%s] failed: %s", tool_name, e)
+
+
+def _register_tools(mcp) -> int:
+    """Register the Day 2 ledger-primitives tool batch. Returns the
+    count of tools registered. Kept as a separate function so tests can
+    build a bare `FastMCP` instance without touching tools, and so the
+    Day 3+ tool batches drop in beside this one without churn."""
+    import mcp_tools_ledger
+    xrpl_node = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+
+    @mcp.tool()
+    def get_ledger_stats() -> dict:
+        """Return the last-validated ledger stats (index, close time,
+        server state, load factor, complete range, build). Wrapped in
+        the xrpldashboard proof envelope with source=`local_rippled`."""
+        return mcp_tools_ledger.tool_get_ledger_stats(xrpl_node)
+
+    @mcp.tool()
+    def get_amendment_status() -> dict:
+        """Return the current amendments state (enabled / in-flight /
+        superseded / unrecognized-enabled) with `cross_check_status`
+        derived from the responding node's feature-RPC vs Amendments
+        ledger-object concurrence. Wrapped in the proof envelope."""
+        return mcp_tools_ledger.tool_get_amendment_status()
+
+    @mcp.tool()
+    def get_unl_status() -> dict:
+        """Return the current UNL composition (both published lists,
+        overlap, expiry-days). Honest-partial when a list fetch fails.
+        Wrapped in the proof envelope."""
+        return mcp_tools_ledger.tool_get_unl_status()
+
+    return 3
+
+
+def build_server(register_tools: bool = True):
+    """Return a FastMCP server instance.
+
+    When `register_tools=True` (default), the Day 2 ledger-primitives
+    batch is registered. Tests that only exercise the envelope pass
+    `register_tools=False` to keep the surface minimal."""
     from mcp.server.fastmcp import FastMCP  # lazy import — package is
     # not required for the envelope-only unit tests.
     mcp = FastMCP(SERVER_NAME)
+    if register_tools:
+        n = _register_tools(mcp)
+        log.info("registered %d tool(s) on %s", n, SERVER_NAME)
     return mcp
 
 
@@ -233,9 +297,18 @@ def main() -> int:
     start_heartbeat()
 
     mcp = build_server()
-    log.info("mcp scaffold ready; tool inventory=0 (Day 1 scaffold)")
+
+    # HTTP listener bind config — FastMCP's `streamable-http` transport
+    # honours the FASTMCP_HOST / FASTMCP_PORT env vars its settings
+    # object reads at construction time. We surface them under the same
+    # MCP_* prefix as MCP_TRANSPORT so operators have one place to look.
+    host = os.environ.get("MCP_HTTP_HOST") or os.environ.get("FASTMCP_HOST") or "127.0.0.1"
+    port = os.environ.get("MCP_HTTP_PORT") or os.environ.get("FASTMCP_PORT") or "8765"
+    os.environ["FASTMCP_HOST"] = host
+    os.environ["FASTMCP_PORT"] = str(port)
 
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
+    log.info("mcp starting: transport=%s host=%s port=%s", transport, host, port)
     mcp.run(transport=transport)
     return 0
 

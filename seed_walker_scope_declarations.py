@@ -378,17 +378,36 @@ SCOPES = [
     ),
     (
         "mcp_server_heartbeat",
-        "read-only MCP tool proxy over existing Neon tables (Day 1 scaffold: 0 tools)",
+        "read-only MCP tool proxy over existing Neon tables (Day 2: 3 tools registered)",
         "Self-writing 60s heartbeat from mcp_server.py's background daemon "
         "thread. Not an XRPL walker — the row exists so the MCP server's own "
         "liveness surfaces on /walker_health under the same alarm framework "
         "as every other walker (goes yellow within 60s, red within ~5min if "
-        "the process dies). Day 1 scaffold registers zero tools; the "
-        "declared_scope will expand to name the 20-tool inventory as tools "
-        "land in Day 2-4. Enforcement: every tool routes through "
-        "mcp_server.wrap_envelope, which is the single response-wrap "
+        "the process dies). Day 2 registers the ledger-primitives batch: "
+        "get_ledger_stats (server_info), get_amendment_status (amendments_state "
+        "with derived cross_check_status), get_unl_status (network_state with "
+        "honest_partial-on-partial-fetch). Enforcement: every tool routes "
+        "through mcp_server.wrap_envelope, which is the single response-wrap "
         "function; no tool bypasses it (docs/AGENT_TIER_DESIGN.md "
         "§Enforcement).",
+        True,
+    ),
+    (
+        "mcp_server_last_tool_call",
+        "Q1 heartbeat-gap watermark — last successful MCP tool response",
+        "Not a walker. Watermark row stamped by mcp_server.stamp_tool_call "
+        "at the tail of every tool that successfully emitted an envelope. "
+        "Purpose: distinguish 'heartbeat thread alive' from 'HTTP listener "
+        "serving tools' — the Q1 gap declared in mcp_server.py's header. "
+        "If the FastMCP HTTP listener crashes while the heartbeat daemon "
+        "thread survives, mcp_server_heartbeat.last_success_at stays fresh "
+        "while this row goes stale within one cadence, and /walker_health "
+        "surfaces the delta. No cadence declared — updates happen on tool "
+        "traffic, not a timer. Absence of freshness relative to the tool "
+        "call rate IS the signal; declared_scope only ensures "
+        "answer_plausibility_walker's UNDECLARED_WALKER rule doesn't fire "
+        "the first time a tool call lands. Traffic-driven, so honest_partial "
+        "= True (staleness during a legitimate quiet period is expected).",
         True,
     ),
     (
