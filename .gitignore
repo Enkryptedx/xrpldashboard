@@ -79,6 +79,14 @@ _private/
 # Was untracked-but-unignored, meaning a git add . would sweep it in.
 scratch/
 
+# Local ad-hoc analysis outputs (JSON dumps, incident state snapshots,
+# fixture drafts) — same rule as scratch/, distinct location for cleanliness.
+artifacts/
+# Rippled rebuild run logs — large per-incident, kept locally for postmortem.
+ops/rebuild_runs/
+# Legacy walker-watch tooling — dormant since 2026-06-12, kept locally only.
+ops/goose/
+
 # OS
 .DS_Store
 Thumbs.db
