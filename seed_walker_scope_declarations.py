@@ -345,6 +345,38 @@ SCOPES = [
         True,
     ),
     (
+        "pg_backup_canary",
+        "Layer 3 freshness canary for the encrypted Neon dump pipeline",
+        "Daily launchd job (launchd/run_pg_backup_canary.sh) that lists "
+        "b2crypt:xrpldashboard-backup-<host>/postgres/ for the newest "
+        "neondb-*.dump, parses the embedded UTC timestamp from the "
+        "filename, computes age in hours, and fails if age > "
+        "CANARY_MAX_AGE_HOURS (default 25h — one-hour slack over the "
+        "03:30 backup). Filename parsing beats rclone-modtime here "
+        "because crypt remotes can lose modtime metadata; filenames "
+        "survive the encryption boundary intact. Not an XRPL walker; row "
+        "exists so canary freshness surfaces on /walker_health under the "
+        "same alarm framework. Pairs with pg_restore_test (weekly "
+        "correctness). Honest partial: only inspects the newest file's "
+        "filename age — an intermediate day of missing dumps between "
+        "two fresh ones is invisible until the next stale-day rollover.",
+        True,
+    ),
+    (
+        "pg_restore_test",
+        "Layer 3 correctness of the encrypted Neon dump pipeline",
+        "Weekly launchd job (tools/restore_test.py) that pulls the newest "
+        "neondb-*.dump from b2crypt, spins up an ephemeral local Postgres "
+        "on port 5439, restores into a throwaway DB, runs smoke queries "
+        "(row counts + freshness on token_prices/events/unl_snapshots), "
+        "tears everything down. Answers 'are backups usable?' — pairs "
+        "with pg_backup_canary's 'are backups running?'. Sundays 04:00. "
+        "Honest partial: smoke queries verify structural correctness "
+        "and non-emptiness of a handful of tables, not full row-level "
+        "recovery of every walker's output.",
+        True,
+    ),
+    (
         "mcp_server_heartbeat",
         "read-only MCP tool proxy over existing Neon tables (Day 1 scaffold: 0 tools)",
         "Self-writing 60s heartbeat from mcp_server.py's background daemon "

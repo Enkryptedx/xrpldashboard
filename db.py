@@ -4635,9 +4635,10 @@ def read_rlusd_supply_history(days=30):
 
 def count_burst_cohort_reclassified_rows():
     """Total page_view rows currently reclassified as bot by burst-cohort
-    membership. Feeds R4's accepted-cause path: an all-time human count
-    that drops by ~this delta is an accepted classifier update, not a
-    real regression."""
+    membership. Retained for callers that specifically want the
+    burst-cohort surface (analytics detail views, docs). NOT the right
+    denominator for R4's accepted-drop budget — see
+    count_is_bot_true_page_views for that."""
     if not pg_available():
         return 0
     try:
@@ -4646,6 +4647,32 @@ def count_burst_cohort_reclassified_rows():
                 "SELECT COALESCE(SUM(unique_ips), 0) "
                 "FROM burst_cohort_days"
             )
+            row = cur.fetchone()
+            return int(row[0] or 0)
+    except Exception:
+        return 0
+
+
+def count_is_bot_true_page_views():
+    """Total page_view rows currently marked is_bot=TRUE. This is the
+    ground-truth surface the live classifier reads (page_view_stats
+    counts humans as `is_bot IS NOT TRUE`), so its delta since the last
+    R4 watermark is the correct accepted-drop budget: every classifier
+    that promotes a row to bot — burst_cohort_days trigger,
+    page_view_bot_hashes trigger, scanner_combos_confirmed trigger, or
+    the mainline is_bot_writer — increments this count by one.
+
+    Founding case 2026-07-30: R4 was scoped to burst_cohort_days only
+    (5,636 rows) while the live is_bot=TRUE pool was 77,739 rows across
+    four surfaces. Eight overnight false alarms every one carrying the
+    note "burst-cohort delta since watermark = 0 (accepted drop
+    budget)" while a legitimate reclassifier had promoted 297+ rows via
+    a sibling surface R4 couldn't see."""
+    if not pg_available():
+        return 0
+    try:
+        with pg_connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM page_views WHERE is_bot=TRUE")
             row = cur.fetchone()
             return int(row[0] or 0)
     except Exception:

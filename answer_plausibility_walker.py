@@ -28,9 +28,11 @@ walker-down case is R3's).
   R4 — monotonic-violated:
        Analytics all-time human views + uniques (from /admin/stats
        aggregation). Compares against the last stored watermark for the
-       metric. A decrease is accepted only if it's within the delta
-       observed in burst_cohort_days.reclassified rows since the last
-       watermark. Otherwise fire.
+       metric. A decrease is accepted only if it's within the delta of
+       total is_bot=TRUE page_views since the last watermark — the
+       ground-truth surface that every classifier (burst_cohort_days,
+       page_view_bot_hashes, scanner_combos_confirmed, is_bot_writer)
+       ultimately writes to. Otherwise fire.
 
 Plus the machinery-stays-wired rider: any walker in walker_health
 missing a walker_scope_declarations row is emitted as an
@@ -78,9 +80,13 @@ R2_LOOKBACK_DAYS = 3
 R2_LOOKBACK_ACTIVITY_FLOOR = 1000
 
 # ── R4 tolerance ─────────────────────────────────────────────────────────
-# Accepted decrease = (burst_cohort_reclassified_delta_since_last_watermark).
-# A drop within that budget is a logged classifier update, not a regression.
-# Any drop beyond it fires.
+# Accepted decrease = (is_bot=TRUE page_view delta since last watermark).
+# A drop within that budget is a logged classifier update (any surface —
+# burst_cohort_days, page_view_bot_hashes, scanner_combos_confirmed,
+# is_bot_writer), not a regression. Any drop beyond it fires.
+# Pre-2026-07-30 the budget was scoped to burst_cohort_days only, so
+# any classifier writing via a sibling surface would false-alarm — see
+# db.count_is_bot_true_page_views for the founding case.
 R4_TOLERANCE_ABS = 0
 
 logger = logging.getLogger(WALKER_NAME)
@@ -213,23 +219,35 @@ def _evaluate_analytics(alarms):
     obs_views = int(all_time.get("views") or 0)
     obs_uniques = int(all_time.get("uniques") or 0)
 
-    # burst-cohort watermark: total reclassified unique_ips right now.
-    cohort_now = db.count_burst_cohort_reclassified_rows()
+    # is_bot=TRUE snapshot: total page_view rows marked bot right now.
+    # This is the ground-truth surface — every classifier (burst_cohort,
+    # bot_hashes, scanner_combos, is_bot_writer) mutates page_views.is_bot,
+    # so its delta since the last watermark is the correct accepted-drop
+    # budget. See db.count_is_bot_true_page_views for the founding case.
+    is_bot_now = db.count_is_bot_true_page_views()
 
     for metric_name, obs_value in (
         ("analytics_alltime_human_views", obs_views),
         ("analytics_alltime_human_uniques", obs_uniques),
     ):
         prev_value, prev_seen, extra = db.read_plausibility_watermark(metric_name)
-        prev_cohort = int((extra or {}).get("cohort_reclassified", 0)) if extra else 0
-        cohort_delta = cohort_now - prev_cohort
+        # Continuity: pre-fix watermarks stored `cohort_reclassified`.
+        # Fall back to that key for one cycle so the first post-fix run
+        # doesn't false-alarm; subsequent runs read `is_bot_true_count`.
+        prev_is_bot = (
+            int((extra or {}).get("is_bot_true_count"))
+            if extra and "is_bot_true_count" in extra
+            else int((extra or {}).get("cohort_reclassified", 0))
+            if extra else 0
+        )
+        is_bot_delta = is_bot_now - prev_is_bot
 
         if prev_value is not None:
             prev_int = int(prev_value)
             delta = obs_value - prev_int
             # Accepted decrease budget: any drop covered by an increase
-            # in burst-cohort reclassification since last watermark.
-            accepted_drop = max(cohort_delta, 0)
+            # in total is_bot=TRUE page_views since last watermark.
+            accepted_drop = max(is_bot_delta, 0)
             if delta < -accepted_drop - R4_TOLERANCE_ABS:
                 _emit(
                     alarms,
@@ -241,18 +259,18 @@ def _evaluate_analytics(alarms):
                     last_change_at=prev_seen,
                     note=(
                         f"decreased by {abs(delta)} (prev={prev_int}); "
-                        f"burst-cohort delta since watermark = "
-                        f"{cohort_delta} (accepted drop budget)"
+                        f"is_bot=TRUE delta since watermark = "
+                        f"{is_bot_delta} (accepted drop budget)"
                     ),
                 )
 
         # Watermark advances every run — capture whichever value came out
-        # of this evaluation. Persisting the cohort count too so the
-        # accepted-drop budget accumulates correctly across restarts.
+        # of this evaluation. Persisting the is_bot=TRUE snapshot too so
+        # the accepted-drop budget accumulates correctly across restarts.
         db.write_plausibility_watermark(
             metric=metric_name,
             value=obs_value,
-            extra={"cohort_reclassified": cohort_now},
+            extra={"is_bot_true_count": is_bot_now},
         )
 
 
