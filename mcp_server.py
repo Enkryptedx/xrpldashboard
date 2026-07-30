@@ -296,7 +296,42 @@ def _register_tools(mcp) -> int:
         Wrapped in the proof envelope."""
         return mcp_tools_ledger.tool_get_unl_status()
 
-    return 3
+    # Day 3 value-flow batch. Same pattern as the ledger batch — every
+    # tool routes its return through wrap_envelope; every success stamps
+    # mcp_server_last_tool_call for the Q1 heartbeat-gap watermark.
+    import mcp_tools_value_flows
+
+    @mcp.tool()
+    def get_whale_events(limit: int = 25) -> dict:
+        """Return the last N XRP-denominated whale events + tagged-watchlist
+        events (trustset excluded). Same feed the homepage globe pulse
+        reads. Wrapped in the proof envelope."""
+        return mcp_tools_value_flows.tool_get_whale_events(limit)
+
+    @mcp.tool()
+    def get_whale_watchlist(limit: int = 25) -> dict:
+        """Return the last N tagged-watchlist events (type='tagged'),
+        floored at TAGGED_XRP_FLOOR_DROPS for XRP-denominated rows.
+        Wrapped in the proof envelope."""
+        return mcp_tools_value_flows.tool_get_whale_watchlist(limit)
+
+    @mcp.tool()
+    def get_rlusd_supply() -> dict:
+        """Return the current cross-chain RLUSD supply (Ethereum + XRPL)
+        from the same PG mirror /rlusd reads. Honest-partial when either
+        chain errored. Wrapped in the proof envelope."""
+        return mcp_tools_value_flows.tool_get_rlusd_supply()
+
+    @mcp.tool()
+    def get_rlusd_flow_24h() -> dict:
+        """Return the last finalized 24h XRPL net-change from
+        rlusd_supply_history. freshness_contract='finalized_only' is
+        the machine-readable form of the R1/R2 finalized-window rule.
+        cross_check_status derived from stored vs supply-diff pair.
+        Wrapped in the proof envelope."""
+        return mcp_tools_value_flows.tool_get_rlusd_flow_24h()
+
+    return 7
 
 
 def build_server(register_tools: bool = True):
