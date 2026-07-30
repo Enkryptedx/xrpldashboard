@@ -97,5 +97,17 @@ fi
 
 log "  ok (${AGE_HOURS}h <= ${MAX_AGE_HOURS}h)"
 python3 -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=True, message='${LATEST} age=${AGE_HOURS}h')" 2>/dev/null || true
+
+# BetterStack heartbeat — success-path ONLY (literal last line before rc=0
+# exit). Every non-zero exit above skips this line, so a failed canary =
+# no ping = BetterStack incident within the heartbeat's grace window.
+# Missing URL = silent skip (script keeps working without the monitor;
+# never fail the canary just because the monitor URL isn't set).
+if [[ -n "${BETTERSTACK_PG_BACKUP_CANARY_URL:-}" ]]; then
+  curl -fsS -m 10 "$BETTERSTACK_PG_BACKUP_CANARY_URL" >/dev/null \
+    && log "  betterstack ping ok" \
+    || log "  betterstack ping failed (canary still PASS)"
+fi
+
 log "pg_backup_canary end (rc=0)"
 exit 0

@@ -282,6 +282,25 @@ def _run() -> int:
     return 0 if all_ok else 3
 
 
+def _ping_betterstack_success() -> None:
+    """POST to the BetterStack heartbeat URL — success path ONLY. Called
+    only after a full PASS. A missed run = no ping = BetterStack incident
+    within the heartbeat grace window (1 day for the weekly restore test).
+    Silent skip when the env var is unset, so the script keeps working
+    without the monitor. Network failure logs but does not fail the
+    restore test — the walker_health row is still authoritative."""
+    import urllib.request
+    url = os.environ.get("BETTERSTACK_PG_RESTORE_TEST_URL", "").strip()
+    if not url:
+        return
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"[restore_test] betterstack ping ok ({resp.status})")
+    except Exception as e:
+        print(f"[restore_test] betterstack ping failed: {e} (restore_test still PASS)")
+
+
 def main() -> int:
     if _HAS_DB:
         _db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
@@ -291,6 +310,8 @@ def main() -> int:
             WALKER_NAME, ok=(rc == 0),
             message="PASS" if rc == 0 else f"FAIL rc={rc}",
         )
+    if rc == 0:
+        _ping_betterstack_success()
     return rc
 
 
