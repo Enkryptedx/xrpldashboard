@@ -34,6 +34,12 @@ BUCKET_PREFIX="${BACKUP_BUCKET_PREFIX:-xrpldashboard-backup-${HOST}}"
 DEST_PREFIX="${REMOTE}:${BUCKET_PREFIX}/postgres"
 MAX_AGE_HOURS="${CANARY_MAX_AGE_HOURS:-25}"
 REPO_ROOT="/Users/charliebruce/xrpl_test"
+# Explicit venv Python: launchd PATH-resolved `python3` is the Homebrew
+# system interpreter, which does NOT have psycopg installed. db.py's
+# guarded `import psycopg` then falls to `psycopg = None`, and every
+# walker_health write silently no-ops. Six days of invisible failures
+# (2026-07-24 → 2026-07-29) is the cost of that path resolution.
+VENV_PY="${REPO_ROOT}/venv/bin/python"
 
 # Source env for DATABASE_URL so we can write walker_health.
 ENV_FILE="${XRPLDASHBOARD_ENV:-/Users/charliebruce/.config/xrpldashboard/env}"
@@ -42,10 +48,10 @@ ENV_FILE="${XRPLDASHBOARD_ENV:-/Users/charliebruce/.config/xrpldashboard/env}"
 export DATABASE_URL="${DATABASE_URL:-}"
 
 log "pg_backup_canary start (prefix=${DEST_PREFIX}, max_age=${MAX_AGE_HOURS}h)"
-python3 -c "
+"$VENV_PY" -c "
 import sys; sys.path.insert(0,'$REPO_ROOT')
 import db; db.write_walker_health_start('pg_backup_canary', cadence_seconds=86400)
-" 2>/dev/null || true
+" 2>>"$LOG_FILE" || log "  walker_health start-write failed (canary still PASS)"
 
 if ! command -v rclone >/dev/null 2>&1; then
   log "FAIL: rclone not on PATH."
@@ -63,7 +69,7 @@ LATEST="$(rclone lsf "$DEST_PREFIX" \
 
 if [[ -z "$LATEST" ]]; then
   log "FAIL: no neondb-*.dump files in ${DEST_PREFIX}"
-  python3 -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='no dump files found')" 2>/dev/null || true
+  "$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='no dump files found')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
   exit 2
 fi
 
@@ -72,7 +78,7 @@ fi
 TS_STR="$(echo "$LATEST" | sed -nE 's/^neondb-([0-9]{8}T[0-9]{6}Z)\.dump$/\1/p')"
 if [[ -z "$TS_STR" ]]; then
   log "FAIL: latest filename ${LATEST} does not match neondb-YYYYMMDDTHHMMSSZ.dump"
-  python3 -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='filename parse failed: $LATEST')" 2>/dev/null || true
+  "$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='filename parse failed: $LATEST')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
   exit 3
 fi
 
@@ -90,13 +96,13 @@ log "  latest=${LATEST}  age=${AGE_HOURS}h"
 
 if (( AGE_HOURS > MAX_AGE_HOURS )); then
   log "FAIL: latest backup is ${AGE_HOURS}h old (threshold: ${MAX_AGE_HOURS}h)"
-  python3 -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='backup ${AGE_HOURS}h old > ${MAX_AGE_HOURS}h threshold')" 2>/dev/null || true
+  "$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='backup ${AGE_HOURS}h old > ${MAX_AGE_HOURS}h threshold')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
   log "pg_backup_canary end (rc=4)"
   exit 4
 fi
 
 log "  ok (${AGE_HOURS}h <= ${MAX_AGE_HOURS}h)"
-python3 -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=True, message='${LATEST} age=${AGE_HOURS}h')" 2>/dev/null || true
+"$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=True, message='${LATEST} age=${AGE_HOURS}h')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
 
 # BetterStack heartbeat — success-path ONLY (literal last line before rc=0
 # exit). Every non-zero exit above skips this line, so a failed canary =

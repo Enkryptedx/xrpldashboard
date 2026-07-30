@@ -10,6 +10,12 @@
 
     <key>ProgramArguments</key>
     <array>
+      <!-- Explicit venv Python: the shebang `#!/usr/bin/env python3`
+           resolves via launchd's PATH to the Homebrew interpreter,
+           which lacks psycopg. db.py guards `import psycopg` to None
+           and every walker_health write silently no-ops. Sibling of
+           the pg_backup_canary defect confirmed 2026-07-30. -->
+      <string>/Users/charliebruce/xrpl_test/venv/bin/python</string>
       <string>/Users/charliebruce/xrpl_test/tools/restore_test.py</string>
     </array>
 
