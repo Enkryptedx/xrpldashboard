@@ -175,6 +175,24 @@ _HEARTBEAT_THREAD: Optional[threading.Thread] = None
 _HEARTBEAT_STOP = threading.Event()
 
 
+def _ping_betterstack() -> None:
+    """Success-path ping to the external heartbeat monitor. Mirrors the
+    pg_backup_canary pattern from `e60ac46`: URL missing = silent skip
+    (never fail the heartbeat cycle just because the external monitor
+    isn't configured); network failure = warning-log-only. Every
+    non-successful walker_health cycle skips this call, so a dead
+    server = no ping = BetterStack incident within the grace window
+    (5m period + 1m grace = ~6min detection floor)."""
+    url = os.environ.get("BETTERSTACK_MCP_SERVER_HEARTBEAT_URL")
+    if not url:
+        return
+    try:
+        import httpx
+        httpx.get(url, timeout=10.0).raise_for_status()
+    except Exception as e:  # noqa: BLE001 — ping is best-effort
+        log.warning("mcp_server_heartbeat: betterstack ping failed: %s", e)
+
+
 def _heartbeat_loop() -> None:
     try:
         import db
@@ -197,6 +215,11 @@ def _heartbeat_loop() -> None:
             db.write_walker_health_start(
                 WALKER_NAME, cadence_seconds=HEARTBEAT_CADENCE_SECONDS,
             )
+            # BetterStack ping ONLY after both walker_health writes
+            # succeed — so a Neon outage that silently no-ops the
+            # health writes ALSO withholds the external ping, which
+            # is the correct behaviour (Q2 ground-truth alignment).
+            _ping_betterstack()
         except Exception as e:
             log.warning("mcp_server_heartbeat: write cycle failed: %s", e)
 
