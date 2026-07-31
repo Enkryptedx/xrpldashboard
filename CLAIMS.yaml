@@ -1429,6 +1429,26 @@ pages:
           and pairs with the flask-limiter enforcement change
           (agents_json_rate_limits_match_enforcement).
 
+      - id: methodology_mcp_envelope_anchors_resolve
+        label: "Every methodology_url cited in an MCP tool envelope resolves to a real element on /methodology (contract per AGENT_TIER_DESIGN.md:410)."
+        data_paths:
+          - "mcp_tools_ledger.py: methodology_url arguments (#ledger, #amendments, #unl)"
+          - "mcp_tools_value_flows.py: methodology_url arguments (#whales, #rlusd)"
+          - "templates/methodology.html §MCP tool envelope sources (h3 ids: ledger, amendments, unl, whales, rlusd)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Envelope contract from AGENT_TIER_DESIGN.md:410 ("Every
+          methodology_url resolves. Simple HTTP head-check on all URLs
+          referenced in envelopes."). Discovered violated during the
+          2026-07-31 anchor audit — 5 anchors were being emitted by
+          Day 2/3 tools with no matching id on /methodology. Fixed by
+          landing the "MCP tool envelope sources" h2 with 5 h3 anchor
+          targets. If a future tool ships with a new methodology_url,
+          the corresponding h3 must land in the SAME commit or the
+          envelope's contract silently breaks. See sibling
+          methodology_for_ai_agents_discovery_links_resolve.
+
       - id: methodology_for_ai_agents_discovery_links_resolve
         label: "All discovery-surface links in /methodology#for-ai-agents (llms.txt, agents.json, snapshot chain/pubkey, security.txt, design-doc GitHub URL) resolve 200."
         data_paths:

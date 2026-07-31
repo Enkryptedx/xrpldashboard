@@ -533,6 +533,48 @@
     <li><strong>{{ _('Monitoring:') }}</strong> {{ _('An external uptime service checks the worker heartbeat every 3 minutes; staleness over 10 minutes pages the maintainer.') }}</li>
   </ul>
 
+  <h2 id="mcp-tool-envelope-sources">{{ _('MCP tool envelope sources') }}</h2>
+  <p>
+    {{ _('Every tool served by the MCP server (see') }} <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('Agent Tier design doc') }}</a>) {{ _('carries a') }} <code>methodology_url</code> {{ _('field in its proof envelope. The anchors below are the deep-link targets those envelopes cite — each names the data source, freshness contract, and any known limitations for one class of tool. If a tool\'s envelope points here, this is the section a caller lands on.') }}
+  </p>
+
+  <h3 id="ledger">{{ _('Ledger primitives (get_ledger_tip)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>local_rippled</code> {{ _('(self-hosted node) or') }} <code>s1.ripple.com:51234</code> {{ _('when the local node is unavailable. Returns the current validated ledger index, close time, and hash — the same values the browser liveness chip reads.') }}
+    {{ _('Freshness contract:') }} <code>≤ 5s</code> {{ _('(ledger close cadence). No cache — every call is a live') }} <code>ledger</code> {{ _('RPC. Envelopes emit') }} <code>as_of</code> {{ _('as the ledger close time, not the fetch time.') }}
+  </p>
+
+  <h3 id="amendments">{{ _('Amendments (get_amendments_status)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>s1.ripple.com:51234</code> {{ _('via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
+  </p>
+
+  <h3 id="unl">{{ _('Validator UNL (get_unl_status)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>vl.ripple.com</code> {{ _('(Ripple\'s canonical published Unique Node List) cross-checked against') }} <code>vl.xrplf.org</code> ({{ _('XRPLF-published UNL). Returns the list version, ephemeral key expiration, and validator entries.') }}
+    {{ _('Freshness contract:') }} <code>≤ 30min</code>. {{ _('When one of the two published lists fails to fetch, the tool routes') }} <code>honest_partial=true</code> {{ _('with a') }} <code>scope_note</code> {{ _('naming which list failed — never fabricates a synthetic UNL from a single source.') }}
+  </p>
+
+  <h3 id="whales">{{ _('Whale events (get_whale_events, get_whale_watchlist)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>local_rippled_stream_capture</code> — {{ _('the same live capture feed the') }} <a href="/whales">/whales</a> {{ _('page reads. Thresholds mirror the human surface:') }} <code>WHALE_XRP_THRESHOLD_DROPS = 100_000 XRP</code> {{ _('for the large-transfer feed;') }} <code>TAGGED_XRP_FLOOR_DROPS = 100 XRP</code> {{ _('for the tagged watchlist. TrustSet entries are excluded — they signal intent, not movement.') }}
+    {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('stream cadence + PG-write lag). Token-denominated tagged rows bypass the XRP floor; agents needing USD-priced sizing must join against the token-price oracle themselves. The tool response includes this caveat verbatim in a') }} <code>note</code> {{ _('field.') }}
+  </p>
+
+  <h3 id="rlusd">{{ _('RLUSD supply and 24h flow (get_rlusd_supply, get_rlusd_flow_24h)') }}</h3>
+  <p>
+    <strong>{{ _('Supply.') }}</strong>
+    {{ _('Source:') }} <code>ethereum_public_rpc + xrpl_public_rpc</code> — {{ _('the same') }} <code>rlusd_live</code> {{ _('cache the') }} <a href="/rlusd">/rlusd</a> {{ _('page reads.') }}
+    {{ _('Freshness contract:') }} <code>≤ 30min</code>. {{ _('When either chain fetch errored, the envelope emits') }} <code>honest_partial=true</code> {{ _('with a') }} <code>scope_note</code> {{ _('naming which side failed — never a fabricated cross-chain total.') }}
+    <code>cross_check_status='not_applicable'</code> {{ _('here: the two chains measure independent issuance pools, not the same fact from two sources, so they cannot agree/disagree.') }}
+  </p>
+  <p>
+    <strong>{{ _('24h flow.') }}</strong>
+    {{ _('Source:') }} <code>rlusd_supply_history</code> + <code>xrpl_gateway_balances</code>. {{ _('Freshness contract:') }} <code>finalized_only</code> — {{ _('the machine-readable form of the R1/R2 finalized-window rule (') }}<code>snapshot_date &lt; today_utc</code>){{ _('. Today\'s partial-day row is invisible to this tool; only rows the') }} <code>answer_plausibility_walker</code> {{ _('would have evaluated as finalized are eligible. This is the fix for the RLUSD 53-day false-flat class of bug that led to the R2 patch (see') }} <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('docs/TRUTH_AUDIT_DESIGN.md') }}</a>).
+    <br>
+    <code>cross_check_status</code> {{ _('here is derived from a real paired computation: stored') }} <code>xrpl_net_change_24h</code> {{ _('(Option-A gateway_balances diff) vs derived') }} <code>xrpl_supply[t] − xrpl_supply[t-1]</code>{{ _('. Agreement within') }} <code>CROSS_CHECK_EPSILON_RLUSD (1)</code> {{ _('emits') }} <code>agree</code>; {{ _('any larger divergence is') }} <code>disagree</code> — {{ _('an agent reading') }} <code>disagree</code> {{ _('should downweight the number, not just relay it. The same three-state verdict is surfaced as a chip on the') }} <a href="/rlusd">/rlusd</a> {{ _('page next to the freshness pill — one derivation, two surfaces.') }}
+  </p>
+
   <h2 id="for-ai-agents">{{ _('For AI agents') }}</h2>
   <p>
     {{ _('This site is a public read-only source of XRP Ledger and cross-chain data. Automated retrieval, citation, and machine reading are welcome — anticipated, even. This section is the transparent contract for anything reading this page programmatically.') }}
