@@ -261,8 +261,17 @@ def run():
         url = os.environ.get("BETTERSTACK_IS_BOT_CANARY_URL")
         if url:
             try:
+                import ssl
                 import urllib.request
-                with urllib.request.urlopen(url, timeout=10) as resp:
+                # python.org 3.14 ships without linking to a system cert
+                # bundle; default paths at
+                # /Library/Frameworks/Python.framework/.../etc/openssl/
+                # don't exist. Use certifi's bundle directly so the ping
+                # verifies HTTPS without depending on the post-install
+                # "Install Certificates.command" ever having been run.
+                import certifi
+                ctx = ssl.create_default_context(cafile=certifi.where())
+                with urllib.request.urlopen(url, timeout=10, context=ctx) as resp:
                     resp.read()
                 log.info("betterstack ping ok")
             except Exception as e:  # noqa: BLE001 — ping is best-effort
