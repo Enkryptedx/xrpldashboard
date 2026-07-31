@@ -1,0 +1,167 @@
+# Lenovo Node Migration — Plan of Record
+
+**Date drafted:** 2026-07-31
+**Owner:** Charlie (hardware phases), JJ (software phases via SSH)
+**Target:** Migrate rippled node from Mac Studio M4 → Lenovo IdeaCentre Mini 01IRH10R
+**Status:** APPROVED. Phase 0 fires the evening this doc lands (RAM stick delivered same day).
+
+---
+
+## Fences (top of doc, non-negotiable)
+
+1. **The site never blinks.** Walkers stay pointed at public nodes throughout every phase. Nothing on `xrpldashboard.com` cuts over to the Lenovo until the Lenovo has proven full sync + vocab parity + census-read parity in overlap.
+2. **Mac serves until Phase 4 closes.** The Mac node keeps serving whatever it serves today for the entire migration. Demotion is the last step, not a mid-phase step.
+3. **Nothing cuts over unproven.** Every repoint is one consumer at a time, verified against the Mac node's answers before the next consumer moves.
+4. **Hardware-on-evidence.** No RAM upgrade beyond the CT16G56C46S5 (→ 32GB) unless observed memory pressure fires the strain trigger in Phase 4. The DDR5 SODIMM price crisis (Q3 2026 through Q4 2027) is why. We do not pre-buy against hypothetical strain.
+5. **Payment surface untouched.** API v1 stays parked. This migration is infra-only.
+
+---
+
+## Phase 0 — Install the RAM (TONIGHT, Charlie's hands)
+
+**Goal:** Lenovo boots with 32GB visible, dual-channel active. Nothing else.
+
+**Deliberately boring.** No OS work. No login. No network config. Just physical install + BIOS verify + shutdown.
+
+- [ ] Power down the Lenovo. Unplug the power cable.
+- [ ] Wait 30 seconds. Press and hold the power button for 5 seconds to drain residual charge.
+- [ ] Open the case per the IdeaCentre Mini 01IRH10R service manual (single access panel — no tools past a Phillips head).
+- [ ] Locate the empty SODIMM slot (the stock 16GB stick occupies the other slot).
+- [ ] Touch a bare metal surface on the chassis to discharge static before handling the new stick.
+- [ ] Seat the **Crucial CT16G56C46S5** (16GB DDR5-5600 SODIMM) in the empty slot: align notch, 30° angle, press home, rotate flat until clips lock.
+- [ ] Close the case. Reconnect power. Boot.
+- [ ] Enter BIOS (F1 or F2 at Lenovo splash — 01IRH10R defaults to F1).
+- [ ] **Verify:** system shows **32GB installed** AND **dual-channel active** (BIOS memory page or Advanced → Memory Config).
+- [ ] Exit BIOS without saving. Let it boot to whatever it currently boots to (or POST-halt if unformatted — fine).
+- [ ] **Optional but recommended:** one memtest86+ pass (USB stick, ~90 min for 32GB DDR5). Skip only if you're time-boxed.
+- [ ] Shut down. Done for tonight.
+
+**Success criteria for "installed":** 32GB visible in BIOS + dual-channel confirmed + boots clean (no beep codes, no POST errors). Nothing more.
+
+**If anything's off:** stop. Photograph the BIOS memory screen, note the exact behavior, message JJ. Don't force it.
+
+---
+
+## Phase 1 — Ubuntu install (Charlie, ~30 min, separate evening)
+
+**Goal:** Lenovo running Ubuntu Server 24.04 LTS, reachable on the LAN via SSH, with a known IP.
+
+Not tonight. Give the RAM install its own success before starting a new task.
+
+- [ ] Download **Ubuntu Server 24.04 LTS** ISO (ubuntu.com/download/server — the LTS, not the interim release).
+- [ ] Install **Balena Etcher** on the Mac (etcher.balena.io). Insert an 8GB+ USB stick.
+- [ ] Flash the ISO to the USB with Etcher. Wait for verification to complete.
+- [ ] On the Lenovo: insert USB, power on, hit **F12** at the splash for boot menu, select the USB device.
+- [ ] Ubuntu installer choices:
+  - **Language / keyboard:** English (US) or your preference
+  - **Network:** DHCP is fine for install. We'll pin the address in the router post-install (or set static during install if you know the LAN subnet — either works).
+  - **Storage:** "Use entire disk" is fine; do **NOT** encrypt (LUKS blocks unattended reboots — we want the node to come back up after a power blip without a keyboard). Leave the default LVM layout; the node's history growth headroom lives in the free VG space.
+  - **Hostname:** `xrpl-node` (or your preference — call it out to JJ so DNS/tooling matches)
+  - **Timezone:** America/New_York (matches Mac)
+  - **Your name / username / strong password:** yes, strong. This account gets sudo. Write the password down somewhere you actually trust (1Password, paper in a safe — not a sticky note).
+- [ ] **The one critical checkbox: install OpenSSH server.** This is the checkbox that lets JJ take over from Phase 2. If you skip it, we're re-booting from USB.
+- [ ] Skip all the "featured server snaps" (Nextcloud, Docker, etc.). We install what we need in Phase 2.
+- [ ] Complete install. Reboot when prompted. Remove USB.
+- [ ] Login on the console once. Run `ip -brief a` and note the LAN IP (the one that isn't 127.0.0.1).
+- [ ] **In the router:** set a DHCP reservation for the Lenovo's MAC address to the IP it currently has (or the IP you want). This locks the address without touching Ubuntu's netplan.
+- [ ] Message JJ: **"Lenovo up at 192.168.X.Y, username=`<name>`, ready for Phase 2."**
+
+---
+
+## Phase 2 — Base hardening + rippled build (JJ, via SSH)
+
+**Goal:** Locked-down base OS + rippled at current release, syncing from the network.
+
+Runs from JJ's session over SSH. Charlie doesn't need to babysit past dropping the SSH key in place.
+
+- [ ] Charlie: `ssh-copy-id <user>@<lenovo-ip>` from the Mac (uses the Mac's existing key). Verify JJ can log in.
+- [ ] Disable password SSH; keys only. Edit `/etc/ssh/sshd_config`: `PasswordAuthentication no`, `PermitRootLogin no`. Reload sshd.
+- [ ] `ufw` firewall: allow 22 (SSH from LAN only if practical), 51235 (rippled peer port), deny inbound everything else. rippled RPC (5005/6006) stays localhost-only — never expose it externally.
+- [ ] `unattended-upgrades` enabled for security updates. Standard Ubuntu package.
+- [ ] `fail2ban`: **judgment call.** Keys-only SSH + LAN-only exposure means fail2ban is belt-on-belt. Skip unless port 22 ends up WAN-exposed (which it won't in this plan). Revisit if scope changes.
+- [ ] Package prerequisites for rippled build: `build-essential`, `cmake`, `git`, `python3`, `libssl-dev`, `pkg-config`, `protobuf-compiler` — plus whatever the current rippled BUILD.md names (verify at build time; the list moves per release).
+- [ ] **rippled release choice — RECOMMENDATION: build from the current tagged release** (not the Ubuntu package, not `develop`). Reasons:
+  1. The R5 amendment-vocabulary alarm on the Mac (30/75 known vs s1.ripple.com's 31/82) points at Mac node running a stale binary; a current-release build resolves the vocab gap AND gives us the newest optimizations.
+  2. The Ubuntu package lags releases by weeks-to-months. Not what we want for a node whose whole job is being current.
+  3. Building on the target hardware gives us the exact binary we want, no surprise deps.
+  Trade-off: adds ~2h to Phase 2 for the initial build vs. `apt install rippled`. Acceptable.
+- [ ] Clone `github.com/XRPLF/rippled` at the current release tag. Configure with `-DCMAKE_BUILD_TYPE=Release` and reasonable core count (`-j` = `nproc` - 1 to keep the box responsive).
+- [ ] Configure `rippled.cfg`:
+  - `node_size=medium` (matches Mac's current config; the 32GB gives us medium comfortably with headroom)
+  - `[node_db]` type=NuDB, path on the largest volume, `online_delete` set to something sane (e.g., 2000 for medium)
+  - `[ips]` seeded with the standard boot list
+  - `[validators_file]` pointing at the standard published validators.txt
+  - RPC bind localhost-only (`127.0.0.1:5005`), admin localhost-only
+- [ ] Install as a systemd service (`rippled.service`), enabled, but **do not start yet** — start in the sync step below deliberately so we can watch it.
+- [ ] **Sync-from-network is the default path.** Start `rippled`, tail the log, confirm peer connections form, watch `server_info` progress from `disconnected` → `connected` → `syncing` → `full`. On a fresh medium node this typically takes 12-36h; we're not in a hurry.
+- [ ] **Accelerator option (LAN copy from Mac node):** if network sync is dragging past ~48h or peers are misbehaving, we can stop rippled on both boxes, `rsync` the Mac's NuDB directory over Thunderbolt/1GbE to the Lenovo, restart both. **Only** worth it if network sync is genuinely stuck — otherwise it's operator overhead for no gain. Do NOT default to LAN copy; sync-from-network is cleaner and validates the peer path we need working anyway.
+
+**Phase 2 exit criteria:** `server_info` reports `server_state: full`, `complete_ledgers` reaches a healthy contiguous range, and the node has been `full` and stable for at least 4 hours.
+
+---
+
+## Phase 3 — Overlap + verification + consumer repoint (JJ)
+
+**Goal:** Lenovo node proven at parity with Mac node, then localhost consumers moved one at a time.
+
+Both nodes run in parallel through this phase. Nothing on prod moves until every check passes.
+
+- [ ] Both nodes running. Both fully synced. Log in `walker_health` isn't touched yet.
+- [ ] **Verification checklist (all must PASS before any repoint):**
+  - [ ] **Vocab parity:** `feature` RPC output on Lenovo vs `s1.ripple.com` — same known-amendment count (target: matches s1 exactly, resolves the 30/75 vs 31/82 gap that flagged in R5 monitoring)
+  - [ ] **Ledger index parity:** `server_info` on Lenovo vs Mac — both within 1-2 ledgers of each other, both within 1-2 of the network
+  - [ ] **Census-read spot-checks:** run three representative census reads (e.g., total AMMs, total MPTs, total TokenEscrows) against both nodes — results must match exactly
+  - [ ] **Load behavior:** Lenovo's `load_factor` under normal query pressure stays comparable to Mac's (order-of-magnitude, not 10× worse)
+  - [ ] **Log health:** 24h of Lenovo `debug.log` contains no repeated FATAL / repeated peer-blacklisting / repeated resource-exhaustion signals
+- [ ] **Repoint consumers one at a time**, verify each before the next:
+  1. Least-critical walker first (e.g., a low-frequency backfill) — flip its config to point at Lenovo, watch for one full cycle, confirm identical outputs to the Mac-pointed baseline.
+  2. Next-least-critical. Same verify pattern.
+  3. Continue through the list; the RLUSD live-state fetcher and the four-layer audit walkers move **last** because they're the most-visible if wrong.
+- [ ] `answer_plausibility_walker` remains pointed at public nodes throughout Phase 3 (its whole job is cross-checking us against external truth; pointing it at our own new node defeats the point).
+- [ ] **Mac node demotes to warm standby** at Phase 3 exit: still running, still synced, no longer receiving consumer queries. It's the fallback if Phase 4 surfaces a problem.
+
+**Phase 3 exit criteria:** all verification checks passed, all non-public-node consumers repointed to Lenovo, Mac is warm-standby-only, no prod alarms fired during the transition.
+
+---
+
+## Phase 4 — 30-day soak → Mac retirement
+
+**Goal:** Lenovo proves it in production for a full month. Mac retires cleanly.
+
+- [ ] Day 0 of soak = the day Phase 3 exited.
+- [ ] Watch: `walker_health` for the Lenovo-served walkers, four-layer audit output (Layer 2 alarms especially), BetterStack heartbeats, R5 vocab alarm (should stay green now).
+- [ ] Watch: **Lenovo memory-pressure telemetry** — this is the ONLY signal that reopens the 64GB question. Add a walker or a small systemd timer that logs `/proc/meminfo` + swap usage + rippled RSS to a small table, hourly. Alarm on: canary fires, sustained swap use (>0 for >1h), OS stalls, or rippled restarts under memory pressure.
+- [ ] **Strain-trigger clause (armed):** if and ONLY if memory-pressure telemetry fires during the soak, we reopen the RAM question at that week's DDR5 SODIMM prices. No re-litigating the 32GB decision on speculation. The trigger is the observation, not the anxiety.
+- [ ] At day 30, if no strain trigger fired and no alarms outstanding: **Mac node retires.**
+  - Stop `rippled` on the Mac
+  - Archive `rippled.cfg`, `validators.txt`, and a copy of the last-known `server_info` output to `/Users/charliebruce/xrpl_test/_private/mac_node_archive_2026-08-XX/`
+  - Uninstall rippled from the Mac (or leave the binary in place and just disable the LaunchAgent — Charlie's preference)
+  - Update `docs/DEPLOY.md` and `docs/DIAGNOSTIC_BRIEF_local_rippled_2026-07-16.md` to reflect the Lenovo as the primary local node
+  - Mac breathes: freed RAM, freed disk, freed CPU. Walkers + Flask + everything else get the whole box.
+
+**Phase 4 exit criteria:** 30 clean days, Mac archived and retired, docs updated, JJ + Charlie both confirm no surprises during the soak.
+
+---
+
+## Adjacent items (do at the right phase, not before)
+
+- **Kraken API key rotation** (63-day stall as of 2026-07-31): this is the first Lenovo login opening move at Phase 1 completion. Rotate keys → check activity → redact/delete `~/Desktop/_old_bots/kraken_*.py` on the Mac. Codified in MEMORY.md as `project_kraken_api_key_rotation_park_with_trigger`.
+- **MCP server daemonization:** deferred until Charlie authorizes launchd/systemd on the Lenovo post-Phase 3. Design in `docs/AGENT_TIER_DESIGN.md`. Not part of this migration; noted here so it's on the radar for when the Lenovo is stable.
+- **CF WARP / WiFi outage fallback:** the 2026-07-24 WiFi outage stayed on Charlie's side. Not a Lenovo concern, but the Lenovo being on Ethernet (recommended over WiFi for a node) sidesteps the whole class.
+
+---
+
+## What this document is NOT
+
+- Not a design doc. The design lives in code + existing infra; this is an execution checklist.
+- Not a decision doc. Every decision (32GB not 64GB, Lenovo-node-only workload split, sync-from-network default, 30-day soak) is already made and captured in MEMORY.md. This doc executes them.
+- Not a live-changing document. Once Phase 0 fires, edits only after phase completion (post-Phase 1 lessons, post-Phase 3 lessons). No mid-phase re-litigating.
+
+---
+
+## References
+
+- `MEMORY.md` — `project_lenovo_model_confirmed`, `project_xrpldashboard_m4_stays_workload_split`, `project_ddr5_sodimm_price_crisis_2026-07`, `feedback_new_hardware_over_refurb`, `project_kraken_api_key_rotation_park_with_trigger`
+- `docs/DIAGNOSTIC_BRIEF_local_rippled_2026-07-16.md` — Mac node current shape
+- `docs/AGENT_TIER_DESIGN.md` — MCP server (deferred to post-Phase 3)
+- `docs/WORKING_TREE_DISCIPLINE.md` — four-destination rule applies at every phase boundary
