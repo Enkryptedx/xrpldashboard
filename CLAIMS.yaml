@@ -606,6 +606,22 @@ pages:
           off-ledger lending is out of scope and not disclosed on the
           page. If scope expands, the page title must move with it.
 
+      - id: lending_honest_partial_scope
+        label: "honest_partial marker: broker enumeration full, depositor enrichment top-30-by-TVL"
+        data_paths:
+          - "lending_snapshot.py:DEPOSITOR_ENRICH_TOP_N (env LENDING_ENRICH_TOP_N default 30)"
+          - "seed_walker_scope_declarations.py: lending_snapshot filter_note"
+          - "templates/lending.html: post-activation scope-note (amber pill)"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy mirrors walker_scope_declarations.filter_note for
+          lending_snapshot. If DEPOSITOR_ENRICH_TOP_N changes, the "top 30"
+          number in the marker must move with it — sibling of the whale-
+          title / escrow-copy founding-case class. Marker only fires
+          post-activation (inside {% if activated %}); pre-activation the
+          amendment-status scope-note carries the messaging.
+
   # ─────────────────────────────────────────────────────────────────
   /mpts:
     template: templates/mpts.html

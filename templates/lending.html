@@ -438,6 +438,17 @@
     </div>
 
     {% if activated %}
+      {# honest_partial marker for the lending_snapshot walker. Fires only
+         once the amendments activate and real broker rows appear — the
+         top-N enrichment caveat matters only when there's a broker table
+         to be partial about. Wording mirrors seed_walker_scope_declarations
+         "lending_snapshot" filter_note: broker/vault/loan enumeration is
+         full, depositor-count enrichment is top-30-by-TVL only. #}
+      <div class="scope-note" style="border-left-color: var(--amber); background: rgba(245,158,11,0.04); margin-bottom: 0.9em;">
+        <strong style="color: var(--amber);">{{ _('Scope:') }}</strong>
+        {{ _('Full LoanBroker/Vault/Loan enumeration via') }} <code>ledger_data</code>.
+        {{ _('Depositor-count enrichment is limited to the top 30 brokers by TVL — brokers ranked #31+ show') }} <code>—</code> {{ _('for depositors. Snapshot refreshes every 15 min via lending_snapshot walker.') }}
+      </div>
       {% set brokers = (data.brokers if data else []) or [] %}
       {% set top_brokers = brokers[:10] %}
       <div class="summary-row">
