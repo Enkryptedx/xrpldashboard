@@ -131,6 +131,30 @@
       }
     }
 
+    /* Scope-note — honest_partial marker mirroring
+       seed_walker_scope_declarations "bridge_signer_walker".
+       Single-account scope; other bridges (FXRP, Squid, future
+       Wormhole NTT) are explicitly out until named_accounts adds them
+       with category='bridge'. Same amber pattern the /lending
+       honest_partial marker uses. */
+    .scope-note {
+      background: rgba(251,191,36,0.04);
+      border-left: 3px solid var(--amber);
+      padding: 12px 14px;
+      margin: 0 0 20px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .scope-note strong { color: var(--amber); font-weight: 600; }
+    .scope-note code {
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px; border-radius: 4px;
+      font-family: var(--mono); font-size: 0.85em;
+      word-break: break-all;
+    }
+
     /* Rotation timeline */
     .rotation {
       border-left: 2px solid rgba(34,211,238,0.4);
@@ -179,6 +203,22 @@
     {% from "_freshness_badge.html" import freshness_badge, freshness_badge_css %}
     {{ freshness_badge_css() }}
     {{ freshness_badge(data_age_label) }}
+
+    {# honest_partial marker for bridge_signer_walker. Copy mirrors
+       seed_walker_scope_declarations.py "bridge_signer_walker"
+       filter_note — single-account scope, SignerListSet tesSUCCESS
+       only, ingested from the public Ripple node per the polite-pace
+       rule. Other bridges (FXRP, Squid, future Wormhole NTT) are
+       explicitly out of scope until named_accounts adds them with
+       category='bridge'. #}
+    <div class="scope-note">
+      <strong>{{ _('Scope:') }}</strong>
+      {{ _('Single account — the Axelar XRPL Gateway') }}
+      <code>{{ gateway_address }}</code>.
+      {{ _('Walker scans') }} <code>account_tx</code> {{ _('for') }} <code>SignerListSet</code>
+      {{ _('transactions with') }} <code>tesSUCCESS</code>,
+      {{ _('ingested from Ripple\'s public node (s1.ripple.com) per the polite-pace rule for public XRPL infrastructure. Rotation history bootstraps 2026-06-08; earlier rotations are permanently absent. Other XRPL bridges (FXRP, Squid, future Wormhole NTT) are out of scope on this page.') }}
+    </div>
 
     {% if state %}
       <div class="hero-card">

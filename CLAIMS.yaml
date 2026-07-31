@@ -1114,6 +1114,25 @@ pages:
           Verify against Axelar's own docs before any bridge-account
           change lands.
 
+      - id: sidechain_honest_partial_scope
+        label: "Scope-note: single Axelar gateway, SignerListSet-only, 2026-06-08 bootstrap, other bridges out"
+        data_paths:
+          - "bridge_signer_walker.py:AXELAR_GATEWAY (rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw)"
+          - "seed_walker_scope_declarations.py: bridge_signer_walker filter_note"
+          - "templates/sidechain.html: scope-note block (amber pill)"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy mirrors walker_scope_declarations.filter_note for
+          bridge_signer_walker. If the AXELAR_GATEWAY constant moves,
+          the gateway_address rendered in the scope-note moves with it
+          (via context var, not hard-coded). Rotation-history bootstrap
+          date (2026-06-08) is a copy-class fact — will silently rot if
+          the walker is ever re-bootstrapped from an earlier ledger.
+          "Other bridges out of scope" clause is the moat against citation
+          creep — if FXRP/Squid/Wormhole NTT ever land in named_accounts
+          with category='bridge', this claim must move with them.
+
       - id: sidechain_freshness_walker_based
         label: "Freshness pill tracks walker_health.last_success_at (not the table's written_at) — SignerListSet rotations are rare, so written_at would misread as 'months ago' when the walker is working"
         data_paths:
