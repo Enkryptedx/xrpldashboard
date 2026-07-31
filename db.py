@@ -4368,7 +4368,12 @@ _bot_hash_table_ready = False
 # Set True by the is_bot writer after the backfill completes and the
 # canary has soaked for 3 days. Flip is a separate deploy step; this
 # stays False until that confirmation lands.
-_is_bot_column_ready = False
+# FLIPPED 2026-07-31 after 3-day soak PASS (07-29/07-30/07-31 all delta=0,
+# trailing-7d + historical-week windows). Analytics reads switch from the
+# hash-tables path to the stamped is_bot column + partial index.
+# Rollback: flip back to False, deploy — no schema change, minutes.
+# Post-flip drift guard: is_bot_canary at 06:00 daily.
+_is_bot_column_ready = True
 
 
 def scan_burst_cohorts(lookback_days=90):
