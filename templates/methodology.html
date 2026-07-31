@@ -575,6 +575,35 @@
     <code>cross_check_status</code> {{ _('here is derived from a real paired computation: stored') }} <code>xrpl_net_change_24h</code> {{ _('(Option-A gateway_balances diff) vs derived') }} <code>xrpl_supply[t] − xrpl_supply[t-1]</code>{{ _('. Agreement within') }} <code>CROSS_CHECK_EPSILON_RLUSD (1)</code> {{ _('emits') }} <code>agree</code>; {{ _('any larger divergence is') }} <code>disagree</code> — {{ _('an agent reading') }} <code>disagree</code> {{ _('should downweight the number, not just relay it. The same three-state verdict is surfaced as a chip on the') }} <a href="/rlusd">/rlusd</a> {{ _('page next to the freshness pill — one derivation, two surfaces.') }}
   </p>
 
+  <h3 id="amm">{{ _('AMM pools (get_amm_pool, get_amm_top_by_tvl)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>rank_amms_walker + amm_tvl_recorder</code> — {{ _('the same') }} <code>amm_ranked_pools</code> {{ _('snapshot the') }} <a href="/pools">/pools</a> {{ _('page reads.') }} <code>rank_amms</code> {{ _('curates the ranked set (thresholds on liquidity and non-zero pair sides);') }} <code>amm_tvl_recorder</code> {{ _('fills the tvl_usd + tvl_status columns from live pricing. Rows with NULL tvl_usd sort last in the top-N view — the absence is preserved, not silently dropped.') }}
+    {{ _('Freshness contract:') }} <code>≤ 30min</code> — {{ _('matches the recorder cadence. Unranked AMM accounts (below thresholds, or newer than the last snapshot cycle) return a RuntimeError from') }} <code>get_amm_pool</code> {{ _('rather than a stub — absence IS the signal, same rule the Day 3 finalized-window tool applies.') }}
+  </p>
+
+  <h3 id="token-attestation">{{ _('Token attestation (get_token_attestation)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>verify_toml_accounts + enrich_token_names</code> — {{ _('the same') }} <code>account_labels</code> {{ _('table the') }} <a href="/tokens">/tokens</a> {{ _('per-row attestation badge reads. Three-state ladder mirrors app.py:2589-2598 (v3 §7):') }}
+    <code>verified</code> — {{ _('the issuer address has a label with') }} <code>source='toml'</code> ({{ _('verify_toml_accounts successfully fetched and parsed the issuer\'s .toml declaration);') }}
+    <code>self-described</code> — {{ _('labeled with a non-toml source (derived:xls-15, enrich_token_names): named by an evidence trail but not TOML-verified;') }}
+    <code>null</code> — {{ _('no account_labels row for the issuer. Absence IS the signal — the field is explicitly null, never fabricated.') }}
+    {{ _('Freshness contract:') }} <code>daily</code>. {{ _('Every response includes') }} <code>dispute_contact_url</code> {{ _('in the data payload — first-party channel for any issuer who disagrees with the label. Same target the') }} <a href="/tokens">/tokens</a> {{ _('per-row footer link uses (purpose=attestation-dispute in app.py CONTACT_PURPOSES).') }}
+  </p>
+
+  <h3 id="rwa">{{ _('RWA families and pools (get_rwa_families, get_rwa_pools)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>rwa_family + rwa_pool_attribution</code> — {{ _('the same curated allowlist tables the') }} <a href="/rwa">/rwa</a> {{ _('page reads.') }} <code>get_rwa_families</code> {{ _('returns every family with its attributed pool count;') }} <code>get_rwa_pools</code> {{ _('returns every pool-attribution row with provenance +') }} <code>tvl_usd</code> {{ _('joined against') }} <code>amm_ranked_pools</code> {{ _('(same join as app.py:3086).') }}
+    <br>
+    <code>attestation_level</code> ∈ <code>{verified, inferred, preliminary}</code> {{ _('is a per-family curation grade (schema constraint in db.py:365);') }} <code>confidence</code> ∈ <code>{high, medium, low}</code> {{ _('is a per-pool attribution grade. Both are curated, not derived — the manifest of what we chose to surface, and with what strength of claim.') }}
+    {{ _('Freshness contract:') }} <code>daily</code> ({{ _('families) /') }} <code>≤ 30min</code> {{ _('(pools, since the TVL join reads the amm_ranked_pools snapshot). Both responses include') }} <code>dispute_contact_url</code> — {{ _('a family or pool owner disagreeing with an attribution has the same first-party correction channel.') }}
+  </p>
+
+  <h3 id="mpt">{{ _('MPT snapshot (get_mpt_snapshot)') }}</h3>
+  <p>
+    {{ _('Source:') }} <code>mpt_snapshot + mpt_holders_refresh</code> — {{ _('the same') }} <code>mpt_snapshot</code> {{ _('JSON payload the') }} <a href="/mpts">/mpts</a> {{ _('page reads. Reports total active MPTs and a by-class breakdown as the walker recorded them; not third-party-naming (no per-issuer labels here, so no') }} <code>dispute_contact_url</code>). {{ _('A mislabel of a specific MPT issuer lands on') }} <code>get_token_attestation</code>, {{ _('not here.') }}
+    {{ _('Freshness contract:') }} <code>daily</code> ({{ _('mpt_snapshot walker cadence). The snapshot dict includes') }} <code>snapshot_age_seconds</code> — {{ _('an agent that wants a fresher read can compare that value against the daily contract and back off accordingly.') }}
+  </p>
+
   <h2 id="for-ai-agents">{{ _('For AI agents') }}</h2>
   <p>
     {{ _('This site is a public read-only source of XRP Ledger and cross-chain data. Automated retrieval, citation, and machine reading are welcome — anticipated, even. This section is the transparent contract for anything reading this page programmatically.') }}

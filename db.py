@@ -2457,6 +2457,74 @@ def read_mpt_snapshot():
         return None
 
 
+def read_rwa_families():
+    """Return every rwa_family row with its attributed pool count.
+
+    Shape mirrors what /rwa renders (app.py:3033) but returns a flat count
+    of attributed pools rather than the array — the MCP tool exposes the
+    count for agents; the human page keeps the addresses. None on PG
+    unavailable so the caller can raise a distinct RuntimeError instead
+    of returning an empty list that looks like "no families exist."""
+    if not pg_available():
+        return None
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT f.family_slug, f.family_name, f.description,
+                       f.external_url, f.attestation_level,
+                       COUNT(p.pool_address) AS pool_count
+                  FROM rwa_family f
+             LEFT JOIN rwa_pool_attribution p
+                    ON f.family_slug = p.family_slug
+              GROUP BY f.family_slug, f.family_name, f.description,
+                       f.external_url, f.attestation_level
+              ORDER BY pool_count DESC NULLS LAST, f.family_name
+            """)
+            return [
+                {
+                    "family_slug": r[0],
+                    "family_name": r[1],
+                    "description": r[2],
+                    "external_url": r[3],
+                    "attestation_level": r[4],
+                    "pool_count": int(r[5] or 0),
+                }
+                for r in cur.fetchall()
+            ]
+
+
+def read_rwa_pools_attributed():
+    """Return every rwa_pool_attribution row with its family slug and
+    provenance. Left-join against amm_ranked_pools so agents get the
+    TVL alongside the attribution — the two datasets are curated
+    independently but always read together on /rwa (app.py:3086).
+    None on PG unavailable."""
+    if not pg_available():
+        return None
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.pool_address, p.family_slug, p.confidence,
+                       p.provenance, p.notes, a.tvl_usd, a.tvl_status
+                  FROM rwa_pool_attribution p
+             LEFT JOIN amm_ranked_pools a
+                    ON p.pool_address = a.amm_account
+              ORDER BY p.family_slug, p.pool_address
+            """)
+            return [
+                {
+                    "pool_address": r[0],
+                    "family_slug": r[1],
+                    "confidence": r[2],
+                    "provenance": r[3],
+                    "notes": r[4],
+                    "tvl_usd": r[5],
+                    "tvl_status": r[6],
+                }
+                for r in cur.fetchall()
+            ]
+
+
 def write_credentials_snapshot(data):
     """Persist the /credentials state blob so every gunicorn worker
     (and any future standalone walker) reads the same view. Silent no-op

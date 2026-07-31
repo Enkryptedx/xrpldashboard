@@ -1434,7 +1434,8 @@ pages:
         data_paths:
           - "mcp_tools_ledger.py: methodology_url arguments (#ledger, #amendments, #unl)"
           - "mcp_tools_value_flows.py: methodology_url arguments (#whales, #rlusd)"
-          - "templates/methodology.html §MCP tool envelope sources (h3 ids: ledger, amendments, unl, whales, rlusd)"
+          - "mcp_tools_amm_tokens.py: methodology_url arguments (#amm, #token-attestation, #rwa, #mpt)"
+          - "templates/methodology.html §MCP tool envelope sources (h3 ids: ledger, amendments, unl, whales, rlusd, amm, token-attestation, rwa, mpt)"
         behavior: MANUAL_CURATION
         layer3_source: self-attested-only
         risk_note: >
@@ -1444,10 +1445,32 @@ pages:
           2026-07-31 anchor audit — 5 anchors were being emitted by
           Day 2/3 tools with no matching id on /methodology. Fixed by
           landing the "MCP tool envelope sources" h2 with 5 h3 anchor
-          targets. If a future tool ships with a new methodology_url,
+          targets, extended to 9 with Day 4 (amm, token-attestation,
+          rwa, mpt). If a future tool ships with a new methodology_url,
           the corresponding h3 must land in the SAME commit or the
           envelope's contract silently breaks. See sibling
           methodology_for_ai_agents_discovery_links_resolve.
+
+      - id: mcp_third_party_naming_dispute_url_present
+        label: "Every MCP tool whose data payload names a third party (issuer attestation, RWA family attribution) carries `dispute_contact_url` in the data payload."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_token_attestation (data.dispute_contact_url)"
+          - "mcp_tools_amm_tokens.py:tool_get_rwa_families (data.dispute_contact_url)"
+          - "mcp_tools_amm_tokens.py:tool_get_rwa_pools (data.dispute_contact_url)"
+          - "mcp_tools_amm_tokens.py:DISPUTE_CONTACT_URL"
+          - "app.py:CONTACT_PURPOSES (attestation-dispute)"
+        behavior: MANUAL_CURATION
+        layer3_source: self-attested-only
+        risk_note: >
+          Third-party-naming discipline (Day 4). Any tool that assigns a
+          name / tier / attribution to an address the site did not
+          originate must expose a first-party correction channel — same
+          rule the /tokens per-row footer link and /rwa page-level footer
+          apply to human readers. If CONTACT_PURPOSES rename drops the
+          `attestation-dispute` key, both the on-page footer and the MCP
+          data-payload URL 404 in the same way, so a single fix closes
+          both surfaces. Adjacent to attestation-dispute-correction-path
+          project memory (16cebf4).
 
       - id: methodology_for_ai_agents_discovery_links_resolve
         label: "All discovery-surface links in /methodology#for-ai-agents (llms.txt, agents.json, snapshot chain/pubkey, security.txt, design-doc GitHub URL) resolve 200."

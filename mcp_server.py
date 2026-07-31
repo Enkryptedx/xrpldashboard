@@ -344,7 +344,59 @@ def _register_tools(mcp) -> int:
         Wrapped in the proof envelope."""
         return mcp_tools_value_flows.tool_get_rlusd_flow_24h()
 
-    return 7
+    # Day 4 AMM + token-attestation batch. Tools 3-5 are the first that
+    # name a THIRD PARTY in the data payload (issuer attestation, RWA
+    # family attribution) — every third-party-naming tool carries
+    # `dispute_contact_url` so the named party has a first-party channel
+    # to correct a label they disagree with. Same rule the /tokens and
+    # /rwa footers apply to human readers.
+    import mcp_tools_amm_tokens
+
+    @mcp.tool()
+    def get_amm_pool(amm_account: str) -> dict:
+        """Return the single ranked-pool row for one AMM account from the
+        amm_ranked_pools snapshot. Raises when the account is absent
+        (unranked, below thresholds, or newer than the last snapshot).
+        Wrapped in the proof envelope."""
+        return mcp_tools_amm_tokens.tool_get_amm_pool(amm_account)
+
+    @mcp.tool()
+    def get_amm_top_by_tvl(limit: int = 10) -> dict:
+        """Return the top-N ranked AMM pools by tvl_usd from the same
+        snapshot /pools reads. NULL-tvl rows sort last. Wrapped in the
+        proof envelope."""
+        return mcp_tools_amm_tokens.tool_get_amm_top_by_tvl(limit)
+
+    @mcp.tool()
+    def get_token_attestation(currency: str, issuer: str) -> dict:
+        """Return the attestation tier (verified / self-described / null)
+        for one (currency, issuer) pair. Data payload includes
+        `dispute_contact_url` — first tool to name a third party. Wrapped
+        in the proof envelope."""
+        return mcp_tools_amm_tokens.tool_get_token_attestation(currency, issuer)
+
+    @mcp.tool()
+    def get_rwa_families() -> dict:
+        """Return every rwa_family row with attributed pool count. Data
+        payload includes `dispute_contact_url`. Wrapped in the proof
+        envelope."""
+        return mcp_tools_amm_tokens.tool_get_rwa_families()
+
+    @mcp.tool()
+    def get_rwa_pools() -> dict:
+        """Return every attributed RWA pool with provenance + TVL. Data
+        payload includes `dispute_contact_url`. Wrapped in the proof
+        envelope."""
+        return mcp_tools_amm_tokens.tool_get_rwa_pools()
+
+    @mcp.tool()
+    def get_mpt_snapshot() -> dict:
+        """Return the MPT snapshot dict (issuances / by_class / total).
+        Not third-party-naming — no dispute_contact_url. Wrapped in the
+        proof envelope."""
+        return mcp_tools_amm_tokens.tool_get_mpt_snapshot()
+
+    return 13
 
 
 def build_server(register_tools: bool = True):

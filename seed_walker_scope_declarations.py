@@ -378,7 +378,7 @@ SCOPES = [
     ),
     (
         "mcp_server_heartbeat",
-        "read-only MCP tool proxy over existing Neon tables (Day 3: 7 tools registered)",
+        "read-only MCP tool proxy over existing Neon tables (Day 4: 13 tools registered)",
         "Self-writing 60s heartbeat from mcp_server.py's background daemon "
         "thread. Not an XRPL walker — the row exists so the MCP server's own "
         "liveness surfaces on /walker_health under the same alarm framework "
