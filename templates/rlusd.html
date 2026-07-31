@@ -399,6 +399,27 @@
       color: var(--amber);
     }
 
+    /* Cross-check label — surfaces the same three-state verdict
+       (agree / disagree / not_applicable) the MCP envelope carries.
+       Green when the stored xrpl_net_change_24h agrees with the
+       derived xrpl_supply[t] − xrpl_supply[t-1] diff; amber on
+       disagree; muted on not_applicable. One source of truth
+       (mcp_tools_value_flows._derive_flow_cross_check), two surfaces. */
+    .rlusd-cross-check-chip {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      display: inline-block;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .rlusd-cross-check-chip.is-agree  { color: var(--green); }
+    .rlusd-cross-check-chip.is-disagree { color: var(--amber); }
+    .rlusd-cross-check-chip a { color: inherit; text-decoration: underline; }
+
     .foot {
       margin-top: 28px; font-size: 0.78rem; color: var(--dim);
       border-top: 1px solid var(--border); padding-top: 16px;
@@ -522,6 +543,30 @@
           {% trans age=human_age %}Last updated · {{ age }} ago · reconnecting{% endtrans %}
         {%- endif -%}
       </div>
+      {% endif %}
+      {# Cross-check label — 24h XRPL net-change verdict from
+         mcp_tools_value_flows.derive_rlusd_flow_cross_check_for_display.
+         Same computation the get_rlusd_flow_24h MCP tool serves to
+         agents. Three states, honest vocabulary: agree / disagree /
+         not_applicable. Absent when the helper returns None (no DB,
+         no finalized rows, exception) — silence beats a false green. #}
+      {% if cross_check %}
+        {% if cross_check.status == 'agree' %}
+          <div class="rlusd-cross-check-chip is-agree" title="{{ cross_check.finalized_snapshot_date }}">
+            {% trans date=cross_check.finalized_snapshot_date %}✓ 24h net-change cross-checked against independent RPC — agrees ({{ date }} finalized){% endtrans %}
+            · <a href="/methodology#rlusd">{{ _('methodology') }}</a>
+          </div>
+        {% elif cross_check.status == 'disagree' %}
+          <div class="rlusd-cross-check-chip is-disagree" title="{{ cross_check.finalized_snapshot_date }}">
+            {% trans date=cross_check.finalized_snapshot_date %}⚠ 24h net-change cross-check disagrees ({{ date }} finalized){% endtrans %}
+            · <a href="/methodology#rlusd">{{ _('methodology') }}</a>
+          </div>
+        {% else %}
+          <div class="rlusd-cross-check-chip" title="{{ cross_check.scope_note or '' }}">
+            {{ _('Cross-check pending — need two finalized rows') }}
+            · <a href="/methodology#rlusd">{{ _('methodology') }}</a>
+          </div>
+        {% endif %}
       {% endif %}
       <div class="legend-chips">
         <span class="chip mint"><span class="sw"></span>new RLUSD created</span>

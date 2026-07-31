@@ -270,6 +270,79 @@ def tool_get_rlusd_supply() -> dict:
 # 4. get_rlusd_flow_24h
 # ─────────────────────────────────────────────────────────────────────
 
+def _derive_flow_cross_check(finalized_rows: list) -> tuple:
+    """Pure cross-check derivation from a list of finalized
+    rlusd_supply_history rows (newest first). Returns
+    (status, scope_note): status ∈ {'agree','disagree','not_applicable'}.
+
+    Shared by tool_get_rlusd_flow_24h (envelope) and
+    derive_rlusd_flow_cross_check_for_display (the /rlusd on-page label
+    surface). Same rule, two callers, one source of truth — mirrors the
+    "cross-check field is a claim, so its computation must be
+    single-sourced" discipline from AGENT_TIER_DESIGN.md."""
+    if not finalized_rows:
+        return ("not_applicable", "no finalized rlusd_supply_history rows available")
+    latest = finalized_rows[0]
+    stored_net_change = latest.get("xrpl_net_change_24h")
+    if len(finalized_rows) < 2:
+        return (
+            "not_applicable",
+            "only one finalized rlusd_supply_history row available — "
+            "cross-check requires two finalized rows to derive a diff",
+        )
+    prior = finalized_rows[1]
+    latest_supply = latest.get("xrpl_supply")
+    prior_supply = prior.get("xrpl_supply")
+    if latest_supply is None or prior_supply is None or stored_net_change is None:
+        return (
+            "not_applicable",
+            "one of xrpl_supply[t], xrpl_supply[t-1], or stored "
+            "xrpl_net_change_24h is NULL — cannot cross-check",
+        )
+    try:
+        derived = decimal.Decimal(str(latest_supply)) - decimal.Decimal(str(prior_supply))
+        stored = decimal.Decimal(str(stored_net_change))
+        if abs(derived - stored) <= CROSS_CHECK_EPSILON_RLUSD:
+            return ("agree", None)
+        return ("disagree", None)
+    except (decimal.InvalidOperation, TypeError):
+        return (
+            "not_applicable",
+            "xrpl_net_change_24h or xrpl_supply not decimal-coercible",
+        )
+
+
+def derive_rlusd_flow_cross_check_for_display() -> Optional[dict]:
+    """Fault-tolerant wrapper for the /rlusd on-page label. Returns None
+    on any failure (no DB, empty history, exception) so the template can
+    omit the label rather than showing a lie.
+
+    The MCP tool exercises the strict envelope-contract path
+    (RuntimeError on missing data); this helper is the "for-display"
+    path — same derivation, absence-is-honest failure mode."""
+    try:
+        import db
+        if not db.pg_available():
+            return None
+        raw_history = db.read_rlusd_supply_history(days=3)
+        if not raw_history:
+            return None
+        today_utc = datetime.datetime.now(datetime.timezone.utc).date()
+        finalized = [r for r in raw_history if r["snapshot_date"] < today_utc]
+        if not finalized:
+            return None
+        status, scope_note = _derive_flow_cross_check(finalized)
+        latest = finalized[0]
+        return {
+            "status": status,
+            "scope_note": scope_note,
+            "finalized_snapshot_date": latest["snapshot_date"].isoformat(),
+            "as_of_iso": _iso_utc_now(),
+        }
+    except Exception:
+        return None
+
+
 def tool_get_rlusd_flow_24h() -> dict:
     """Return the last finalized 24h XRPL net-change from rlusd_supply_history.
 
@@ -318,33 +391,7 @@ def tool_get_rlusd_flow_24h() -> dict:
 
     latest = finalized[0]
     stored_net_change = latest.get("xrpl_net_change_24h")
-
-    cross_check = "not_applicable"
-    scope_note = None
-    if len(finalized) < 2:
-        scope_note = (
-            "only one finalized rlusd_supply_history row available — "
-            "cross-check requires two finalized rows to derive a diff"
-        )
-    else:
-        prior = finalized[1]
-        latest_supply = latest.get("xrpl_supply")
-        prior_supply = prior.get("xrpl_supply")
-        if latest_supply is None or prior_supply is None or stored_net_change is None:
-            scope_note = (
-                "one of xrpl_supply[t], xrpl_supply[t-1], or stored "
-                "xrpl_net_change_24h is NULL — cannot cross-check"
-            )
-        else:
-            try:
-                derived = decimal.Decimal(str(latest_supply)) - decimal.Decimal(str(prior_supply))
-                stored = decimal.Decimal(str(stored_net_change))
-                if abs(derived - stored) <= CROSS_CHECK_EPSILON_RLUSD:
-                    cross_check = "agree"
-                else:
-                    cross_check = "disagree"
-            except (decimal.InvalidOperation, TypeError):
-                scope_note = "xrpl_net_change_24h or xrpl_supply not decimal-coercible"
+    cross_check, scope_note = _derive_flow_cross_check(finalized)
 
     data = {
         "finalized_window": {

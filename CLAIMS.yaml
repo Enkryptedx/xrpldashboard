@@ -80,6 +80,26 @@ pages:
           Founding case for R2 finalized-window rule (see commit
           9418032 + memory project_xrpldashboard_r2_finalized_window_patch.md).
 
+      - id: rlusd_cross_check_label
+        label: "24h net-change cross-check verdict chip: agree / disagree / pending"
+        data_paths:
+          - "mcp_tools_value_flows.py:_derive_flow_cross_check"
+          - "mcp_tools_value_flows.py:derive_rlusd_flow_cross_check_for_display"
+          - "app.py:rlusd() cross_check context var"
+          - "templates/rlusd.html: rlusd-cross-check-chip block"
+          - "db.py:read_rlusd_supply_history"
+        behavior: STEP_CHANGE
+        layer2_rules: [R1, R2]
+        layer3_source: self-attested-only  # stored vs derived, same pool
+        finalized_window: true
+        note: >
+          Same three-state verdict the get_rlusd_flow_24h MCP envelope
+          carries (cross_check_status). One derivation
+          (_derive_flow_cross_check), two surfaces — if the chip and the
+          envelope ever disagree, the derivation function is the bug.
+          `disagree` state is the visible shape of a real reconciliation-
+          surface drift (see feedback_reconciliation_surfaces_advance_triggers).
+
       - id: rlusd_freshness_chip
         label: "Freshness chip: 'Live · updated Ns ago' vs 'Last updated · reconnecting'"
         data_paths:

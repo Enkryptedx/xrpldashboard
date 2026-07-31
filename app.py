@@ -2983,6 +2983,17 @@ def rlusd():
     import rlusd_live
     refresh_interval_minutes = max(1, rlusd_live.REFRESH_INTERVAL // 60)
 
+    # Cross-check label surface. Same derivation the MCP tool
+    # get_rlusd_flow_24h uses (mcp_tools_value_flows._derive_flow_cross_check),
+    # so the on-page label and the machine-readable envelope report the
+    # same three-state verdict — one source of truth, two surfaces.
+    # None on any failure so the template omits the label rather than lie.
+    try:
+        from mcp_tools_value_flows import derive_rlusd_flow_cross_check_for_display
+        cross_check = derive_rlusd_flow_cross_check_for_display()
+    except Exception:
+        cross_check = None
+
     return render_template(
         "rlusd.html",
         initial=initial,
@@ -2990,6 +3001,7 @@ def rlusd():
         age_seconds=age_seconds,
         fresh=fresh,
         refresh_interval_minutes=refresh_interval_minutes,
+        cross_check=cross_check,
     )
 
 
