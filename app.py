@@ -17,6 +17,7 @@ from datetime import date, datetime, timezone
 
 from flask import Flask, Response, abort, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
+from flask_smorest import Api
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from amm_scan_pools import (
@@ -240,7 +241,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-07-29"
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-07-31"
 
 
 @app.context_processor
@@ -270,6 +271,393 @@ def inject_agent_tier_freshness():
     return {
         "agent_tier_methodology_last_verified": LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Agent Tier — OpenAPI decoration (Day 5, 2026-07-31)
+#
+# flask-smorest wires /openapi.json + Swagger UI at /docs. The spec
+# documents the LIVE free surface only: the discovery and well-known
+# endpoints that already exist on main, plus a documented pointer to
+# the 13 MCP tools (envelope schema is the standard response wrapper
+# every future JSON payload will carry — MCP tools today, HTTP
+# read-only API when it lands).
+#
+# Fences (per Day 5 commit contract):
+#   • Zero payment surface — no endpoints touch money, keys, or gating.
+#   • Zero new HTTP routes — this is decoration of what already ships.
+#   • parked/api-v1-scaffold stays parked; unpark-time rebase carries
+#     these schemas forward. See MEMORY.md for the drift note.
+#   • Error handlers untouched — smorest Api is used only to serve
+#     /openapi.json + /docs and to register spec metadata; the
+#     existing @app.errorhandler(404)/(500) HTML handlers stay dominant
+#     because no smorest Blueprint is registered here.
+#
+# Freshness contract: LAST_VERIFIED_AGENT_TIER_METHODOLOGY governs
+# this surface too — bump it whenever the OpenAPI spec changes shape.
+# ─────────────────────────────────────────────────────────────────────
+
+# Static MCP tool inventory — mirrors mcp_server._register_tools() and
+# the tool_* function names in mcp_tools_*.py. Kept as data (not a live
+# import) so the Flask app doesn't drag the FastMCP dependency in at
+# web-app startup. Test tests/test_openapi.py::test_mcp_inventory_count
+# holds this list in sync with the actual registered-tool count.
+AGENT_TIER_MCP_INVENTORY = [
+    {"name": "get_ledger_stats",      "source": "local_rippled",             "freshness": "≤ 5min",         "batch": "ledger-primitives"},
+    {"name": "get_amendment_status",  "source": "local_rippled",             "freshness": "≤ 30min",        "batch": "ledger-primitives"},
+    {"name": "get_unl_status",        "source": "local_rippled",             "freshness": "≤ 30min",        "batch": "ledger-primitives"},
+    {"name": "get_whale_events",      "source": "local_rippled_stream_capture", "freshness": "≤ 5min",      "batch": "value-flows"},
+    {"name": "get_whale_watchlist",   "source": "local_rippled_stream_capture", "freshness": "≤ 5min",      "batch": "value-flows"},
+    {"name": "get_rlusd_supply",      "source": "neon_postgres",             "freshness": "≤ 5min",         "batch": "value-flows"},
+    {"name": "get_rlusd_flow_24h",    "source": "neon_postgres",             "freshness": "finalized_only", "batch": "value-flows"},
+    {"name": "get_amm_pool",          "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_amm_top_by_tvl",    "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_token_attestation", "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_rwa_families",      "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_rwa_pools",         "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_mpt_snapshot",      "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+]
+
+app.config["API_TITLE"] = "xrpldashboard — Agent Tier (read-only)"
+app.config["API_VERSION"] = "v1"
+app.config["OPENAPI_VERSION"] = "3.0.3"
+app.config["OPENAPI_URL_PREFIX"] = "/"
+app.config["OPENAPI_JSON_PATH"] = "openapi.json"
+app.config["OPENAPI_SWAGGER_UI_PATH"] = "docs"
+app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+# Keep smorest's ETag machinery off — we don't use it and it'd add a
+# response-header surface we haven't audited.
+app.config["API_ETAG_DISABLED"] = True
+
+# API_SPEC_OPTIONS is passed through to apispec.APISpec as **kwargs.
+# Info fields, externalDocs, servers, and tags live here because
+# apispec builds the info block at construction time, not by
+# post-hoc mutation. Schema components and path items DO get added
+# post-hoc via api.spec.components.schema()/api.spec.path().
+app.config["API_SPEC_OPTIONS"] = {
+    "info": {
+        "description": (
+            "Machine-readable index of xrpldashboard's LIVE read-only "
+            "surface. Every endpoint listed here is publicly served "
+            "today; every response either is or will be wrapped in the "
+            "ProofAnnotationEnvelope schema (MCP tools today; HTTP "
+            "read-only API when it lands). Free for humans and "
+            "identified agents at reasonable volume — no accounts, no "
+            "API keys, no payment rails. See /methodology#for-ai-agents "
+            "for the full contract, and docs/AGENT_TIER_DESIGN.md in "
+            "the source repo for the design behind this surface."
+        ),
+        "contact": {
+            "name": "xrpldashboard",
+            "url": f"{SITE_URL}/contact",
+            "email": "contact@xrpldashboard.com",
+        },
+        "license": {
+            "name": "MIT (source); data derived from public XRPL and Ethereum ledgers",
+            "url": "https://github.com/Enkryptedx/xrpldashboard/blob/main/LICENSE",
+        },
+        "x-agent-tier-freshness": {
+            "last_verified": LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
+            "source_of_truth": "app.py:LAST_VERIFIED_AGENT_TIER_METHODOLOGY",
+            "note": (
+                "Bump the constant whenever the OpenAPI spec, llms.txt, "
+                "or agents.json shape changes. Three surfaces refresh "
+                "from one edit."
+            ),
+        },
+        "x-mcp-tools": {
+            "server_name": "xrpldashboard-mcp",
+            "server_version": "1.0.0",
+            "protocol": "MCP (Model Context Protocol) — stdio + streamable HTTP",
+            "documentation": f"{SITE_URL}/methodology#for-ai-agents",
+            "design_doc": (
+                "https://github.com/Enkryptedx/xrpldashboard/blob/main/"
+                "docs/AGENT_TIER_DESIGN.md"
+            ),
+            "envelope_schema_ref": "#/components/schemas/ProofAnnotationEnvelope",
+            "tool_count": len(AGENT_TIER_MCP_INVENTORY),
+            "tools": AGENT_TIER_MCP_INVENTORY,
+            "status": (
+                "Server implementation running headless (see "
+                "mcp_server.py + mcp_tools_*.py in the source repo). "
+                "Public daemonization is deferred until Phase 3 of the "
+                "Lenovo node migration completes "
+                "(see docs/LENOVO_MIGRATION.md)."
+            ),
+        },
+    },
+    "externalDocs": {
+        "description": "Full methodology, per-surface freshness contracts, and the four-layer truth audit design.",
+        "url": f"{SITE_URL}/methodology",
+    },
+    "servers": [
+        {"url": SITE_URL, "description": "Production"},
+    ],
+    "tags": [
+        {"name": "discovery", "description": "Discovery-layer surfaces — how agents find this site's machine-readable contracts."},
+        {"name": "signed-snapshots", "description": "Tamper-evident daily Ed25519-signed database snapshots. Verify locally against the pinned public key."},
+        {"name": "documentation", "description": "OpenAPI JSON and Swagger UI for this spec itself."},
+    ],
+}
+
+api = Api(app)
+
+# Envelope schema — the standard response wrapper every MCP tool
+# returns, and the shape every future HTTP JSON endpoint will follow.
+# Sourced from mcp_server.wrap_envelope() and matched by the
+# proof-annotation contract in templates/methodology.html.
+api.spec.components.schema(
+    "ProofAnnotationEnvelope",
+    {
+        "type": "object",
+        "description": (
+            "Standard response envelope. Every MCP tool response is "
+            "wrapped in this shape via mcp_server.wrap_envelope(). "
+            "The `proof` block carries source, freshness, and "
+            "cross-check metadata that lets agents verify the payload "
+            "against ledger truth without a support ticket."
+        ),
+        "required": ["data", "proof", "server"],
+        "properties": {
+            "data": {
+                "description": "Tool-specific payload. Shape varies per tool.",
+            },
+            "proof": {
+                "type": "object",
+                "required": [
+                    "source", "as_of", "freshness_contract",
+                    "methodology_url", "cross_check_status", "honest_partial",
+                ],
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "description": "Data source identifier.",
+                        "examples": ["local_rippled", "neon_postgres", "ethereum_1rpc", "local_rippled_stream_capture"],
+                    },
+                    "as_of": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "ISO 8601 UTC timestamp for when the payload was materialized.",
+                    },
+                    "freshness_contract": {
+                        "type": "string",
+                        "enum": ["≤ 5min", "≤ 30min", "daily", "finalized_only"],
+                        "description": "The declared freshness bound for this payload. `finalized_only` means the tool refuses to serve partial-day rows (R1/R2 rule).",
+                    },
+                    "claims_ref": {
+                        "type": ["string", "null"],
+                        "description": "CLAIMS.yaml claim id where one exists. `null` when the datum isn't a public claim.",
+                    },
+                    "methodology_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Deep link to the /methodology section describing this source.",
+                    },
+                    "cross_check_status": {
+                        "type": "string",
+                        "enum": ["agree", "disagree", "not_applicable"],
+                        "description": "Result of the tool's internal cross-check (where one is defined; `not_applicable` otherwise).",
+                    },
+                    "honest_partial": {
+                        "type": "boolean",
+                        "description": "True when the tool served a partial result because a dependency was unavailable. Always accompanied by `scope_note`.",
+                    },
+                    "scope_note": {
+                        "type": ["string", "null"],
+                        "description": "Required when honest_partial=True. Names exactly which slice is missing.",
+                    },
+                },
+            },
+            "server": {
+                "type": "object",
+                "required": ["name", "version", "public_key_fingerprint", "docs"],
+                "properties": {
+                    "name": {"type": "string", "examples": ["xrpldashboard-mcp"]},
+                    "version": {"type": "string", "examples": ["1.0.0"]},
+                    "public_key_fingerprint": {
+                        "type": "string",
+                        "description": "SHA-256 fingerprint of the signed-snapshot public key. Pin locally for tamper detection.",
+                    },
+                    "docs": {"type": "string", "format": "uri"},
+                },
+            },
+        },
+    },
+)
+
+
+def _register_agent_tier_openapi_paths(app_ref, spec):
+    """Register path items for the LIVE well-known and discovery
+    surfaces. These are documented under this OpenAPI spec but served
+    by the existing @app.route decorators — smorest is not the router
+    here, only the documenter. See fence #3 in the header above.
+
+    Flask-smorest's FlaskPlugin requires a real werkzeug Rule (extracted
+    from app.url_map) for every documented path — it inspects the rule
+    to infer path parameters and to translate Flask's `<type:name>` to
+    OpenAPI's `{name}`. So we resolve each path by matching url_map
+    rules, and skip anything that didn't register (defensive — this
+    file's routes should always be present, but a missed import
+    shouldn't crash startup)."""
+
+    def _text_ok(mime="text/plain"):
+        return {
+            "200": {
+                "description": "OK",
+                "content": {mime: {"schema": {"type": "string"}}},
+            },
+        }
+
+    def _json_ok(schema=None):
+        return {
+            "200": {
+                "description": "OK",
+                "content": {
+                    "application/json": {
+                        "schema": schema or {"type": "object"},
+                    },
+                },
+            },
+        }
+
+    def _rule_for(path_pattern):
+        """Find the werkzeug Rule whose rule matches the given
+        pattern. Returns None if not registered."""
+        for r in app_ref.url_map.iter_rules():
+            if r.rule == path_pattern:
+                return r
+        return None
+
+    def _register(path_pattern, operations):
+        rule = _rule_for(path_pattern)
+        if rule is None:
+            return  # defensive; missing routes just skip documentation
+        # flask-smorest 0.47.0 FlaskPlugin.rule_to_params does
+        # `argument not in rule.defaults`, which raises TypeError when
+        # rule.defaults is None (werkzeug's default). Force to empty
+        # dict so the plugin can iterate — no routing impact because
+        # {} and None both mean "no defaults" for werkzeug matching.
+        if rule.defaults is None:
+            rule.defaults = {}
+        spec.path(rule=rule, operations=operations)
+
+    _register(
+        "/llms.txt",
+        {
+            "get": {
+                "tags": ["discovery"],
+                "summary": "llmstxt.org site directory",
+                "description": (
+                    "Markdown-formatted site directory following the "
+                    "llmstxt.org convention. Every URL listed resolves "
+                    "to a live public surface."
+                ),
+                "responses": _text_ok("text/markdown"),
+            },
+        },
+    )
+    _register(
+        "/.well-known/agents.json",
+        {
+            "get": {
+                "tags": ["discovery"],
+                "summary": "Agent-discovery manifest (Wildcard-AI flavor)",
+                "description": (
+                    "Site identity, rate limits, trust surfaces, and "
+                    "the proof-annotation envelope agents should "
+                    "expect. Status booleans stay honest — each flips "
+                    "to true only after the corresponding surface "
+                    "responds."
+                ),
+                "responses": _json_ok(),
+            },
+        },
+    )
+    _register(
+        "/.well-known/security.txt",
+        {
+            "get": {
+                "tags": ["discovery"],
+                "summary": "Security disclosure contact",
+                "description": "RFC 9116 security.txt.",
+                "responses": _text_ok(),
+            },
+        },
+    )
+    _register(
+        "/robots.txt",
+        {
+            "get": {
+                "tags": ["discovery"],
+                "summary": "Crawler directives",
+                "responses": _text_ok(),
+            },
+        },
+    )
+    _register(
+        "/sitemap.xml",
+        {
+            "get": {
+                "tags": ["discovery"],
+                "summary": "XML sitemap (curated public routes + per-MPT detail pages)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {"application/xml": {"schema": {"type": "string"}}},
+                    },
+                },
+            },
+        },
+    )
+    _register(
+        "/.well-known/snapshots/chain.json",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Chain-linked list of daily signed snapshots",
+                "description": (
+                    "Each entry is chain-linked to the previous day, "
+                    "giving a tamper-evident audit trail across the "
+                    "full snapshot history."
+                ),
+                "responses": _json_ok(),
+            },
+        },
+    )
+    _register(
+        "/.well-known/snapshots/<date>.json",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Ed25519-signed snapshot for a specific date (YYYY-MM-DD)",
+                "parameters": [{
+                    "name": "date",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+                    "description": "UTC calendar date, YYYY-MM-DD.",
+                }],
+                "responses": _json_ok(),
+            },
+        },
+    )
+    _register(
+        "/.well-known/snapshots/pubkey.pem",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Ed25519 public key for snapshot verification",
+                "description": "Pin locally. Verify snapshot signatures against this key.",
+                "responses": _text_ok("application/x-pem-file"),
+            },
+        },
+    )
+
+
+# NOTE: the actual _register_agent_tier_openapi_paths(app, api.spec)
+# call happens at the BOTTOM of this module — after all @app.route
+# decorators have run — because the FlaskPlugin looks up rules in
+# app.url_map, which is only populated as routes are registered.
 
 
 _SNAPSHOT_FP_CACHE = {"path_mtime": None, "value": None}
@@ -5759,9 +6147,10 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 
 ## For agent authors
 - Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
-- Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
-- MCP server + read-only API: under construction (see docs/AGENT_TIER_DESIGN.md in the repo). No payment rails; free for identified agents at reasonable volume when live.
-- Every future API response will carry a receipts block: `{{source, as_of, methodology_url, claims_ref?, snapshot_signature?}}` — verify locally against the signed snapshot chain rather than trusting the score.
+- OpenAPI spec (machine-readable index of the LIVE free surface + envelope schema + MCP tool inventory): [{SITE_URL}/openapi.json]({SITE_URL}/openapi.json). Swagger UI: [{SITE_URL}/docs]({SITE_URL}/docs).
+- Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
+- MCP server: implementation running headless (see docs/AGENT_TIER_DESIGN.md in the repo). Public daemonization deferred to post-Lenovo-migration Phase 3. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. No payment rails; free for identified agents at reasonable volume when the server is public.
+- Every response from the MCP server (today) and the read-only API (when it lands) is wrapped in a proof-annotation envelope: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
 """
 
 
@@ -5777,9 +6166,12 @@ def llms_txt():
 # Agent-discovery manifest (Wildcard-AI flavor). Served at the
 # .well-known standard path. Declares site identity, rate limits,
 # trust surfaces, and the proof-annotation envelope agents should
-# expect. Status block is deliberately honest — mcp_ready /
-# openapi_ready / flows_ready stay false until each actually ships,
-# per the Day 1-6 sequence in docs/AGENT_TIER_DESIGN.md.
+# expect. Status block is deliberately honest — each boolean flips
+# to true only after the corresponding surface actually responds.
+# As of Day 5: openapi_ready=True (spec live at /openapi.json);
+# mcp_ready stays False until the MCP daemon is publicly exposed
+# (deferred to post-Lenovo-migration Phase 3); flows_ready stays
+# False until Wildcard-AI flows land. See docs/AGENT_TIER_DESIGN.md.
 _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
@@ -5834,13 +6226,13 @@ _AGENTS_JSON = {
         ),
     },
     "mcp_servers": [],
-    "openapi": None,
+    "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Day 1 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
+        "phase": f"Day 5 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
         "discovery_layer_ready": True,
         "mcp_ready": False,
-        "openapi_ready": False,
+        "openapi_ready": True,
         "flows_ready": False,
         "reference": "docs/AGENT_TIER_DESIGN.md in the source repo",
     },
@@ -6172,6 +6564,14 @@ def server_error(e):
     survive partial outages, so a 500 means a real bug — point users
     to /health so they can see if workers are paused."""
     return render_template("500.html"), 500
+
+
+# Register OpenAPI path items for the LIVE discovery + well-known
+# surfaces. Runs after every @app.route decorator so url_map is
+# fully populated and _rule_for() can find each rule. See the
+# Agent Tier / OpenAPI decoration block near the top of this file
+# for the fence list and the design behind this decoration.
+_register_agent_tier_openapi_paths(app, api.spec)
 
 
 if __name__ == "__main__":

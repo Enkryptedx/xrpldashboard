@@ -609,10 +609,12 @@
     {{ _('This site is a public read-only source of XRP Ledger and cross-chain data. Automated retrieval, citation, and machine reading are welcome — anticipated, even. This section is the transparent contract for anything reading this page programmatically.') }}
   </p>
 
-  <h3>{{ _('Discovery surfaces') }}</h3>
+  <h3 id="discovery-surfaces">{{ _('Discovery surfaces') }}</h3>
   <ul>
     <li><a href="/llms.txt"><code>/llms.txt</code></a> — {{ _('markdown site directory (llmstxt.org convention). Every URL listed resolves to a live public page.') }}</li>
     <li><a href="/.well-known/agents.json"><code>/.well-known/agents.json</code></a> — {{ _('agent-discovery manifest (Wildcard-AI flavor). Contains site identity, rate limits, trust surfaces, and the proof-annotation envelope agents should expect.') }}</li>
+    <li><a href="/openapi.json"><code>/openapi.json</code></a> — {{ _('OpenAPI 3.0 spec for the LIVE read-only surface. Includes the ProofAnnotationEnvelope schema (the standard response wrapper) and the machine-readable MCP tool inventory at') }} <code>info.x-mcp-tools</code>.</li>
+    <li><a href="/docs"><code>/docs</code></a> — {{ _('Swagger UI rendering of the above. Human-readable; agents typically fetch /openapi.json directly.') }}</li>
     <li><a href="/.well-known/security.txt"><code>/.well-known/security.txt</code></a> — {{ _('security disclosure contact.') }}</li>
   </ul>
 
@@ -629,9 +631,8 @@
   "snapshot_signature":  "ed25519:...@chain#N"           // where the datum is snapshot-derived
 }</code></pre>
   <p>
-    {{ _('MCP surfaces, the read-only OpenAPI spec, and per-tool freshness contracts land later this week under the Agent Tier build') }}
-    (<a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a>).
-    {{ _('Discovery layer — this section, plus') }} <code>llms.txt</code> {{ _('and') }} <code>agents.json</code> — {{ _('is Day 1.') }}
+    {{ _('The read-only OpenAPI spec is live at') }} <a href="/openapi.json"><code>/openapi.json</code></a> ({{ _('Swagger UI at') }} <a href="/docs"><code>/docs</code></a>) — {{ _('the ProofAnnotationEnvelope schema above is machine-readable at') }} <code>#/components/schemas/ProofAnnotationEnvelope</code>, {{ _('and the 13-tool MCP inventory is at') }} <code>info.x-mcp-tools</code>. {{ _('The MCP server implementation is running headless today; public daemonization is deferred until Phase 3 of the') }} <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/LENOVO_MIGRATION.md" target="_blank" rel="noopener noreferrer">{{ _('Lenovo node migration') }}</a>. {{ _('Per-tool freshness contracts are declared inside each tool response envelope') }} (<code>freshness_contract</code> {{ _('field:') }} <code>≤ 5min</code> / <code>≤ 30min</code> / <code>daily</code> / <code>finalized_only</code>) {{ _('and mirror the on-page freshness chips agents see for the same data. See the') }}
+    <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a> {{ _('for the full build sequence.') }}
   </p>
 
   <h3>{{ _('Signed-snapshot verification') }}</h3>
@@ -653,7 +654,7 @@
     <li><strong>{{ _('Backoff:') }}</strong> {{ _('HTTP 429 with a') }} <code>Retry-After</code> {{ _('header.') }}</li>
   </ul>
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Rate-limit enforcement wiring lands with the MCP + API surfaces later this week. The numbers here match') }} <code>/.well-known/agents.json</code> {{ _('and will match what the server actually enforces on ship.') }}
+    {{ _('Rate-limit enforcement wiring lands with the fleet-block extension in Day 6-7. The numbers here match') }} <code>/.well-known/agents.json</code> {{ _('and will match what the server actually enforces on ship.') }}
   </p>
 
   <h3>{{ _('Retention and privacy') }}</h3>
@@ -669,7 +670,7 @@
   </p>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Freshness contract for this section and the agent-tier surfaces') }} (<code>llms.txt</code>, <code>agents.json</code>): {{ _('last verified') }} <code>{{ agent_tier_methodology_last_verified }}</code>. {{ _('Bumped whenever the agent-tier surface changes.') }}
+    {{ _('Freshness contract for this section and the agent-tier surfaces') }} (<code>llms.txt</code>, <code>agents.json</code>, <code>openapi.json</code>): {{ _('last verified') }} <code>{{ agent_tier_methodology_last_verified }}</code>. {{ _('Bumped whenever the agent-tier surface changes.') }}
   </p>
 
   <h2>{{ _('Versioning this page') }}</h2>
