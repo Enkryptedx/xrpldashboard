@@ -13,8 +13,14 @@ if [[ ! -r "$ENV_FILE" ]]; then
   exit 78  # EX_CONFIG
 fi
 
+# set -a: auto-export every variable set until `set +a`. Defense against
+# non-exported entries in the env file being invisible to exec'd Python
+# subprocesses (as happened 07-29/30/31 with the BETTERSTACK_*_URL lines
+# — silent-skip in the ping code path, no organic green bar for three days).
+set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+set +a
 
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/scripts/is_bot_canary.py"

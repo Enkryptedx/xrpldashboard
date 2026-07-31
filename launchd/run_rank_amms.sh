@@ -15,8 +15,10 @@ if [[ ! -r "$ENV_FILE" ]]; then
   exit 78  # EX_CONFIG — launchd will retry per StartInterval
 fi
 
+set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+set +a
 
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/rank_amms.py"

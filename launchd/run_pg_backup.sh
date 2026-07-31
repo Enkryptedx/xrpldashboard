@@ -56,8 +56,10 @@ if [[ ! -r "$ENV_FILE" ]]; then
   log "FAIL: env file not readable at ${ENV_FILE}"
   exit 1
 fi
+set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+set +a
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   log "FAIL: DATABASE_URL not set after sourcing ${ENV_FILE}"

@@ -175,16 +175,29 @@ _HEARTBEAT_THREAD: Optional[threading.Thread] = None
 _HEARTBEAT_STOP = threading.Event()
 
 
+_BETTERSTACK_MISSING_LOGGED = False
+
+
 def _ping_betterstack() -> None:
     """Success-path ping to the external heartbeat monitor. Mirrors the
-    pg_backup_canary pattern from `e60ac46`: URL missing = silent skip
-    (never fail the heartbeat cycle just because the external monitor
-    isn't configured); network failure = warning-log-only. Every
+    pg_backup_canary pattern from `e60ac46`: URL missing = visible skip
+    (log once, never fail the heartbeat cycle just because the external
+    monitor isn't configured); network failure = warning-log-only. Every
     non-successful walker_health cycle skips this call, so a dead
     server = no ping = BetterStack incident within the grace window
-    (5m period + 1m grace = ~6min detection floor)."""
+    (5m period + 1m grace = ~6min detection floor).
+
+    Visible-skip on absence — logged once per process to avoid flooding a
+    60s heartbeat loop. Silent-skip on the sibling is_bot_canary concealed
+    a sourced-but-not-exported env var for three days (2026-07-29→31)."""
+    global _BETTERSTACK_MISSING_LOGGED
     url = os.environ.get("BETTERSTACK_MCP_SERVER_HEARTBEAT_URL")
     if not url:
+        if not _BETTERSTACK_MISSING_LOGGED:
+            log.warning("mcp_server_heartbeat: betterstack skip: URL not in "
+                        "environment (BETTERSTACK_MCP_SERVER_HEARTBEAT_URL) — "
+                        "external monitor will not receive pings until fixed")
+            _BETTERSTACK_MISSING_LOGGED = True
         return
     try:
         import httpx

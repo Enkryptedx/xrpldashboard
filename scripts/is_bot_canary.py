@@ -253,9 +253,10 @@ def run():
 
     # BetterStack heartbeat — success-path ONLY. A canary FAIL skips this
     # ping, so BetterStack fires an incident within the 24h+2h grace
-    # window. Missing URL = silent skip (never fail the canary because
-    # the external monitor isn't configured). Mirrors pg_backup_canary
-    # (e60ac46) and mcp_server_heartbeat (0ae2841).
+    # window. Missing URL = visible skip (log line, never fail the canary
+    # because the external monitor isn't configured). Silent-skip on 07-29
+    # /30/31 concealed a sourced-but-not-exported env var for three days;
+    # visible-skip prevents that failure mode's recurrence.
     if ok:
         url = os.environ.get("BETTERSTACK_IS_BOT_CANARY_URL")
         if url:
@@ -266,6 +267,10 @@ def run():
                 log.info("betterstack ping ok")
             except Exception as e:  # noqa: BLE001 — ping is best-effort
                 log.warning("betterstack ping failed (canary still PASS): %s", e)
+        else:
+            log.warning("betterstack skip: URL not in environment "
+                        "(BETTERSTACK_IS_BOT_CANARY_URL) — external monitor "
+                        "will page within the 24h+2h grace window if this persists")
 
 
 if __name__ == "__main__":

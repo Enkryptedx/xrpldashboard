@@ -43,8 +43,10 @@ VENV_PY="${REPO_ROOT}/venv/bin/python"
 
 # Source env for DATABASE_URL so we can write walker_health.
 ENV_FILE="${XRPLDASHBOARD_ENV:-/Users/charliebruce/.config/xrpldashboard/env}"
+set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 # shellcheck disable=SC1090
 [[ -r "$ENV_FILE" ]] && source "$ENV_FILE" || true
+set +a
 export DATABASE_URL="${DATABASE_URL:-}"
 
 log "pg_backup_canary start (prefix=${DEST_PREFIX}, max_age=${MAX_AGE_HOURS}h)"

@@ -17,8 +17,10 @@ if [[ ! -r "$ENV_FILE" ]]; then
   exit 78  # EX_CONFIG
 fi
 
+set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 # shellcheck disable=SC1090
 source "$ENV_FILE"
+set +a
 
 if [[ -z "${SIGNING_KEY_PASSPHRASE:-}" ]]; then
   echo "[$(date '+%F %T')] ERROR: SIGNING_KEY_PASSPHRASE missing from env" >&2
