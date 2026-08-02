@@ -141,13 +141,25 @@ wants to use Get ledger stats" — Charlie approved. [FROM-TRANSCRIPT — msg 10
 - `proof.freshness_contract`: `"≤ 5min"` [FROM-INVENTORY]
 - `proof.methodology_url`: `.../methodology#ledger` [FROM-INVENTORY]
 - `proof.claims_ref`: `"ledger_stats_live"` [FROM-INVENTORY]
-- `proof.honest_partial`: `false` [FROM-USER-REPORT]
+- `proof.honest_partial`: `false` [FROM-TRANSCRIPT]
 - `data.ledger_index`: `<not held — see PNG>`
 - `data.close_time`: `<not held — see PNG>`
-- `data.server_state`: `null` [FROM-USER-REPORT]
-- `data.build_version`: `null` [FROM-USER-REPORT]
-- `data.hostid`: `null` [FROM-USER-REPORT]
+- `data.server_state`: `null` [FROM-TRANSCRIPT]
+- `data.build_version`: `null` [FROM-TRANSCRIPT]
+- `data.hostid`: `null` [FROM-TRANSCRIPT]
 - `server.public_key_fingerprint`: `<not held — see PNG>`
+
+**Root cause of the three nulls — NOT a tool bug.** [FROM-TRANSCRIPT —
+Charlie's live diagnosis, msg 10406]
+> Public s1.ripple.com does treat server_state, build_version, and
+> hostid as admin-scoped and omits them for unauthenticated
+> server_info calls, so nulls there are the accurate reflection of
+> what that node handed back, not a tool bug.
+
+This connects P1 to Incident 2 (below): because `XRPL_LOCAL_NODE`
+wasn't in the Claude Desktop child's env, `get_ledger_stats` fell
+back to public s1, which correctly omits admin fields for
+unauthenticated callers. The tool faithfully relayed what it got.
 
 **Star of the prompt — unprompted honesty-gap catch:**
 [FROM-TRANSCRIPT — msg 10392] Sonnet 5 flagged, without being asked,
@@ -163,11 +175,15 @@ follow-up:
 
 This is a positive receipt: an independent model reading the envelope
 diagnosed a real contract gap in the wild, on the very tool call that
-was supposed to prove the envelope is machine-legible.
+was supposed to prove the envelope is machine-legible. The gap holds
+even with the "public s1 admin-scoped" root cause understood — the
+envelope's contract is about faithfully flagging partial responses,
+not about whether the writer or the upstream produced the partial-ness.
 
 **Post-ship backlog:** when any surfaced field is `null`, the tool
 should flip `honest_partial: true` and add `scope_note` naming which
-fields + why. Logged.
+fields + why (and, when applicable, the upstream reason — e.g., "public
+s1 omits admin fields for unauthenticated calls"). Logged.
 
 **Screenshot need:** medium. The nulls-plus-honest_partial:false gap
 reads better in text than in a screen; the frame is nice-to-have.
@@ -188,22 +204,43 @@ reads better in text than in a screen; the frame is nice-to-have.
 
 **Tool fired:** `get_token_attestation`. [FROM-INVENTORY]
 
-**Envelope key fields:**
+**First-attempt error (verbatim):** [FROM-TRANSCRIPT — msg 10406]
+> Error executing tool get_token_attestation:
+> get_token_attestation: DATABASE_URL not configured
+
+**In-band epistemic-precision moment (bonus receipt):** while the tool
+was in the errored state, Charlie flagged that the tool's own
+description text claims it's "the first tool to name a third party"
+for the dispute-URL field — but noted this is "just descriptive
+metadata attached to the tool definition — not something either of us
+has verified against actual output, and now we have no output to check
+it against anyway. I'd treat that line as unverified until a real
+payload comes back." [FROM-TRANSCRIPT — msg 10406]
+
+That is itself a demo-relevant receipt: the operator refused to treat
+a self-descriptive claim as verified until a real payload confirmed it.
+The four-layer audit posture applied to the demo of the four-layer
+audit posture. Meta but real.
+
+**Retry envelope key fields (14:44 EDT, after wrapper fix):**
 - `proof.source`: `"neon_postgres"` [FROM-INVENTORY]
 - `proof.freshness_contract`: `"daily"` [FROM-INVENTORY]
 - `proof.claims_ref`: `"token_attestation_status"` [FROM-INVENTORY]
-- `proof.honest_partial`: `false` [FROM-USER-REPORT — this time correct;
-  no nulls in core fields]
-- `data.tier`: `"verified"` [FROM-USER-REPORT]
+- `proof.honest_partial`: `false` [FROM-TRANSCRIPT — correct this time;
+  no nulls in core fields, so the flag reads accurately]
+- `data.tier`: `"verified"` [FROM-TRANSCRIPT]
 - `data.dispute_contact_url`:
   `"https://xrpldashboard.com/contact?purpose=attestation-dispute"`
-  [FROM-USER-REPORT — matches DEMO_PACKET expected shape]
-- `data.issuer_name`: `"Ripple (Ripple USD issuer)"` [FROM-USER-REPORT]
+  [FROM-TRANSCRIPT]
+- `data.issuer_name`: `"Ripple (Ripple USD issuer)"` [FROM-TRANSCRIPT]
+- `data.attestation_tier_reason`: `null` [FROM-TRANSCRIPT]
+- Sourcing note per response body: `issuer_name` sourced via `.toml`
+  from `ripple.com`. [FROM-TRANSCRIPT — msg 10406]
 
 **Star of the prompt — third-party-naming discipline visible in one call.**
 The envelope both names a third party (Ripple) and carries the channel
 by which that third party can dispute the label. This is the piece
-competitors don't ship. [RECONSTRUCTED — codified in memory
+competitors don't ship. [FROM-INVENTORY — codified in memory
 `project_agent_tier_build_active.md` §"Five judgment calls locked" #2]
 
 **Screenshot need:** high. `dispute_contact_url` visible next to
@@ -232,13 +269,23 @@ Charlie made.
    `signed_snapshot.verify_envelope+pinned_pubkey`, freshness: `≤ 5min`]
 
 **Envelope key fields (from tool 2's response):**
-- `data.verify_result`: `true` [FROM-USER-REPORT]
+- `data.verify_result`: `true` [FROM-TRANSCRIPT — msg 10406]
 - `data.public_key_fingerprint`: `7F:D4:F2:F4:D2:57:7C:BE`
-  [FROM-USER-REPORT] — matches the fingerprint tool 1's envelope
-  carried
-- `data.issues`: `[]` (empty) [FROM-USER-REPORT]
-- `chain_root`, `leaf_hash`, `audit_path`, `signature_ed25519`:
-  `<not held — see PNG>`
+  [FROM-TRANSCRIPT — msg 10406] — matches the fingerprint tool 1's
+  envelope carried
+- `data.issues`: empty (verbatim from response: "empty — no path or
+  signature mismatches") [FROM-TRANSCRIPT — msg 10406]
+- `chain_root`: `e61469ddd64...79a43f` (prefix + suffix; middle
+  truncated in the response body). [FROM-TRANSCRIPT — msg 10406]
+- `leaf_hash`, `audit_path`, `signature_ed25519`:
+  `<not held — see PNG>` (full hex sequences)
+
+**Same-key confirmation (bonus receipt).** [FROM-TRANSCRIPT — msg 10406]
+The chain_root matched what was in the original snapshot AND the
+resolved fingerprint matched the one both `get_signed_snapshot`
+returned and the server block itself reported — Charlie's own framing:
+> so it's the same pinned key, not a different one being silently
+> substituted.
 
 **External-anchoring cross-checks (verified during demo):**
 - `https://xrpldashboard.com/.well-known/snapshots/pubkey.pem` returned
@@ -253,17 +300,27 @@ verifier resolved. The signed data can be independently checked by any
 third party against either HTTPS or DNS without trusting anything on
 this server.
 
-**Precision on what this proves.** [FROM-TRANSCRIPT — msg 10398,
-Charlie's own caveat]
-> This only proves internal consistency between the tool and the
-> published pubkey. Trust still rests on whoever pins
-> `7F:D4:F2:F4:D2:57:7C:BE` as canonical.
+**Precision on what this proves.** [FROM-TRANSCRIPT — Charlie's own
+caveat, msg 10406, verbatim]
+> One thing worth naming for the demo narrative: this only proves
+> internal consistency — that the leaf hash, audit path, and signature
+> all check out against the pubkey the tool itself ships with. It
+> doesn't independently prove that pubkey is the correct one an outside
+> party should trust; that trust still rests on whoever pins
+> 7F:D4:F2:F4:D2:57:7C:BE as canonical (methodology page, DNS TXT
+> record, wherever you've anchored it). If a screenshot claims
+> "cryptographically verified," it's accurate to say
+> verified-against-the-published-key, not
+> verified-against-some-external-root-of-trust — worth being precise
+> about which claim you're making if this goes in front of anyone
+> who'd ask.
 
 The honest caption is *verified-against-the-published-key* (via two
-independent external channels), **not** verified-against-some-external-
-root-of-trust. Anyone can independently pin the fingerprint from either
-external channel and get the same verification result — but the
-statement is about that channel, not about universal trust.
+independent external channels — HTTPS and DNS), **not**
+verified-against-some-external-root-of-trust. Anyone can independently
+pin the fingerprint from either external channel and get the same
+verification result — but the statement is about that channel, not
+about universal trust.
 
 **Screenshot need:** high. Both tool invocation panes visible in one
 frame + `verify_result: true` is the flagship image.
@@ -288,15 +345,18 @@ left untouched.
 [FROM-INVENTORY]
 
 **Envelope key fields:**
-- `data.verify_result`: `false` [FROM-USER-REPORT]
+- `data.verify_result`: `false` [FROM-TRANSCRIPT — msg 10406]
 - `data.issues`: `["Ed25519 signature did NOT verify against published pubkey"]`
-  [FROM-USER-REPORT] — exact string per `DEMO_PACKET.md` §3 Prompt 4
-  "Expected" line
+  [FROM-TRANSCRIPT — msg 10406] — exact string, matches
+  `DEMO_PACKET.md` §3 Prompt 4 "Expected" line
 - `data.public_key_fingerprint`: still `7F:D4:F2:F4:D2:57:7C:BE`
-  [FROM-USER-REPORT] — verifier still knows *which* key it checked
-  against; the failure is signature-specific, not key-resolution
-- `data.chain_root`: unchanged from Prompt 3 [FROM-USER-REPORT] —
-  Merkle path untouched, only the signature bytes were tampered
+  [FROM-TRANSCRIPT — msg 10406] — verifier still knows *which* key it
+  checked against; the failure is signature-specific, not
+  key-resolution. Charlie's own framing:
+  > the verifier still knows *which* key it checked against, it just
+  > correctly says the sig doesn't match under that key
+- `data.chain_root`: unchanged from Prompt 3 [FROM-TRANSCRIPT — msg
+  10406] — Merkle path untouched, only the signature bytes were tampered
 
 **Star of the prompt.** [FROM-TRANSCRIPT — msg 10400, Charlie's
 assessment]
@@ -331,17 +391,33 @@ Glow-relevant frame — it's the direct answer to a reviewer asking
 
 ---
 
-## Screenshot state (honest)
+## Screenshot state (honest, as of 2026-08-02 15:32 EDT)
 
-The DEMO_PACKET §4 capture spec calls for six numeric-prefixed PNGs
-(`01_terminal_start.png` through `06_prompt4_tamper_verify_false.png`)
-landing in this directory. **They aren't produced from this side** —
-they're pixels on Charlie's Claude Desktop window, capturable only
-from that screen.
+**Landed:** `05_prompt3_roundtrip_verify_true.jpg` — Charlie's capture
+of the P3 (round-trip verify=true) frame, filed 2026-08-02 15:20 EDT.
+The frame carries both the tool-return fields (`verify_result: true`,
+`public_key_fingerprint: 7F:D4:F2:F4:D2:57:7C:BE`, empty issues) AND
+Charlie's written epistemic-precision caveat about internal-vs-external
+verification — the caveat itself is a second-order receipt of the
+transparency posture.
 
-Recovery path: the Claude Desktop conversation from 14:24 → 14:50 EDT
-is still scrollable in Charlie's client. Scroll back, screenshot per
-the packet's numbering, drop the PNGs into this directory, commit.
+**Pending:** five remaining PNGs. They're pixels on Charlie's Claude
+Desktop window; only he can capture them.
+
+**Transcript upgrade:** Charlie also relayed the verbatim text of the
+demo responses via msg 10406 (2026-08-02 15:32 EDT). Provenance marks
+throughout this document have been upgraded from `[FROM-USER-REPORT]`
+to `[FROM-TRANSCRIPT]` where the exact string is now held. Notable
+newly-verbatim material: the `chain_root: e61469ddd64...79a43f`
+prefix; the exact P2 error string; Charlie's fuller
+internal-vs-external caveat; the fact that P1's three nulls trace to
+public s1 admin-scoping (fallback used because Incident 2 hadn't been
+fixed yet), not to a tool bug.
+
+Recovery path for remaining frames: the Claude Desktop conversation
+from 14:24 → 14:50 EDT is still scrollable in Charlie's client. Scroll
+back, screenshot per the packet's numbering, drop into this directory,
+commit.
 
 **If the PNGs never land, the Glow submission leans on this RUN_LOG
 plus the repo's test suite (74/74 green, bar re-walk 6/6 PASS).** That
