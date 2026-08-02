@@ -428,20 +428,51 @@ WantedBy=multi-user.target
 
 ---
 
-### 6.2 SHAMapStore silent-first-fire observation (3.3.0-rc1 fresh NuDB)
+### 6.2 SHAMapStore silent-first-fire observation (3.3.0-rc1 fresh NuDB) — RESOLVED 2026-08-02
 
-Recorded 2026-08-02 morning verification (Lenovo uptime ~8h 37m):
+Original observation (2026-08-02 morning, Lenovo uptime ~8h 37m):
 
 - `online_delete=10000` + `advisory_delete=0` per §6 config
-- Retention window at 8h 37m uptime: **17,026 ledgers** (low bound `106000766` has not moved)
+- Retention window: **17,026 ledgers** (low bound `106000766` had not moved)
 - SHAMapStore partition at debug level: **SILENT** (no prune-fire log lines)
-- Cfg confirmed correct — this is NOT a misconfiguration
+- Cfg confirmed correct — this was NOT a misconfiguration
+- Hypothesis at the time: 3.3.0-rc1's SHAMapStore first-fire on a fresh NuDB takes longer than 8h and is silent until first-fire
 
-**Hypothesis:** 3.3.0-rc1's SHAMapStore first-fire on a fresh NuDB takes longer than 8h and is silent until first-fire. Not a bug until the retention window stops advancing OR uptime crosses the escalation threshold below.
+**Resolution — 2026-08-02 16:41 UTC read:**
 
-**Tracking:** crontab on the Lenovo runs a 4h prune check into `/home/charlie/prune_watch.log`; each entry captures uptime + retention low-bound + high-bound + delta-since-last-check.
+- Retention: **14,506 ledgers** (`complete_ledgers 106009952-106024458`) — ~1.45× the 10K target, bounded
+- LV usage: 21% of the dedicated `/var/lib/rippled` LV (~20G / 98G, ~74G free)
+- SHAMapStore first-fired sometime between the ~8h37m morning read and the 16:41 UTC afternoon read
+- Hypothesis confirmed: **silent-until-first-fire on fresh NuDB is 3.3.0-rc1 expected behavior**
 
-**Escalation trigger:** 24-36h uptime with retention still growing unbounded → open Discord/GitHub issue at XRPLF with the debug evidence. Do NOT preemptively flip `online_delete` or restart — silence is the observation, not the problem, until it's demonstrably still silent past first-fire.
+**Adjacent observation (non-urgent, flagged for later):** rippled uptime at the 16:41 UTC read was 6h 6m (start ≈ 10:35 UTC), while box uptime was 20h. rippled restarted mid-morning. Whether SHAMapStore first-fire correlated with the restart, or the restart was independent (systemd cycle, unrelated event), needs `journalctl -u rippled --since '2026-08-02 06:00'`. Not urgent because retention is bounded, service is healthy, and no user-facing failure occurred.
+
+**Escalation trigger UNPINNED** — no longer needed. crontab prune-watch retained for continuous confirmation; log at `/home/charlie/prune_watch.log` (crontab was installed today after the last :00 slot, so first fire is 20:00 UTC / 16:00 EDT — populates tonight).
+
+---
+
+### 6.3 Network pinning — static IP via netplan (not router reservation)
+
+Pinned 2026-08-02 17:03 UTC.
+
+**Why not a router DHCP reservation:** the household's Evolution Digital ISP gateway exposes no local web UI. Ports 80, 443, 8080, 8443, 8888, 4433, 81, 8081 all closed on `192.168.40.1` from the LAN side. This is an ISP-locked cable gateway; admin is app-only or ISP-portal-only. No usable reservation surface.
+
+**Chosen path:** static IP on the server itself.
+
+- File: `/etc/netplan/50-cloud-init.yaml`
+- `dhcp4: false` on `enp46s0`
+- Address: `192.168.40.95/24`
+- Default route via `192.168.40.1`
+- DNS: `1.1.1.1`, `8.8.8.8`
+- `chmod 600` (netplan requires; suppresses the `netplan apply` permissions warning)
+
+**Cloud-init lockdown** — `/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg` contains `network: {config: disabled}` so cloud-init does not re-render `50-cloud-init.yaml` back to DHCP on subsequent boots.
+
+**Why this is preferable to a router reservation regardless:** the server owns its address independent of router state. Survives router reboot, replacement, ISP swap, or DHCP pool change. Standard practice for a headless node anyway.
+
+**Verified:** `netplan apply` did not drop the live SSH session (same-subnet same-IP switchover is seamless). Post-apply from-Mac `ssh charlie@192.168.40.95 "hostname -I"` returned `192.168.40.95`.
+
+**Reboot-proof-test still owed:** static-IP config was applied but not reboot-verified. Any future reboot of the Lenovo (e.g. kernel update, hardware move) is the real test. If SSH does not come back at `.95` post-reboot, the netplan config is malformed and DHCP-fallback did not happen — recovery is either console access or DHCP-lease-scan from the router side (which has no UI, so console access is the fallback plan).
 
 ---
 
