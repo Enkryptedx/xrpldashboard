@@ -1,0 +1,17 @@
+[Unit]
+Description=Rippled node (XRPL tracking, Lenovo IdeaCentre Mini)
+Documentation=https://xrpl.org/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rippled
+Group=rippled
+ExecStart=/usr/local/bin/rippled --conf /etc/rippled/rippled.cfg
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
