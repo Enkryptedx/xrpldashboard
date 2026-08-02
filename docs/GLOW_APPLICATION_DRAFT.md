@@ -128,8 +128,10 @@ provenance marks: `docs/agent_tier_ship_evidence/RUN_LOG.md`.
 - Sibling in-window work worth naming: `db38ecc` `d0e4e50` (RLUSD
   false-flat closure), `12f2c94` (reconciliation-surface advance
   trigger), `7ea0b22` (bot_hashes advance-trigger, third sibling in
-  the class), `c7a84b0` (is_bot column flip: 400ms → 19ms cold path,
-  a 21× improvement on the analytics page)
+  the class), `c7a84b0` (is_bot column flip: median 400ms → 19ms
+  per-query on /analytics against prod Neon on the trailing-7d
+  predicate, 21× per query; /analytics fires ~22 such queries
+  per render)
 
 ---
 
@@ -168,11 +170,18 @@ gate.
 
 **2. "Give me the data as a machine, not a screen."** The 15 MCP
 tools turn xrpldashboard into a first-class data source for AI
-agents. No competitor in the XRPL analytics space currently ships an
-MCP server as of 2026-08-02. A Claude, ChatGPT, or bespoke agent can
-plug in via stdio or streamable-http and consume XRPL data through a
-machine-legible envelope, with rate limits designed to be
-free-for-good-actors and cost-for-abuse.
+agents. **No XRPL analytics provider ships a proof-annotated MCP
+server as of 2026-08-02** — machine-readable envelopes carrying
+source, freshness contract, claims reference, and stateless
+cryptographic verifiability on every response are the differentiator.
+Other MCP-shaped surfaces exist in the XRPL ecosystem; none ship the
+envelope discipline, the on-payload dispute channel for third parties
+named in responses, or the signed-snapshot moat that makes an
+archived answer independently verifiable months later. A Claude,
+ChatGPT, or bespoke agent can plug in via stdio or streamable-http
+and consume XRPL data through that machine-legible envelope, with
+rate limits designed to be free-for-good-actors and
+cost-for-abuse.
 
 **3. "Prove my archived answer wasn't tampered with."** The
 signed-snapshot moat means an agent (or a human) can save today's
@@ -192,8 +201,18 @@ MIT):
 - `/whales` — real-time large-transfer surfacer with cache-headers
   discipline for AI-citation accuracy
 
-**Test discipline.** 74/74 agent-tier tests green; 6/6 ship-gate bar
-walk PASS as of 2026-08-02.
+**Test discipline.** Pytest suite covers routes, MCP tools
+(ledger / AMM / tokens / value-flows / signed-snapshot), OpenAPI
+schema, rate-limiting, and helpers — 208 test items collected across
+166 test functions (parameterized). Pre-demo run 2026-08-02 14:20 EDT:
+fully green in 16.85s, per `docs/agent_tier_ship_evidence/RUN_LOG.md`.
+Current run: 204/208 pass — 4 environment-dependent failures
+(local `/health` and `/healthz` return 503 when walker services aren't
+attached, and two institutional-page assertions flag against local
+config) are under investigation and do not affect production. 6/6
+ship-gate bar walk PASS as of 2026-08-02 (envelope discipline,
+CLAIMS refs, methodology anchors, walker_scope_declarations,
+rate-limit probe, signed-snapshot round-trip).
 
 ---
 
