@@ -36,6 +36,12 @@
     <dict>
       <key>PATH</key>
       <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+      <!-- Batch A #2 repoint 2026-08-02: XRPL_LOCAL_NODE points xrpl_client.get_client()
+           at Lenovo (192.168.40.95:5005) instead of default localhost:5005 (Mac).
+           REVERT: remove this key/string pair, `launchctl bootout` + `bootstrap`.
+           Fallback to s1/s2 preserved in xrpl_client.py — Lenovo down != walker fails. -->
+      <key>XRPL_LOCAL_NODE</key>
+      <string>http://192.168.40.95:5005</string>
     </dict>
   </dict>
 </plist>
