@@ -136,30 +136,62 @@ wants to use Get ledger stats" — Charlie approved. [FROM-TRANSCRIPT — msg 10
 
 **Tool fired:** `get_ledger_stats`. [FROM-INVENTORY]
 
-**Envelope key fields:**
-- `proof.source`: `"local_rippled"` [FROM-INVENTORY]
-- `proof.freshness_contract`: `"≤ 5min"` [FROM-INVENTORY]
-- `proof.methodology_url`: `.../methodology#ledger` [FROM-INVENTORY]
-- `proof.claims_ref`: `"ledger_stats_live"` [FROM-INVENTORY]
-- `proof.honest_partial`: `false` [FROM-TRANSCRIPT]
-- `data.ledger_index`: `<not held — see PNG>`
-- `data.close_time`: `<not held — see PNG>`
-- `data.server_state`: `null` [FROM-TRANSCRIPT]
-- `data.build_version`: `null` [FROM-TRANSCRIPT]
-- `data.hostid`: `null` [FROM-TRANSCRIPT]
-- `server.public_key_fingerprint`: `<not held — see PNG>`
+**Raw envelope (verbatim from msg 10407):** [FROM-TRANSCRIPT]
 
-**Root cause of the three nulls — NOT a tool bug.** [FROM-TRANSCRIPT —
-Charlie's live diagnosis, msg 10406]
-> Public s1.ripple.com does treat server_state, build_version, and
-> hostid as admin-scoped and omits them for unauthenticated
-> server_info calls, so nulls there are the accurate reflection of
-> what that node handed back, not a tool bug.
+```json
+{
+ "data": {
+  "validated_ledger_index": 106026242,
+  "close_time_iso": "2026-08-02T18:36:30Z",
+  "server_state": null,
+  "load_factor": 1,
+  "complete_ledgers": "32570-106026242",
+  "build_version": null,
+  "hostid": null
+ },
+ "proof": {
+  "source": "local_rippled",
+  "as_of": "2026-08-02T18:36:30Z",
+  "freshness_contract": "≤ 5min",
+  "claims_ref": "ledger_stats_live",
+  "methodology_url": "https://xrpldashboard.com/methodology#ledger",
+  "cross_check_status": "not_applicable",
+  "honest_partial": false,
+  "scope_note": null
+ },
+ "server": {
+  "name": "xrpldashboard-mcp",
+  "version": "1.0.0",
+  "public_key_fingerprint": "7F:D4:F2:F4:D2:57:7C:BE",
+  "docs": "https://xrpldashboard.com/methodology#for-ai-agents"
+ }
+}
+```
 
-This connects P1 to Incident 2 (below): because `XRPL_LOCAL_NODE`
-wasn't in the Claude Desktop child's env, `get_ledger_stats` fell
-back to public s1, which correctly omits admin fields for
-unauthenticated callers. The tool faithfully relayed what it got.
+**Root cause of the three nulls — investigation pending, NOT a
+public-s1 fallback.** The envelope's own `proof.source: "local_rippled"`
+plus healthy `load_factor: 1` and `complete_ledgers: 32570-106026242`
+prove the tool did reach local rippled and got a live response. The
+nulls in `server_state`, `build_version`, and `hostid` are therefore
+something else — one of:
+
+1. **Local rippled isn't populating those fields** in its `server_info`
+   response (config, version, or admin-scope issue on THIS node — check
+   whether the Mac's rippled has `admin` permission enabled in its
+   config and whether the tool is calling as admin).
+2. **The tool code isn't reading them correctly** from a response that
+   does contain them.
+
+Charlie's live framing in msg 10407: *"a silent-write-style gap on the
+rippled response, not just a display choice — if those fields should be
+populated on a healthy node, this is worth a health check on that source."*
+
+An **earlier draft of this log incorrectly attributed the nulls to
+public s1.ripple.com admin-scoping via an Incident-2 fallback.** That
+theory was based on a plausible inference before the raw envelope
+existed; msg 10407's `proof.source: "local_rippled"` refutes it. The
+mistake is left named here rather than silently overwritten, per the
+same discipline the four-layer audit exists to enforce.
 
 **Star of the prompt — unprompted honesty-gap catch:**
 [FROM-TRANSCRIPT — msg 10392] Sonnet 5 flagged, without being asked,
@@ -175,15 +207,22 @@ follow-up:
 
 This is a positive receipt: an independent model reading the envelope
 diagnosed a real contract gap in the wild, on the very tool call that
-was supposed to prove the envelope is machine-legible. The gap holds
-even with the "public s1 admin-scoped" root cause understood — the
-envelope's contract is about faithfully flagging partial responses,
-not about whether the writer or the upstream produced the partial-ness.
+was supposed to prove the envelope is machine-legible. Note the
+envelope's `scope_note: null` alongside three data-field nulls — that's
+a *second* instance of the same gap in one call. The contract-honoring
+shape would have had `honest_partial: true` and `scope_note` naming
+the three null fields.
 
-**Post-ship backlog:** when any surfaced field is `null`, the tool
-should flip `honest_partial: true` and add `scope_note` naming which
-fields + why (and, when applicable, the upstream reason — e.g., "public
-s1 omits admin fields for unauthenticated calls"). Logged.
+**Post-ship backlog (2 items):**
+1. **Contract fix:** when any surfaced field is `null`, the tool should
+   flip `honest_partial: true` and populate `scope_note` naming which
+   fields + why they're null.
+2. **Health check on local rippled:** the `server_state`,
+   `build_version`, `hostid` nulls on a demonstrably-reached local
+   rippled (per `proof.source` + healthy `load_factor` + valid
+   `complete_ledgers`) is either a rippled-config issue (admin scope
+   not granted to the caller) or a tool-code parse issue. Investigate,
+   fix at the source, so the envelope has real values to flag.
 
 **Screenshot need:** medium. The nulls-plus-honest_partial:false gap
 reads better in text than in a screen; the frame is nice-to-have.
