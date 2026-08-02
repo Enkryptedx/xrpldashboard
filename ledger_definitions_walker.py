@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 import time
 import urllib.request
@@ -32,7 +33,7 @@ import db
 
 
 WALKER_CADENCE_SECONDS = 21600  # mirrors launchd StartInterval — 6h
-LOCAL_RIPPLED_URL = "http://localhost:5005"
+LOCAL_RIPPLED_URL = os.environ.get("XRPL_LOCAL_NODE", "http://localhost:5005")
 RPC_TIMEOUT_S = 8
 
 # Non-real vocabulary entries the node advertises. Both TRANSACTION_TYPES

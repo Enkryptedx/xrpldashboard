@@ -71,7 +71,7 @@ ETH_XCHECK_RPCS = [u for u in [
     "https://ethereum-rpc.publicnode.com",            # same-source fallback
 ] if u]
 XRPL_XCHECK_NODE = "https://xrplcluster.com"          # independent from s1.ripple.com
-XRPL_LOCAL_NODE = "http://localhost:5005"             # our node — used for vocab/amend checks
+XRPL_LOCAL_NODE = os.environ.get("XRPL_LOCAL_NODE", "http://localhost:5005")  # our node — used for vocab/amend checks
 XRPL_PUBLIC_NODE = "https://s1.ripple.com:51234"      # mainnet reference (amendments ledger)
 COINGECKO_PRICE_URL = (
     "https://api.coingecko.com/api/v3/simple/price"
