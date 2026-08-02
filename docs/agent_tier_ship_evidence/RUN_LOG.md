@@ -430,10 +430,45 @@ Glow-relevant frame — it's the direct answer to a reviewer asking
 
 ---
 
-## Screenshot state (honest, as of 2026-08-02 15:54 EDT)
+## Screenshot state (honest, as of 2026-08-02 16:09 EDT, msg-10417 reconciliation sweep)
 
-**Landed (three frames covering the two moat-critical prompts):**
+**Landed (seven frames — five in the DEMO_PACKET spec-numbering, plus
+two ambient session-provenance frames):**
 
+- `00_incident1_attach_failure.jpg` — Incident 1 evidence: the red
+  "Could not attach to MCP server xrpldashboard-mcp" error against the
+  demo-scaffold message. Filed 2026-08-02 16:09 EDT from msg 10382
+  (14:27 EDT). Bonus frame — not in the DEMO_PACKET §4 numbering but
+  directly matches the RUN_LOG's "Startup incidents" section on
+  Incident 1 (paperclip-attach → Settings→Developer route).
+  [FROM-THREAD — msg-10417 reconciliation sweep, file_303]
+- `00b_model_picker_ambient.jpg` — Claude Desktop model picker showing
+  Fable 5 / Opus 5 / Sonnet 5 (chosen) / Haiku 4.5 with the P1 prompt
+  visible in background. Filed 2026-08-02 16:09 EDT from msg 10388
+  (14:34 EDT). Session-provenance ambient evidence for the "Sonnet 5
+  chosen" line above. [FROM-THREAD — msg-10417 reconciliation sweep,
+  file_305]
+- `02_claude_desktop_tool_list.jpg` — Settings → Developer showing
+  `xrpldashboard-mcp` with status `running`, command
+  `/Users/charliebruce/xrpl_test/venv/bin/python`, args
+  `/Users/charliebruce/xrpl_test/mcp_server.py`, "View Logs" affordance.
+  Matches DEMO_PACKET §4 capture-spec item #2 (was named
+  `02_claude_desktop_tool_list.png` in the spec; JPG variant filed).
+  Filed 2026-08-02 16:09 EDT from msg 10386 (14:32 EDT). Ambient proof
+  that the MCP server is registered and running in Claude Desktop as
+  the demo begins. [FROM-THREAD — msg-10417 reconciliation sweep,
+  file_304]
+- `03a_prompt1_permission_dialog.jpg` — the P1 prompt visible on-screen
+  (`"Use the xrpldashboard-mcp server. Call get_led[ger_stats]... Show
+  me the raw envelope in a code block — I want to see th[e] and server
+  fields, not just the ledger index."`) + Claude Desktop's permission
+  dialog "Claude wants to use Get ledger stats from xrpldashboard-mcp"
+  with Always-allow / Deny affordances. Filed 2026-08-02 16:09 EDT
+  from msg 10390 (14:36 EDT). Proves P1 was invoked against
+  `xrpldashboard-mcp` inside Claude Desktop as the client (the raw
+  envelope itself is preserved verbatim in the §Prompt 1 section above
+  from msg 10407). [FROM-THREAD — msg-10417 reconciliation sweep,
+  file_306]
 - `05_prompt3_roundtrip_verify_true.jpg` — P3 round-trip verify=true.
   Filed 2026-08-02 15:20 EDT. Carries tool-return fields
   (`verify_result: true`, `public_key_fingerprint:
@@ -454,14 +489,29 @@ Glow-relevant frame — it's the direct answer to a reviewer asking
   pairing for the demo — true-case then false-case back to back shows
   the verifier isn't just always returning true."*
 
-The two flagship Glow-critical frames (P4 tamper + P3 verify) are
-both landed. The "how do I know your green isn't stagecraft" question
-now has a screenshot answer, not just a text-transcript answer.
+The two flagship Glow-critical frames (P4 tamper + P3 verify) plus
+in-client provenance (tool list + P1 permission dialog) are all
+landed. The "how do I know your green isn't stagecraft" question now
+has a screenshot answer AND the "was it really running in Claude
+Desktop" question has one too.
 
-**Pending (nice-to-have, not ship-critical):** three remaining PNGs
-covering P2 (dispute URL), P1 (envelope in-client), and startup
-(terminal `registered 15 tool(s)` + Claude Desktop developer-panel
-tool count).
+**Pending (one nice-to-have PNG, not ship-critical):**
+- `04_prompt2_dispute_url.jpg` (DEMO_PACKET spec #4) — the P2 response
+  frame showing `dispute_contact_url` next to `issuer_name`. The P2
+  text is preserved verbatim in §Prompt 2 above from msg 10406, so the
+  facts are held; only the visual frame is missing.
+- `01_terminal_start.jpg` (DEMO_PACKET spec #1) — the terminal
+  `registered 15 tool(s)` log line. Ambient claim covered textually
+  in §Environment; not required for the transparency argument.
+
+**Meta note on the reconciliation:** Before msg 10417 this document
+listed three "pending" PNGs. Charlie's flag was correct — four of
+those images had already been sent (msg 10382 attach-failure, msg
+10386 tool list, msg 10388 model picker, msg 10390 permission dialog)
+but weren't filed against the outstanding-items list. Sweep on
+2026-08-02 16:09 EDT closed the loop; feedback memory
+`feedback_delivered_but_untracked_receiving_side_close_on_arrival.md`
+codifies the discipline going forward.
 
 **Transcript upgrade:** Charlie also relayed the verbatim text of the
 demo responses via msg 10406 (2026-08-02 15:32 EDT). Provenance marks
@@ -469,9 +519,15 @@ throughout this document have been upgraded from `[FROM-USER-REPORT]`
 to `[FROM-TRANSCRIPT]` where the exact string is now held. Notable
 newly-verbatim material: the `chain_root: e61469ddd64...79a43f`
 prefix; the exact P2 error string; Charlie's fuller
-internal-vs-external caveat; the fact that P1's three nulls trace to
-public s1 admin-scoping (fallback used because Incident 2 hadn't been
-fixed yet), not to a tool bug.
+internal-vs-external caveat. **Correction (post-msg-10407):** a
+prior draft of this section attributed P1's three nulls to public
+s1 admin-scoping via an Incident-2 fallback path. Msg 10407's raw
+envelope refutes that inference — `proof.source: "local_rippled"`
+plus a healthy `load_factor: 1` and `complete_ledgers:
+32570-106026242` show the local rippled was reached. The wrong
+inference is preserved visibly in §Prompt 1 root-cause block for
+epistemic-discipline reasons; investigation of the true cause is
+listed in §Post-ship backlog.
 
 Recovery path for remaining frames: the Claude Desktop conversation
 from 14:24 → 14:50 EDT is still scrollable in Charlie's client. Scroll

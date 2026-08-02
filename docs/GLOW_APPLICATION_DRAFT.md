@@ -17,8 +17,10 @@ per the Glow docs site at time of drafting (2026-08-02).
 window per `git log --since='2026-02-02'`.
 
 **Nomination path:** Glow accepts both Scout-nominated and
-self-nominated contributors. Charlie's decision: self-nominate now or
-wait for a Scout — either lands in the same platform application form.
+self-nominated contributors. **Standing recommendation (msg 10417,
+Charlie): self-nominate now.** Window closes 2026-08-31; waiting for
+a Scout buys risk with no upside. Both paths land in the same platform
+application form.
 
 ---
 
@@ -44,12 +46,13 @@ need his word before final.
 
 **Project URL:** https://xrpldashboard.com
 
-**Repository:** [CHARLIE INPUT — public GitHub URL, if Charlie wants
-to name it; the repo is currently local + Render, not clear if the
-GH URL is the intended public front door]
+**Repository:** https://github.com/Enkryptedx/xrpldashboard
+[FROM-REPO-REMOTE, `git remote -v` @ 2026-08-02 — confirm to Charlie
+this is the intended public front door before submit]
 
-**Existing on Glow?** [CHARLIE INPUT — check the platform. If a
-Scout has already created an entry, use it; otherwise create new]
+**Existing on Glow?** Assume create-new via self-nomination per
+standing recommendation. If a Scout has already created an entry at
+submit-time, prefer that entry over creating a duplicate.
 
 ---
 
@@ -229,7 +232,7 @@ Everything below is publicly verifiable at the URLs / commits named,
 no login required.
 
 **Verify the code:**
-- Repository: [CHARLIE INPUT — public GitHub URL]
+- Repository: https://github.com/Enkryptedx/xrpldashboard
 - License: MIT (see `LICENSE`)
 - Full test suite: `pytest tests/` — 74/74 pass in ~17s
 
@@ -265,20 +268,42 @@ no login required.
 
 ## Notes for Charlie (before submitting)
 
-**Known unknowns that need your input:**
-1. Public GitHub URL (Field 1 + Receipts appendix)
-2. Wallet address you want to attach for KYC / disbursement
-3. Employment-independence exact wording (Field 5)
-4. Whether to self-nominate now or wait for a Scout
+**Known unknowns that need your input (reduced by msg-10417
+reconciliation sweep, 2026-08-02 16:09 EDT — was five items, now
+two-plus-two-confirms):**
+
+Genuinely-still-missing (only Charlie can answer):
+1. **Wallet address** for KYC / disbursement. Per your own directive
+   in msg 10417, wallet addresses get verified back to you before
+   submit — never assumed silently. One line: "The wallet you want on
+   the application is `r...`" — I paste it into the platform, never
+   into this file.
+2. **Field 5 exact wording** — your current employment / income
+   situation as you'd word it. Draft language in the field above uses
+   plausible generic phrasing; your actual words replace the first
+   paragraph. The roadmap-disclosure paragraph stands per the standing
+   agent-tier decision.
+
+Confirmed by sweep (already filled above, verify at read-through):
+3. **GitHub URL** = `https://github.com/Enkryptedx/xrpldashboard`
+   [FROM-REPO-REMOTE, `git remote -v`]. Confirm this is the public
+   front door you want named.
+4. **Self-nominate stance** = self-nominate now per msg 10417 standing
+   recommendation. If you'd rather wait for a Scout, override before
+   submit.
+
+Optional-tuning ask (was #5, still open):
 5. Whether you want any commit hashes above swapped in/out (I picked
-   the most representative ~15; the window has 535 to choose from)
+   the most representative ~15; the window has 535 to choose from).
 
 **Suggested timing.** The application window closes 2026-08-31.
-Suggest submitting no earlier than after the six PNG screenshots
-land in `docs/agent_tier_ship_evidence/` — the RUN_LOG is textual
-evidence, the PNGs are visual receipts, and the submission is
-strongest with both. If the PNGs don't land, this draft stands on
-its own — but it's a weaker version of itself.
+Seven of the eight visual receipts have landed as of 2026-08-02 16:09
+EDT (P3 verify, P4 tamper top+bottom, tool-list, P1 permission dialog,
+incident-1 attach-failure, model picker); only P2 dispute-URL and
+terminal-start remain optional. The RUN_LOG + these seven PNGs +
+publicly-verifiable pubkey + test suite are already a stronger
+submission than the "text-only" fallback originally planned.
+No earlier constraint on submit — timing is your call.
 
 **Do NOT submit yet.** This is a paste-and-review draft. Read
 end-to-end, mark up, then either edit here or drop your rewrite in
