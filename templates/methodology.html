@@ -654,7 +654,7 @@
     <li><strong>{{ _('Backoff:') }}</strong> {{ _('HTTP 429 with a') }} <code>Retry-After</code> {{ _('header.') }}</li>
   </ul>
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Rate-limit enforcement wiring lands with the fleet-block extension in Day 6-7. The numbers here match') }} <code>/.well-known/agents.json</code> {{ _('and will match what the server actually enforces on ship.') }}
+    {{ _('Enforcement is live as of 2026-08-02. The numbers here, in') }} <code>/.well-known/agents.json</code>, {{ _('and what the server actually enforces are held in sync by a regression test that reads the module\'s default-rate strings on every run.') }}
   </p>
 
   <h3>{{ _('Retention and privacy') }}</h3>

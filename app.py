@@ -71,6 +71,15 @@ from flask_babel import gettext as babel_gettext
 import db
 import og_image
 import price_oracle
+from agent_tier_rate_limit import (
+    AUDIT_URL_HEADER_NAME,
+    AUDIT_URL_PATH,
+    FLEET_BLOCK_RETRY_AFTER_SECONDS,
+    agent_tier_limit_rate,
+    fleet_signature,
+    is_agent_tier_route,
+    is_ai_crawler,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCAN_STATE_PATH = os.path.join(HERE, "amm_scan_state.json")
@@ -241,7 +250,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-07-31"
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-02"
 
 
 @app.context_processor
@@ -1281,6 +1290,47 @@ def _block_ai_crawlers():
     for fragment in _BLOCKED_UA_FRAGMENTS:
         if fragment in ua:
             return "Forbidden", 403
+
+
+@app.before_request
+def _agent_tier_fleet_block():
+    """Day 6: extend the proven /whales fleet-block signature to the
+    agent-tier surfaces (llms.txt, agents.json, snapshot well-knowns,
+    OpenAPI, /docs). Same fingerprint as the /whales inline block
+    (IL + Chrome/142 residential 2026-07); factored into
+    agent_tier_rate_limit.fleet_signature() so a future second-fleet
+    observation adds ONE line covering /whales + the agent-tier surface
+    at once. Returns 429 + Retry-After (well-behaved compliance signal;
+    the same shape /whales serves). Non-agent-tier paths fall through
+    untouched — /whales retains its own inline block by design so this
+    hook cannot regress that surface."""
+    if not is_agent_tier_route(request.path):
+        return
+    label = fleet_signature()
+    if label:
+        return Response(
+            "",
+            status=429,
+            headers={
+                "Retry-After": str(FLEET_BLOCK_RETRY_AFTER_SECONDS),
+                "X-Fleet-Signature": label,
+            },
+        )
+
+
+@app.after_request
+def _agent_tier_audit_header(response):
+    """Day 6: identified AI-crawler responses on agent-tier routes get
+    an X-XRPL-Dashboard-Audit-URL header pointing at /coverage — the
+    doc's "warm citations" touch (docs/AGENT_TIER_DESIGN.md §Rate
+    limiting + abuse posture). Anonymous responses don't get the
+    header (no citation-graph value to expose). Non-agent-tier paths
+    unchanged."""
+    if not is_agent_tier_route(request.path):
+        return response
+    if is_ai_crawler(request.headers.get("User-Agent", "")):
+        response.headers[AUDIT_URL_HEADER_NAME] = f"{SITE_URL}{AUDIT_URL_PATH}"
+    return response
 
 
 @app.before_request
@@ -4108,6 +4158,7 @@ def _read_signed_envelope(date_str):
 
 
 @app.route("/.well-known/snapshots/<date>.json")
+@limiter.limit(agent_tier_limit_rate)
 def well_known_signed_snapshot(date):
     """Serve a signed snapshot JSON. PG-first so Render serves the same
     bytes the Mac wrote; disk fallback for local dev. Once written, a
@@ -4126,6 +4177,7 @@ def well_known_signed_snapshot(date):
 
 
 @app.route("/.well-known/snapshots/chain.json")
+@limiter.limit(agent_tier_limit_rate)
 def well_known_signed_chain():
     """Append-only Merkle chain head. PG-first; disk fallback. Shorter
     cache than per-date snapshots because the chain extends daily and we
@@ -4139,6 +4191,7 @@ def well_known_signed_chain():
 
 
 @app.route("/.well-known/snapshots/pubkey.pem")
+@limiter.limit(agent_tier_limit_rate)
 def well_known_signed_pubkey():
     """Public key, PEM-encoded. Pinned in three independent places:
     here, /about page, and a DNS TXT record. Verifiers triangulate."""
@@ -6069,6 +6122,7 @@ def healthz():
 
 
 @app.route("/robots.txt")
+@limiter.limit(agent_tier_limit_rate)
 def robots_txt():
     """Tell crawlers what's indexable. Allow the public surface, exclude
     operational endpoints and the unbounded detail-page space (every
@@ -6094,6 +6148,7 @@ def robots_txt():
 
 
 @app.route("/.well-known/security.txt")
+@limiter.limit(agent_tier_limit_rate)
 def security_txt():
     body = (
         "Contact: mailto:contact@xrpldashboard.com\n"
@@ -6155,6 +6210,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 
 
 @app.route("/llms.txt")
+@limiter.limit(agent_tier_limit_rate)
 def llms_txt():
     """Machine-readable site directory for AI crawlers and agents,
     following the llmstxt.org convention. Every URL listed resolves to
@@ -6229,7 +6285,7 @@ _AGENTS_JSON = {
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Day 5 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
+        "phase": f"Day 6 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
         "discovery_layer_ready": True,
         "mcp_ready": False,
         "openapi_ready": True,
@@ -6240,6 +6296,7 @@ _AGENTS_JSON = {
 
 
 @app.route("/.well-known/agents.json")
+@limiter.limit(agent_tier_limit_rate)
 def agents_json():
     """Agent-discovery manifest at the standard well-known path.
     Wildcard-AI flavor. Every field is verifiable — status booleans
@@ -6248,6 +6305,7 @@ def agents_json():
 
 
 @app.route("/sitemap.xml")
+@limiter.limit(agent_tier_limit_rate)
 def sitemap_xml():
     """Static + dynamic sitemap. Curated public pages always included.
     Per-MPT detail pages (live/prepared only — test issuances carry a
@@ -6549,6 +6607,34 @@ def _short_ua(ua):
             os_ = label
             break
     return f"{browser} · {os_}"
+
+
+@app.errorhandler(429)
+def _rate_limit_429(e):
+    """Day 6: guarantee Retry-After on every 429, per the design doc
+    'never silent throttling' rule. flask-limiter's default response
+    omits the header unless headers_enabled=True, which would decorate
+    ALL responses. Targeted handler leaves non-429 responses untouched.
+
+    flask-limiter raises RateLimitExceeded with a .description like
+    '2 per 1 minute' and a `.limit.limit.get_expiry()` giving seconds
+    until reset. Fall back to 60s if the shape changes upstream so
+    the header is never absent."""
+    retry_after = None
+    try:
+        limit = getattr(e, "limit", None)
+        if limit is not None:
+            expiry = getattr(getattr(limit, "limit", None), "get_expiry", None)
+            if callable(expiry):
+                retry_after = int(expiry())
+    except Exception:
+        retry_after = None
+    if not retry_after or retry_after < 1:
+        retry_after = 60
+    resp = jsonify({"error": "rate_limit_exceeded", "detail": str(e.description)})
+    resp.status_code = 429
+    resp.headers["Retry-After"] = str(retry_after)
+    return resp
 
 
 @app.errorhandler(404)

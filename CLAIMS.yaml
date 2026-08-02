@@ -1356,20 +1356,24 @@ pages:
           MCP endpoint will treat this domain as unstable and back off.
 
       - id: agents_json_rate_limits_match_enforcement
-        label: "Declared rate limits (60/300/600) match what flask-limiter actually enforces."
+        label: "Declared rate limits (60/300) match what flask-limiter actually enforces on agent-tier routes."
         data_paths:
           - "app.py:_AGENTS_JSON (rate_limits block)"
-          - "flask_limiter configuration — needs-trace once limits are wired in the rate-limit commit"
+          - "agent_tier_rate_limit.py:agent_tier_limit_rate() (source of truth for enforced values)"
+          - "app.py: @limiter.limit(agent_tier_limit_rate) decorators on 8 agent-tier routes"
+          - "tests/test_agent_tier_rate_limit.py:test_agents_json_rate_limit_copy_matches_module (regression guard)"
         behavior: MANUAL_CURATION
         layer3_source: self-attested-only
-        needs-trace: true
         risk_note: >
-          Rate-limit enforcement lands Day 5-6 per the design doc.
-          Until then, the declared numbers are ASPIRATIONAL — copy
-          must land AND enforcement must ship in the same commit
-          (three-audience rule + title-is-contract). If enforcement
-          ships without matching the copy, or vice versa, this claim
-          fires.
+          Enforcement shipped Day 6 (2026-08-02). Anonymous = 60/min,
+          identified AI-crawler UA = 300/min, both per-IP via CF-
+          Connecting-IP. Contract stays live via the paired regression
+          test that reads the module's default-rate strings and asserts
+          the two "60"/"300" substrings appear in agents.json rate_limits
+          copy. Any future change to agent_tier_limit_rate() defaults
+          MUST update _AGENTS_JSON.rate_limits and methodology.html's
+          "For AI agents" rate-limits block in the same commit — the
+          test guards the numeric match but not the surrounding prose.
 
       - id: agents_json_receipts_envelope_shape
         label: "The receipts_envelope.shape here matches what MCP tools + API endpoints actually return."
