@@ -445,7 +445,7 @@ Original observation (2026-08-02 morning, Lenovo uptime ~8h 37m):
 - SHAMapStore first-fired sometime between the ~8h37m morning read and the 16:41 UTC afternoon read
 - Hypothesis confirmed: **silent-until-first-fire on fresh NuDB is 3.3.0-rc1 expected behavior**
 
-**Adjacent observation (non-urgent, flagged for later):** rippled uptime at the 16:41 UTC read was 6h 6m (start ≈ 10:35 UTC), while box uptime was 20h. rippled restarted mid-morning. Whether SHAMapStore first-fire correlated with the restart, or the restart was independent (systemd cycle, unrelated event), needs `journalctl -u rippled --since '2026-08-02 06:00'`. Not urgent because retention is bounded, service is healthy, and no user-facing failure occurred.
+**Adjacent observation — VERDICTED benign:** rippled uptime at the 16:41 UTC read was 6h 6m (start 10:35 UTC), while box uptime was ~20h. `journalctl -u rippled` shows **two clean SIGTERM cycles**: 10:29:14 UTC (signal 15 → clean stop → systemd restart, PID 146390 → 188864) and 10:34:40 UTC (signal 15 again → clean stop → restart, PID 188864 → 189238). Both `Deactivated successfully` → `Started` = `systemctl restart` pattern, not crash. No segfault, no abort, no SIGKILL / OOM. Cause: morning ops touch (config edit, verification, or unattended-upgrades package refresh). **Not SHAMapStore-triggered** — retention-advance timing was coincident, not causal.
 
 **Escalation trigger UNPINNED** — no longer needed. crontab prune-watch retained for continuous confirmation; log at `/home/charlie/prune_watch.log` (crontab was installed today after the last :00 slot, so first fire is 20:00 UTC / 16:00 EDT — populates tonight).
 
