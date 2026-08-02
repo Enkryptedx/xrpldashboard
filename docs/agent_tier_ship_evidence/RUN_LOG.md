@@ -430,18 +430,38 @@ Glow-relevant frame — it's the direct answer to a reviewer asking
 
 ---
 
-## Screenshot state (honest, as of 2026-08-02 15:32 EDT)
+## Screenshot state (honest, as of 2026-08-02 15:54 EDT)
 
-**Landed:** `05_prompt3_roundtrip_verify_true.jpg` — Charlie's capture
-of the P3 (round-trip verify=true) frame, filed 2026-08-02 15:20 EDT.
-The frame carries both the tool-return fields (`verify_result: true`,
-`public_key_fingerprint: 7F:D4:F2:F4:D2:57:7C:BE`, empty issues) AND
-Charlie's written epistemic-precision caveat about internal-vs-external
-verification — the caveat itself is a second-order receipt of the
-transparency posture.
+**Landed (three frames covering the two moat-critical prompts):**
 
-**Pending:** five remaining PNGs. They're pixels on Charlie's Claude
-Desktop window; only he can capture them.
+- `05_prompt3_roundtrip_verify_true.jpg` — P3 round-trip verify=true.
+  Filed 2026-08-02 15:20 EDT. Carries tool-return fields
+  (`verify_result: true`, `public_key_fingerprint:
+  7F:D4:F2:F4:D2:57:7C:BE`, empty issues) AND Charlie's written
+  epistemic-precision caveat about internal-vs-external verification —
+  the caveat itself is a second-order receipt of the transparency
+  posture.
+- `06a_prompt4_tamper_verify_false_top.jpg` — P4 tamper, upper half.
+  Filed 2026-08-02 15:54 EDT. Prompt fully visible + Claude Desktop's
+  own "Devised signature tampering strategy to test verification"
+  reasoning header + Charlie's edit line (`...e272d809 → ...e272d808`)
+  + `verify_result: false` + the exact issue string
+  `"Ed25519 signature did NOT verify against published pubkey"` +
+  fingerprint `7F:D4:F2:F4:D2:57:7C:BE` still resolving.
+- `06b_prompt4_tamper_verify_false_bottom.jpg` — P4 tamper, lower
+  half. Filed 2026-08-02 15:54 EDT. Full closing analysis paragraph:
+  *"clean negative-control result... single-bit-scale tamper... good
+  pairing for the demo — true-case then false-case back to back shows
+  the verifier isn't just always returning true."*
+
+The two flagship Glow-critical frames (P4 tamper + P3 verify) are
+both landed. The "how do I know your green isn't stagecraft" question
+now has a screenshot answer, not just a text-transcript answer.
+
+**Pending (nice-to-have, not ship-critical):** three remaining PNGs
+covering P2 (dispute URL), P1 (envelope in-client), and startup
+(terminal `registered 15 tool(s)` + Claude Desktop developer-panel
+tool count).
 
 **Transcript upgrade:** Charlie also relayed the verbatim text of the
 demo responses via msg 10406 (2026-08-02 15:32 EDT). Provenance marks
@@ -466,15 +486,17 @@ screenshot cannot; the four external-facing receipts still stand
 the "here it is running in an off-the-shelf MCP client" leg of the
 argument gets thinner.
 
-**Most Glow-critical frames, in priority order** (if only one or two
-can be captured):
-1. **`06_prompt4_tamper_verify_false.png`** — the tamper adversary
-   case. Direct answer to "how do I know the green isn't stagecraft."
-2. **`05_prompt3_roundtrip_verify_true.png`** — the moat. Both tool
-   invocation panes + `verify_result: true` in one frame.
-3. **`04_prompt2_dispute_url.png`** — third-party-naming discipline.
+**Most Glow-critical frames, in priority order** (top two already
+landed as of 2026-08-02 15:54 EDT):
+1. ✅ **`06a` + `06b` `_prompt4_tamper_verify_false_{top,bottom}.jpg`** —
+   the tamper adversary case, split across two frames covering full
+   prompt-to-analysis. Direct answer to "how do I know the green isn't
+   stagecraft."
+2. ✅ **`05_prompt3_roundtrip_verify_true.jpg`** — the moat,
+   verify=true + external-anchoring caveat visible.
+3. ⏳ **`04_prompt2_dispute_url.jpg`** — third-party-naming discipline.
    `dispute_contact_url` next to `issuer_name: "Ripple (…)"`.
-4. **`01_terminal_start.png`** — `registered 15 tool(s)`. Ambient
+4. ⏳ **`01_terminal_start.jpg`** — `registered 15 tool(s)`. Ambient
    proof for the count-of-tools claim throughout the packet.
 
 ---
