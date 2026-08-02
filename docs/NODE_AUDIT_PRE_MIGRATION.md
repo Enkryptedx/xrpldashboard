@@ -476,6 +476,12 @@ Pinned 2026-08-02 17:03 UTC.
 
 ---
 
+### 6.4 Nix build environment (Determinate Nix, nix-daemon)
+
+Determinate Nix (multi-user, `nix-daemon.service`) was installed 2026-08-01 to provide the GCC 15 toolchain required by rippled 3.3.0-rc1's C++23 build, after Ubuntu 24.04's stock compilers (GCC 13/14) proved insufficient. Build shape: `nix develop` inside the `~/rippled` checkout enters the upstream dev shell (flake-provided compiler + Conan), and the CMake build runs inside it, producing the binary at `~/rippled/.build/build/Release/xrpld`. That artifact was then installed to `/usr/local/bin/xrpld` (with `rippled` symlink) per §6 — the running node has zero Nix involvement at runtime. Disposition: keep the daemon; future rippled upgrades re-enter via the same `nix develop` path, and the install step (§6.1 order, step 6) carries the new binary out of the build tree.
+
+---
+
 ## Charlie's decisions gate — RESOLVED 2026-08-01
 
 All four ratified pre-Phase-2:
