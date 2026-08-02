@@ -1439,7 +1439,8 @@ pages:
           - "mcp_tools_ledger.py: methodology_url arguments (#ledger, #amendments, #unl)"
           - "mcp_tools_value_flows.py: methodology_url arguments (#whales, #rlusd)"
           - "mcp_tools_amm_tokens.py: methodology_url arguments (#amm, #token-attestation, #rwa, #mpt)"
-          - "templates/methodology.html §MCP tool envelope sources (h3 ids: ledger, amendments, unl, whales, rlusd, amm, token-attestation, rwa, mpt)"
+          - "mcp_tools_signed_snapshot.py: methodology_url arguments (#signed-snapshot)"
+          - "templates/methodology.html §MCP tool envelope sources (h3 ids: ledger, amendments, unl, whales, rlusd, amm, token-attestation, rwa, mpt, signed-snapshot)"
         behavior: MANUAL_CURATION
         layer3_source: self-attested-only
         risk_note: >
@@ -1450,9 +1451,12 @@ pages:
           Day 2/3 tools with no matching id on /methodology. Fixed by
           landing the "MCP tool envelope sources" h2 with 5 h3 anchor
           targets, extended to 9 with Day 4 (amm, token-attestation,
-          rwa, mpt). If a future tool ships with a new methodology_url,
-          the corresponding h3 must land in the SAME commit or the
-          envelope's contract silently breaks. See sibling
+          rwa, mpt), and to 10 with Day 7 (signed-snapshot, singular —
+          the sibling human-facing #signed-snapshots h2 further up the
+          page carries the deep-dive on the chain design). If a future
+          tool ships with a new methodology_url, the corresponding h3
+          must land in the SAME commit or the envelope's contract
+          silently breaks. See sibling
           methodology_for_ai_agents_discovery_links_resolve.
 
       - id: mcp_third_party_naming_dispute_url_present
@@ -1501,6 +1505,261 @@ pages:
           clear), this copy must move to reflect the paid surface
           BEFORE any endpoint starts charging. Sibling of the
           whale-title / escrow-copy founding cases.
+
+  # ─────────────────────────────────────────────────────────────────
+  # MCP tool surface — one claim per tool's `claims_ref` envelope field
+  # ─────────────────────────────────────────────────────────────────
+  # Added 2026-08-02 (Day 7 verification-bar close). Each MCP tool sets
+  # `claims_ref=<id>` in its envelope; this block is the audit trail
+  # naming the source table/walker + the check that would catch a lie.
+  # Note: `rlusd_xrpl_net_change_24h` (used by get_rlusd_flow_24h) is
+  # already catalogued under /rlusd — the tool reuses the on-page claim
+  # id because the fact IS the same fact; no duplicate entry here.
+
+  /mcp:
+    route: "mcp_server.py (stdio + optional HTTP; wraps every tool via wrap_envelope)"
+    claims:
+
+      - id: ledger_stats_live
+        label: "get_ledger_stats returns live server_info fields (validated ledger, close time, server_state, load_factor, complete_ledgers, build_version, hostid) from the local rippled."
+        data_paths:
+          - "mcp_tools_ledger.py:tool_get_ledger_stats"
+          - "mcp_tools_ledger.py:_fetch_server_info (env XRPL_LOCAL_NODE → localhost:5005 default)"
+          - "rippled server_info RPC"
+        behavior: DAILY_WIGGLE
+        layer3_source: local_rippled_server_info
+        risk_note: >
+          Live-RPC tool with ≤5min freshness contract. If XRPL_LOCAL_NODE
+          points at a stale/unhealthy node, envelope's `server_state` and
+          `close_time_iso` are the ground-truth check — an agent seeing
+          `server_state != 'full'` or a close_time older than a few
+          minutes has the honest signal to downweight. Envelope's
+          `source: local_rippled` names which node answered.
+
+      - id: amendments_active_count
+        label: "get_amendment_status returns enabled/in-flight/superseded counts + hashes from the Amendments ledger object, with cross_check_status derived against the responding node's feature-RPC view."
+        data_paths:
+          - "mcp_tools_ledger.py:tool_get_amendment_status"
+          - "amendments_state.fetch_amendments_state_cached (300s cache; same one /amendments reads)"
+          - "cross_check_walker.py: cross_check_pair_4 (localhost feature vs mainnet Amendments ledger object on s1)"
+        behavior: STEP_CHANGE
+        layer2_rules: [R6]  # amendment-count-drift detected by cross_check_pair_4
+        layer3_source: xrpl_amendments_ledger_object
+        risk_note: >
+          Cross-check is the moat: unrecognized-enabled hashes present in
+          the ledger object but not in the responding node's build produce
+          `cross_check_status='disagree'` in the envelope. Any silent
+          divergence between /amendments on-page counts and this tool's
+          `enabled_count` would surface here + on the /amendments claim
+          `amendments_enabled_count` (line 503) — same fact, two readers.
+
+      - id: unl_composition
+        label: "get_unl_status returns both canonical UNL lists (vl.ripple.com + vl.xrplf.org) with per-list validator counts, expiration, and overlap; honest_partial=True when one fetch failed."
+        data_paths:
+          - "mcp_tools_ledger.py:tool_get_unl_status"
+          - "network_state.fetch_network_state_cached (10min cache; same one /network reads)"
+          - "cross_check_walker.py: cross_check_pair_5 (live vl fetch vs stored unl_snapshots)"
+        behavior: STEP_CHANGE
+        layer3_source: vl_ripple_com_vl_xrplf_org
+        risk_note: >
+          Honest-partial routing is the escape hatch — if one list fetch
+          failed, envelope carries `honest_partial=True` + a scope_note
+          naming which list is missing. An agent reading `honest_partial`
+          knows to treat `overlap` as unavailable, not fabricated. Same
+          two-source honesty the /network page publishes
+          (network_unl_counts, line 552).
+
+      - id: whale_events_recent
+        label: "get_whale_events returns the last N XRP-denominated whale events + tagged-watchlist rows from the local xrpl_stream capture feed."
+        data_paths:
+          - "mcp_tools_value_flows.py:tool_get_whale_events"
+          - "db.py:read_recent_events (WHALE_XRP_THRESHOLD_DROPS=100k XRP, TAGGED_XRP_FLOOR_DROPS=100 XRP)"
+          - "xrpl_stream (local rippled stream capture)"
+        behavior: DAILY_WIGGLE
+        layer3_source: local_rippled_stream_capture
+        risk_note: >
+          Same feed the homepage globe pulse + /whales card read; envelope
+          makes the source explicit. Thresholds are named in the payload
+          (whale_threshold_drops, tagged_floor_drops) so an agent doesn't
+          have to guess where the cutoff is. If xrpl_stream dies,
+          walker_health.mcp_server_last_tool_call goes stale within one
+          cadence — the Q1 heartbeat-gap watermark is the ground-truth
+          check.
+
+      - id: whale_watchlist_recent
+        label: "get_whale_watchlist returns the last N tagged-watchlist events (type='tagged'), floored at TAGGED_XRP_FLOOR_DROPS for XRP-denominated rows."
+        data_paths:
+          - "mcp_tools_value_flows.py:tool_get_whale_watchlist"
+          - "db.py:read_recent_events (fetches 3× requested limit, Python-filters to type='tagged')"
+          - "app.py: named_accounts.json (tag source)"
+        behavior: DAILY_WIGGLE
+        layer3_source: local_rippled_stream_capture
+        risk_note: >
+          Same feed as whale_events_recent, filtered to type='tagged'
+          rows. The payload's `note` field surfaces the honest-partial
+          around token-denominated rows: amount_drops IS NULL rows bypass
+          the XRP floor, so an agent needing USD-priced sizing must join
+          against the token-price oracle themselves. Absence-is-signal
+          documented on the payload, not silent.
+
+      - id: rlusd_supply_cross_chain
+        label: "get_rlusd_supply returns cross-chain RLUSD supply (Ethereum + XRPL); honest_partial=True with scope_note when either chain fetch errored — cross-chain total only computed when both sides present."
+        data_paths:
+          - "mcp_tools_value_flows.py:tool_get_rlusd_supply"
+          - "rlusd_live.fetch_state (5min cache; same one /rlusd reads)"
+          - "db.py:read_rlusd_state_cache (PG mirror written by rlusd_refresher walker)"
+        behavior: STEP_CHANGE
+        layer3_source: ethereum_public_rpc+xrpl_public_rpc
+        risk_note: >
+          cross_check_status='not_applicable' by design — the two chains
+          measure independent issuance pools, not the same fact from two
+          sources, so agree/disagree is category-inapplicable. The
+          finalized-window flow tool (get_rlusd_flow_24h → claims_ref
+          `rlusd_xrpl_net_change_24h`) is where cross-check exercises
+          real paired data. If either chain errors, `total_supply` is
+          null and scope_note names the reason — never a fabricated sum.
+
+      - id: amm_pool_by_address
+        label: "get_amm_pool returns one ranked-pool row from amm_ranked_pools for a supplied amm_account; raises when the account isn't in the current snapshot."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_amm_pool"
+          - "db.py:read_amm_ranked_pools (writer: rank_amms_walker + amm_tvl_recorder)"
+          - "templates/pools.html: same source"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Absence IS the signal — unranked AMMs (below TVL thresholds,
+          newer than the last snapshot) raise rather than stubbing a
+          zero row. Same fact as the /pools page's ranked list
+          (pools_tvl_and_ranking, line 473). If rank_amms_walker dies,
+          walker_health.rank_amms marks stale; the tool still returns
+          the last successful snapshot with its snapshot_ts_iso — an
+          agent checking freshness against `≤ 30min` contract sees the
+          drift.
+
+      - id: amm_top_by_tvl_rank
+        label: "get_amm_top_by_tvl returns the top-N ranked pools by tvl_usd from the same amm_ranked_pools snapshot; NULL tvl_usd rows sort last."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_amm_top_by_tvl"
+          - "db.py:read_amm_ranked_pools (writer: rank_amms_walker + amm_tvl_recorder)"
+          - "db.py:read_amm_snapshot_ts (snapshot freshness marker)"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Same source as amm_pool_by_address; payload includes
+          `snapshot_ts_iso` so an agent can cross-check the envelope's
+          `as_of` field against the underlying snapshot age. If the
+          two disagree by more than the freshness contract, the walker
+          is behind and the payload is honest about it. Row shape
+          mirrors what /pools renders — divergence would break both
+          surfaces the same way.
+
+      - id: token_attestation_status
+        label: "get_token_attestation returns the attestation tier (verified / self-described / null) for one (currency, issuer) pair from account_labels; carries dispute_contact_url."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_token_attestation"
+          - "mcp_tools_amm_tokens.py:_classify_attestation_tier (mirrors app.py:2589-2598 tier ladder)"
+          - "db.py:read_account_labels (writer: verify_toml_accounts + enrich_token_names)"
+          - "mcp_tools_amm_tokens.py:DISPUTE_CONTACT_URL"
+        behavior: DAILY_WIGGLE
+        layer3_source: toml_attested
+        risk_note: >
+          Third-party-naming tool. Payload carries `dispute_contact_url`
+          (routes to /contact?purpose=attestation-dispute) so any issuer
+          disagreeing with the label has a first-party correction
+          channel — same rule the /tokens footer applies to humans
+          (mcp_third_party_naming_dispute_url_present, line 1458).
+          Absence IS signal: `attestation_tier=null` + reason names why
+          (no row / no name field) — never fabricated.
+
+      - id: rwa_families_count
+        label: "get_rwa_families returns every rwa_family row + attributed pool count; carries dispute_contact_url."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_rwa_families"
+          - "db.py:read_rwa_families"
+          - "app.py: /rwa page (rwa_issuer_families, line 675)"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Third-party-naming tool — every family name is a label the site
+          assigned to an issuer. Payload's `dispute_contact_url` is the
+          correction channel; same rule as token_attestation_status.
+          Family count divergence with /rwa page (rwa_issuer_families,
+          line 675) would surface here the same way the on-page
+          claim's audit would catch it.
+
+      - id: rwa_pools_attributed_count
+        label: "get_rwa_pools returns every attributed RWA pool with provenance + TVL (joined against amm_ranked_pools); carries dispute_contact_url."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_rwa_pools"
+          - "db.py:read_rwa_pools_attributed"
+          - "app.py: /rwa page (rwa_on_chain_liquidity, line 689)"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Third-party-naming tool. Payload carries provenance per pool
+          (family_slug, confidence, notes) so an agent reading a pool's
+          RWA attribution can inspect the basis, not just the label.
+          dispute_contact_url completes the correction path. Same source
+          as rwa_on_chain_liquidity (/rwa page); a mismatch between the
+          two would be a walker-write or DB-read bug, not a scope
+          question.
+
+      - id: mpt_active_count
+        label: "get_mpt_snapshot returns total_active MPTs + by_class breakdown from the mpt_snapshot table (writer: mpt_snapshot + mpt_holders_refresh)."
+        data_paths:
+          - "mcp_tools_amm_tokens.py:tool_get_mpt_snapshot"
+          - "db.py:read_mpt_snapshot"
+          - "app.py: /mpts page (mpts_issuance_count, line 631)"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Not third-party-naming — reports what the ledger contains
+          without opinion on issuer identity. Payload's
+          `snapshot_age_seconds` is the freshness proof; if the walker
+          hasn't produced a snapshot yet the tool raises rather than
+          returning a stub. Same source as mpts_issuance_count on /mpts
+          (line 631) — walker death shows on both surfaces via
+          walker_health.mpt_snapshot.
+
+      - id: signed_snapshot_daily
+        label: "get_signed_snapshot returns the Ed25519-signed daily snapshot for a given ISO date + the Merkle audit path against the chain root (writer: signed_snapshot_walker / signed_snapshot.sign_snapshot)."
+        data_paths:
+          - "mcp_tools_signed_snapshot.py:tool_get_signed_snapshot"
+          - "signed_snapshot.py:sign_snapshot"
+          - "signed_snapshots/<date>.json (on-disk source of truth)"
+        behavior: STEP_CHANGE
+        layer3_source: cryptographic-signature
+        risk_note: >
+          Absence IS the signal: if the walker has not produced today's
+          snapshot yet, or the date predates the chain start, the tool
+          raises rather than returning a stub. Payload is a
+          pass-through of the on-disk signed envelope (leaf_hash,
+          chain_root, previous_root, audit_path, signature_ed25519,
+          signing_pubkey_fingerprint) — an agent can hand this straight
+          back into verify_snapshot_signature and complete the
+          round-trip receipt. Pinned pubkey served at
+          /.well-known/snapshots/pubkey.pem; chain served at
+          /.well-known/snapshots/chain.json.
+
+      - id: signed_snapshot_verify
+        label: "verify_snapshot_signature is stateless — re-derives leaf hash, checks Ed25519 signature against pinned pubkey, checks audit path against chain root, returns verify_result:bool + public_key_fingerprint + issues[]."
+        data_paths:
+          - "mcp_tools_signed_snapshot.py:tool_verify_snapshot_signature"
+          - "signed_snapshot.py:verify_envelope"
+          - "signed_snapshot.py:load_public_key"
+        behavior: STEP_CHANGE
+        layer3_source: cryptographic-signature
+        risk_note: >
+          No shared state with the writer, no I/O beyond loading the
+          pinned public key — same verification path a third-party
+          verifier would run. Accepts either the full MCP envelope
+          ({data, proof, server}) or the bare signed payload dict.
+          Malformed input (missing required fields, non-dict envelope,
+          None) raises rather than returning verify_result=False —
+          malformed input is a caller bug, not a verification result.
+          Freshness_contract="≤ 5min" reflects in-process stateless
+          check, not data staleness.
 
   # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)

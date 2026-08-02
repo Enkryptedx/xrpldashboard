@@ -396,7 +396,30 @@ def _register_tools(mcp) -> int:
         proof envelope."""
         return mcp_tools_amm_tokens.tool_get_mpt_snapshot()
 
-    return 13
+    # Day 7 signed-snapshot batch. The moat expressing itself as an MCP
+    # surface: a caller who screenshots a metric today can hand the
+    # envelope back into verify_snapshot_signature six months later and
+    # prove the number wasn't silently changed. Two tools, one round-trip
+    # receipt.
+    import mcp_tools_signed_snapshot
+
+    @mcp.tool()
+    def get_signed_snapshot(date_str: str) -> dict:
+        """Return the Ed25519-signed daily snapshot for `date_str`
+        (ISO YYYY-MM-DD) wrapped in the proof envelope. Absence raises —
+        the walker has not produced this date yet, or the date predates
+        the chain start."""
+        return mcp_tools_signed_snapshot.tool_get_signed_snapshot(date_str)
+
+    @mcp.tool()
+    def verify_snapshot_signature(envelope: dict) -> dict:
+        """Stateless verification: re-derive the leaf hash, check the
+        Ed25519 signature against the pinned pubkey, check the audit path
+        against the claimed chain root. Accepts full MCP envelope or bare
+        signed payload. Wrapped in the proof envelope."""
+        return mcp_tools_signed_snapshot.tool_verify_snapshot_signature(envelope)
+
+    return 15
 
 
 def build_server(register_tools: bool = True):

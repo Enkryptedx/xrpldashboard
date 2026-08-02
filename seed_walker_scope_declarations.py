@@ -378,18 +378,23 @@ SCOPES = [
     ),
     (
         "mcp_server_heartbeat",
-        "read-only MCP tool proxy over existing Neon tables (Day 4: 13 tools registered)",
+        "read-only MCP tool proxy over existing Neon tables (Day 7: 15 tools registered)",
         "Self-writing 60s heartbeat from mcp_server.py's background daemon "
         "thread. Not an XRPL walker — the row exists so the MCP server's own "
         "liveness surfaces on /walker_health under the same alarm framework "
         "as every other walker (goes yellow within 60s, red within ~5min if "
-        "the process dies). Day 2 registers the ledger-primitives batch: "
-        "get_ledger_stats (server_info), get_amendment_status (amendments_state "
-        "with derived cross_check_status), get_unl_status (network_state with "
-        "honest_partial-on-partial-fetch). Enforcement: every tool routes "
-        "through mcp_server.wrap_envelope, which is the single response-wrap "
-        "function; no tool bypasses it (docs/AGENT_TIER_DESIGN.md "
-        "§Enforcement).",
+        "the process dies). Registered tool inventory (Day 7, 15 tools): "
+        "Day 2 ledger primitives — get_ledger_stats, get_amendment_status, "
+        "get_unl_status. Day 3 value flows — get_whale_events, "
+        "get_whale_watchlist, get_rlusd_supply, get_rlusd_flow_24h. Day 4 "
+        "AMM + tokens — get_amm_pool, get_amm_top_by_tvl, "
+        "get_token_attestation, get_rwa_families, get_rwa_pools, "
+        "get_mpt_snapshot. Day 7 signed-snapshot moat — get_signed_snapshot "
+        "(daily Ed25519-signed envelope with Merkle audit path), "
+        "verify_snapshot_signature (stateless verification path). "
+        "Enforcement: every tool routes through mcp_server.wrap_envelope, "
+        "which is the single response-wrap function; no tool bypasses it "
+        "(docs/AGENT_TIER_DESIGN.md §Enforcement).",
         True,
     ),
     (

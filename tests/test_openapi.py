@@ -138,8 +138,9 @@ def test_mcp_inventory_tool_names_match_actual_functions():
     import mcp_tools_ledger
     import mcp_tools_value_flows
     import mcp_tools_amm_tokens
+    import mcp_tools_signed_snapshot
 
-    modules = [mcp_tools_ledger, mcp_tools_value_flows, mcp_tools_amm_tokens]
+    modules = [mcp_tools_ledger, mcp_tools_value_flows, mcp_tools_amm_tokens, mcp_tools_signed_snapshot]
     for tool in AGENT_TIER_MCP_INVENTORY:
         fn_name = f"tool_{tool['name']}"
         found = any(hasattr(m, fn_name) for m in modules)

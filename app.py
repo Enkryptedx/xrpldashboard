@@ -288,7 +288,7 @@ def inject_agent_tier_freshness():
 # flask-smorest wires /openapi.json + Swagger UI at /docs. The spec
 # documents the LIVE free surface only: the discovery and well-known
 # endpoints that already exist on main, plus a documented pointer to
-# the 13 MCP tools (envelope schema is the standard response wrapper
+# the 15 MCP tools (envelope schema is the standard response wrapper
 # every future JSON payload will carry — MCP tools today, HTTP
 # read-only API when it lands).
 #
@@ -325,6 +325,8 @@ AGENT_TIER_MCP_INVENTORY = [
     {"name": "get_rwa_families",      "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
     {"name": "get_rwa_pools",         "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
     {"name": "get_mpt_snapshot",      "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
+    {"name": "get_signed_snapshot",   "source": "signed_snapshot_walker",     "freshness": "daily",          "batch": "signed-snapshot"},
+    {"name": "verify_snapshot_signature", "source": "signed_snapshot.verify_envelope+pinned_pubkey", "freshness": "≤ 5min", "batch": "signed-snapshot"},
 ]
 
 app.config["API_TITLE"] = "xrpldashboard — Agent Tier (read-only)"
@@ -6285,7 +6287,7 @@ _AGENTS_JSON = {
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Day 6 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
+        "phase": f"Day 7 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
         "discovery_layer_ready": True,
         "mcp_ready": False,
         "openapi_ready": True,
