@@ -199,16 +199,14 @@ walk PASS as of 2026-08-02.
 
 ### Field 5 — Employment independence
 
-**[CHARLIE INPUT REQUIRED — this is the honesty gate.]**
+**Final text, Charlie's words (msg 10421, 2026-08-02 17:28 EDT):**
 
-Draft language, subject to Charlie's rewrite based on his actual
-situation:
-
-> This work was performed independently, outside any employment
-> relationship. xrpldashboard is a personal open-source project
-> (repository under Charlie Bruce, MIT licensed, no employer
-> assignment). No salary, contract, or grant has funded the work
-> covered by this application to date.
+> Part-time glass industry specialist (independent contractor,
+> ~$100-150K annually depending on job volume) and emergency response
+> team member, currently inactive from field work while supporting a
+> family member through surgery. xrpldashboard.com is built and
+> operated entirely independently — no employer relationship, no
+> outside funding, no IP entanglement.
 >
 > Roadmap disclosure: a paid agent-tier is under consideration as
 > a future revenue stream to sustain infrastructure costs (rippled
@@ -218,11 +216,6 @@ situation:
 > is required is honored in writing: the tier structure, if it ever
 > exists, will add capacity for paying agents on top of an unchanged
 > free surface, not remove capacity from the free surface.
-
-Charlie: replace the first paragraph with your own words about your
-current employment / income situation. The roadmap-disclosure
-paragraph is the §1 verdict's condition, honored in writing per the
-prior standing decision.
 
 ---
 
@@ -268,33 +261,35 @@ no login required.
 
 ## Notes for Charlie (before submitting)
 
-**Known unknowns that need your input (reduced by msg-10417
-reconciliation sweep, 2026-08-02 16:09 EDT — was five items, now
-two-plus-two-confirms):**
+**Known unknowns — reduced to one, wallet-in-flight (msg 10421,
+2026-08-02 17:28 EDT):**
 
-Genuinely-still-missing (only Charlie can answer):
-1. **Wallet address** for KYC / disbursement. Per your own directive
-   in msg 10417, wallet addresses get verified back to you before
-   submit — never assumed silently. One line: "The wallet you want on
-   the application is `r...`" — I paste it into the platform, never
-   into this file.
-2. **Field 5 exact wording** — your current employment / income
-   situation as you'd word it. Draft language in the field above uses
-   plausible generic phrasing; your actual words replace the first
-   paragraph. The roadmap-disclosure paragraph stands per the standing
-   agent-tier decision.
+1. **Wallet address** — Xaman "XRPLDashboard Ops" account created
+   tonight, XRP funding arrives ~tomorrow evening via Crypto.com 24h
+   new-address hold. **Not a blocker** — the r-address is valid the
+   moment Xaman shows it; activation (first deposit + base reserve)
+   and RLUSD trust line happen after funding, and neither is required
+   for the Glow application form. When Charlie sends *"The wallet for
+   the application is `r...`"*, standing rule executes:
+   - Verify back character-for-character: *"Confirming `r[...]` is the
+     address for the Glow application — reply yes"*
+   - Format sanity-check on receipt (base58, starts with `r`, length
+     25–35). Do NOT check on-ledger existence — unactivated is expected.
+   - Address enters the platform form at submit time only, never into
+     any committed file.
 
-Confirmed by sweep (already filled above, verify at read-through):
-3. **GitHub URL** = `https://github.com/Enkryptedx/xrpldashboard`
-   [FROM-REPO-REMOTE, `git remote -v`]. Confirm this is the public
-   front door you want named.
-4. **Self-nominate stance** = self-nominate now per msg 10417 standing
-   recommendation. If you'd rather wait for a Scout, override before
-   submit.
+Confirmed by prior sweep (filled above):
+- GitHub URL = `https://github.com/Enkryptedx/xrpldashboard`
+  [FROM-REPO-REMOTE, `git remote -v`]
+- Self-nominate stance = self-nominate now (msg 10417 standing rec)
+- Field 5 wording = Charlie's exact text landed 2026-08-02 17:28 EDT
+  from msg 10421 (glass-industry contractor + emergency-response,
+  currently inactive, independent build with no employer/funding/IP
+  entanglement)
 
-Optional-tuning ask (was #5, still open):
-5. Whether you want any commit hashes above swapped in/out (I picked
-   the most representative ~15; the window has 535 to choose from).
+Optional-tuning ask (still open):
+- Whether you want any commit hashes above swapped in/out (I picked
+  ~15 representative; the window has 535 to choose from).
 
 **Suggested timing.** The application window closes 2026-08-31.
 Seven of the eight visual receipts have landed as of 2026-08-02 16:09
