@@ -120,6 +120,34 @@ Both nodes run in parallel through this phase. Nothing on prod moves until every
 - [ ] `answer_plausibility_walker` remains pointed at public nodes throughout Phase 3 (its whole job is cross-checking us against external truth; pointing it at our own new node defeats the point).
 - [ ] **Mac node demotes to warm standby** at Phase 3 exit: still running, still synced, no longer receiving consumer queries. It's the fallback if Phase 4 surfaces a problem.
 
+### Phase 3.A — Batch A census correction (2026-08-02, twice-corrected)
+
+The "24 consumers of the local node" figure from the original design was wrong twice, in the same class of error both times: **env-var presence in a plist ≠ traffic path in code.** The only trustworthy audit is grep-and-read the walker code.
+
+- **First correction:** "24 consumers" counted walkers that made any XRPL RPC call. Most of those were pointed at `https://s1.ripple.com:51234` or similar public infra, never at the Mac. True count of walkers routed through `xrpl_client.py`'s local-node cascade was smaller.
+- **Second correction (mid-batch, ~08:20 EDT 2026-08-02):** the initial "true Mac-dep = 4" count still miscounted `nft_activity_backfill`. Reading the walker before touching its plist surfaced that backfill mode reads a different lever entirely — `XRPL_BACKFILL_CLIO` (default `https://s2-clio.ripple.com:51234/`) — because local rippled would return `lgrNotFound` for every backfill request against its ~10k-ledger window vs the ~2M-ledger backfill span. Setting `XRPL_LOCAL_NODE` on the backfill plist would look like a repoint but change zero traffic.
+
+**Ratified Batch A = 3 walkers.** All shipped GREEN 2026-08-02:
+
+| # | Walker | Plist | Outcome |
+|---|---|---|---|
+| 1 | `oracle_walker` | `launchd/com.charliebruce.xrpldashboard.oracle_walker.plist` | GREEN — 2 DIA rows, pair_count 14 |
+| 2 | `escrow_walker` | `launchd/com.charliebruce.xrpldashboard.escrow_walker.plist` | GREEN — 101 rows, 20/20 Ripple cohort |
+| 3 | `nft_activity_walker` (activity mode) | `launchd/com.charliebruce.xrpldashboard.nft_activity_walker.plist` | GREEN — 86 ledgers, 225 nft rows, cursor 106020511 → 106020597 in one cycle |
+
+**NOT Batch A — architectural public-Clio dependency:**
+- `nft_activity_backfill` — reads `XRPL_BACKFILL_CLIO`, hits public Clio by design. Lenovo has the same ~10k `ledger_history` as Mac; a backfill repoint would fail with `lgrNotFound` for every request in the ~2M-ledger span. **Stays on public Clio.**
+
+**Batch C (audit-tier, held for LAST per Phase 3):**
+- `ledger_definitions_walker` (R5 vocab-receipt walker)
+- `cross_check_walker` (Layer 3 audit — compares LOCAL vs s1; the whole point is external cross-check, so the local end being Mac vs Lenovo is the actual comparison being made — move deliberately, code-path re-audit REQUIRED before staging per twice-proven lesson)
+
+**Also on public s1/s2 today, moving is a SEPARATE architectural decision post-soak:**
+- Approximately 10 walkers hit `XRPL_NODE` / `XRPL_RPC` / `XRPL_CLIO_NODE` with defaults on public infra (`enrich_token_names`, `verify_toml_accounts`, `permissioned_domains_walker`, `credentials_walker`, `mpt_holders_refresh`, `bridge_signer_walker`, `rank_amms`, `lending_snapshot`, `lending_data`, `amm_tvl_recorder`, `coverage_register_walker`; plus snapshots).
+- Migration's stated purpose is **Mac relief** — that purpose only touches the walkers actually burdening the Mac (Batch A + Batch C). Moving the others is "should our own node become the primary source, replacing distributed public infrastructure?" — a separate decision post-30-day-soak, memo-owned, not a side effect of tonight's env-var mechanics.
+
+**Twice-proven lesson:** future Batch B/C staging (and any fleet-wide "point at Lenovo" impulse) MUST grep-and-read the walker code before touching its plist. Sibling backlog: normalize the fleet's 3+ RPC-target env-var names (`XRPL_LOCAL_NODE` / `XRPL_NODE` / `XRPL_RPC` / `XRPL_CLIO_NODE`) to `XRPL_LOCAL_NODE` fleet-wide + add `walker_health.rpc_url` column so which-URL-was-hit becomes recorded fact — would have made this class of miscount impossible.
+
 **Phase 3 exit criteria:** all verification checks passed, all non-public-node consumers repointed to Lenovo, Mac is warm-standby-only, no prod alarms fired during the transition.
 
 ---

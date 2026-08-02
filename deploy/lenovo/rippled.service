@@ -8,7 +8,12 @@ Wants=network-online.target
 Type=simple
 User=rippled
 Group=rippled
-ExecStart=/usr/local/bin/rippled --conf /etc/rippled/rippled.cfg
+ExecStart=/usr/local/bin/xrpld --conf /etc/rippled/rippled.cfg
+# 3.3.0+ upstream ships as `xrpld` (rename ratified 2026-08-01 20:34 EDT).
+# A `rippled → xrpld` symlink is installed alongside in /usr/local/bin/
+# for any inherited script that still names `rippled`. This unit file
+# stays named rippled.service (config namespace unchanged, `systemctl
+# status rippled` continues to work).
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536

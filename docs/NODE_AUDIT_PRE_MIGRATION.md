@@ -279,8 +279,8 @@ Log file: `/Users/charliebruce/rippled-data/logs/debug.log` (369 MB active, 7 ro
 - Config: `/etc/rippled/rippled.cfg`
 - Data: `/var/lib/rippled/db/`
 - Logs: `/var/log/rippled/debug.log` (Ubuntu logrotate)
-- Binary: `/usr/local/bin/rippled` (built from source, **3.3.0-rc1** — see Post-Phase-1 Amendment)
-- Systemd unit: `/etc/systemd/system/rippled.service` (with `LimitNOFILE=65536`)
+- Binary: `/usr/local/bin/xrpld` (built from source, **3.3.0-rc1** — see Post-Phase-1 Amendment). **Binary-name rename ratified 2026-08-01 20:34 EDT** — 3.3.0+ upstream ships as `xrpld`, matching XRPLF's post-rename branding. A `rippled → xrpld` symlink is installed alongside so any inherited script / doc / cfg path that still names `rippled` continues to resolve; the systemd unit and cfg paths keep the `rippled.cfg` / `rippled.service` filenames (config namespace is stable, only the executable moved).
+- Systemd unit: `/etc/systemd/system/rippled.service` (with `LimitNOFILE=65536`, `ExecStart=/usr/local/bin/xrpld ...`)
 
 **Ratified history depth:** Option A — 10,000 ledgers (see §3.4 ratification).
 
@@ -383,7 +383,8 @@ ED42AEC58B701EEBB77356FFFEC26F83C1F0407263530F068C7C73D392C7E06FD1
 
 ```ini
 [Unit]
-Description=Rippled node
+Description=Rippled node (XRPL tracking, Lenovo IdeaCentre Mini)
+Documentation=https://xrpl.org/
 After=network-online.target
 Wants=network-online.target
 
@@ -391,7 +392,7 @@ Wants=network-online.target
 Type=simple
 User=rippled
 Group=rippled
-ExecStart=/usr/local/bin/rippled --conf /etc/rippled/rippled.cfg
+ExecStart=/usr/local/bin/xrpld --conf /etc/rippled/rippled.cfg
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -399,6 +400,48 @@ LimitNOFILE=65536
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Unit-name note:** the systemd unit filename stays `rippled.service` (config namespace unchanged; every runbook that says `systemctl status rippled` continues to work). Only `ExecStart` names the renamed binary. The `rippled → xrpld` symlink in `/usr/local/bin/` is belt-plus-braces for any inherited invocation path.
+
+---
+
+### 6.1 Deploy path — canonical materialization
+
+`deploy/lenovo/` in this repo (added 743c757, comment-placement patch 657fc8e) holds the versioned, curl-able files that get copied to the Lenovo verbatim. The block above stays the reasoning-of-record; the files below are the executable form:
+
+- `deploy/lenovo/rippled.cfg` → `/etc/rippled/rippled.cfg`
+- `deploy/lenovo/validators.txt` → `/etc/rippled/validators.txt`
+- `deploy/lenovo/rippled.service` → `/etc/systemd/system/rippled.service`
+
+**Deploy order (one shot, root on Lenovo):**
+
+1. `useradd -r -s /usr/sbin/nologin rippled` (system user; no login shell)
+2. Create the dedicated LV + mount at `/var/lib/rippled` per Post-Phase-1 Amendment §5; `chown -R rippled:rippled /var/lib/rippled`
+3. `install -d -o rippled -g rippled /var/log/rippled` (logrotate picks up automatically once file exists)
+4. `install -d -m 755 /etc/rippled` and copy `deploy/lenovo/rippled.cfg` + `deploy/lenovo/validators.txt` in
+5. `install -m 644 deploy/lenovo/rippled.service /etc/systemd/system/rippled.service`
+6. `install -m 755 <built-binary> /usr/local/bin/xrpld && ln -s xrpld /usr/local/bin/rippled`
+7. `systemctl daemon-reload && systemctl enable --now rippled.service`
+8. Tail `/var/log/rippled/debug.log`; watch `server_info` progress `disconnected → connected → syncing → full`
+
+**Any cfg tweak amends this doc AND `deploy/lenovo/` in one commit** — the doc is the reasoning-of-record, the files are the deployable materialization; they never fork.
+
+---
+
+### 6.2 SHAMapStore silent-first-fire observation (3.3.0-rc1 fresh NuDB)
+
+Recorded 2026-08-02 morning verification (Lenovo uptime ~8h 37m):
+
+- `online_delete=10000` + `advisory_delete=0` per §6 config
+- Retention window at 8h 37m uptime: **17,026 ledgers** (low bound `106000766` has not moved)
+- SHAMapStore partition at debug level: **SILENT** (no prune-fire log lines)
+- Cfg confirmed correct — this is NOT a misconfiguration
+
+**Hypothesis:** 3.3.0-rc1's SHAMapStore first-fire on a fresh NuDB takes longer than 8h and is silent until first-fire. Not a bug until the retention window stops advancing OR uptime crosses the escalation threshold below.
+
+**Tracking:** crontab on the Lenovo runs a 4h prune check into `/home/charlie/prune_watch.log`; each entry captures uptime + retention low-bound + high-bound + delta-since-last-check.
+
+**Escalation trigger:** 24-36h uptime with retention still growing unbounded → open Discord/GitHub issue at XRPLF with the debug evidence. Do NOT preemptively flip `online_delete` or restart — silence is the observation, not the problem, until it's demonstrably still silent past first-fire.
 
 ---
 
