@@ -137,6 +137,32 @@ ALTER TABLE token_volume DROP CONSTRAINT IF EXISTS token_volume_pkey;
 CREATE UNIQUE INDEX IF NOT EXISTS token_volume_path_uniq_idx
     ON token_volume (currency, issuer, hour_bucket, path_type);
 
+-- AI-crawler telemetry (Phase 2 of the 2026-08-02 two-instrument build).
+-- Every request to an agent-tier route from a bot-shaped UA writes one
+-- row. `ua_class` is either an exact AI_CRAWLER_UA_SUBSTRINGS entry
+-- (e.g. 'gptbot', 'claudebot', 'perplexitybot') OR the literal
+-- 'UNLISTED' for bot-shaped UAs that don't match the allowlist —
+-- Charlie's rule: log spoofers/unlisted agents as their own class, do
+-- NOT force them into the 15.
+--
+-- Denominator scope: agent-tier routes only (see AGENT_TIER_ROUTE_PATHS).
+-- General page traffic stays in `page_views`; the two surfaces are the
+-- citation-signal / demand-signal split the ship note pinned.
+--
+-- No PK — this is an append-only fact table. Aggregations use the
+-- (ua_class, ts) index. Retention: keep indefinitely at current rate;
+-- if volume outgrows storage a `ts < now() - N days` prune is trivial.
+CREATE TABLE IF NOT EXISTS ai_crawler_hits (
+    ts       BIGINT NOT NULL,
+    ua_class TEXT NOT NULL,
+    path     TEXT NOT NULL,
+    status   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ai_crawler_hits_class_ts_idx
+    ON ai_crawler_hits (ua_class, ts DESC);
+CREATE INDEX IF NOT EXISTS ai_crawler_hits_ts_idx
+    ON ai_crawler_hits (ts DESC);
+
 CREATE TABLE IF NOT EXISTS amm_pool_events (
     id          BIGSERIAL PRIMARY KEY,
     ts          BIGINT NOT NULL,
@@ -1273,6 +1299,28 @@ def upsert_token_volume(currency, issuer, hour_bucket, path_type,
             )
     except Exception as e:
         _log_err("upsert_token_volume_failed", e)
+        _drop_writer_conn()
+
+
+def write_ai_crawler_hit(ts, ua_class, path, status):
+    """Append one row to ai_crawler_hits. Called from the request path
+    in app.py; MUST be allocation-cheap and MUST NOT raise into the
+    caller — any failure is rate-log-only and drops the writer conn so
+    the next request tries a fresh one.
+
+    Silent no-op when PG isn't configured (dev/local)."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ai_crawler_hits (ts, ua_class, path, status) "
+                "VALUES (%s, %s, %s, %s)",
+                (ts, ua_class, path, status),
+            )
+    except Exception as e:
+        _log_err("write_ai_crawler_hit_failed", e)
         _drop_writer_conn()
 
 

@@ -61,6 +61,61 @@ def test_is_ai_crawler_empty_or_none():
     assert not is_ai_crawler(None)
 
 
+# ── unit: classify_ai_crawler (returns class label, not bool) ───────
+#
+# Charlie's rule 2026-08-02: unlisted / spoofed UAs get their own class
+# 'UNLISTED' — never forced into the 15-substring allowlist.
+
+
+def test_classify_returns_matched_substring_for_known_crawler():
+    from agent_tier_rate_limit import classify_ai_crawler
+    assert classify_ai_crawler("Mozilla/5.0 (compatible; GPTBot/1.2)") == "gptbot"
+    assert classify_ai_crawler("ClaudeBot/1.0") == "claudebot"
+    assert classify_ai_crawler("PerplexityBot/1.0") == "perplexitybot"
+    assert classify_ai_crawler("Google-Extended") == "google-extended"
+
+
+def test_classify_returns_unlisted_for_bot_shaped_ua():
+    from agent_tier_rate_limit import classify_ai_crawler, UA_CLASS_UNLISTED
+    # Bot-shaped substrings that don't match the allowlist.
+    for ua in [
+        "curl/8.4.0",
+        "python-requests/2.31",
+        "Wget/1.21",
+        "Go-http-client/1.1",
+        "MysteryScrapeBot/9",
+        "SomeSpider/1",
+        "HeadlessChrome/141",
+    ]:
+        assert classify_ai_crawler(ua) == UA_CLASS_UNLISTED, ua
+
+
+def test_classify_returns_none_for_normal_browser():
+    from agent_tier_rate_limit import classify_ai_crawler
+    assert classify_ai_crawler(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+    ) is None
+    assert classify_ai_crawler(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1"
+    ) is None
+
+
+def test_classify_returns_none_for_empty_or_none():
+    from agent_tier_rate_limit import classify_ai_crawler
+    assert classify_ai_crawler(None) is None
+    assert classify_ai_crawler("") is None
+
+
+def test_classify_allowlist_wins_over_unlisted():
+    # A UA that contains both an allowlist entry AND a bot-hint must
+    # resolve to the allowlist entry, not UNLISTED. Real-world UAs
+    # frequently contain "bot" alongside the specific name.
+    from agent_tier_rate_limit import classify_ai_crawler
+    assert classify_ai_crawler("GPTBot spider crawler") == "gptbot"
+
+
 # ── unit: is_agent_tier_route ───────────────────────────────────────
 
 def test_is_agent_tier_route_exact_matches():

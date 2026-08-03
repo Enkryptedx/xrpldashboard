@@ -25,6 +25,18 @@ The 3-audience rule is normative (feedback_three_audience_rule):
    the rate-limit bucket, so a rotating residential fleet on Chrome/142
    is soft-blocked even at request 1 of its per-IP burst.
 
+Three-question monitor rubric (feedback_three_question_monitor_rubric,
+applied to the ai_crawler_hits telemetry surface built on top of this
+module):
+  Q1 What breaks silently? Writer death or table absence would zero
+     the ai_crawler_hits stream. Guard: db._log_err surfaces write
+     failures; count-nonzero-in-24h canary (queued).
+  Q2 Ground-truth check? Compare hits.ua_class distribution against
+     `/admin/stats` page_views for the same paths and same window; any
+     ua_class we count MUST appear in raw page_view user_agent strings.
+  Q3 Who watches it? Sunday queue audit reads ai_crawler_hits top-N;
+     alarm surfaces on the same weekly cadence as R-series checks.
+
 Route scope: `AGENT_TIER_ROUTE_PATHS` names the exact paths this module
 guards. Kept explicit rather than pattern-matched — a new discovery
 surface is a review-worthy decision, not an automatic broadening.
@@ -139,6 +151,84 @@ def is_ai_crawler(user_agent: Optional[str]) -> bool:
         if fragment in ua_lower:
             return True
     return False
+
+
+# ── ai_crawler_hits classification (Charlie's rule 2026-08-02) ──────
+#
+# `classify_ai_crawler` is the upgrade from `is_ai_crawler`: instead of
+# a bool it returns WHICH crawler class matched, so the writer can bucket
+# citation crawlers by operator. Two special classes exist beyond the
+# 15-substring allowlist:
+#
+#   UA_CLASS_UNLISTED — UA smells bot-like (contains "bot" / "crawl" /
+#       "spider" / "http" / "python" / "curl" etc.) but does NOT match
+#       any allowlist entry. Charlie's rule: "if the Day 6 classifier's
+#       UA list turns out to catch something unexpected in live traffic
+#       (a spoofed UA, an unlisted agent), log it honestly as its own
+#       class rather than forcing it into the fifteen."
+#
+#   None (return) — normal browser or empty UA. NOT logged to
+#       ai_crawler_hits (that's what page_views is for). The caller
+#       decides what to do with a None return.
+#
+# Design contract: this classifier is called on the request path, so
+# it must be allocation-cheap. Case-lower once, membership-test against
+# short substring tuples. No regex.
+UA_CLASS_UNLISTED = "UNLISTED"
+
+# Substrings that mark a UA as "something automated" without matching
+# our positive allowlist. Case-insensitive. Kept small and boring on
+# purpose — the point is to catch spoofers and unlisted agents, not to
+# reinvent the training-crawler blocklist (that's app.py's job via
+# _BLOCKED_UA_FRAGMENTS).
+_BOTLIKE_UA_HINTS = (
+    "bot",
+    "crawl",
+    "spider",
+    "scrape",
+    "fetch",
+    "http-client",
+    "http_client",
+    "python-requests",
+    "python-urllib",
+    "aiohttp",
+    "httpx",
+    "okhttp",
+    "curl/",
+    "wget/",
+    "go-http-client",
+    "java/",
+    "libwww",
+    "headlesschrome",
+    "phantomjs",
+)
+
+
+def classify_ai_crawler(user_agent: Optional[str]) -> Optional[str]:
+    """Return the matched AI-crawler class label for a User-Agent, or
+    None for normal browser / empty UA (which should not be logged to
+    ai_crawler_hits).
+
+    Return values:
+    - Exact substring from AI_CRAWLER_UA_SUBSTRINGS for a known citation
+      crawler (e.g. "gptbot", "claudebot", "perplexitybot"). Case-lowered
+      as stored in the allowlist.
+    - UA_CLASS_UNLISTED for a bot-shaped UA that doesn't match the
+      allowlist — Charlie's rule 2026-08-02: don't force spoofers into
+      the 15.
+    - None for empty/None UA or a UA with no bot-hint substring.
+
+    Called on the request path; must stay allocation-light."""
+    if not user_agent:
+        return None
+    ua_lower = user_agent.lower()
+    for fragment in AI_CRAWLER_UA_SUBSTRINGS:
+        if fragment in ua_lower:
+            return fragment
+    for hint in _BOTLIKE_UA_HINTS:
+        if hint in ua_lower:
+            return UA_CLASS_UNLISTED
+    return None
 
 
 # ── Fleet signature (extension of /whales inline block) ─────────────

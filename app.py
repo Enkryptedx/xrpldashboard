@@ -76,6 +76,7 @@ from agent_tier_rate_limit import (
     AUDIT_URL_PATH,
     FLEET_BLOCK_RETRY_AFTER_SECONDS,
     agent_tier_limit_rate,
+    classify_ai_crawler,
     fleet_signature,
     is_agent_tier_route,
     is_ai_crawler,
@@ -1327,11 +1328,32 @@ def _agent_tier_audit_header(response):
     doc's "warm citations" touch (docs/AGENT_TIER_DESIGN.md §Rate
     limiting + abuse posture). Anonymous responses don't get the
     header (no citation-graph value to expose). Non-agent-tier paths
-    unchanged."""
+    unchanged.
+
+    Phase 2 (2026-08-02): piggyback ai_crawler_hits telemetry here.
+    Same classification pass covers both surfaces — one call to
+    classify_ai_crawler(), header on allowlisted UAs, row written for
+    any bot-shaped UA (allowlisted OR UNLISTED). Normal browsers /
+    empty UAs get None back and are skipped (that's what page_views
+    counts). Failures never break the response."""
     if not is_agent_tier_route(request.path):
         return response
-    if is_ai_crawler(request.headers.get("User-Agent", "")):
+    ua = request.headers.get("User-Agent", "")
+    ua_class = classify_ai_crawler(ua)
+    if ua_class is None:
+        return response
+    if ua_class != "UNLISTED":
         response.headers[AUDIT_URL_HEADER_NAME] = f"{SITE_URL}{AUDIT_URL_PATH}"
+    try:
+        if db.pg_available():
+            db.write_ai_crawler_hit(
+                ts=int(time.time()),
+                ua_class=ua_class,
+                path=(request.path or "/")[:300],
+                status=int(response.status_code),
+            )
+    except Exception:
+        pass
     return response
 
 
