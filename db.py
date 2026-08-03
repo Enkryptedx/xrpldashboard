@@ -121,11 +121,21 @@ CREATE TABLE IF NOT EXISTS token_volume (
     issuer      TEXT NOT NULL,
     hour_bucket BIGINT NOT NULL,
     volume_xrp  DOUBLE PRECISION NOT NULL DEFAULT 0,
-    trade_count BIGINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (currency, issuer, hour_bucket)
+    trade_count BIGINT NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS token_volume_bucket_idx
     ON token_volume (hour_bucket DESC);
+-- Migration 2026-08-02 (path-tagging): per-row path_type enables value-weighted
+-- AMM/CLOB split (docs/FLOOR_RERUN_2026-08.md preconditions). Enum ∈
+-- {AMM, CLOB, MIXED, DIRECT, AMM_LP, UNKNOWN}. NULL is reserved for
+-- pre-2026-08-02 rows (past isn't taggable — we never backfill a guess).
+-- Old PK dropped in favor of a UNIQUE INDEX that treats NULLs as distinct
+-- (preserving legacy row uniqueness) while allowing new writes to bucket
+-- separately by path. See migrations/2026_08_02_token_volume_path_type.sql.
+ALTER TABLE token_volume ADD COLUMN IF NOT EXISTS path_type TEXT;
+ALTER TABLE token_volume DROP CONSTRAINT IF EXISTS token_volume_pkey;
+CREATE UNIQUE INDEX IF NOT EXISTS token_volume_path_uniq_idx
+    ON token_volume (currency, issuer, hour_bucket, path_type);
 
 CREATE TABLE IF NOT EXISTS amm_pool_events (
     id          BIGSERIAL PRIMARY KEY,
@@ -1233,11 +1243,19 @@ def write_event(
         _drop_writer_conn()
 
 
-def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1, volume_xrp_delta=0.0):
-    """Increment trade_count and volume_xrp for a (currency, issuer, hour_bucket)
-    bucket. volume_xrp_delta defaults to 0.0 for callers that don't have a
-    priced value (AMM deposit/withdraw, or Payment for a token with no XRP
-    pool above the token_prices dust gate). Silent no-op when PG isn't
+def upsert_token_volume(currency, issuer, hour_bucket, path_type,
+                        trade_delta=1, volume_xrp_delta=0.0):
+    """Increment trade_count and volume_xrp for a
+    (currency, issuer, hour_bucket, path_type) bucket.
+
+    path_type is REQUIRED and must be one of {"AMM", "CLOB", "MIXED",
+    "DIRECT", "AMM_LP", "UNKNOWN"}. NULL is reserved for pre-2026-08-02
+    legacy rows and is never written by this helper (past isn't taggable —
+    house law: old rows stay NULL, new rows carry a stated tag).
+
+    volume_xrp_delta defaults to 0.0 for callers that don't have a priced
+    value (AMM deposit/withdraw, or Payment for a token with no XRP pool
+    above the token_prices dust gate). Silent no-op when PG isn't
     configured."""
     conn = _get_writer_conn()
     if conn is None:
@@ -1246,12 +1264,12 @@ def upsert_token_volume(currency, issuer, hour_bucket, trade_delta=1, volume_xrp
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO token_volume "
-                "(currency, issuer, hour_bucket, volume_xrp, trade_count) "
-                "VALUES (%s, %s, %s, %s, %s) "
-                "ON CONFLICT (currency, issuer, hour_bucket) DO UPDATE "
+                "(currency, issuer, hour_bucket, volume_xrp, trade_count, path_type) "
+                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (currency, issuer, hour_bucket, path_type) DO UPDATE "
                 "SET trade_count = token_volume.trade_count + EXCLUDED.trade_count, "
                 "    volume_xrp = token_volume.volume_xrp + EXCLUDED.volume_xrp",
-                (currency, issuer, hour_bucket, volume_xrp_delta, trade_delta),
+                (currency, issuer, hour_bucket, volume_xrp_delta, trade_delta, path_type),
             )
     except Exception as e:
         _log_err("upsert_token_volume_failed", e)

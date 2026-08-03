@@ -410,6 +410,69 @@ def _payment_xrp_delta(cur, iss, amount_value):
     return delta
 
 
+_PATH_TYPE_AMM = "AMM"
+_PATH_TYPE_CLOB = "CLOB"
+_PATH_TYPE_MIXED = "MIXED"
+_PATH_TYPE_DIRECT = "DIRECT"
+_PATH_TYPE_AMM_LP = "AMM_LP"
+_PATH_TYPE_UNKNOWN = "UNKNOWN"
+
+
+def classify_payment_path(meta, amm_account_set):
+    """Return path_type ∈ {AMM, CLOB, MIXED, DIRECT, UNKNOWN} for a Payment.
+
+    Walks meta.AffectedNodes:
+      - LedgerEntryType == "AMM" (created/modified/deleted) → AMM touched
+      - LedgerEntryType == "Offer" (created/modified/deleted) → CLOB touched
+      - LedgerEntryType == "AccountRoot" whose Account is in
+        amm_account_set → AMM touched (fallback for AMM shapes that don't
+        surface a dedicated AMM ledger entry, or AMM account as an
+        intermediate hop)
+
+    Returns:
+      - MIXED if both AMM and CLOB flags set
+      - AMM  / CLOB if exactly one flag set
+      - DIRECT if AffectedNodes present but no AMM/Offer nodes (plain
+        wallet-to-wallet or issuer-to-holder transfer with no routing)
+      - UNKNOWN if meta is missing or malformed (never guessed as DIRECT)
+
+    Codified 2026-08-02 per docs/FLOOR_RERUN_2026-08.md — the
+    denominator statement for value-weighted CLOB/AMM share analysis.
+    """
+    if not isinstance(meta, dict) or "AffectedNodes" not in meta:
+        return _PATH_TYPE_UNKNOWN
+    nodes = meta.get("AffectedNodes") or []
+    if not isinstance(nodes, list):
+        return _PATH_TYPE_UNKNOWN
+    saw_amm = False
+    saw_clob = False
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        for change_type in ("CreatedNode", "ModifiedNode", "DeletedNode"):
+            entry = node.get(change_type)
+            if not isinstance(entry, dict):
+                continue
+            let = entry.get("LedgerEntryType")
+            if let == "AMM":
+                saw_amm = True
+            elif let == "Offer":
+                saw_clob = True
+            elif let == "AccountRoot" and amm_account_set:
+                fields = entry.get("FinalFields") or entry.get("NewFields") or {}
+                if isinstance(fields, dict):
+                    acct = fields.get("Account")
+                    if acct and acct in amm_account_set:
+                        saw_amm = True
+    if saw_amm and saw_clob:
+        return _PATH_TYPE_MIXED
+    if saw_amm:
+        return _PATH_TYPE_AMM
+    if saw_clob:
+        return _PATH_TYPE_CLOB
+    return _PATH_TYPE_DIRECT
+
+
 def token_event_handler(msg, state):
     """Token Payments + AMM deposit/withdraw → volumes.db hourly buckets.
 
@@ -433,11 +496,27 @@ def token_event_handler(msg, state):
     AMM deposit/withdraw: still counts as one trade per token side, but
     volume_xrp += 0.0 (Asset/Asset2 identify the pair without carrying
     a per-leg amount; pricing those is deferred).
+
+    Path-tagging (2026-08-02): each Postgres row now carries a path_type
+    ∈ {AMM, CLOB, MIXED, DIRECT, AMM_LP, UNKNOWN} classifying the
+    settlement venue. Rows written before this ship stay NULL (past isn't
+    taggable). The SQLite mirror at volumes.db stays as an untagged
+    aggregate for now (its readers — /tokens, /token — don't need the
+    breakdown; Postgres is the floor-analysis source-of-truth).
+
+    Scope statement for the floor analysis denominator: this handler
+    captures IOU-token Payment settlements (both currency + issuer
+    non-XRP) plus AMM liquidity ops (AMMDeposit/AMMWithdraw, tagged
+    AMM_LP with volume_xrp=0). It does NOT capture pure DEX OfferCreate
+    fills that never became a Payment — that's a deliberate deferred
+    ship, not a silent gap. Any downstream floor-share computation
+    should filter path_type IN ('AMM','CLOB','MIXED') to exclude
+    non-trading rows (DIRECT transfers, AMM_LP liquidity ops).
     """
     tx = extract_tx(msg)
     ttype = tx.get("TransactionType")
 
-    entries = []  # list of (cur, iss, xrp_delta)
+    entries = []  # list of (cur, iss, xrp_delta, path_type)
     if ttype == "Payment":
         delivered = (msg.get("meta") or {}).get("delivered_amount")
         if delivered is not None:
@@ -452,7 +531,13 @@ def token_event_handler(msg, state):
             val = amount.get("value")
             if cur and iss:
                 _refresh_token_price_cache_if_stale()
-                entries.append((cur, iss, _payment_xrp_delta(cur, iss, val)))
+                path_type = classify_payment_path(
+                    msg.get("meta") or {},
+                    _AMM_ACCOUNT_SET or set(),
+                )
+                entries.append(
+                    (cur, iss, _payment_xrp_delta(cur, iss, val), path_type)
+                )
     elif ttype in ("AMMDeposit", "AMMWithdraw"):
         for key in ("Asset", "Asset2"):
             asset = tx.get(key) or {}
@@ -460,14 +545,14 @@ def token_event_handler(msg, state):
                 cur = asset.get("currency")
                 iss = asset.get("issuer")
                 if cur and cur != "XRP" and iss:
-                    entries.append((cur, iss, 0.0))
+                    entries.append((cur, iss, 0.0, _PATH_TYPE_AMM_LP))
 
     if not entries:
         return
 
     hour_bucket = int(time.time() // 3600)
     try:
-        for cur, iss, xrp_delta in entries:
+        for cur, iss, xrp_delta, _path_type in entries:
             _volumes_conn.execute(
                 "INSERT INTO token_volume "
                 "(currency, issuer, hour_bucket, volume_xrp, trade_count) "
@@ -481,9 +566,9 @@ def token_event_handler(msg, state):
         log(f"token_event_handler db error: {e}")
         return
 
-    for cur, iss, xrp_delta in entries:
+    for cur, iss, xrp_delta, path_type in entries:
         pgbridge.upsert_token_volume(
-            cur, iss, hour_bucket,
+            cur, iss, hour_bucket, path_type,
             trade_delta=1, volume_xrp_delta=xrp_delta,
         )
 

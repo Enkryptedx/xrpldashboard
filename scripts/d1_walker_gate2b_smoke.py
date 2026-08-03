@@ -96,8 +96,8 @@ def run():
     xrpl_stream._volumes_conn = conn
 
     pg_upserts = []
-    def fake_upsert(cur, iss, hb, trade_delta=1, volume_xrp_delta=0.0):
-        pg_upserts.append((cur, iss, hb, trade_delta, volume_xrp_delta))
+    def fake_upsert(cur, iss, hb, path_type, trade_delta=1, volume_xrp_delta=0.0):
+        pg_upserts.append((cur, iss, hb, path_type, trade_delta, volume_xrp_delta))
     pgbridge.upsert_token_volume = fake_upsert
 
     # Seed cache instead of TTL wait.

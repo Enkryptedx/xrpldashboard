@@ -81,8 +81,8 @@ def step2_smoke_handler(prices):
 
     # Neutralise the PG-write path so nothing hits Neon.
     pg_upserts = []
-    def fake_upsert(cur, iss, hb, trade_delta=1, volume_xrp_delta=0.0):
-        pg_upserts.append((cur, iss, hb, trade_delta, volume_xrp_delta))
+    def fake_upsert(cur, iss, hb, path_type, trade_delta=1, volume_xrp_delta=0.0):
+        pg_upserts.append((cur, iss, hb, path_type, trade_delta, volume_xrp_delta))
     pgbridge.upsert_token_volume = fake_upsert
 
     # Force the cache to a known snapshot rather than waiting for TTL.
