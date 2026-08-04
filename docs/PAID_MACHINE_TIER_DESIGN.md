@@ -1,8 +1,12 @@
 # xrpldashboard — Paid Machine-Tier
 ## Decision Memo (NOT a build)
 
-**Date:** 2026-08-03
+**Date:** 2026-08-03 (amended same day per Grok + ChatGPT external evaluations)
 **Status:** DRAFT DECISION MEMO — pressure-test of a strategy sentence, not an approved build. Gated by (1) attorney answers and (2) the sovereignty audit in § 0 of this document.
+
+**Amendment log:**
+- 2026-08-03 (`d2fed28`): § 1.A gained signing dimension per Grok evaluation.
+- 2026-08-03 (this commit): § 1.E added (dataset licensing per ChatGPT); § 3.1 added (queryable claims layer as Phase 3 free-tier substrate — both engines converged on this); § 3.2 added (envelope `confidence` enum spec per ChatGPT gap #4); Next-steps #5 (`/audits` public surface backlog) + #6 (overlap-weighting standing protocol) + #7 (envelope-fix confidence-field placement).
 
 **Strategy sentence under test:**
 > *"Current state free for everyone forever; depth, delivery, and proof-at-scale metered for machines exclusively."*
@@ -267,6 +271,37 @@ The signing machinery **exists**. `signed_snapshot.py` (785 lines, verified 2026
 
 **Verdict: HOLD, hardest attorney gate of the four.** Do not build. Watch the x402 adoption curve through Q4 2026 for XRPL-side integrations. Revisit no earlier than candidate A shipping and generating revenue.
 
+### § 1.E — Dataset licensing for AI evaluation and training (added 2026-08-03 per ChatGPT evaluation — see `project_external_ai_evaluation_chatgpt_2026-08-04.md`)
+
+**Target market — narrow, on purpose:** NOT generic crypto-data buyers. Specifically:
+- Model-evaluation shops building hallucination benchmarks on crypto-domain LLMs (verifiable ground truth for eval corpora).
+- Crypto-domain-LLM builders needing citation-anchored training or fine-tuning corpora with per-fact provenance.
+- Compliance/audit vendors building AI-assisted forensics workflows that require reproducible receipts.
+
+The customer isn't "someone who wants XRPL data." It's "someone building or evaluating AI systems who needs verifiable ground truth to test against or ground on." This scoping matters — it protects candidate A from being confused with a general data-licensing play.
+
+**Product shape (sketch, not spec):**
+- A curated corpus of `(claim, evidence, snapshot_hash, methodology, confidence)` tuples over SOVEREIGN series only. Per-tuple lineage stamps.
+- Delivered as versioned dataset releases (parquet + signed manifest) with reproducibility receipts — each release verifiable against the live signed-snapshot chain at the release's ledger cutoff.
+- License terms name eval-and-training use explicitly. Redistribution of the corpus is separately gated.
+
+**Sovereignty filter:** identical to candidates A/B/C — only SOVEREIGN series enter the corpus. RLUSD Ethereum-side and NFT historical stay out permanently (per § 0.3, § 0.4). This is not a workaround for the sovereignty rule; it's an application of it to a different customer segment.
+
+**Explicit non-overlap with candidate A:** dataset licensing is *bulk corpus release for training/evaluation*, sold under a data-licensing contract. Candidate A is *live-query signed history* over the same underlying series, sold as API access. Same source data; different products; different contracts; different customer psychology (dataset buyer wants a stable snapshot; API buyer wants freshness).
+
+**Attorney weight — heaviest of the five candidates, distinct from the others.**
+- Data licensing contract law (redistribution terms, derivative-work carve-outs, upstream-liability disclaimers).
+- IP posture on our own methodology (are our derivation steps a licensable process, or just an unprotectable observation?).
+- Warranty language on "verified ground truth" — false-claim exposure if a downstream benchmark exposes an inaccuracy.
+- Cross-jurisdictional buyer risk (AI eval shops often HQ outside US).
+- Distinct from candidate D's payments/tax gate and candidate A's rate-metering gate. Attorney answers do not transfer; this candidate needs its own set.
+
+**Demand evidence:**
+- Zero measured today. No inbound asks in the "AI eval corpus" shape. The ChatGPT evaluation flagged this segment as a plausible market — one external voice, no customer voices yet.
+- Signal path: watch AI-benchmark repos (Hugging Face evals, `lm-eval-harness`-style leaderboards) for crypto-domain entries. Watch for direct asks referencing eval-corpora specifically.
+
+**Verdict: HOLD — watch-and-probe.** Do not build. Do not amend candidate A to absorb it. If (a) candidate A ships and (b) at least one credible eval-corpus ask arrives referencing verifiable XRPL ground truth by name, revisit with a scoped attorney consult. Until then, this candidate is a memo entry, not a product.
+
 ---
 
 ## Summary matrix
@@ -276,7 +311,8 @@ The signing machinery **exists**. `signed_snapshot.py` (785 lines, verified 2026
 | **A. Signed historical time-series API** | Medium (gap audits blocking) | Unmeasured (`ai_crawler_hits` reading 2026-08-16) | Medium | **HOLD — lead** |
 | **B. Webhooks / push** | Medium (delivery reliability) | Lower ceiling than A | Medium | **HOLD — behind A** |
 | **C. Bulk verification** | High (sovereign by construction) | Zero today | Light | **KEEP AS DESIGN, don't build** |
-| **D. x402 micropayments on MCP** | Medium (no XRPL x402 integration observed) | Speculative | **Heaviest** | **HOLD — watch curve** |
+| **D. x402 micropayments on MCP** | Medium (no XRPL x402 integration observed) | Speculative | Heaviest (payments/tax/custody) | **HOLD — watch curve** |
+| **E. Dataset licensing for AI eval/training** | Medium (corpus curation + signed release infra) | Zero measured (one external voice) | **Heaviest (data-licensing contract + IP + warranty)** — distinct set from candidates A-D | **HOLD — watch-and-probe** |
 
 ---
 
@@ -344,6 +380,58 @@ The signing machinery **exists**. `signed_snapshot.py` (785 lines, verified 2026
 **Cross-check with Glow disclosure (`docs/GLOW_APPLICATION_DRAFT.md`, commit `986c966`):**
 - Glow lines 230-237: *"a paid agent-tier is under consideration ... nothing shipped in the retroactive window is paywalled, and no paywalling of shipped work is planned ... the tier structure, if it ever exists, will add capacity for paying agents on top of an unchanged free surface, not remove capacity from the free surface."*
 - **This memo's covenant is a strict superset of the Glow disclosure.** Zero daylight. The Glow text stands unchanged; this covenant extends it with the sovereignty rule as an additional public commitment.
+
+### § 3.1 — Free-tier substrate for the paid tier: the queryable claims layer
+
+*Added 2026-08-03. Reframed from backlog nugget → Phase 3 dependency after both Grok and ChatGPT external evaluations independently proposed a queryable claims surface (see `project_external_ai_evaluation_grok_2026-08-04.md`, `project_external_ai_evaluation_chatgpt_2026-08-04.md`).*
+
+**This is free-tier machinery.** It never enters a paid product. It is documented in this memo because candidate A is not shippable without it: absent a discoverability layer, agents cannot learn which claims are currently backed by SOVEREIGN data and therefore currently buyable through candidate A. The paid tier presumes this substrate.
+
+**Design unit — three pieces, one build:**
+
+1. **Stable resolvable claim URIs.** One per claim in `CLAIMS.yaml` (currently 1000+ lines of latent value with no agent-consumable surface). Proposed scheme: `/claims/<namespace>.<domain>.<series>` — e.g., `/claims/xrpl.rlusd.supply`, `/claims/xrpl.escrow.count`, `/claims/xrpl.mpts.holders`. **The URI scheme is permanent once agents cite it** — pick deliberately. Namespace convention decision goes in the build's design pass, not this memo.
+2. **Per-claim status JSON.** Returned when the URI is fetched. Traffic-light shape:
+   - `green` — claim is currently backed by SOVEREIGN data with a passing gap audit. Currently sellable through candidate A if it ships. Signable.
+   - `yellow` — claim is PUBLIC-INFRA-DEPENDENT (pending Batch B migration) OR gap audit incomplete. Free-surface only until upgraded.
+   - `red` — claim is THIRD-PARTY-DERIVED (permanently free-only per § 0.3/§ 0.4) OR claim currently failing / paused / retired.
+   Status fields include: current classification, last-verified timestamp, methodology URL, snapshot signature reference where applicable.
+3. **Page-side atomic citations.** On `/rlusd`, `/whales`, `/mpts`, etc., specific numbers deep-link to the specific claim URI + snapshot hash on the same page render. Replaces page-level footnote citation (Weak: "Source: XRPL dashboard") with fact-level citation (Strong: `Claim ID + Evidence + Snapshot hash`). Cheap UI change; large semantic shift for AI evaluators.
+
+**Three payoffs, one design:**
+
+- **Discoverability substrate for candidate A.** Agents discover which series are `green` before hitting the paid tier — the "what's currently sellable / verifiable" navigation layer.
+- **Latent CLAIMS.yaml value exposed.** The manifest already exists (1000+ lines) but is only agent-consumable if you parse YAML at retrieval time and know the file path. URIs + status JSON make it consumable through the same tool-response pattern as everything else agent-tier already ships.
+- **Fact-level citation UX.** Addresses ChatGPT weakness #2 (unknown-authority problem) and weakness #3 (MCP outputs must be citation-native) at the same time. Grok independently asked for this in different language (queryable manifest with rate-tiered access).
+
+**Not new capability.** Surfaces existing capability. The atoms are all there — walkers, CLAIMS.yaml, methodology chips, signed snapshots. The build is the queryable navigation layer over the atoms.
+
+**Cost:** low compared to any § 1 candidate. **Attorney weight:** none (free-tier, no payments, no data licensing). **Placement:** Phase 3 free-tier substrate. Ships **before or alongside** candidate A. **Never sold.**
+
+### § 3.2 — The envelope contract: confidence enum discipline
+
+*Added 2026-08-03 per ChatGPT evaluation gap #4 (envelope confidence field).*
+
+The `ProofAnnotationEnvelope` (declared at `app.py:6292-6307`) currently carries `source / as_of / methodology_url / claims_ref / snapshot_signature`. The envelope-contract build (next in the standing build queue) adds two fields already partially wired in `mcp_server.py`:
+
+- `honest_partial: bool` — automatically `True` on any-null result surface, so partial answers are structurally distinguishable from complete ones. Never fabricated union / overlap / cross-chain totals when a sub-source failed.
+- `scope_note: str` — required (via existing `ValueError` at `mcp_server.py:155`) whenever `honest_partial=True`. Names precisely which sub-source is missing.
+
+**This memo adds a third field with a strict spec: `confidence` — categorical enum only.**
+
+**Enum values (finalized 2026-08-03):**
+
+- `signature_verified` — snapshot signature valid; datum is snapshot-derived and cryptographically verifiable.
+- `cross_checked` — `cross_check_walker` (or equivalent independent verification path) independently agrees with our walker output. Corroborated but not signed.
+- `walker_computed` — our walker computed the value; no external corroboration path exists or has run.
+- `single_source` — value depends on a single upstream we could not corroborate at query time (e.g., one of two RPC pool responses succeeded; the other failed). Weakest honest label.
+
+**Prohibition (written into the spec):**
+
+> Numeric confidence values (e.g., `"confidence": 0.91`) are prohibited absent a calibration model. We do not currently run calibrated probability models over any of our lineage paths; publishing a numeric confidence would be a false claim of calibration. The enum is the ceiling.
+
+If a future build introduces a genuine calibration model (statistical, not vibes-based) for a specific series, the enum extends — but numeric values only enter through a distinct field name (`calibrated_probability` or similar) with a linked calibration methodology page. The `confidence` field never carries numeric values.
+
+**Placement in build queue:** the `confidence` field ships with the envelope-contract fix — same build as `honest_partial: true on any-null` and `scope_note` population expansion. Envelope-fix is queue-position 1 in the current standing build queue.
 
 ---
 
@@ -444,6 +532,7 @@ The point isn't to disclaim responsibility. The point is to **not promise what a
 | **C. Bulk verification** | 0 (0 hits/day on /snapshots/verify) | 1 (auth + rate limiter + billing hook) | 0.00 | 3rd |
 | **B. Webhooks / push** | 0 (no observed asks) | 2 (delivery reliability + DLQ + signed payload) | 0.00 | 2nd (by build-cost) |
 | **D. x402 micropayments** | 0 (no XRPL x402 integration observed) | 3 (heaviest attorney gate + client-tooling ecosystem still nascent for XRPL) | 0.00 | 4th |
+| **E. Dataset licensing for AI eval/training** | 0 (one external voice, no customer voices) | 3 (corpus curation + reproducibility receipts + signed release infra + data-licensing contract) | 0.00 | 5th |
 
 **Bottom-line recommendation:**
 
@@ -484,6 +573,9 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 6. **Demand thresholds are mechanical, not editorial.** § 2 table reads at decision date; no verbal-approval workaround.
 7. **The covenant text (§ 3) is a public asset,** publishable independently of any paid-tier build.
 8. **The single cheapest WTP probe (§ 6.1) is a 15-minute change** — free to ship regardless of the rest of this memo's fate.
+9. **Candidate E (dataset licensing) is a HOLD watch-and-probe entry, distinct from candidate A.** Same source data, different customer segment, different attorney gate. Do not conflate.
+10. **§ 3.1's queryable claims layer is Phase 3 free-tier substrate** — never sold, but a shipping dependency for candidate A. Its URI scheme is permanent once agents cite it; scheme decision is a deliberate design pass, not this memo's call.
+11. **§ 3.2's `confidence` enum is a spec commitment.** Numeric confidence values are prohibited absent a calibration model. The enum is `signature_verified / cross_checked / walker_computed / single_source`. Extends when calibration models actually exist for a series; not before.
 
 ## What this memo does NOT settle
 
@@ -492,12 +584,17 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 - Whether the site takes on operating a full-history XRPL node (a decision that would unlock NFT historical as SOVEREIGN, but has independent operational + cost implications outside the paid-tier question).
 - Whether an eventual paid tier accepts x402/USDC on Base vs. an XRPL-native path — deferred until candidate A validates the market.
 
-## Next steps (no builds)
+## Next steps (memo-level; standing build queue lives outside this memo)
 
 1. **Update `project_walker_rpc_lever_normalization_backlog.md`** with `network_pulse.py:25` hardcode surfaced by this trace.
 2. **When Batch B decision fires (~2026-08-31 post-soak):** cross-reference this memo's per-series migration paths. `xrpl_stream.py` gap-audit + backfill semantics from today's AI cross-verify blocks any migration of that walker.
 3. **When `ai_crawler_hits` distribution reads clean (~2026-08-16):** re-evaluate candidate A's demand signal. If N≥3 inbound asks AND the crawler distribution shows agent traffic, candidate A moves HOLD → KEEP.
 4. **When Kirk (or another attorney) responds:** capture money-transmission answer, tax treatment, refund posture, custody posture in an attached decision-record memo. Then this memo's verdicts convert from HOLD to BUILD / KILL per candidate.
+5. **`/audits` public surface — backlog.** Publish two artifacts:
+   - The sovereignty covenant (§ 3 above) reformatted as **enumerated numbered public commitments** on `/covenant` (or an extension of `/about`). Motivation: Grok's audit cited "your rule #3" which existed only in Charlie's prompt-description, not on the site. Future evaluators should extract the numbered rules from the SITE, not from prompts. Publishing them hardens the covenant.
+   - An `/audits` receipts page — Grok verdict + verification table, ChatGPT verdict + coverage-critique cross-check, our corrections. Converts the private discipline the prober memories capture into public reputation-layer evidence, per ChatGPT weakness #2. Cost trivial. Attorney gate: none.
+6. **Overlap-weighting protocol — filed into quarterly re-run standing method.** When two external engines converge on a critique, it is load-bearing consensus (weight higher). When one raises it and the other does not, it is one-engine signal (weight lower). Read all future external audits by overlap-weight first. Recorded in both `project_external_ai_evaluation_grok_2026-08-04.md` and `project_external_ai_evaluation_chatgpt_2026-08-04.md` under "How to apply."
+7. **When envelope-contract fix ships:** land `confidence` enum values (`signature_verified / cross_checked / walker_computed / single_source`) alongside `honest_partial: true on any-null` and `scope_note` population expansion. Per § 3.2 spec; numeric confidence remains prohibited.
 
 ---
 
@@ -508,6 +605,8 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 - `project_walker_rpc_lever_normalization_backlog.md` — the RPC-lever-name inconsistency this memo re-surfaced with `network_pulse.py:25`.
 - `feedback_causal_claims_need_same_provenance_as_field_values.md` — the discipline that underwrites this memo's verdicts.
 - `project_external_ai_prober_results_2026-08-03.md` — the "AI more accurate than our own picture" case that motivated the AI cross-verify of `xrpl_stream.py` migration (Batch B first item).
+- `project_external_ai_evaluation_grok_2026-08-04.md` — external audit (invited to deflate). Source of candidate A's signing dimension (§ 1.A amended 2026-08-03) and the CLAIMS-queryable-endpoint proposal (§ 3.1 amended 2026-08-03).
+- `project_external_ai_evaluation_chatgpt_2026-08-04.md` — external audit sibling to Grok's (architecturally anchored — ChatGPT did NOT browse the live site). Source of candidate E (§ 1.E), the confidence-field enum spec (§ 3.2), the atomic-citation UX in § 3.1, and the /audits public-surface backlog entry (Next steps #5).
 - `project_two_instruments_2026_08_ship_of_record.md` — `ai_crawler_hits` telemetry is the quantitative half of the demand signal for candidate A.
 - `parked/api-v1-scaffold @ 2b5eb76` — the API shape work already scaffolded; unpark on candidate A promotion.
 
