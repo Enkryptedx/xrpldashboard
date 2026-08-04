@@ -171,6 +171,45 @@ The "24 consumers of the local node" figure from the original design was wrong t
 
 ---
 
+## Amendment — Early retirement (2026-08-04, pre-soak-completion)
+
+**Ruling:** Charlie's word (msg 10608). Mac node retired **early**, mid-Phase-4 soak, on 2026-08-04.
+
+**Reasoning:** the standby was serving nobody. Post-null-triple investigation (2026-08-04) surfaced that the Mac's rippled was `server_state: disconnected`, `peers: 0`, `validated_ledger.age: 3.9 days` — the node had been broken for days without alarm. Simultaneously the Lenovo showed `server_state: full`, `validated_ledger.age: 4 seconds`, and was carrying every real consumer (Batch A walkers + MCP server after the source-truth fix at `847f131`). The standby posture was insurance at full cost — 6.3 GB RSS, 37.5% of Mac RAM, 62 GB of disk — with zero coverage. Retiring closes the cost side; the parachute keeps resurrection cheap.
+
+**Retirement mechanism (executed 2026-08-04 EDT):**
+```
+launchctl unload -w /Users/charliebruce/Library/LaunchAgents/com.charliebruce.rippled.plist
+```
+`-w` writes to the launchd override state so the service does NOT auto-relaunch at next login. The plist file itself is untouched on disk.
+
+**Parachute (all preserved on disk, one-command resurrection):**
+- Plist: `/Users/charliebruce/Library/LaunchAgents/com.charliebruce.rippled.plist` (Jun 24 20:25, 1050B)
+- Config: `/Users/charliebruce/.config/rippled/rippled.cfg` (Jun 24 19:36, 55795B)
+- Binary: `/Users/charliebruce/rippled/.build/rippled`
+- Data dir: `/Users/charliebruce/rippled-data/` (~62 GB — larger than the pre-retirement ~23 GB estimate; NuDB grew during the disconnected period)
+- Logs: `/Users/charliebruce/rippled-data/logs/launchd-{out,err}.log`
+- NuDB rebuild ops script: `ops/rippled_nudb_rebuild.sh` (hardcoded to `localhost:5005` — dormant, valid for resurrection)
+
+**Resurrection command:** `launchctl load -w /Users/charliebruce/Library/LaunchAgents/com.charliebruce.rippled.plist`.  Post-load the Mac rippled comes back on `127.0.0.1:5005`. To route the MCP server / walker fleet back to the Mac, flip `XRPL_LOCAL_NODE` in `~/.config/xrpldashboard/env` from `http://192.168.40.95:5005` (Lenovo) to `http://127.0.0.1:5005` (Mac).
+
+**Disk-space note:** the 62 GB NuDB stays on-disk until soak-end (~2026-08-31 by original Phase 4 timeline). A Charlie-word deletion decision after that. Not reclaiming automatically — resurrection lands unusable if the data dir is gone and would require a rebuild sync.
+
+**Post-retirement verification (2026-08-04, immediately after unload):**
+- `launchctl list | grep rippled` → empty (unloaded)
+- `ps -p 28264` → gone
+- `lsof -iTCP:5005 -sTCP:LISTEN` → empty (port free)
+- Mac RAM relief: pre-retirement `Pages free: 3886` (~60 MB) → post-retirement `Pages free: 504,507` (~7.82 GB). **+7.8 GB reclaimed in 30 seconds.** Pre-retirement `Pages active: 332,902` → post `131,440` (kernel actively reclaiming). Wired pages unchanged (~95 K).
+- FD relief: pre-retirement 45 FDs on the rippled process → 0 (process gone).
+- Consumer sweep: only two live code paths carry a `localhost:5005` fallback (walkers + MCP), both env-var-overridable, both wrapper scripts source `~/.config/xrpldashboard/env` which now sets `XRPL_LOCAL_NODE=http://192.168.40.95:5005`. Confirmed by grep for `http[s]?://(127\.0\.0\.1|localhost):5005` across `*.py`, `*.sh`, `*.plist` — no remaining hardcoded consumer expects the Mac port. Only exception: `ops/rippled_nudb_rebuild.sh` (Mac-side ops tooling, part of the parachute).
+
+**Deferred (unchanged by early retirement):**
+- Original Phase 4 archive-of-cfg-and-validators step: still queued for the soak-end Charlie-word deletion decision.
+- Docs `DEPLOY.md` and `DIAGNOSTIC_BRIEF_local_rippled_2026-07-16.md` update: queued for soak-end. Retirement was early; the "primary local node is Lenovo" reality has been true since 2026-08-02 Batch A completion — those docs already lag.
+- Uninstall of the rippled binary itself: **not done**. Parachute holds all files in place; the binary at `~/rippled/.build/rippled` stays until Charlie's word.
+
+---
+
 ## Adjacent items (do at the right phase, not before)
 
 - **Kraken API key rotation** (63-day stall as of 2026-07-31): this is the first Lenovo login opening move at Phase 1 completion. Rotate keys → check activity → redact/delete `~/Desktop/_old_bots/kraken_*.py` on the Mac. Codified in MEMORY.md as `project_kraken_api_key_rotation_park_with_trigger`.
