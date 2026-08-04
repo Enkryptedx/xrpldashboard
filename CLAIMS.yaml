@@ -1762,6 +1762,77 @@ pages:
           check, not data staleness.
 
   # ─────────────────────────────────────────────────────────────────
+  /claims:
+    template: templates/claims_index.html + templates/claim_detail.html
+    route: "app.py:claims_index() + claim_detail() + claims_index_json()"
+    claims:
+
+      - id: claims_uri_scheme
+        label: "URI scheme: /claims/xrpl.<domain>.<series> — permanent, additive-only"
+        data_paths:
+          - "claims_endpoint.py:_uri_for + _URI_RE"
+          - "docs/PAID_MACHINE_TIER_DESIGN.md § 3.1"
+          - "templates/claims_index.html: machine-hint block"
+          - "templates/claim_detail.html: machine-hint block"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          The URI scheme is a commitment to agents that will cite these
+          URIs. Once an agent embeds a URI in a citation, that URI must
+          keep resolving forever. Additions are additive; existing URIs
+          never change or delete. If a claim id is renamed in
+          CLAIMS.yaml, add the new URI + keep the old one aliasing to
+          the same entry — do NOT break the citation contract.
+
+      - id: claims_status_tier_derivation
+        label: "Traffic-light status derives from Layer 3 source per _LAYER3_SOURCE_TIER map"
+        data_paths:
+          - "claims_endpoint.py:_LAYER3_SOURCE_TIER"
+          - "claims_endpoint.py:_classify"
+          - "claims_endpoint.py:_TIER_REASON"
+        behavior: STEP_CHANGE
+        layer3_source: self-attested-only
+        risk_note: >
+          Green = SOVEREIGN (local rippled or own signing key). Yellow
+          = public-XRPL-RPC or self-attested-only (no independent
+          cross-check yet). Red = third-party-derived. Unclassified
+          Layer 3 sources default to `unknown` (yellow-equivalent) —
+          conservatively never promoted to green without explicit
+          addition to the map. If a new layer3_source is added to
+          CLAIMS.yaml, the map must be extended in the same commit
+          (Layer 4 sibling of the whale-title copy-move rule).
+
+      - id: claims_index_status_totals
+        label: "Status totals shown on /claims (green N sovereign / yellow N public-node dependent / red N third-party derived)"
+        data_paths:
+          - "claims_endpoint.py:status_totals"
+          - "templates/claims_index.html: .totals block"
+        behavior: DAILY_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          Totals rise as CLAIMS.yaml grows; ratios shift as walkers
+          migrate off public infra (Batch B) or independent verifiers
+          come online. Not a headline stat — a coverage stat. If it
+          ever drifts to green > yellow+red combined without a
+          concomitant Batch B ship, something is misclassified.
+
+      - id: claims_json_envelope_shape
+        label: "Every /claims JSON response carries the ProofAnnotationEnvelope shape (data + proof.source/as_of/methodology_url/claims_ref)"
+        data_paths:
+          - "claims_endpoint.py:claim_json"
+          - "claims_endpoint.py:index_json"
+          - "app.py:6293-6310 receipts_envelope declaration"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          The whole point of the queryable claims layer is to give
+          agents a consistent proof-annotated surface across every
+          machine-readable endpoint. If a future edit strips the
+          `proof` block from a response, the endpoint has silently
+          become second-class. Sibling of the MCP envelope-contract
+          rule.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
   # /nfts:

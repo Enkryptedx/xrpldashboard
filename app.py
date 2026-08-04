@@ -251,7 +251,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-04"
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-04"  # /claims endpoint shipped this date
 
 
 @app.context_processor
@@ -3635,6 +3635,92 @@ def methodology():
     return render_template("methodology.html")
 
 
+# ─────────────────────────────────────────────────────────────────
+# Queryable claims layer (shipped 2026-08-04 per docs/PAID_MACHINE_TIER_DESIGN.md
+# § 3.1). Every CLAIMS.yaml entry gets a permanent resolvable URI
+# under /claims/xrpl.<domain>.<series>. See claims_endpoint.py for
+# the URI scheme, sovereignty classification, and JSON shape. Also
+# emits a machine-readable index at /claims/index.json (content-
+# negotiated: JSON when Accept: application/json OR path suffix
+# `.json`; HTML otherwise).
+import claims_endpoint  # noqa: E402
+
+
+def _claims_wants_json() -> bool:
+    accept = (request.headers.get("Accept") or "").lower()
+    return "application/json" in accept and "text/html" not in accept
+
+
+@app.route("/claims")
+def claims_index():
+    """Human-readable index of every catalogued public claim on the
+    site. Groups by page/domain, colors by sovereignty tier (green =
+    sovereign / signable, yellow = public-node dependent OR no
+    independent cross-check yet, red = third-party derived and
+    permanently free-only per rule #3). This is free-tier substrate
+    for the future paid tier — agents discover which claims are
+    currently backed by SOVEREIGN data before hitting anything paid.
+    See docs/PAID_MACHINE_TIER_DESIGN.md § 3.1."""
+    if _claims_wants_json():
+        return jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
+    grouped = claims_endpoint.by_domain()
+    totals = claims_endpoint.status_totals()
+    return render_template(
+        "claims_index.html",
+        grouped=grouped,
+        totals=totals,
+        last_verified=LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
+    )
+
+
+@app.route("/claims/index.json")
+def claims_index_json():
+    """Machine-readable claims index. Same payload as
+    /claims with `Accept: application/json`."""
+    return jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
+
+
+@app.route("/claims/<uri>")
+def claim_detail(uri):
+    """Per-claim status page. Content-negotiated — JSON when
+    `Accept: application/json` OR the URI carries a `.json` suffix;
+    HTML otherwise. The URI scheme is permanent (once agents cite
+    a URI, it will keep resolving; new URIs are additive only)."""
+    wants_json = False
+    if uri.endswith(".json"):
+        wants_json = True
+        uri = uri[:-5]
+    else:
+        wants_json = _claims_wants_json()
+
+    if not claims_endpoint.is_valid_uri(uri):
+        if wants_json:
+            return jsonify({
+                "error": "invalid_uri",
+                "expected_scheme": "xrpl.<domain>.<series>",
+                "index_url": f"{SITE_URL}/claims/index.json",
+            }), 400
+        abort(404)
+
+    entry = claims_endpoint.get_claim(uri)
+    if entry is None:
+        if wants_json:
+            return jsonify({
+                "error": "unknown_claim",
+                "uri": uri,
+                "index_url": f"{SITE_URL}/claims/index.json",
+            }), 404
+        abort(404)
+
+    if wants_json:
+        return jsonify(claims_endpoint.claim_json(entry, SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
+    return render_template(
+        "claim_detail.html",
+        claim=entry,
+        last_verified=LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
+    )
+
+
 @app.route("/regulation")
 def regulation():
     """Plain-English legislative-status tracker for the CLARITY Act
@@ -6195,7 +6281,7 @@ _LLMS_TXT = f"""# xrpldashboard
 
 > Public read-only data for the XRP Ledger, computed directly from XRPL and Ethereum nodes. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
-Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Signed integrity snapshots are published daily.
+Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Each claim carries a permanent URI at [/claims/xrpl.<domain>.<series>]({SITE_URL}/claims) with a traffic-light sovereignty tier (green = own infrastructure / signable, yellow = public XRPL RPC or unverified, red = third-party derived). Machine-readable index: [{SITE_URL}/claims/index.json]({SITE_URL}/claims/index.json). Signed integrity snapshots are published daily.
 
 ## Data pages
 - [/rlusd]({SITE_URL}/rlusd): RLUSD supply history — cross-chain supply, mint/burn events (XRPL + Ethereum), computed live from both ledgers.
@@ -6222,6 +6308,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 ## Integrity and verification
 - Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
 - Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification.
+- Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
 - Security contact: [{SITE_URL}/.well-known/security.txt]({SITE_URL}/.well-known/security.txt).
 - Source code: [github.com/Enkryptedx/xrpldashboard](https://github.com/Enkryptedx/xrpldashboard) (MIT-licensed Flask app).
 
@@ -6285,6 +6372,9 @@ _AGENTS_JSON = {
     "trust_surfaces": {
         "methodology": f"{SITE_URL}/methodology",
         "claims_manifest_repo": "https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml",
+        "claims_index": f"{SITE_URL}/claims",
+        "claims_index_json": f"{SITE_URL}/claims/index.json",
+        "claims_uri_scheme": "/claims/xrpl.<domain>.<series> — permanent, additive-only. Fetch any URI with Accept: application/json (or append .json) for status JSON.",
         "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
         "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
         "security_contact": f"{SITE_URL}/.well-known/security.txt",

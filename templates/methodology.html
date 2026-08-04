@@ -622,6 +622,7 @@
     <li><a href="/.well-known/agents.json"><code>/.well-known/agents.json</code></a> — {{ _('agent-discovery manifest (Wildcard-AI flavor). Contains site identity, rate limits, trust surfaces, and the proof-annotation envelope agents should expect.') }}</li>
     <li><a href="/openapi.json"><code>/openapi.json</code></a> — {{ _('OpenAPI 3.0 spec for the LIVE read-only surface. Includes the ProofAnnotationEnvelope schema (the standard response wrapper) and the machine-readable MCP tool inventory at') }} <code>info.x-mcp-tools</code>.</li>
     <li><a href="/docs"><code>/docs</code></a> — {{ _('Swagger UI rendering of the above. Human-readable; agents typically fetch /openapi.json directly.') }}</li>
+    <li><a href="/claims"><code>/claims</code></a> — {{ _('queryable public claims manifest. Every claim on the site has a permanent URI at') }} <code>/claims/xrpl.&lt;domain&gt;.&lt;series&gt;</code> {{ _('with a traffic-light sovereignty tier (green = own infrastructure, yellow = public XRPL RPC or unverified, red = third-party derived). Content-negotiated JSON via') }} <code>Accept: application/json</code> {{ _('or') }} <code>.json</code> {{ _('suffix. Machine-readable index at') }} <a href="/claims/index.json"><code>/claims/index.json</code></a>.</li>
     <li><a href="/.well-known/security.txt"><code>/.well-known/security.txt</code></a> — {{ _('security disclosure contact.') }}</li>
   </ul>
 
