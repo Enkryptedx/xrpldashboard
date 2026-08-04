@@ -251,7 +251,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-02"
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-04"
 
 
 @app.context_processor
@@ -6198,12 +6198,13 @@ _LLMS_TXT = f"""# xrpldashboard
 Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Signed integrity snapshots are published daily.
 
 ## Data pages
-- [/rlusd]({SITE_URL}/rlusd): RLUSD stablecoin cross-chain supply, mint/burn events (XRPL + Ethereum).
-- [/whales]({SITE_URL}/whales): XRP transactions of 100,000+ XRP, live stream.
+- [/rlusd]({SITE_URL}/rlusd): RLUSD supply history — cross-chain supply, mint/burn events (XRPL + Ethereum), computed live from both ledgers.
+- [/whales]({SITE_URL}/whales): XRPL whale transfers live — every XRP payment above 100,000 XRP, streamed as it validates.
 - [/rwa]({SITE_URL}/rwa): real-world-asset tokens on XRPL with issuer attestation.
-- [/tokens]({SITE_URL}/tokens): full token registry with domain-attested labels.
+- [/tokens]({SITE_URL}/tokens): verified XRPL token supply — full token registry with domain-attested labels and on-ledger activity.
 - [/mpts]({SITE_URL}/mpts): MPT (Multi-Purpose Token) registry and issuer roll-ups.
 - [/pools]({SITE_URL}/pools): AMM pools ranked by TVL and volume.
+- [/amendments]({SITE_URL}/amendments): current XRPL amendment status — enabled, voting, and vetoed amendments with validator support tallies.
 - [/analytics]({SITE_URL}/analytics): first-party page-view analytics, bot-filtered.
 - [/coverage]({SITE_URL}/coverage): what this site covers versus the XRPL's canonical object-type inventory.
 - [/lending]({SITE_URL}/lending): LendingProtocol amendment status.
@@ -6228,8 +6229,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
 - OpenAPI spec (machine-readable index of the LIVE free surface + envelope schema + MCP tool inventory): [{SITE_URL}/openapi.json]({SITE_URL}/openapi.json). Swagger UI: [{SITE_URL}/docs]({SITE_URL}/docs).
 - Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
-- MCP server: implementation running headless (see docs/AGENT_TIER_DESIGN.md in the repo). Public daemonization deferred to post-Lenovo-migration Phase 3. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. No payment rails; free for identified agents at reasonable volume when the server is public.
-- Every response from the MCP server (today) and the read-only API (when it lands) is wrapped in a proof-annotation envelope: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
+- MCP server: runs headless today against the local rippled node (see mcp_server.py + mcp_tools_*.py in the repo). Public daemonization is deferred to Phase 3 of the Lenovo node migration. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. No payment rails; free for identified agents at reasonable volume when the daemon goes public.
+- Every response from the MCP server is wrapped in a proof-annotation envelope today; the read-only HTTP API will emit the same envelope when it ships. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
 """
 
 
@@ -6247,11 +6248,11 @@ def llms_txt():
 # .well-known standard path. Declares site identity, rate limits,
 # trust surfaces, and the proof-annotation envelope agents should
 # expect. Status block is deliberately honest — each boolean flips
-# to true only after the corresponding surface actually responds.
-# As of Day 5: openapi_ready=True (spec live at /openapi.json);
-# mcp_ready stays False until the MCP daemon is publicly exposed
-# (deferred to post-Lenovo-migration Phase 3); flows_ready stays
-# False until Wildcard-AI flows land. See docs/AGENT_TIER_DESIGN.md.
+# to true only after the corresponding surface actually responds:
+# openapi_ready=True (spec live at /openapi.json); mcp_ready stays
+# False until the MCP daemon is publicly exposed (deferred to
+# post-Lenovo-migration Phase 3); flows_ready stays False until
+# Wildcard-AI flows land. See docs/AGENT_TIER_DESIGN.md.
 _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
@@ -6278,7 +6279,7 @@ _AGENTS_JSON = {
             "300 requests/minute (by UA: GPTBot, ClaudeBot, PerplexityBot, "
             "Google-Extended, and others on Cloudflare's verified-bot list)"
         ),
-        "mcp_session": "600 tool calls/hour/session (once MCP ships)",
+        "mcp_session": "600 tool calls/hour/session (enforced when the MCP daemon is publicly exposed; today's headless server has no per-session limit)",
         "signed_snapshot_verify": "unlimited (stateless, cryptographic-only)",
     },
     "trust_surfaces": {
@@ -6299,17 +6300,19 @@ _AGENTS_JSON = {
         },
         "spec_url": f"{SITE_URL}/methodology#for-ai-agents",
         "note": (
-            "Envelope becomes normative when the MCP server + read-only API "
-            "ship this week (see docs/AGENT_TIER_DESIGN.md). Today's HTML "
-            "surfaces already expose source metadata inline via per-page "
-            "methodology chips and the /methodology page."
+            "Envelope is normative for the MCP server today (running "
+            "headless against the local rippled node; see "
+            "docs/AGENT_TIER_DESIGN.md) and applies to the read-only "
+            "HTTP API when it ships. HTML surfaces expose the same "
+            "source metadata inline via per-page methodology chips "
+            "and the /methodology page."
         ),
     },
     "mcp_servers": [],
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Day 7 of Agent Tier build ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
+        "phase": f"Agent Tier live (discovery + OpenAPI + headless MCP); public MCP daemon deferred to Lenovo migration Phase 3 ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
         "discovery_layer_ready": True,
         "mcp_ready": False,
         "openapi_ready": True,

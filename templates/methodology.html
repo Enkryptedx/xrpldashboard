@@ -627,7 +627,7 @@
 
   <h3>{{ _('Proof-annotation contract') }}</h3>
   <p>
-    {{ _('Every JSON payload from the (soon-to-ship) MCP server and read-only API will carry a receipts block. Agents can verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
+    {{ _('Every JSON payload from the MCP server carries a receipts block today (running headless against the local rippled node; public daemon deferred to Lenovo Phase 3), and the read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
     <code>CLAIMS.yaml</code> — {{ _('without a support ticket. Envelope shape:') }}
   </p>
   <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; color: var(--text); font-size: 0.85rem;"><code>{

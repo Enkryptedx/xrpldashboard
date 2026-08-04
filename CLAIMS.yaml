@@ -30,7 +30,7 @@ pages:
     claims:
 
       - id: rlusd_page_title
-        label: "Page title: 'RLUSD · cross-chain treasury watch'"
+        label: "Page title: 'RLUSD supply history · cross-chain treasury watch'"
         data_paths:
           - "templates/rlusd.html:37  <title>"
           - "templates/rlusd.html:454 <h1>RLUSD · live across two chains</h1>"
@@ -143,7 +143,7 @@ pages:
     claims:
 
       - id: whale_page_title_and_scope
-        label: "Page title 'whales' / H1 'Whale watch' — displayed events match the declared scope"
+        label: "Page title 'XRPL whale transfers live' / H1 'Whale watch' — displayed events match the declared scope"
         data_paths:
           - "templates/whales.html:6 <title>"
           - "templates/whales.html:266 <h1>Whale watch</h1>"

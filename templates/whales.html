@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ _('whales') }} · xrpldashboard</title>
-  {% set meta_title = "whales · xrpldashboard" %}
-  {% set meta_description = "Live tracker of whale XRP transfers — every payment over " ~ "{:,}".format(whale_xrp_threshold) ~ " XRP, with the wallets behind them named where we know them." %}
+  <title>{{ _('XRPL whale transfers live') }} · xrpldashboard</title>
+  {% set meta_title = "XRPL whale transfers live · xrpldashboard" %}
+  {% set meta_description = "XRPL whale transfers live — every XRP payment above " ~ "{:,}".format(whale_xrp_threshold) ~ " XRP, streamed as it validates, with the wallets behind them named where we know them." %}
   {% include "_head_meta.html" %}
   {# meta-refresh removed: events stream in via WS and prepend in place,
      so reloading every 60s would just lose scroll position and re-render
