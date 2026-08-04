@@ -73,6 +73,13 @@
     <div class="footprint">rendered {{ now }} · <a href="/health">/health</a></div>
   </div>
 
+  {# id="walker-inventory" must render unconditionally: every claim       #}
+  {# envelope's verification.walker_health cites /coverage#walker-inventory #}
+  {# so the anchor has to survive a walker outage. The register table      #}
+  {# below the anchor is what goes missing when unavailable_reason fires;  #}
+  {# the anchor itself does not. Same class as Grok red-team #1.           #}
+  <h2 id="walker-inventory" style="margin-top: 24px;">Walker inventory{% if not unavailable_reason %} <span class="count">— {{ state.walker_scopes|length }} declared, {{ state.walker_health.values()|selectattr('undeclared')|list|length }} undeclared, {{ state.walker_health.values()|selectattr('is_stale')|list|length }} stale</span>{% endif %}</h2>
+
   {% if unavailable_reason %}
     <div class="banner scream">REGISTER UNAVAILABLE — {{ unavailable_reason }}</div>
   {% else %}
@@ -139,11 +146,10 @@
       </div>
     </div>
 
-    {# ─── Escrow-lesson inventory: walker scope declarations ─────── #}
-    {# id="walker-inventory" is cited by every claim envelope's       #}
-    {# verification.walker_health field (claims_endpoint.py). Do not  #}
-    {# rename without updating claims_endpoint.py + the CI URL guard. #}
-    <h2 id="walker-inventory">Walker inventory <span class="count">— {{ state.walker_scopes|length }} declared, {{ undecl|length }} undeclared, {{ state.walker_health.values()|selectattr('is_stale')|list|length }} stale</span></h2>
+    {# Escrow-lesson inventory: walker scope declarations.               #}
+    {# Anchor id="walker-inventory" is hoisted above the                 #}
+    {# {% if unavailable_reason %} guard higher up in this file so       #}
+    {# it survives a walker outage — see Grok red-team #1 lesson.        #}
     <div class="card">
       <table>
         <thead>

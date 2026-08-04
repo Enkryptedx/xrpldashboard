@@ -626,6 +626,19 @@
     <li><a href="/.well-known/security.txt"><code>/.well-known/security.txt</code></a> — {{ _('security disclosure contact.') }}</li>
   </ul>
 
+  {#
+    #use-this-data-methodology anchor: copy-pasteable client onramp lives on
+    /claims (fuller UX + syntax coloring). This heading points there rather
+    than duplicating the code, so the snippets have a single source of truth.
+    tests/test_snippet_urls_resolve.py asserts both anchors still exist.
+  #}
+  <h3 id="use-this-data-methodology">{{ _('Use this data — copy-pasteable snippets') }}</h3>
+  <p>
+    {{ _('Four self-contained snippets — curl, Python, JavaScript for fetching a claim envelope + a Python end-to-end verifier for the daily signed snapshots — live on the claims manifest:') }}
+    <a href="/claims#use-this-data"><code>/claims#use-this-data</code></a>.
+    {{ _('Every snippet on that page was executed against live prod before shipping. Copy any one, run it, get a proof-annotated response back in under a second.') }}
+  </p>
+
   <h3>{{ _('Proof-annotation contract') }}</h3>
   <p>
     {{ _('Every JSON payload from the MCP server carries a receipts block today (running headless against the local rippled node; public daemon deferred to Lenovo Phase 3), and the read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}

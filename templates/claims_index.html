@@ -72,6 +72,18 @@
       color: var(--text);
     }
 
+    .use-block { margin: 0 0 32px; }
+    .use-block p { color: var(--muted); font-size: 14px; margin: 8px 0 16px; }
+    .use-block h3 { font-size: 0.95rem; margin: 20px 0 8px; color: var(--cyan);
+                    font-family: var(--mono); font-weight: 600; letter-spacing: 0.01em; }
+    .use-block pre {
+      background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+      font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+      color: var(--text); margin: 0 0 12px;
+    }
+    .use-block pre .cmt { color: var(--dim); }
+
     .domain-block {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
       margin: 0 0 18px; padding: 18px 22px;
@@ -142,6 +154,76 @@
       Sovereignty tier is derived from each claim's Layer 3 source per
       <a href="/methodology#for-ai-agents">/methodology</a>.
     </div>
+
+    {#
+      #use-this-data anchor: cited from methodology#for-ai-agents and from
+      llms.txt "For agent authors". Rename requires updating both surfaces
+      and re-running tests/test_snippet_urls_resolve.py — the guard test
+      asserts this anchor and the URLs inside the snippets still resolve.
+    #}
+    <section class="use-block" id="use-this-data">
+      <h2 style="margin-top: 8px;">Use this data</h2>
+      <p>
+        Four self-contained snippets you can paste into a terminal or notebook.
+        The first three fetch a claim envelope and print its proof fields
+        (<code>source</code>, <code>as_of</code>, <code>freshness_contract</code>,
+        <code>claims_ref</code>) — the same shape agents receive through the MCP
+        tools. The fourth verifies a daily signed snapshot end-to-end (leaf hash,
+        Ed25519 signature, Merkle audit path) against our pinned public key, so
+        no trust in the network path is required.
+      </p>
+
+      <h3>Tier 1 · fetch a claim envelope</h3>
+      <pre><span class="cmt"># curl (shell)</span>
+curl -s https://xrpldashboard.com/claims/xrpl.rlusd.xrpl_supply.json | jq '.proof'</pre>
+
+      <pre><span class="cmt"># Python (stdlib only)</span>
+import json, urllib.request
+url = "https://xrpldashboard.com/claims/xrpl.rlusd.xrpl_supply.json"
+env = json.loads(urllib.request.urlopen(url).read())
+p = env["proof"]
+print(f"source={p['source']}  as_of={p['as_of']}")
+print(f"freshness_contract={p['freshness_contract']}")
+print(f"claims_ref={p['claims_ref']}")</pre>
+
+      <pre><span class="cmt">// JavaScript (any modern runtime with fetch)</span>
+const url = "https://xrpldashboard.com/claims/xrpl.rlusd.xrpl_supply.json";
+const env = await (await fetch(url)).json();
+const p = env.proof;
+console.log(`source=${p.source}  as_of=${p.as_of}`);
+console.log(`freshness_contract=${p.freshness_contract}`);
+console.log(`claims_ref=${p.claims_ref}`);</pre>
+
+      <h3>Tier 2 · verify a signed daily snapshot</h3>
+      <pre><span class="cmt"># Python — requires `cryptography`. Prints "verified: True" or raises.</span>
+import hashlib, json, urllib.request
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+BASE  = "https://xrpldashboard.com/.well-known/snapshots"
+chain = json.loads(urllib.request.urlopen(f"{BASE}/chain.json").read())
+date  = chain["leaves"][-1]["date"]
+env   = json.loads(urllib.request.urlopen(f"{BASE}/{date}.json").read())
+pub   = load_pem_public_key(urllib.request.urlopen(f"{BASE}/pubkey.pem").read())
+
+def canonical(o):
+    return json.dumps(o, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+
+leaf_fields = ("signing_domain", "schema_version", "snapshot_date_utc", "metrics")
+leaf = {k: env[k] for k in leaf_fields}
+assert hashlib.sha256(b"\x00" + canonical(leaf)).hexdigest() == env["leaf_hash"]
+
+summary_fields = (*leaf_fields[:3], "leaf_hash", "leaf_index",
+                  "leaves_total", "chain_root", "previous_root")
+summary = {k: env[k] for k in summary_fields}
+pub.verify(bytes.fromhex(env["signature_ed25519"]), canonical(summary))
+print(f"verified: True  (date={date}, chain_root={env['chain_root'][:16]}…)")</pre>
+
+      <p style="font-size: 12.5px; color: var(--dim); margin-top: 4px;">
+        Every snippet on this page was run against live prod before shipping.
+        Full envelope shape, canonical-JSON contract, and Merkle rules are
+        documented at <a href="/methodology#signed-snapshots">/methodology#signed-snapshots</a>.
+      </p>
+    </section>
 
     {% for domain, claims in grouped.items() %}
       <section class="domain-block">

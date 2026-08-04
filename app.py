@@ -6309,6 +6309,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
 - Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification.
 - Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
+- Copy-pasteable client snippets (curl, Python, JavaScript for fetching a claim envelope + a Python end-to-end verifier for the daily signed snapshots): [{SITE_URL}/claims#use-this-data]({SITE_URL}/claims#use-this-data). Every snippet on that page was executed against live prod before shipping.
 - Security contact: [{SITE_URL}/.well-known/security.txt]({SITE_URL}/.well-known/security.txt).
 - Source code: [github.com/Enkryptedx/xrpldashboard](https://github.com/Enkryptedx/xrpldashboard) (MIT-licensed Flask app).
 
