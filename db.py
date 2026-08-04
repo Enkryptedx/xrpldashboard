@@ -3853,7 +3853,10 @@ def read_recent_events(limit=10, tagged_floor_drops=None):
     amount_drops IS NULL (token-denominated) OR amount_drops >= this
     floor. Prevents sub-dollar watchlist activity from dominating the
     homepage card. Non-tagged types (large_xfer) pass regardless — they
-    were already tier-gated at capture time by xrpl_stream."""
+    are already gated at capture time by xrpl_stream at its walker floor
+    (default 50K XRP). Callers that need the higher /whales display
+    floor (100K XRP) must filter downstream — see
+    mcp_tools_value_flows.tool_get_whale_events for an example."""
     if tagged_floor_drops is None:
         sql = (
             "SELECT tx_hash, ledger_index, ts, type, from_addr, to_addr, "

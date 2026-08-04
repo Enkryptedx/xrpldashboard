@@ -161,12 +161,14 @@ pages:
           type_labels all move in ONE commit — not just the predicate.
 
       - id: whale_tier_threshold
-        label: "Every displayed large_xfer/tagged event satisfies the selected tier threshold (default ≥100K XRP)"
+        label: "Every displayed large_xfer/tagged event satisfies the selected tier threshold (default ≥100K XRP); walker-capture floor (≥50K XRP) and MCP-tool floor (≥100K XRP) are both named accurately wherever either is described."
         data_paths:
           - "templates/whales.html:326-338 tier pills (1m / 100k / 50k)"
           - "templates/whales.html:363 'Streaming validated XRPL transactions ≥ N XRP'"
           - "db.py:read_whale_events (tier_drops arg)"
-          - "xrpl_stream.py: amount_drops calculation"
+          - "xrpl_stream.py:WHALE_XRP_THRESHOLD_DROPS (walker capture, default 50k XRP)"
+          - "mcp_tools_value_flows.py:WHALE_XRP_THRESHOLD_DROPS (MCP + display floor, 100k XRP)"
+          - "templates/methodology.html §whales (must name both capture and display thresholds)"
         behavior: BOUNDED
         layer2_rules: [R6]  # not yet implemented in the walker
         layer3_source: self-attested-only
@@ -175,6 +177,13 @@ pages:
           pill's claim. R6 will catch this once implemented. Trustset
           events legitimately bypass the tier per the explainer copy
           (line 330) — R6 must exempt type='trustset'.
+          Scope-widened 2026-08-04 after an external evaluator caught
+          the two-tier threshold collapsing into a single "100K XRP"
+          statement in methodology while the walker file's constant of
+          the same name was actually 50K. Any copy that names
+          `WHALE_XRP_THRESHOLD_DROPS` must disambiguate walker-capture
+          (xrpl_stream.py, 50K) from MCP/display floor
+          (mcp_tools_value_flows.py + app.py, 100K).
 
       - id: whale_type_labels
         label: "Type pill labels ('whale', 'tagged', 'trustlines') match the DB event `type` values (large_xfer, tagged, trustset)"
@@ -1570,11 +1579,11 @@ pages:
           (network_unl_counts, line 552).
 
       - id: whale_events_recent
-        label: "get_whale_events returns the last N XRP-denominated whale events + tagged-watchlist rows from the local xrpl_stream capture feed."
+        label: "get_whale_events returns the last N XRP-denominated whale events + tagged-watchlist rows from the local xrpl_stream capture feed, filtered so large_xfer rows satisfy the published whale_threshold_drops."
         data_paths:
-          - "mcp_tools_value_flows.py:tool_get_whale_events"
-          - "db.py:read_recent_events (WHALE_XRP_THRESHOLD_DROPS=100k XRP, TAGGED_XRP_FLOOR_DROPS=100 XRP)"
-          - "xrpl_stream (local rippled stream capture)"
+          - "mcp_tools_value_flows.py:tool_get_whale_events (WHALE_XRP_THRESHOLD_DROPS=100k XRP; Python-filters large_xfer rows to match published metadata)"
+          - "db.py:read_recent_events (returns walker-captured rows, tagged_floor_drops=100 XRP)"
+          - "xrpl_stream.py:WHALE_XRP_THRESHOLD_DROPS (walker capture floor, default 50k XRP)"
         behavior: DAILY_WIGGLE
         layer3_source: local_rippled_stream_capture
         risk_note: >

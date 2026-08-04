@@ -109,15 +109,28 @@ def _serialize_event(row: tuple) -> dict:
 def tool_get_whale_events(limit: int = 25) -> dict:
     """Return the last N XRP-denominated whale events + tagged-watchlist
     events (trustset excluded — signal, not movement). Same feed the
-    homepage globe pulse reads; envelope makes the source explicit."""
+    homepage globe pulse reads; envelope makes the source explicit.
+
+    Walker captures at ≥50K XRP (xrpl_stream.py:WHALE_XRP_THRESHOLD_DROPS),
+    but this tool mirrors the /whales page's default display floor
+    (WHALE_XRP_THRESHOLD_DROPS=100K here) so the published
+    `whale_threshold_drops` metadata matches what the response actually
+    contains. Fetches a wider window (3×) then Python-filters large_xfer
+    rows to ≥ the display threshold; tagged rows keep their own floor."""
     import db
     if not db.pg_available():
         raise RuntimeError("get_whale_events: DATABASE_URL not configured")
     limit = max(1, min(int(limit), 100))
-    rows = db.read_recent_events(limit=limit, tagged_floor_drops=TAGGED_XRP_FLOOR_DROPS)
+    fetch_n = min(limit * 3, 300)
+    rows = db.read_recent_events(limit=fetch_n, tagged_floor_drops=TAGGED_XRP_FLOOR_DROPS)
+    filtered = [
+        r for r in rows
+        if r[3] != "large_xfer"
+        or (r[6] is not None and int(r[6]) >= WHALE_XRP_THRESHOLD_DROPS)
+    ][:limit]
     data = {
-        "events": [_serialize_event(r) for r in rows],
-        "count": len(rows),
+        "events": [_serialize_event(r) for r in filtered],
+        "count": len(filtered),
         "whale_threshold_drops": WHALE_XRP_THRESHOLD_DROPS,
         "tagged_floor_drops": TAGGED_XRP_FLOOR_DROPS,
     }

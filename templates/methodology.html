@@ -557,7 +557,7 @@
 
   <h3 id="whales">{{ _('Whale events (get_whale_events, get_whale_watchlist)') }}</h3>
   <p>
-    {{ _('Source:') }} <code>local_rippled_stream_capture</code> — {{ _('the same live capture feed the') }} <a href="/whales">/whales</a> {{ _('page reads. Thresholds mirror the human surface:') }} <code>WHALE_XRP_THRESHOLD_DROPS = 100_000 XRP</code> {{ _('for the large-transfer feed;') }} <code>TAGGED_XRP_FLOOR_DROPS = 100 XRP</code> {{ _('for the tagged watchlist. TrustSet entries are excluded — they signal intent, not movement.') }}
+    {{ _('Source:') }} <code>local_rippled_stream_capture</code> — {{ _('the same live capture feed the') }} <a href="/whales">/whales</a> {{ _('page reads. Two-tier threshold, both named in the response payload:') }} <code>xrpl_stream.py</code> {{ _('captures at') }} <code>≥ 50_000 XRP</code> ({{ _('walker floor, env-tunable via') }} <code>WHALE_XRP_THRESHOLD_XRP</code>); {{ _('the MCP tool + /whales default display floor is') }} <code>≥ 100_000 XRP</code> ({{ _('mirrors the human surface). Tagged rows use') }} <code>TAGGED_XRP_FLOOR_DROPS = 100 XRP</code>. {{ _('TrustSet entries are excluded — they signal intent, not movement.') }}
     {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('stream cadence + PG-write lag). Token-denominated tagged rows bypass the XRP floor; agents needing USD-priced sizing must join against the token-price oracle themselves. The tool response includes this caveat verbatim in a') }} <code>note</code> {{ _('field.') }}
   </p>
 
