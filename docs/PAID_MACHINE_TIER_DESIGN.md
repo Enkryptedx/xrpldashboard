@@ -1,15 +1,21 @@
 # xrpldashboard — Paid Machine-Tier
 ## Decision Memo (NOT a build)
 
-**Date:** 2026-08-03 (amended same day per Grok + ChatGPT external evaluations)
+**Date:** 2026-08-03 (last amended 2026-08-04 per fresh-Claude external evaluation with web-searched revenue evidence)
 **Status:** DRAFT DECISION MEMO — pressure-test of a strategy sentence, not an approved build. Gated by (1) attorney answers and (2) the sovereignty audit in § 0 of this document.
 
 **Amendment log:**
 - 2026-08-03 (`d2fed28`): § 1.A gained signing dimension per Grok evaluation.
-- 2026-08-03 (this commit): § 1.E added (dataset licensing per ChatGPT); § 3.1 added (queryable claims layer as Phase 3 free-tier substrate — both engines converged on this); § 3.2 added (envelope `confidence` enum spec per ChatGPT gap #4); Next-steps #5 (`/audits` public surface backlog) + #6 (overlap-weighting standing protocol) + #7 (envelope-fix confidence-field placement).
+- 2026-08-03: § 1.E added (dataset licensing per ChatGPT); § 3.1 added (queryable claims layer as Phase 3 free-tier substrate — both engines converged on this); § 3.2 added (envelope `confidence` enum spec per ChatGPT gap #4); Next-steps #5 (`/audits` public surface backlog) + #6 (overlap-weighting standing protocol) + #7 (envelope-fix confidence-field placement).
+- 2026-08-04 (this commit): external-reality calibration folded in per third external voice (fresh Claude with cited web search — see `project_external_ai_evaluation_claude_cold_2026-08-04.md`). § 1.A gained y1 revenue expectation ("low hundreds to low thousands"). § 1.D HOLD hardened with x402 $28K/day XRPL-ecosystem baseline as step-change requirement before Q4-2026 revisit. § 1.E reframed as relationship-driven ($2K-20K/deal manual sale to eval labs), not marketplace-listable. § 1.F added — Cloudflare Pay Per Crawl (opt-in, feasibility read only, respects all five sovereignty rules, zero build cost). New headline framing added below the strategy sentence: **monetizing the trust layer is a 2027+ story, not a 2026 one** — validates current sequencing (build citation substrate first). All market numbers are `[FROM-REVIEW-CITED-SEARCH]` — treat as pointers to verify before load-bearing decisions, not consensus fact.
 
 **Strategy sentence under test:**
 > *"Current state free for everyone forever; depth, delivery, and proof-at-scale metered for machines exclusively."*
+
+**Timing framing (added 2026-08-04):**
+> *"Monetizing the trust layer is a 2027+ story, not a 2026 one."*
+>
+> This is not a retreat from the strategy sentence. It is an honest read of the current market: measured MCP monetization sector-wide is <5%, x402 XRPL-ecosystem volume is ~$28K/day, dataset-licensing deals to eval labs price in the $2K-20K/deal manual-sale band. None of those numbers support a paid-tier revenue business in 2026. What they do support is **building the citation substrate now (queryable claims, signed history, envelope discipline) and metering it when the market shape emerges.** This validates the current sequencing — the memo's HOLDs are not stalling, they are aligned with the market's own tempo. Source: `project_external_ai_evaluation_claude_cold_2026-08-04.md` (Part 2 findings, cited web search).
 
 **Hard gates before any paid product ships:**
 1. **Attorney gate** — money-transmission classification, sales-tax treatment of digital services, custody posture, refund policy, Coinbase-facilitator ToS flow-down. Verbatim question already on next attorney-call agenda (see `docs/AGENT_TIER_DESIGN.md` § Revisit triggers). Awaiting Kirk (Taft Law) response to 2026-08-03 email; Oberheiden / Cogent / IndyBar remaining in Charlie's lane.
@@ -198,6 +204,15 @@ The signing machinery **exists**. `signed_snapshot.py` (785 lines, verified 2026
 - Concrete inbound asks: minimum N=3 credible requests (email, GitHub issue, Twitter DM from an account with verifiable production use) before build starts.
 - If both signals show demand: candidate A moves from HOLD to KEEP and enters the build queue behind attorney answers.
 
+**Y1 revenue expectation (calibrated 2026-08-04 per fresh-Claude Part 2 web-searched evidence — `[FROM-REVIEW-CITED-SEARCH]`):**
+
+- **Realistic band: low hundreds to low thousands of USD in year one.** Not low tens of thousands.
+- **Grounding**: sector-wide MCP monetization rate is <5% of MCP servers running. Per-call MCP pricing at $0.07/call has been offered publicly with zero paying customers on record. The market has not yet agreed on the shape it will pay for.
+- **Implication**: candidate A survives on customer-count × ARPU, not on volume. If year-one ships with 3-5 relationship-sold customers at flat-fee tier subscriptions (e.g., $200-1,000/month), that is on-band success — not a signal to accelerate build.
+- **Kill trigger**: if candidate A ships and returns 0 paying customers in the first 90 days despite active outreach, HOLD-again, do not iterate the product surface (the market shape is wrong, not the product shape).
+
+This calibration does not change the HOLD verdict. It changes what "success" looks like when candidate A eventually flips HOLD → BUILD. It also validates the memo's overall "trust layer is a 2027+ story" framing at the candidate level.
+
 **Verdict: HOLD.** Highest-value near-term product IF sovereign eligibility clears AND demand signal materializes. Do not build now; do not kill.
 
 ### § 1.B — Webhooks / push delivery
@@ -269,7 +284,14 @@ The signing machinery **exists**. `signed_snapshot.py` (785 lines, verified 2026
 
 **Demand:** speculative. Coinbase's own numbers show real usage, but the demand shape for *XRPL data via x402* is unmeasured. The `ai_crawler_hits` distribution readable 2026-08-16 will inform this, but at a lower resolution than for candidate A.
 
-**Verdict: HOLD, hardest attorney gate of the four.** Do not build. Watch the x402 adoption curve through Q4 2026 for XRPL-side integrations. Revisit no earlier than candidate A shipping and generating revenue.
+**Step-change requirement (added 2026-08-04 — `[FROM-REVIEW-CITED-SEARCH]`):**
+
+- **XRPL-ecosystem x402 volume baseline: ~$28K/day** across the entire XRPL x402 footprint as of the fresh-Claude Part 2 read (Q3 2026).
+- **Threshold to flip HOLD → BUILD-EVAL:** the XRPL-ecosystem x402 daily-volume figure must show a **step-change** (e.g., ≥10× to ≥$280K/day, sustained ≥30 days) AND at least one credible XRPL-native x402 integration must ship AND candidate A must be revenue-positive first. All three conditions, not any one.
+- **Why this bar is high:** the current $28K/day baseline across the entire XRPL x402 ecosystem is too small to justify the payments/tax/custody attorney work that candidate D uniquely requires. A 2× or 3× move is within noise; a 10× move is a market-shape change.
+- **Revisit cadence:** re-read the volume figure at the Q4 2026 decision date (§ 2). If the step-change condition is not met, HOLD extends through Q1 2027 by default.
+
+**Verdict: HOLD, hardest attorney gate of the four.** Do not build. Watch the x402 adoption curve through Q4 2026 for XRPL-side integrations. Revisit no earlier than candidate A shipping and generating revenue AND the step-change condition above.
 
 ### § 1.E — Dataset licensing for AI evaluation and training (added 2026-08-03 per ChatGPT evaluation — see `project_external_ai_evaluation_chatgpt_2026-08-04.md`)
 
@@ -300,7 +322,45 @@ The customer isn't "someone who wants XRPL data." It's "someone building or eval
 - Zero measured today. No inbound asks in the "AI eval corpus" shape. The ChatGPT evaluation flagged this segment as a plausible market — one external voice, no customer voices yet.
 - Signal path: watch AI-benchmark repos (Hugging Face evals, `lm-eval-harness`-style leaderboards) for crypto-domain entries. Watch for direct asks referencing eval-corpora specifically.
 
-**Verdict: HOLD — watch-and-probe.** Do not build. Do not amend candidate A to absorb it. If (a) candidate A ships and (b) at least one credible eval-corpus ask arrives referencing verifiable XRPL ground truth by name, revisit with a scoped attorney consult. Until then, this candidate is a memo entry, not a product.
+**Sales-motion reframe (added 2026-08-04 — `[FROM-REVIEW-CITED-SEARCH]`):**
+
+- **Not marketplace-listable. Relationship-driven, manual sale.**
+- **Deal size band: $2K-20K per deal**, closed 1-to-1 with eval-lab / benchmark-builder counterparts. No self-serve tier. No dataset shopping cart.
+- **Sales motion:** direct outreach to named eval-lab teams (Hugging Face benchmark maintainers, `lm-eval-harness` contributors, crypto-domain LLM builders with published training-set provenance) with a scoped corpus proposal. Response rate is the demand signal; deals close over weeks, not clicks.
+- **Y1 realistic band:** 0-2 deals. This is a HOLD candidate for a reason — the addressable buyer list is small, the deal cycle is long, the attorney gate is heaviest of any candidate. Zero deals in Y1 is on-band.
+- **Implication for candidate A separation:** the manual-sale motion further reinforces § 1.E ≠ § 1.A. Candidate A is a subscription API; candidate E is a bespoke corpus release. Different customer teams inside the same company might buy each — that's fine, keeps them separately gated.
+
+**Verdict: HOLD — watch-and-probe.** Do not build. Do not amend candidate A to absorb it. If (a) candidate A ships and (b) at least one credible eval-corpus ask arrives referencing verifiable XRPL ground truth by name, revisit with a scoped attorney consult AND scope the first deal as a manual sale, not a listed product. Until then, this candidate is a memo entry, not a product.
+
+### § 1.F — Cloudflare Pay Per Crawl (added 2026-08-04 per fresh-Claude external evaluation — see `project_external_ai_evaluation_claude_cold_2026-08-04.md`)
+
+**Status: feasibility read, not build. Zero build cost. Opt-in only.**
+
+Cloudflare Pay Per Crawl is an opt-in per-request billing surface Cloudflare exposes to origins for crawler traffic. Site operator sets a per-crawl price; Cloudflare handles crawler identification, payment collection, and receipt delivery. The origin never touches payment plumbing.
+
+**Sovereignty fit — respects all five rules:**
+1. **We only sell data we source and prove ourselves** — data served remains our sovereign surfaces (`/claims`, methodology, envelope-wrapped responses); nothing licensed changes.
+2. **Free surface stays free for humans and identified agents** — Pay Per Crawl targets unidentified/paid-tier crawlers only; identified agent tiers (llms.txt, agents.json, MCP) stay on the free path.
+3. **No new payment plumbing on our side** — Cloudflare owns receipt collection, invoice generation, and dispute handling. Money-transmission classification stays on Cloudflare, not on us. This is meaningful — candidate D's attorney weight is exactly this problem, and F sidesteps it.
+4. **Attribution stays honest** — every response Cloudflare bills for is one of our envelope-shaped payloads. `honest_partial`, `scope_note`, `claims_ref` all pass through unchanged.
+5. **Reversible** — Pay Per Crawl is a toggle. If the pattern doesn't fit, we turn it off. No shipped code to maintain, no client integration to sunset.
+
+**What it is NOT:**
+- Not a substitute for candidate A. Pay Per Crawl monetizes anonymous crawler traffic on existing free surfaces; candidate A monetizes signed historical series with per-response envelopes and named subscribers. Different revenue mechanics, different customer psychology.
+- Not the same as a paywall. The free surface stays free for identified traffic — Pay Per Crawl only charges unidentified crawlers that Cloudflare rate-limits into the paid lane.
+- Not a demand signal for candidate A. Anonymous crawler willingness-to-pay via Cloudflare and named-subscriber willingness-to-pay for signed series are different markets. Do not read one as evidence for the other.
+
+**Attorney weight — light.**
+- Data-licensing implications: none new — data served is already public.
+- Payments/tax: Cloudflare's ledger, not ours. Verify our Cloudflare terms cover receipt-of-funds treatment; the marketplace exposure is Cloudflare's, not ours.
+- Refund/dispute: Cloudflare-mediated by design.
+- Compared to candidate D's payments/tax/custody stack, F is trivially attorney-light.
+
+**Y1 revenue expectation:** unmeasured. The signal path is: (a) enable Pay Per Crawl on a subset of endpoints (probably not `/claims`, `/methodology`, `agents.json` — those are discovery surfaces we WANT identified traffic on — but potentially on read-heavy JSON endpoints); (b) read Cloudflare's crawler-hit + billing dashboard for 60-90 days; (c) revisit.
+
+**Verdict: FEASIBILITY READ, NOT BUILD.** No commitment to enable. Not a KEEP, not a HOLD. This is a memo entry for the next external evaluator to see we considered it and named the terms — same shape as candidate D was originally treated. Revisit **only if** (a) Cloudflare Pay Per Crawl adoption is broadly reported as producing measurable per-origin revenue AND (b) doing so does not degrade our identified-crawler traffic pattern (the observed traffic is our demand-evidence instrument — killing it for a few dollars in Cloudflare receipts is a strategic loss).
+
+**Explicit non-overlap with existing candidates:** F targets a different traffic class (anonymous crawlers) from A (named subscribers), B (push subscribers), C (bulk verification callers), D (per-call machine payments), or E (dataset licensees). No candidate cannibalizes another.
 
 ---
 
@@ -312,7 +372,8 @@ The customer isn't "someone who wants XRPL data." It's "someone building or eval
 | **B. Webhooks / push** | Medium (delivery reliability) | Lower ceiling than A | Medium | **HOLD — behind A** |
 | **C. Bulk verification** | High (sovereign by construction) | Zero today | Light | **KEEP AS DESIGN, don't build** |
 | **D. x402 micropayments on MCP** | Medium (no XRPL x402 integration observed) | Speculative | Heaviest (payments/tax/custody) | **HOLD — watch curve** |
-| **E. Dataset licensing for AI eval/training** | Medium (corpus curation + signed release infra) | Zero measured (one external voice) | **Heaviest (data-licensing contract + IP + warranty)** — distinct set from candidates A-D | **HOLD — watch-and-probe** |
+| **E. Dataset licensing for AI eval/training** | Medium (corpus curation + signed release infra) | Zero measured (one external voice) | **Heaviest (data-licensing contract + IP + warranty)** — distinct set from candidates A-D | **HOLD — watch-and-probe** (relationship-driven, $2K-20K/deal — see § 1.E reframe) |
+| **F. Cloudflare Pay Per Crawl (opt-in)** | High (Cloudflare-hosted; zero build cost) | Unmeasured (would be Cloudflare-dashboard read) | Light (Cloudflare owns payments) | **FEASIBILITY READ, NOT BUILD** — memo entry only, revisit only on broad-adoption reports |
 
 ---
 
@@ -533,6 +594,7 @@ The point isn't to disclaim responsibility. The point is to **not promise what a
 | **B. Webhooks / push** | 0 (no observed asks) | 2 (delivery reliability + DLQ + signed payload) | 0.00 | 2nd (by build-cost) |
 | **D. x402 micropayments** | 0 (no XRPL x402 integration observed) | 3 (heaviest attorney gate + client-tooling ecosystem still nascent for XRPL) | 0.00 | 4th |
 | **E. Dataset licensing for AI eval/training** | 0 (one external voice, no customer voices) | 3 (corpus curation + reproducibility receipts + signed release infra + data-licensing contract) | 0.00 | 5th |
+| **F. Cloudflare Pay Per Crawl** | 0 (feasibility read only) | 0 (zero build; Cloudflare-hosted toggle) | n/a | **Off the rank** — not a build candidate, memo entry only |
 
 **Bottom-line recommendation:**
 
@@ -576,6 +638,8 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 9. **Candidate E (dataset licensing) is a HOLD watch-and-probe entry, distinct from candidate A.** Same source data, different customer segment, different attorney gate. Do not conflate.
 10. **§ 3.1's queryable claims layer is Phase 3 free-tier substrate** — never sold, but a shipping dependency for candidate A. Its URI scheme is permanent once agents cite it; scheme decision is a deliberate design pass, not this memo's call.
 11. **§ 3.2's `confidence` enum is a spec commitment.** Numeric confidence values are prohibited absent a calibration model. The enum is `signature_verified / cross_checked / walker_computed / single_source`. Extends when calibration models actually exist for a series; not before.
+12. **Timing framing is settled: "monetizing the trust layer is a 2027+ story, not a 2026 one"** (added 2026-08-04). This is a market-calibration statement, not a stall. It validates that the memo's HOLDs are aligned with the observed market shape (MCP <5% monetized, x402 XRPL $28K/day, dataset-licensing manual-sale). The 2026 work is the citation substrate (claims layer, envelope discipline, signed history); metering waits for the market shape to emerge.
+13. **Candidate F (Cloudflare Pay Per Crawl) is off the rank as a build candidate** (added 2026-08-04). It is a memo entry for future evaluators to see we considered it and named its terms. Revisit only if Cloudflare Pay Per Crawl adoption is broadly reported as producing measurable per-origin revenue AND doing so does not degrade our identified-crawler demand-signal traffic.
 
 ## What this memo does NOT settle
 
@@ -607,6 +671,7 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 - `project_external_ai_prober_results_2026-08-03.md` — the "AI more accurate than our own picture" case that motivated the AI cross-verify of `xrpl_stream.py` migration (Batch B first item).
 - `project_external_ai_evaluation_grok_2026-08-04.md` — external audit (invited to deflate). Source of candidate A's signing dimension (§ 1.A amended 2026-08-03) and the CLAIMS-queryable-endpoint proposal (§ 3.1 amended 2026-08-03).
 - `project_external_ai_evaluation_chatgpt_2026-08-04.md` — external audit sibling to Grok's (architecturally anchored — ChatGPT did NOT browse the live site). Source of candidate E (§ 1.E), the confidence-field enum spec (§ 3.2), the atomic-citation UX in § 3.1, and the /audits public-surface backlog entry (Next steps #5).
+- `project_external_ai_evaluation_claude_cold_2026-08-04.md` — third external audit (fresh Claude, no project memory, actually browsed live surfaces + web-searched revenue evidence). Source of the 2026-08-04 external-reality amendments: § 1.A y1 revenue calibration, § 1.D step-change requirement, § 1.E relationship-driven reframe, § 1.F Cloudflare Pay Per Crawl entry, and the "trust layer is a 2027+ story" timing framing.
 - `project_two_instruments_2026_08_ship_of_record.md` — `ai_crawler_hits` telemetry is the quantitative half of the demand signal for candidate A.
 - `parked/api-v1-scaffold @ 2b5eb76` — the API shape work already scaffolded; unpark on candidate A promotion.
 
