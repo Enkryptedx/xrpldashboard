@@ -332,35 +332,44 @@ The customer isn't "someone who wants XRPL data." It's "someone building or eval
 
 **Verdict: HOLD — watch-and-probe.** Do not build. Do not amend candidate A to absorb it. If (a) candidate A ships and (b) at least one credible eval-corpus ask arrives referencing verifiable XRPL ground truth by name, revisit with a scoped attorney consult AND scope the first deal as a manual sale, not a listed product. Until then, this candidate is a memo entry, not a product.
 
-### § 1.F — Cloudflare Pay Per Crawl (added 2026-08-04 per fresh-Claude external evaluation — see `project_external_ai_evaluation_claude_cold_2026-08-04.md`)
+### § 1.F — Cloudflare: two sub-candidates (split enacted 2026-08-04 per `docs/CLOUDFLARE_PPC_RESEARCH_2026-08-04.md`)
 
-**Status: feasibility read, not build. Zero build cost. Opt-in only.**
+The initial fresh-Claude read treated Cloudflare Pay Per Crawl as a single candidate. One session of research (msg 10622) found Cloudflare bifurcated into two products with opposite verdicts for xrpldashboard. Original § 1.F entry preserved in commit `539d4a9`; research doc is the audit trail; this section enacts the split Charlie approved.
 
-Cloudflare Pay Per Crawl is an opt-in per-request billing surface Cloudflare exposes to origins for crawler traffic. Site operator sets a per-crawl price; Cloudflare handles crawler identification, payment collection, and receipt delivery. The origin never touches payment plumbing.
+#### § 1.F.1 — Pay Per Crawl (402-per-request model, launched July 2025)
 
-**Sovereignty fit — respects all five rules:**
-1. **We only sell data we source and prove ourselves** — data served remains our sovereign surfaces (`/claims`, methodology, envelope-wrapped responses); nothing licensed changes.
-2. **Free surface stays free for humans and identified agents** — Pay Per Crawl targets unidentified/paid-tier crawlers only; identified agent tiers (llms.txt, agents.json, MCP) stay on the free path.
-3. **No new payment plumbing on our side** — Cloudflare owns receipt collection, invoice generation, and dispute handling. Money-transmission classification stays on Cloudflare, not on us. This is meaningful — candidate D's attorney weight is exactly this problem, and F sidesteps it.
-4. **Attribution stays honest** — every response Cloudflare bills for is one of our envelope-shaped payloads. `honest_partial`, `scope_note`, `claims_ref` all pass through unchanged.
-5. **Reversible** — Pay Per Crawl is a toggle. If the pattern doesn't fit, we turn it off. No shipped code to maintain, no client integration to sunset.
+**Verdict: CONFLICTS-WITH-FLYWHEEL-SKIP.**
 
-**What it is NOT:**
-- Not a substitute for candidate A. Pay Per Crawl monetizes anonymous crawler traffic on existing free surfaces; candidate A monetizes signed historical series with per-response envelopes and named subscribers. Different revenue mechanics, different customer psychology.
-- Not the same as a paywall. The free surface stays free for identified traffic — Pay Per Crawl only charges unidentified crawlers that Cloudflare rate-limits into the paid lane.
-- Not a demand signal for candidate A. Anonymous crawler willingness-to-pay via Cloudflare and named-subscriber willingness-to-pay for signed series are different markets. Do not read one as evidence for the other.
+**What it is:** site operator sets a per-crawl price; crawlers send 402 if they don't present payment intent. Cloudflare's Allow/Charge/Block operates at verified-bot level.
 
-**Attorney weight — light.**
-- Data-licensing implications: none new — data served is already public.
-- Payments/tax: Cloudflare's ledger, not ours. Verify our Cloudflare terms cover receipt-of-funds treatment; the marketplace exposure is Cloudflare's, not ours.
-- Refund/dispute: Cloudflare-mediated by design.
-- Compared to candidate D's payments/tax/custody stack, F is trivially attorney-light.
+**Why we skip:**
+1. **Eligibility gate is not zero-cost.** Requires Cloudflare paid plan tier for the 402 feature + a separate private-beta application (`cloudflare.com/paypercrawl-signup/`) for full monetization. Not a free-plan dashboard toggle.
+2. **Flywheel conflict is direct.** Our Day-6 identified-crawler tier (`agent_tier_rate_limit.py:73-99`) deliberately allows 15 citation-crawler UAs (OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended, etc.) at 300 req/min + audit-URL header pointing at `/coverage`. The point is to feed the citation flywheel before we've read a single week of data (first crawler-harvest read: Friday 2026-08-08). Cloudflare's Allow/Charge/Block granularity is coarser than our citation/training distinction; enabling PPC risks 402-ing the exact crawlers we're deliberately feeding.
+3. **Revenue floor doesn't clear plan-upgrade break-even.** Expected low tens to low hundreds of USD/year at current traffic scale. Does not justify upgrading the Cloudflare plan tier.
+4. **Cloudflare's own signal.** On July 1, 2026, Cloudflare called the 402 model "a first step" and argued "crawling is a poor proxy for value." Following a product the vendor is de-emphasizing is a poor bet.
 
-**Y1 revenue expectation:** unmeasured. The signal path is: (a) enable Pay Per Crawl on a subset of endpoints (probably not `/claims`, `/methodology`, `agents.json` — those are discovery surfaces we WANT identified traffic on — but potentially on read-heavy JSON endpoints); (b) read Cloudflare's crawler-hit + billing dashboard for 60-90 days; (c) revisit.
+**Re-open trigger:** if (a) Pay Per Crawl graduates to free-tier availability AND (b) Friday's crawler-harvest read shows the citation flywheel is producing measurable citations AND (c) Cloudflare's granularity allows allowlisting citation crawlers while charging training-only bots — all three, not any one.
 
-**Verdict: FEASIBILITY READ, NOT BUILD.** No commitment to enable. Not a KEEP, not a HOLD. This is a memo entry for the next external evaluator to see we considered it and named the terms — same shape as candidate D was originally treated. Revisit **only if** (a) Cloudflare Pay Per Crawl adoption is broadly reported as producing measurable per-origin revenue AND (b) doing so does not degrade our identified-crawler traffic pattern (the observed traffic is our demand-evidence instrument — killing it for a few dollars in Cloudflare receipts is a strategic loss).
+#### § 1.F.2 — Pay Per Citation (Cloudflare pivot announced July 1, 2026)
 
-**Explicit non-overlap with existing candidates:** F targets a different traffic class (anonymous crawlers) from A (named subscribers), B (push subscribers), C (bulk verification callers), D (per-call machine payments), or E (dataset licensees). No candidate cannibalizes another.
+**Verdict: OPT-IN-LATER-AT-BROAD-AVAILABILITY.**
+
+**What it is:** publishers who opt in are paid when their content appears in AI answers (Ceramic.ai + You.com as initial partners). No crawl-level 402; compensation arrives at the citation event, not the fetch event.
+
+**Why this fits our strategy exactly:**
+- Citation = the value axis the flywheel is building toward. Pay Per Citation monetizes success at the same event we're optimizing for.
+- Respects all five sovereignty rules: data stays free at the source; Cloudflare / Ceramic / You.com pay from their answer-monetization side; no payment plumbing added on our end.
+- Zero conflict with identified-crawler traffic — more citation crawl activity → more citation events → more payments. Flywheel and revenue are additive, not opposed.
+
+**Attorney weight:** light. Publisher opt-in to a Cloudflare-brokered arrangement. No money-transmission exposure on our side. No custody, no USDC.
+
+**Why we don't opt in today:** no publisher enrollment surface exists yet. Cloudflare says "broad availability later in 2026, without a specific date." Not actionable until the enrollment path ships.
+
+**Watch trigger (concrete):** revisit at **2026-11-01** — matches the memo's 60-90d demand-window decision date. If Pay Per Citation has a public publisher opt-in surface, evaluate sovereignty fit and opt in immediately.
+
+**Kill trigger:** 90 days past 2026-12-31 with no publisher opt-in path published → close watch, mark CLOSED.
+
+**Explicit non-overlap with candidates A-E:** Pay Per Citation pays on citation appearance from the Cloudflare / answer-engine side. Candidate A sells signed-series API access. Different payment mechanics, different customers, different infrastructure — they can co-exist.
 
 ---
 
@@ -373,7 +382,8 @@ Cloudflare Pay Per Crawl is an opt-in per-request billing surface Cloudflare exp
 | **C. Bulk verification** | High (sovereign by construction) | Zero today | Light | **KEEP AS DESIGN, don't build** |
 | **D. x402 micropayments on MCP** | Medium (no XRPL x402 integration observed) | Speculative | Heaviest (payments/tax/custody) | **HOLD — watch curve** |
 | **E. Dataset licensing for AI eval/training** | Medium (corpus curation + signed release infra) | Zero measured (one external voice) | **Heaviest (data-licensing contract + IP + warranty)** — distinct set from candidates A-D | **HOLD — watch-and-probe** (relationship-driven, $2K-20K/deal — see § 1.E reframe) |
-| **F. Cloudflare Pay Per Crawl (opt-in)** | High (Cloudflare-hosted; zero build cost) | Unmeasured (would be Cloudflare-dashboard read) | Light (Cloudflare owns payments) | **FEASIBILITY READ, NOT BUILD** — memo entry only, revisit only on broad-adoption reports |
+| **F.1 Cloudflare Pay Per Crawl (402 model)** | Low (paid-plan-gated + private beta application) | Speculative (low tens to low hundreds/year) | Light (Cloudflare owns payments) | **SKIP — conflicts with citation flywheel** |
+| **F.2 Cloudflare Pay Per Citation (July 2026)** | Low today (no publisher enrollment path yet) | Aligned with flywheel (pay on citation = our success axis) | Light (publisher opt-in, Cloudflare-brokered) | **WATCH — opt in at broad availability (trigger 2026-11-01)** |
 
 ---
 
@@ -639,7 +649,7 @@ paid-tier-interest: candidate historical time-series and webhook delivery under 
 10. **§ 3.1's queryable claims layer is Phase 3 free-tier substrate** — never sold, but a shipping dependency for candidate A. Its URI scheme is permanent once agents cite it; scheme decision is a deliberate design pass, not this memo's call.
 11. **§ 3.2's `confidence` enum is a spec commitment.** Numeric confidence values are prohibited absent a calibration model. The enum is `signature_verified / cross_checked / walker_computed / single_source`. Extends when calibration models actually exist for a series; not before.
 12. **Timing framing is settled: "monetizing the trust layer is a 2027+ story, not a 2026 one"** (added 2026-08-04). This is a market-calibration statement, not a stall. It validates that the memo's HOLDs are aligned with the observed market shape (MCP <5% monetized, x402 XRPL $28K/day, dataset-licensing manual-sale). The 2026 work is the citation substrate (claims layer, envelope discipline, signed history); metering waits for the market shape to emerge.
-13. **Candidate F (Cloudflare Pay Per Crawl) is off the rank as a build candidate** (added 2026-08-04). It is a memo entry for future evaluators to see we considered it and named its terms. Revisit only if Cloudflare Pay Per Crawl adoption is broadly reported as producing measurable per-origin revenue AND doing so does not degrade our identified-crawler demand-signal traffic.
+13. **Cloudflare bifurcates into F.1 (SKIP) + F.2 (WATCH)** (split enacted 2026-08-04 per one-session research, `docs/CLOUDFLARE_PPC_RESEARCH_2026-08-04.md`). F.1 (Pay Per Crawl, 402 model) conflicts with the citation flywheel and requires a paid-plan upgrade — skipped. F.2 (Pay Per Citation, July 2026 Cloudflare pivot) aligns with our strategy exactly — pays on citation appearance, the same event the flywheel builds toward. Not yet actionable (no publisher enrollment path). Watch trigger: 2026-11-01.
 
 ## What this memo does NOT settle
 
