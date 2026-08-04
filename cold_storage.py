@@ -1,6 +1,6 @@
 """
 Cold-storage tracker — currently scoped to the Ripple monthly-release
-escrows declared in xrp-ledger.toml. These 21 accounts hold the majority
+escrows declared in xrp-ledger.toml. These 20 accounts hold the majority
 of Ripple's contractually-locked XRP and are the canonical "cold storage"
 cohort on XRPL: balances only change on the published release schedule.
 

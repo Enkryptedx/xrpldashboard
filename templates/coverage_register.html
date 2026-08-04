@@ -140,7 +140,10 @@
     </div>
 
     {# ─── Escrow-lesson inventory: walker scope declarations ─────── #}
-    <h2>Walker inventory <span class="count">— {{ state.walker_scopes|length }} declared, {{ undecl|length }} undeclared, {{ state.walker_health.values()|selectattr('is_stale')|list|length }} stale</span></h2>
+    {# id="walker-inventory" is cited by every claim envelope's       #}
+    {# verification.walker_health field (claims_endpoint.py). Do not  #}
+    {# rename without updating claims_endpoint.py + the CI URL guard. #}
+    <h2 id="walker-inventory">Walker inventory <span class="count">— {{ state.walker_scopes|length }} declared, {{ undecl|length }} undeclared, {{ state.walker_health.values()|selectattr('is_stale')|list|length }} stale</span></h2>
     <div class="card">
       <table>
         <thead>

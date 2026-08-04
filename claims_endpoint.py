@@ -296,6 +296,37 @@ def status_totals() -> dict[str, int]:
     return totals
 
 
+# Public URL overrides for page_paths whose CLAIMS.yaml key is not a
+# publicly reachable HTTP route. Any page_path NOT in this map falls
+# through to `f"{site_url}{page_path}"` — guarded by
+# tests/test_claim_envelope_urls_resolve.py, which route-resolves every
+# URL every claim envelope emits.
+#
+# Founding case (Grok red-team #1, 2026-08-04): every claim's
+# `verification.walker_health` was hardcoded to /walker_health, which
+# is localhost-only (aborts 404 for any non-127.0.0.1 request). All
+# 110 claims cited a dead verification URL. Same class as the whale
+# bug: proof-layer text asserting a URL that doesn't resolve.
+PAGE_URL_OVERRIDES: dict[str, str] = {
+    # MCP is stdio-based; no public /mcp HTTP surface until Phase 3.
+    # Point verifiers at the agent-tier methodology anchor for now.
+    "/mcp": "/methodology#for-ai-agents",
+    # /walker_health is localhost-only by design (private admin view);
+    # /coverage exposes the same walker_health table publicly.
+    "/walker_health": "/coverage#walker-inventory",
+}
+
+
+def _public_page_url(page_path: str, site_url: str) -> str | None:
+    """Return a resolvable public URL for a CLAIMS.yaml page_path, or
+    None if the path is not URL-shaped. Applies PAGE_URL_OVERRIDES for
+    keys that name a claim namespace rather than a public route."""
+    if not page_path.startswith("/"):
+        return None
+    override = PAGE_URL_OVERRIDES.get(page_path)
+    return f"{site_url}{override or page_path}"
+
+
 def claim_json(entry: dict, site_url: str, methodology_url: str) -> dict:
     """Build the per-claim JSON response.
 
@@ -312,7 +343,7 @@ def claim_json(entry: dict, site_url: str, methodology_url: str) -> dict:
             "claim_id": entry["id"],
             "page": {
                 "path": entry["page_path"],
-                "url": f"{site_url}{entry['page_path']}" if entry["page_path"].startswith("/") else None,
+                "url": _public_page_url(entry["page_path"], site_url),
             },
             "label": entry["label"],
             "status": entry["status"],
@@ -332,7 +363,7 @@ def claim_json(entry: dict, site_url: str, methodology_url: str) -> dict:
                 "manifest_repo": (
                     "https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml"
                 ),
-                "walker_health": f"{site_url}/walker_health",
+                "walker_health": f"{site_url}/coverage#walker-inventory",
                 "signed_snapshot_chain": f"{site_url}/.well-known/snapshots/chain.json",
             },
         },
