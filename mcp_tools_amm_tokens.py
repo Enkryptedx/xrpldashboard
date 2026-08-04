@@ -240,17 +240,39 @@ def tool_get_token_attestation(currency: str, issuer: str) -> dict:
     tier, reason = _classify_attestation_tier(label)
     extra = (label or {}).get("extra") or {}
     domain = extra.get("domain") if isinstance(extra, dict) else None
-    data = {
+    data: dict[str, Any] = {
         "currency": currency,
         "issuer": issuer,
         "attestation_tier": tier,
-        "attestation_tier_reason": reason,
-        "issuer_name": (label or {}).get("name"),
-        "issuer_category": (label or {}).get("category"),
-        "issuer_label_source": (label or {}).get("source"),
-        "issuer_domain": domain,
         "dispute_contact_url": DISPUTE_CONTACT_URL,
     }
+    # Reason + label-context fields are only present when populated; a null
+    # reason on a verified/self-described tier means "no downgrade reason
+    # applies" (absent, not missing) — omit rather than emit a top-level
+    # null. The envelope-contract fix flags any top-level null as a
+    # honest_partial trigger, and label-absence IS the honest_partial case
+    # (declared below).
+    if reason is not None:
+        data["attestation_tier_reason"] = reason
+    if label:
+        if label.get("name"):
+            data["issuer_name"] = label["name"]
+        if label.get("category"):
+            data["issuer_category"] = label["category"]
+        if label.get("source"):
+            data["issuer_label_source"] = label["source"]
+        if domain:
+            data["issuer_domain"] = domain
+
+    honest_partial = label is None
+    scope_note: Optional[str] = None
+    if honest_partial:
+        scope_note = (
+            f"no account_labels row for issuer {issuer}; attestation_tier "
+            "is unresolved (absence IS the signal — the label is not "
+            "fabricated)"
+        )
+
     envelope = mcp_server.wrap_envelope(
         data,
         source="verify_toml_accounts+enrich_token_names",
@@ -258,6 +280,8 @@ def tool_get_token_attestation(currency: str, issuer: str) -> dict:
         freshness_contract="daily",
         methodology_url="https://xrpldashboard.com/methodology#token-attestation",
         claims_ref="token_attestation_status",
+        honest_partial=honest_partial,
+        scope_note=scope_note,
     )
     mcp_server.stamp_tool_call("get_token_attestation")
     return envelope

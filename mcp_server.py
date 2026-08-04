@@ -115,6 +115,22 @@ def _server_block() -> dict:
     }
 
 
+def _top_level_null_data_keys(data: Any) -> list[str]:
+    """Names of top-level dict keys in the response payload whose value is None.
+
+    Envelope contract: a top-level null field IS a missing sub-source. If any
+    top-level `data` value is None, the caller must declare honest_partial=True
+    and name which sub-source is missing in scope_note. Nested nulls (e.g.,
+    an unrecognized amendment with name=None) are legitimate sentinels and
+    are intentionally NOT flagged — top-level-only keeps the enforcement
+    aligned with observed emit bugs (local_rippled admin-scoped triple)
+    without cascading across every tool's inner shape.
+    """
+    if not isinstance(data, dict):
+        return []
+    return [k for k, v in data.items() if v is None]
+
+
 def wrap_envelope(
     data: Any,
     *,
@@ -154,6 +170,18 @@ def wrap_envelope(
         )
     if honest_partial and not scope_note:
         raise ValueError("envelope.scope_note required when honest_partial=True")
+
+    null_data_keys = _top_level_null_data_keys(data)
+    if null_data_keys and not honest_partial:
+        raise ValueError(
+            "envelope contract: data has top-level null field(s) "
+            f"{null_data_keys} but honest_partial=False. Callers emitting "
+            "null fields MUST set honest_partial=True and populate "
+            "scope_note naming which sub-source is missing or "
+            "admin-scoped. Externally flagged 2026-08-03 by Grok + ChatGPT "
+            "evaluations; the null-triple in tool_get_ledger_stats was the "
+            "founding demo case."
+        )
 
     return {
         "data": data,

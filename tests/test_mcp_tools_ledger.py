@@ -89,6 +89,34 @@ def test_get_ledger_stats_raises_on_upstream_error(monkeypatch):
         mcp_tools_ledger.tool_get_ledger_stats("https://example.invalid")
 
 
+def test_get_ledger_stats_self_declares_honest_partial_on_null_admin_fields(monkeypatch):
+    # Emulates the demo null-triple: local_rippled returns a validated ledger
+    # but does not populate the admin-scoped fields load_factor / complete_ledgers /
+    # hostid. Envelope must emit with honest_partial=True and a scope_note that
+    # names the missing fields — no silent envelope-level completeness claim.
+    _install_server_info_response(monkeypatch, {
+        "validated_ledger": {"seq": 98765432, "close_time": 800000000},
+        "server_state": "full",
+        # load_factor missing → None after .get()
+        # complete_ledgers missing → None after .get()
+        "build_version": "2.6.0",
+        # hostid missing → None after .get()
+    })
+    _install_stamp_noop(monkeypatch)
+
+    env = mcp_tools_ledger.tool_get_ledger_stats("https://example.invalid")
+
+    assert env["proof"]["honest_partial"] is True
+    scope = env["proof"]["scope_note"] or ""
+    assert "load_factor" in scope
+    assert "complete_ledgers" in scope
+    assert "hostid" in scope
+    # Non-null fields still surface intact
+    assert env["data"]["validated_ledger_index"] == 98765432
+    assert env["data"]["server_state"] == "full"
+    assert env["data"]["build_version"] == "2.6.0"
+
+
 # ─────────────────────────────────────────────────────────────────────
 # get_amendment_status
 # ─────────────────────────────────────────────────────────────────────
@@ -186,3 +214,55 @@ def test_get_unl_status_honest_partial_when_one_list_fails(monkeypatch):
     assert env["proof"]["honest_partial"] is True
     assert "xrplf" in (env["proof"]["scope_note"] or "")
     assert env["data"]["overlap"] is None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# wrap_envelope direct contract tests (top-level null enforcement)
+# ─────────────────────────────────────────────────────────────────────
+
+_VALID_ENVELOPE_KW = dict(
+    source="local_rippled",
+    as_of="2026-08-03T22:00:00Z",
+    freshness_contract="≤ 5min",
+    methodology_url="https://xrpldashboard.com/methodology#ledger",
+)
+
+
+def test_wrap_envelope_raises_on_top_level_null_without_honest_partial():
+    with pytest.raises(ValueError) as excinfo:
+        mcp_server.wrap_envelope(
+            {"live_field": 1, "missing_field": None},
+            **_VALID_ENVELOPE_KW,
+        )
+    assert "missing_field" in str(excinfo.value)
+    assert "honest_partial" in str(excinfo.value)
+
+
+def test_wrap_envelope_accepts_top_level_null_with_honest_partial_and_scope_note():
+    env = mcp_server.wrap_envelope(
+        {"live_field": 1, "missing_field": None},
+        honest_partial=True,
+        scope_note="missing_field is admin-scoped on this node build",
+        **_VALID_ENVELOPE_KW,
+    )
+    assert env["proof"]["honest_partial"] is True
+    assert env["proof"]["scope_note"] == (
+        "missing_field is admin-scoped on this node build"
+    )
+    assert env["data"]["missing_field"] is None
+
+
+def test_wrap_envelope_ignores_nested_nulls_when_top_level_all_present():
+    # Legitimate sentinel: unrecognized amendment with name=None nested inside
+    # a list. Top-level keys are all non-null; envelope must NOT force
+    # honest_partial for nested sentinels — that is the amendment tool's
+    # existing semantic (see test_get_amendment_status_disagree_when_unrecognized_present).
+    env = mcp_server.wrap_envelope(
+        {
+            "enabled_count": 1,
+            "unrecognized_enabled": [{"hash": "Z", "name": None}],
+        },
+        **_VALID_ENVELOPE_KW,
+    )
+    assert env["proof"]["honest_partial"] is False
+    assert env["proof"]["scope_note"] is None

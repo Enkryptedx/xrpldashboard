@@ -45,7 +45,7 @@ Two failure paths are load-bearing and MUST be preserved:
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 
@@ -113,6 +113,19 @@ def tool_get_ledger_stats(xrpl_node_url: str) -> dict:
         "build_version": info.get("build_version"),
         "hostid": info.get("hostid"),
     }
+
+    null_fields = [k for k, v in data.items() if v is None]
+    honest_partial = bool(null_fields)
+    scope_note: Optional[str] = None
+    if honest_partial:
+        scope_note = (
+            "local_rippled server_info did not populate: "
+            + ", ".join(null_fields)
+            + ". Likely admin-scoped or rippled-config-gated (see the "
+            "null-triple investigation in project_agent_tier_build_active.md). "
+            "Non-null fields remain sourced from local_rippled."
+        )
+
     envelope = mcp_server.wrap_envelope(
         data,
         source="local_rippled",
@@ -120,6 +133,8 @@ def tool_get_ledger_stats(xrpl_node_url: str) -> dict:
         freshness_contract="≤ 5min",
         methodology_url="https://xrpldashboard.com/methodology#ledger",
         claims_ref="ledger_stats_live",
+        honest_partial=honest_partial,
+        scope_note=scope_note,
     )
     mcp_server.stamp_tool_call("get_ledger_stats")
     return envelope
