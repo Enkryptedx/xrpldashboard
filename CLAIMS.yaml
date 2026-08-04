@@ -1777,12 +1777,13 @@ pages:
     claims:
 
       - id: claims_uri_scheme
-        label: "URI scheme: /claims/xrpl.<domain>.<series> — permanent, additive-only"
+        label: "URI scheme: /claims/xrpl.<domain>.<series> — permanent, additive-only; inline cite links on /rlusd, /whales, /mpts consume this scheme"
         data_paths:
           - "claims_endpoint.py:_uri_for + _URI_RE"
           - "docs/PAID_MACHINE_TIER_DESIGN.md § 3.1"
           - "templates/claims_index.html: machine-hint block"
           - "templates/claim_detail.html: machine-hint block"
+          - "templates/_cite_link.html: cite() macro (href=/claims/{uri}) consumed by rlusd, whales, mpts"
         behavior: LEGITIMATELY_FLAT
         layer3_source: self-attested-only
         risk_note: >

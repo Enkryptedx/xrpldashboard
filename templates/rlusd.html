@@ -1,4 +1,5 @@
 {% from "_explainer.html" import explainer, explainer_css, explainer_js %}
+{% from "_cite_link.html" import cite_css, cite %}
 {# Server-side preflight values. The /rlusd route reads the same TTL-cached
    cross-chain state the API serves, so the page renders with real supply
    numbers instead of "—" placeholders. Crawlers and the first JS-less
@@ -465,6 +466,7 @@
       color: var(--muted);
     }
     {{ explainer_css() }}
+    {{ cite_css() }}
   </style>
   {% include "_vibes_head.html" %}
 </head>
@@ -634,7 +636,7 @@
         <span class="pct" id="ethPct">{% if eth_supply is not none and total_supply %}{{ "%.1f"|format(100 * eth_supply / total_supply) }}% of supply{% else %}—{% endif %}</span>
       </div>
       <div class="supply" id="ethSupplyBig">{{ fmt_usd(eth_supply) }}</div>
-      <div class="supply-label">RLUSD circulating on Ethereum</div>
+      <div class="supply-label">RLUSD circulating on Ethereum {{ cite('xrpl.rlusd.eth_supply', 'red') }}</div>
       <div class="breakdown">
         <div class="item"><div class="l">Mints · 24h</div><div class="v" id="ethMints">{{ fmt_usd(eth_mints) }}</div></div>
         <div class="item"><div class="l">Burns · 24h</div><div class="v" id="ethBurns">{{ fmt_usd(eth_burns) }}</div></div>
@@ -653,11 +655,11 @@
         <span class="pct" id="xrplPct">{% if xrpl_supply is not none and total_supply %}{{ "%.1f"|format(100 * xrpl_supply / total_supply) }}% of supply{% else %}—{% endif %}</span>
       </div>
       <div class="supply" id="xrplSupplyBig">{{ fmt_usd(xrpl_supply) }}</div>
-      <div class="supply-label">RLUSD circulating on the XRPL</div>
+      <div class="supply-label">RLUSD circulating on the XRPL {{ cite('xrpl.rlusd.xrpl_supply', 'yellow') }}</div>
       <div class="breakdown">
         <div class="item wide" title="Mints minus redemptions — we show the net because it's what the ledger proves directly. Computed from gateway_balances at UTC-day-boundary ledgers.">
           <div class="l">Net supply change · 24h</div>
-          <div class="v {% if xrpl_net is not none %}{{ 'mint' if xrpl_net >= 0 else 'burn' }}{% endif %}" id="xrplNet">{{ fmt_signed(xrpl_net) }}</div>
+          <div class="v {% if xrpl_net is not none %}{{ 'mint' if xrpl_net >= 0 else 'burn' }}{% endif %}" id="xrplNet">{{ fmt_signed(xrpl_net) }}{{ cite('xrpl.rlusd.xrpl_net_change_24h', 'yellow') }}</div>
         </div>
       </div>
       <div class="source">

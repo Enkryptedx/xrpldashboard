@@ -8,7 +8,9 @@
   {% set meta_description = "Every Multi-Purpose Token (XLS-33) issuance on the XRP Ledger. Tracks issuers, holder distribution, supply, and transfer metadata. Refreshed daily." %}
   {% include "_head_meta.html" %}
 
+  {% from "_cite_link.html" import cite_css, cite %}
   <style>
+    {{ cite_css() }}
     :root {
       --bg: #0a0e27;
       --card: #141832;
@@ -316,7 +318,7 @@
   <div class="summary-row" role="group" aria-label="{{ _('MPT class breakdown') }}">
     <div class="summary-tile">
       <div class="label">{{ _('Total MPTs') }}</div>
-      <div class="value">{{ total }}</div>
+      <div class="value">{{ total }}{{ cite('xrpl.mpts.issuance_count', 'yellow') }}</div>
     </div>
     <div class="summary-tile rwa">
       <div class="label">{{ _('RWA') }}</div>

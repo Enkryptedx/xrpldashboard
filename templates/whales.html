@@ -11,9 +11,11 @@
      so reloading every 60s would just lose scroll position and re-render
      the same list. #}
 
+  {% from "_cite_link.html" import cite_css, cite %}
   <style>
     {% from "_explainer.html" import explainer_css %}
     {{ explainer_css() }}
+    {{ cite_css() }}
     :root {
       --bg: #0a0e27;
       --card: #141832;
@@ -360,7 +362,7 @@
       <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
     </span>
     <span class="lsb-meta">
-      {{ _('Streaming validated XRPL transactions ≥') }} {{ "{:,}".format(tier_drops // 1_000_000) }} XRP
+      {{ _('Streaming validated XRPL transactions ≥') }} {{ "{:,}".format(tier_drops // 1_000_000) }} XRP {{ cite('xrpl.whales.whale_tier_threshold', 'yellow') }}
     </span>
   </div>
 
