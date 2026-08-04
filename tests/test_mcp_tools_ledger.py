@@ -64,7 +64,7 @@ def test_get_ledger_stats_returns_valid_envelope(monkeypatch):
     })
     _install_stamp_noop(monkeypatch)
 
-    env = mcp_tools_ledger.tool_get_ledger_stats("https://example.invalid")
+    env = mcp_tools_ledger.tool_get_ledger_stats("http://127.0.0.1:5005")
 
     # Envelope shape
     assert set(env.keys()) == {"data", "proof", "server"}
@@ -86,7 +86,7 @@ def test_get_ledger_stats_raises_on_upstream_error(monkeypatch):
     _install_stamp_noop(monkeypatch)
 
     with pytest.raises(RuntimeError):
-        mcp_tools_ledger.tool_get_ledger_stats("https://example.invalid")
+        mcp_tools_ledger.tool_get_ledger_stats("http://127.0.0.1:5005")
 
 
 def test_get_ledger_stats_self_declares_honest_partial_on_null_admin_fields(monkeypatch):
@@ -104,7 +104,7 @@ def test_get_ledger_stats_self_declares_honest_partial_on_null_admin_fields(monk
     })
     _install_stamp_noop(monkeypatch)
 
-    env = mcp_tools_ledger.tool_get_ledger_stats("https://example.invalid")
+    env = mcp_tools_ledger.tool_get_ledger_stats("http://127.0.0.1:5005")
 
     assert env["proof"]["honest_partial"] is True
     scope = env["proof"]["scope_note"] or ""
@@ -115,6 +115,43 @@ def test_get_ledger_stats_self_declares_honest_partial_on_null_admin_fields(monk
     assert env["data"]["validated_ledger_index"] == 98765432
     assert env["data"]["server_state"] == "full"
     assert env["data"]["build_version"] == "2.6.0"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# _derive_source_label — never hardcoded, closes the 2026-08-02 P1 lie
+# ─────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("url,expected", [
+    ("http://127.0.0.1:5005", "local_rippled"),
+    ("http://localhost:5005", "local_rippled"),
+    ("http://[::1]:5005", "local_rippled"),
+    ("http://192.168.40.95:5005", "local_rippled"),     # Lenovo LAN
+    ("http://10.0.0.5:5005", "local_rippled"),          # RFC1918 10/8
+    ("http://172.16.0.1:5005", "local_rippled"),        # RFC1918 172.16/12
+    ("https://s1.ripple.com:51234", "remote_rippled:s1.ripple.com"),
+    ("https://xrplcluster.com", "remote_rippled:xrplcluster.com"),
+    ("https://8.8.8.8:5005", "remote_rippled:8.8.8.8"),  # public IP
+    ("", "unknown_rippled"),
+])
+def test_derive_source_label(url, expected):
+    assert mcp_tools_ledger._derive_source_label(url) == expected
+
+
+def test_get_ledger_stats_public_url_yields_remote_source(monkeypatch):
+    """The 2026-08-02 P1 regression: MCP fell back to public s1 while its
+    envelope claimed `source=local_rippled`. Deriving from URL closes it."""
+    _install_server_info_response(monkeypatch, {
+        "validated_ledger": {"seq": 98765432, "close_time": 800000000},
+        "server_state": "full",
+        "load_factor": 1.0,
+        "complete_ledgers": "32570-98765432",
+        "build_version": "2.6.0",
+        "hostid": "TESTHOST",
+    })
+    _install_stamp_noop(monkeypatch)
+
+    env = mcp_tools_ledger.tool_get_ledger_stats("https://s1.ripple.com:51234")
+    assert env["proof"]["source"] == "remote_rippled:s1.ripple.com"
 
 
 # ─────────────────────────────────────────────────────────────────────

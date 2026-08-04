@@ -193,6 +193,43 @@ existed; msg 10407's `proof.source: "local_rippled"` refutes it. The
 mistake is left named here rather than silently overwritten, per the
 same discipline the four-layer audit exists to enforce.
 
+**Final correction — 2026-08-04.** The intermediate correction above
+was itself wrong, and gets left visible for the same reason. Root
+cause investigation (msg 10604, commits `9178137` + envelope-truth
+follow-up) revealed:
+
+  1. `mcp_server.py:_register_tools` read the env var `XRPL_NODE`
+     with a default of `https://s1.ripple.com:51234` (public JSON-RPC).
+     `~/.config/xrpldashboard/env` had no `XRPL_NODE` set — the fleet
+     convention is `XRPL_LOCAL_NODE` (per `.env.example` +
+     `walker_rpc_lever_normalization_backlog` memory). MCP was reading
+     the wrong variable, defaulted, and hit public s1.
+  2. `mcp_tools_ledger.py` hardcoded `source="local_rippled"` — that
+     string was a lie, not a reflection of where the tool actually
+     went. The intermediate correction's "proof.source proves it was
+     local" reasoning depended on the lie to refute the fallback.
+  3. Curl to `http://192.168.40.95:5005` (Lenovo admin) at
+     2026-08-04 11:00 UTC returned the three "null" fields fully
+     populated (`build_version: 3.3.0-rc1`, `hostid: rippled-node`,
+     `server_state: full`). The nulls came from public s1's response
+     shape as delivered to our tool, not from admin-scoping on any
+     local node.
+
+Fixes shipped in the follow-up commit:
+  * MCP server reads `XRPL_LOCAL_NODE` with a `http://127.0.0.1:5005`
+    default; env file adds `XRPL_LOCAL_NODE=http://192.168.40.95:5005`
+    pointing at Lenovo (Batch A target, currently `server_state: full`,
+    ledger age single-digit seconds).
+  * `tool_get_ledger_stats` now derives the envelope `source` label
+    from the URL host (loopback + RFC1918 → `local_rippled`; anything
+    else → `remote_rippled:<host>`). Public-endpoint calls will
+    henceforth label themselves as such — the envelope becomes
+    truthful about its own sourcing for the first time.
+
+The 2026-08-02 demo P1 therefore ran against public s1, faithfully
+relayed by our tool, mislabeled by our tool. The relay was honest;
+the label was not. Both correction layers stay visible above.
+
 **Star of the prompt — unprompted honesty-gap catch:**
 [FROM-TRANSCRIPT — msg 10392] Sonnet 5 flagged, without being asked,
 that `honest_partial: false` sitting next to three null fields

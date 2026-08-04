@@ -313,13 +313,24 @@ def _register_tools(mcp) -> int:
     build a bare `FastMCP` instance without touching tools, and so the
     Day 3+ tool batches drop in beside this one without churn."""
     import mcp_tools_ledger
-    xrpl_node = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+    # XRPL_LOCAL_NODE is the fleet-wide canonical name for the local rippled
+    # admin URL (see .env.example + walker plists). Prior wiring read
+    # XRPL_NODE — the `.env.example` public-endpoint var — and defaulted
+    # to public s1.ripple.com:51234 when unset, which is what the
+    # 2026-08-02 P1 demo actually hit while its envelope claimed
+    # source=`local_rippled` (see RUN_LOG.md § "Final correction"). Reading
+    # the correct var + admin-port default closes that mislabel at the
+    # config layer; the URL-derived source label in mcp_tools_ledger closes
+    # it at the response layer.
+    xrpl_node = os.environ.get("XRPL_LOCAL_NODE", "http://127.0.0.1:5005")
 
     @mcp.tool()
     def get_ledger_stats() -> dict:
         """Return the last-validated ledger stats (index, close time,
         server state, load factor, complete range, build). Wrapped in
-        the xrpldashboard proof envelope with source=`local_rippled`."""
+        the xrpldashboard proof envelope; envelope source is derived from
+        the actual URL host (`local_rippled` for loopback / private LAN,
+        `remote_rippled:<host>` otherwise) — never hardcoded."""
         return mcp_tools_ledger.tool_get_ledger_stats(xrpl_node)
 
     @mcp.tool()

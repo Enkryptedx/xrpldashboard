@@ -44,12 +44,39 @@ Two failure paths are load-bearing and MUST be preserved:
 """
 from __future__ import annotations
 
+import ipaddress
 import time
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import httpx
 
 import mcp_server
+
+
+def _derive_source_label(xrpl_node_url: str) -> str:
+    """Return an envelope `source` label derived from the actual URL host.
+
+    `local_rippled` for loopback (127.0.0.1, ::1, localhost) OR any
+    RFC1918 private LAN address (the Lenovo node lives at 192.168.40.95).
+    `remote_rippled:<host>` for anything else — a public endpoint
+    (s1.ripple.com, xrplcluster.com, etc.) must NEVER carry the
+    `local_rippled` label. The 2026-08-02 P1 demo mislabeled a public-s1
+    call as local because the source was hardcoded; deriving it from the
+    URL closes that class of lie at the response layer.
+    """
+    host = (urlparse(xrpl_node_url).hostname or "").lower()
+    if not host:
+        return "unknown_rippled"
+    if host in ("localhost",):
+        return "local_rippled"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return f"remote_rippled:{host}"
+    if ip.is_loopback or ip.is_private:
+        return "local_rippled"
+    return f"remote_rippled:{host}"
 
 
 def _iso_utc_now() -> str:
@@ -128,7 +155,7 @@ def tool_get_ledger_stats(xrpl_node_url: str) -> dict:
 
     envelope = mcp_server.wrap_envelope(
         data,
-        source="local_rippled",
+        source=_derive_source_label(xrpl_node_url),
         as_of=_iso_utc_now(),
         freshness_contract="≤ 5min",
         methodology_url="https://xrpldashboard.com/methodology#ledger",
