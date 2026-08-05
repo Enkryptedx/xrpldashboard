@@ -490,7 +490,12 @@ def _get_or_init_session_limiter():
     return _SESSION_LIMITER
 
 
-def build_server(register_tools: bool = True, session_limiter=None):
+def build_server(
+    register_tools: bool = True,
+    session_limiter=None,
+    host: str | None = None,
+    port: int | None = None,
+):
     """Return a FastMCP server instance with per-session rate limiting.
 
     The returned server is a :class:`_RateLimitedFastMCP` — a FastMCP
@@ -506,6 +511,13 @@ def build_server(register_tools: bool = True, session_limiter=None):
     ``session_limiter`` lets tests inject a small-window limiter to
     exercise boundary behaviour fast; production leaves it None and the
     module-level lazy singleton is used.
+
+    ``host`` / ``port`` are forwarded to FastMCP's constructor. FastMCP's
+    Settings loads ``FASTMCP_HOST`` / ``FASTMCP_PORT`` from env, but
+    ``FastMCP.__init__`` overrides those with kwarg defaults (127.0.0.1/
+    8000). Passing them explicitly is the only way for streamable-http to
+    bind where the operator asked. Left as None for tests that don't run
+    an HTTP transport.
     """
     from mcp.server.fastmcp import FastMCP  # lazy import — package is
     # not required for the envelope-only unit tests.
@@ -541,7 +553,12 @@ def build_server(register_tools: bool = True, session_limiter=None):
                 )
             return await super().call_tool(name, arguments)
 
-    mcp = _RateLimitedFastMCP(SERVER_NAME)
+    fastmcp_kwargs: dict = {}
+    if host is not None:
+        fastmcp_kwargs["host"] = host
+    if port is not None:
+        fastmcp_kwargs["port"] = port
+    mcp = _RateLimitedFastMCP(SERVER_NAME, **fastmcp_kwargs)
     if register_tools:
         n = _register_tools(mcp)
         log.info("registered %d tool(s) on %s", n, SERVER_NAME)
@@ -553,17 +570,16 @@ def main() -> int:
     log.info("starting mcp_server_heartbeat (cadence=%ds)", HEARTBEAT_CADENCE_SECONDS)
     start_heartbeat()
 
-    # HTTP listener bind config — FastMCP's `streamable-http` transport
-    # honours the FASTMCP_HOST / FASTMCP_PORT env vars its settings
-    # object reads *at construction time*. Set them BEFORE build_server()
-    # or FastMCP falls back to its internal defaults (127.0.0.1:8000) and
-    # the operator-facing MCP_HTTP_PORT is silently ignored.
+    # HTTP listener bind config. FastMCP's Settings has env_prefix
+    # FASTMCP_ but FastMCP.__init__ passes kwarg defaults (127.0.0.1 /
+    # 8000) into Settings() which override anything env-loaded — the only
+    # reliable way to bind where the operator asked is to pass host/port
+    # to the constructor. MCP_HTTP_* takes precedence, then FASTMCP_*,
+    # then fallback defaults matching /agents.json (8765).
     host = os.environ.get("MCP_HTTP_HOST") or os.environ.get("FASTMCP_HOST") or "127.0.0.1"
-    port = os.environ.get("MCP_HTTP_PORT") or os.environ.get("FASTMCP_PORT") or "8765"
-    os.environ["FASTMCP_HOST"] = host
-    os.environ["FASTMCP_PORT"] = str(port)
+    port = int(os.environ.get("MCP_HTTP_PORT") or os.environ.get("FASTMCP_PORT") or "8765")
 
-    mcp = build_server()
+    mcp = build_server(host=host, port=port)
 
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     log.info("mcp starting: transport=%s host=%s port=%s", transport, host, port)
