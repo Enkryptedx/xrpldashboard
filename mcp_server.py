@@ -534,6 +534,8 @@ def build_server(
     from mcp.server.fastmcp.exceptions import ToolError
     from mcp_session_rate_limit import (
         session_key_from_context,
+        should_bypass_rate_limit,
+        stamp_rate_limit_bypass,
         stamp_rate_limit_hit,
     )
 
@@ -551,6 +553,10 @@ def build_server(
         async def call_tool(self, name, arguments):
             ctx = self.get_context()
             session_key = session_key_from_context(ctx)
+            bypassed, matched_ua = should_bypass_rate_limit(ctx)
+            if bypassed:
+                stamp_rate_limit_bypass(session_key, matched_ua)
+                return await super().call_tool(name, arguments)
             allowed, retry_after = await limiter.check_and_record(session_key)
             if not allowed:
                 stamp_rate_limit_hit(session_key, retry_after)

@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from collections import defaultdict, deque
 from typing import Any
@@ -59,6 +60,24 @@ log = logging.getLogger(__name__)
 DEFAULT_MAX_CALLS = 600
 DEFAULT_WINDOW_SECONDS = 3600
 _FALLBACK_KEY = "__session_key_unavailable__"
+
+# UA substrings whose bearer sessions bypass the 600/hr limiter. Kept as an
+# allowlist (not deny) — the default set below is directory-review scanners
+# whose bulk-tool-crawl behaviour would otherwise trip the ceiling mid-scan
+# and get us auto-rejected from their listing. See
+# project_mcp_directory_submissions_2026-08.md for the receipts.
+#
+# SmitheryBot: documented at https://smithery.ai/docs — "SmitheryBot/1.0
+# (+https://smithery.ai)"; scans hosted MCP servers to build the registry
+# listing. Adding to allowlist so their scan can't 429 us into rejection.
+#
+# Env `MCP_SESSION_LIMIT_UA_ALLOWLIST` (comma-separated substrings, case
+# insensitive) extends the default set at process start. Never replaces —
+# the default set is the floor. Substring match (not exact) because these
+# bots version-bump their UA and we want the bypass to survive that.
+DEFAULT_UA_ALLOWLIST_SUBSTRINGS: tuple[str, ...] = (
+    "SmitheryBot",
+)
 
 
 class SessionRateLimiter:
@@ -146,6 +165,46 @@ def session_key_from_context(ctx: Any) -> str:
     return f"session:{id(session)}"
 
 
+def _ua_allowlist_substrings() -> tuple[str, ...]:
+    """Return the effective UA-allowlist substrings (default + env extras).
+
+    Read fresh each call so tests can monkeypatch env without a reload.
+    Case-normalized to lowercase; caller matches against a lowercased UA.
+    """
+    extras: list[str] = []
+    raw = os.environ.get("MCP_SESSION_LIMIT_UA_ALLOWLIST", "").strip()
+    if raw:
+        extras = [s.strip() for s in raw.split(",") if s.strip()]
+    return tuple(s.lower() for s in (*DEFAULT_UA_ALLOWLIST_SUBSTRINGS, *extras))
+
+
+def should_bypass_rate_limit(ctx: Any) -> tuple[bool, str]:
+    """Return ``(True, matched_ua_substring)`` if the request's User-Agent
+    matches a UA allowlist entry, else ``(False, "")``.
+
+    Only reads ``ctx.request_context.request.headers`` — the Starlette
+    Request stashed by the streamable-http transport (see
+    ``mcp.server.streamable_http.StreamableHTTPServerTransport``). All
+    exceptions collapse to a fail-CLOSED default (not bypassed) — better to
+    limit a legitimate scanner (they retry with backoff) than to leak an
+    unlimited bypass through a wiring bug.
+    """
+    try:
+        request = ctx.request_context.request
+        if request is None:
+            return False, ""
+        ua = request.headers.get("user-agent", "") or ""
+    except Exception:  # noqa: BLE001 — any breakage in header path → fail closed
+        return False, ""
+    if not ua:
+        return False, ""
+    ua_lower = ua.lower()
+    for needle in _ua_allowlist_substrings():
+        if needle and needle in ua_lower:
+            return True, needle
+    return False, ""
+
+
 _FALLBACK_LOGGED = False
 
 
@@ -198,3 +257,26 @@ def stamp_rate_limit_hit(session_key: str, retry_after: int) -> None:
         )
     except Exception as e:  # noqa: BLE001 — write is best-effort
         log.warning("stamp_rate_limit_hit: walker_health write failed: %s", e)
+
+
+def stamp_rate_limit_bypass(session_key: str, matched_ua: str) -> None:
+    """Write a walker_health row when a UA-allowlisted session bypasses.
+
+    Sibling to :func:`stamp_rate_limit_hit`. Fires once per tool call the
+    bypass path serves — same rule as blocks: never leave a limiter-side
+    decision silent. If SmitheryBot (or any allowlisted scanner) ever calls
+    us, /walker_health surfaces ``mcp_session_rate_limit_bypass`` so the
+    trip is visible.
+    """
+    try:
+        import db
+    except Exception:  # noqa: BLE001
+        return
+    try:
+        db.write_walker_health_end(
+            "mcp_session_rate_limit_bypass",
+            ok=True,
+            message=f"bypass session={session_key} matched_ua={matched_ua}",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("stamp_rate_limit_bypass: walker_health write failed: %s", e)

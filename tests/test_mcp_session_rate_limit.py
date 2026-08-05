@@ -25,8 +25,10 @@ import pytest
 
 from mcp_session_rate_limit import (
     _FALLBACK_KEY,
+    DEFAULT_UA_ALLOWLIST_SUBSTRINGS,
     SessionRateLimiter,
     session_key_from_context,
+    should_bypass_rate_limit,
 )
 
 
@@ -183,6 +185,163 @@ def test_session_key_fallback_when_session_raises():
 
 def test_session_key_fallback_when_session_none():
     assert session_key_from_context(_CtxNoneSession()) == _FALLBACK_KEY
+
+
+# ─────────────────────────────────────────────────────────────────────
+# should_bypass_rate_limit — UA allowlist for directory scanners
+# ─────────────────────────────────────────────────────────────────────
+
+class _FakeHeaders:
+    def __init__(self, ua: str | None) -> None:
+        self._ua = ua
+
+    def get(self, key: str, default: str = "") -> str:
+        if key.lower() == "user-agent":
+            return self._ua if self._ua is not None else default
+        return default
+
+
+class _FakeRequest:
+    def __init__(self, ua: str | None) -> None:
+        self.headers = _FakeHeaders(ua)
+
+
+class _FakeRequestContext:
+    def __init__(self, request):
+        self.request = request
+
+
+class _CtxWithRequest:
+    def __init__(self, ua: str | None) -> None:
+        self.request_context = _FakeRequestContext(_FakeRequest(ua))
+
+
+class _CtxRequestContextRaises:
+    @property
+    def request_context(self):
+        raise RuntimeError("no request context")
+
+
+def test_bypass_matches_smitherybot_default():
+    """Default allowlist bypasses SmitheryBot UA — the reason this
+    module exists as of 2026-08-05. If this ever regresses, we walk
+    into Smithery's SmitheryBot scan with a 429 waiting for it, which
+    was the pre-written landmine we shipped this to defuse.
+    """
+    assert "SmitheryBot" in DEFAULT_UA_ALLOWLIST_SUBSTRINGS
+    ctx = _CtxWithRequest("SmitheryBot/1.0 (+https://smithery.ai)")
+    bypassed, matched = should_bypass_rate_limit(ctx)
+    assert bypassed is True
+    assert matched == "smitherybot"
+
+
+def test_bypass_case_insensitive():
+    """UA match is case-insensitive so a version bump to
+    ``SMITHERYBOT/2.0`` doesn't break the bypass."""
+    ctx = _CtxWithRequest("SMITHERYBOT/2.0")
+    bypassed, _ = should_bypass_rate_limit(ctx)
+    assert bypassed is True
+
+
+def test_bypass_does_not_match_ordinary_client():
+    """Ordinary MCP clients (Claude Desktop, curl, our own dogfood) are
+    NOT bypassed. If this ever regresses, the limiter is silently open."""
+    ctx = _CtxWithRequest("Claude-Desktop/1.0")
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+    ctx = _CtxWithRequest("curl/8.4.0")
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+    ctx = _CtxWithRequest("xrpldashboard-mcp-ready-guard/1.0")
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+
+def test_bypass_absent_ua_not_bypassed():
+    """No User-Agent header → not bypassed. Fail-closed."""
+    ctx = _CtxWithRequest(None)
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+    ctx = _CtxWithRequest("")
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+
+def test_bypass_context_missing_request_not_bypassed():
+    """No request on the context (stdio transport, tests) → not bypassed."""
+    ctx = _CtxWithRequest("SmitheryBot/1.0")
+    ctx.request_context.request = None
+    assert should_bypass_rate_limit(ctx) == (False, "")
+
+
+def test_bypass_context_raises_not_bypassed():
+    """Any exception reading the context → fail-closed (not bypassed).
+    Better to limit a legitimate scanner (they retry with backoff) than
+    to leak an unlimited bypass through a wiring bug."""
+    assert should_bypass_rate_limit(_CtxRequestContextRaises()) == (False, "")
+
+
+def test_bypass_env_extends_default(monkeypatch):
+    """MCP_SESSION_LIMIT_UA_ALLOWLIST extends the default set."""
+    monkeypatch.setenv(
+        "MCP_SESSION_LIMIT_UA_ALLOWLIST",
+        "MyCustomScanner, ExampleBot",
+    )
+    ctx = _CtxWithRequest("MyCustomScanner/1.0")
+    bypassed, matched = should_bypass_rate_limit(ctx)
+    assert bypassed is True
+    assert matched == "mycustomscanner"
+
+    # Default still holds under env extension.
+    ctx = _CtxWithRequest("SmitheryBot/1.0")
+    assert should_bypass_rate_limit(ctx)[0] is True
+
+
+def test_rate_limited_fastmcp_bypasses_when_should_bypass_true(monkeypatch):
+    """Integration: when ``should_bypass_rate_limit`` returns True the
+    ``call_tool`` override skips the limiter and delegates straight to
+    the FastMCP parent. Ceiling is 2 tool calls; the bypassed path
+    makes 5, all pass.
+
+    This is the day-one guarantee for the directory-submission window:
+    the Smithery review scan hits our public endpoint with SmitheryBot
+    UA, ``should_bypass_rate_limit`` returns True (verified separately
+    by ``test_bypass_matches_smitherybot_default``), and our own 600/hr
+    limiter cannot be the reason we get auto-rejected.
+
+    The bypass predicate is monkey-patched at the module level BEFORE
+    ``build_server`` is called — ``build_server`` re-imports
+    ``should_bypass_rate_limit`` on each call, so the closure inside
+    the ``_RateLimitedFastMCP`` subclass picks up the patched version.
+    """
+    import mcp_session_rate_limit
+
+    monkeypatch.setattr(
+        mcp_session_rate_limit,
+        "should_bypass_rate_limit",
+        lambda ctx: (True, "smitherybot"),
+    )
+    monkeypatch.setattr(
+        mcp_session_rate_limit,
+        "stamp_rate_limit_bypass",
+        lambda *a, **k: None,
+    )
+
+    import mcp_server
+    from mcp_session_rate_limit import SessionRateLimiter
+
+    tiny = SessionRateLimiter(max_calls=2, window_seconds=60)
+    server = mcp_server.build_server(register_tools=False, session_limiter=tiny)
+
+    @server.tool()
+    def echo(x: int) -> int:  # noqa: ARG001
+        return x
+
+    async def scenario():
+        # Five calls under the bypass predicate — all pass despite ceiling=2.
+        for i in range(5):
+            r = await server.call_tool("echo", {"x": i})
+            assert r is not None, f"bypassed call {i+1}/5 unexpectedly blocked"
+
+    _run(scenario())
 
 
 # ─────────────────────────────────────────────────────────────────────
