@@ -250,15 +250,21 @@ def _heartbeat_loop() -> None:
 
     while not _HEARTBEAT_STOP.wait(HEARTBEAT_CADENCE_SECONDS):
         try:
+            # One write per cycle. The earlier version also called
+            # write_walker_health_start() here, which clobbered the just-
+            # written ok=True (its ON CONFLICT sets last_run_ok=false,
+            # last_run_completed=NULL, last_run_message=NULL) — so the
+            # steady-state row read as ok=False even though the daemon
+            # was healthy. last_success_at stayed truthful so
+            # /walker_health (which reads freshness + consecutive_failures)
+            # still rendered green, but any auditor reading last_run_ok
+            # directly was misled. Distribution-day 2026-08-05 verdict.
             db.write_walker_health_end(
                 WALKER_NAME, ok=True, message="heartbeat",
             )
-            db.write_walker_health_start(
-                WALKER_NAME, cadence_seconds=HEARTBEAT_CADENCE_SECONDS,
-            )
-            # BetterStack ping ONLY after both walker_health writes
-            # succeed — so a Neon outage that silently no-ops the
-            # health writes ALSO withholds the external ping, which
+            # BetterStack ping ONLY after the walker_health write
+            # succeeds — so a Neon outage that silently no-ops the
+            # health write ALSO withholds the external ping, which
             # is the correct behaviour (Q2 ground-truth alignment).
             _ping_betterstack()
         except Exception as e:
