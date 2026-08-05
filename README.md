@@ -13,6 +13,35 @@ Three things make this repo different from "another blockchain dashboard":
 
 Quick links: [`/methodology`](https://xrpldashboard.com/methodology) · [`/signed-snapshots`](https://xrpldashboard.com/signed-snapshots) · [`docs/TRUTH_AUDIT_DESIGN.md`](docs/TRUTH_AUDIT_DESIGN.md)
 
+## Agent tier (MCP)
+
+Live public MCP endpoint: **`https://mcp.xrpldashboard.com/mcp`** — streamable-HTTP, protocol version 2025-06-18, no auth. Fifteen read-only tools over XRPL and the on-XRPL RLUSD supply, every response wrapped in a proof-annotation envelope with `source`, `as_of`, `freshness_contract`, and a `claims_ref` back to [`/claims`](https://xrpldashboard.com/claims). Public beta through 2026-09.
+
+Connect in 60 seconds — copy-paste config for Claude Desktop or any MCP client:
+
+```json
+{
+  "mcpServers": {
+    "xrpldashboard": {
+      "command": "npx",
+      "args": [
+        "mcp-remote@latest",
+        "https://mcp.xrpldashboard.com/mcp"
+      ]
+    }
+  }
+}
+```
+
+Or add it as a Custom Connector in Claude Desktop → Settings → Connectors with URL `https://mcp.xrpldashboard.com/mcp` and auth `None`. Full onboarding page (three sample prompts, honest limits, 429 shape): [`/connect`](https://xrpldashboard.com/connect#connect-in-60-seconds).
+
+- **Session rate limit:** 600 tool calls / hour / session, enforced live (HTTP 429 + `Retry-After` on breach). See [`mcp_session_rate_limit.py`](mcp_session_rate_limit.py).
+- **Discovery manifest:** [`/.well-known/agents.json`](https://xrpldashboard.com/.well-known/agents.json) · [`/llms.txt`](https://xrpldashboard.com/llms.txt) · [`/openapi.json`](https://xrpldashboard.com/openapi.json).
+- **Verifiable moat:** `get_signed_snapshot` + `verify_snapshot_signature` — pin the Ed25519 pubkey at [`/.well-known/snapshots/pubkey.pem`](https://xrpldashboard.com/.well-known/snapshots/pubkey.pem) and verify a day's snapshot without trusting us.
+- **Backing infra:** our own rippled full-history node (Ubuntu box in Indiana → Cloudflare Tunnel), source at [`mcp_server.py`](mcp_server.py) and `mcp_tools_*.py`.
+
+Design doc: [`docs/AGENT_TIER_DESIGN.md`](docs/AGENT_TIER_DESIGN.md).
+
 ## Pages
 
 37 public pages, organized as:

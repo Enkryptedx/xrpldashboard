@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.xrpldashboard/xrpldashboard-mcp",
+  "title": "xrpldashboard",
+  "description": "Read-only MCP tools over the XRP Ledger. Live rippled node in Indiana. Every response wrapped in a proof-annotation envelope with source, freshness, and CLAIMS reference. Includes daily signed snapshots you can verify against a pinned Ed25519 pubkey. Free, no account, no key. Public beta through 2026-09.",
+  "version": "1.29.0",
+  "websiteUrl": "https://xrpldashboard.com/connect#connect-in-60-seconds",
+  "repository": {
+    "url": "https://github.com/Enkryptedx/xrpldashboard",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.xrpldashboard.com/mcp"
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "protocol_version": "2025-06-18",
+      "tool_count": 15,
+      "auth": "none",
+      "session_rate_limit": "600 tool calls/hour/session, enforced (HTTP 429 with Retry-After)",
+      "envelope_schema": "https://xrpldashboard.com/openapi.json#/components/schemas/ProofAnnotationEnvelope",
+      "connect_docs": "https://xrpldashboard.com/connect#connect-in-60-seconds",
+      "methodology": "https://xrpldashboard.com/methodology#for-ai-agents",
+      "agents_json": "https://xrpldashboard.com/.well-known/agents.json",
+      "signed_snapshot_pubkey": "https://xrpldashboard.com/.well-known/snapshots/pubkey.pem",
+      "signed_snapshot_chain": "https://xrpldashboard.com/.well-known/snapshots/chain.json"
+    }
+  }
+}
