@@ -461,15 +461,87 @@ def _register_tools(mcp) -> int:
     return 15
 
 
-def build_server(register_tools: bool = True):
-    """Return a FastMCP server instance.
+_SESSION_LIMITER = None
 
-    When `register_tools=True` (default), the Day 2 ledger-primitives
-    batch is registered. Tests that only exercise the envelope pass
-    `register_tools=False` to keep the surface minimal."""
+
+def _get_or_init_session_limiter():
+    """Lazy singleton for the session rate limiter.
+
+    Env-tunable so ops can tighten the ceiling during the public-beta
+    soak without a redeploy. Copy in `/agents.json` reads the same
+    constants — any change here must ship with the copy update, or the
+    tense-audit reflex flags itself immediately.
+    """
+    global _SESSION_LIMITER
+    if _SESSION_LIMITER is None:
+        from mcp_session_rate_limit import (
+            DEFAULT_MAX_CALLS,
+            DEFAULT_WINDOW_SECONDS,
+            SessionRateLimiter,
+        )
+        max_calls = int(os.environ.get("MCP_SESSION_MAX_CALLS", str(DEFAULT_MAX_CALLS)))
+        window_seconds = int(
+            os.environ.get("MCP_SESSION_WINDOW_SECONDS", str(DEFAULT_WINDOW_SECONDS))
+        )
+        _SESSION_LIMITER = SessionRateLimiter(
+            max_calls=max_calls,
+            window_seconds=window_seconds,
+        )
+    return _SESSION_LIMITER
+
+
+def build_server(register_tools: bool = True, session_limiter=None):
+    """Return a FastMCP server instance with per-session rate limiting.
+
+    The returned server is a :class:`_RateLimitedFastMCP` — a FastMCP
+    subclass that overrides ``call_tool`` to enforce the 600 tool-calls/
+    hour/session ceiling advertised in `/agents.json`. Every tool call
+    goes through the override; there is no bypass path from a network
+    caller. See mcp_session_rate_limit.py for the design.
+
+    When `register_tools=True` (default), the Day 2-7 tool batches are
+    registered. Tests that only exercise the envelope pass
+    `register_tools=False` to keep the surface minimal.
+
+    ``session_limiter`` lets tests inject a small-window limiter to
+    exercise boundary behaviour fast; production leaves it None and the
+    module-level lazy singleton is used.
+    """
     from mcp.server.fastmcp import FastMCP  # lazy import — package is
     # not required for the envelope-only unit tests.
-    mcp = FastMCP(SERVER_NAME)
+    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp_session_rate_limit import (
+        session_key_from_context,
+        stamp_rate_limit_hit,
+    )
+
+    limiter = session_limiter if session_limiter is not None else _get_or_init_session_limiter()
+
+    class _RateLimitedFastMCP(FastMCP):
+        """FastMCP with per-session tool-call rate limiting.
+
+        Overrides :meth:`call_tool` — the choke point the low-level MCP
+        server routes ``tools/call`` protocol messages to (see
+        ``FastMCP._setup_handlers``). Wrapping this one method enforces
+        the limit for every registered tool with no per-tool churn.
+        """
+
+        async def call_tool(self, name, arguments):
+            ctx = self.get_context()
+            session_key = session_key_from_context(ctx)
+            allowed, retry_after = await limiter.check_and_record(session_key)
+            if not allowed:
+                stamp_rate_limit_hit(session_key, retry_after)
+                raise ToolError(
+                    f"Session rate limit exceeded "
+                    f"({limiter.max_calls} tool calls per "
+                    f"{limiter.window_seconds}s window). "
+                    f"Retry after ~{retry_after}s. See "
+                    f"{SERVER_DOCS_URL} for the advertised rate limits."
+                )
+            return await super().call_tool(name, arguments)
+
+    mcp = _RateLimitedFastMCP(SERVER_NAME)
     if register_tools:
         n = _register_tools(mcp)
         log.info("registered %d tool(s) on %s", n, SERVER_NAME)
