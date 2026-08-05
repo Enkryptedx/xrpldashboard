@@ -63,11 +63,118 @@ def test_agents_json_openapi_ready_matches_reality(client):
         )
 
 
-def test_agents_json_mcp_ready_still_false(client):
-    """MCP daemon is deferred to post-Lenovo-migration Phase 3. Until
-    then, mcp_ready must stay False regardless of what else ships."""
+def test_agents_json_mcp_ready_matches_reality(client):
+    """agents.json declares mcp_ready=True. That must be honest: the
+    URL listed in mcp_servers[0].url must actually accept an MCP
+    protocol handshake. Sibling of test_agents_json_openapi_ready_
+    matches_reality — third application of the same guard pattern.
+
+    Difference from the openapi_ready pattern: the target lives on a
+    different host (mcp.xrpldashboard.com behind Cloudflare Tunnel to
+    the Lenovo box), so this test has to reach the internet. That's
+    intentional — the flag CANNOT truthfully read True unless the real
+    public daemon answers. If the tunnel is down, this test fails and
+    the sign should come down until it's fixed.
+
+    The check is skipped (not passed) when the network is unreachable
+    from the test runner, so offline CI doesn't report a false green.
+    """
+    import json
+    import socket
+    import ssl
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    try:
+        import certifi
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ssl_context = ssl.create_default_context()
+
     aj = client.get("/.well-known/agents.json").get_json()
-    assert aj["status"]["mcp_ready"] is False
+    if not aj["status"]["mcp_ready"]:
+        # Belt-and-braces: if mcp_ready=False, mcp_servers should be
+        # empty (no live-URL claim to guard).
+        assert aj["mcp_servers"] == [], (
+            f"mcp_ready=False but mcp_servers is non-empty: "
+            f"{aj['mcp_servers']!r}"
+        )
+        return
+
+    # mcp_ready=True — enforce every promise the manifest is making.
+    assert "mcp_stability" in aj["status"], (
+        "mcp_ready=True but status.mcp_stability missing — the "
+        "machine-readable soak posture is part of the honest flip"
+    )
+    assert aj["mcp_servers"], (
+        "mcp_ready=True but mcp_servers is empty — nothing to connect to"
+    )
+    entry = aj["mcp_servers"][0]
+    for key in ("url", "transport", "protocol_version", "tool_count"):
+        assert entry.get(key), (
+            f"mcp_servers[0] missing required key {key!r}: {entry!r}"
+        )
+    url = entry["url"]
+
+    # Live check: POST an initialize handshake. Any 2xx response with
+    # a valid JSON-RPC 2.0 initialize result proves the daemon is
+    # actually answering the protocol we advertise. Skip (not fail) on
+    # network unreachable so offline runs stay honest.
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": entry["protocol_version"],
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "xrpldashboard-tests-mcp-ready-guard",
+                    "version": "1",
+                },
+            },
+        }
+    ).encode("utf-8")
+    req = Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            # Cloudflare may 403 requests with no User-Agent header.
+            "User-Agent": "xrpldashboard-mcp-ready-guard/1.0",
+        },
+    )
+    try:
+        with urlopen(req, timeout=10, context=ssl_context) as resp:
+            status = resp.status
+            body = resp.read(4096).decode("utf-8", errors="replace")
+    except HTTPError as e:
+        # A real HTTP response (e.g. 403, 421, 500) — the daemon or
+        # tunnel answered with an error. That's a fail, not a skip;
+        # the sign is currently lying.
+        pytest.fail(
+            f"agents.json says mcp_ready=True but POST {url} returned "
+            f"HTTP {e.code}: {e.reason} — the sign does not match the "
+            f"door. Body: {e.read(400).decode('utf-8', errors='replace')!r}"
+        )
+    except (URLError, socket.timeout, ConnectionError) as e:
+        pytest.skip(
+            f"live-check of {url} skipped: network unreachable ({e!r}). "
+            "Offline test runners do not gate the flag; a healthy "
+            "network run must pass this before ship."
+        )
+    assert 200 <= status < 300, (
+        f"agents.json says mcp_ready=True but {url} returned HTTP "
+        f"{status}: {body[:200]!r}"
+    )
+    # Body may be JSON or SSE (text/event-stream); either way it must
+    # contain a valid initialize result carrying serverInfo.
+    assert "serverInfo" in body and '"jsonrpc"' in body, (
+        f"initialize handshake to {url} returned unexpected body: "
+        f"{body[:300]!r}"
+    )
 
 
 def test_llms_txt_has_openapi_reference(client):

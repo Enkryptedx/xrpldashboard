@@ -251,7 +251,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-04"  # /claims endpoint shipped this date
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-05"  # public MCP endpoint went live this date
 
 
 @app.context_processor
@@ -6317,8 +6317,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
 - OpenAPI spec (machine-readable index of the LIVE free surface + envelope schema + MCP tool inventory): [{SITE_URL}/openapi.json]({SITE_URL}/openapi.json). Swagger UI: [{SITE_URL}/docs]({SITE_URL}/docs).
 - Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
-- MCP server: runs headless today against the local rippled node (see mcp_server.py + mcp_tools_*.py in the repo). Public daemonization is deferred to Phase 3 of the Lenovo node migration. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. No payment rails; free for identified agents at reasonable volume when the daemon goes public.
-- Every response from the MCP server is wrapped in a proof-annotation envelope today; the read-only HTTP API will emit the same envelope when it ships. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
+- MCP server (public beta through 2026-09): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
+- Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec. The read-only HTTP API will emit the same envelope when it ships.
 """
 
 
@@ -6367,7 +6367,7 @@ _AGENTS_JSON = {
             "300 requests/minute (by UA: GPTBot, ClaudeBot, PerplexityBot, "
             "Google-Extended, and others on Cloudflare's verified-bot list)"
         ),
-        "mcp_session": "600 tool calls/hour/session (enforced when the MCP daemon is publicly exposed; today's headless server has no per-session limit)",
+        "mcp_session": "600 tool calls/hour/session, enforced live at https://mcp.xrpldashboard.com/mcp (see mcp_session_rate_limit.py; 429 with Retry-After on breach, walker_health surfaces block frequency)",
         "signed_snapshot_verify": "unlimited (stateless, cryptographic-only)",
     },
     "trust_surfaces": {
@@ -6391,21 +6391,33 @@ _AGENTS_JSON = {
         },
         "spec_url": f"{SITE_URL}/methodology#for-ai-agents",
         "note": (
-            "Envelope is normative for the MCP server today (running "
-            "headless against the local rippled node; see "
-            "docs/AGENT_TIER_DESIGN.md) and applies to the read-only "
-            "HTTP API when it ships. HTML surfaces expose the same "
-            "source metadata inline via per-page methodology chips "
-            "and the /methodology page."
+            "Envelope is normative for the MCP server (public at "
+            "https://mcp.xrpldashboard.com/mcp — see mcp_servers below — "
+            "backed by our own rippled node on the Lenovo box) and "
+            "applies to the read-only HTTP API when it ships. HTML "
+            "surfaces expose the same source metadata inline via "
+            "per-page methodology chips and the /methodology page."
         ),
     },
-    "mcp_servers": [],
+    "mcp_servers": [
+        {
+            "url": "https://mcp.xrpldashboard.com/mcp",
+            "transport": "streamable-http",
+            "protocol_version": "2025-06-18",
+            "auth": "none",
+            "tool_count": len(AGENT_TIER_MCP_INVENTORY),
+            "tool_inventory_url": f"{SITE_URL}/openapi.json",  # tools listed at info.x-mcp-tools
+            "session_rate_limit": "600 tool calls/hour/session (enforced)",
+            "connect_docs": f"{SITE_URL}/methodology#for-ai-agents",
+        },
+    ],
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Agent Tier live (discovery + OpenAPI + headless MCP); public MCP daemon deferred to Lenovo migration Phase 3 ({LAST_VERIFIED_AGENT_TIER_METHODOLOGY})",
+        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta through 2026-09, running against our own rippled node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
         "discovery_layer_ready": True,
-        "mcp_ready": False,
+        "mcp_ready": True,
+        "mcp_stability": "public_beta_through_2026-09",
         "openapi_ready": True,
         "flows_ready": False,
         "reference": "docs/AGENT_TIER_DESIGN.md in the source repo",

@@ -641,7 +641,7 @@
 
   <h3>{{ _('Proof-annotation contract') }}</h3>
   <p>
-    {{ _('Every JSON payload from the MCP server carries a receipts block today (running headless against the local rippled node; public daemon deferred to Lenovo Phase 3), and the read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
+    {{ _('Every JSON payload from the MCP server carries a receipts block. The MCP server is public at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta through 2026-09), streamable-http transport, protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box. The read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
     <code>CLAIMS.yaml</code> — {{ _('without a support ticket. Envelope shape:') }}
   </p>
   <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; color: var(--text); font-size: 0.85rem;"><code>{
@@ -652,7 +652,7 @@
   "snapshot_signature":  "ed25519:...@chain#N"           // where the datum is snapshot-derived
 }</code></pre>
   <p>
-    {{ _('The read-only OpenAPI spec is live at') }} <a href="/openapi.json"><code>/openapi.json</code></a> ({{ _('Swagger UI at') }} <a href="/docs"><code>/docs</code></a>) — {{ _('the ProofAnnotationEnvelope schema above is machine-readable at') }} <code>#/components/schemas/ProofAnnotationEnvelope</code>, {{ _('and the 15-tool MCP inventory is at') }} <code>info.x-mcp-tools</code>. {{ _('The MCP server implementation is running headless today; public daemonization is deferred until Phase 3 of the') }} <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/LENOVO_MIGRATION.md" target="_blank" rel="noopener noreferrer">{{ _('Lenovo node migration') }}</a>. {{ _('Per-tool freshness contracts are declared inside each tool response envelope') }} (<code>freshness_contract</code> {{ _('field:') }} <code>≤ 5min</code> / <code>≤ 30min</code> / <code>daily</code> / <code>finalized_only</code>) {{ _('and mirror the on-page freshness chips agents see for the same data. See the') }}
+    {{ _('The read-only OpenAPI spec is live at') }} <a href="/openapi.json"><code>/openapi.json</code></a> ({{ _('Swagger UI at') }} <a href="/docs"><code>/docs</code></a>) — {{ _('the ProofAnnotationEnvelope schema above is machine-readable at') }} <code>#/components/schemas/ProofAnnotationEnvelope</code>, {{ _('and the 15-tool MCP inventory is at') }} <code>info.x-mcp-tools</code>. {{ _('The MCP server is public and live at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta through 2026-09; the server runs as a systemd daemon on the Lenovo box, same host as our rippled node, exposed via Cloudflare Tunnel). Per-tool freshness contracts are declared inside each tool response envelope') }} (<code>freshness_contract</code> {{ _('field:') }} <code>≤ 5min</code> / <code>≤ 30min</code> / <code>daily</code> / <code>finalized_only</code>) {{ _('and mirror the on-page freshness chips agents see for the same data. See the') }}
     <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a> {{ _('for the full build sequence.') }}
   </p>
 
