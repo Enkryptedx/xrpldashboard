@@ -6335,6 +6335,9 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - MCP server (public beta through 2026-09): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec. The read-only HTTP API will emit the same envelope when it ships.
+- Directory listings for this MCP server (same endpoint + tool inventory as above; the directories are discovery aids, not different endpoints):
+  - Anthropic MCP Registry: [registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard) — server id `com.xrpldashboard/xrpldashboard-mcp`, DNS-verified namespace, listed 2026-08-05.
+  - Smithery: [smithery.ai/servers/xrpldashboard/xrpldashboard](https://smithery.ai/servers/xrpldashboard/xrpldashboard) — Smithery gateway URL `https://xrpldashboard--xrpldashboard.run.tools`, listed 2026-08-05.
 """
 
 
@@ -6425,6 +6428,20 @@ _AGENTS_JSON = {
             "tool_inventory_url": f"{SITE_URL}/openapi.json",  # tools listed at info.x-mcp-tools
             "session_rate_limit": "600 tool calls/hour/session (enforced)",
             "connect_docs": f"{SITE_URL}/connect#connect-in-60-seconds",
+        },
+    ],
+    "discovery_backlinks": [
+        {
+            "registry": "anthropic_mcp_registry",
+            "listing_url": "https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard",
+            "server_id": "com.xrpldashboard/xrpldashboard-mcp",
+            "listed_at": "2026-08-05",
+        },
+        {
+            "registry": "smithery",
+            "listing_url": "https://smithery.ai/servers/xrpldashboard/xrpldashboard",
+            "gateway_url": "https://xrpldashboard--xrpldashboard.run.tools",
+            "listed_at": "2026-08-05",
         },
     ],
     "openapi": f"{SITE_URL}/openapi.json",
