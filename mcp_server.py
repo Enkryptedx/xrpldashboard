@@ -553,16 +553,17 @@ def main() -> int:
     log.info("starting mcp_server_heartbeat (cadence=%ds)", HEARTBEAT_CADENCE_SECONDS)
     start_heartbeat()
 
-    mcp = build_server()
-
     # HTTP listener bind config — FastMCP's `streamable-http` transport
     # honours the FASTMCP_HOST / FASTMCP_PORT env vars its settings
-    # object reads at construction time. We surface them under the same
-    # MCP_* prefix as MCP_TRANSPORT so operators have one place to look.
+    # object reads *at construction time*. Set them BEFORE build_server()
+    # or FastMCP falls back to its internal defaults (127.0.0.1:8000) and
+    # the operator-facing MCP_HTTP_PORT is silently ignored.
     host = os.environ.get("MCP_HTTP_HOST") or os.environ.get("FASTMCP_HOST") or "127.0.0.1"
     port = os.environ.get("MCP_HTTP_PORT") or os.environ.get("FASTMCP_PORT") or "8765"
     os.environ["FASTMCP_HOST"] = host
     os.environ["FASTMCP_PORT"] = str(port)
+
+    mcp = build_server()
 
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     log.info("mcp starting: transport=%s host=%s port=%s", transport, host, port)
