@@ -495,6 +495,7 @@ def build_server(
     session_limiter=None,
     host: str | None = None,
     port: int | None = None,
+    transport_security=None,
 ):
     """Return a FastMCP server instance with per-session rate limiting.
 
@@ -518,6 +519,15 @@ def build_server(
     8000). Passing them explicitly is the only way for streamable-http to
     bind where the operator asked. Left as None for tests that don't run
     an HTTP transport.
+
+    ``transport_security`` overrides FastMCP's auto-enabled DNS rebinding
+    protection. When the bind host is loopback FastMCP defaults to only
+    allowing ``127.0.0.1:*`` / ``localhost:*`` / ``[::1]:*`` Host headers
+    — which blocks the public-hostname request path when the server sits
+    behind a Cloudflare Tunnel (Host header carries the tunneled
+    hostname, e.g. ``mcp.xrpldashboard.com``). Callers that publish the
+    server must pass a ``TransportSecuritySettings`` allowlisting the
+    public hostname. Left as None for tests and stdio.
     """
     from mcp.server.fastmcp import FastMCP  # lazy import — package is
     # not required for the envelope-only unit tests.
@@ -558,6 +568,8 @@ def build_server(
         fastmcp_kwargs["host"] = host
     if port is not None:
         fastmcp_kwargs["port"] = port
+    if transport_security is not None:
+        fastmcp_kwargs["transport_security"] = transport_security
     mcp = _RateLimitedFastMCP(SERVER_NAME, **fastmcp_kwargs)
     if register_tools:
         n = _register_tools(mcp)
@@ -579,7 +591,35 @@ def main() -> int:
     host = os.environ.get("MCP_HTTP_HOST") or os.environ.get("FASTMCP_HOST") or "127.0.0.1"
     port = int(os.environ.get("MCP_HTTP_PORT") or os.environ.get("FASTMCP_PORT") or "8765")
 
-    mcp = build_server(host=host, port=port)
+    # DNS rebinding protection allowlist. FastMCP auto-enables strict
+    # loopback-only allowlists when host is 127.0.0.1/localhost/[::1],
+    # which rejects the tunneled public hostname (Cloudflare Tunnel
+    # preserves the original Host header — ``mcp.xrpldashboard.com``
+    # here). MCP_ALLOWED_HOSTS / MCP_ALLOWED_ORIGINS are comma-separated
+    # lists. Both fields support ``host:*`` port wildcards per the MCP
+    # SDK's TransportSecuritySettings. When either env var is set we
+    # build an explicit TransportSecuritySettings (protection enabled);
+    # when both are unset FastMCP's auto default applies.
+    allowed_hosts_env = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
+    allowed_origins_env = os.environ.get("MCP_ALLOWED_ORIGINS", "").strip()
+    transport_security = None
+    if allowed_hosts_env or allowed_origins_env:
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        allowed_hosts = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
+        allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+        transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=allowed_hosts,
+            allowed_origins=allowed_origins,
+        )
+        log.info(
+            "mcp transport security: hosts=%s origins=%s",
+            allowed_hosts,
+            allowed_origins,
+        )
+
+    mcp = build_server(host=host, port=port, transport_security=transport_security)
 
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     log.info("mcp starting: transport=%s host=%s port=%s", transport, host, port)
