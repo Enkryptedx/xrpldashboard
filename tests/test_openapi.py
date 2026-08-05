@@ -176,6 +176,31 @@ def test_agents_json_mcp_ready_matches_reality(client):
         f"{body[:300]!r}"
     )
 
+    # And the connect_docs pointer must resolve on the site itself, with
+    # the fragment anchor rendering as a real id — sibling-invariant of
+    # the claim-envelope URL guard. If /connect moves or the anchor
+    # renames, agents pasting `connect_docs` from /agents.json land on a
+    # broken URL and the door has a bad address.
+    connect_docs = entry.get("connect_docs", "")
+    assert connect_docs, "mcp_servers[0].connect_docs missing"
+    from urllib.parse import urlparse
+    parsed = urlparse(connect_docs)
+    path = parsed.path or "/"
+    r = client.get(path)
+    assert r.status_code == 200, (
+        f"agents.json connect_docs={connect_docs} but page {path} "
+        f"returns HTTP {r.status_code}"
+    )
+    if parsed.fragment:
+        page_body = r.data.decode(errors="replace")
+        assert (
+            f'id="{parsed.fragment}"' in page_body
+            or f"id='{parsed.fragment}'" in page_body
+        ), (
+            f"connect_docs={connect_docs} but /connect has no "
+            f"id='{parsed.fragment}' — anchor was renamed or removed"
+        )
+
 
 def test_llms_txt_has_openapi_reference(client):
     """Day 5 flip: llms.txt must point at the live OpenAPI spec.

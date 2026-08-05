@@ -168,6 +168,86 @@ def test_unknown_route_404(client):
     assert r.status_code == 404
 
 
+# ─────────────────────────────────────────────────────────────────────
+# /connect — 60-second onboarding page (Distribution Day 2026-08-05)
+# ─────────────────────────────────────────────────────────────────────
+#
+# Guard test for the page /agents.json.mcp_servers[0].connect_docs and the
+# directory-submission entries (Anthropic, Smithery, glama.ai) all point
+# at. If any of these anchors moves, the URL guard in
+# tests/test_claim_envelope_urls_resolve.py catches the resolver-side
+# break; this test catches the content-side break — the page still
+# carries the config snippet, the three sample prompts, the beta window,
+# the enforced-limit copy, and the stable #connect-in-60-seconds anchor.
+
+def test_connect_page_returns_200(client):
+    r = client.get("/connect")
+    assert r.status_code == 200
+
+
+def test_connect_carries_60_second_anchor(client):
+    body = client.get("/connect").data.decode()
+    assert 'id="connect-in-60-seconds"' in body, (
+        "/connect must keep the stable #connect-in-60-seconds anchor — "
+        "agents.json, llms.txt, and the directory-submission specs all "
+        "point at it."
+    )
+
+
+def test_connect_names_public_url(client):
+    body = client.get("/connect").data.decode()
+    assert "https://mcp.xrpldashboard.com/mcp" in body, (
+        "/connect must name the live public MCP URL verbatim"
+    )
+
+
+def test_connect_ships_config_snippet(client):
+    """The mcp-remote bridge config is the one dogfooded on 2026-08-05.
+    The snippet must be present in a copy-paste-ready form. Per the
+    snippets law: publish nothing you haven't verified against the URL."""
+    body = client.get("/connect").data.decode()
+    assert 'mcp-remote@latest' in body
+    assert '"mcpServers"' in body
+    assert '"xrpldashboard"' in body
+
+
+def test_connect_three_sample_prompts(client):
+    """Primitive / aggregation / verify — the demo shape.
+    The verify prompt is the moat demo (signed snapshot + pubkey pin);
+    if it's not on the page a fresh user has no path to the differentiator.
+    """
+    body = client.get("/connect").data.decode()
+    assert "get_ledger_stats" in body, "primitive-tool sample prompt missing"
+    assert "get_rlusd_supply" in body, "aggregation-tool sample prompt missing"
+    assert "verify_snapshot_signature" in body, "verify (moat) sample prompt missing"
+
+
+def test_connect_states_beta_window_and_limit(client):
+    """The public-beta-through-2026-09 label and the enforced 600/hr line
+    are both promises made on /agents.json and /llms.txt. /connect must
+    carry the same copy in running-behavior tense."""
+    body = client.get("/connect").data.decode()
+    assert "2026-09" in body, "/connect missing beta-window date"
+    assert "600" in body, "/connect missing rate-limit number"
+    assert "429" in body or "Retry-After" in body, (
+        "/connect missing the honest 429 + Retry-After copy — enforcement "
+        "shape has to match /agents.json.rate_limits.mcp_session"
+    )
+
+
+def test_connect_carries_disclaimer(client):
+    """Same class-of-page invariant every public page enforces."""
+    body = client.get("/connect").data.decode()
+    assert "Not financial advice" in body
+
+
+def test_connect_no_jinja_leakage(client):
+    """Same class-of-page invariant every public page enforces."""
+    body = client.get("/connect").data.decode()
+    assert not re.search(r"\{\{[^}]*\}\}", body), "/connect leaks {{...}}"
+    assert not re.search(r"\{%[^%]*%\}", body), "/connect leaks {%...%}"
+
+
 @pytest.mark.parametrize("path", PUBLIC_PAGES)
 def test_public_page_has_og_tags(client, path):
     """Every public page must carry Open Graph + Twitter card tags so

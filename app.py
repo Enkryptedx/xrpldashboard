@@ -3635,6 +3635,21 @@ def methodology():
     return render_template("methodology.html")
 
 
+@app.route("/connect")
+def connect():
+    """The 60-second onboarding page for AI agents wiring into the live
+    public MCP endpoint. Two config paths (Custom Connector UI, mcp-remote
+    bridge), three sample prompts (primitive / aggregation / verify), the
+    beta window, the enforced 600/hr limit, and the honest-limits section.
+    Anchor #connect-in-60-seconds is stable — /agents.json.mcp_servers[0]
+    .connect_docs, /llms.txt, and the directory-submission specs all
+    point at it."""
+    return render_template(
+        "connect.html",
+        last_verified=LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
+    )
+
+
 # ─────────────────────────────────────────────────────────────────
 # Queryable claims layer (shipped 2026-08-04 per docs/PAID_MACHINE_TIER_DESIGN.md
 # § 3.1). Every CLAIMS.yaml entry gets a permanent resolvable URI
@@ -6318,6 +6333,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - OpenAPI spec (machine-readable index of the LIVE free surface + envelope schema + MCP tool inventory): [{SITE_URL}/openapi.json]({SITE_URL}/openapi.json). Swagger UI: [{SITE_URL}/docs]({SITE_URL}/docs).
 - Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
 - MCP server (public beta through 2026-09): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
+- Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec. The read-only HTTP API will emit the same envelope when it ships.
 """
 
@@ -6408,7 +6424,7 @@ _AGENTS_JSON = {
             "tool_count": len(AGENT_TIER_MCP_INVENTORY),
             "tool_inventory_url": f"{SITE_URL}/openapi.json",  # tools listed at info.x-mcp-tools
             "session_rate_limit": "600 tool calls/hour/session (enforced)",
-            "connect_docs": f"{SITE_URL}/methodology#for-ai-agents",
+            "connect_docs": f"{SITE_URL}/connect#connect-in-60-seconds",
         },
     ],
     "openapi": f"{SITE_URL}/openapi.json",
