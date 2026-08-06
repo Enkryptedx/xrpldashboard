@@ -80,6 +80,11 @@ _LAYER3_SOURCE_TIER = {
     "xrpl-priceoracle-rpc": "yellow",
     "xrpl-transaction-history": "yellow",
     "self-attested-only": "yellow",
+    # Walker-captured feed where the upstream WS endpoint is a public
+    # Ripple node (xrpl_stream.py:49 XRPL_WS_NODE='wss://s2.ripple.com').
+    # Persistence is ours; origin observation is not. Green when the
+    # stream is repointed at our own local WS (Batch B post-soak).
+    "public_ws_stream_capture": "yellow",
     # THIRD-PARTY-DERIVED — permanently free-only under rule #3
     # ("only sell data I source and prove myself, from my own
     # infrastructure — never data derived from third-party APIs,

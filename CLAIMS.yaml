@@ -1579,13 +1579,23 @@ pages:
           (network_unl_counts, line 552).
 
       - id: whale_events_recent
-        label: "get_whale_events returns the last N XRP-denominated whale events + tagged-watchlist rows from the local xrpl_stream capture feed, filtered so large_xfer rows satisfy the published whale_threshold_drops."
+        label: "get_whale_events returns the last N XRP-denominated whale events + tagged-watchlist rows from the xrpl_stream capture feed, filtered so large_xfer rows satisfy the published whale_threshold_drops."
         data_paths:
           - "mcp_tools_value_flows.py:tool_get_whale_events (WHALE_XRP_THRESHOLD_DROPS=100k XRP; Python-filters large_xfer rows to match published metadata)"
           - "db.py:read_recent_events (returns walker-captured rows, tagged_floor_drops=100 XRP)"
           - "xrpl_stream.py:WHALE_XRP_THRESHOLD_DROPS (walker capture floor, default 50k XRP)"
+          - "xrpl_stream.py:49 XRPL_WS_NODE='wss://s2.ripple.com' — stream upstream (public WS, not local rippled)"
         behavior: DAILY_WIGGLE
-        layer3_source: local_rippled_stream_capture
+        layer3_source: public_ws_stream_capture
+        scope_note: >
+          Layer 3 tier flipped green→yellow on 2026-08-06 sovereignty
+          honesty check: the "local xrpl_stream" phrase in the previous
+          label meant "captured by our walker", but the upstream feed
+          xrpl_stream subscribes to is hardcoded to wss://s2.ripple.com
+          (public Ripple node), not the local rippled. Data is still
+          our own persisted capture, but the origin observation is a
+          public node. Returns to green when the stream repoints at
+          our own local WS endpoint (Batch B post-soak).
         risk_note: >
           Same feed the homepage globe pulse + /whales card read; envelope
           makes the source explicit. Thresholds are named in the payload
@@ -1601,8 +1611,14 @@ pages:
           - "mcp_tools_value_flows.py:tool_get_whale_watchlist"
           - "db.py:read_recent_events (fetches 3× requested limit, Python-filters to type='tagged')"
           - "app.py: named_accounts.json (tag source)"
+          - "xrpl_stream.py:49 XRPL_WS_NODE='wss://s2.ripple.com' — same stream feed as whale_events_recent"
         behavior: DAILY_WIGGLE
-        layer3_source: local_rippled_stream_capture
+        layer3_source: public_ws_stream_capture
+        scope_note: >
+          Same tier flip + reason as whale_events_recent — this claim
+          reads the same walker-captured stream, filtered to type=
+          'tagged'. Returns to green when xrpl_stream repoints at
+          local rippled WS (Batch B).
         risk_note: >
           Same feed as whale_events_recent, filtered to type='tagged'
           rows. The payload's `note` field surfaces the honest-partial
