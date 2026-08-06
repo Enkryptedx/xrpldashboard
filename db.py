@@ -1754,6 +1754,40 @@ def upsert_coverage_label(kind, name, label, short_desc, linked_page=None):
         return False
 
 
+_STALE_MULTIPLE = 3
+_STALE_FLOOR_SECONDS = 1800
+
+
+def compute_walker_staleness(cadence_seconds, last_success_ts, now_ts):
+    """Read-time derived STALE state for a walker_health row.
+
+    Pure arithmetic — no I/O, no writers, no new tables. Called on every
+    /coverage render. Opt-in via declared cadence: walkers without
+    cadence_seconds never STALE (event-triggered / manual / paused).
+
+    Threshold: max(cadence × 3, 30 min). N=3 covers scheduler jitter +
+    one failed-and-retried cycle + margin. 30-min floor prevents
+    short-cadence walkers from false-STALE during slow deploys.
+
+    Cross-exam verdict 2026-08-06 (project_walker_liveness_cross_exam
+    _2026-08-06.md answer #1, #2, #6). Would have caught Patient A
+    (ledger_definitions, macOS 26 LNP block) and Patient B (rank_amms,
+    --reset hardcoded) at their observed stale ages.
+    """
+    if not cadence_seconds:
+        return {"is_stale": False, "stale_seconds": None,
+                "stale_threshold": None}
+    threshold = max(_STALE_MULTIPLE * int(cadence_seconds),
+                    _STALE_FLOOR_SECONDS)
+    if last_success_ts is None:
+        return {"is_stale": True, "stale_seconds": None,
+                "stale_threshold": threshold}
+    stale_seconds = now_ts - last_success_ts
+    return {"is_stale": stale_seconds > threshold,
+            "stale_seconds": stale_seconds,
+            "stale_threshold": threshold}
+
+
 def read_coverage_register_state():
     """Compute the three-way diff on read from Phase 0 (vocabulary),
     Phase 1a (seen tables), coverage_labels, walker_scope_declarations,
@@ -1869,18 +1903,18 @@ def read_coverage_register_state():
             last_success_ts = (
                 int(last_success.timestamp()) if last_success else None
             )
-            is_stale = False
-            if cadence and last_success_ts is not None:
-                is_stale = (now - last_success_ts) > (2 * int(cadence))
-            elif last_success_ts is None:
-                is_stale = True
+            staleness = compute_walker_staleness(
+                cadence_seconds=int(cadence) if cadence else None,
+                last_success_ts=last_success_ts,
+                now_ts=now,
+            )
             wh[wname] = {
                 "walker_name": wname,
                 "last_run_ok": bool(r[1]),
                 "last_success_ts": last_success_ts,
                 "cadence_seconds": int(cadence) if cadence else None,
                 "consecutive_failures": int(r[4]),
-                "is_stale": is_stale,
+                **staleness,
                 "undeclared": wname not in scopes,
             }
 

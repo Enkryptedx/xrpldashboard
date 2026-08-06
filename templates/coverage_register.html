@@ -48,7 +48,13 @@
     td.name { font-family: var(--mono); color: var(--text); }
     td.short { color: var(--muted); font-size: 0.85rem; }
     td.num { font-family: var(--mono); color: var(--dim); text-align: right; white-space: nowrap; }
-    tr.stale td { text-decoration: line-through; color: var(--dim); }
+    /* STALE row = walker hasn't succeeded in >max(cadence×3, 30min). Rendered
+       as a failure (red-tinted background) — cross-exam verdict 2026-08-06
+       explicitly rejected the dim/struck-through treatment for diluting the
+       "this is a walker not doing its job" signal. */
+    tr.stale td { background: color-mix(in srgb, var(--red) 8%, transparent);
+                  color: var(--text); }
+    tr.stale td.name { color: var(--red); font-weight: 600; }
     .pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
             font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
             font-family: var(--mono); }
@@ -185,7 +191,9 @@
                 {% else %}
                   <span class="pill green">FULL</span>
                 {% endif %}
-                {% if is_stale %}<span class="pill red">STALE</span>{% endif %}
+                {% if is_stale %}
+                  <span class="pill red" title="Walker has not written a successful run in longer than 3× its declared cadence (with a 30-minute floor). Read-time derived from walker_health — no separate scheduler-tick writer.">STALE{% if wh.stale_seconds is not none %} — no run in {{ wh.stale_seconds // 60 }}m{% endif %}{% if wh.cadence_seconds %}, cadence {{ wh.cadence_seconds // 60 }}m{% endif %}</span>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}
