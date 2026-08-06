@@ -23,4 +23,4 @@ set +a
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/rank_amms.py"
 
-exec "$PYTHON" "$SCRIPT" --reset
+exec "$PYTHON" "$SCRIPT"
