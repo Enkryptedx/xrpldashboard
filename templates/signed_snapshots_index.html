@@ -88,6 +88,28 @@
         {% if fingerprint %}<span class="muted"> · fingerprint <code>{{ fingerprint }}</code></span>{% endif %}
       </div>
     </div>
+
+    <div class="card" id="xrpl-anchor">
+      <div><span class="pill live">●</span> on-ledger anchor</div>
+      <div style="margin-top:8px">
+        Since <code>2026-08-07</code>, each daily <code>chain_root</code> is additionally
+        anchored on the XRP Ledger from anchor account
+        <code>rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ</code> to ops account
+        <code>rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd</code>, with the root committed inside
+        the transaction memo. Cadence is <strong>weekly, manual</strong> today; the
+        language upgrades when automation lands.
+      </div>
+      <div class="muted" style="margin-top:6px">first anchor</div>
+      <div class="root">tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8</div>
+      <div class="muted" style="margin-top:2px">ledger 106140698 · 2026-08-07 21:49:32 UTC · <code>tesSUCCESS</code></div>
+      <div style="margin-top:10px">
+        Memo format (v1): <code>xrpldashboard/anchor/v1|&lt;ISO date&gt;|&lt;chain_root_hex&gt;</code>
+        in MemoData. Verifiers MUST strip trailing whitespace on the MemoData string
+        before splitting or comparing (wallet UIs may append newlines). Full spec
+        including Type A / Type B shapes: see
+        <a href="/methodology#signed-snapshots-xrpl-anchor">/methodology#signed-snapshots-xrpl-anchor</a>.
+      </div>
+    </div>
     {% else %}
     <div class="card muted">
       No signed snapshots written yet. Once <code>signed_snapshot.py</code> runs

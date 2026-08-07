@@ -333,6 +333,49 @@
     </p>
   </div>
 
+  <h3 id="signed-snapshots-xrpl-anchor">{{ _('On-ledger anchor of the snapshot chain') }}</h3>
+  <p>
+    {% trans -%}
+    Since <strong>2026-08-07</strong>, each daily <code>chain_root</code> is additionally committed inside an XRP Ledger <code>Payment</code> transaction memo. The anchor account <code>rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ</code> sends the payment to the ops account <code>rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd</code>. The transaction is 1 drop, plus the standard XRPL fee; the memo is the payload. This puts the chain root on a canonical, third-party-replicated timeline that we cannot rewrite without minting a public contradiction.
+    {%- endtrans %}
+  </p>
+  <p>
+    <strong>{{ _('Cadence.') }}</strong>
+    {{ _('Weekly, manual today. The language upgrades when automation lands. Missed weeks are visible on-ledger and will be reconciled explicitly rather than backdated.') }}
+  </p>
+  <p>
+    <strong>{{ _('First anchor.') }}</strong>
+    {{ _('Transaction') }} <code>01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8</code>,
+    {{ _('validated in ledger') }} <code>106140698</code> {{ _('at') }} <code>2026-08-07 21:49:32 UTC</code> ({{ _('result') }} <code>tesSUCCESS</code>).
+  </p>
+  <p>
+    <strong>{{ _('Memo format (v1, normative).') }}</strong>
+    {{ _('All payload lives inside the single') }} <code>MemoData</code> {{ _('field. Wallet UIs may auto-populate') }} <code>MemoType="Description"</code> {{ _('and') }} <code>MemoFormat="text/plain"</code>; {{ _('verifiers must ignore those and read only') }} <code>MemoData</code>.
+  </p>
+  <ul>
+    <li><strong>{{ _('Type A (routine anchor):') }}</strong> <code>xrpldashboard/anchor/v1|&lt;ISO date&gt;|&lt;chain_root_hex&gt;</code></li>
+    <li><strong>{{ _('Type B (correction anchor):') }}</strong> <code>xrpldashboard/anchor-correction/v1|&lt;ISO date&gt;|&lt;prior_tx_hash&gt;|&lt;chain_root_hex&gt;</code></li>
+  </ul>
+  <p>
+    <strong>{{ _('Verifier rules (v1, normative).') }}</strong>
+  </p>
+  <ol>
+    <li>{{ _('Strip trailing whitespace from') }} <code>MemoData</code> {{ _('before splitting or comparing. Xaman and some other wallets append trailing newlines (observed: six') }} <code>\n</code> {{ _('bytes) that are not part of the payload.') | safe }}</li>
+    <li>{{ _('Identify anchor type by the leading token in') }} <code>MemoData</code> ({{ _('the string before the first') }} <code>|</code>), {{ _('not by') }} <code>MemoType</code>.</li>
+    <li>{{ _('Enforce source-account identity: the payment MUST originate from the anchor account above.') }}</li>
+    <li>{{ _('Enforce destination-account identity: the payment MUST be to the ops account above, except for a single sanctioned bootstrap-hop transaction (') }}<code>E94ADB8CF438EB94DCC00725572CBCC03ACC3084F12DE706AEB4D418B6A7438B</code>{{ _(') that funded the ops account before anchoring began.') }}</li>
+    <li>{{ _('Enforce sequence continuity: correction anchors reference the') }} <code>prior_tx_hash</code> {{ _('they are replacing; there are no silent gaps.') }}</li>
+    <li>{{ _('Compare') }} <code>chain_root_hex</code> {{ _('from the memo to the published') }} <code>chain_root</code> {{ _('for the same ISO date in') }} <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>. {{ _('Any mismatch is a live-alarm event.') }}
+    </li>
+  </ol>
+  <p>
+    <strong>{{ _('Trust model addition.') }}</strong>
+    {{ _('The signed-snapshot chain is tamper-evident against the site alone. The on-ledger anchor makes tampering additionally require a contradicting public XRPL history — a much larger and third-party-observed act. It does not prove the underlying numbers are correct; it makes it impossible to quietly rewrite which numbers we published on which date.') }}
+  </p>
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    {{ _('Full spec (accounts, memo layout, deviation history, pre-lock amendments) lives at') }} <code>docs/ONLEDGER_ANCHOR_SPEC.md</code> {{ _('in the source repository.') }}
+  </p>
+
   <h2 id="attestation">{{ _('Domain attestation') }}</h2>
   <p>
     {% trans -%}
@@ -661,6 +704,9 @@
     {{ _('A tamper-evident chain of daily Ed25519-signed database snapshots is served under') }}
     <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>. {{ _('The public key is pinned at') }}
     <a href="/.well-known/snapshots/pubkey.pem"><code>/.well-known/snapshots/pubkey.pem</code></a>. {{ _('Agents that need audit-grade evidence can verify any snapshot payload cryptographically against this key without trusting the server or the network path in between. See') }} <a href="#signed-snapshots">{{ _('Signed integrity snapshots') }}</a> {{ _('above for details.') }}
+  </p>
+  <p>
+    {{ _('Since 2026-08-07, each daily') }} <code>chain_root</code> {{ _('is additionally anchored on the XRP Ledger from account') }} <code>rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ</code> {{ _('(first anchor tx') }} <code>01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8</code>, {{ _('ledger 106140698). Cadence is weekly, manual today. Memo format v1 (namespace-in-') }}<code>MemoData</code>) {{ _('and verifier rules — including the mandatory') }} <code>.strip()</code> {{ _('on') }} <code>MemoData</code> {{ _('before splitting — are documented at') }} <a href="#signed-snapshots-xrpl-anchor">{{ _('On-ledger anchor of the snapshot chain') }}</a> {{ _('above.') }}
   </p>
 
   <h3>{{ _('Rate limits') }}</h3>

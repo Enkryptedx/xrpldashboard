@@ -6336,6 +6336,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 ## Integrity and verification
 - Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
 - Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification.
+- On-ledger anchor of the snapshot chain (since 2026-08-07): each daily `chain_root` is additionally committed inside an XRPL Payment memo from anchor account `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` to ops account `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd`. First anchor tx: `01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8` at ledger 106140698 (2026-08-07 21:49:32 UTC). Cadence is weekly, manual today; language upgrades when automation lands. Memo format v1 (namespace-in-MemoData) and verifier rules (including the `.strip()` rule for wallet-appended newlines) documented at [{SITE_URL}/methodology#signed-snapshots-xrpl-anchor]({SITE_URL}/methodology#signed-snapshots-xrpl-anchor).
 - Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
 - Copy-pasteable client snippets (curl, Python, JavaScript for fetching a claim envelope + a Python end-to-end verifier for the daily signed snapshots): [{SITE_URL}/claims#use-this-data]({SITE_URL}/claims#use-this-data). Every snippet on that page was executed against live prod before shipping.
 - Security contact: [{SITE_URL}/.well-known/security.txt]({SITE_URL}/.well-known/security.txt).
@@ -6410,6 +6411,17 @@ _AGENTS_JSON = {
         "claims_uri_scheme": "/claims/xrpl.<domain>.<series> — permanent, additive-only. Fetch any URI with Accept: application/json (or append .json) for status JSON.",
         "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
         "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+        "signed_snapshot_xrpl_anchor": {
+            "anchor_account": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+            "ops_account": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+            "first_anchor_tx": "01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8",
+            "first_anchor_ledger": 106140698,
+            "first_anchor_close_time_utc": "2026-08-07T21:49:32Z",
+            "memo_format_v1": "xrpldashboard/anchor/v1|<ISO date>|<chain_root_hex>",
+            "cadence": "weekly, manual (2026-08 through automation cutover)",
+            "spec_url": f"{SITE_URL}/methodology#signed-snapshots-xrpl-anchor",
+            "note": "Each daily chain_root is additionally committed inside an XRPL Payment memo from anchor→ops. Verifiers must .strip() MemoData before splitting/comparing (wallet UIs may append trailing newlines).",
+        },
         "security_contact": f"{SITE_URL}/.well-known/security.txt",
         "llms_txt": f"{SITE_URL}/llms.txt",
     },
@@ -6460,7 +6472,7 @@ _AGENTS_JSON = {
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta through 2026-09, running against our own rippled node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
+        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta through 2026-09, running against our own rippled node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Since 2026-08-07, each daily chain_root is additionally anchored on the XRP Ledger from account rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ (first anchor tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8, ledger 106140698); cadence is weekly, manual today. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
         "discovery_layer_ready": True,
         "mcp_ready": True,
         "mcp_stability": "public_beta_through_2026-09",

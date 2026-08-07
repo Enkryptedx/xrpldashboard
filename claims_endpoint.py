@@ -68,6 +68,10 @@ _LAYER3_SOURCE_TIER = {
     "local_rippled_server_info": "green",
     "local_rippled_stream_capture": "green",
     "cryptographic-signature": "green",
+    # On-ledger Payment-memo anchor of the signed-snapshot chain root.
+    # Sovereign: our own anchor key + our own ops account, third-party
+    # replicated on the XRP Ledger. See docs/ONLEDGER_ANCHOR_SPEC.md.
+    "xrpl_onledger_anchor": "green",
     # PUBLIC-INFRA-DEPENDENT — XRPL RPC that currently traverses public
     # nodes for at least some walkers (Batch B post-soak migration
     # queued). Also self-attested-only, where the claim is backed by

@@ -1787,6 +1787,40 @@ pages:
           check, not data staleness.
 
   # ─────────────────────────────────────────────────────────────────
+  /snapshots:
+    template: templates/signed_snapshots_index.html
+    route: "app.py:4343 signed_snapshots_index() + /snapshots/verify"
+    claims:
+
+      - id: signed_snapshot_xrpl_anchor
+        label: "Each daily chain_root is additionally anchored on the XRP Ledger via Payment memo from anchor rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ → ops rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd. Weekly, manual cadence."
+        data_paths:
+          - "docs/ONLEDGER_ANCHOR_SPEC.md (spec, v1 LOCKED with 3 pre-lock amendments 2026-08-07)"
+          - "templates/signed_snapshots_index.html: on-ledger anchor card (#xrpl-anchor)"
+          - "templates/methodology.html: §On-ledger anchor of the snapshot chain (#signed-snapshots-xrpl-anchor)"
+          - "app.py: _LLMS_TXT §Integrity and verification + _AGENTS_JSON.trust_surfaces.signed_snapshot_xrpl_anchor"
+        behavior: STEP_CHANGE
+        layer3_source: xrpl_onledger_anchor
+        risk_note: >
+          First anchor tx
+          01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8
+          at ledger 106140698, 2026-08-07 21:49:32 UTC, tesSUCCESS.
+          Bootstrap-hop tx
+          E94ADB8CF438EB94DCC00725572CBCC03ACC3084F12DE706AEB4D418B6A7438B
+          (25 XRP anchor→ops funding) is the ONLY sanctioned non-memo
+          outbound from the anchor account, ever — verifiers must
+          allowlist that single hash and reject any other non-memo
+          Payment. MemoData shape v1 (namespace-in-field):
+          `xrpldashboard/anchor/v1|<ISO date>|<chain_root_hex>` (Type
+          A) or `xrpldashboard/anchor-correction/v1|<ISO date>|<prior
+          tx>|<chain_root_hex>` (Type B). Verifiers MUST .strip()
+          MemoData before splitting — Xaman appends 6 trailing
+          newlines. Cadence is weekly, manual today; missed weeks are
+          reconciled explicitly, never backdated. Full amendment
+          history and rejected alternatives:
+          docs/ONLEDGER_ANCHOR_SPEC.md.
+
+  # ─────────────────────────────────────────────────────────────────
   /claims:
     template: templates/claims_index.html + templates/claim_detail.html
     route: "app.py:claims_index() + claim_detail() + claims_index_json()"
