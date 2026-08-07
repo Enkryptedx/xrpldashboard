@@ -62,9 +62,97 @@ def test_lookup_redirects_to_pools(client):
         assert r.headers.get("Location", "").endswith("/pools")
 
 
-def test_healthz_ok(client):
+def test_healthz_ok(client, monkeypatch):
+    """/healthz returns 200 + reachable when PG ping succeeds."""
+    import app as app_module
+
+    monkeypatch.setattr(app_module.db, "ping", lambda: None)
     r = client.get("/healthz")
     assert r.status_code == 200
+    body = r.get_json()
+    assert body["status"] == "ok"
+    assert body["db"] == "reachable"
+
+
+def test_healthz_503_when_db_unreachable(client, monkeypatch):
+    """/healthz is the routing probe — 503 only when we cannot reach PG."""
+    import app as app_module
+
+    def boom():
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(app_module.db, "ping", boom)
+    r = client.get("/healthz")
+    assert r.status_code == 503
+    body = r.get_json()
+    assert body["status"] == "unhealthy"
+    assert body["db"] == "unreachable"
+
+
+def test_healthz_does_not_503_on_walker_staleness(client, monkeypatch):
+    """Post-2026-08-07: /healthz is a routing probe (PG-reachable only).
+    Walker staleness must NOT flip it to 503, or Render pulls the whole
+    site out of rotation because one Mac walker went quiet. Regression
+    guard for the 19-min full-site 502 (project_healthz_outage_2026-08-07)."""
+    import app as app_module
+
+    monkeypatch.setattr(app_module.db, "ping", lambda: None)
+
+    def fake_degrade():
+        return {
+            "overall": "degraded",
+            "status_code": 503,
+            "scan_alive": False,
+            "stream_alive": False,
+            "mirror_alive": False,
+        }
+
+    monkeypatch.setattr(app_module, "_health_degrade_state", fake_degrade)
+    r = client.get("/healthz")
+    assert r.status_code == 200, "/healthz must stay 200 when walkers are stale"
+
+
+def test_api_health_reports_degrade(client, monkeypatch):
+    """/api/health keeps the pre-split semantics — 503 + rich per-check
+    JSON when any of scan/stream/mirror is stale. This is where
+    BetterStack (and any freshness alarm) should poll."""
+    import app as app_module
+
+    def fake_degrade():
+        return {
+            "overall": "degraded",
+            "status_code": 503,
+            "scan_alive": False,
+            "stream_alive": True,
+            "mirror_alive": True,
+        }
+
+    monkeypatch.setattr(app_module, "_health_degrade_state", fake_degrade)
+    r = client.get("/api/health")
+    assert r.status_code == 503
+    body = r.get_json()
+    assert body["status"] == "degraded"
+    assert body["checks"]["scan"] is False
+    assert body["checks"]["stream"] is True
+    assert body["checks"]["mirror"] is True
+
+
+def test_api_health_ok_when_all_alive(client, monkeypatch):
+    import app as app_module
+
+    def fake_degrade():
+        return {
+            "overall": "ok",
+            "status_code": 200,
+            "scan_alive": True,
+            "stream_alive": True,
+            "mirror_alive": True,
+        }
+
+    monkeypatch.setattr(app_module, "_health_degrade_state", fake_degrade)
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.get_json()["status"] == "ok"
 
 
 def test_api_ledger_tip_returns_json(client):

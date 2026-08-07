@@ -1086,6 +1086,21 @@ def pg_connect():
         conn.close()
 
 
+def ping():
+    """Cheap PG round-trip for the /healthz routing probe. Raises on any
+    failure (connection, auth, network). One SELECT 1, no retries.
+
+    Kept minimal so /healthz can answer "can this container serve
+    traffic?" without touching walker heartbeats — the 2026-08-07 outage
+    (project_healthz_outage_2026-08-07.md) proved that gating routing
+    on walker liveness makes a single stale Mac walker take the whole
+    public site down."""
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+
+
 @contextmanager
 def rpc_loop_safe_pg_connect():
     """Use ONLY when a Postgres conn MUST survive across external RPC calls

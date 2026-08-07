@@ -6221,19 +6221,32 @@ def internal_coverage_redirect():
 
 
 @app.route("/healthz")
-@app.route("/api/health")
 def healthz():
-    """Machine-readable health endpoint for uptime monitors.
+    """Render routing probe — PG-reachability only.
 
-    Shares `_health_degrade_state()` with `/health` so the JSON verdict here
-    and the human page can never disagree for the same request. PG + local
-    file reads only — no XRPL RPC — so polling at 30s cadence stays cheap
-    even at high monitor fanout. The per-check breakdown lets monitors
-    surface what degraded, not just that something did.
+    Fires every 10s via render.yaml healthCheckPath. Returns 503 iff we
+    cannot reach Postgres, since without PG the app cannot serve any
+    dynamic page. Deliberately does NOT check walker freshness / stream
+    liveness / mirror liveness: those are data-quality signals for
+    /api/health and BetterStack, not routing signals. The 2026-08-07
+    outage (project_healthz_outage_2026-08-07.md) proved that gating
+    routing on walker liveness lets one Mac walker's silence take the
+    whole public site down — the wrong tradeoff for users."""
+    try:
+        db.ping()
+        return {"status": "ok", "db": "reachable"}, 200
+    except Exception as e:
+        return {"status": "unhealthy", "db": "unreachable", "error": str(e)[:120]}, 503
 
-    /api/health is an alias matching the /api/ prefix convention for
-    programmatic clients.
-    """
+
+@app.route("/api/health")
+def api_health():
+    """Rich degrade JSON — per-check freshness booleans + 503 on degrade.
+
+    External monitors (BetterStack, uptime checkers) should poll THIS,
+    not /healthz. Returns 503 when any of scan/stream/mirror is stale,
+    matching the pre-2026-08-07 /healthz semantics — but on this
+    endpoint the 503 is a data-freshness signal, not a routing signal."""
     state = _health_degrade_state()
     body = {
         "status": state["overall"],
