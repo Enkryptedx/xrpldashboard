@@ -1,0 +1,11 @@
+[Unit]
+Description=Fire xrpld-l1-pager every 20 minutes (autonomous-oversight tier 1)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=20min
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

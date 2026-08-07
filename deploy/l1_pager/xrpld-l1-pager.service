@@ -1,0 +1,12 @@
+[Unit]
+Description=xrpldashboard L1 pager (autonomous-oversight tier 1; walker STALE + snapshot-missed + walker-failing → Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=charlie
+WorkingDirectory=/home/charlie/xrpldashboard
+ExecStart=/bin/bash -c 'set -a; source /home/charlie/.config/xrpldashboard/env; set +a; exec /home/charlie/xrpldashboard/.venv/bin/python -u /home/charlie/xrpldashboard/tools/l1_pager.py'
+StandardOutput=append:/home/charlie/xrpldashboard/logs/l1_pager.log
+StandardError=append:/home/charlie/xrpldashboard/logs/l1_pager.err.log
