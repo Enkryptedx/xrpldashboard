@@ -434,6 +434,7 @@ def main():
     if state.get("finished_at") and state.get("cursor", 0) >= len(index):
         log(f"already finished: {len(ranked)} ranked pools in {RANKED_PATH}")
         log("pass --reset to re-rank")
+        _mirror_to_postgres(ranked, state, indexed_count=len(index))
         return 0
 
     if state["started_at"] is None:
