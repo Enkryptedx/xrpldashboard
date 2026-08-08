@@ -233,6 +233,17 @@ Each anchor is a `Payment` from the anchor account (`rL2yMECEyUT94pLDrAcetMNMG1H
 
 ---
 
+## Artifact self-description (schema_version 3+)
+
+Signed snapshot JSONs and `chain.json` self-describe their verification path. Every artifact carries two additional top-level string fields so a verifier landing on any single file can reach both the key and the spec in one hop, with no external navigation:
+
+- `pubkey_url` — direct URL to the Ed25519 public key (PEM), e.g. `https://xrpldashboard.com/.well-known/snapshots/pubkey.pem`
+- `verifier_spec_url` — direct URL to the methodology section covering canonical serialization, leaf hashing, Merkle rebuild, and the strip rule, e.g. `https://xrpldashboard.com/methodology#signed-snapshots`
+
+These fields are additive — pre-schema_version-3 artifacts remain valid and verifiable; the signature is computed over the fixed `envelope_summary` subset (`{signing_domain, schema_version, snapshot_date_utc, leaf_hash, leaf_index, leaves_total, chain_root, previous_root}`) which does not include the URL fields, so adding them changes no historical hash. Rationale filed in `memory/project_external_ai_evaluation_chatgpt_audit2_2026-08-09.md` — cold-verifier dead-end fix.
+
+---
+
 ## Publication requirements
 
 Once the first anchor lands:

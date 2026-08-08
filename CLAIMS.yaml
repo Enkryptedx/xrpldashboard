@@ -1816,8 +1816,14 @@ pages:
           tx>|<chain_root_hex>` (Type B). Verifiers MUST .strip()
           MemoData before splitting — Xaman appends 6 trailing
           newlines. Cadence is weekly, manual today; missed weeks are
-          reconciled explicitly, never backdated. Full amendment
-          history and rejected alternatives:
+          reconciled explicitly, never backdated. Trust model: the
+          anchor proves timestamped commitment to a published digest —
+          that this exact chain_root existed and was published by this
+          date. It does not prove the underlying analytics are
+          correct; that is the job of the four-layer audit,
+          cross-checks, and published methodology. The anchor makes
+          silent rewriting detectable, not errors impossible. Full
+          amendment history and rejected alternatives:
           docs/ONLEDGER_ANCHOR_SPEC.md.
 
   # ─────────────────────────────────────────────────────────────────

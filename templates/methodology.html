@@ -326,7 +326,7 @@
       {% endif %}
     </p>
     <p>
-      {{ _('Schema version:') }} <code>2</code>.
+      {{ _('Schema version:') }} <code>3</code>.
       {{ _('Signing domain:') }} <code>xrpldashboard.com/signed_snapshot/v1</code>.
       {{ _('Curve:') }} <code>Ed25519</code>.
       {{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.
@@ -369,8 +369,8 @@
     </li>
   </ol>
   <p>
-    <strong>{{ _('Trust model addition.') }}</strong>
-    {{ _('The signed-snapshot chain is tamper-evident against the site alone. The on-ledger anchor makes tampering additionally require a contradicting public XRPL history — a much larger and third-party-observed act. It does not prove the underlying numbers are correct; it makes it impossible to quietly rewrite which numbers we published on which date.') }}
+    <strong>{{ _('Trust model — what the anchor proves and what it does not.') }}</strong>
+    {{ _('The on-ledger anchor proves timestamped commitment to a published digest — that this exact') }} <code>chain_root</code> {{ _('existed and was published by this date. It does not prove the underlying analytics are correct; that is the job of the four-layer audit, cross-checks, and published methodology. The anchor makes silent rewriting detectable, not errors impossible. The signed-snapshot chain is tamper-evident against the site alone; the on-ledger anchor makes tampering additionally require a contradicting public XRPL history — a much larger and third-party-observed act.') }}
   </p>
   <p style="color: var(--muted); font-size: 0.9rem;">
     {{ _('Full spec (accounts, memo layout, deviation history, pre-lock amendments) lives at') }} <code>docs/ONLEDGER_ANCHOR_SPEC.md</code> {{ _('in the source repository.') }}

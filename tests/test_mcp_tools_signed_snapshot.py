@@ -80,6 +80,18 @@ def test_get_signed_snapshot_envelope_and_shape(monkeypatch):
     assert required <= set(d.keys())
     assert d["snapshot_date_utc"] == date_str
 
+    # schema_version 3+ artifacts self-describe their verification path:
+    # a cold verifier landing on this JSON alone reaches both the key
+    # and the spec in one hop. Older artifacts stay verifiable but new
+    # writes carry these two fields.
+    if d.get("schema_version", 0) >= 3:
+        assert d["pubkey_url"] == (
+            "https://xrpldashboard.com/.well-known/snapshots/pubkey.pem"
+        )
+        assert d["verifier_spec_url"] == (
+            "https://xrpldashboard.com/methodology#signed-snapshots"
+        )
+
 
 def test_get_signed_snapshot_bad_iso_date_raises(monkeypatch):
     _install_stamp_noop(monkeypatch)

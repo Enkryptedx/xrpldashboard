@@ -78,9 +78,18 @@ PRIVKEY_ENC_PATH = os.path.join(SECRETS_DIR, "snapshot_ed25519_enc.pem")
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SIGNING_DOMAIN = "xrpldashboard.com/signed_snapshot/v1"
 WALKER_CADENCE_SECONDS = 86400  # run_signed_snapshot.sh called daily via launchd
+
+# Self-describing verification URLs published inside every signed artifact
+# (schema_version 3+) and inside chain.json. A verifier landing on any single
+# JSON reaches both the key and the spec in one hop — no external navigation
+# needed. Added 2026-08-09 in response to external-audit finding that the
+# fingerprint was present but the key location and canonical-serialization
+# spec were not reachable from the artifact itself.
+PUBKEY_URL = "https://xrpldashboard.com/.well-known/snapshots/pubkey.pem"
+VERIFIER_SPEC_URL = "https://xrpldashboard.com/methodology#signed-snapshots"
 
 
 # ---------------------------------------------------------------------------
@@ -584,10 +593,15 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
         "audit_path": audit_path,
         "signature_ed25519": sig.hex(),
         "signing_pubkey_fingerprint": fp,
-        "verifier_instructions": "See https://xrpldashboard.com/methodology#signed-snapshots",
+        "pubkey_url": PUBKEY_URL,
+        "verifier_spec_url": VERIFIER_SPEC_URL,
+        "verifier_instructions": f"See {VERIFIER_SPEC_URL}",
     }
 
     if not dry_run:
+        chain["schema_version"] = SCHEMA_VERSION
+        chain["pubkey_url"] = PUBKEY_URL
+        chain["verifier_spec_url"] = VERIFIER_SPEC_URL
         chain["current_root"] = current_root.hex()
         chain.setdefault("root_history", []).append({
             "date": snap["snapshot_date_utc"],
