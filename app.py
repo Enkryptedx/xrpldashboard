@@ -3601,9 +3601,34 @@ def rwa():
                    "xrp-ledger.toml exists at that host — vanity-domain spoof. "
                    "No on-XRPL Franklin Templeton attestation chain published."},
         {"name": "Archax", "status": "pending",
-         "reason": "Archax is a real institutional broker (archax.com) but no "
-                   "evidence of trust-line token issuance on XRPL. Promote "
-                   "pending TOML check."},
+         "reason": "Archax is a real institutional broker (archax.com). "
+                   "Re-checked 2026-08-08 after CoinDesk cited a $55.4M "
+                   "position via RWA.xyz aggregation — that figure is a "
+                   "third-party estimate and not our measurement. archax.com "
+                   "returns 403 on the .well-known probe (anti-bot wall, not "
+                   "a clean absence) and no Archax-labeled MPT or trust-line "
+                   "issuer wallet appears in our own dataset. Promote pending "
+                   "an accessible xrp-ledger.toml and a verifiable issuer "
+                   "wallet."},
+        {"name": "Aviva Investors", "status": "pending",
+         "reason": "Aviva Investors US Dollar Liquidity Fund MPT "
+                   "(064D94DE…F95EA90A, issuer r9o37ZXw…mHmr2) declares "
+                   "'Aviva Investors Liquidity Funds plc' via on-chain MPT "
+                   "metadata — self-attested one direction. Neither aviva.com "
+                   "nor avivainvestors.com publishes a xrp-ledger.toml that "
+                   "closes the attestation loop back to that wallet. Visible "
+                   "on /mpts as the raw ledger surface; withheld from the "
+                   "verified /rwa tier until Aviva publishes a TOML pinning "
+                   "the issuer address."},
+        {"name": "Societe Generale (SG-FORGE)", "status": "pending",
+         "reason": "CoinDesk (2026-08-07) cites RWA.xyz aggregating ~$11.6M "
+                   "of Societe Generale tokenized assets on XRPL — a "
+                   "third-party estimate we cannot restate as our own. Checked "
+                   "sgforge.com, societegenerale.com, and socgen.com: no "
+                   "xrp-ledger.toml at any host. No SG-labeled MPT or "
+                   "trust-line issuer wallet appears in our own dataset. "
+                   "Promote pending an accessible TOML and a verifiable "
+                   "issuer wallet."},
         {"name": "Justoken (JMWH)", "status": "pending",
          "reason": "Real project with legitimate press coverage (YPF Luz energy "
                    "partnership, tokenized-energy claims via the JMWH token). "

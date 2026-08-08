@@ -218,6 +218,29 @@
     {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
   </p>
 
+  <div id="rippled-3-3-0" class="recent-callout" style="border-color: rgba(34,211,238,0.24); background: linear-gradient(180deg, rgba(34,211,238,0.04), var(--card));">
+    <div class="label" style="color: var(--cyan);">{{ _('rippled v3.3.0 · released 2026-08-06 · six new amendments') }}</div>
+    <p style="margin: 6px 0 0;">
+      {{ _('The 3.3.0 release bundles six amendments aimed at institutional Multi-Purpose-Token tokenization:') }}
+      <code>BatchV1_1</code>, <code>ConfidentialTransfer</code>, <code>DynamicMPT</code>,
+      <code>PermissionDelegationV1_1</code>, <code>Sponsor</code>, {{ _('and') }} <code>fixCleanup3_3_0</code>.
+      {{ _('Each still has to hold an 80 percent validator majority for 14 consecutive days before activation.') }}
+    </p>
+    <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
+      {{ _('Two of the six — ConfidentialTransfer (XLS-96) and Sponsor (XLS-68) — currently appear on this page under') }}
+      <em>{{ _('In development — not yet on-chain') }}</em>{{ _(' because the XRPL node answering this request is on an earlier binary. They will migrate to the in-flight list once the responding node upgrades to 3.3.0 and returns them from the') }}
+      <code>feature</code> {{ _('RPC. No manual edit here — the page follows the wire.') }}
+    </p>
+    <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
+      {{ _('Release notes:') }}
+      <a href="https://xrpl.org/blog/2026/xrpld-3.3.0" rel="nofollow noopener" target="_blank">xrpl.org · rippled 3.3.0</a>.
+      {{ _('Third-party market context — CoinDesk (2026-08-07) reports RWA.xyz aggregates ~$1.38B in tokenized real-world assets on XRPL, largest cohorts RLUSD (~$845.7M) and Ondo (~$212.6M). Aggregator estimates drift daily; these figures are cited, not measured by xrpldashboard:') }}
+      <a href="https://www.coindesk.com/tech/2026/08/07/new-xrp-ledger-amendments-target-usd530-million-in-tokenized-wall-street-assets" rel="nofollow noopener" target="_blank">{{ _('CoinDesk 2026-08-07') }}</a>.
+      {{ _('For the issuer side — which institutional wallets have closed a two-way TOML attestation loop on XRPL today — see') }}
+      <a href="/rwa">/rwa</a>.
+    </p>
+  </div>
+
   {% if not state or not state.ok %}
     <div class="countdown" style="border-color: rgba(251,113,133,0.32); background: linear-gradient(180deg, rgba(251,113,133,0.06), var(--card));">
       <div class="tag" style="color: var(--rose); border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.08);">{{ _('upstream offline') }}</div>
@@ -391,6 +414,12 @@
       "source_label": "XLS-66 Lending Protocol (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0066-lending-protocol"
     },
+    "MPTokensV2": {
+      "kind": "feature",
+      "summary": _("Extends XRPL's decentralized exchange to trade Multi-Purpose Tokens as a native asset class — MPTs can be paired with XRP, IOUs, or other MPTs across the existing DEX transaction set. Builds on XLS-33 MPTokensV1 (already enabled on mainnet) and unlocks price discovery for the tokenized-RWA cohort that lives entirely inside the MPT format today."),
+      "source_label": "XLS-82 MPT DEX Integration (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0082-mpt-dex-integration"
+    },
     "NonFungibleTokensV1": {
       "kind": "superseded",
       "summary": _("Original NFToken specification — introduced native NFT support on the XRP Ledger via five new transaction types and two new ledger object types. Superseded by NonFungibleTokensV1_1, which bundles this base spec together with the fixNFTokenDirV1 and fixNFTokenNegOffer cleanup amendments. V1_1 is enabled on mainnet, so native NFT functionality is live; this base amendment remains in the node's feature list for historical completeness."),
@@ -400,6 +429,12 @@
     "PermissionDelegation": {
       "kind": "feature",
       "summary": _("Lets one wallet delegate signing authority for specific transaction types to another wallet without sharing the master key — approve-by-type instead of approve-by-key. Disabled in rippled v2.6.1 after a bug surfaced; fixDelegateV1_1 (also in this list) is the companion patch and the pair is expected to re-enable together."),
+      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
+    },
+    "PermissionDelegationV1_1": {
+      "kind": "feature",
+      "summary": _("Re-shipped version of PermissionDelegation with the v2.6.1 bug fixed — accounts can delegate specified transaction-type permissions to another account without sharing signing keys. Shipped in rippled v3.3.0 alongside the base amendment; the pair is expected to activate together and supersede the original."),
       "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
     },
@@ -414,6 +449,12 @@
       "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
       "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
+    },
+    "fixBatchInnerSigs": {
+      "kind": "fix",
+      "summary": _("Companion patch for the original Batch amendment: fixes an issue where inner transactions inside a Batch were flagged as having valid signatures, which should not happen — inner transactions ride the outer Batch signature and carry none of their own. Disabled in rippled v3.1.1 after a Batch bug surfaced; the fix is now bundled into BatchV1_1, which is the version shipping in rippled v3.3.0."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
     },
     "fixDelegateV1_1": {
       "kind": "fix",
