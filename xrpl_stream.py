@@ -46,7 +46,7 @@ import db as pgbridge
 # verification error.
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
-XRPL_WS_NODE = "wss://s2.ripple.com"
+XRPL_WS_NODE = os.environ.get("XRPL_LOCAL_WS_NODE", "wss://s2.ripple.com")
 RECONNECT_BACKOFF_BASE = 2.0
 RECONNECT_BACKOFF_MAX = 60.0
 HEARTBEAT_EVERY_SECONDS = 300   # write a heartbeat log line every 5 min
