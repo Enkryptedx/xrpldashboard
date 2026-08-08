@@ -235,7 +235,7 @@ def inject_site_url():
 # freshness chip AND the homepage banner both read this via the
 # inject_regulation_freshness context processor. Codified in CLAIMS.yaml
 # claim regulation_freshness_chip.
-LAST_VERIFIED_REGULATION = "2026-07-25"
+LAST_VERIFIED_REGULATION = "2026-08-08"
 
 # CLARITY-window homepage banner self-expires on this date (Senate
 # recess-return day). After this, the strip disappears from any page
