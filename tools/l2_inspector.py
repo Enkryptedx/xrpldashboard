@@ -52,7 +52,6 @@ Invocation:
 from __future__ import annotations
 
 import argparse
-import base64
 import datetime as dt
 import json
 import os
@@ -311,37 +310,24 @@ def check_snapshot_signature(site_url: str, now_utc: dt.datetime) -> list[dict]:
         })
         return alerts
 
-    entries = chain.get("entries") or chain.get("snapshots") or []
-    if not entries:
+    leaves = chain.get("leaves") or []
+    if not leaves:
         alerts.append({
             "id": "snapshot_signature:chain_empty",
-            "detail": "chain.json has no entries",
+            "detail": "chain.json has no leaves",
         })
         return alerts
 
-    # Newest entry: assume list is date-ordered ascending or descending; sort by date
-    def _key(e):
-        return e.get("date") or e.get("snapshot_date") or ""
-    entries = sorted(entries, key=_key)
-    newest = entries[-1]
-    prev = entries[-2] if len(entries) >= 2 else None
+    leaves = sorted(leaves, key=lambda e: e.get("date") or "")
+    newest_leaf = leaves[-1]
+    prev_leaf = leaves[-2] if len(leaves) >= 2 else None
+    newest_date = newest_leaf.get("date") or ""
 
-    # 3. Fetch newest snapshot artifact — expected key on entry: "url" or a derivable path
-    snap_url = newest.get("url")
-    if not snap_url:
-        # Derive path if only date is present
-        d = _key(newest)
-        if d:
-            snap_url = f"{base}/.well-known/snapshots/{d}.json"
-    if not snap_url:
-        alerts.append({
-            "id": "snapshot_signature:newest_url_missing",
-            "detail": f"newest chain entry has no url: {newest}",
-        })
-        return alerts
-    if snap_url.startswith("/"):
-        snap_url = f"{base}{snap_url}"
+    def _snap_url(date_str: str) -> str:
+        return f"{base}/.well-known/snapshots/{date_str}.json"
 
+    # 3. Fetch newest snapshot artifact
+    snap_url = _snap_url(newest_date)
     try:
         st, snap_body, _ = _fetch(snap_url)
         if st != 200:
@@ -359,24 +345,36 @@ def check_snapshot_signature(site_url: str, now_utc: dt.datetime) -> list[dict]:
         })
         return alerts
 
-    # 4. Verify Ed25519 signature
-    sig_b64 = snapshot.get("signature") or snapshot.get("sig")
-    payload = snapshot.get("payload") or snapshot.get("body") or snapshot.get("manifest")
-    if not sig_b64 or payload is None:
+    # 4. Verify Ed25519 signature.
+    # Signed envelope shape (from signed_snapshot.py:574-583): exactly these
+    # 8 keys, sorted-key canonical JSON, signature is HEX not base64.
+    envelope_keys = (
+        "signing_domain", "schema_version", "snapshot_date_utc",
+        "leaf_hash", "leaf_index", "leaves_total",
+        "chain_root", "previous_root",
+    )
+    missing = [k for k in envelope_keys if k not in snapshot]
+    if missing:
         alerts.append({
-            "id": "snapshot_signature:missing_sig_or_payload",
+            "id": "snapshot_signature:envelope_incomplete",
             "url": snap_url,
-            "detail": f"keys={list(snapshot.keys())}",
+            "detail": f"missing keys: {missing}",
+        })
+        return alerts
+    sig_hex = snapshot.get("signature_ed25519")
+    if not sig_hex:
+        alerts.append({
+            "id": "snapshot_signature:signature_absent",
+            "url": snap_url,
         })
         return alerts
 
-    # Canonical payload for signature: JSON with sorted keys, separators=(',',':')
-    if isinstance(payload, (dict, list)):
-        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    else:
-        canonical = str(payload).encode()
+    envelope = {k: snapshot[k] for k in envelope_keys}
+    canonical = json.dumps(
+        envelope, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")
     try:
-        sig = base64.b64decode(sig_b64)
+        sig = bytes.fromhex(sig_hex)
         verify_key.verify(canonical, sig)
     except BadSignatureError:
         alerts.append({
@@ -391,17 +389,29 @@ def check_snapshot_signature(site_url: str, now_utc: dt.datetime) -> list[dict]:
         })
         return alerts
 
-    # 5. Chain link — newest.prev_hash should match prev entry's hash
-    if prev is not None:
-        newest_prev = newest.get("prev_hash") or newest.get("previous")
-        prev_hash = prev.get("hash") or prev.get("chain_root")
-        if newest_prev and prev_hash and newest_prev != prev_hash:
+    # 5. Chain link — newest.previous_root should equal previous snapshot's chain_root.
+    if prev_leaf is not None:
+        prev_date = prev_leaf.get("date") or ""
+        prev_url = _snap_url(prev_date)
+        try:
+            pst, pbody, _ = _fetch(prev_url)
+            if pst == 200:
+                prev_snap = json.loads(pbody)
+                newest_prev_root = snapshot.get("previous_root") or ""
+                prev_chain_root = prev_snap.get("chain_root") or ""
+                if newest_prev_root != prev_chain_root:
+                    alerts.append({
+                        "id": "snapshot_signature:chain_link_mismatch",
+                        "newest_date": newest_date,
+                        "prev_date": prev_date,
+                        "newest_previous_root": newest_prev_root[:32] + "…",
+                        "prev_chain_root": prev_chain_root[:32] + "…",
+                    })
+        except Exception as e:
             alerts.append({
-                "id": "snapshot_signature:chain_link_mismatch",
-                "newest_date": _key(newest),
-                "prev_date": _key(prev),
-                "newest_prev_hash": newest_prev[:32] + "…",
-                "prev_hash": prev_hash[:32] + "…",
+                "id": "snapshot_signature:prev_snapshot_fetch_failed",
+                "url": prev_url,
+                "detail": f"{type(e).__name__}: {e}",
             })
 
     return alerts
