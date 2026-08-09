@@ -2,7 +2,7 @@
 Daily UNL composition snapshot.
 
 Fetches both canonical published XRPL validator lists (vl.ripple.com and
-vl.xrplf.org), decodes each signed manifest server-side, and writes one
+unl.xrpl.foundation), decodes each signed manifest server-side, and writes one
 row per source per day into the `unl_snapshots` Postgres table. The diff
 between consecutive snapshots powers the "Validator-set composition over
 time" section on /network.

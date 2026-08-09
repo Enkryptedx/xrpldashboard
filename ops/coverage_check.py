@@ -154,7 +154,7 @@ def check_amendments():
 # ---- check 2: validator UNL freshness ------------------------------------
 UNL_SOURCES = {
     "ripple": "https://vl.ripple.com/",
-    "xrplf":  "https://vl.xrplf.org/",
+    "xrplf":  "https://unl.xrpl.foundation/",
 }
 
 

@@ -5,7 +5,7 @@ XRPL validators choose one or more validator lists to trust. The two
 canonical published lists are:
 
   - vl.ripple.com    — Ripple's UNL
-  - vl.xrplf.org     — XRPL Foundation's UNL
+  - unl.xrpl.foundation     — XRPL Foundation's UNL
 
 Each list is a signed manifest with an expiration. If a list's expiration
 passes, operators using that list stop accepting it as authoritative
@@ -44,7 +44,7 @@ UNL_SOURCES = [
     {
         "key": "xrplf",
         "label": "Foundation UNL",
-        "url": "https://vl.xrplf.org/",
+        "url": "https://unl.xrpl.foundation/",
         "operator": "XRPL Foundation",
         "operator_url": "https://xrplf.org",
     },
