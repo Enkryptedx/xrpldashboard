@@ -28,11 +28,6 @@ mkdir -p "$LOG_DIR"
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
 
-REMOTE="${BACKUP_REMOTE:-b2crypt}"
-HOST="$(hostname -s)"
-BUCKET_PREFIX="${BACKUP_BUCKET_PREFIX:-xrpldashboard-backup-${HOST}}"
-DEST_PREFIX="${REMOTE}:${BUCKET_PREFIX}/postgres"
-MAX_AGE_HOURS="${CANARY_MAX_AGE_HOURS:-25}"
 REPO_ROOT="/Users/charliebruce/xrpl_test"
 # Explicit venv Python: launchd PATH-resolved `python3` is the Homebrew
 # system interpreter, which does NOT have psycopg installed. db.py's
@@ -41,7 +36,11 @@ REPO_ROOT="/Users/charliebruce/xrpl_test"
 # (2026-07-24 → 2026-07-29) is the cost of that path resolution.
 VENV_PY="${REPO_ROOT}/venv/bin/python"
 
-# Source env for DATABASE_URL so we can write walker_health.
+# Source env for DATABASE_URL + BACKUP_BUCKET_PREFIX pin.
+# NOTE: env sourcing MUST precede any parameter-default derivation below.
+# 2026-08-10: previously HOST/BUCKET_PREFIX were computed before source,
+# so the pin was never read. Canary flapped in lockstep with writer under
+# launchd hostname-resolution variance — both wrong together = silent pass.
 ENV_FILE="${XRPLDASHBOARD_ENV:-/Users/charliebruce/.config/xrpldashboard/env}"
 set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 # shellcheck disable=SC1090
@@ -49,7 +48,20 @@ set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
 set +a
 export DATABASE_URL="${DATABASE_URL:-}"
 
-log "pg_backup_canary start (prefix=${DEST_PREFIX}, max_age=${MAX_AGE_HOURS}h)"
+REMOTE="${BACKUP_REMOTE:-b2crypt}"
+HOST="$(hostname -s)"
+BUCKET_PREFIX="${BACKUP_BUCKET_PREFIX:-xrpldashboard-backup-${HOST}}"
+DEST_PREFIX="${REMOTE}:${BUCKET_PREFIX}/postgres"
+MAX_AGE_HOURS="${CANARY_MAX_AGE_HOURS:-25}"
+PIN_SOURCE="${BACKUP_BUCKET_PREFIX:+env}"
+PIN_SOURCE="${PIN_SOURCE:-hostname_fallback}"
+# Divergence-scan controls: check for any dump landing in a NON-pinned
+# xrpldashboard-backup-* bucket in the last DIVERGENCE_MAX_AGE_HOURS hours.
+# Catches the writer-canary lockstep blind spot (both computing the same
+# wrong bucket = both silent-green). Set to 0 to skip the scan.
+DIVERGENCE_MAX_AGE_HOURS="${CANARY_DIVERGENCE_MAX_AGE_HOURS:-25}"
+
+log "pg_backup_canary start (prefix=${DEST_PREFIX}, hostname=${HOST}, pin_source=${PIN_SOURCE}, max_age=${MAX_AGE_HOURS}h, divergence_scan_window=${DIVERGENCE_MAX_AGE_HOURS}h)"
 "$VENV_PY" -c "
 import sys; sys.path.insert(0,'$REPO_ROOT')
 import db; db.write_walker_health_start('pg_backup_canary', cadence_seconds=86400)
@@ -104,6 +116,47 @@ if (( AGE_HOURS > MAX_AGE_HOURS )); then
 fi
 
 log "  ok (${AGE_HOURS}h <= ${MAX_AGE_HOURS}h)"
+
+# Two-sided divergence scan — 2026-08-10.
+# The single-bucket freshness check above cannot detect "writer landed a
+# dump in the WRONG bucket" if the canary reads from the same wrong bucket
+# (both derive BUCKET_PREFIX from the same source; both go wrong together).
+# Enumerate every xrpldashboard-backup-* bucket on the remote, and alarm
+# if any bucket OTHER THAN the pinned one contains a dump written in the
+# last DIVERGENCE_MAX_AGE_HOURS hours.
+if (( DIVERGENCE_MAX_AGE_HOURS > 0 )); then
+  log "  divergence-scan: listing ${REMOTE}: for xrpldashboard-backup-* buckets"
+  # rclone lsjson at the remote root lists buckets (b2 crypt-remote proxies
+  # bucket enumeration transparently). We list --dirs-only, filter by prefix.
+  DIVERGENCE_HITS=""
+  while IFS= read -r other_bucket; do
+    [[ -z "$other_bucket" ]] && continue
+    [[ "$other_bucket" == "$BUCKET_PREFIX" ]] && continue
+    other_prefix="${REMOTE}:${other_bucket}/postgres"
+    other_latest="$(rclone lsf "$other_prefix" --files-only \
+                      --include "neondb-*.dump" 2>/dev/null | sort -r | head -1)"
+    [[ -z "$other_latest" ]] && continue
+    other_ts="$(echo "$other_latest" | sed -nE 's/^neondb-([0-9]{8}T[0-9]{6}Z)\.dump$/\1/p')"
+    [[ -z "$other_ts" ]] && continue
+    other_epoch="$(date -j -u -f "%Y%m%dT%H%M%SZ" "$other_ts" "+%s" 2>/dev/null || echo 0)"
+    (( other_epoch == 0 )) && continue
+    other_age_hours=$(( (NOW_EPOCH - other_epoch) / 3600 ))
+    (( other_age_hours < 0 )) && other_age_hours=0
+    if (( other_age_hours <= DIVERGENCE_MAX_AGE_HOURS )); then
+      log "  divergence FOUND: ${other_bucket} has ${other_latest} age=${other_age_hours}h"
+      DIVERGENCE_HITS+="${other_bucket}(${other_age_hours}h) "
+    fi
+  done < <(rclone lsf "${REMOTE}:" --dirs-only 2>/dev/null | sed 's:/$::' | grep -E '^xrpldashboard-backup-')
+
+  if [[ -n "$DIVERGENCE_HITS" ]]; then
+    log "FAIL: writer divergence — dump(s) landed outside pinned bucket in last ${DIVERGENCE_MAX_AGE_HOURS}h: ${DIVERGENCE_HITS}"
+    "$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=False, message='divergence: ${DIVERGENCE_HITS}')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
+    log "pg_backup_canary end (rc=5)"
+    exit 5
+  fi
+  log "  divergence-scan clean (no non-pinned buckets have dumps <${DIVERGENCE_MAX_AGE_HOURS}h)"
+fi
+
 "$VENV_PY" -c "import sys; sys.path.insert(0,'$REPO_ROOT'); import db; db.write_walker_health_end('pg_backup_canary', ok=True, message='${LATEST} age=${AGE_HOURS}h')" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
 
 # BetterStack heartbeat — success-path ONLY (literal last line before rc=0

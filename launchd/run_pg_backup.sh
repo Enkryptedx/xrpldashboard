@@ -29,6 +29,22 @@ mkdir -p "$LOG_DIR"
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
 
 ENV_FILE="${XRPLDASHBOARD_ENV:-/Users/charliebruce/.config/xrpldashboard/env}"
+
+if [[ ! -r "$ENV_FILE" ]]; then
+  log "FAIL: env file not readable at ${ENV_FILE}"
+  exit 1
+fi
+set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+# NOTE: env sourcing MUST precede any parameter-default derivation below.
+# 2026-08-10: previously HOST/BUCKET_PREFIX were computed before source,
+# so the BACKUP_BUCKET_PREFIX pin in env was never read — bucket fell back
+# to hostname derivation which varied under launchd context (returned "Mac"
+# on some days, "Charlies-Mac-mini" on others). Landed 2 dumps in the wrong
+# bucket 2026-08-07 and 2026-08-08 before discovery.
 REMOTE="${BACKUP_REMOTE:-b2crypt}"
 HOST="$(hostname -s)"
 BUCKET_PREFIX="${BACKUP_BUCKET_PREFIX:-xrpldashboard-backup-${HOST}}"
@@ -40,7 +56,11 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 DUMP_NAME="neondb-${TS}.dump"
 DEST="${DEST_PREFIX}/${DUMP_NAME}"
 
-log "pg_backup start (remote=${REMOTE}, bucket=${BUCKET_PREFIX}, keep=${PG_BACKUP_NIGHTLY}n+${PG_BACKUP_MONTHLY}m)"
+# Self-diagnostic: "env" if the pin was read from env, "hostname_fallback" if not.
+# Historical logs before 2026-08-10 fix always show "hostname_fallback" — the pin was never applied.
+PIN_SOURCE="${BACKUP_BUCKET_PREFIX:+env}"
+PIN_SOURCE="${PIN_SOURCE:-hostname_fallback}"
+log "pg_backup start (remote=${REMOTE}, bucket=${BUCKET_PREFIX}, hostname=${HOST}, pin_source=${PIN_SOURCE}, keep=${PG_BACKUP_NIGHTLY}n+${PG_BACKUP_MONTHLY}m)"
 
 if ! command -v pg_dump >/dev/null 2>&1; then
   log "FAIL: pg_dump not on PATH. Run 'brew install postgresql@17'."
@@ -51,15 +71,6 @@ if ! command -v rclone >/dev/null 2>&1; then
   log "FAIL: rclone not on PATH."
   exit 1
 fi
-
-if [[ ! -r "$ENV_FILE" ]]; then
-  log "FAIL: env file not readable at ${ENV_FILE}"
-  exit 1
-fi
-set -a  # auto-export sourced vars — 2026-07-31 BetterStack silent-skip fix
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   log "FAIL: DATABASE_URL not set after sourcing ${ENV_FILE}"
