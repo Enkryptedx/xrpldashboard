@@ -646,6 +646,7 @@
         <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
         <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
         <a href="/mpts"{% if _p == '/mpts' or _p.startswith('/mpt/') %} class="active" aria-current="page"{% endif %}>{{ _('MPTs') }}</a>
+        <a href="/nfts"{% if _p.startswith('/nfts') %} class="active" aria-current="page"{% endif %}>{{ _('NFTs') }}</a>
         {# RWA and RLUSD are proper nouns — not translated. #}
         <a href="/rwa"{% if _p.startswith('/rwa') %} class="active" aria-current="page"{% endif %}>RWA</a>
         <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
