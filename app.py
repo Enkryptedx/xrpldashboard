@@ -3412,10 +3412,13 @@ def nfts():
                             freshness_seconds = max(0, int(time.time() - row[4].timestamp()))
                             freshness_label = _format_age_seconds(freshness_seconds)
 
+                    # `INTERVAL %s` does not parse — Postgres wants a literal
+                    # after INTERVAL, not a bound parameter. Casting the bound
+                    # value via `(%s)::interval` is the shape that works.
                     for label, interval in (("24h", "24 hours"), ("7d", "7 days")):
                         cur.execute(
                             "SELECT tx_type, COUNT(*) FROM nft_activity "
-                            "WHERE close_time >= NOW() - INTERVAL %s "
+                            "WHERE close_time >= NOW() - (%s)::interval "
                             "GROUP BY tx_type",
                             (interval,),
                         )
