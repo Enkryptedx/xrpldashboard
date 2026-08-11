@@ -69,6 +69,22 @@ partner_conversations.md
 # Outreach log contains PII (real names, emails, reply notes) — keep local
 OUTREACH_LOG.md
 
+# Attorney / legal work product — structural block so a stray `git add`
+# cannot ride a future commit. Class-level rule, not per-file — any doc
+# whose name signals privileged content is blocked wherever it lands
+# (repo root or docs/). The single ATTORNEY_BRIEF_2026-08-10.md that
+# prompted this rule lives outside the repo at
+# ~/.openclaw/workspace/private/ATTORNEY_BRIEF_2026-08-10.md (0700 dir).
+# Rule codified 2026-08-10 after JJ caught it by judgment during a
+# ship — belt-and-suspenders: judgment + gitignore.
+**/ATTORNEY_*
+**/*_ATTORNEY_*
+**/*ATTORNEY*
+**/PRIVILEGED_*
+**/*_PRIVILEGED_*
+**/*_LEGAL_*
+**/*_COUNSEL_*
+
 # Private archives: user-submitted content from dead tables, contact-form
 # exports, anything with rows that came from third parties. DDL/schema
 # archives go in migrations/archived/ (repo); row data lands here (local).
