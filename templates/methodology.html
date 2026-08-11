@@ -709,6 +709,25 @@
     <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a> {{ _('for the full build sequence.') }}
   </p>
 
+  <h3 id="nft-data-sources">{{ _('NFT data sources — sovereign vs. third-party') }}</h3>
+  <p>
+    {{ _('The /nfts page surfaces XLS-20 NFT activity (mints, burns, offers, sales) with two source classes, each labeled at point of display:') }}
+  </p>
+  <ul>
+    <li>
+      <strong>{{ _('Live forward-walker activity') }}</strong> — {{ _('read from our own rippled node via the standard') }} <code>Ledger</code> {{ _('RPC (') }}<code>transactions=True, expand=True</code>{{ _('), 5-minute cadence, 200-ledger batches, head-safety margin of 3. Only') }} <code>tesSUCCESS</code> {{ _('transactions are counted. This tier is classified') }} <strong style="color: var(--green);">own-node</strong>.
+    </li>
+    <li>
+      <strong>{{ _('Historical backfill (2026-04-01 → head)') }}</strong> — {{ _('read from Ripple\'s public Clio archive at') }} <code>s2-clio.ripple.com</code> {{ _('because full history was required and our own rippled node does not carry it. This tier is classified') }} <strong style="color: var(--amber);">third-party</strong>.
+    </li>
+  </ul>
+  <p>
+    {{ _('The 2026-08-10 gap audit of the historical range produced ~95.6% coverage — 4,955,611 events across 2,194,433 distinct ledgers of a 2,958,523-ledger range. The ~4.4% shortfall (~129,000 ledgers) is a mix of legitimately empty ledgers and residual public-Clio 503 responses the walker persisted past during backfill. This is disclosed on') }} <a href="/nfts">/nfts</a> {{ _('rather than surfaced as false-complete.') }}
+  </p>
+  <p>
+    {{ _('Under our sovereign-source doctrine —') }} <code>SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code> {{ _('— any endpoint whose underlying data was read through a third-party pipe stays free forever, honestly labeled, until it can be re-derived from our own infrastructure. NFT historical backfill therefore sits permanently in the free tier until (and unless) we buy a full-history rippled node and re-derive the range from it. The doctrine is fully documented in') }} <code>docs/X402_RAILS_DARK_SCOPING.md</code> {{ _('§ 2 Paid-candidate filter.') }}
+  </p>
+
   <h3>{{ _('Signed-snapshot verification') }}</h3>
   <p>
     {{ _('A tamper-evident chain of daily Ed25519-signed database snapshots is served under') }}

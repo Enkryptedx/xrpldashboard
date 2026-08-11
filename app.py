@@ -134,6 +134,7 @@ PUBLIC_ROUTES = [
     "/tokens",
     "/pools",
     "/mpts",
+    "/nfts",
     "/rlusd",
     "/cold-storage",
     "/price-data",
@@ -3345,6 +3346,120 @@ def tokens():
     )
 
 
+# /nfts cache — 5-min TTL keeps ledger queries cheap under crawler traffic.
+# Single-entry, closed-key (no query params on this route), so no lock needed
+# beyond the standard read/write pattern.
+_NFTS_CACHE = {"body": None, "at": 0.0}
+_NFTS_CACHE_TTL_S = 300
+
+# Estimated residual holes in the NFT historical backfill window
+# (2026-04-01 → head), from the 2026-08-10 gap audit. Stratified sampling of
+# missing ledgers against s2-clio.ripple.com produced a 16.1% hole-rate in
+# small-delta gaps and 35.7% in large-delta gaps, yielding ~129K residual
+# public-Clio 503 holes → ~4.4% of the range → ~95.6% coverage. Surfaced on
+# /nfts as a scope note per SELLABLE_REQUIRES_SOVEREIGN_SOURCE doctrine
+# (docs/X402_RAILS_DARK_SCOPING.md; project_data_licensing_and_scraper_train_
+# research_2026-08-10.md).
+_NFT_BACKFILL_RESIDUAL_HOLES_EST = 129_000
+
+
+@app.route("/nfts")
+def nfts():
+    """XLS-20 NFT activity on the XRPL — free forever, honestly source-labeled.
+
+    Live data reads from our own rippled forward-walker (own-node source).
+    Historical backfill (2026-04-01 → head) was read from Ripple's public
+    Clio archive (third-party source) — labeled at point of display, kept
+    free-tier permanently under SELLABLE_REQUIRES_SOVEREIGN_SOURCE.
+
+    Cached 5min in-process. Every query is by-index (tx_type + close_time,
+    or issuer + close_time). Never touches the XRPL node from this route."""
+    now_mono = time.monotonic()
+    if _NFTS_CACHE["body"] is not None and (now_mono - _NFTS_CACHE["at"]) < _NFTS_CACHE_TTL_S:
+        return _NFTS_CACHE["body"]
+
+    # Defaults — the page still renders honestly (dashes / zero rows) if PG
+    # is unavailable at request time. Nothing crashes.
+    totals = {"total_events": 0}
+    counts_24h = {}
+    counts_7d = {}
+    counts_all = {}
+    top_issuers = []
+    range_start_ledger = 103_252_853  # 2026-04-01 UTC floor, from nft_walker_state.backfill_target
+    range_end_ledger = 103_252_853
+    range_start_date = "2026-04-01"
+    range_end_date = "—"
+    freshness_seconds = None
+    freshness_label = None
+
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*), MIN(ledger_index), MAX(ledger_index), "
+                        "MIN(close_time), MAX(close_time) FROM nft_activity"
+                    )
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        totals["total_events"] = int(row[0])
+                        range_start_ledger = int(row[1] or range_start_ledger)
+                        range_end_ledger = int(row[2] or range_end_ledger)
+                        if row[3]:
+                            range_start_date = row[3].strftime("%Y-%m-%d")
+                        if row[4]:
+                            range_end_date = row[4].strftime("%Y-%m-%d")
+                            freshness_seconds = max(0, int(time.time() - row[4].timestamp()))
+                            freshness_label = _format_age_seconds(freshness_seconds)
+
+                    for label, interval in (("24h", "24 hours"), ("7d", "7 days")):
+                        cur.execute(
+                            "SELECT tx_type, COUNT(*) FROM nft_activity "
+                            "WHERE close_time >= NOW() - INTERVAL %s "
+                            "GROUP BY tx_type",
+                            (interval,),
+                        )
+                        bucket = {r[0]: int(r[1]) for r in cur.fetchall()}
+                        if label == "24h":
+                            counts_24h = bucket
+                        else:
+                            counts_7d = bucket
+
+                    cur.execute(
+                        "SELECT tx_type, COUNT(*) FROM nft_activity GROUP BY tx_type"
+                    )
+                    counts_all = {r[0]: int(r[1]) for r in cur.fetchall()}
+
+                    cur.execute(
+                        "SELECT issuer, COUNT(*) AS events FROM nft_activity "
+                        "WHERE issuer IS NOT NULL "
+                        "AND close_time >= NOW() - INTERVAL '7 days' "
+                        "GROUP BY issuer ORDER BY events DESC LIMIT 10"
+                    )
+                    top_issuers = [(r[0], int(r[1])) for r in cur.fetchall()]
+        except Exception:
+            app.logger.exception("nfts: PG read failed; rendering empty state")
+
+    body = render_template(
+        "nfts.html",
+        totals=totals,
+        counts_24h=counts_24h,
+        counts_7d=counts_7d,
+        counts_all=counts_all,
+        top_issuers=top_issuers,
+        range_start_ledger=range_start_ledger,
+        range_end_ledger=range_end_ledger,
+        range_start_date=range_start_date,
+        range_end_date=range_end_date,
+        freshness_seconds=freshness_seconds,
+        freshness_label=freshness_label,
+        gap_audit={"residual_holes_est": _NFT_BACKFILL_RESIDUAL_HOLES_EST},
+    )
+    _NFTS_CACHE["body"] = body
+    _NFTS_CACHE["at"] = now_mono
+    return body
+
+
 @app.route("/about")
 def about():
     """Public-facing 'what is this' page. Mission, principles, methodology,
@@ -6342,6 +6457,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/rwa]({SITE_URL}/rwa): real-world-asset tokens on XRPL with issuer attestation.
 - [/tokens]({SITE_URL}/tokens): verified XRPL token supply — full token registry with domain-attested labels and on-ledger activity.
 - [/mpts]({SITE_URL}/mpts): MPT (Multi-Purpose Token) registry and issuer roll-ups.
+- [/nfts]({SITE_URL}/nfts): XLS-20 NFT activity on XRPL — mints, burns, offers, and sales, with per-source labels (live: own rippled; historical backfill: Ripple's public Clio archive, disclosed and free-tier only under SELLABLE_REQUIRES_SOVEREIGN_SOURCE).
 - [/pools]({SITE_URL}/pools): AMM pools ranked by TVL and volume.
 - [/amendments]({SITE_URL}/amendments): current XRPL amendment status — enabled, voting, and vetoed amendments with validator support tallies.
 - [/analytics]({SITE_URL}/analytics): first-party page-view analytics, bot-filtered.

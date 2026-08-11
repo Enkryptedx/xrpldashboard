@@ -1899,12 +1899,135 @@ pages:
           rule.
 
   # ─────────────────────────────────────────────────────────────────
+  /nfts:
+    template: templates/nfts.html
+    route: "app.py:3365 nfts()"
+    claims:
+
+      - id: nfts_page_title
+        label: "Page title: 'XLS-20 NFT activity on the XRPL'"
+        data_paths:
+          - "templates/nfts.html: <title> + <h1>"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Copy-class claim. If NFT scope changes (e.g. adds XLS-46 collections
+          or bridged NFTs) the title/H1 must move with it — sibling of the
+          whale-title founding case.
+
+      - id: nfts_tx_type_counts_live
+        label: "Per-tx-type activity counts (24h + 7d): NFTokenMint, NFTokenAcceptOffer, NFTokenCreateOffer, NFTokenCancelOffer, NFTokenBurn"
+        data_paths:
+          - "db.pg_connect() + nft_activity table (GROUP BY tx_type, close_time window)"
+          - "nft_activity_walker.py: activity mode (5min cadence, 200-ledger batches)"
+          - "xrpl_client.py:get_client — local rippled primary, s1/s2 public fallback"
+          - "app.py:3365 nfts() — counts_24h + counts_7d + counts_all"
+          - "templates/nfts.html: activity-by-tx-type card"
+        behavior: CONTINUOUS_WIGGLE
+        layer2_rules: [R1, R3]
+        layer3_source: local_rippled
+        risk_note: >
+          Live tx-type counts are the paid-eligible-post-migration surface
+          under SELLABLE_REQUIRES_SOVEREIGN_SOURCE (see
+          docs/X402_RAILS_DARK_SCOPING.md § Fence #2). Today's forward-walker
+          uses xrpl_client's cascade — own rippled first, public s1/s2
+          fallback via `xrpl_node_fallback_used=True` when local is down.
+          The layer3_source label reflects the intended sovereignty tier;
+          walker_health records actual per-run fallback state.
+
+      - id: nfts_historical_backfill_range
+        label: "Backfill coverage window: ledger 103,252,853 (2026-04-01) → current head"
+        data_paths:
+          - "nft_activity_walker.py: backfill mode (s2-clio.ripple.com)"
+          - "app.py:3365 nfts() — range_start_ledger + range_end_ledger"
+          - "templates/nfts.html: hero range block"
+        behavior: MONOTONIC_GROW
+        layer3_source: ripple_public_clio_archive
+        risk_note: >
+          Historical backfill was read from Ripple's public Clio archive
+          (s2-clio.ripple.com) — a third-party pipe. Under
+          SELLABLE_REQUIRES_SOVEREIGN_SOURCE (Fence #2 / Fence #8 in
+          X402_RAILS_DARK_SCOPING.md) this data is filtered OFF the paid
+          tier and stays free forever, disclosed with an amber source-pill
+          at point of display. Re-derivation from our own full-history
+          node is the path to clean title (attorney question 6(d)).
+
+      - id: nfts_backfill_residual_holes
+        label: "Backfill coverage disclosure: ~95.6% of range covered, ~129,000 residual holes (Clio 503 windows)"
+        data_paths:
+          - "app.py:3362 _NFT_BACKFILL_RESIDUAL_HOLES_EST = 129_000"
+          - "templates/nfts.html: known-limitations card"
+          - "memory: project_xrpldashboard_nft_backfill_gap_audit_2026-08-10.md"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Founding-case-shaped disclosure: coverage stat, not headline stat.
+          The 129K estimate was derived from stratified sampling of missing
+          ledgers against s2-clio: 16.1% hole-rate in small-delta gaps,
+          35.7% in large-delta gaps, weighted ~4.4% of the range. If this
+          number ever moves without a documented sampling round + memory
+          update, it has become fiction.
+
+      - id: nfts_top_issuers_7d
+        label: "Top 10 issuers by 7d NFT activity (CreateOffer + Burn events; Mint/AcceptOffer/CancelOffer have NULL issuer by tx-type shape)"
+        data_paths:
+          - "db.pg_connect() + nft_activity table (WHERE issuer IS NOT NULL, close_time >= NOW()-7d)"
+          - "app.py:3432-3438 top_issuers query"
+          - "templates/nfts.html: top-issuers table"
+        behavior: DAILY_WIGGLE
+        layer3_source: local_rippled
+        risk_note: >
+          Ledger facts only — issuer address, no off-chain names / collection
+          labels / verified-domain badges (out of scope tonight). The
+          issuer column is populated by the walker for tx_types where the
+          XRPL result field surfaces issuer directly (NFTokenCreateOffer,
+          NFTokenBurn); NFTokenMint / AcceptOffer / CancelOffer rows have
+          NULL issuer by ledger shape, not by walker bug. Scope note on the
+          card documents this honestly.
+
+      - id: nfts_freshness_stamp
+        label: "Freshness stamp: 'Live · updated Ns ago' (age of most recent close_time in nft_activity)"
+        data_paths:
+          - "app.py:3411-3412 freshness_seconds computed from MAX(close_time)"
+          - "templates/nfts.html: hero freshness chip"
+        behavior: CONTINUOUS_WIGGLE
+        layer3_source: self-attested-only
+        risk_note: >
+          If activity-mode walker stops but the page cache holds a value,
+          the stamp will keep ticking up. Coverage handoff to R3 via
+          walker_health(worker='nft_activity_walker'). Any staleness > cadence×3
+          is a signal, not a fluctuation.
+
+      - id: nfts_source_labeling_disclosure
+        label: "Per-row source-pill: own-node (green) for live activity, third-party (amber) for historical backfill"
+        data_paths:
+          - "templates/nfts.html: data-sources card (2-row table)"
+          - "docs/X402_RAILS_DARK_SCOPING.md § Fence #2 SELLABLE_REQUIRES_SOVEREIGN_SOURCE"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Charlie's rule: sovereignty tier and revenue tier are the same
+          line. If a new NFT surface ever ships on this page, it needs
+          a source-pill at point of display or it violates the doctrine.
+          Sibling of the whale-title founding-case discipline (label at
+          the surface, not deep in methodology).
+
+      - id: nfts_scope_limitations
+        label: "Known limitations disclosed: no cross-collection floor prices, no off-chain names, sales-not-priced (buyer/seller/price_drops NULL)"
+        data_paths:
+          - "templates/nfts.html: known-limitations card"
+        behavior: LEGITIMATELY_FLAT
+        layer3_source: self-attested-only
+        risk_note: >
+          Populated NULL columns are honest (walker didn't extract those
+          fields tonight) rather than guessed. When a future walker pass
+          fills price_drops for AcceptOffer rows, this disclosure must
+          shrink to match — enforced by presence on this page, not by
+          a script.
+
+  # ─────────────────────────────────────────────────────────────────
   # Pages NOT yet catalogued (Phase 4 leftover — gate on next pass)
   # ─────────────────────────────────────────────────────────────────
-  # /nfts:
-  #   NO ROUTE as of 2026-07-22. NFT data collected by nft_activity_walker
-  #   + backfill (ETA ~2026-08-05). Public page gates on Charlie after
-  #   NFT anomaly scan completes. Claims to be added when route ships.
   #
   # /wallet/<address>:
   #   Per-wallet detail page. Data claims include balance, tx history,

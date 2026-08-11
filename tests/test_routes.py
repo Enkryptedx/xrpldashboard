@@ -16,6 +16,7 @@ PUBLIC_PAGES = [
     "/health",
     "/whales",
     "/tokens",
+    "/nfts",
     "/about",
     "/institutional",
     "/pools",
