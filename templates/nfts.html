@@ -327,8 +327,8 @@
     <h2>{{ _('Known limitations (scope notes)') }}</h2>
     <ul style="color: var(--muted); font-size: var(--fs-sm); padding-left: 1.2em; margin: 0.4em 0;">
       <li>
-        <strong style="color: var(--text);">{{ _('Backfill coverage is ~95.6%% of the 2026-04-01 → head range.') }}</strong>
-        {{ _('About') }} {{ "{:,}".format(gap_audit.residual_holes_est) }} {{ _('ledgers in the historical window returned no NFT-tx data at backfill time — a mix of legitimately empty ledgers and residual public-Clio 503 responses that our walker persisted past. This is honestly disclosed here rather than surfaced as false-complete. The forward-walker (live) has no such gap.') }}
+        <strong style="color: var(--text);">{{ _('Backfill coverage is ~%(pct)s%% of the 2026-04-01 → head range (%(total)s ledgers).', pct=gap_audit.coverage_pct, total="{:,}".format(gap_audit.range_total_est)) }}</strong>
+        {{ _('Of that range: %(observed)s ledgers were observed with NFT activity, ~%(empty)s contained no NFT transactions (legitimately empty of NFT tx), and ~%(residual)s are residual holes — public-Clio 503 responses our walker persisted past during backfill. The 95.6%% figure counts empty-by-consensus ledgers as covered and residual holes as missed. This is honestly disclosed here rather than surfaced as false-complete. The forward-walker (live) has no such gap.', observed="{:,}".format(gap_audit.observed_est), empty="{:,}".format(gap_audit.legitimately_empty_est), residual="{:,}".format(gap_audit.residual_holes_est)) }}
       </li>
       <li>
         <strong style="color: var(--text);">{{ _('Sales are not priced today.') }}</strong>

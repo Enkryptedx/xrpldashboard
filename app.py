@@ -3352,15 +3352,28 @@ def tokens():
 _NFTS_CACHE = {"body": None, "at": 0.0}
 _NFTS_CACHE_TTL_S = 300
 
-# Estimated residual holes in the NFT historical backfill window
-# (2026-04-01 → head), from the 2026-08-10 gap audit. Stratified sampling of
-# missing ledgers against s2-clio.ripple.com produced a 16.1% hole-rate in
-# small-delta gaps and 35.7% in large-delta gaps, yielding ~129K residual
-# public-Clio 503 holes → ~4.4% of the range → ~95.6% coverage. Surfaced on
-# /nfts as a scope note per SELLABLE_REQUIRES_SOVEREIGN_SOURCE doctrine
-# (docs/X402_RAILS_DARK_SCOPING.md; project_data_licensing_and_scraper_train_
-# research_2026-08-10.md).
-_NFT_BACKFILL_RESIDUAL_HOLES_EST = 129_000
+# NFT historical backfill coverage numbers, frozen 2026-08-10 gap audit
+# (2026-04-01 → head at ~21:44 UTC). All four constants move together — a
+# fresh sampling round must update all four in lockstep (audit-trail:
+# project_xrpldashboard_nft_backfill_gap_audit_2026-08-10.md).
+#
+# The 95.6% denominator is the FULL range (RANGE_TOTAL). The apparent
+# range/observed gap (~764K ledgers) splits into two classes:
+#   • LEGITIMATELY_EMPTY — no NFT transactions occurred at all (consensus
+#     data, nothing to capture; counted as covered).
+#   • RESIDUAL_HOLES — public-Clio 503 responses our walker persisted past
+#     during backfill (recoverable NFT activity we did not persist; counted
+#     as missed). Class split derived from stratified sampling: 16.1%
+#     hole-rate in small-delta gaps, 35.7% in large-delta gaps, weighted
+#     to ~4.4% of the range → ~95.6% coverage.
+#
+# Surfaced on /nfts + /methodology per SELLABLE_REQUIRES_SOVEREIGN_SOURCE
+# doctrine (docs/X402_RAILS_DARK_SCOPING.md).
+_NFT_BACKFILL_RANGE_TOTAL_EST         = 2_958_523
+_NFT_BACKFILL_OBSERVED_EST            = 2_194_433
+_NFT_BACKFILL_LEGITIMATELY_EMPTY_EST  =   635_090  # range_total - observed - residual
+_NFT_BACKFILL_RESIDUAL_HOLES_EST      =   129_000
+_NFT_BACKFILL_COVERAGE_PCT            = 95.6
 
 
 @app.route("/nfts")
@@ -3456,7 +3469,13 @@ def nfts():
         range_end_date=range_end_date,
         freshness_seconds=freshness_seconds,
         freshness_label=freshness_label,
-        gap_audit={"residual_holes_est": _NFT_BACKFILL_RESIDUAL_HOLES_EST},
+        gap_audit={
+            "range_total_est":        _NFT_BACKFILL_RANGE_TOTAL_EST,
+            "observed_est":           _NFT_BACKFILL_OBSERVED_EST,
+            "legitimately_empty_est": _NFT_BACKFILL_LEGITIMATELY_EMPTY_EST,
+            "residual_holes_est":     _NFT_BACKFILL_RESIDUAL_HOLES_EST,
+            "coverage_pct":           _NFT_BACKFILL_COVERAGE_PCT,
+        },
     )
     _NFTS_CACHE["body"] = body
     _NFTS_CACHE["at"] = now_mono

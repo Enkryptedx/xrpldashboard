@@ -722,7 +722,7 @@
     </li>
   </ul>
   <p>
-    {{ _('The 2026-08-10 gap audit of the historical range produced ~95.6%% coverage — 4,955,611 events across 2,194,433 distinct ledgers of a 2,958,523-ledger range. The ~4.4%% shortfall (~129,000 ledgers) is a mix of legitimately empty ledgers and residual public-Clio 503 responses the walker persisted past during backfill. This is disclosed on') }} <a href="/nfts">/nfts</a> {{ _('rather than surfaced as false-complete.') }}
+    {{ _('The 2026-08-10 gap audit of the historical range produced ~95.6%% coverage of a 2,958,523-ledger range (2026-04-01 → head): 2,194,433 ledgers were observed with NFT activity (4,955,611 events), ~635,090 contained no NFT transactions (legitimately empty of NFT tx), and ~129,000 are residual holes — public-Clio 503 responses the walker persisted past during backfill. The 95.6%% denominator is the full range; empty-by-consensus ledgers count as covered, residual holes count as missed. This is disclosed on') }} <a href="/nfts">/nfts</a> {{ _('rather than surfaced as false-complete.') }}
   </p>
   <p>
     {{ _('Under our sovereign-source doctrine —') }} <code>SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code> {{ _('— any endpoint whose underlying data was read through a third-party pipe stays free forever, honestly labeled, until it can be re-derived from our own infrastructure. NFT historical backfill therefore sits permanently in the free tier until (and unless) we buy a full-history rippled node and re-derive the range from it. The doctrine is fully documented in') }} <code>docs/X402_RAILS_DARK_SCOPING.md</code> {{ _('§ 2 Paid-candidate filter.') }}

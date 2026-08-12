@@ -1953,20 +1953,27 @@ pages:
           node is the path to clean title (attorney question 6(d)).
 
       - id: nfts_backfill_residual_holes
-        label: "Backfill coverage disclosure: ~95.6% of range covered, ~129,000 residual holes (Clio 503 windows)"
+        label: "Backfill coverage disclosure: ~95.6% of 2,958,523-ledger range covered — 2,194,433 observed with NFT activity + ~635,090 legitimately empty of NFT tx; ~129,000 residual holes (Clio 503 windows) are the counted-as-missed portion"
         data_paths:
-          - "app.py:3362 _NFT_BACKFILL_RESIDUAL_HOLES_EST = 129_000"
+          - "app.py: _NFT_BACKFILL_RANGE_TOTAL_EST / _OBSERVED_EST / _LEGITIMATELY_EMPTY_EST / _RESIDUAL_HOLES_EST / _COVERAGE_PCT"
           - "templates/nfts.html: known-limitations card"
+          - "templates/methodology.html: §nft-data-sources"
           - "memory: project_xrpldashboard_nft_backfill_gap_audit_2026-08-10.md"
         behavior: LEGITIMATELY_FLAT
         layer3_source: self-attested-only
         risk_note: >
           Founding-case-shaped disclosure: coverage stat, not headline stat.
-          The 129K estimate was derived from stratified sampling of missing
-          ledgers against s2-clio: 16.1% hole-rate in small-delta gaps,
-          35.7% in large-delta gaps, weighted ~4.4% of the range. If this
-          number ever moves without a documented sampling round + memory
-          update, it has become fiction.
+          Denominator = full range (2,958,523 ledgers). Numerator = observed
+          (2,194,433) + legitimately empty (~635,090). Residual holes
+          (~129,000) count as missed. The 129K estimate was derived from
+          stratified sampling of missing ledgers against s2-clio: 16.1%
+          hole-rate in small-delta gaps, 35.7% in large-delta gaps, weighted
+          ~4.4% of the range. All four numbers move together — a fresh
+          sampling round must update the app.py constants + memo + templates
+          + this label in lockstep. If any number moves without that chain,
+          it has become fiction. Denominator ambiguity flagged in ChatGPT
+          audit #4 (2026-08-12); labeling clarified in commit-of-record,
+          math unchanged.
 
       - id: nfts_top_issuers_7d
         label: "Top 10 issuers by 7d NFT activity (CreateOffer + Burn events; Mint/AcceptOffer/CancelOffer have NULL issuer by tx-type shape)"
