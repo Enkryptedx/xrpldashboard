@@ -24,10 +24,67 @@ PUBLIC_PAGES = [
 ]
 
 
+# Superset of PUBLIC_PAGES — every top-nav / first-order content page whose
+# 500-in-public would compromise the honesty contract. The trust-critical
+# six Charlie named after the 2026-08-12 methodology-500 incident come first
+# (/, /methodology, /claims, /snapshots/, /nfts, /connect); the remaining
+# entries are the rest of the reachable-from-nav content set. Any GET that
+# returns non-200 fails CI — this catches render-killers regardless of
+# root cause (unescaped %, missing context var, Python exception, etc).
+# The 2026-08-10 methodology bug (c4682dc) went undetected in public for
+# ~40 hours because /methodology was not in this list; that gap closes here.
+TRUST_CRITICAL_PAGES = [
+    "/",
+    "/methodology",
+    "/claims",
+    "/snapshots/",
+    "/nfts",
+    "/connect",
+    "/whales",
+    "/tokens",
+    "/mpts",
+    "/pools",
+    "/rlusd",
+    "/rwa",
+    "/amendments",
+    "/regulation",
+    "/sidechain",
+    "/learn",
+    "/security",
+    "/price-data",
+    "/about",
+    "/institutional",
+    "/cold-storage",
+    # /health deliberately excluded — it is designed to return 503 when the
+    # walker fleet is degraded (that IS the honest signal), and lives under
+    # test_healthz_ok / test_healthz_503_when_db_unreachable which validate
+    # the two-sided contract explicitly. Adding it here would misclassify
+    # the designed degrade path as a render-killer.
+]
+
+
 @pytest.mark.parametrize("path", PUBLIC_PAGES)
 def test_public_page_returns_200(client, path):
     r = client.get(path)
     assert r.status_code == 200, f"{path} returned {r.status_code}"
+    assert r.data, f"{path} returned empty body"
+
+
+@pytest.mark.parametrize("path", TRUST_CRITICAL_PAGES)
+def test_trust_critical_page_renders_200(client, path):
+    """Render-killer guard for every trust-critical GET.
+
+    The narrower PUBLIC_PAGES list only covered nine routes; /methodology
+    was not among them, which let commit c4682dc ship a %-in-gettext bug
+    that served 500 in public for ~40 hours (see
+    project_power_outage_ingest_gap_2026-08-12 memory). This test is the
+    permanent version of that lesson — every trust-critical page must
+    return 200 before merge, regardless of the specific failure mode.
+    """
+    r = client.get(path)
+    assert r.status_code == 200, (
+        f"{path} returned {r.status_code} — render-killer, do not merge"
+    )
     assert r.data, f"{path} returned empty body"
 
 
