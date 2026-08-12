@@ -4870,6 +4870,47 @@ CONTACT_PURPOSES = {
 }
 
 
+def _is_bot_contact_submission(ua: str, message: str) -> tuple[bool, str]:
+    """Return (is_bot, signature) for a /contact form submission.
+
+    Three signatures cover the two campaigns observed in contact_inquiries
+    (2026-07-03 through 2026-08-10) plus the original backlog pattern:
+
+      unclosed_paren_ua  — `(KHTML, like Gecko;` in the UA string (no closing
+                           paren before the semicolon). Identified in /contact
+                           page-view traffic 2026-08-10; hasn't appeared in
+                           submissions yet but included as a future-proof guard.
+
+      seo_spam_owner     — message body contains "hello xrpldashboard" (case-
+                           insensitive). The exact template: "Hello Xrpldashboard
+                           Com Owner, My name is X and I'm betting you'd like
+                           your website..." — seen in 5 of the 19 submission rows.
+
+      av_bundle_ua       — UA contains "ccleaner/" or "avast/" after the Chrome
+                           version. CCleaner and Avast bundle a Chrome-based
+                           browser that sends these suffixes; they appear in the
+                           multilingual price-inquiry campaign (LT/RO/LV, rotating
+                           Gmail, "Hi I wanted to know your price" in 12 languages).
+
+    Soft-drop design: return value drives a fake-200 — the bot gets told
+    "message received" while the payload goes nowhere. Never teach the bot
+    which signal it tripped.
+
+    Returns (False, "") for clean submissions so callers can short-circuit
+    without checking the reason string."""
+    ua_lower = (ua or "").lower()
+    msg_lower = (message or "").lower()
+
+    if "(khtml, like gecko;" in ua_lower:
+        return True, "unclosed_paren_ua"
+    if "hello xrpldashboard" in msg_lower:
+        return True, "seo_spam_owner"
+    if "ccleaner/" in ua_lower or "avast/" in ua_lower:
+        return True, "av_bundle_ua"
+
+    return False, ""
+
+
 @app.route("/click/contact")
 def click_contact():
     """Click logger + purpose-routed redirect to /contact. purpose is
@@ -5017,6 +5058,21 @@ def contact_submit():
     country = request.headers.get("CF-IPCountry") \
         or request.headers.get("X-Vercel-IP-Country") \
         or request.headers.get("X-Country-Code")
+
+    # Bot filter — soft-drop: bot gets a fake-200 success page, payload
+    # goes nowhere, bot never learns it was filtered. The drop is logged
+    # (ts + UA + signature only, no payload) so campaign decay is auditable.
+    is_bot, bot_sig = _is_bot_contact_submission(ua or "", message)
+    if is_bot:
+        db.log_contact_bot_drop(ua, bot_sig)
+        return render_template(
+            "contact.html",
+            submitted=True,
+            purpose=purpose,
+            purpose_label=CONTACT_PURPOSES[purpose],
+            purposes=CONTACT_PURPOSES,
+            ref_param=ref_param,
+        )
 
     try:
         row_id = db.insert_contact_inquiry(

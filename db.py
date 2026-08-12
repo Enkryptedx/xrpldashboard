@@ -778,6 +778,19 @@ CREATE INDEX IF NOT EXISTS contact_inquiries_ts_idx
 CREATE INDEX IF NOT EXISTS contact_inquiries_purpose_idx
     ON contact_inquiries (purpose);
 
+-- Bot-drop log for /contact form (soft-drop filter, 2026-08-12).
+-- One row per submission silently discarded. No payload stored — only
+-- the ts, UA, and which signature fired. Lets us track campaign decay
+-- and audit that the filter is doing what it says it does.
+CREATE TABLE IF NOT EXISTS contact_bot_drops (
+    id        BIGSERIAL PRIMARY KEY,
+    ts        BIGINT NOT NULL,
+    ua        TEXT,
+    signature TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS contact_bot_drops_ts_idx
+    ON contact_bot_drops (ts DESC);
+
 -- NFT tables — back /nfts (Fable funnel + active/quiet + churn badge).
 -- All figures counted from a cutoff ledger forward. True full-history
 -- existing count lives in a separate stock table (nft_existing_snapshot);
@@ -5833,6 +5846,25 @@ def mark_contact_inquiry_alerted(row_id):
                     "UPDATE contact_inquiries "
                     "SET email_alerted = TRUE WHERE id = %s",
                     (row_id,),
+                )
+            conn.commit()
+    except Exception:
+        pass
+
+
+def log_contact_bot_drop(ua, signature):
+    """Record a silently-dropped /contact submission in contact_bot_drops.
+    Best-effort — never raises, never blocks the fake-200 response path.
+    No payload stored; only ts, UA, and which filter signature fired."""
+    if not pg_available():
+        return
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO contact_bot_drops (ts, ua, signature) "
+                    "VALUES (%s, %s, %s)",
+                    (int(time.time()), (ua or "")[:300], signature),
                 )
             conn.commit()
     except Exception:
