@@ -94,6 +94,7 @@ EVENTS_DB_PATH = os.path.join(HERE, "events.db")
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
+GLOSSARY_PATH = os.path.join(HERE, "glossary.json")
 D1_HERO_SNAPSHOT_PATH = os.path.join(HERE, "d1_hero_snapshot.json")
 AXELAR_BRIDGE_ISSUER = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
 ISO_CONTINENT_PATH = os.path.join(HERE, "iso_country_to_continent.json")
@@ -4442,6 +4443,14 @@ def security():
     return render_template("security.html")
 
 
+@app.route("/glossary")
+def glossary():
+    with open(GLOSSARY_PATH, encoding="utf-8") as f:
+        terms = json.load(f)
+    terms_sorted = sorted(terms, key=lambda t: t["term"].upper())
+    return render_template("glossary.html", terms=terms_sorted)
+
+
 @app.route("/help/already-sent-money")
 def help_already_sent_money():
     """Calm crisis-design page for someone who has already sent XRP or
@@ -6624,6 +6633,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 
 ## How this is computed
 - [/methodology]({SITE_URL}/methodology): per-surface freshness contracts, cache TTLs, data sources, known limitations. See especially the "For AI agents" section.
+- [/glossary]({SITE_URL}/glossary): plain-English definitions for XRPL terms and xrpldashboard methodology concepts (AMM, amendment, trust line, signed snapshot, sovereignty tier, and more).
 - [/about]({SITE_URL}/about): mission, funding, principles.
 - [/health]({SITE_URL}/health): live infrastructure status endpoint.
 - [/terms]({SITE_URL}/terms): terms of use.

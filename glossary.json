@@ -1,0 +1,303 @@
+[
+  {
+    "term": "AMM",
+    "slug": "amm",
+    "definition": "Automated Market Maker. An XRPL-native DEX protocol that prices token pairs using a constant-product formula (x \u00d7 y = k). Liquidity providers deposit both sides of a pair; traders swap against the pool. Each pool has its own account on the ledger, enabled by the AMM amendment (XLS-30).",
+    "see": "/pools",
+    "see_label": "AMM pools"
+  },
+  {
+    "term": "Amendment",
+    "slug": "amendment",
+    "definition": "A change to the XRPL protocol that activates only when 80% of trusted validators support it for two consecutive weeks. Pending amendments are visible on /amendments before they go live. Once activated, an amendment cannot be reverted.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "Amendment vote",
+    "slug": "amendment-vote",
+    "definition": "The process by which XRPL validators signal support for or against a pending protocol change. Each validator broadcasts its position per ledger; the 80%-for-two-weeks threshold triggers activation. Votes are on-ledger and publicly visible.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "AMM pool",
+    "slug": "amm-pool",
+    "definition": "A specific trading pair managed by an AMM account on XRPL. The pool account holds both assets and prices swaps using a constant-product formula. Pool state \u2014 reserves, LP token supply, trading fee \u2014 is all readable on-ledger.",
+    "see": "/pools",
+    "see_label": "AMM pools"
+  },
+  {
+    "term": "Anchor (on-ledger)",
+    "slug": "anchor",
+    "definition": "A weekly XRPL payment from the dashboard\u2019s anchor account (rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ) to its ops account, with the snapshot chain\u2019s current chain_root embedded in the memo field. Creates an immutable public record that cannot be backdated: even if the site were compromised, the on-ledger record would remain.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 signed snapshots"
+  },
+  {
+    "term": "Backfill",
+    "slug": "backfill",
+    "definition": "The process of ingesting historical ledger data after a gap or from a new starting point. Backfill coverage is disclosed where it applies: the /nfts historical range starts at ledger 103,252,853 (2026-04-01); earlier history is not yet available. Residual holes are quantified and published, not hidden.",
+    "see": "/nfts",
+    "see_label": "NFT activity"
+  },
+  {
+    "term": "Burn (NFT)",
+    "slug": "burn-nft",
+    "definition": "The permanent deletion of an NFT from the XRPL. Once burned, the token ID is retired and cannot be recreated. Burn events appear in the /nfts activity feed.",
+    "see": "/nfts",
+    "see_label": "NFT activity"
+  },
+  {
+    "term": "Chain root",
+    "slug": "chain-root",
+    "definition": "A hex string that summarizes the entire signed snapshot chain up to the current day. Computed by hashing successive daily snapshots together; a change in any past snapshot would invalidate the root. Published in chain.json and anchored on-ledger weekly so a stranger can verify the record without trusting the site.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 signed snapshots"
+  },
+  {
+    "term": "Claims manifest",
+    "slug": "claims-manifest",
+    "definition": "CLAIMS.yaml \u2014 the site\u2019s public record of every meaningful claim on every page: what data source backs it, which Layer 2 audit rules apply, and what would break it. Each claim has a permanent URI at /claims/xrpl.\u2039domain\u203a.\u2039series\u203a. Machine-readable index at /claims/index.json.",
+    "see": "/claims",
+    "see_label": "Claims manifest"
+  },
+  {
+    "term": "Cold wallet",
+    "slug": "cold-wallet",
+    "definition": "An XRPL account whose private key is kept offline. Exchanges typically use cold wallets to hold the majority of customer funds, keeping only a smaller hot wallet online for active settlement. Known cold-wallet balances are tracked on /cold-storage.",
+    "see": "/cold-storage",
+    "see_label": "Cold storage"
+  },
+  {
+    "term": "DEX",
+    "slug": "dex",
+    "definition": "The XRPL\u2019s built-in decentralized exchange, where accounts place limit orders that settle on-ledger. Older than AMM pools; offers match and cross in the order book without a third-party intermediary. Trading on the DEX requires no account approval beyond holding the relevant trust lines.",
+    "see": "/tokens",
+    "see_label": "Token registry"
+  },
+  {
+    "term": "DID",
+    "slug": "did",
+    "definition": "Decentralized Identifier. An XRPL object (XLS-40) that lets accounts publish a self-sovereign identity document on-ledger. The DID document can attest to external credentials without relying on a central registry.",
+    "see": "/methodology",
+    "see_label": "Methodology"
+  },
+  {
+    "term": "Escrow",
+    "slug": "escrow",
+    "definition": "An XRPL object that holds XRP until a time condition or cryptographic condition is met. Ripple uses escrow to release its corporate XRP allocation on a scheduled basis \u2014 those releases are visible as large on-ledger transactions.",
+    "see": "/whales",
+    "see_label": "Whale transfers"
+  },
+  {
+    "term": "Freshness contract",
+    "slug": "freshness-contract",
+    "definition": "A per-surface promise about how stale the data on a given page can be, stated as a maximum cache TTL. \u201cLive\u201d means streamed directly from the ledger with no cache layer; \u201c60s\u201d means the query result is cached for up to 60 seconds. The full table of freshness contracts is on /methodology.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 freshness table"
+  },
+  {
+    "term": "Gateway",
+    "slug": "gateway",
+    "definition": "An XRPL issuer that creates trust-line balances redeemable for an off-chain asset. A bank or stablecoin operator that issues tokens on XRPL is acting as a gateway. RLUSD is issued by Ripple acting as a gateway on both XRPL and Ethereum.",
+    "see": "/rlusd",
+    "see_label": "RLUSD"
+  },
+  {
+    "term": "Hot wallet",
+    "slug": "hot-wallet",
+    "definition": "An XRPL account whose private key is online and used for frequent transactions. Counterpart to a cold wallet; exchanges expose hot wallets to more operational risk in exchange for immediate settlement liquidity.",
+    "see": "/cold-storage",
+    "see_label": "Cold storage"
+  },
+  {
+    "term": "Issuer",
+    "slug": "issuer",
+    "definition": "The XRPL account that created a token. Tokens on XRPL are identified by the pair (currency code, issuer address); the same currency code from two different issuers represents two distinct tokens. The /tokens registry lists issuers with domain attestation where available.",
+    "see": "/tokens",
+    "see_label": "Token registry"
+  },
+  {
+    "term": "Ledger",
+    "slug": "ledger",
+    "definition": "Each \u201cledger\u201d is a block in XRPL\u2019s history: an ordered set of transactions that validators agreed on, plus the resulting account state. A new ledger closes every 3\u20135 seconds. The XRP Ledger has been running continuously since January 2013.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "Ledger index",
+    "slug": "ledger-index",
+    "definition": "A sequential counter identifying each closed ledger. Ledger 1 is the genesis ledger (January 2013); the index increments by one per close. Ledger indices are used throughout the site to anchor data to specific points in time.",
+    "see": "/methodology",
+    "see_label": "Methodology"
+  },
+  {
+    "term": "LedgerProtocol (XLS-66)",
+    "slug": "ledgerprotocol",
+    "definition": "The Lending Protocol amendment that adds a native lending market to XRPL \u2014 collateralized borrowing and lending without a third-party custodian. Currently in voting phase. /lending tracks its amendment status.",
+    "see": "/lending",
+    "see_label": "Lending"
+  },
+  {
+    "term": "MCP (Model Context Protocol)",
+    "slug": "mcp",
+    "definition": "An open standard for connecting AI assistants to live data sources. xrpldashboard\u2019s MCP server lets AI tools query XRPL data directly and receive proof-annotation envelopes rather than raw numbers. The server is free, public, and listed in the Anthropic and Glama directories.",
+    "see": "/connect",
+    "see_label": "Connect an AI"
+  },
+  {
+    "term": "Mint (NFT)",
+    "slug": "mint-nft",
+    "definition": "The act of creating an NFT on XRPL under the XLS-20 standard. The NFT is minted into the creator\u2019s account with a unique 256-bit token ID. Mint events appear in the /nfts activity feed.",
+    "see": "/nfts",
+    "see_label": "NFT activity"
+  },
+  {
+    "term": "MPT (Multi-Purpose Token)",
+    "slug": "mpt",
+    "definition": "Multi-Purpose Token. XLS-33 standard for fungible tokens on XRPL with a smaller on-ledger footprint than trust-line tokens. Designed for high-volume issuers: each holder only requires a single ledger object rather than a trust line. The /mpts page tracks all active MPT issuances.",
+    "see": "/mpts",
+    "see_label": "MPT registry"
+  },
+  {
+    "term": "NFT (XLS-20)",
+    "slug": "nft",
+    "definition": "Non-fungible token on XRPL under the XLS-20 standard, enabled by the NonFungibleTokensV1_1 amendment. Each NFT has a unique 256-bit identifier. Mints, burns, offers, and sales are tracked on /nfts.",
+    "see": "/nfts",
+    "see_label": "NFT activity"
+  },
+  {
+    "term": "Offer",
+    "slug": "offer",
+    "definition": "An on-ledger order placed by an account to trade one asset for another at a specified exchange rate. Offers rest in the DEX order book until filled, cancelled, or expired. Distinct from NFT offers (which are sale listings under the XLS-20 protocol).",
+    "see": "/tokens",
+    "see_label": "Token registry"
+  },
+  {
+    "term": "Oracle",
+    "slug": "oracle",
+    "definition": "An XRPL object (XLS-47) that lets on-ledger accounts publish price feeds or other external data. Oracles enable smart contracts and AMMs to consume real-world data without leaving the ledger.",
+    "see": "/methodology",
+    "see_label": "Methodology"
+  },
+  {
+    "term": "Partial coverage",
+    "slug": "partial-coverage",
+    "definition": "A disclosure that a dataset doesn\u2019t cover the full range or population a reader might assume. Example: /nfts discloses its residual holes (~129K ledgers not backfilled) rather than presenting an artificially complete number. Scope notes appear wherever coverage is partial.",
+    "see": "/nfts",
+    "see_label": "NFT activity"
+  },
+  {
+    "term": "Permdomain",
+    "slug": "permdomain",
+    "definition": "Permission Domain (XLS-80). An XRPL amendment enabling permissioned DEX and AMM pools where participation is restricted to a defined set of accounts. Designed for regulated token trading where counterparty eligibility matters.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "Proof annotation",
+    "slug": "proof-annotation",
+    "definition": "A structured wrapper around every MCP tool response: {data, proof:{source, as_of, freshness_contract, methodology_url, claims_ref, cross_check_status, honest_partial, scope_note}}. Lets a machine verify provenance without trusting the presenter. Full schema at /openapi.json.",
+    "see": "/connect",
+    "see_label": "Connect an AI"
+  },
+  {
+    "term": "Reserve",
+    "slug": "reserve",
+    "definition": "The minimum XRP balance an XRPL account must hold. Currently 10 XRP base reserve plus 2 XRP for each object (trust line, offer, NFT page, etc.) the account owns. Reserve requirements prevent ledger spam by making it costly to create unbounded on-ledger objects.",
+    "see": "/methodology",
+    "see_label": "Methodology"
+  },
+  {
+    "term": "rippled",
+    "slug": "rippled",
+    "definition": "The open-source reference implementation of the XRPL protocol, written in C++. Running your own rippled node gives you a sovereign data source \u2014 you can verify every fact against your own copy of the ledger without trusting a third party. xrpldashboard\u2019s live data comes from its own rippled node on the Lenovo box.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 data sources"
+  },
+  {
+    "term": "RLUSD",
+    "slug": "rlusd",
+    "definition": "Ripple\u2019s USD-pegged stablecoin, issued on both XRPL and Ethereum. Supply and mint/burn events on this site are computed directly from gateway balance RPCs (XRPL) and Ethereum contract state \u2014 not from a third-party price API.",
+    "see": "/rlusd",
+    "see_label": "RLUSD supply"
+  },
+  {
+    "term": "RWA (real-world asset)",
+    "slug": "rwa",
+    "definition": "A token on XRPL whose value is tied to an off-chain asset: a currency, commodity, real estate instrument, or security. XRPL\u2019s trust-line model makes RWA issuance straightforward; attestation quality varies by issuer. /rwa lists verified RWA tokens with issuer attestation status.",
+    "see": "/rwa",
+    "see_label": "RWA registry"
+  },
+  {
+    "term": "Scope note",
+    "slug": "scope-note",
+    "definition": "A disclosure attached to a data point that limits its interpretation. Example: \u201cHistorical range is 2026-04-01 to present; earlier data not available.\u201d Scope notes appear wherever a number doesn\u2019t cover the full range a reader might assume. They are not disclaimers \u2014 they are precision statements.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 known limitations"
+  },
+  {
+    "term": "Signed snapshot",
+    "slug": "signed-snapshot",
+    "definition": "A daily database export signed with Ed25519, chain-linked to the previous day\u2019s snapshot. The signature proves the data hasn\u2019t changed since it was published; the chain linkage proves the order of publication. Snapshots are free to download and verify independently.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 signed snapshots"
+  },
+  {
+    "term": "Sovereignty",
+    "slug": "sovereignty",
+    "definition": "The property of a data source that lets you verify it independently without trusting a third party. Own-node data (rippled) is sovereign; data relayed through a third-party API is not. xrpldashboard\u2019s data sovereignty tier is green for metrics derived from its own rippled node.",
+    "see": "/methodology",
+    "see_label": "Methodology \u2014 data sources"
+  },
+  {
+    "term": "Sovereignty tier",
+    "slug": "sovereignty-tier",
+    "definition": "A traffic-light rating for each data source. Green: own rippled node \u2014 independently verifiable. Yellow: public XRPL RPC \u2014 on-chain but relayed through a third party. Red: third-party derived \u2014 trust us or check the original source yourself. Each claim on /claims carries its tier.",
+    "see": "/claims",
+    "see_label": "Claims manifest"
+  },
+  {
+    "term": "Trust line",
+    "slug": "trust-line",
+    "definition": "An accounting relationship between two XRPL accounts that allows them to hold a non-XRP asset. Each trust line has a credit limit set by the holder. Holding a token on XRPL means holding a trust-line balance with the issuer.",
+    "see": "/tokens",
+    "see_label": "Token registry"
+  },
+  {
+    "term": "TVL (total value locked)",
+    "slug": "tvl",
+    "definition": "The combined value of assets deposited in AMM pools or lending protocols, measured in XRP or USD at current market price. TVL is sensitive to the XRP/USD rate used \u2014 the rate source is disclosed on every surface that displays TVL.",
+    "see": "/pools",
+    "see_label": "AMM pools"
+  },
+  {
+    "term": "UNL (Unique Node List)",
+    "slug": "unl",
+    "definition": "The set of validators a rippled node trusts to reach consensus. The XRPL Foundation publishes a recommended UNL. Two nodes with substantially non-overlapping UNLs could theoretically disagree on ledger state, so UNL alignment is a safety property of the network.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "Validator",
+    "slug": "validator",
+    "definition": "A rippled node that participates in the XRPL consensus process by voting on which transactions to include in each ledger. Validators on the default Unique Node List (UNL) carry weight in the consensus vote. Validators do not receive a reward \u2014 they run as a public service or to protect their own connectivity to the network.",
+    "see": "/amendments",
+    "see_label": "Amendment tracker"
+  },
+  {
+    "term": "Whale",
+    "slug": "whale",
+    "definition": "An account making an unusually large XRP transfer. On /whales, the threshold is 100,000 XRP per payment. The label is descriptive \u2014 it identifies transaction size, not trading intent or account status.",
+    "see": "/whales",
+    "see_label": "Whale transfers"
+  },
+  {
+    "term": "XRP",
+    "slug": "xrp",
+    "definition": "The native currency of the XRP Ledger, used to pay transaction fees (which are destroyed, not paid to validators), fund reserve requirements, and serve as a bridge asset in DEX trades. XRP balances require no trust line \u2014 every XRPL account holds XRP natively.",
+    "see": "/whales",
+    "see_label": "Whale transfers"
+  }
+]

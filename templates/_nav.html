@@ -52,6 +52,102 @@
   .nav .lang-switch .menu .en-label {
     color: rgba(160,180,210,0.55); font-size: 10px; margin-left: 0.4em;
   }
+
+  /* Search trigger button */
+  .nav .search-trigger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 22px;
+    background: none; border: 1px solid rgba(160,180,210,0.28);
+    border-radius: 6px; cursor: pointer;
+    color: rgba(160,180,210,0.75);
+    padding: 0;
+    transition: color 0.15s, border-color 0.15s;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .nav .search-trigger:hover { color: var(--cyan); border-color: rgba(34,211,238,0.4); }
+  .nav .search-trigger svg { display: block; }
+
+  /* Search overlay */
+  #xd-search-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(4,6,16,0.75); backdrop-filter: blur(4px);
+    align-items: flex-start; justify-content: center;
+    padding-top: clamp(48px, 10vh, 120px);
+  }
+  #xd-search-overlay.xd-search-open { display: flex; }
+  #xd-search-box {
+    width: min(680px, calc(100vw - 32px));
+    background: #141832; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    overflow: hidden;
+  }
+  #xd-search-input-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  #xd-search-icon { color: rgba(160,180,210,0.5); flex-shrink: 0; }
+  #xd-search-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: #e6e9f2; font-size: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #xd-search-input::placeholder { color: rgba(160,180,210,0.45); }
+  #xd-search-esc {
+    font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
+    border: 1px solid rgba(160,180,210,0.25);
+    color: rgba(160,180,210,0.55);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer; flex-shrink: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  #xd-search-status {
+    font-size: 0.75rem; color: rgba(160,180,210,0.5);
+    padding: 0 16px;
+    min-height: 0;
+    transition: min-height 0.1s;
+  }
+  #xd-search-status:not(:empty) { padding: 8px 16px; }
+  #xd-search-results {
+    list-style: none; margin: 0; padding: 0 8px 8px;
+    max-height: 400px; overflow-y: auto;
+  }
+  #xd-search-results li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    padding: 10px 10px;
+    border-radius: 8px; cursor: pointer;
+    transition: background 0.1s;
+  }
+  #xd-search-results li:hover,
+  #xd-search-results li.xd-sr-active { background: rgba(34,211,238,0.07); }
+  .xd-sr-type {
+    grid-row: 1 / 3; align-self: center;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 4px;
+    white-space: nowrap; height: fit-content;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .xd-sr-type--page    { color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); background: rgba(34,211,238,0.06); }
+  .xd-sr-type--section { color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.06); }
+  .xd-sr-type--term    { color: #a855f7; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.06); }
+  .xd-sr-type--claim   { color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); background: rgba(251,191,36,0.06); }
+  .xd-sr-title { font-size: 0.9rem; font-weight: 600; color: #e6e9f2; align-self: end; }
+  .xd-sr-excerpt { font-size: 0.78rem; color: rgba(160,180,210,0.65); align-self: start; }
+  #xd-search-footer {
+    font-size: 0.72rem; color: rgba(160,180,210,0.4);
+    padding: 8px 16px 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    text-align: center;
+  }
+  @media (max-width: 600px) {
+    #xd-search-overlay { padding-top: 16px; align-items: flex-start; }
+    #xd-search-box { border-radius: 10px 10px 0 0; width: 100vw; }
+  }
 </style>
 {% set _p = request.path %}
 {% macro _nav_link(href, label, match=None) -%}
@@ -82,6 +178,12 @@
     {{ _nav_link('/regulation', _('regulation')) }}
     {{ _nav_link('/about', _('about')) }}
     {{ _nav_link('/institutional', _('institutional')) }}
+    <button class="search-trigger" onclick="xdSearchOpen()" aria-label="Search (Cmd+K)" title="Search (⌘K)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <circle cx="8.5" cy="8.5" r="5.5"/>
+        <line x1="13" y1="13" x2="18" y2="18"/>
+      </svg>
+    </button>
     {% if live_xrp_usd %}
       {# XRP/AMM/self-sourced are crypto proper nouns — not translated. #}
       <span class="xrp-chip" title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }})">
@@ -108,3 +210,4 @@
     </details>
   </div>
 </div>
+<script src="/static/js/search.js" defer></script>

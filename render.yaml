@@ -13,8 +13,10 @@ services:
     runtime: python
     plan: starter
 
-    # Build: install pinned dependencies.
-    buildCommand: pip install -r requirements.txt
+    # Build: install pinned dependencies, then generate the static search
+    # index from glossary.json + CLAIMS.yaml. Deploy fails if either
+    # source is missing or malformed (build_search_index.py exits non-zero).
+    buildCommand: pip install -r requirements.txt && python scripts/build_search_index.py
 
     # Run: gunicorn binds to Render's $PORT, 2 workers, 60s timeout.
     # 2 workers handles concurrent visitors well at this scale; bump if

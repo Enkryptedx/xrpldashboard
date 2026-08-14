@@ -55,6 +55,7 @@ TRUST_CRITICAL_PAGES = [
     "/about",
     "/institutional",
     "/cold-storage",
+    "/glossary",
     # /health deliberately excluded — it is designed to return 503 when the
     # walker fleet is degraded (that IS the honest signal), and lives under
     # test_healthz_ok / test_healthz_503_when_db_unreachable which validate
