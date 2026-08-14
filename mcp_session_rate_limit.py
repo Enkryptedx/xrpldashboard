@@ -51,6 +51,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import time
 from collections import defaultdict, deque
 from typing import Any
@@ -280,3 +281,127 @@ def stamp_rate_limit_bypass(session_key: str, matched_ua: str) -> None:
         )
     except Exception as e:  # noqa: BLE001
         log.warning("stamp_rate_limit_bypass: walker_health write failed: %s", e)
+
+
+# Ref-tag capture — one-column extension per Charlie's directive 2026-08-12.
+# Each MCP session is stamped ONCE with the ?ref=<slug> that opened the
+# connection, so October's revenue read can query
+# `walker_health WHERE walker_name='mcp_session_start'` and count distinct
+# sessions per referring directory. The map lives in-process (like the
+# limiter's buckets); a restart wipes counters and starts a fresh count,
+# same operational model as the ceiling itself.
+#
+# Ref slugs are advertised per directory in the six-directory expansion
+# (project_mcp_directory_expansion_2026-08-13.md). Unknown slugs bucketed
+# as "invalid"; missing ref (someone typed the URL manually or shared it
+# in DMs) as "direct" — both preserved so the ratio (advertised vs
+# organic) is visible instead of silently zeroed.
+_REF_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+_REF_MAX_LEN = 64
+_SESSION_REF: dict[str, str] = {}
+_SESSION_STARTED: set[str] = set()
+_REF_LOCK = asyncio.Lock()
+
+
+def _normalize_ref(raw: str | None) -> str:
+    """Sanitize a raw ?ref value into a stable slug or 'direct'/'invalid'.
+
+    Fail-safe rules:
+      * missing / empty  → 'direct' (arrived without a directory tag)
+      * matches slug re  → lowercased slug preserved
+      * anything else    → 'invalid' (traffic still counted, source flagged)
+
+    Keeps the walker_health message field bounded and grep-friendly. Never
+    raises — the ref tag is observability, not auth; a wire-poisoned value
+    must never break session init.
+    """
+    if raw is None:
+        return "direct"
+    s = raw.strip().lower()
+    if not s:
+        return "direct"
+    if len(s) > _REF_MAX_LEN:
+        return "invalid"
+    if _REF_SLUG_RE.match(s):
+        return s
+    return "invalid"
+
+
+def _extract_raw_ref(ctx: Any) -> str | None:
+    """Best-effort read of ?ref= from the Starlette Request behind the
+    streamable-http transport. Returns None on any breakage — the caller
+    normalizes None to 'direct'. Never raises."""
+    try:
+        request = ctx.request_context.request
+        if request is None:
+            return None
+        qp = getattr(request, "query_params", None)
+        if qp is None:
+            return None
+        return qp.get("ref")
+    except Exception:  # noqa: BLE001 — any breakage in header path → 'direct'
+        return None
+
+
+async def mark_session_seen(ctx: Any, session_key: str) -> str:
+    """Bind (session_key → ref) on first sight, stamp once, return the ref.
+
+    Idempotent per session_key: the first call captures the ref, writes
+    exactly one ``mcp_session_start`` walker_health row, and remembers the
+    binding. Subsequent calls with the same session_key return the bound
+    ref without another write.
+
+    Runs in ``call_tool`` before rate-limit accounting so every session that
+    successfully calls even one tool is counted exactly once with its
+    source-directory tag. Sessions that connect but never call a tool are
+    intentionally NOT counted here (they're pre-tool noise and the
+    downstream question October wants answered is "which directory sent
+    agents that actually did work").
+    """
+    async with _REF_LOCK:
+        if session_key in _SESSION_STARTED:
+            return _SESSION_REF.get(session_key, "direct")
+        ref = _normalize_ref(_extract_raw_ref(ctx))
+        _SESSION_REF[session_key] = ref
+        _SESSION_STARTED.add(session_key)
+    stamp_session_start(session_key, ref)
+    return ref
+
+
+def get_ref_for_session(session_key: str) -> str:
+    """Read-only lookup for the bound ref of a known session. Returns
+    'direct' if the session hasn't been marked yet (defensive default —
+    the counting query only surfaces stamped rows, so this fallback
+    only affects the message text of a later hit/bypass row)."""
+    return _SESSION_REF.get(session_key, "direct")
+
+
+def stamp_session_start(session_key: str, ref: str) -> None:
+    """Write the once-per-session ``mcp_session_start`` walker_health row.
+
+    Same silent-skip-on-db-import-failure discipline as the sibling stamp
+    functions. Row shape lets October's counting query be a single grep:
+    ``SELECT COUNT(*) FROM walker_health WHERE walker_name =
+    'mcp_session_start' AND message LIKE '%ref=<slug>%' AND
+    last_success_at > <since>``. No new schema; message text carries the
+    dimension.
+    """
+    try:
+        import db
+    except Exception:  # noqa: BLE001
+        return
+    try:
+        db.write_walker_health_end(
+            "mcp_session_start",
+            ok=True,
+            message=f"session={session_key} ref={ref}",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("stamp_session_start: walker_health write failed: %s", e)
+
+
+async def _reset_ref_state_for_tests() -> None:
+    """Test hook — clear the in-process ref map + stamp-once set."""
+    async with _REF_LOCK:
+        _SESSION_REF.clear()
+        _SESSION_STARTED.clear()

@@ -394,6 +394,67 @@ def test_connect_no_jinja_leakage(client):
     assert not re.search(r"\{%[^%]*%\}", body), "/connect leaks {%...%}"
 
 
+# ─────────────────────────────────────────────────────────────────
+# /connect/<slug> per-directory redirect layer (added 2026-08-12 for
+# the 3→9 MCP directory expansion). Ref-tag capture in the MCP session
+# layer + this redirect layer together give October's revenue read a
+# clean per-directory numerator.
+# ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize(
+    "slug",
+    ["anthropic", "smithery", "glama", "mcpso", "allmcps",
+     "mcpmarket", "pulse", "cursor", "openai", "direct", "readme"],
+)
+def test_connect_slug_redirects_to_ref_tagged_mcp(client, slug):
+    """Every allowlisted slug 302s to the live MCP endpoint carrying
+    the ref query param — the belt-and-suspenders path that covers
+    directories that strip query strings when rendering the URL."""
+    r = client.get(f"/connect/{slug}", follow_redirects=False)
+    assert r.status_code == 302, (
+        f"/connect/{slug} must 302 (got {r.status_code}) — this is the "
+        f"attribution path October's revenue read counts on"
+    )
+    loc = r.headers.get("Location", "")
+    assert loc == f"https://mcp.xrpldashboard.com/mcp?ref={slug}", (
+        f"/connect/{slug} redirected to {loc!r}; must be the live MCP "
+        f"endpoint with ref preserved"
+    )
+
+
+def test_connect_slug_case_insensitive(client):
+    """Directory forms may uppercase display slugs; the redirect must
+    still route them to the canonical lowercase ref."""
+    r = client.get("/connect/Anthropic", follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers.get("Location") == "https://mcp.xrpldashboard.com/mcp?ref=anthropic"
+
+
+def test_connect_slug_unknown_falls_through_to_docs(client):
+    """Unknown slugs (typos, off-list directories) 302 to the human
+    docs page rather than 404 — a mildly mangled URL still reaches
+    the onboarding page rather than dead-ending."""
+    r = client.get("/connect/unknown-slug", follow_redirects=False)
+    assert r.status_code == 302, "unknown slug must 302, not 404"
+    loc = r.headers.get("Location", "")
+    assert loc.endswith("/connect#connect-in-60-seconds"), (
+        f"unknown slug redirected to {loc!r}; must land on /connect docs"
+    )
+
+
+def test_connect_slug_never_reveals_paid_endpoints(client):
+    """Free-tier posture invariant: nothing on the /connect/<slug> path
+    may reveal x402 / paid / RLUSD-price copy — the flip is dark until
+    October's decision. Belt-and-suspenders vs the class of leak where
+    a stray env-preview or debug block escapes into a redirect target."""
+    r = client.get("/connect/anthropic", follow_redirects=False)
+    loc = r.headers.get("Location", "")
+    for banned in ("x402", "RLUSD", "USDC", "402", "paid"):
+        assert banned.lower() not in loc.lower(), (
+            f"/connect/anthropic redirect location leaked {banned!r}: {loc!r}"
+        )
+
+
 @pytest.mark.parametrize("path", PUBLIC_PAGES)
 def test_public_page_has_og_tags(client, path):
     """Every public page must carry Open Graph + Twitter card tags so

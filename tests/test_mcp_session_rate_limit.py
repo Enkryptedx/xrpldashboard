@@ -27,6 +27,10 @@ from mcp_session_rate_limit import (
     _FALLBACK_KEY,
     DEFAULT_UA_ALLOWLIST_SUBSTRINGS,
     SessionRateLimiter,
+    _normalize_ref,
+    _reset_ref_state_for_tests,
+    get_ref_for_session,
+    mark_session_seen,
     session_key_from_context,
     should_bypass_rate_limit,
 )
@@ -124,6 +128,185 @@ def test_reset_clears_bucket():
         assert (await limiter.check_and_record("s"))[0] is False
         await limiter.reset("s")
         assert (await limiter.check_and_record("s"))[0] is True
+
+    _run(scenario())
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Ref-tag capture (per-directory attribution) — added 2026-08-12 for
+# the 3→9 MCP directory expansion. Each MCP session is stamped once
+# with its ?ref=<slug> so October's revenue read can count arriving
+# agents by referring directory. See mcp_session_rate_limit.py and
+# project_mcp_directory_expansion_2026-08-13.md for the design.
+# ─────────────────────────────────────────────────────────────────────
+
+class _RefQueryParams:
+    def __init__(self, mapping):
+        self._m = mapping
+
+    def get(self, key, default=None):
+        return self._m.get(key, default)
+
+
+class _RefRequest:
+    def __init__(self, ref=None, missing=False):
+        if missing:
+            self.query_params = None
+        else:
+            self.query_params = _RefQueryParams({"ref": ref} if ref is not None else {})
+
+
+class _RefRequestContext:
+    def __init__(self, request):
+        self.request = request
+
+
+class _RefCtx:
+    def __init__(self, request=None):
+        self.request_context = _RefRequestContext(request)
+
+
+def test_normalize_ref_valid_slugs():
+    assert _normalize_ref("anthropic") == "anthropic"
+    assert _normalize_ref("Smithery") == "smithery"          # lowercased
+    assert _normalize_ref("mcp-so") == "mcp-so"              # hyphen allowed
+    assert _normalize_ref("all_mcps") == "all_mcps"          # underscore allowed
+    assert _normalize_ref("glama2") == "glama2"              # digits allowed
+    assert _normalize_ref("a") == "a"                        # 1-char minimum
+
+
+def test_normalize_ref_edge_cases():
+    assert _normalize_ref(None) == "direct"
+    assert _normalize_ref("") == "direct"
+    assert _normalize_ref("   ") == "direct"                 # stripped-then-empty
+    assert _normalize_ref("has space") == "invalid"
+    assert _normalize_ref("has/slash") == "invalid"
+    assert _normalize_ref("SELECT *") == "invalid"
+    assert _normalize_ref("-leading-hyphen") == "invalid"    # must start alnum
+    assert _normalize_ref("a" * 65) == "invalid"             # length cap
+    assert _normalize_ref("a" * 64) == ("a" * 64)            # length cap boundary
+
+
+def test_mark_session_seen_binds_and_stamps_once(monkeypatch):
+    """First call captures ref + stamps; second call is idempotent (no
+    second stamp). This is the load-bearing behaviour — a chatty agent
+    that calls 500 tools in one session must show up as ONE arrival,
+    not 500, in the per-directory counter."""
+    stamps = []
+
+    def fake_stamp(session_key, ref):
+        stamps.append((session_key, ref))
+
+    monkeypatch.setattr(
+        "mcp_session_rate_limit.stamp_session_start", fake_stamp
+    )
+
+    async def scenario():
+        await _reset_ref_state_for_tests()
+        ctx = _RefCtx(_RefRequest(ref="anthropic"))
+        r1 = await mark_session_seen(ctx, "session:1234")
+        r2 = await mark_session_seen(ctx, "session:1234")
+        r3 = await mark_session_seen(ctx, "session:1234")
+        assert r1 == "anthropic"
+        assert r2 == "anthropic"
+        assert r3 == "anthropic"
+        assert len(stamps) == 1, "session_start must stamp exactly once per session"
+        assert stamps[0] == ("session:1234", "anthropic")
+        assert get_ref_for_session("session:1234") == "anthropic"
+
+    _run(scenario())
+
+
+def test_mark_session_seen_missing_ref_is_direct(monkeypatch):
+    """Sessions that arrive without ?ref= are stamped as 'direct' —
+    the ratio of tagged/direct is itself a signal the counting query
+    surfaces (organic vs directory-attributed traffic)."""
+    stamps = []
+    monkeypatch.setattr(
+        "mcp_session_rate_limit.stamp_session_start",
+        lambda k, r: stamps.append((k, r)),
+    )
+
+    async def scenario():
+        await _reset_ref_state_for_tests()
+        ctx = _RefCtx(_RefRequest(ref=None))  # no ?ref= at all
+        r = await mark_session_seen(ctx, "session:direct-1")
+        assert r == "direct"
+        assert stamps == [("session:direct-1", "direct")]
+
+    _run(scenario())
+
+
+def test_mark_session_seen_invalid_ref_is_bucketed(monkeypatch):
+    """A wire-poisoned ref value can't break session init — it collapses
+    to 'invalid' and the session is still counted. Never raises."""
+    stamps = []
+    monkeypatch.setattr(
+        "mcp_session_rate_limit.stamp_session_start",
+        lambda k, r: stamps.append((k, r)),
+    )
+
+    async def scenario():
+        await _reset_ref_state_for_tests()
+        ctx = _RefCtx(_RefRequest(ref="'; DROP TABLE walker_health;--"))
+        r = await mark_session_seen(ctx, "session:poison")
+        assert r == "invalid"
+        assert stamps == [("session:poison", "invalid")]
+
+    _run(scenario())
+
+
+def test_mark_session_seen_survives_missing_request(monkeypatch):
+    """If the transport layer ever fails to stash the Starlette Request
+    (e.g., MCP SDK version drift), ref capture falls back to 'direct'
+    without raising. Q1 fail-open discipline — same rule as the UA
+    allowlist path."""
+    stamps = []
+    monkeypatch.setattr(
+        "mcp_session_rate_limit.stamp_session_start",
+        lambda k, r: stamps.append((k, r)),
+    )
+
+    async def scenario():
+        await _reset_ref_state_for_tests()
+        # request is None entirely
+        ctx = _RefCtx(request=None)
+        r = await mark_session_seen(ctx, "session:no-request")
+        assert r == "direct"
+        assert stamps == [("session:no-request", "direct")]
+        # query_params is None (structural gap)
+        await _reset_ref_state_for_tests()
+        ctx2 = _RefCtx(_RefRequest(missing=True))
+        r2 = await mark_session_seen(ctx2, "session:no-qp")
+        assert r2 == "direct"
+
+    _run(scenario())
+
+
+def test_mark_session_seen_distinct_sessions_bind_independently(monkeypatch):
+    """Two sessions arriving via different directories are counted
+    independently. Regression fence against the class of bug where a
+    module-level ref cache would let session #2's ref overwrite session
+    #1's."""
+    stamps = []
+    monkeypatch.setattr(
+        "mcp_session_rate_limit.stamp_session_start",
+        lambda k, r: stamps.append((k, r)),
+    )
+
+    async def scenario():
+        await _reset_ref_state_for_tests()
+        ctx_a = _RefCtx(_RefRequest(ref="smithery"))
+        ctx_b = _RefCtx(_RefRequest(ref="glama"))
+        await mark_session_seen(ctx_a, "session:aaa")
+        await mark_session_seen(ctx_b, "session:bbb")
+        await mark_session_seen(ctx_a, "session:aaa")  # dup — no re-stamp
+        assert get_ref_for_session("session:aaa") == "smithery"
+        assert get_ref_for_session("session:bbb") == "glama"
+        assert stamps == [
+            ("session:aaa", "smithery"),
+            ("session:bbb", "glama"),
+        ]
 
     _run(scenario())
 

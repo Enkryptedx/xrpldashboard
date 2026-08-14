@@ -3813,6 +3813,83 @@ def connect():
 
 
 # ─────────────────────────────────────────────────────────────────
+# Per-directory /connect/<slug> redirect layer (added 2026-08-12 for
+# the 3→9 MCP directory expansion). Two purposes:
+#
+# 1. Belt-and-suspenders backup to ?ref=<slug> URLs. If any directory
+#    strips query strings when displaying or handing the URL to a
+#    client, the /connect/<slug> path 302s to the ref-tagged endpoint
+#    server-side — the query re-attaches at the transport hop the
+#    client can't strip. Verified 2026-08-12: mcp-remote@latest
+#    (Cursor + Claude Desktop's bridge) preserves query strings, so
+#    the primary path already works; this is defense in depth.
+#
+# 2. Attribution watermark on the redirect itself. The click stamps
+#    a walker_health row `mcp_connect_redirect` with ref=<slug> BEFORE
+#    the 302, so a click that never completes the MCP handshake (agent
+#    fetched the URL then closed) is still counted at the directory
+#    layer. The MCP-session-start stamp counts sessions that actually
+#    call a tool; the redirect stamp counts arrivals at the door.
+#
+# Allowlist is the closed set of nine directories (three live + six
+# expansion). New directory ⇒ add the slug here + submit. Slugs match
+# the ref-tag capture rules in mcp_session_rate_limit._normalize_ref.
+# ─────────────────────────────────────────────────────────────────
+
+CONNECT_REDIRECT_SLUGS: frozenset[str] = frozenset({
+    # Three live (2026-08-05):
+    "anthropic",     # Official MCP Registry (registry.modelcontextprotocol.io)
+    "smithery",      # smithery.ai
+    "glama",         # glama.ai/mcp/servers
+    # Six-directory expansion (2026-08-12):
+    "mcpso",         # mcp.so
+    "allmcps",       # allmcps.com
+    "mcpmarket",     # mcpmarket.com
+    "pulse",         # pulsemcp.com — pending waitlist as of 2026-08-12
+    "cursor",        # docs.cursor.com/tools/mcp (future submission)
+    "openai",        # OpenAI directory (research task)
+    # Reserved (organic + operational):
+    "direct",        # URL typed / shared in DMs — not from a directory
+    "readme",        # arrivals from README badge click
+})
+MCP_PUBLIC_URL = "https://mcp.xrpldashboard.com/mcp"
+
+
+@app.route("/connect/<slug>")
+def connect_redirect(slug: str):
+    """302-redirect a directory click to the ref-tagged MCP endpoint.
+
+    Unknown slugs fall through to /connect (the human onboarding page)
+    with a 302 too — no 404 for typos, so a mildly-mangled URL still
+    reaches the docs. The stamp only fires on slugs in the allowlist
+    (unknown slugs are user-typo noise, not counted).
+    """
+    slug_norm = (slug or "").strip().lower()
+    if slug_norm in CONNECT_REDIRECT_SLUGS:
+        _stamp_connect_redirect(slug_norm)
+        return redirect(f"{MCP_PUBLIC_URL}?ref={slug_norm}", code=302)
+    return redirect("/connect#connect-in-60-seconds", code=302)
+
+
+def _stamp_connect_redirect(slug: str) -> None:
+    """Best-effort walker_health stamp for the redirect-time click.
+
+    Silent-skip on any DB failure — attribution is observability, not
+    a gate; a Neon outage must not break the redirect path. Same
+    discipline as :func:`stamp_rate_limit_hit`.
+    """
+    try:
+        import db as _db
+        _db.write_walker_health_end(
+            "mcp_connect_redirect",
+            ok=True,
+            message=f"ref={slug}",
+        )
+    except Exception:  # noqa: BLE001 — best-effort attribution
+        pass
+
+
+# ─────────────────────────────────────────────────────────────────
 # Queryable claims layer (shipped 2026-08-04 per docs/PAID_MACHINE_TIER_DESIGN.md
 # § 3.1). Every CLAIMS.yaml entry gets a permanent resolvable URI
 # under /claims/xrpl.<domain>.<series>. See claims_endpoint.py for

@@ -1,5 +1,10 @@
 # Anthropic Official MCP Registry — submission steps
 
+> **2026-08-12 update:** Republish flow (v1.29.0 → v1.29.1) for the
+> ref-tagged URL now lives in `EXPANSION_2026-08-13.md` §1. This file
+> is the first-time-publish reference, retained for the history it
+> encodes. Use the expansion doc for the republish.
+
 Registry: https://registry.modelcontextprotocol.io  
 Namespace we want: `com.xrpldashboard/*` (DNS-verified, not the free `io.github.enkryptedx/*` GitHub-verified path — the com. namespace matches the site's identity and is our moat).
 

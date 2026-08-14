@@ -539,6 +539,7 @@ def build_server(
     # not required for the envelope-only unit tests.
     from mcp.server.fastmcp.exceptions import ToolError
     from mcp_session_rate_limit import (
+        mark_session_seen,
         session_key_from_context,
         should_bypass_rate_limit,
         stamp_rate_limit_bypass,
@@ -559,6 +560,11 @@ def build_server(
         async def call_tool(self, name, arguments):
             ctx = self.get_context()
             session_key = session_key_from_context(ctx)
+            # Bind ref=<slug> from ?ref= on the initial URL to this
+            # session (once) so October's per-directory read can attribute
+            # every arriving agent. Runs before rate-limit accounting so
+            # bypass paths (SmitheryBot) are counted with their ref too.
+            await mark_session_seen(ctx, session_key)
             bypassed, matched_ua = should_bypass_rate_limit(ctx)
             if bypassed:
                 stamp_rate_limit_bypass(session_key, matched_ua)
