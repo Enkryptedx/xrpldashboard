@@ -32,9 +32,11 @@ RIPPLE_EPOCH_OFFSET = 946684800
 # enough to still feel "current."
 CLOSE_TIME_SAMPLE_LEDGERS = 1000
 
-# Pulse cache TTL. Shorter than the AMM cache because the pulse is the
-# "is it alive right now" panel — staleness here is more visible to users.
-PULSE_CACHE_TTL_SECONDS = int(os.environ.get("PULSE_CACHE_TTL_SECONDS", "20"))
+# Pulse cache TTL. 60s balances "alive right now" feel against 3× RPC-per-
+# miss cost — at 20s the homepage cache-miss path was firing 3 synchronous
+# XRPL RPCs whenever a request landed in a fresh TTL window, driving TTFB
+# variance from 2s to 9s. 60s stays honest (pulse chip labels its own age).
+PULSE_CACHE_TTL_SECONDS = int(os.environ.get("PULSE_CACHE_TTL_SECONDS", "60"))
 _cache_lock = threading.Lock()
 _cache_state = {"data": None, "fetched_at": 0.0}
 
