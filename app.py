@@ -713,19 +713,6 @@ _WHALES_REBUILD_IN_FLIGHT = set()  # elements: (tier, filter_type) tuples
 # recycle — honest and small enough that receipts stay decision-grade.
 _WHALES_CACHE_FLUSH_INTERVAL_S = 300
 
-# / (homepage) 60s in-process SWR cache — mirrors the whales pattern. Cold
-# TTFB was 2-9s from uncached AMM snapshot + recent-whale query + top-tokens
-# aggregation + inline pulse RPC (when the 20s pulse TTL missed). Single-slot
-# key space ("full") because the homepage takes no query params. Freshness
-# stamps (timestamp_str/iso) are rendered INTO the body at render time, so
-# cache-serve preserves data-time truth automatically — a 65s-old cached
-# body carries a stamp that says "65s ago", same discipline as everywhere.
-_INDEX_CACHE_LOCK = threading.Lock()
-_INDEX_CACHE = {}  # "full" -> (expiry_ts, body_str, gen_ms)
-_INDEX_CACHE_TTL_S = 60
-_INDEX_REBUILD_LOCK = threading.Lock()
-_INDEX_REBUILD_IN_FLIGHT = set()
-
 
 def _maybe_flush_whales_receipts(force):
     """Flush accumulated hit/miss deltas to whales_cache_daily.
@@ -862,32 +849,6 @@ def _trigger_analytics_rebuild():
 
     threading.Thread(
         target=_run, daemon=True, name="analytics-swr-rebuild"
-    ).start()
-
-
-def _trigger_index_rebuild():
-    """SWR twin of _trigger_whales_rebuild for the / homepage. Single-key
-    cache so the in-flight set has at most one element ('full')."""
-    key = "full"
-    with _INDEX_REBUILD_LOCK:
-        if key in _INDEX_REBUILD_IN_FLIGHT:
-            return
-        _INDEX_REBUILD_IN_FLIGHT.add(key)
-
-    def _run():
-        try:
-            _CACHE_REBUILD_LOCAL.bypass = True
-            with app.test_request_context("/"):
-                index()
-        except Exception:
-            pass
-        finally:
-            _CACHE_REBUILD_LOCAL.bypass = False
-            with _INDEX_REBUILD_LOCK:
-                _INDEX_REBUILD_IN_FLIGHT.discard(key)
-
-    threading.Thread(
-        target=_run, daemon=True, name="index-swr-rebuild"
     ).start()
 
 
@@ -1950,27 +1911,6 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
 def index():
     """The public landing page. Mosaic of every subsystem so visitors
     immediately see the full scope of the dashboard, not just AMM pools."""
-    # 60s in-process SWR cache — see _INDEX_CACHE comment above. Hit path
-    # returns the cached HTML body directly; miss path continues into the
-    # render logic below and caches at return. Freshness stamps live in
-    # the body so cache-serve preserves data-time truth automatically.
-    _index_cache_key = "full"
-    _index_now = time.time()
-    _index_serve_stale = False
-    _cached_body = None
-    if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
-        with _INDEX_CACHE_LOCK:
-            _cached_entry = _INDEX_CACHE.get(_index_cache_key)
-            if _cached_entry:
-                _cached_body = _cached_entry[1]
-                if _cached_entry[0] <= _index_now:
-                    _index_serve_stale = True
-    if _cached_body is not None:
-        if _index_serve_stale:
-            _trigger_index_rebuild()
-        return _cached_body
-    _index_render_start = time.perf_counter()
-
     pulse = fetch_pulse_cached()
     # Render-time heartbeat for the hidden cached-meta hook that drives the
     # 30s [data-live] panel refresh in templates/index.html. Visible label
@@ -2024,7 +1964,7 @@ def index():
     # by ~0.02%/year via transaction-fee burns, well below display rounding.
     xrp_distribution = _build_xrp_distribution(ranked_full)
 
-    _index_body = render_template(
+    return render_template(
         "index.html",
         timestamp_str=timestamp_str,
         timestamp_iso=timestamp_iso,
@@ -2040,14 +1980,6 @@ def index():
         cold_storage=cold,
         xrp_distribution=xrp_distribution,
     )
-    _index_gen_ms = int((time.perf_counter() - _index_render_start) * 1000)
-    with _INDEX_CACHE_LOCK:
-        _INDEX_CACHE[_index_cache_key] = (
-            _index_now + _INDEX_CACHE_TTL_S,
-            _index_body,
-            _index_gen_ms,
-        )
-    return _index_body
 
 
 @app.route("/lookup")

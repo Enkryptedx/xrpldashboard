@@ -1,24 +1,20 @@
 {# Futuristic-tech vibes — body scripts. Include just before </body>.
    All effects are feature-detected — pages without .stat-pill, [data-countup],
    or .mosaic simply skip the relevant block, no errors. #}
-<script defer src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"
         integrity="sha384-B2WBjDzEjJpYvhmi2UyEn7rektqkf5suS6sNoyyrf0EBAwBHdkiXxIlU0V5Ru2ed"
         crossorigin="anonymous"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
         integrity="sha384-g4NTh/Iv5PPU4xPyhEWqPcwtNXOvdaDI8LLnyYfyNZOjKJeYQyjzQ9X5275eBjpt"
         crossorigin="anonymous"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"
         integrity="sha384-Z3REaz79l2IaAZqJsSABtTbhjgOUYyV3p90XNnAPCSHg3EMTz1fouunq9WZRtj3d"
         crossorigin="anonymous"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"
+<script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"
         integrity="sha384-DsT1q/+aTIkNUICSMoPHLh8RDdgN2BaPm3ThHPGAuETCIdf1vPGwFsoMy/SrKZ7W"
         crossorigin="anonymous"></script>
 <script>
-  // Wait for DOMContentLoaded so the four deferred CDN scripts above have
-  // executed (defer scripts run in order, before DOMContentLoaded fires).
-  // Without this the IIFE would run at parse time, find window.Lenis/gsap/
-  // countUp still undefined, and silently skip every effect.
-  window.addEventListener('DOMContentLoaded', function () {
+  (function () {
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Lenis smooth scroll (also drives ScrollTrigger if present)
@@ -123,5 +119,5 @@
         });
       });
     }
-  });
+  })();
 </script>
