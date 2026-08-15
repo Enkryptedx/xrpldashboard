@@ -32,9 +32,11 @@ RIPPLE_EPOCH_OFFSET = 946684800
 # enough to still feel "current."
 CLOSE_TIME_SAMPLE_LEDGERS = 1000
 
-# Pulse cache TTL. Shorter than the AMM cache because the pulse is the
-# "is it alive right now" panel — staleness here is more visible to users.
-PULSE_CACHE_TTL_SECONDS = int(os.environ.get("PULSE_CACHE_TTL_SECONDS", "20"))
+# Pulse cache TTL. Bumped 20→60 to cut homepage cold-render latency —
+# a fresh /health render on cache-miss was firing 3× XRPL RPCs; longer TTL
+# means most hits skip the RPC round-trip entirely. Still visible enough for
+# an "is it alive right now" panel; the /methodology mirror moved in lockstep.
+PULSE_CACHE_TTL_SECONDS = int(os.environ.get("PULSE_CACHE_TTL_SECONDS", "60"))
 _cache_lock = threading.Lock()
 _cache_state = {"data": None, "fetched_at": 0.0}
 

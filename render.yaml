@@ -2,8 +2,15 @@
 # Render reads this file when you connect the repo and provisions
 # the service automatically. Push to git → Render redeploys.
 #
-# Plan: starter ($7/mo) keeps the service warm 24/7 (the free tier
-# sleeps after 15 min of inactivity, which kills a "live dashboard").
+# Plan: standard ($25/mo, 2 GB RAM, 1 CPU). Bumped from starter after the
+# 2026-08-15 OOM incident — starter's 512MB ceiling was being exceeded at
+# baseline load (accumulated whales cache + ranked snapshot cache + module
+# state + concurrent renders pushed past the limit; Render notifications
+# confirmed "used over 512MB" twice in one window). This yaml MUST match the
+# dashboard tier: Render's blueprint sync overwrites dashboard changes on
+# every deploy per https://render.com/docs/infrastructure-as-code, so
+# `plan: starter` here would silently downgrade the service the next time
+# anyone pushes to main.
 #
 # Docs: https://render.com/docs/blueprint-spec
 
@@ -11,7 +18,7 @@ services:
   - type: web
     name: xrpldashboard
     runtime: python
-    plan: starter
+    plan: standard
 
     # Build: install pinned dependencies, then generate the static search
     # index from glossary.json + CLAIMS.yaml. Deploy fails if either
