@@ -4945,7 +4945,15 @@ def ensure_is_bot_schema():
                 )
         # CREATE INDEX CONCURRENTLY needs autocommit (outside transaction)
         dsn = pg_url()
-        idx_conn = psycopg.connect(dsn, autocommit=True)
+        idx_conn = psycopg.connect(
+            dsn,
+            autocommit=True,
+            connect_timeout=15,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=3,
+        )
         try:
             with idx_conn.cursor() as cur:
                 cur.execute(
