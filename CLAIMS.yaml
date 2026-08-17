@@ -1070,6 +1070,18 @@ pages:
           Senate recess) and 2026-09-14 (recess return) — re-verify
           regardless of whether status appears to have changed.
 
+          2026-08-17 postmortem: contract breached by 2 days during
+          active window (LAST_VERIFIED sat at 2026-08-08, re-verify
+          was due 2026-08-15); the 2026-08-09 hard-trigger checkpoint
+          was missed entirely. Content miss: the page stated "no
+          cloture motion has been filed" while a cloture motion on
+          the motion to proceed had been filed same-day 2026-08-08
+          (Thune). Corrected 2026-08-17 with public correction chip
+          on the page; root cause = manual-cadence contract with no
+          automated reminder + staleness banner fired to visitors
+          before it fired to operator. L2 v2 freshness-sweep backlog
+          (tools/l2_inspector.py:29) now escalated for next L2 touch.
+
       - id: regulation_sec_cftc_framework
         label: "SEC vs CFTC jurisdictional test as described in bill text"
         data_paths:

@@ -74,6 +74,11 @@
                         text-transform: uppercase; letter-spacing: 0.06em; }
     table.timeline td.date { font-family: var(--mono); color: var(--text); white-space: nowrap; }
 
+    .reg-correction { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.28);
+                      border-left: 3px solid var(--amber); border-radius: 8px;
+                      padding: 12px 16px; margin: 0 0 20px; font-size: 0.92rem; color: var(--text); }
+    .reg-correction strong { color: var(--amber); }
+
     .not-happened { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.22);
                     border-radius: 8px; padding: 14px 18px; margin: 12px 0 8px; }
     .not-happened h4 { margin: 0 0 8px; font-size: 0.85rem; text-transform: uppercase;
@@ -96,6 +101,10 @@
   <h1>The CLARITY Act — where it stands, in plain English</h1>
 
   {{ regulation_freshness(last_verified_iso, days_since, staleness_days=7) }}
+
+  <div class="reg-correction" role="note" aria-label="page correction">
+    <strong>Correction — 2026-08-17:</strong> Earlier versions of this page (published 2026-08-08 through 2026-08-17) stated that <em>"no cloture motion has been filed"</em> on H.R. 3633. That was incorrect as of the same-day Senate action on 2026-08-08 — Senate Majority Leader Thune filed cloture <em>on the motion to proceed</em> before recess. The 2026-08-08 timeline row and the "What has NOT happened" list below have been corrected. The distinction matters: cloture on the motion to proceed is a procedural first step, not passage; the bill remains at the motion-to-proceed stage.
+  </div>
 
   <div class="fresh-banner">
     This page tracks a live legislative fight. Legislative status and votes are verified against primary sources — bill text, roll call records, official statements — and dated. News reporting is cited only for draft provisions and negotiations not yet in the official record. <strong>Last verified: {{ last_verified_iso }}.</strong> We update when the status changes. This is not legal advice and it is not investment advice.
@@ -161,8 +170,8 @@
       </tr>
       <tr>
         <td class="date">2026-08-08</td>
-        <td>Senate entered its August recess with <strong>no cloture motion filed and no floor vote held</strong> on H.R. 3633. Next legislative window opens on the Senate's return on 2026-09-14.</td>
-        <td>Congress.gov actions list; 2026 Senate calendar</td>
+        <td>Senate Majority Leader Thune filed <strong>cloture on the motion to proceed</strong> to H.R. 3633 (Calendar No. 423) before recess. This is a procedural first step, not passage; the vote on invoking cloture is scheduled for the Senate's return, <strong>week of 2026-09-15</strong>. Cloture requires 60 votes to invoke. No floor vote on the bill itself has yet been held.</td>
+        <td>Congress.gov actions list; <a href="https://www.coindesk.com/policy/2026/08/08/u-s-senate-opens-first-stage-of-crypto-clarity-act-voting-to-give-bill-a-chance-next-month" target="_blank" rel="noopener noreferrer">CoinDesk 2026-08-08 (news report)</a></td>
       </tr>
     </tbody>
   </table>
@@ -170,8 +179,8 @@
   <div class="not-happened">
     <h4>What has NOT happened</h4>
     <ul>
-      <li>No cloture motion has been filed on H.R. 3633.</li>
-      <li>No Senate floor vote has been held. A pre-recess vote was floated on 2026-08-03 and pulled on 2026-08-06 without a cloture filing; the bill is queued for consideration on the Senate's return from recess.</li>
+      <li>No cloture <strong>vote</strong> has been taken. A cloture motion <em>on the motion to proceed</em> was filed 2026-08-08; the invocation vote is scheduled for the Senate's return, week of 2026-09-15.</li>
+      <li>No Senate floor vote <em>on the bill itself</em> has been held. The bill remains at the motion-to-proceed stage.</li>
       <li>Under standing Senate rules, the bill needs <strong>60 votes to overcome a filibuster</strong> and reach a final passage vote. Republicans hold 53 seats in the 119th Congress; assuming all 53 vote in favor and every senator is present, at least seven additional votes would be needed to reach the 60-vote cloture threshold.</li>
     </ul>
   </div>
