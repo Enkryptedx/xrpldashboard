@@ -1092,7 +1092,14 @@ def pg_connect():
         raise RuntimeError(
             "Postgres not configured: set DATABASE_URL and install psycopg[binary]."
         )
-    conn = psycopg.connect(pg_url())
+    conn = psycopg.connect(
+        pg_url(),
+        connect_timeout=15,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=3,
+    )
     try:
         yield conn
     finally:
