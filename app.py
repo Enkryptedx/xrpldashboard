@@ -6057,7 +6057,7 @@ def mpt_detail(issuance_id):
         else:
             archive_depth_label = f"{int(h / 24)}d"
 
-    return render_template(
+    resp = make_response(render_template(
         "mpt_detail.html",
         mpt=mpt,
         peers=peers,
@@ -6067,7 +6067,11 @@ def mpt_detail(issuance_id):
         history=history,
         archive_depth_seconds=archive_depth_seconds,
         archive_depth_label=archive_depth_label,
-    )
+    ))
+    # Force revalidation on Safari — prevents post-deploy stale HTML from
+    # pinning after template fixes (2026-08-18 sparkline-diet incident).
+    resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return resp
 
 
 @app.route("/mpt/issuer/<address>")
@@ -6154,7 +6158,7 @@ def mpt_issuer(address):
     if last_refresh_ts:
         last_refresh_age_seconds = max(0, int(time.time()) - int(last_refresh_ts))
 
-    return render_template(
+    resp = make_response(render_template(
         "mpt_issuer.html",
         address=address,
         header_label=header_label,
@@ -6169,7 +6173,11 @@ def mpt_issuer(address):
         has_indexable=has_indexable,
         last_refresh_ts=last_refresh_ts,
         last_refresh_age_seconds=last_refresh_age_seconds,
-    )
+    ))
+    # Force revalidation on Safari — prevents post-deploy stale HTML from
+    # pinning after template fixes (2026-08-18 sparkline-diet incident).
+    resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return resp
 
 
 @app.route("/api/ledger-tip")
