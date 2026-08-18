@@ -2,6 +2,22 @@
    that should support ⌘K search. Extracted from _nav.html 2026-08-18 so
    the homepage (which has its own custom nav strip) can load it. #}
 <style>
+  /* Search trigger button — visible affordance in the nav. Unscoped so
+     it styles wherever the button lives (shared nav OR homepage nav-strip). */
+  .search-trigger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 22px;
+    background: none; border: 1px solid rgba(160,180,210,0.28);
+    border-radius: 6px; cursor: pointer;
+    color: rgba(160,180,210,0.75);
+    padding: 0;
+    transition: color 0.15s, border-color 0.15s;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .search-trigger:hover { color: var(--cyan); border-color: rgba(34,211,238,0.4); }
+  .search-trigger svg { display: block; }
+
   #xd-search-overlay {
     display: none; position: fixed; inset: 0; z-index: 200;
     background: rgba(4,6,16,0.75); backdrop-filter: blur(4px);

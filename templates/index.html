@@ -658,6 +658,12 @@
         <a href="/methodology"{% if _p == '/methodology' %} class="active" aria-current="page"{% endif %}>{{ _('methodology') }}</a>
         <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
         <a href="/institutional"{% if _p.startswith('/institutional') %} class="active" aria-current="page"{% endif %}>{{ _('institutional') }}</a>
+        <button class="search-trigger" onclick="xdSearchOpen()" aria-label="Search (Cmd+K)" title="Search (⌘K)">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <circle cx="8.5" cy="8.5" r="5.5"/>
+            <line x1="13" y1="13" x2="18" y2="18"/>
+          </svg>
+        </button>
         {% include "_liveness_chip.html" %}
         {# Language switcher — mirrors the one in _nav.html so users stuck
            in the wrong locale can flip back from the homepage. #}
