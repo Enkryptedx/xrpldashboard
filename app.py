@@ -6070,8 +6070,10 @@ def mpt_detail(issuance_id):
     ))
     # Force revalidation on Safari — prevents post-deploy stale HTML from
     # pinning after template fixes (2026-08-18 sparkline-diet incident).
+    # ETag + make_conditional lets the browser 304 when unchanged.
     resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
-    return resp
+    resp.add_etag()
+    return resp.make_conditional(request)
 
 
 @app.route("/mpt/issuer/<address>")
@@ -6176,8 +6178,10 @@ def mpt_issuer(address):
     ))
     # Force revalidation on Safari — prevents post-deploy stale HTML from
     # pinning after template fixes (2026-08-18 sparkline-diet incident).
+    # ETag + make_conditional lets the browser 304 when unchanged.
     resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
-    return resp
+    resp.add_etag()
+    return resp.make_conditional(request)
 
 
 @app.route("/api/ledger-tip")
