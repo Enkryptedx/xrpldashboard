@@ -3348,10 +3348,43 @@ def tokens():
 
 
 # /nfts cache — 5-min TTL keeps ledger queries cheap under crawler traffic.
-# Single-entry, closed-key (no query params on this route), so no lock needed
-# beyond the standard read/write pattern.
+# Single-entry, closed-key (no query params on this route). SWR twin of the
+# /whales pattern (_WHALES_REBUILD_LOCK, app.py:707-708): on TTL expiry, serve
+# the stale body immediately and fire ONE background rebuild. Prior plain-cache
+# path paid the full render synchronously on the first miss per worker after
+# any deploy or TTL boundary — sampled 22.6s cold-render 2026-08-17.
 _NFTS_CACHE = {"body": None, "at": 0.0}
 _NFTS_CACHE_TTL_S = 300
+# Single-slot cache so a plain bool guard is enough; dict wrapper keeps
+# stable identity across the closure. See _ANALYTICS_REBUILD_STATE.
+_NFTS_REBUILD_LOCK = threading.Lock()
+_NFTS_REBUILD_STATE = {"in_flight": False}
+
+
+def _trigger_nfts_rebuild():
+    """SWR twin of _trigger_analytics_rebuild — see that docstring. Bypasses
+    the read-path short-circuit via _CACHE_REBUILD_LOCAL so the rebuild
+    actually re-renders instead of taking the stale-serve branch itself."""
+    with _NFTS_REBUILD_LOCK:
+        if _NFTS_REBUILD_STATE["in_flight"]:
+            return
+        _NFTS_REBUILD_STATE["in_flight"] = True
+
+    def _run():
+        try:
+            _CACHE_REBUILD_LOCAL.bypass = True
+            with app.test_request_context("/nfts"):
+                nfts()
+        except Exception:
+            pass
+        finally:
+            _CACHE_REBUILD_LOCAL.bypass = False
+            with _NFTS_REBUILD_LOCK:
+                _NFTS_REBUILD_STATE["in_flight"] = False
+
+    threading.Thread(
+        target=_run, daemon=True, name="nfts-swr-rebuild"
+    ).start()
 
 # NFT historical backfill coverage numbers, frozen 2026-08-10 gap audit
 # (2026-04-01 → head at ~21:44 UTC). All four constants move together — a
@@ -3389,8 +3422,15 @@ def nfts():
     Cached 5min in-process. Every query is by-index (tx_type + close_time,
     or issuer + close_time). Never touches the XRPL node from this route."""
     now_mono = time.monotonic()
-    if _NFTS_CACHE["body"] is not None and (now_mono - _NFTS_CACHE["at"]) < _NFTS_CACHE_TTL_S:
-        return _NFTS_CACHE["body"]
+    if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
+        _cached_body = _NFTS_CACHE["body"]
+        if _cached_body is not None:
+            _cached_age = now_mono - _NFTS_CACHE["at"]
+            if _cached_age < _NFTS_CACHE_TTL_S:
+                return _cached_body
+            # SWR: expired but body exists — serve now, rebuild in bg.
+            _trigger_nfts_rebuild()
+            return _cached_body
 
     # Defaults — the page still renders honestly (dashes / zero rows) if PG
     # is unavailable at request time. Nothing crashes.
