@@ -6070,9 +6070,11 @@ def mpt_detail(issuance_id):
     ))
     # Force revalidation on Safari — prevents post-deploy stale HTML from
     # pinning after template fixes (2026-08-18 sparkline-diet incident).
-    # ETag + make_conditional lets the browser 304 when unchanged.
+    # ETag is snapshot-derived (id + written_at), not body-hashed — the nav
+    # liveness chip injects a per-request epoch that would otherwise churn
+    # every render and defeat revalidation.
     resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
-    resp.add_etag()
+    resp.set_etag(f"{target_id}-{data.get('written_at') or 0}", weak=True)
     return resp.make_conditional(request)
 
 
@@ -6178,9 +6180,11 @@ def mpt_issuer(address):
     ))
     # Force revalidation on Safari — prevents post-deploy stale HTML from
     # pinning after template fixes (2026-08-18 sparkline-diet incident).
-    # ETag + make_conditional lets the browser 304 when unchanged.
+    # ETag is snapshot-derived (address + last_refresh_ts), not body-hashed —
+    # the nav liveness chip injects a per-request epoch that would otherwise
+    # churn every render and defeat revalidation.
     resp.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
-    resp.add_etag()
+    resp.set_etag(f"{address}-{last_refresh_ts or 0}", weak=True)
     return resp.make_conditional(request)
 
 
