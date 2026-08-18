@@ -263,11 +263,20 @@
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"/>
+        {# Downsample dots so a token with 1900+ hourly rows doesn't paint 1900
+           SVG DOM nodes on mobile (killed the click-into for 249/250 MPTs
+           2026-08-18). Polyline above already carries the shape; circles are
+           markers. Stride keeps ~60 dots regardless of history depth; last
+           point always drawn so the endpoint reads. #}
+        {%- set _dot_target = 60 -%}
+        {%- set _stride = [(history|length // _dot_target), 1] | max -%}
         {% for p in history %}
+        {% if loop.index0 % _stride == 0 or loop.last %}
         <circle
           cx="{{ (svg_pad + (svg_w - 2*svg_pad) * (p.snapshot_ts - t_first) / t_range) | round(1) }}"
           cy="{{ (svg_h - svg_pad - (svg_h - 2*svg_pad) * (p.outstanding - v_min) / v_range) | round(1) }}"
           r="2.5" fill="var(--text)"/>
+        {% endif %}
         {% endfor %}
       </svg>
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:0.35em;">
