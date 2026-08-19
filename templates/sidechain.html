@@ -204,20 +204,38 @@
     {{ freshness_badge_css() }}
     {{ freshness_badge(data_age_label) }}
 
-    {# honest_partial marker for bridge_signer_walker. Copy mirrors
-       seed_walker_scope_declarations.py "bridge_signer_walker"
-       filter_note — single-account scope, SignerListSet tesSUCCESS
-       only, ingested from the public Ripple node per the polite-pace
-       rule. Other bridges (FXRP, Squid, future Wormhole NTT) are
-       explicitly out of scope until named_accounts adds them with
-       category='bridge'. #}
+    {# honest_partial marker for bridge_signer_walker. Human-first rewrite
+       2026-08-18 per "made legible" principle — technical identifiers moved
+       to the collapsed disclosure; all honest limits preserved. #}
     <div class="scope-note">
-      <strong>{{ _('Scope:') }}</strong>
-      {{ _('Single account — the Axelar XRPL Gateway') }}
-      <code>{{ gateway_address }}</code>.
-      {{ _('Walker scans') }} <code>account_tx</code> {{ _('for') }} <code>SignerListSet</code>
-      {{ _('transactions with') }} <code>tesSUCCESS</code>,
-      {{ _('ingested from Ripple\'s public node (s1.ripple.com) per the polite-pace rule for public XRPL infrastructure. Rotation history bootstraps 2026-06-08; earlier rotations are permanently absent. Other XRPL bridges (FXRP, Squid, future Wormhole NTT) are out of scope on this page.') }}
+      <strong>{{ _('Scope') }}</strong>
+      <ul style="margin: 8px 0 0; padding-left: 18px; line-height: 1.55;">
+        <li>
+          <strong>{{ _('What we watch:') }}</strong>
+          {{ _('the Axelar bridge\'s gateway account on the XRP Ledger — the vault-like account holding bridged funds — and every successful change to its keyholder list (who can move the money).') }}
+        </li>
+        <li>
+          <strong>{{ _('Where the data comes from:') }}</strong>
+          {{ _('Ripple\'s public servers, polled at a respectful pace.') }}
+        </li>
+        <li>
+          <strong>{{ _('What\'s permanently missing:') }}</strong>
+          {{ _('our history starts 2026-06-08. Earlier keyholder changes happened but weren\'t captured and cannot be recovered.') }}
+        </li>
+        <li>
+          <strong>{{ _('What this page is NOT:') }}</strong>
+          {{ _('other XRPL bridges (FXRP, Squid, future Wormhole NTT) aren\'t tracked here.') }}
+        </li>
+      </ul>
+      <details style="margin-top: 10px;">
+        <summary style="cursor: pointer; font-size: 0.85rem; opacity: 0.75;">{{ _('Technical details') }}</summary>
+        <div style="margin-top: 6px; font-size: 0.82rem; line-height: 1.5; opacity: 0.85;">
+          {{ _('Gateway account:') }} <code>{{ gateway_address }}</code><br>
+          {{ _('Transactions watched:') }} <code>SignerListSet</code> {{ _('with result') }} <code>tesSUCCESS</code>.<br>
+          {{ _('Query path:') }} <code>account_tx</code> {{ _('via Ripple\'s') }} <code>s1.ripple.com</code>.<br>
+          <a href="/methodology#sidechain">{{ _('Full methodology') }} →</a>
+        </div>
+      </details>
     </div>
 
     {% if state %}
