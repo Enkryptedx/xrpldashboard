@@ -25,11 +25,16 @@ services:
     # source is missing or malformed (build_search_index.py exits non-zero).
     buildCommand: pip install -r requirements.txt && python scripts/build_search_index.py
 
-    # Run: gunicorn binds to Render's $PORT, 2 workers, 60s timeout.
-    # 2 workers handles concurrent visitors well at this scale; bump if
-    # CPU saturates. Threads=4 lets each worker handle several
-    # blocked-on-XRPL requests in parallel without spawning more processes.
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60 --access-logfile -
+    # Run: gunicorn binds to Render's $PORT.
+    # 3 workers x 8 threads = 24 concurrent request slots.
+    # 30s timeout kills any hung request before Render's health-check
+    # failure ratio crosses the SIGTERM threshold (2026-08-19 flap-storm:
+    # 2x4=8 slots + 60s timeout let a small number of hung requests
+    # starve the pool for minutes, triggering three BetterStack incidents
+    # inside 20 minutes with public 502 confirmed on 6/6 external nodes).
+    # Interim: mechanism not yet named; larger pool + shorter timeout
+    # stops the bleeding while the root cause hunt continues.
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 3 --threads 8 --timeout 30 --access-logfile -
 
     # Health check — Render hits this URL to verify the service is up
     # before routing traffic. /healthz returns 200 without doing an
