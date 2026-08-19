@@ -1099,6 +1099,7 @@ def pg_connect():
         keepalives_idle=30,
         keepalives_interval=10,
         keepalives_count=3,
+        options="-c statement_timeout=25s",
     )
     try:
         yield conn
@@ -1218,6 +1219,7 @@ def _get_writer_conn():
             keepalives_idle=30,
             keepalives_interval=10,
             keepalives_count=3,
+            options="-c statement_timeout=25s",
         )
     except Exception as e:
         _log_err("writer_connect_failed", e)
