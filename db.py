@@ -1129,10 +1129,15 @@ def pg_connect():
         keepalives_idle=30,
         keepalives_interval=10,
         keepalives_count=3,
-        options="-c statement_timeout=25s",
         **_extra,
     )
     try:
+        # Post-connect SET (not startup `options=`) — Neon's PgBouncer pooler
+        # rejects statement_timeout in the startup packet ("unsupported
+        # startup parameter in options"). Applied here so every request-scope
+        # connection is capped without depending on server-side defaults.
+        with conn.cursor() as _cur:
+            _cur.execute("SET statement_timeout = '25s'")
         yield conn
     finally:
         conn.close()
@@ -1252,9 +1257,14 @@ def _get_writer_conn():
             keepalives_idle=30,
             keepalives_interval=10,
             keepalives_count=3,
-            options="-c statement_timeout=25s",
             **_extra,
         )
+        # Post-connect SET (not startup `options=`) — Neon's PgBouncer pooler
+        # rejects statement_timeout in the startup packet. Applied here so the
+        # cached writer conn is capped from first use; when DATABASE_URL_DIRECT
+        # (unpooled) is set the setting sticks for the connection lifetime.
+        with _writer_conn.cursor() as _cur:
+            _cur.execute("SET statement_timeout = '25s'")
     except Exception as e:
         _log_err("writer_connect_failed", e)
         _writer_conn = None
