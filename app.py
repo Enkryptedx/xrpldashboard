@@ -3427,10 +3427,14 @@ def nfts():
         if _cached_body is not None:
             _cached_age = now_mono - _NFTS_CACHE["at"]
             if _cached_age < _NFTS_CACHE_TTL_S:
-                return _cached_body
+                _r = make_response(_cached_body)
+                _r.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+                return _r
             # SWR: expired but body exists — serve now, rebuild in bg.
             _trigger_nfts_rebuild()
-            return _cached_body
+            _r = make_response(_cached_body)
+            _r.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+            return _r
 
     # Defaults — the page still renders honestly (dashes / zero rows) if PG
     # is unavailable at request time. Nothing crashes.
@@ -3520,7 +3524,9 @@ def nfts():
     )
     _NFTS_CACHE["body"] = body
     _NFTS_CACHE["at"] = now_mono
-    return body
+    resp = make_response(body)
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
 
 
 @app.route("/about")
@@ -3957,22 +3963,28 @@ def claims_index():
     currently backed by SOVEREIGN data before hitting anything paid.
     See docs/PAID_MACHINE_TIER_DESIGN.md § 3.1."""
     if _claims_wants_json():
-        return jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
+        resp = make_response(jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents")))
+        resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+        return resp
     grouped = claims_endpoint.by_domain()
     totals = claims_endpoint.status_totals()
-    return render_template(
+    resp = make_response(render_template(
         "claims_index.html",
         grouped=grouped,
         totals=totals,
         last_verified=LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
-    )
+    ))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
 
 
 @app.route("/claims/index.json")
 def claims_index_json():
     """Machine-readable claims index. Same payload as
     /claims with `Accept: application/json`."""
-    return jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
+    resp = make_response(jsonify(claims_endpoint.index_json(SITE_URL, f"{SITE_URL}/methodology#for-ai-agents")))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
 
 
 @app.route("/claims/<uri>")
@@ -4008,12 +4020,16 @@ def claim_detail(uri):
         abort(404)
 
     if wants_json:
-        return jsonify(claims_endpoint.claim_json(entry, SITE_URL, f"{SITE_URL}/methodology#for-ai-agents"))
-    return render_template(
+        resp = make_response(jsonify(claims_endpoint.claim_json(entry, SITE_URL, f"{SITE_URL}/methodology#for-ai-agents")))
+        resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+        return resp
+    resp = make_response(render_template(
         "claim_detail.html",
         claim=entry,
         last_verified=LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
-    )
+    ))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
 
 
 @app.route("/regulation")
@@ -6724,7 +6740,9 @@ def llms_txt():
     following the llmstxt.org convention. Every URL listed resolves to
     a live public surface — this is a title-is-contract file with extra
     teeth (first artifact written primarily for machine readers)."""
-    return Response(_LLMS_TXT, mimetype="text/markdown; charset=utf-8")
+    resp = Response(_LLMS_TXT, mimetype="text/markdown; charset=utf-8")
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
 
 
 # Agent-discovery manifest (Wildcard-AI flavor). Served at the
@@ -6851,7 +6869,9 @@ def agents_json():
     """Agent-discovery manifest at the standard well-known path.
     Wildcard-AI flavor. Every field is verifiable — status booleans
     stay false until the corresponding surface actually responds."""
-    return jsonify(_AGENTS_JSON)
+    resp = make_response(jsonify(_AGENTS_JSON))
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
 
 
 @app.route("/sitemap.xml")
