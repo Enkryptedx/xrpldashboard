@@ -1083,6 +1083,33 @@ def pg_available():
     return bool(pg_url()) and psycopg is not None
 
 
+def _resolve_ipv4_hostaddr(url):
+    """Return the URL host resolved to an IPv4 address, or None on any
+    failure. Callers pass this as psycopg.connect(hostaddr=...) so libpq
+    pins the TCP target to IPv4 while still using the hostname for TLS
+    SNI and cert verification.
+
+    Guards against the 2026-08-19 Render deploy loop: Neon's pooler
+    returned AAAA records the outbound network couldn't route ("Network
+    is unreachable" on 2600:1f16:...), and libpq stopped at the first
+    address family it got. None-on-failure preserves the previous DNS
+    path when IPv4 resolution isn't available."""
+    import socket
+    from urllib.parse import urlparse
+    try:
+        hostname = urlparse(url).hostname
+        if not hostname:
+            return None
+        infos = socket.getaddrinfo(
+            hostname, None, socket.AF_INET, socket.SOCK_STREAM,
+        )
+        if not infos:
+            return None
+        return infos[0][4][0]
+    except Exception:
+        return None
+
+
 @contextmanager
 def pg_connect():
     """Context-managed psycopg connection for short-lived (request-scope)
@@ -1092,14 +1119,18 @@ def pg_connect():
         raise RuntimeError(
             "Postgres not configured: set DATABASE_URL and install psycopg[binary]."
         )
+    _url = pg_url()
+    _v4 = _resolve_ipv4_hostaddr(_url)
+    _extra = {"hostaddr": _v4} if _v4 else {}
     conn = psycopg.connect(
-        pg_url(),
+        _url,
         connect_timeout=15,
         keepalives=1,
         keepalives_idle=30,
         keepalives_interval=10,
         keepalives_count=3,
         options="-c statement_timeout=25s",
+        **_extra,
     )
     try:
         yield conn
@@ -1211,6 +1242,8 @@ def _get_writer_conn():
         # blocking the worker indefinitely (root cause of the 2026-05-08
         # wedge: socket sat in CLOSE_WAIT while the worker mutex parked).
         writer_url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
+        _v4 = _resolve_ipv4_hostaddr(writer_url)
+        _extra = {"hostaddr": _v4} if _v4 else {}
         _writer_conn = psycopg.connect(
             writer_url,
             autocommit=True,
@@ -1220,6 +1253,7 @@ def _get_writer_conn():
             keepalives_interval=10,
             keepalives_count=3,
             options="-c statement_timeout=25s",
+            **_extra,
         )
     except Exception as e:
         _log_err("writer_connect_failed", e)
