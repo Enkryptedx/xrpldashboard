@@ -143,6 +143,37 @@ IN_DEVELOPMENT_AMENDMENTS = [
 ]
 
 
+# Interim honest-vote-count notes for specific in-flight amendments.
+# Rippled `feature` RPC only returns the responding node's OWN validator
+# vote in count/threshold — it never surfaces the trusted-validator
+# network tally. Until the aggregated-vote fetch ships (design pack owed
+# 2026-08-22, code Friday), we attach a static honest note to amendments
+# in active-news windows so readers get truth instead of a blind spot.
+#
+# Each entry cites a verifiable primary aggregator + as-of date. Numbers
+# come from xrpscan.com/api/v1/amendments (count/threshold/validations
+# fields; count/validations = current support fraction). Refresh manually
+# when press coverage moves; the auto-fetch version supersedes this dict.
+#
+# Entry shape:
+#   { "count": int, "validations": int,
+#     "as_of": "YYYY-MM-DD", "source_url": "..." }
+INTERIM_VOTE_NOTES = {
+    "SingleAssetVault": {
+        "count": 14,
+        "validations": 35,
+        "as_of": "2026-08-20",
+        "source_url": "https://api.xrpscan.com/api/v1/amendments",
+    },
+    "LendingProtocol": {
+        "count": 13,
+        "validations": 35,
+        "as_of": "2026-08-20",
+        "source_url": "https://api.xrpscan.com/api/v1/amendments",
+    },
+}
+
+
 # Hashes we can name from off-ledger sources even when the responding
 # node doesn't carry the definition (e.g. amendments merged to rippled
 # `develop` but not yet in a released binary). Each entry must cite a
@@ -211,7 +242,11 @@ def fetch_amendments_state():
         elif name in OBSOLETE_AMENDMENTS:
             superseded.append({"hash": h, "name": name})
         elif info.get("supported"):
-            in_flight.append({"hash": h, "name": name})
+            entry = {"hash": h, "name": name}
+            note = INTERIM_VOTE_NOTES.get(name)
+            if note:
+                entry["interim_vote_note"] = note
+            in_flight.append(entry)
 
     enabled.sort(key=lambda x: (x["name"] or "").lower())
     in_flight.sort(key=lambda x: (x["name"] or "").lower())

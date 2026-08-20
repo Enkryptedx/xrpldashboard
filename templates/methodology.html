@@ -601,6 +601,10 @@
   <p>
     {{ _('Source:') }} <code>s1.ripple.com:51234</code> {{ _('via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
   </p>
+  <p>
+    <strong>{{ _('Amendment vote tallies — honest limit.') }}</strong>
+    {{ _('The') }} <code>feature</code> {{ _('RPC\'s') }} <code>count</code> {{ _('and') }} <code>threshold</code> {{ _('fields report the responding node\'s') }} <em>{{ _('own') }}</em> {{ _('validator vote — they return') }} <code>None</code> {{ _('for any non-validator, which includes our self-hosted node and every public gateway (s1/s2). Aggregated trusted-validator support percentages therefore cannot be sourced from a single rippled RPC. During active-news windows for specific amendments we attach an interim honest label sourced from') }} <a href="https://api.xrpscan.com/api/v1/amendments" rel="nofollow noopener" target="_blank">xrpscan.com's amendments API</a> ({{ _('curated in') }} <code>amendments_state.INTERIM_VOTE_NOTES</code>, {{ _('refreshed manually against the primary source') }}). {{ _('A live-fetch integration with the honest_partial envelope pattern is in design (owed 2026-08-22).') }}
+  </p>
 
   <h3 id="unl">{{ _('Validator UNL (get_unl_status)') }}</h3>
   <p>
