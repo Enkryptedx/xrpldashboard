@@ -44,3 +44,24 @@ MemoData from hex and compare chain_root to `/.well-known/snapshots/chain.json`
 ### Pre-cadence verification
 
 Before beginning the weekly cadence, we ran an external adversarial audit (zero false-data findings; anchor #1 independently verified from the raw ledger) and a fault-injection drill (8/8 alarms caught; one latent blind spot found and fixed during the drill itself). This anchor commits the audited chain.
+
+---
+
+## Anchor #3 — 2026-08-21
+
+| Field | Value |
+|-------|-------|
+| Type | A (weekly) |
+| Tx hash | `35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45` |
+| Ledger | 106451826 |
+| Close time | 2026-08-21 19:50:01 UTC |
+| From | `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` (Anchor) |
+| To | `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd` (Dashboard) |
+| Amount | 0.000001 XRP (1 drop) |
+| Fee | 12 drops |
+| Sequence | 106138933 |
+| MemoData (decoded) | `xrpldashboard/anchor/v1\|2026-08-21\|14a8e28420c37dadd952a57d3487034bd29b6522af1765253019ba5c17e0016f` |
+| chain_root verified | `14a8e28420c37dadd952a57d3487034bd29b6522af1765253019ba5c17e0016f` matches `/.well-known/snapshots/chain.json` `root_history[2026-08-21]` (verified 2026-08-22 12:31 UTC via s1.ripple.com + Render-direct fetch) |
+| Day of week | Friday (verified from ledger close_time — third consecutive Friday cadence, 7d after #2) |
+| On-ledger result | `tesSUCCESS`, `validated=true` |
+| Notes | Signed Fri 2026-08-21 15:50 EDT in prior session; recorded to git Sat AM (recording lag, no on-chain gap). Sequence continuity confirmed 106138931 (#1) → 106138932 (#2) → 106138933 (#3), monotonic. Genesis fixture (#1) intact. Week bracketed by the 2026-08-19 flap-storm (Neon `statement_timeout` fix landed Tue; 7-day stability clock reset to Day 0 and restarted 2026-08-20) and the Phase 2 memory-aware cache primitive PR #1 (`919f416`) shipping guard-only Sat 07:31 EDT. |
