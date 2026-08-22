@@ -46,9 +46,47 @@ except ImportError:
     _HAS_DB = False
 WALKER_NAME = "pg_restore_test"
 WALKER_CADENCE_SECONDS = 604800  # weekly
-B2_REMOTE = os.environ.get("PG_BACKUP_REMOTE", "b2crypt")
+
+
+def _load_xrpldashboard_env() -> None:
+    """Source ~/.config/xrpldashboard/env into os.environ so BACKUP_BUCKET_PREFIX
+    (and any other pins) are visible when this script is invoked directly by
+    launchd — the plist does not use a shell wrapper. Silent no-op if the file
+    is missing or unreadable; explicit os.environ entries always win."""
+    env_file = os.environ.get(
+        "XRPLDASHBOARD_ENV",
+        os.path.expanduser("~/.config/xrpldashboard/env"),
+    )
+    try:
+        with open(env_file, "r") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):]
+                if "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except OSError:
+        pass
+
+
+_load_xrpldashboard_env()
+
+# Env-var names mirror the writer (launchd/run_pg_backup.sh): both sides read
+# BACKUP_REMOTE and BACKUP_BUCKET_PREFIX so a single env-file pin binds both.
+# 2026-08-22 drift repair: reader previously read PG_BACKUP_REMOTE/PG_BACKUP_BUCKET
+# — different namespace, so the writer's pin never reached the reader, and the
+# reader fell back to hostname derivation which is unstable under launchd.
+_HOSTNAME_SHORT = os.uname().nodename.split(".")[0]
+B2_REMOTE = os.environ.get("BACKUP_REMOTE", "b2crypt")
 B2_BUCKET = os.environ.get(
-    "PG_BACKUP_BUCKET", f"xrpldashboard-backup-{os.uname().nodename.split('.')[0]}"
+    "BACKUP_BUCKET_PREFIX", f"xrpldashboard-backup-{_HOSTNAME_SHORT}"
 )
 B2_PREFIX = f"{B2_REMOTE}:{B2_BUCKET}/postgres"
 PORT = 5439
