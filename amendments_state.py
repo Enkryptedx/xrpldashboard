@@ -25,6 +25,8 @@ import time
 import httpx
 from flask_babel import lazy_gettext as _l
 
+import amendments_network_votes
+
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("AMENDMENTS_CACHE_TTL", "300"))
 
@@ -143,39 +145,14 @@ IN_DEVELOPMENT_AMENDMENTS = [
 ]
 
 
-# Interim honest-vote-count notes for specific in-flight amendments.
-# Rippled `feature` RPC only returns the responding node's OWN validator
-# vote in count/threshold — it never surfaces the trusted-validator
-# network tally. Until the aggregated-vote fetch ships (design pack owed
-# 2026-08-22, code Friday), we attach a static honest note to amendments
-# in active-news windows so readers get truth instead of a blind spot.
-#
-# Each entry cites a verifiable primary aggregator + as-of date. Numbers
-# come from data.xrpl.org/v1/network/amendments/vote/main (the Validator
-# History Service that powers the XRPL Foundation explorer). We read
-# UNL-scoped fields only: the "consensus" percentage and the count of
-# validators listed with unl="vl.ripple.com" — never the raw
-# voted.count, which includes non-UNL nodes and does not count toward
-# activation. Refresh manually when the UNL tally moves; the auto-fetch
-# version supersedes this dict.
-#
-# Entry shape:
-#   { "count": int, "validations": int,
-#     "as_of": "YYYY-MM-DD", "source_url": "..." }
-INTERIM_VOTE_NOTES = {
-    "SingleAssetVault": {
-        "count": 14,
-        "validations": 35,
-        "as_of": "2026-08-22",
-        "source_url": "https://data.xrpl.org/v1/network/amendments/vote/main",
-    },
-    "LendingProtocol": {
-        "count": 13,
-        "validations": 35,
-        "as_of": "2026-08-22",
-        "source_url": "https://data.xrpl.org/v1/network/amendments/vote/main",
-    },
-}
+# Interim vote-count notes have been REPLACED by the live-fetch module
+# `amendments_network_votes.fetch_network_vote_tallies_cached()`, which
+# pulls UNL-scoped trusted-validator tallies from VHS
+# (data.xrpl.org/v1/network/amendments/vote/main) on the same 300s cache
+# TTL as this module. The symbol is kept empty for one release so that
+# whoever reads this file next sees the pointer to the new module
+# inline; it will be deleted in a follow-up cleanup.
+INTERIM_VOTE_NOTES: dict = {}
 
 
 # Hashes we can name from off-ledger sources even when the responding
@@ -234,6 +211,9 @@ def fetch_amendments_state():
     majorities_raw = node.get("Majorities") or []
     enabled_hashes = set(node.get("Amendments") or [])
 
+    network_votes_env = amendments_network_votes.fetch_network_vote_tallies_cached()
+    network_votes = network_votes_env.get("data") or {}
+
     enabled = []
     in_flight = []
     superseded = []
@@ -247,9 +227,9 @@ def fetch_amendments_state():
             superseded.append({"hash": h, "name": name})
         elif info.get("supported"):
             entry = {"hash": h, "name": name}
-            note = INTERIM_VOTE_NOTES.get(name)
-            if note:
-                entry["interim_vote_note"] = note
+            net_vote = network_votes.get((h or "").upper())
+            if net_vote is not None:
+                entry["network_vote"] = net_vote
             in_flight.append(entry)
 
     enabled.sort(key=lambda x: (x["name"] or "").lower())
@@ -297,6 +277,8 @@ def fetch_amendments_state():
             "activation_eta_iso": activation_iso,
         })
 
+    in_flight_with_votes = sum(1 for e in in_flight if "network_vote" in e)
+
     return {
         "ok": True,
         "ledger_index": ledger_result.get("ledger_index")
@@ -306,6 +288,14 @@ def fetch_amendments_state():
         "unrecognized_enabled_count": len(unrecognized_enabled),
         "in_flight": in_flight,
         "in_flight_count": len(in_flight),
+        "in_flight_with_votes_count": in_flight_with_votes,
+        "in_flight_without_votes_count": len(in_flight) - in_flight_with_votes,
+        "network_votes_source": {
+            "url": network_votes_env.get("source_url"),
+            "as_of_iso": network_votes_env.get("as_of_iso"),
+            "status": network_votes_env.get("status"),
+            "stale_age_seconds": network_votes_env.get("stale_age_seconds"),
+        },
         "superseded": superseded,
         "superseded_count": len(superseded),
         "in_development": IN_DEVELOPMENT_AMENDMENTS,

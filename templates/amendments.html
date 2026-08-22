@@ -508,17 +508,37 @@
             </p>
             <p class="meta">{{ _('hash') }}: <code>{{ amend.hash }}</code></p>
           {% endif %}
-          {% if amend.interim_vote_note %}
-            {% set note = amend.interim_vote_note %}
-            {% set pct = (note.count * 100) // note.validations %}
-            <p class="meta" style="margin-top: 10px; padding: 10px 12px; background: rgba(255, 200, 60, 0.08); border-left: 3px solid rgba(255, 200, 60, 0.55); border-radius: 3px;">
-              <strong>{{ _('Active validator voting.') }}</strong>
-              {{ _('XRPL\'s public') }} <code>feature</code> {{ _('RPC returns per-node validator vote state only — it does not aggregate the trusted-validator network tally. Per') }}
-              <a href="{{ note.source_url }}" rel="nofollow noopener" target="_blank">XRPL Foundation validator history (data.xrpl.org)</a>
-              {{ _('as of') }} {{ note.as_of }}: <strong>{{ note.count }}/{{ note.validations }}</strong>
-              {{ _('trusted validators voting yes (roughly') }} {{ pct }}&#37;{{ _(').') }}
-              {{ _('Activation threshold: 80&#37; support held for 14 consecutive days.') | safe }}
-              {{ _('Direct on-page tally integration is in design; interim figures refresh manually until then.') }}
+          {% if amend.network_vote %}
+            {% set nv = amend.network_vote %}
+            {% set pct = (nv.count * 100) // nv.validations %}
+            {% set is_stale = state.network_votes_source and state.network_votes_source.status == 'stale' %}
+            {% set strip_bg = 'rgba(255, 200, 60, 0.08)' if is_stale else 'rgba(120, 200, 120, 0.06)' %}
+            {% set strip_bar = 'rgba(255, 200, 60, 0.55)' if is_stale else 'rgba(120, 200, 120, 0.45)' %}
+            <p class="meta" style="margin-top: 10px; padding: 10px 12px; background: {{ strip_bg }}; border-left: 3px solid {{ strip_bar }}; border-radius: 3px;">
+              <strong>{{ _('Trusted-validator vote:') }}</strong>
+              <strong>{{ nv.count }}/{{ nv.validations }}</strong>
+              {{ _('yes') }}
+              ({{ nv.threshold }} {{ _('threshold') }}; ~{{ pct }}% {{ _('support') }}).
+              {% if is_stale %}
+                <strong style="color: #c99a2e;">{{ _('(stale)') }}</strong>
+              {% endif %}
+              <br>
+              <span class="dim" style="font-size: 0.85rem;">
+                {{ _('Source: XRPL Foundation validator history · fetched') }}
+                <span class="mono">{{ nv.as_of_iso }}</span>
+                {% if is_stale and state.network_votes_source.stale_age_seconds %}
+                  · {{ _('last successful fetch') }}
+                  {{ (state.network_votes_source.stale_age_seconds // 60) }} {{ _('min ago') }}
+                {% endif %}
+              </span>
+            </p>
+          {% else %}
+            <p class="meta dim" style="margin-top: 10px; font-size: 0.9rem;">
+              {% if state.network_votes_source and state.network_votes_source.status in ('unavailable', 'disabled') %}
+                {{ _('Trusted-validator vote: not fetched — network-vote source currently unavailable.') }}
+              {% else %}
+                {{ _('Trusted-validator vote: not published by the aggregator for this amendment.') }}
+              {% endif %}
             </p>
           {% endif %}
         </div>
