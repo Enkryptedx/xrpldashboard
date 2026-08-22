@@ -1,49 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>com.charliebruce.xrpldashboard.pg_restore_test</string>
-
-    <key>Comment</key>
-    <string>Weekly restore-test of the latest Neon backup. Pulls newest neondb-*.dump from b2crypt, spins up an ephemeral local Postgres on port 5439, restores into a throwaway DB, runs smoke queries (token_prices/events/unl_snapshots counts + freshness), tears down. Correctness layer paired with the daily freshness canary. Sundays at 04:00 local — after Saturday's backup, before the workweek. RunAtLoad FALSE; weekly is enough.</string>
-
-    <key>ProgramArguments</key>
-    <array>
-      <!-- Explicit venv Python: the shebang `#!/usr/bin/env python3`
-           resolves via launchd's PATH to the Homebrew interpreter,
-           which lacks psycopg. db.py guards `import psycopg` to None
-           and every walker_health write silently no-ops. Sibling of
-           the pg_backup_canary defect confirmed 2026-07-30. -->
-      <string>/Users/charliebruce/xrpl_test/venv/bin/python</string>
-      <string>/Users/charliebruce/xrpl_test/tools/restore_test.py</string>
-    </array>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/charliebruce/xrpl_test</string>
-
-    <key>StartCalendarInterval</key>
-    <dict>
-      <key>Weekday</key>
-      <integer>0</integer>
-      <key>Hour</key>
-      <integer>4</integer>
-      <key>Minute</key>
-      <integer>0</integer>
-    </dict>
-
-    <key>RunAtLoad</key>
-    <false/>
-
-    <key>StandardOutPath</key>
-    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_restore_test.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_restore_test.err.log</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>PATH</key>
-      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
-  </dict>
+<dict>
+	<key>Comment</key>
+	<string>Weekly restore-test of the latest Neon backup. Pulls newest neondb-*.dump from b2crypt, spins up an ephemeral local Postgres on port 5439, restores into a throwaway DB, runs smoke queries (token_prices/events/unl_snapshots counts + freshness), tears down. Correctness layer paired with the daily freshness canary. Sundays at 04:00 local — after Saturday's backup, before the workweek. RunAtLoad FALSE; weekly is enough.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.pg_restore_test</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/charliebruce/xrpl_test/venv/bin/python</string>
+		<string>/Users/charliebruce/xrpl_test/tools/restore_test.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pg_restore_test.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pg_restore_test.out.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>7</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+		<key>Weekday</key>
+		<integer>0</integer>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
 </plist>

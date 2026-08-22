@@ -1,41 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>com.charliebruce.xrpldashboard.pg_backup</string>
-
-    <key>Comment</key>
-    <string>Daily encrypted Postgres dump. Streams pg_dump -Fc | rclone rcat to b2crypt:.../postgres/neondb-TS.dump (no plaintext at rest). Closes the Neon-not-pg_dumped gap from STORAGE_INVENTORY_2026-05-25.md. 03:30 local — 30 min after b2_backup at 03:00 to avoid bandwidth contention. RunAtLoad is FALSE on purpose: nightly is enough, no need to fire on every reboot.</string>
-
-    <key>ProgramArguments</key>
-    <array>
-      <string>/Users/charliebruce/xrpl_test/launchd/run_pg_backup.sh</string>
-    </array>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/charliebruce/xrpl_test</string>
-
-    <key>StartCalendarInterval</key>
-    <dict>
-      <key>Hour</key>
-      <integer>3</integer>
-      <key>Minute</key>
-      <integer>30</integer>
-    </dict>
-
-    <key>RunAtLoad</key>
-    <false/>
-
-    <key>StandardOutPath</key>
-    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup.err.log</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>PATH</key>
-      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
-  </dict>
+<dict>
+	<key>Comment</key>
+	<string>Daily encrypted Postgres dump. Streams pg_dump -Fc | rclone rcat to b2crypt:.../postgres/neondb-TS.dump (no plaintext at rest). Closes the Neon-not-pg_dumped gap from STORAGE_INVENTORY_2026-05-25.md. 03:30 local — 30 min after b2_backup at 03:00 to avoid bandwidth contention. RunAtLoad TRUE since 2026-08-20: catches storm-power / reboot scenarios where 03:30 fires during loginwindow-gap (Mac user LaunchAgents don't load until user login, silently skipping StartCalendarInterval). Wrapper has idempotency guard — if today's dump already exists in pinned bucket, skips work + exits 0.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.pg_backup</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_pg_backup.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pg_backup.out.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>22</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
 </plist>
