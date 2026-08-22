@@ -151,9 +151,13 @@ IN_DEVELOPMENT_AMENDMENTS = [
 # in active-news windows so readers get truth instead of a blind spot.
 #
 # Each entry cites a verifiable primary aggregator + as-of date. Numbers
-# come from xrpscan.com/api/v1/amendments (count/threshold/validations
-# fields; count/validations = current support fraction). Refresh manually
-# when press coverage moves; the auto-fetch version supersedes this dict.
+# come from data.xrpl.org/v1/network/amendments/vote/main (the Validator
+# History Service that powers the XRPL Foundation explorer). We read
+# UNL-scoped fields only: the "consensus" percentage and the count of
+# validators listed with unl="vl.ripple.com" — never the raw
+# voted.count, which includes non-UNL nodes and does not count toward
+# activation. Refresh manually when the UNL tally moves; the auto-fetch
+# version supersedes this dict.
 #
 # Entry shape:
 #   { "count": int, "validations": int,
@@ -162,14 +166,14 @@ INTERIM_VOTE_NOTES = {
     "SingleAssetVault": {
         "count": 14,
         "validations": 35,
-        "as_of": "2026-08-20",
-        "source_url": "https://api.xrpscan.com/api/v1/amendments",
+        "as_of": "2026-08-22",
+        "source_url": "https://data.xrpl.org/v1/network/amendments/vote/main",
     },
     "LendingProtocol": {
         "count": 13,
         "validations": 35,
-        "as_of": "2026-08-20",
-        "source_url": "https://api.xrpscan.com/api/v1/amendments",
+        "as_of": "2026-08-22",
+        "source_url": "https://data.xrpl.org/v1/network/amendments/vote/main",
     },
 }
 
