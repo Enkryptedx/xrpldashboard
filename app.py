@@ -905,11 +905,15 @@ def _analytics_warmer_loop():
     time.sleep(10)  # let gunicorn worker fully start before first build
     while True:
         try:
-            # Refresh bot hash tables before the analytics rebuild so the
-            # render can use the fast table-subquery path. Runs every cycle
-            # (~30s) to keep scanner detection fresh (7d rolling window).
-            db.refresh_bot_hash_tables()
-
+            # NOTE: bot-hash tables (page_view_bot_hashes,
+            # page_view_scanner_combos) are refreshed exclusively by the
+            # scripts/is_bot_writer.py walker on the Mac Mini (launchd, ~5min
+            # cadence). The web tier used to call refresh_bot_hash_tables()
+            # here every 30s, but that racked up cross-host TRUNCATE
+            # contention with the walker and produced the deadlock storm
+            # documented in docs/WALKER_WOUNDS_2026-08-22.md. Sole-writer
+            # invariant: only is_bot_writer writes those tables. 5-min
+            # staleness is negligible against the 7-day scanner window.
             with _ANALYTICS_CACHE_LOCK:
                 entry = _ANALYTICS_CACHE.get("full")
                 expiry = entry[0] if entry else 0
