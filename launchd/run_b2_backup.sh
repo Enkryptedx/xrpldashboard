@@ -21,6 +21,12 @@ LOG_DIR="/Users/charliebruce/xrpl_test/launchd_logs"
 LOG_FILE="${LOG_DIR}/b2_backup.$(date +%Y-%m-%d).log"
 mkdir -p "$LOG_DIR"
 
+# Source pinned env (BACKUP_REMOTE, BACKUP_BUCKET_PREFIX) if present.
+# Without this, a hostname flip re-points backups to an orphan bucket.
+if [[ -f "$HOME/.config/xrpldashboard/env" ]]; then
+  set -a; . "$HOME/.config/xrpldashboard/env"; set +a
+fi
+
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
 
 REMOTE="${BACKUP_REMOTE:-b2crypt}"
