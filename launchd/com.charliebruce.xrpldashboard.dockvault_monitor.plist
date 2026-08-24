@@ -13,6 +13,7 @@
 	<string>com.charliebruce.xrpldashboard.dockvault_monitor</string>
 	<key>ProgramArguments</key>
 	<array>
+		<string>/bin/bash</string>
 		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_monitor.sh</string>
 	</array>
 	<key>RunAtLoad</key>

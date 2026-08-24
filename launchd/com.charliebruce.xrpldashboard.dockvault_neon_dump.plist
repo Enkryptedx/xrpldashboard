@@ -13,6 +13,7 @@
 	<string>com.charliebruce.xrpldashboard.dockvault_neon_dump</string>
 	<key>ProgramArguments</key>
 	<array>
+		<string>/bin/bash</string>
 		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_neon_dump.sh</string>
 	</array>
 	<key>RunAtLoad</key>

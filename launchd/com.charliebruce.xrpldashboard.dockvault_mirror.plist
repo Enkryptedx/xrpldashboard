@@ -13,6 +13,7 @@
 	<string>com.charliebruce.xrpldashboard.dockvault_mirror</string>
 	<key>ProgramArguments</key>
 	<array>
+		<string>/bin/bash</string>
 		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_mirror.sh</string>
 	</array>
 	<key>RunAtLoad</key>

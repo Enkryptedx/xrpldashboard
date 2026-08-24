@@ -31,7 +31,7 @@ _dv_timeout() {
 
 dockvault_preflight() {
   # Cheap mount check first — doesn't touch filesystem, doesn't need FDA.
-  if ! mount | grep -q " ${DOCKVAULT_ROOT} "; then
+  if ! /sbin/mount | grep -q " ${DOCKVAULT_ROOT} "; then
     log "SKIP: DockVault not mounted at ${DOCKVAULT_ROOT}"
     log "  Fix: unlock volume (auto-unlock via keychain, or dialog on plug)"
     return 1
