@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Nightly pull-back of latest Neon pg_dump from Backblaze B2 to /Volumes/DockVault/neon_dumps. 04:15 EDT — safely after pg_backup (22:00 EDT prior day per verified plist) and b2_backup (03:00 EDT). Charlie's 2026-08-23 D1=1a-iii ruling: leave proven pg_backup.sh untouched; act as pure downstream reader. Retention 90 daily + 12 monthly-anchored (D5). RunAtLoad FALSE. Loud-skip if DockVault not mounted or launchd context lacks FDA.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.dockvault_neon_dump</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_neon_dump.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_neon_dump.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_neon_dump.out.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>4</integer>
+		<key>Minute</key>
+		<integer>15</integer>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>

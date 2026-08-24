@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Hourly heartbeat for /Volumes/DockVault (mount + active write-test round-trip). Per Charlie's 2026-08-23 D3=3b ruling: active write-test catches exact silent-hang class where mount is present but volume is inaccessible (FDA gap, Spotlight lock, half-unlocked keychain). Missing heartbeat -> BetterStack alerts. RunAtLoad TRUE: pulse on reboot to catch post-boot keychain-unlock issues immediately. DOCKVAULT_MONITOR_HEARTBEAT_URL must be set in env for ping to fire.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.dockvault_monitor</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_monitor.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_monitor.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_monitor.out.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>
