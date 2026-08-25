@@ -682,13 +682,28 @@
 
   <div class="callout">
     <p>
-      <strong>{{ _('Why TVL has different statuses:') }}</strong> {{ _('XRP-paired pools with a USD-pegged token (stablecoin or fiat-backed) are tagged') }}
-      <span class="status-exact">{{ _('stablecoin-anchored') }}</span> — {{ _('the dollar value comes direct from the pegged side. XRP-paired pools without a fiat anchor are tagged') }} <span class="status-estimated">{{ _('estimated · 2× XRP') }}</span> — {{ _('twice the XRP-side value, deterministic because AMM curves balance 50/50. Pools with no XRP side are tagged') }}
-      <span class="status-non_xrp_pair">{{ _('token-token pair') }}</span> {{ _('and sink to the bottom — we\'ll price them once a derived token price feed exists.') }}
+      <strong>{{ _('What we watch:') }}</strong>
+      {{ _('Every AMM liquidity pool on the XRP Ledger, ranked by total value locked. The constellation fires live comets as swaps, deposits, and withdrawals hit the ledger. The browse table shows every indexed pool — from the deepest stablecoin AMMs to small community token pairs.') }}
     </p>
     <p>
-      <strong>{{ _('Catalog is still expanding.') }}</strong> {{ _('A bootstrap scan walks the ledger by object ID, so the indexed list grows as the scan progresses. The') }} {{ "{:,}".format(indexed_count) }} {{ _('you see above is the current count — it goes up over time, not down.') }}
+      {{ _('TVL is computed from live on-chain balances, not reported figures. Pools with a USD-pegged token on one side are') }}
+      <span class="status-exact">{{ _('stablecoin-anchored') }}</span> —
+      {{ _('dollar value reads direct from that side. XRP-paired pools without a fiat anchor are') }}
+      <span class="status-estimated">{{ _('estimated · 2× XRP') }}</span> —
+      {{ _('twice the XRP-side value, which is deterministic because AMM curves balance 50/50. Pools with no XRP side are') }}
+      <span class="status-non_xrp_pair">{{ _('token-token pair') }}</span> —
+      {{ _('TVL unknown until a token price feed exists; they sink to the bottom.') }}
     </p>
+    <p>
+      <strong>{{ _('What\'s not here:') }}</strong>
+      {{ _('Yield, APR, or fee income — we track balances and event flow, not earnings. Token-token pair TVL — no XRP side means no deterministic price anchor yet. Pools newer than the last scan cycle appear as the count grows; the') }} {{ "{:,}".format(indexed_count) }} {{ _('above is the running indexed total.') }}
+    </p>
+    <details>
+      <summary>{{ _('Data sources') }}</summary>
+      <p>
+        {{ _('Pool index seeded from') }} <code>amm_info</code> {{ _('on the public XRPL node, walking by object ID. Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only. TVL snapshot refreshes on the') }} <code>rank_amms</code> {{ _('cadence (≤30 min).') }}
+      </p>
+    </details>
   </div>
 
   <div class="footer">
