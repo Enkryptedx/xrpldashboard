@@ -17,12 +17,29 @@ Checks:
   2. walker_failing      — walker_health.consecutive_failures >= 3.
   3. snapshot_missed     — most recent signed_snapshots.snapshot_date
                            is not today or yesterday (26h window).
-  4. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
+  4. sovereignty_loss    — Class A walker has ≥12 `unreachable:*` or
+                           `local_*` walker_node_fallback events in the
+                           trailing 6h AND the earliest event in the
+                           trailing 24h is ≥12h old (proves sustained,
+                           not a blip). Would have caught the 2026-07
+                           Mac walker fallback flood on day-of. Class B
+                           walkers (check_page/token_page/unknown) are
+                           the Render→Lenovo hairpin baseline — always
+                           suppressed by allowlist, not blocklist.
+  5. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
 
-Dedup rules:
-  - New alert → send immediately, remember `first_fired`.
-  - Same alert still active AND >4h since last_reminder → resend.
-  - Alert cleared → send "RECOVERED" once, then forget.
+Dedup / suppression rules (see `reconcile`):
+  - NEW alert (unseen id)                       → page immediately.
+  - EXISTING alert, fingerprint CHANGED         → page immediately as
+    a breakthrough; reset throttle clock.
+  - EXISTING alert, fingerprint UNCHANGED,
+      within 6h of last page                    → suppress; add to
+      the per-tick digest line.
+  - EXISTING alert, fingerprint UNCHANGED,
+      past 6h                                   → full re-page + reset.
+  - CLEARED alert                               → RECOVERED, immediate.
+  - End of tick: if any suppressed alerts, one digest message with
+    per-alert next-repage times so silence never means "gone."
 
 Env vars:
   DATABASE_URL              — Neon connection string (required).
@@ -63,11 +80,65 @@ STALE_CADENCE_MULTIPLIER = 3
 STALE_MAX_AGE_SECONDS = 30 * 86400          # skip rows older than 30d
 CONSECUTIVE_FAILURE_THRESHOLD = 3
 SNAPSHOT_MAX_AGE_HOURS = 26
-DEFAULT_REMINDER_INTERVAL_SEC = 4 * 3600
+DEFAULT_REMINDER_INTERVAL_SEC = 6 * 3600     # re-page throttle floor
+# Once a specific (walker, reason) condition has paged, its "still-active"
+# reminder does not re-page more often than this. Fingerprint changes,
+# new alerts, and recoveries all bypass the throttle immediately (see
+# reconcile). Escalation on materially-worsening rate (e.g. 2× recent_count
+# in one throttle window) is a future refinement — not shipped in the
+# first suppression cut.
+# ── per-walker staleness mutes ──────────────────────────────────────
+# Dated, pointed mutes for known-harmless stale walkers.
+# Each entry: walker_name → ISO expiry date (inclusive).
+# Must reference a doc + build slot — not a permanent blindfold.
+# Restore-test lesson: silenced monitors carry expiry + paper trail.
+WALKER_STALENESS_MUTES: dict[str, str] = {
+    # Two power events (2026-08-13 + 2026-08-20) reset StartInterval;
+    # launchd has rescheduled the run to 2026-08-27 (tomorrow).
+    # Known harmless: token naming is additive, no data at risk.
+    # Documented in docs/TOKEN_NAMING_DEEP_DIVE.md §1.
+    # Post-cert rebuild slot confirmed (behind POOLS-COMETS).
+    # Expiry: 2026-09-08 — two weeks post-cert to cover the rebuild window.
+    "enrich_token_names": "2026-09-08",
+}
+
 WEEKLY_HEARTBEAT_WEEKDAY = 6                # Sunday (Mon=0)
 WEEKLY_HEARTBEAT_HOUR_MIN = 9
 WEEKLY_HEARTBEAT_HOUR_MAX = 10
 ET_ZONE = zoneinfo.ZoneInfo("America/New_York")
+
+# ── sovereignty-loss check ──────────────────────────────────────────
+# Class A walkers are Mac-hosted and MUST reach the Lenovo sovereign
+# rippled at 192.168.40.95:5005. Fallback to public s1/s2 means we lost
+# sovereignty — the exact class of silent-failure that ran 43 days
+# undetected mid-2026 (framework Python 3.14 + launchd + utun4 VPN routes
+# → EHOSTUNREACH). Rule below would have caught it on hour ~12 of the
+# flood instead of day 43. Class B walkers are Render-side; their
+# hairpin back to Lenovo is a structural problem tracked separately —
+# never in this pager's scope.
+SOVEREIGNTY_CLASS_A_WALKERS = frozenset({
+    "escrow_walker",
+    "nft_activity",
+    "oracle_walker",
+    "rlusd_refresher",
+})
+# Documentation-only allowlist of things we EXPECT to see in
+# walker_node_fallback for reasons unrelated to Mac-sovereignty loss.
+# Query below uses Class A explicitly (allowlist), so this set is
+# informational — a place for the on-call reader to see why Render-side
+# hairpin noise doesn't fire the pager.
+# cold_storage / escrow_supply are Flask modules imported by app.py on
+# Render (cold_storage.py + escrow_supply.py → xrpl_client → local first
+# → cascade). Render's AWS network cannot route to 192.168.40.95:5005,
+# so every request hairpins to s1/s2 by design. Rate tracks visitor
+# traffic, not walker cadence. Mis-shelved in Class A until 2026-08-17.
+SOVEREIGNTY_CLASS_B_WALKERS = frozenset({
+    "check_page", "token_page", "unknown",
+    "cold_storage", "escrow_supply",
+})
+SOVEREIGNTY_WINDOW_HOURS = 6                # rate-check window
+SOVEREIGNTY_MIN_EVENTS = 12                 # events in that window
+SOVEREIGNTY_MIN_SUSTAIN_HOURS = 12          # earliest event must be ≥12h old
 
 
 # ── delivery ────────────────────────────────────────────────────────
@@ -152,6 +223,9 @@ def check_walker_stale(now_utc: dt.datetime) -> list[dict]:
             for name, cadence, age_s in cur.fetchall():
                 if age_s is None or cadence is None:
                     continue
+                mute_exp = WALKER_STALENESS_MUTES.get(name)
+                if mute_exp and dt.date.today() <= dt.date.fromisoformat(mute_exp):
+                    continue
                 threshold = max(int(cadence) * STALE_CADENCE_MULTIPLIER,
                                 STALE_FLOOR_SECONDS)
                 if age_s > threshold and age_s < STALE_MAX_AGE_SECONDS:
@@ -186,6 +260,85 @@ def check_walker_failing() -> list[dict]:
                     "last_message": (msg or "")[:200],
                 })
     return alerts
+
+
+def _fetch_sovereignty_rows(now_utc: dt.datetime) -> list[tuple]:
+    """Pull raw walker_node_fallback rows for Class A walkers in the
+    trailing 24h where the reason indicates a sovereignty-loss (local
+    node unreachable or degraded). Returns list of
+    (walker_name, ts, reason) tuples. Split out from the check so the
+    threshold logic below is pure-Python + unit-testable."""
+    with _pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT walker_name, ts, reason
+                  FROM walker_node_fallback
+                 WHERE walker_name = ANY(%s)
+                   AND (reason LIKE 'unreachable:%%'
+                        OR reason LIKE 'local_%%')
+                   AND ts > NOW() - INTERVAL '24 hours'
+                """,
+                (list(SOVEREIGNTY_CLASS_A_WALKERS),),
+            )
+            return list(cur.fetchall())
+
+
+def _evaluate_sovereignty_rows(rows: list[tuple],
+                               now_utc: dt.datetime) -> list[dict]:
+    """Pure function: given raw (walker_name, ts, reason) rows, apply the
+    Class A allowlist + threshold logic and return the alert list.
+
+    Threshold: fire when a walker has ≥SOVEREIGNTY_MIN_EVENTS events in
+    the trailing SOVEREIGNTY_WINDOW_HOURS AND its earliest event in the
+    input window is ≥SOVEREIGNTY_MIN_SUSTAIN_HOURS old (sustain check —
+    refuses to fire on a fresh blip).
+
+    Class B walkers are excluded by the allowlist filter here (belt on
+    top of the SQL WHERE braces — if the SQL is edited or the caller
+    passes wider input, we still don't page on structural noise)."""
+    by_walker: dict[str, list[tuple[dt.datetime, str]]] = {}
+    for walker_name, ts, reason in rows:
+        if walker_name not in SOVEREIGNTY_CLASS_A_WALKERS:
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=dt.timezone.utc)
+        by_walker.setdefault(walker_name, []).append((ts, reason))
+
+    alerts = []
+    window_cutoff = now_utc - dt.timedelta(hours=SOVEREIGNTY_WINDOW_HOURS)
+    sustain_cutoff = now_utc - dt.timedelta(hours=SOVEREIGNTY_MIN_SUSTAIN_HOURS)
+    for walker, events in by_walker.items():
+        recent = [(t, r) for t, r in events if t > window_cutoff]
+        if len(recent) < SOVEREIGNTY_MIN_EVENTS:
+            continue
+        earliest_ts = min(t for t, _ in events)
+        latest_ts = max(t for t, _ in events)
+        if earliest_ts > sustain_cutoff:
+            continue
+        alerts.append({
+            "id": f"sovereignty_loss:{walker}",
+            "walker": walker,
+            "recent_count": len(recent),
+            "window_hours": SOVEREIGNTY_WINDOW_HOURS,
+            "earliest_age_s": int((now_utc - earliest_ts).total_seconds()),
+            "latest_age_s": int((now_utc - latest_ts).total_seconds()),
+            "sample_reason": (recent[0][1] or "")[:120],
+        })
+    return alerts
+
+
+def check_sovereignty_loss(now_utc: dt.datetime) -> list[dict]:
+    """Alert when a Class A (Mac-hosted) walker has been cascading past
+    its sovereign local node for ≥SOVEREIGNTY_MIN_EVENTS events in the
+    trailing SOVEREIGNTY_WINDOW_HOURS AND its earliest fallback event
+    within the trailing 24h is ≥SOVEREIGNTY_MIN_SUSTAIN_HOURS old.
+
+    See _evaluate_sovereignty_rows for the pure-Python threshold logic.
+    Class B walkers (check_page/token_page/unknown) are Render→Lenovo
+    hairpin noise — excluded by allowlist, not blocklist."""
+    rows = _fetch_sovereignty_rows(now_utc)
+    return _evaluate_sovereignty_rows(rows, now_utc)
 
 
 def check_snapshot_missed(now_utc: dt.datetime) -> list[dict]:
@@ -244,6 +397,25 @@ def format_alert(alert: dict) -> str:
             f"🟥 <b>FAILING walker</b>: <code>{alert['walker']}</code> — "
             f"{alert['consecutive_failures']} consecutive failures{tail}"
         )
+    if kind == "sovereignty_loss":
+        # Earliest AND latest age both surfaced so a reader can tell
+        # "fresh fire" (latest ≈ minutes ago) from "echo of an already-
+        # resolved incident" (latest ≈ hours ago) at a glance.
+        latest_line = ""
+        if "latest_age_s" in alert:
+            latest_line = (
+                f" · latest event {_human_age(alert['latest_age_s'])} ago"
+            )
+        return (
+            f"🟥 <b>SOVEREIGNTY LOST</b>: <code>{alert['walker']}</code> "
+            f"cascaded past sovereign local node "
+            f"{alert['recent_count']}× in trailing {alert['window_hours']}h "
+            f"(earliest event {_human_age(alert['earliest_age_s'])} old"
+            f"{latest_line} — sustained, not a blip).\n"
+            f"sample reason: <code>{alert['sample_reason']}</code>\n"
+            f"Check Mac VPN routing / launchd Python interpreter / "
+            f"192.168.40.95:5005 reachability from the walker's context."
+        )
     if kind == "snapshot_missed":
         if alert["id"].endswith("no_rows"):
             return "🟥 <b>SNAPSHOT missed</b>: signed_snapshots table is empty"
@@ -256,6 +428,42 @@ def format_alert(alert: dict) -> str:
 
 def format_recovered(alert_id: str) -> str:
     return f"🟩 <b>RECOVERED</b>: <code>{alert_id}</code>"
+
+
+# ── suppression fingerprint + digest ───────────────────────────────
+def _alert_fingerprint(alert: dict) -> str:
+    """Stable identity string used to decide whether a still-active
+    alert has *materially changed* since we last paged. Only text/reason
+    fields are included — pure count/age drift within the same reason
+    does NOT re-page. Fingerprint change (reason string flips) DOES
+    re-page immediately (see reconcile). Keep this list narrow: adding
+    a volatile field here reintroduces the page-storm this patch was
+    written to end."""
+    return "|".join(str(alert.get(k, "")) for k in (
+        "id",
+        "sample_reason",       # sovereignty_loss
+        "last_message",        # walker_failing
+    ))
+
+
+def _format_digest(entries: list[dict], now_utc: dt.datetime,
+                   throttle_sec: int) -> str:
+    """One-line-per-suppressed-alert summary for a tick where re-pages
+    were held back. Silence is not "gone"; it is "known and unchanged."
+    The next full re-page time per alert is printed so an operator can
+    see when the throttle expires."""
+    lines = ["🔇 <b>Still-active, unchanged</b> "
+             f"(suppressed by {throttle_sec // 3600}h re-page throttle):"]
+    for e in entries:
+        first_fired = e["first_fired"]
+        next_repage = e["next_repage"]
+        lines.append(
+            f" • <code>{e['id']}</code> — since "
+            f"{first_fired.astimezone(ET_ZONE).strftime('%m-%d %H:%M ET')}, "
+            f"next re-page at "
+            f"{next_repage.astimezone(ET_ZONE).strftime('%H:%M ET')}"
+        )
+    return "\n".join(lines)
 
 
 def format_heartbeat(alerts: list[dict]) -> str:
@@ -278,6 +486,7 @@ def gather_alerts(now_utc: dt.datetime) -> list[dict]:
         (check_walker_stale, {"now_utc": now_utc}),
         (check_walker_failing, {}),
         (check_snapshot_missed, {"now_utc": now_utc}),
+        (check_sovereignty_loss, {"now_utc": now_utc}),
     ):
         try:
             alerts.extend(fn(**kwargs))
@@ -307,37 +516,94 @@ def should_send_heartbeat(state: dict, now_utc: dt.datetime) -> bool:
 
 def reconcile(state: dict, current: list[dict], now_utc: dt.datetime,
               reminder_interval: int, dry_run: bool) -> None:
-    """Diff current alerts vs state; deliver new/reminder/recovered messages."""
+    """Diff current alerts vs state; deliver new/reminder/recovered messages.
+
+    Suppression rules (see module docstring "Dedup rules"):
+      - NEW alert (unseen id) → page immediately.
+      - EXISTING alert, fingerprint CHANGED (e.g. sample_reason flipped)
+        → page immediately as a breakthrough; reset the throttle clock.
+      - EXISTING alert, fingerprint UNCHANGED, within `reminder_interval`
+        of last page → SUPPRESSED; row added to the digest.
+      - EXISTING alert, fingerprint UNCHANGED, past `reminder_interval`
+        → re-page and reset the throttle clock.
+      - CLEARED alert → RECOVERED message, immediate.
+
+    After the per-alert loop, if any suppressions happened this tick,
+    one digest message summarizes them so silence never means "gone."
+    """
     current_by_id = {a["id"]: a for a in current}
     active = state["active_alerts"]
+    digest_entries: list[dict] = []
 
-    # New + reminder
     for aid, alert in current_by_id.items():
         prev = active.get(aid)
+        fp = _alert_fingerprint(alert)
+
         if prev is None:
+            # New condition — always breaks through, no throttle applies.
             send_telegram(format_alert(alert), dry_run=dry_run)
             active[aid] = {
                 "first_fired": now_utc.isoformat(),
                 "last_reminder": now_utc.isoformat(),
+                "fingerprint": fp,
                 "snapshot": alert,
             }
             continue
+
+        prev_fp = prev.get("fingerprint", "")
         last_reminder = dt.datetime.fromisoformat(prev["last_reminder"])
         if last_reminder.tzinfo is None:
             last_reminder = last_reminder.replace(tzinfo=dt.timezone.utc)
-        if (now_utc - last_reminder).total_seconds() > reminder_interval:
+        age_since_page = (now_utc - last_reminder).total_seconds()
+
+        if prev_fp and prev_fp != fp:
+            # Materially changed (reason/message flipped) — breakthrough.
+            send_telegram(
+                "⚠️ <b>Changed</b>\n" + format_alert(alert),
+                dry_run=dry_run,
+            )
+            prev["last_reminder"] = now_utc.isoformat()
+            prev["fingerprint"] = fp
+            prev["snapshot"] = alert
+            continue
+
+        if age_since_page > reminder_interval:
+            # Throttle expired — full re-page.
             send_telegram(
                 "🔁 <b>Still active</b>\n" + format_alert(alert),
                 dry_run=dry_run,
             )
             prev["last_reminder"] = now_utc.isoformat()
+            prev["fingerprint"] = fp
             prev["snapshot"] = alert
+            continue
 
-    # Cleared
+        # Suppressed — record for the digest, do not send full page.
+        first_fired = dt.datetime.fromisoformat(prev["first_fired"])
+        if first_fired.tzinfo is None:
+            first_fired = first_fired.replace(tzinfo=dt.timezone.utc)
+        next_repage = last_reminder + dt.timedelta(seconds=reminder_interval)
+        digest_entries.append({
+            "id": aid,
+            "first_fired": first_fired,
+            "next_repage": next_repage,
+        })
+        # Refresh the snapshot so operator-visible fields (counts, ages)
+        # stay current in state even when not paged.
+        prev["snapshot"] = alert
+
+    # Cleared — recoveries always break through (good news travels fast).
     for aid in list(active.keys()):
         if aid not in current_by_id:
             send_telegram(format_recovered(aid), dry_run=dry_run)
             del active[aid]
+
+    # Emit the digest last — one line per suppressed alert, one message.
+    if digest_entries:
+        send_telegram(
+            _format_digest(digest_entries, now_utc, reminder_interval),
+            dry_run=dry_run,
+        )
 
 
 def main() -> int:
