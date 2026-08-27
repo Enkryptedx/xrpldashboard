@@ -1,0 +1,12 @@
+[Unit]
+Description=xrpldashboard anchor canary (L1.5 tier; on-ledger anchor memo vs live chain.json cross-check → Telegram on divergence)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=charlie
+WorkingDirectory=/home/charlie/xrpldashboard
+ExecStart=/bin/bash -c 'set -a; source /home/charlie/.config/xrpldashboard/env; set +a; exec /home/charlie/xrpldashboard/.venv/bin/python -u /home/charlie/xrpldashboard/tools/anchor_canary.py'
+StandardOutput=append:/home/charlie/xrpldashboard/logs/anchor_canary.log
+StandardError=append:/home/charlie/xrpldashboard/logs/anchor_canary.err.log

@@ -1,0 +1,14 @@
+[Unit]
+Description=Fire xrpld-anchor-canary daily (L1.5 tier; sovereign ledger vs live-site cross-check)
+
+[Timer]
+# Anchors land weekly; a daily read costs nothing and catches forgery
+# faster. Boot delay lets rippled complete server_state after reboot.
+OnBootSec=5min
+OnCalendar=daily
+Persistent=true
+AccuracySec=5min
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
