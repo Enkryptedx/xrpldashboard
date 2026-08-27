@@ -327,3 +327,41 @@ def test_freshness_stamp_matches_agents_json(client):
         f"agents.json last_verified={aj_last!r} != "
         f"openapi.json x-agent-tier-freshness.last_verified={spec_last!r}"
     )
+
+
+def test_last_verified_not_stale():
+    """Release-ritual gate. LAST_VERIFIED_AGENT_TIER_METHODOLOGY must be
+    within 90 days of today, otherwise the three agent-tier surfaces
+    (llms.txt, agents.json, openapi.json x-agent-tier-freshness) silently
+    drift into "we haven't looked at this in 3+ months" territory.
+
+    Failure signal to whoever hits it: bump the constant in app.py at
+    the same commit where you touched agent-tier shape, or file the
+    stale as a wound if the surfaces are actually still accurate."""
+    from datetime import date, datetime, timedelta
+    from app import LAST_VERIFIED_AGENT_TIER_METHODOLOGY
+    stamp = datetime.strptime(LAST_VERIFIED_AGENT_TIER_METHODOLOGY, "%Y-%m-%d").date()
+    age = date.today() - stamp
+    assert age <= timedelta(days=90), (
+        f"LAST_VERIFIED_AGENT_TIER_METHODOLOGY={LAST_VERIFIED_AGENT_TIER_METHODOLOGY!r} "
+        f"is {age.days} days old (>90). Bump the constant in app.py at "
+        f"the same commit where you touched agent-tier shape."
+    )
+
+
+def test_mcp_server_version_matches_canonical(client):
+    """Single-source-of-truth gate. mcp_server.py::SERVER_VERSION is
+    the canonical MCP server version — every other surface derives from
+    it. This test locks the openapi.json x-mcp-tools.server_version
+    surface to the canonical constant so the two Python-side numbers
+    can never drift again. Registry submission at
+    docs/mcp_directory_submissions/anthropic_server.json is mirrored
+    by hand at republish (mcp-publisher CLI, keyboard step)."""
+    from mcp_server import SERVER_VERSION as canonical
+    spec = client.get("/openapi.json").get_json()
+    spec_version = spec["info"]["x-mcp-tools"]["server_version"]
+    assert spec_version == canonical, (
+        f"openapi.json x-mcp-tools.server_version={spec_version!r} != "
+        f"mcp_server.SERVER_VERSION={canonical!r} (canonical). Bump the "
+        f"canonical constant, not the OpenAPI hardcode."
+    )

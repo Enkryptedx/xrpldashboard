@@ -45,6 +45,7 @@ from lending_data import fetch_lending_data_cached, load_lending_snapshot
 from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
+from mcp_server import SERVER_VERSION as MCP_SERVER_VERSION
 
 try:
     import qrcode
@@ -253,7 +254,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-05"  # public MCP endpoint went live this date
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-27"  # operability sprint — Batch 1 doc-honesty pass
 
 
 @app.context_processor
@@ -381,7 +382,7 @@ app.config["API_SPEC_OPTIONS"] = {
         },
         "x-mcp-tools": {
             "server_name": "xrpldashboard-mcp",
-            "server_version": "1.0.0",
+            "server_version": MCP_SERVER_VERSION,
             "protocol": "MCP (Model Context Protocol) — stdio + streamable HTTP",
             "documentation": f"{SITE_URL}/methodology#for-ai-agents",
             "design_doc": (
@@ -392,11 +393,11 @@ app.config["API_SPEC_OPTIONS"] = {
             "tool_count": len(AGENT_TIER_MCP_INVENTORY),
             "tools": AGENT_TIER_MCP_INVENTORY,
             "status": (
-                "Server implementation running headless (see "
-                "mcp_server.py + mcp_tools_*.py in the source repo). "
-                "Public daemonization is deferred until Phase 3 of the "
-                "Lenovo node migration completes "
-                "(see docs/LENOVO_MIGRATION.md)."
+                "Server publicly reachable at https://mcp.xrpldashboard.com/mcp "
+                "(streamable HTTP, protocol 2025-06-18, 15 read-only tools, "
+                "no auth). Listed in the Anthropic MCP Registry and Smithery. "
+                "See mcp_server.py + mcp_tools_*.py in the source repo for "
+                "implementation."
             ),
         },
     },
@@ -6744,7 +6745,7 @@ def llms_txt():
     following the llmstxt.org convention. Every URL listed resolves to
     a live public surface — this is a title-is-contract file with extra
     teeth (first artifact written primarily for machine readers)."""
-    resp = Response(_LLMS_TXT, mimetype="text/markdown; charset=utf-8")
+    resp = Response(_LLMS_TXT, mimetype="text/plain")
     resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
     return resp
 
@@ -6754,10 +6755,11 @@ def llms_txt():
 # trust surfaces, and the proof-annotation envelope agents should
 # expect. Status block is deliberately honest — each boolean flips
 # to true only after the corresponding surface actually responds:
-# openapi_ready=True (spec live at /openapi.json); mcp_ready stays
-# False until the MCP daemon is publicly exposed (deferred to
-# post-Lenovo-migration Phase 3); flows_ready stays False until
-# Wildcard-AI flows land. See docs/AGENT_TIER_DESIGN.md.
+# openapi_ready=True (spec live at /openapi.json); mcp_ready=True
+# (public daemon live at mcp.xrpldashboard.com/mcp since 2026-08-05,
+# streamable HTTP protocol 2025-06-18, 15 read-only tools, no auth);
+# flows_ready stays False until Wildcard-AI flows land. See
+# docs/AGENT_TIER_DESIGN.md.
 _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (

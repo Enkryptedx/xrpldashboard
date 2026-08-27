@@ -72,7 +72,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PUBKEY_FP_PATH = os.path.join(HERE, "snapshot_pubkey_fingerprint.txt")
 
 SERVER_NAME = "xrpldashboard-mcp"
-SERVER_VERSION = "1.0.0"
+# Canonical server version — single source of truth for this MCP server.
+# Every other surface derives from this constant:
+#   - app.py _OPENAPI_JSON info.x-mcp-tools.server_version imports it directly
+#     (test_openapi.py::test_mcp_server_version_matches_canonical gates drift)
+#   - MCP serverInfo returned by initialize/list_tools reads this value
+#   - docs/mcp_directory_submissions/anthropic_server.json version is
+#     hand-mirrored at registry republish (mcp-publisher CLI, keyboard step)
+# Bump on real releases only. requirements.txt "mcp==X" tracks the SDK
+# LIBRARY version and must not be confused with this server's version.
+SERVER_VERSION = "1.1.0"
 SERVER_DOCS_URL = "https://xrpldashboard.com/methodology#for-ai-agents"
 
 WALKER_NAME = "mcp_server_heartbeat"

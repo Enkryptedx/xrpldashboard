@@ -3,7 +3,7 @@
   "name": "com.xrpldashboard/xrpldashboard-mcp",
   "title": "xrpldashboard",
   "description": "Read-only XRP Ledger MCP tools with proof-annotation envelopes and signed daily snapshots.",
-  "version": "1.29.1",
+  "version": "1.1.0",
   "websiteUrl": "https://xrpldashboard.com/connect#connect-in-60-seconds",
   "repository": {
     "url": "https://github.com/Enkryptedx/xrpldashboard",
