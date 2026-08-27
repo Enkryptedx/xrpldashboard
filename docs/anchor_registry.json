@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "namespace": "xrpldashboard/anchor/v1",
+  "account": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+  "anchors": [
+    {
+      "seq": 1,
+      "tx_hash": "01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8",
+      "ledger_index": 106140698,
+      "close_time_iso": "2026-08-07T21:49:32+00:00",
+      "snapshot_date": "2026-08-07",
+      "chain_root_hex": "c73d65ae5927243b86ee9ddbfd02b967451dc75a6b4678a5a05dadc9dbfdf86a",
+      "type": "standard",
+      "recorded_at_utc": "2026-08-16T10:20:00+00:00",
+      "recorded_from": "backfill_from_docs_anchor_history_md"
+    },
+    {
+      "seq": 2,
+      "tx_hash": "73951F479EDE071067FEA423FD2E67D8268470C8A3530B91AEA9826B469DC003",
+      "ledger_index": 106290824,
+      "close_time_iso": "2026-08-14T15:14:20+00:00",
+      "snapshot_date": "2026-08-14",
+      "chain_root_hex": "c92c377855cbaebbbaa0d034546f3c36975c86a2c03b84a9b881afc1271e7237",
+      "type": "standard",
+      "recorded_at_utc": "2026-08-16T10:20:00+00:00",
+      "recorded_from": "backfill_from_docs_anchor_history_md"
+    },
+    {
+      "seq": 3,
+      "tx_hash": "35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45",
+      "ledger_index": 106451826,
+      "close_time_iso": "2026-08-21T19:50:01+00:00",
+      "snapshot_date": "2026-08-21",
+      "chain_root_hex": "14a8e28420c37dadd952a57d3487034bd29b6522af1765253019ba5c17e0016f",
+      "type": "standard",
+      "recorded_at_utc": "2026-08-23T13:44:46.021193+00:00",
+      "recorded_from": "ceremony_append_tool"
+    }
+  ]
+}
