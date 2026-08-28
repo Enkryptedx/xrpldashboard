@@ -282,6 +282,74 @@ def test_mcp_inventory_tool_names_match_actual_functions():
         )
 
 
+def test_each_mcp_tool_has_input_schema(client):
+    """Every tool in x-mcp-tools must expose an `inputSchema` — the
+    JSON-Schema shape an agent needs to call the tool without guessing.
+    Guards the enrichment path in app._build_enriched_mcp_inventory().
+    If the fallback to sparse AGENT_TIER_MCP_INVENTORY silently kicks
+    in, schemas disappear from the spec and this test fails, so the
+    silent-fallback failure mode names itself in CI."""
+    spec = client.get("/openapi.json").get_json()
+    tools = spec["info"]["x-mcp-tools"]["tools"]
+    assert tools, "x-mcp-tools.tools is empty"
+    missing = [t["name"] for t in tools if not t.get("inputSchema")]
+    assert not missing, (
+        f"{len(missing)}/{len(tools)} tools missing inputSchema: {missing}. "
+        "Enrichment probably fell back to the sparse static inventory — "
+        "check web-app logs for the FastMCP import fight."
+    )
+    # Descriptions must also survive the enrichment.
+    no_desc = [t["name"] for t in tools if not t.get("description")]
+    assert not no_desc, (
+        f"{len(no_desc)}/{len(tools)} tools missing description: {no_desc}"
+    )
+
+
+def test_mcp_input_schema_types_are_valid_json_schema_types(client):
+    """Every tool's inputSchema must be a valid JSON-Schema object:
+    top-level `type` = 'object', each property's `type` is one of the
+    seven JSON-Schema primitives (or null / an array of them for union
+    types). Catches the failure mode where a Python type hint we can't
+    translate (e.g. bare `dict` without generic args) emits garbage
+    into the spec — which would look correct to a linter but fail an
+    agent that reads inputSchema.type to decide how to build the call.
+
+    Reference: https://json-schema.org/draft/2020-12/json-schema-core#name-type"""
+    valid_types = {"string", "integer", "number", "boolean",
+                   "array", "object", "null"}
+    spec = client.get("/openapi.json").get_json()
+    tools = spec["info"]["x-mcp-tools"]["tools"]
+    errors = []
+    for tool in tools:
+        schema = tool.get("inputSchema")
+        if not schema:
+            continue  # covered by the sibling test
+        if schema.get("type") != "object":
+            errors.append(
+                f"{tool['name']}: top-level type is "
+                f"{schema.get('type')!r}, expected 'object'"
+            )
+        for prop_name, prop_schema in (schema.get("properties") or {}).items():
+            prop_type = prop_schema.get("type")
+            if prop_type is None:
+                # $ref-only or anyOf-only is allowed; only complain when
+                # a bare `type` field is set to something invalid.
+                continue
+            if isinstance(prop_type, list):
+                bad = [t for t in prop_type if t not in valid_types]
+                if bad:
+                    errors.append(
+                        f"{tool['name']}.{prop_name}: type list contains "
+                        f"invalid JSON-Schema types: {bad}"
+                    )
+            elif prop_type not in valid_types:
+                errors.append(
+                    f"{tool['name']}.{prop_name}: type={prop_type!r} is "
+                    f"not one of {sorted(valid_types)}"
+                )
+    assert not errors, "invalid JSON-Schema types:\n  " + "\n  ".join(errors)
+
+
 def test_documented_paths_all_serve_200(client):
     """Every path documented in the spec must actually respond. This
     catches the "documented but doesn't exist" failure mode where an

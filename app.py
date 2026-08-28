@@ -333,6 +333,65 @@ AGENT_TIER_MCP_INVENTORY = [
     {"name": "verify_snapshot_signature", "source": "signed_snapshot.verify_envelope+pinned_pubkey", "freshness": "≤ 5min", "batch": "signed-snapshot"},
 ]
 
+
+def _build_enriched_mcp_inventory():
+    """Enrich AGENT_TIER_MCP_INVENTORY with FastMCP-derived `inputSchema`
+    and `description` for each tool. Cross-references the static
+    inventory rows (source / freshness / batch — properties FastMCP does
+    not know about) with live tool metadata FastMCP derives from Python
+    signatures and docstrings, so the OpenAPI spec surfaces one row per
+    tool with both proof-envelope framing AND callable-shape schema.
+
+    Cross-import happened cleanly on 2026-08-28 in the same venv the web
+    app runs in (mcp_server already imported at line 48; tool modules
+    are deferred-loaded inside _register_tools so bare import stays
+    cheap). Extraction here calls _register_tools on a bare FastMCP
+    probe and takes ~1s at module load — paid once, cached in module
+    scope.
+
+    Falls back to the sparse AGENT_TIER_MCP_INVENTORY on any failure
+    (import fight, FastMCP shape change, tool module drift). Logs the
+    failure so /openapi.json still ships rather than 500ing at boot,
+    and the drift-guard tests in test_openapi.py catch the missing
+    schemas on the next CI run.
+    """
+    try:
+        import asyncio
+        from mcp.server.fastmcp import FastMCP
+        import mcp_server as _mcp_server_mod
+
+        _probe = FastMCP("_openapi_inventory_probe")
+        _mcp_server_mod._register_tools(_probe)
+        _live = asyncio.run(_probe.list_tools())
+        _live_by_name = {t.name: t for t in _live}
+
+        _enriched = []
+        for stub in AGENT_TIER_MCP_INVENTORY:
+            tool = _live_by_name.get(stub["name"])
+            if tool is None:
+                _enriched.append(dict(stub))
+                continue
+            _enriched.append({
+                **stub,
+                "description": " ".join((tool.description or "").split()),
+                "inputSchema": tool.inputSchema or {
+                    "type": "object", "properties": {},
+                },
+            })
+        return _enriched
+    except Exception as _e:  # noqa: BLE001 — boot-time defense in depth
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "MCP inventory enrichment failed; falling back to sparse "
+            "AGENT_TIER_MCP_INVENTORY. Error: %s: %s",
+            type(_e).__name__, _e,
+        )
+        return list(AGENT_TIER_MCP_INVENTORY)
+
+
+AGENT_TIER_MCP_INVENTORY_ENRICHED = _build_enriched_mcp_inventory()
+
+
 app.config["API_TITLE"] = "xrpldashboard — Agent Tier (read-only)"
 app.config["API_VERSION"] = "v1"
 app.config["OPENAPI_VERSION"] = "3.0.3"
@@ -390,8 +449,8 @@ app.config["API_SPEC_OPTIONS"] = {
                 "docs/AGENT_TIER_DESIGN.md"
             ),
             "envelope_schema_ref": "#/components/schemas/ProofAnnotationEnvelope",
-            "tool_count": len(AGENT_TIER_MCP_INVENTORY),
-            "tools": AGENT_TIER_MCP_INVENTORY,
+            "tool_count": len(AGENT_TIER_MCP_INVENTORY_ENRICHED),
+            "tools": AGENT_TIER_MCP_INVENTORY_ENRICHED,
             "status": (
                 "Server publicly reachable at https://mcp.xrpldashboard.com/mcp "
                 "(streamable HTTP, protocol 2025-06-18, 15 read-only tools, "
