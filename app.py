@@ -1274,6 +1274,19 @@ def apply_security_headers(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
 
+    # /analytics — Cache-Control: no-store. The page copy says "live";
+    # machines should get live too. Prior state (2026-08-27) was no
+    # explicit Cache-Control at all, which let intermediate caches
+    # freeze the page for 2+ hours for non-browser fetchers while
+    # browsers saw fresh via the WS refresh path. Explicit no-store
+    # makes the "live" promise structural — absence-of-posture was
+    # the disease; explicit posture is the cure. Origin's own 60s
+    # in-process cache (see analytics() docstring) is orthogonal: it
+    # smooths render cost under load; no-store only tells clients
+    # and CDNs not to cache the response body.
+    if _path == "/analytics":
+        response.headers["Cache-Control"] = "no-store"
+
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault(

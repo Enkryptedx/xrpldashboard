@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>{{title}}</title>
+    <meta name="description" content="xrpldashboard Agent Tier (read-only) — interactive Swagger UI for humans. The machine-readable OpenAPI spec, including the x-mcp-tools inventory with inputSchema and description for all 15 MCP tools, is at /openapi.json. Discovery: /llms.txt, /.well-known/agents.json."/>
+    <link href="{{swagger_ui_url}}swagger-ui.css" rel="stylesheet" type="text/css"/>
+    <style>
+      #honest-note {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        padding: 1rem 1.5rem;
+        max-width: 900px;
+        margin: 0 auto;
+        border-bottom: 1px solid #ddd;
+        background: #f8f8f8;
+        color: #222;
+      }
+      #honest-note h1 { margin: 0 0 0.5rem 0; font-size: 1.25rem; }
+      #honest-note p { margin: 0; line-height: 1.5; }
+      #honest-note code { background: #e8e8e8; padding: 0.1em 0.3em; border-radius: 3px; }
+      #honest-note a { color: #06c; }
+    </style>
+  </head>
+
+ <body>
+
+   <div id="honest-note">
+     <h1>xrpldashboard &mdash; Agent Tier (read-only) API docs</h1>
+     <p>
+       This page is an interactive <strong>Swagger UI</strong> for humans and
+       requires JavaScript to render the endpoint browser below. The
+       machine-readable <strong>OpenAPI spec</strong> &mdash; including the
+       <code>x-mcp-tools</code> inventory with <code>inputSchema</code> and
+       <code>description</code> for all 15 MCP tools &mdash; is at
+       <a href="/openapi.json"><code>/openapi.json</code></a>.
+       Agent-tier discovery also lives at
+       <a href="/llms.txt"><code>/llms.txt</code></a> and
+       <a href="/.well-known/agents.json"><code>/.well-known/agents.json</code></a>.
+     </p>
+   </div>
+
+   <div id="swagger-ui-container"></div>
+
+   <script src="{{swagger_ui_url}}swagger-ui-standalone-preset.js"></script>
+   <script src="{{swagger_ui_url}}swagger-ui-bundle.js"></script>
+   <script>
+
+     config = {
+       url: "{{ spec_url }}",
+       dom_id: '#swagger-ui-container'
+     }
+
+     var override_config = {{ swagger_ui_config | tojson }};
+     for (var attrname in override_config) { config[attrname] = override_config[attrname]; }
+
+     window.onload = function() {
+       window.ui = SwaggerUIBundle(config)
+     }
+   </script>
+
+ </body>
+
+</html>
