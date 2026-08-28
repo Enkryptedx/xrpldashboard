@@ -47,10 +47,11 @@ from xrpl_client import get_client
 # roll our own gate here — drift on this is a footgun.
 from verify_toml_accounts import _is_safe_domain as _domain_is_safe
 
-# D3 URL check: keep the request-path HTTP fetch quick. 5s is enough
+# D3 URL check: keep the request-path HTTP fetch quick. 2s is enough
 # for any well-configured TOML endpoint; anything longer belongs in
-# couldnt_check, not blocking the paste-box.
-_D3_HTTP_TIMEOUT = 5
+# couldnt_check, not blocking the paste-box. Tightened 2026-08-27 so
+# machine fetchers (Grok/ChatGPT) don't time out on the URL form.
+_D3_HTTP_TIMEOUT = 2
 _D3_USER_AGENT = "xrpldashboard-check-page/1.0 (+https://xrpldashboard.com/check)"
 _D3_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
@@ -70,8 +71,8 @@ _OFAC_SDN_PATH = os.path.join(_HERE, "ofac_sdn_addresses.json")
 # fall back to couldnt_check on failure (same discipline as _fetch_toml_fast).
 _RDAP_URL_TEMPLATE = "https://rdap.org/domain/{}"
 _CRTSH_URL_TEMPLATE = "https://crt.sh/?q={}&output=json"
-_RDAP_TIMEOUT = 6
-_CRTSH_TIMEOUT = 8
+_RDAP_TIMEOUT = 3
+_CRTSH_TIMEOUT = 4
 
 # XRPL ripple-epoch offset: seconds between 1970-01-01 and 2000-01-01 UTC.
 _RIPPLE_EPOCH = 946_684_800

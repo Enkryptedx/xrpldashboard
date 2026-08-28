@@ -5464,6 +5464,74 @@ def wallet(address):
     )
 
 
+_CHECK_JSON_METHODOLOGY_URL = "https://xrpldashboard.com/methodology#for-ai-agents"
+
+
+def _check_prefers_json(req) -> bool:
+    """Content-negotiation for /check. True when caller asked for JSON.
+
+    Browsers send `text/html,…,application/json;q=0.9` → HTML wins.
+    AI-agent fetchers sending `Accept: application/json` → JSON wins.
+    A missing / `*/*` Accept header stays HTML (backwards-compat with
+    the paste-box path and curl defaults).
+    """
+    accept = req.accept_mimetypes
+    # No header at all → HTML (default UX).
+    if not accept:
+        return False
+    best = accept.best_match(
+        ["application/json", "text/html"], default="text/html"
+    )
+    return best == "application/json"
+
+
+def _check_strip_top_null_keys(payload: dict) -> dict:
+    """Remove top-level keys with None values before envelope wrap.
+
+    /check result dicts carry rendering hints (`next_action=None` for
+    the empty-message case and the URL safety-gate reject case) which
+    are UI signals, not missing sub-sources. The envelope contract
+    treats top-level nulls as missing sub-sources, so strip them before
+    wrap_envelope validation runs.
+    """
+    return {k: v for k, v in payload.items() if v is not None}
+
+
+def _check_json_response(result: dict, *, status: int = 200) -> Response:
+    """Wrap a /check result in the proof-annotation envelope."""
+    from mcp_server import wrap_envelope
+    couldnt = result.get("couldnt_check") or []
+    honest_partial = bool(couldnt)
+    if honest_partial:
+        labels = [
+            c.get("label", "?") for c in couldnt if isinstance(c, dict)
+        ]
+        scope_note = (
+            "One or more sub-sources didn't answer in time or returned "
+            "no data (RDAP / crt.sh / on-chain lookup / OFAC / TOML "
+            "fetch): "
+            + ", ".join(labels)
+            + ". Everything else in `data` is present."
+        )
+    else:
+        scope_note = None
+
+    payload = _check_strip_top_null_keys(result)
+    envelope = wrap_envelope(
+        payload,
+        source="xrpldashboard/check-endpoint",
+        as_of=result.get("checked_at_utc"),
+        freshness_contract="≤ 5min",
+        methodology_url=_CHECK_JSON_METHODOLOGY_URL,
+        cross_check_status="not_applicable",
+        honest_partial=honest_partial,
+        scope_note=scope_note,
+    )
+    response = jsonify(envelope)
+    response.status_code = status
+    return response
+
+
 @app.route("/check", methods=["GET", "POST"])
 @limiter.limit("60 per minute")
 def check_page():
@@ -5518,6 +5586,8 @@ def check_page():
         # Deliberately pass query="" so back-button rehydration does
         # not resurface the message. Empty paste box + "paste again"
         # is the graceful path (Charlie's D4a-Q1 answer).
+        if result is not None and _check_prefers_json(request):
+            return _check_json_response(result)
         return render_template(
             "check.html",
             query="",
@@ -5571,6 +5641,19 @@ def check_page():
             input_error = babel_gettext(
                 "Something went wrong checking that. Try again in a moment."
             )
+
+    if _check_prefers_json(request):
+        if result is not None:
+            return _check_json_response(result)
+        # Empty query or user-input error: JSON-shaped 400 for machine
+        # callers so they get a structured signal, not an HTML paste-box.
+        return (
+            jsonify({
+                "error": input_error or "no query provided (use ?q=...)",
+                "query": q,
+            }),
+            400,
+        )
 
     return render_template(
         "check.html",
