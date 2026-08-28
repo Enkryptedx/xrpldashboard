@@ -81,7 +81,7 @@ SERVER_NAME = "xrpldashboard-mcp"
 #     hand-mirrored at registry republish (mcp-publisher CLI, keyboard step)
 # Bump on real releases only. requirements.txt "mcp==X" tracks the SDK
 # LIBRARY version and must not be confused with this server's version.
-SERVER_VERSION = "1.1.0"
+SERVER_VERSION = "2.0.0"
 SERVER_DOCS_URL = "https://xrpldashboard.com/methodology#for-ai-agents"
 
 WALKER_NAME = "mcp_server_heartbeat"

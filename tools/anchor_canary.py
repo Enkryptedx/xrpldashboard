@@ -38,8 +38,11 @@ Design law:
     triggers or pollute reconcile state.
   - Render-origin site fetch — ANCHOR_CANARY_SITE_URL default
     https://xrpldashboard.onrender.com, matching L2's hairpin workaround.
-  - Weekly heartbeat Tuesday 09:00-10:00 ET (differentiates from L1
-    Sunday and L2 Monday). Silence from the canary is itself an alarm.
+  - Weekly heartbeat Saturday 09:00-10:00 ET — the 24h-post-Friday-ceremony
+    verification window. Moved from Tuesday 2026-08-27 so the green receipt
+    testifies against the freshest anchor while the ceremony's chain state
+    is still the newest fact on the ledger. Differentiates from L1 Sunday
+    and L2 Monday. Silence from the canary is itself an alarm.
   - Strip rule honored — decoded MemoData is `.rstrip()`ed, each
     pipe-delimited field is `.strip()`ed.
 
@@ -101,7 +104,7 @@ ACCOUNT_TX_PAGE_LIMIT = 200
 # Safety valve so a broken marker loop never spins forever.
 ACCOUNT_TX_MAX_PAGES = 50
 
-WEEKLY_HEARTBEAT_WEEKDAY = 1  # Tuesday (L1=Sun=6, L2=Mon=0)
+WEEKLY_HEARTBEAT_WEEKDAY = 5  # Saturday — 24h-post-Friday-ceremony verification window (moved from Tue=1 on 2026-08-27)
 WEEKLY_HEARTBEAT_HOUR_MIN = 9
 WEEKLY_HEARTBEAT_HOUR_MAX = 10
 ET_ZONE = zoneinfo.ZoneInfo("America/New_York")
@@ -748,9 +751,12 @@ def format_heartbeat(alerts: list[dict], anchors: list[dict],
         )
     if n > 0:
         latest = anchors[-1]
+        root_hex = (latest.get("chain_root_hex") or "").lower()
+        root_display = f"{root_hex[:16]}…" if root_hex else "(none)"
         latest_line = (
             f"latest: seq {n} · date <code>{latest.get('snapshot_date')}</code> "
-            f"· ledger <code>{latest.get('ledger_index')}</code> "
+            f"· ledger <code>{latest.get('ledger_index')}</code>\n"
+            f"root <code>{root_display}</code> "
             f"· tx <code>{(latest.get('tx_hash') or '')[:16]}…</code>"
         )
     else:
