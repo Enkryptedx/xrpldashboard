@@ -738,6 +738,51 @@ def format_recovered(alert_id: str) -> str:
     return f"🟩 <b>Anchor canary RECOVERED</b>: <code>{alert_id}</code>"
 
 
+def format_view_line(alerts: list[dict], anchors: list[dict],
+                     meta: dict, now_utc: dt.datetime) -> str:
+    """Single-line ledger view for ceremony use — orthogonal to alert path.
+    Emitted when --print-view is set, regardless of dry-run / production
+    mode. Green cycles get the view line + nothing else; alert cycles get
+    the view line + the alerts. Never silent when the flag is set.
+
+    Root-mismatch heuristic: any of the three root-family alerts flips
+    root_match=no (root_mismatch = actual disagreement; live_root_missing
+    = one side didn't record; live_chain_unavailable = couldn't check)."""
+    n = len(anchors)
+    witness = meta.get("witness_url") or "?"
+    if meta.get("skipped"):
+        return (
+            f"[anchor-canary view] anchors={n} · SKIPPED "
+            f"({meta.get('witness_detail', 'n/a')})"
+        )
+    if n == 0:
+        return f"[anchor-canary view] anchors=0 · witness={witness}"
+    latest = anchors[-1]
+    tx_hash = (latest.get("tx_hash") or "")[:8]
+    root_alert_ids = {
+        "anchor_canary:root_mismatch",
+        "anchor_canary:live_root_missing_for_anchored_date",
+        "anchor_canary:live_chain_unavailable",
+    }
+    root_match = "no" if any(a.get("id") in root_alert_ids for a in alerts) else "yes"
+    freshness_hours = "?"
+    if latest.get("close_time_iso"):
+        try:
+            close = dt.datetime.fromisoformat(latest["close_time_iso"])
+            freshness_hours = f"{(now_utc - close).total_seconds() / 3600:.1f}"
+        except ValueError:
+            pass
+    return (
+        f"[anchor-canary view] anchors={n} · latest_seq={n} "
+        f"· latest_date={latest.get('snapshot_date') or '?'} "
+        f"· latest_ledger={latest.get('ledger_index') or '?'} "
+        f"· latest_tx={tx_hash} "
+        f"· root_match={root_match} "
+        f"· witness={witness} "
+        f"· freshness_hours={freshness_hours}"
+    )
+
+
 def format_heartbeat(alerts: list[dict], anchors: list[dict],
                      meta: dict) -> str:
     n = len(anchors)
@@ -854,6 +899,14 @@ def main() -> int:
                    help="Send a heartbeat regardless of day/hour (for testing).")
     p.add_argument("--test-message", action="store_true",
                    help="Send one 'anchor canary online' test message and exit 0.")
+    p.add_argument("--print-view", action="store_true",
+                   help="Emit a single-line ledger summary (anchors, latest "
+                        "seq/date/ledger/tx, root_match, witness, freshness_hours) "
+                        "to stdout after gather_alerts and before reconcile. "
+                        "Orthogonal to alerts — green cycles emit the view line "
+                        "plus nothing else; alert cycles emit the view line plus "
+                        "the alerts. Use during anchor ceremonies to confirm "
+                        "what the canary sees before banking the cycle as green.")
     args = p.parse_args()
 
     # R5: refuse to run in production mode without credentials.
@@ -891,6 +944,9 @@ def main() -> int:
             dry_run=args.dry_run,
         )
         return 0
+
+    if args.print_view:
+        print(format_view_line(current, anchors, meta, now_utc), flush=True)
 
     # LOUD SKIP: emit no alerts, mutate no state, log-only.
     if meta.get("skipped"):

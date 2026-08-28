@@ -220,6 +220,19 @@ def _client_ip_key():
     return request.remote_addr or "anonymous"
 
 
+def _client_ip():
+    """Analytics client IP: prefer Cloudflare's CF-Connecting-IP (authoritative,
+    not client-modifiable), fall back to ProxyFix-resolved request.remote_addr.
+    Defense in depth — if the X-Forwarded-For hop count ever changes (Render
+    infra shift, added edge), per-visitor dispersion stays correct instead of
+    silently collapsing to a Cloudflare egress pool. Returns "" (not "anonymous")
+    so downstream _visitor_hash / _ip_day_hash keep their empty-IP semantics."""
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip:
+        return cf_ip.strip()
+    return request.remote_addr or ""
+
+
 limiter = Limiter(
     app=app,
     key_func=_client_ip_key,
@@ -1477,7 +1490,7 @@ def _log_page_view():
             return
         if not db.pg_available():
             return
-        ip = request.remote_addr or ""
+        ip = _client_ip()
         if ip and ip in _ANALYTICS_EXCLUDED_IPS:
             return
         ua = (request.user_agent.string or "")[:300] or None
@@ -4926,7 +4939,7 @@ def click_institutional_contact():
     the mailto: fallback stays visible inside the form for founders who
     prefer direct email."""
     try:
-        ip = request.remote_addr or ""
+        ip = _client_ip()
         ua = (request.user_agent.string or "")[:300] or None
         ref_param = (request.args.get("ref") or "").strip()[:64] or None
         referrer = (request.referrer or "")[:300] or None
@@ -5065,7 +5078,7 @@ def institutional_contact_submit():
                   "best_time": best_time, "message": message},
         ), 400
 
-    ip = request.remote_addr or ""
+    ip = _client_ip()
     ua = (request.user_agent.string or "")[:300] or None
     referrer = (request.referrer or "")[:300] or None
     country = request.headers.get("CF-IPCountry") \
@@ -5182,7 +5195,7 @@ def click_contact():
     if purpose not in CONTACT_PURPOSES:
         purpose = "general"
     try:
-        ip = request.remote_addr or ""
+        ip = _client_ip()
         ua = (request.user_agent.string or "")[:300] or None
         ref_param = (request.args.get("ref") or "").strip()[:64] or None
         referrer = (request.referrer or "")[:300] or None
@@ -5315,7 +5328,7 @@ def contact_submit():
             form={"name": name, "email": email, "message": message},
         ), 400
 
-    ip = request.remote_addr or ""
+    ip = _client_ip()
     ua = (request.user_agent.string or "")[:300] or None
     referrer = (request.referrer or "")[:300] or None
     country = request.headers.get("CF-IPCountry") \
@@ -6782,6 +6795,7 @@ def internal_coverage_redirect():
 
 
 @app.route("/healthz")
+@limiter.limit("120 per minute")
 def healthz():
     """Render routing probe — PG-reachability only.
 
@@ -6792,7 +6806,13 @@ def healthz():
     /api/health and BetterStack, not routing signals. The 2026-08-07
     outage (project_healthz_outage_2026-08-07.md) proved that gating
     routing on walker liveness lets one Mac walker's silence take the
-    whole public site down — the wrong tradeoff for users."""
+    whole public site down — the wrong tradeoff for users.
+
+    Rate-limit: 120/min per client IP. Render's probe fires at 6/min
+    (comfortable headroom) and comes from an internal source distinct
+    from public CF-Connecting-IP buckets. Public curl-loop abusers get
+    their own bucket and hit the limit at 2/sec sustained — probe stays
+    green while attack surface shrinks."""
     try:
         db.ping()
         return {"status": "ok", "db": "reachable"}, 200

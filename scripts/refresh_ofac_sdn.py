@@ -142,9 +142,16 @@ def main() -> int:
         "count": len(addresses),
         "addresses": addresses,
     }
-    with open(_OUT_PATH, "w", encoding="utf-8") as f:
+    # Atomic write: temp file + fsync + rename. A SIGKILL / power-loss mid-
+    # write on the target path would leave a truncated JSON that check_data.py
+    # loads as an empty snapshot on next boot — silent OFAC coverage loss.
+    tmp_path = _OUT_PATH + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(snapshot, f, indent=2, sort_keys=True)
         f.write("\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, _OUT_PATH)
     print(
         f"[refresh_ofac_sdn] wrote {len(addresses)} addresses to "
         f"{_OUT_PATH} (OFAC publication {pub_date})",

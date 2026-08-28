@@ -203,7 +203,11 @@ def _pg_connect():
     url = os.environ.get("DATABASE_URL", "").strip()
     if not url:
         raise RuntimeError("DATABASE_URL unset")
-    return psycopg.connect(url)
+    # connect_timeout=15: match db.py convention. Without it, a Neon cold-
+    # start (typically 6-8s, occasionally longer) or a wedged TCP can hang
+    # the pager cron indefinitely, silencing the very alarm we exist to fire.
+    # Same lesson as db.py flap fix ff3739b (2026-08-17).
+    return psycopg.connect(url, connect_timeout=15)
 
 
 def check_walker_stale(now_utc: dt.datetime) -> list[dict]:
