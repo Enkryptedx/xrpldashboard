@@ -138,6 +138,25 @@
       "sdn_type": "Entity",
       "sdn_uid": "33151"
     },
+    "0x1CAb8177ACe78b1B6B1c393371F4f2dCAE40CbEB": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
+    "0x1b8579cf6ab12ea6b74ac5fa41f3829a3cb61e6e": {
+      "chain": "ETH",
+      "entity_name": "Mojtaba GHAL'EH-KUHI",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57064"
+    },
     "0x1d19b52b54e7ef5ea1a4b40b616165e798eac9f8": {
       "chain": "ETH",
       "entity_name": "Dmytro RASHEVSKYI",
@@ -165,6 +184,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "47635"
+    },
+    "0x252a8bd2319d8a555b872990601221b3a2053bce": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "0x2711d73d559f62f4f855ee21f38378f528e07985": {
       "chain": "ETH",
@@ -277,6 +306,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "27307"
     },
+    "0x4060cbf80734193f521a3cc6fd4e985df2825279": {
+      "chain": "ETH",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
+    },
     "0x43fa21d92141BA9db43052492E0DeEE5aa5f0A93": {
       "chain": "ETH",
       "entity_name": "Roman SEMENOV",
@@ -306,7 +344,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "ETH",
+      "chain": "BSC",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -359,6 +397,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "33854"
+    },
+    "0x56de1527136f76a809e5b14ded6103eecd072ba7": {
+      "chain": "ETH",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "0x57EC89A0C056163A0314e413320f9B3ABe761259": {
       "chain": "ETH",
@@ -414,6 +461,35 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "33854"
+    },
+    "0x6B0736Fed0634e15E19CC57fBA19cd179c13AbCA": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
+    "0x6Fac4D18c912343BF86fa7049364Dd4E424Ab9C0": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
+    "0x6b69e2a7545c166417a80c61a77562052bffa9c5": {
+      "chain": "ETH",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
     },
     "0x6be0ae71e6c41f2f9d0d1a3b8d0f75e6f6a0b46e": {
       "chain": "ETH",
@@ -490,6 +566,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "30518"
     },
+    "0x7F03679B56d8772530EFA516b58Bb83d4829E881": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
     "0x7F19720A857F834887FC9A7bC0a0fBe7Fc7f8102": {
       "chain": "ETH",
       "entity_name": "SECONDEYE SOLUTION",
@@ -538,6 +624,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "29703"
     },
+    "0x8694ed130432be2cd3efff2e4d9dc52351dc7423": {
+      "chain": "ETH",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
+    },
     "0x8Dce2aAC0dE82bdCAf6b4373B79f94331b8e4995": {
       "chain": "ETH",
       "entity_name": "GARANTEX EUROPE OU",
@@ -547,6 +642,26 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36025"
+    },
+    "0x8ac5381FCD9e7395D14e02986c344aADA84B4bC6": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
+    "0x8d79c73daae8630c88de372ba8f57592fa987607": {
+      "chain": "ETH",
+      "entity_name": "Siavash KAYVANPOUR",
+      "programs": [
+        "SDGT",
+        "IRGC"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58284"
     },
     "0x901bb9583b24d97e995513c6778dc6888ab6870e": {
       "chain": "ETH",
@@ -585,6 +700,16 @@
       "sdn_type": "Individual",
       "sdn_uid": "45391"
     },
+    "0x9697749A9e8D6C119D8EEb0d6268a1b99C40684c": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
     "0x97b1043abd9e6fc31681635166d430a458d14f9c": {
       "chain": "ETH",
       "entity_name": "Sang Man KIM",
@@ -595,7 +720,7 @@
       "sdn_uid": "43377"
     },
     "0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2": {
-      "chain": "ETH",
+      "chain": "USDC",
       "entity_name": "VALERIAN LABS, INC.",
       "programs": [
         "ILLICIT-DRUGS-EO14059"
@@ -611,6 +736,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "57056"
+    },
+    "0x9DD7fA4B4950154F7e75BdD8A77266B99b94Ec08": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "0x9c2bc757b66f24d60f016b6237f8cdd414a879fa": {
       "chain": "ETH",
@@ -631,6 +766,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "31212"
+    },
+    "0xA40cFBFc8534FFC84E20a7d8bBC3729B26a35F6f": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "0xD8500C631dC32FA18645B7436344a99E4825e10e": {
       "chain": "ETH",
@@ -659,6 +804,16 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "39585"
+    },
+    "0xF45Ecc3a59C7911181C659cE9115854c6175Be91": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "0xF7B31119c2682c88d88D455dBb9d5932c65Cf1bE": {
       "chain": "ETH",
@@ -725,6 +880,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "36025"
     },
+    "0xb5A69Da691670F62510793F79a9B36c7db1A7b7c": {
+      "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
     "0xb637f84b66876ebf609c2a4208905f9ddac9d075": {
       "chain": "ETH",
       "entity_name": "Song Guk YUN",
@@ -742,6 +907,24 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "43377"
+    },
+    "0xbb69e01921b17cd22080968bcc96ba6115da6062": {
+      "chain": "ETH",
+      "entity_name": "CRYPTO HOME DMCC",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58258"
+    },
+    "0xbd3276f265b83b5e828c05f46cde9d10a1521a24": {
+      "chain": "ETH",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "0xc103b7dc095c904b92081eef0c1640081ec01c10": {
       "chain": "ETH",
@@ -806,8 +989,18 @@
       "sdn_type": "Entity",
       "sdn_uid": "53953"
     },
-    "0xd882cfc20f52f2599d84b8e8d58c7fb62cfe344b": {
+    "0xd81414ABc631C6CADAe1C6198b0c2b15a9B4fDe5": {
       "chain": "ETH",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
+    "0xd882cfc20f52f2599d84b8e8d58c7fb62cfe344b": {
+      "chain": "ETC",
       "entity_name": "Dmitrii KARASAVIDI",
       "programs": [
         "CYBER2"
@@ -833,6 +1026,15 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "44718"
+    },
+    "0xe05f529f5284d75624eba386cb716928c3b54a2a": {
+      "chain": "ETH",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
     },
     "0xe1d865c3d669dcc8c57c8d023140cb204e672ee4": {
       "chain": "ETH",
@@ -871,6 +1073,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "33151"
     },
+    "0xeb507efa9ee692a4c774ad1de9f3cb26fc459da3": {
+      "chain": "ETH",
+      "entity_name": "Arman KAHZADIAN",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57065"
+    },
     "0xed6e0a7e4ac94d976eebfb82ccf777a3c6bad921": {
       "chain": "ETH",
       "entity_name": "Roman SEMENOV",
@@ -879,6 +1090,24 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "44718"
+    },
+    "0xef85a6fafa5942a964dc618e94e230881d29ce2a": {
+      "chain": "ETH",
+      "entity_name": "Arman KAHZADIAN",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57065"
+    },
+    "0xf1c4c44d2dcbcfa704349e3b57628dbd8404e597": {
+      "chain": "ETH",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "0xf2235d55b2950a0b1317469d72d07ae65b2e27cb": {
       "chain": "ETH",
@@ -1016,6 +1245,16 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "39585"
+    },
+    "12aNKp2iDKuhEde2YfPdd4DFGenRUTKupL": {
+      "chain": "XBT",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "12jVCWW1ZhTLA5yVnroEJswqKwsfiZKsax": {
       "chain": "XBT",
@@ -1250,6 +1489,16 @@
       "sdn_type": "Individual",
       "sdn_uid": "28263"
     },
+    "15Zt2mKuQ5Qy6DEXfDcbtsEVneoGQQXrS4": {
+      "chain": "XBT",
+      "entity_name": "Siavash KAYVANPOUR",
+      "programs": [
+        "SDGT",
+        "IRGC"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58284"
+    },
     "15cRqR3TXS1JehBGWERuxFE8NhWZzfoeeU": {
       "chain": "XBT",
       "entity_name": "Ivan Gennadievich KONDRATIEV",
@@ -1395,15 +1644,6 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36216"
-    },
-    "17a5bpKvEp1j1Trs4qTbcNZrby53JbaS9C": {
-      "chain": "XBT",
-      "entity_name": "Farrukh Furkatovitch FAYZIMATOV",
-      "programs": [
-        "SDGT"
-      ],
-      "sdn_type": "Individual",
-      "sdn_uid": "31811"
     },
     "17ezuJoT3XBbdcwFZbkTnrXbup11F4uhiy": {
       "chain": "XBT",
@@ -1683,6 +1923,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36216"
+    },
+    "1BUXxhcwzFukm9CUxnhag85sSXDkMRbXse": {
+      "chain": "XBT",
+      "entity_name": "Siavash KAYVANPOUR",
+      "programs": [
+        "SDGT",
+        "IRGC"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58284"
     },
     "1BiUFjzH6wsT73U3tfy4aXHCQsYQHzjk5h": {
       "chain": "XBT",
@@ -2081,6 +2331,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "29703"
     },
+    "1G1V1b9s9uPsFCNL15ibZk44xsVygKsP2u": {
+      "chain": "XBT",
+      "entity_name": "CRYPTO HOME DMCC",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58258"
+    },
     "1G64TFMFVJTjhJXra6x74BBhsfSyiWaFtT": {
       "chain": "XBT",
       "entity_name": "HYDRA MARKET",
@@ -2117,6 +2376,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "30518"
+    },
+    "1GXeCkFQq7SYo6B7wdLAPkkri6NFTFB7No": {
+      "chain": "XBT",
+      "entity_name": "Mojtaba GHAL'EH-KUHI",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57064"
     },
     "1GYuu9d5HPikafbys3k5Q3DRJq6debGsoB": {
       "chain": "XBT",
@@ -2292,6 +2560,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36216"
+    },
+    "1JGPiQGK78xTxAVoxA1MjK3Z15M84Rj6BL": {
+      "chain": "XBT",
+      "entity_name": "Arman KAHZADIAN",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57065"
     },
     "1JHdQHkBZiim1cb4hyUh2PbzEbbg6z2TrF": {
       "chain": "XBT",
@@ -4509,6 +4786,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "29585"
     },
+    "6wjqWWra8ombzaw6VHrG5xpQ972jCYF6bbHiFCbWmr4U": {
+      "chain": "SOL",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
+    },
     "84AwzjeFWXNEuhj8LWinXo93AqYr6wS8ZcnaBCoGhrL7EtvBMBovdhiUSV9xLhjrPA8t64hYSaMc8bHtWXoV9129EHUjU62": {
       "chain": "XMR",
       "entity_name": "Behrouz PARSARAD",
@@ -4792,6 +5078,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "55045"
+    },
+    "TAbbVaBKgH4VBLXgWqACuwoKF4cH1HinQh": {
+      "chain": "TRX",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
     },
     "TAgZxxuvfuKYJY5UPC1DXF8NPHbKtTzEGu": {
       "chain": "TRX",
@@ -5471,6 +5767,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "55045"
     },
+    "TEsxMcVocweTM82Mdmc5diKC6qyCWqSpPv": {
+      "chain": "TRX",
+      "entity_name": "Behzad MESRI",
+      "programs": [
+        "CYBER2",
+        "HRIT-IR"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "24003"
+    },
     "TEtLieZwyjJTth7S5EJqUNjtSbM1ui9toK": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -5850,6 +6156,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "22985"
+    },
+    "TJCBpxZ3yC7C7oegSRZMFxBcscmUVeSA36": {
+      "chain": "USDT",
+      "entity_name": "Almpertos TSORIS",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58409"
     },
     "TJCUwt9EKeTyzDw42658h8aYxQXScLdCZR": {
       "chain": "TRX",
@@ -6282,6 +6597,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "TP3kVtnFgDSoSqzw178nLJtGWNjrbKNgB6": {
+      "chain": "TRX",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
+    },
     "TPCnxv28xNbvtAaEppddvnfkjQpaFeAkV3": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -6366,6 +6690,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TPgxjjB6AJeMSQFngbUM6dMMxPHa9GEtYa": {
+      "chain": "TRX",
+      "entity_name": "Siavash KAYVANPOUR",
+      "programs": [
+        "SDGT",
+        "IRGC"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58284"
     },
     "TPkNp2Z5KiA1sLWpPMWsfNErVo2dHxc4iy": {
       "chain": "TRX",
@@ -6736,6 +7070,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "22985"
+    },
+    "TTVJuXWCusAURrpNShiypauagEH1N4CrxV": {
+      "chain": "TRX",
+      "entity_name": "CRYPTO HOME DMCC",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58258"
     },
     "TTct1DezYvriNWU7Wi3mygLoskkaw61mra": {
       "chain": "USDT",
@@ -7243,6 +7586,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "TXN3hVukebhyYR31YPCYd7aJAvmUeXu1ab": {
+      "chain": "TRX",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
+    },
     "TXR1nhqAek4c5Dq9EfjQLarcBWR9Jp6N7m": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -7252,6 +7604,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TXR4FDAZZLDSvuRxveW9aBMybbaS12WWHk": {
+      "chain": "TRX",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "TXc4kRiMEcdXRxWpSKkD5qKaARExN4uxPq": {
       "chain": "USDT",
@@ -7570,6 +7931,15 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "43421"
+    },
+    "bc1q4ktvxxhhvf8qhs9qkdsm9arcxfmmeex6rl7n50": {
+      "chain": "XBT",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "bc1q4namcagg5wljs0u20z6h2sqgsq4q5lts8rt2rr": {
       "chain": "XBT",
@@ -8050,6 +8420,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "53033"
     },
+    "bc1qf6zxs4lkp9umh6hf087mh70w0ymcyt8cunp58r": {
+      "chain": "XBT",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
+    },
     "bc1qfg4gfg0y6t6xjnpmlhuwx5k0wlw6nmfzxn2psc": {
       "chain": "XBT",
       "entity_name": "Jonatan ZIMENKOV",
@@ -8148,6 +8527,15 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "53033"
+    },
+    "bc1qjzk63wwatq2f638psymq3qapn00aqgksyx56l3t8eg7zuuccwasq498khf": {
+      "chain": "XBT",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
     },
     "bc1qkfqh5p2qsakseg5gnwen6zh5xf3elmku2xaup29mw3l0wnncy3es880dss": {
       "chain": "XBT",
@@ -8313,6 +8701,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36216"
+    },
+    "bc1qr2pwmvkpq5tc5um2g9uh34yyu6wepwx89rts70": {
+      "chain": "XBT",
+      "entity_name": "Keyvan Fayyaz Gareh BLAGH",
+      "programs": [
+        "CYBER4"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "57061"
     },
     "bc1qr2tgu4almsw9ajqfwz93qw0xc8w2g72xpyzqvn": {
       "chain": "XBT",
@@ -8700,6 +9097,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "57035"
     },
+    "bc1qz654h5qcqzalv6ltpxsk4ksdcc3e20wkedqntgnarv3a0t2e2p7scr48pl": {
+      "chain": "XBT",
+      "entity_name": "SHPS SHELBIT",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58287"
+    },
     "bc1qzcg8y0utezp7zkp2cmqppd3x80l4gpqzew25wy": {
       "chain": "XBT",
       "entity_name": "Behrouz PARSARAD",
@@ -8717,6 +9123,15 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "53033"
+    },
+    "bnb136ns6lfw4zs5hg4n85vdthaad7hq5m4gtkgf23": {
+      "chain": "BNB",
+      "entity_name": "CRYPTO HOME DMCC",
+      "programs": [
+        "SDGT"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "58258"
     },
     "ltc1qr8ntsedq8tv0svmxqhzvdcdl5k7kntdmnhwep7": {
       "chain": "LTC",
@@ -8836,8 +9251,8 @@
       "sdn_uid": "29585"
     }
   },
-  "count": 947,
-  "fetched_at_utc": "2026-07-26 01:43 UTC",
-  "publication_date": "2026-07-24",
+  "count": 991,
+  "fetched_at_utc": "2026-08-28 16:07 UTC",
+  "publication_date": "2026-08-28",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }

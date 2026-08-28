@@ -1181,15 +1181,40 @@ def apply_security_headers(response):
         without forcing them to send CORP headers, but with credentials
         stripped. Pairs with COOP to enable cross-origin isolation.
 
-    - Cross-Origin-Resource-Policy: same-origin
+    - Cross-Origin-Resource-Policy: same-origin (with discovery-class exception)
         Stops cross-origin pages from embedding our resources as no-cors
-        loads. Same-origin only — we don't host shared assets.
+        loads. Same-origin is the site-wide default; the agent-tier
+        discovery surfaces (llms.txt, agents.json, openapi.json, the
+        snapshots family, /docs, robots.txt, security.txt) AND the
+        /claims/ family (index.json + every claim URI — citation
+        payloads the receipts story rests on) are shared assets by
+        design and get CORP: cross-origin plus Access-Control-Allow-
+        Origin: * in the branch at the top of this hook so browser-
+        side agent tooling can fetch them. Do NOT "fix" the discovery
+        exception back to a wall — that premise is stale (the agent
+        tier + claims URIs made these surfaces public read-only shared
+        assets on purpose).
 
     - Content-Security-Policy-Report-Only (Trusted Types)
         Report-only enforcement of Trusted Types for sinks like innerHTML.
         Violations log to the browser console without breaking rendering.
         Promote to enforced (drop "-Report-Only") after a week of clean logs.
     """
+    # Discovery-class exception (see CORP block in the docstring above).
+    # Agent-tier surfaces + the /claims/ family are public read-only
+    # shared assets by design; browser-side agent tooling needs to fetch
+    # them from other origins. Direct assignment (not setdefault) so we
+    # override the same-origin CORP default set below. COOP/COEP
+    # untouched — irrelevant to fetch/XHR reads.
+    _path = request.path or ""
+    if (
+        is_agent_tier_route(_path)
+        or _path == "/claims/index.json"
+        or _path.startswith("/claims/")
+    ):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault(
@@ -6788,7 +6813,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/coverage]({SITE_URL}/coverage): what this site covers versus the XRPL's canonical object-type inventory.
 - [/lending]({SITE_URL}/lending): LendingProtocol amendment status.
 - [/regulation]({SITE_URL}/regulation): plain-English CLARITY Act (H.R. 3633) status tracker.
-- [/check]({SITE_URL}/check): OFAC SDN, domain-age, and earliest-SSL-cert lookup for any XRPL address or URL.
+- [/check]({SITE_URL}/check): typed triage for XRPL addresses, tokens, URLs, and pasted messages. Address/token inputs return OFAC SDN + identity + on-chain signals; URL inputs return domain-age + earliest-SSL-cert; message inputs extract and triage every subject inside. Facts-not-verdicts — every signal carries source + timestamp.
 - [/cold-storage]({SITE_URL}/cold-storage): known cold-wallet balances.
 
 ## How this is computed
