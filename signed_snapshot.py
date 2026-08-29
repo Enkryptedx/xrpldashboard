@@ -47,6 +47,8 @@ import getpass
 import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 
@@ -77,8 +79,18 @@ PRIVKEY_ENC_PATH = os.path.join(SECRETS_DIR, "snapshot_ed25519_enc.pem")
 # verify from a public artefact today gets added in a future schema_version.
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
+CLAIMS_YAML_PATH = os.path.join(HERE, "CLAIMS.yaml")
+APP_PY_PATH = os.path.join(HERE, "app.py")
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+
+# v4 walker-health-summary thresholds (mirror /walker_health severity buckets;
+# if these drift from the app-side page the digest becomes worthless as
+# cross-check evidence, so any change here MUST update the /walker_health
+# code path in the same commit — anti-Layer-4 lesson from the design doc).
+WALKER_STATE_GREEN_MAX_CADENCE_MULTIPLE = 2   # age ≤ 2×cadence AND ok=true
+WALKER_STATE_STALE_MAX_CADENCE_MULTIPLE = 8   # 2×cadence < age ≤ 8×cadence
+WALKER_STATE_DEAD_CONSECUTIVE_FAILURES = 3    # ≥3 failures → dead regardless of age
 SIGNING_DOMAIN = "xrpldashboard.com/signed_snapshot/v1"
 WALKER_CADENCE_SECONDS = 86400  # run_signed_snapshot.sh called daily via launchd
 
@@ -315,11 +327,275 @@ def _validated_ledger_index(client):
     return result.get("ledger_index") or (result.get("ledger") or {}).get("ledger_index")
 
 
-def collect_metrics() -> tuple[list[dict], list[str]]:
+# ---------------------------------------------------------------------------
+# v4 metric collectors — walker_health_summary, claims_index_state,
+# editorial_state. Each takes an explicit `now_utc` (frozen at build-time by
+# `build_snapshot`) so two dry-runs within one wall-clock second produce
+# byte-identical digests (acceptance gate 4d). Each RAISES on SoT failure
+# (strict-refuse per §5 ruling — never stamp a guess).
+# ---------------------------------------------------------------------------
+
+def _walker_state(row: dict, now_utc: dt.datetime) -> tuple[str, float | None]:
+    """Classify one walker_health row into (state, age_multiples_of_cadence).
+
+    state ∈ {"green", "stale", "dead"}. Cadence-less rows collapse to dead
+    with age_multiples=None so the digest flips immediately if a walker is
+    ever registered without declaring its cadence (schema violation that
+    should be visible on-chain, not silently averaged in)."""
+    cadence = row.get("cadence_seconds")
+    consecutive = row.get("consecutive_failures") or 0
+    ok = bool(row.get("last_run_ok"))
+    last_success = row.get("last_success_at")
+
+    if consecutive >= WALKER_STATE_DEAD_CONSECUTIVE_FAILURES:
+        return "dead", None if cadence in (None, 0) else round(
+            _age_multiples(now_utc, last_success, cadence), 1
+        )
+
+    if cadence in (None, 0) or last_success is None:
+        return "dead", None
+
+    multiples = _age_multiples(now_utc, last_success, cadence)
+    multiples_1dp = round(multiples, 1)
+
+    if ok and multiples <= WALKER_STATE_GREEN_MAX_CADENCE_MULTIPLE:
+        return "green", multiples_1dp
+    if multiples > WALKER_STATE_STALE_MAX_CADENCE_MULTIPLE:
+        return "dead", multiples_1dp
+    return "stale", multiples_1dp
+
+
+def _age_multiples(now_utc: dt.datetime, last_success: dt.datetime, cadence_seconds: int) -> float:
+    """Age in units of the walker's declared cadence. now_utc is frozen at
+    build-time; last_success comes from the row. Any tz-naive datetime is
+    treated as UTC (walker_health stores TIMESTAMPTZ but read_walker_health_all
+    surfaces naive datetimes in some code paths — defensive coercion)."""
+    if last_success.tzinfo is None:
+        last_success = last_success.replace(tzinfo=dt.timezone.utc)
+    age_seconds = (now_utc - last_success).total_seconds()
+    if age_seconds < 0:
+        age_seconds = 0.0
+    return age_seconds / float(cadence_seconds)
+
+
+def collect_walker_health_summary(now_utc: dt.datetime, read_walker_health_all=None) -> dict:
+    """v4 metric collector. Reads the full walker_health table via
+    db.read_walker_health_all() (dependency-injected for tests), classifies
+    each row against the same thresholds /walker_health uses, and returns
+    the {name, value, unit, source} metric. Raises SystemExit on strict-
+    refuse (empty read, PG unavailable, unreadable) — the whole point of
+    this metric is proof-of-our-own-machinery-health; stamping without it
+    would lie about the very thing it commits to."""
+    if read_walker_health_all is None:
+        import db
+        if not db.pg_available():
+            raise SystemExit(
+                "STRICT-REFUSE (v4 §5a): walker_health_summary requires PG; "
+                "DATABASE_URL not set / pg_available()=False"
+            )
+        read_walker_health_all = db.read_walker_health_all
+
+    try:
+        rows = read_walker_health_all()
+    except Exception as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5a): walker_health_summary read failed: "
+            f"{type(e).__name__}: {e}"
+        )
+
+    if not rows:
+        raise SystemExit(
+            "STRICT-REFUSE (v4 §5a): walker_health_summary got 0 rows — "
+            "either walker_health table is empty or the read silently failed"
+        )
+
+    detail = []
+    for row in sorted(rows, key=lambda r: r["walker_name"]):
+        state, multiples = _walker_state(row, now_utc)
+        detail.append({
+            "walker": row["walker_name"],
+            "state": state,
+            "consecutive_failures": int(row.get("consecutive_failures") or 0),
+            "age_multiples_of_cadence": multiples,
+        })
+
+    digest = hashlib.sha256(_canonical_json(detail)).hexdigest()
+    counts = {"green": 0, "stale": 0, "dead": 0}
+    for entry in detail:
+        counts[entry["state"]] += 1
+
+    return {
+        "name": "walker_health_summary",
+        "value": {
+            "total_walkers": len(detail),
+            "green_count": counts["green"],
+            "stale_count": counts["stale"],
+            "dead_count": counts["dead"],
+            "walkers_digest_sha256": digest,
+        },
+        "unit": "walkers",
+        "source": "walker_health table via db.read_walker_health_all()",
+    }
+
+
+def collect_claims_index_state(claims_yaml_path: str = None, git_short_reader=None) -> dict:
+    """v4 metric collector. SHA of CLAIMS.yaml + git-short of the last
+    commit that touched it + structural counts (page_count, claim_count).
+    Raises SystemExit on strict-refuse (file missing, unparseable, git
+    unavailable). Byte-hash + counts are redundant on purpose — defense
+    in depth per §1b ruling."""
+    path = claims_yaml_path or CLAIMS_YAML_PATH
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state cannot read "
+            f"{path}: {type(e).__name__}: {e}"
+        )
+
+    sha = hashlib.sha256(raw).hexdigest()
+
+    try:
+        import yaml
+    except ImportError as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state needs PyYAML "
+            f"to parse {path}: {e}"
+        )
+
+    try:
+        doc = yaml.safe_load(raw) or {}
+    except yaml.YAMLError as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state cannot parse "
+            f"{path}: {type(e).__name__}: {e}"
+        )
+
+    pages = doc.get("pages") or {}
+    if not isinstance(pages, dict):
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state got non-dict "
+            f"'pages' key in {path}"
+        )
+
+    page_count = len(pages)
+    claim_count = 0
+    for page in pages.values():
+        if isinstance(page, dict):
+            claims = page.get("claims") or []
+            if isinstance(claims, list):
+                claim_count += len(claims)
+
+    if git_short_reader is None:
+        def git_short_reader(p):
+            try:
+                out = subprocess.check_output(
+                    ["git", "log", "-n1", "--format=%h", "--", p],
+                    cwd=HERE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    timeout=10,
+                )
+                return out.strip()
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+                raise RuntimeError(f"git log failed: {type(e).__name__}: {e}")
+
+    try:
+        git_short = git_short_reader(path)
+    except Exception as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state cannot read "
+            f"git-short for {path}: {e}"
+        )
+
+    if not git_short:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5b): claims_index_state got empty "
+            f"git-short for {path}"
+        )
+
+    return {
+        "name": "claims_index_state",
+        "value": {
+            "page_count": page_count,
+            "claim_count": claim_count,
+            "claims_yaml_sha256": sha,
+            "claims_yaml_git_short": git_short,
+        },
+        "unit": "claims",
+        "source": "CLAIMS.yaml file hash + git log",
+    }
+
+
+_LAST_VERIFIED_RE = re.compile(
+    r'^LAST_VERIFIED_(\w+)\s*=\s*"(\d{4}-\d{2}-\d{2})"',
+    flags=re.M,
+)
+
+
+def collect_editorial_state(app_py_path: str = None) -> dict:
+    """v4 metric collector — FRESHNESS-ONLY (§1c ruling 2026-08-27 22:22 ET).
+    Regex-enumerates every `LAST_VERIFIED_* = "YYYY-MM-DD"` constant in
+    app.py source and commits them as a sort_keys-ordered nested dict.
+
+    New LAST_VERIFIED_* constants added later are picked up automatically
+    without touching this file. Correction/wound registries are deferred
+    to v5 (separate design sitting).
+
+    Raises SystemExit on strict-refuse (app.py unreadable OR zero stamps
+    found — a codebase that lost all its freshness stamps between v4 ship
+    and this run is a signal, not a normal state)."""
+    path = app_py_path or APP_PY_PATH
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            source = f.read()
+    except OSError as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5c): editorial_state cannot read "
+            f"{path}: {type(e).__name__}: {e}"
+        )
+
+    stamps: dict[str, str] = {}
+    for match in _LAST_VERIFIED_RE.finditer(source):
+        name, date = match.group(1), match.group(2)
+        stamps[f"LAST_VERIFIED_{name}"] = date
+
+    if not stamps:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5c): editorial_state found zero "
+            f"LAST_VERIFIED_* constants in {path} — either the source "
+            f"moved or every freshness stamp was removed"
+        )
+
+    return {
+        "name": "editorial_state",
+        "value": {
+            "last_verified_stamps": stamps,
+        },
+        "unit": "editorial",
+        "source": "app.py LAST_VERIFIED_* constants (regex-enumerated at stamp time)",
+    }
+
+
+def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], list[str]]:
     """Return (metrics, errors). Each metric: {name, value, unit, source}.
-    Missing sources are recorded as errors and absent from the metric list —
-    the chain still proceeds (a snapshot with fewer metrics is honest; one
-    with fabricated metrics would not be)."""
+    Missing sources for v1-v3 metrics are recorded as errors and absent
+    from the metric list — the chain still proceeds (a snapshot with fewer
+    metrics is honest; one with fabricated metrics would not be).
+
+    v4 metrics (walker_health_summary, claims_index_state, editorial_state)
+    use STRICT-REFUSE semantics per §5 — a missing v4 SoT raises SystemExit,
+    because those metrics ARE the proof-of-our-own-machinery-health and
+    stamping without them would silently lie about the very thing they
+    commit to.
+
+    now_utc is frozen at the top of build_snapshot and threaded into
+    walker_health_summary so age_multiples_of_cadence doesn't drift across
+    consecutive dry-runs (acceptance gate 4d)."""
+    if now_utc is None:
+        now_utc = dt.datetime.now(dt.timezone.utc)
+
     metrics: list[dict] = []
     errors: list[str] = []
 
@@ -478,6 +754,14 @@ def collect_metrics() -> tuple[list[dict], list[str]]:
     except Exception as e:
         errors.append(f"rwa: {type(e).__name__}")
 
+    # v4 metrics — appended at end (§2 insertion-order ruling). Each raises
+    # SystemExit on SoT failure (§5 strict-refuse); we do NOT swallow into
+    # `errors` because the whole point of these three is proof-of-our-own-
+    # machinery-health, and a silently-absent metric would defeat that.
+    metrics.append(collect_walker_health_summary(now_utc))
+    metrics.append(collect_claims_index_state())
+    metrics.append(collect_editorial_state())
+
     return metrics, errors
 
 
@@ -521,11 +805,19 @@ def append_or_replace_leaf(chain: dict, date_str: str, leaf_hash_hex: str, ledge
 # Build + sign
 # ---------------------------------------------------------------------------
 
-def build_snapshot(date_str: str) -> dict:
+def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
     """Pure metric collection + structuring. Signing is a separate step
-    (sign_snapshot) so tests can drive build without holding a key."""
-    metrics, errors = collect_metrics()
-    started_at = int(time.time())
+    (sign_snapshot) so tests can drive build without holding a key.
+
+    now_utc is frozen ONCE here and threaded through collect_metrics so
+    every v4 metric that uses "current time" (walker age vs cadence) sees
+    the same instant. Two dry-runs within a wall-clock second must produce
+    byte-identical digests — acceptance gate 4d. Callers that need to
+    control time in tests can pass now_utc explicitly."""
+    if now_utc is None:
+        now_utc = dt.datetime.now(dt.timezone.utc)
+    metrics, errors = collect_metrics(now_utc=now_utc)
+    started_at = int(now_utc.timestamp())
     return {
         "signing_domain": SIGNING_DOMAIN,
         "schema_version": SCHEMA_VERSION,
@@ -599,6 +891,7 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
     }
 
     if not dry_run:
+        _update_schema_version_history(chain, snap["snapshot_date_utc"])
         chain["schema_version"] = SCHEMA_VERSION
         chain["pubkey_url"] = PUBKEY_URL
         chain["verifier_spec_url"] = VERIFIER_SPEC_URL
@@ -611,6 +904,61 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
         write_signed_snapshot(signed)
 
     return signed
+
+
+def _update_schema_version_history(chain: dict, snapshot_date: str):
+    """Maintain chain.json's schema_version_history array (§3 ruling).
+    Records the version transition: closes the outgoing version's row
+    with last_snapshot_date, opens the incoming version's row with
+    first_snapshot_date. Idempotent — re-runs of the same-day stamp
+    don't duplicate rows."""
+    history = chain.setdefault("schema_version_history", [])
+    prev_version = chain.get("schema_version")
+
+    if prev_version is not None and prev_version != SCHEMA_VERSION:
+        # Close the outgoing version's row IF not already recorded.
+        closed = any(
+            row.get("version") == prev_version and "last_snapshot_date" in row
+            for row in history
+        )
+        if not closed:
+            history.append({
+                "version": prev_version,
+                "last_snapshot_date": _last_snapshot_date_for_version(
+                    chain, prev_version, snapshot_date
+                ),
+            })
+        opened = any(
+            row.get("version") == SCHEMA_VERSION and "first_snapshot_date" in row
+            for row in history
+        )
+        if not opened:
+            history.append({
+                "version": SCHEMA_VERSION,
+                "first_snapshot_date": snapshot_date,
+            })
+    elif not history and prev_version == SCHEMA_VERSION:
+        # First run under a new-version chain that predates the history
+        # array — bootstrap a single row so future transitions have context.
+        history.append({
+            "version": SCHEMA_VERSION,
+            "first_snapshot_date": snapshot_date,
+        })
+
+
+def _last_snapshot_date_for_version(chain: dict, prev_version: int, incoming_date: str) -> str:
+    """Best-effort last-snapshot date under the outgoing version. We don't
+    record per-leaf schema_version in chain.json today, so the closest
+    honest answer is the newest leaf date strictly before today's stamp.
+    Falls back to the incoming date if the chain has no prior leaves
+    (edge case: brand-new chain jumping straight to v4)."""
+    prior_dates = [
+        leaf["date"] for leaf in chain.get("leaves", [])
+        if leaf.get("date") and leaf["date"] < incoming_date
+    ]
+    if prior_dates:
+        return max(prior_dates)
+    return incoming_date
 
 
 def write_signed_snapshot(signed: dict):
