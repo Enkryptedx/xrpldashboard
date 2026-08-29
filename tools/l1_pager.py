@@ -158,6 +158,15 @@ SOVEREIGNTY_CLASS_B_WALKERS = frozenset({
 SOVEREIGNTY_WINDOW_HOURS = 6                # rate-check window
 SOVEREIGNTY_MIN_EVENTS = 12                 # events in that window
 SOVEREIGNTY_MIN_SUSTAIN_HOURS = 12          # earliest event must be ≥12h old
+SOVEREIGNTY_LIVENESS_FLOOR_SEC = 600        # never trust "cadence*2" below 10min
+
+# Populated during check_sovereignty_loss when a raw threshold-triggering
+# alert is dropped because the walker is currently healthy (last_run_ok +
+# last_run_completed within 2× cadence). main() consumes this list AFTER
+# gather_alerts and BEFORE reconcile to emit one informational (🟨) line
+# per suppressed incident with state-based dedupe. A real past incident
+# stays visible; only the false-urgency red page is killed.
+_SOVEREIGNTY_LIVENESS_SUPPRESSED: list[dict] = []
 
 
 # ── delivery ────────────────────────────────────────────────────────
@@ -197,14 +206,17 @@ def state_path() -> Path:
 def load_state() -> dict:
     p = state_path()
     if not p.exists():
-        return {"active_alerts": {}, "last_heartbeat_sent": None}
+        return {"active_alerts": {}, "last_heartbeat_sent": None,
+                "sovereignty_liveness_suppressed_seen": {}}
     try:
         data = json.loads(p.read_text())
         data.setdefault("active_alerts", {})
         data.setdefault("last_heartbeat_sent", None)
+        data.setdefault("sovereignty_liveness_suppressed_seen", {})
         return data
     except Exception:
-        return {"active_alerts": {}, "last_heartbeat_sent": None}
+        return {"active_alerts": {}, "last_heartbeat_sent": None,
+                "sovereignty_liveness_suppressed_seen": {}}
 
 
 def save_state(state: dict) -> None:
@@ -417,6 +429,47 @@ def _evaluate_sovereignty_rows(rows: list[tuple],
     return alerts
 
 
+def _check_walker_liveness(walker: str,
+                           now_utc: dt.datetime) -> tuple[bool, dict]:
+    """Return (is_healthy_now, snapshot).
+
+    Healthy iff walker_health.last_run_ok=True AND last_run_completed is
+    within max(cadence_seconds * 2, SOVEREIGNTY_LIVENESS_FLOOR_SEC). The
+    floor prevents a walker with a pathologically small cadence from
+    being declared "unhealthy" during any normal inter-run gap.
+
+    Returns (False, {}) when the walker has no walker_health row (fresh
+    install / never registered) — a completely-silent walker should not
+    be granted the benefit of the doubt.
+    """
+    with _pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT last_run_ok, last_run_completed, cadence_seconds
+                  FROM walker_health
+                 WHERE walker_name = %s
+                """,
+                (walker,),
+            )
+            row = cur.fetchone()
+    if not row:
+        return False, {}
+    ok, completed, cadence = row
+    snapshot = {
+        "last_run_ok": bool(ok) if ok is not None else None,
+        "last_run_completed": completed.isoformat() if completed else None,
+        "cadence_seconds": int(cadence) if cadence is not None else None,
+    }
+    if not ok or completed is None or cadence is None:
+        return False, snapshot
+    if completed.tzinfo is None:
+        completed = completed.replace(tzinfo=dt.timezone.utc)
+    age_s = (now_utc - completed).total_seconds()
+    threshold_s = max(int(cadence) * 2, SOVEREIGNTY_LIVENESS_FLOOR_SEC)
+    return age_s < threshold_s, snapshot
+
+
 def check_sovereignty_loss(now_utc: dt.datetime) -> list[dict]:
     """Alert when a Class A (Mac-hosted) walker has been cascading past
     its sovereign local node for ≥SOVEREIGNTY_MIN_EVENTS events in the
@@ -425,9 +478,34 @@ def check_sovereignty_loss(now_utc: dt.datetime) -> list[dict]:
 
     See _evaluate_sovereignty_rows for the pure-Python threshold logic.
     Class B walkers (check_page/token_page/unknown) are Render→Lenovo
-    hairpin noise — excluded by allowlist, not blocklist."""
+    hairpin noise — excluded by allowlist, not blocklist.
+
+    Live-state suppression (2026-08-29 fix): a raw threshold-triggering
+    alert is dropped from the returned red-page list when the walker is
+    currently healthy — a historical incident that already self-recovered
+    is not a false-urgency 🟥. The suppressed incident is stashed in
+    module-level `_SOVEREIGNTY_LIVENESS_SUPPRESSED` for main() to emit as
+    a one-shot informational (🟨) line so the history stays visible."""
+    _SOVEREIGNTY_LIVENESS_SUPPRESSED.clear()
     rows = _fetch_sovereignty_rows(now_utc)
-    return _evaluate_sovereignty_rows(rows, now_utc)
+    raw_alerts = _evaluate_sovereignty_rows(rows, now_utc)
+    live_alerts: list[dict] = []
+    for alert in raw_alerts:
+        walker = alert["walker"]
+        healthy, health = _check_walker_liveness(walker, now_utc)
+        if healthy:
+            earliest_ts = now_utc - dt.timedelta(seconds=alert["earliest_age_s"])
+            latest_ts = now_utc - dt.timedelta(seconds=alert["latest_age_s"])
+            _SOVEREIGNTY_LIVENESS_SUPPRESSED.append({
+                "walker": walker,
+                "start_ts": earliest_ts.isoformat(),
+                "end_ts": latest_ts.isoformat(),
+                "event_count": alert["recent_count"],
+                "health": health,
+            })
+            continue
+        live_alerts.append(alert)
+    return live_alerts
 
 
 def check_snapshot_missed(now_utc: dt.datetime) -> list[dict]:
@@ -524,6 +602,25 @@ def format_alert(alert: dict) -> str:
 
 def format_recovered(alert_id: str) -> str:
     return f"🟩 <b>RECOVERED</b>: <code>{alert_id}</code>"
+
+
+def format_sovereignty_liveness_suppressed(entry: dict) -> str:
+    """One-shot informational (🟨) line for a sovereignty incident that
+    already self-recovered before it could page. Preserves the history
+    (start→end, event count) that the red-page path would have surfaced,
+    without shouting FRESH URGENT when the walker is currently healthy."""
+    start_et = dt.datetime.fromisoformat(entry["start_ts"]).astimezone(ET_ZONE)
+    end_et = dt.datetime.fromisoformat(entry["end_ts"]).astimezone(ET_ZONE)
+    span_s = (dt.datetime.fromisoformat(entry["end_ts"])
+              - dt.datetime.fromisoformat(entry["start_ts"])).total_seconds()
+    return (
+        f"🟨 <b>Sovereignty blip (resolved)</b>: "
+        f"<code>{entry['walker']}</code> — "
+        f"{entry['event_count']} events "
+        f"{start_et.strftime('%m-%d %H:%M')}→"
+        f"{end_et.strftime('%H:%M ET')} "
+        f"({_human_age(int(span_s))} span), currently healthy."
+    )
 
 
 # ── suppression fingerprint + digest ───────────────────────────────
@@ -737,6 +834,22 @@ def main() -> int:
             dry_run=args.dry_run,
         )
         return 0
+
+    # Emit informational (🟨) lines for sovereignty incidents that
+    # already self-recovered before they could red-page. Dedupe by
+    # (walker, latest_ts) so a stable already-past incident doesn't
+    # repeat every tick; a NEW blip window (different latest_ts) does
+    # re-emit. Runs BEFORE reconcile so a suppressed incident that later
+    # ages out of the 24h window is a clean fall-off, not a mystery.
+    seen = state.setdefault("sovereignty_liveness_suppressed_seen", {})
+    for entry in _SOVEREIGNTY_LIVENESS_SUPPRESSED:
+        walker = entry["walker"]
+        latest_ts = entry["end_ts"]
+        if seen.get(walker) == latest_ts:
+            continue
+        send_telegram(format_sovereignty_liveness_suppressed(entry),
+                      dry_run=args.dry_run)
+        seen[walker] = latest_ts
 
     reconcile(state, current, now_utc, reminder_interval, args.dry_run)
 
