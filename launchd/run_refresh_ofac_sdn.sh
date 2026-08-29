@@ -80,6 +80,53 @@ except Exception as e:
 " 2>/dev/null || echo '?')
   MSG="ok — ${COUNT} digital-currency addresses"
   log "  ${MSG}"
+
+  # Auto-commit + push refreshed snapshot so Render redeploys with fresh
+  # OFAC coverage. Guard: no diff = no commit (avoids empty daily commits
+  # when the SDN list hasn't changed). Push failure is LOUD — nonzero exit
+  # + walker_health end-write ok=False so the L1 pager surfaces it.
+  #
+  # Pathspec edge: `git commit -m ... -- "$GIT_SNAPSHOT"` scopes the
+  # commit to that one file, but any hand-edited-but-uncommitted local
+  # changes to ofac_sdn_addresses.json will get swept into cron's commit
+  # too (working-tree state for that pathspec, ignoring the index).
+  # Known + acceptable — this file is machine-owned; a human diff on it
+  # is a rare edge and cron's daily commit is the right absorb point.
+  cd "$REPO_ROOT"
+  GIT_SNAPSHOT="ofac_sdn_addresses.json"
+  if [[ -z "$(git status --porcelain -- "$GIT_SNAPSHOT" 2>/dev/null)" ]]; then
+    log "  git: ${GIT_SNAPSHOT} unchanged — skip commit/push"
+  else
+    log "  git: ${GIT_SNAPSHOT} changed — commit+push"
+    GIT_COMMIT_MSG="OFAC SDN daily refresh — ${COUNT} addresses ($(date -u +%Y-%m-%d))"
+    if ! git commit -m "$GIT_COMMIT_MSG" -- "$GIT_SNAPSHOT" >>"$LOG_FILE" 2>&1; then
+      GIT_FAIL="FAIL: git commit refused for ${GIT_SNAPSHOT}"
+      log "  ${GIT_FAIL}"
+      "$VENV_PY" -c "
+import sys; sys.path.insert(0,'$REPO_ROOT')
+import db; db.write_walker_health_end('refresh_ofac_sdn', ok=False, message='${GIT_FAIL}')
+" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
+      exit 3
+    fi
+    PUSH_ARGS=""
+    if [[ "${OFAC_GIT_DRY_RUN:-0}" == "1" ]]; then
+      PUSH_ARGS="--dry-run"
+      log "  git: OFAC_GIT_DRY_RUN=1 — push with --dry-run"
+    fi
+    if ! GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/true SSH_ASKPASS=/bin/true \
+         git push $PUSH_ARGS origin HEAD >>"$LOG_FILE" 2>&1; then
+      GIT_FAIL="FAIL: git push refused — Render will not see refresh"
+      log "  ${GIT_FAIL}"
+      "$VENV_PY" -c "
+import sys; sys.path.insert(0,'$REPO_ROOT')
+import db; db.write_walker_health_end('refresh_ofac_sdn', ok=False, message='${GIT_FAIL}')
+" 2>>"$LOG_FILE" || log "  walker_health end-write failed"
+      exit 4
+    fi
+    log "  git: commit+push ok"
+    MSG="ok — ${COUNT} addresses (pushed)"
+  fi
+
   "$VENV_PY" -c "
 import sys; sys.path.insert(0,'$REPO_ROOT')
 import db; db.write_walker_health_end('refresh_ofac_sdn', ok=True, message='${MSG}')
