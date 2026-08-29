@@ -7214,7 +7214,14 @@ def analytics():
     #    legacy subqueries but still ~13s cold.
     # 3. Legacy subquery form: if pg unavailable or precompute fails.
     _precomputed_bots = None
-    if db.pg_available() and not db._bot_hash_table_ready:
+    # Skip precompute when the is_bot column is ready — _bot_filter_sql
+    # short-circuits on it before checking `precomputed`, so the two
+    # full-table HashAggregates here (5-15s/render) would be discarded.
+    # Fossil: this path predated the is_bot column and survived the
+    # migration silently until 2026-08-29.
+    if (db.pg_available()
+            and not db._bot_hash_table_ready
+            and not db._is_bot_column_ready):
         try:
             with db.pg_connect() as _bot_conn:
                 _precomputed_bots = db.compute_bot_hash_sets(_bot_conn)
