@@ -248,6 +248,16 @@ Cross-reference: `docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md`. Founding incide
 
 ---
 
+## Migration Fossil — 2026-08-29 (CLOSED)
+
+**Wound:** `compute_bot_hash_sets()` call at `app.py:7217` survived the `is_bot` column migration with no guard. On every cache-miss `/analytics` render, two full-table HashAggregates (visitor_hash + ip_day_hash, 229K rows) ran and were discarded — `_bot_filter_sql` short-circuits on `_is_bot_column_ready` before reaching the `precomputed` branch. Cost: **5s local / 8-15s on Render** per cold render. Undetected because the result was silently discarded, not an error.
+
+**Fix (commit `1d9e2bc`, 2026-08-29):** Added `and not db._is_bot_column_ready` to the guard at `app.py:7217`. One-line change. Cold render TTFB: 16-19s → 8-9s (remaining ~8s is 26 live Render→Neon round-trips at ~300ms each — separate concern).
+
+**Durable lesson:** Migrations that supersede a code path must grep for all callers of the old path and add guards. Shipping the new column/flag is not sufficient; the old path silently survives until explicitly blocked.
+
+---
+
 ## Appendix — Files This Touches
 
 | File | Change |
