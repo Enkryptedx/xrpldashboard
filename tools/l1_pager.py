@@ -315,6 +315,42 @@ def check_walker_failing() -> list[dict]:
     return alerts
 
 
+def check_walker_findings() -> list[dict]:
+    """Alert when a walker's last clean run surfaced >0 findings
+    (vulns/CVEs/anomalies) — the SIGNAL a walker was built to emit.
+    Distinct from check_walker_failing: findings ≠ run failure.
+    Introduced 2026-08-29 alongside walker_health.findings_count column
+    after pip_audit_walker paged for two PERFECT runs of doing its job.
+
+    Fires on findings_count > 0 regardless of consecutive_failures (a
+    walker can have both — pip-audit crashes AND had a prior clean run
+    with findings). WALKER_MESSAGE_MUTES filter skips alerts whose
+    last_run_message contains an acknowledged substring (e.g. a CVE ID
+    with a fix-window mute date)."""
+    alerts = []
+    today = dt.date.today()
+    with _pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT walker_name, findings_count,
+                       last_success_at, last_run_message
+                  FROM walker_health
+                 WHERE findings_count IS NOT NULL
+                   AND findings_count > 0
+            """)
+            for name, n_findings, last_success, msg in cur.fetchall():
+                if _walker_message_muted(name, msg, today=today):
+                    continue
+                alerts.append({
+                    "id": f"walker_findings:{name}",
+                    "walker": name,
+                    "findings_count": int(n_findings),
+                    "last_success_at": last_success.isoformat() if last_success else None,
+                    "last_message": (msg or "")[:200],
+                })
+    return alerts
+
+
 def _fetch_sovereignty_rows(now_utc: dt.datetime) -> list[tuple]:
     """Pull raw walker_node_fallback rows for Class A walkers in the
     trailing 24h where the reason indicates a sovereignty-loss (local
@@ -450,6 +486,13 @@ def format_alert(alert: dict) -> str:
             f"🟥 <b>FAILING walker</b>: <code>{alert['walker']}</code> — "
             f"{alert['consecutive_failures']} consecutive failures{tail}"
         )
+    if kind == "walker_findings":
+        msg = alert.get("last_message") or ""
+        tail = f"\nlast msg: <code>{msg}</code>" if msg else ""
+        return (
+            f"🟨 <b>FINDINGS from walker</b>: <code>{alert['walker']}</code> — "
+            f"{alert['findings_count']} finding(s) on last clean run{tail}"
+        )
     if kind == "sovereignty_loss":
         # Earliest AND latest age both surfaced so a reader can tell
         # "fresh fire" (latest ≈ minutes ago) from "echo of an already-
@@ -495,7 +538,7 @@ def _alert_fingerprint(alert: dict) -> str:
     return "|".join(str(alert.get(k, "")) for k in (
         "id",
         "sample_reason",       # sovereignty_loss
-        "last_message",        # walker_failing
+        "last_message",        # walker_failing + walker_findings
     ))
 
 
@@ -538,6 +581,7 @@ def gather_alerts(now_utc: dt.datetime) -> list[dict]:
     for fn, kwargs in (
         (check_walker_stale, {"now_utc": now_utc}),
         (check_walker_failing, {}),
+        (check_walker_findings, {}),
         (check_snapshot_missed, {"now_utc": now_utc}),
         (check_sovereignty_loss, {"now_utc": now_utc}),
     ):

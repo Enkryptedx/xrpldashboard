@@ -606,7 +606,14 @@ CREATE TABLE IF NOT EXISTS walker_health (
     last_success_at       TIMESTAMPTZ,
     last_failure_at       TIMESTAMPTZ,
     consecutive_failures  INTEGER NOT NULL DEFAULT 0,
-    cadence_seconds       INTEGER
+    cadence_seconds       INTEGER,
+    -- findings_count: distinct signal from ok/consecutive_failures. A clean
+    -- run that surfaces N vulnerabilities/CVEs/anomalies writes ok=True
+    -- (execution succeeded) AND findings_count=N (loud signal, still paged
+    -- via l1_pager.check_walker_findings). Conflating findings with
+    -- consecutive_failures pages after 2 clean runs of a walker doing its
+    -- job correctly. Introduced 2026-08-29 alongside pip_audit_walker.
+    findings_count        INTEGER
 );
 
 -- bridge_signer_history — append-only ledger of Axelar XRPL Gateway
@@ -2884,13 +2891,21 @@ def write_walker_health_start(walker_name, cadence_seconds=None):
     _writer_execute_with_retry(f"write_walker_health_start[{walker_name}]", _do)
 
 
-def write_walker_health_end(walker_name, ok, message=None):
+def write_walker_health_end(walker_name, ok, message=None, findings_count=None):
     """Update walker_health with the run outcome. On ok=True: stamps
     last_success_at=now() and zeroes consecutive_failures. On ok=False:
     stamps last_failure_at=now() and increments consecutive_failures.
     The row must already exist (start-of-run write created it); if not,
     we still UPSERT so a walker that forgot to call start isn't invisible.
-    Silent no-op when PG isn't configured."""
+    Silent no-op when PG isn't configured.
+
+    findings_count is a distinct signal from ok/consecutive_failures: a
+    walker whose job is to surface vulnerabilities (pip_audit_walker) can
+    complete cleanly AND report N findings — that's ok=True + findings_count=N.
+    Only true run failures (crash/timeout/subprocess broke) set ok=False
+    and increment consecutive_failures. Pass None (default) to leave the
+    column untouched; pass 0 to explicitly clear it after fixes land.
+    """
     def _do(conn):
         with conn.cursor() as cur:
             if ok:
@@ -2898,30 +2913,32 @@ def write_walker_health_end(walker_name, ok, message=None):
                     "INSERT INTO walker_health "
                     "  (walker_name, last_run_started, last_run_completed, "
                     "   last_run_ok, last_run_message, last_success_at, "
-                    "   consecutive_failures) "
-                    "VALUES (%s, now(), now(), true, %s, now(), 0) "
+                    "   consecutive_failures, findings_count) "
+                    "VALUES (%s, now(), now(), true, %s, now(), 0, %s) "
                     "ON CONFLICT (walker_name) DO UPDATE SET "
                     "  last_run_completed = now(), "
                     "  last_run_ok = true, "
                     "  last_run_message = EXCLUDED.last_run_message, "
                     "  last_success_at = now(), "
-                    "  consecutive_failures = 0",
-                    (walker_name, message),
+                    "  consecutive_failures = 0, "
+                    "  findings_count = EXCLUDED.findings_count",
+                    (walker_name, message, findings_count),
                 )
             else:
                 cur.execute(
                     "INSERT INTO walker_health "
                     "  (walker_name, last_run_started, last_run_completed, "
                     "   last_run_ok, last_run_message, last_failure_at, "
-                    "   consecutive_failures) "
-                    "VALUES (%s, now(), now(), false, %s, now(), 1) "
+                    "   consecutive_failures, findings_count) "
+                    "VALUES (%s, now(), now(), false, %s, now(), 1, %s) "
                     "ON CONFLICT (walker_name) DO UPDATE SET "
                     "  last_run_completed = now(), "
                     "  last_run_ok = false, "
                     "  last_run_message = EXCLUDED.last_run_message, "
                     "  last_failure_at = now(), "
-                    "  consecutive_failures = walker_health.consecutive_failures + 1",
-                    (walker_name, message),
+                    "  consecutive_failures = walker_health.consecutive_failures + 1, "
+                    "  findings_count = EXCLUDED.findings_count",
+                    (walker_name, message, findings_count),
                 )
     _writer_execute_with_retry(f"write_walker_health_end[{walker_name}]", _do)
 
@@ -2940,7 +2957,8 @@ def read_walker_health_all():
                     "SELECT walker_name, last_run_started, last_run_completed, "
                     "       last_run_ok, last_run_message, "
                     "       last_success_at, last_failure_at, "
-                    "       consecutive_failures, cadence_seconds "
+                    "       consecutive_failures, cadence_seconds, "
+                    "       findings_count "
                     "  FROM walker_health "
                     "  ORDER BY walker_name"
                 )
@@ -2963,6 +2981,7 @@ def read_walker_health_all():
                         "last_failure_at": row[6],
                         "consecutive_failures": row[7],
                         "cadence_seconds": row[8],
+                        "findings_count": row[9],
                         "last_success_age_seconds": (
                             round(age_secs, 1) if age_secs is not None else None
                         ),
@@ -2985,7 +3004,7 @@ def read_walker_health(walker_name):
                     "SELECT last_run_started, last_run_completed, "
                     "       last_run_ok, last_run_message, "
                     "       last_success_at, last_failure_at, "
-                    "       consecutive_failures "
+                    "       consecutive_failures, findings_count "
                     "  FROM walker_health WHERE walker_name = %s",
                     (walker_name,),
                 )
@@ -3007,6 +3026,7 @@ def read_walker_health(walker_name):
                     "last_success_at": last_success_at,
                     "last_failure_at": row[5],
                     "consecutive_failures": row[6],
+                    "findings_count": row[7],
                     "last_success_age_seconds": (
                         round(age_secs, 1) if age_secs is not None else None
                     ),

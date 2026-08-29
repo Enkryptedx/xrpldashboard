@@ -4,12 +4,17 @@
 Runs pip-audit against requirements.txt and writes results into
 walker_health so the L1 pager surfaces them.
 
-Fires on two conditions (both write ok=False):
-  1. pip-audit itself fails to run (binary missing, JSON malformed,
-     subprocess timeout, requirements file gone).
-  2. pip-audit runs successfully but finds >0 vulnerabilities.
+Two distinct signals — do not conflate (lesson filed 2026-08-29):
 
-Success path (ok=True): pip-audit ran clean, 0 findings.
+  ok=True + findings_count=0 → pip-audit ran clean, no vulns. Green.
+  ok=True + findings_count=N → pip-audit ran clean, N vulns surfaced.
+      This is a paged signal via l1_pager.check_walker_findings, NOT
+      a run failure. The walker did its job correctly. Bumping
+      consecutive_failures here pages after 2 clean runs of a walker
+      that's doing what it was built to do — the original bug.
+  ok=False → the run itself broke: binary missing, subprocess timeout,
+      JSON malformed, empty dep list. Increments consecutive_failures,
+      pages via check_walker_failing after 3 consecutive breaks.
 
 Message format on findings (surfaced to /walker_health + the pager):
     "N findings across M pkgs: pillow@11.0.0(PYSEC-2026-165,PYSEC-2026-2250),
@@ -21,7 +26,8 @@ WALKER_MESSAGE_MUTES escape valve (see tools/l1_pager.py): when a
 finding is acknowledged but not yet fixable, Charlie can add the CVE
 ID substring to the mutes dict with an expiry date. The pager skips
 the alert while that substring appears in the message; new findings
-with different substrings still page.
+with different substrings still page. Applies to both check_walker_findings
+and check_walker_failing paths — same escape valve, same fingerprint.
 
 Cadence: 604800s (7 days). Launchd StartInterval matches.
 """
@@ -77,17 +83,26 @@ def _format_findings(deps: list[dict]) -> tuple[int, int, str]:
 
 
 def run_pip_audit(requirements: str, pip_audit_bin: str,
-                  timeout_sec: int) -> tuple[bool, str]:
-    """Run pip-audit, parse JSON, return (ok, message).
+                  timeout_sec: int) -> tuple[bool, int, str]:
+    """Run pip-audit, parse JSON, return (ok, findings_count, message).
 
-    ok=True → pip-audit ran cleanly and reported 0 findings.
-    ok=False + "N findings" → pip-audit ran cleanly, found vulns.
-    ok=False + "pip-audit run failed: ..." → run itself broke.
+    ok=True → pip-audit *executed* cleanly (subprocess ran, JSON parsed).
+              findings_count may be 0 or N — both are clean executions.
+              Reserving ok=False for actual run failures avoids the
+              conflation lesson from 2026-08-29: consecutive_failures
+              incremented for two PERFECT runs that found 21 CVEs.
+    ok=False → the run itself broke (binary missing, JSON malformed,
+               subprocess timeout, empty dep list). findings_count=0
+               is a "we couldn't tell" default in this branch.
+
+    Distinct signals: consecutive_failures tracks run failures; the
+    pager fires on findings_count > 0 via check_walker_findings() with
+    the same WALKER_MESSAGE_MUTES escape valve that gates run failures.
     """
     if not os.path.exists(pip_audit_bin):
-        return False, f"pip-audit run failed: binary missing at {pip_audit_bin}"
+        return False, 0, f"pip-audit run failed: binary missing at {pip_audit_bin}"
     if not os.path.exists(requirements):
-        return False, f"pip-audit run failed: requirements file missing at {requirements}"
+        return False, 0, f"pip-audit run failed: requirements file missing at {requirements}"
 
     try:
         result = subprocess.run(
@@ -97,9 +112,9 @@ def run_pip_audit(requirements: str, pip_audit_bin: str,
             timeout=timeout_sec,
         )
     except subprocess.TimeoutExpired:
-        return False, f"pip-audit run failed: timeout after {timeout_sec}s"
+        return False, 0, f"pip-audit run failed: timeout after {timeout_sec}s"
     except OSError as e:
-        return False, f"pip-audit run failed: {e.__class__.__name__}: {e}"
+        return False, 0, f"pip-audit run failed: {e.__class__.__name__}: {e}"
 
     # pip-audit exits 1 when it finds vulns — that's the SIGNAL, not a
     # run failure. We only treat exit 2 (audit error) as a run failure.
@@ -110,21 +125,21 @@ def run_pip_audit(requirements: str, pip_audit_bin: str,
 
     try:
         payload = json.loads(stdout)
-    except (json.JSONDecodeError, ValueError) as e:
+    except (json.JSONDecodeError, ValueError):
         # No JSON = pip-audit didn't get to a report. Surface stderr tail.
         tail = (stderr[-200:] or stdout[-200:] or "no output").strip()
-        return False, f"pip-audit run failed: no JSON output (exit={result.returncode}): {tail}"
+        return False, 0, f"pip-audit run failed: no JSON output (exit={result.returncode}): {tail}"
 
     deps = payload.get("dependencies") or []
     if not isinstance(deps, list) or not deps:
-        return False, f"pip-audit run failed: empty dependency list in output (exit={result.returncode})"
+        return False, 0, f"pip-audit run failed: empty dependency list in output (exit={result.returncode})"
 
     n_findings, n_pkgs, hit_msg = _format_findings(deps)
 
     if n_findings == 0:
-        return True, f"0 findings — {len(deps)} packages checked"
+        return True, 0, f"0 findings — {len(deps)} packages checked"
 
-    return False, f"{n_findings} findings across {n_pkgs} pkgs: {hit_msg}"
+    return True, n_findings, f"{n_findings} findings across {n_pkgs} pkgs: {hit_msg}"
 
 
 def main() -> int:
@@ -137,13 +152,22 @@ def main() -> int:
     log.info("pip-audit start: bin=%s reqs=%s timeout=%ds",
              pip_audit_bin, requirements, timeout_sec)
 
-    ok, msg = run_pip_audit(requirements, pip_audit_bin, timeout_sec)
-    if ok:
+    ok, n_findings, msg = run_pip_audit(requirements, pip_audit_bin, timeout_sec)
+    if ok and n_findings == 0:
         log.info("pip-audit PASS: %s", msg)
+    elif ok:
+        log.warning("pip-audit ran cleanly, %d findings surfaced: %s", n_findings, msg)
     else:
         log.error("pip-audit FAIL: %s", msg)
 
-    db.write_walker_health_end(WALKER_NAME, ok=ok, message=msg)
+    db.write_walker_health_end(
+        WALKER_NAME,
+        ok=ok,
+        message=msg,
+        findings_count=n_findings if ok else None,
+    )
+    # Exit non-zero only on true run failures. Findings on a clean run
+    # are a paged signal via findings_count, not a launchd-visible fault.
     return 0 if ok else 1
 
 
