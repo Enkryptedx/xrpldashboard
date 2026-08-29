@@ -102,6 +102,25 @@ WALKER_STALENESS_MUTES: dict[str, str] = {
     "enrich_token_names": "2026-09-08",
 }
 
+# ── per-walker MESSAGE-substring mutes (fingerprint-based) ────────────
+# Silences a walker_failing alert when the walker's last_run_message
+# contains any live substring. Used for acknowledged-but-not-yet-fixable
+# findings — e.g., a pip-audit CVE whose fix requires a coordinated
+# upgrade window. Unlike WALKER_STALENESS_MUTES (blanket by walker name),
+# these mutes are FINGERPRINT-based: new findings whose substrings don't
+# match keep paging. This is the escape valve, not the blindfold.
+#
+# Format: walker_name → { substring_to_match: ISO_expiry_date_inclusive }
+# Doctrine: silenced monitors carry expiry + paper trail. Every entry
+# should reference a doc, build slot, or upstream fix — not a permanent
+# "ignore this CVE forever" without a reason.
+WALKER_MESSAGE_MUTES: dict[str, dict[str, str]] = {
+    # Example (empty by default; populate as findings are acknowledged):
+    # "pip_audit_walker": {
+    #     "PYSEC-2026-165": "2026-10-01",  # pillow — waiting on 12.2.0 rollout
+    # },
+}
+
 WEEKLY_HEARTBEAT_WEEKDAY = 6                # Sunday (Mon=0)
 WEEKLY_HEARTBEAT_HOUR_MIN = 9
 WEEKLY_HEARTBEAT_HOUR_MAX = 10
@@ -243,10 +262,31 @@ def check_walker_stale(now_utc: dt.datetime) -> list[dict]:
     return alerts
 
 
+def _walker_message_muted(walker: str, msg: str | None,
+                          today: dt.date | None = None) -> bool:
+    """Return True if any live WALKER_MESSAGE_MUTES substring for this
+    walker appears in the message. Fingerprint-based mute — a new
+    failure whose message lacks all live substrings still pages."""
+    walker_mutes = WALKER_MESSAGE_MUTES.get(walker) or {}
+    if not walker_mutes or not msg:
+        return False
+    today = today or dt.date.today()
+    for substring, exp_iso in walker_mutes.items():
+        try:
+            exp = dt.date.fromisoformat(exp_iso)
+        except ValueError:
+            continue
+        if today <= exp and substring in msg:
+            return True
+    return False
+
+
 def check_walker_failing() -> list[dict]:
     """Alert when a walker has 3+ consecutive failures — real streak,
-    not a race-window flicker."""
+    not a race-window flicker. WALKER_MESSAGE_MUTES filter skips alerts
+    whose last_run_message contains an acknowledged substring."""
     alerts = []
+    today = dt.date.today()
     with _pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -256,6 +296,8 @@ def check_walker_failing() -> list[dict]:
                  WHERE consecutive_failures >= %s
             """, (CONSECUTIVE_FAILURE_THRESHOLD,))
             for name, fails, last_fail, msg in cur.fetchall():
+                if _walker_message_muted(name, msg, today=today):
+                    continue
                 alerts.append({
                     "id": f"walker_failing:{name}",
                     "walker": name,

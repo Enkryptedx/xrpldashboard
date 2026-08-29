@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Weekly pip-audit walker (Python dependency vulnerability scan). Cadence 604800s = 7 days. Fires on failure-to-run AND on findings>0 via walker_health ok=False. WALKER_MESSAGE_MUTES in tools/l1_pager.py is the acknowledged-finding escape valve — silence a specific CVE ID substring with an expiry date without silencing new findings. RunAtLoad TRUE so the very first load produces a baseline row immediately; StartInterval then reruns weekly. Wrapper timeout belt = 12 min (Perl SIGALRM) — pip-audit is network-bound and a wedged PyPI advisory DB read shouldn't hang the cron.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.pip_audit_walker</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_pip_audit_walker.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pip_audit_walker.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/pip_audit_walker.out.log</string>
+	<key>StartInterval</key>
+	<integer>604800</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>
