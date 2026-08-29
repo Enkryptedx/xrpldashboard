@@ -1200,6 +1200,13 @@ def rpc_loop_safe_pg_connect():
         keepalives_count=3,
     )
     try:
+        # Post-connect SET (not startup `options=`) — Neon's PgBouncer pooler
+        # rejects statement_timeout in the startup packet. Same lesson as
+        # pg_connect + _get_writer_conn (08-19 `db26af3` / `321d738`). Extends
+        # the 25s cap to walker-side RPC-loop-safe writes so a pathologically
+        # slow query can't wedge the walker beyond its own timeout belt.
+        with conn.cursor() as _cur:
+            _cur.execute("SET statement_timeout = '25s'")
         yield conn
     finally:
         try:

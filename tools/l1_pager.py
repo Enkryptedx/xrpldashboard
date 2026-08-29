@@ -226,7 +226,14 @@ def _pg_connect():
     # start (typically 6-8s, occasionally longer) or a wedged TCP can hang
     # the pager cron indefinitely, silencing the very alarm we exist to fire.
     # Same lesson as db.py flap fix ff3739b (2026-08-17).
-    return psycopg.connect(url, connect_timeout=15)
+    conn = psycopg.connect(url, connect_timeout=15)
+    # Post-connect SET statement_timeout — Neon PgBouncer rejects it in the
+    # startup `options=` packet. Same pattern as db.py `pg_connect` /
+    # `_get_writer_conn` / `rpc_loop_safe_pg_connect`. Caps any pathologically
+    # slow walker_health/tick reads at 25s so the pager can't hang itself.
+    with conn.cursor() as _cur:
+        _cur.execute("SET statement_timeout = '25s'")
+    return conn
 
 
 def check_walker_stale(now_utc: dt.datetime) -> list[dict]:
