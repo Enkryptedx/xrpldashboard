@@ -21,14 +21,33 @@
     <key>WorkingDirectory</key>
     <string>/Users/charliebruce/xrpl_test</string>
 
-    <!-- Weekly: 604800 seconds. Staggered 1 day after verify_toml so any new
-         TOML-attested accounts are in named_accounts.json before we run the
-         IOU TOML currency lookup pass. -->
-    <key>StartInterval</key>
-    <integer>604800</integer>
+    <!-- Weekly cadence, calendar-anchored to Wed 08:00 local (was
+         StartInterval=604800 until 2026-08-29). Anchored day = Wed to
+         land 1 day after verify_toml's Tue run so any new TOML-attested
+         accounts are in named_accounts.json before we run the IOU TOML
+         currency lookup pass.
+         Reason for switch: StartInterval counts from launchctl load
+         moment; two power events (2026-08-13 + 2026-08-20) reset the
+         counter and drifted the next-fire out to 2026-08-27, then
+         re-drifted after storm-08-20. walker_health measures wall-clock
+         so the mismatch looked like a 55.9h stale wound on 2026-08-29
+         even though launchctl thought it was on schedule.
+         RunAtLoad=true belt-and-suspenders: catches missed slots when
+         the Wed 08:00 fire lands during a FileVault loginwindow gap
+         (storm-08-20 class). Weekly + additive + ~5min = no harm from
+         occasional double-run after a boot. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Weekday</key>
+      <integer>3</integer>
+      <key>Hour</key>
+      <integer>8</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
 
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 
     <key>StandardOutPath</key>
     <string>/Users/charliebruce/xrpl_test/launchd_logs/enrich_token_names.out.log</string>
