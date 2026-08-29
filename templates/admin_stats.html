@@ -439,8 +439,9 @@
       <span class="pill warn">noise</span>
     </h1>
     <div class="sub">
-      Scanner traffic — WordPress login attempts, env file leak probes, etc.
-      Every public site gets these. None of these paths exist on our site.
+      Scanner and fleet traffic. Some probe phantom paths (WordPress logins,
+      .env leaks); distributed fleets also probe real pages, which is why
+      real paths appear below.
     </div>
 
     <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));" role="group" aria-label="Bot probe statistics">
