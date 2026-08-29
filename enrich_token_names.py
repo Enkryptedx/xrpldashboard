@@ -23,7 +23,7 @@ Usage:
     python enrich_token_names.py --part-a   # MPT only
     python enrich_token_names.py --part-b   # IOU TOML only
     python enrich_token_names.py --part-c   # LP-token derivation only
-    python enrich_token_names.py --limit 50 # cap IOU issuers checked (default 200)
+    python enrich_token_names.py --limit 50 # cap IOU issuers checked (default 500)
 """
 
 from __future__ import annotations
@@ -538,8 +538,8 @@ def main() -> None:
     ap.add_argument("--part-a",   action="store_true", help="MPT metadata only")
     ap.add_argument("--part-b",   action="store_true", help="IOU TOML only")
     ap.add_argument("--part-c",   action="store_true", help="LP-token derivation only")
-    ap.add_argument("--limit",    type=int, default=200,
-                    help="Max IOU issuers to check (default 200)")
+    ap.add_argument("--limit",    type=int, default=500,
+                    help="Max IOU issuers to check (default 500)")
     args = ap.parse_args()
 
     _wh_db = None
