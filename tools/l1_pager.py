@@ -77,7 +77,22 @@ except ImportError:
 # ── thresholds ──────────────────────────────────────────────────────
 STALE_FLOOR_SECONDS = 24 * 3600
 STALE_CADENCE_MULTIPLIER = 3
+# Weekly-and-longer walkers use a tighter formula: 3× cadence would
+# permit 3 missed cycles = 21d for a weekly, too loose. Switch to
+# 2× + 1d grace at cadence ≥ WEEKLY_TIGHTEN_CADENCE_S (weekly=15d,
+# biweekly=29d). Sub-weekly walkers unchanged (3× still right for
+# scheduler jitter + one failed-and-retried cycle + margin).
+# Filed alongside enrich_token_names plist drift wound 2026-08-29.
+WEEKLY_TIGHTEN_CADENCE_S = 604800           # ≥ weekly triggers tighter
+WEEKLY_STALE_MULTIPLIER = 2
+WEEKLY_STALE_GRACE_S = 86400                # +1d grace
 STALE_MAX_AGE_SECONDS = 30 * 86400          # skip rows older than 30d
+
+
+def _stale_threshold_for(cadence_s: int) -> int:
+    if cadence_s >= WEEKLY_TIGHTEN_CADENCE_S:
+        return cadence_s * WEEKLY_STALE_MULTIPLIER + WEEKLY_STALE_GRACE_S
+    return max(cadence_s * STALE_CADENCE_MULTIPLIER, STALE_FLOOR_SECONDS)
 CONSECUTIVE_FAILURE_THRESHOLD = 3
 SNAPSHOT_MAX_AGE_HOURS = 26
 DEFAULT_REMINDER_INTERVAL_SEC = 6 * 3600     # re-page throttle floor
@@ -268,8 +283,7 @@ def check_walker_stale(now_utc: dt.datetime) -> list[dict]:
                 mute_exp = WALKER_STALENESS_MUTES.get(name)
                 if mute_exp and dt.date.today() <= dt.date.fromisoformat(mute_exp):
                     continue
-                threshold = max(int(cadence) * STALE_CADENCE_MULTIPLIER,
-                                STALE_FLOOR_SECONDS)
+                threshold = _stale_threshold_for(int(cadence))
                 if age_s > threshold and age_s < STALE_MAX_AGE_SECONDS:
                     alerts.append({
                         "id": f"walker_stale:{name}",
