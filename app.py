@@ -848,7 +848,7 @@ def _maybe_flush_whales_receipts(force):
 # goes through the separate /analytics/live endpoint.
 _ANALYTICS_CACHE_LOCK = threading.Lock()
 _ANALYTICS_CACHE = {}  # "full" -> (expiry_ts, body_str, gen_ms)
-_ANALYTICS_CACHE_TTL_S = 60
+_ANALYTICS_CACHE_TTL_S = 300
 _ANALYTICS_CACHE_STATS = {
     "hits": 0,
     "misses": 0,
