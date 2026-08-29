@@ -6,6 +6,15 @@ __pycache__/
 # Virtual envs
 venv/
 .venv/
+venv_py311/
+venv_py312/
+
+# launchd runtime state — timestamp files written by launchd jobs on success.
+# Same class as amm_index.json etc: generated, not source of truth.
+launchd_state/
+
+# Parked/deferred work — kept on disk for possible revisit, not shipped.
+parked/
 
 # Env / secrets
 .env

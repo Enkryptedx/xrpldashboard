@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>D6 launchd-FDA probe. RunAtLoad ONCE, no calendar schedule, no keepalive. Bootstrap → auto-fires → logs to launchd_logs/probe_fda_TS.log → bootout when done. Same ProgramArguments idiom as real dockvault_* plists (bash + script) so the TCC attribution matches production.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.probe_fda</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/probe_fda.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/probe_fda.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/probe_fda.out.log</string>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>

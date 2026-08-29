@@ -261,8 +261,7 @@
   <p>
     <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side traffic has now been migrated to the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. The server-side worker still streams from') }} <code>wss://s2.ripple.com</code>; {{ _('the plan is to migrate it next, and to run our own') }}
-    <code>rippled</code> {{ _('node as the project grows.') }}
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. Our own') }} <code>rippled</code> {{ _('node is already in service for the forward-walker and MCP tool envelope reads (classified') }} <code>own-node</code> {{ _('in the source-tier table below); migrating the continuous XRPL streaming worker from') }} <code>wss://s2.ripple.com</code> {{ _('to the same own-node is the next step.') }}
   </p>
 
   <h3>{{ _('Database') }}</h3>
