@@ -615,7 +615,7 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
                 return r
         return None
 
-    def _register(path_pattern, operations):
+    def _register(path_pattern, operations, parameters=None):
         rule = _rule_for(path_pattern)
         if rule is None:
             return  # defensive; missing routes just skip documentation
@@ -626,7 +626,18 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
         # {} and None both mean "no defaults" for werkzeug matching.
         if rule.defaults is None:
             rule.defaults = {}
-        spec.path(rule=rule, operations=operations)
+        # Path-level `parameters` (OpenAPI convention: shared across all
+        # operations under a path). FlaskPlugin.path_helper merges its
+        # rule-derived auto-params into whatever we pass here by matching
+        # on (name, in) — same-name entries update in place, so our
+        # richer schema (e.g. YYYY-MM-DD regex) survives and no duplicate
+        # is emitted. Keeping this at path-level is what avoids the
+        # Grok-flagged duplicate `parameters` block that appeared when
+        # the same param was declared under `get.parameters` instead.
+        kwargs = {"rule": rule, "operations": operations}
+        if parameters is not None:
+            kwargs["parameters"] = list(parameters)
+        spec.path(**kwargs)
 
     _register(
         "/llms.txt",
@@ -717,16 +728,16 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
             "get": {
                 "tags": ["signed-snapshots"],
                 "summary": "Ed25519-signed snapshot for a specific date (YYYY-MM-DD)",
-                "parameters": [{
-                    "name": "date",
-                    "in": "path",
-                    "required": True,
-                    "schema": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
-                    "description": "UTC calendar date, YYYY-MM-DD.",
-                }],
                 "responses": _json_ok(),
             },
         },
+        parameters=[{
+            "name": "date",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            "description": "UTC calendar date, YYYY-MM-DD.",
+        }],
     )
     _register(
         "/.well-known/snapshots/pubkey.pem",
