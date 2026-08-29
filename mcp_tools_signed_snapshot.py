@@ -136,6 +136,8 @@ def tool_get_signed_snapshot(date_str: str) -> dict:
         "audit_path": signed.get("audit_path", []),
         "signature_ed25519": signed.get("signature_ed25519"),
         "signing_pubkey_fingerprint": signed.get("signing_pubkey_fingerprint"),
+        "pubkey_url": signed.get("pubkey_url"),
+        "verifier_spec_url": signed.get("verifier_spec_url"),
         "verifier_instructions": signed.get("verifier_instructions"),
     }
     envelope = mcp_server.wrap_envelope(
