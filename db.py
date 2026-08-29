@@ -34,6 +34,7 @@ context-managed connections, which is fine at our request volume.
 import datetime
 import os
 import json
+import threading
 import time
 from contextlib import contextmanager
 
@@ -1143,17 +1144,90 @@ def pg_connect():
         conn.close()
 
 
+# ─────────────────────────────────────────────────────────────────────
+# /healthz memoized connection — see ping() below.
+# ─────────────────────────────────────────────────────────────────────
+
+_healthz_conn = None
+_healthz_conn_lock = threading.Lock()
+
+
+def _open_healthz_conn():
+    """Open a persistent probe connection. Mirrors _get_writer_conn's
+    pattern: prefer DATABASE_URL_DIRECT (Neon unpooled) so session-level
+    SET statement_timeout sticks across autocommit queries; fall back to
+    pooled DATABASE_URL if DIRECT is unset. Autocommit + TCP keepalives
+    so a half-dead socket surfaces as an error rather than blocking.
+
+    statement_timeout='3s' here (not walker-side 25s) — /healthz sits
+    behind Render's 5s health-check ceiling. If a SELECT 1 stalls past
+    3s, we'd rather surface QueryCanceled than let Render's probe time
+    out and start SIGTERM-ing the worker."""
+    url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
+    _v4 = _resolve_ipv4_hostaddr(url)
+    _extra = {"hostaddr": _v4} if _v4 else {}
+    conn = psycopg.connect(
+        url,
+        autocommit=True,
+        connect_timeout=10,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=3,
+        **_extra,
+    )
+    with conn.cursor() as cur:
+        cur.execute("SET statement_timeout = '3s'")
+    return conn
+
+
+def _drop_healthz_conn():
+    """Close and clear the memoized healthz conn so the next ping() reopens."""
+    global _healthz_conn
+    try:
+        if _healthz_conn is not None:
+            _healthz_conn.close()
+    except Exception:
+        pass
+    _healthz_conn = None
+
+
 def ping():
     """Cheap PG round-trip for the /healthz routing probe. Raises on any
-    failure (connection, auth, network). One SELECT 1, no retries.
+    failure (connection, auth, network) — /healthz then returns 503.
 
-    Kept minimal so /healthz can answer "can this container serve
-    traffic?" without touching walker heartbeats — the 2026-08-07 outage
-    (project_healthz_outage_2026-08-07.md) proved that gating routing
-    on walker liveness makes a single stale Mac walker take the whole
-    public site down."""
-    with pg_connect() as conn:
-        with conn.cursor() as cur:
+    Memoized per worker process: first probe pays TCP + SSL + auth (~200ms
+    warm Neon, up to 8s if Neon compute is cold-starting); subsequent
+    probes on the same worker reuse the physical socket (~1-5ms).
+    Drop-and-retry on any query failure so a broken socket surfaces as
+    one failed probe rather than a stuck worker.
+
+    Prior design (fresh pg_connect() every 10s) contributed to the
+    2026-08-17 + 08-19 + 08-28 Neon cold-start flap-storms: connect +
+    SSL + auth against a scale-to-zero pooler routinely blew past
+    Render's 5s ceiling. Refactor here + scale-to-zero OFF are belt +
+    suspenders.
+
+    Kept minimal so /healthz can answer 'can this container serve
+    traffic?' without touching walker heartbeats — the 2026-08-07
+    outage (project_healthz_outage_2026-08-07.md) proved that gating
+    routing on walker liveness lets one stale Mac walker take the
+    whole public site down."""
+    global _healthz_conn
+    with _healthz_conn_lock:
+        try:
+            if _healthz_conn is None or _healthz_conn.closed:
+                _healthz_conn = _open_healthz_conn()
+            with _healthz_conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+            return
+        except Exception:
+            _drop_healthz_conn()
+        # One retry with a fresh conn — if this also fails, let it raise
+        # so /healthz reports 503.
+        _healthz_conn = _open_healthz_conn()
+        with _healthz_conn.cursor() as cur:
             cur.execute("SELECT 1")
             cur.fetchone()
 
