@@ -277,6 +277,128 @@ def test_unchanged_past_throttle_repages_and_resets(sent):
 
 
 # ─────────────────────────────────────────────────────────────────────
+# 7b. Digest fingerprint gate — one suppressed alert = one notice, not
+#     one per ~20-min tick (2026-08-30 fix; Charlie got 16 identical
+#     "🔇 still-active" notices between 01:48 and 06:52 ET).
+# ─────────────────────────────────────────────────────────────────────
+
+def test_digest_notice_not_re_emitted_when_set_unchanged(sent):
+    one_hour_ago = (NOW - dt.timedelta(hours=1)).isoformat()
+    alert = _sovereignty_alert()
+    state = {
+        "active_alerts": {
+            alert["id"]: {
+                "first_fired": one_hour_ago,
+                "last_reminder": one_hour_ago,
+                "fingerprint": l1_pager._alert_fingerprint(alert),
+                "snapshot": alert,
+            },
+        },
+        "last_heartbeat_sent": None,
+        "last_digest_fingerprint": None,
+    }
+
+    # Tick 1 (t+1h): suppressed set enters → one digest notice.
+    l1_pager.reconcile(state, [alert], NOW, THROTTLE_SEC, dry_run=False)
+    assert len(sent) == 1
+    assert "Still-active, unchanged" in sent[0]
+    fp_after_tick1 = state["last_digest_fingerprint"]
+    assert fp_after_tick1
+
+    # Ticks 2 and 3 (t+1h20, t+1h40) — same suppressed set, still inside
+    # the 6h throttle. NO additional digest notices should fire.
+    for minutes in (20, 40):
+        later = NOW + dt.timedelta(minutes=minutes)
+        l1_pager.reconcile(state, [alert], later, THROTTLE_SEC,
+                           dry_run=False)
+    assert len(sent) == 1, (
+        f"expected exactly 1 digest across 3 ticks with same set, "
+        f"got {len(sent)}: {sent!r}"
+    )
+    # Fingerprint stable across ticks (proves the gate identifies the
+    # set as unchanged).
+    assert state["last_digest_fingerprint"] == fp_after_tick1
+
+
+def test_digest_re_emits_when_new_alert_joins_suppressed_set(sent):
+    one_hour_ago = (NOW - dt.timedelta(hours=1)).isoformat()
+    a1 = _sovereignty_alert("escrow_walker")
+    state = {
+        "active_alerts": {
+            a1["id"]: {
+                "first_fired": one_hour_ago,
+                "last_reminder": one_hour_ago,
+                "fingerprint": l1_pager._alert_fingerprint(a1),
+                "snapshot": a1,
+            },
+        },
+        "last_heartbeat_sent": None,
+        "last_digest_fingerprint": None,
+    }
+
+    # Tick 1: only a1 suppressed → digest 1.
+    l1_pager.reconcile(state, [a1], NOW, THROTTLE_SEC, dry_run=False)
+    assert len(sent) == 1
+    assert "sovereignty_loss:escrow_walker" in sent[0]
+
+    # Tick 2 (t+20m): a2 first-fires (full page) AND a1 still suppressed
+    # → set has grown. Expect fresh-alert page + a new digest with both.
+    a2 = _sovereignty_alert("nft_activity")
+    later = NOW + dt.timedelta(minutes=20)
+    l1_pager.reconcile(state, [a1, a2], later, THROTTLE_SEC,
+                       dry_run=False)
+    # Tick 3 (t+40m): both now suppressed → digest set = {a1, a2}. Same
+    # set on the next tick should not re-emit.
+    later2 = NOW + dt.timedelta(minutes=40)
+    l1_pager.reconcile(state, [a1, a2], later2, THROTTLE_SEC,
+                       dry_run=False)
+
+    digests = [m for m in sent if "Still-active, unchanged" in m]
+    # Exactly 2 digests: one for {a1} on tick 1, one for {a1, a2} on
+    # tick 2. Tick 3 has identical set → suppressed by fingerprint gate.
+    assert len(digests) == 2, f"digest count: {len(digests)} :: {digests!r}"
+    assert "sovereignty_loss:nft_activity" not in digests[0]
+    assert "sovereignty_loss:nft_activity" in digests[1]
+
+
+def test_digest_fingerprint_clears_on_recovery(sent):
+    one_hour_ago = (NOW - dt.timedelta(hours=1)).isoformat()
+    alert = _sovereignty_alert()
+    state = {
+        "active_alerts": {
+            alert["id"]: {
+                "first_fired": one_hour_ago,
+                "last_reminder": one_hour_ago,
+                "fingerprint": l1_pager._alert_fingerprint(alert),
+                "snapshot": alert,
+            },
+        },
+        "last_heartbeat_sent": None,
+        "last_digest_fingerprint": None,
+    }
+
+    # Tick 1: suppress and record fingerprint.
+    l1_pager.reconcile(state, [alert], NOW, THROTTLE_SEC, dry_run=False)
+    assert state["last_digest_fingerprint"]
+
+    # Tick 2: alert cleared. Recovery fires; fingerprint resets.
+    later = NOW + dt.timedelta(minutes=20)
+    l1_pager.reconcile(state, [], later, THROTTLE_SEC, dry_run=False)
+    assert state["last_digest_fingerprint"] is None
+    # Next fresh alert should get its own digest even with the same id.
+    later2 = later + dt.timedelta(hours=1)
+    fresh_seed_ts = (later2 - dt.timedelta(hours=1)).isoformat()
+    state["active_alerts"][alert["id"]] = {
+        "first_fired": fresh_seed_ts,
+        "last_reminder": fresh_seed_ts,
+        "fingerprint": l1_pager._alert_fingerprint(alert),
+        "snapshot": alert,
+    }
+    l1_pager.reconcile(state, [alert], later2, THROTTLE_SEC, dry_run=False)
+    assert any("Still-active, unchanged" in m for m in sent[-2:])
+
+
+# ─────────────────────────────────────────────────────────────────────
 # 8. Sovereignty alert body surfaces both earliest and latest event age
 #    (the echo-vs-fire hygiene item from the 2026-08-17 saga)
 # ─────────────────────────────────────────────────────────────────────

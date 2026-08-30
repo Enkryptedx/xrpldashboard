@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import sys
@@ -222,16 +223,19 @@ def load_state() -> dict:
     p = state_path()
     if not p.exists():
         return {"active_alerts": {}, "last_heartbeat_sent": None,
-                "sovereignty_liveness_suppressed_seen": {}}
+                "sovereignty_liveness_suppressed_seen": {},
+                "last_digest_fingerprint": None}
     try:
         data = json.loads(p.read_text())
         data.setdefault("active_alerts", {})
         data.setdefault("last_heartbeat_sent", None)
         data.setdefault("sovereignty_liveness_suppressed_seen", {})
+        data.setdefault("last_digest_fingerprint", None)
         return data
     except Exception:
         return {"active_alerts": {}, "last_heartbeat_sent": None,
-                "sovereignty_liveness_suppressed_seen": {}}
+                "sovereignty_liveness_suppressed_seen": {},
+                "last_digest_fingerprint": None}
 
 
 def save_state(state: dict) -> None:
@@ -638,6 +642,27 @@ def format_sovereignty_liveness_suppressed(entry: dict) -> str:
 
 
 # ── suppression fingerprint + digest ───────────────────────────────
+def _digest_set_fingerprint(digest_entries: list[dict],
+                            active: dict) -> str:
+    """Stable hash of the current suppressed set. Two ticks with the same
+    set of (id, per-alert fingerprint) tuples produce the same digest
+    fingerprint. Used to gate re-emission: identical set → no re-notice.
+    Set differs (id enters/leaves, or an entry's fingerprint flips) → the
+    fingerprint changes and the digest re-emits on the next tick.
+
+    Empty set returns "" so state resets cleanly when no suppressions
+    remain."""
+    if not digest_entries:
+        return ""
+    items = sorted(
+        (e["id"], active.get(e["id"], {}).get("fingerprint", ""))
+        for e in digest_entries
+    )
+    return hashlib.sha256(
+        "\n".join(f"{aid}|{fp}" for aid, fp in items).encode()
+    ).hexdigest()
+
+
 def _alert_fingerprint(alert: dict) -> str:
     """Stable identity string used to decide whether a still-active
     alert has *materially changed* since we last paged. Only text/reason
@@ -807,11 +832,20 @@ def reconcile(state: dict, current: list[dict], now_utc: dt.datetime,
             del active[aid]
 
     # Emit the digest last — one line per suppressed alert, one message.
-    if digest_entries:
+    # Suppressed-set fingerprint gate: the digest only re-emits when the
+    # composition changes (id enters/leaves the set, or an entry's
+    # fingerprint flips). Identical set on consecutive ticks stays silent,
+    # so the ~20-min pager cadence can't spam Charlie with the same
+    # "still-active" notice indefinitely. When the set empties, the
+    # fingerprint clears so the next suppression will fire a fresh notice.
+    digest_fp = _digest_set_fingerprint(digest_entries, active)
+    prior_fp = state.get("last_digest_fingerprint") or ""
+    if digest_entries and digest_fp != prior_fp:
         send_telegram(
             _format_digest(digest_entries, now_utc, reminder_interval),
             dry_run=dry_run,
         )
+    state["last_digest_fingerprint"] = digest_fp or None
 
 
 def main() -> int:
