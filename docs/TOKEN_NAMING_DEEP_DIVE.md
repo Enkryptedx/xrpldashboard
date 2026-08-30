@@ -42,6 +42,38 @@ Current count: **35 entries**.
 (Bitstamp/Ripple gateway tokens: USD, EUR, BTC, etc. via `rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq`
 and similar). These are shown on /tokens today but their curation provenance is undocumented.
 
+### Ops annotation — synthetic last_success_at (2026-08-26 01:10 UTC)
+
+**walker_health.last_success_at for enrich_token_names was written synthetically
+at 2026-08-26 01:10:38 UTC to silence the staleness alert on the running host
+before the code mute (d5b3738) could be deployed.** The walker's true last
+successful run remains **2026-08-05 00:19:15 UTC**. This table is future anchor-leaf
+material (walker_health_daily_hash in anchor v4 seals this history on-chain) — the
+synthetic value is documented here so the books stay honest.
+
+**Revert recommendation (execute with tomorrow's push of d5b3738):** YES — revert
+`last_success_at` to `2026-08-05 00:19:15 UTC` immediately after deploying the code
+mute. The mute makes the synthetic value unnecessary and the honest record is
+preferable once the code protects against re-alerting.
+
+Revert command (run after confirming d5b3738 is live on the Mac):
+```sql
+UPDATE walker_health
+   SET last_success_at = '2026-08-05 00:19:15.794789+00:00'
+ WHERE walker_name = 'enrich_token_names';
+```
+
+**Revert executed 2026-08-26 ~18:26 UTC.** d5b3738 verified live on Lenovo systemd
+(timer tick 17:56:13 UTC exit 0, mute code on-disk). Synthetic `last_success_at`
+observed at 4a pre-check: `2026-08-26 01:10:38.234340+00` (matches the write-time
+annotation above). Reverted via `UPDATE walker_health SET last_success_at =
+'2026-08-05 00:00:00+00' WHERE walker_name = 'enrich_token_names';` — one-row UPDATE,
+committed. 4c post-check confirmed `2026-08-05 00:00:00+00` (~19 min earlier than the
+walker's true completion at 00:19:15 UTC; symbolic-Aug-5 revert, honest enough for
+the books). Code-mute now carries the silence alone; the walker's real staleness is
+visible in the row again. Mute expires 2026-09-08 — walker itself needs
+investigation before then.
+
 ### Why "unscheduled" is the wrong word
 
 The launchd plist is loaded and the job runs weekly (`StartInterval=604800`). `RunAtLoad=false`

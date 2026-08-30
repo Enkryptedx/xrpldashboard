@@ -291,3 +291,61 @@ Ratio of `sessions / clicks` per ref is the funnel quality signal —
 directories with high click-through but low session-completion may be
 routing casual scrapers, not tool-callers. This informs which
 directories deserve further investment vs. deprioritize.
+
+### Claude-User demand bucket (added 2026-08-16)
+
+`Claude-User/*` is Anthropic's per-conversation web-fetch UA (an
+end-user's Claude session pulling a page mid-answer, distinct from
+`ClaudeBot/*` training crawler and generic `anthropic-*` UAs). It is
+the closest analogue we have today to "direct in-session tool demand"
+from an Anthropic agent context that has NOT yet installed the MCP —
+tracking it alongside the ref-tagged MCP session counters gives a
+before/after read on whether the MCP directory listings are
+converting Claude sessions into tool callers.
+
+Per-path 7-day hits from Claude-User UA:
+
+    SELECT path, COUNT(*) AS hits
+    FROM page_views
+    WHERE ts > extract(epoch from NOW() - INTERVAL '7 days')
+      AND user_agent LIKE '%Claude-User%'
+    GROUP BY path
+    ORDER BY hits DESC;
+
+Volume + geographic spread:
+
+    SELECT COUNT(*) AS hits,
+           COUNT(DISTINCT country) AS countries,
+           COUNT(DISTINCT visitor_hash) AS uniq_visitors
+    FROM page_views
+    WHERE ts > extract(epoch from NOW() - INTERVAL '7 days')
+      AND user_agent LIKE '%Claude-User%';
+
+**Baseline snapshot (2026-08-16, trailing 7d)**:
+- 25 hits / 6 countries / 22 unique visitors.
+- **17 of 25 hits (68%) on `/amendments`** — the amendments page is
+  the single dominant destination for Claude-User traffic. Runner-up
+  is `/` (2 hits). Suggests the demand shape is amendment-status Q&A
+  in-session, not general dashboard browsing.
+- Charlie's earlier baseline note was "12 hits / 6 countries"; the
+  6-country geo pattern is stable, hit volume grew ~2× in a week —
+  drift worth watching monthly to catch a step-change.
+
+October read (post rails-dark, alongside the ref-slug counters):
+
+    -- Claude-User concentration by path over 30d
+    SELECT path,
+           COUNT(*) AS hits,
+           COUNT(DISTINCT visitor_hash) AS uniq_visitors
+    FROM page_views
+    WHERE ts > extract(epoch from NOW() - INTERVAL '30 days')
+      AND user_agent LIKE '%Claude-User%'
+    GROUP BY path
+    ORDER BY hits DESC
+    LIMIT 20;
+
+    -- Comparison: Claude-User (pre-MCP) vs. ref-tagged MCP sessions
+    -- If MCP sessions ≪ Claude-User hits: MCP discoverability is the
+    -- bottleneck (agents want the data but don't know the tool exists).
+    -- If MCP sessions ≫ Claude-User hits: MCP is doing its job — the
+    -- machine audience found the shortcut and stopped scraping HTML.

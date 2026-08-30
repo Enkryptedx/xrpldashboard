@@ -15,6 +15,9 @@ Quick links: [`/methodology`](https://xrpldashboard.com/methodology) · [`/signe
 
 ## Agent tier (MCP)
 
+[![Listed on Anthropic MCP Registry](https://img.shields.io/badge/MCP-Anthropic%20Registry-blue)](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard)
+[![Smithery listed](https://img.shields.io/badge/Smithery-listed-6a5acd)](https://smithery.ai/servers/xrpldashboard/xrpldashboard)
+
 Live public MCP endpoint: **`https://mcp.xrpldashboard.com/mcp`** — streamable-HTTP, protocol version 2025-06-18, no auth. Fifteen read-only tools over XRPL and the on-XRPL RLUSD supply, every response wrapped in a proof-annotation envelope with `source`, `as_of`, `freshness_contract`, and a `claims_ref` back to [`/claims`](https://xrpldashboard.com/claims). Public beta through 2026-09.
 
 Connect in 60 seconds — copy-paste config for Claude Desktop or any MCP client:
@@ -26,7 +29,7 @@ Connect in 60 seconds — copy-paste config for Claude Desktop or any MCP client
       "command": "npx",
       "args": [
         "mcp-remote@latest",
-        "https://mcp.xrpldashboard.com/mcp"
+        "https://mcp.xrpldashboard.com/mcp?ref=readme"
       ]
     }
   }
