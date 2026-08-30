@@ -34,3 +34,19 @@ launchd_logs/**
 
 # Backup tooling's own logs (avoid recursion if run twice in a day).
 b2_backup.*.log
+
+# Security excludes added 2026-08-08 after B2 bucket finding.
+# Defense-in-depth: these must NEVER land in cloud backup, even if
+# the source path list expands. Applies to any --source root that
+# could contain them.
+.ssh/**
+.ssh
+.env
+.env.*
+**/.config/xrpldashboard/env
+**/.config/rclone/**
+**/.aws/**
+**/.gnupg/**
+.config/rclone/**
+.aws/**
+.gnupg/**

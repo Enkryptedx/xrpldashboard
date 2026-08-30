@@ -24,7 +24,8 @@ export PATH
 
 LOG_DIR="/Users/charliebruce/xrpl_test/launchd_logs"
 LOG_FILE="${LOG_DIR}/dockvault_neon_dump.$(date +%Y-%m-%d).log"
-mkdir -p "$LOG_DIR"
+LAUNCHD_STATE_DIR="/Users/charliebruce/xrpl_test/launchd_state"
+mkdir -p "$LOG_DIR" "$LAUNCHD_STATE_DIR"
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
 
@@ -68,7 +69,7 @@ fi
 mkdir -p "$LOCAL_DIR"
 
 # Find the latest dump on B2 by name (naming: neondb-YYYYMMDDTHHMMSSZ.dump).
-LATEST="$(rclone lsf "$SRC_PREFIX" --files-only --include "neondb-*.dump" 2>/dev/null | sort -r | head -1)"
+LATEST="$(rclone lsf "$SRC_PREFIX" --files-only --include "neondb-*.dump" --timeout 30m --contimeout 60s 2>/dev/null | sort -r | head -1)"
 
 if [[ -z "$LATEST" ]]; then
   log "SKIP: no dumps found at ${SRC_PREFIX}"
@@ -78,14 +79,19 @@ fi
 
 log "  latest on B2: ${LATEST}"
 
+SUCCESS=0
 if [[ -f "${LOCAL_DIR}/${LATEST}" ]]; then
   log "  already have ${LATEST} locally — pull-back no-op"
+  SUCCESS=1
 else
   log "  pulling ${LATEST} -> ${LOCAL_DIR}/"
   if rclone copy "${SRC_PREFIX}/${LATEST}" "$LOCAL_DIR/" \
+      --timeout 30m \
+      --contimeout 60s \
       --log-level INFO \
       --log-file "$LOG_FILE" 2>&1 | tee -a "$LOG_FILE"; then
     log "  ok — pull-back complete"
+    SUCCESS=1
   else
     rc=$?
     log "  FAIL: pull-back rc=${rc} (exit 0, monitor catches persistent fail)"
@@ -97,7 +103,7 @@ fi
 # Prune: keep KEEP_DAILY days of daily + KEEP_MONTHLY monthly-anchored.
 # Same shape as run_pg_backup.sh prune, just larger windows.
 python3 - "$LOCAL_DIR" "$KEEP_DAILY" "$KEEP_MONTHLY" "$LOG_FILE" <<'PY' || log "WARN: prune non-zero (non-fatal)"
-import os, re, sys
+import os, re, signal, sys
 from datetime import datetime, timezone
 
 local_dir, keep_daily, keep_monthly, log_file = \
@@ -109,6 +115,18 @@ def log(msg):
     print(line)
     with open(log_file, "a") as f:
         f.write(line + "\n")
+
+# A3 ruling 2026-08-28: 60s per-op alarm belt on the prune loop. Catches
+# the exact silent-hang class from the 2026-08-25 22h prune stall — a
+# blocked os.remove (Spotlight lock, ejected mid-op, half-mounted volume)
+# no longer wedges the whole job forever.
+class RemoveTimeout(Exception):
+    pass
+
+def _on_alarm(signum, frame):
+    raise RemoveTimeout()
+
+signal.signal(signal.SIGALRM, _on_alarm)
 
 pat = re.compile(r"^neondb-(\d{4})(\d{2})(\d{2})T\d{6}Z\.dump$")
 files = []
@@ -133,9 +151,15 @@ if not to_delete:
 
 errors = 0
 for name in to_delete:
+    signal.alarm(60)
     try:
         os.remove(os.path.join(local_dir, name))
+        signal.alarm(0)
+    except RemoveTimeout:
+        log(f"  prune WARN: 60s timeout removing {name} (skipping, will retry next run)")
+        errors += 1
     except Exception as e:
+        signal.alarm(0)
         log(f"  prune WARN: could not delete {name}: {e}")
         errors += 1
 
@@ -144,6 +168,15 @@ if errors:
     sys.exit(1)
 log(f"  prune ok (kept {len(keep)}, deleted {len(to_delete)})")
 PY
+
+if [[ $SUCCESS -eq 1 ]]; then
+  # B2 ruling 2026-08-28: last_completed_ok stamp for the hourly monitor's
+  # stale-check. Only written on genuine sync-current (pull-back complete
+  # or file already local); skipped on all fail/no-source paths so persistent
+  # silent skip surfaces as a WITHHELD BetterStack heartbeat.
+  date -u +%s > "${LAUNCHD_STATE_DIR}/dockvault_neon_dump_last_ok"
+  log "  state: wrote last_ok -> ${LAUNCHD_STATE_DIR}/dockvault_neon_dump_last_ok"
+fi
 
 log "dockvault_neon_dump end (rc=0)"
 exit 0

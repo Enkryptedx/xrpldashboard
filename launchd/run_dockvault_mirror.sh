@@ -22,7 +22,8 @@ export PATH
 
 LOG_DIR="/Users/charliebruce/xrpl_test/launchd_logs"
 LOG_FILE="${LOG_DIR}/dockvault_mirror.$(date +%Y-%m-%d).log"
-mkdir -p "$LOG_DIR"
+LAUNCHD_STATE_DIR="/Users/charliebruce/xrpl_test/launchd_state"
+mkdir -p "$LOG_DIR" "$LAUNCHD_STATE_DIR"
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
 
@@ -72,6 +73,8 @@ for entry in "${SOURCES[@]}"; do
       --transfers 4 \
       --checkers 8 \
       --fast-list \
+      --timeout 30m \
+      --contimeout 60s \
       --log-level INFO \
       --log-file "$LOG_FILE" 2>&1 | tee -a "$LOG_FILE"; then
     log "    ok"
@@ -81,6 +84,14 @@ for entry in "${SOURCES[@]}"; do
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 done
+
+if [[ $FAIL_COUNT -eq 0 ]]; then
+  # B2 ruling 2026-08-28: write last_completed_ok so hourly monitor can
+  # WITHHOLD BetterStack heartbeat if this job goes silent >26h.
+  # Catches persistent skip/fail that always-exit-0 would otherwise hide.
+  date -u +%s > "${LAUNCHD_STATE_DIR}/dockvault_mirror_last_ok"
+  log "  state: wrote last_ok -> ${LAUNCHD_STATE_DIR}/dockvault_mirror_last_ok"
+fi
 
 log "dockvault_mirror end (fails=${FAIL_COUNT})"
 # Per launchd retry-storm avoidance doctrine: always exit 0.

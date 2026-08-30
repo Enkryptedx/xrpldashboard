@@ -62,6 +62,25 @@ PIN_SOURCE="${PIN_SOURCE:-hostname_fallback}"
 DIVERGENCE_MAX_AGE_HOURS="${CANARY_DIVERGENCE_MAX_AGE_HOURS:-25}"
 
 log "pg_backup_canary start (prefix=${DEST_PREFIX}, hostname=${HOST}, pin_source=${PIN_SOURCE}, max_age=${MAX_AGE_HOURS}h, divergence_scan_window=${DIVERGENCE_MAX_AGE_HOURS}h)"
+
+# Race guard — 2026-08-20 storm-power / RunAtLoad catch-up.
+# With RunAtLoad=true on both pg_backup + pg_backup_canary, a Charlie
+# login after a reboot fires them together. If the canary wins the race,
+# the previous day's dump might read 24h+ old = false-positive FAIL while
+# a new dump is actively uploading in the paired wrapper. Defer verdict:
+# ping BetterStack heartbeat (system healthy — backup in flight) + exit 0.
+BACKUP_PID="$(pgrep -f 'bash .*run_pg_backup\.sh$' 2>/dev/null | head -1 || true)"
+if [[ -n "$BACKUP_PID" ]]; then
+  log "  race guard: pg_backup wrapper currently running (pid=${BACKUP_PID}); deferring staleness verdict"
+  if [[ -n "${BETTERSTACK_PG_BACKUP_CANARY_URL:-}" ]]; then
+    curl -fsS -m 10 "$BETTERSTACK_PG_BACKUP_CANARY_URL" >/dev/null \
+      && log "  betterstack ping ok (deferred)" \
+      || log "  betterstack ping failed (deferred — still PASS)"
+  fi
+  log "pg_backup_canary end (rc=0, deferred by race guard)"
+  exit 0
+fi
+
 "$VENV_PY" -c "
 import sys; sys.path.insert(0,'$REPO_ROOT')
 import db; db.write_walker_health_start('pg_backup_canary', cadence_seconds=86400)

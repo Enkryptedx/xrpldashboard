@@ -62,6 +62,24 @@ PIN_SOURCE="${BACKUP_BUCKET_PREFIX:+env}"
 PIN_SOURCE="${PIN_SOURCE:-hostname_fallback}"
 log "pg_backup start (remote=${REMOTE}, bucket=${BUCKET_PREFIX}, hostname=${HOST}, pin_source=${PIN_SOURCE}, keep=${PG_BACKUP_NIGHTLY}n+${PG_BACKUP_MONTHLY}m)"
 
+# Idempotency guard — 2026-08-20 storm-power / RunAtLoad catch-up.
+# With RunAtLoad=true on the plist, this wrapper fires at every LaunchAgent
+# load (Charlie login after reboot). If today's dump already landed via the
+# scheduled 03:30 fire (or a prior manual kick / prior login this day),
+# skip work + exit 0. TODAY_PREFIX matches "neondb-YYYYMMDDT" in UTC to
+# align with the dump filename convention set by TS above.
+TODAY_PREFIX="neondb-$(date -u +%Y%m%d)T"
+if command -v rclone >/dev/null 2>&1 && \
+   rclone listremotes 2>/dev/null | grep -q "^${REMOTE}:$"; then
+  EXISTING="$(rclone lsf "$DEST_PREFIX" --files-only \
+                --include "${TODAY_PREFIX}*" 2>/dev/null | sort -r | head -1 || true)"
+  if [[ -n "$EXISTING" ]]; then
+    log "  catch-up guard: today's dump already exists (${EXISTING}) — skipping"
+    log "pg_backup end (rc=0, skipped by catch-up guard)"
+    exit 0
+  fi
+fi
+
 if ! command -v pg_dump >/dev/null 2>&1; then
   log "FAIL: pg_dump not on PATH. Run 'brew install postgresql@17'."
   exit 1
