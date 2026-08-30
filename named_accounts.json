@@ -189,5 +189,35 @@
     "category": "issuer",
     "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml",
     "_note": "Auto-discovered via https://www.reaper.financial/.well-known/xrp-ledger.toml \u2014 domain owner (reaper.financial) lists this address in its xrp-ledger.toml [[TOKENS]] section as the Reaper issuer."
+  },
+  "rUWHMFszzSMUiWkabvCTnmaNntUh8VNkVw": {
+    "name": "User Deposit Account",
+    "category": "other",
+    "verified_via": "https://www.sivax.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to www.sivax.io, and https://www.sivax.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rfQrECjbQU5t1NvQHck1eVKLSGZ1KHyRa": {
+    "name": "Joe Moore Managing Member of MAM",
+    "category": "other",
+    "verified_via": "https://mooreassetsmgmt.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to mooreassetsmgmt.com, and https://mooreassetsmgmt.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHXgaJLpjDe4jsAiF8atNrRfS6eYrjPYPB": {
+    "name": "XRP",
+    "category": "other",
+    "verified_via": "https://www.xrp-escrows.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrp-escrows.com, and https://www.xrp-escrows.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHjUEuGTbiSc2KowsvATgfFQwP8rWGyMvK": {
+    "name": "USDT",
+    "category": "other",
+    "verified_via": "https://usdxrp.net/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to usdxrp.net, and https://usdxrp.net/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rQfR5mn4tXzusGnWynhik15RFZZVZDjhdq": {
+    "name": "THE MOON BOY NFT issuer \u2014 Land Plots, Orion Agents, Lunar Vehicles (XLS-20)",
+    "category": "other",
+    "verified_via": "https://themoonboyxrp.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to themoonboyxrp.com, and https://themoonboyxrp.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
   }
 }

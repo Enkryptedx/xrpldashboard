@@ -2909,5 +2909,859 @@
     "name": "wMRVL",
     "desc": "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock.",
     "issuer_name": "WeildX"
+  },
+  "0641C7921F473515CC34A9FC9EF44E763DECA3B03B742D76:rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347": {
+    "currency_hex": "0641C7921F473515CC34A9FC9EF44E763DECA3B03B742D76",
+    "currency_display": "SCPOINV",
+    "issuer": "rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "HSE-123",
+    "issuer_name": "SC.PO"
+  },
+  "0641C79A1F473515CC34A9FC9EF44E763DECA3B03B742D76:rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347": {
+    "currency_hex": "0641C79A1F473515CC34A9FC9EF44E763DECA3B03B742D76",
+    "currency_display": "SCPOINV",
+    "issuer": "rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "BK-2123",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7851F473515CC34A9FC9EF44E763DECA3B03B742D76:rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347": {
+    "currency_hex": "0641C7851F473515CC34A9FC9EF44E763DECA3B03B742D76",
+    "currency_display": "SCPOINV",
+    "issuer": "rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "CAR-CDY",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7A51F473515CC34A9FC9EF44E763DECA3B03B742D76:rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347": {
+    "currency_hex": "0641C7A51F473515CC34A9FC9EF44E763DECA3B03B742D76",
+    "currency_display": "SCPOINV",
+    "issuer": "rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "YB-122",
+    "issuer_name": "SC.PO"
+  },
+  "064E27496D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8:rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR": {
+    "currency_hex": "064E27496D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8",
+    "currency_display": "USDPEND",
+    "issuer": "rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "SUBSCRIPTION_CASH Receipt - SGBENJI",
+    "issuer_name": "Franklin Templeton"
+  },
+  "0641C77FF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C77FF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Apple",
+    "issuer_name": "SC.PO"
+  },
+  "0641C770F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C770F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Car Parts",
+    "issuer_name": "SC.PO"
+  },
+  "0641C775F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C775F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "QCA Bikes",
+    "issuer_name": "SC.PO"
+  },
+  "0641C77AF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C77AF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Bike",
+    "issuer_name": "SC.PO"
+  },
+  "0641C788F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C788F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Shipping Address Update",
+    "issuer_name": "SC.PO"
+  },
+  "0641C78AF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C78AF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Shipping address test 2",
+    "issuer_name": "SC.PO"
+  },
+  "7741524D00000000000000000000000000000000:rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf": {
+    "currency_hex": "7741524D00000000000000000000000000000000",
+    "currency_display": "7741524D00000000000000000000000000000000",
+    "issuer": "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wARM",
+    "desc": "wARM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Arm Holdings plc listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "77414D4154000000000000000000000000000000:rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie": {
+    "currency_hex": "77414D4154000000000000000000000000000000",
+    "currency_display": "77414D4154000000000000000000000000000000",
+    "issuer": "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAMAT",
+    "desc": "wAMAT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Applied Materials, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "77504C5452000000000000000000000000000000:rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS": {
+    "currency_hex": "77504C5452000000000000000000000000000000",
+    "currency_display": "77504C5452000000000000000000000000000000",
+    "issuer": "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wPLTR",
+    "desc": "wPLTR is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Palantir Technologies Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7753504358000000000000000000000000000000:rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ": {
+    "currency_hex": "7753504358000000000000000000000000000000",
+    "currency_display": "7753504358000000000000000000000000000000",
+    "issuer": "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wSPCX",
+    "desc": "wSPCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Space Exploration Technologies Corp. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "77494E5443000000000000000000000000000000:r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV": {
+    "currency_hex": "77494E5443000000000000000000000000000000",
+    "currency_display": "77494E5443000000000000000000000000000000",
+    "issuer": "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wINTC",
+    "desc": "wINTC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Intel Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774C524358000000000000000000000000000000:rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T": {
+    "currency_hex": "774C524358000000000000000000000000000000",
+    "currency_display": "774C524358000000000000000000000000000000",
+    "issuer": "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wLRCX",
+    "desc": "wLRCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lam Research Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "0657F198D8C28B7B602323469FF6FD09EED69C7210884740:rLm3recAhoqwfnU4HF2RybjALBXVvhJ2Ku": {
+    "currency_hex": "0657F198D8C28B7B602323469FF6FD09EED69C7210884740",
+    "currency_display": "DTRT",
+    "issuer": "rLm3recAhoqwfnU4HF2RybjALBXVvhJ2Ku",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "DTRT HEALTH",
+    "desc": "Utility token for Do The Right Thing Health Covenant Trust. Network coupon for up to 10% of invoices across our healthcare facilities. Fixed internal value of $1. No investment yields promised.",
+    "issuer_name": "Do The Right Thing Health Covenant Trust"
+  },
+  "0476D647478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
+    "currency_hex": "0476D647478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
+    "currency_display": "XPN",
+    "issuer": "rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "XPN (Xspence)",
+    "desc": "A testing rewards token bridging verified Devnet testing with Mainnet through the Xspence Devnet portal.",
+    "issuer_name": "Xspence"
+  },
+  "0641C7C31F473515CC34A9FC9EF44E763DECA3B03B742D76:rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347": {
+    "currency_hex": "0641C7C31F473515CC34A9FC9EF44E763DECA3B03B742D76",
+    "currency_display": "SCPOINV",
+    "issuer": "rsiPEXNs1XGn14DV7MHXsTfQVpGiEpJ347",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "DOC-PDF",
+    "issuer_name": "SC.PO"
+  },
+  "060837F258DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
+    "currency_hex": "060837F258DFB58EBE866100FEDB2013D123744243658B7D",
+    "currency_display": "THE Y PASS",
+    "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "THE Y PASS",
+    "desc": "A 30-day pass to the Y. Non-transferable. HVI3 PRODUCTIONS - hvi3.com"
+  },
+  "060837B658DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
+    "currency_hex": "060837B658DFB58EBE866100FEDB2013D123744243658B7D",
+    "currency_display": "HVI Spike Te",
+    "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "HVI Spike Test Pass",
+    "desc": "Xaman opt-in spike 2026-08-17 \u2014 not a real ticket"
+  },
+  "0641C79CF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C79CF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Deliver Notes Test v2",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7BAF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7BAF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Flip Flops Test w. Tax",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7B8F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7B8F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Flip Flops Test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C792F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C792F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Apple Tree",
+    "issuer_name": "SC.PO"
+  },
+  "0641C798F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C798F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO with Legal T&C test v2",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7A5F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7A5F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "New PO # Test (2)",
+    "issuer_name": "SC.PO"
+  },
+  "0641C79FF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C79FF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO Number test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C797F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C797F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO with Legal T&C test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7B1F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7B1F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO # Test Update v2",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7B0F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7B0F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO # Test Update",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7B5F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7B5F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PO # Test Update v3",
+    "issuer_name": "SC.PO"
+  },
+  "0641C79BF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C79BF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Deliver Notes Test",
+    "issuer_name": "SC.PO"
+  },
+  "0641C78DF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C78DF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Shipping Address Update v2",
+    "issuer_name": "SC.PO"
+  },
+  "0641C7CBF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7CBF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "PDF and Image attached test",
+    "issuer_name": "SC.PO"
+  },
+  "LHT:rHashLabsu2H6hXDSunL8AcVDmTyE17Z35": {
+    "currency_hex": "LHT",
+    "currency_display": "LHT",
+    "issuer": "rHashLabsu2H6hXDSunL8AcVDmTyE17Z35",
+    "source": "toml",
+    "verified_via": "https://lhtoken.io/.well-known/xrp-ledger.toml"
+  },
+  "XRH:r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw": {
+    "currency_hex": "XRH",
+    "currency_display": "XRH",
+    "issuer": "r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw",
+    "source": "toml",
+    "verified_via": "https://xrhrabbithole.github.io/.well-known/xrp-ledger.toml",
+    "name": "XRH"
+  },
+  "URL:rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp": {
+    "currency_hex": "URL",
+    "currency_display": "URL",
+    "issuer": "rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp",
+    "source": "toml",
+    "verified_via": "https://urlsurlf.com/.well-known/xrp-ledger.toml",
+    "name": "URlsURlf",
+    "desc": "Everything that matters, in one place."
+  },
+  "77434F494E000000000000000000000000000000:rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT": {
+    "currency_hex": "77434F494E000000000000000000000000000000",
+    "currency_display": "77434F494E000000000000000000000000000000",
+    "issuer": "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wCOIN",
+    "desc": "wCOIN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Coinbase Global, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "035A24B6D92690B9B37A9ACACE801DCF6A1AC272:rf5BUNqEYi159nP3Hew1i1rkoWvguZEpdX": {
+    "currency_hex": "035A24B6D92690B9B37A9ACACE801DCF6A1AC272",
+    "currency_display": "LP: XRP/XRH",
+    "issuer": "rf5BUNqEYi159nP3Hew1i1rkoWvguZEpdX",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "XRH",
+        "issuer": "r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "7751434F4D000000000000000000000000000000:r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF": {
+    "currency_hex": "7751434F4D000000000000000000000000000000",
+    "currency_display": "7751434F4D000000000000000000000000000000",
+    "issuer": "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wQCOM",
+    "desc": "wQCOM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Qualcomm Incorporated listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "wMU:rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3": {
+    "currency_hex": "wMU",
+    "currency_display": "wMU",
+    "issuer": "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wMU",
+    "desc": "wMU is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Micron Technology, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774D534654000000000000000000000000000000:rPpEtXCzThYmWyzARbD3snF53JuasuJgSk": {
+    "currency_hex": "774D534654000000000000000000000000000000",
+    "currency_display": "774D534654000000000000000000000000000000",
+    "issuer": "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wMSFT",
+    "desc": "wMSFT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Microsoft Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774156474F000000000000000000000000000000:rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD": {
+    "currency_hex": "774156474F000000000000000000000000000000",
+    "currency_display": "774156474F000000000000000000000000000000",
+    "issuer": "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAVGO",
+    "desc": "wAVGO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Broadcom Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774B544F53000000000000000000000000000000:rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx": {
+    "currency_hex": "774B544F53000000000000000000000000000000",
+    "currency_display": "774B544F53000000000000000000000000000000",
+    "issuer": "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wKTOS",
+    "desc": "wKTOS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Kratos Defense & Security Solutions, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7754534D43000000000000000000000000000000:rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH": {
+    "currency_hex": "7754534D43000000000000000000000000000000",
+    "currency_display": "7754534D43000000000000000000000000000000",
+    "issuer": "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wTSMC",
+    "desc": "wTSMC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Taiwan Semiconductor Manufacturing Company Limited listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7741564156000000000000000000000000000000:rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z": {
+    "currency_hex": "7741564156000000000000000000000000000000",
+    "currency_display": "7741564156000000000000000000000000000000",
+    "issuer": "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAVAV",
+    "desc": "wAVAV is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to AeroVironment, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774E464C58000000000000000000000000000000:ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH": {
+    "currency_hex": "774E464C58000000000000000000000000000000",
+    "currency_display": "774E464C58000000000000000000000000000000",
+    "issuer": "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wNFLX",
+    "desc": "wNFLX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Netflix, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7747465300000000000000000000000000000000:r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV": {
+    "currency_hex": "7747465300000000000000000000000000000000",
+    "currency_display": "7747465300000000000000000000000000000000",
+    "issuer": "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wGFS",
+    "desc": "wGFS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to GlobalFoundries Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "XRT:rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR": {
+    "currency_hex": "XRT",
+    "currency_display": "XRT",
+    "issuer": "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR",
+    "source": "toml",
+    "verified_via": "https://xrpturbo.com/.well-known/xrp-ledger.toml",
+    "name": "XRPTurbo Token",
+    "desc": "On XRPTurbo, users can stake our flagship XRT token, invest in new projects through our launchpad and manage AI Agents through a decentralized interface.",
+    "issuer_name": "XRPTurbo"
+  },
+  "774C4C5900000000000000000000000000000000:rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv": {
+    "currency_hex": "774C4C5900000000000000000000000000000000",
+    "currency_display": "774C4C5900000000000000000000000000000000",
+    "issuer": "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wLLY",
+    "desc": "wLLY is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Eli Lilly and Company listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774141504C000000000000000000000000000000:rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo": {
+    "currency_hex": "774141504C000000000000000000000000000000",
+    "currency_display": "774141504C000000000000000000000000000000",
+    "issuer": "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAAPL",
+    "desc": "wAAPL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Apple Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7742414241000000000000000000000000000000:rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK": {
+    "currency_hex": "7742414241000000000000000000000000000000",
+    "currency_display": "7742414241000000000000000000000000000000",
+    "issuer": "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wBABA",
+    "desc": "wBABA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alibaba Group Holding Limited listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "77474F4F47000000000000000000000000000000:r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg": {
+    "currency_hex": "77474F4F47000000000000000000000000000000",
+    "currency_display": "77474F4F47000000000000000000000000000000",
+    "issuer": "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wGOOG",
+    "desc": "wGOOG is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alphabet Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "WST:rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST": {
+    "currency_hex": "WST",
+    "currency_display": "WST",
+    "issuer": "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST",
+    "source": "toml",
+    "verified_via": "https://pay.aiic.nz/.well-known/xrp-ledger.toml"
+  },
+  "7756495341000000000000000000000000000000:rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7": {
+    "currency_hex": "7756495341000000000000000000000000000000",
+    "currency_display": "7756495341000000000000000000000000000000",
+    "issuer": "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wVISA",
+    "desc": "wVISA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Visa Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774C4D5400000000000000000000000000000000:ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio": {
+    "currency_hex": "774C4D5400000000000000000000000000000000",
+    "currency_display": "774C4D5400000000000000000000000000000000",
+    "issuer": "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wLMT",
+    "desc": "wLMT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lockheed Martin Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774A504D00000000000000000000000000000000:rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9": {
+    "currency_hex": "774A504D00000000000000000000000000000000",
+    "currency_display": "774A504D00000000000000000000000000000000",
+    "issuer": "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wJPM",
+    "desc": "wJPM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to JPMorgan Chase & Co. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7752545800000000000000000000000000000000:rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK": {
+    "currency_hex": "7752545800000000000000000000000000000000",
+    "currency_display": "7752545800000000000000000000000000000000",
+    "issuer": "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wRTX",
+    "desc": "wRTX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to RTX Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "6169787270000000000000000000000000000000:rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu": {
+    "currency_hex": "6169787270000000000000000000000000000000",
+    "currency_display": "6169787270000000000000000000000000000000",
+    "issuer": "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu",
+    "source": "toml",
+    "verified_via": "https://aigent.run/.well-known/xrp-ledger.toml"
+  },
+  "774E4F564F000000000000000000000000000000:rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ": {
+    "currency_hex": "774E4F564F000000000000000000000000000000",
+    "currency_display": "774E4F564F000000000000000000000000000000",
+    "issuer": "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wNOVO",
+    "desc": "wNOVO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Novo Nordisk A/S listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "7741534D4C000000000000000000000000000000:rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt": {
+    "currency_hex": "7741534D4C000000000000000000000000000000",
+    "currency_display": "7741534D4C000000000000000000000000000000",
+    "issuer": "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wASML",
+    "desc": "wASML is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to ASML Holding N.V. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "TXT:rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg": {
+    "currency_hex": "TXT",
+    "issuer": "rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg",
+    "source": "domain_fallback",
+    "issuer_name": "TextRP",
+    "domain": "token.textrp.io",
+    "verified_via": "https://token.textrp.io/.well-known/xrp-ledger.toml",
+    "currency_display": "TXT"
+  },
+  "7754534C41000000000000000000000000000000:rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
+    "currency_hex": "7754534C41000000000000000000000000000000",
+    "currency_display": "7754534C41000000000000000000000000000000",
+    "issuer": "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wTSLA",
+    "desc": "wTSLA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Tesla, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774E564441000000000000000000000000000000:raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g": {
+    "currency_hex": "774E564441000000000000000000000000000000",
+    "currency_display": "774E564441000000000000000000000000000000",
+    "issuer": "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wNVDA",
+    "desc": "wNVDA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to NVIDIA Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "77414D5A4E000000000000000000000000000000:rLpy3QeZohPjLodLsppK4P6REFVV6rCN61": {
+    "currency_hex": "77414D5A4E000000000000000000000000000000",
+    "currency_display": "77414D5A4E000000000000000000000000000000",
+    "issuer": "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wAMZN",
+    "desc": "wAMZN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Amazon.com, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774D455441000000000000000000000000000000:r39KivuiizHEKe76spEk1vNALmhuTFMXhG": {
+    "currency_hex": "774D455441000000000000000000000000000000",
+    "currency_display": "774D455441000000000000000000000000000000",
+    "issuer": "r39KivuiizHEKe76spEk1vNALmhuTFMXhG",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wMETA",
+    "desc": "wMETA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Meta Platforms, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774E4F4300000000000000000000000000000000:rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT": {
+    "currency_hex": "774E4F4300000000000000000000000000000000",
+    "currency_display": "774E4F4300000000000000000000000000000000",
+    "issuer": "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wNOC",
+    "desc": "wNOC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Northrop Grumman Corporation listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "774C485800000000000000000000000000000000:rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq": {
+    "currency_hex": "774C485800000000000000000000000000000000",
+    "currency_display": "774C485800000000000000000000000000000000",
+    "issuer": "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq",
+    "source": "toml",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "name": "wLHX",
+    "desc": "wLHX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to L3Harris Technologies, Inc. listed stock.",
+    "issuer_name": "WeildX"
+  },
+  "57414E475A595200000000000000000000000000:rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr": {
+    "currency_hex": "57414E475A595200000000000000000000000000",
+    "currency_display": "57414E475A595200000000000000000000000000",
+    "issuer": "rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr",
+    "source": "toml",
+    "verified_via": "https://wang.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "name": "WANGZYR",
+    "desc": "WANGZYR represents units associated with ZYR Wang Copper SPV Ltd and its underlying 5% economic interest in Wang Copper Limited, Zambia. Rights and benefits, if any, are governed solely by applicable legal documentation and SPV agreements."
+  },
+  "4145524F00000000000000000000000000000000:rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7": {
+    "currency_hex": "4145524F00000000000000000000000000000000",
+    "currency_display": "4145524F00000000000000000000000000000000",
+    "issuer": "rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7",
+    "source": "toml",
+    "verified_via": "https://aero.alterspv.com/.well-known/xrp-ledger.toml",
+    "name": "AeroNeura",
+    "desc": "AeroNeura develops advanced engineering software, intelligent control systems, propulsion testing platforms, dynamometer automation solutions, calibration technologies, simulation environments, and AI enabled industrial engineering tools serving aerospace, automotive, defense, rail, marine, energy, and advanced mobility sectors. AERO is issued through a special purpose vehicle managed by Alter SPVs, which holds an investment interest in AeroNeura Ltd. The token is intended to provide blockchain based representation of the SPV's AeroNeura related holdings. AeroNeura Ltd remains the operating company and does not administer token issuance, transfers, investor onboarding, compliance, or secondary market activities. All matters relating to AERO must be directed to Alter SPVs."
+  },
+  "4752494400000000000000000000000000000000:rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL": {
+    "currency_hex": "4752494400000000000000000000000000000000",
+    "currency_display": "4752494400000000000000000000000000000000",
+    "issuer": "rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL",
+    "source": "toml",
+    "verified_via": "https://grid.alterspv.com/.well-known/xrp-ledger.toml",
+    "name": "WaferGrid",
+    "desc": "GRID is an XRP Ledger issued digital token administered by Alter SPVs through a designated special purpose vehicle. GRID represents a blockchain based record linked to Alter SPVs' equity interest in WaferGrid Technologies Pte Ltd, a semiconductor test and measurement company focused on essential on wafer test technologies for engineers moving advanced devices from first silicon to profitable production."
+  },
+  "FSE:rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj": {
+    "currency_hex": "FSE",
+    "currency_display": "FSE",
+    "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj",
+    "source": "toml",
+    "verified_via": "https://strategyengine.one/.well-known/xrp-ledger.toml"
+  },
+  "43484F4C41000000000000000000000000000000:rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy": {
+    "currency_hex": "43484F4C41000000000000000000000000000000",
+    "currency_display": "43484F4C41000000000000000000000000000000",
+    "issuer": "rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy",
+    "source": "toml",
+    "verified_via": "https://chola.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "name": "Chola Mining",
+    "desc": "CHOLA represents tokenized participation units associated with ZYR Chola Mines SPV Ltd and its underlying 12% ownership interest in Chola Mining Limited. Issued on the XRP Ledger."
+  },
+  "CVK:rNByev6jxJAy9TqLQxg7bwn4i4VJwWq3nx": {
+    "currency_hex": "CVK",
+    "currency_display": "CVK",
+    "issuer": "rNByev6jxJAy9TqLQxg7bwn4i4VJwWq3nx",
+    "source": "toml",
+    "verified_via": "https://cvk.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "name": "Cryovektor",
+    "desc": "CVK is a digital asset on the XRP Ledger associated with CryoVektor Systems NAO, a private Russian company specializing in cryogenic systems, industrial gas technologies, LNG infrastructure, vacuum insulated equipment, aerospace thermal management solutions, and advanced low temperature engineering.",
+    "issuer_name": "ZYR CryoVektor SPV"
+  },
+  "0372E3C8B7EA294F4B595B790716EAEE93935144:rsxbGeLDA2v6W7hbp2MGdus62ouuuNpHZn": {
+    "currency_hex": "0372E3C8B7EA294F4B595B790716EAEE93935144",
+    "currency_display": "LP: XRP/FSE",
+    "issuer": "rsxbGeLDA2v6W7hbp2MGdus62ouuuNpHZn",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "FSE",
+        "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "034924E5E85D8889380CD1602A985FCA22EC350E:rwF7Hj2gypYfo3Anytgk1sr66mpykUGbv2": {
+    "currency_hex": "034924E5E85D8889380CD1602A985FCA22EC350E",
+    "currency_display": "LP: FSE/SOLO",
+    "issuer": "rwF7Hj2gypYfo3Anytgk1sr66mpykUGbv2",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "FSE",
+        "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj"
+      },
+      {
+        "currency": "534F4C4F00000000000000000000000000000000",
+        "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03DF0A903786B976BC927368B1E5E82EE956267B:rpNNxuksu47XMfPzegbdJiqQBkavhQK1p7": {
+    "currency_hex": "03DF0A903786B976BC927368B1E5E82EE956267B",
+    "currency_display": "LP: XRP/6169787270000000000000000000000000000000",
+    "issuer": "rpNNxuksu47XMfPzegbdJiqQBkavhQK1p7",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "6169787270000000000000000000000000000000",
+        "issuer": "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0363546BC9B21CF88BE87135F9AB2033BBC999DE:rG8d771rZHGLr1YRMAXobqH3FPwnZ4iXo8": {
+    "currency_hex": "0363546BC9B21CF88BE87135F9AB2033BBC999DE",
+    "currency_display": "LP: XRT/RLUSD",
+    "issuer": "rG8d771rZHGLr1YRMAXobqH3FPwnZ4iXo8",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRT",
+        "issuer": "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR"
+      },
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03A2F42709C280B3ADDEC3B6937292881EAE9C03:rK4hiVvwL1TZbf8pzPjHufecx1aBPwjfiT": {
+    "currency_hex": "03A2F42709C280B3ADDEC3B6937292881EAE9C03",
+    "currency_display": "LP: XRP/XRT",
+    "issuer": "rK4hiVvwL1TZbf8pzPjHufecx1aBPwjfiT",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "XRT",
+        "issuer": "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "035A07E8601AFF1A46807593EFDC9E5C80957A99:rNxL2H9HRFmTqJZsXD2pnjrJkmxdBNFmff": {
+    "currency_hex": "035A07E8601AFF1A46807593EFDC9E5C80957A99",
+    "currency_display": "LP: XRP/TXT",
+    "issuer": "rNxL2H9HRFmTqJZsXD2pnjrJkmxdBNFmff",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "TXT",
+        "issuer": "rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03FEF7198152C8BE1E7AA91067AE261D63074035:rndEYUd7rakFWXvcwbaJHct5MxC2u6Y3iK": {
+    "currency_hex": "03FEF7198152C8BE1E7AA91067AE261D63074035",
+    "currency_display": "LP: FSE/RPR",
+    "issuer": "rndEYUd7rakFWXvcwbaJHct5MxC2u6Y3iK",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "FSE",
+        "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj"
+      },
+      {
+        "currency": "RPR",
+        "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
   }
 }
