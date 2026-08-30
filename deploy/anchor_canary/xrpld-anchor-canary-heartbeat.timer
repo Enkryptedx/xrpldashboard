@@ -1,0 +1,30 @@
+[Unit]
+Description=Fire xrpld-anchor-canary in the weekly heartbeat window (Sat 09:00 America/New_York; timezone-aware, DST-proof)
+
+[Timer]
+# Aligns with tools/anchor_canary.py heartbeat gate:
+#   WEEKLY_HEARTBEAT_WEEKDAY = 5  (Saturday)
+#   WEEKLY_HEARTBEAT_HOUR_MIN = 9
+#   WEEKLY_HEARTBEAT_HOUR_MAX = 10  (i.e. 09:00 <= hour_ET < 10:00)
+#
+# Timezone-aware OnCalendar (systemd 235+) follows ET across DST
+# transitions; a fixed-UTC schedule would silently drift each Nov/Mar
+# (that class of bug is precisely why this timer exists — the primary
+# .timer fires at 00:02 UTC which never overlaps the 13:00-14:00 UTC
+# heartbeat window, so the heartbeat could not fire via automation).
+#
+# The primary xrpld-anchor-canary.timer STAYS UNTOUCHED (daily
+# error-path check). This second timer only exists to make the
+# automated weekly heartbeat possible; without it, only manual
+# --force-heartbeat can send.
+#
+# The wrapped script's heartbeat gate (should_send_heartbeat) is the
+# authority — this timer just guarantees the script runs at a moment
+# when the gate returns True.
+OnCalendar=Sat *-*-* 09:05 America/New_York
+Persistent=true
+AccuracySec=1min
+Unit=xrpld-anchor-canary.service
+
+[Install]
+WantedBy=timers.target

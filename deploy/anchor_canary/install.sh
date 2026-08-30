@@ -15,12 +15,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-install -m 0644 xrpld-anchor-canary.service /etc/systemd/system/
-install -m 0644 xrpld-anchor-canary.timer   /etc/systemd/system/
+install -m 0644 xrpld-anchor-canary.service              /etc/systemd/system/
+install -m 0644 xrpld-anchor-canary.timer                /etc/systemd/system/
+install -m 0644 xrpld-anchor-canary-heartbeat.timer      /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now xrpld-anchor-canary.timer
-echo '--- timer status ---'
-systemctl list-timers xrpld-anchor-canary --no-pager
+systemctl enable --now xrpld-anchor-canary-heartbeat.timer
+echo '--- timer status (both timers — heartbeat timer must show Sat 09:0x ET as next-fire) ---'
+systemctl list-timers 'xrpld-anchor-canary*' --no-pager
 echo '--- first fire ---'
 systemctl start xrpld-anchor-canary.service
 sleep 4
