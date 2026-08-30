@@ -103,11 +103,23 @@ fi
 log "  dumping → ${DEST}"
 START_EPOCH=$(date +%s)
 
+# Direct (non-pooler) endpoint for pg_dump — 2026-08-30 wound.
+# Neon's PgBouncer pooler enforces server-side statement_timeout=25s at
+# connection setup and rejects the startup `options=` parameter, so
+# PGOPTIONS/SET statement_timeout=0 never reaches the backend through the
+# pooler. Full-table dumps of nft_activity/events grew past the 25s budget
+# → PQgetCopyData/PQgetResult failures. The direct endpoint bypasses
+# PgBouncer and honors PGOPTIONS.
+# Scope: BACKUP ONLY. Web app, walkers, canary, everything else keeps
+# the pooler + 25s ceiling untouched (Neon compute protection).
+DUMP_URL="${DATABASE_URL/-pooler./.}"
+
 # Stream: pg_dump → rclone rcat. set -o pipefail makes the pipeline
 # fail-fast if either side errors. --no-owner / --no-acl produce
 # portable dumps that restore cleanly into a different cluster
 # (Neon-specific role IDs would otherwise break local restore).
-if pg_dump -Fc --no-owner --no-acl "$DATABASE_URL" \
+if PGOPTIONS='-c statement_timeout=0' \
+   pg_dump -Fc --no-owner --no-acl "$DUMP_URL" \
     | rclone rcat "$DEST" --log-level INFO --log-file "$LOG_FILE"; then
   END_EPOCH=$(date +%s)
   DURATION=$((END_EPOCH - START_EPOCH))
