@@ -15,12 +15,48 @@
     "name": "About xrpldashboard",
     "url": "{{ site_url }}/about",
     "description": "About xrpldashboard — who runs it, how it's funded, and the methodology behind every metric. Independent XRPL analytics, free for retail users, forever.",
-    "isPartOf": {
-      "@type": "WebSite",
-      "name": "xrpldashboard",
-      "url": "{{ site_url }}"
-    },
+    "isPartOf": { "@id": "{{ site_url }}#website" },
+    "about": { "@id": "{{ site_url }}#organization" },
+    "author": { "@id": "{{ site_url }}#person-charlie" },
     "inLanguage": "{{ current_locale }}"
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "{{ site_url }}#website",
+    "name": "xrpldashboard",
+    "url": "{{ site_url }}",
+    "publisher": { "@id": "{{ site_url }}#organization" },
+    "author": { "@id": "{{ site_url }}#person-charlie" }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "{{ site_url }}#organization",
+    "name": "xrpldashboard",
+    "url": "{{ site_url }}",
+    "logo": "{{ site_url }}/static/favicon.svg",
+    "founder": { "@id": "{{ site_url }}#person-charlie" },
+    "sameAs": ["https://x.com/xrpldashboardx"]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": "{{ site_url }}#person-charlie",
+    "name": "Charlie Bruce",
+    "url": "{{ site_url }}/about",
+    "description": "Developer of xrpldashboard.com — independent XRPL analytics with a built-in truth-audit system.",
+    "worksFor": { "@id": "{{ site_url }}#organization" },
+    "sameAs": ["https://github.com/Enkryptedx"]
   }
   </script>
 

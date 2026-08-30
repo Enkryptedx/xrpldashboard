@@ -267,7 +267,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-27"  # operability sprint — Batch 1 doc-honesty pass
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-29"  # identity-fix snack batch — x-mcp-tools sharpen + disambig boilerplate
 
 
 @app.context_processor
@@ -432,7 +432,10 @@ app.config["API_SPEC_OPTIONS"] = {
             "identified agents at reasonable volume — no accounts, no "
             "API keys, no payment rails. See /methodology#for-ai-agents "
             "for the full contract, and docs/AGENT_TIER_DESIGN.md in "
-            "the source repo for the design behind this surface."
+            "the source repo for the design behind this surface. "
+            "Independent project — not affiliated with Ripple, the XRP "
+            "Ledger Foundation, any exchange, or with xrpdashboard.com "
+            "(note: missing 'L' — that's a separate XRP portfolio product)."
         ),
         "contact": {
             "name": "xrpldashboard",
@@ -465,11 +468,15 @@ app.config["API_SPEC_OPTIONS"] = {
             "tool_count": len(AGENT_TIER_MCP_INVENTORY_ENRICHED),
             "tools": AGENT_TIER_MCP_INVENTORY_ENRICHED,
             "status": (
-                "Server publicly reachable at https://mcp.xrpldashboard.com/mcp "
-                "(streamable HTTP, protocol 2025-06-18, 15 read-only tools, "
-                "no auth). Listed in the Anthropic MCP Registry and Smithery. "
-                "See mcp_server.py + mcp_tools_*.py in the source repo for "
-                "implementation."
+                "Public-beta live at https://mcp.xrpldashboard.com/mcp "
+                "through 2026-09 — server publicly reachable (streamable "
+                "HTTP, MCP protocol 2025-06-18, 15 read-only tools, no "
+                "auth, 600 tool calls/hour/session enforced). Backed by "
+                "our own rippled node. Listed in the Anthropic MCP "
+                "Registry (server id com.xrpldashboard/xrpldashboard-mcp, "
+                "DNS-verified namespace, listed 2026-08-05) and Smithery "
+                "(listed 2026-08-05). See mcp_server.py + mcp_tools_*.py "
+                "in the source repo for implementation."
             ),
         },
     },
@@ -6901,6 +6908,8 @@ _LLMS_TXT = f"""# xrpldashboard
 
 > Public read-only data for the XRP Ledger, computed directly from XRPL and Ethereum nodes. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
+Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
+
 Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Each claim carries a permanent URI at [/claims/xrpl.<domain>.<series>]({SITE_URL}/claims) with a traffic-light sovereignty tier (green = own infrastructure / signable, yellow = public XRPL RPC or unverified, red = third-party derived). Machine-readable index: [{SITE_URL}/claims/index.json]({SITE_URL}/claims/index.json). Signed integrity snapshots are published daily.
 
 ## Data pages
@@ -6978,6 +6987,11 @@ _AGENTS_JSON = {
         "XRPL and Ethereum nodes. Every response is proof-annotated with "
         "source, freshness stamp, and CLAIMS reference. Free for humans "
         "and identified agents."
+    ),
+    "disambiguation": (
+        "Independent project — not affiliated with Ripple, the XRP Ledger "
+        "Foundation, any exchange, or with xrpdashboard.com (note: missing "
+        "'L' — that's a separate XRP portfolio product)."
     ),
     "site_url": SITE_URL,
     "documentation": f"{SITE_URL}/methodology#for-ai-agents",
