@@ -1064,12 +1064,28 @@ CREATE INDEX IF NOT EXISTS stripe_events_processed_idx
 -- bucket = unix_ts // 3600. Old rows are cheap to sweep with a periodic
 -- DELETE WHERE hour_bucket < now/3600 - 168 (7d retention is plenty for
 -- rate-limit purposes).
+-- Per-identity per-hour request counter. Identity is EITHER a key_id
+-- (keyed caller) OR an ip_hash (anonymous caller). Exactly one is
+-- populated per row; the CHECK enforces the XOR. Uniqueness across
+-- (identity, hour) uses COALESCE in a unique index since PostgreSQL
+-- PKs can't include expressions.
+-- Shape change 2026-08-30 for /check.json v0.9 metering; migration:
+-- migrations/2026_08_30_api_request_counters_ip_hash.sql.
 CREATE TABLE IF NOT EXISTS api_request_counters (
-    key_id        BIGINT NOT NULL,
+    id            BIGSERIAL PRIMARY KEY,
+    key_id        BIGINT,
+    ip_hash       TEXT,
     hour_bucket   BIGINT NOT NULL,
     request_count INT NOT NULL DEFAULT 0,
-    PRIMARY KEY (key_id, hour_bucket)
+    CONSTRAINT api_request_counters_identity_xor
+        CHECK ((key_id IS NULL) <> (ip_hash IS NULL))
 );
+CREATE UNIQUE INDEX IF NOT EXISTS api_request_counters_identity_hour_uniq
+    ON api_request_counters (
+        COALESCE(key_id, 0),
+        COALESCE(ip_hash, ''),
+        hour_bucket
+    );
 CREATE INDEX IF NOT EXISTS api_request_counters_bucket_idx
     ON api_request_counters (hour_bucket);
 """

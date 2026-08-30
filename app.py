@@ -5602,7 +5602,12 @@ def _check_prefers_json(req) -> bool:
     AI-agent fetchers sending `Accept: application/json` → JSON wins.
     A missing / `*/*` Accept header stays HTML (backwards-compat with
     the paste-box path and curl defaults).
+
+    v0.9 (2026-08-30): the `/check.json` alias route forces JSON regardless
+    of Accept header so machine callers don't have to construct headers.
     """
+    if req.path == "/check.json":
+        return True
     accept = req.accept_mimetypes
     # No header at all → HTML (default UX).
     if not accept:
@@ -5611,6 +5616,97 @@ def _check_prefers_json(req) -> bool:
         ["application/json", "text/html"], default="text/html"
     )
     return best == "application/json"
+
+
+# ---------------------------------------------------------------------------
+# /check.json v0.9 — per-verdict Ed25519 signing (DRAFT, 2026-08-30).
+#
+# Field names and envelope shape are subject to Charlie's Tue 2026-09-01 EOD
+# ruling before v1.0 freezes them. Enabled only when CHECK_SIGNING_KEY_PATH
+# env var points at a readable unencrypted Ed25519 PEM (hot key, separate
+# from the snapshot cold key). Unset → sig_ed25519 = null in output, no
+# crash. Fail-quiet-with-null-sig parallels x402_rails.py's pay_to empty
+# default: a downstream that expects a signature will see null and know
+# to fix the deploy rather than silently trust an absent sig.
+#
+# Key lifecycle owed as its own ruling; docs/BUSINESS_TRACK_CHECKLIST_2026-
+# 08-30.md carries the pointer.
+# ---------------------------------------------------------------------------
+
+_CHECK_V09_SIGNER_ID = "check.xrpldashboard.com"
+_CHECK_V09_KEY_CACHE = {"loaded": False, "key": None}
+
+
+def _check_v09_load_signing_key():
+    """Load the /check hot signing key lazily; None if unavailable."""
+    cache = _CHECK_V09_KEY_CACHE
+    if cache["loaded"]:
+        return cache["key"]
+    cache["loaded"] = True
+    key_path = os.environ.get("CHECK_SIGNING_KEY_PATH", "").strip()
+    if not key_path or not os.path.exists(key_path):
+        return None
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PrivateKey,
+        )
+        with open(key_path, "rb") as f:
+            priv = serialization.load_pem_private_key(
+                f.read(), password=None
+            )
+        if isinstance(priv, Ed25519PrivateKey):
+            cache["key"] = priv
+            return priv
+        app.logger.error(
+            "CHECK_SIGNING_KEY_PATH=%r is not an Ed25519 private key",
+            key_path,
+        )
+    except Exception:
+        app.logger.exception(
+            "failed to load /check.json signing key from %r", key_path
+        )
+    return None
+
+
+def _check_v09_sign(envelope: dict) -> dict:
+    """Return envelope with a `proof.check_v09_signature` block added.
+
+    DRAFT — field names subject to Charlie's Tue 2026-09-01 EOD ruling.
+    Nested inside `proof` (rather than as a new top-level key) to keep
+    the {data, proof, server} envelope contract locked by
+    tests/test_check_json_negotiation.py.
+
+    Canonical hash is SHA-256 of `signed_snapshot._canonical_json(...)` —
+    same canonicalization the snapshot signer uses, so verifiers can
+    reuse the existing verify path. Hash is computed over the envelope
+    with the signature block absent (self-reference would be circular),
+    so the signature covers exactly what a verifier reconstructs.
+    """
+    import base64
+    import copy
+    import hashlib
+    from signed_snapshot import _canonical_json
+
+    envelope_for_hash = copy.deepcopy(envelope)
+    envelope_for_hash.get("proof", {}).pop("check_v09_signature", None)
+    canonical = _canonical_json(envelope_for_hash)
+    canonical_hash = hashlib.sha256(canonical).hexdigest()
+    priv = _check_v09_load_signing_key()
+    if priv is None:
+        sig_b64 = None
+        signer = None
+    else:
+        sig_b64 = base64.b64encode(priv.sign(canonical)).decode()
+        signer = _CHECK_V09_SIGNER_ID
+    signed = copy.deepcopy(envelope)
+    signed.setdefault("proof", {})["check_v09_signature"] = {
+        "signer": signer,
+        "sig_ed25519": sig_b64,
+        "canonical_hash_sha256": canonical_hash,
+        "canonicalization": "sorted-keys-no-whitespace-utf8",
+    }
+    return signed
 
 
 def _check_strip_top_null_keys(payload: dict) -> dict:
@@ -5655,6 +5751,7 @@ def _check_json_response(result: dict, *, status: int = 200) -> Response:
         honest_partial=honest_partial,
         scope_note=scope_note,
     )
+    envelope = _check_v09_sign(envelope)
     response = jsonify(envelope)
     response.status_code = status
     return response
@@ -5789,6 +5886,16 @@ def check_page():
         result=result,
         input_error=input_error,
     )
+
+
+@app.route("/check.json", methods=["GET", "POST"])
+@limiter.limit("60 per hour")
+def check_json_page():
+    """v0.9 machine surface — alias route that forces JSON regardless of
+    Accept header. Reuses check_page's full D1-D4 dispatch. Anon IP
+    rate-limit 60/hour (Charlie 2026-08-30 spec). API-key-tier bypass
+    lands in v1.0 when key middleware wires up."""
+    return check_page()
 
 
 _CURRENCY_HEX_CHARS = set("0123456789abcdefABCDEF")
