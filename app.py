@@ -7242,6 +7242,176 @@ def agents_json():
     return resp
 
 
+# ---------------------------------------------------------------------------
+# /.well-known/x402 — free-tier discovery manifest (2026-08-30, v0.9-draft).
+#
+# Schema follows the x402 Bazaar discovery-resource shape documented at
+# https://docs.x402.org/extensions/bazaar (accepts / extensions.bazaar.info /
+# resource / type / x402Version). Bazaar listings normally get published by
+# facilitators when a real payment settles with the `bazaar` extension echoed
+# in the PaymentPayload — no submission form or PR exists as of 2026-08-30.
+# We publish this static manifest as a discovery hint for crawler-based
+# directories (t54, xrpl-utilities.io, etc.) and as source-of-truth for
+# downstream tooling; when we flip x402 rails from mode=off to mode=live
+# (Fence-#8 unblocking, target 2026-09-25), the same `accepts` array will
+# populate with real pricing entries.
+#
+# Field parity with /.well-known/agents.json is deliberate — anything that
+# names identity, trust surfaces, or the last_verified date is sourced from
+# the same constants so a single edit keeps both manifests in sync. Fields
+# that only make sense in the bazaar shape (resource, type, extensions,
+# accepts) live only here.
+#
+# Free-tier scope (Charlie 2026-08-30 spec): /check.json v0.9 is the only
+# resource listed. `accepts: []` communicates "no charge required" — a
+# machine caller reads that as an unpriced endpoint gated only by IP-bucket
+# rate limits. Pricing lands in a follow-up commit after Charlie's ruling.
+# ---------------------------------------------------------------------------
+
+
+_X402_CATALOG = {
+    "x402Version": 1,
+    # Bazaar-shape core resource entry — a directory ingesting this file
+    # can read `resource`, `type`, `accepts`, `extensions.bazaar.info`
+    # exactly as documented at docs.x402.org/extensions/bazaar.
+    "resource": f"{SITE_URL}/check.json",
+    "type": "http",
+    "serviceName": "xrpldashboard",
+    "iconUrl": f"{SITE_URL}/static/favicon.ico",
+    "tags": [
+        "xrpl", "verification", "provenance", "attestation", "identity",
+        "credentials", "kyc", "signed-snapshot", "free-tier",
+    ],
+    "lastUpdated": f"{LAST_VERIFIED_AGENT_TIER_METHODOLOGY}T00:00:00Z",
+    # Empty accepts = free tier, no payment required. IP-bucket rate limit
+    # only. Populated with pricing entries when x402 rails flip live.
+    "accepts": [],
+    "extensions": {
+        "bazaar": {
+            "info": {
+                "input": {
+                    "type": "http",
+                    "method": "GET",
+                    "queryParams": {
+                        "q": (
+                            "string — XRPL wallet address (r...), "
+                            "token (SYMBOL.rIssuer), URL, or bare domain"
+                        ),
+                    },
+                    "description": (
+                        "Free-tier identity + provenance verification for "
+                        "XRPL wallets, tokens, URLs, and domains. Returns a "
+                        "proof-annotation envelope with source, freshness, "
+                        "methodology_url, cross_check_status, and (when the "
+                        "/check hot signing key is configured) an Ed25519 "
+                        "signature block for third-party verification. Anon "
+                        "IP rate limit 60 requests/hour."
+                    ),
+                    "example": {
+                        "url": f"{SITE_URL}/check.json?q=rEXAMPLE...",
+                        "headers": {"Accept": "application/json"},
+                    },
+                },
+                "output": {
+                    "type": "application/json",
+                    "schema": {
+                        "$ref": (
+                            f"{SITE_URL}/openapi.json"
+                            "#/components/schemas/ProofAnnotationEnvelope"
+                        ),
+                    },
+                    "example": {
+                        "data": {
+                            "kind": "wallet",
+                            "address": "rEXAMPLE...",
+                            "tier": "verified",
+                            "signals": ["identity-credential", "on-chain-activity"],
+                        },
+                        "proof": {
+                            "source": "xrpldashboard/check-endpoint",
+                            "as_of": "2026-08-30T22:15:00Z",
+                            "freshness_contract": "≤ 5min",
+                            "methodology_url": f"{SITE_URL}/methodology#for-ai-agents",
+                            "cross_check_status": "verified",
+                            "honest_partial": False,
+                        },
+                        "server": {"signer_id": "check.xrpldashboard.com"},
+                        "sig_ed25519": None,
+                    },
+                },
+            },
+        },
+    },
+    # --- Fields below are xrpldashboard-specific (non-bazaar) but useful
+    # to any crawler that indexes /.well-known/x402 as a general discovery
+    # hint. Kept in sync with /.well-known/agents.json for identity/trust
+    # parity — see the shared LAST_VERIFIED / SITE_URL / _AGENTS_JSON
+    # constants above.
+    "identity": {
+        "name": "xrpldashboard",
+        "disambiguation": (
+            "Independent project — not affiliated with Ripple, the XRP "
+            "Ledger Foundation, any exchange, or with xrpdashboard.com "
+            "(note: missing 'L' — that's a separate XRP portfolio product)."
+        ),
+        "site_url": SITE_URL,
+        "contact": "contact@xrpldashboard.com",
+        "source_code": "https://github.com/Enkryptedx/xrpldashboard",
+        "license": "MIT (source); data derived from public XRPL and Ethereum ledgers",
+        "agents_manifest": f"{SITE_URL}/.well-known/agents.json",
+        "documentation": f"{SITE_URL}/methodology#for-ai-agents",
+        "openapi": f"{SITE_URL}/openapi.json",
+        "last_verified": LAST_VERIFIED_AGENT_TIER_METHODOLOGY,
+    },
+    "trust_surfaces": {
+        "methodology": f"{SITE_URL}/methodology",
+        "claims_index": f"{SITE_URL}/claims",
+        "claims_index_json": f"{SITE_URL}/claims/index.json",
+        "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
+        "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+        "security_contact": f"{SITE_URL}/.well-known/security.txt",
+    },
+    "policies": {
+        "cost": "free at v0.9 (no accounts, no API keys, no payment rails wired)",
+        "rate_limit_anonymous": "60 requests/hour/IP for /check.json v0.9",
+        "auth": "none",
+        "retention": "no query retention — POST bodies and query params are NOT stored",
+    },
+    "disclaimer": (
+        "Attestation, not safety. Every /check response carries per-signal "
+        "source + freshness. The endpoint reports what identity claims exist "
+        "on the ledger; it does NOT tell you whether a subject is safe to "
+        "interact with. Signals are facts (KYC credential present, XRPL "
+        "amendments voted, snapshot in chain), not verdicts. Human judgment "
+        "is required."
+    ),
+    "status": {
+        "phase": (
+            "Free-tier verification live. x402 rails currently mode=off "
+            "(middleware shipped in commit b406233, 2026-08-30, not "
+            "settling payments). Fence-#8 sovereignty items (see "
+            "docs/SOVEREIGNTY_COVENANT_VIOLATIONS_2026-08-30.md) must "
+            "close before mode=live flip; target 2026-09-25."
+        ),
+        "x402_rails_ready": False,
+        "free_tier_ready": True,
+        "signing_key_wired": False,
+    },
+}
+
+
+@app.route("/.well-known/x402")
+@limiter.limit(agent_tier_limit_rate)
+def x402_catalog():
+    """x402 Bazaar-shape free-tier discovery manifest. Schema per
+    https://docs.x402.org/extensions/bazaar as of 2026-08-30. Cross-check
+    with /.well-known/agents.json is enforced by
+    tests/test_x402_catalog_parity.py."""
+    resp = make_response(jsonify(_X402_CATALOG))
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
 @app.route("/sitemap.xml")
 @limiter.limit(agent_tier_limit_rate)
 def sitemap_xml():
