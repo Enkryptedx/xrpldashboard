@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Hourly rippled_cfg_drift_guard walker. Cadence 3600s = 1h. Verifies Lenovo's /etc/rippled/rippled.cfg port stanzas remain sovereign-safe: [port_rpc_admin_local]=(127.0.0.1/127.0.0.1), [port_rpc_public_lan]=(192.168.40.95/admin-absent), [port_rpc_public]=(127.0.0.1/admin-absent, may be absent pre-tunnel-Step-1). Any drift → walker_health.findings_count &gt; 0 → BetterStack page. HARD PREREQUISITE for tunnel Step 1 per triage/TUNNEL_DESIGN_PACK_2026-08-31.md — Step 1 cannot begin until this walker completes at least one clean hourly cycle in the wild. Reads the live cfg via ssh rippled-node cat (world-readable file, no sudo needed). RunAtLoad TRUE for immediate baseline row. Wrapper timeout belt 90s (Perl SIGALRM).</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.rippled_cfg_drift_guard</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_rippled_cfg_drift_guard.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/rippled_cfg_drift_guard.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/rippled_cfg_drift_guard.out.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>
