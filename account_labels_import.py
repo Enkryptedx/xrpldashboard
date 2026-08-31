@@ -134,11 +134,26 @@ def import_derived_mpt():
             by_issuer[issuer] = r
     rows = []
     for issuer, r in by_issuer.items():
-        ticker = r.get("ticker") or r.get("name") or "?"
-        issuer_name = r.get("issuer_name")
+        # Defensive strip: JS-side enrichment upstream has been observed to
+        # emit `"<name> - undefined"` and `"<name> undefined"` when a
+        # metadata field it expected was `undefined`. Never propagate that
+        # into a public label (audit finding 2026-08-30).
+        def _clean(v):
+            if not v:
+                return v
+            s = str(v).strip()
+            for tail in (" - undefined", " undefined"):
+                if s.endswith(tail):
+                    s = s[: -len(tail)].strip()
+            return s or None
+        ticker = _clean(r.get("ticker")) or _clean(r.get("name")) or "?"
+        issuer_name = _clean(r.get("issuer_name"))
         display = f"MPT Issuer: {issuer_name} ({ticker})" if issuer_name \
             else f"MPT Issuer ({ticker})"
-        extra = json.dumps({"ticker": r.get("ticker"), "name": r.get("name")})
+        extra = json.dumps({
+            "ticker": _clean(r.get("ticker")),
+            "name": _clean(r.get("name")),
+        })
         rows.append((issuer, display, "mpt_issuer", "derived:mpt", 0.7, extra))
     written = db.bulk_upsert_derived_labels(rows)
     print(f"[labels] derived:mpt: {written} attempted from "

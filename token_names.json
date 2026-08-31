@@ -709,8 +709,8 @@
     "issuer": "rnRbuxseqEHbxXgaBZJu7PAMQKmVAqp9RM",
     "source": "mpt_metadata",
     "category": "other",
-    "name": "Precious MPT - undefined",
-    "desc": "Metaprotocol Token representing precious metals portfolio for customer undefined"
+    "name": "Precious MPT",
+    "desc": "Metaprotocol Token representing precious metals portfolio"
   },
   "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "currency_hex": "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
