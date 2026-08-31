@@ -62,6 +62,12 @@
 
 ---
 
+## Standing headline metrics
+
+- **Verifier traffic (30d):** 1,265 signed-leaf pulls · 247 `chain.json` fetches · 78 `pubkey.pem` fetches from `/.well-known/snapshots/*`. Machines actively verifying our signed chain — this is the moat being exercised. Competitor equivalent is zero because they don't sign data. Standing headline metric; belongs in every weekly digest + analytics-report citation-signals table under "verifier traffic". First measured 2026-08-30.
+
+---
+
 ## Standing rules — do not violate
 
 - **Fence #4:** No custody, ever. Operator wallet is transit only. RLUSD off-ramp to USD is Charlie's manual step, not automated.
