@@ -1541,11 +1541,25 @@ def _log_page_view():
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
             or request.headers.get("X-Country-Code")
-        # Cloudflare Managed Transform "Add visitor location headers" injects
-        # cf-region-code (ISO 3166-2 subdivision). Case-insensitive per HTTP;
-        # Flask/Werkzeug normalizes. Raw string, no truncation/normalization —
-        # first-write soak reveals the actual on-wire format ("IN" vs "US-IN").
-        region_code = request.headers.get("CF-Region-Code") or None
+        # Region code (ISO 3166-2 subdivision, e.g. "IN" or "US-IN").
+        # Two possible sources, in preference order:
+        #   1. CF-Region-Code — set by CF Managed Transform "Add visitor
+        #      location headers". Empirically dead on Free plan (2026-08-31)
+        #      because Free-tier CF IP-geolocation dataset is country-only,
+        #      so the Managed Transform has no region data to inject.
+        #   2. X-CF-Region-Code — set by our own Cloudflare Worker
+        #      (xrpldashboard-region-enrich, deployed to xrpldashboard.com/*
+        #      + www.xrpldashboard.com/*) which reads request.cf.regionCode
+        #      directly on Workers Free-tier (that data path IS populated
+        #      even when the Managed Transform's isn't). Actual working
+        #      source in production.
+        # Raw string, no truncation/normalization — first-write soak reveals
+        # the actual on-wire format.
+        region_code = (
+            request.headers.get("CF-Region-Code")
+            or request.headers.get("X-CF-Region-Code")
+            or None
+        )
         utm = request.args.get("utm_source")
         utm = utm[:100] if utm else None
         db.log_page_view(
