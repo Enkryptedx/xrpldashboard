@@ -5572,7 +5572,7 @@ def _bot_filter_sql_lite(kind):
 
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None, utm_source=None,
-                  ip_day_hash=None):
+                  ip_day_hash=None, region_code=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
     eat connection-setup latency on every request."""
@@ -5584,10 +5584,11 @@ def log_page_view(path, visitor_hash=None, referrer=None,
             cur.execute(
                 "INSERT INTO page_views "
                 "(ts, path, visitor_hash, referrer, user_agent, country, "
-                " utm_source, ip_day_hash) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                " utm_source, ip_day_hash, region_code) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
-                 referrer, user_agent, country, utm_source, ip_day_hash),
+                 referrer, user_agent, country, utm_source, ip_day_hash,
+                 region_code),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)

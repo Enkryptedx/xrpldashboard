@@ -1541,6 +1541,11 @@ def _log_page_view():
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
             or request.headers.get("X-Country-Code")
+        # Cloudflare Managed Transform "Add visitor location headers" injects
+        # cf-region-code (ISO 3166-2 subdivision). Case-insensitive per HTTP;
+        # Flask/Werkzeug normalizes. Raw string, no truncation/normalization —
+        # first-write soak reveals the actual on-wire format ("IN" vs "US-IN").
+        region_code = request.headers.get("CF-Region-Code") or None
         utm = request.args.get("utm_source")
         utm = utm[:100] if utm else None
         db.log_page_view(
@@ -1549,6 +1554,7 @@ def _log_page_view():
             referrer=ref,
             user_agent=ua,
             country=country,
+            region_code=region_code,
             utm_source=utm,
             ip_day_hash=_ip_day_hash(ip),
         )
