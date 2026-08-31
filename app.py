@@ -201,16 +201,21 @@ app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
 
 def _unix_utc(ts):
     """Jinja filter: format a unix-seconds timestamp as `YYYY-MM-DD HH:MM UTC`.
-    Empty / None → empty string. Non-numeric input is passed through
-    stringified so a template render never dies on a malformed value.
+    Empty / None / Jinja Undefined → empty string (matches the pre-filter
+    template default so a caller that forgets to populate `now` still
+    renders the surrounding prose). Non-numeric input that survives the
+    int() cast falls back to str(ts) so the template never crashes.
     Added 2026-08-30 to close the raw-unix-in-prose leak on /learn and
     /coverage caught in the site audit."""
-    if ts in (None, "", 0):
-        return ""
     try:
         ts_int = int(ts)
-    except (TypeError, ValueError):
-        return str(ts)
+    except Exception:
+        # None, Jinja Undefined, empty string, or a non-numeric string all
+        # land here and render as empty prose. Broad except because
+        # jinja2.Undefined raises UndefinedError (not TypeError) from int().
+        return ""
+    if ts_int == 0:
+        return ""
     return datetime.fromtimestamp(ts_int, tz=timezone.utc).strftime(
         "%Y-%m-%d %H:%M UTC"
     )
