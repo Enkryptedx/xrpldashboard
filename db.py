@@ -1143,7 +1143,11 @@ def pg_connect():
         raise RuntimeError(
             "Postgres not configured: set DATABASE_URL and install psycopg[binary]."
         )
-    _url = pg_url()
+    # DATABASE_URL_DIRECT parity with _get_writer_conn: 2026-08-31 caught a
+    # walker failing on statement_timeout error against the pooler URL.
+    # _get_writer_conn honored DATABASE_URL_DIRECT, but pg_connect() did not,
+    # so ANY read path (read_credentials_snapshot etc.) blew up on pool.
+    _url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
     _v4 = _resolve_ipv4_hostaddr(_url)
     _extra = {"hostaddr": _v4} if _v4 else {}
     conn = psycopg.connect(
@@ -1287,8 +1291,12 @@ def rpc_loop_safe_pg_connect():
         raise RuntimeError(
             "Postgres not configured: set DATABASE_URL and install psycopg[binary]."
         )
+    # DATABASE_URL_DIRECT parity — same rationale as pg_connect() above.
+    # rpc_loop_safe callers (walker RPC loops) also need the direct endpoint
+    # when it's set, otherwise pool-side startup-parameter rejection bites.
+    _url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
     conn = psycopg.connect(
-        pg_url(),
+        _url,
         autocommit=True,
         connect_timeout=10,
         keepalives=1,
