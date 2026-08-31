@@ -4323,11 +4323,13 @@ def sidechain():
 
 
 # ─────────────────────────────────────────────────────────────────────
-# /walker_health — public view of every instrumented background walker.
-# Reads the walker_health table (populated by each walker's try/finally
-# instrumentation) and renders a single sortable severity table.
-# Truth-first stance: this page exists so visitors can verify the data
-# they see on other pages is actually fresh, not last-good.
+# /walker_health — localhost-only admin view of every instrumented
+# background walker. Reads the walker_health table (populated by each
+# walker's try/finally instrumentation) and renders a single sortable
+# severity table. Public callers hit 404 by design (see abort in
+# handler). Whether to open a redacted public transparency view is
+# owed a Charlie ruling — see docs/SOVEREIGNTY_COVENANT_VIOLATIONS_
+# 2026-08-30.md §/walker_health.
 # ─────────────────────────────────────────────────────────────────────
 
 WALKER_SEVERITY_WARN_MULTIPLE = 2   # >2× cadence since last success → yellow
@@ -5603,17 +5605,25 @@ def _check_prefers_json(req) -> bool:
     A missing / `*/*` Accept header stays HTML (backwards-compat with
     the paste-box path and curl defaults).
 
-    v0.9 (2026-08-30): the `/check.json` alias route forces JSON regardless
-    of Accept header so machine callers don't have to construct headers.
+    v0.9 (2026-08-30): the `/check.json` alias route and the `?format=json`
+    query param both force JSON regardless of Accept header so machine
+    callers don't have to construct headers.
     """
     if req.path == "/check.json":
         return True
-    accept = req.accept_mimetypes
-    # No header at all → HTML (default UX).
-    if not accept:
+    if (req.args.get("format") or "").lower() == "json":
+        return True
+    # Werkzeug's MIMEAccept is truthy for `*/*`, so `not accept` never
+    # fires for a bare curl (which sends `Accept: */*`). Check the raw
+    # header for the empty / wildcard case explicitly.
+    raw_accept = (req.headers.get("Accept") or "").strip()
+    if not raw_accept or raw_accept == "*/*":
         return False
+    accept = req.accept_mimetypes
+    # text/html listed first so a `*/*` fragment in a longer header ties
+    # to HTML rather than JSON (audit finding 2026-08-30).
     best = accept.best_match(
-        ["application/json", "text/html"], default="text/html"
+        ["text/html", "application/json"], default="text/html"
     )
     return best == "application/json"
 
