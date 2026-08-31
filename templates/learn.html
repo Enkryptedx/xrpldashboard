@@ -181,7 +181,7 @@
         </div>
         <div class="ledger-num" id="learnLedgerNum">#{{ '{:,}'.format(ledger_index) }}</div>
         <div class="as-of" id="learnAsOf">
-          {{ _('as of') }} <span class="as-of-time">{{ as_of_unix }}</span> UTC
+          {{ _('as of') }} <span class="as-of-time">{{ as_of_unix|unix_utc }}</span>
         </div>
       </div>
       <div class="caption">

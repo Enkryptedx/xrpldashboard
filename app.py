@@ -198,6 +198,26 @@ _VISITOR_HASH_KEY = app.secret_key.encode("utf-8")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 app.jinja_env.globals.update(fmt_money=fmt_money, fmt_num=fmt_num)
 
+
+def _unix_utc(ts):
+    """Jinja filter: format a unix-seconds timestamp as `YYYY-MM-DD HH:MM UTC`.
+    Empty / None → empty string. Non-numeric input is passed through
+    stringified so a template render never dies on a malformed value.
+    Added 2026-08-30 to close the raw-unix-in-prose leak on /learn and
+    /coverage caught in the site audit."""
+    if ts in (None, "", 0):
+        return ""
+    try:
+        ts_int = int(ts)
+    except (TypeError, ValueError):
+        return str(ts)
+    return datetime.fromtimestamp(ts_int, tz=timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC"
+    )
+
+
+app.jinja_env.filters["unix_utc"] = _unix_utc
+
 # Wire Flask-Babel: cookie-based locale, /lang/<code> switcher, template
 # helpers (language_list, current_locale, is_rtl). Strings still need _()
 # wrapping per-template — this just makes the machinery available.

@@ -76,7 +76,7 @@
       <h1>Coverage Register <span style="color:var(--muted);font-weight:400;font-size:0.75em;">internal · pre-public soak</span></h1>
       <div class="sub">Three-way diff: what the node knows vs. what the stream has seen vs. what the site has curated.</div>
     </div>
-    <div class="footprint">rendered {{ now }} · <a href="/health">/health</a></div>
+    <div class="footprint">rendered {{ now|unix_utc }} · <a href="/health">/health</a></div>
   </div>
 
   {# id="walker-inventory" must render unconditionally: every claim       #}
@@ -144,7 +144,7 @@
         <div class="k">build_version</div>
         <div class="v">{{ state.definitions.build_version or '—' }}</div>
         <div class="k">fetched_at</div>
-        <div class="v">{{ state.definitions.fetched_at }} ({{ (now - state.definitions.fetched_at) // 60 }} min ago)</div>
+        <div class="v">{{ state.definitions.fetched_at|unix_utc }} ({{ (now - state.definitions.fetched_at) // 60 }} min ago)</div>
         <div class="k">defined_tx_types</div>
         <div class="v">{{ state.definitions.defined_tx_count }}</div>
         <div class="k">defined_entry_types</div>
