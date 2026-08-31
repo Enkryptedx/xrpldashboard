@@ -39,7 +39,7 @@
            REVERT: remove this key/string pair, `launchctl bootout` + `bootstrap`.
            Fallback to s1/s2 preserved in xrpl_client.py — Lenovo down != walker fails. -->
       <key>XRPL_LOCAL_NODE</key>
-      <string>http://192.168.40.95:5005</string>
+      <string>http://192.168.40.95:5006</string>
     </dict>
   </dict>
 </plist>
