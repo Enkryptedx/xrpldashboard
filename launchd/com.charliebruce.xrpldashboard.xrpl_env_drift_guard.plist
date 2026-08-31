@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Hourly xrpl_env_drift_guard walker. Cadence 3600s = 1h. Verifies the 5 XRPL_ env vars in ~/.config/xrpldashboard/env all point at http://192.168.40.95:5006 (Lenovo LAN non-admin RPC established Wave-0 2026-08-31). Any drift → walker_health.findings_count &gt; 0 → BetterStack page. Codified after accidental scrollback-paste of a step-(d) `mv env.bak-2026-08-31 env` reversibility command reverted XRPL_LOCAL_NODE :5006→:5005 undetected for ~40 min in the Wave-0/Wave-1a handoff window. RunAtLoad TRUE for an immediate baseline row; StartInterval reruns hourly. Wrapper timeout belt 60s (Perl SIGALRM).</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.xrpl_env_drift_guard</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_xrpl_env_drift_guard.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/xrpl_env_drift_guard.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/xrpl_env_drift_guard.out.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>
