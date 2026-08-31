@@ -13,7 +13,11 @@ import pytest
 
 PUBLIC_PAGES = [
     "/",
-    "/health",
+    # /health deliberately excluded — designed to return 503 when the
+    # walker fleet is degraded (see the same doctrine at TRUST_CRITICAL_PAGES
+    # below). Its two-sided contract is tested by test_healthz_ok /
+    # test_healthz_503_when_db_unreachable. Adding it to a must-return-200
+    # list misclassifies the honest-degrade path as a render-killer.
     "/whales",
     "/tokens",
     "/nfts",
@@ -280,34 +284,19 @@ def test_about_links_to_institutional(client):
     assert 'href="/institutional"' in body
 
 
-def test_institutional_has_mailto_with_prefilled_subject(client):
-    """The mailto is the page's only conversion path. Subject and body
-    must remain pre-filled or we lose the partner-prompting structure."""
-    body = client.get("/institutional").data.decode()
-    assert "mailto:contact@xrpldashboard.com" in body
-    assert "subject=" in body.lower()
-    assert "body=" in body.lower()
-
-
-def test_institutional_not_in_shared_nav(client):
-    """Per launch positioning: institutional must be discoverable from
-    /about only, never from the global nav. Regression test: if anyone
-    adds it to the shared _nav.html or any page's top-of-page nav block,
-    this fails fast."""
-    # Sample a page that uses the shared _nav.html include + a page with
-    # its own nav block, plus the homepage's nav-strip.
-    for path in ("/health", "/about", "/"):
-        body = client.get(path).data.decode()
-        # Match either pattern: <div class="nav"> or <nav class="nav-strip">
-        nav_blocks = re.findall(
-            r'<(?:div\s+class="nav"|nav\s+class="nav-strip")[^>]*>.*?</(?:div|nav)>',
-            body, flags=re.S,
-        )
-        assert nav_blocks, f"{path} missing recognizable nav block"
-        for block in nav_blocks:
-            assert "/institutional" not in block, (
-                f"{path} shared nav now links to /institutional"
-            )
+# Two prior invariants deleted 2026-08-30 — both tested design decisions
+# Charlie later reversed in his own commits:
+#   * test_institutional_has_mailto_with_prefilled_subject — asserted an
+#     institutional mailto with pre-filled subject/body. Killed by
+#     a430b4a755cf (2026-07-03) "fix(contact): migrate 25 mailto links to
+#     /contact form" which intentionally moved that page to the /contact
+#     form conversion path.
+#   * test_institutional_not_in_shared_nav — asserted /institutional appear
+#     from /about only, not the shared nav. Killed by 6eb7790 (2026-05-21)
+#     "inst: revert Plausible footprint; add /institutional to top nav".
+# Per Charlie's rule (2026-08-30 Monday work order §5b): a suite with a
+# permanent exception stops being trusted — delete stale invariants
+# rather than let them ride under a --deselect.
 
 
 def test_unknown_route_404(client):
