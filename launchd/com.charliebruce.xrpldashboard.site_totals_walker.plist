@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Daily site_totals_walker. Cadence 86400s = 24h. Recomputes and upserts authoritative all-time counts (total_hits, human_hits, bot_hits, countries_all/human, countries_all/human excluding T1 Tor placeholder) into site_totals table (single-row upsert, id=1) and mirrors to docs/SITE_TOTALS.json. Single source of truth for &quot;how many countries&quot; style questions — replaces ad-hoc queries that were producing inconsistent answers (194 / 190 / 180-something). Data-integrity guard: any count DECREASING vs prior row → walker_health.findings_count &gt; 0 → BetterStack page (append-only page_views should never regress; a decrease signals data loss or classification-rule change worth paging on). RunAtLoad TRUE for immediate baseline row. StartInterval per Charlie's macos_startinterval_over_calendar rule — hour-of-day is not critical for a once-daily brief query (&lt;1s wall-clock). Uses DATABASE_URL_DIRECT per walker convention (commit 1631426 pooler-bypass hotfix). Wrapper timeout belt 60s (Perl SIGALRM).</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.site_totals_walker</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_site_totals_walker.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/site_totals_walker.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/site_totals_walker.out.log</string>
+	<key>StartInterval</key>
+	<integer>86400</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>

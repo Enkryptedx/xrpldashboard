@@ -1,0 +1,40 @@
+{
+  "computed_at_epoch": 1788306909,
+  "computed_at_utc": "2026-09-01T23:55:09+00:00",
+  "source": "site_totals_walker (~/xrpl_test/site_totals_walker.py)",
+  "table": "site_totals (single-row upsert, id=1)",
+  "authoritative_definitions": {
+    "total_hits": "COUNT(*) FROM page_views \u2014 all rows ever",
+    "human_hits": "COUNT(*) FILTER (is_bot IS NOT TRUE)",
+    "bot_hits": "COUNT(*) FILTER (is_bot IS TRUE)",
+    "countries_all": "DISTINCT country WHERE country IS NOT NULL \u2014 INCLUDES T1 (Tor exit) as a country value",
+    "countries_human": "DISTINCT country WHERE country IS NOT NULL AND is_bot IS NOT TRUE",
+    "countries_all_excluding_t1": "countries_all minus the T1 Tor placeholder (T1 is not a real country)",
+    "countries_human_excluding_t1": "countries_human minus T1",
+    "countries_null": "Rows with country IS NULL \u2014 informational, does not affect distinct counts",
+    "countries_placeholder_t1": "1 if T1 has ever appeared, else 0 \u2014 used to derive the excluding_t1 variants"
+  },
+  "totals": {
+    "total_hits": 237963,
+    "human_hits": 53452,
+    "bot_hits": 184511,
+    "bot_pct": 77.54,
+    "countries_all_time_any_traffic": 170,
+    "countries_all_time_human_only": 133,
+    "countries_all_time_any_traffic_excluding_t1": 169,
+    "countries_all_time_human_only_excluding_t1": 132,
+    "rows_with_null_country": 1600,
+    "includes_placeholder_t1_tor": true
+  },
+  "monotonic_check": {
+    "prior_row_present": true,
+    "decreases_detected": [],
+    "note": "Any count decrease vs prior row is impossible on append-only page_views. Non-empty list here \u2192 data-integrity finding (walker_health.findings_count > 0 \u2192 BetterStack page)."
+  },
+  "notes": [
+    "Prior public counts of 194 / 190 / 180-something came from different queries/filters and are NOT authoritative.",
+    "countries_all is the authoritative answer to 'how many countries have visited xrpldashboard' unless Charlie has ruled otherwise.",
+    "countries_all_excluding_t1 is available as an alternate reading if T1 (Tor) placement is considered non-canonical.",
+    "Data-integrity: an all-time count going down flags a walker_health finding \u2014 append-only data should never regress."
+  ]
+}
