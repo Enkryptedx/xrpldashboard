@@ -102,7 +102,7 @@
   {% if submitted %}
     <h1>{{ _('Message received') }}</h1>
     <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to Charlie') }}</div>
-    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a> {{ _('directly.') }}</p>
+    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} <a href="{{ 'mailto:contact@xrpldashboard.com' | entity_encode }}">{{ 'contact@xrpldashboard.com' | entity_encode }}</a> {{ _('directly.') }}</p>
     <p><a href="/institutional">← {{ _('back to institutional') }}</a></p>
   {% else %}
     <h1>{{ _('Reach the institutional team') }}</h1>
@@ -151,7 +151,7 @@
         <div class="submit-row">
           <button type="submit" class="submit">{{ _('Send message') }}</button>
           <span class="fallback">
-            {{ _('Prefer email?') }} <a href="mailto:contact@xrpldashboard.com">contact@xrpldashboard.com</a>
+            {{ _('Prefer email?') }} <a href="{{ 'mailto:contact@xrpldashboard.com' | entity_encode }}">{{ 'contact@xrpldashboard.com' | entity_encode }}</a>
           </span>
         </div>
       </form>

@@ -138,7 +138,7 @@
     <li><strong>{{ _('Neon') }}</strong> — {{ _('managed Postgres database. Stores public XRPL data only; no visitor data.') }}
       <a href="https://neon.tech/privacy-policy" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
     <li><strong>{{ _('Brevo') }}</strong> — {{ _('SMTP relay used only when we send mail from') }}
-      <code>contact@xrpldashboard.com</code>.
+      <code>{{ 'contact@xrpldashboard.com' | entity_encode }}</code>.
       {{ _('Sees the contents of emails we send.') }}
       <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener noreferrer">{{ _('Privacy') }}</a>.</li>
     <li><strong>{{ _('Public XRPL and Ethereum nodes') }}</strong> — {{ _('we query') }}
@@ -151,14 +151,14 @@
   <h2>5. {{ _('If you email us') }}</h2>
   <p>
     {{ _('Emails sent to') }}
-    contact@xrpldashboard.com
+    {{ 'contact@xrpldashboard.com' | entity_encode }}
     {{ _('are forwarded through Squarespace\'s email-forwarding service to a personal Gmail inbox, and replies are sent through Brevo\'s SMTP relay. We retain those emails so we can continue the conversation. We don\'t add senders to any marketing list.') }}
   </p>
 
   <h2>6. {{ _('Your rights') }}</h2>
   <p>
     {{ _('Depending on where you live, you may have rights under laws like the EU GDPR or California CCPA — including the right to access, correct, or delete personal information we hold about you, and to ask us not to use it for certain purposes. Because we collect so little (no accounts, no profiles), there usually isn\'t much to act on, but we\'ll handle any request in good faith. Email us at') }}
-    contact@xrpldashboard.com.
+    {{ 'contact@xrpldashboard.com' | entity_encode }}.
   </p>
 
   <h2>7. {{ _('Changes to this policy') }}</h2>
@@ -169,7 +169,7 @@
   <h2>8. {{ _('Contact') }}</h2>
   <p>
     {{ _('Privacy questions, deletion requests, or anything else:') }}
-    contact@xrpldashboard.com.
+    {{ 'contact@xrpldashboard.com' | entity_encode }}.
   </p>
 
   <div class="footer">

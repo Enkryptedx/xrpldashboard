@@ -122,14 +122,14 @@
         </tr>
         <tr>
           <td class="vendor">Brevo</td>
-          <td>{{ _('Outbound SMTP for replies from contact@xrpldashboard.com') }}</td>
+          <td>{{ _('Outbound SMTP for replies from') }} {{ 'contact@xrpldashboard.com' | entity_encode }}</td>
           <td class="region">{{ _('European Union') }}</td>
           <td>{{ _('Sender, recipient, and message body of outbound email replies sent from our contact address. Inbound mail does not pass through Brevo.') }}</td>
           <td class="dpa"><a href="https://www.brevo.com/legal/" target="_blank" rel="noopener noreferrer">Legal →</a></td>
         </tr>
         <tr>
           <td class="vendor">Squarespace</td>
-          <td>{{ _('Inbound email forwarding for contact@xrpldashboard.com') }}</td>
+          <td>{{ _('Inbound email forwarding for') }} {{ 'contact@xrpldashboard.com' | entity_encode }}</td>
           <td class="region">{{ _('United States') }}</td>
           <td>{{ _('Inbound email envelope + body, forwarded to a single operator inbox. No mailbox storage of forwarded mail beyond transit.') }}</td>
           <td class="dpa"><a href="https://www.squarespace.com/dpa" target="_blank" rel="noopener noreferrer">DPA →</a></td>

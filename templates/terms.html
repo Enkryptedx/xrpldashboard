@@ -144,7 +144,7 @@
   <h2>9. {{ _('Governing law') }}</h2>
   <p>
     {{ _('These terms are governed by the laws of the United States, without regard to conflict-of-laws principles. If you have a dispute with us, please email us first at') }}
-    contact@xrpldashboard.com —
+    {{ 'contact@xrpldashboard.com' | entity_encode }} —
     {{ _('we\'ll try to resolve it informally before anyone reaches for lawyers.') }}
   </p>
 
@@ -156,7 +156,7 @@
   <h2>11. {{ _('Contact') }}</h2>
   <p>
     {{ _('Questions, corrections, or anything else:') }}
-    contact@xrpldashboard.com.
+    {{ 'contact@xrpldashboard.com' | entity_encode }}.
   </p>
 
   <div class="footer">
