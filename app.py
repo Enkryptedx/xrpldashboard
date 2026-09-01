@@ -223,6 +223,25 @@ def _unix_utc(ts):
 
 app.jinja_env.filters["unix_utc"] = _unix_utc
 
+
+def _entity_encode(text):
+    """Render a string as HTML numeric character entities. Every char becomes
+    &#N; where N is its Unicode codepoint. Browsers decode entities natively,
+    so the visible text is identical to the source string. Naive regex-based
+    email scrapers that look for `[\\w.-]+@[\\w.-]+` in raw HTML miss it —
+    they don't decode entities before pattern-matching. Intended use:
+    obfuscate exposed email addresses in prose to break the harvesting tier
+    of email-scraper bots. Not defense against sophisticated scrapers that
+    parse HTML entities; those are a different threat model. Marked Markup
+    so Jinja does not re-escape the ampersands."""
+    from markupsafe import Markup
+    if text is None:
+        return Markup("")
+    return Markup("".join(f"&#{ord(c)};" for c in str(text)))
+
+
+app.jinja_env.filters["entity_encode"] = _entity_encode
+
 # Wire Flask-Babel: cookie-based locale, /lang/<code> switcher, template
 # helpers (language_list, current_locale, is_rtl). Strings still need _()
 # wrapping per-template — this just makes the machinery available.

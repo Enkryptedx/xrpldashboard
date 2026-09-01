@@ -107,7 +107,7 @@
   {% if submitted %}
     <h1>{{ _('Message received') }}</h1>
     <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to Charlie') }}</div>
-    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} contact@xrpldashboard.com {{ _('directly.') }}</p>
+    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} {{ 'contact@xrpldashboard.com' | entity_encode }} {{ _('directly.') }}</p>
     <p><a href="/">← {{ _('back to dashboard') }}</a></p>
   {% else %}
     <div class="purpose-pill">{{ purpose_label }}</div>
