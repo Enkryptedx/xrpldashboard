@@ -46,6 +46,7 @@ from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from mcp_server import SERVER_VERSION as MCP_SERVER_VERSION
+import geoip_state
 
 try:
     import qrcode
@@ -1560,21 +1561,16 @@ def _log_page_view():
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
             or request.headers.get("X-Country-Code")
-        # Region code (ISO 3166-2 subdivision, e.g. "IN" or "US-IN").
-        # Two possible sources, in preference order:
-        #   1. CF-Region-Code — set by CF Managed Transform "Add visitor
-        #      location headers". Empirically dead on Free plan (2026-08-31)
-        #      because Free-tier CF IP-geolocation dataset is country-only,
-        #      so the Managed Transform has no region data to inject.
-        #   2. X-CF-Region-Code — set by our own Cloudflare Worker
-        #      (xrpldashboard-region-enrich, deployed to xrpldashboard.com/*
-        #      + www.xrpldashboard.com/*) which reads request.cf.regionCode
-        #      directly on Workers Free-tier (that data path IS populated
-        #      even when the Managed Transform's isn't). Actual working
-        #      source in production.
-        # Raw string, no truncation/normalization — first-write soak reveals
-        # the actual on-wire format.
-        region_code = (
+        # Region code (ISO 3166-2, "US-CA" style — country-dash-subdivision).
+        # Primary source: self-hosted MaxMind GeoLite2 lookup on the client
+        # IP. Local .mmdb file, sub-microsecond per call. Fetched at
+        # container start from MaxMind keyed by MAXMIND_LICENSE_KEY.
+        # Fallback: legacy CF-Region-Code / X-CF-Region-Code headers. Both
+        # sources were parked (Managed Transform empirically dead on Free
+        # plan; Worker deploy blocked by Custom Domain DNS conflict). Left
+        # in-chain so if either ever comes back the writer still catches
+        # them without a redeploy.
+        region_code = geoip_state.lookup_region_code(ip) or (
             request.headers.get("CF-Region-Code")
             or request.headers.get("X-CF-Region-Code")
             or None
