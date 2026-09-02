@@ -4624,6 +4624,8 @@ BOT_UA_PATTERNS = (
     "%Python-urllib%",
     "%BuiltWith%",
     "%FACTANKER%",
+    "%xrpld-%",
+    "%Palo Alto Networks%",
 )
 
 # Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
@@ -4652,7 +4654,15 @@ BOT_UA_PATTERNS = (
 # robots-observatory tool). Additions-only — no existing TRUE rows can
 # be un-matched. Full bidirectional resync via version bump is safe
 # under this constraint.
-BOT_CLASSIFIER_VERSION = 4
+# v5 (2026-09-02): two more UA patterns after midday analytics flagged
+# both surviving in the "human" bucket:
+# %xrpld-% (contains-match, ILIKE case-insensitive) — Charlie's own
+#   internal automated verifiers (xrpld-l2-inspector, xrpld-anchor-canary,
+#   any future xrpld-* named tool). Not readers.
+# %Palo Alto Networks% — Cortex XDR security scanner UA, showed up
+#   fresh at low volume. Not a browser.
+# Same additions-only property as v4 → bidirectional full-resync safe.
+BOT_CLASSIFIER_VERSION = 5
 
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
