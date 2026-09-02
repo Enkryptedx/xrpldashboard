@@ -290,6 +290,41 @@
     .amend-snapshot-chip.is-stale .dot { background: var(--amber);
       box-shadow: 0 0 6px var(--amber); }
 
+    /* Sovereign-fallback disclosure banner — 2026-09-02.
+       Renders only when data.sourcing == "fallback-public-rpc".
+       Not a footnote per the disclosure spec: prominent amber banner
+       at the top of the page so every viewer sees the source shift. */
+    .sovereign-fallback-banner {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-left: 3px solid var(--amber);
+      border-radius: 10px;
+      padding: 0.85em 1.1em;
+      margin-bottom: 1em;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7em;
+      color: var(--text);
+      font-size: var(--fs-sm);
+      line-height: 1.55;
+    }
+    .sovereign-fallback-banner .icon {
+      flex: 0 0 auto;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(245,158,11,0.15);
+      color: var(--amber);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-family: var(--mono); font-size: 12px;
+      margin-top: 1px;
+    }
+    .sovereign-fallback-banner .body { flex: 1; }
+    .sovereign-fallback-banner .headline {
+      font-weight: 600; color: var(--amber); margin-bottom: 0.25em;
+    }
+    .sovereign-fallback-banner .detail {
+      color: var(--muted); font-size: var(--fs-xs);
+    }
+
     {{ explainer_css() }}
 
     @media (max-width: 720px) {
@@ -307,6 +342,20 @@
 <div class="wrap">
 
   {% include "_nav.html" %}
+
+  {# Sovereign-fallback disclosure banner. Shows only when the live
+     fetcher couldn't reach the sovereign tunnel and served this page
+     via public XRPL infrastructure. Disclosure symmetry rule: same
+     signal a machine caller would read from data.sourcing. #}
+  {% if data and data.sourcing == 'fallback-public-rpc' %}
+    <div class="sovereign-fallback-banner" role="status">
+      <span class="icon" aria-hidden="true">!</span>
+      <div class="body">
+        <div class="headline">{{ _('Live data via public XRPL infrastructure') }}</div>
+        <div class="detail">{{ _('Sovereign node temporarily unavailable — data on this page was served through a public rippled server. Refreshes will retry the sovereign path.') }}</div>
+      </div>
+    </div>
+  {% endif %}
 
   {% set activated = status and status.activated %}
   {% set lending_a = status.lending if status else None %}
@@ -599,7 +648,14 @@
   </div>
 
   <footer>
-    {{ _('Data: live') }} <code>feature</code> {{ _('RPC against') }} <code>s1.ripple.com</code>.
+    {% set src = (data.sourcing if data else None) %}
+    {% if src == 'sovereign' %}
+      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via the sovereign tunnel.') }}
+    {% elif src == 'fallback-public-rpc' %}
+      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via public XRPL infrastructure — sovereign node temporarily unavailable.') }}
+    {% else %}
+      {{ _('Data: live') }} <code>feature</code> {{ _('RPC.') }}
+    {% endif %}
     {{ _('Page goes live with broker data the day the LendingProtocol + SingleAssetVault amendments activate.') }}
     {{ _('Verify against') }}
     <a href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener">xrplf.org/amendment-tracker</a>

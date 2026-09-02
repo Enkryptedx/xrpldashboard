@@ -9,13 +9,34 @@ query, returns {"ok": True, "activated": False, "brokers": []}. The
 template's awaiting state renders from that. Once activation flips,
 the same code path returns real rows on the next 5-min refresh.
 
-Node selection: XRPL_LENDING_NODE wins, falls back to XRPL_NODE, then
-mainnet. Set XRPL_LENDING_NODE=https://s.devnet.rippletest.net:51234 to
-exercise the live-data branch today (devnet has both amendments enabled).
+── Sovereign tunnel + public fallback (2026-09-02) ───────────────────
+This module is the first live route to use the sovereign tunnel
+(`rpc.xrpldashboard.com` → Lenovo node). It tries the tunnel first for
+each RPC call in a fetch. On tunnel failure (transport error, non-200,
+etc.) after retry-with-backoff, it falls back to the existing public
+XRPL_NODE path — and STAYS on public for the rest of that fetch so we
+don't thrash. The next scheduled fetch (5-min cache TTL) restarts the
+attempt on the tunnel.
+
+Sourcing is tracked per-fetch and returned in `data["sourcing"]`:
+  - "sovereign"                 → tunnel served every call in this fetch
+  - "fallback-public-rpc"       → at least one call fell back to public
+  - "public-no-tunnel-configured" → tunnel env vars unset (e.g. local dev)
+
+The disclosure banner in `templates/lending.html` keys off this field.
+Both human viewers and any future machine caller get the same signal —
+disclosure symmetry per the sovereignty spec.
+
+Fallback events (walker_name="lending_page") are written to the same
+`walker_node_fallback` table walkers use, so /lending's tunnel health
+shows up in the same sovereignty accounting.
+
+Fail-open: unset env vars skip the tunnel attempt cleanly, never crash.
 """
 
 import json
 import os
+import random
 import threading
 import time
 
@@ -30,31 +51,153 @@ SNAPSHOT_PATH = os.environ.get(
 )
 SNAPSHOT_MAX_AGE = int(os.environ.get("LENDING_SNAPSHOT_MAX_AGE", "1800"))  # 30 min
 
+# Public path (unchanged from prior versions) — falls back here if the
+# tunnel is unavailable OR unconfigured.
 XRPL_NODE = os.environ.get(
     "XRPL_LENDING_NODE",
     os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234"),
 )
+
+# Sovereign tunnel path — added 2026-09-02. If any of these three vars
+# are unset, the tunnel is skipped and we use the public path directly.
+TUNNEL_NODE = (os.environ.get("XRPL_TUNNEL_NODE") or "").strip() or None
+_CF_CLIENT_ID = (os.environ.get("CF_ACCESS_CLIENT_ID") or "").strip() or None
+_CF_CLIENT_SECRET = (os.environ.get("CF_ACCESS_CLIENT_SECRET") or "").strip() or None
+_TUNNEL_CONFIGURED = bool(TUNNEL_NODE and _CF_CLIENT_ID and _CF_CLIENT_SECRET)
+
 CACHE_TTL = int(os.environ.get("LENDING_DATA_CACHE_TTL", "300"))
 PAGE_LIMIT = 400
+
+# Retry against the tunnel before cascading to the public path. Same
+# shape as xrpl_client.py — absorbs transient TCP-accept refusals or CF
+# edge hiccups without spilling to public infra.
+TUNNEL_RETRY_ATTEMPTS = 3
+TUNNEL_RETRY_BASE_MS = 100
+TUNNEL_RETRY_JITTER_MS = 100
+REQUEST_TIMEOUT_SECONDS = 20.0
+
+# Sourcing flag values — surfaced in data["sourcing"] and read by
+# templates/lending.html (banner) and any future JSON response.
+SOURCING_SOVEREIGN = "sovereign"
+SOURCING_FALLBACK = "fallback-public-rpc"
+SOURCING_NO_TUNNEL = "public-no-tunnel-configured"
 
 _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
 
-
-def _rpc(method, params):
-    try:
-        resp = httpx.post(
-            XRPL_NODE,
-            json={"method": method, "params": [params]},
-            timeout=20.0,
-        )
-        return (resp.json() or {}).get("result") or {}
-    except Exception:
-        return None
+# Module-level httpx.Client pool per URL — keep-alive across calls in
+# the same process. Same pattern as xrpl_client.py, same rationale:
+# eliminates fresh-TCP-per-call handshake overhead.
+_HTTP_LIMITS = httpx.Limits(
+    max_keepalive_connections=8,
+    max_connections=16,
+    keepalive_expiry=30.0,
+)
+_http_clients: dict = {}
 
 
-def _paginate_objects(obj_type):
-    """Walk every ledger object of a given type. Returns list (may be empty)."""
+def _client_for(url: str) -> httpx.Client:
+    c = _http_clients.get(url)
+    if c is None:
+        c = httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS, limits=_HTTP_LIMITS)
+        _http_clients[url] = c
+    return c
+
+
+def _tunnel_backoff_seconds(attempt: int) -> float:
+    """Backoff for attempt N (1-indexed). attempt=2 → ~100-200ms;
+    attempt=3 → ~200-300ms. Only called BETWEEN attempts."""
+    base_ms = TUNNEL_RETRY_BASE_MS * (attempt - 1)
+    jitter_ms = random.uniform(0, TUNNEL_RETRY_JITTER_MS)
+    return (base_ms + jitter_ms) / 1000.0
+
+
+class _LendingFetcher:
+    """Per-fetch RPC client: tunnel-first with retry-then-cascade, tracks
+    sourcing across all calls in one fetch. Sticky fallback within a
+    fetch — once we've fallen back, subsequent calls in the same fetch
+    stay on public. The next cache-miss re-attempts the tunnel from
+    scratch. Not thread-safe; instantiate one per fetch call."""
+
+    def __init__(self):
+        if _TUNNEL_CONFIGURED:
+            self.sourcing = SOURCING_SOVEREIGN
+            self._tunnel_headers = {
+                "CF-Access-Client-Id": _CF_CLIENT_ID,
+                "CF-Access-Client-Secret": _CF_CLIENT_SECRET,
+                "Content-Type": "application/json",
+            }
+        else:
+            self.sourcing = SOURCING_NO_TUNNEL
+            self._tunnel_headers = None
+
+    @property
+    def effective_node_url(self) -> str:
+        """URL that (would have) served the last call. Used only for
+        display / debug — the real signal is `sourcing`."""
+        if self.sourcing == SOURCING_SOVEREIGN:
+            return TUNNEL_NODE or XRPL_NODE
+        return XRPL_NODE
+
+    def _try_tunnel(self, payload):
+        """Attempt up to TUNNEL_RETRY_ATTEMPTS against the tunnel with
+        jittered backoff between attempts. Returns (result_dict, None)
+        on success, or (None, last_failure_reason) on total failure."""
+        last_reason = None
+        for attempt in range(1, TUNNEL_RETRY_ATTEMPTS + 1):
+            try:
+                r = _client_for(TUNNEL_NODE).post(
+                    TUNNEL_NODE, json=payload, headers=self._tunnel_headers,
+                )
+                if r.status_code == 200:
+                    return (r.json() or {}).get("result") or {}, None
+                # 403 = Access header rejected; 502 = tunnel origin down;
+                # anything non-200 is a tunnel failure worth retrying then
+                # cascading on.
+                last_reason = f"tunnel_http_{r.status_code}"
+            except Exception as e:
+                last_reason = f"tunnel_unreachable:{type(e).__name__}"
+            if attempt < TUNNEL_RETRY_ATTEMPTS:
+                time.sleep(_tunnel_backoff_seconds(attempt + 1))
+        return None, last_reason
+
+    def _try_public(self, payload):
+        """Fallback: single attempt to XRPL_NODE (existing public path).
+        Returns result dict on success, None on failure."""
+        try:
+            r = _client_for(XRPL_NODE).post(XRPL_NODE, json=payload)
+            return (r.json() or {}).get("result") or {}
+        except Exception:
+            return None
+
+    def call(self, method, params):
+        """One RPC call. If the tunnel is configured and we haven't
+        already fallen back this fetch, try tunnel with retry; on total
+        tunnel failure, downgrade sourcing to SOURCING_FALLBACK, log
+        one walker_node_fallback row, and cascade to public. If sourcing
+        is already SOURCING_FALLBACK or SOURCING_NO_TUNNEL, go straight
+        to public."""
+        payload = {"method": method, "params": [params]}
+        if self.sourcing == SOURCING_SOVEREIGN:
+            result, tunnel_fail_reason = self._try_tunnel(payload)
+            if result is not None:
+                return result
+            # Sticky downgrade: log ONE fallback row per fetch, not per call
+            self.sourcing = SOURCING_FALLBACK
+            try:
+                import db
+                db.write_walker_node_fallback(
+                    "lending_page", tunnel_fail_reason or "tunnel_unknown",
+                )
+            except Exception:
+                # DB write failures must not break the page load
+                pass
+        return self._try_public(payload)
+
+
+def _paginate_objects(fetcher, obj_type):
+    """Walk every ledger object of a given type via the fetcher. Returns
+    list (may be empty), or None on RPC failure."""
     out = []
     marker = None
     for _ in range(200):  # hard ceiling; brokers/vaults won't approach this
@@ -65,7 +208,7 @@ def _paginate_objects(obj_type):
         }
         if marker is not None:
             params["marker"] = marker
-        result = _rpc("ledger_data", params)
+        result = fetcher.call("ledger_data", params)
         if not result:
             return None
         for entry in result.get("state") or []:
@@ -131,13 +274,15 @@ def _ripple_epoch_now():
 
 
 def fetch_lending_data():
+    fetcher = _LendingFetcher()
     status = fetch_lending_status_cached()
     activated = bool(status.get("activated"))
     if not activated:
         return {
             "ok": True,
             "activated": False,
-            "node": XRPL_NODE,
+            "node": fetcher.effective_node_url,
+            "sourcing": fetcher.sourcing,
             "brokers": [],
             "broker_count": 0,
             "vault_count": 0,
@@ -146,14 +291,15 @@ def fetch_lending_data():
             "status": status,
         }
 
-    brokers_raw = _paginate_objects("loan_broker")
-    vaults_raw = _paginate_objects("vault")
-    loans_raw = _paginate_objects("loan")
+    brokers_raw = _paginate_objects(fetcher, "loan_broker")
+    vaults_raw = _paginate_objects(fetcher, "vault")
+    loans_raw = _paginate_objects(fetcher, "loan")
     if brokers_raw is None or vaults_raw is None or loans_raw is None:
         return {
             "ok": False,
             "activated": True,
-            "node": XRPL_NODE,
+            "node": fetcher.effective_node_url,
+            "sourcing": fetcher.sourcing,
             "brokers": [],
             "broker_count": 0,
             "vault_count": 0,
@@ -214,7 +360,8 @@ def fetch_lending_data():
     return {
         "ok": True,
         "activated": True,
-        "node": XRPL_NODE,
+        "node": fetcher.effective_node_url,
+        "sourcing": fetcher.sourcing,
         "brokers": rows,
         "broker_count": len(rows),
         "vault_count": len(vaults_raw),
@@ -244,7 +391,12 @@ def fetch_lending_data_cached(ttl=None):
 def load_lending_snapshot(path=None, max_age=None):
     """Read the JSON written by lending_snapshot.py. Returns None if the
     file is missing, malformed, or stale beyond max_age — the route then
-    falls back to the in-process fetcher."""
+    falls back to the in-process fetcher.
+
+    Snapshots written by the Mac walker are treated as sovereign in
+    display terms — the walker runs against XRPL_LOCAL_NODE on the LAN
+    (Lenovo direct, not the tunnel). If that assumption ever changes,
+    update the snapshot writer to record its own sourcing field."""
     path = path or SNAPSHOT_PATH
     max_age = max_age if max_age is not None else SNAPSHOT_MAX_AGE
     try:
@@ -263,13 +415,17 @@ def load_lending_snapshot(path=None, max_age=None):
         return None
     data["snapshot_age_seconds"] = round(age, 1)
     data["from_snapshot"] = True
+    # Default sourcing for snapshot-served data: the walker uses direct
+    # LAN access, so it's sovereign unless the walker itself later reports
+    # otherwise via its own sourcing field.
+    data.setdefault("sourcing", SOURCING_SOVEREIGN)
     return data
 
 
 if __name__ == "__main__":
     t0 = time.time()
     d = fetch_lending_data()
-    print(f"node: {d['node']}")
+    print(f"node: {d['node']}  sourcing: {d['sourcing']}")
     print(f"fetched in {time.time()-t0:.1f}s")
     print(f"activated: {d['activated']} ok: {d['ok']}")
     print(f"brokers: {d['broker_count']}  vaults: {d['vault_count']}  loans: {d['loan_count']}")
