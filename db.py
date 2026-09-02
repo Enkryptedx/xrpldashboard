@@ -4618,6 +4618,12 @@ BOT_UA_PATTERNS = (
     "%bot/%",
     "%spider%",
     "%crawler%",
+    "%WhaleFlowRadar%",
+    "%Claude-User%",
+    "%HeadlessChrome%",
+    "%Python-urllib%",
+    "%BuiltWith%",
+    "%FACTANKER%",
 )
 
 # Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
@@ -4636,7 +4642,17 @@ BOT_UA_PATTERNS = (
 # ip_day_hash arm — page_view_bot_hashes has no advance-trigger (yet;
 # design law + implementation to follow). Bidirectional full-resync
 # clears this instance; the bot_hashes-advance trigger closes the class.
-BOT_CLASSIFIER_VERSION = 3
+# v4 (2026-09-02): added 6 UA patterns to BOT_UA_PATTERNS that were
+# leaking through as is_bot=NULL and polluting human-only counts:
+# %WhaleFlowRadar% (scraper hitting /cold-storage from ZA — put ZA at
+# #1 in "human" traffic overnight), %Claude-User% (Anthropic on-demand
+# fetch, sibling to already-listed ChatGPT-User), %HeadlessChrome%
+# (standard automation signature), %Python-urllib% (stdlib script),
+# %BuiltWith% (tech-detection scraper), %FACTANKER% (named
+# robots-observatory tool). Additions-only — no existing TRUE rows can
+# be un-matched. Full bidirectional resync via version bump is safe
+# under this constraint.
+BOT_CLASSIFIER_VERSION = 4
 
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
