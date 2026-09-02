@@ -1,6 +1,6 @@
 {
-  "computed_at_epoch": 1788306909,
-  "computed_at_utc": "2026-09-01T23:55:09+00:00",
+  "computed_at_epoch": 1788310874,
+  "computed_at_utc": "2026-09-02T01:01:14+00:00",
   "source": "site_totals_walker (~/xrpl_test/site_totals_walker.py)",
   "table": "site_totals (single-row upsert, id=1)",
   "authoritative_definitions": {
@@ -12,29 +12,43 @@
     "countries_all_excluding_t1": "countries_all minus the T1 Tor placeholder (T1 is not a real country)",
     "countries_human_excluding_t1": "countries_human minus T1",
     "countries_null": "Rows with country IS NULL \u2014 informational, does not affect distinct counts",
-    "countries_placeholder_t1": "1 if T1 has ever appeared, else 0 \u2014 used to derive the excluding_t1 variants"
+    "countries_placeholder_t1": "1 if T1 has ever appeared, else 0 \u2014 used to derive the excluding_t1 variants",
+    "us_states_all": "DISTINCT region_code WHERE region_code LIKE 'US-%' \u2014 any traffic, since state-tracking deploy (see us_state_tracking_since_utc)",
+    "us_states_human": "DISTINCT US states from is_bot IS NOT TRUE rows \u2014 human-only readers of the site",
+    "us_state_tracking_since_epoch": "Unix epoch when state-level capture went live (commit a092bbb). Any us_states_* count is strictly since this moment; nothing was captured before."
   },
   "totals": {
-    "total_hits": 237963,
-    "human_hits": 53452,
-    "bot_hits": 184511,
-    "bot_pct": 77.54,
+    "total_hits": 238011,
+    "human_hits": 53475,
+    "bot_hits": 184536,
+    "bot_pct": 77.53,
     "countries_all_time_any_traffic": 170,
     "countries_all_time_human_only": 133,
     "countries_all_time_any_traffic_excluding_t1": 169,
     "countries_all_time_human_only_excluding_t1": 132,
     "rows_with_null_country": 1600,
-    "includes_placeholder_t1_tor": true
+    "includes_placeholder_t1_tor": true,
+    "us_states_since_tracking_started_any_traffic": 19,
+    "us_states_since_tracking_started_human_only": 8,
+    "us_state_tracking_since_epoch": 1788295800,
+    "us_state_tracking_since_utc": "2026-09-01T20:50:00+00:00"
   },
   "monotonic_check": {
     "prior_row_present": true,
     "decreases_detected": [],
-    "note": "Any count decrease vs prior row is impossible on append-only page_views. Non-empty list here \u2192 data-integrity finding (walker_health.findings_count > 0 \u2192 BetterStack page)."
+    "guarded_fields": [
+      "total_hits",
+      "countries_all",
+      "countries_all_excluding_t1",
+      "us_states_all"
+    ],
+    "note": "Any count decrease vs prior row is impossible on append-only page_views. Non-empty list here \u2192 data-integrity finding (walker_health.findings_count > 0 \u2192 BetterStack page). Only truly monotonic fields are guarded \u2014 human/bot subsets and us_states_human rebalance when is_bot classifier reruns."
   },
   "notes": [
     "Prior public counts of 194 / 190 / 180-something came from different queries/filters and are NOT authoritative.",
     "countries_all is the authoritative answer to 'how many countries have visited xrpldashboard' unless Charlie has ruled otherwise.",
     "countries_all_excluding_t1 is available as an alternate reading if T1 (Tor) placement is considered non-canonical.",
-    "Data-integrity: an all-time count going down flags a walker_health finding \u2014 append-only data should never regress."
+    "us_states_* counts have a shorter clock than country counts. The state clock started 2026-09-01 20:51 UTC when commit a092bbb went live; nothing before that has region_code populated. A small us_states_all number early in the state clock's life is expected and will grow with time.",
+    "Data-integrity: an all-time count in the guarded set going down flags a walker_health finding \u2014 append-only data should never regress."
   ]
 }

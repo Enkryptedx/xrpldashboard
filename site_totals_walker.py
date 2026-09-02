@@ -47,6 +47,14 @@ WALKER_CADENCE_SECONDS = 86400  # daily
 
 DOCS_JSON_PATH = Path("/Users/charliebruce/xrpl_test/docs/SITE_TOTALS.json")
 
+# When state-level (MaxMind GeoLite2) capture went live in production.
+# Commit a092bbb, 2026-09-01 16:51:04 -0400 → 20:51:04 UTC. Rounded down
+# to 20:50 for a conservative inclusive window. Any us_states_* count is
+# strictly since-deploy — nothing came before because region_code wasn't
+# being written on Render-side traffic. Stored on the tally so future
+# readers know the state clock started later than the country clock.
+US_STATE_TRACKING_SINCE_EPOCH = 1788295800  # 2026-09-01 20:50:00 UTC
+
 _SCHEMA_ENSURE = """
 CREATE TABLE IF NOT EXISTS site_totals (
     id           INT PRIMARY KEY DEFAULT 1,
@@ -65,6 +73,9 @@ CREATE TABLE IF NOT EXISTS site_totals (
 _SCHEMA_ADD_COLS = [
     "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS countries_all_excluding_t1 INT",
     "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS countries_human_excluding_t1 INT",
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_states_all INT",
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_states_human INT",
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_state_tracking_since_epoch BIGINT",
 ]
 
 _COMPUTE_SQL = """
@@ -77,16 +88,24 @@ SELECT
   COUNT(*) FILTER (WHERE country IS NULL) AS c_null,
   COUNT(DISTINCT country) FILTER (WHERE country = 'T1') AS c_t1_placeholder,
   COUNT(DISTINCT country) FILTER (WHERE country IS NOT NULL AND country <> 'T1') AS c_all_no_t1,
-  COUNT(DISTINCT country) FILTER (WHERE country IS NOT NULL AND country <> 'T1' AND is_bot IS NOT TRUE) AS c_hum_no_t1
+  COUNT(DISTINCT country) FILTER (WHERE country IS NOT NULL AND country <> 'T1' AND is_bot IS NOT TRUE) AS c_hum_no_t1,
+  COUNT(DISTINCT region_code) FILTER (WHERE region_code LIKE 'US-%%') AS us_states_all,
+  COUNT(DISTINCT region_code) FILTER (WHERE region_code LIKE 'US-%%' AND is_bot IS NOT TRUE) AS us_states_human
 FROM page_views
 """
+# us_states_* counts are naturally since-deploy: region_code wasn't written
+# before commit a092bbb (2026-09-01 20:51 UTC), so any pre-deploy rows have
+# region_code IS NULL and are excluded by the LIKE filter. No explicit time
+# gate needed. US_STATE_TRACKING_SINCE_EPOCH is stored on the row for future
+# readers to know when the clock started.
 
 _UPSERT_SQL = """
 INSERT INTO site_totals (
     id, computed_at, total_hits, human_hits, bot_hits,
     countries_all, countries_human, countries_null, countries_placeholder_t1,
-    countries_all_excluding_t1, countries_human_excluding_t1
-) VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    countries_all_excluding_t1, countries_human_excluding_t1,
+    us_states_all, us_states_human, us_state_tracking_since_epoch
+) VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (id) DO UPDATE SET
     computed_at = EXCLUDED.computed_at,
     total_hits = EXCLUDED.total_hits,
@@ -97,11 +116,14 @@ ON CONFLICT (id) DO UPDATE SET
     countries_null = EXCLUDED.countries_null,
     countries_placeholder_t1 = EXCLUDED.countries_placeholder_t1,
     countries_all_excluding_t1 = EXCLUDED.countries_all_excluding_t1,
-    countries_human_excluding_t1 = EXCLUDED.countries_human_excluding_t1
+    countries_human_excluding_t1 = EXCLUDED.countries_human_excluding_t1,
+    us_states_all = EXCLUDED.us_states_all,
+    us_states_human = EXCLUDED.us_states_human,
+    us_state_tracking_since_epoch = EXCLUDED.us_state_tracking_since_epoch
 """
 
 _PRIOR_SQL = """
-SELECT total_hits, countries_all, countries_all_excluding_t1
+SELECT total_hits, countries_all, countries_all_excluding_t1, us_states_all
 FROM site_totals WHERE id = 1
 """
 # Column order must match _MONOTONIC_FIELDS positionally.
@@ -113,18 +135,24 @@ FROM site_totals WHERE id = 1
 # - countries_all / countries_all_excluding_t1: DISTINCT set-membership
 #   over append-only data (a country either has appeared, or hasn't; it
 #   never "un-appears")
+# - us_states_all: same DISTINCT set-membership property on region_code.
+#   State-tracking only started 2026-09-01 20:51 UTC (commit a092bbb),
+#   so the clock is younger than country tracking — see
+#   US_STATE_TRACKING_SINCE_EPOCH — but the monotonic property is the
+#   same from that moment on.
 #
 # INTENTIONALLY EXCLUDED:
-# - human_hits, bot_hits, countries_human, countries_human_excluding_t1:
-#   these depend on is_bot classification which is RETROACTIVE. When the
-#   is_bot_writer walker reruns and reclassifies rows human↔bot, these
-#   counts rebalance. First observed 2026-09-01: human_hits went from
-#   53,454 → 53,451 across two runs 20 min apart, from classifier rerun.
-#   That's normal is_bot behavior, not a data-integrity finding.
+# - human_hits, bot_hits, countries_human, countries_human_excluding_t1,
+#   us_states_human: these all depend on is_bot classification which is
+#   RETROACTIVE. When the is_bot_writer walker reruns and reclassifies
+#   rows human↔bot, these counts rebalance. First observed 2026-09-01:
+#   human_hits went 53,454 → 53,451 across two runs 20 min apart, from a
+#   classifier rerun. Normal is_bot behavior, not a data-integrity finding.
 _MONOTONIC_FIELDS = (
     "total_hits",
     "countries_all",
     "countries_all_excluding_t1",
+    "us_states_all",
 )
 
 
@@ -180,7 +208,7 @@ def main():
                 row = cur.fetchone()
 
             (total, human, bot, c_all, c_hum, c_null, c_t1,
-             c_all_no_t1, c_hum_no_t1) = row
+             c_all_no_t1, c_hum_no_t1, us_st_all, us_st_hum) = row
             now_epoch = int(datetime.now(timezone.utc).timestamp())
 
             new_vals = {
@@ -191,6 +219,8 @@ def main():
                 "countries_human": c_hum,
                 "countries_all_excluding_t1": c_all_no_t1,
                 "countries_human_excluding_t1": c_hum_no_t1,
+                "us_states_all": us_st_all,
+                "us_states_human": us_st_hum,
             }
             decreases = _detect_decreases(prior, new_vals)
 
@@ -199,6 +229,7 @@ def main():
                     now_epoch, total, human, bot,
                     c_all, c_hum, c_null, c_t1,
                     c_all_no_t1, c_hum_no_t1,
+                    us_st_all, us_st_hum, US_STATE_TRACKING_SINCE_EPOCH,
                 ))
             conn.commit()
 
@@ -217,6 +248,9 @@ def main():
                 "countries_human_excluding_t1": "countries_human minus T1",
                 "countries_null": "Rows with country IS NULL — informational, does not affect distinct counts",
                 "countries_placeholder_t1": "1 if T1 has ever appeared, else 0 — used to derive the excluding_t1 variants",
+                "us_states_all": "DISTINCT region_code WHERE region_code LIKE 'US-%' — any traffic, since state-tracking deploy (see us_state_tracking_since_utc)",
+                "us_states_human": "DISTINCT US states from is_bot IS NOT TRUE rows — human-only readers of the site",
+                "us_state_tracking_since_epoch": "Unix epoch when state-level capture went live (commit a092bbb). Any us_states_* count is strictly since this moment; nothing was captured before.",
             },
             "totals": {
                 "total_hits": total,
@@ -229,21 +263,30 @@ def main():
                 "countries_all_time_human_only_excluding_t1": c_hum_no_t1,
                 "rows_with_null_country": c_null,
                 "includes_placeholder_t1_tor": c_t1 == 1,
+                "us_states_since_tracking_started_any_traffic": us_st_all,
+                "us_states_since_tracking_started_human_only": us_st_hum,
+                "us_state_tracking_since_epoch": US_STATE_TRACKING_SINCE_EPOCH,
+                "us_state_tracking_since_utc": datetime.fromtimestamp(
+                    US_STATE_TRACKING_SINCE_EPOCH, timezone.utc).isoformat(),
             },
             "monotonic_check": {
                 "prior_row_present": prior is not None,
                 "decreases_detected": decreases,
+                "guarded_fields": list(_MONOTONIC_FIELDS),
                 "note": (
                     "Any count decrease vs prior row is impossible on append-only "
                     "page_views. Non-empty list here → data-integrity finding "
-                    "(walker_health.findings_count > 0 → BetterStack page)."
+                    "(walker_health.findings_count > 0 → BetterStack page). "
+                    "Only truly monotonic fields are guarded — human/bot subsets "
+                    "and us_states_human rebalance when is_bot classifier reruns."
                 ),
             },
             "notes": [
                 "Prior public counts of 194 / 190 / 180-something came from different queries/filters and are NOT authoritative.",
                 "countries_all is the authoritative answer to 'how many countries have visited xrpldashboard' unless Charlie has ruled otherwise.",
                 "countries_all_excluding_t1 is available as an alternate reading if T1 (Tor) placement is considered non-canonical.",
-                "Data-integrity: an all-time count going down flags a walker_health finding — append-only data should never regress.",
+                "us_states_* counts have a shorter clock than country counts. The state clock started 2026-09-01 20:51 UTC when commit a092bbb went live; nothing before that has region_code populated. A small us_states_all number early in the state clock's life is expected and will grow with time.",
+                "Data-integrity: an all-time count in the guarded set going down flags a walker_health finding — append-only data should never regress.",
             ],
         }
         _write_docs_json(payload)
@@ -256,7 +299,8 @@ def main():
             message = (
                 f"clean: total={total:,} human={human:,} bot={bot:,} "
                 f"countries_all={c_all} (excl-T1={c_all_no_t1}) "
-                f"countries_human={c_hum} (excl-T1={c_hum_no_t1})"
+                f"countries_human={c_hum} (excl-T1={c_hum_no_t1}) "
+                f"us_states_all={us_st_all} us_states_human={us_st_hum}"
             )
             logging.info(message)
             findings = 0
