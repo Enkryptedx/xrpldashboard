@@ -343,11 +343,11 @@
 
   {% include "_nav.html" %}
 
-  {# Sovereign-fallback disclosure banner. Shows only when the live
-     fetcher couldn't reach the sovereign tunnel and served this page
-     via public XRPL infrastructure. Disclosure symmetry rule: same
-     signal a machine caller would read from data.sourcing. #}
-  {% if data and data.sourcing == 'fallback-public-rpc' %}
+  {# Sovereign-fallback disclosure banner. Shows when EITHER the amendment
+     status fetch OR the broker/vault/loan fetch fell back to public
+     infra. `page_sourcing` is aggregated by the route with the
+     worse-of-two rule — any single fallback taints the whole page. #}
+  {% if page_sourcing == 'fallback-public-rpc' %}
     <div class="sovereign-fallback-banner" role="status">
       <span class="icon" aria-hidden="true">!</span>
       <div class="body">
@@ -648,7 +648,7 @@
   </div>
 
   <footer>
-    {% set src = (data.sourcing if data else None) %}
+    {% set src = page_sourcing %}
     {% if src == 'sovereign' %}
       {{ _('Data: live') }} <code>feature</code> {{ _('RPC via the sovereign tunnel.') }}
     {% elif src == 'fallback-public-rpc' %}

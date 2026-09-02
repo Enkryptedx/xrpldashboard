@@ -6088,16 +6088,26 @@ def lending():
     snapshot if it's recent enough; otherwise we fall back to the in-
     process cached fetcher (5min TTL) so the page never breaks even if
     the snapshot worker is dead."""
+    from sovereign_tunnel_client import (
+        SOURCING_SOVEREIGN,
+        worse_sourcing,
+    )
     status = fetch_lending_status_cached()
     data = None
     if status and status.get("activated"):
         data = load_lending_snapshot()
         if data is None:
             data = fetch_lending_data_cached()
+    # Aggregate sourcing across both fetches — any fallback taints the
+    # page per the disclosure symmetry rule (banner + footer key off this).
+    page_sourcing = (status or {}).get("sourcing") or SOURCING_SOVEREIGN
+    if data and data.get("sourcing"):
+        page_sourcing = worse_sourcing(page_sourcing, data["sourcing"])
     return render_template(
         "lending.html",
         status=status,
         data=data,
+        page_sourcing=page_sourcing,
         cache_ttl_seconds=LENDING_CACHE_TTL,
     )
 

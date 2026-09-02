@@ -21,7 +21,11 @@ import os
 import threading
 import time
 
-import httpx
+from sovereign_tunnel_client import (
+    SOURCING_SOVEREIGN,
+    SOURCING_NO_TUNNEL,
+    SovereignFetcher,
+)
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("LENDING_CACHE_TTL", "300"))
@@ -35,20 +39,12 @@ _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
 
 
-def _fetch_features():
-    try:
-        resp = httpx.post(
-            XRPL_NODE,
-            json={"method": "feature", "params": [{}]},
-            timeout=15.0,
-        )
-        return (resp.json() or {}).get("result") or {}
-    except Exception:
-        return None
-
-
 def fetch_lending_status():
-    result = _fetch_features()
+    # Sovereign tunnel first (fail-open if unconfigured). This is one of
+    # two RPC calls per /lending page visit — the /lending route aggregates
+    # sourcing across it and the broker/vault/loan fetch with worse_sourcing().
+    fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="lending_page")
+    result = fetcher.call("feature", {}) or None
     if not result:
         return {
             "ok": False,
@@ -57,6 +53,7 @@ def fetch_lending_status():
             "ledger_index": None,
             "ready": False,
             "activated": False,
+            "sourcing": fetcher.sourcing,
         }
     feats = result.get("features") or {}
     lending = feats.get(LENDING_AMENDMENT_HASH) or {}
@@ -98,6 +95,7 @@ def fetch_lending_status():
         "ledger_index": result.get("ledger_index"),
         "ready": True,
         "activated": activated,
+        "sourcing": fetcher.sourcing,
     }
 
 
