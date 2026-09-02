@@ -42,7 +42,8 @@ SSH_COMMAND_TIMEOUT_SECONDS = 25
 
 # stanza → {key: expected value | None (must be absent)}
 # Sentinel: stanza-name in _OPTIONAL_STANZAS means "not a finding if entire
-# stanza is missing" — used for [port_rpc_public] pre-tunnel.
+# stanza is missing". Empty since 2026-09-02: [port_rpc_public] shipped
+# live in the tunnel restart, so its absence is now a real drift signal.
 EXPECTED: dict[str, dict[str, str | None]] = {
     "port_rpc_admin_local": {
         "ip": "127.0.0.1",
@@ -57,7 +58,7 @@ EXPECTED: dict[str, dict[str, str | None]] = {
         "admin": None,  # must be absent
     },
 }
-_OPTIONAL_STANZAS = frozenset({"port_rpc_public"})
+_OPTIONAL_STANZAS: frozenset[str] = frozenset()
 
 
 def _fetch_cfg() -> str | None:
@@ -169,8 +170,7 @@ def main() -> None:
     findings = len(drift_msgs)
     if findings == 0:
         message = (
-            f"clean: {len(EXPECTED)} rippled.cfg port stanzas verified "
-            f"(port_rpc_public may be absent pre-tunnel — OK)"
+            f"clean: {len(EXPECTED)} rippled.cfg port stanzas verified"
         )
     else:
         message = f"DRIFT[{findings}]: {'; '.join(drift_msgs)}"
