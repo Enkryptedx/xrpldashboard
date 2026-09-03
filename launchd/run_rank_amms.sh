@@ -22,5 +22,22 @@ set +a
 
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/rank_amms.py"
+RANKED_PATH="/Users/charliebruce/xrpl_test/amm_ranked.json"
 
-exec "$PYTHON" "$SCRIPT"
+# Auto-reset when amm_ranked.json is > 20h old. rank_amms is checkpoint-
+# persistent: once state.finished_at is set, subsequent runs no-op with
+# "already finished / pass --reset to re-rank". Without periodic reset,
+# the file staled to 3 days (2026-08-31 → 2026-09-03) and the daily
+# signed-snapshot metrics amm_pools_count + amm_pools_total_tvl_usd
+# started reflecting 3-day-old TVL. 20h keeps daily refresh comfortably
+# inside the anchor-day freshness window.
+ARGS=()
+if [[ -f "$RANKED_PATH" ]]; then
+  AGE_S=$(( $(date +%s) - $(stat -f %m "$RANKED_PATH") ))
+  if (( AGE_S > 72000 )); then
+    ARGS+=("--reset")
+    echo "[$(date '+%F %T')] amm_ranked.json is ${AGE_S}s old (>20h) — passing --reset"
+  fi
+fi
+
+exec "$PYTHON" "$SCRIPT" "${ARGS[@]}"
