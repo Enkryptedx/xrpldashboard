@@ -15,15 +15,19 @@
 # path with no DB dep; the Postgres side was the silent half.
 #
 # 2026-09-04 rework:
-#   * --limit 20000: bounded per-run walk. Walker maintains a cursor
-#     in launchd_state/verify_toml_cursor.json so successive weekly
-#     runs sweep the full active-address set in ~2-3 weeks of chunks
-#     instead of restarting from 'r...' every time (prior behavior:
-#     one weekly run started but never completed as events.db grew
-#     past ~500k active addresses, so the tail never got walked).
+#   * --limit 15000: bounded per-run walk (raised from 10000 after
+#     the first bounded run measured 4.86 addr/sec on LAN rippled;
+#     15k fits comfortably inside the 3600s wrapper timeout).
+#   * Two-phase walk (Phase A = addresses first-seen in events.db
+#     since last run's HWM, capped at 5000; Phase B = cursor walk
+#     through the old active-address set with remaining budget). New
+#     addresses are the only set with any real chance of gaining a
+#     fresh Domain field, so they get first crack at the budget.
+#   * Cursor in launchd_state/verify_toml_cursor.json (last_address
+#     for Phase B, last_new_scan_ts high-water mark for Phase A).
 #   * Perl SIGALRM belt at 3600s (1 hour): matches rippled_cfg_drift_
-#     guard's pattern. Prior wrapper had no timeout — the stuck 16h
-#     run 2026-09-03 traced back to this exact gap.
+#     guard's pattern. In-script SIGALRM handler preserves cursor +
+#     writes clean walker_health_end(ok=false, timeout).
 #   * Env sourcing also exports XRPL_LOCAL_NODE, which the Python
 #     script now prefers over XRPL_RPC — LAN Lenovo rippled instead
 #     of Ripple public s1.
@@ -42,9 +46,9 @@ set +a
 
 PYTHON="/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
 SCRIPT="/Users/charliebruce/xrpl_test/verify_toml_accounts.py"
-LIMIT=10000
-TIMEOUT=3600  # 60 min. First-run measurement: 4.7 addresses/sec on LAN
-              # = ~2100s for 10000 addresses. Comfortable margin. Raise
+LIMIT=15000
+TIMEOUT=3600  # 60 min. First-run measurement: 4.86 addresses/sec on LAN
+              # = ~3086s for 15000 addresses. Comfortable margin. Raise
               # LIMIT (not TIMEOUT) if we want faster cycle-through of
               # events.db's ~500k active addresses.
 

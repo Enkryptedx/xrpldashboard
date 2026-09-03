@@ -245,34 +245,49 @@ def _install_timeout_handler(walker_name: str) -> None:
         log(f"WARN could not install SIGALRM handler: {e}")
 
 
-def _load_cursor() -> str:
-    """Return the last-processed address from the previous on-chain run,
-    or empty string when no cursor exists / cursor unreadable. Never
-    raises — a broken cursor file just means "start from the beginning."
-    """
+def _load_cursor_dict() -> dict:
+    """Return the full cursor dict (last_address, wrapped, last_new_scan_ts,
+    updated_at) or {} when unreadable. Never raises."""
     if not os.path.exists(CURSOR_PATH):
-        return ""
+        return {}
     try:
         with open(CURSOR_PATH) as f:
-            data = json.load(f) or {}
-        return str(data.get("last_address") or "")
+            return json.load(f) or {}
     except (OSError, json.JSONDecodeError):
-        return ""
+        return {}
 
 
-def _save_cursor(last_address: str, wrapped: bool = False) -> None:
+def _load_cursor() -> str:
+    """Back-compat wrapper — return just last_address."""
+    return str(_load_cursor_dict().get("last_address") or "")
+
+
+def _save_cursor(
+    last_address: str,
+    wrapped: bool = False,
+    new_scan_ts: int | None = None,
+) -> None:
     """Persist the cursor to disk atomically. `wrapped=True` when the
-    walker finished the tail of the address set and reset — logged in
-    the cursor payload for grep-ability."""
+    walker finished the tail of the address set and reset. If
+    `new_scan_ts` is None the previous last_new_scan_ts value is
+    preserved (Phase B mid-run saves must not clobber Phase A's HWM);
+    pass an explicit int to advance the high-water mark after a Phase A
+    completes within budget."""
+    existing = _load_cursor_dict()
+    payload = {
+        "last_address": last_address,
+        "wrapped": wrapped,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    if new_scan_ts is not None:
+        payload["last_new_scan_ts"] = int(new_scan_ts)
+    elif "last_new_scan_ts" in existing:
+        payload["last_new_scan_ts"] = existing["last_new_scan_ts"]
     try:
         os.makedirs(os.path.dirname(CURSOR_PATH), exist_ok=True)
         tmp = CURSOR_PATH + ".tmp"
         with open(tmp, "w") as f:
-            json.dump({
-                "last_address": last_address,
-                "wrapped": wrapped,
-                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            }, f)
+            json.dump(payload, f)
         os.replace(tmp, CURSOR_PATH)
     except OSError as e:
         log(f"WARN cursor save failed: {e}")
@@ -296,6 +311,70 @@ def active_addresses() -> set[str]:
     except Exception as e:
         log(f"WARN events.db read failed: {e}")
     return seen
+
+
+# Phase A cap: addresses first-seen since last scan are the ONLY set with
+# any real chance of having gained a fresh Domain field. Cap at 5000 so a
+# busy week's overflow rolls into the next weekly run instead of starving
+# Phase B (cursor walk through the old set). Wired 2026-09-04 rework.
+PHASE_A_CAP = 5000
+
+
+def _events_db_max_ts() -> int | None:
+    """Max(ts) across the events table, or None if empty/unreadable."""
+    if not os.path.exists(EVENTS_DB_PATH):
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+        row = conn.execute("SELECT MAX(ts) FROM events").fetchone()
+        conn.close()
+        return int(row[0]) if row and row[0] is not None else None
+    except Exception as e:
+        log(f"WARN events.db max(ts) read failed: {e}")
+        return None
+
+
+def _phase_a_first_seen_since(hwm_ts: int) -> tuple[list[str], int]:
+    """Return (sorted new addresses whose earliest events.db appearance
+    is strictly after `hwm_ts`, max_ts observed).
+
+    Single full-table scan of events.db is O(rows) but avoids a nested
+    NOT-EXISTS query; events.db is capped by retention and stays in
+    the low-hundreds-of-MB range in practice.
+    """
+    if not os.path.exists(EVENTS_DB_PATH):
+        return [], hwm_ts
+    prior: set[str] = set()
+    recent: set[str] = set()
+    max_ts = hwm_ts
+    try:
+        conn = sqlite3.connect(f"file:{EVENTS_DB_PATH}?mode=ro", uri=True)
+        # Index events_ts_idx exists — use it to split the scan.
+        # Old set first (bounds recent-set exclusion).
+        for from_a, to_a in conn.execute(
+            "SELECT DISTINCT from_addr, to_addr FROM events WHERE ts <= ?",
+            (hwm_ts,),
+        ):
+            if from_a:
+                prior.add(from_a)
+            if to_a:
+                prior.add(to_a)
+        for from_a, to_a, ts in conn.execute(
+            "SELECT from_addr, to_addr, ts FROM events WHERE ts > ?",
+            (hwm_ts,),
+        ):
+            if ts and ts > max_ts:
+                max_ts = int(ts)
+            if from_a:
+                recent.add(from_a)
+            if to_a:
+                recent.add(to_a)
+        conn.close()
+    except Exception as e:
+        log(f"WARN events.db Phase A read failed: {e}")
+        return [], hwm_ts
+    new_addrs = sorted(recent - prior)
+    return new_addrs, max_ts
 
 
 def fetch_domain_field(client: JsonRpcClient, address: str) -> str | None:
@@ -610,12 +689,12 @@ def scan_account_mode(
                 f"NEW={new_count} REFRESHED={refreshed_count} "
                 f"NO_DOMAIN={no_domain_count} UNVERIFIABLE={unverifiable_count} "
                 f"ERROR={error_count} · cursor={last_processed}")
-            if mode_tag == "on-chain":
+            if mode_tag in ("on-chain", "on-chain-cursor"):
                 _save_cursor(last_processed)
         time.sleep(THROTTLE_S)
 
     # Final cursor save + summary line
-    if mode_tag == "on-chain" and last_processed:
+    if mode_tag in ("on-chain", "on-chain-cursor") and last_processed:
         _save_cursor(last_processed)
     log(f"[{mode_tag}] SUMMARY: probed={len(candidates)} NEW={new_count} "
         f"REFRESHED={refreshed_count} NO_DOMAIN={no_domain_count} "
@@ -768,6 +847,116 @@ def main() -> int:
             try:
                 if mode == "org":
                     new, ref = scan_org_mode(named, args.dry_run)
+                elif mode == "on-chain":
+                    # Two-phase (2026-09-04 rework):
+                    #   Phase A = addresses first-seen in events.db since
+                    #     the previous run's high-water mark (capped at
+                    #     PHASE_A_CAP). These are the only set with any
+                    #     real chance of gaining a fresh Domain field.
+                    #   Phase B = existing cursor walk through the old
+                    #     active-address set, spending whatever budget
+                    #     Phase A left over. HWM only advances if Phase A
+                    #     completed fully within budget so surplus new
+                    #     addresses roll into the next run.
+                    cursor_dict = _load_cursor_dict()
+                    last_hwm = cursor_dict.get("last_new_scan_ts")
+
+                    phase_a_budget = PHASE_A_CAP
+                    if remaining_budget is not None:
+                        phase_a_budget = min(PHASE_A_CAP, remaining_budget)
+
+                    if last_hwm is None:
+                        # First run under this scheme: no baseline, so
+                        # skip Phase A and anchor HWM at current max(ts)
+                        # so next weekly run has a "since" to key on.
+                        phase_a_cands: list[str] = []
+                        anchor_ts = _events_db_max_ts()
+                        if anchor_ts is not None:
+                            _save_cursor(
+                                cursor_dict.get("last_address", ""),
+                                wrapped=cursor_dict.get("wrapped", False),
+                                new_scan_ts=anchor_ts,
+                            )
+                        log(f"  [on-chain-new] first run under two-phase "
+                            f"scheme — no last_new_scan_ts baseline; "
+                            f"Phase A skipped; HWM anchored at {anchor_ts}")
+                        phase_a_max_ts = anchor_ts
+                        phase_a_capped = False
+                    else:
+                        new_addrs, phase_a_max_ts = _phase_a_first_seen_since(int(last_hwm))
+                        available = len(new_addrs)
+                        if available > phase_a_budget:
+                            phase_a_cands = new_addrs[:phase_a_budget]
+                            phase_a_capped = True
+                            log(f"  [on-chain-new] {available} newly-active "
+                                f"addresses since ts>{last_hwm}; capping at "
+                                f"budget={phase_a_budget}; HWM held "
+                                f"(surplus rolls into next run)")
+                        else:
+                            phase_a_cands = new_addrs
+                            phase_a_capped = False
+                            log(f"  [on-chain-new] {available} newly-active "
+                                f"addresses since ts>{last_hwm}; all fit in "
+                                f"budget={phase_a_budget}; HWM advances to "
+                                f"{phase_a_max_ts} after Phase A")
+
+                    # Cross-mode dedup + curated filter (same rules as
+                    # _gather_candidates so Phase A + earlier modes and
+                    # Phase A + Phase B never re-walk the same address).
+                    if phase_a_cands:
+                        before_dedup = len(phase_a_cands)
+                        phase_a_cands = [a for a in phase_a_cands if a not in seen]
+                        dropped = before_dedup - len(phase_a_cands)
+                        if dropped:
+                            log(f"  [on-chain-new] cross-mode dedup: "
+                                f"{dropped}/{before_dedup} candidate(s) "
+                                f"already walked in an earlier mode — skipping")
+                        if not args.force_recheck:
+                            phase_a_cands = filter_curated(phase_a_cands)
+                    seen.update(phase_a_cands)
+
+                    pa_new, pa_ref = scan_account_mode(
+                        phase_a_cands, named, args.dry_run,
+                        mode_tag="on-chain-new",
+                    )
+                    per_mode_new["on-chain-new"] = pa_new
+                    per_mode_ref["on-chain-new"] = pa_ref
+
+                    # Advance HWM iff Phase A completed within budget
+                    # (surplus? keep old HWM so next run picks it up).
+                    if last_hwm is not None and not phase_a_capped and phase_a_max_ts is not None:
+                        _save_cursor(
+                            _load_cursor_dict().get("last_address", ""),
+                            wrapped=_load_cursor_dict().get("wrapped", False),
+                            new_scan_ts=int(phase_a_max_ts),
+                        )
+                        log(f"  [on-chain-new] HWM advanced to {phase_a_max_ts}")
+
+                    if remaining_budget is not None:
+                        remaining_budget = max(0, remaining_budget - len(phase_a_cands))
+
+                    # Phase B — cursor walk with whatever budget is left.
+                    if remaining_budget is None or remaining_budget > 0:
+                        pb_cands = _gather_candidates(
+                            "on-chain", args, seen, remaining_budget,
+                        )
+                        seen.update(pb_cands)
+                        pb_new, pb_ref = scan_account_mode(
+                            pb_cands, named, args.dry_run,
+                            mode_tag="on-chain-cursor",
+                        )
+                        if remaining_budget is not None:
+                            remaining_budget = max(0, remaining_budget - len(pb_cands))
+                    else:
+                        pb_new, pb_ref = 0, 0
+                        log("  [on-chain-cursor] SKIP — budget exhausted by Phase A")
+                    per_mode_new["on-chain-cursor"] = pb_new
+                    per_mode_ref["on-chain-cursor"] = pb_ref
+
+                    # Aggregate into the mode-name key too, for the
+                    # top-line summary readers that still expect "on-chain".
+                    new = pa_new + pb_new
+                    ref = pa_ref + pb_ref
                 else:
                     cands = _gather_candidates(
                         mode, args, seen, remaining_budget,
