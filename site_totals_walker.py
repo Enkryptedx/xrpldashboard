@@ -68,6 +68,41 @@ CREATE TABLE IF NOT EXISTS site_totals (
     countries_placeholder_t1 INT NOT NULL,
     CHECK (id = 1)
 );
+
+-- Append-only companion to site_totals (2026-09-03).
+--
+-- The singleton `site_totals` answers "what are the current totals?" but
+-- can't answer "how much did they grow?" without a manual diff against
+-- prior page_view queries. This history table lets any "growth over N
+-- days" question resolve to a single query without recomputing over
+-- page_views' full history.
+--
+-- Backfill deferred by ruling — we start from tonight and let the
+-- daily walker accrete. The singleton row keeps working for
+-- "what's the current number" callers unchanged.
+--
+-- Same fields as site_totals except id/CHECK (which are singleton
+-- discipline, meaningless in the history table). computed_at is
+-- the natural primary key — two rows can't share a wall-clock
+-- second (walker is daily), and if a re-run collides ON CONFLICT
+-- DO NOTHING preserves the earlier row.
+CREATE TABLE IF NOT EXISTS site_totals_history (
+    computed_at   BIGINT PRIMARY KEY,
+    total_hits    BIGINT NOT NULL,
+    human_hits    BIGINT NOT NULL,
+    bot_hits      BIGINT NOT NULL,
+    countries_all       INT NOT NULL,
+    countries_human     INT NOT NULL,
+    countries_null      INT NOT NULL,
+    countries_placeholder_t1 INT NOT NULL,
+    countries_all_excluding_t1   INT NOT NULL,
+    countries_human_excluding_t1 INT NOT NULL,
+    us_states_all       INT NOT NULL,
+    us_states_human     INT NOT NULL,
+    us_state_tracking_since_epoch BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS site_totals_history_computed_at_idx
+    ON site_totals_history (computed_at DESC);
 """
 
 _SCHEMA_ADD_COLS = [
@@ -231,6 +266,29 @@ def main():
                     c_all_no_t1, c_hum_no_t1,
                     us_st_all, us_st_hum, US_STATE_TRACKING_SINCE_EPOCH,
                 ))
+                # 2026-09-03: also append to history (Part 3 —
+                # site_totals_history). ON CONFLICT DO NOTHING
+                # preserves the earlier row if a re-run happens to
+                # collide on the same wall-clock second (unlikely
+                # on a daily cadence but defensive against manual
+                # kicks). Decrease-guard still compares against the
+                # singleton row, unchanged.
+                cur.execute(
+                    "INSERT INTO site_totals_history ("
+                    "  computed_at, total_hits, human_hits, bot_hits, "
+                    "  countries_all, countries_human, countries_null, "
+                    "  countries_placeholder_t1, countries_all_excluding_t1, "
+                    "  countries_human_excluding_t1, us_states_all, "
+                    "  us_states_human, us_state_tracking_since_epoch"
+                    ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (computed_at) DO NOTHING",
+                    (
+                        now_epoch, total, human, bot,
+                        c_all, c_hum, c_null, c_t1,
+                        c_all_no_t1, c_hum_no_t1,
+                        us_st_all, us_st_hum, US_STATE_TRACKING_SINCE_EPOCH,
+                    ),
+                )
             conn.commit()
 
         payload = {
@@ -287,6 +345,7 @@ def main():
                 "countries_all_excluding_t1 is available as an alternate reading if T1 (Tor) placement is considered non-canonical.",
                 "us_states_* counts have a shorter clock than country counts. The state clock started 2026-09-01 20:51 UTC when commit a092bbb went live; nothing before that has region_code populated. A small us_states_all number early in the state clock's life is expected and will grow with time.",
                 "Data-integrity: an all-time count in the guarded set going down flags a walker_health finding — append-only data should never regress.",
+                "Growth-over-time queries: the walker also appends a row to site_totals_history on each run (Part 3, 2026-09-03). 'How much did we grow in N days' resolves to a single query against that table — no page_views recomputation required. No backfill; the history table starts accreting from 2026-09-03 forward.",
             ],
         }
         _write_docs_json(payload)
