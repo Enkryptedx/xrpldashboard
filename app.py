@@ -31,8 +31,10 @@ from amm_scan_pools import (
 from network_pulse import fetch_pulse_cached
 from tx_type_mix import fetch_tx_type_mix, WINDOWS as TX_MIX_WINDOWS, DEFAULT_WINDOW as TX_MIX_DEFAULT_WINDOW
 from xrp_price import fetch_xrp_price_cached
-from cold_storage import fetch_cold_storage_cached
-from escrow_supply import fetch_escrow_locked_cached
+# cold_storage / escrow_supply live-fetch functions removed from top-level
+# imports 2026-09-03: routes now import fetch_*_from_db() at call site
+# instead. The old live-fetch functions still exist in the modules for
+# tests / CLI use but are no longer called from any web route.
 from total_supply import fetch_total_supply_cached, XRP_DESIGN_SUPPLY_FALLBACK
 import amendments_state
 from amendments_state import fetch_amendments_state_cached
@@ -1920,7 +1922,11 @@ def _build_xrp_distribution(ranked_full):
     homepage viz does not (retained shape in case a future viz wants
     the freshness signal without recomputing it)."""
     try:
-        esc = fetch_escrow_locked_cached()
+        # 2026-09-03: switched from fetch_escrow_locked_cached (live RPC to
+        # public XRPL, ~52/hr walker_node_fallback) to DB-backed read
+        # populated by escrow_supply_walker every 15 min via LAN rippled.
+        from escrow_supply import fetch_escrow_locked_from_db
+        esc = fetch_escrow_locked_from_db()
     except Exception:
         esc = None
     escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
@@ -2142,7 +2148,11 @@ def index():
     ranked_top5 = [r for r in ranked_full if (r.get("tvl_usd") or 0) > 0][:5]
 
     try:
-        cold = fetch_cold_storage_cached()
+        # 2026-09-03: switched from fetch_cold_storage_cached (live RPC to
+        # public XRPL, ~214/hr walker_node_fallback) to DB-backed read
+        # populated by cold_storage_walker every 15 min via LAN rippled.
+        from cold_storage import fetch_cold_storage_from_db
+        cold = fetch_cold_storage_from_db()
     except Exception:
         cold = None
 
