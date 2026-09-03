@@ -381,6 +381,28 @@
     <strong>{{ _('Trust model — what the anchor proves and what it does not.') }}</strong>
     {{ _('The on-ledger anchor proves timestamped commitment to a published digest — that this exact') }} <code>chain_root</code> {{ _('existed and was published by this date. It does not prove the underlying analytics are correct; that is the job of the four-layer audit, cross-checks, and published methodology. The anchor makes silent rewriting detectable, not errors impossible. The signed-snapshot chain is tamper-evident against the site alone; the on-ledger anchor makes tampering additionally require a contradicting public XRPL history — a much larger and third-party-observed act.') }}
   </p>
+  <p>
+    <strong>{{ _('Anchored metric set (v1 — 7 metrics, effective 2026-09-04).') }}</strong>
+    {{ _('Every metric committed to the signed-snapshot chain must originate from our own rippled node on the LAN or from artifacts derived from it. The daily leaf currently commits these seven:') }}
+  </p>
+  <ol>
+    <li><code>xrpl_validated_ledger_index</code> — {{ _('validated ledger index read directly from LAN rippled') }}</li>
+    <li><code>amm_pools_count</code> — {{ _('active AMM pool count from') }} <code>amm_ranked.json</code> ({{ _('ranker walker queries LAN rippled') }})</li>
+    <li><code>amm_pools_total_tvl_usd</code> — {{ _('sum of TVL over the ranked AMM set (same source as above)') }}</li>
+    <li><code>mpt_total_count</code> — {{ _('MPT issuance count from') }} <code>mpt_snapshot.json</code> ({{ _('snapshot walker uses LAN rippled, with public cascade as a last-resort fallback logged in') }} <code>walker_node_fallback</code>)</li>
+    <li><code>named_accounts_count</code> — {{ _('watchlist size from') }} <code>named_accounts.json</code> ({{ _('curated file; auto-verification walker uses LAN rippled') }})</li>
+    <li><code>rlusd_xrpl_supply</code> — {{ _('RLUSD circulating on XRPL, via LAN rippled') }} <code>gateway_balances</code></li>
+    <li><code>rwa_total_aum_usd</code> — {{ _('RWA total from LAN-derived') }} <code>amm_ranked.json</code> {{ _('cross-referenced against curated') }} <code>rwa_pool_attribution</code></li>
+  </ol>
+  <p>
+    <strong>{{ _('What is intentionally NOT anchored — and why.') }}</strong>
+    {{ _('The Ethereum-side RLUSD supply and the cross-chain total that derives from it appear on') }} <a href="/rlusd">/rlusd</a> {{ _('but are excluded from the anchored set. Ethereum-side data originates from a public Ethereum RPC (we do not run our own Ethereum node), and the anchor covenant requires "originated from our own node." Keeping those numbers off the chain preserves the meaning of the anchor.') }}
+    <br>
+    {{ _('Meta-observability metrics — walker_health_summary, claims_index_state, editorial_state — are included in the signed leaf payload as proof-of-our-own-machinery-health but sit outside the "seven anchored data metrics" narrative because they describe our infrastructure, not XRPL analytics.') }}
+  </p>
+  <p style="color: var(--muted); font-size: 0.9rem;">
+    {{ _('Historical continuity: prior anchors (#1–#4) were stamped with a wider metric set that included the two Ethereum-side entries. Their leaf hashes and chain roots remain immutable — the append-only chain records each day\'s leaf_hash as it was, and verification recomputes the merkle root over all leaves regardless of which specific metrics any given day contained. Changing the anchored set for future leaves does not break verification of past ones.') }}
+  </p>
   <p style="color: var(--muted); font-size: 0.9rem;">
     {{ _('Full spec (accounts, memo layout, deviation history, pre-lock amendments) lives at') }} <code>docs/ONLEDGER_ANCHOR_SPEC.md</code> {{ _('in the source repository.') }}
   </p>

@@ -667,14 +667,27 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
     except (OSError, json.JSONDecodeError) as e:
         errors.append(f"named_accounts: {type(e).__name__}")
 
-    # RLUSD cross-chain supply (from PG cache written by rlusd_live worker)
+    # RLUSD supply (from PG cache written by rlusd_live worker).
+    #
+    # SOVEREIGNTY (Option A ruling 2026-09-03, pre-anchor-#5):
+    #   Only the XRPL-side supply is anchored. The Ethereum-side supply
+    #   (and the cross-chain total that derives from it) originate from
+    #   ETH_RPC (Alchemy or similar public Ethereum endpoint) — Charlie
+    #   doesn't run his own Ethereum node, so those two metrics
+    #   FUNDAMENTALLY cannot meet the "originated from own node" bar
+    #   the anchored-metric set commits to.
+    #
+    # Both eth_supply and total_supply remain visible on /rlusd (labeled
+    # "Ethereum-side, sourced via public RPC — not anchored") so the
+    # disclosure-symmetry rule holds. Only their inclusion in the signed
+    # snapshot chain is removed. The rlusd_supply_history write below
+    # still captures both sides (so /rlusd continues to render history).
     try:
         import db
         _rlusd_result = db.read_rlusd_state_cache()
         rlusd_cached = _rlusd_result[0] if _rlusd_result else None
         if rlusd_cached:
             xrpl_supply = (rlusd_cached.get("xrpl") or {}).get("supply")
-            eth_supply = (rlusd_cached.get("eth") or {}).get("supply")
             if xrpl_supply is not None:
                 metrics.append({
                     "name": "rlusd_xrpl_supply",
@@ -682,20 +695,8 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
                     "unit": "usd",
                     "source": "rlusd_state_cache (xrpl gateway_balances)",
                 })
-            if eth_supply is not None:
-                metrics.append({
-                    "name": "rlusd_eth_supply",
-                    "value": round(float(eth_supply), 2),
-                    "unit": "usd",
-                    "source": "rlusd_state_cache (ethereum transfer log)",
-                })
-            if xrpl_supply is not None and eth_supply is not None:
-                metrics.append({
-                    "name": "rlusd_total_supply",
-                    "value": round(float(xrpl_supply) + float(eth_supply), 2),
-                    "unit": "usd",
-                    "source": "rlusd_state_cache (xrpl + ethereum)",
-                })
+            # rlusd_eth_supply + rlusd_total_supply intentionally NOT
+            # anchored — see sovereignty comment above.
             # Append today's row to rlusd_supply_history (daily UPSERT
             # keyed on snapshot_date, derived from payload.fetched_at).
             # Same in-memory payload, no extra fetch. Fleet sweep 2026-07-28:
