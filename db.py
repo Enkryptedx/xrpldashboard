@@ -34,6 +34,7 @@ context-managed connections, which is fine at our request volume.
 import datetime
 import os
 import json
+import re
 import threading
 import time
 from contextlib import contextmanager
@@ -67,18 +68,38 @@ def _is_schema_drift(exc):
     ))
 
 
+# Hostname/URL/user/IP redactor for exception messages logged via _log_err.
+# 2026-09-03 fix: writer_connect_failed errors in launchd_logs/ named the
+# Neon username and backend IPs verbatim ("password authentication failed
+# for user 'neondb_owner'", "connection to server at '<ip>' failed"). Scaled
+# fix at the log helper so every _log_err caller inherits the redaction.
+_LEAK_RE = re.compile(
+    r"host ['\"]?[A-Za-z0-9._-]+['\"]?"                # DNS-error shape: host 'X'
+    r"|postgres[a-z+]*://[^\s'\"]+"                    # full URL
+    r"|ep-[A-Za-z0-9-]+\.[A-Za-z0-9.-]+"               # bare Neon endpoint hostname
+    r"|at \"\d{1,3}(?:\.\d{1,3}){3}\""                 # psycopg backend IP form
+    r"|\bneondb_owner\b"                               # Neon DB username
+)
+
+
+def _sanitize_for_log(obj) -> str:
+    """Redact hostnames/URLs/user/IPs before stringifying an exception for log output."""
+    return _LEAK_RE.sub("[REDACTED]", str(obj))
+
+
 def _log_err(category, exc):
     # Schema-drift class NEVER self-heals; treating it like a transient
     # error hid the tx_type_hourly gap for 6 minutes on 2026-07-07.
     # Always loud, never rate-limited. First hit dumps the stack so the
     # caller is grep-able.
+    exc_str = _sanitize_for_log(exc)
     if _is_schema_drift(exc):
         if category not in _SCHEMA_DRIFT_SEEN:
             import traceback
-            tb = "".join(traceback.format_exception(
-                type(exc), exc, exc.__traceback__))
+            tb = _sanitize_for_log("".join(traceback.format_exception(
+                type(exc), exc, exc.__traceback__)))
             print(
-                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc}\n"
+                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc_str}\n"
                 f"[db]     Won't self-heal — apply init_schema() or the "
                 f"relevant migration.\n{tb}",
                 flush=True,
@@ -86,7 +107,7 @@ def _log_err(category, exc):
             _SCHEMA_DRIFT_SEEN.add(category)
         else:
             print(
-                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc}",
+                f"[db] !!! SCHEMA-DRIFT {category}: {type(exc).__name__}: {exc_str}",
                 flush=True,
             )
         return
@@ -97,7 +118,7 @@ def _log_err(category, exc):
         _LAST_ERR_LOG[category] = (last_ts, suppressed + 1)
         return
     tail = f" ({suppressed} suppressed in last {_ERR_LOG_INTERVAL_S}s)" if suppressed else ""
-    print(f"[db] {category}: {type(exc).__name__}: {exc}{tail}", flush=True)
+    print(f"[db] {category}: {type(exc).__name__}: {exc_str}{tail}", flush=True)
     _LAST_ERR_LOG[category] = (now, 0)
 
 
