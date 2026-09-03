@@ -58,9 +58,27 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 EVENTS_DB_PATH = os.path.join(HERE, "events.db")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 ORG_DOMAINS_PATH = os.path.join(HERE, "xrpl_org_domains.json")
+# Cursor for on-chain mode: last address processed in the previous run.
+# Next run resumes from the address alphabetically after this one.
+# When the whole active-address set has been walked, cursor resets to
+# empty and the next run starts over. Wired 2026-09-04 so a --limit N
+# bounded run at a weekly cadence still visits the full set eventually
+# instead of restarting from 'r...' every week.
+CURSOR_PATH = os.path.join(HERE, "launchd_state", "verify_toml_cursor.json")
 LOG_PATH = os.path.join(HERE, "verify_toml.log")
 
-XRPL_RPC = os.environ.get("XRPL_RPC", "https://s1.ripple.com:51234")
+# Prefer LAN Lenovo rippled (XRPL_LOCAL_NODE, matches xrpl_client.py
+# convention) so this walker doesn't spam Ripple's public s1/s2 with
+# ~thousands of account_info calls per run. Fall through to the older
+# XRPL_RPC env var for backwards compatibility, then public s1 as a
+# last resort — but the wrapper sources ~/.config/xrpldashboard/env
+# which sets XRPL_LOCAL_NODE, so the public URL should never be hit
+# in practice. Wired 2026-09-04 with the cursor + bounded-run rework.
+XRPL_RPC = (
+    os.environ.get("XRPL_LOCAL_NODE")
+    or os.environ.get("XRPL_RPC")
+    or "https://s1.ripple.com:51234"
+)
 HTTP_TIMEOUT = 10
 USER_AGENT = "xrpldashboard-toml-verifier/1.0 (+https://xrpldashboard.com)"
 WALKER_CADENCE_SECONDS = 604800  # StartInterval in com.xrpldashboard.verify_toml.plist (weekly)
@@ -195,6 +213,69 @@ def filter_curated(addrs: list[str]) -> list[str]:
         log(f"  curated-skip: {skipped}/{len(addrs)} candidate(s) already "
             f"labeled (non-derived); use --force-recheck to override")
     return kept
+
+
+def _install_timeout_handler(walker_name: str) -> None:
+    """Install SIGALRM handler so a wrapper-alarm timeout writes a clean
+    walker_health_end row (ok=false, message=timeout) instead of the
+    Python process dying mid-address and leaving walker_health showing
+    the started-but-never-ended state the pre-2026-09-04 stuck runs
+    exhibited. Best-effort DB write; cursor persistence still happens
+    every 500 addresses inside scan_account_mode."""
+    import signal
+    try:
+        import db as _wh_db
+    except Exception:
+        _wh_db = None
+
+    def _handler(signum, frame):
+        try:
+            log(f"SIGALRM (signum={signum}) — wrapper timeout, writing walker_health_end and exiting")
+            if _wh_db is not None:
+                _wh_db.write_walker_health_end(
+                    walker_name, ok=False,
+                    message="wrapper SIGALRM timeout — partial run; cursor persisted",
+                )
+        finally:
+            os._exit(124)  # POSIX 124 = timeout convention
+
+    try:
+        signal.signal(signal.SIGALRM, _handler)
+    except (ValueError, OSError) as e:
+        log(f"WARN could not install SIGALRM handler: {e}")
+
+
+def _load_cursor() -> str:
+    """Return the last-processed address from the previous on-chain run,
+    or empty string when no cursor exists / cursor unreadable. Never
+    raises — a broken cursor file just means "start from the beginning."
+    """
+    if not os.path.exists(CURSOR_PATH):
+        return ""
+    try:
+        with open(CURSOR_PATH) as f:
+            data = json.load(f) or {}
+        return str(data.get("last_address") or "")
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+
+def _save_cursor(last_address: str, wrapped: bool = False) -> None:
+    """Persist the cursor to disk atomically. `wrapped=True` when the
+    walker finished the tail of the address set and reset — logged in
+    the cursor payload for grep-ability."""
+    try:
+        os.makedirs(os.path.dirname(CURSOR_PATH), exist_ok=True)
+        tmp = CURSOR_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({
+                "last_address": last_address,
+                "wrapped": wrapped,
+                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }, f)
+        os.replace(tmp, CURSOR_PATH)
+    except OSError as e:
+        log(f"WARN cursor save failed: {e}")
 
 
 def active_addresses() -> set[str]:
@@ -464,59 +545,82 @@ def scan_account_mode(
     proof. Same verification path for every candidate source; the only
     difference is the `mode_tag` printed in log lines so a multi-mode
     --all run is grep-able."""
-    log(f"[{mode_tag}] probing {len(candidates)} account(s) for Domain field")
+    log(f"[{mode_tag}] probing {len(candidates)} account(s) for Domain field "
+        f"(XRPL_RPC={XRPL_RPC})")
     if not candidates:
         return 0, 0
     client = JsonRpcClient(XRPL_RPC)
     new_count = refreshed_count = 0
+    no_domain_count = 0
+    error_count = 0
+    unverifiable_count = 0
+    last_processed = ""
+    # Slimmed logging (2026-09-04): NO_DOMAIN/UNVERIFIABLE/ERROR were the
+    # bulk of the previous 250MB .out.log noise (~99.9% of iterations).
+    # Track them as counters and emit periodic progress lines instead.
+    PROGRESS_EVERY = 500
+    # Throttle: 0.02s per address (was 0.15s) since we're on LAN rippled
+    # now, not polite-pace public. LAN can absorb 50 req/s from one client.
+    THROTTLE_S = 0.02
 
     for i, addr in enumerate(candidates, 1):
+        last_processed = addr
         domain = fetch_domain_field(client, addr)
         if not domain:
-            log(f"  [{mode_tag}] {addr}: NO_DOMAIN")
-            time.sleep(0.1)  # throttle even on misses
-            continue
-        final_url, toml_data, err = fetch_toml(domain)
-        if toml_data is None:
-            log(f"  [{mode_tag}] {addr}: ERROR domain={domain} → "
-                f"toml unusable ({err})")
-            time.sleep(0.1)
-            continue
-        if not address_in_toml(toml_data, addr):
-            log(f"  [{mode_tag}] {addr}: UNVERIFIABLE domain={domain} → "
-                f"toml does NOT list this address")
-            time.sleep(0.1)
-            continue
-        # Find the ACCOUNTS block matching this address (for name/desc)
-        block = next(
-            (b for b in toml_data.get("ACCOUNTS", [])
-             if isinstance(b, dict) and b.get("address") == addr),
-            None,
-        )
-        entry = {
-            "name": derive_name(toml_data, domain, block),
-            "category": categorize(toml_data, None),
-            "verified_via": final_url,
-            "_note": (
-                f"Auto-verified via two-way ownership proof: on-chain "
-                f"`Domain` field decodes to {domain}, and {final_url} lists "
-                f"this address in its [[ACCOUNTS]] section."
-            ),
-        }
-        outcome = upsert(named, addr, entry, dry_run)
-        if outcome == "new":
-            new_count += 1
-            log(f"  [{mode_tag}] {addr}: VERIFIED [{i}/{len(candidates)}] → "
-                f"{entry['name']} ({final_url})")
-        elif outcome == "refreshed":
-            refreshed_count += 1
-            log(f"  [{mode_tag}] {addr}: REFRESHED [{i}/{len(candidates)}] "
-                f"({final_url})")
-        else:
-            log(f"  [{mode_tag}] {addr}: VERIFIED (noop, already current)")
-        _write_account_label(addr, entry, mode_tag, dry_run)
-        time.sleep(0.15)  # be polite to public RPC
+            no_domain_count += 1
+        elif True:
+            final_url, toml_data, err = fetch_toml(domain)
+            if toml_data is None:
+                error_count += 1
+                # Domain-fetch errors are rare enough to keep logging
+                log(f"  [{mode_tag}] {addr}: ERROR domain={domain} → toml unusable ({err})")
+            elif not address_in_toml(toml_data, addr):
+                unverifiable_count += 1
+                # Unverifiable domains are typically parked/unrelated; count-only
+            else:
+                block = next(
+                    (b for b in toml_data.get("ACCOUNTS", [])
+                     if isinstance(b, dict) and b.get("address") == addr),
+                    None,
+                )
+                entry = {
+                    "name": derive_name(toml_data, domain, block),
+                    "category": categorize(toml_data, None),
+                    "verified_via": final_url,
+                    "_note": (
+                        f"Auto-verified via two-way ownership proof: on-chain "
+                        f"`Domain` field decodes to {domain}, and {final_url} lists "
+                        f"this address in its [[ACCOUNTS]] section."
+                    ),
+                }
+                outcome = upsert(named, addr, entry, dry_run)
+                if outcome == "new":
+                    new_count += 1
+                    log(f"  [{mode_tag}] {addr}: VERIFIED [{i}/{len(candidates)}] → "
+                        f"{entry['name']} ({final_url})")
+                elif outcome == "refreshed":
+                    refreshed_count += 1
+                    log(f"  [{mode_tag}] {addr}: REFRESHED [{i}/{len(candidates)}] "
+                        f"({final_url})")
+                _write_account_label(addr, entry, mode_tag, dry_run)
+        # Persist cursor every PROGRESS_EVERY addresses so a mid-run
+        # SIGALRM kill doesn't lose most of the walk.
+        if i % PROGRESS_EVERY == 0:
+            log(f"  [{mode_tag}] progress: {i}/{len(candidates)} · "
+                f"NEW={new_count} REFRESHED={refreshed_count} "
+                f"NO_DOMAIN={no_domain_count} UNVERIFIABLE={unverifiable_count} "
+                f"ERROR={error_count} · cursor={last_processed}")
+            if mode_tag == "on-chain":
+                _save_cursor(last_processed)
+        time.sleep(THROTTLE_S)
 
+    # Final cursor save + summary line
+    if mode_tag == "on-chain" and last_processed:
+        _save_cursor(last_processed)
+    log(f"[{mode_tag}] SUMMARY: probed={len(candidates)} NEW={new_count} "
+        f"REFRESHED={refreshed_count} NO_DOMAIN={no_domain_count} "
+        f"UNVERIFIABLE={unverifiable_count} ERROR={error_count} · "
+        f"cursor_end={last_processed}")
     return new_count, refreshed_count
 
 
@@ -561,6 +665,26 @@ def _gather_candidates(
         cands = sorted(active_addresses())
         extras = [s.strip() for s in (args.extra or "").split(",") if s.strip()]
         cands.extend(a for a in extras if a not in cands)
+        # Cursor: skip addresses <= last-processed from previous run.
+        # If cursor is past the last candidate (wrapped), reset it so
+        # this run starts over from the beginning of the sorted set.
+        # Wired 2026-09-04: weekly walker + --limit N per run + cursor
+        # persistence = full active-set gets walked over N weeks
+        # (previously each week restarted from 'r...', never reaching
+        # 'z...' before the walker was killed).
+        cursor = _load_cursor()
+        if cursor:
+            before = len(cands)
+            cands = [a for a in cands if a > cursor]
+            if not cands:
+                log(f"  [on-chain] cursor at {cursor!r} past end of "
+                    f"{before} active addresses — resetting and walking from top")
+                _save_cursor("", wrapped=True)
+                cands = sorted(active_addresses())
+                cands.extend(a for a in extras if a not in cands)
+            else:
+                log(f"  [on-chain] cursor {cursor!r} → resuming with "
+                    f"{len(cands)}/{before} candidates remaining in this cycle")
     elif mode == "mpt-issuers":
         cands = candidates_mpt_issuers()
     elif mode == "token-issuers":
@@ -615,6 +739,10 @@ def main() -> int:
             import db as _wh_db_mod
             _wh_db = _wh_db_mod
             _wh_db.write_walker_health_start("verify_toml", cadence_seconds=WALKER_CADENCE_SECONDS)
+            # 2026-09-04: install SIGALRM handler so wrapper timeout
+            # writes clean walker_health_end + preserves the cursor
+            # that scan_account_mode has been saving every 500 addrs.
+            _install_timeout_handler("verify_toml")
         except Exception:
             _wh_db = None
 
