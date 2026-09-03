@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Comment</key>
+	<string>Twice-daily local mirror of JJ's memory dirs + workspace anchor .mds to /Volumes/DockVault/memory_mirror. ~12h cadence via StartInterval (43200s) per macos_startinterval_over_calendar rule (2026-09-03 conversion) — Calendar-based Hour=4,16 skipped missed times when Mac was asleep; Interval fires on wake if 12h has elapsed. A working day of memory must not ride on a single 4am snapshot (2026-08-31 ruling). DockVault-only per doctrine: memory dirs are personal-context + decision-log, never ride to B2. Uses rclone sync with --backup-dir for dated diff snapshots + 90d retention. Loud-skip if DockVault not mounted or launchd context lacks FDA.</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.charliebruce.xrpldashboard.dockvault_memory_mirror</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/charliebruce/xrpl_test/launchd/run_dockvault_memory_mirror.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_memory_mirror.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/charliebruce/xrpl_test/launchd_logs/dockvault_memory_mirror.out.log</string>
+	<key>StartInterval</key>
+	<integer>43200</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/charliebruce/xrpl_test</string>
+</dict>
+</plist>
