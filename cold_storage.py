@@ -27,6 +27,19 @@ NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 
 CACHE_TTL = int(os.environ.get("COLD_CACHE_TTL", "300"))
 
+# Staleness threshold for the DB-backed read path. Walker cadence is 900s
+# (15 min); 3 missed cycles = 2700s (45 min) before the /cold-storage
+# route flips sourcing from SOVEREIGN to STALE_CACHE and shows the
+# disclosure banner. Distinct from FALLBACK: no live public RPC is
+# happening, cache is just old. Wired 2026-09-03.
+STALENESS_THRESHOLD_SECONDS = 45 * 60
+
+_SCOPE_NOTE = (
+    "Currently tracking the Ripple monthly-release escrows declared in "
+    "ripple.com/.well-known/xrp-ledger.toml. Exchange cold wallets and "
+    "foundation reserves coming later."
+)
+
 _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
 
@@ -117,11 +130,84 @@ def fetch_cold_storage():
         "fetched_ok": fetched_ok,
         "largest_name": largest["name"] if largest else None,
         "largest_xrp": largest["balance_xrp"] if largest else 0.0,
-        "scope_note": (
-            "Currently tracking the Ripple monthly-release escrows declared in "
-            "ripple.com/.well-known/xrp-ledger.toml. Exchange cold wallets and "
-            "foundation reserves coming later."
-        ),
+        "scope_note": _SCOPE_NOTE,
+    }
+
+
+def fetch_cold_storage_from_db():
+    """DB-backed read path used by the /cold-storage route (2026-09-03+).
+
+    Reads cold_storage_snapshot (populated by cold_storage_walker.py every
+    15 min via LAN rippled), enriches with named_accounts.json metadata,
+    and returns the same dict shape as fetch_cold_storage()/fetch_cold_
+    storage_cached() plus a `sourcing` key:
+      - `sovereign` when the oldest row is fresher than STALENESS_THRESHOLD
+      - `stale-cache` when older (walker down / DB write lagging) — the
+        route's disclosure banner keys off this
+    Route never hits XRPL live — walker owns all the RPC traffic. On empty
+    DB (walker never ran / DB unreachable) returns empty-shape + stale-cache
+    so the template can render a degraded but honest view.
+    """
+    import db
+    from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
+
+    snap = db.read_cold_storage_snapshot()
+    rows_raw = snap["rows"]
+    named = _load_named()
+
+    if not rows_raw:
+        return {
+            "rows": [], "total_xrp": 0.0, "tracked_count": 0,
+            "escrow_account_count": 0, "fetched_ok": 0,
+            "largest_name": None, "largest_xrp": 0.0,
+            "scope_note": _SCOPE_NOTE,
+            "cached_age_seconds": None,
+            "sourcing": SOURCING_STALE_CACHE,
+        }
+
+    rows = []
+    total_xrp = 0.0
+    fetched_ok = 0
+    for r in rows_raw:
+        addr = r["address"]
+        meta = named.get(addr) or {}
+        name = meta.get("name") or addr
+        bal = float(r["balance_xrp"]) if r["fetch_ok"] else None
+        row = {
+            "address": addr,
+            "address_short": f"{addr[:6]}…{addr[-4:]}",
+            "name": name,
+            "balance_xrp": bal,
+            "sequence": r["sequence"],
+            "error": not r["fetch_ok"],
+            "verified_via": meta.get("verified_via"),
+        }
+        if r["fetch_ok"]:
+            fetched_ok += 1
+            total_xrp += bal
+        rows.append(row)
+
+    rows.sort(key=lambda x: -(x["balance_xrp"] if x["balance_xrp"] is not None else -1))
+    largest = rows[0] if rows and rows[0]["balance_xrp"] else None
+    escrow_account_count = sum(
+        1 for r in rows_raw
+        if "RLUSD" not in (named.get(r["address"], {}).get("name") or "")
+    )
+
+    age = snap.get("age_seconds") or 0
+    sourcing = SOURCING_STALE_CACHE if age > STALENESS_THRESHOLD_SECONDS else SOURCING_SOVEREIGN
+
+    return {
+        "rows": rows,
+        "total_xrp": total_xrp,
+        "tracked_count": len(rows),
+        "escrow_account_count": escrow_account_count,
+        "fetched_ok": fetched_ok,
+        "largest_name": largest["name"] if largest else None,
+        "largest_xrp": largest["balance_xrp"] if largest else 0.0,
+        "scope_note": _SCOPE_NOTE,
+        "cached_age_seconds": float(age),
+        "sourcing": sourcing,
     }
 
 

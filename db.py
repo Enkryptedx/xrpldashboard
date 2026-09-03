@@ -1109,6 +1109,40 @@ CREATE UNIQUE INDEX IF NOT EXISTS api_request_counters_identity_hour_uniq
     );
 CREATE INDEX IF NOT EXISTS api_request_counters_bucket_idx
     ON api_request_counters (hour_bucket);
+
+-- Cold-storage per-address balance cache. Mac walker (cold_storage_walker.py)
+-- fetches balances for every category=ripple address in named_accounts.json
+-- every 15 min via LAN rippled and upserts here. The /cold-storage route
+-- reads latest rows from this table instead of making 21 live account_info
+-- RPC calls per page render. Wired 2026-09-03 to stop Ripple public-node
+-- dependence + kill ~214 walker_node_fallback rows/hr for walker_name=cold_storage.
+CREATE TABLE IF NOT EXISTS cold_storage_snapshot (
+    address       TEXT PRIMARY KEY,
+    balance_xrp   NUMERIC(20, 6) NOT NULL,
+    sequence      BIGINT,
+    owner_count   INTEGER,
+    ledger_index  BIGINT NOT NULL,
+    fetched_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fetch_ok      BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE INDEX IF NOT EXISTS cold_storage_snapshot_fetched_at_idx
+    ON cold_storage_snapshot (fetched_at DESC);
+
+-- Escrow-supply aggregate cache. Companion to cold_storage_snapshot: sums
+-- EscrowCreate objects across the same category=ripple cohort (minus RLUSD
+-- issuer) and stores one aggregate row (singleton, id=1 per rlusd_state_cache
+-- pattern). Mac walker (escrow_supply_walker.py) refreshes every 15 min.
+-- Kills ~52 walker_node_fallback rows/hr for walker_name=escrow_supply.
+CREATE TABLE IF NOT EXISTS escrow_supply_snapshot (
+    id                INTEGER PRIMARY KEY,
+    total_xrp         NUMERIC(24, 6) NOT NULL,
+    object_count      INTEGER NOT NULL,
+    accounts_scanned  INTEGER NOT NULL,
+    accounts_total    INTEGER NOT NULL,
+    ledger_index      BIGINT NOT NULL,
+    fetched_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (id = 1)
+);
 """
 
 
@@ -6931,3 +6965,153 @@ def increment_api_request_counter(key_id):
         _log_err("increment_api_request_counter_failed", e)
         _drop_writer_conn()
         return None
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# cold_storage_snapshot + escrow_supply_snapshot
+#
+# Wired 2026-09-03. Mac-side walkers (cold_storage_walker.py +
+# escrow_supply_walker.py) upsert here every 15 min via LAN rippled;
+# /cold-storage route on Render reads from these tables instead of
+# making 21 live account_info + 19 account_objects RPC calls per render.
+# Kills ~214/hr + ~52/hr walker_node_fallback churn to public XRPL.
+# Staleness handled by the route (SOURCING_STALE_CACHE banner if oldest
+# fetched_at > threshold).
+# ─────────────────────────────────────────────────────────────────────────
+
+def replace_cold_storage_snapshot(rows):
+    """Replace-on-write full refresh of cold_storage_snapshot. `rows` is
+    a list of dicts with keys: address (PK), balance_xrp (float), sequence
+    (int|None), owner_count (int|None), ledger_index (int), fetch_ok (bool).
+
+    Wraps in one transaction so a partial failure leaves the previous
+    snapshot intact. Returns True on success, False on any DB error —
+    walker treats False as soft-fail and walker_health_end records it.
+    """
+    if not pg_available():
+        return False
+    if not rows:
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM cold_storage_snapshot")
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO cold_storage_snapshot "
+                        "  (address, balance_xrp, sequence, owner_count, "
+                        "   ledger_index, fetched_at, fetch_ok) "
+                        "VALUES (%s, %s, %s, %s, %s, NOW(), %s)",
+                        (
+                            r["address"],
+                            r["balance_xrp"],
+                            r.get("sequence"),
+                            r.get("owner_count"),
+                            r["ledger_index"],
+                            bool(r.get("fetch_ok", True)),
+                        ),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("replace_cold_storage_snapshot_failed", e)
+        return False
+
+
+def read_cold_storage_snapshot():
+    """Read all cold_storage_snapshot rows. Returns dict:
+        {"rows": [...], "fetched_at": datetime|None, "age_seconds": int|None}
+    Empty rows + None on PG unavailable / table empty — caller renders
+    "no data yet" state + SOURCING_STALE_CACHE (or similar) banner.
+    age_seconds is computed from the OLDEST fetched_at across rows
+    (worst-case freshness for the batch)."""
+    if not pg_available():
+        return {"rows": [], "fetched_at": None, "age_seconds": None}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT address, balance_xrp, sequence, owner_count, "
+                    "       ledger_index, fetched_at, fetch_ok "
+                    "  FROM cold_storage_snapshot "
+                    " ORDER BY balance_xrp DESC NULLS LAST"
+                )
+                cols = [d.name for d in cur.description]
+                raw = [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_cold_storage_snapshot_failed", e)
+        return {"rows": [], "fetched_at": None, "age_seconds": None}
+    if not raw:
+        return {"rows": [], "fetched_at": None, "age_seconds": None}
+    oldest = min(r["fetched_at"] for r in raw)
+    age = (datetime.datetime.now(datetime.timezone.utc) - oldest).total_seconds()
+    return {"rows": raw, "fetched_at": oldest, "age_seconds": int(age)}
+
+
+def upsert_escrow_supply_snapshot(total_xrp, object_count, accounts_scanned,
+                                  accounts_total, ledger_index):
+    """Upsert the singleton escrow_supply_snapshot row (id=1). Returns
+    True on success, False on DB error."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO escrow_supply_snapshot "
+                    "  (id, total_xrp, object_count, accounts_scanned, "
+                    "   accounts_total, ledger_index, fetched_at) "
+                    "VALUES (1, %s, %s, %s, %s, %s, NOW()) "
+                    "ON CONFLICT (id) DO UPDATE SET "
+                    "  total_xrp = EXCLUDED.total_xrp, "
+                    "  object_count = EXCLUDED.object_count, "
+                    "  accounts_scanned = EXCLUDED.accounts_scanned, "
+                    "  accounts_total = EXCLUDED.accounts_total, "
+                    "  ledger_index = EXCLUDED.ledger_index, "
+                    "  fetched_at = EXCLUDED.fetched_at",
+                    (total_xrp, object_count, accounts_scanned,
+                     accounts_total, ledger_index),
+                )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("upsert_escrow_supply_snapshot_failed", e)
+        return False
+
+
+def read_escrow_supply_snapshot():
+    """Read singleton escrow_supply_snapshot row. Returns dict:
+        {"total_xrp": ..., "object_count": ..., "accounts_scanned": ...,
+         "accounts_total": ..., "ledger_index": ..., "fetched_at": ...,
+         "age_seconds": int}
+    or all-None dict when unavailable/empty."""
+    empty = {"total_xrp": None, "object_count": None, "accounts_scanned": None,
+             "accounts_total": None, "ledger_index": None, "fetched_at": None,
+             "age_seconds": None}
+    if not pg_available():
+        return empty
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT total_xrp, object_count, accounts_scanned, "
+                    "       accounts_total, ledger_index, fetched_at "
+                    "  FROM escrow_supply_snapshot WHERE id = 1"
+                )
+                row = cur.fetchone()
+    except Exception as e:
+        _log_err("read_escrow_supply_snapshot_failed", e)
+        return empty
+    if not row:
+        return empty
+    fetched_at = row[5]
+    age = int((datetime.datetime.now(datetime.timezone.utc) - fetched_at).total_seconds())
+    return {
+        "total_xrp": float(row[0]),
+        "object_count": int(row[1]),
+        "accounts_scanned": int(row[2]),
+        "accounts_total": int(row[3]),
+        "ledger_index": int(row[4]),
+        "fetched_at": fetched_at,
+        "age_seconds": age,
+    }

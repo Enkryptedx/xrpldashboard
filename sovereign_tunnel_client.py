@@ -55,6 +55,16 @@ REQUEST_TIMEOUT_SECONDS = 20.0
 SOURCING_SOVEREIGN = "sovereign"
 SOURCING_FALLBACK = "fallback-public-rpc"
 SOURCING_NO_TUNNEL = "public-no-tunnel-configured"
+# Added 2026-09-03 for /cold-storage + /escrow-supply DB-cache pattern:
+# the page reads walker-populated DB rows instead of hitting XRPL live.
+# STALE_CACHE fires when the newest row's fetched_at is older than the
+# page's staleness threshold (typically 3× the walker cadence, e.g. 45min
+# for a 15-min walker). It's DISTINCT from FALLBACK — no live RPC is
+# happening, just the cache is old. Ranks between SOVEREIGN (fresh cache)
+# and NO_TUNNEL (public RPC directly): worse than sovereign, but better
+# than a live public-RPC hit because Ripple's public servers aren't
+# touched.
+SOURCING_STALE_CACHE = "stale-cache"
 
 
 # ── Connection pool (module-level, thread-safe) ───────────────────────
@@ -168,10 +178,12 @@ def worse_sourcing(a: str, b: str) -> str:
     """Aggregate two sourcing values for a page that ran multiple fetches
     (e.g. /lending: amendment check + broker/vault/loan fetch). Any single
     fallback taints the whole page. Precedence (worst first):
-      fallback-public-rpc > public-no-tunnel-configured > sovereign
+      fallback-public-rpc > public-no-tunnel-configured > stale-cache > sovereign
     """
     if SOURCING_FALLBACK in (a, b):
         return SOURCING_FALLBACK
     if SOURCING_NO_TUNNEL in (a, b):
         return SOURCING_NO_TUNNEL
+    if SOURCING_STALE_CACHE in (a, b):
+        return SOURCING_STALE_CACHE
     return SOURCING_SOVEREIGN

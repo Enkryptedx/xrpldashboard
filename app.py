@@ -6035,12 +6035,26 @@ def token_detail(currency, issuer):
 @app.route("/cold-storage")
 def cold_storage():
     """Cold-storage tracker — currently scoped to Ripple monthly-release escrows.
-    See cold_storage.py for the liquid-balance data layer, escrow_supply.py
-    for the EscrowCreate-summed locked total, and escrow_snapshot.py for the
-    per-escrow browser + upcoming-releases calendar (walker-populated)."""
-    data = fetch_cold_storage_cached()
+
+    2026-09-03: switched from live XRPL fetch (21 account_info + 19
+    account_objects RPCs per page render, ~215/hr + ~52/hr walker_node_
+    fallback churn to public Ripple servers) to DB-backed reads populated
+    by two Mac-side walkers (cold_storage_walker + escrow_supply_walker)
+    on 15-min cadence via LAN rippled. Route never touches XRPL live now.
+    Staleness: `stale-cache` sourcing + disclosure banner if the oldest
+    DB row is older than 45 min (3 missed walker cycles). escrow_snapshot
+    (per-escrow browser + upcoming-releases calendar) was already DB-
+    backed via escrow_snapshot.py — unchanged."""
+    from cold_storage import fetch_cold_storage_from_db
+    from escrow_supply import fetch_escrow_locked_from_db
+    from sovereign_tunnel_client import (
+        SOURCING_SOVEREIGN,
+        worse_sourcing,
+    )
+
+    data = fetch_cold_storage_from_db()
     try:
-        locked = fetch_escrow_locked_cached()
+        locked = fetch_escrow_locked_from_db()
     except Exception:
         locked = None
     try:
@@ -6048,12 +6062,21 @@ def cold_storage():
         escrows = fetch_escrow_snapshot_cached()
     except Exception:
         escrows = None
+
+    # Aggregate sourcing across the two cache-backed fetches. Any single
+    # stale-cache taints the whole page per the disclosure symmetry rule
+    # (banner + footer key off page_sourcing).
+    page_sourcing = data.get("sourcing") or SOURCING_SOVEREIGN
+    if locked and locked.get("sourcing"):
+        page_sourcing = worse_sourcing(page_sourcing, locked["sourcing"])
+
     import cold_storage as cold_storage_module
     return render_template(
         "cold_storage.html",
         data=data,
         locked=locked,
         escrows=escrows,
+        page_sourcing=page_sourcing,
         cache_ttl_seconds=cold_storage_module.CACHE_TTL,
     )
 

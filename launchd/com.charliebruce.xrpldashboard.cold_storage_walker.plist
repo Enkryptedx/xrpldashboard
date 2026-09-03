@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.cold_storage_walker</string>
+
+    <key>Comment</key>
+    <string>15-min cache-write walker for /cold-storage. Fetches balances for every category=ripple address in named_accounts.json via LAN rippled (XRPL_LOCAL_NODE) and upserts them into cold_storage_snapshot in Neon. The /cold-storage route reads from the table instead of making 21 live account_info RPCs per page render. Wired 2026-09-03 to kill ~214/hr walker_node_fallback rows against public Ripple servers. StartInterval per macos_startinterval_over_calendar rule (rolling — fires on wake if the interval has elapsed). Balances only change on Ripple's monthly release schedule; 15-min cadence gives 3 write cycles inside the /cold-storage 45-min staleness threshold so one missed fire is invisible.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_cold_storage_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/cold_storage_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/cold_storage_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

@@ -25,6 +25,10 @@ from xrpl_client import get_client
 
 CACHE_TTL = int(os.environ.get("ESCROW_CACHE_TTL", "3600"))
 
+# Staleness threshold for the DB-backed read path (see cold_storage.py
+# STALENESS_THRESHOLD_SECONDS — same value + rationale). Wired 2026-09-03.
+STALENESS_THRESHOLD_SECONDS = 45 * 60
+
 _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
 
@@ -123,6 +127,41 @@ def fetch_escrow_locked_cached(ttl=None):
         result["cached_age_seconds"] = None
         result["is_fallback"] = True
         return result
+
+
+def fetch_escrow_locked_from_db():
+    """DB-backed read path used by the /cold-storage route (2026-09-03+).
+
+    Reads the singleton escrow_supply_snapshot row (populated by
+    escrow_supply_walker.py every 15 min via LAN rippled). Returns the
+    same dict shape as fetch_escrow_locked_cached() plus a `sourcing`
+    key (sovereign|stale-cache). Route never hits XRPL live.
+    """
+    import db
+    from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
+
+    snap = db.read_escrow_supply_snapshot()
+    if snap["fetched_at"] is None:
+        return {
+            "total_xrp": 0.0,
+            "object_count": 0,
+            "accounts_scanned": 0,
+            "accounts_total": 0,
+            "cached_age_seconds": None,
+            "is_fallback": True,
+            "sourcing": SOURCING_STALE_CACHE,
+        }
+    age = snap["age_seconds"] or 0
+    sourcing = SOURCING_STALE_CACHE if age > STALENESS_THRESHOLD_SECONDS else SOURCING_SOVEREIGN
+    return {
+        "total_xrp": snap["total_xrp"],
+        "object_count": snap["object_count"],
+        "accounts_scanned": snap["accounts_scanned"],
+        "accounts_total": snap["accounts_total"],
+        "cached_age_seconds": float(age),
+        "is_fallback": sourcing == SOURCING_STALE_CACHE,
+        "sourcing": sourcing,
+    }
 
 
 if __name__ == "__main__":

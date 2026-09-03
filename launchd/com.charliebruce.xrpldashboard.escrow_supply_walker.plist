@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.escrow_supply_walker</string>
+
+    <key>Comment</key>
+    <string>15-min cache-write walker for /cold-storage "locked" figure. Sums EscrowCreate objects across the category=ripple cohort (minus RLUSD issuer) via LAN rippled and upserts one aggregate row into the singleton escrow_supply_snapshot in Neon. The /cold-storage route reads from the table instead of making 19 paginated account_objects RPCs per page render. Wired 2026-09-03 to kill ~52/hr walker_node_fallback rows for a total that changes once a month. Same 15-min cadence + StartInterval discipline as cold_storage_walker.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_escrow_supply_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/escrow_supply_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/escrow_supply_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
