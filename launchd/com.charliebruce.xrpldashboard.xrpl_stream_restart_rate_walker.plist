@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.xrpl_stream_restart_rate_walker</string>
+
+    <key>Comment</key>
+    <string>Hourly SSH-to-Lenovo grep of xrpl_stream.log for restart events over rolling 24h + 7d windows. Writes walker_health row (findings_count = 24h restart count, message = full breakdown incl. watchdog-triggered subset). Turns the log-buried restart rate (measured 2026-09-03 at ~53/day, 98% watchdog-triggered) into a first-class metric so the trend is visible without a manual grep. StartInterval per macos_startinterval_over_calendar rule.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_xrpl_stream_restart_rate_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/xrpl_stream_restart_rate_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/xrpl_stream_restart_rate_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
