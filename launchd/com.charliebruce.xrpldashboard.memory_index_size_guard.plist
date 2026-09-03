@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>Comment</key>
-	<string>Hourly memory_index_size_guard walker. Cadence 3600s = 1h. Verifies MEMORY.md (claude auto-memory root index) stays under the loader read window — two tiers: WARN at 22500B/190L (soft, above accepted Tier-0 full-text size), CRITICAL at 24500B/198L (louder, ~500B / ~2 lines before hard loader cap ~24985B/~200L). Pages via walker_health findings_count>0 before a standing rule is silently truncated from always-injected context. Wired 2026-08-31 with the memory restructure (root ROOT INDEX + rules-full.md + index-archive.md); thresholds raised 2026-09-03 per Charlie's ruling after the 2026-09-02 Tier-0 expansion. RunAtLoad TRUE for an immediate baseline row; StartInterval reruns hourly. Wrapper timeout belt 60s (Perl SIGALRM).</string>
+	<string>Hourly memory_index_size_guard walker. Cadence 3600s = 1h. Verifies MEMORY.md (claude auto-memory root index) stays under the loader read window — two tiers: WARN at 24200B/190L (soft, above accepted Tier-0 full-text size 23799B on 2026-09-03), CRITICAL at 24500B/198L (louder, ~500B / ~2 lines before hard loader cap ~24985B/~200L). Pages via walker_health findings_count>0 before a standing rule is silently truncated from always-injected context. Wired 2026-08-31 with the memory restructure (root ROOT INDEX + rules-full.md + index-archive.md); thresholds raised 2026-09-03 per Charlie's ruling after the 2026-09-02 Tier-0 expansion. RunAtLoad TRUE for an immediate baseline row; StartInterval reruns hourly. Wrapper timeout belt 60s (Perl SIGALRM).</string>
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PATH</key>

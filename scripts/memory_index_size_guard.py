@@ -12,13 +12,15 @@ This guard pages BEFORE truncation so a growing index never silently
 loses standing rules again.
 
 Thresholds (two tiers — soft warn first, hard-cap warn second/louder):
-  bytes: WARN at 22500 (22 KB), HARD_WARN at 24500 — hard loader cap ~24985
-  lines: WARN at 190,           HARD_WARN at 198   — hard read guideline ~200
+  bytes: WARN at 24200, HARD_WARN at 24500 — hard loader cap ~24985
+  lines: WARN at 190,   HARD_WARN at 198   — hard read guideline ~200
 
 Rationale (2026-09-03): Tier-0 full-text rules pushed the accepted
 MEMORY.md size to ~23800B (Charlie's 2026-09-02 ruling). Old 20000B
-warn tripped hourly on accepted-size — noise. New tiers: soft warn
-above the accepted ceiling, hard warn ~500B before truncation.
+warn tripped hourly on accepted-size — noise. Soft warn sits ~400B
+above current accepted size (silent by default); hard warn ~500B
+before truncation. Soft-to-hard gap = 300B (tight, but hard cap is
+close so any growth past soft means real pressure).
 
 Two distinct signals — do not conflate:
   ok=True + findings_count=0 → MEMORY.md within both thresholds. Green.
@@ -53,7 +55,7 @@ WALKER_CADENCE_SECONDS = 3600
 DEFAULT_MEMORY_MD = os.path.expanduser(
     "~/.claude/projects/-Users-charliebruce--openclaw-workspace/memory/MEMORY.md"
 )
-BYTES_WARN = 22500       # soft warn — above accepted Tier-0 size (~23800)
+BYTES_WARN = 24200       # soft warn — above accepted Tier-0 size (23799 on 2026-09-03)
 BYTES_HARD_WARN = 24500  # loud warn — ~500B before hard loader cap ~24985
 LINES_WARN = 190         # soft warn — above accepted line count
 LINES_HARD_WARN = 198    # loud warn — ~2 lines before hard guideline ~200
