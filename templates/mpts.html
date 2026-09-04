@@ -477,7 +477,7 @@
   </div>
 
   <footer>
-    {{ _('Data: live') }} <code>ledger_data</code> {{ _('RPC against') }} <code>s1.ripple.com</code>. {{ _('Issuance list (which MPTs exist, their asset_class, ticker) refreshes daily via the snapshot worker; holder counts refresh hourly via') }} <code>mpt_holders</code>{{ _(' and exclude the issuer\'s own treasury balance, matching CMC circulating-supply convention.') }}
+    {{ _('Data:') }} <code>ledger_data</code> {{ _('walk of our own rippled node, cached and refreshed daily (issuance list — which MPTs exist, their asset_class, ticker) and hourly (holder counts via') }} <code>mpt_holders</code>{{ _('). Holder counts exclude the issuer\'s own treasury balance, matching CMC circulating-supply convention.') }}
     {{ _('Status badges are derived: "live" if outstanding supply is greater than zero, "test" for issuances using TEST/TMPT tickers or "Test ..." names, otherwise "prepared".') }}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research.') }}

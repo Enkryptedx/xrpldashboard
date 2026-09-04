@@ -247,7 +247,7 @@
   </p>
   <ul>
     <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Used by the browser for all per-page real-time subscriptions (whales, tokens, pools, wallet, liveness chip).') }}</li>
-    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Used by the server-side worker for streaming validated transactions into Postgres. Also kept as the first browser fallback if xrplcluster.com is unreachable.') }}</li>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Kept as the first browser fallback if xrplcluster.com is unreachable. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
   </ul>
 
@@ -259,9 +259,9 @@
     <li><strong><code>1rpc.io/eth</code></strong> — {{ _('Public, key-free Ethereum JSON-RPC endpoint. Used by /api/rlusd/state to read the RLUSD ERC-20 totalSupply and recent Transfer logs at contract 0x8292…17eD.') }}</li>
   </ul>
   <p>
-    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side traffic has now been migrated to the community-operated cluster') }}
+    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side traffic runs against the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. Our own') }} <code>rippled</code> {{ _('node is already in service for the forward-walker and MCP tool envelope reads (classified') }} <code>own-node</code> {{ _('in the source-tier table below); migrating the continuous XRPL streaming worker from') }} <code>wss://s2.ripple.com</code> {{ _('to the same own-node is the next step.') }}
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. Our own') }} <code>rippled</code> {{ _('node on the LAN carries the forward-walker, MCP tool envelope reads, and — since 2026-09 — the continuous XRPL streaming worker (all classified') }} <code>own-node</code> {{ _('in the source-tier table below). Server-side reads from Render still fall through public XRPL RPC where the tunnel path is not wired; each such page discloses its source.') }}
   </p>
 
   <h3>{{ _('Database') }}</h3>
@@ -288,7 +288,7 @@
   <h2 id="signed-snapshots">{{ _('Signed integrity snapshots') }}</h2>
   <p>
     {% trans -%}
-    Every UTC day we capture a small canonical set of headline metrics (validated ledger index, AMM pool count and total TVL, MPT count, named-accounts count), hash that capture into a Merkle leaf, extend a global append-only Merkle chain, and sign the resulting envelope with our Ed25519 private key. The signed JSON is published at <code>/.well-known/snapshots/YYYY-MM-DD.json</code> and the cumulative chain root at <code>/.well-known/snapshots/chain.json</code>. Both are static, cacheable, and independently verifiable forever.
+    Every UTC day we capture a canonical set of headline metrics (the seven anchored data metrics enumerated in <a href="#anchored-metric-set">Anchored metric set</a> below, plus three meta-observability metrics), hash that capture into a Merkle leaf, extend a global append-only Merkle chain, and sign the resulting envelope with our Ed25519 private key. The signed JSON is published at <code>/.well-known/snapshots/YYYY-MM-DD.json</code> and the cumulative chain root at <code>/.well-known/snapshots/chain.json</code>. Both are static, cacheable, and independently verifiable forever.
     {%- endtrans %}
   </p>
   <p>
@@ -382,7 +382,7 @@
     {{ _('The on-ledger anchor proves timestamped commitment to a published digest — that this exact') }} <code>chain_root</code> {{ _('existed and was published by this date. It does not prove the underlying analytics are correct; that is the job of the four-layer audit, cross-checks, and published methodology. The anchor makes silent rewriting detectable, not errors impossible. The signed-snapshot chain is tamper-evident against the site alone; the on-ledger anchor makes tampering additionally require a contradicting public XRPL history — a much larger and third-party-observed act.') }}
   </p>
   <p>
-    <strong>{{ _('Anchored metric set (v1 — 7 metrics, effective 2026-09-04).') }}</strong>
+    <strong id="anchored-metric-set">{{ _('Anchored metric set (v1 — 7 metrics, effective 2026-09-04).') }}</strong>
     {{ _('Every metric committed to the signed-snapshot chain must originate from our own rippled node on the LAN or from artifacts derived from it. The daily leaf currently commits these seven:') }}
   </p>
   <ol>

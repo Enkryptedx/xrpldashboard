@@ -7126,7 +7126,7 @@ def security_txt():
 # agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
-> Public read-only data for the XRP Ledger, computed directly from XRPL and Ethereum nodes. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+> Public read-only data for the XRP Ledger, computed directly from our own XRPL node; Ethereum-side data (RLUSD cross-chain supply) via public RPC, disclosed. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
 Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
 
@@ -7204,9 +7204,9 @@ _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
         "Public read-only data for the XRP Ledger, computed directly from "
-        "XRPL and Ethereum nodes. Every response is proof-annotated with "
-        "source, freshness stamp, and CLAIMS reference. Free for humans "
-        "and identified agents."
+        "our own XRPL node; Ethereum-side data (RLUSD cross-chain supply) via "
+        "public RPC, disclosed. Every response is proof-annotated with source, "
+        "freshness stamp, and CLAIMS reference. Free for humans and identified agents."
     ),
     "disambiguation": (
         "Independent project — not affiliated with Ripple, the XRP Ledger "
