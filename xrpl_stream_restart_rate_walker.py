@@ -41,7 +41,7 @@ REMOTE_CMD_TEMPLATE = (
     "now=time.time()\n"
     "cut24=datetime.datetime.fromtimestamp(now-86400).strftime(\\\"%Y-%m-%d %H:%M:%S\\\")\n"
     "cut7d=datetime.datetime.fromtimestamp(now-7*86400).strftime(\\\"%Y-%m-%d %H:%M:%S\\\")\n"
-    "c24=c7=c_wd=0\n"
+    "c24=c7=c_wd=c_sr=0\n"
     "with open(p) as f:\n"
     "  for line in f:\n"
     "    if len(line)<21 or line[0]!=\\\"[\\\": continue\n"
@@ -50,7 +50,8 @@ REMOTE_CMD_TEMPLATE = (
     "      if ts>=cut7d: c7+=1\n"
     "      if ts>=cut24: c24+=1\n"
     "    elif \\\"watchdog: no msg\\\" in line and ts>=cut24: c_wd+=1\n"
-    "print(f\\\"{{c24}} {{c7}} {{c_wd}}\\\")"
+    "    elif \\\"session ended cleanly\\\" in line and ts>=cut24: c_sr+=1\n"
+    "print(f\\\"{{c24}} {{c7}} {{c_wd}} {{c_sr}}\\\")"
     '"'
 )
 
@@ -59,7 +60,7 @@ def _log(msg: str) -> None:
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-def fetch_counts() -> tuple[int, int, int]:
+def fetch_counts() -> tuple[int, int, int, int]:
     cmd = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
            REMOTE_HOST, REMOTE_CMD_TEMPLATE.format(log=REMOTE_LOG)]
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -69,9 +70,9 @@ def fetch_counts() -> tuple[int, int, int]:
             f"stderr={out.stderr.strip()[:200]}"
         )
     parts = out.stdout.strip().split()
-    if len(parts) != 3:
+    if len(parts) != 4:
         raise RuntimeError(f"unexpected stdout shape: {out.stdout!r}")
-    return int(parts[0]), int(parts[1]), int(parts[2])
+    return int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
 
 
 def main() -> int:
@@ -87,10 +88,14 @@ def main() -> int:
     msg = "init"
     findings = None
     try:
-        c24, c7, cwd = fetch_counts()
-        findings = c24
+        c24, c7, cwd, csr = fetch_counts()
+        # findings_count is a compound liveness signal: process restarts
+        # + session reconnects (both are data gaps in events.db that the
+        # process-restart count alone missed until 2026-09-04).
+        findings = c24 + csr
         rate_per_day_7d = c7 / 7.0
         msg = (f"24h={c24} restarts (watchdog={cwd}) · "
+               f"session_reconnects={csr} · "
                f"7d={c7} ({rate_per_day_7d:.1f}/day avg) · "
                f"host={REMOTE_HOST}")
         _log(f"OK: {msg}")

@@ -40,4 +40,4 @@ if [[ -f "$RANKED_PATH" ]]; then
   fi
 fi
 
-exec "$PYTHON" "$SCRIPT" "${ARGS[@]}"
+exec "$PYTHON" "$SCRIPT" ${ARGS[@]+"${ARGS[@]}"}

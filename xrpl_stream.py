@@ -37,6 +37,7 @@ import os
 import sqlite3
 import sys
 import threading
+import socket
 import time
 
 import db as pgbridge
@@ -47,6 +48,7 @@ import db as pgbridge
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 XRPL_WS_NODE = os.environ.get("XRPL_LOCAL_WS_NODE", "wss://s2.ripple.com")
+_HOST_LABEL = socket.gethostname()
 RECONNECT_BACKOFF_BASE = 2.0
 RECONNECT_BACKOFF_MAX = 60.0
 HEARTBEAT_EVERY_SECONDS = 300   # write a heartbeat log line every 5 min
@@ -1105,7 +1107,7 @@ def run_session(state):
         # Stamp an immediate heartbeat so prod /health doesn't wait the full
         # HEARTBEAT_EVERY_SECONDS window to learn the worker is back up.
         pgbridge.write_heartbeat(
-            "xrpl_stream:mac",
+            f"xrpl_stream:{_HOST_LABEL}",
             txns_seen=state.get("txns_seen"),
             last_ledger=state.get("last_ledger_index"),
             extra={
@@ -1182,7 +1184,7 @@ def run_session(state):
                         "xrpl_stream", cadence_seconds=HEARTBEAT_EVERY_SECONDS
                     )
                     pgbridge.write_heartbeat(
-                        "xrpl_stream:mac",
+                        f"xrpl_stream:{_HOST_LABEL}",
                         txns_seen=state.get("txns_seen"),
                         last_ledger=state.get("last_ledger_index"),
                         extra={
