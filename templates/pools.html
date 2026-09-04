@@ -701,14 +701,13 @@
     <details>
       <summary>{{ _('Data sources') }}</summary>
       <p>
-        {{ _('Pool index seeded from') }} <code>amm_info</code> {{ _('on the public XRPL node, walking by object ID. Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only. TVL snapshot refreshes on the') }} <code>rank_amms</code> {{ _('cadence (≤30 min).') }}
+        {{ _('Pool index + TVL snapshot are walker-written cached rows: the') }} <code>rank_amms</code> {{ _('walker on our Mac queries') }} <code>amm_info</code> {{ _('against our own rippled node over LAN and refreshes the') }} <code>amm_ranked.json</code> {{ _('artifact ~daily (auto-reset once the artifact ages past 20h). Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only.') }}
       </p>
     </details>
   </div>
 
   <div class="footer">
-    {{ _('swaps and TVL stream in live via WebSocket; pool index seeded from') }}
-    <code>amm_info</code> {{ _('on the public XRPL node.') }}
+    {{ _('swaps stream in live via public WebSocket; pool index + TVL are walker-written from our own node (refreshed ~daily).') }}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>
