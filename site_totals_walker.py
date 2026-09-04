@@ -111,6 +111,23 @@ _SCHEMA_ADD_COLS = [
     "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_states_all INT",
     "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_states_human INT",
     "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS us_state_tracking_since_epoch BIGINT",
+    # Worldwide regions (2026-09-03) — distinct region_code values
+    # covering every country's subdivisions, plus a count of how
+    # many countries have at least one region observed. Same clock
+    # start as us_states_* (region_code capture went live in commit
+    # a092bbb, 2026-09-01 20:51 UTC). See US_STATE_TRACKING_SINCE_EPOCH.
+    #
+    # regions_all counts every non-null region_code — includes US-VA,
+    # CA-QC, ZA-KZN, etc. regions_countries_covered counts distinct
+    # country values on rows where region_code IS NOT NULL.
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS regions_all INT",
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS regions_human INT",
+    "ALTER TABLE site_totals ADD COLUMN IF NOT EXISTS regions_countries_covered INT",
+    # Mirror on the history table so backfilled-forward growth queries
+    # see the new fields.
+    "ALTER TABLE site_totals_history ADD COLUMN IF NOT EXISTS regions_all INT",
+    "ALTER TABLE site_totals_history ADD COLUMN IF NOT EXISTS regions_human INT",
+    "ALTER TABLE site_totals_history ADD COLUMN IF NOT EXISTS regions_countries_covered INT",
 ]
 
 _COMPUTE_SQL = """
@@ -125,7 +142,10 @@ SELECT
   COUNT(DISTINCT country) FILTER (WHERE country IS NOT NULL AND country <> 'T1') AS c_all_no_t1,
   COUNT(DISTINCT country) FILTER (WHERE country IS NOT NULL AND country <> 'T1' AND is_bot IS NOT TRUE) AS c_hum_no_t1,
   COUNT(DISTINCT region_code) FILTER (WHERE region_code LIKE 'US-%%') AS us_states_all,
-  COUNT(DISTINCT region_code) FILTER (WHERE region_code LIKE 'US-%%' AND is_bot IS NOT TRUE) AS us_states_human
+  COUNT(DISTINCT region_code) FILTER (WHERE region_code LIKE 'US-%%' AND is_bot IS NOT TRUE) AS us_states_human,
+  COUNT(DISTINCT region_code) FILTER (WHERE region_code IS NOT NULL) AS regions_all,
+  COUNT(DISTINCT region_code) FILTER (WHERE region_code IS NOT NULL AND is_bot IS NOT TRUE) AS regions_human,
+  COUNT(DISTINCT country) FILTER (WHERE region_code IS NOT NULL) AS regions_countries_covered
 FROM page_views
 """
 # us_states_* counts are naturally since-deploy: region_code wasn't written
@@ -139,8 +159,9 @@ INSERT INTO site_totals (
     id, computed_at, total_hits, human_hits, bot_hits,
     countries_all, countries_human, countries_null, countries_placeholder_t1,
     countries_all_excluding_t1, countries_human_excluding_t1,
-    us_states_all, us_states_human, us_state_tracking_since_epoch
-) VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    us_states_all, us_states_human, us_state_tracking_since_epoch,
+    regions_all, regions_human, regions_countries_covered
+) VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (id) DO UPDATE SET
     computed_at = EXCLUDED.computed_at,
     total_hits = EXCLUDED.total_hits,
@@ -154,11 +175,15 @@ ON CONFLICT (id) DO UPDATE SET
     countries_human_excluding_t1 = EXCLUDED.countries_human_excluding_t1,
     us_states_all = EXCLUDED.us_states_all,
     us_states_human = EXCLUDED.us_states_human,
-    us_state_tracking_since_epoch = EXCLUDED.us_state_tracking_since_epoch
+    us_state_tracking_since_epoch = EXCLUDED.us_state_tracking_since_epoch,
+    regions_all = EXCLUDED.regions_all,
+    regions_human = EXCLUDED.regions_human,
+    regions_countries_covered = EXCLUDED.regions_countries_covered
 """
 
 _PRIOR_SQL = """
-SELECT total_hits, countries_all, countries_all_excluding_t1, us_states_all
+SELECT total_hits, countries_all, countries_all_excluding_t1, us_states_all,
+       regions_all, regions_countries_covered
 FROM site_totals WHERE id = 1
 """
 # Column order must match _MONOTONIC_FIELDS positionally.
@@ -188,6 +213,11 @@ _MONOTONIC_FIELDS = (
     "countries_all",
     "countries_all_excluding_t1",
     "us_states_all",
+    # Worldwide regions (2026-09-03). Same set-membership property
+    # as countries_all: a region either has appeared or hasn't. Neither
+    # can legitimately un-appear on an append-only page_views table.
+    "regions_all",
+    "regions_countries_covered",
 )
 
 
@@ -243,7 +273,8 @@ def main():
                 row = cur.fetchone()
 
             (total, human, bot, c_all, c_hum, c_null, c_t1,
-             c_all_no_t1, c_hum_no_t1, us_st_all, us_st_hum) = row
+             c_all_no_t1, c_hum_no_t1, us_st_all, us_st_hum,
+             reg_all, reg_hum, reg_countries) = row
             now_epoch = int(datetime.now(timezone.utc).timestamp())
 
             new_vals = {
@@ -256,6 +287,9 @@ def main():
                 "countries_human_excluding_t1": c_hum_no_t1,
                 "us_states_all": us_st_all,
                 "us_states_human": us_st_hum,
+                "regions_all": reg_all,
+                "regions_human": reg_hum,
+                "regions_countries_covered": reg_countries,
             }
             decreases = _detect_decreases(prior, new_vals)
 
@@ -265,6 +299,7 @@ def main():
                     c_all, c_hum, c_null, c_t1,
                     c_all_no_t1, c_hum_no_t1,
                     us_st_all, us_st_hum, US_STATE_TRACKING_SINCE_EPOCH,
+                    reg_all, reg_hum, reg_countries,
                 ))
                 # 2026-09-03: also append to history (Part 3 —
                 # site_totals_history). ON CONFLICT DO NOTHING
@@ -279,14 +314,16 @@ def main():
                     "  countries_all, countries_human, countries_null, "
                     "  countries_placeholder_t1, countries_all_excluding_t1, "
                     "  countries_human_excluding_t1, us_states_all, "
-                    "  us_states_human, us_state_tracking_since_epoch"
-                    ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "  us_states_human, us_state_tracking_since_epoch, "
+                    "  regions_all, regions_human, regions_countries_covered"
+                    ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "ON CONFLICT (computed_at) DO NOTHING",
                     (
                         now_epoch, total, human, bot,
                         c_all, c_hum, c_null, c_t1,
                         c_all_no_t1, c_hum_no_t1,
                         us_st_all, us_st_hum, US_STATE_TRACKING_SINCE_EPOCH,
+                        reg_all, reg_hum, reg_countries,
                     ),
                 )
             conn.commit()
@@ -308,6 +345,9 @@ def main():
                 "countries_placeholder_t1": "1 if T1 has ever appeared, else 0 — used to derive the excluding_t1 variants",
                 "us_states_all": "DISTINCT region_code WHERE region_code LIKE 'US-%' — any traffic, since state-tracking deploy (see us_state_tracking_since_utc)",
                 "us_states_human": "DISTINCT US states from is_bot IS NOT TRUE rows — human-only readers of the site",
+                "regions_all": "DISTINCT region_code (any country, any traffic) — worldwide scoreboard of every state/province/region observed since region_code capture went live 2026-09-01 20:51 UTC. Includes US-VA, CA-QC, ZA-KZN, GB-ENG, etc.",
+                "regions_human": "DISTINCT region_code from is_bot IS NOT TRUE rows — human-only worldwide regions",
+                "regions_countries_covered": "DISTINCT country on rows where region_code IS NOT NULL — count of countries where at least one subregion has been observed",
                 "us_state_tracking_since_epoch": "Unix epoch when state-level capture went live (commit a092bbb). Any us_states_* count is strictly since this moment; nothing was captured before.",
             },
             "totals": {
@@ -326,6 +366,9 @@ def main():
                 "us_state_tracking_since_epoch": US_STATE_TRACKING_SINCE_EPOCH,
                 "us_state_tracking_since_utc": datetime.fromtimestamp(
                     US_STATE_TRACKING_SINCE_EPOCH, timezone.utc).isoformat(),
+                "regions_worldwide_any_traffic": reg_all,
+                "regions_worldwide_human_only": reg_hum,
+                "regions_countries_covered": reg_countries,
             },
             "monotonic_check": {
                 "prior_row_present": prior is not None,
@@ -359,7 +402,9 @@ def main():
                 f"clean: total={total:,} human={human:,} bot={bot:,} "
                 f"countries_all={c_all} (excl-T1={c_all_no_t1}) "
                 f"countries_human={c_hum} (excl-T1={c_hum_no_t1}) "
-                f"us_states_all={us_st_all} us_states_human={us_st_hum}"
+                f"us_states_all={us_st_all} us_states_human={us_st_hum} "
+                f"regions_all={reg_all} regions_human={reg_hum} "
+                f"regions_countries_covered={reg_countries}"
             )
             logging.info(message)
             findings = 0

@@ -36,7 +36,12 @@ _cache = {"fetched_at": 0.0, "data": None}
 
 def fetch_total_supply():
     try:
-        client = get_client()
+        # walker_name="total_supply" (2026-09-03) — was defaulting to
+        # "unknown", which surfaced as ~18 walker_node_fallback rows/6h
+        # with walker_name='unknown' during the sovereignty audit and
+        # broke per-page fallback attribution. Every fallback now carries
+        # a real caller identity.
+        client = get_client(walker_name="total_supply")
         resp = client.request(Ledger(ledger_index="validated"))
     except Exception as exc:
         log.warning("total_supply: ledger request failed: %s", exc)
