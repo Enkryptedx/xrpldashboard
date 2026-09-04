@@ -68,6 +68,27 @@ Before beginning the weekly cadence, we ran an external adversarial audit (zero 
 
 ---
 
+## Anchor #5 — 2026-09-04
+
+| Field | Value |
+|-------|-------|
+| Type | A (weekly) |
+| Tx hash | `BB72E91012DA3B05C060FAD64DD405DC09A8BAB3EC1A079AFD82367D65A3B44B` |
+| Ledger | 106764148 |
+| Close time | 2026-09-04 21:17:30 UTC |
+| From | `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` (Anchor) |
+| To | `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd` (Dashboard) |
+| Amount | 0.000001 XRP (1 drop) |
+| Fee | 12 drops |
+| Sequence | 106138935 |
+| MemoData (decoded) | `xrpldashboard/anchor/v1\|2026-09-04\|8e259732deab4050bab0c2af4a6e184949627670c3109fccbe049007d162abbb` |
+| chain_root verified | `8e259732deab4050bab0c2af4a6e184949627670c3109fccbe049007d162abbb` matches live `/.well-known/snapshots/chain.json` `current_root` at time of stamp (validated from own Lenovo LAN node, not public s1 — first anchor whose validation lookup was end-to-end sovereign) |
+| Day of week | Friday (verified from ledger close_time — fifth consecutive Friday cadence, 7d after #4) |
+| On-ledger result | `tesSUCCESS`, `validated=true` |
+| Notes | **First 7-metric anchor** (Option A landed 2026-09-03: `rlusd_eth_supply` and `rlusd_total_supply` dropped from the anchored set — Ethereum data is public-RPC-sourced and can't meet the "originated from our own node" covenant; both still appear on `/rlusd` under a labeled sovereignty-note per `docs/methodology.html#anchored-metric-set`). The 10-metric leaf breakdown = 7 data metrics + 3 v4 meta metrics. `walker_health_summary` at stamp time = `{green=41, stale=1, dead=0}` — captures the post-cleanup state after this morning's cadence-declaration fixes on `rank_amms`/`mcp_*`/`nft_activity_backfill` walkers. **A double-run chain-link defect in the 09-04 snapshot was found by the L2 inspector pre-stamp and corrected before this stamp.** Root cause: `sign_snapshot` computed `previous_root` from `chain["current_root"]` before `append_or_replace_leaf`, so a same-date re-run stored `previous_root` pointing at the first-attempt's chain_root (overwritten and unreachable) instead of the prior day's. Six historical files carry the same defect (05-14/15/16, 06-14, 08-12, 08-30) and are already anchored via #1-4; documented in `docs/CHAIN_LINK_DEFECT_HISTORICAL_2026-09-04.md`. Fix landed in commit `60e9925` — `sign_snapshot` now computes `previous_root = merkle_root(all_leaves[:leaf_index])` after replace, `verify_envelope` gains a fifth `chain_link OK` check, `append_or_replace_leaf` prints a loud stderr on replace so future double-runs are never silent, and a regression test reproduces the scenario end-to-end. `docs/ONLEDGER_ANCHOR_SPEC.md` gains a standing pre-stamp checklist (5-OKs local `--verify` · L2 green · published==local · no `kickstart -k` on `signed_snapshot`). Sequence continuity confirmed 106138931 (#1) → 106138932 (#2) → 106138933 (#3) → 106138934 (#4) → 106138935 (#5), monotonic. Genesis fixture (#1) intact. |
+
+---
+
 ## Anchor #4 — 2026-08-28
 
 | Field | Value |
