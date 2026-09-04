@@ -254,6 +254,35 @@ Once the first anchor lands:
 
 ---
 
+## Pre-stamp checklist (mandatory before every anchor tx)
+
+Established 2026-09-04 after the `chain_link_mismatch` incident on 09-04 caught a
+double-run defect that a stamp would have permanently committed to XRPL.
+
+Before signing and broadcasting any anchor tx:
+
+1. **Local `--verify` passes with all FIVE OKs** — `signature`, `audit_path`,
+   `leaf_hash`, `fingerprint`, `chain_link`. The `chain_link` check was added
+   2026-09-04 specifically to catch the double-run defect locally instead of
+   relying on the L2 inspector to catch it after the fact.
+2. **L2 inspector is GREEN on the target snapshot** — check
+   `/.well-known/snapshots/<date>.json` renders and cross-links cleanly to the
+   prior day. Rendered chain state is what auditors and downstream verifiers
+   consume, so `published == local` matters.
+3. **Published version equals local disk version** — a `curl` of
+   `/.well-known/snapshots/<date>.json` against the local file should
+   byte-identical match. A stale Render deploy served during the stamp window
+   would anchor a chain_root visitors can't see, silently splitting trust.
+4. **Never `launchctl kickstart -k` `signed_snapshot`** — kickstart-k races the
+   plist's scheduled fire and can trigger a double-run (which is what caused
+   the 09-04 incident). Manual invocations must target the script directly
+   (`venv/bin/python signed_snapshot.py [--date YYYY-MM-DD]`) with a clear
+   window before the next scheduled launchd fire.
+
+Details: `docs/CHAIN_LINK_DEFECT_HISTORICAL_2026-09-04.md`.
+
+---
+
 ## Explicitly NOT in this spec
 
 - The `snapshot_anchor_walker` implementation (HELD)

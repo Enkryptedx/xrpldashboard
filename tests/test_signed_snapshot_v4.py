@@ -228,7 +228,16 @@ def test_gate_4a_v4_leaf_contains_three_new_metrics(monkeypatch, tmp_path, stub_
 def test_gate_4b_every_historical_v3_snapshot_verifies():
     """Sweep every signed_snapshots/YYYY-MM-DD.json on disk (all v3
     today) and verify each with the v4-aware verifier. Backward-compat
-    invariant per §3 — v4 must never invalidate a historical stamp."""
+    invariant per §3 — v4 must never invalidate a historical stamp.
+
+    2026-09-04 addendum: the chain_link check added by verify_envelope
+    surfaces a historical defect — 6 pre-fix snapshots have broken
+    previous_root fields from silent same-date double-runs. Those files
+    are already anchored on-chain (anchors #1-4) so cannot be re-signed
+    without invalidating the anchors. Chain_link defects on historical
+    files are treated as EXPECTED (documented in
+    docs/CHAIN_LINK_DEFECT_HISTORICAL_2026-09-04.md); the OTHER four
+    checks must still pass on every historical file."""
     paths = sorted(glob.glob(os.path.join(SNAPSHOTS_DIR, "20??-??-??.json")))
     if not paths:
         pytest.skip("no historical snapshots on disk to verify")
@@ -238,11 +247,15 @@ def test_gate_4b_every_historical_v3_snapshot_verifies():
         with open(path) as f:
             envelope = json.load(f)
         ok, issues = signed_snapshot.verify_envelope(envelope)
-        if not ok:
-            failures.append((os.path.basename(path), issues))
+        # Strip chain_link issues; those are a known historical defect
+        # tracked separately. Everything else must still pass.
+        non_chain_link = [i for i in issues if not i.startswith("chain_link")]
+        if non_chain_link:
+            failures.append((os.path.basename(path), non_chain_link))
 
     assert failures == [], (
-        f"gate 4b regression: {len(failures)} historical snapshots failed v4-aware verify: {failures}"
+        f"gate 4b regression: {len(failures)} historical snapshots "
+        f"failed a NON-chain_link check under v4-aware verify: {failures}"
     )
 
 
@@ -605,3 +618,81 @@ def test_editorial_state_reads_real_app_py():
         assert name.startswith("LAST_VERIFIED_")
         assert len(date_val) == 10
         dt.date.fromisoformat(date_val)  # raises if malformed
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Regression: 2026-09-04 chain_link_mismatch (double-run on same date)
+# ─────────────────────────────────────────────────────────────────────
+
+def test_double_run_previous_root_links_to_prior_day_not_first_attempt(
+    monkeypatch, tmp_path, stub_v4_collectors, ephemeral_keypair
+):
+    """When sign_snapshot runs TWICE on the same date, the second run's
+    previous_root must equal the PRIOR DAY's chain_root — not the first
+    attempt's chain_root that got overwritten in chain.json.
+
+    Reproduces the 2026-09-04 chain_link_mismatch incident: overnight
+    the signed_snapshot walker fired twice for date 09-04. The first run
+    appended leaf at index 112 with chain_root=A; the second run REPLACED
+    that leaf in-place with hash B. Before the fix, sign_snapshot read
+    previous_root from chain['current_root'] which still held A (Run 1's
+    output), so Run 2 stored previous_root=A — an unreachable intermediate
+    state. The L2 inspector caught it via prior-day cross-check; the fix
+    computes previous_root from merkle_root(leaves[0..leaf_index-1]) so
+    Run 2 links to Day N-1's chain_root, not Run 1's overwritten root.
+    """
+    stub_v4_collectors()
+
+    # Minimal metric shape — one metric so leaf hashing works without
+    # dragging the whole v1-v3 collector set into the test.
+    def _min_metrics(now_utc=None):
+        if now_utc is None:
+            now_utc = dt.datetime.now(dt.timezone.utc)
+        return [signed_snapshot.collect_walker_health_summary(now_utc)], []
+    monkeypatch.setattr(signed_snapshot, "collect_metrics", _min_metrics)
+
+    monkeypatch.setattr(signed_snapshot, "CHAIN_PATH", str(tmp_path / "chain.json"))
+    monkeypatch.setattr(signed_snapshot, "SNAPSHOTS_DIR", str(tmp_path))
+
+    # Day N-1: sign the prior day so we have a baseline chain_root to link to
+    prior = signed_snapshot.build_snapshot("2026-08-28", now_utc=FROZEN_NOW)
+    prior_signed = signed_snapshot.sign_snapshot(prior)
+    prior_chain_root = prior_signed["chain_root"]
+    assert prior_signed["leaf_index"] == 0
+    assert prior_signed["previous_root"] is None  # first leaf → no prior root
+
+    # Day N: first run. Same-day metrics might drift on a re-run, so
+    # force a distinct metric shape between the two Day-N runs by
+    # bumping the frozen "now" — this changes walker_health_summary's
+    # freshness fields and therefore leaf_hash.
+    later_now = FROZEN_NOW + dt.timedelta(hours=1)
+    day_n_v1 = signed_snapshot.build_snapshot("2026-08-29", now_utc=FROZEN_NOW)
+    signed_v1 = signed_snapshot.sign_snapshot(day_n_v1)
+    assert signed_v1["leaf_index"] == 1
+    assert signed_v1["previous_root"] == prior_chain_root
+    first_attempt_chain_root = signed_v1["chain_root"]
+    first_attempt_leaf_hash = signed_v1["leaf_hash"]
+
+    # Day N: second run, same date. Metric snapshot differs (later_now)
+    # so leaf_hash differs and this genuinely replaces rather than
+    # producing byte-identical output.
+    day_n_v2 = signed_snapshot.build_snapshot("2026-08-29", now_utc=later_now)
+    signed_v2 = signed_snapshot.sign_snapshot(day_n_v2)
+
+    # Same slot (replace preserved index)
+    assert signed_v2["leaf_index"] == 1
+
+    # Leaf changed
+    assert signed_v2["leaf_hash"] != first_attempt_leaf_hash
+
+    # THE FIX: previous_root points at Day N-1, not Run 1's overwritten root
+    assert signed_v2["previous_root"] == prior_chain_root, (
+        f"chain_link regression: previous_root should be prior day's "
+        f"chain_root ({prior_chain_root[:16]}…), got {signed_v2['previous_root'][:16]}…"
+    )
+    assert signed_v2["previous_root"] != first_attempt_chain_root
+
+    # And verify_envelope now catches this — the disk file (post-Run 2)
+    # + chain.json state should verify clean, all five checks green.
+    ok, issues = signed_snapshot.verify_snapshot_file("2026-08-29")
+    assert ok, f"post-fix verify should pass on re-run: {issues}"

@@ -787,19 +787,31 @@ def write_chain(chain: dict):
     os.replace(tmp, CHAIN_PATH)
 
 
-def append_or_replace_leaf(chain: dict, date_str: str, leaf_hash_hex: str, ledger_index) -> tuple[int, list[bytes]]:
+def append_or_replace_leaf(chain: dict, date_str: str, leaf_hash_hex: str, ledger_index) -> tuple[int, list[bytes], bool]:
     """If a leaf for date_str exists, replace it (same-day re-run); else
-    append. Returns (leaf_index, all_leaf_hashes_bytes). Leaves keep the
-    order they were first observed in — replacement preserves the index
-    so audit paths against pre-replacement roots invalidate cleanly
-    (we never claim historical-root inclusion for a replaced leaf)."""
+    append. Returns (leaf_index, all_leaf_hashes_bytes, replaced). Leaves
+    keep the order they were first observed in — replacement preserves the
+    index so audit paths against pre-replacement roots invalidate cleanly
+    (we never claim historical-root inclusion for a replaced leaf).
+
+    `replaced` = True when the caller overwrites a same-date leaf. Loud
+    on stderr in that case: the 2026-09-04 chain_link_mismatch incident
+    was caused by a silent double-run that overwrote the first-attempt
+    leaf, so future double-runs never happen unnoticed."""
     leaves = chain.setdefault("leaves", [])
     for i, leaf in enumerate(leaves):
         if leaf["date"] == date_str:
+            print(
+                f"[signed_snapshot] REPLACING existing leaf for {date_str} "
+                f"(index={i}, old_hash={leaf['leaf_hash'][:16]}…, "
+                f"new_hash={leaf_hash_hex[:16]}…) — chain_link "
+                f"previous_root will point at prior day, not first attempt",
+                file=sys.stderr, flush=True,
+            )
             leaves[i] = {"date": date_str, "leaf_hash": leaf_hash_hex, "ledger_index": ledger_index}
-            return i, [bytes.fromhex(le["leaf_hash"]) for le in leaves]
+            return i, [bytes.fromhex(le["leaf_hash"]) for le in leaves], True
     leaves.append({"date": date_str, "leaf_hash": leaf_hash_hex, "ledger_index": ledger_index})
-    return len(leaves) - 1, [bytes.fromhex(le["leaf_hash"]) for le in leaves]
+    return len(leaves) - 1, [bytes.fromhex(le["leaf_hash"]) for le in leaves], False
 
 
 # ---------------------------------------------------------------------------
@@ -851,13 +863,19 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
     leaf_hash = _hash_leaf(leaf_bytes)
 
     chain = load_chain()
-    previous_root = chain.get("current_root")
-    leaf_index, all_leaves = append_or_replace_leaf(
+    leaf_index, all_leaves, replaced = append_or_replace_leaf(
         chain,
         snap["snapshot_date_utc"],
         leaf_hash.hex(),
         next((m["value"] for m in snap["metrics"] if m["name"] == "xrpl_validated_ledger_index"), None),
     )
+    # previous_root = merkle root of the leaves BEFORE this one's slot.
+    # Computed from all_leaves[0..leaf_index-1] so a same-date re-run
+    # (leaf_index preserved from the first attempt) links to the prior
+    # day's root, NOT the overwritten first-attempt root. Reading
+    # chain["current_root"] here would break the link on re-runs — that
+    # was the 2026-09-04 chain_link_mismatch defect.
+    previous_root = _merkle_root(all_leaves[:leaf_index]).hex() if leaf_index > 0 else None
     current_root = _merkle_root(all_leaves)
     audit_path = _merkle_audit_path(all_leaves, leaf_index)
 
@@ -1040,6 +1058,71 @@ def verify_envelope(signed: dict) -> tuple[bool, list[str]]:
     if expected_fp != signed["signing_pubkey_fingerprint"]:
         issues.append(f"pubkey fingerprint mismatch (file={signed['signing_pubkey_fingerprint']}, local={expected_fp})")
 
+    # 5) Chain link: previous_root must equal the merkle root at the
+    # slot immediately before this leaf. Catches the 2026-09-04 double-
+    # run defect where a same-date re-run stored previous_root pointing
+    # at its own overwritten first attempt instead of the prior day's
+    # chain_root. Two evidence sources, in order of preference:
+    #   (a) chain.json is present locally  → recompute merkle_root
+    #       over leaves[0..leaf_index-1] and compare
+    #   (b) prior day's signed snapshot file is on disk → compare its
+    #       chain_root against this file's previous_root
+    # A verifier with neither gets a soft note, not a hard failure —
+    # the chain-link claim is unprovable without external evidence.
+    leaf_index = signed.get("leaf_index")
+    prev_root_claimed = signed.get("previous_root")
+    if leaf_index == 0:
+        if prev_root_claimed not in (None, ""):
+            issues.append(
+                f"chain_link: leaf_index=0 should have previous_root=None, "
+                f"file has {prev_root_claimed}"
+            )
+    else:
+        chain_link_verified = False
+        # Path (a): recompute from chain.json
+        try:
+            if os.path.exists(CHAIN_PATH):
+                with open(CHAIN_PATH) as f:
+                    chain = json.load(f)
+                leaves = chain.get("leaves", [])
+                if len(leaves) > leaf_index:
+                    prev_hashes = [bytes.fromhex(le["leaf_hash"]) for le in leaves[:leaf_index]]
+                    prev_root_computed = _merkle_root(prev_hashes).hex()
+                    if prev_root_computed != prev_root_claimed:
+                        issues.append(
+                            f"chain_link: previous_root mismatch "
+                            f"(file={prev_root_claimed[:24]}…, "
+                            f"chain.json[0..{leaf_index-1}]={prev_root_computed[:24]}…)"
+                        )
+                    chain_link_verified = True
+        except Exception as e:
+            issues.append(f"chain_link: chain.json read failed: {type(e).__name__}: {e}")
+        # Path (b): prior-day file cross-check (also runs if chain.json worked,
+        # as an extra check that prior-day chain_root == our previous_root)
+        try:
+            date_str = signed.get("snapshot_date_utc") or ""
+            if date_str:
+                d = dt.date.fromisoformat(date_str) - dt.timedelta(days=1)
+                prior_path = os.path.join(SNAPSHOTS_DIR, f"{d.isoformat()}.json")
+                if os.path.exists(prior_path):
+                    with open(prior_path) as f:
+                        prior = json.load(f)
+                    prior_chain_root = prior.get("chain_root")
+                    if prior_chain_root and prior_chain_root != prev_root_claimed:
+                        issues.append(
+                            f"chain_link: previous_root != prior-day chain_root "
+                            f"(prior {d.isoformat()}.chain_root={prior_chain_root[:24]}…, "
+                            f"our previous_root={prev_root_claimed[:24]}…)"
+                        )
+                    chain_link_verified = True
+        except Exception:
+            pass
+        if not chain_link_verified:
+            issues.append(
+                "chain_link: could not verify (no chain.json and no prior-day file "
+                "on disk) — verifier should fetch prior-day snapshot to complete"
+            )
+
     return (not issues), issues
 
 
@@ -1073,7 +1156,7 @@ def main():
     if args.verify:
         ok, issues = verify_snapshot_file(args.verify)
         if ok:
-            print(f"VERIFIED {args.verify}: signature OK, audit_path OK, leaf_hash OK, fingerprint OK.")
+            print(f"VERIFIED {args.verify}: signature OK, audit_path OK, leaf_hash OK, fingerprint OK, chain_link OK.")
             return 0
         print(f"VERIFICATION FAILED for {args.verify}:")
         for it in issues:
