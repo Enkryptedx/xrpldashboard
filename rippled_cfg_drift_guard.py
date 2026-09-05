@@ -57,7 +57,30 @@ EXPECTED: dict[str, dict[str, str | None]] = {
         "ip": "127.0.0.1",
         "admin": None,  # must be absent
     },
+    # 2026-09-02: sovereign WS for the on-box xrpl_stream service (runs on the
+    # Lenovo itself, systemd xrpld-xrpl-stream). Loopback-only, non-admin:
+    # ip=127.0.0.1 so nothing off-box can reach it, admin key ABSENT so the
+    # transactions-stream subscriber cannot invoke admin methods (e.g. `stop`).
+    # Exact WS-side mirror of [port_rpc_public] on 5007. The earlier LAN
+    # variant (192.168.40.95:6007) was scrapped once we confirmed the stream
+    # is same-box, not Mac→Lenovo.
+    "port_ws_public": {
+        "ip": "127.0.0.1",
+        "admin": None,  # must be absent
+        # 2026-09-05: raised from rippled's default 100 after the on-box
+        # xrpl_stream subscriber (transactions stream on this port) was
+        # being kicked by rippled ~400/hr with "Policy error: client is
+        # too slow" — same shape as the Mac-era `send_queue_limit = 500`
+        # workaround from [port_ws_admin_local] that got dropped in the
+        # Lenovo repoint. Guard this key so it never silently reverts.
+        "send_queue_limit": "500",
+    },
 }
+# _OPTIONAL_STANZAS handling: name a stanza here to make its absence a
+# non-finding during pre-ship windows (stanza added to EXPECTED first,
+# then cfg edit lands + rippled restart, then the entry is cleared).
+# Empty since 2026-09-02: [port_ws_public_lan] shipped live and is now
+# a required stanza; absence is a real drift signal.
 _OPTIONAL_STANZAS: frozenset[str] = frozenset()
 
 
