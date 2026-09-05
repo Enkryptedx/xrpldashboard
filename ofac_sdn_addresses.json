@@ -344,7 +344,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "BSC",
+      "chain": "ETH",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -900,7 +900,7 @@
       "sdn_uid": "57034"
     },
     "0xb6f5ec1a0a9cd1526536d3f0426c429529471f40": {
-      "chain": "USDC",
+      "chain": "ETH",
       "entity_name": "Sang Man KIM",
       "programs": [
         "DPRK4"
@@ -9252,7 +9252,7 @@
     }
   },
   "count": 991,
-  "fetched_at_utc": "2026-09-04 10:00 UTC",
-  "publication_date": "2026-09-03",
+  "fetched_at_utc": "2026-09-05 10:00 UTC",
+  "publication_date": "2026-09-04",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
