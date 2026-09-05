@@ -7522,15 +7522,21 @@ _AGENTS_JSON = {
         "future_notice_period_days": None,
         "future_grandfathering_policy": None,
         "future_payment_protocol": None,
-        "future_billed_surface": None,
+        "future_billed_surface": "http",
+        "future_billed_surface_rationale": (
+            "HTTP first because /check.json is the product-shaped surface "
+            "and x402 is HTTP-native. MCP billing considered later if "
+            "there is demand; MCP stays free at v1 until then."
+        ),
         "note": (
-            "Fields marked null are to be filled by the operator ahead of "
-            "any pricing change. `future_paid_status` = planned indicates "
-            "the operator's stated intent to introduce paid tiers for "
-            "machine access at some point; concrete terms (effective date, "
-            "notice, grandfathering, payment rail, which surface bills) are "
-            "not yet set. Agents integrating today should not assume "
-            "current pricing terms persist without checking this section."
+            "future_billed_surface = 'http' is a firm operator decision "
+            "(2026-09-05). The remaining fields (effective_from, "
+            "notice_period_days, grandfathering_policy, payment_protocol) "
+            "are held null pending legal review — concrete pricing terms "
+            "need attorney sign-off before machines can rely on them. "
+            "Agents integrating today should treat 'planned' as a "
+            "commitment to give notice, not a commitment to a specific "
+            "date; check this section on each poll."
         ),
     },
     "mcp_servers": [
