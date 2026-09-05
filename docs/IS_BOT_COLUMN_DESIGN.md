@@ -248,6 +248,54 @@ Cross-reference: `docs/IS_BOT_SCANNER_MEMORY_FIX_2026-07-26.md`. Founding incide
 
 ---
 
+## Column-cached lane consumers (blast-radius map)
+
+The `is_bot` column is a **read cache** of `_bot_filter_sql`'s verdicts, gated by `_is_bot_column_ready`. When that flag is True, everything below reads the column path; when False, they fall through to the hash-table path or the legacy predicate. **The 2026-09-05 canary-fail (below) was invisible to the public metrics because the primary reader routes through `_bot_filter_sql`, which re-derives verdicts if the column is stale.** Only the readers that hit the column *directly* (not through `_bot_filter_sql`) are at risk when the column drifts.
+
+**Consumers of the column directly (SKIP `_bot_filter_sql`, at risk on stale column):**
+
+| File | Symbol | Consumer role |
+|------|--------|---------------|
+| `site_totals_walker.py` | `human_hits`, `bot_hits`, `countries_human`, `countries_human_excluding_t1`, `us_states_human`, `regions_human`, `regions_countries_covered` | Nightly walker that writes `site_totals` — the source for `docs/SITE_TOTALS.json` published as the anchored `walker_totals_v1` metric in the daily signed snapshot |
+| `scripts/country_state_map_2026-09-03.py` | region map generator | One-shot / periodic tally, used for country/state map artifacts |
+| `scripts/tally_extend_queries_2026-09-03.py` | tally queries | One-shot analytics reports |
+| `db.py` (line 5138) | schema-check bot count | Diagnostic only |
+
+**Consumers of the column *through* `_bot_filter_sql` (self-healing when column is fresh):**
+
+| File | Symbol | Notes |
+|------|--------|-------|
+| `app.py` `/analytics` and per-page count paths | `_bot_filter_sql("human"|"bot"|"all")` | Auto-falls back to hash-table or legacy predicate if column not ready. Not at risk when column is stale — it just runs slower. |
+
+**Rule of thumb for future code:** if you must read `is_bot` directly (bypassing `_bot_filter_sql`), you own the risk of column drift for your consumer. Prefer `_bot_filter_sql` unless you have a documented reason.
+
+---
+
+## Wound — 2026-09-05 (CLOSED): silent-noop `refresh_bot_hash_tables` past 65,535-param wire cap
+
+**Symptom:** `is_bot_canary` fired at 06:00 UTC — `trailing-7d humans-column=1962 humans-predicate=1940 delta=+22`. BetterStack incident. `is_bot_writer.walker_health.last_run_ok = True` (green) despite the drift.
+
+**Trace:**
+1. 22 divergent rows all had `is_bot = NULL`, classified as bot by the canary's session-linkage arms (visitor_hash + ip_day_hash — 3 distinct visitor hashes, 2 distinct ip_day hashes fanning out to 22 page_views rows on 2026-09-05 03:17-05:40 UTC).
+2. Those linking hashes were **not** in `page_view_bot_hashes` — the writer's materialized session-hash table.
+3. `refresh_bot_hash_tables()`'s SELECT would emit 19,061 visitor + 14,030 ip_day = **33,091 tuples**. The single-statement `INSERT VALUES (%s,%s),(%s,%s)...` binds 2 params/tuple = **66,182 params**, exceeding Postgres's wire-protocol `int16` `numParams` cap of 65,535 in the Bind message.
+4. `psycopg` raised `OperationalError: sending query and params failed: number of parameters must be between 0 and 65535`.
+5. The `except Exception as e: _log_err(...)` block in `refresh_bot_hash_tables()` swallowed the error to stdout tag `[db] refresh_bot_hash_tables_failed` — the caller (is_bot_writer) never saw it, its walker_health stayed green, and public analytics (which use `_bot_filter_sql`) stayed correct while the column silently under-stamped for ~3 hours (from the moment total tuples crossed 32,767) until the canary noticed.
+
+**Fix (this commit):**
+1. **Chunked INSERT** in `refresh_bot_hash_tables` — `page_view_bot_hashes` inserts in batches of 10,000 (3x headroom for 2-param rows), `page_view_scanner_combos_confirmed` (ratchet) in batches of 5,000 (parity for 6-param rows).
+2. **Re-raise from the except** — no more silent-noop; when refresh fails, the writer's walker_health goes red and BetterStack pages on the correct root cause instead of the downstream canary lagging by up to a day.
+
+**Verification (this session):**
+- `page_view_bot_hashes` count restored: visitor 18,898 → 19,061; ip_day 13,868 → 14,030.
+- Writer's `bot_hashes-resync` trigger (5c) then fired on the MD5 change: `rows=23 duration_ms=116` — flipped the 22 canary-flagged rows plus 1 fresh row.
+- Canary re-run: PASS delta=0.
+- All-time humans column vs live-predicate: 53,723 vs 53,721 = **+2 (0.004%)** — within the writer's 5-min refresh cadence noise.
+
+**Durable lesson:** any `_log_err` swallow on a write-path function that a walker depends on for correctness is a `telemetry_fail_loud` violation. Re-raise; let the walker's own walker_health carry the alarm.
+
+---
+
 ## Migration Fossil — 2026-08-29 (CLOSED)
 
 **Wound:** `compute_bot_hash_sets()` call at `app.py:7217` survived the `is_bot` column migration with no guard. On every cache-miss `/analytics` render, two full-table HashAggregates (visitor_hash + ip_day_hash, 229K rows) ran and were discarded — `_bot_filter_sql` short-circuits on `_is_bot_column_ready` before reaching the `precomputed` branch. Cost: **5s local / 8-15s on Render** per cold render. Undetected because the result was silently discarded, not an error.

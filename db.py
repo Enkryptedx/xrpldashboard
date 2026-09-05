@@ -5351,15 +5351,24 @@ def refresh_bot_hash_tables():
                 scanner_combos = [(p, u) for p, u, h, d in scanner_combos_full]
 
                 # Atomic refresh: truncate + reinsert in one transaction.
-                # Flattened single-statement INSERT keeps round-trips to one.
+                # Chunked: single-statement INSERT VALUES is bounded by
+                # Postgres wire-protocol int16 param count (65535). At
+                # 2 params/tuple, one INSERT can hold at most 32767 tuples.
+                # Once combined visitor+ip_day tuples cross that, the whole
+                # refresh silently no-ops (see incident 2026-09-05: 33091
+                # tuples → OperationalError swallowed by _log_err, writer
+                # walker_health stayed green, canary flagged +22 delta 3h
+                # later). Chunk of 10000 gives 3x headroom + future growth.
+                _INSERT_CHUNK = 10000
                 cur.execute("TRUNCATE page_view_bot_hashes")
                 all_hash_rows = (
                     [("visitor", h) for h in visitor_hashes]
                     + [("ip_day", h) for h in ip_day_hashes]
                 )
-                if all_hash_rows:
-                    ph = ",".join(["(%s,%s)"] * len(all_hash_rows))
-                    flat = [v for row in all_hash_rows for v in row]
+                for i in range(0, len(all_hash_rows), _INSERT_CHUNK):
+                    chunk = all_hash_rows[i:i + _INSERT_CHUNK]
+                    ph = ",".join(["(%s,%s)"] * len(chunk))
+                    flat = [v for row in chunk for v in row]
                     cur.execute(
                         f"INSERT INTO page_view_bot_hashes (hash_type, hash) "
                         f"VALUES {ph}",
@@ -5367,9 +5376,10 @@ def refresh_bot_hash_tables():
                     )
 
                 cur.execute("TRUNCATE page_view_scanner_combos")
-                if scanner_combos:
-                    ph = ",".join(["(%s,%s)"] * len(scanner_combos))
-                    flat = [v for row in scanner_combos for v in row]
+                for i in range(0, len(scanner_combos), _INSERT_CHUNK):
+                    chunk = scanner_combos[i:i + _INSERT_CHUNK]
+                    ph = ",".join(["(%s,%s)"] * len(chunk))
+                    flat = [v for row in chunk for v in row]
                     cur.execute(
                         f"INSERT INTO page_view_scanner_combos (path, user_agent) "
                         f"VALUES {ph}",
@@ -5396,25 +5406,37 @@ def refresh_bot_hash_tables():
                         )
                         for p, u, hits, dv in scanner_combos_full
                     ]
-                    r_ph = ",".join(
-                        ["(%s,%s,'auto',%s,%s,%s,%s,NOW())"] * len(ratchet_rows)
-                    )
-                    r_flat = [v for row in ratchet_rows for v in row]
-                    cur.execute(
-                        f"INSERT INTO page_view_scanner_combos_confirmed "
-                        f"(path, user_agent, confirmed_by, evidence_ratio, "
-                        f" evidence_row_count, evidence_window_start, "
-                        f" evidence_window_end, last_seen_at) "
-                        f"VALUES {r_ph} "
-                        f"ON CONFLICT (path, user_agent) DO UPDATE "
-                        f"  SET last_seen_at = NOW()",
-                        r_flat,
-                    )
+                    # 6 params/row → 10924 rows per statement max under
+                    # int16 param cap. Chunk at 5000 for headroom parity
+                    # with the other two INSERTs.
+                    _RATCHET_CHUNK = 5000
+                    for i in range(0, len(ratchet_rows), _RATCHET_CHUNK):
+                        chunk = ratchet_rows[i:i + _RATCHET_CHUNK]
+                        r_ph = ",".join(
+                            ["(%s,%s,'auto',%s,%s,%s,%s,NOW())"] * len(chunk)
+                        )
+                        r_flat = [v for row in chunk for v in row]
+                        cur.execute(
+                            f"INSERT INTO page_view_scanner_combos_confirmed "
+                            f"(path, user_agent, confirmed_by, evidence_ratio, "
+                            f" evidence_row_count, evidence_window_start, "
+                            f" evidence_window_end, last_seen_at) "
+                            f"VALUES {r_ph} "
+                            f"ON CONFLICT (path, user_agent) DO UPDATE "
+                            f"  SET last_seen_at = NOW()",
+                            r_flat,
+                        )
 
             conn.commit()
         _bot_hash_table_ready = True
     except Exception as e:
+        # telemetry_fail_loud: re-raise so the caller (is_bot_writer)
+        # sees the failure and its walker_health row goes red. Prior
+        # silent-catch masked the 2026-09-05 param-cap incident for
+        # ~3h before the canary caught the downstream drift.
         _log_err("refresh_bot_hash_tables_failed", e)
+        _bot_hash_table_ready = False
+        raise
 
 
 def compute_bot_hash_sets(conn):
