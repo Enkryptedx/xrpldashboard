@@ -553,7 +553,21 @@ def _build_state() -> dict:
             "xrpl": {
                 "issuer": XRPL_ISSUER,
                 "explorer": f"https://xrpscan.com/account/{XRPL_ISSUER}",
-                "via": XRPL_NODE,
+                # Publish an anonymized label rather than the LAN IP. The
+                # actual host is our own rippled on the LAN; publishing
+                # http://192.168.40.95:5006 in a signed public document
+                # leaks internal topology (unroutable, so not exploitable,
+                # but noisy). Flagged Round 3 (ChatGPT), 2026-09-05.
+                # Future-only: already-signed snapshots keep the old label
+                # for immutability; new writes carry the anonymized form.
+                "via": (
+                    "own-node (LAN)"
+                    if XRPL_NODE.startswith("http://192.168.")
+                    or XRPL_NODE.startswith("http://10.")
+                    or XRPL_NODE.startswith("http://127.")
+                    or XRPL_NODE.startswith("http://localhost")
+                    else XRPL_NODE
+                ),
             },
         },
     }

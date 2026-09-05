@@ -314,7 +314,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-08-29"  # identity-fix snack batch — x-mcp-tools sharpen + disambig boilerplate
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-05"  # Round 3 (ChatGPT) audit fixes — sourcing over-claim rewrite in llms.txt, /check.json documented as live surface, schema_version 4 propagated to methodology, pricing-transition schema added to agents.json
 
 
 @app.context_processor
@@ -803,6 +803,75 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
                 "responses": _text_ok("application/x-pem-file"),
             },
         },
+    )
+    _register(
+        "/.well-known/snapshots/pubkey.json",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Same public key as pubkey.pem in machine-friendly JSON (hex + base64)",
+                "description": (
+                    "Generic HTTP clients frequently choke on "
+                    "application/x-pem-file. This endpoint returns the "
+                    "raw 32-byte Ed25519 public key in hex and base64 "
+                    "encodings plus the SHA-256 fingerprint, without "
+                    "requiring the client to parse PEM."
+                ),
+                "responses": _json_ok(),
+            },
+        },
+    )
+    _register(
+        "/.well-known/anchors.json",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Machine-readable index of on-ledger XRPL anchor transactions",
+                "description": (
+                    "For each anchor: number, date, tx hash, ledger "
+                    "index, close time, chain_root, decoded memo, "
+                    "block-explorer URLs, and a chain.json cross-check "
+                    "(roots_match). The Proof Page in machine form."
+                ),
+                "responses": _json_ok(),
+            },
+        },
+    )
+    _register(
+        "/check.json",
+        {
+            "get": {
+                "tags": ["read-api"],
+                "summary": "Typed triage for XRPL addresses, tokens, URLs, or pasted text",
+                "description": (
+                    "Live HTTP API surface. `?q=` accepts an XRPL "
+                    "r-address, a token identifier (currency+issuer), a "
+                    "URL, or free-text. The response `data` field is "
+                    "typed by input kind: `wallet`, `token`, `url`, or "
+                    "`message`. Each capability entry carries "
+                    "`source_label` (the origin RPC / on-ledger object "
+                    "the capability was derived from) and `checked_at_utc` "
+                    "(ISO timestamp). Full envelope shape (top-level "
+                    "`proof` object like MCP tools use) is a build item "
+                    "in progress — today's response provides per-field "
+                    "provenance instead. Anonymous rate limit 60/hour/IP; "
+                    "identified verified-bot rate limit 300/hour."
+                ),
+                "responses": _json_ok(),
+            },
+            "post": {
+                "tags": ["read-api"],
+                "summary": "Same as GET; POST body accepts free-text or JSON with a `q` field",
+                "responses": _json_ok(),
+            },
+        },
+        parameters=[{
+            "name": "q",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+            "description": "Input to triage: r-address, currency+issuer, URL, or free text.",
+        }],
     )
 
 
@@ -4837,6 +4906,146 @@ def well_known_signed_pubkey():
     return resp
 
 
+@app.route("/.well-known/snapshots/pubkey.json")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_signed_pubkey_json():
+    """Same public key as pubkey.pem, but as JSON with hex + base64
+    fields — generic HTTP clients (agent runtimes, LLM tool wrappers)
+    frequently choke on application/x-pem-file. This surface returns
+    the raw 32-byte Ed25519 public key in machine-friendly encodings
+    plus the fingerprint. Added 2026-09-05 per Round-3 audit."""
+    try:
+        from cryptography.hazmat.primitives import serialization
+        with open(SNAPSHOT_PUBKEY_PEM_PATH, "rb") as f:
+            pem_bytes = f.read()
+        pub = serialization.load_pem_public_key(pem_bytes)
+        pub_raw = pub.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        import base64, hashlib
+        payload = {
+            "curve": "Ed25519",
+            "encoding": {
+                "hex": pub_raw.hex(),
+                "base64": base64.b64encode(pub_raw).decode("ascii"),
+                "base64url_unpadded": base64.urlsafe_b64encode(pub_raw).decode("ascii").rstrip("="),
+            },
+            "fingerprint_sha256_hex": hashlib.sha256(pub_raw).hexdigest(),
+            "fingerprint_short": ":".join(
+                hashlib.sha256(pub_raw).hexdigest()[i:i+2].upper()
+                for i in range(0, 16, 2)
+            ),
+            "pem_url": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+            "signing_domain": "xrpldashboard.com/signed_snapshot/v1",
+            "spec_url": f"{SITE_URL}/methodology#signed-snapshots-xrpl-anchor",
+            "pinned_in": [
+                "this endpoint",
+                f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+                f"{SITE_URL}/about",
+                "DNS TXT record on xrpldashboard.com",
+            ],
+        }
+    except Exception as e:
+        abort(500, description=f"pubkey.json build failed: {type(e).__name__}: {e}")
+    resp = jsonify(payload)
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
+@app.route("/.well-known/anchors.json")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_anchors_json():
+    """Machine-readable index of on-ledger anchors.
+
+    For each anchor: number, date, tx hash, ledger index, close time,
+    chain_root, memo (decoded), explorer URLs, verification status.
+    Added 2026-09-05 per Round-3 audit (F: 'proof-page in machine form
+    is the next round to ask for it — build the JSON now; the human
+    page follows'). Data source: docs/anchor_history.md parsed at
+    request time, augmented with the current chain.json state so the
+    latest anchor's root is always cross-verifiable against the chain."""
+    import re
+    payload_anchors = []
+    try:
+        history_path = os.path.join(HERE, "docs", "anchor_history.md")
+        with open(history_path, "r", encoding="utf-8") as f:
+            history_md = f.read()
+        # Parse each "## Anchor #N — YYYY-MM-DD" section
+        sections = re.split(r"\n---\n", history_md)
+        for section in sections:
+            m = re.search(r"## Anchor #(\d+) — (\d{4}-\d{2}-\d{2})", section)
+            if not m:
+                continue
+            entry = {"number": int(m.group(1)), "date": m.group(2)}
+            def _grab(field_re):
+                mm = re.search(field_re, section)
+                return mm.group(1).strip() if mm else None
+            entry["tx_hash"] = _grab(r"\|\s*Tx hash\s*\|\s*`([A-F0-9]+)`")
+            led = _grab(r"\|\s*Ledger\s*\|\s*(\d+)")
+            entry["ledger_index"] = int(led) if led else None
+            entry["close_time_utc"] = _grab(r"\|\s*Close time\s*\|\s*([^\|]+)")
+            entry["from"] = _grab(r"\|\s*From\s*\|\s*`([^`]+)`")
+            entry["to"] = _grab(r"\|\s*To\s*\|\s*`([^`]+)`")
+            fee = _grab(r"\|\s*Fee\s*\|\s*(\d+)")
+            entry["fee_drops"] = int(fee) if fee else None
+            seq = _grab(r"\|\s*Sequence\s*\|\s*(\d+)")
+            entry["sequence"] = int(seq) if seq else None
+            memo_raw = _grab(r"\|\s*MemoData \(decoded\)\s*\|\s*`([^`]+)`")
+            entry["memo_data_decoded"] = memo_raw.replace(r"\|", "|") if memo_raw else None
+            if entry["memo_data_decoded"]:
+                parts = entry["memo_data_decoded"].split("|")
+                if len(parts) == 3 and parts[0] == "xrpldashboard/anchor/v1":
+                    entry["chain_root"] = parts[2]
+            entry["result"] = "tesSUCCESS" if "tesSUCCESS" in section else None
+            entry["type"] = "A"  # all published anchors so far are type-A (standard)
+            if entry["tx_hash"]:
+                entry["explorer_urls"] = {
+                    "xrpscan": f"https://xrpscan.com/tx/{entry['tx_hash']}",
+                    "bithomp": f"https://bithomp.com/explorer/{entry['tx_hash']}",
+                    "xrpl_org": f"https://livenet.xrpl.org/transactions/{entry['tx_hash']}",
+                }
+            payload_anchors.append(entry)
+    except Exception as e:
+        abort(500, description=f"anchors.json build failed: {type(e).__name__}: {e}")
+
+    # Cross-verify: chain.json's current_root should equal the latest
+    # anchor's chain_root (per the covenant). Include the observation
+    # so consumers can spot drift the moment it happens.
+    verification = None
+    try:
+        chain = _read_chain_meta()
+        if chain and payload_anchors:
+            # anchor_history.md is roughly oldest-first, but ordering
+            # is not enforced — pick by max anchor number instead of
+            # relying on document order.
+            latest = max(payload_anchors, key=lambda x: x.get("number") or 0)
+            chain_root_now = chain.get("current_root")
+            verification = {
+                "chain_json_current_root": chain_root_now,
+                "latest_anchor_chain_root": latest.get("chain_root"),
+                "roots_match": (chain_root_now == latest.get("chain_root")) if latest.get("chain_root") else None,
+                "chain_leaves_total": len(chain.get("leaves") or []),
+                "note": "roots_match=true means chain.json head equals the latest anchor tx's committed chain_root. false or null is a drift signal.",
+            }
+    except Exception:
+        pass
+
+    resp = jsonify({
+        "spec_url": f"{SITE_URL}/methodology#signed-snapshots-xrpl-anchor",
+        "anchor_account": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+        "ops_account": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+        "memo_format": "xrpldashboard/anchor/v1|<snapshot_date>|<chain_root_hex>",
+        "cadence": "weekly, manual (2026-08 through automation cutover)",
+        "verifier_requirements": "Strip trailing whitespace on decoded MemoData before splitting on '|'. See methodology page for v1 verifier rules.",
+        "anchors": sorted(payload_anchors, key=lambda x: x.get("number") or 0, reverse=True),
+        "chain_cross_check": verification,
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    })
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
 def _safe_date_str(s):
     """Strict YYYY-MM-DD validation. Defends the well-known route from
     directory-traversal attempts via crafted date param."""
@@ -7126,7 +7335,7 @@ def security_txt():
 # agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
-> Public read-only data for the XRP Ledger, computed directly from our own XRPL node; Ethereum-side data (RLUSD cross-chain supply) via public RPC, disclosed. Every page discloses its data source, cache TTL, and known limitations. No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own rippled node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own rippled node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
 Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
 
@@ -7158,7 +7367,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 
 ## Integrity and verification
 - Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
-- Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification.
+- Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification. Machine-friendly JSON equivalent (hex + base64 fields, same fingerprint) at [{SITE_URL}/.well-known/snapshots/pubkey.json]({SITE_URL}/.well-known/snapshots/pubkey.json) — added 2026-09-05 for clients that choke on `application/x-pem-file`.
+- Machine-readable anchor index: [{SITE_URL}/.well-known/anchors.json]({SITE_URL}/.well-known/anchors.json) — every anchor tx with tx hash, ledger index, close time, chain_root, memo, explorer URLs, and a chain.json cross-check (`roots_match: true|false`). Added 2026-09-05.
 - On-ledger anchor of the snapshot chain (since 2026-08-07): each daily `chain_root` is additionally committed inside an XRPL Payment memo from anchor account `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` to ops account `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd`. First anchor tx: `01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8` at ledger 106140698 (2026-08-07 21:49:32 UTC). Cadence is weekly, manual today; language upgrades when automation lands. Memo format v1 (namespace-in-MemoData) and verifier rules (including the `.strip()` rule for wallet-appended newlines) documented at [{SITE_URL}/methodology#signed-snapshots-xrpl-anchor]({SITE_URL}/methodology#signed-snapshots-xrpl-anchor).
 - Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
 - Copy-pasteable client snippets (curl, Python, JavaScript for fetching a claim envelope + a Python end-to-end verifier for the daily signed snapshots): [{SITE_URL}/claims#use-this-data]({SITE_URL}/claims#use-this-data). Every snippet on that page was executed against live prod before shipping.
@@ -7171,7 +7381,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
 - MCP server (public beta through 2026-09): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
-- Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec. The read-only HTTP API will emit the same envelope when it ships.
+- Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
+- Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Signature envelope: v0.9 per-verdict Ed25519 signing is in progress; today's `/check.json` responses carry per-capability `source_label` and `checked_at_utc` fields but not yet the full `proof` envelope shape MCP tools use. The full envelope migration for HTTP is tracked as a build item — until then, treat `/check.json` as machine-consumable with per-field provenance, not per-envelope signature.
 - Directory listings for this MCP server (same endpoint + tool inventory as above; the directories are discovery aids, not different endpoints):
   - Anthropic MCP Registry: [registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard) — server id `com.xrpldashboard/xrpldashboard-mcp`, DNS-verified namespace, listed 2026-08-05.
   - Smithery: [smithery.ai/servers/xrpldashboard/xrpldashboard](https://smithery.ai/servers/xrpldashboard/xrpldashboard) — Smithery gateway URL `https://xrpldashboard--xrpldashboard.run.tools`, listed 2026-08-05.
@@ -7203,10 +7414,15 @@ def llms_txt():
 _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
-        "Public read-only data for the XRP Ledger, computed directly from "
-        "our own XRPL node; Ethereum-side data (RLUSD cross-chain supply) via "
-        "public RPC, disclosed. Every response is proof-annotated with source, "
-        "freshness stamp, and CLAIMS reference. Free for humans and identified agents."
+        "Public read-only data for the XRP Ledger. Sourcing is per-surface: "
+        "walker-cached from our own rippled node (LAN) for anchored metrics, "
+        "sovereign-tunnel for /check + /lending, public XRPL RPC for surfaces "
+        "where tunnel wiring is not yet complete, and public Ethereum RPC for "
+        "the RLUSD Ethereum-side. Every response is proof-annotated with "
+        "source, freshness stamp, and CLAIMS reference (MCP: full envelope; "
+        "HTTP /check.json: per-capability source_label + checked_at_utc, "
+        "full envelope migration in progress). Free for humans and identified "
+        "agents at v1."
     ),
     "disambiguation": (
         "Independent project — not affiliated with Ripple, the XRP Ledger "
@@ -7242,6 +7458,8 @@ _AGENTS_JSON = {
         "claims_uri_scheme": "/claims/xrpl.<domain>.<series> — permanent, additive-only. Fetch any URI with Accept: application/json (or append .json) for status JSON.",
         "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
         "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
+        "signed_snapshot_pubkey_json": f"{SITE_URL}/.well-known/snapshots/pubkey.json",
+        "onchain_anchors_json": f"{SITE_URL}/.well-known/anchors.json",
         "signed_snapshot_xrpl_anchor": {
             "anchor_account": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
             "ops_account": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
@@ -7268,10 +7486,51 @@ _AGENTS_JSON = {
         "note": (
             "Envelope is normative for the MCP server (public at "
             "https://mcp.xrpldashboard.com/mcp — see mcp_servers below — "
-            "backed by our own rippled node on the Lenovo box) and "
-            "applies to the read-only HTTP API when it ships. HTML "
-            "surfaces expose the same source metadata inline via "
-            "per-page methodology chips and the /methodology page."
+            "backed by our own rippled node on the Lenovo box). The "
+            "read-only HTTP API surface today is /check.json (live at "
+            f"{SITE_URL}/check.json); it currently carries per-capability "
+            "source_label + checked_at_utc metadata but not yet the full "
+            "envelope shape MCP tools use — full envelope migration for "
+            "HTTP is tracked as a build item. HTML surfaces expose the "
+            "same source metadata inline via per-page methodology chips "
+            "and the /methodology page."
+        ),
+    },
+    "http_endpoints": [
+        {
+            "url": f"{SITE_URL}/check.json",
+            "method": "GET",
+            "params": {
+                "q": "XRPL account address (r-address), token ID (currency+issuer), URL, or free-text",
+                "format": "'json' (optional; omit — the .json suffix implies it)",
+            },
+            "response_shape": {
+                "data": "object — typed triage payload with capabilities[], checked_at_utc, kind, next_action, source_label per capability",
+                "note": "top-level `proof` envelope is not yet present on this endpoint; per-capability `source_label` + `checked_at_utc` provide field-level provenance today",
+            },
+            "rate_limit_anonymous": "60 requests/hour/IP",
+            "rate_limit_identified_bot": "300 requests/hour by verified UA",
+            "auth": "none at v1",
+            "kind_dispatch": "address → wallet triage; token_id → token triage; URL → domain-age + SSL; text → subject extraction + per-subject triage",
+            "spec_url": f"{SITE_URL}/openapi.json",
+        },
+    ],
+    "pricing_transition": {
+        "current": "free at v1 (no accounts, no keys, no payment)",
+        "future_paid_status": "planned",
+        "future_effective_from": None,
+        "future_notice_period_days": None,
+        "future_grandfathering_policy": None,
+        "future_payment_protocol": None,
+        "future_billed_surface": None,
+        "note": (
+            "Fields marked null are to be filled by the operator ahead of "
+            "any pricing change. `future_paid_status` = planned indicates "
+            "the operator's stated intent to introduce paid tiers for "
+            "machine access at some point; concrete terms (effective date, "
+            "notice, grandfathering, payment rail, which surface bills) are "
+            "not yet set. Agents integrating today should not assume "
+            "current pricing terms persist without checking this section."
         ),
     },
     "mcp_servers": [
