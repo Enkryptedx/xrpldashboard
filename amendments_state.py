@@ -26,6 +26,7 @@ import httpx
 from flask_babel import lazy_gettext as _l
 
 import amendments_network_votes
+import xrpl_client
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("AMENDMENTS_CACHE_TTL", "300"))
@@ -171,16 +172,24 @@ _cache_lock = threading.Lock()
 _cache = {"fetched_at": 0.0, "data": None}
 
 
-def _post(method, params):
-    try:
-        resp = httpx.post(
-            XRPL_NODE,
-            json={"method": method, "params": [params]},
-            timeout=15.0,
+def _post(method, params, fetcher=None):
+    """Tunnel-first RPC POST. 2026-09-06: switched from direct httpx.post
+    to SovereignFetcher.call so /amendments now cascades to public XRPL
+    only when the sovereign tunnel is unavailable. If a caller shares one
+    fetcher across multiple _post calls (fetch_amendments_state does),
+    a cascade after the first sticks and the whole page's sourcing
+    reflects worst-case.
+    """
+    if fetcher is None:
+        # Standalone call — one-shot fetcher (rare; almost every caller
+        # threads the shared fetcher through)
+        from sovereign_tunnel_client import SovereignFetcher
+        import xrpl_client as _xc
+        fetcher = SovereignFetcher(
+            public_url=_xc.PUBLIC_NODES[0],
+            walker_name="amendments_state",
         )
-        return (resp.json() or {}).get("result") or {}
-    except Exception:
-        return None
+    return fetcher.call(method, params)
 
 
 def _xrpl_close_to_iso(close_time):
@@ -197,14 +206,26 @@ def _xrpl_close_to_iso(close_time):
 
 def fetch_amendments_state():
     """Return a fresh combined state dict. No caching here; see the
-    `_cached` wrapper for memoization."""
-    feat_result = _post("feature", {})
+    `_cached` wrapper for memoization.
+
+    2026-09-06: uses one SovereignFetcher for both RPCs so a cascade
+    after the first sticks (correct per-page semantic — worst case
+    wins for sourcing disclosure). Return dict gains `sourcing` for
+    downstream banner rendering.
+    """
+    from sovereign_tunnel_client import SovereignFetcher
+    fetcher = SovereignFetcher(
+        public_url=xrpl_client.PUBLIC_NODES[0],
+        walker_name="amendments_state",
+    )
+    feat_result = _post("feature", {}, fetcher=fetcher)
     ledger_result = _post(
         "ledger_entry",
         {"index": AMENDMENTS_LEDGER_INDEX, "ledger_index": "validated"},
+        fetcher=fetcher,
     )
     if not feat_result or not ledger_result:
-        return {"ok": False}
+        return {"ok": False, "sourcing": fetcher.sourcing}
 
     features = feat_result.get("features") or {}
     node = (ledger_result.get("node") or {})
@@ -281,6 +302,7 @@ def fetch_amendments_state():
 
     return {
         "ok": True,
+        "sourcing": fetcher.sourcing,
         "ledger_index": ledger_result.get("ledger_index")
             or feat_result.get("ledger_index"),
         "enabled_count": len(enabled_hashes),
