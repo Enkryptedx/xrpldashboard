@@ -1190,6 +1190,44 @@ CREATE TABLE IF NOT EXISTS token_issuer_flags_snapshot (
 CREATE INDEX IF NOT EXISTS token_issuer_flags_snapshot_fetched_at_idx
     ON token_issuer_flags_snapshot (fetched_at DESC);
 
+-- Inferred (not-hand-curated) token categories, sourced from issuer-
+-- published xrp-ledger.toml [[TOKENS]] entries. Populated by the same
+-- token_issuer_flags_walker cycle: for every issuer with a valid
+-- AccountRoot Domain, the walker fetches https://<domain>/.well-known/
+-- xrp-ledger.toml (rate-limited, fail-open, ~1 fetch/sec, 24h cache) and
+-- writes one row per (currency, issuer) with the toml-declared category.
+-- Merged into label_lookup at render with category_source='toml'; the
+-- visual renders inferred pulses with a dashed ring and stat rollups
+-- exclude them (curator-only, per Charlie's honesty-over-coverage rule).
+-- category_source discipline is load-bearing: any downstream that uses
+-- label_lookup must honor the source field before implying attestation.
+CREATE TABLE IF NOT EXISTS token_category_inferred (
+    currency_hex     TEXT NOT NULL,
+    issuer           TEXT NOT NULL,
+    currency_display TEXT,
+    category         TEXT,
+    source           TEXT NOT NULL DEFAULT 'toml',
+    source_url       TEXT,
+    fetched_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (currency_hex, issuer, source)
+);
+CREATE INDEX IF NOT EXISTS token_category_inferred_issuer_idx
+    ON token_category_inferred (issuer);
+CREATE INDEX IF NOT EXISTS token_category_inferred_fetched_at_idx
+    ON token_category_inferred (fetched_at DESC);
+
+-- Rate-limit / cache-cadence hint table for the toml-fetcher. Records
+-- the last time we fetched EACH issuer's toml (regardless of success).
+-- Walker uses this to enforce a 24h fetch-cache per issuer + a
+-- ~1/sec global rate limit. Absence of a row means "never fetched."
+CREATE TABLE IF NOT EXISTS token_toml_fetch_log (
+    issuer         TEXT PRIMARY KEY,
+    domain         TEXT NOT NULL,
+    last_fetch_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_status    TEXT,
+    last_error     TEXT
+);
+
 -- Escrow-supply aggregate cache. Companion to cold_storage_snapshot: sums
 -- EscrowCreate objects across the same category=ripple cohort (minus RLUSD
 -- issuer) and stores one aggregate row (singleton, id=1 per rlusd_state_cache
@@ -7314,6 +7352,121 @@ def read_token_issuer_flags(issuer):
     ).total_seconds()
     r["age_seconds"] = int(age)
     return r
+
+
+def upsert_token_category_inferred(rows):
+    """Upsert-in-place for token_category_inferred (source='toml' entries).
+    `rows` = list of dicts with currency_hex, issuer, currency_display,
+    category, source_url. Existing (currency_hex, issuer, 'toml') keys
+    get their category/source_url refreshed; new pairs inserted. Never
+    deletes — toml disappearance is silence, not evidence of absence."""
+    if not pg_available():
+        return False
+    if not rows:
+        return True
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO token_category_inferred "
+                        "  (currency_hex, issuer, currency_display, "
+                        "   category, source, source_url, fetched_at) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, NOW()) "
+                        "ON CONFLICT (currency_hex, issuer, source) DO UPDATE "
+                        "  SET currency_display = EXCLUDED.currency_display, "
+                        "      category = EXCLUDED.category, "
+                        "      source_url = EXCLUDED.source_url, "
+                        "      fetched_at = NOW()",
+                        (
+                            r["currency_hex"], r["issuer"],
+                            r.get("currency_display"),
+                            r.get("category"),
+                            r.get("source", "toml"),
+                            r.get("source_url"),
+                        ),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err_and_raise("upsert_token_category_inferred_failed", e)
+
+
+def read_token_category_inferred_map():
+    """Return {(currency_hex, issuer): {"category", "source", "source_url",
+    "currency_display", "fetched_at"}} across all rows. Used by /tokens'
+    label_lookup merge. Empty dict on PG unavailable / error (fail-open —
+    inferred layer is additive, never required for basic render)."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT currency_hex, issuer, currency_display, "
+                    "       category, source, source_url, fetched_at "
+                    "  FROM token_category_inferred"
+                )
+                return {
+                    (r[0], r[1]): {
+                        "currency_display": r[2],
+                        "category": r[3],
+                        "source": r[4],
+                        "source_url": r[5],
+                        "fetched_at": r[6],
+                    }
+                    for r in cur.fetchall()
+                }
+    except Exception as e:
+        _log_err("read_token_category_inferred_failed", e)
+        return {}
+
+
+def read_token_toml_fetch_due(cache_hours=24):
+    """Return list of issuers whose toml is DUE for fetch: never fetched
+    OR last_fetch_at older than cache_hours ago. Walker filters this
+    against its cohort to avoid re-fetching a healthy toml every cycle."""
+    if not pg_available():
+        return set()
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT issuer FROM token_toml_fetch_log "
+                    " WHERE last_fetch_at > NOW() - (%s || ' hours')::INTERVAL",
+                    [str(int(cache_hours))],
+                )
+                fresh = {r[0] for r in cur.fetchall()}
+        return fresh  # caller inverts: due = cohort - fresh
+    except Exception as e:
+        _log_err("read_token_toml_fetch_due_failed", e)
+        return set()
+
+
+def upsert_token_toml_fetch_log(issuer, domain, status, error=None):
+    """Record a fetch attempt (success or failure). Cadence gate for the
+    walker's 24h fetch-cache-per-issuer rule."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO token_toml_fetch_log "
+                    "  (issuer, domain, last_fetch_at, last_status, last_error) "
+                    "VALUES (%s, %s, NOW(), %s, %s) "
+                    "ON CONFLICT (issuer) DO UPDATE "
+                    "  SET domain = EXCLUDED.domain, "
+                    "      last_fetch_at = NOW(), "
+                    "      last_status = EXCLUDED.last_status, "
+                    "      last_error = EXCLUDED.last_error",
+                    (issuer, domain, status, error),
+                )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("upsert_token_toml_fetch_log_failed", e)
+        return False
 
 
 def read_token_volume_issuers():

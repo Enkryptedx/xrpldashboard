@@ -3646,13 +3646,31 @@ def tokens():
     # Lookup table for the live trade-tape JS: every labeled token (not just
     # top 32) so the tape can resolve display name + category color for any
     # incoming WS trade. Plain JSON, embedded inline in the page.
-    label_lookup = {
-        f"{t['currency_raw']}|{t['issuer']}": {
+    # 2026-09-06 (B of A+B): label_lookup entries now carry category_source
+    # ∈ {"curator","toml","other"}. Curator wins on conflict (hand-verified
+    # data > inferred), and the JS renders inferred tokens with a dashed
+    # pulse ring so the reader can tell "we know" from "we guessed."
+    label_lookup = {}
+    for t in enriched:
+        if not t["labeled"]:
+            continue
+        label_lookup[f"{t['currency_raw']}|{t['issuer']}"] = {
             "display": t["display"],
             "category": t["category"] or "other",
+            "category_source": "curator",
         }
-        for t in enriched if t["labeled"]
-    }
+    # Merge inferred (toml-published) categories for pairs NOT already
+    # covered by curator. Curator wins on conflict.
+    inferred_map = db.read_token_category_inferred_map()
+    for (cur, iss), inf in inferred_map.items():
+        key = f"{cur}|{iss}"
+        if key in label_lookup:
+            continue  # curator wins
+        label_lookup[key] = {
+            "display": inf.get("currency_display") or cur,
+            "category": inf.get("category") or "other",
+            "category_source": inf.get("source") or "toml",
+        }
     label_lookup_json = json.dumps(label_lookup, separators=(",", ":"))
 
     # NEW-1 hotfix 2026-09-06: ship a JS-friendly subset of

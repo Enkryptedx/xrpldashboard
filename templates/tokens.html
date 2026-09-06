@@ -1290,6 +1290,10 @@
         glyph: (sym || '?').replace(/[^A-Za-z0-9]/g, '').charAt(0).toUpperCase() || '?',
         amount: leg.value,
         kind: leg.kind,
+        // Extension B: propagate category_source ('curator' or 'toml')
+        // to the pulse so drawPulses() can render the dashed-ring
+        // overlay for inferred entries.
+        category_source: (lbl && lbl.category_source) || null,
         born: performance.now(),
         lastX: 0, lastY: 0, lastR: 0,
       });
@@ -1451,6 +1455,23 @@
         ctx.stroke();
         // Coin head — disc with ticker glyph.
         drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph);
+        // NEW-1 extension B (2026-09-06): dashed ring overlay for
+        // tokens whose category is INFERRED (from toml) rather than
+        // curator-verified. Honest visual — the reader can tell
+        // "we know" (solid coin) from "we guessed via issuer toml"
+        // (dashed ring around it).
+        if (p.category_source && p.category_source !== 'curator') {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,' + (alpha * 0.55) + ')';
+          ctx.setLineDash([Math.max(2, radius * 0.35),
+                           Math.max(2, radius * 0.25)]);
+          ctx.lineWidth = Math.max(0.6, radius * 0.08);
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, radius * 1.15, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
         p.lastX = pos.x; p.lastY = pos.y; p.lastR = radius;
       }
     }
