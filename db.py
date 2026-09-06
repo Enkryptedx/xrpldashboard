@@ -4732,6 +4732,30 @@ BOT_PATH_PATTERNS = (
 #      route whose UA contains "bot/", "spider", or "crawler" gets
 #      mis-bucketed. The "bot/" form (slash forces version-string shape)
 #      reduces matches on words like "robot" or "abbot".
+# v6 rule 2 (approved 2026-09-06): growth-path-cluster predicate. A single
+# visitor_hash that hits ≥5 DISTINCT paths from the growth/vanity path list
+# in a single UTC day is a scanner, not a reader. Real visitors don't
+# comparison-shop /affiliate + /affiliate-program + /affiliates + /ambassador
+# + /partners in one sitting; that behavior is the SK scanner fingerprint
+# from 2026-09-05 (15 distinct affiliate/ambassador paths from one vh).
+# List anchored on `/` so a future product route that MERELY contains
+# "affiliate" as a substring can't collide. Every entry is a growth or
+# vanity path class we don't and won't ship, so any 5-of-N combination
+# is diagnostic. Add cautiously — new entries reclassify visitors on the
+# next writer cycle.
+GROWTH_PATH_PATTERNS = (
+    "%/affiliate%",
+    "%/ambassador%",
+    "%/creators%",
+    "%/partners%",
+    "%/referral%",
+    "%/press%",
+    "%/team%",
+)
+GROWTH_PATH_DISTINCT_THRESHOLD = 5
+GROWTH_PATH_LOOKBACK_DAYS = 30
+
+
 BOT_UA_PATTERNS = (
     "%AhrefsBot%",
     "%bingbot%",
@@ -4778,9 +4802,8 @@ BOT_UA_PATTERNS = (
     # emits the HTTP header NAME as part of the header VALUE — e.g.
     # `User-Agent: User-Agent:Mozilla/5.0…`. Real browsers never do this.
     # Killed 3 of the 10 CN /contact form-farmer rows in Sat's report.
-    # Additions-only (no existing TRUE row can be un-matched), so hot-
-    # reload safe without a version bump — only new rows are caught until
-    # the next real v6 bump triggers a full-resync backfill.
+    # Additions-only. First shipped 2026-09-06 with no version bump so
+    # only new rows were caught; the v6 bump (below) now backfills.
     "%User-Agent:%Mozilla%",
 )
 
@@ -4818,7 +4841,21 @@ BOT_UA_PATTERNS = (
 # %Palo Alto Networks% — Cortex XDR security scanner UA, showed up
 #   fresh at low volume. Not a browser.
 # Same additions-only property as v4 → bidirectional full-resync safe.
-BOT_CLASSIFIER_VERSION = 5
+# v6 (2026-09-06): two approved rules landed together for one full-resync
+# backfill. Both are additions-only (no existing TRUE row can be un-
+# matched), so bidirectional full-resync is safe.
+#   Rule 1: %User-Agent:%Mozilla% UA pattern (added 2026-09-06 without a
+#     version bump on first ship — the v6 bump now backfills historical
+#     rows that matched but weren't stamped). Catches curl/python-requests
+#     scripters that emit the header NAME as part of the header VALUE.
+#   Rule 2: growth-path-cluster (GROWTH_PATH_PATTERNS + threshold 5, 30d
+#     lookback). refresh_bot_hash_tables() computes visitor_hashes that
+#     hit ≥5 distinct growth paths in any single UTC day and inserts them
+#     into page_view_bot_hashes under hash_type='visitor' — the existing
+#     visitor-arm in _bot_filter_sql then flags every row from that
+#     visitor. Catches the SK-scanner class (15 distinct /affiliate*
+#     paths from one vh in one day, 2026-09-05 reference incident).
+BOT_CLASSIFIER_VERSION = 6
 
 # ── Burst-cohort classifier ───────────────────────────────────────────────────
 # Catches rotating-IP fleet attacks where each IP hits a *real* page exactly
@@ -5426,6 +5463,36 @@ def refresh_bot_hash_tables():
                     row_params,
                 )
                 visitor_hashes = [r[0] for r in cur.fetchall()]
+
+                # v6 rule 2 — growth-path-cluster (approved 2026-09-06).
+                # Any visitor_hash that hit ≥5 DISTINCT growth paths in a
+                # single UTC day in the last 30 days is a scanner. Folded
+                # into the same visitor set so no new arm/table/trigger
+                # is needed — the existing visitor arm in _bot_filter_sql
+                # will flag every row from these hashes. The v6 bump
+                # backfills historical rows on the next writer cycle.
+                growth_ts = int(time.time()) - GROWTH_PATH_LOOKBACK_DAYS * 86400
+                growth_path_likes = " OR ".join(
+                    "path LIKE %s" for _ in GROWTH_PATH_PATTERNS
+                )
+                cur.execute(
+                    "SELECT visitor_hash "
+                    "  FROM page_views "
+                    " WHERE visitor_hash IS NOT NULL "
+                    "   AND ts > %s "
+                    f"   AND ({growth_path_likes}) "
+                    " GROUP BY visitor_hash, "
+                    "          date_trunc('day', to_timestamp(ts))::DATE "
+                    "HAVING COUNT(DISTINCT path) >= %s",
+                    [growth_ts]
+                    + list(GROWTH_PATH_PATTERNS)
+                    + [GROWTH_PATH_DISTINCT_THRESHOLD],
+                )
+                growth_hashes = {r[0] for r in cur.fetchall()}
+                if growth_hashes:
+                    # De-dup against visitor_hashes so we don't insert twice.
+                    already = set(visitor_hashes)
+                    visitor_hashes = list(already | growth_hashes)
 
                 # IP-day hashes from row_pred
                 cur.execute(
