@@ -1165,6 +1165,31 @@ CREATE TABLE IF NOT EXISTS cold_storage_snapshot (
 CREATE INDEX IF NOT EXISTS cold_storage_snapshot_fetched_at_idx
     ON cold_storage_snapshot (fetched_at DESC);
 
+-- Per-issuer AccountRoot flags snapshot. Mac walker (token_issuer_flags_
+-- walker.py) enumerates DISTINCT issuers from token_volume every 30 min,
+-- fetches AccountInfo(signer_lists=True) per issuer via LAN rippled, and
+-- upserts rows here. The /token/<cur>/<iss> detail route reads this table
+-- for its "Ledger-level capabilities" panel instead of firing one live
+-- AccountInfo RPC per page render. Wired 2026-09-06 to kill ~3/day
+-- walker_node_fallback rows for walker_name=token_page. Staleness: 3
+-- missed 30-min cycles (>=90 min old, or row absent for a new issuer)
+-- flips the page's sourcing to stale-cache and lights the banner. flags,
+-- transfer_rate, regular_key, and has_signer_list are exactly the inputs
+-- check_data._capability_signals() reads — snapshot shape follows.
+CREATE TABLE IF NOT EXISTS token_issuer_flags_snapshot (
+    issuer          TEXT PRIMARY KEY,
+    flags           BIGINT NOT NULL DEFAULT 0,
+    transfer_rate   BIGINT,
+    regular_key     TEXT,
+    has_signer_list BOOLEAN NOT NULL DEFAULT FALSE,
+    domain_hex      TEXT,
+    ledger_index    BIGINT NOT NULL DEFAULT 0,
+    fetched_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fetch_ok        BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE INDEX IF NOT EXISTS token_issuer_flags_snapshot_fetched_at_idx
+    ON token_issuer_flags_snapshot (fetched_at DESC);
+
 -- Escrow-supply aggregate cache. Companion to cold_storage_snapshot: sums
 -- EscrowCreate objects across the same category=ripple cohort (minus RLUSD
 -- issuer) and stores one aggregate row (singleton, id=1 per rlusd_state_cache
@@ -7145,6 +7170,103 @@ def read_cold_storage_snapshot():
     oldest = min(r["fetched_at"] for r in raw)
     age = (datetime.datetime.now(datetime.timezone.utc) - oldest).total_seconds()
     return {"rows": raw, "fetched_at": oldest, "age_seconds": int(age)}
+
+
+def replace_token_issuer_flags_snapshot(rows):
+    """Replace-on-write full refresh of token_issuer_flags_snapshot. `rows`
+    is a list of dicts with keys: issuer (PK), flags (int), transfer_rate
+    (int|None), regular_key (str|None), has_signer_list (bool), domain_hex
+    (str|None), ledger_index (int), fetch_ok (bool).
+
+    One transaction so a partial failure leaves the previous snapshot
+    intact. Raises via _log_err_and_raise on any DB error — walker treats
+    the exception as soft-fail via its own try/except in main().
+    """
+    if not pg_available():
+        raise WriterConnUnavailable(
+            "replace_token_issuer_flags_snapshot: pg_available()=False"
+        )
+    if not rows:
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM token_issuer_flags_snapshot")
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO token_issuer_flags_snapshot "
+                        "  (issuer, flags, transfer_rate, regular_key, "
+                        "   has_signer_list, domain_hex, ledger_index, "
+                        "   fetched_at, fetch_ok) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)",
+                        (
+                            r["issuer"],
+                            int(r.get("flags") or 0),
+                            r.get("transfer_rate"),
+                            r.get("regular_key"),
+                            bool(r.get("has_signer_list", False)),
+                            r.get("domain_hex"),
+                            int(r.get("ledger_index") or 0),
+                            bool(r.get("fetch_ok", True)),
+                        ),
+                    )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err_and_raise("replace_token_issuer_flags_snapshot_failed", e)
+
+
+def read_token_issuer_flags(issuer):
+    """Read one issuer's flags row. Returns dict or None if absent / PG
+    unavailable / read error. Caller uses age_seconds to decide
+    stale-cache vs sovereign; missing row = None = treat as stale-cache
+    (data not yet populated by walker)."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT issuer, flags, transfer_rate, regular_key, "
+                    "       has_signer_list, domain_hex, ledger_index, "
+                    "       fetched_at, fetch_ok "
+                    "  FROM token_issuer_flags_snapshot "
+                    " WHERE issuer = %s",
+                    (issuer,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                cols = [d.name for d in cur.description]
+                r = dict(zip(cols, row))
+    except Exception as e:
+        _log_err("read_token_issuer_flags_failed", e)
+        return None
+    age = (
+        datetime.datetime.now(datetime.timezone.utc) - r["fetched_at"]
+    ).total_seconds()
+    r["age_seconds"] = int(age)
+    return r
+
+
+def read_token_volume_issuers():
+    """Enumerate DISTINCT issuers with any token_volume row. Returns list
+    of str (r-addresses). Walker input — one AccountInfo per issuer.
+    Returns [] on PG unavailable / read error (walker treats empty as
+    "no cohort to fetch," logs a soft-fail message)."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT issuer FROM token_volume "
+                    " WHERE issuer IS NOT NULL AND issuer <> ''"
+                )
+                return [r[0] for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_token_volume_issuers_failed", e)
+        return []
 
 
 def upsert_escrow_supply_snapshot(total_xrp, object_count, accounts_scanned,

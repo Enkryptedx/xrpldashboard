@@ -17,8 +17,7 @@ from datetime import datetime, timezone
 
 import db
 from check_data import _capability_signals
-from xrpl.models.requests import AccountInfo
-from xrpl_client import get_client
+from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
@@ -27,6 +26,12 @@ AMM_INDEX_PATH = os.path.join(HERE, "amm_index.json")
 
 CACHE_TTL = int(os.environ.get("TOKEN_CACHE_TTL", "120"))
 SPARKLINE_HOURS = 24 * 7  # last 7 days, hourly
+
+# Capabilities panel staleness threshold. Walker writes every 30 min; 3
+# missed cycles = 90 min = data is stale enough to flip the page sourcing
+# to stale-cache and light the banner. Kept as a module constant so the
+# walker plist cadence and this threshold move together if either shifts.
+CAPABILITIES_STALE_SECONDS = 90 * 60
 
 # LP-balance threshold below which a pool is treated as a non-meaningful
 # micro / algorithmic-seed pool (typical pattern: thousands of pools across
@@ -300,25 +305,26 @@ def fetch_token_data(currency, issuer):
             xrp_price = None
 
     # 5. Ledger-level capability signals for the issuer AccountRoot.
-    # Softly breaks this module's "no live RPC" convention — a single
-    # AccountInfo call, cached with the rest of the page (CACHE_TTL 120s).
-    # signer_lists=True piggybacks multi-sig detection on the same round-trip.
+    # 2026-09-06: DB-first via token_issuer_flags_snapshot (populated by
+    # token_issuer_flags_walker every 30 min on LAN rippled). Kills the
+    # last live-RPC path in this module (~3 walker_node_fallback rows/day
+    # for walker_name=token_page). Row age > 90 min OR row absent (new
+    # issuer, walker hasn't caught up) → sourcing=stale-cache and banner.
     capabilities = []
-    try:
-        client = get_client(walker_name="token_page")
-        resp = client.request(AccountInfo(
-            account=issuer, ledger_index="validated", signer_lists=True,
-        ))
-        acct = (resp.result or {}).get("account_data") or {}
-        signer_lists = (resp.result or {}).get("account_data", {}).get(
-            "signer_lists"
-        ) or (resp.result or {}).get("signer_lists")
-        if signer_lists and "signer_lists" not in acct:
-            acct = dict(acct)
-            acct["signer_lists"] = signer_lists
+    capabilities_sourcing = SOURCING_SOVEREIGN
+    snap = db.read_token_issuer_flags(issuer)
+    if snap is None or (snap.get("age_seconds") or 0) > CAPABILITIES_STALE_SECONDS:
+        capabilities_sourcing = SOURCING_STALE_CACHE
+    if snap and snap.get("fetch_ok"):
+        # Rehydrate the account_data shape _capability_signals reads.
+        acct = {
+            "Flags": snap.get("flags") or 0,
+            "TransferRate": snap.get("transfer_rate"),
+            "RegularKey": snap.get("regular_key"),
+            "signer_lists": [{}] if snap.get("has_signer_list") else [],
+            "Domain": snap.get("domain_hex"),
+        }
         capabilities = _capability_signals(acct)
-    except Exception:
-        capabilities = []
 
     return {
         "currency_raw": currency,
@@ -347,6 +353,9 @@ def fetch_token_data(currency, issuer):
         "meaningful_lp_threshold": MEANINGFUL_LP_THRESHOLD,
         "history_source": history_source,
         "capabilities": capabilities,
+        "capabilities_sourcing": capabilities_sourcing,
+        "capabilities_age_seconds": (snap or {}).get("age_seconds"),
+        "sourcing": capabilities_sourcing,
     }
 
 

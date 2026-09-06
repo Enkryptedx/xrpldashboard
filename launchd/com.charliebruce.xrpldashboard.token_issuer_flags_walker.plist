@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.charliebruce.xrpldashboard.token_issuer_flags_walker</string>
+
+    <key>Comment</key>
+    <string>30-min cache-write walker for /token/&lt;cur&gt;/&lt;iss&gt;. Enumerates DISTINCT issuers from token_volume via db.read_token_volume_issuers() and fetches AccountInfo(signer_lists=True) per issuer via LAN rippled (XRPL_LOCAL_NODE), upserting into token_issuer_flags_snapshot in Neon. The /token route reads that table for its "Ledger-level capabilities" panel instead of firing one live AccountInfo RPC per page render. Wired 2026-09-06 to kill ~3/day walker_node_fallback rows for walker_name=token_page. StartInterval per macos_startinterval_over_calendar rule (rolling — fires on wake if the interval has elapsed). Issuer flags change rarely (a manual AccountSet tx); 30-min cadence gives 3 write cycles inside the 90-min staleness threshold so one missed fire is invisible.</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/charliebruce/xrpl_test/launchd/run_token_issuer_flags_walker.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/charliebruce/xrpl_test</string>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/token_issuer_flags_walker.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/charliebruce/xrpl_test/launchd_logs/token_issuer_flags_walker.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/Library/Frameworks/Python.framework/Versions/3.14/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>

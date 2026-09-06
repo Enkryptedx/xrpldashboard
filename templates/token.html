@@ -392,12 +392,17 @@
     </div>
   </div>
 
-  {% if data.capabilities %}
+  {% if data.capabilities or data.capabilities_sourcing == 'stale-cache' %}
   <div class="card" style="margin-top: 1.6em;">
     <h2>{{ _('Ledger-level capabilities') }}</h2>
     <p style="color: var(--muted); font-size: 0.86rem; margin: 0 0 1em; line-height: 1.5;">
       {{ _('A technical inventory of what the ledger allows this account to do. Not a safety judgment — none of these facts, alone or in combination, mean "safe" or "unsafe." The absence of a capability here is also not a reassurance.') }}
     </p>
+    {% if data.capabilities_sourcing == 'stale-cache' %}
+      <p class="disclaimer" style="background: rgba(245,158,11,0.08); border-left-color: rgba(245,158,11,0.55); margin: 0 0 1em;">
+        {{ _('Capabilities data below is served from cache and may be stale. Our issuer-flags walker writes every 30 minutes; the last write on file for this issuer is older than 90 minutes (or hasn\'t landed yet for a newly-active issuer). The pill copy is still accurate as of that write.') }}
+      </p>
+    {% endif %}
     {% for c in data.capabilities %}
       <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-left: 3px solid rgba(140,150,170,0.35); border-radius: 6px; padding: 0.8em 1em; margin: 0.6em 0;">
         <div style="color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin: 0 0 0.3em;">{{ c.label }}</div>
