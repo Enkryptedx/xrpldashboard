@@ -21,6 +21,9 @@ import time
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import Ledger, ServerInfo
 
+import xrpl_client
+from sovereign_tunnel_client import SovereignFetcher
+
 
 XRPL_NODE = "https://s1.ripple.com:51234"
 
@@ -94,18 +97,30 @@ def _classify(load_factor, last_close_age, avg_close):
 
 
 def fetch_pulse():
-    """Single-shot live pulse. No cache. Returns a dict with all panel fields."""
-    timestamp = datetime.now(timezone.utc)
-    client = JsonRpcClient(XRPL_NODE)
+    """Single-shot live pulse. No cache. Returns a dict with all panel fields.
 
-    try:
-        si = client.request(ServerInfo()).result.get("info", {})
-    except Exception as e:
+    2026-09-06: switched from hardcoded `JsonRpcClient(s1.ripple.com)` to
+    SovereignFetcher. Nav-chip fires on every page load — the pre-fix
+    reliance on public XRPL infra was the single largest remaining
+    public-RPC source in the /health render path. One SovereignFetcher
+    per fetch = one walker_node_fallback row per fetch on real cascade,
+    matching the /lending + /check convention.
+    """
+    timestamp = datetime.now(timezone.utc)
+    fetcher = SovereignFetcher(
+        public_url=xrpl_client.PUBLIC_NODES[0],
+        walker_name="network_pulse",
+    )
+
+    si_result = fetcher.call("server_info", {})
+    if si_result is None:
         return {
-            "error": f"server_info failed: {e}",
+            "error": "server_info failed",
             "timestamp": timestamp,
-            "node": XRPL_NODE,
+            "node": xrpl_client.PUBLIC_NODES[0],
+            "sourcing": fetcher.sourcing,
         }
+    si = si_result.get("info", {}) if isinstance(si_result, dict) else {}
 
     validated = si.get("validated_ledger") or {}
     current_seq = validated.get("seq")
@@ -121,16 +136,23 @@ def fetch_pulse():
     # Avg close time: sample two ledger headers (current + N back) and divide
     # the close_time delta by the sequence delta. server_info doesn't return
     # close_time on Clio nodes, so we have to query the headers explicitly.
+    # These two ledger fetches share the fetcher, so a cascade after
+    # server_info's success sticks: the two ledger reads go over public
+    # too, and the whole page's sourcing is the fetcher's final state.
     avg_close = None
     if current_seq:
         target = current_seq - CLOSE_TIME_SAMPLE_LEDGERS
         try:
-            current = client.request(
-                Ledger(ledger_index=current_seq, transactions=False, expand=False)
-            ).result.get("ledger") or {}
-            old = client.request(
-                Ledger(ledger_index=target, transactions=False, expand=False)
-            ).result.get("ledger") or {}
+            current_r = fetcher.call(
+                "ledger",
+                {"ledger_index": current_seq, "transactions": False, "expand": False},
+            )
+            old_r = fetcher.call(
+                "ledger",
+                {"ledger_index": target, "transactions": False, "expand": False},
+            )
+            current = (current_r or {}).get("ledger") or {}
+            old = (old_r or {}).get("ledger") or {}
             cur_close = current.get("close_time")
             cur_seq = current.get("ledger_index")
             old_close = old.get("close_time")
@@ -149,7 +171,7 @@ def fetch_pulse():
     return {
         "error": None,
         "timestamp": timestamp,
-        "node": XRPL_NODE,
+        "node": fetcher.effective_node_url,
         "ledger_index": current_seq,
         "last_close_age_seconds": last_close_age,
         "avg_close_seconds": avg_close,
@@ -161,6 +183,7 @@ def fetch_pulse():
         "complete_ledgers": complete_ledgers,
         "status": status,
         "status_text": status_text,
+        "sourcing": fetcher.sourcing,
     }
 
 
