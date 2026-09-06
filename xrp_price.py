@@ -16,6 +16,9 @@ import time
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo
 
+import xrpl_client
+from sovereign_tunnel_client import SovereignFetcher
+
 
 XRPL_NODE = os.environ.get("XRPL_RPC", "https://xrplcluster.com")
 
@@ -29,34 +32,42 @@ _state = {"data": None, "fetched_at": 0.0}
 
 
 def fetch_xrp_price() -> dict:
-    """Live fetch. Returns dict with price, reserves, or error key."""
-    client = JsonRpcClient(XRPL_NODE)
-    try:
-        resp = client.request(AMMInfo(
-            asset={"currency": "XRP"},
-            asset2={"currency": RLUSD_CURRENCY, "issuer": RLUSD_ISSUER},
-        ))
-    except Exception as e:
-        return {"error": f"amm_info failed: {e}"}
+    """Live fetch. Returns dict with price, reserves, or error key.
 
-    if "error" in resp.result:
-        return {"error": resp.result.get("error", "amm_info error")}
+    2026-09-06: tunnel-first via SovereignFetcher. Previously hardcoded
+    to `xrplcluster.com` (public). One RPC per fetch (amm_info); walker
+    identity = xrp_price so any cascade attributes correctly in
+    walker_node_fallback.
+    """
+    fetcher = SovereignFetcher(
+        public_url=xrpl_client.PUBLIC_NODES[0],
+        walker_name="xrp_price",
+    )
+    result = fetcher.call("amm_info", {
+        "asset":  {"currency": "XRP"},
+        "asset2": {"currency": RLUSD_CURRENCY, "issuer": RLUSD_ISSUER},
+    })
+    if result is None:
+        return {"error": "amm_info failed (all endpoints)", "sourcing": fetcher.sourcing}
 
-    amm = resp.result.get("amm")
+    if "error" in result:
+        return {"error": result.get("error", "amm_info error"), "sourcing": fetcher.sourcing}
+
+    amm = result.get("amm")
     if not amm:
-        return {"error": "no amm in response"}
+        return {"error": "no amm in response", "sourcing": fetcher.sourcing}
 
     xrp_raw = amm.get("amount")
     rlusd_raw = amm.get("amount2", {})
 
     if not isinstance(xrp_raw, str):
-        return {"error": "unexpected XRP amount format"}
+        return {"error": "unexpected XRP amount format", "sourcing": fetcher.sourcing}
 
     xrp_amount   = int(xrp_raw) / 1_000_000
     rlusd_amount = float(rlusd_raw.get("value", 0))
 
     if xrp_amount <= 0:
-        return {"error": "zero XRP reserves"}
+        return {"error": "zero XRP reserves", "sourcing": fetcher.sourcing}
 
     price = rlusd_amount / xrp_amount
 
@@ -67,6 +78,7 @@ def fetch_xrp_price() -> dict:
         "rlusd_reserves": round(rlusd_amount, 2),
         "source": "XRPL DEX (XRP/RLUSD AMM)",
         "amm_account": amm.get("account"),
+        "sourcing": fetcher.sourcing,
     }
 
 
