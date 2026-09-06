@@ -100,7 +100,40 @@ if ! rclone listremotes 2>/dev/null | grep -q "^${REMOTE}:$"; then
   exit 1
 fi
 
-log "  dumping → ${DEST}"
+# 2026-09-06 A+B hardening (Charlie ruling on PG_BACKUP_HARDENING_PROPOSAL):
+# spool the dump to DockVault first, then upload with `rclone copy` (chunked
+# multipart with per-chunk retries) instead of streaming through rcat.
+# Turns "one B2 503 wipes the entire 5000s dump" (09-04 signature) into
+# "one B2 503 retries chunk N without re-dumping". A: retry budget bumped
+# from rcat default 3 to copy 10 with 30s sleep. B: dump preserved on disk
+# so a failed upload doesn't cost the dump time.
+SPOOL_ROOT="/Volumes/DockVault/neon_dumps/tmp"
+# Precheck: DockVault must be mounted + have ≥15 GB free (dump is ~6.6 GB
+# and growing; headroom for one dump + safety). Skip loud if not — do NOT
+# silently fall back to /tmp (macOS /tmp is on the startup disk and a 7 GB
+# write could push cache/log processes to disk-full).
+if ! mkdir -p "$SPOOL_ROOT" 2>/dev/null; then
+  log "FAIL: cannot create spool root ${SPOOL_ROOT} (DockVault not mounted?)"
+  exit 1
+fi
+SPOOL_FREE_KB="$(df -k "$SPOOL_ROOT" | awk 'NR==2 {print $4}')"
+if [[ -z "$SPOOL_FREE_KB" ]] || (( SPOOL_FREE_KB < 15 * 1024 * 1024 )); then
+  log "FAIL: spool ${SPOOL_ROOT} has <15 GB free (${SPOOL_FREE_KB} KB)"
+  exit 1
+fi
+
+# Housekeeping: purge any stale tmp files left by a killed prior run
+# BEFORE this run begins so we don't accumulate uncleaned dumps if the
+# upload trap fires or the machine reboots mid-run.
+find "$SPOOL_ROOT" -maxdepth 1 -type f -name 'neondb-*.dump' -mtime +1 \
+     -exec rm -f {} \; 2>/dev/null || true
+
+TMPDUMP="${SPOOL_ROOT}/${DUMP_NAME}"
+# Trap: on any exit path (success, failure, signal) remove the tmp dump.
+# Guarantees zero orphans in the spool even if pg_dump / rclone crash.
+trap 'rm -f "$TMPDUMP" 2>/dev/null || true' EXIT
+
+log "  dumping → ${TMPDUMP} (then uploading → ${DEST})"
 START_EPOCH=$(date +%s)
 
 # Direct (non-pooler) endpoint for pg_dump — 2026-08-30 wound.
@@ -114,23 +147,48 @@ START_EPOCH=$(date +%s)
 # the pooler + 25s ceiling untouched (Neon compute protection).
 DUMP_URL="${DATABASE_URL/-pooler./.}"
 
-# Stream: pg_dump → rclone rcat. set -o pipefail makes the pipeline
-# fail-fast if either side errors. --no-owner / --no-acl produce
-# portable dumps that restore cleanly into a different cluster
-# (Neon-specific role IDs would otherwise break local restore).
+# --no-owner / --no-acl produce portable dumps that restore cleanly into
+# a different cluster (Neon-specific role IDs would otherwise break local
+# restore).
 if PGOPTIONS='-c statement_timeout=0' \
-   pg_dump -Fc --no-owner --no-acl "$DUMP_URL" \
-    | rclone rcat "$DEST" --log-level INFO --log-file "$LOG_FILE"; then
+   pg_dump -Fc --no-owner --no-acl -f "$TMPDUMP" "$DUMP_URL"; then
+  DUMP_EPOCH=$(date +%s)
+  DUMP_DURATION=$((DUMP_EPOCH - START_EPOCH))
+  LOCAL_BYTES="$(stat -f %z "$TMPDUMP" 2>/dev/null || echo unknown)"
+  log "  pg_dump ok  size=${LOCAL_BYTES} bytes  duration=${DUMP_DURATION}s"
+else
+  rc=$?
+  log "FAIL: pg_dump exited rc=${rc} — no upload attempted"
+  exit "$rc"
+fi
+
+# rclone copy: chunked multipart with per-chunk retries. --retries 10 +
+# --retries-sleep 30s gives a 5-min window for B2 to recover from a
+# 'no tomes available' (09-04 signature). --low-level-retries 20 covers
+# HTTP-layer transients within each chunk attempt. --checksum verifies
+# the uploaded object matches the local file (belt-and-braces vs a
+# truncated write).
+if rclone copy "$TMPDUMP" "$DEST_PREFIX/" \
+    --log-level INFO --log-file "$LOG_FILE" \
+    --retries 10 --retries-sleep 30s \
+    --low-level-retries 20 --checksum; then
   END_EPOCH=$(date +%s)
-  DURATION=$((END_EPOCH - START_EPOCH))
+  UPLOAD_DURATION=$((END_EPOCH - DUMP_EPOCH))
+  TOTAL_DURATION=$((END_EPOCH - START_EPOCH))
   SIZE_BYTES="$(rclone size "$DEST" --json 2>/dev/null \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["bytes"])' \
     || echo "unknown")"
-  log "  ok  size=${SIZE_BYTES} bytes  duration=${DURATION}s"
+  log "  upload ok  size=${SIZE_BYTES} bytes  upload=${UPLOAD_DURATION}s  total=${TOTAL_DURATION}s"
 else
   rc=$?
-  log "FAIL: dump+upload pipeline exited rc=${rc}"
-  # Best-effort: try to clean a partial upload if one exists.
+  log "FAIL: rclone copy exited rc=${rc} after retry budget"
+  # Best-effort: try to clean a partial upload if one exists on B2.
+  # The local $TMPDUMP is preserved by the EXIT trap only being registered
+  # to `rm`; on rc≠0 we leave it in place for manual retry / diagnosis
+  # — override the trap here so re-runs can retry the upload without
+  # re-dumping.
+  trap - EXIT
+  log "  local dump preserved at ${TMPDUMP} — re-run for upload retry"
   rclone delete "$DEST" 2>/dev/null || true
   exit "$rc"
 fi
