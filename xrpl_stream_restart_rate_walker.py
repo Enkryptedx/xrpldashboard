@@ -89,10 +89,30 @@ def main() -> int:
     findings = None
     try:
         c24, c7, cwd, csr = fetch_counts()
-        # findings_count is a compound liveness signal: process restarts
-        # + session reconnects (both are data gaps in events.db that the
-        # process-restart count alone missed until 2026-09-04).
-        findings = c24 + csr
+        # 2026-09-06: findings_count = real data-loss class ONLY
+        # (process restarts + watchdog kicks). Prior compound
+        # findings=c24+csr conflated a watchdog stall (data lost,
+        # 5-53/day pre-fix) with a graceful upstream session-close
+        # (127.0.0.1:6007 idle-cycles ~45min, second reconnects,
+        # no lost data). Every hour csr ticked by ~1 the walker
+        # rewrote last_run_message, which flipped l1_pager's
+        # fingerprint (`id|sample_reason|last_message`) and
+        # bypassed the 6h re-page throttle as a "breakthrough" —
+        # producing a fresh page at the first 20-min L1 tick after
+        # each hourly walker write, so ~hourly pages routed through
+        # the 20-min pager cadence.
+        # Now: findings clears at 0 whenever process is stable, csr
+        # stays in the human-readable message (an operator can still
+        # eyeball a runaway upstream via /walker-health or the ~200/
+        # day threshold below), and l1_pager's fingerprint won't
+        # storm on csr drift.
+        findings = c24 + cwd
+        # Emergency escape valve: if session_reconnects run away
+        # (>200/day = one every ~7min), we DO want a page — this
+        # tier caught a bad upstream node in the past.
+        SESSION_RECONNECT_ALERT_THRESHOLD = 200
+        if csr > SESSION_RECONNECT_ALERT_THRESHOLD:
+            findings += 1
         rate_per_day_7d = c7 / 7.0
         msg = (f"24h={c24} restarts (watchdog={cwd}) · "
                f"session_reconnects={csr} · "
