@@ -1180,6 +1180,35 @@ CREATE TABLE IF NOT EXISTS escrow_supply_snapshot (
     fetched_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (id = 1)
 );
+
+-- Legal audit trail for paid calls that were SERVED but NOT METERED
+-- under the billing-pause rule (Option B, ruled 2026-09-02, re-transmitted
+-- 2026-09-06). Every paused paid call = one row. Never deleted; same
+-- retention posture as page_views. See triage/SOURCING_DISCLOSURE_SPEC_
+-- 2026-09-06.md + memory/project_billing_pause_rule.md for the full rule
+-- text. Middleware writes via db.write_unbilled_call().
+--
+-- Indexes: ts_utc DESC (most common query is "show me the last N unbilled
+-- calls"), plus per-endpoint / per-client / per-reason for audit lookups.
+-- request_id has a UNIQUE constraint — same request retried by the client
+-- doesn't double-log (idempotency baked in at the storage layer, not
+-- something the middleware has to remember).
+CREATE TABLE IF NOT EXISTS unbilled_calls (
+    id                  BIGSERIAL   PRIMARY KEY,
+    ts_utc              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    endpoint            TEXT        NOT NULL,
+    request_id          TEXT        NOT NULL,
+    sourcing            TEXT        NOT NULL,
+    billing_reason      TEXT        NOT NULL,
+    client_identifier   TEXT,
+    canonical_hash      TEXT        NOT NULL,
+    response_bytes      INTEGER     NOT NULL,
+    UNIQUE (request_id)
+);
+CREATE INDEX IF NOT EXISTS unbilled_calls_ts_idx        ON unbilled_calls (ts_utc DESC);
+CREATE INDEX IF NOT EXISTS unbilled_calls_endpoint_idx  ON unbilled_calls (endpoint, ts_utc DESC);
+CREATE INDEX IF NOT EXISTS unbilled_calls_reason_idx    ON unbilled_calls (billing_reason, ts_utc DESC);
+CREATE INDEX IF NOT EXISTS unbilled_calls_client_idx    ON unbilled_calls (client_identifier, ts_utc DESC) WHERE client_identifier IS NOT NULL;
 """
 
 
@@ -7174,3 +7203,57 @@ def read_escrow_supply_snapshot():
         "fetched_at": fetched_at,
         "age_seconds": age,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Billing-pause audit trail (Option B, 2026-09-02 / re-transmitted 2026-09-06)
+# ─────────────────────────────────────────────────────────────────────
+
+def write_unbilled_call(*, endpoint, request_id, sourcing, billing_reason,
+                        client_identifier=None, canonical_hash, response_bytes):
+    """Append one row to unbilled_calls — the legal audit trail for a
+    paid call that was SERVED but NOT METERED under the billing-pause
+    rule. Idempotent via UNIQUE (request_id): a client retrying the
+    same request doesn't double-log; the second INSERT is a no-op via
+    ON CONFLICT DO NOTHING.
+
+    Called from x402_rails.py::apply_billing_pause. Never called on the
+    free path — the symmetry rule surfaces the sourcing field on free
+    responses, but only paid calls create audit rows.
+
+    Returns True on write (or on idempotent duplicate — the caller can
+    treat both the same). Returns False when PG is unavailable (dev
+    box); the middleware should still return the paused response with
+    billed:false so the client sees the disclosure even without an
+    audit row. See the spec for the fence: dev-box PG-unavailable is
+    NOT a production concern (a production call always lands with PG
+    reachable OR fails before reaching this hook)."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO unbilled_calls "
+                    "  (endpoint, request_id, sourcing, billing_reason, "
+                    "   client_identifier, canonical_hash, response_bytes) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (request_id) DO NOTHING",
+                    (
+                        endpoint, request_id, sourcing, billing_reason,
+                        client_identifier, canonical_hash, int(response_bytes),
+                    ),
+                )
+            conn.commit()
+        return True
+    except Exception as e:
+        # This path is the exception to fail-loud: an audit-write
+        # failure MUST NOT block the customer response. Log via
+        # _log_err (non-raising) so the response completes. If we can't
+        # write the audit row, the caller has already been served — a
+        # missed audit is a defect worth investigating, not a reason to
+        # break the customer's request. Compare to the fail-loud write
+        # helpers (write_signed_snapshot etc.) which BLOCK the walker;
+        # this is a request-path helper where blocking harms the user.
+        _log_err("write_unbilled_call_failed", e)
+        return False

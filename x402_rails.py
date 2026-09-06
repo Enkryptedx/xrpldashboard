@@ -413,3 +413,129 @@ def x402_maybe_require_payment(
         return _wrapper
 
     return _decorator
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Billing-pause middleware — Option B (ruled 2026-09-02, re-transmitted
+# 2026-09-06). Any paid call whose response sourcing is not "sovereign"
+# is SERVED but NOT METERED. Response carries billed:false +
+# billing_reason. One row per paused call in db.unbilled_calls.
+#
+# Full spec: triage/SOURCING_DISCLOSURE_SPEC_2026-09-06.md
+# Auto-loaded memory: memory/project_billing_pause_rule.md
+# ─────────────────────────────────────────────────────────────────────
+
+# billing_reason enum (frozen — extending requires a governance decision)
+BILLING_REASON_SOVEREIGN_PATH_UNAVAILABLE = "sovereign-path-unavailable"
+BILLING_REASON_STALE_CACHE = "stale-cache"
+BILLING_REASON_SOURCING_UNKNOWN = "sourcing-unknown"
+
+# Map from SovereignFetcher sourcing values to billing_reason. Missing
+# sourcing key maps to SOURCING_UNKNOWN (fail-closed on unknown, per
+# spec §billing_reason).
+_SOURCING_TO_REASON = {
+    "fallback-public-rpc":         BILLING_REASON_SOVEREIGN_PATH_UNAVAILABLE,
+    "public-no-tunnel-configured": BILLING_REASON_SOVEREIGN_PATH_UNAVAILABLE,
+    "stale-cache":                 BILLING_REASON_STALE_CACHE,
+}
+
+
+def apply_billing_pause(*, response, endpoint, request_id, client_identifier=None,
+                        canonical_hash=None, db_write_fn=None):
+    """Post-process a paid response per the billing-pause rule.
+
+    Inputs:
+        response: Flask Response object (must be JSON body-writable via
+                  response.get_json() + response.data assignment)
+        endpoint: string, the route path (e.g. "/check.json")
+        request_id: string, per-request UUID; used as the idempotency
+                    key for the unbilled_calls audit row
+        client_identifier: optional x402 payer id / wallet / API key.
+                           None for anonymous. Written to the audit row.
+        canonical_hash: hash of the response body (same one the proof
+                        envelope carries). Written to the audit row so
+                        an integrator can join their receipt to our audit
+                        later.
+        db_write_fn: optional override for db.write_unbilled_call; used
+                     in tests. Default is the real db helper.
+
+    Returns:
+        (response, was_paused: bool)
+
+    Behavior:
+        - sourcing == "sovereign" → sets data["billed"] = True, was_paused=False
+        - sourcing != "sovereign" (including missing) → sets
+          data["billed"] = False + data["billing_reason"] = <enum>,
+          writes one unbilled_calls row via db_write_fn, was_paused=True.
+
+    Never raises — a paused response with a failed audit-write still
+    returns the paused response (billed:false visible to the client).
+    See db.write_unbilled_call's docstring on the fence.
+    """
+    if db_write_fn is None:
+        import db as _db
+        db_write_fn = _db.write_unbilled_call
+
+    try:
+        payload = response.get_json(silent=True)
+    except Exception:
+        payload = None
+
+    if not isinstance(payload, dict):
+        # Response isn't JSON — can't inspect sourcing, can't inject
+        # billed. Treat as sovereign (don't audit-log a non-inspectable
+        # response). This is a "should never happen for machine tier
+        # responses" path — every paid endpoint returns JSON by design.
+        return response, False
+
+    # Look for sourcing on the top level OR in a nested "data" block
+    # (both shapes appear across the codebase — /check.json wraps under
+    # data, /lending exposes it directly, /cold-storage exposes it
+    # directly, etc). Nested wins because that's the /check.json
+    # envelope pattern.
+    sourcing = None
+    if isinstance(payload.get("data"), dict):
+        sourcing = payload["data"].get("sourcing")
+    if sourcing is None:
+        sourcing = payload.get("sourcing")
+
+    if sourcing == "sovereign":
+        # Set billed:true on the top-level payload so machines can
+        # rely on the field regardless of whether the endpoint wraps
+        # under `data` or not.
+        payload["billed"] = True
+        _write_billed_field(response, payload)
+        return response, False
+
+    # Non-sovereign OR sourcing missing → billing-pause fires
+    reason = _SOURCING_TO_REASON.get(sourcing, BILLING_REASON_SOURCING_UNKNOWN)
+    payload["billed"] = False
+    payload["billing_reason"] = reason
+    _write_billed_field(response, payload)
+
+    # Write audit row (best-effort per spec fence — failure to audit
+    # doesn't break the customer response)
+    try:
+        db_write_fn(
+            endpoint=endpoint,
+            request_id=request_id,
+            sourcing=sourcing if sourcing is not None else "unknown",
+            billing_reason=reason,
+            client_identifier=client_identifier,
+            canonical_hash=canonical_hash or "",
+            response_bytes=len(response.get_data() or b""),
+        )
+    except Exception:
+        # Never crash the customer response on audit-write failure
+        pass
+
+    return response, True
+
+
+def _write_billed_field(response, payload):
+    """Serialise the modified payload back onto the Flask Response.
+    Kept as a helper so a future switch to a different JSON serializer
+    or a streaming response only changes one spot."""
+    import json as _json
+    response.data = _json.dumps(payload).encode("utf-8")
+    response.headers["Content-Length"] = str(len(response.data))
