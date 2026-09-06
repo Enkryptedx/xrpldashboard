@@ -4746,6 +4746,17 @@ BOT_UA_PATTERNS = (
     "%FACTANKER%",
     "%xrpld-%",
     "%Palo Alto Networks%",
+    # 2026-09-06 — leaked-header UA pattern (one of two approved v6 rules;
+    # the growth-path-cluster predicate is the other, filed for a
+    # coordinated v6 bump with proper full-resync). This catches the
+    # curl/python-requests scripter bug where the client accidentally
+    # emits the HTTP header NAME as part of the header VALUE — e.g.
+    # `User-Agent: User-Agent:Mozilla/5.0…`. Real browsers never do this.
+    # Killed 3 of the 10 CN /contact form-farmer rows in Sat's report.
+    # Additions-only (no existing TRUE row can be un-matched), so hot-
+    # reload safe without a version bump — only new rows are caught until
+    # the next real v6 bump triggers a full-resync backfill.
+    "%User-Agent:%Mozilla%",
 )
 
 # Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
