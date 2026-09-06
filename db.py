@@ -122,6 +122,43 @@ def _log_err(category, exc):
     _LAST_ERR_LOG[category] = (now, 0)
 
 
+def _log_err_and_raise(category, exc):
+    """Same-shape wrapper around _log_err that re-raises after logging.
+
+    Use for **write** helpers whose caller assumes success on no-exception —
+    the read-helper contract of `return None on failure` doesn't apply
+    because a write's caller has no way to distinguish success from silent
+    no-op. Silent-swallow on writes was the root cause of the 2026-09-05
+    is_bot canary incident (writer walker_health stayed green for hours
+    while refresh_bot_hash_tables was failing every run).
+
+    Only migrate write helpers whose caller either propagates the
+    exception to walker_health ok=False or wraps it in a try/except that
+    marks the walker failed. See docs/IS_BOT_COLUMN_DESIGN.md §Wound
+    2026-09-05 for the pattern.
+    """
+    _log_err(category, exc)
+    raise
+
+
+class WriterConnUnavailable(Exception):
+    """Raised by a fail-loud write helper when pg_available() is True but
+    _get_writer_conn() returned None — Neon reachable-ish (env set) but the
+    connection open failed. Distinct from a mid-transaction Postgres error
+    (which raises a psycopg exception through the helper's own except).
+
+    Silent-return-False on this path was the second half of the 2026-09-05
+    silent-swallow class — the outer try/except caught the actual pg
+    exception inside _get_writer_conn, logged it via _log_err, returned
+    None, and the caller returned False silently. Now the write helpers
+    detect the None + raise this so the walker's outer try/except sees
+    it and walker_health goes red.
+
+    Read helpers keep the return-None contract — this class is write-only.
+    """
+    pass
+
+
 SCHEMA_DDL = """
 CREATE TABLE IF NOT EXISTS events (
     tx_hash      TEXT PRIMARY KEY,
@@ -2445,7 +2482,7 @@ def replace_amm_ranked_pools(rows):
         return
     conn = _get_writer_conn()
     if conn is None:
-        return
+        raise WriterConnUnavailable("replace_amm_ranked_pools: _get_writer_conn returned None")
     snapshot_ts = int(time.time())
     payload = [
         (
@@ -2479,8 +2516,8 @@ def replace_amm_ranked_pools(rows):
                     payload,
                 )
     except Exception as e:
-        _log_err("replace_amm_ranked_pools_failed", e)
         _drop_writer_conn()
+        _log_err_and_raise("replace_amm_ranked_pools_failed", e)
 
 
 def write_token_prices(rows):
@@ -2495,7 +2532,7 @@ def write_token_prices(rows):
         return 0
     conn = _get_writer_conn()
     if conn is None:
-        return 0
+        raise WriterConnUnavailable("write_token_prices: _get_writer_conn returned None")
     payload = [
         (
             r["currency"],
@@ -2523,9 +2560,8 @@ def write_token_prices(rows):
                 )
         return len(rows)
     except Exception as e:
-        _log_err("write_token_prices_failed", e)
         _drop_writer_conn()
-        return 0
+        _log_err_and_raise("write_token_prices_failed", e)
 
 
 def read_token_prices_map():
@@ -3625,7 +3661,7 @@ def write_snapshot_meta(meta):
         return
     conn = _get_writer_conn()
     if conn is None:
-        return
+        raise WriterConnUnavailable("write_snapshot_meta: _get_writer_conn returned None")
     written_at = int(meta.get("written_at") or time.time())
     try:
         with conn.cursor() as cur:
@@ -3638,8 +3674,8 @@ def write_snapshot_meta(meta):
                 (json.dumps(meta, default=str), written_at),
             )
     except Exception as e:
-        _log_err("write_snapshot_meta_failed", e)
         _drop_writer_conn()
+        _log_err_and_raise("write_snapshot_meta_failed", e)
 
 
 def write_account_snapshots(snapshot_date, rows):
@@ -5215,7 +5251,7 @@ def ensure_is_bot_schema():
         finally:
             idx_conn.close()
     except Exception as e:
-        _log_err("ensure_is_bot_schema_failed", e)
+        _log_err_and_raise("ensure_is_bot_schema_failed", e)
 
 
 def get_classification_meta(keys=None):
@@ -6224,7 +6260,12 @@ def write_signed_snapshot(envelope, current_root, leaves_total, schema_version):
         return False
     conn = _get_writer_conn()
     if conn is None:
-        return False
+        # Fail-loud (2026-09-06): pg_available()=True but writer conn
+        # open failed inside _get_writer_conn (which logs via _log_err
+        # and returns None). Pre-fix: silent return False here → caller
+        # walker_health stayed green. Post-fix: raise so the caller's
+        # outer try/except sees it.
+        raise WriterConnUnavailable("write_signed_snapshot: _get_writer_conn returned None (Neon reachable-ish but connect failed)")
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -6266,9 +6307,8 @@ def write_signed_snapshot(envelope, current_root, leaves_total, schema_version):
             conn.rollback()
         except Exception:
             pass
-        _log_err("write_signed_snapshot_failed", e)
         _drop_writer_conn()
-        return False
+        _log_err_and_raise("write_signed_snapshot_failed", e)
 
 
 def read_signed_snapshot(date_str):
@@ -6443,8 +6483,7 @@ def replace_escrows_snapshot(rows, snapshot_ledger_index=None):
             conn.commit()
         return True
     except Exception as e:
-        _log_err("replace_escrows_snapshot_failed", e)
-        return False
+        _log_err_and_raise("replace_escrows_snapshot_failed", e)
 
 
 def read_escrows_snapshot():
@@ -6564,8 +6603,7 @@ def replace_oracles_snapshot(rows, snapshot_ledger_index=None):
             conn.commit()
         return True
     except Exception as e:
-        _log_err("replace_oracles_snapshot_failed", e)
-        return False
+        _log_err_and_raise("replace_oracles_snapshot_failed", e)
 
 
 def read_oracles_snapshot():
@@ -7036,8 +7074,7 @@ def replace_cold_storage_snapshot(rows):
             conn.commit()
         return True
     except Exception as e:
-        _log_err("replace_cold_storage_snapshot_failed", e)
-        return False
+        _log_err_and_raise("replace_cold_storage_snapshot_failed", e)
 
 
 def read_cold_storage_snapshot():

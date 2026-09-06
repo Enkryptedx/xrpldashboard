@@ -1199,9 +1199,22 @@ def main():
         # can serve /.well-known/snapshots/<date>.json globally. Disk is the
         # source of truth; PG failure here is logged and ignored — next run
         # will replay the upsert and the mirror catches up.
+        # Mirror to Postgres (loud since 2026-09-06 — db.write_signed_snapshot
+        # now RAISES via _log_err_and_raise if the Neon write fails). The
+        # disk file is still the source of truth, but a mirror failure means
+        # Render is serving a stale envelope for the newest date — that's a
+        # real problem worth flipping walker_health red so BetterStack pages,
+        # not silently continuing with "post-write verify: OK" + "postgres
+        # mirror: FAILED" as we did through Aug/early-Sep.
         try:
             import db
-            if db.pg_available():
+        except Exception as e:
+            print(f"postgres mirror: ERROR import failed: {type(e).__name__}: {e}", file=sys.stderr)
+            _ok = False
+            _msg = f"postgres mirror import failed: {type(e).__name__}: {e}"
+            raise
+        if db.pg_available():
+            try:
                 mirrored = db.write_signed_snapshot(
                     envelope=signed,
                     current_root=signed["chain_root"],
@@ -1209,10 +1222,13 @@ def main():
                     schema_version=signed["schema_version"],
                 )
                 print(f"postgres mirror: {'OK' if mirrored else 'FAILED (disk intact, retry next run)'}")
-            else:
-                print("postgres mirror: skipped (DATABASE_URL not set)")
-        except Exception as e:
-            print(f"postgres mirror: ERROR {type(e).__name__}: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"postgres mirror: ERROR {type(e).__name__}: {e}", file=sys.stderr)
+                _ok = False
+                _msg = f"postgres mirror failed: {type(e).__name__}: {e}"
+                raise
+        else:
+            print("postgres mirror: skipped (DATABASE_URL not set)")
 
         _ok = True
         _msg = (f"signed+verified path=signed_snapshots/{date_str}.json "

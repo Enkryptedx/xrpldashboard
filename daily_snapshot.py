@@ -360,13 +360,14 @@ def main():
 
         path = write_snapshot(snap)
         print(f"wrote {path}")
-        _ok = True
-        _msg = (f"wrote {os.path.basename(path)} "
-                f"accounts={len(snap.get('accounts', []))} "
-                f"pools={len(snap.get('amm_pools', []))} "
-                f"mpts={len(snap.get('mpts') or [])} "
-                f"elapsed={snap.get('elapsed_seconds')}s")
 
+        # Order: mirror pushes happen BEFORE _ok=True so a mirror raise
+        # falls into the outer except with _ok still False. db.write_snapshot_meta
+        # became fail-loud 2026-09-06 (raises via _log_err_and_raise); the
+        # mirror path is not "best-effort" anymore — a silent-mirror-fail
+        # means Render serves stale rollup data under a green walker_health
+        # row (same shape as the is_bot canary incident, but on the
+        # snapshot-strip rollup).
         meta = mirror_meta_to_postgres()
         if meta:
             print(f"mirrored meta to pg: days={meta['days_collected']} accounts={meta['accounts_tracked']} pools={meta['pools_tracked']} mpts={meta['mpts_tracked']}")
@@ -375,6 +376,12 @@ def main():
         if accts_mirrored is not None:
             print(f"mirrored accounts to pg: rows={accts_mirrored}")
 
+        _ok = True
+        _msg = (f"wrote {os.path.basename(path)} "
+                f"accounts={len(snap.get('accounts', []))} "
+                f"pools={len(snap.get('amm_pools', []))} "
+                f"mpts={len(snap.get('mpts') or [])} "
+                f"elapsed={snap.get('elapsed_seconds')}s")
         return 0
     except Exception as e:
         _msg = f"{type(e).__name__}: {e}"
