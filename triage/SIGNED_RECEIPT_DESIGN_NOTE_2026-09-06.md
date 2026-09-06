@@ -78,3 +78,96 @@ Regardless of A or B, both need:
 ## What Charlie needs to decide
 
 **Choose A or B (or "both, A first").** Then I scope the build, propose a ship date, and either take it on next session or defer it to a fix window with more headroom than tonight's had.
+
+---
+
+## 2026-09-06 amendment — Option A approved IN SHAPE with one hard condition
+
+Charlie's ruling: Option A ships. **Not** with the snapshot / anchor
+key. A Mac-side service that signs whatever Render sends is a **signing
+oracle** — a compromised Render must never be able to get arbitrary
+payloads signed with the key the chain's credibility rests on. The
+below is now the design contract, not an option:
+
+### 1. Separate receipt keypair (mandatory)
+
+- New Ed25519 keypair, **generated on the Mac**, dedicated to receipts.
+  Never touches Render.
+- Public key published at **`/.well-known/snapshots/receipt_pubkey.json`**
+  (adjacent to but distinct from the snapshot pubkey) + mirrored in a
+  DNS TXT record under `receipt._xrpldashboard.com` (or wherever the
+  snapshot pubkey TXT lives, sibling not overwrite).
+- Snapshot/anchor keypair is *out of scope* for receipt signing. Two
+  keys, two blast radii: a receipt-oracle compromise cannot forge a
+  historical snapshot; a snapshot compromise cannot forge a receipt.
+
+### 2. Fixed receipt schema — signing service accepts ONE payload shape
+
+- The Mac-side `sig-service` exposes exactly one route
+  (`POST /sign/receipt/v1`) that accepts a JSON body conforming to a
+  frozen receipt schema and rejects anything else with 400.
+- Schema validation happens BEFORE signing. Fields are typed and
+  exhaustively listed (endpoint, request_id, ts_utc, canonical_hash,
+  sourcing, billing_reason, client_identifier, response_bytes — the
+  same envelope shape the billing-pause table already stores).
+- No wildcard "sign this arbitrary hash" endpoint. If Render is
+  compromised, the worst case is forged receipts (bounded by schema),
+  never a forged snapshot header or a forged L2 anchor.
+
+### 3. Domain-separated signature
+
+- Every signature computed as `Sign(k, "xrpldashboard/receipt/v1" ||
+  0x00 || canonical_hash_bytes)`. The literal prefix is the **domain
+  separator**; a receipt signature cannot be replayed as a snapshot
+  signature or vice versa even if the keys somehow collided or a
+  future service re-used the receipt key by accident.
+- The verifier snippet (Python + JS) hardcodes the same prefix so
+  independent verification is domain-locked without operator opt-in.
+- `signing_domain` published in the receipt envelope alongside
+  `sig_ed25519` so verifiers see the domain they should feed to the
+  verification function; makes rotation to `xrpldashboard/receipt/v2`
+  a schema change with visible bumping, not a silent break.
+
+### 4. Sig-service surface (contract-tight)
+
+- CF-Access authenticated, same as XRPL tunnel.
+- Rate limit at the origin: max N sign-calls per Render-service-token
+  per minute (bound blast radius on a Render compromise).
+- Log every sign call: request_id, canonical_hash prefix, ts, response
+  bytes. Rolling 90d local log; audit trail per-signature. Alerts on
+  N × baseline anomaly (paves the observability floor before day one).
+- No memory of what was signed beyond the log; stateless service.
+
+### 5. Not-in-this-build (parked)
+
+- Batched signing (Option B). Still viable follow-up if per-call latency
+  ever becomes user-visible; today, the +30–150ms tunnel round-trip fits
+  inside cache-miss budget.
+- Wildcard signing endpoint. Explicitly out of scope forever.
+
+### 6. Charlie's keyboard needs (send-back)
+
+The receipt keypair generation is not something JJ executes:
+
+1. On Mac: `openssl genpkey -algorithm ED25519 -out /path/receipt_ed25519.pem
+   -pass pass:<passphrase>` (passphrase = your paper-wallet-adjacent
+   discipline, per [[no_1password_keychain]]; stored on paper only).
+2. Extract pubkey to
+   `/path/receipt_ed25519.pub.pem`.
+3. Publish pubkey JSON at
+   `/.well-known/snapshots/receipt_pubkey.json` (same publisher path
+   as the snapshot pubkey; separate file).
+4. Publish DNS TXT at `receipt._xrpldashboard.com` mirroring the same
+   pubkey (base64 encoded per snapshot pubkey precedent).
+5. Confirm "done + here's the pubkey path" — no key material comes to
+   JJ, only the pubkey and its path.
+
+Once the keypair exists on the Mac + pubkey is published, the sig-
+service build is a ~250-line Flask app + CF Tunnel hostname + client
+wrapper in sovereign_tunnel_client.py. Ship after Charlie's key gen.
+
+### 7. Rejected variant (record so it isn't re-proposed)
+
+Signing receipts with the existing snapshot/anchor key was proposed
+in [[snapshot-signing-key-reuse]] scoping — REJECTED here on principle.
+Convenience beat security in that variant. This note supersedes.
