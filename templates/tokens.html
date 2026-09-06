@@ -880,6 +880,13 @@
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
+  {# NEW-1 hotfix 2026-09-06: ticker-canonical-issuers map ships to the
+     client so the live falling visual applies the SAME collision guard
+     used server-side by token_naming.resolve_display. A subset of the
+     curated JSON (just what the JS resolver needs — no _doc/brand fields)
+     is embedded here so a labeled OR unlabeled "USDT"-hex trade landing
+     off a non-canonical issuer never renders bare on the visual. #}
+  <script type="application/json" id="ticker-canonical-data">{{ ticker_canonical_json|safe }}</script>
 
   <div class="stats">
     <div class="stat vibes-spot">
@@ -1108,6 +1115,37 @@
       try { LABELS = JSON.parse(labelsEl.textContent || '{}'); }
       catch (e) { LABELS = {}; }
     }
+    // NEW-1 hotfix 2026-09-06: ticker-canonical map mirror of
+    // token_naming.py so the client applies the SAME collision guard
+    // used server-side. Any decoded token name matching a known ticker
+    // whose issuer isn't in canonical_issuers[] gets the "USDT (rXXX…
+    // — not Tether)" qualifier — never renders bare.
+    var TICKER_CANONICAL = {};
+    var tickerEl = document.getElementById('ticker-canonical-data');
+    if (tickerEl) {
+      try { TICKER_CANONICAL = JSON.parse(tickerEl.textContent || '{}'); }
+      catch (e) { TICKER_CANONICAL = {}; }
+    }
+    function shortAddr(a) {
+      if (!a) return 'unknown';
+      if (a.length <= 12) return a;
+      return a.substr(0, 5) + '…' + a.substr(a.length - 4);
+    }
+    // Mirror of token_naming.resolve_display for one lane: given a
+    // decoded (or bare short) ticker name + the issuer, return the
+    // collision-qualified display string. Returns the input `name` if
+    // no collision.
+    function applyTickerCollision(name, issuer) {
+      if (!name) return name;
+      var upper = name.toUpperCase();
+      var entry = TICKER_CANONICAL[upper];
+      if (!entry) return name;
+      var canon = entry.canonical_issuers || [];
+      if (issuer && canon.indexOf(issuer) !== -1) return name;
+      var hint = shortAddr(issuer);
+      var note = entry.note || 'not canonical';
+      return name + ' (' + hint + ' — ' + note + ')';
+    }
     var CATEGORY_RGB = {
       stablecoin:     [34,197,94],
       fiat:           [34,197,94],
@@ -1232,7 +1270,16 @@
       var cat = lbl ? lbl.category : 'other';
       if (cat === 'fiat') cat = 'stablecoin';
       var lane = laneIndex(cat);
-      var sym = lbl ? lbl.display : decodeCurrency(leg.currency);
+      // NEW-1 hotfix: labeled tokens ship server-side collision-qualified
+      // already (see app.py enriched loop); unlabeled tokens run the
+      // client-side JS mirror. Either way, no bare "USDT" from a
+      // non-canonical issuer reaches the tooltip.
+      var sym;
+      if (lbl) {
+        sym = lbl.display;
+      } else {
+        sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
+      }
       pulses.push({
         laneCenter: lane + 0.5,
         progress: 0,

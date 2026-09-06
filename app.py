@@ -3349,6 +3349,7 @@ def tokens():
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
     # not a placeholder to backfill.
     price_map = db.read_token_prices_map() if db.pg_available() else {}
+    from token_naming import resolve_display as _tk_resolve
     enriched = []
     for cur, iss, trades, hours_active in rows:
         meta = tokens_meta.get((cur, iss)) or {}
@@ -3361,6 +3362,14 @@ def tokens():
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
             category = None
             labeled = False
+        # NEW-1 (2026-09-06) hotfix: /tokens' label_lookup_json feeds the
+        # live falling-visual JS. Without this overlay a labeled "USDT"
+        # from a non-canonical issuer falls into the visual bare — the
+        # exact case Charlie caught. Applies same collision guard the
+        # /tokens list already does at line ~2164 (identical pattern).
+        _col = _tk_resolve(cur, iss)
+        if _col.get("collision"):
+            display = _col["display"]
         # BROAD Axelar reading (D1 v5 §2): every currency the Axelar gateway
         # issues counts as bridge, not just tokens hand-tagged in
         # token_names.json (only 1 of 9 currently is). Backfill deferred.
@@ -3646,6 +3655,25 @@ def tokens():
     }
     label_lookup_json = json.dumps(label_lookup, separators=(",", ":"))
 
+    # NEW-1 hotfix 2026-09-06: ship a JS-friendly subset of
+    # ticker_canonical_issuers.json to the client so the live falling
+    # visual's JS decoder can apply the same collision guard as the
+    # server (see token_naming.resolve_display). Only ticker → note +
+    # canonical_issuers[] needs to reach the client; brand/_doc stay
+    # on disk. Fail-open: if the file is missing/corrupt, ship {} and
+    # the JS resolver treats every decoded ticker as non-colliding.
+    _ticker_client = {}
+    try:
+        from token_naming import _load_ticker_map as _load_tm
+        for t, entry in _load_tm().items():
+            _ticker_client[t] = {
+                "note": entry.get("note") or f"not {t}",
+                "canonical_issuers": sorted(entry.get("canonical_issuers") or []),
+            }
+    except Exception:
+        _ticker_client = {}
+    ticker_canonical_json = json.dumps(_ticker_client, separators=(",", ":"))
+
     return render_template(
         "tokens.html",
         tokens=enriched,
@@ -3665,6 +3693,7 @@ def tokens():
         hex_view_h=hex_view_h,
         hex_size=HEX_S,
         label_lookup_json=label_lookup_json,
+        ticker_canonical_json=ticker_canonical_json,
         data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
     )
 
