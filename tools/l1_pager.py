@@ -665,16 +665,29 @@ def _digest_set_fingerprint(digest_entries: list[dict],
 
 def _alert_fingerprint(alert: dict) -> str:
     """Stable identity string used to decide whether a still-active
-    alert has *materially changed* since we last paged. Only text/reason
-    fields are included — pure count/age drift within the same reason
-    does NOT re-page. Fingerprint change (reason string flips) DOES
-    re-page immediately (see reconcile). Keep this list narrow: adding
-    a volatile field here reintroduces the page-storm this patch was
-    written to end."""
+    alert has *materially changed* since we last paged. Fingerprint
+    change → breakthrough re-page (see reconcile). Keep this list
+    narrow: adding a volatile field here reintroduces page-storms.
+
+    2026-09-06: dropped `last_message` from the fingerprint. Prior
+    included message text so walkers with mutable messages
+    (xrpl_stream_restart_rate embedding session_reconnects=NN) flipped
+    the fingerprint every hour and triggered a fresh "Changed" page
+    routed through L1's 20-min timer — one page per hour + one
+    still-active digest 20 min later = the noise storm 09-06 evening.
+
+    Now: fingerprint = id + sample_reason (sovereignty_loss's
+    only text discriminator). walker_failing / walker_findings alerts
+    carry no sample_reason so their fingerprint is just `id` — the
+    same alert re-fires only via the reminder_interval throttle
+    (6h default) or a real recovery+re-alarm cycle. If a walker's
+    UNDERLYING FINDING CLASS changes (a different CVE, a different
+    schema, etc.), the id itself changes (walker_findings:<walker>
+    is already walker-scoped; a truly new class would need a distinct
+    id string upstream). Message drift alone will no longer page."""
     return "|".join(str(alert.get(k, "")) for k in (
         "id",
-        "sample_reason",       # sovereignty_loss
-        "last_message",        # walker_failing + walker_findings
+        "sample_reason",       # sovereignty_loss discriminator
     ))
 
 
