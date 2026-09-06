@@ -2149,6 +2149,7 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
             pg_labels = {}
     out = []
     seen_issuers: dict[str, str] = {}
+    from token_naming import resolve_display as _resolve_disp
     for cur, iss, trades in rows:
         meta = tokens_meta.get((cur, iss)) or {}
         if meta:
@@ -2156,6 +2157,13 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
         else:
             decoded = _decode_currency_hex(cur)
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
+        # Overlay ticker-collision guard so /tokens list shows the same
+        # "USDT (rXXX… — not Tether)" qualifier /token detail does.
+        # Only overrides display when a real collision exists; canonical
+        # or non-listed tickers pass through unchanged.
+        _col = _resolve_disp(cur, iss)
+        if _col.get("collision"):
+            display = _col["display"]
         lbl = pg_labels.get(iss) or {}
         attested_domain = None
         if lbl.get("source") == "toml":
@@ -2781,21 +2789,15 @@ def _disambiguate_labels(parties):
 
 
 def _decode_currency_hex(hex_str):
-    """XRPL non-standard currencies are 40-char hex with NUL padding.
-    If the bytes are printable ASCII, render that; otherwise return None
-    and the caller can show a truncated hex."""
+    """Delegates to token_naming.decode_currency — single source of truth
+    across /tokens, /token detail, /whales, /check, /wallet. Returns the
+    ASCII name on clean decode or None for short-code/junk paths so the
+    caller can render its own fallback (truncated hex or "?")."""
+    from token_naming import decode_currency
     if not hex_str or len(hex_str) != 40:
         return None
-    try:
-        b = bytes.fromhex(hex_str).rstrip(b"\x00")
-    except ValueError:
-        return None
-    if not b or not all(32 <= c < 127 for c in b):
-        return None
-    try:
-        return b.decode("ascii")
-    except UnicodeDecodeError:
-        return None
+    d = decode_currency(hex_str)
+    return d["display"] if d["kind"] == "decoded" else None
 
 
 def _format_xrp(drops):
@@ -2849,9 +2851,18 @@ def _resolve_event(row, named_accounts, token_names):
         iss = amount_obj.get("issuer")
         val = amount_obj.get("value")
         token = token_names.get((cur, iss))
-        cur_disp = (token or {}).get("currency_display") or (
-            (cur[:6] + "…") if cur and len(cur) > 6 else cur
-        ) or "?"
+        # NEW-1 (2026-09-06): ticker-collision guard on the whales row.
+        # A trustline set on "USDT" from a non-Tether issuer no longer
+        # shows a bare "USDT" — it renders "USDT (rXXX… — not Tether)"
+        # so a reader scanning the whales list can't miss the collision.
+        from token_naming import resolve_display as _rd
+        _col = _rd(cur, iss)
+        if _col.get("collision"):
+            cur_disp = _col["display"]
+        else:
+            cur_disp = (token or {}).get("currency_display") or (
+                (cur[:6] + "…") if cur and len(cur) > 6 else cur
+            ) or "?"
         amount_display = _format_token_amount(val, cur_disp)
         currency = currency or cur
         issuer = issuer or iss
@@ -2860,9 +2871,18 @@ def _resolve_event(row, named_accounts, token_names):
 
     if etype == "trustset" and amount_display is None:
         token = token_names.get((currency, issuer)) if (currency and issuer) else None
-        cur_disp = (token or {}).get("currency_display") or (
-            (currency[:6] + "…") if currency and len(currency) > 6 else currency
-        ) or "?"
+        # Same collision guard on trustline-open rows — the trustline
+        # kind is exactly where a scam collision hurts most (the row
+        # says "opened trustline → USDT" and the user has to know
+        # the issuer isn't Tether).
+        from token_naming import resolve_display as _rd
+        _col = _rd(currency, issuer) if (currency and issuer) else {"collision": None, "display": None}
+        if _col.get("collision"):
+            cur_disp = _col["display"]
+        else:
+            cur_disp = (token or {}).get("currency_display") or (
+                (currency[:6] + "…") if currency and len(currency) > 6 else currency
+            ) or "?"
         amount_display = f"trustline → {cur_disp}"
 
     # tx_type surfacing (2026-09-06, ship for the "TAGGED USDT · —" case).
@@ -7332,12 +7352,20 @@ def robots_txt():
         "Allow: /\n"
         "Allow: /mpt/\n"
         "Allow: /coverage\n"
+        # /token/<cur>/<iss> unblocked 2026-09-06 per Charlie's NEW-1
+        # ruling — the naming fix (ticker-collision + hex-decode + junk
+        # fallback) means every crawlable token detail page now shows a
+        # human-readable name and calls out ticker collisions, so an
+        # imposter USDT can't hide behind a bare "5553445400…" in
+        # search-engine results any more. Universe is finite and
+        # curated (issuer set = distinct issuers in token_volume), same
+        # justification as /mpt/.
+        "Allow: /token/\n"
         "Disallow: /healthz\n"
         "Disallow: /api/\n"
         "Disallow: /lookup\n"
         "Disallow: /v2\n"
         "Disallow: /wallet/\n"
-        "Disallow: /token/\n"
         f"\nSitemap: {SITE_URL}/sitemap.xml\n"
     )
     return Response(body, mimetype="text/plain")

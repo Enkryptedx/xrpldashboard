@@ -1,0 +1,105 @@
+{
+  "_doc": "Curated map of well-known off-chain tickers → their canonical XRPL issuers (if any). Read by token_naming.resolve_display(). When a decoded currency name matches one of these keys but the issuer is NOT in canonical_issuers, /token, /whales, /check etc. render the collision-qualified form (e.g. 'USDT (usdxrp.net — not Tether)'). canonical_issuers=[] means NO canonical XRPL issuer exists — every match is a collision. Add cautiously; a new entry retroactively re-qualifies every existing display.",
+  "_source_of_truth": "Ripple's RLUSD launch announcement (2024); public issuer registries at xrpscan.com and xrplf.org/registry (spot-checked 2026-09-06). Update this file, not code, when a legitimate issuer changes hands.",
+
+  "RLUSD": {
+    "brand": "Ripple USD",
+    "canonical_issuers": ["rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"],
+    "note": "not Ripple's RLUSD"
+  },
+  "USDT": {
+    "brand": "Tether",
+    "canonical_issuers": [],
+    "note": "not Tether"
+  },
+  "USDC": {
+    "brand": "Circle USDC",
+    "canonical_issuers": [],
+    "note": "not Circle USDC"
+  },
+  "DAI": {
+    "brand": "MakerDAO DAI",
+    "canonical_issuers": [],
+    "note": "not MakerDAO DAI"
+  },
+  "BTC": {
+    "brand": "Bitcoin",
+    "canonical_issuers": [],
+    "note": "not native Bitcoin"
+  },
+  "WBTC": {
+    "brand": "Wrapped Bitcoin",
+    "canonical_issuers": [],
+    "note": "not the mainstream WBTC"
+  },
+  "ETH": {
+    "brand": "Ethereum",
+    "canonical_issuers": [],
+    "note": "not native Ethereum"
+  },
+  "SOL": {
+    "brand": "Solana",
+    "canonical_issuers": [],
+    "note": "not native Solana"
+  },
+  "ADA": {
+    "brand": "Cardano",
+    "canonical_issuers": [],
+    "note": "not native Cardano"
+  },
+  "MATIC": {
+    "brand": "Polygon",
+    "canonical_issuers": [],
+    "note": "not native Polygon"
+  },
+  "LINK": {
+    "brand": "Chainlink",
+    "canonical_issuers": [],
+    "note": "not native Chainlink"
+  },
+  "XLM": {
+    "brand": "Stellar",
+    "canonical_issuers": [],
+    "note": "not native Stellar"
+  },
+  "BNB": {
+    "brand": "Binance BNB",
+    "canonical_issuers": [],
+    "note": "not native BNB"
+  },
+  "LTC": {
+    "brand": "Litecoin",
+    "canonical_issuers": [],
+    "note": "not native Litecoin"
+  },
+  "DOGE": {
+    "brand": "Dogecoin",
+    "canonical_issuers": [],
+    "note": "not native Dogecoin"
+  },
+  "SHIB": {
+    "brand": "Shiba Inu",
+    "canonical_issuers": [],
+    "note": "not the mainstream SHIB"
+  },
+  "PEPE": {
+    "brand": "Pepe (mainstream memecoin)",
+    "canonical_issuers": [],
+    "note": "not the mainstream PEPE"
+  },
+  "TRX": {
+    "brand": "Tron",
+    "canonical_issuers": [],
+    "note": "not native Tron"
+  },
+  "USDX": {
+    "brand": "USDX (multiple projects)",
+    "canonical_issuers": [],
+    "note": "no canonical XRPL issuer"
+  },
+  "TETHER": {
+    "brand": "Tether",
+    "canonical_issuers": [],
+    "note": "not Tether Ltd."
+  }
+}

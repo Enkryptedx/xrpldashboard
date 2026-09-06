@@ -208,6 +208,19 @@
           <span class="cat-badge cat-unnamed">{{ _('unnamed') }}</span>
         {% endif %}
       </div>
+      {% if data.ticker_collision %}
+        <div class="hero-meta" style="margin-top: 0.35em; color: var(--amber);">
+          {{ _('This token uses the ticker') }} <strong>{{ data.ticker_collision.ticker }}</strong>
+          {{ _('but the issuer is not the canonical XRPL issuer for that name — this is') }}
+          <strong>{{ data.ticker_collision.note }}</strong>.
+          {{ _('Issuer:') }} <span class="iss">{{ data.ticker_collision.issuer_hint }}</span>.
+        </div>
+      {% endif %}
+      {% if data.non_standard_code %}
+        <div class="hero-meta" style="margin-top: 0.35em; color: var(--muted);">
+          {{ _('Non-standard currency code — the on-chain bytes do not decode to a printable name; the raw hex is shown for reference.') }}
+        </div>
+      {% endif %}
       {% if data.category == 'lp_token' and data.pool_pair_label %}
       <div class="hero-meta lp-clarifier">
         {{ _('AMM LP token — represents a share of the %(pair)s pool. Holders earn fees from swaps in this pool.', pair=data.pool_pair_label) }}

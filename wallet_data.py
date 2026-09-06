@@ -167,29 +167,31 @@ for _entry in _AMM_INDEX:
 
 
 def _decode_currency_hex(hex_str):
-    if not hex_str or len(hex_str) != 40:
-        return hex_str or "?"
-    try:
-        b = bytes.fromhex(hex_str).rstrip(b"\x00")
-    except ValueError:
-        return hex_str[:8].upper()
-    if not b or not all(32 <= c < 127 for c in b):
-        return hex_str[:8].upper()
-    try:
-        return b.decode("ascii").strip()
-    except UnicodeDecodeError:
-        return hex_str[:8].upper()
+    """Delegates to token_naming.decode_currency — same behavior as
+    token_data.py / check_data.py / app.py so /wallet renders match
+    /token, /tokens, /whales, /check. Preserves historical return
+    shape: string on any input; short-hex or "?" on bad input."""
+    from token_naming import decode_currency
+    d = decode_currency(hex_str or "")
+    if d["kind"] == "decoded":
+        return d["display"]
+    if d["kind"] == "junk":
+        return d["display"]  # short-hex uppercase
+    return hex_str or "?"
 
 
 def _short_currency(currency, issuer=None):
+    """Ticker-collision aware. Delegates decode to token_naming; overlays
+    the curated collision guard so a wallet holding e.g. "USDT" from a
+    non-canonical issuer renders as "USDT (rXXX… — not Tether)"."""
+    from token_naming import resolve_display
     if not currency or currency == "XRP":
         return "XRP"
-    if len(currency) == 3:
-        return currency
     meta = _TOKEN_BY_KEY.get((currency, issuer)) if issuer else None
-    if meta and meta.get("currency_display"):
+    r = resolve_display(currency, issuer)
+    if meta and meta.get("currency_display") and not r["collision"]:
         return meta["currency_display"]
-    return _decode_currency_hex(currency)
+    return r["display"]
 
 
 def _amm_pair_label(asset, asset2):

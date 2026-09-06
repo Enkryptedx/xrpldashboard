@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import db
 from check_data import _capability_signals
 from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
+from token_naming import decode_currency, resolve_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
@@ -87,18 +88,13 @@ def _short_addr(addr):
 
 
 def _decode_currency_hex(hex_str):
+    """Delegates to token_naming.decode_currency so decode behaviour stays
+    consistent with /whales, /check, /tokens. Returns the ASCII string
+    for a clean decode or None (matches historical shape callers expect)."""
     if not hex_str or len(hex_str) != 40:
         return None
-    try:
-        b = bytes.fromhex(hex_str).rstrip(b"\x00")
-    except ValueError:
-        return None
-    if not b or not all(32 <= c < 127 for c in b):
-        return None
-    try:
-        return b.decode("ascii")
-    except UnicodeDecodeError:
-        return None
+    d = decode_currency(hex_str)
+    return d["display"] if d["kind"] == "decoded" else None
 
 
 def _amm_pools_holding(currency, issuer):
@@ -247,6 +243,24 @@ def fetch_token_data(currency, issuer):
         labeled = False
         source_url = None
 
+    # Ticker-collision guard (NEW-1, 2026-09-06). Use the issuer's Domain
+    # field from the DB snapshot as the collision hint when available —
+    # renders "USDT (usdxrp.net — not Tether)" instead of a short-address
+    # form. Domain comes from token_issuer_flags_snapshot (already fetched
+    # for the capabilities block below).
+    _issuer_domain = None
+    _snap = db.read_token_issuer_flags(issuer)
+    if _snap and _snap.get("domain_hex"):
+        try:
+            _d = bytes.fromhex(_snap["domain_hex"]).decode("ascii").strip()
+            if _d and all(32 <= ord(c) < 127 for c in _d):
+                _issuer_domain = _d
+        except (ValueError, UnicodeDecodeError):
+            pass
+    _resolved = resolve_display(currency, issuer, issuer_domain=_issuer_domain)
+    ticker_collision = _resolved["collision"]
+    non_standard_code = _resolved["non_standard"]
+
     # LP-token clarifier: extract the underlying pair from the curated display
     # string ("LP: XRP/RLUSD" -> "XRP/RLUSD") so the template can render a
     # one-line explanation. Reuses the already-resolved pair label rather than
@@ -312,7 +326,7 @@ def fetch_token_data(currency, issuer):
     # issuer, walker hasn't caught up) → sourcing=stale-cache and banner.
     capabilities = []
     capabilities_sourcing = SOURCING_SOVEREIGN
-    snap = db.read_token_issuer_flags(issuer)
+    snap = _snap  # reuse the read above so we don't hit the DB twice
     if snap is None or (snap.get("age_seconds") or 0) > CAPABILITIES_STALE_SECONDS:
         capabilities_sourcing = SOURCING_STALE_CACHE
     if snap and snap.get("fetch_ok"):
@@ -356,6 +370,12 @@ def fetch_token_data(currency, issuer):
         "capabilities_sourcing": capabilities_sourcing,
         "capabilities_age_seconds": (snap or {}).get("age_seconds"),
         "sourcing": capabilities_sourcing,
+        # NEW-1 (2026-09-06): ticker-collision + non-standard-code fields.
+        # Templates render these under the token name; JSON twins expose
+        # them so agents can trust-check the collision boundary in code.
+        "ticker_collision": ticker_collision,
+        "non_standard_code": non_standard_code,
+        "issuer_domain": _issuer_domain,
     }
 
 

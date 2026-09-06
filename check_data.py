@@ -139,19 +139,19 @@ def _normalize_currency(cur: str) -> str:
 
 
 def _display_currency(cur_normalized: str) -> str:
-    """Reverse of _normalize_currency for display. 3-char passes through;
-    hex-40 with trailing zeros unpacks back to ASCII when the bytes decode
-    cleanly, otherwise renders as short-hex (e.g. "0x534F4C…000")."""
+    """Reverse of _normalize_currency for display. Delegates to
+    token_naming.decode_currency (single source of truth across
+    /tokens, /token, /whales, /check, /wallet). 3-char passes through;
+    hex-40 with clean bytes unpacks back to ASCII; junk falls back to
+    the "0x…" short-hex form so downstream copy still has a scannable
+    handle to the raw code."""
     if not cur_normalized:
         return cur_normalized
-    if len(cur_normalized) <= 3:
-        return cur_normalized
-    try:
-        raw = bytes.fromhex(cur_normalized).rstrip(b"\x00")
-        if raw and all(32 <= b < 127 for b in raw):
-            return raw.decode("ascii")
-    except ValueError:
-        pass
+    from token_naming import decode_currency
+    d = decode_currency(cur_normalized)
+    if d["kind"] == "decoded" or d["kind"] == "short" or d["kind"] == "xrp":
+        return d["display"]
+    # kind == "junk"
     return f"0x{cur_normalized[:6]}…{cur_normalized[-3:]}"
 
 
@@ -986,6 +986,37 @@ def check_token(currency: str, issuer: str) -> dict:
 
     signals: list[dict] = []
     couldnt_check: list[dict] = []
+
+    # NEW-1 (2026-09-06): ticker-collision signal — pushed to the FRONT of
+    # the signals list so a reader checking a "USDT" token from an issuer
+    # that isn't Tether sees the collision before any other signal. Uses
+    # the AccountRoot Domain field (if we already have it via _query_ledger)
+    # as the collision hint. Silent when no collision applies.
+    from token_naming import resolve_display as _rd_check
+    _dom_hint = domain if 'domain' in dir() else None
+    _col = _rd_check(currency, issuer, issuer_domain=_dom_hint)
+    if _col.get("collision"):
+        signals.append(_signal(
+            label="Ticker collision",
+            value=(
+                f"This token uses the ticker “{_col['collision']['ticker']}” "
+                f"but the issuer is not the canonical XRPL issuer for that name — "
+                f"this is {_col['collision']['note']}. Issuer: {_col['collision']['issuer_hint']}."
+            ),
+            source_label="curator: ticker_canonical_issuers.json",
+            source_url=None,
+        ))
+    if _col.get("non_standard"):
+        signals.append(_signal(
+            label="Non-standard currency code",
+            value=(
+                "This token's on-chain currency code does not decode to a "
+                "printable name. Raw hex is shown for reference; there is "
+                "no reader-friendly ticker to compare against."
+            ),
+            source_label="XRPL currency code (raw)",
+            source_url=None,
+        ))
 
     # --- Tier decision ------------------------------------------------
     verified_url = tn_entry.get("verified_via")
