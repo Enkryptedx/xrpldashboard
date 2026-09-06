@@ -373,6 +373,14 @@
       <div class="event-top">
         <div class="event-meta">
           <span class="badge {{ e.type }}">{{ e.type_display }}</span>
+          {# XRPL TransactionType, extracted from raw_json. Shown as a
+             small companion pill so a "TAGGED" row also declares what
+             kind of ledger operation it was (Payment / CheckCreate /
+             TrustSet / AMMDeposit / OfferCreate / …). Silent when the
+             tx_type wasn't in raw_json (older rows before extraction). #}
+          {% if e.tx_type and e.tx_type != 'Payment' %}
+          <span class="badge" style="background: rgba(140,150,170,0.10); color: var(--dim); font-size: 0.65rem;">{{ e.tx_type }}</span>
+          {% endif %}
           <span>{{ e.age }} {{ _('ago') }}</span>
           <span class="event-link">{{ _('ledger') }} {{ e.ledger }}</span>
         </div>

@@ -2865,6 +2865,31 @@ def _resolve_event(row, named_accounts, token_names):
         ) or "?"
         amount_display = f"trustline → {cur_disp}"
 
+    # tx_type surfacing (2026-09-06, ship for the "TAGGED USDT · —" case).
+    # Extract the actual XRPL TransactionType from raw_json so the badge can
+    # say "CheckCreate" vs "Payment" vs "AMMDeposit" etc. — a tagged row on a
+    # Check no longer looks like a broken Payment. For non-Payment types
+    # whose "amount" isn't a Payment.Amount, extract the promise-shaped
+    # field (SendMax for Checks, LimitAmount for TrustSets) so the row
+    # explains itself instead of rendering "—".
+    tx_type = tx.get("TransactionType") if isinstance(tx, dict) else None
+    if amount_display is None and tx_type == "CheckCreate":
+        send_max = tx.get("SendMax")
+        if isinstance(send_max, str):
+            try:
+                amount_display = f"up to {_format_xrp(int(send_max))} (Check)"
+            except ValueError:
+                pass
+        elif isinstance(send_max, dict):
+            cur = send_max.get("currency")
+            iss = send_max.get("issuer")
+            val = send_max.get("value")
+            token = token_names.get((cur, iss))
+            cur_disp = (token or {}).get("currency_display") or (
+                (cur[:6] + "…") if cur and len(cur) > 6 else cur
+            ) or "?"
+            amount_display = f"up to {_format_token_amount(val, cur_disp)} (Check)"
+
     if amount_display is None:
         amount_display = "—"
 
@@ -2908,6 +2933,11 @@ def _resolve_event(row, named_accounts, token_names):
         "age": _humanize_seconds(age_seconds),
         "type": etype,
         "type_display": type_labels.get(etype, etype),
+        # tx_type = XRPL TransactionType extracted from raw_json at render
+        # time; rendered as a small pill next to the type_display badge so
+        # a "TAGGED" row also shows "CheckCreate" / "Payment" / "AMMDeposit"
+        # etc. Independent of the site's own event-class taxonomy above.
+        "tx_type": tx_type,
         "from_addr": from_addr,
         "from_addr_short": _short_addr(from_addr),
         "from_label": from_label,
