@@ -547,6 +547,22 @@
 
       <p class="status-line">{{ result.status_line }}</p>
 
+      {# Sovereignty disclosure banner. Renders only when the sovereign
+         tunnel wasn't the answer — either the tunnel cascaded to a public
+         XRPL RPC for this request (fallback-public-rpc) or the tunnel is
+         unconfigured in this environment (public-no-tunnel-configured).
+         Silent when result.sourcing is missing (message triage kind) or
+         equals 'sovereign' (the happy path). Symmetric with /lending. #}
+      {% if result.sourcing == 'fallback-public-rpc' %}
+        <p class="disclaimer" style="background: rgba(245,158,11,0.08); border-left-color: rgba(245,158,11,0.55); margin-top: 8px;">
+          {{ _('Live ledger lookup for this address fell back to public XRPL infrastructure (s1.ripple.com / s2.ripple.com) because our sovereign tunnel didn\'t serve this request. The facts themselves are unchanged — every one still carries its own source label and timestamp below.') }}
+        </p>
+      {% elif result.sourcing == 'public-no-tunnel-configured' %}
+        <p class="disclaimer" style="background: rgba(140,150,170,0.06); border-left-color: rgba(140,150,170,0.35); margin-top: 8px;">
+          {{ _('Live ledger lookup for this address used public XRPL infrastructure — the sovereign tunnel is not configured on this deployment.') }}
+        </p>
+      {% endif %}
+
       {{ fcra_disclaimer() }}
 
       {% if result.next_action %}

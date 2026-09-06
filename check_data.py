@@ -38,7 +38,15 @@ import certifi
 from publicsuffix2 import get_sld  # Mozilla Public Suffix List, for correct eTLD+1
 from xrpl.models.requests import AccountInfo
 
+import xrpl_client
 from xrpl_client import get_client
+from sovereign_tunnel_client import (
+    SOURCING_SOVEREIGN,
+    SOURCING_FALLBACK,
+    SOURCING_NO_TUNNEL,
+    SovereignFetcher,
+    worse_sourcing,
+)
 
 # D3 URL/domain check: reuse the battle-tested SSRF gate from the
 # walker. _is_safe_domain rejects IPs, control chars, and off-shape
@@ -514,31 +522,52 @@ def _signal_earliest_ssl_cert(host: str) -> dict:
     )
 
 
-def _query_ledger(address: str) -> tuple[dict | None, str | None]:
-    """Return (account_data, error_reason). account_data is None if the
-    account doesn't exist on-chain or if all endpoints failed.
+def _make_fetcher() -> SovereignFetcher:
+    """Build a per-request SovereignFetcher for /check.
+
+    walker_name='check_page' so any cascade shows up in
+    walker_node_fallback under the same name as the pre-tunnel-wire
+    logger (see xrpl_client.get_client(walker_name='check_page')),
+    which keeps the ~287/day cascade count comparable before/after.
+    Public fallback URL comes from xrpl_client.PUBLIC_NODES[0] so env
+    overrides flow through consistently.
+    """
+    public_url = xrpl_client.PUBLIC_NODES[0]
+    return SovereignFetcher(public_url=public_url, walker_name="check_page")
+
+
+def _query_ledger(address: str, fetcher: SovereignFetcher | None = None) -> tuple[dict | None, str | None, str]:
+    """Return (account_data, error_reason, sourcing).
+
+    account_data is None if the account doesn't exist on-chain or if
+    all endpoints failed. sourcing is one of the SOURCING_* constants
+    from sovereign_tunnel_client, reflecting how the RPC was served.
 
     Requests signer_lists=True so multi-sig detection piggybacks on the
     same RPC call — no extra round-trip for the capabilities section.
-    """
-    try:
-        client = get_client(walker_name="check_page")
-        resp = client.request(
-            AccountInfo(
-                account=address,
-                ledger_index="validated",
-                signer_lists=True,
-            )
-        )
-    except Exception as e:
-        return None, f"XRPL endpoints unreachable ({type(e).__name__})"
 
-    result = resp.result or {}
+    Tunnel-first via SovereignFetcher (rpc.xrpldashboard.com with
+    CF-Access headers); public s1/s2 fallback if the tunnel fails or
+    is unconfigured. Fail-open if env vars missing (fetcher's sourcing
+    reports 'public-no-tunnel-configured' instead of crashing).
+    """
+    if fetcher is None:
+        fetcher = _make_fetcher()
+
+    params = {
+        "account": address,
+        "ledger_index": "validated",
+        "signer_lists": True,
+    }
+    result = fetcher.call("account_info", params)
+    if result is None:
+        return None, "XRPL endpoints unreachable", fetcher.sourcing
+
     err = result.get("error")
     if err == "actNotFound":
-        return None, "not_found"
+        return None, "not_found", fetcher.sourcing
     if err:
-        return None, f"XRPL returned '{err}'"
+        return None, f"XRPL returned '{err}'", fetcher.sourcing
 
     account_data = dict(result.get("account_data") or {})
     # signer_lists is returned as a top-level field in the RPC result,
@@ -548,7 +577,7 @@ def _query_ledger(address: str) -> tuple[dict | None, str | None]:
         sl = result.get("signer_lists")
         if sl:
             account_data["signer_lists"] = sl
-    return account_data, None
+    return account_data, None, fetcher.sourcing
 
 
 # ─── Ledger-level capabilities (Phase 3 issuer flags + account security) ─
@@ -755,7 +784,8 @@ def check_address(address: str) -> dict:
         except Exception as e:
             pg_error = f"database read failed ({type(e).__name__})"
 
-    account_data, ledger_error = _query_ledger(address)
+    _fetcher = _make_fetcher()
+    account_data, ledger_error, page_sourcing = _query_ledger(address, _fetcher)
 
     signals: list[dict] = []
     couldnt_check: list[dict] = []
@@ -894,6 +924,12 @@ def check_address(address: str) -> dict:
         "capabilities": capabilities,
         "couldnt_check": couldnt_check,
         "checked_at_utc": _now_iso(),
+        # Sourcing flag from the SovereignFetcher used for the on-chain
+        # AccountInfo call. One of SOURCING_SOVEREIGN / SOURCING_FALLBACK
+        # / SOURCING_NO_TUNNEL. Consumed by the /check human template to
+        # render the fallback/no-tunnel banner AND by /check.json machine
+        # callers so agents can see the sovereignty state per query.
+        "sourcing": page_sourcing,
         # Next-action link for Fold 1 — always /wallet/<addr>, the
         # visitor's route into the fuller detail view.
         "next_action": {
@@ -943,7 +979,8 @@ def check_token(currency: str, issuer: str) -> dict:
     named_entry = named.get(issuer) or {}
 
     # On-chain Domain read from the issuer's AccountRoot.
-    account_data, ledger_error = _query_ledger(issuer)
+    _fetcher = _make_fetcher()
+    account_data, ledger_error, page_sourcing = _query_ledger(issuer, _fetcher)
     domain = _decode_domain_hex((account_data or {}).get("Domain")) \
         if account_data else None
 
@@ -1134,6 +1171,7 @@ def check_token(currency: str, issuer: str) -> dict:
         "capabilities": capabilities,
         "couldnt_check": couldnt_check,
         "checked_at_utc": _now_iso(),
+        "sourcing": page_sourcing,
         "next_action": {
             "label": "View this token's activity",
             "href": f"/token/{currency_norm}/{issuer}",
@@ -1321,7 +1359,7 @@ def _matchback_for_account(address: str, target_domain: str) -> tuple[bool, str 
     A match is any within-family relation: exact, subdomain either way,
     or same registered root. So target `xrpl-labs.com` matches on-chain
     `validator.xrpl-labs.com` and vice versa."""
-    account_data, err = _query_ledger(address)
+    account_data, err, _sourcing = _query_ledger(address)
     if err or not account_data:
         return False, None
     domain = _decode_domain_hex(account_data.get("Domain"))
