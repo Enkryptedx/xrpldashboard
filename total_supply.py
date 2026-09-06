@@ -23,7 +23,9 @@ import time
 
 from xrpl.models.requests import Ledger
 
+import xrpl_client
 from xrpl_client import get_client
+from sovereign_tunnel_client import SovereignFetcher
 
 log = logging.getLogger(__name__)
 
@@ -35,18 +37,25 @@ _cache = {"fetched_at": 0.0, "data": None}
 
 
 def fetch_total_supply():
-    try:
-        # walker_name="total_supply" (2026-09-03) — was defaulting to
-        # "unknown", which surfaced as ~18 walker_node_fallback rows/6h
-        # with walker_name='unknown' during the sovereignty audit and
-        # broke per-page fallback attribution. Every fallback now carries
-        # a real caller identity.
-        client = get_client(walker_name="total_supply")
-        resp = client.request(Ledger(ledger_index="validated"))
-    except Exception as exc:
-        log.warning("total_supply: ledger request failed: %s", exc)
+    """Tunnel-first ledger request.
+
+    walker_name="total_supply" (2026-09-03) — every fallback carries
+    a real caller identity so per-page attribution stays clean.
+    2026-09-06: switched from xrpl_client.get_client() (local rippled
+    primary via localhost:5005, which is unreachable from Render and
+    was producing ~52 walker_node_fallback rows/day) to
+    SovereignFetcher (tunnel primary via rpc.xrpldashboard.com with
+    CF-Access headers; s1/s2 fallback on real cascade). Fail-open if
+    tunnel env vars unset.
+    """
+    fetcher = SovereignFetcher(
+        public_url=xrpl_client.PUBLIC_NODES[0],
+        walker_name="total_supply",
+    )
+    result = fetcher.call("ledger", {"ledger_index": "validated"})
+    if result is None:
+        log.warning("total_supply: ledger request failed (all endpoints)")
         return None
-    result = resp.result or {}
     if "error" in result:
         log.warning("total_supply: ledger error: %s", result.get("error"))
         return None
@@ -64,6 +73,7 @@ def fetch_total_supply():
         "total_xrp": drops / 1_000_000.0,
         "total_drops": drops,
         "ledger_index": ledger.get("ledger_index"),
+        "sourcing": fetcher.sourcing,
     }
 
 
