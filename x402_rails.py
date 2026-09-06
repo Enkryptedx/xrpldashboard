@@ -399,7 +399,25 @@ def x402_maybe_require_payment(
                 )
 
             response = make_response(fn(*args, **kwargs))
-            if receipt.get("tx_hash"):
+            # Billing-pause middleware (Option B, 2026-09-02) — post-process
+            # the response body: if sourcing != sovereign, set billed:false +
+            # billing_reason and skip the receipt (no settlement claim on a
+            # non-sovereign response). If sourcing == sovereign, set
+            # billed:true and add the payment receipt header as usual.
+            request_id = (
+                request.headers.get("X-Request-Id")
+                or request.headers.get("Request-Id")
+                or (receipt.get("tx_hash") or "")
+            )
+            client_identifier = receipt.get("payer") or receipt.get("from")
+            response, paused = apply_billing_pause(
+                response=response,
+                endpoint=resource,
+                request_id=request_id,
+                client_identifier=client_identifier,
+                canonical_hash=None,
+            )
+            if not paused and receipt.get("tx_hash"):
                 response.headers["X-PAYMENT-RECEIPT"] = str(receipt["tx_hash"])
             return response
 
