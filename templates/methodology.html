@@ -288,7 +288,7 @@
   <h2 id="signed-snapshots">{{ _('Signed integrity snapshots') }}</h2>
   <p>
     {% trans -%}
-    Every UTC day we capture a canonical set of headline metrics (the seven anchored data metrics enumerated in <a href="#anchored-metric-set">Anchored metric set</a> below, plus three meta-observability metrics), hash that capture into a Merkle leaf, extend a global append-only Merkle chain, and sign the resulting envelope with our Ed25519 private key. The signed JSON is published at <code>/.well-known/snapshots/YYYY-MM-DD.json</code> and the cumulative chain root at <code>/.well-known/snapshots/chain.json</code>. Both are static, cacheable, and independently verifiable forever.
+    Every UTC day we capture a canonical set of headline metrics (the seven anchored data metrics enumerated in <a href="#anchored-metric-set">Anchored metric set</a> below, plus four meta-observability metrics — a fourth, <code>registry_state</code>, was added effective 2026-09-07), hash that capture into a Merkle leaf, extend a global append-only Merkle chain, and sign the resulting envelope with our Ed25519 private key. The signed JSON is published at <code>/.well-known/snapshots/YYYY-MM-DD.json</code> and the cumulative chain root at <code>/.well-known/snapshots/chain.json</code>. Both are static, cacheable, and independently verifiable forever.
     {%- endtrans %}
   </p>
   <p>
@@ -398,7 +398,7 @@
     <strong>{{ _('What is intentionally NOT anchored — and why.') }}</strong>
     {{ _('The Ethereum-side RLUSD supply and the cross-chain total that derives from it appear on') }} <a href="/rlusd">/rlusd</a> {{ _('but are excluded from the anchored set. Ethereum-side data originates from a public Ethereum RPC (we do not run our own Ethereum node), and the anchor covenant requires "originated from our own node." Keeping those numbers off the chain preserves the meaning of the anchor.') }}
     <br>
-    {{ _('Meta-observability metrics — walker_health_summary, claims_index_state, editorial_state — are included in the signed leaf payload as proof-of-our-own-machinery-health but sit outside the "seven anchored data metrics" narrative because they describe our infrastructure, not XRPL analytics.') }}
+    {{ _('Meta-observability metrics — walker_health_summary, claims_index_state, editorial_state, registry_state (added 2026-09-07) — are included in the signed leaf payload as proof-of-our-own-machinery-health but sit outside the "seven anchored data metrics" narrative because they describe our infrastructure and our editorial state, not XRPL analytics. registry_state commits the taxonomy version, registry row counts, and a Merkle root over the full curator decision history — so any past snapshot proves both what the taxonomy was and what the registry contained on that date.') }}
   </p>
   <p style="color: var(--muted); font-size: 0.9rem;">
     {{ _('Historical continuity: prior anchors (#1–#4) were stamped with a wider metric set that included the two Ethereum-side entries. Their leaf hashes and chain roots remain immutable — the append-only chain records each day\'s leaf_hash as it was, and verification recomputes the merkle root over all leaves regardless of which specific metrics any given day contained. Changing the anchored set for future leaves does not break verification of past ones.') }}
