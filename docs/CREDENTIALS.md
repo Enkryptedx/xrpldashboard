@@ -336,7 +336,7 @@ snapshot. Generated 2026-09-07 EDT.
 | Public key (hex) | `f35c9e0aaa7d9e0ebc22fe343dbb75ede8a517e54eac6a2320fb3bde8ceabd7d` |
 | Created | 2026-09-07 EDT |
 | Curator | Charlie Bruce |
-| Passphrase custody | **Paper only.** Never in Keychain, 1Password, or any digital surface. Per feedback_no_1password_keychain. |
+| Passphrase custody | **Env-file custody, paper as recovery copy.** Same pattern as the snapshot key. Env var `RECEIPT_KEY_PASSPHRASE` in `~/.config/xrpldashboard/env` is sourced by the sig-service launchd wrapper at startup. Paper record (labeled with the private-key path) remains the ONLY off-machine copy; consult it if a Mac restore wipes the env var. Ruling: Charlie 2026-09-07 (afternoon revision) — flipped from paper-only after operational-cadence review. |
 
 ### 5.2 Touchpoint inventory
 
@@ -347,7 +347,8 @@ snapshot. Generated 2026-09-07 EDT.
 | 3 | Public key JSON | `receipt_pubkey.json` at the xrpl_test repo root | Machine-friendly (hex + base64 + b64url + fingerprint + domain separator); served at `/.well-known/snapshots/receipt_pubkey.json` |
 | 4 | Fingerprint file | `receipt_pubkey_fingerprint.txt` at the xrpl_test repo root | Diff-friendly bare fingerprint; mirrors `snapshot_pubkey_fingerprint.txt` |
 | 5 | DNS TXT record | `_xrpld-receipt-key.xrpldashboard.com` in Cloudflare | Verifier-side pinning; contains `v=`, `fp=`, `pub=`, `sep=` fields |
-| 6 | Paper record | Charlie's paper (physical) | Two lines: the passphrase, and the private-key path `~/.config/xrpldashboard/receipt_ed25519_enc.pem`. Useless individually. |
+| 6 | Paper record | Charlie's paper (physical) | Two lines: the passphrase, and the private-key path `~/.config/xrpldashboard/receipt_ed25519_enc.pem`. Recovery copy only — not the operational unlock path. Useless individually. |
+| 7 | Env-file passphrase | `RECEIPT_KEY_PASSPHRASE` in `~/.config/xrpldashboard/env` on Charlie's Mac (mode 600 owner-only) | Read by the sig-service launchd wrapper at startup; the service auto-decrypts the private key and starts READY TO SIGN. If wiped: service starts LOCKED, manual `POST /unlock` from paper is the fallback. Rotation: replace this env value + restart the sig-service. |
 
 ### 5.3 Triangulation
 

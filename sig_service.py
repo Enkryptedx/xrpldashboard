@@ -314,11 +314,55 @@ def create_app(
     audit_dir: str = AUDIT_DIR,
 ) -> Flask:
     app = Flask(__name__)
-    app.config["KEYSTORE"] = KeyStore(privkey_path, pubkey_path)
+    keystore = KeyStore(privkey_path, pubkey_path)
+    app.config["KEYSTORE"] = keystore
     app.config["RATE_LIMITER"] = RateLimiter(
         RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_PER_TOKEN
     )
     app.config["AUDIT_LOG"] = AuditLog(audit_dir, AUDIT_RETENTION_DAYS)
+
+    # Auto-unlock at startup if RECEIPT_KEY_PASSPHRASE is in env — matches
+    # the snapshot key's env-file custody pattern per Charlie's ruling
+    # 2026-09-07 (afternoon revision). Paper remains the recovery copy
+    # for cases where the env var is wiped (fresh Mac restore, launchd
+    # env-file overwritten, etc.) but is no longer the operational path.
+    # See docs/SIG_SERVICE.md §Custody.
+    _env_pw = (os.environ.get("RECEIPT_KEY_PASSPHRASE") or "").strip()
+    if _env_pw:
+        try:
+            keystore.unlock(_env_pw.encode("utf-8"))
+            app.config["AUDIT_LOG"].record({
+                "event": "unlocked_from_env",
+                "key_fingerprint": keystore.fingerprint(),
+            })
+            import sys as _sys
+            print(
+                f"[sig_service] auto-unlocked from RECEIPT_KEY_PASSPHRASE at "
+                f"startup (fingerprint {keystore.fingerprint()})",
+                file=_sys.stderr, flush=True,
+            )
+        except Exception as e:
+            import sys as _sys
+            app.config["AUDIT_LOG"].record({
+                "event": "unlocked_from_env_failed",
+                "reason": type(e).__name__,
+            })
+            print(
+                f"[sig_service] RECEIPT_KEY_PASSPHRASE auto-unlock FAILED: "
+                f"{type(e).__name__}: {e}. "
+                f"Service remains LOCKED; falls back to manual POST /unlock.",
+                file=_sys.stderr, flush=True,
+            )
+            # Do not raise — service still starts, /status reflects locked,
+            # /unlock endpoint still accepts a manual passphrase.
+    else:
+        import sys as _sys
+        print(
+            "[sig_service] RECEIPT_KEY_PASSPHRASE not set in env; service "
+            "starts LOCKED. Unlock via localhost POST /unlock or restart "
+            "with the env var set. See docs/SIG_SERVICE.md §Custody.",
+            file=_sys.stderr, flush=True,
+        )
 
     @app.route("/status", methods=["GET"])
     def status():

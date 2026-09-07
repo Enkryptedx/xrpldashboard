@@ -43,5 +43,25 @@ if [[ ! -f "${HOME}/.config/xrpldashboard/receipt_ed25519_enc.pem" ]]; then
   exit 1
 fi
 
+# Source the shared env file — brings in RECEIPT_KEY_PASSPHRASE (for env-
+# file custody auto-unlock at sig_service startup, per Charlie ruling
+# 2026-09-07 afternoon). Same pattern every other launchd wrapper uses.
+# If the env file is missing, we log-and-continue: the sig-service will
+# start LOCKED and the manual POST /unlock path remains available.
+ENV_FILE="${HOME}/.config/xrpldashboard/env"
+if [[ -f "${ENV_FILE}" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+  if [[ -n "${RECEIPT_KEY_PASSPHRASE:-}" ]]; then
+    log "  RECEIPT_KEY_PASSPHRASE present in env — sig-service will auto-unlock at startup"
+  else
+    log "  RECEIPT_KEY_PASSPHRASE NOT set in env — sig-service starts LOCKED (manual /unlock required)"
+  fi
+else
+  log "  env file missing at ${ENV_FILE} — sig-service starts LOCKED (manual /unlock required)"
+fi
+
 log "sig_service start (bind=${BIND})"
 exec "${PYTHON}" "${SERVICE}" --bind "${BIND}"

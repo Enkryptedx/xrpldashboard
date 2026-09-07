@@ -98,29 +98,40 @@ domain separator) is inherent to this design.
   `unlock_failed`, `unlock_rejected_non_loopback`, `signed`,
   `sign_rejected_schema`, `sign_rate_limited`, `sign_failed`.
 
-## Passphrase custody
+## Passphrase custody (updated 2026-09-07 afternoon)
 
-**Per Charlie's ruling 2026-09-07: the receipt keypair passphrase lives
-on paper only.** No Keychain, no 1Password, no env file.
+**Env-file custody — same pattern as the snapshot key. Paper is the recovery copy, not the operational path.** Charlie ruling: manual unlock proved too fragile for a 24/7 signing service; matching the snapshot-key pattern gets the same operational cadence for the same class of risk.
 
-Consequence: the sig-service starts LOCKED after every Mac reboot or
-service restart. Charlie unlocks it manually via a localhost curl,
-typing the paper value at a `read -s` prompt so it never lands in
-shell history.
+The sig-service reads `RECEIPT_KEY_PASSPHRASE` from environment at startup, decrypts the private key, and starts READY TO SIGN. Auto-unlock is logged to the audit log (`event: unlocked_from_env`). If the env var is missing or the value doesn't decrypt, the service starts LOCKED with a warning on stderr; the manual `POST /unlock` path remains available as a fallback (loopback-only).
 
-Unlock ritual (after every restart):
+### Setup — one-time (Charlie's keyboard)
+
+1. Open the env file: `nano ~/.config/xrpldashboard/env`
+2. Add a new line: `export RECEIPT_KEY_PASSPHRASE=<paper value>`  (same paper value as your recovery record next to the private-key path)
+3. Save + exit.
+4. Restart the sig-service (or reload the LaunchAgent):
+   ```
+   launchctl kickstart -k gui/$(id -u)/com.charliebruce.xrpldashboard.sig_service
+   ```
+5. Verify: `curl -s http://127.0.0.1:8842/status | jq .unlocked` → `true`
+
+### Recovery — if the env var is wiped
+
+If a Mac restore, launchd env file rewrite, or accidental env-file edit wipes `RECEIPT_KEY_PASSPHRASE`, the sig-service starts LOCKED. Recovery from paper:
 
 ```
-ssh into the Mac (or open Terminal directly) and run:
-
-read -s "PP?receipt paraphrase: "
+read -s "PP?receipt passphrase from paper: "
 curl -s -X POST http://127.0.0.1:8842/unlock \
   -H "Content-Type: application/json" \
   --data-binary "$(python3 -c 'import json, os; print(json.dumps({"passphrase": os.environ["PP"]}))')"
 unset PP
 ```
 
-Response `{"unlocked": true, ...}` = ready to sign.
+Then re-add the value to `~/.config/xrpldashboard/env` for the next restart to auto-unlock again.
+
+### Rotation
+
+To rotate the passphrase: generate a new encrypted PEM with a fresh passphrase, update the env var, restart the service. Old and new can coexist during a transition if the new PEM is saved to a `.pem.v2` path and swapped after verification. See docs/CREDENTIALS.md §5.4 for the full rotation flow.
 
 ## Install (Mac side, launchd)
 
@@ -145,23 +156,88 @@ launchctl enable gui/$(id -u)/com.charliebruce.xrpldashboard.sig_service
 
 Then unlock via the ritual above.
 
-## Install (Render side)
+## Install (Render side + Cloudflare)
 
-The client wrapper (`sovereign_tunnel_client.sign_receipt(...)`) will
-land in a follow-up. Shape:
+### 1. Client wrapper (Render code)
+
+Ships in `sig_client.py` (this repo, imported by `app.py`'s `/check` handler):
 
 ```python
-def sign_receipt(canonical_hash, response_id, kind="check", issued_at_utc=None):
-    """POST to sig.xrpldashboard.com/sign via CF-Access-authenticated tunnel.
-    Returns signature dict on success. Fails-OPEN on network / 503 —
-    envelope ships with sig_ed25519 = null and sig_unreachable_at_utc set."""
-    ...
+from sig_client import sign_receipt, attach_to_envelope, SIG_STATUS_SIGNED
+
+# Fire-and-inline signing:
+sig_block, status = sign_receipt(canonical_hash="a1b2...", kind="check")
+if sig_block:
+    envelope["sig_ed25519"] = sig_block["signature_ed25519_hex"]
+    # ... plus signing_key_fingerprint, domain_separator, signed_at_utc
+else:
+    envelope["sig_ed25519"] = None
+    envelope["sig_status"] = status   # sig_unreachable / sig_locked / etc.
+
+# Or the one-line convenience:
+attach_to_envelope(envelope, canonical_hash="a1b2...")
 ```
 
-The tunnel hostname `sig.xrpldashboard.com` needs to be added to the
-existing Cloudflare Tunnel that already handles `rpc.xrpldashboard.com`
-(sovereign XRPL). Same CF-Access policy applies. The tunnel origin
-target is `http://127.0.0.1:8842`.
+The client is fail-open. Never raises. On any error the envelope
+ships with `sig_ed25519: null` and a `sig_status` field naming the
+reason. Verifiers see the null + reason and know signing was skipped
+for that response.
+
+### 2. Env vars on Render
+
+Add three vars to Render → xrpldashboard → Environment:
+
+| Var | Value |
+|---|---|
+| `SIG_TUNNEL_URL` | `https://sig.xrpldashboard.com` (no trailing slash) |
+| `CF_ACCESS_CLIENT_ID` | already set (used by sovereign_tunnel_client for RPC) |
+| `CF_ACCESS_CLIENT_SECRET` | already set |
+
+The Access-service-token pair (`CF_ACCESS_CLIENT_ID` / `_SECRET`) is
+the same one that gates `rpc.xrpldashboard.com`. Reusing it is
+intentional — same authentication surface, same rotation cadence.
+
+### 3. Cloudflare Tunnel — add the sig hostname (Charlie's keyboard)
+
+**Send-back:** reply **"tunnel added"** when the hostname resolves + returns 401 for an unauthenticated curl.
+
+- Cloudflare Zero Trust dashboard → Networks → Tunnels → your existing tunnel (the one already routing `rpc.xrpldashboard.com`) → **Public hostnames** tab → **Add a public hostname**.
+- **Subdomain:** `sig`
+- **Domain:** `xrpldashboard.com`
+- **Type:** `HTTP`
+- **URL:** `127.0.0.1:8842` (the Mac's loopback where sig-service listens)
+- Save.
+
+Then add an Access application for the new hostname:
+
+- Zero Trust dashboard → Access → Applications → **Add an application** (or extend the existing RPC application to cover the new hostname).
+- **Application type:** Self-hosted
+- **Session duration:** whatever the existing RPC application uses (24h is fine).
+- **Subdomain:** `sig` · **Domain:** `xrpldashboard.com`
+- **Policies:** add the same Service Auth policy that's already on `rpc.xrpldashboard.com`. The service token you set on Render (`CF_ACCESS_CLIENT_ID` / `_SECRET`) must appear in that policy's Include list.
+- Save.
+
+### 4. Verify the tunnel + Access setup (Charlie or JJ)
+
+From any host with the CF-Access service token (Render or your Mac):
+
+```
+# Should return 200 with the sig-service /status JSON:
+curl -sSf \
+  -H "CF-Access-Client-Id: <id>" \
+  -H "CF-Access-Client-Secret: <secret>" \
+  https://sig.xrpldashboard.com/status
+```
+
+Without the headers should return 401 or Access's login page HTML.
+
+### 5. Flip Render to use the signer
+
+Once the tunnel + Access are green, deploy Render. The `/check.json`
+handler starts calling `sign_receipt(...)` per response. Watch the
+Render logs for `sig_status=signed` on healthy calls and
+`sig_status=sig_unreachable` if the tunnel flaps — the envelope
+still ships either way.
 
 ## Failure modes + observability
 

@@ -243,6 +243,46 @@ class SignEndpointTests(unittest.TestCase):
         self.assertIn(429, codes,
                       f"expected rate-limit trigger, got {sorted(set(codes))}")
 
+    def test_env_auto_unlock_at_startup(self):
+        # Fresh app with RECEIPT_KEY_PASSPHRASE set should be unlocked
+        # before the first request lands.
+        tmp = tempfile.mkdtemp()
+        priv_path, pub_path = _make_scoped_keypair(tmp)
+        audit_dir = os.path.join(tmp, "audit")
+        os.environ["RECEIPT_KEY_PASSPHRASE"] = TEST_PASSPHRASE
+        try:
+            app_env = sig_service.create_app(
+                privkey_path=priv_path,
+                pubkey_path=pub_path,
+                audit_dir=audit_dir,
+            )
+            c = app_env.test_client()
+            r = c.get("/status")
+            self.assertEqual(r.status_code, 200)
+            self.assertTrue(r.get_json()["unlocked"])
+        finally:
+            del os.environ["RECEIPT_KEY_PASSPHRASE"]
+
+    def test_env_auto_unlock_wrong_passphrase_leaves_locked(self):
+        # A bad env passphrase should log the failure but leave the
+        # service startable (manual unlock still available).
+        tmp = tempfile.mkdtemp()
+        priv_path, pub_path = _make_scoped_keypair(tmp)
+        audit_dir = os.path.join(tmp, "audit")
+        os.environ["RECEIPT_KEY_PASSPHRASE"] = "wrong-value"
+        try:
+            app_env = sig_service.create_app(
+                privkey_path=priv_path,
+                pubkey_path=pub_path,
+                audit_dir=audit_dir,
+            )
+            c = app_env.test_client()
+            r = c.get("/status")
+            self.assertEqual(r.status_code, 200)
+            self.assertFalse(r.get_json()["unlocked"])
+        finally:
+            del os.environ["RECEIPT_KEY_PASSPHRASE"]
+
     def test_status_endpoint_reports_unlocked_state(self):
         r = self.client.get("/status")
         self.assertEqual(r.status_code, 200)
