@@ -1534,7 +1534,17 @@ def pg_connect():
     # _get_writer_conn honored DATABASE_URL_DIRECT, but pg_connect() did not,
     # so ANY read path (read_credentials_snapshot etc.) blew up on pool.
     _url = os.environ.get("DATABASE_URL_DIRECT", "").strip() or pg_url()
-    _v4 = _resolve_ipv4_hostaddr(_url)
+    # 2026-09-07: skip the hostaddr override for Neon's -pooler URLs.
+    # The pooler routes by TLS SNI; pinning hostaddr to one resolved IPv4
+    # lands on a specific pooler tenant that intermittently 'password
+    # authentication failed' post-rotation (some tenants lag the
+    # rotation propagation). Same DATABASE_URL used with raw
+    # psycopg.connect(url) works every time. Triage:
+    # triage/PG_CONNECT_POOLER_STALE_IP_2026-09-07.md. The hostaddr guard
+    # from the 2026-08-19 Render deploy-loop AAAA fix stays in place for
+    # non-pooler URLs, which is where the original problem was.
+    _use_hostaddr = "-pooler." not in (_url or "")
+    _v4 = _resolve_ipv4_hostaddr(_url) if _use_hostaddr else None
     _extra = {"hostaddr": _v4} if _v4 else {}
     conn = psycopg.connect(
         _url,

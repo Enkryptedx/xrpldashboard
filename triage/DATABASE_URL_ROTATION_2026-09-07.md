@@ -25,12 +25,61 @@ If you cannot tolerate any outage window, the alternative is a two-step Neon flo
 
 ---
 
-## Step 0 — Pre-rotation baseline (JJ runs, no secret touched)
+## Step 0 — Pre-rotation baseline: FULL credential-location inventory + endpoint list
 
-Charlie: none. JJ documents:
-- Current Neon project + database: from URL host `ep-steep-tree-ajz0h6nv.c-3.us-east-2.aws.neon.tech` → Neon project `steep-tree`, region `us-east-2`.
-- Places DATABASE_URL is stored (need updating): (1) Mac `~/.config/xrpldashboard/env`, (2) Lenovo `~/.config/xrpldashboard/env` (mirror), (3) Render env-var `DATABASE_URL` for the web service.
-- Places using DATABASE_URL indirectly: pg_backup wrapper (sourced from env file), every walker + web app on Render + Lenovo (all source from env at start).
+**2026-09-07 post-hoc fix**: the original checklist only enumerated one env-var (`DATABASE_URL`) and tested one endpoint per host. That MISSED `DATABASE_URL_DIRECT` on the Mac and caused `db.pg_connect()` (which prefers the direct URL) to fail post-rotation. This step is now the load-bearing discipline — no rotation begins until this inventory is filled in for the current state, and no rotation is "done" until every entry in the inventory is re-tested.
+
+### 0a — Codebase inventory (JJ runs, no secret touched)
+
+Grep the repo for every env-var name the code could read as a Neon credential:
+
+```
+grep -rhoE "os\.environ\.get\(['\"]([^'\"]+)['\"]|os\.environ\[['\"]([^'\"]+)['\"]|os\.getenv\(['\"]([^'\"]+)['\"]" --include="*.py" | \
+  grep -oE "['\"]([^'\"]+)['\"]" | sort -u | \
+  grep -iE "DATABASE|POSTGRES|^['\"](PG[A-Z_]+)|NEON|PGPASSWORD"
+```
+
+As of 2026-09-07, that returns: `DATABASE_URL`, `DATABASE_URL_DIRECT`, `NEON_DATABASE_URL`. If a future refactor adds a fourth name, this grep catches it and the inventory table below expands.
+
+### 0b — Per-host inventory (JJ runs, name-only reporting; test each with SELECT 1)
+
+For every host, enumerate every place a Neon credential could live and record the current state. Tests are `SELECT 1` through the exact var/path — not just one representative check.
+
+**Mac (`Charlies-Mac-mini`):**
+| Location | Check | Command shape (JJ runs) |
+|---|---|---|
+| `~/.config/xrpldashboard/env` | `DATABASE_URL` | `psycopg.connect(os.environ['DATABASE_URL']).cursor().execute('SELECT 1')` |
+| `~/.config/xrpldashboard/env` | `DATABASE_URL_DIRECT` | same shape, `DATABASE_URL_DIRECT` |
+| `~/.config/xrpldashboard/env` | `NEON_DATABASE_URL` | same shape, `NEON_DATABASE_URL` (may be NOT SET) |
+| `~/.config/xrpldashboard/env` | any other var whose name matches the codebase-inventory grep | ditto |
+| `~/.pgpass` | file existence + `psql -h ... -U neondb_owner ...` | verify libpq honors it |
+| `~/Library/LaunchAgents/*.plist` | scan `EnvironmentVariables` blocks for any Neon-credential key | `plutil -p` each plist |
+| `xrpl_test/launchd/*.sh` | grep for `postgresql://neondb_owner` hardcoded URLs | `grep -l` all wrapper scripts |
+
+**Lenovo (`rippled-node`):**
+| Location | Check |
+|---|---|
+| `~/.config/xrpldashboard/env` | every `DATABASE|POSTGRES|PG|NEON` var name (usually just `DATABASE_URL` today) |
+| `~/.pgpass` | file existence |
+| `/etc/systemd/system/xrpld-*.service` | scan for `Environment=` and `EnvironmentFile=` — today the services source env inside `ExecStart` via bash, so no separate EnvironmentFile= directive. If that changes, this row catches it. |
+
+**Render (Charlie reads the dashboard; JJ names what the code expects):**
+| Dashboard var name | Set on Render? (Charlie confirms) |
+|---|---|
+| `DATABASE_URL` | (fill in) |
+| `DATABASE_URL_DIRECT` | (fill in) |
+| `NEON_DATABASE_URL` | (fill in) |
+| (any other name from the 0a grep) | (fill in) |
+
+For each hit that IS set, verify via `curl -s xrpldashboard.com/healthz` after each Render env change. Render doesn't expose per-var SELECT 1 the way a Mac terminal does; healthz is the closest proxy.
+
+### 0c — Codebase reader-path inventory (JJ runs)
+
+The names above are what the code CAN read. In practice `db.pg_connect()` uses `DATABASE_URL_DIRECT` if set, else `DATABASE_URL`. `_get_writer_conn` uses `DATABASE_URL_DIRECT` if set, else `DATABASE_URL`. Raw `psycopg.connect(os.environ['DATABASE_URL'])` uses whatever the caller hands it. **Test every reader-path independently after the edit** — passing a plain `SELECT 1` through `DATABASE_URL` says nothing about whether `db.pg_connect()` (which reads `DATABASE_URL_DIRECT`) will work.
+
+### 0d — Fill inventory before starting Step 1
+
+Copy the tables above into a scratchpad. Fill in the "Set / NOT SET" and "current state" columns before proceeding. Every entry that comes back "set" is one row that must be re-tested after the rotation. Every entry that comes back "NOT SET" is a row that stays unset (or the operator chooses to leave a note for a future decision).
 
 ---
 
@@ -49,30 +98,62 @@ JJ waits. Does not ask for the value.
 
 ---
 
-## Step 2 — Update Mac env file (Charlie's keyboard)
+## Step 2 — Update Mac env file — EVERY Neon-credential VAR from the inventory (Charlie's keyboard)
+
+**2026-09-07 post-hoc fix**: the original step said "the DATABASE_URL line." That singular framing hid the fact that Charlie's Mac env file has multiple Neon-credential vars (`DATABASE_URL` pooler AND `DATABASE_URL_DIRECT` non-pooler). Both must land the new value in this step — one nano session, one save, both lines updated. Same rule applies to any additional var name discovered by the Step 0 codebase-inventory grep.
 
 Charlie:
 1. Open `~/.config/xrpldashboard/env` in your editor.
-2. Update the `DATABASE_URL=postgresql://neondb_owner:<NEW>@ep-steep-tree-ajz0h6nv.c-3.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` line — replace `<NEW>` with the value from Step 1.
-3. Save.
+2. For EACH Neon-credential var identified in Step 0b (typically `DATABASE_URL` and `DATABASE_URL_DIRECT`; sometimes `NEON_DATABASE_URL`):
+   - Use nano's Ctrl-W to jump to the var by name.
+   - Ctrl-W again to `@ep-steep-tree` — cursor lands on the `@` boundary.
+   - Backspace the old password to the LEFT until the char just left of the cursor is `:` (the colon after `neondb_owner`).
+   - Type or paste the new value.
+3. Save + exit (Ctrl-O, Enter, Ctrl-X).
 4. Reply "mac updated" — no content.
 
-JJ proof (Charlie pastes back ONLY the pass/fail line, not the URL):
+JJ proof (runs SELECT 1 through EVERY var set on the Mac, not just one):
 ```
 $ set -a && source ~/.config/xrpldashboard/env && set +a
-$ /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -c "import os; import psycopg; psycopg.connect(os.environ['DATABASE_URL']).cursor().execute('SELECT 1')"
+$ python3 -c "
+import os, psycopg
+for name in ['DATABASE_URL', 'DATABASE_URL_DIRECT', 'NEON_DATABASE_URL']:
+    v = os.environ.get(name)
+    if not v: print(f'{name}: NOT SET'); continue
+    try:
+        psycopg.connect(v, connect_timeout=8).cursor().execute('SELECT 1')
+        print(f'{name}: OK')
+    except Exception as e:
+        print(f'{name}: FAIL — {type(e).__name__}: {str(e).split(chr(10))[0][:120]}')
+"
+$ python3 -c "
+import db
+with db.pg_connect() as conn:
+    with conn.cursor() as cur:
+        cur.execute('SELECT 1')
+        print('db.pg_connect: OK')
+"
 ```
-Expected output: nothing (silent success) OR a single traceback line if wrong. Charlie pastes back the last line only. If silent, we're good.
+
+Every set var must return OK. The `db.pg_connect()` check is separate and non-optional — that's the read path most walkers use, and it exercises the `DATABASE_URL_DIRECT` preference which raw psycopg.connect(DATABASE_URL) does not.
 
 ---
 
-## Step 3 — Update Lenovo env file (Charlie's keyboard, ssh)
+## Step 3 — Update Lenovo env file — EVERY Neon-credential VAR from the inventory + restart long-lived walkers (Charlie's keyboard, ssh)
+
+Same discipline as Step 2 — every var identified in Step 0b's Lenovo row gets updated in one nano session. Today that's typically just `DATABASE_URL`; if the Step 0 grep discovers a `DATABASE_URL_DIRECT` or `NEON_DATABASE_URL` on Lenovo in the future, this step catches them.
 
 Charlie:
 1. `ssh rippled-node`
-2. `nano ~/.config/xrpldashboard/env` — same DATABASE_URL line, replace `<NEW>` with the Step 1 value.
+2. `nano ~/.config/xrpldashboard/env` — for EACH Neon-credential var, replace the password segment. Same nano search pattern.
 3. Save + exit.
-4. Reply "lenovo updated" — no content.
+4. **Restart the always-on walkers that hold long-lived Postgres connections.** Today that's only `xrpld-xrpl-stream.service` (persistent write path). Timer-driven walkers (`xrpld-anchor-canary`, `xrpld-cross-check-walker`, `xrpld-l1-pager`, `xrpld-l2-inspector`, `xrpld-ledger-definitions-walker`) source env on each fire and self-recover — no restart needed.
+   ```
+   sudo systemctl restart xrpld-xrpl-stream.service
+   sudo systemctl status xrpld-xrpl-stream.service | head -5
+   ```
+   Confirm `Active: active (running)`.
+5. Reply "lenovo updated" — no content.
 
 JJ proof (Charlie runs, pastes back only the pass/fail):
 ```
