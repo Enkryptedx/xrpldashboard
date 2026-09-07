@@ -109,6 +109,28 @@
       border-radius: 10px; padding: 14px 18px; margin: 0 0 18px;
       color: var(--text); font-size: 1.0rem; line-height: 1.55;
     }
+    /* Seed-phrase warning — the loudest thing on the page when it fires.
+       Distinct from the amber cat-warn used for regular signals so a
+       user cannot mistake this for a routine finding. */
+    .seed-warn {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: rgba(239,68,68,0.10);
+      border: 1.5px solid rgba(239,68,68,0.55);
+      border-radius: 10px; padding: 16px 20px; margin: 0 0 18px;
+      color: var(--text);
+    }
+    .seed-warn-icon {
+      font-size: 1.8rem; color: #ef4444; line-height: 1;
+      margin-top: 2px; flex-shrink: 0;
+    }
+    .seed-warn-head {
+      color: #ef4444; font-weight: 700; font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+    .seed-warn-body {
+      color: var(--text); font-size: 0.95rem; line-height: 1.5;
+      margin: 0;
+    }
     .msg-group { margin: 22px 0 8px; }
     .msg-group-heading {
       color: var(--muted); font-size: 0.78rem;
@@ -388,6 +410,18 @@
           </span>
         {% endif %}
       </div>
+
+      {% if result.seed_phrase_detected %}
+        <div class="seed-warn" role="alert">
+          <div class="seed-warn-icon" aria-hidden="true">⚠</div>
+          <div>
+            <div class="seed-warn-head">{{ _('This looks like a recovery phrase.') }}</div>
+            <p class="seed-warn-body">
+              {{ _('Never share a wallet recovery phrase (12 or 24 words) with anyone, including us. Anyone with the phrase can drain the wallet — that is the whole point of the phrase. Legitimate services do not ask for it, ever. We do not store the pasted text; close this tab now.') }}
+            </p>
+          </div>
+        </div>
+      {% endif %}
 
       <p class="status-line">{{ result.status_line }}</p>
 

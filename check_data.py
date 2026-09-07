@@ -764,6 +764,139 @@ def _capability_signals(account_data: dict) -> list[dict]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Pre-send scam-catch helpers (2026-09-07). Two guards Charlie has asked
+# for repeatedly and that keep getting displaced:
+#   (1) seed-phrase detector — if a user pastes their 12/24-word BIP39
+#       mnemonic into /check, we tell them LOUDLY to stop, close the tab,
+#       and never share the phrase with anyone, ourselves included. This
+#       is a hard privacy contract: check_message() already never persists
+#       the input; the detector fires only for the render, no logging.
+#   (2) look-alike-address warning — if the target r-address is one to
+#       three characters different from a well-known named account, warn
+#       that the target may be a vanity impersonator. Common attack shape
+#       is prefix+suffix-matching vanity generators; small edit distance
+#       against named accounts catches most of them.
+#
+# Both are SIGNALS not verdicts (facts_not_verdicts rule); the /check
+# hero already renders "what claim exists," this pattern adds new
+# entries to the signals list with a distinct severity tag so the
+# template can flag them prominently without pretending to know intent.
+# ---------------------------------------------------------------------------
+
+# Length heuristic for BIP39 mnemonics. The BIP39 standard specifies
+# 12, 15, 18, 21, or 24-word phrases with each word from a fixed 2048-
+# word English wordlist. We use a shape heuristic (12/24 lowercase alpha
+# words 3-8 chars each) rather than loading the full wordlist — false
+# positives on 12+ consecutive short lowercase words are acceptable when
+# the response is "if this looks like a seed phrase to you, treat it as
+# one; never share it with any website." A false positive costs the user
+# nothing except a moment of caution.
+_SEED_WORD_RE = re.compile(r"\b[a-z]{3,8}\b")
+
+def _detect_seed_phrase(text: str) -> bool:
+    """Return True if the text contains a plausible BIP39 12- or 24-word
+    mnemonic. Heuristic: 12+ consecutive lowercase alpha words 3-8 chars,
+    space/newline-separated, with at most 1 non-conforming word inline
+    (typos, capitalization drift, or the user pasted with extra prose)."""
+    if not text or len(text) < 40:
+        return False
+    words = re.findall(r"\S+", text.lower())
+    run = 0
+    max_run = 0
+    for w in words:
+        # strip common punctuation but not internal alpha
+        stripped = re.sub(r"[^a-z]", "", w)
+        if 3 <= len(stripped) <= 8 and stripped == w.strip(".,;:!?()[]{}\"'"):
+            run += 1
+            if run > max_run:
+                max_run = run
+        else:
+            run = 0
+    # 12 minimum (shortest BIP39 phrase); 24 is a strong signal but 12+
+    # is enough to fire the warning.
+    return max_run >= 12
+
+
+def _levenshtein(a: str, b: str, cap: int = 5) -> int:
+    """Bounded Levenshtein distance with early exit above `cap`. Iterative
+    two-row implementation; O(len(a) * len(b)) time, O(len(b)) space.
+    Returns cap+1 if the true distance exceeds cap — the caller only cares
+    about the distance-under-threshold bucket."""
+    la, lb = len(a), len(b)
+    if abs(la - lb) > cap:
+        return cap + 1
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        cur = [i] + [0] * lb
+        row_min = i
+        for j in range(1, lb + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            cur[j] = min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            if cur[j] < row_min:
+                row_min = cur[j]
+        if row_min > cap:
+            return cap + 1
+        prev = cur
+    return prev[lb]
+
+
+_LOOKALIKE_MAX_DIST = 3  # 1-3 char swap is the vanity-generator scam shape
+_LOOKALIKE_CACHE: list[tuple[str, str, str]] | None = None
+
+
+def _lookalike_named_candidates():
+    """Return [(address, name, verified_via), ...] over named_accounts
+    entries eligible for look-alike comparison. Excludes AMM pools and
+    other bulk-generated named categories where a near-match is expected
+    (LP pools cluster in the same address space by AMM derivation)."""
+    global _LOOKALIKE_CACHE
+    if _LOOKALIKE_CACHE is not None:
+        return _LOOKALIKE_CACHE
+    out = []
+    for addr, entry in (_load_named() or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        cat = (entry.get("category") or entry.get("role") or "").lower()
+        if cat in ("amm", "amm_pool", "lp_pool"):
+            continue
+        name = entry.get("name")
+        via = entry.get("verified_via")
+        if not name:
+            continue
+        out.append((addr, name, via))
+    _LOOKALIKE_CACHE = out
+    return out
+
+
+def _lookalike_named_address(address: str) -> dict | None:
+    """If `address` is 1-3 chars off from a named-accounts entry and is
+    not itself named, return {name, verified_via, distance, near_address}
+    for the closest match; else None. Prefix+suffix agreement is what
+    the vanity-generator attack produces, so we consider matches over the
+    full address rather than substring hits."""
+    if not address or len(address) < 25:
+        return None
+    named = _load_named() or {}
+    if address in named:
+        return None  # target itself is named; not an impostor of anything
+    best = None
+    best_dist = _LOOKALIKE_MAX_DIST + 1
+    for cand_addr, cand_name, cand_via in _lookalike_named_candidates():
+        d = _levenshtein(address, cand_addr, cap=_LOOKALIKE_MAX_DIST)
+        if d <= _LOOKALIKE_MAX_DIST and d < best_dist:
+            best = (cand_addr, cand_name, cand_via, d)
+            best_dist = d
+    if not best:
+        return None
+    return {
+        "name": best[1],
+        "verified_via": best[2],
+        "distance": best[3],
+        "near_address": best[0],
+    }
+
+
 def check_address(address: str) -> dict:
     """Build the /check D1 result for an r-address.
 
@@ -893,6 +1026,34 @@ def check_address(address: str) -> dict:
 
     # --- Ledger-level capabilities (Phase 3) -------------------------
     capabilities = _capability_signals(account_data) if account_data else []
+
+    # --- Pre-send scam catch: look-alike-address warning (2026-09-07)
+    # Vanity generators produce addresses that share prefix + suffix with
+    # a well-known target; a 1-3 char inner-swap fools a quick glance. If
+    # this address is edit-distance ≤ 3 from a named account and is not
+    # itself named, surface a distinct signal so the user double-checks
+    # character by character before sending anything.
+    _lookalike = _lookalike_named_address(address)
+    if _lookalike and not named_entry:
+        _n = _lookalike["distance"]
+        signals.append(_signal(
+            label="Look-alike address warning",
+            value=(
+                f"This address is {_n} character"
+                + ("s" if _n != 1 else "")
+                + f" different from a named account on file: "
+                f"{_lookalike['name']} ({_lookalike['near_address']}). "
+                "Vanity-address scams are generated to match a real "
+                "address's prefix and suffix on purpose. If you meant "
+                f"{_lookalike['name']}, compare the two addresses side by "
+                "side character by character before you send anything."
+            ),
+            source_label=(
+                "named_accounts.json (edit-distance ≤ 3, "
+                "AMM pools excluded)"
+            ),
+            source_url=_lookalike.get("verified_via"),
+        ))
 
     # --- Status line — routing, not verdict --------------------------
     if tier == "verified":
@@ -1822,6 +1983,13 @@ def check_message(text: str) -> dict:
             "next_action": None,
         }
 
+    # --- Pre-send scam catch: seed-phrase detector (2026-09-07) -----
+    # If the message contains what looks like a BIP39 12- or 24-word
+    # mnemonic, warn the user LOUDLY. Never persist. The warning fires
+    # in addition to the normal extraction so the user still sees any
+    # address / token / URL that also appeared in the message.
+    seed_phrase_detected = _detect_seed_phrase(text)
+
     # --- extract, dedupe address ⇢ token overlap ---------------------
     tokens = _extract_tokens(text)
     token_issuers = {issuer for _, issuer in tokens}
@@ -1905,6 +2073,27 @@ def check_message(text: str) -> dict:
     else:
         tier = "self" if any(r.get("tier") == "self" for r in all_results) else "bare"
 
+    # If seed-phrase detected, override the summary + status_line with
+    # an unmistakable safety message. The normal signals still render
+    # below, but this is what the user sees FIRST.
+    if seed_phrase_detected:
+        status_line = (
+            "STOP. This message appears to contain a recovery phrase "
+            "(12 or 24 words). Never share these words with anyone, "
+            "including us. Anyone with your recovery phrase can drain "
+            "your wallet."
+        )
+        summary = (
+            "This message looks like it contains a wallet recovery "
+            "phrase. Close this tab now. If you received the phrase "
+            "in a message, whoever sent it either exposed their own "
+            "wallet or is trying to trick you into typing yours in "
+            "response. Legitimate services never ask for a recovery "
+            "phrase. Every check on the rest of the message below "
+            "still runs, but nothing about the phrase itself is "
+            "stored anywhere."
+        )
+
     return {
         "kind": "message",
         "subject": "pasted message",
@@ -1912,6 +2101,7 @@ def check_message(text: str) -> dict:
         "tier": tier,
         "status_line": status_line,
         "summary": summary,
+        "seed_phrase_detected": seed_phrase_detected,
         "groups": {
             "addresses": address_results,
             "tokens": token_results,
