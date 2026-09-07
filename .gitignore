@@ -122,7 +122,43 @@ Thumbs.db
 *.swp
 
 # Charlie ruling 2026-09-07: internal ops notes never enter the public repo.
-# triage/ files (audit rounds, walkthroughs, rotation checklists, wound tables,
-# internal thinking) are on-Mac-only. Sensitive drafts + on-Mac ops artifacts.
 # See memory: public_repo_no_infrastructure_map.md
+# Rule: public repo publishes what the site does + code that runs it.
+# Never publishes how the machines are wired.
+
+# Internal ops thinking — audit rounds, wound tables, walkthroughs,
+# rotation checklists, wound-of-the-day notes.
 triage/
+
+# Machine wiring — every plist + wrapper script names LAN IPs, ports,
+# service labels, env-file paths, install rituals. Working tree carries
+# the live copies; DockVault mirror + ~/xrpl_test_private_infra/ are
+# the backups.
+launchd/
+deploy/
+
+# Infrastructure-map docs — rotation runbooks, install rituals, host
+# audits, incident postmortems, DNS/cert archaeology. Anything that
+# names a host, port, LAN IP, env-file path, or credential location.
+docs/CREDENTIALS.md
+docs/SIG_SERVICE.md
+docs/LENOVO_MIGRATION.md
+docs/NODE_AUDIT_PRE_MIGRATION.md
+docs/DOCKVAULT_INSTALL_RUNBOOK.md
+docs/DOCK_REVIVAL_2026-08-23.md
+docs/DNS_ARCHAEOLOGY_2026-08-26.md
+docs/FOUR_AM_WINDOW_DIAGNOSIS_2026-08-22.md
+docs/WALKER_WOUNDS_2026-08-22.md
+docs/CERT_STABILITY_2026-08-26.md
+docs/RESOURCE_WATCHMEN_DESIGN.md
+docs/PG_BACKUP_POOLER_TIMEOUT_WOUND_2026-08-30.md
+docs/XRPL_STREAM_FALLBACK_PLAN_2026-09-03.md
+docs/nft_activity_http_rpc_reach_failure_post_sovereignty_restore.md
+docs/LIVE_FETCH_AMENDMENTS_DESIGN.md
+docs/AGENT_TIER_LEGAL_QA_2026-08-04.md
+docs/BUSINESS_TRACK_CHECKLIST_2026-08-30.md
+docs/CLOUDFLARE_PPC_RESEARCH_2026-08-04.md
+docs/mcp_directory_submissions/
+docs/agent_tier_ship_evidence/
+DEPLOY.md
+STORAGE_INVENTORY_2026-05-25.md
