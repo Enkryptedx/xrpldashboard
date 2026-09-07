@@ -794,6 +794,104 @@ def _capability_signals(account_data: dict) -> list[dict]:
 # nothing except a moment of caution.
 _SEED_WORD_RE = re.compile(r"\b[a-z]{3,8}\b")
 
+# Scam-request patterns — three canonical shapes of a phishing message
+# that arrives asking a victim to reveal a wallet secret OR send money to
+# "receive more." All patterns are case-insensitive and match anywhere
+# in the text. Each category has multiple regex variants so a single
+# rephrase doesn't slip past — the attacker's job is to write in ways
+# that HIT one of these patterns, which is exactly the point.
+#
+# Discipline: patterns require a request-verb near the sensitive noun
+# ("enter your seed", not "seed" alone). Bare mention of "seed phrase"
+# in a conversation ("I lost my seed phrase and asked a friend for help")
+# doesn't match; that's a legit discussion. The three categories are:
+#   seed_request       — someone is asking the reader to reveal a seed
+#   giveaway_double    — "send X, receive 2X" doubler scam
+#   fake_support_urgency — "your wallet has been locked, click within N hours"
+_SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
+    "seed_request": [
+        re.compile(
+            r"\b(enter|provide|share|type|paste|input|verify|confirm|submit|sync|need|give|show|tell|send)\b.{0,25}\b(your\s+)?(seed|recovery|mnemonic|12[-\s]word|24[-\s]word|private\s+key)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(seed|recovery|mnemonic)\s+(phrase|words?)\b.{0,80}\b(enter|need|require|send|provide|share|give|type|paste)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bwallet\s+(sync|verify|recovery|restoration|validation)\b.{0,120}\b(seed|recovery|phrase|mnemonic|words?)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(what[\s']*s?|whats)\s+your\s+(seed|recovery|mnemonic)",
+            re.IGNORECASE,
+        ),
+    ],
+    "giveaway_double": [
+        re.compile(
+            r"\bsend\s+\d[\d,]*\s*(xrp|xrpl?|coins?|tokens?).{0,60}\breceive\s+\d",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bdouble\s+(your\s+)?(xrp|crypto|coins?|holdings|deposit)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(2|3|5|10|20|100)x\s+(your\s+)?(xrp|crypto|deposit|coins?|tokens?)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(official|ripple|xrp)\s+(giveaway|airdrop|promotion).{0,100}\b(send|deposit|transfer)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(1|10|100|1000|10000)\s*xrp\s+giveaway",
+            re.IGNORECASE,
+        ),
+    ],
+    "fake_support_urgency": [
+        re.compile(
+            r"\b(your\s+)?(wallet|account|address)\s+(has\s+been\s+)?(compromised|locked|suspended|frozen|hacked|flagged|blocked|disabled|deactivated)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(immediate|urgent|emergency)\s+(action|verification|response|attention)\s+(required|needed)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(verify|secure|restore|reactivate|unlock)\s+(your\s+)?(wallet|account).{0,60}\b(within|before|by|in)\s+(24|48|72|\d+)\s*(hours?|hrs?|days?|minutes?)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bwill\s+be\s+(permanently\s+)?(locked|closed|suspended|frozen|deleted|deactivated)\s+(in|within|after)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bclick\s+(here|below|this\s+link|the\s+link)\s+(to\s+)?(verify|secure|recover|restore|claim|unlock|reactivate)",
+            re.IGNORECASE,
+        ),
+    ],
+}
+
+
+def _detect_scam_patterns(text: str) -> list[str]:
+    """Return the sorted list of scam-pattern category keys that match
+    somewhere in `text`. Empty list = no match. Each category fires
+    independently; a compound message hitting multiple categories
+    returns all matched keys (the render can escalate on multi-hit).
+
+    Case-insensitive; matches anywhere in the message, not just at
+    boundaries — a scam pitch can arrive mid-message after a preamble."""
+    if not text:
+        return []
+    hits: set[str] = set()
+    for category, patterns in _SCAM_PATTERNS.items():
+        for pat in patterns:
+            if pat.search(text):
+                hits.add(category)
+                break  # one hit per category is enough — don't over-count
+    return sorted(hits)
+
 def _detect_seed_phrase(text: str) -> bool:
     """Return True if the text contains a plausible BIP39 12- or 24-word
     mnemonic. Heuristic: 12+ consecutive lowercase alpha words 3-8 chars,
@@ -1983,12 +2081,19 @@ def check_message(text: str) -> dict:
             "next_action": None,
         }
 
-    # --- Pre-send scam catch: seed-phrase detector (2026-09-07) -----
-    # If the message contains what looks like a BIP39 12- or 24-word
-    # mnemonic, warn the user LOUDLY. Never persist. The warning fires
-    # in addition to the normal extraction so the user still sees any
-    # address / token / URL that also appeared in the message.
+    # --- Pre-send scam catches (2026-09-07) --------------------------
+    # (a) Pasted-seed guard — user pasted their OWN mnemonic to check
+    #     "is this a scam?" or "did I lose my wallet?". The detector
+    #     fires and the render tells them to stop, close the tab, and
+    #     never share the phrase with any website.
+    # (b) Scam-request patterns — inbound message is asking THE READER
+    #     to reveal a seed / send doubled crypto / act on fake urgency.
+    #     Three category families (seed_request, giveaway_double,
+    #     fake_support_urgency) with multiple regex variants each so
+    #     a single rephrase doesn't slip past. Multi-hit escalates.
+    # All checks are in-request only; never persisted.
     seed_phrase_detected = _detect_seed_phrase(text)
+    scam_patterns_matched = _detect_scam_patterns(text)
 
     # --- extract, dedupe address ⇢ token overlap ---------------------
     tokens = _extract_tokens(text)
@@ -2093,6 +2198,35 @@ def check_message(text: str) -> dict:
             "still runs, but nothing about the phrase itself is "
             "stored anywhere."
         )
+    elif scam_patterns_matched:
+        # Scam-request pattern hit(s) — the message is asking the reader
+        # to do something a legitimate service would never ask for.
+        # Override the summary so the safety guidance lands above the
+        # per-target signals rather than being buried in the fold below.
+        _multi = len(scam_patterns_matched) > 1
+        _cats_pretty = {
+            "seed_request": "asking for a wallet recovery phrase / seed / private key",
+            "giveaway_double": "'send X, receive 2X' doubler pitch",
+            "fake_support_urgency": "'your wallet is locked, act within N hours' urgency pressure",
+        }
+        _hits_str = "; ".join(_cats_pretty[c] for c in scam_patterns_matched)
+        status_line = (
+            "This message matches known scam patterns. Do not act on it. "
+            "Whatever it asks for — seed phrase, XRP for a doubling promise, "
+            "clicking a link to 'verify' — a real service never asks in a "
+            "message. Close the tab."
+        )
+        summary = (
+            f"This message hit "
+            f"{'multiple scam patterns' if _multi else 'a scam pattern'}: "
+            f"{_hits_str}. Legitimate exchanges, wallets, and support teams "
+            f"never ask for your recovery phrase, never promise you'll "
+            f"receive back more than you send, and never demand action within "
+            f"hours. If the message came from someone claiming to be a "
+            f"service or team, treat the message as the scam and reach the "
+            f"real service through their own website (typed by you, not "
+            f"clicked from a link)."
+        )
 
     return {
         "kind": "message",
@@ -2102,6 +2236,7 @@ def check_message(text: str) -> dict:
         "status_line": status_line,
         "summary": summary,
         "seed_phrase_detected": seed_phrase_detected,
+        "scam_patterns_matched": scam_patterns_matched,
         "groups": {
             "addresses": address_results,
             "tokens": token_results,

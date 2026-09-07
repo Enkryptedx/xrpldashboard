@@ -131,6 +131,30 @@
       color: var(--text); font-size: 0.95rem; line-height: 1.5;
       margin: 0;
     }
+    /* Scam-request pattern warning — one shade less loud than the seed
+       warning (amber vs red) because the pattern list can carry false
+       positives on the edges; the seed detector is definitive shape. */
+    .scam-warn {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: rgba(245,158,11,0.08);
+      border: 1.5px solid rgba(245,158,11,0.55);
+      border-radius: 10px; padding: 16px 20px; margin: 0 0 18px;
+      color: var(--text);
+    }
+    .scam-warn-icon {
+      font-size: 1.6rem; color: #f59e0b; line-height: 1;
+      margin-top: 2px; flex-shrink: 0;
+    }
+    .scam-warn-head {
+      color: #f59e0b; font-weight: 700; font-size: 1.02rem;
+      margin-bottom: 6px;
+    }
+    .scam-warn-list {
+      color: var(--text); font-size: 0.92rem; line-height: 1.5;
+      margin: 0; padding-left: 18px;
+    }
+    .scam-warn-list li { margin: 4px 0; }
+    .scam-warn-list li strong { color: #f59e0b; }
     .msg-group { margin: 22px 0 8px; }
     .msg-group-heading {
       color: var(--muted); font-size: 0.78rem;
@@ -419,6 +443,32 @@
             <p class="seed-warn-body">
               {{ _('Never share a wallet recovery phrase (12 or 24 words) with anyone, including us. Anyone with the phrase can drain the wallet — that is the whole point of the phrase. Legitimate services do not ask for it, ever. We do not store the pasted text; close this tab now.') }}
             </p>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if result.scam_patterns_matched %}
+        <div class="scam-warn" role="alert">
+          <div class="scam-warn-icon" aria-hidden="true">⚠</div>
+          <div>
+            <div class="scam-warn-head">
+              {% if result.scam_patterns_matched|length > 1 %}
+                {{ _('This message hits multiple known scam patterns.') }}
+              {% else %}
+                {{ _('This message hits a known scam pattern.') }}
+              {% endif %}
+            </div>
+            <ul class="scam-warn-list">
+              {% for cat in result.scam_patterns_matched %}
+                {% if cat == 'seed_request' %}
+                  <li><strong>{{ _('Seed / recovery-phrase request.') }}</strong> {{ _('The message asks the reader to enter, share, verify, or paste a recovery phrase (12 or 24 words), mnemonic, or private key. No legitimate service ever asks for this. Anyone with the phrase can drain the wallet.') }}</li>
+                {% elif cat == 'giveaway_double' %}
+                  <li><strong>{{ _('Doubler / giveaway pitch.') }}</strong> {{ _("The message promises the reader will receive back more crypto than they send ('send X, receive 2X', 'double your XRP', 'official Ripple giveaway'). This is always a scam — the sender keeps everything and disappears.") }}</li>
+                {% elif cat == 'fake_support_urgency' %}
+                  <li><strong>{{ _('Fake-support urgency.') }}</strong> {{ _("The message uses 'your wallet has been locked', 'act within 24 hours', or 'click here to verify' pressure. Real exchanges and wallets do not communicate this way. Do not click; visit the real service by typing its URL directly.") }}</li>
+                {% endif %}
+              {% endfor %}
+            </ul>
           </div>
         </div>
       {% endif %}
