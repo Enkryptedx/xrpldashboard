@@ -8151,6 +8151,145 @@ def admin_stats():
     return redirect(url_for("analytics"), code=301)
 
 
+def _admin_authed(req):
+    """Gate for /admin/* routes. ADMIN_TOKEN env var is the shared secret;
+    accepted via Authorization: Bearer <t> OR ?admin_token=<t> (query is
+    convenient for one-off links but the header is preferred — it won't
+    show up in access logs or the Referer chain). If ADMIN_TOKEN is unset
+    the console is disabled entirely — a fresh Render deploy without the
+    env var configured returns 503, not "open by default."
+
+    Returns (True, None) on auth success, (False, reason) on failure.
+    """
+    tok = (os.environ.get("ADMIN_TOKEN") or "").strip()
+    if not tok:
+        return False, "admin_disabled_no_token"
+    submitted = (req.headers.get("Authorization") or "").strip()
+    if submitted.startswith("Bearer "):
+        submitted = submitted[7:].strip()
+    if not submitted:
+        submitted = (req.args.get("admin_token") or "").strip()
+    if not submitted or not secrets.compare_digest(submitted, tok):
+        return False, "admin_unauthenticated"
+    return True, None
+
+
+def _highlight_diff_pairs(a, b):
+    """Return two aligned lists of chars from strings a and b with each char
+    tagged True if it differs from its counterpart. Used by the ticker-
+    collision UI so the curator can spot which characters of a candidate
+    r-address diverge from the canonical issuer's address at a glance.
+
+    Strings of different lengths are padded on the right with a space so
+    the alignment is preserved. This is a byte-by-byte compare — no
+    smart-diff — because r-addresses are fixed-alphabet base58 and the
+    common attack shape is a 1-4 character swap within the middle."""
+    la, lb = len(a or ""), len(b or "")
+    n = max(la, lb)
+    a2 = (a or "").ljust(n)
+    b2 = (b or "").ljust(n)
+    out_a, out_b = [], []
+    for i in range(n):
+        diff = a2[i] != b2[i]
+        out_a.append({"c": a2[i], "diff": diff})
+        out_b.append({"c": b2[i], "diff": diff})
+    return out_a, out_b
+
+
+@app.route("/admin/token-review", methods=["GET"])
+def admin_token_review():
+    """Curator queue for the XRPL Token Registry (registry spec item 8).
+    Renders the top-N rows of curator_review_queue ordered by impact
+    score, with the ticker-collision UI (both r-addresses side-by-side,
+    differing characters highlighted, canonical issuer evidence) so each
+    decision is <30s. GET only for now — POST decision endpoint is a
+    follow-up once the walker writes to token_category_history with a
+    curator-provenance envelope (view/table exist, wiring waits on the
+    signing keypair per registry-spec step 4)."""
+    ok, err = _admin_authed(request)
+    if not ok:
+        if err == "admin_disabled_no_token":
+            return (
+                "admin console disabled — ADMIN_TOKEN env not set on this "
+                "deploy. Set it in the Render env config and redeploy.",
+                503,
+            )
+        return "unauthorized", 401
+
+    if not db.pg_available():
+        return "postgres unavailable — cannot serve queue", 503
+
+    try:
+        limit = min(max(int(request.args.get("limit", 100)), 1), 500)
+    except Exception:
+        limit = 100
+
+    try:
+        canonical_map = json.load(
+            open("/Users/charliebruce/xrpl_test/ticker_canonical_issuers.json")
+        )
+    except Exception:
+        canonical_map = {}
+
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT currency_hex, issuer, decoded_name, trades_30d,
+                       ticker_collision, ticker_collision_of, domain,
+                       blackholed, current_category, current_tier,
+                       impact_score
+                FROM curator_review_queue
+                ORDER BY impact_score DESC NULLS LAST
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            raw = cur.fetchall()
+
+    rows = []
+    for r in raw:
+        (
+            currency_hex, issuer, decoded_name, trades_30d,
+            ticker_collision, ticker_collision_of, domain,
+            blackholed, current_category, current_tier, impact_score,
+        ) = r
+        row = {
+            "currency_hex": currency_hex,
+            "issuer": issuer,
+            "decoded_name": decoded_name,
+            "trades_30d": trades_30d or 0,
+            "ticker_collision": bool(ticker_collision),
+            "ticker_collision_of": ticker_collision_of,
+            "domain": domain,
+            "blackholed": bool(blackholed),
+            "current_category": current_category or "unlabeled",
+            "current_tier": current_tier or "bare",
+            "impact_score": float(impact_score or 0),
+        }
+        if ticker_collision and ticker_collision_of:
+            canon = canonical_map.get(ticker_collision_of) or {}
+            canon_issuers = canon.get("canonical_issuers") or []
+            row["canonical_brand"] = canon.get("brand")
+            row["canonical_note"] = canon.get("note")
+            row["canonical_issuers"] = canon_issuers
+            if canon_issuers:
+                pairs = _highlight_diff_pairs(issuer, canon_issuers[0])
+                row["diff_this"], row["diff_canon"] = pairs
+            else:
+                row["diff_this"], row["diff_canon"] = None, None
+        rows.append(row)
+
+    return render_template(
+        "admin_token_review.html",
+        rows=rows,
+        limit=limit,
+        total=len(rows),
+        current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+        is_rtl=False,
+    )
+
+
 def _short_ua(ua):
     """Best-effort browser/OS label from a User-Agent string. We don't ship
     a UA-parser dep; this just pattern-matches the common shapes so the

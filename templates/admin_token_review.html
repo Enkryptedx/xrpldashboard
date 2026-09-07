@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Token review — xrpldashboard admin</title>
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --green: #22c55e;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+    h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    .lede { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+    .meta { color: var(--dim); font-size: 0.85rem; margin-bottom: 16px; }
+    .row {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .row.collision { border-left: 3px solid var(--amber); }
+    .row-head {
+      display: flex; justify-content: space-between; gap: 16px;
+      font-family: var(--mono); font-size: 0.85rem; margin-bottom: 8px;
+    }
+    .row-head .name { color: var(--text); font-weight: 600; }
+    .row-head .score { color: var(--dim); }
+    .badges { display: inline-flex; gap: 6px; margin-left: 8px; }
+    .badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 500; font-family: var(--mono);
+      background: rgba(255,255,255,0.06); color: var(--muted);
+    }
+    .badge.amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .badge.red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge.dim { background: rgba(128,144,176,0.10); color: var(--dim); }
+    .row-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+                font-size: 0.82rem; color: var(--muted); }
+    .row-body .cell { }
+    .row-body .cell .label { color: var(--dim); font-size: 0.72rem;
+                             text-transform: uppercase; letter-spacing: 0.03em; }
+    .row-body .cell .value { color: var(--text); font-family: var(--mono);
+                             font-size: 0.85rem; margin-top: 2px; }
+    .collision-block {
+      background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.20);
+      border-radius: 6px; padding: 10px 12px; margin-top: 10px;
+    }
+    .collision-block .heading { color: var(--amber); font-weight: 600;
+                                font-size: 0.85rem; margin-bottom: 6px; }
+    .diff-pair { font-family: var(--mono); font-size: 0.85rem;
+                 letter-spacing: 0.01em; }
+    .diff-pair .label { display: inline-block; width: 92px; color: var(--dim);
+                        font-size: 0.72rem; text-transform: uppercase; }
+    .diff-pair .chars { display: inline-block; }
+    .diff-pair .chars .c { display: inline-block; }
+    .diff-pair .chars .c.diff { background: rgba(239,68,68,0.30);
+                                color: #fff; font-weight: 700; }
+    .canon-note { color: var(--dim); font-size: 0.78rem; margin-top: 6px;
+                  font-style: italic; }
+    .no-canon { color: var(--dim); font-style: italic; font-size: 0.82rem;
+                margin-top: 4px; }
+    .empty { color: var(--muted); padding: 40px; text-align: center; }
+    .footer { color: var(--dim); font-size: 0.78rem; margin-top: 30px;
+              padding-top: 16px; border-top: 1px solid var(--border); }
+    a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Curator queue — token review</h1>
+    <p class="lede">Top {{ total }} rows from <code>curator_review_queue</code>, ordered by impact score (log-volume × log-holders × collision × freshness). Collision rows flagged in amber with side-by-side r-address diff against the canonical issuer.</p>
+    <div class="meta">
+      {{ total }} rows shown · limit param: <code>?limit=N</code> (max 500)
+    </div>
+
+    {% if not rows %}
+      <div class="empty">No rows in queue. This means every token in the registry has been curator-decided or is a mechanical (LP / non_standard_code) tier.</div>
+    {% else %}
+      {% for row in rows %}
+        <div class="row {% if row.ticker_collision %}collision{% endif %}">
+          <div class="row-head">
+            <div>
+              <span class="name">{{ row.decoded_name or '(non-standard)' }}</span>
+              <span class="badges">
+                {% if row.ticker_collision %}<span class="badge amber">ticker_collision → {{ row.ticker_collision_of }}</span>{% endif %}
+                {% if row.blackholed %}<span class="badge red">blackholed</span>{% endif %}
+                <span class="badge dim">tier: {{ row.current_tier }}</span>
+                <span class="badge dim">cat: {{ row.current_category }}</span>
+              </span>
+            </div>
+            <div class="score">impact {{ '%.2f' | format(row.impact_score) }}</div>
+          </div>
+          <div class="row-body">
+            <div class="cell">
+              <div class="label">Currency (hex)</div>
+              <div class="value">{{ row.currency_hex[:20] }}{% if row.currency_hex|length > 20 %}…{% endif %}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Issuer</div>
+              <div class="value">{{ row.issuer }}</div>
+            </div>
+            <div class="cell">
+              <div class="label">30d trades</div>
+              <div class="value">{{ row.trades_30d }}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Domain (toml)</div>
+              <div class="value">{{ row.domain or '(none)' }}</div>
+            </div>
+          </div>
+
+          {% if row.ticker_collision and row.ticker_collision_of %}
+            <div class="collision-block">
+              <div class="heading">Ticker collision — {{ row.canonical_brand or row.ticker_collision_of }}</div>
+              {% if row.canonical_issuers and row.canonical_issuers|length > 0 %}
+                <div class="diff-pair">
+                  <span class="label">this token</span>
+                  <span class="chars">{% for c in row.diff_this %}<span class="c{% if c.diff %} diff{% endif %}">{{ c.c }}</span>{% endfor %}</span>
+                </div>
+                <div class="diff-pair">
+                  <span class="label">canonical</span>
+                  <span class="chars">{% for c in row.diff_canon %}<span class="c{% if c.diff %} diff{% endif %}">{{ c.c }}</span>{% endfor %}</span>
+                </div>
+                {% if row.canonical_note %}<div class="canon-note">{{ row.canonical_note }}</div>{% endif %}
+              {% else %}
+                <div class="no-canon">No canonical XRPL issuer exists for {{ row.ticker_collision_of }}. Every occurrence of this ticker on XRPL is a collision by construction. {% if row.canonical_note %}({{ row.canonical_note }}){% endif %}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="footer">
+      Queue view: <code>curator_review_queue</code> (db.py). Impact score formula: <code>log(trades_30d+1) × log(amm_pool_count+1) × collision_mult × self_sub_mult × freshness_mult</code>. Excludes LP tokens and non-standard-code (both are handled mechanically). Decision POST endpoint pending signing keypair (registry spec step 4) — until then, this is a read-only surface for triage planning.
+    </div>
+  </div>
+</body>
+</html>
