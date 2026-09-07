@@ -120,3 +120,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Charlie ruling 2026-09-07: internal ops notes never enter the public repo.
+# triage/ files (audit rounds, walkthroughs, rotation checklists, wound tables,
+# internal thinking) are on-Mac-only. Sensitive drafts + on-Mac ops artifacts.
+# See memory: public_repo_no_infrastructure_map.md
+triage/
