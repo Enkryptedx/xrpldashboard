@@ -1190,6 +1190,71 @@ CREATE TABLE IF NOT EXISTS token_issuer_flags_snapshot (
 CREATE INDEX IF NOT EXISTS token_issuer_flags_snapshot_fetched_at_idx
     ON token_issuer_flags_snapshot (fetched_at DESC);
 
+-- ─────────────────────────────────────────────────────────────────────
+-- REGISTRY v1 (2026-09-06 Charlie ruling) — Step 2 of the build spec:
+-- schema split into issuer_facts + token_facts, with facts_completeness
+-- per row. Prior design conflated per-issuer facts (Domain, AccountRoot
+-- Flags, blackholed) with per-(currency, issuer) facts (display, AMM
+-- membership, decoded name) into the walker's flags_snapshot table
+-- and app.py's enriched loop — that conflation was the root cause of
+-- the 09-06 label_lookup_json bug. Explicit split so a per-pair fact
+-- update never accidentally rewrites a per-issuer one.
+-- Provenance envelope (Step 3, follow-up commit) will decorate each
+-- row with observed_by / observed_at / ledger_index; this DDL declares
+-- shape only, backfill happens post-DDL from the walkers' existing
+-- state.
+-- ─────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS issuer_facts (
+    issuer               TEXT PRIMARY KEY,
+    domain               TEXT,                 -- decoded from Domain hex
+    domain_two_way_proof TEXT,                 -- 'pass' | 'fail' | 'unchecked'
+    account_flags        BIGINT NOT NULL DEFAULT 0,
+    blackholed           BOOLEAN NOT NULL DEFAULT FALSE,
+    default_ripple       BOOLEAN NOT NULL DEFAULT FALSE,
+    transfer_rate        BIGINT,
+    require_auth         BOOLEAN NOT NULL DEFAULT FALSE,
+    has_signer_list      BOOLEAN NOT NULL DEFAULT FALSE,
+    regular_key          TEXT,
+    first_ledger_seen    BIGINT,               -- issuer age proxy
+    trustline_count      INTEGER,
+    facts_completeness   INTEGER NOT NULL DEFAULT 0,   -- 0-100
+    observed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    observed_ledger_idx  BIGINT
+);
+CREATE INDEX IF NOT EXISTS issuer_facts_domain_idx
+    ON issuer_facts (domain);
+CREATE INDEX IF NOT EXISTS issuer_facts_completeness_idx
+    ON issuer_facts (facts_completeness DESC);
+
+CREATE TABLE IF NOT EXISTS token_facts (
+    currency_hex         TEXT NOT NULL,
+    issuer               TEXT NOT NULL,
+    decoded_name         TEXT,                 -- ASCII when 40-hex decodes cleanly
+    decode_kind          TEXT,                 -- 'xrp'|'short'|'decoded'|'junk'
+    non_standard_code    BOOLEAN NOT NULL DEFAULT FALSE,
+    ticker_collision     BOOLEAN NOT NULL DEFAULT FALSE,
+    ticker_collision_of  TEXT,                 -- canonical ticker name if collision
+    is_lp_token          BOOLEAN NOT NULL DEFAULT FALSE,
+    amm_pool_count       INTEGER NOT NULL DEFAULT 0,
+    trades_30d           BIGINT NOT NULL DEFAULT 0,
+    trades_90d           BIGINT NOT NULL DEFAULT 0,
+    mpt_asset_class      TEXT,                 -- from MPT XLS-89 metadata
+    mpt_asset_subclass   TEXT,
+    facts_completeness   INTEGER NOT NULL DEFAULT 0,
+    observed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    observed_ledger_idx  BIGINT,
+    PRIMARY KEY (currency_hex, issuer)
+);
+CREATE INDEX IF NOT EXISTS token_facts_issuer_idx
+    ON token_facts (issuer);
+CREATE INDEX IF NOT EXISTS token_facts_trades_30d_idx
+    ON token_facts (trades_30d DESC);
+CREATE INDEX IF NOT EXISTS token_facts_collision_idx
+    ON token_facts (ticker_collision) WHERE ticker_collision = TRUE;
+CREATE INDEX IF NOT EXISTS token_facts_completeness_idx
+    ON token_facts (facts_completeness DESC);
+
 -- Inferred (not-hand-curated) token categories, sourced from issuer-
 -- published xrp-ledger.toml [[TOKENS]] entries. Populated by the same
 -- token_issuer_flags_walker cycle: for every issuer with a valid
