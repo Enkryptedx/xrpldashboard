@@ -254,7 +254,14 @@ _UUID_V4_RE = re.compile(
 _ISO_UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$"
 )
-_ALLOWED_KINDS = frozenset({"check"})
+_ALLOWED_KINDS = frozenset({"check", "registry"})
+# "check"    → /check.json response envelope receipts (inline, per-request)
+# "registry" → daily signed XRPL Token Registry snapshot (batch, once/day)
+# Both use the same key + same domain separator. The canonical_hash
+# differs by kind (each artifact's canonical serialization includes the
+# kind field), so signatures can't be cross-replayed even with the
+# shared domain separator.
+
 _REQUIRED_FIELDS = frozenset({
     "canonical_hash",
     "response_id",

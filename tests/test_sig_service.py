@@ -117,11 +117,19 @@ class ReceiptSchemaValidationTests(unittest.TestCase):
         self.assertIsNotNone(sig_service.validate_sign_request(
             _sample_body(response_id="12345678-1234-1234-1234-123456789abc")))
 
-    def test_kind_must_be_check(self):
-        self.assertIsNotNone(sig_service.validate_sign_request(
+    def test_kind_must_be_check_or_registry(self):
+        # Both allowed
+        self.assertIsNone(sig_service.validate_sign_request(
+            _sample_body(kind="check")))
+        self.assertIsNone(sig_service.validate_sign_request(
             _sample_body(kind="registry")))
+        # Nothing else
         self.assertIsNotNone(sig_service.validate_sign_request(
             _sample_body(kind="")))
+        self.assertIsNotNone(sig_service.validate_sign_request(
+            _sample_body(kind="custom")))
+        self.assertIsNotNone(sig_service.validate_sign_request(
+            _sample_body(kind="CHECK")))  # case-sensitive
 
     def test_issued_at_utc_must_be_iso_utc(self):
         self.assertIsNotNone(sig_service.validate_sign_request(
@@ -243,7 +251,7 @@ class SignEndpointTests(unittest.TestCase):
         self.client.post("/unlock", json={"passphrase": TEST_PASSPHRASE})
         r = self.client.get("/status")
         self.assertTrue(r.get_json()["unlocked"])
-        self.assertEqual(r.get_json()["allowed_kinds"], ["check"])
+        self.assertEqual(r.get_json()["allowed_kinds"], ["check", "registry"])
 
     def test_audit_log_records_signed_events(self):
         self.client.post("/unlock", json={"passphrase": TEST_PASSPHRASE})

@@ -5112,6 +5112,43 @@ def well_known_signed_pubkey_json():
 
 
 RECEIPT_PUBKEY_PEM_PATH = os.path.join(HERE, "receipt_pubkey.pem")
+SIGNED_REGISTRY_SNAPSHOTS_DIR = os.path.join(HERE, "signed_registry_snapshots")
+
+
+@app.route("/.well-known/registry/<date_str>.json")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_signed_registry(date_str):
+    """Serve a daily signed registry snapshot by ISO date. Files are
+    written by signed_registry_snapshot.py once per UTC day, signed
+    with the receipt/registry key (fingerprint A4:0F:B1:0A:9D:33:64:03,
+    domain separator xrpldashboard/registry/v1).
+
+    Verifier flow:
+      1. Fetch this file.
+      2. Fetch /.well-known/snapshots/receipt_pubkey.pem (or .json).
+      3. Recompute canonical_hash over the envelope minus the
+         `signature` and `canonical_hash_hex` fields. Compare to
+         `canonical_hash_hex`.
+      4. Verify Ed25519 signature over
+         DOMAIN_SEPARATOR + 0x00 + bytes.fromhex(canonical_hash_hex)
+         using the pubkey.
+      5. Cross-check: this file's `history_merkle_root_hex` must equal
+         the `registry_state.history_merkle_root` value in that date's
+         signed_snapshot (/.well-known/snapshots/<date>.json). If they
+         diverge, the registry file has been tampered with post-signing.
+    """
+    import re as _re
+    if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        abort(404)
+    path = os.path.join(SIGNED_REGISTRY_SNAPSHOTS_DIR, f"{date_str}.json")
+    if not os.path.exists(path):
+        abort(404, description=f"no signed registry snapshot for {date_str}")
+    resp = send_from_directory(
+        SIGNED_REGISTRY_SNAPSHOTS_DIR, f"{date_str}.json",
+        mimetype="application/json",
+    )
+    resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+    return resp
 
 
 @app.route("/.well-known/snapshots/receipt_pubkey.pem")
