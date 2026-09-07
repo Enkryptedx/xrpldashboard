@@ -794,20 +794,36 @@ def _capability_signals(account_data: dict) -> list[dict]:
 # nothing except a moment of caution.
 _SEED_WORD_RE = re.compile(r"\b[a-z]{3,8}\b")
 
-# Scam-request patterns — three canonical shapes of a phishing message
-# that arrives asking a victim to reveal a wallet secret OR send money to
-# "receive more." All patterns are case-insensitive and match anywhere
-# in the text. Each category has multiple regex variants so a single
-# rephrase doesn't slip past — the attacker's job is to write in ways
-# that HIT one of these patterns, which is exactly the point.
+# Scam-request patterns — canonical shapes of a phishing / fraud message.
+# Category keys stay as `scam_patterns_matched` internally (they're a
+# working label, not a verdict); the /check render NEVER surfaces the
+# word "scam" as a verdict — instead it says "warning signs commonly
+# used in fraud attempts" and explains the factual line per sign. Same
+# discipline as ticker_collision. See templates/check.html for the
+# render text; attorney sees final phrasing before it's called done.
 #
 # Discipline: patterns require a request-verb near the sensitive noun
 # ("enter your seed", not "seed" alone). Bare mention of "seed phrase"
 # in a conversation ("I lost my seed phrase and asked a friend for help")
-# doesn't match; that's a legit discussion. The three categories are:
-#   seed_request       — someone is asking the reader to reveal a seed
-#   giveaway_double    — "send X, receive 2X" doubler scam
-#   fake_support_urgency — "your wallet has been locked, click within N hours"
+# doesn't match; that's a legit discussion. Categories:
+#   seed_request                — asks the reader to reveal a seed
+#   giveaway_double             — "send X, receive 2X" doubler pitch
+#   fake_support_urgency        — "your wallet is locked, act now"
+#   account_alert_phishing      — "unusual sign-in, if this wasn't you..."
+#   fake_airdrop_connect_wallet — "connect your wallet to claim airdrop"
+#   brand_impersonation         — named crypto brand + urgency/CTA nearby
+#
+# For account_alert_phishing and brand_impersonation the render adds ONE
+# question — "Do you actively use this service?" — because real notices
+# and fake notices use the same words; only the reader's account state
+# can distinguish, not the message itself.
+
+_KNOWN_CRYPTO_BRAND_RE = (
+    r"coinbase|binance|kraken|uphold|gemini|xaman|xrpscan|bithomp|"
+    r"ripple|xumm|sologenic|okx|kucoin|crypto\.com|metamask|ledger|"
+    r"trezor|phantom"
+)
+
 _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
     "seed_request": [
         re.compile(
@@ -871,6 +887,79 @@ _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
             re.IGNORECASE,
         ),
     ],
+    "account_alert_phishing": [
+        # "unusual sign-in / login / activity" — REQUIRES nearby CTA
+        # ("click", "verify", "secure", "confirm", "if this wasn't you")
+        # so a legit discussion of alert emails ("I got an unusual sign-in
+        # email — was it real?") doesn't false-positive.
+        re.compile(
+            r"\b(unusual|suspicious|new|unauthorized)\s+(sign[-\s]?in|log[-\s]?in|login|activity|access|attempt)\b.{0,200}\b(click|verify|secure|confirm|reactivate|if\s+(this|it)\s+wasn'?t\s+you)",
+            re.IGNORECASE,
+        ),
+        # "if this wasn't you"
+        re.compile(
+            r"\bif\s+(this|it)\s+(was|wasn'?t|was\s+not)\s+(not\s+)?you\b",
+            re.IGNORECASE,
+        ),
+        # "confirm / cancel / approve / deny this withdrawal / transaction"
+        re.compile(
+            r"\b(confirm|cancel|approve|deny|reject)\s+(this|your)\s+(withdrawal|transaction|payment|transfer|purchase|order)",
+            re.IGNORECASE,
+        ),
+        # "secure your account / verify your identity" — paired with a request context
+        re.compile(
+            r"\b(secure|protect|restore|reactivate|update)\s+your\s+(account|identity|wallet|profile)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bverify\s+your\s+identity\b",
+            re.IGNORECASE,
+        ),
+    ],
+    "fake_airdrop_connect_wallet": [
+        # "connect your wallet ... claim/receive/airdrop/reward"
+        re.compile(
+            r"\bconnect\s+your\s+wallet\b.{0,120}\b(claim|receive|airdrop|reward|earn|drop|mint)",
+            re.IGNORECASE,
+        ),
+        # reverse order — "claim your airdrop ... connect"
+        re.compile(
+            r"\b(claim|receive)\s+(your|the|free)\s+(airdrop|reward|tokens?|nft|prize|drop)\b.{0,120}\bconnect",
+            re.IGNORECASE,
+        ),
+        # "sign this transaction / message to claim"
+        re.compile(
+            r"\bsign\s+(this|the|a)\s+(transaction|message|permit)\b.{0,120}\b(claim|receive|verify|airdrop|reward)",
+            re.IGNORECASE,
+        ),
+        # "free/exclusive airdrop" combo
+        re.compile(
+            r"\b(free|exclusive|limited|surprise)\s+(airdrop|drop|nft|token\s+claim|reward\s+drop)",
+            re.IGNORECASE,
+        ),
+    ],
+    "brand_impersonation": [
+        # Named brand + urgency word within 200 chars
+        re.compile(
+            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\b.{0,200}\b(verify|secure|confirm|urgent|immediate|suspended|locked|compromised|reactivate|reset|action\s+required)",
+            re.IGNORECASE,
+        ),
+        # Named brand + "click here / below / link"
+        re.compile(
+            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\b.{0,200}\bclick\s+(here|below|the\s+link|this\s+link)",
+            re.IGNORECASE,
+        ),
+        # Brand + "team here / support here / security team"
+        re.compile(
+            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\s+(team|support|customer\s+service|security(\s+team)?|help)\s+(here|says|notified|contacted)",
+            re.IGNORECASE,
+        ),
+        # Brand-in-message-header phrasing "From: Coinbase Support" etc.
+        re.compile(
+            r"\bfrom\s*:?\s*(" + _KNOWN_CRYPTO_BRAND_RE + r")\s+(security|support|team|customer)",
+            re.IGNORECASE,
+        ),
+    ],
 }
 
 
@@ -881,7 +970,12 @@ def _detect_scam_patterns(text: str) -> list[str]:
     returns all matched keys (the render can escalate on multi-hit).
 
     Case-insensitive; matches anywhere in the message, not just at
-    boundaries — a scam pitch can arrive mid-message after a preamble."""
+    boundaries — a fraud pitch can arrive mid-message after a preamble.
+
+    Internal name is "scam_patterns" (a working label). The /check
+    render never uses the word "scam" as a verdict — see the template
+    for the public wording ("warning signs commonly used in fraud
+    attempts") and per-category factual line."""
     if not text:
         return []
     hits: set[str] = set()
@@ -891,6 +985,21 @@ def _detect_scam_patterns(text: str) -> list[str]:
                 hits.add(category)
                 break  # one hit per category is enough — don't over-count
     return sorted(hits)
+
+
+def _detect_brand_mentions(text: str) -> list[str]:
+    """Return the sorted, deduplicated list of crypto-brand names that
+    appear in `text`. Used by the render to produce the 'Do you actively
+    use this service?' question — the reader's answer distinguishes a
+    real notice they should investigate through the service's own app
+    from a fake notice pretending to be that service. The list itself
+    is not a verdict — a real notice mentions the brand too."""
+    if not text:
+        return []
+    found: set[str] = set()
+    for m in re.finditer(r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\b", text, re.IGNORECASE):
+        found.add(m.group(1).lower())
+    return sorted(found)
 
 def _detect_seed_phrase(text: str) -> bool:
     """Return True if the text contains a plausible BIP39 12- or 24-word
@@ -2094,6 +2203,7 @@ def check_message(text: str) -> dict:
     # All checks are in-request only; never persisted.
     seed_phrase_detected = _detect_seed_phrase(text)
     scam_patterns_matched = _detect_scam_patterns(text)
+    brands_named = _detect_brand_mentions(text)
 
     # --- extract, dedupe address ⇢ token overlap ---------------------
     tokens = _extract_tokens(text)
@@ -2199,33 +2309,34 @@ def check_message(text: str) -> dict:
             "stored anywhere."
         )
     elif scam_patterns_matched:
-        # Scam-request pattern hit(s) — the message is asking the reader
-        # to do something a legitimate service would never ask for.
-        # Override the summary so the safety guidance lands above the
-        # per-target signals rather than being buried in the fold below.
-        _multi = len(scam_patterns_matched) > 1
-        _cats_pretty = {
-            "seed_request": "asking for a wallet recovery phrase / seed / private key",
-            "giveaway_double": "'send X, receive 2X' doubler pitch",
-            "fake_support_urgency": "'your wallet is locked, act within N hours' urgency pressure",
-        }
-        _hits_str = "; ".join(_cats_pretty[c] for c in scam_patterns_matched)
+        # Warning-sign pattern hit(s) — the message contains one or more
+        # shapes commonly used in fraud attempts. Override the summary so
+        # the safety guidance lands above the per-target signals rather
+        # than being buried in the fold below.
+        #
+        # WORDING RULE (Charlie 2026-09-07): the render NEVER says "scam"
+        # as a verdict. Real and fake messages use the same language;
+        # only the reader's account state distinguishes. See the template
+        # for per-category factual lines and the "Do you actively use
+        # this service?" question that renders under account_alert_
+        # phishing / brand_impersonation hits.
         status_line = (
-            "This message matches known scam patterns. Do not act on it. "
-            "Whatever it asks for — seed phrase, XRP for a doubling promise, "
-            "clicking a link to 'verify' — a real service never asks in a "
-            "message. Close the tab."
+            "This message contains warning signs commonly used in fraud "
+            "attempts. Do not act on it based on this message alone. "
+            "The specific signs and the safe response are below."
         )
         summary = (
-            f"This message hit "
-            f"{'multiple scam patterns' if _multi else 'a scam pattern'}: "
-            f"{_hits_str}. Legitimate exchanges, wallets, and support teams "
-            f"never ask for your recovery phrase, never promise you'll "
-            f"receive back more than you send, and never demand action within "
-            f"hours. If the message came from someone claiming to be a "
-            f"service or team, treat the message as the scam and reach the "
-            f"real service through their own website (typed by you, not "
-            f"clicked from a link)."
+            "The signs listed below are patterns that appear in messages "
+            "designed to pressure a reader into revealing a wallet "
+            "recovery phrase, sending crypto to an address they don't "
+            "control, or clicking a link to a lookalike site. Whether "
+            "this specific message is genuine or fake cannot be judged "
+            "from the message alone — real notices and fake notices "
+            "often use the same language. The safe response is the same "
+            "either way: open the service's own app or type its URL "
+            "yourself and check your account there. Do not click links "
+            "in this message. Do not send money based on this message. "
+            "Do not share a recovery phrase."
         )
 
     return {
@@ -2237,6 +2348,7 @@ def check_message(text: str) -> dict:
         "summary": summary,
         "seed_phrase_detected": seed_phrase_detected,
         "scam_patterns_matched": scam_patterns_matched,
+        "brands_named": brands_named,
         "groups": {
             "addresses": address_results,
             "tokens": token_results,

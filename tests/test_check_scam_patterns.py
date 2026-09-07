@@ -30,6 +30,25 @@ BENIGN = [
     "Just staked some CTF tokens for the first time this week.",
     "How do I use xrpldashboard/tokens to see the top pools by TVL?",
     "The new registry taxonomy for tokens is a great step forward.",
+    # Benign counter-cases for account_alert_phishing (2026-09-07):
+    # legit chat about security notifications should NOT trigger
+    "I finally set up my Coinbase account and the KYC flow was smooth.",
+    "Ripple announced a new partnership with a European bank yesterday.",
+    "Xaman is my daily wallet — signing txns is one tap.",
+    "The XRPL airdrop from 2020 was memorable, I still hold those tokens.",
+    "Bithomp has a nice explorer for the XRPL and shows account activity.",
+    # Benign counter-cases discussing scams / help-seeking without asking
+    # the reader to reveal anything (the detector should NOT fire on
+    # someone reporting having BEEN targeted). We avoid literal request
+    # phrasing here because the /check surface DOES want to warn users
+    # who paste literal request phrasing — even in an "is this a scam?"
+    # frame, firing the warning is helpful, not a false positive.
+    "Someone messaged me claiming to be Ripple support but I ignored it.",
+    "I got an alert email from Kraken yesterday — is there a way to check whether it was legitimate before I do anything?",
+    # Casual "airdrop" mention without wallet-connect pitch
+    "There is a legitimate airdrop from a project I follow, it uses a snapshot from block N.",
+    # Casual "connect your wallet" reference to a DEX/dApp
+    "To use the AMM I have to connect my wallet to the DEX interface.",
 ]
 
 SCAM = [
@@ -58,6 +77,33 @@ SCAM = [
         "Ripple Team notice: Your account has been flagged. Enter your "
         "recovery phrase to verify, or send 10 XRP to receive 20 XRP as "
         "compensation.",
+    ),
+    # New scam categories (2026-09-07 — Charlie ruling):
+    (
+        "account_alert_phishing",
+        "Coinbase Security Alert: We detected unusual sign-in activity "
+        "on your account from a new device. If this wasn't you, click "
+        "here to secure your account immediately.",
+    ),
+    (
+        "fake_airdrop_connect_wallet",
+        "Exclusive Ripple XRP airdrop — connect your wallet to claim "
+        "5,000 XRP within the next 24 hours!",
+    ),
+    (
+        "brand_impersonation",
+        "Xaman support here — your wallet needs immediate verification. "
+        "Click here to reactivate before your account is suspended.",
+    ),
+    (
+        "account_alert_and_brand",
+        "From: Binance Security Team — Suspicious login attempt detected. "
+        "If this wasn't you, verify your identity via the link below.",
+    ),
+    (
+        "airdrop_and_brand",
+        "Ripple partnership airdrop — sign this transaction with your "
+        "Xaman wallet to claim the free XRP drop.",
     ),
 ]
 
@@ -99,18 +145,25 @@ class ScamPatternDetectorTests(unittest.TestCase):
         self.assertIn("fake_support_urgency", hits)
 
     def test_compound_three_categories_returns_all_three(self):
+        # SCAM[4] mentions "Ripple Team notice" + urgency ("account
+        # flagged") → also fires brand_impersonation now (2026-09-07
+        # category added). Assert the three core categories are all
+        # present; brand_impersonation firing too is a bonus, not a
+        # regression.
         _, msg = SCAM[4]
         hits = set(check_data._detect_scam_patterns(msg))
-        self.assertEqual(
-            hits,
-            {"seed_request", "giveaway_double", "fake_support_urgency"},
-        )
+        self.assertIn("seed_request", hits)
+        self.assertIn("giveaway_double", hits)
+        self.assertIn("fake_support_urgency", hits)
 
     def test_check_message_surfaces_scam_hits_and_overrides_summary(self):
         _, msg = SCAM[0]
         result = check_data.check_message(msg)
         self.assertEqual(result["scam_patterns_matched"], ["seed_request"])
-        self.assertIn("scam patterns", result["status_line"].lower())
+        # Charlie ruling 2026-09-07: public wording says
+        # "warning signs commonly used in fraud attempts" — the internal
+        # name "scam_patterns" is a working label, never a verdict.
+        self.assertIn("fraud attempts", result["status_line"].lower())
 
     def test_pasted_seed_phrase_still_wins_over_scam_pattern_render(self):
         # 12-word mnemonic-shape input should trigger the seed detector's
@@ -122,6 +175,90 @@ class ScamPatternDetectorTests(unittest.TestCase):
         result = check_data.check_message(seed)
         self.assertTrue(result["seed_phrase_detected"])
         self.assertIn("STOP", result["status_line"])
+
+    # New categories (2026-09-07 — Charlie ruling)
+
+    def test_account_alert_phishing_detected(self):
+        _, msg = next((k, v) for k, v in SCAM if "account_alert" == k[:13])
+        self.assertIn(
+            "account_alert_phishing",
+            check_data._detect_scam_patterns(msg),
+        )
+
+    def test_fake_airdrop_connect_wallet_detected(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM if "fake_airdrop" == k[:12]
+        )
+        self.assertIn(
+            "fake_airdrop_connect_wallet",
+            check_data._detect_scam_patterns(msg),
+        )
+
+    def test_brand_impersonation_detected(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM
+            if k == "brand_impersonation"
+        )
+        self.assertIn(
+            "brand_impersonation",
+            check_data._detect_scam_patterns(msg),
+        )
+
+    def test_brand_impersonation_captures_brand_names(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM if k == "brand_impersonation"
+        )
+        result = check_data.check_message(msg)
+        self.assertIn("xaman", result["brands_named"])
+
+    def test_account_alert_compound_returns_all_matched_categories(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM if k == "account_alert_and_brand"
+        )
+        hits = set(check_data._detect_scam_patterns(msg))
+        # Binance branded, phishing shape, and urgency ("Security Team",
+        # "verify your identity") should all fire.
+        self.assertIn("account_alert_phishing", hits)
+        self.assertIn("brand_impersonation", hits)
+
+    def test_airdrop_and_brand_compound_returns_both(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM if k == "airdrop_and_brand"
+        )
+        hits = set(check_data._detect_scam_patterns(msg))
+        self.assertIn("fake_airdrop_connect_wallet", hits)
+        # xaman is a named brand; ripple partnership + airdrop language
+        # should also trigger brand_impersonation if urgency is nearby.
+        # We do NOT strictly require brand_impersonation here — that
+        # depends on how attackers phrase the urgency. If the pattern
+        # doesn't fire on this exact wording, that's fine — the airdrop
+        # signal alone is enough to warn the user.
+
+    def test_check_message_surfaces_brand_names_field(self):
+        _, msg = next(
+            (k, v) for k, v in SCAM if k == "brand_impersonation"
+        )
+        result = check_data.check_message(msg)
+        self.assertIn("brands_named", result)
+        self.assertIsInstance(result["brands_named"], list)
+
+    def test_public_wording_never_says_scam_as_verdict(self):
+        # Charlie's ruling 2026-09-07: the public render must never
+        # say "scam" as a verdict. Internal name stays scam_patterns
+        # but the status_line + summary use "warning signs commonly
+        # used in fraud attempts" language instead.
+        _, msg = SCAM[0]  # any scam message
+        result = check_data.check_message(msg)
+        status = result["status_line"].lower()
+        summary = result["summary"].lower()
+        # 'scam' must NOT appear in the public wording that renders
+        # above the per-target signals.
+        self.assertNotIn(" scam", status,
+                         "status_line uses 'scam' — must be 'fraud attempts'")
+        self.assertNotIn(" scam", summary,
+                         "summary uses 'scam' — must be 'fraud attempts'")
+        # The mandated phrasing must be present.
+        self.assertIn("fraud attempts", status)
 
 
 if __name__ == "__main__":

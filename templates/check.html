@@ -149,12 +149,33 @@
       color: #f59e0b; font-weight: 700; font-size: 1.02rem;
       margin-bottom: 6px;
     }
+    .scam-warn-lede {
+      color: var(--text); font-size: 0.9rem; line-height: 1.55;
+      margin: 0 0 10px; font-style: italic; opacity: 0.85;
+    }
     .scam-warn-list {
       color: var(--text); font-size: 0.92rem; line-height: 1.5;
       margin: 0; padding-left: 18px;
     }
-    .scam-warn-list li { margin: 4px 0; }
+    .scam-warn-list li { margin: 6px 0; }
     .scam-warn-list li strong { color: #f59e0b; }
+    .scam-warn-list li code {
+      background: rgba(245,158,11,0.15); padding: 1px 6px; border-radius: 4px;
+      color: var(--text); font-family: var(--mono, ui-monospace, Menlo, monospace);
+      font-size: 0.85em;
+    }
+    .scam-warn-question {
+      margin-top: 12px; padding: 10px 12px;
+      border-top: 1px solid rgba(245,158,11,0.20);
+      color: var(--text);
+    }
+    .scam-warn-question strong {
+      color: #f59e0b; display: block; margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+    .scam-warn-question p {
+      font-size: 0.9rem; line-height: 1.5; margin: 4px 0;
+    }
     .msg-group { margin: 22px 0 8px; }
     .msg-group-heading {
       color: var(--muted); font-size: 0.78rem;
@@ -452,23 +473,47 @@
           <div class="scam-warn-icon" aria-hidden="true">⚠</div>
           <div>
             <div class="scam-warn-head">
-              {% if result.scam_patterns_matched|length > 1 %}
-                {{ _('This message hits multiple known scam patterns.') }}
-              {% else %}
-                {{ _('This message hits a known scam pattern.') }}
-              {% endif %}
+              {{ _('This message contains warning signs commonly used in fraud attempts.') }}
+            </div>
+            <div class="scam-warn-lede">
+              {{ _('Real and fake messages of this shape often use the same language. This alone is not a verdict on this specific message. The safe response is the same either way — do not act on this message; check through the service directly.') }}
             </div>
             <ul class="scam-warn-list">
               {% for cat in result.scam_patterns_matched %}
                 {% if cat == 'seed_request' %}
-                  <li><strong>{{ _('Seed / recovery-phrase request.') }}</strong> {{ _('The message asks the reader to enter, share, verify, or paste a recovery phrase (12 or 24 words), mnemonic, or private key. No legitimate service ever asks for this. Anyone with the phrase can drain the wallet.') }}</li>
+                  <li><strong>{{ _('Recovery-phrase request.') }}</strong> {{ _('The message asks the reader to enter, share, verify, or paste a recovery phrase (12 or 24 words), mnemonic, or private key. No legitimate service ever asks for this — anyone with the phrase can drain the wallet.') }}</li>
                 {% elif cat == 'giveaway_double' %}
-                  <li><strong>{{ _('Doubler / giveaway pitch.') }}</strong> {{ _("The message promises the reader will receive back more crypto than they send ('send X, receive 2X', 'double your XRP', 'official Ripple giveaway'). This is always a scam — the sender keeps everything and disappears.") }}</li>
+                  <li><strong>{{ _('Send-X-receive-2X pitch.') }}</strong> {{ _("The message promises the reader will receive back more crypto than they send ('send 100 XRP receive 200', 'double your XRP', 'official Ripple giveaway'). No legitimate promotion is structured this way. Every message of this shape sends crypto in and returns nothing.") }}</li>
                 {% elif cat == 'fake_support_urgency' %}
-                  <li><strong>{{ _('Fake-support urgency.') }}</strong> {{ _("The message uses 'your wallet has been locked', 'act within 24 hours', or 'click here to verify' pressure. Real exchanges and wallets do not communicate this way. Do not click; visit the real service by typing its URL directly.") }}</li>
+                  <li><strong>{{ _('Urgency pressure.') }}</strong> {{ _("The message combines an account-status claim ('your wallet has been locked / compromised / frozen') with a short deadline ('act within 24 hours') and a call to action ('click here to verify'). Real exchanges and wallets do not communicate through short-deadline pressure — that shape is a manipulation tactic, not a business practice.") }}</li>
+                {% elif cat == 'account_alert_phishing' %}
+                  <li><strong>{{ _('Account-alert phrasing.') }}</strong> {{ _("The message uses 'unusual sign-in', 'if this wasn't you', 'confirm this withdrawal', 'secure your account', or 'verify your identity' — the exact shape a real notification email uses too. This alone cannot tell real from fake. Do not click anything in this message. Open the app or type the company's address yourself and check your account there. If something real happened, it will be waiting for you inside the app. If nothing is there, the message was fake.") }}</li>
+                {% elif cat == 'fake_airdrop_connect_wallet' %}
+                  <li><strong>{{ _('Wallet-connect airdrop pitch.') }}</strong> {{ _("The message asks the reader to connect a wallet or sign a transaction/message to claim an airdrop, reward, or free NFT. Signing a transaction that arrived through a link you didn't type yourself can approve a full transfer of your balance to the attacker. Never sign a message that arrived from a message you didn't originate — regardless of what the message promises.") }}</li>
+                {% elif cat == 'brand_impersonation' %}
+                  <li><strong>{{ _('Named-brand + urgency / click-here combination.') }}</strong>
+                    {% if result.brands_named %}
+                      {{ _('The message names a known crypto brand') }}
+                      (<code>{{ result.brands_named | join(', ') }}</code>)
+                      {{ _('alongside urgency language or a call to click. Real messages from these brands look identical to fake ones. Do not judge from the message. Check via the brand\'s own app or website (typed by you, not clicked from this message) before responding.') }}
+                    {% else %}
+                      {{ _('The message names a known crypto brand alongside urgency language or a call to click. Real messages from these brands look identical to fake ones. Check via the brand\'s own app or website (typed by you, not clicked from this message) before responding.') }}
+                    {% endif %}
+                  </li>
                 {% endif %}
               {% endfor %}
             </ul>
+
+            {# Ask "Do you use this service?" when account-alert phishing OR brand impersonation fires.
+               The reader's answer distinguishes a real notice they should investigate through the
+               service's own app (yes) from a fake notice pretending to be that service (no). #}
+            {% if 'account_alert_phishing' in result.scam_patterns_matched or 'brand_impersonation' in result.scam_patterns_matched %}
+              <div class="scam-warn-question">
+                <strong>{{ _('Do you actively use this service?') }}</strong>
+                <p>{{ _('If yes — open the service\'s own app or type its URL and check your account. Anything real will be waiting for you there.') }}</p>
+                <p>{{ _('If no — the message is fraudulent by construction (you have no account to secure). Delete it. Do not click.') }}</p>
+              </div>
+            {% endif %}
           </div>
         </div>
       {% endif %}

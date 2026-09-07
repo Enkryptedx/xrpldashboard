@@ -122,9 +122,20 @@ Both flags may attach to a row of any category. They render as prominent badges 
 The registry is currently maintained by:
 - **Primary curator:** Charlie Bruce
 - **Deputy / queue-holder:** JJ (automated queue triage; anything editorial escalated within 48 hours)
-- **Editorial successor:** to-be-named human (Charlie to designate)
+- **Editorial successor:** to-be-named human (Charlie designates when named)
 
-If Charlie is unreachable for >48 hours, JJ holds the queue in read-only status — no new curator-verified categorizations land, disputes are logged with "acknowledged, awaiting editorial review" status, and the successor is paged.
+### Interim hold-pattern (in effect until a human successor is named)
+
+The successor role has not yet been assigned. Until Charlie names a human editorial successor, the following hold-pattern is in force:
+
+- If Charlie is unreachable for **>48 hours**, JJ holds the queue in **read-only** status. No new curator-verified categorizations land during the hold.
+- Every incoming dispute or self-submission during the hold is logged with status `acknowledged, awaiting editorial review` and a timestamp.
+- JJ escalates the read-only state to Charlie's known contact channels at the 48-hour mark; if no reply within a further 48 hours, JJ produces a public status page entry disclosing that the registry is in read-only mode with a specific reason ("primary curator temporarily unavailable — no editorial writes are landing pending review").
+- Mechanical (L1) rules — LP-token detection, ticker_collision, non_standard_code — continue to compute and render normally during the hold. Those don't require human judgment.
+- Rate limits, submission validation, and all other machine-only paths continue to run during the hold. Only the *editorial write path* freezes.
+- Once Charlie is reachable again (or a named successor is designated), the hold lifts and the queue's frozen entries are processed in the order they arrived.
+
+This interim pattern is written up here so the registry's failure-mode is public and predictable, not opaque. When a successor is named, this section is rewritten to name them explicitly.
 
 ## Version-bump policy
 
