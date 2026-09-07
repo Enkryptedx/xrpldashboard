@@ -34,13 +34,16 @@ Charlie: none. JJ documents:
 
 ---
 
-## Step 1 — Neon dashboard: generate new password (Charlie's keyboard)
+## Step 1 — Neon auto-generates a new password; Charlie copies it (Charlie's keyboard)
+
+**Neon generates the new password server-side and shows it once. Charlie does not invent or type one — the only human action is clicking Reset and copying the shown value to paper.** Do not bring a candidate passphrase into this step; Neon replaces it with its own high-entropy value.
 
 Charlie:
 1. Log into Neon (https://console.neon.tech).
-2. Project `steep-tree` → Roles → user `neondb_owner` → **Reset password**.
-3. Neon shows the new password ONCE. Copy it to your paper (or your usual paste buffer — DO NOT paste it into this chat or into any code file that syncs).
-4. Reply "generated" — no content, just the word.
+2. Project `xrpldashboard` → Roles → user `neondb_owner` → **Reset password**.
+3. Confirm the reset. Neon displays the freshly-generated password ONCE with a "shown only once" warning.
+4. Copy that value to paper (or your usual paste buffer — DO NOT paste into any chat surface or file that syncs).
+5. Reply "copied" — no content, just the word.
 
 JJ waits. Does not ask for the value.
 
