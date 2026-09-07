@@ -340,6 +340,36 @@ def fetch_token_data(currency, issuer):
         }
         capabilities = _capability_signals(acct)
 
+    # 6. Review status (Charlie ruling 2026-09-07). Taxonomy v1 splits
+    # 'unlabeled' into two honest states: not_yet_reviewed (default —
+    # no curator has looked) vs reviewed_unlabeled (curator confirmed
+    # no category applies). Derive from token_category_current: if any
+    # curator-source row exists, this row has been reviewed. If the row
+    # has no curator-source entry AND no cached category, it renders as
+    # not_yet_reviewed.
+    reviewed = False
+    if db.pg_available():
+        try:
+            with db.pg_connect() as _conn:
+                with _conn.cursor() as _cur:
+                    _cur.execute(
+                        """
+                        SELECT 1 FROM token_category_current
+                        WHERE currency_hex = %s AND issuer = %s
+                          AND source = 'curator'
+                        LIMIT 1
+                        """,
+                        (currency, issuer),
+                    )
+                    reviewed = bool(_cur.fetchone())
+        except Exception:
+            reviewed = False
+
+    if category is None or category == 'unlabeled':
+        review_status = 'reviewed_unlabeled' if reviewed else 'not_yet_reviewed'
+    else:
+        review_status = None  # a real category is assigned; split doesn't apply
+
     return {
         "currency_raw": currency,
         "currency_decoded": _decode_currency_hex(currency),
@@ -347,6 +377,8 @@ def fetch_token_data(currency, issuer):
         "issuer_short": _short_addr(issuer),
         "display": display,
         "category": category,
+        "reviewed": reviewed,
+        "review_status": review_status,
         "labeled": labeled,
         "source_url": source_url,
         "pool_pair_label": pool_pair_label,
