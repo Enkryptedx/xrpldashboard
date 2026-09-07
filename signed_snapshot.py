@@ -915,10 +915,27 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
         chain["pubkey_url"] = PUBKEY_URL
         chain["verifier_spec_url"] = VERIFIER_SPEC_URL
         chain["current_root"] = current_root.hex()
-        chain.setdefault("root_history", []).append({
+        # Dedup by date — mirror the leaf-replacement logic elsewhere in
+        # this module. Original bug 2026-09-07: a stale cron kick fired
+        # signed_snapshot a second time; leaves correctly replaced (Friday
+        # fix) but root_history bare-appended, producing two entries for
+        # one date. On a re-stamp: overwrite the existing entry's root
+        # with the current-run root, preserving one-row-per-date and
+        # matching the fact that only one leaf-per-date exists.
+        _rh = chain.setdefault("root_history", [])
+        _target = {
             "date": snap["snapshot_date_utc"],
             "root": current_root.hex(),
-        })
+        }
+        _existing_idx = next(
+            (i for i, e in enumerate(_rh)
+             if isinstance(e, dict) and e.get("date") == snap["snapshot_date_utc"]),
+            None,
+        )
+        if _existing_idx is None:
+            _rh.append(_target)
+        else:
+            _rh[_existing_idx] = _target
         write_chain(chain)
         write_signed_snapshot(signed)
 
