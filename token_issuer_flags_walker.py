@@ -26,12 +26,20 @@ Only a total wipeout (0 fetched_ok across all issuers, i.e. LAN rippled
 unreachable) returns (False, ...) so walker_health goes red.
 """
 import logging
+import ssl
 import sys
 import time
 import urllib.request
 import urllib.error
 
 from xrpl.models.requests import AccountInfo
+
+# macOS Python framework installs ship without a system CA bundle, so
+# urllib.request.urlopen chokes with CERTIFICATE_VERIFY_FAILED on any
+# HTTPS site. Use certifi's Mozilla bundle. Both Mac and Lenovo have
+# certifi (it's a hard dep of the xrpl-py stack).
+import certifi
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 import db
 from xrpl_client import get_client
@@ -91,9 +99,13 @@ _TOML_CATEGORY_MAP = {
 
 
 def _normalize_toml_category(value):
+    """Taxonomy v1 (2026-09-06 Charlie ruling): default for unknown /
+    absent toml category is 'unlabeled' — 'other' was retired as a
+    category, kept only as a client-side compatibility alias while
+    old inferred rows drain."""
     if not value or not isinstance(value, str):
-        return "other"
-    return _TOML_CATEGORY_MAP.get(value.strip().lower(), "other")
+        return "unlabeled"
+    return _TOML_CATEGORY_MAP.get(value.strip().lower(), "unlabeled")
 
 
 def _fetch_toml(domain, log):
@@ -104,7 +116,7 @@ def _fetch_toml(domain, log):
     url = f"https://{domain.rstrip('/')}/.well-known/xrp-ledger.toml"
     req = urllib.request.Request(url, headers={"User-Agent": _TOML_USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=TOML_FETCH_TIMEOUT_SEC) as resp:
+        with urllib.request.urlopen(req, timeout=TOML_FETCH_TIMEOUT_SEC, context=_SSL_CONTEXT) as resp:
             code = resp.getcode()
             if code != 200:
                 return f"http_{code}", None, f"HTTP {code}"

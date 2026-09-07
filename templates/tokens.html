@@ -1166,6 +1166,20 @@
       community:            'unlabeled',
       lp_token:             'unlabeled',  // AMM-share tokens; deliberate
       unlabeled:            'unlabeled',
+      // Compatibility aliases for old vocabulary still living in rows
+      // (token_category_inferred has 924 'other' rows from tonight's
+      // toml walker; token_names.json is fully migrated but the toml
+      // walker's default is being fixed in the same commit). Aliasing
+      // 'other' → 'unlabeled' keeps the visual honest during the
+      // rewrite window; walker update means future rows land 'unlabeled'
+      // directly and this alias eventually goes cold.
+      other:                'unlabeled',
+      bridge:                'wrapped',
+      wrapped_major:         'wrapped',
+      native_utility:        'utility',
+      defi:                  'utility',
+      fiat:                  'stablecoin',
+      stablecoin:            'stablecoin',
     };
     var CATEGORY_RGB = {
       stablecoin: [34,197,94],
