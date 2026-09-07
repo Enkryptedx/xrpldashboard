@@ -5111,6 +5111,78 @@ def well_known_signed_pubkey_json():
     return resp
 
 
+RECEIPT_PUBKEY_PEM_PATH = os.path.join(HERE, "receipt_pubkey.pem")
+
+
+@app.route("/.well-known/snapshots/receipt_pubkey.pem")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_receipt_pubkey():
+    """Receipt/registry signing public key, PEM-encoded. Distinct key
+    from the snapshot/anchor key at /.well-known/snapshots/pubkey.pem:
+    the receipt key signs /check.json response envelopes and the daily
+    registry snapshot, with domain separator 'xrpldashboard/receipt/v1'
+    applied before Ed25519 verify so a signature intended for one
+    surface cannot be replayed on the other. Generated 2026-09-07."""
+    resp = send_from_directory(
+        HERE, "receipt_pubkey.pem",
+        mimetype="application/x-pem-file",
+    )
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
+@app.route("/.well-known/snapshots/receipt_pubkey.json")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_receipt_pubkey_json():
+    """Machine-friendly JSON view of the receipt/registry signing public
+    key: hex + base64 + base64url_unpadded, plus fingerprint (SHA-256
+    first 8 bytes, XX:XX:XX:XX:XX:XX:XX:XX). Same triangulation shape
+    as the snapshot pubkey.json — verifiers cross-check this endpoint
+    against the DNS TXT record and the PEM URL."""
+    try:
+        from cryptography.hazmat.primitives import serialization
+        with open(RECEIPT_PUBKEY_PEM_PATH, "rb") as f:
+            pem_bytes = f.read()
+        pub = serialization.load_pem_public_key(pem_bytes)
+        pub_raw = pub.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        import base64, hashlib
+        digest_hex = hashlib.sha256(pub_raw).hexdigest()
+        fp = ":".join(digest_hex[i:i+2].upper() for i in range(0, 16, 2))
+        payload = {
+            "curve": "Ed25519",
+            "purpose": "receipt-signing + registry-snapshot-signing",
+            "domain_separator": "xrpldashboard/receipt/v1",
+            "encoding": {
+                "hex": pub_raw.hex(),
+                "base64": base64.b64encode(pub_raw).decode("ascii"),
+                "base64url_unpadded": base64.urlsafe_b64encode(pub_raw).decode("ascii").rstrip("="),
+            },
+            "fingerprint_sha256_hex": digest_hex,
+            "fingerprint_short": fp,
+            "pem_url": f"{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem",
+            "distinct_from_snapshot_key": (
+                "This key is separate from the historical-snapshot signing "
+                "key at /.well-known/snapshots/pubkey.pem. Signatures made "
+                "with this key are prefixed with the domain separator "
+                "'xrpldashboard/receipt/v1' before Ed25519 verify to prevent "
+                "cross-domain replay against the snapshot surface."
+            ),
+            "pinned_in": [
+                "this endpoint",
+                f"{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem",
+                "DNS TXT record on xrpldashboard.com (receipt._xrpldashboard.com)",
+            ],
+        }
+    except Exception as e:
+        abort(500, description=f"receipt_pubkey.json build failed: {type(e).__name__}: {e}")
+    resp = jsonify(payload)
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
 @app.route("/.well-known/anchors.json")
 @limiter.limit(agent_tier_limit_rate)
 def well_known_anchors_json():

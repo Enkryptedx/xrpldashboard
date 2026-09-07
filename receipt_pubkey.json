@@ -1,0 +1,13 @@
+{
+  "algorithm": "ed25519",
+  "created_at_utc": "2026-09-07T18:37:33Z",
+  "curator": "Charlie Bruce",
+  "domain_separator": "xrpldashboard/receipt/v1",
+  "fingerprint_sha256_first8_hex": "a40fb10a9d336403",
+  "fingerprint_sha256_first8_pretty": "A4:0F:B1:0A:9D:33:64:03",
+  "notes": "This key signs check.json receipts and daily registry snapshots. Distinct from the snapshot/anchor key which signs historical ledger snapshots. Verifiers must apply the domain separator before Ed25519 verify to prevent cross-domain replay.",
+  "public_key_pem_path": "/.well-known/snapshots/receipt_pubkey.pem",
+  "public_key_raw_b64": "81yeCqp9ng68Iv40Pbt17eilF+VOrGojIPs73ozqvX0=",
+  "public_key_raw_hex": "f35c9e0aaa7d9e0ebc22fe343dbb75ede8a517e54eac6a2320fb3bde8ceabd7d",
+  "purpose": "receipt-signing + registry-snapshot-signing"
+}
