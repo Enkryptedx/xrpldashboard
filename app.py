@@ -8152,12 +8152,16 @@ def admin_stats():
 
 
 def _admin_authed(req):
-    """Gate for /admin/* routes. ADMIN_TOKEN env var is the shared secret;
-    accepted via Authorization: Bearer <t> OR ?admin_token=<t> (query is
-    convenient for one-off links but the header is preferred — it won't
-    show up in access logs or the Referer chain). If ADMIN_TOKEN is unset
-    the console is disabled entirely — a fresh Render deploy without the
-    env var configured returns 503, not "open by default."
+    """Gate for /admin/* routes. ADMIN_TOKEN env var is the shared secret,
+    accepted ONLY via Authorization: Bearer <t> header. Query-string auth
+    was intentionally removed (Charlie ruling 2026-09-07) — a secret in a
+    URL lands in Render access logs, browser history, browser referrers,
+    and any well-meaning "share this link" screenshot. Header-only closes
+    all of those channels.
+
+    If ADMIN_TOKEN is unset the console is disabled entirely — a fresh
+    Render deploy without the env var configured returns 503, not "open
+    by default." Constant-time compare via secrets.compare_digest.
 
     Returns (True, None) on auth success, (False, reason) on failure.
     """
@@ -8165,10 +8169,9 @@ def _admin_authed(req):
     if not tok:
         return False, "admin_disabled_no_token"
     submitted = (req.headers.get("Authorization") or "").strip()
-    if submitted.startswith("Bearer "):
-        submitted = submitted[7:].strip()
-    if not submitted:
-        submitted = (req.args.get("admin_token") or "").strip()
+    if not submitted.startswith("Bearer "):
+        return False, "admin_unauthenticated"
+    submitted = submitted[7:].strip()
     if not submitted or not secrets.compare_digest(submitted, tok):
         return False, "admin_unauthenticated"
     return True, None
