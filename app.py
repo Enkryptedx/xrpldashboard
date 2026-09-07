@@ -148,6 +148,8 @@ PUBLIC_ROUTES = [
     "/institutional",
     "/security",
     "/subprocessors",
+    "/thisweek",
+    "/registry/taxonomy",
 ]
 
 
@@ -4412,6 +4414,151 @@ def registry_submit():
     )
 
 
+_THISWEEK_DIR = os.path.join(HERE, "docs", "thisweek")
+_THISWEEK_CACHE: dict = {}
+_THISWEEK_MTIMES: dict = {}
+
+
+def _load_thisweek_edition(date_str: str):
+    """Read + parse one edition markdown. Returns (front_matter, html_body)
+    or (None, None) if not found. Cache invalidates on file mtime advance."""
+    import re as _re
+    md_path = os.path.join(_THISWEEK_DIR, f"{date_str}.md")
+    try:
+        mtime = os.path.getmtime(md_path)
+    except OSError:
+        return None, None
+    cached = _THISWEEK_CACHE.get(date_str)
+    if cached and _THISWEEK_MTIMES.get(date_str) == mtime:
+        return cached
+    with open(md_path, "r", encoding="utf-8") as f:
+        src = f.read()
+    front: dict = {}
+    body = src
+    m = _re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", src, _re.DOTALL)
+    if m:
+        raw_front = m.group(1)
+        body = m.group(2)
+        for line in raw_front.splitlines():
+            if ":" in line:
+                k, v = line.split(":", 1)
+                front[k.strip()] = v.strip().strip("'\"")
+    import markdown as _md
+    html = _md.markdown(body, extensions=["fenced_code", "tables", "toc", "attr_list"])
+    result = (front, html)
+    _THISWEEK_CACHE[date_str] = result
+    _THISWEEK_MTIMES[date_str] = mtime
+    return result
+
+
+def _list_thisweek_editions():
+    """Return sorted list of edition dates (newest first)."""
+    import re as _re
+    if not os.path.isdir(_THISWEEK_DIR):
+        return []
+    out = []
+    for name in os.listdir(_THISWEEK_DIR):
+        m = _re.match(r"^(\d{4}-\d{2}-\d{2})\.md$", name)
+        if m:
+            out.append(m.group(1))
+    out.sort(reverse=True)
+    return out
+
+
+@app.route("/thisweek")
+@limiter.limit(agent_tier_limit_rate)
+def thisweek_canonical():
+    """Latest edition of the weekly 'What changed on XRPL' page."""
+    editions = _list_thisweek_editions()
+    if not editions:
+        abort(404, description="no editions published yet")
+    return redirect(url_for("thisweek_edition", date_str=editions[0]), code=302)
+
+
+@app.route("/thisweek/<date_str>")
+@limiter.limit(agent_tier_limit_rate)
+def thisweek_edition(date_str):
+    import re as _re
+    if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        abort(404)
+    front, html = _load_thisweek_edition(date_str)
+    if html is None:
+        abort(404, description=f"no edition for {date_str}")
+    editions = _list_thisweek_editions()
+    return render_template(
+        "thisweek.html",
+        edition_date=date_str,
+        front=front,
+        body_html=html,
+        editions=editions,
+        current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+    )
+
+
+@app.route("/thisweek/<date_str>.json")
+@limiter.limit(agent_tier_limit_rate)
+def thisweek_edition_json(date_str):
+    """JSON twin of an edition — front-matter + body html + canonical URL."""
+    import re as _re
+    if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        abort(404)
+    front, html = _load_thisweek_edition(date_str)
+    if html is None:
+        abort(404)
+    resp = jsonify({
+        "date": date_str,
+        "front_matter": front,
+        "body_html": html,
+        "canonical_url": f"{SITE_URL}/thisweek/{date_str}",
+    })
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
+@app.route("/thisweek.xml")
+@limiter.limit(agent_tier_limit_rate)
+def thisweek_rss():
+    """RSS 2.0 feed of the last 10 editions."""
+    editions = _list_thisweek_editions()[:10]
+    items_xml = ""
+    for d in editions:
+        front, html = _load_thisweek_edition(d)
+        if front is None:
+            continue
+        title = f"This week on XRPL — {d}"
+        link = f"{SITE_URL}/thisweek/{d}"
+        pub_date = front.get("published_at_utc", d + "T16:30:00Z")
+        teaser = front.get("tweet_teaser", "")
+        # Escape XML minimally
+        def esc(s):
+            return (s.replace("&", "&amp;").replace("<", "&lt;")
+                     .replace(">", "&gt;").replace("\"", "&quot;"))
+        items_xml += (
+            f"    <item>\n"
+            f"      <title>{esc(title)}</title>\n"
+            f"      <link>{esc(link)}</link>\n"
+            f"      <guid isPermaLink=\"true\">{esc(link)}</guid>\n"
+            f"      <pubDate>{esc(pub_date)}</pubDate>\n"
+            f"      <description>{esc(teaser)}</description>\n"
+            f"    </item>\n"
+        )
+    body = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<rss version=\"2.0\">\n"
+        "  <channel>\n"
+        f"    <title>This week on XRPL — xrpldashboard</title>\n"
+        f"    <link>{SITE_URL}/thisweek</link>\n"
+        "    <description>Weekly Sunday post pairing the loudest XRP news with the on-chain reality, each item linked to the on-site page that shows it.</description>\n"
+        f"    <language>en-us</language>\n"
+        f"{items_xml}"
+        "  </channel>\n"
+        "</rss>\n"
+    )
+    resp = Response(body, mimetype="application/rss+xml")
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
 @app.route("/registry/taxonomy")
 def registry_taxonomy():
     """Public taxonomy vocabulary for the XRPL Token Registry.
@@ -5876,6 +6023,7 @@ CONTACT_PURPOSES = {
     "data-correction":         "Data or number correction",
     "attestation-dispute":     "Attestation or label dispute",
     "institutional-general":   "Institutional inquiry (form fallback)",
+    "weekly-post-correction":  "Correction to a /thisweek edition",
 }
 
 
@@ -7802,6 +7950,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 ## How this is computed
 - [/methodology]({SITE_URL}/methodology): per-surface freshness contracts, cache TTLs, data sources, known limitations. See especially the "For AI agents" section.
 - [/glossary]({SITE_URL}/glossary): plain-English definitions for XRPL terms and xrpldashboard methodology concepts (AMM, amendment, trust line, signed snapshot, sovereignty tier, and more).
+- [/thisweek]({SITE_URL}/thisweek): weekly Sunday post pairing the loudest XRP news with the on-chain reality — each item linked to the on-site page that shows it. RSS at [{SITE_URL}/thisweek.xml]({SITE_URL}/thisweek.xml); JSON twin per edition at `/thisweek/YYYY-MM-DD.json`.
+- [/registry/taxonomy]({SITE_URL}/registry/taxonomy): the vocabulary the XRPL Token Registry uses — 12 real categories + 2 review-status values + 2 mechanical flags. Anchored via `registry_state` in the daily signed snapshot.
 - [/about]({SITE_URL}/about): mission, funding, principles.
 - [/health]({SITE_URL}/health): live infrastructure status endpoint.
 - [/terms]({SITE_URL}/terms): terms of use.
@@ -8628,6 +8778,94 @@ def admin_token_review():
         current_locale=(request.accept_languages.best_match(["en"]) or "en"),
         is_rtl=False,
     )
+
+
+@app.route("/admin/token-review/decision", methods=["POST"])
+def admin_token_review_decision():
+    """One-click curator decision endpoint. Each POST writes exactly one
+    row to token_category_history (or, for 'needs_review', skips the write
+    but records a touch so the row falls off the queue heuristic).
+
+    Body (JSON): {currency_hex, issuer, decision, note?, curator_id?}
+    decision: 'confirm_collision' | 'dismiss' | 'needs_review'
+    """
+    ok, err = _admin_authed(request)
+    if not ok:
+        if err == "admin_disabled_no_token":
+            return "admin console disabled — ADMIN_TOKEN env not set", 503
+        return "unauthorized", 401
+    if not db.pg_available():
+        return jsonify({"error": "postgres unavailable"}), 503
+    try:
+        body = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        return jsonify({"error": "body must be JSON"}), 400
+    currency_hex = (body.get("currency_hex") or "").strip().upper()
+    issuer = (body.get("issuer") or "").strip()
+    decision = (body.get("decision") or "").strip()
+    note = (body.get("note") or "").strip()[:500] or None
+    curator_id = (body.get("curator_id") or "charlie").strip()
+
+    import re as _re
+    if not _re.match(r"^[0-9A-F]{40}$", currency_hex):
+        return jsonify({"error": "currency_hex must be 40 uppercase hex"}), 400
+    if not _is_xrpl_address(issuer):
+        return jsonify({"error": "issuer must be a valid r-address"}), 400
+    if decision not in ("confirm_collision", "dismiss", "needs_review"):
+        return jsonify({"error": "decision must be one of confirm_collision, dismiss, needs_review"}), 400
+
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            if decision == "confirm_collision":
+                cur.execute(
+                    """
+                    INSERT INTO token_category_history
+                        (currency_hex, issuer, category, tier, source,
+                         citation_url, curator_id, curator_authority,
+                         taxonomy_version, note)
+                    VALUES (%s, %s, 'unlabeled', 'curator-inferred', 'curator',
+                            NULL, %s, 'owner', '1.0.0', %s)
+                    RETURNING id
+                    """,
+                    (currency_hex, issuer, curator_id,
+                     f"curator: confirm_collision · {note or 'ticker_collision flag stands'}"),
+                )
+            elif decision == "dismiss":
+                cur.execute(
+                    """
+                    INSERT INTO token_category_history
+                        (currency_hex, issuer, category, tier, source,
+                         citation_url, curator_id, curator_authority,
+                         taxonomy_version, note)
+                    VALUES (%s, %s, 'unlabeled', 'verified', 'curator',
+                            NULL, %s, 'owner', '1.0.0', %s)
+                    RETURNING id
+                    """,
+                    (currency_hex, issuer, curator_id,
+                     f"curator: dismiss · {note or 'collision flag reviewed and dismissed'}"),
+                )
+            else:  # needs_review
+                cur.execute(
+                    """
+                    INSERT INTO token_category_history
+                        (currency_hex, issuer, category, tier, source,
+                         citation_url, curator_id, curator_authority,
+                         taxonomy_version, note)
+                    VALUES (%s, %s, 'unlabeled', 'bare', 'curator',
+                            NULL, %s, 'owner', '1.0.0', %s)
+                    RETURNING id
+                    """,
+                    (currency_hex, issuer, curator_id,
+                     f"curator: needs_review · {note or 'flagged for follow-up'}"),
+                )
+            new_id = cur.fetchone()[0]
+            conn.commit()
+    return jsonify({
+        "ok": True,
+        "decision": decision,
+        "landed_history_id": new_id,
+        "curator_id": curator_id,
+    })
 
 
 def _short_ua(ua):

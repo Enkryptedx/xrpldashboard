@@ -76,6 +76,36 @@
     .footer { color: var(--dim); font-size: 0.78rem; margin-top: 30px;
               padding-top: 16px; border-top: 1px solid var(--border); }
     a { color: var(--cyan); }
+    .decisions {
+      display: flex; gap: 8px; margin-top: 10px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .decisions button {
+      flex: 1; padding: 8px 10px; border-radius: 5px;
+      border: 1px solid var(--border); background: var(--card);
+      color: var(--text); font-size: 0.85rem; cursor: pointer;
+      font-family: var(--sys);
+    }
+    .decisions button:hover { border-color: var(--cyan); color: var(--cyan); }
+    .decisions button[data-decision="confirm_collision"]:hover {
+      border-color: #ef4444; color: #ef4444;
+    }
+    .decisions button[data-decision="dismiss"]:hover {
+      border-color: #22c55e; color: #22c55e;
+    }
+    .decisions button:disabled { opacity: 0.4; cursor: default; }
+    .decisions .decided { color: var(--dim); font-style: italic;
+                          font-size: 0.85rem; padding: 6px 10px; }
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 12px 18px; color: var(--text);
+      font-size: 0.85rem; z-index: 1000; opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.visible { opacity: 1; }
+    .toast.error { border-color: #ef4444; color: #ef4444; }
   </style>
 </head>
 <body>
@@ -122,6 +152,14 @@
             </div>
           </div>
 
+          <div class="decisions"
+               data-currency-hex="{{ row.currency_hex }}"
+               data-issuer="{{ row.issuer }}">
+            <button data-decision="confirm_collision">confirm collision</button>
+            <button data-decision="dismiss">dismiss (legit token)</button>
+            <button data-decision="needs_review">needs review</button>
+          </div>
+
           {% if row.ticker_collision and row.ticker_collision_of %}
             <div class="collision-block">
               <div class="heading">Ticker collision — {{ row.canonical_brand or row.ticker_collision_of }}</div>
@@ -145,8 +183,73 @@
     {% endif %}
 
     <div class="footer">
-      Queue view: <code>curator_review_queue</code> (db.py). Impact score formula: <code>log(trades_30d+1) × log(amm_pool_count+1) × collision_mult × self_sub_mult × freshness_mult</code>. Excludes LP tokens and non-standard-code (both are handled mechanically). Decision POST endpoint pending signing keypair (registry spec step 4) — until then, this is a read-only surface for triage planning.
+      Queue view: <code>curator_review_queue</code> (db.py). Impact score formula: <code>log(trades_30d+1) × log(amm_pool_count+1) × collision_mult × self_sub_mult × freshness_mult</code>. Excludes LP tokens and non-standard-code (both are handled mechanically). Each button POSTs to <code>/admin/token-review/decision</code> and writes one row to <code>token_category_history</code> with the curator's authority — the row drops out of the queue on the next reload.
     </div>
   </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function() {
+      var toast = document.getElementById('toast');
+      function showToast(msg, isError) {
+        toast.textContent = msg;
+        toast.className = 'toast visible' + (isError ? ' error' : '');
+        setTimeout(function() { toast.className = 'toast'; }, 2500);
+      }
+      // The admin token was passed as a Bearer header at page-load time,
+      // so we don't have it in JS. Instead, prompt once per session and
+      // cache in sessionStorage.
+      function getToken() {
+        var tok = sessionStorage.getItem('admin_token');
+        if (!tok) {
+          tok = prompt('Paste your ADMIN_TOKEN (cached for this session):');
+          if (tok) sessionStorage.setItem('admin_token', tok);
+        }
+        return tok;
+      }
+      document.querySelectorAll('.decisions button').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          var wrap = btn.closest('.decisions');
+          var body = {
+            currency_hex: wrap.dataset.currencyHex,
+            issuer: wrap.dataset.issuer,
+            decision: btn.dataset.decision
+          };
+          var tok = getToken();
+          if (!tok) return;
+          Array.from(wrap.querySelectorAll('button')).forEach(function(b) { b.disabled = true; });
+          fetch('/admin/token-review/decision', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + tok
+            },
+            body: JSON.stringify(body)
+          }).then(function(r) {
+            return r.json().then(function(j) { return {ok: r.ok, data: j}; });
+          }).then(function(res) {
+            if (res.ok) {
+              var span = document.createElement('span');
+              span.className = 'decided';
+              span.textContent = '✓ decided: ' + res.data.decision + ' (history_id ' + res.data.landed_history_id + ')';
+              wrap.innerHTML = '';
+              wrap.appendChild(span);
+              showToast('Recorded — history_id ' + res.data.landed_history_id, false);
+            } else {
+              Array.from(wrap.querySelectorAll('button')).forEach(function(b) { b.disabled = false; });
+              showToast('Error: ' + (res.data.error || 'unknown'), true);
+              if (res.data.error && /unauthor/i.test(res.data.error)) {
+                sessionStorage.removeItem('admin_token');
+              }
+            }
+          }).catch(function(err) {
+            Array.from(wrap.querySelectorAll('button')).forEach(function(b) { b.disabled = false; });
+            showToast('Network error', true);
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

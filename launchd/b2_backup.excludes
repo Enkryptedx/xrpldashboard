@@ -50,3 +50,12 @@ b2_backup.*.log
 .config/rclone/**
 .aws/**
 .gnupg/**
+
+# Memory excludes added 2026-08-31 — DockVault-only per doctrine.
+# JJ's session memory + Charlie's decision-log; local encrypted volume only.
+# Defense-in-depth: sources currently don't contain these paths, but if the
+# source list ever expands to $HOME or a parent, the door stays locked.
+.openclaw/**
+.claude/**
+**/.openclaw/**
+**/.claude/**

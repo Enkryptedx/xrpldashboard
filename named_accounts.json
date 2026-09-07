@@ -219,5 +219,203 @@
     "category": "other",
     "verified_via": "https://themoonboyxrp.com/.well-known/xrp-ledger.toml",
     "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to themoonboyxrp.com, and https://themoonboyxrp.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd": {
+    "name": "EVE Token Issuer",
+    "category": "other",
+    "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to evecoin.org, and https://evecoin.org/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "r3YBCMcF7ppa7aNF3J3GS9pivs2xSbrCTo": {
+    "name": "Support and donations wallet. Destination of donations made through aibull.fun.",
+    "category": "other",
+    "verified_via": "https://aibull.fun/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to aibull.fun, and https://aibull.fun/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "r4bCkC8miFsLiN9XZVcYhCURqjvAoAw1vj": {
+    "name": "Official issuer account for XWR Global",
+    "category": "other",
+    "verified_via": "https://xwrglobal.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xwrglobal.com, and https://xwrglobal.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
+    "name": "HVI Platform treasury and credential issuer",
+    "category": "other",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to hvi3.com, and https://hvi3.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rDAZXo3EEAaBG4vzfxXzX1gGYFbLum9fn6": {
+    "name": "Official Oldtimers Offer XRPL Mainnet account used for Digital Vehicle Passport (DVP) NFTs and platform operations.",
+    "category": "other",
+    "verified_via": "https://oldtimersoffer.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to oldtimersoffer.com, and https://oldtimersoffer.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rDEADR4xWENUsJt63FqVPoUHmJcmnii54r": {
+    "name": "Authorized Minting Platform ( NFT Launchpad )",
+    "category": "other",
+    "verified_via": "https://gravemint.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to gravemint.io, and https://gravemint.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rDce39TBzszQJx2sshLy5jPXV3F9nEaQ9Y": {
+    "name": "Primary account for ioxbank.com",
+    "category": "other",
+    "verified_via": "https://ioxbank.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to ioxbank.com, and https://ioxbank.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2": {
+    "name": "HVI credential issuer - Adrian",
+    "category": "other",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to hvi3.com, and https://hvi3.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rESajkukQjuzQefMzdZuNDNyrPmnfTN6M5": {
+    "name": "GrailX issuer account \u2014 mints pack-opening NFT collectibles and holds the on-chain instant-buyback reserve. See https://grailxpacks.xyz/reserve for live proof of reserve.",
+    "category": "other",
+    "verified_via": "https://grailxpacks.xyz/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to grailxpacks.xyz, and https://grailxpacks.xyz/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rGPXHA1Q7ccrLkUpFRAr9YAABcmA8ckVKB": {
+    "name": "Greenhead Labs Agent DID - AI Operations Wallet",
+    "category": "other",
+    "verified_via": "https://greenhead.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to greenhead.io, and https://greenhead.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHashLabsu2H6hXDSunL8AcVDmTyE17Z35": {
+    "name": "LHT Issuer",
+    "category": "other",
+    "verified_via": "https://lhtoken.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to lhtoken.io, and https://lhtoken.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHqiFkxv8oeBC7omT6w1pJy3avfXsTGRS": {
+    "name": "This wallet represents the official HigherTigers organization on the XRP Ledger. It is used for ecosystem operations, NFT distribution, treasury management, strategic partnerships, and community engagement.",
+    "category": "other",
+    "verified_via": "https://highertigers.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to highertigers.com, and https://highertigers.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHu6YTJhAaxfHYAMtdp265PeQpXKohTcUp": {
+    "name": "MPT Reserve Account",
+    "category": "other",
+    "verified_via": "https://www.sivax.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to www.sivax.io, and https://www.sivax.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHxyLo9ygu99xAdq2booG7ZpqQkiE5hwqo": {
+    "name": "drbonezgrindx.github.io",
+    "category": "other",
+    "verified_via": "https://drbonezgrindx.github.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to drbonezgrindx.github.io, and https://drbonezgrindx.github.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rHzWtXTBrArrGoLDixQAgcSD2dBisM19fF": {
+    "name": "Primary address used for NFT projects",
+    "category": "other",
+    "verified_via": "https://distributedagreement.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to distributedagreement.com, and https://distributedagreement.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rKTG86wmEd8K5XC5X1dGpWzjdsF9WZWJrU": {
+    "name": "GUATE",
+    "category": "other",
+    "verified_via": "https://guatemoneda.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to guatemoneda.com, and https://guatemoneda.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rKhWxDDGexgCMB4suSqxL9XEW1ThEycu2E": {
+    "name": "Liberty Wings Token Issuer",
+    "category": "other",
+    "verified_via": "https://liberty-token.xrpldemon.workers.dev/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to liberty-token.xrpldemon.workers.dev, and https://liberty-token.xrpldemon.workers.dev/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rL8gyYQpMcyHi8L7vGi2d1deoCCrLopFcZ": {
+    "name": "Staking custody. Holds AMM LP positions for the liquidity staking programme.",
+    "category": "other",
+    "verified_via": "https://aibull.fun/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to aibull.fun, and https://aibull.fun/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rLGHuf125sJV9d6g2hcK2HzKrDH2j45dPQ": {
+    "name": "DeepTide platform wallet 1",
+    "category": "other",
+    "verified_via": "https://deeptide.co/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to deeptide.co, and https://deeptide.co/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rMbCy5D5rD8cGewcprziS9r8wiMyb6opQ4": {
+    "name": "Dev wallet / treasury. Funds development and operations.",
+    "category": "other",
+    "verified_via": "https://aibull.fun/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to aibull.fun, and https://aibull.fun/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rPP4z4qH1VmmE7tjPD9o9Yo86c5rSxgfCT": {
+    "name": "Official royalCode XRPL issuer account.",
+    "category": "other",
+    "verified_via": "https://royalcode-xrpl-toml.old-grass-0f81.workers.dev/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to royalcode-xrpl-toml.old-grass-0f81.workers.dev, and https://royalcode-xrpl-toml.old-grass-0f81.workers.dev/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg": {
+    "name": "TextRP $TXT Issuing Wallet",
+    "category": "other",
+    "verified_via": "https://token.textrp.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to token.textrp.io, and https://token.textrp.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rUWHYEdNVA7aMCqP5a4WLqtqPAAYd58K83": {
+    "name": "CalorieToken",
+    "category": "other",
+    "verified_via": "https://calorietoken.net/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to calorietoken.net, and https://calorietoken.net/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "raAyazbgEkwzLByXipQuPLWFfnsPS1v1q9": {
+    "name": "xrpdomains.xyz",
+    "category": "other",
+    "verified_via": "https://xrpdomains.xyz/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrpdomains.xyz, and https://xrpdomains.xyz/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "raUsDtUw9t2iinVzBZCxjMcUAoWJEMsHf1": {
+    "name": "DeepTide platform wallet 3",
+    "category": "other",
+    "verified_via": "https://deeptide.co/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to deeptide.co, and https://deeptide.co/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "raidAoSsjn7J4moHXN313aaiftuqP4Krmn": {
+    "name": "The AI DAO (AIDAO Issuer Account)",
+    "category": "other",
+    "verified_via": "https://xrp.dao.ai/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrp.dao.ai, and https://xrp.dao.ai/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rcLawszxWriTcm78QSpPSR2NajVprknfv": {
+    "name": "XRPLClaw Merchant - RLUSD payments for AI agent hosting",
+    "category": "other",
+    "verified_via": "https://xrplclaw.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrplclaw.com, and https://xrplclaw.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
+    "name": "WeildX issuer account for wTSLA on the XRP Ledger.",
+    "category": "other",
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to weildx.com, and https://weildx.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rhTTtx8YyKzcmPDsoroYXuHdGMThrnweb1": {
+    "name": "Operational hot wallet. Authorized NFTokenMinter of the issuer; pays daily quality-verified node rewards.",
+    "category": "other",
+    "verified_via": "https://wlbn.wellbianlabs.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to wlbn.wellbianlabs.io, and https://wlbn.wellbianlabs.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rhgHYVj6RSNN9eF7aPXpZgf5ZdRDapQVXu": {
+    "name": "X589 Creator",
+    "category": "other",
+    "verified_via": "https://x589xrp.github.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to x589xrp.github.io, and https://x589xrp.github.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rnZL3Tbx3vXEH71Hz8zH3L732pRcNk7nm8": {
+    "name": "Issuing account for the XA3 utility token on the XRP Ledger.",
+    "category": "other",
+    "verified_via": "https://felpazzurra.github.io/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to felpazzurra.github.io, and https://felpazzurra.github.io/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rnjtaoRiUknN9dZYM1ZrVcDSnNb31KoNEo": {
+    "name": "NFT trading bot. Places and maintains the automated NFT sell offers; the resting offers on this account are made by that bot, not by hand.",
+    "category": "other",
+    "verified_via": "https://aibull.fun/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to aibull.fun, and https://aibull.fun/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
+  },
+  "rsmYqAFi4hQtTY6k6S3KPJZh7axhUwxT31": {
+    "name": "gadget78 on twitter and discord... creator of DYOR XRPL spreedsheet",
+    "category": "other",
+    "verified_via": "https://gadget78.uk/.well-known/xrp-ledger.toml",
+    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to gadget78.uk, and https://gadget78.uk/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
   }
 }

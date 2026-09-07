@@ -49,7 +49,10 @@ LAUNCHD_STATE_DIR="/Users/charliebruce/xrpl_test/launchd_state"
 STALE_THRESHOLD=93600  # 26h — mirror runs nightly, so 24h + 2h grace.
 NOW=$(date -u +%s)
 STALE_JOB=""
-for job in mirror neon_dump; do
+# memory_mirror added 2026-08-31 — twice-daily cadence (04:30 + 16:30 EDT).
+# 26h threshold still safe: gap between fires is 12h, so 26h means at least
+# TWO consecutive misses before the alarm reflects the failure.
+for job in mirror neon_dump memory_mirror; do
   state_file="${LAUNCHD_STATE_DIR}/dockvault_${job}_last_ok"
   if [[ ! -f "$state_file" ]]; then
     STALE_JOB="${job} (last_ok never written)"
@@ -68,7 +71,7 @@ if [[ -n "$STALE_JOB" ]]; then
   log "dockvault_monitor end (rc=0, stale-job — NO heartbeat ping)"
   exit 0
 fi
-log "  freshness ok — mirror + neon_dump both stamped <26h ago"
+log "  freshness ok — mirror + neon_dump + memory_mirror all stamped <26h ago"
 
 HB_URL="${DOCKVAULT_MONITOR_HEARTBEAT_URL:-}"
 if [[ -z "$HB_URL" ]]; then

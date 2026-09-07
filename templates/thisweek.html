@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>This week on XRPL — {{ edition_date }} · xrpldashboard</title>
+  <meta name="description" content="{{ front.tweet_teaser or 'Weekly XRPL post pairing news with on-chain reality.' }}">
+  <meta property="og:title" content="This week on XRPL — {{ edition_date }}">
+  <meta property="og:description" content="{{ front.tweet_teaser or '' }}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://xrpldashboard.com/thisweek/{{ edition_date }}">
+  <meta property="article:published_time" content="{{ front.published_at_utc or '' }}">
+  <link rel="alternate" type="application/rss+xml" title="This week on XRPL" href="/thisweek.xml">
+  <link rel="alternate" type="application/json" href="/thisweek/{{ edition_date }}.json">
+  {% include "_head_meta.html" ignore missing %}
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2; --muted: #8090b0; --dim: #7a8ca8;
+      --cyan: #22d3ee; --amber: #f59e0b;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font-family: var(--sys); font-size: 15px; line-height: 1.65; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.05), transparent 40%),
+        var(--bg);
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 18px 60px; }
+    .top { display: flex; align-items: center; justify-content: space-between;
+           margin-bottom: 20px; }
+    .brand { font-weight: 600; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+    .edition-chip {
+      display: inline-block; padding: 4px 10px; border-radius: 4px;
+      background: rgba(34,211,238,0.10); color: var(--cyan);
+      font-family: var(--mono); font-size: 0.78rem; margin-bottom: 8px;
+    }
+    .meta { color: var(--dim); font-size: 0.78rem; margin-bottom: 24px; }
+    .meta a { color: var(--dim); }
+    .content h1 { font-size: 1.65rem; margin: 0 0 10px; letter-spacing: -0.01em; }
+    .content h2 {
+      font-size: 1.15rem; margin: 32px 0 8px; padding-top: 20px;
+      border-top: 1px solid var(--border); color: var(--text);
+    }
+    .content h2:first-of-type { border-top: none; padding-top: 0; margin-top: 22px; }
+    .content h3 { font-size: 1.0rem; margin: 20px 0 6px; color: var(--text); }
+    .content p { color: var(--text); margin: 10px 0; }
+    .content ul { padding-left: 22px; margin: 8px 0; }
+    .content code {
+      background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px;
+      font-family: var(--mono); font-size: 0.85em; color: var(--amber);
+    }
+    .content em { color: var(--muted); }
+    .content hr {
+      border: none; border-top: 1px solid var(--border); margin: 32px 0;
+    }
+    .archive {
+      color: var(--dim); font-size: 0.85rem; margin-top: 40px;
+      padding-top: 20px; border-top: 1px solid var(--border);
+    }
+    .archive h3 { color: var(--text); font-size: 0.9rem;
+                  margin: 0 0 8px; text-transform: uppercase;
+                  letter-spacing: 0.05em; }
+    .archive ul { padding-left: 0; list-style: none; margin: 0; }
+    .archive li { padding: 3px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><a href="/"><span class="accent">xrpl</span>dashboard</a></div>
+      <nav class="nav">
+        <a href="/thisweek">this week</a>
+        <a href="/registry/taxonomy">registry</a>
+        <a href="/methodology">methodology</a>
+        <a href="/thisweek.xml">RSS</a>
+      </nav>
+    </div>
+
+    <span class="edition-chip">edition · {{ edition_date }}</span>
+
+    <div class="meta">
+      {% if front.published_at_utc %}Published {{ front.published_at_utc }}{% endif %}
+      {% if front.last_reviewed %} · Last reviewed {{ front.last_reviewed }}{% endif %}
+      · <a href="/thisweek/{{ edition_date }}.json">JSON</a>
+      · <a href="/thisweek.xml">RSS</a>
+      · <a href="/contact?purpose=weekly-post-correction">correction?</a>
+    </div>
+
+    <div class="content">
+      {{ body_html | safe }}
+    </div>
+
+    {% if editions and editions|length > 1 %}
+      <div class="archive">
+        <h3>Past editions</h3>
+        <ul>
+          {% for d in editions %}
+            {% if d != edition_date %}
+              <li><a href="/thisweek/{{ d }}">{{ d }}</a></li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>
