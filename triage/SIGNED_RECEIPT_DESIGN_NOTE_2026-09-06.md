@@ -4,6 +4,21 @@
 **Prompted by:** the `sig_ed25519: null` gap in the current `/check.json` envelope (canonical hash is computed on Render, but the signing key lives only on the Mac, correctly).
 **Decision:** Charlie — pick a path or say file for later.
 
+## Update 2026-09-07 — signing key EXISTS
+
+The Ed25519 receipt/registry keypair required by both Option A and Option B has been generated and published:
+
+- **Fingerprint:** `A4:0F:B1:0A:9D:33:64:03` (SHA-256 first 8 bytes of raw 32-byte pubkey, colon-separated pairs)
+- **Domain separator:** `xrpldashboard/receipt/v1` (prepended + 0x00 byte before Ed25519 sign / verify — cross-domain replay protection against the snapshot key)
+- **Encrypted private key:** `~/.config/xrpldashboard/receipt_ed25519_enc.pem` (mode 600, AES-256-CBC, passphrase on paper only)
+- **Public pubkey:** committed at repo root as `receipt_pubkey.pem` / `.json` / `_fingerprint.txt`; served at `xrpldashboard.com/.well-known/snapshots/receipt_pubkey.pem` and `.json`
+- **DNS TXT pin:** `_xrpld-receipt-key.xrpldashboard.com` (verified propagated to 1.1.1.1 and 8.8.8.8 at generation time)
+- **Verified end-to-end:** sign + verify roundtrip with the domain-separator wrap passed on the Mac at 2026-09-07 14:38 EDT
+
+Full runbook in `docs/CREDENTIALS.md` §5.
+
+Both Option A (sig-service) and Option B (batched signing) are now unblocked on the key-material front. Ruling on which path to build still owed by Charlie; the key material is identical either way.
+
 ## Constraint (invariant, non-negotiable)
 
 The Ed25519 private key that signs snapshots + would sign check receipts lives on the Mac and only on the Mac. It never leaves. Any receipt-signing design must respect this — no key sync to Render, no key in any container image, no key in a KMS proxy we don't control.

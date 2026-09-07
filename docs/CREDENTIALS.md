@@ -319,6 +319,100 @@ should produce more of the same.
 
 ---
 
+## 5. Receipt / registry signing key (Ed25519)
+
+Distinct from the snapshot/anchor key in Section 6 (below when it lands).
+Signs `/check.json` response envelopes and the daily XRPL Token Registry
+snapshot. Generated 2026-09-07 EDT.
+
+### 5.1 Identity
+
+| Field | Value |
+|---|---|
+| Algorithm | Ed25519 |
+| Purpose | receipt-signing + registry-snapshot-signing |
+| Domain separator | `xrpldashboard/receipt/v1` (prepended + 0x00 byte before Ed25519 sign / verify — cross-domain replay protection against the snapshot key) |
+| Fingerprint | `A4:0F:B1:0A:9D:33:64:03` (SHA-256 of raw 32-byte pubkey, first 8 bytes, colon-separated pairs — same scheme as snapshot key) |
+| Public key (hex) | `f35c9e0aaa7d9e0ebc22fe343dbb75ede8a517e54eac6a2320fb3bde8ceabd7d` |
+| Created | 2026-09-07 EDT |
+| Curator | Charlie Bruce |
+| Passphrase custody | **Paper only.** Never in Keychain, 1Password, or any digital surface. Per feedback_no_1password_keychain. |
+
+### 5.2 Touchpoint inventory
+
+| # | Touchpoint | Location | Notes |
+|---|---|---|---|
+| 1 | Encrypted private key | `~/.config/xrpldashboard/receipt_ed25519_enc.pem` on Charlie's Mac (mode 600, owner `charliebruce staff`) | AES-256-CBC encrypted at rest with the paper passphrase; never leaves the Mac |
+| 2 | Public key PEM | `receipt_pubkey.pem` at the xrpl_test repo root | Committed to git; served by Flask at `/.well-known/snapshots/receipt_pubkey.pem` |
+| 3 | Public key JSON | `receipt_pubkey.json` at the xrpl_test repo root | Machine-friendly (hex + base64 + b64url + fingerprint + domain separator); served at `/.well-known/snapshots/receipt_pubkey.json` |
+| 4 | Fingerprint file | `receipt_pubkey_fingerprint.txt` at the xrpl_test repo root | Diff-friendly bare fingerprint; mirrors `snapshot_pubkey_fingerprint.txt` |
+| 5 | DNS TXT record | `_xrpld-receipt-key.xrpldashboard.com` in Cloudflare | Verifier-side pinning; contains `v=`, `fp=`, `pub=`, `sep=` fields |
+| 6 | Paper record | Charlie's paper (physical) | Two lines: the passphrase, and the private-key path `~/.config/xrpldashboard/receipt_ed25519_enc.pem`. Useless individually. |
+
+### 5.3 Triangulation
+
+A verifier can (and should) cross-check the pubkey across three
+independent surfaces and refuse to accept a signature if any two
+disagree:
+
+1. `https://xrpldashboard.com/.well-known/snapshots/receipt_pubkey.pem`
+2. `https://xrpldashboard.com/.well-known/snapshots/receipt_pubkey.json`
+3. `dig +short _xrpld-receipt-key.xrpldashboard.com TXT`
+
+All three publish the same 32-byte pubkey and the same `A4:0F:B1:...`
+fingerprint. If they diverge, one of Render / the repo / Cloudflare
+has been compromised — investigate before trusting any signature.
+
+### 5.4 Rotation procedure
+
+Same shape as the DATABASE_URL rotation in Section 2, but with different
+touchpoints and a different verification path.
+
+1. Generate a new Ed25519 keypair on the Mac with a fresh paper passphrase:
+   ```
+   openssl genpkey -algorithm ED25519 -aes-256-cbc \
+     -out ~/.config/xrpldashboard/receipt_ed25519_enc_v2.pem
+   ```
+2. Extract the new pubkey PEM, emit JSON + fingerprint (mirror the
+   Step 1d Python block from `triage/RECEIPT_KEYPAIR_WALKTHROUGH_2026-09-07.md`).
+3. Sign + verify roundtrip test with the new key — confirm the new
+   paper passphrase actually unlocks.
+4. Publish alongside the old key: serve BOTH pubkeys via a new
+   `/.well-known/snapshots/receipt_pubkey_v2.pem` route. Verifiers
+   accepting either during the transition period is intentional.
+5. Cutover: change the sig-service to sign with the new key. Verifiers
+   pinning the fingerprint via DNS TXT switch when the DNS record
+   updates.
+6. Update the DNS TXT record `_xrpld-receipt-key.xrpldashboard.com` to
+   carry the new pubkey hex + fingerprint. Publish an announcement so
+   pinned verifiers refresh.
+7. Retire: after a 30-day transition, remove the v1 route and delete
+   the v1 private key file. Update this doc with the new identity.
+8. Passphrase custody for the v2 key: paper only, same rule.
+
+### 5.5 Key-loss recovery
+
+If the paper is lost AND the passphrase is not remembered, the
+`~/.config/xrpldashboard/receipt_ed25519_enc.pem` file becomes
+permanently useless (that's the point of encryption). Recovery is the
+same as generating a fresh key: run through Section 5.4 with a new key.
+Signatures made with the lost key remain independently verifiable via
+the pubkey, but no new signatures can be produced.
+
+If the passphrase is remembered but the encrypted PEM file is lost,
+same outcome — the file cannot be reconstructed from the passphrase
+alone. The pubkey publishes the identity but signing requires the
+matching private key material. Regenerate.
+
+**There is intentionally no backup of the encrypted private key file
+outside the Mac.** DockVault mirroring is scoped to `memory_mirror/` and
+`neon_dumps/` only; `~/.config/xrpldashboard/` is not in scope. This
+means a Mac loss requires key regeneration + a 30-day transition
+period. That's the acceptable failure mode — the alternative (a
+digital copy anywhere) is a bigger risk than key regeneration.
+
+---
+
 ## Related task tracking
 
 - `#71` — mirror failure visibility (`_mirror_to_postgres` should

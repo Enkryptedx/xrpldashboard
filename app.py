@@ -5173,7 +5173,7 @@ def well_known_receipt_pubkey_json():
             "pinned_in": [
                 "this endpoint",
                 f"{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem",
-                "DNS TXT record on xrpldashboard.com (receipt._xrpldashboard.com)",
+                "DNS TXT record _xrpld-receipt-key.xrpldashboard.com",
             ],
         }
     except Exception as e:
