@@ -18,4 +18,5 @@ publicsuffix2==2.20191221
 mcp==1.29.0
 PyYAML==6.0.3
 geoip2==4.8.1
+markdown==3.10.3
 maxminddb==2.6.2

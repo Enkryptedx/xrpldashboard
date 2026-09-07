@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taxonomy v{{ taxonomy_version }} · XRPL Token Registry · xrpldashboard</title>
+  <meta name="description" content="XRPL Token Registry — canonical taxonomy vocabulary. 12 real categories + 2 review-status values + 2 mechanical flags. Version-controlled, anchored to daily signed snapshots.">
+  {% include "_head_meta.html" ignore missing %}
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --amber: #f59e0b;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 15px; line-height: 1.6; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.05), transparent 40%),
+        var(--bg);
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 780px; margin: 0 auto; padding: 24px 18px 60px; }
+    .top { display: flex; align-items: center; justify-content: space-between;
+           margin-bottom: 20px; }
+    .brand { font-weight: 600; }
+    .brand a { color: var(--text); }
+    .brand .accent { color: var(--cyan); }
+    .nav a { color: var(--muted); margin-left: 14px; font-size: 0.85rem; }
+    .nav a:hover { color: var(--text); }
+    .version-chip {
+      display: inline-block; padding: 4px 10px; border-radius: 4px;
+      background: rgba(34,211,238,0.10); color: var(--cyan);
+      font-family: var(--mono); font-size: 0.8rem; margin-bottom: 4px;
+    }
+    .last-mtime { color: var(--dim); font-size: 0.78rem; margin-bottom: 20px; }
+    .content h1 { font-size: 1.6rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+    .content h2 {
+      font-size: 1.05rem; margin: 32px 0 4px; padding-top: 20px;
+      border-top: 1px solid var(--border); font-family: var(--mono);
+      color: var(--cyan);
+    }
+    .content h2:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+    .content h3 {
+      font-size: 0.95rem; margin: 24px 0 4px; font-family: var(--mono);
+      color: var(--text);
+    }
+    .content p { color: var(--text); }
+    .content ul { padding-left: 22px; margin: 6px 0 12px; }
+    .content li { margin: 3px 0; color: var(--muted); }
+    .content li strong { color: var(--text); }
+    .content code {
+      background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px;
+      font-family: var(--mono); font-size: 0.85em; color: var(--amber);
+    }
+    .content hr {
+      border: none; border-top: 1px solid var(--border); margin: 28px 0;
+    }
+    .content a { color: var(--cyan); }
+    .footer {
+      color: var(--dim); font-size: 0.78rem; margin-top: 40px;
+      padding-top: 20px; border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><a href="/"><span class="accent">xrpl</span>dashboard</a></div>
+      <nav class="nav">
+        <a href="/tokens">tokens</a>
+        <a href="/methodology">methodology</a>
+        <a href="/coverage">coverage</a>
+      </nav>
+    </div>
+
+    {% if taxonomy_version %}<span class="version-chip">taxonomy v{{ taxonomy_version }}</span>{% endif %}
+    {% if taxonomy_mtime_utc %}<div class="last-mtime">Source last modified: {{ taxonomy_mtime_utc }}</div>{% endif %}
+
+    <div class="content">
+      {{ taxonomy_html | safe }}
+    </div>
+
+    <div class="footer">
+      Version-bump policy in the doc above. Every historical version stays available via git history at
+      <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/registry/taxonomy_v1.md">docs/registry/taxonomy_v1.md</a>.
+      Change log: <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/registry/CHANGELOG.md">docs/registry/CHANGELOG.md</a>.
+      Taxonomy version, row counts, and a Merkle root over the curator decision history are anchored daily in the
+      <a href="/methodology#signed-snapshots">signed snapshot chain</a> — any past snapshot proves both what the taxonomy was
+      and what the registry contained on that date.
+    </div>
+  </div>
+</body>
+</html>

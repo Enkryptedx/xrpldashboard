@@ -4213,6 +4213,67 @@ def methodology():
     return render_template("methodology.html")
 
 
+_TAXONOMY_HTML_CACHE = None
+_TAXONOMY_HTML_CACHE_MTIME = 0.0
+
+
+def _render_taxonomy_html():
+    """Read docs/registry/taxonomy_v1.md, convert to HTML, cache until
+    file mtime advances. Extras: fenced_code + tables + toc + attr_list
+    so the ID anchors in the rendered doc are stable link targets.
+    Auto-cache-bust on file mtime advance so a git pull picks up the
+    new markdown without a process restart."""
+    global _TAXONOMY_HTML_CACHE, _TAXONOMY_HTML_CACHE_MTIME
+    import markdown as _md
+    import re as _re
+    md_path = os.path.join(HERE, "docs", "registry", "taxonomy_v1.md")
+    try:
+        mtime = os.path.getmtime(md_path)
+    except OSError:
+        return None, None, None
+    if _TAXONOMY_HTML_CACHE is None or mtime > _TAXONOMY_HTML_CACHE_MTIME:
+        with open(md_path, "r", encoding="utf-8") as f:
+            src = f.read()
+        _TAXONOMY_HTML_CACHE = _md.markdown(
+            src,
+            extensions=["fenced_code", "tables", "toc", "attr_list"],
+            output_format="html",
+        )
+        _TAXONOMY_HTML_CACHE_MTIME = mtime
+    m = _re.search(r"^\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", src, _re.MULTILINE)
+    version = m.group(1) if m else None
+    return _TAXONOMY_HTML_CACHE, version, mtime
+
+
+@app.route("/registry/taxonomy")
+def registry_taxonomy():
+    """Public taxonomy vocabulary for the XRPL Token Registry.
+
+    Renders docs/registry/taxonomy_v1.md (approved 2026-09-07) as HTML
+    so anyone — human, LLM crawler, integrator — can read the exact
+    definitions, rules, evidence sources, and boundaries in one canonical
+    place. The version string is anchored in the daily signed snapshot
+    via the registry_state meta metric, so this page's contents are
+    tamper-evident: a verifier can point at any historical snapshot and
+    prove which taxonomy version was live on that date.
+    """
+    html, version, mtime = _render_taxonomy_html()
+    if not html:
+        return "taxonomy doc unavailable", 503
+    return render_template(
+        "registry_taxonomy.html",
+        taxonomy_html=html,
+        taxonomy_version=version,
+        taxonomy_mtime_utc=(
+            datetime.fromtimestamp(mtime, timezone.utc).strftime(
+                "%Y-%m-%d %H:%M UTC"
+            )
+            if mtime else None
+        ),
+        current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+    )
+
+
 @app.route("/connect")
 def connect():
     """The 60-second onboarding page for AI agents wiring into the live
