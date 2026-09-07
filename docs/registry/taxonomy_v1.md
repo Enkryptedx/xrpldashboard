@@ -5,7 +5,7 @@
 **Changelog:** [CHANGELOG.md](./CHANGELOG.md)
 **Governance:** [../REGISTRY_GOVERNANCE.md](../REGISTRY_GOVERNANCE.md)
 
-The taxonomy is the vocabulary the XRPL Token Registry uses to describe what class of thing a token is. It has **12 real categories + `unlabeled`** (13 total). Two mechanical flags — `ticker_collision` and `non_standard_code` — attach to any row regardless of category and never replace it.
+The taxonomy is the vocabulary the XRPL Token Registry uses to describe what class of thing a token is. It has **12 real categories + 2 review-status values** (14 total). The two review-status values (`not_yet_reviewed` and `reviewed_unlabeled`) are what a token displays when it does not fall into any of the 12 real categories — they are distinct on purpose so the site never overclaims curatorial attention. Two mechanical flags — `ticker_collision` and `non_standard_code` — attach to any row regardless of category and never replace it.
 
 Every entry below is exactly four lines: **definition** (what it means in one sentence, ≤280 chars for citation), **rule** (mechanical or evidence-based test), **evidence source** (which registry layer produces the signal), **boundaries** (adjacent categories a token could belong to instead, and why they were excluded).
 
@@ -15,7 +15,7 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 - **Definition:** Fiat-pegged token issued by a legally accountable entity with a canonical XRPL issuer address on the curated whitelist.
 - **Rule:** Curator whitelist entry in `ticker_canonical_issuers.json` matching (currency, issuer) AND MPT `asset_subclass=stablecoin` OR toml-attested fiat-peg claim.
 - **Evidence:** L2a (MPT metadata) or L3 (curator + citation URL).
-- **Boundaries:** ≠ `stablecoin_gateway` (which is a named exchange's USD/EUR IOU without regulated-entity status). Impostor USDT/USDC/DAI DO NOT qualify — they land `unlabeled` with `ticker_collision=true`.
+- **Boundaries:** ≠ `stablecoin_gateway` (which is a named exchange's USD/EUR IOU without regulated-entity status). Impostor USDT/USDC/DAI DO NOT qualify — they land outside the 12 real categories (`not_yet_reviewed` by default, promotable to `reviewed_unlabeled` once a curator confirms) and carry `ticker_collision=true`.
 
 ## `stablecoin_gateway`
 - **Definition:** USD/EUR IOU from a named XRPL gateway (Bitstamp, GateHub, historical exchanges); custody-backed but not regulated-entity-issued.
@@ -57,7 +57,7 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 - **Definition:** Represents an off-chain asset via a named cross-chain bridge account (Axelar XRPL bridge, other future named bridges).
 - **Rule:** Issuer address is in the curator-maintained bridge-account whitelist AND currency decodes to a canonical external ticker OR MPT metadata declares wrapped status.
 - **Evidence:** L3 (curator bridge whitelist).
-- **Boundaries:** Ticker impersonation (BTC from non-Axelar issuer) → `unlabeled` + `ticker_collision=true`. ≠ `stablecoin_gateway` (which is an XRPL-native custody claim, not a cross-chain wrap).
+- **Boundaries:** Ticker impersonation (BTC from non-Axelar issuer) → outside the 12 real categories (`not_yet_reviewed` by default, `reviewed_unlabeled` after curator review) + `ticker_collision=true`. ≠ `stablecoin_gateway` (which is an XRPL-native custody claim, not a cross-chain wrap).
 
 ## `rwa`
 - **Definition:** Tokenized real-world asset. Sub-tags may apply: `treasury`, `commodity`, `credit`, `private_credit`, `equity`, `bond`, `real_estate`, `collectible`.
@@ -73,21 +73,29 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 
 ## `memecoin`
 - **Definition:** Purely social or speculative token with no protocol claim, no wrap, no game, no fiat backing; typically issued for community-branding or joke reasons.
-- **Rule:** Curator only. Never inferred from patterns (a legit early-stage utility can look identical to a memecoin on day one). May be curator-inferred when the issuer address, currency name, and lack of any Domain / toml jointly rule out other categories.
-- **Evidence:** L3 (curator, citation `curator_inferred_from_activity` acceptable).
-- **Boundaries:** ≠ `community` (which requires positive evidence of fan-token / social-tipping purpose). ≠ `gaming` (which requires a game). Impostor tickers land `unlabeled` + `ticker_collision`, not `memecoin`.
+- **Rule:** Machines never infer `memecoin`. A human curator may assign it, and the row carries `tier=curator-inferred` with the curator's reasoning in the citation. That is the whole rule — there is no mechanical fallback and no pattern-match short-circuit, because an early-stage legitimate utility token on day one can be visually indistinguishable from a memecoin.
+- **Evidence:** L3 (curator, `tier=curator-inferred`, reasoning in citation).
+- **Boundaries:** ≠ `community` (which requires positive evidence of fan-token / social-tipping purpose). ≠ `gaming` (which requires a game). Impostor tickers land `not_yet_reviewed` or `reviewed_unlabeled` + `ticker_collision`, never `memecoin`.
 
 ## `community`
 - **Definition:** Fan token, tipping token, or "XRP community" branded token that claims a specific community purpose (donations, event access, group identity).
 - **Rule:** Curator whitelist with positive evidence of community-purpose declaration (public community-page citation, Discord/Twitter community-lead attestation).
 - **Evidence:** L3 (curator).
-- **Boundaries:** ≠ `memecoin` (memes have no positive community-purpose claim). ≠ `gaming` (no game). Most tokens hand-inspected end up here get demoted to `unlabeled` — this category has a high evidence bar.
+- **Boundaries:** ≠ `memecoin` (memes have no positive community-purpose claim). ≠ `gaming` (no game). Most tokens hand-inspected end up here get demoted to `reviewed_unlabeled` — this category has a high evidence bar.
 
-## `unlabeled`
-- **Definition:** No category has been positively assigned. This IS the answer for a token, not the absence of one — the registry has looked and confirms it has nothing to say.
-- **Rule:** Default when no other rule matches AND `facts_completeness ≥ 80%`. Below 80% completeness the row renders `pending`, not `unlabeled`.
-- **Evidence:** Absence of positive evidence across all layers.
-- **Boundaries:** All other categories. A row moves from `unlabeled` to a specific category only via curator action OR issuer self-submission through the L2c form (once shipped).
+## `not_yet_reviewed`
+- **Definition:** No curator has ever inspected this token. It has no toml claim, no MPT metadata, no bridge-whitelist entry, and no curator decision. This is the honest default state for every new row — the registry has not yet formed a view on this token.
+- **Rule:** Default whenever `token_category_history` has zero curator-source rows for `(currency_hex, issuer)` AND no toml/MPT/mechanical signal applies. Continues to render this way until either the curator makes a decision (moving the row to a real category OR to `reviewed_unlabeled`) OR the issuer self-submits through the L2c form (once shipped).
+- **Evidence:** Absence of any curator or automated signal. The row exists in `token_facts` (we know it exists on the ledger) but no downstream statement has been made about what it is.
+- **Boundaries:** Distinct from `reviewed_unlabeled` — a curator has NOT looked. Distinct from every real category — no positive evidence supports any of them. Distinct from `pending` (a below-facts-completeness state; `not_yet_reviewed` requires `facts_completeness ≥ 80%`).
+- **Coverage-gauge:** Counted separately. A rising `not_yet_reviewed` count is not editorial failure — it reflects registry surface area growing faster than curator attention. The gap between `not_yet_reviewed` and total tokens is the curator queue.
+
+## `reviewed_unlabeled`
+- **Definition:** A human curator has inspected this token and confirmed that none of the 12 real categories applies. The registry has looked and has nothing to say about the class of thing this is.
+- **Rule:** `token_category_history` has at least one curator-source row for `(currency_hex, issuer)` where `category='unlabeled'` AND `superseded_by IS NULL`. The row also carries the reviewing curator's id and a citation URL explaining what evidence was considered and why no category fit.
+- **Evidence:** L3 (curator explicit decision with reasoning).
+- **Boundaries:** Distinct from `not_yet_reviewed` — a curator HAS looked, and the empty answer is the answer. A row moves from `reviewed_unlabeled` to a real category only when new evidence arrives (a toml claim published, MPT metadata added, or a curator revisits with new information); the taxonomy version is captured on every history row so re-review under a later vocabulary is auditable.
+- **Coverage-gauge:** Counted separately. Every entry represents editorial attention that was spent producing no category — that attention itself is the value.
 
 ---
 
@@ -128,5 +136,5 @@ If Charlie is unreachable for >48 hours, JJ holds the queue in read-only status 
 
 - Not legal advice.
 - Not a certification of any token's safety, value, or issuer's honesty.
-- Not exhaustive of everything on the XRPL — the registry aims for 99%+ coverage-by-30d-volume, not 100%-of-issuers coverage. The `unlabeled` category is a first-class value.
+- Not exhaustive of everything on the XRPL — the registry aims for 99%+ coverage-by-30d-volume, not 100%-of-issuers coverage. Both `not_yet_reviewed` and `reviewed_unlabeled` are first-class values — one honestly declares that no curator has looked, the other honestly declares that a curator looked and no category fit.
 - Not final. This is v1.0.0 draft. Feedback via [`/contact?purpose=attestation-dispute`](https://xrpldashboard.com/contact?purpose=attestation-dispute) or the coming XLS discussion draft.
