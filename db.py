@@ -1255,6 +1255,143 @@ CREATE INDEX IF NOT EXISTS token_facts_collision_idx
 CREATE INDEX IF NOT EXISTS token_facts_completeness_idx
     ON token_facts (facts_completeness DESC);
 
+-- ─────────────────────────────────────────────────────────────────────
+-- REGISTRY v1 Step 3 (2026-09-06): append-only curation history +
+-- provenance envelope for every category assignment. Wikidata's
+-- statements-with-references pattern: no row is ever overwritten;
+-- conflicting claims coexist; the tier ladder disambiguates at render.
+-- Every fact/claim/category tuple carries (subject, predicate, value,
+-- observed_by, observed_at, source, prior_version_ref). The 09-06
+-- spec's central principle — storage schema is a DAG of provenance,
+-- not a bag of labels — depends on this table existing before any
+-- curator write.
+-- ─────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS token_category_history (
+    id                   BIGSERIAL PRIMARY KEY,
+    currency_hex         TEXT NOT NULL,
+    issuer               TEXT NOT NULL,
+    category             TEXT NOT NULL,         -- taxonomy v1 value
+    tier                 TEXT NOT NULL,         -- 'verified' | 'self-described' | 'curator-inferred' | 'mechanical' | 'bare'
+    source               TEXT NOT NULL,         -- 'curator' | 'toml' | 'mpt-metadata' | 'form-submission' | 'mechanical' | 'third-party:<name>'
+    citation_url         TEXT,                  -- primary source URL
+    citation_secondary   TEXT,                  -- optional additional source
+    curator_id           TEXT,                  -- who made the call (null for mechanical/toml)
+    curator_authority    TEXT,                  -- 'owner' | 'contributor' | 'automated' | 'issuer_self'
+    prior_row_id         BIGINT REFERENCES token_category_history(id),  -- linked-list to prior state
+    superseded_by        BIGINT REFERENCES token_category_history(id),  -- forward pointer; null when current
+    observed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    observed_ledger_idx  BIGINT,
+    taxonomy_version     TEXT NOT NULL DEFAULT '1.0.0',
+    note                 TEXT
+);
+CREATE INDEX IF NOT EXISTS token_category_history_pair_idx
+    ON token_category_history (currency_hex, issuer);
+CREATE INDEX IF NOT EXISTS token_category_history_current_idx
+    ON token_category_history (currency_hex, issuer, observed_at DESC)
+    WHERE superseded_by IS NULL;
+CREATE INDEX IF NOT EXISTS token_category_history_tier_idx
+    ON token_category_history (tier);
+CREATE INDEX IF NOT EXISTS token_category_history_source_idx
+    ON token_category_history (source);
+CREATE INDEX IF NOT EXISTS token_category_history_observed_at_idx
+    ON token_category_history (observed_at DESC);
+
+-- View: current category per (currency, issuer) — the not-superseded row.
+CREATE OR REPLACE VIEW token_category_current AS
+    SELECT DISTINCT ON (currency_hex, issuer)
+        currency_hex, issuer, category, tier, source,
+        citation_url, curator_id, curator_authority,
+        observed_at, taxonomy_version, id AS history_id
+    FROM token_category_history
+    WHERE superseded_by IS NULL
+    ORDER BY currency_hex, issuer, observed_at DESC;
+
+-- ─────────────────────────────────────────────────────────────────────
+-- REGISTRY v1 Step 4: curator-review queue view. Priority = impact
+-- score per Spec §3.2 — token_facts trades_30d weight × log-scaled
+-- holders proxy (using amm_pool_count temporarily as holders proxy
+-- since we have it in token_facts already; full holders count will
+-- land when trustline-count walker ships) × collision multiplier ×
+-- self-submission multiplier + freshness bonus for new issuers +
+-- dispute weight from the /contact table (contact_messages) + 5%
+-- random long-tail sampler. Renders the row Charlie sees when he
+-- sits down for 20 minutes.
+-- Excludes tokens with tier IN ('verified','self-described') — those
+-- are already curator-touched. Bare + curator-inferred stay in queue
+-- until promoted OR explicitly moved to unlabeled.
+-- ─────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW curator_review_queue AS
+WITH current AS (
+    SELECT currency_hex, issuer, category, tier
+    FROM token_category_current
+),
+scored AS (
+    SELECT
+        tf.currency_hex,
+        tf.issuer,
+        tf.decoded_name,
+        tf.trades_30d,
+        tf.ticker_collision,
+        tf.ticker_collision_of,
+        tf.non_standard_code,
+        tf.is_lp_token,
+        if_t.domain,
+        if_t.blackholed,
+        if_t.first_ledger_seen,
+        cur.category AS current_category,
+        cur.tier AS current_tier,
+        -- log10-scaled volume component
+        LOG(GREATEST(tf.trades_30d, 1) + 1) AS log_vol,
+        -- log10-scaled amm-pool count proxy (real holder count TBD)
+        LOG(GREATEST(tf.amm_pool_count, 1) + 1) AS log_holders,
+        -- collision → 5x multiplier (impostor USDT/USDC/etc. jumps queue)
+        CASE WHEN tf.ticker_collision THEN 5.0 ELSE 1.0 END AS collision_mult,
+        -- self-submission signal: TBD in Layer 2c; placeholder 1.0
+        1.0::float AS self_sub_mult,
+        -- freshness: issuer <30d old + trades rising → bonus.
+        -- 30d = ~2.6M ledgers (3.5s/ledger). Very rough proxy.
+        CASE
+            WHEN if_t.first_ledger_seen IS NOT NULL
+             AND if_t.first_ledger_seen > (SELECT MAX(first_ledger_seen)::bigint - 2600000 FROM issuer_facts)
+            THEN 2.0 ELSE 1.0
+        END AS freshness_mult
+    FROM token_facts tf
+    LEFT JOIN issuer_facts if_t USING (issuer)
+    LEFT JOIN current cur USING (currency_hex, issuer)
+    -- Exclude already-touched tiers; keep bare + curator-inferred
+    WHERE (cur.tier IS NULL OR cur.tier IN ('bare', 'curator-inferred', 'mechanical'))
+      -- Exclude LP tokens from queue by default (they're structural)
+      AND tf.is_lp_token = FALSE
+      -- Exclude junk-hex from surface queue (they render as non_standard_code
+      -- via the mechanical tier already)
+      AND tf.non_standard_code = FALSE
+)
+SELECT
+    currency_hex,
+    issuer,
+    decoded_name,
+    trades_30d,
+    ticker_collision,
+    ticker_collision_of,
+    domain,
+    blackholed,
+    current_category,
+    current_tier,
+    log_vol,
+    log_holders,
+    collision_mult,
+    self_sub_mult,
+    freshness_mult,
+    -- Impact score: log(vol) * log(holders_proxy) * collision * self_sub * freshness
+    (log_vol * log_holders * collision_mult * self_sub_mult * freshness_mult) AS impact_score
+FROM scored;
+
+CREATE INDEX IF NOT EXISTS token_facts_ticker_collision_of_idx
+    ON token_facts (ticker_collision_of)
+    WHERE ticker_collision = TRUE;
+
 -- Inferred (not-hand-curated) token categories, sourced from issuer-
 -- published xrp-ledger.toml [[TOKENS]] entries. Populated by the same
 -- token_issuer_flags_walker cycle: for every issuer with a valid
