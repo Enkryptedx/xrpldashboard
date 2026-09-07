@@ -8,6 +8,21 @@
 - Every step has an OBSERVABLE proof step that doesn't require JJ to see the secret. Charlie confirms "done + here's the ping result."
 - No automation of any permission dialog or credential paste. Full stop.
 
+**⚠️  OUTAGE WINDOW WARNING (2026-09-07 post-hoc fix — walkthrough bug caught mid-execution).**
+
+Step 1 (Neon `Reset password`) invalidates the OLD password INSTANTLY on Neon's side. **From that moment until every downstream surface (Mac / Lenovo / Render) has been updated, all connections using the old password fail with `password authentication failed`.**
+
+Expected collateral during the outage window (roughly Steps 1 → 4):
+- BetterStack `heartbeat-age` alert (Render web app can't write heartbeat to DB)
+- `check_walker_stale` / `check_walker_failing` (Mac walkers lose DB, can't checkpoint)
+- `check_walker_findings` (no fresh walker output for the /check surface to read)
+- `check_snapshot_missed` (upcoming signed_snapshot has no fresh data to anchor)
+- `check_sovereignty_loss` (sovereignty gauge reads a walker that's silent)
+
+**None of these are real incidents. They are the mechanical consequence of rotating the shared secret while surfaces still hold the old value.** Acknowledge them in your pager + BetterStack as "known — password rotation in progress" BEFORE starting Step 1, and expect them to clear on their own within 5-15 minutes of Step 4 completion as each walker's next natural cycle picks up the new env.
+
+If you cannot tolerate any outage window, the alternative is a two-step Neon flow: create a SECOND role with a new password, update every surface to use the second role, then delete the first role. Neon supports this. This walkthrough does not — it takes the outage in exchange for keeping one production role.
+
 ---
 
 ## Step 0 — Pre-rotation baseline (JJ runs, no secret touched)
