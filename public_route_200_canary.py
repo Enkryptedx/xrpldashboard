@@ -36,6 +36,7 @@ import datetime as dt
 import json
 import os
 import sys
+import time
 
 import httpx
 
@@ -89,47 +90,54 @@ ROUTES: list[tuple[str, int, str | None]] = [
 ]
 
 
-def probe_one(path: str, min_bytes: int, must_contain: str | None) -> dict:
-    """GET one route, return a result dict. Never raises."""
+def _probe_once(path: str) -> tuple[int | None, bytes, str | None]:
+    """One HTTP GET. Returns (status_or_None, body, err_reason_or_None)."""
     url = BASE_URL + path
-    started = dt.datetime.now(dt.timezone.utc)
     try:
         resp = httpx.get(url, timeout=TIMEOUT_S,
                          headers={"User-Agent": "xrpldashboard-public-route-canary/1.0"},
                          follow_redirects=True)
-        body = resp.content[:1024 * 1024]
-        status = resp.status_code
+        return resp.status_code, resp.content[:1024 * 1024], None
     except (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError) as e:
+        return None, b"", f"network_{type(e).__name__}"
+
+
+def probe_one(path: str, min_bytes: int, must_contain: str | None) -> dict:
+    """GET one route with a single retry on failure. Never raises.
+
+    Retry rationale: /nfts, /analytics, /tokens can occasionally exceed
+    15s on the first request under load (10s+ observed at commit time).
+    A single 1s-delayed retry filters transient stalls that would
+    otherwise page L1 with no real regression."""
+    started = dt.datetime.now(dt.timezone.utc)
+    for attempt in (1, 2):
+        status, body, net_err = _probe_once(path)
+        if net_err is None and status == 200 and len(body) >= min_bytes:
+            if must_contain is None or must_contain in body.decode("utf-8", errors="replace"):
+                return {
+                    "path": path, "status": status, "body_bytes": len(body),
+                    "ok": True, "reason": "ok", "attempt": attempt,
+                    "started_utc": started.isoformat(),
+                }
+        if attempt == 1:
+            time.sleep(1.0)
+    if net_err is not None:
         return {
-            "path": path,
-            "status": None,
-            "body_bytes": 0,
-            "ok": False,
-            "reason": f"network_{type(e).__name__}",
+            "path": path, "status": None, "body_bytes": 0, "ok": False,
+            "reason": net_err, "attempt": 2,
             "started_utc": started.isoformat(),
         }
 
     body_len = len(body)
-    ok = True
-    reason = "ok"
     if status != 200:
-        ok, reason = False, f"http_{status}"
+        reason = f"http_{status}"
     elif body_len < min_bytes:
-        ok, reason = False, f"body_short_{body_len}_lt_{min_bytes}"
-    elif must_contain is not None:
-        try:
-            body_str = body.decode("utf-8", errors="replace")
-        except Exception:
-            body_str = ""
-        if must_contain not in body_str:
-            ok, reason = False, f"missing_substring_{must_contain[:40]}"
-
+        reason = f"body_short_{body_len}_lt_{min_bytes}"
+    else:
+        reason = f"missing_substring_{(must_contain or '')[:40]}"
     return {
-        "path": path,
-        "status": status,
-        "body_bytes": body_len,
-        "ok": ok,
-        "reason": reason,
+        "path": path, "status": status, "body_bytes": body_len,
+        "ok": False, "reason": reason, "attempt": 2,
         "started_utc": started.isoformat(),
     }
 
