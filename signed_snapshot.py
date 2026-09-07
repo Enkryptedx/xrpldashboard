@@ -578,6 +578,144 @@ def collect_editorial_state(app_py_path: str = None) -> dict:
     }
 
 
+TAXONOMY_DOC_PATH = os.path.join(HERE, "docs", "registry", "taxonomy_v1.md")
+_TAXONOMY_VERSION_RE = re.compile(
+    r"^\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", re.MULTILINE
+)
+
+
+def _read_taxonomy_version(path: str = None) -> str:
+    """Regex-scan the taxonomy doc for the `**Version:** X.Y.Z` line so a
+    version bump doesn't need a code change here. Strict-refuse if the
+    doc is missing or the line is absent — this metric commits to the
+    active taxonomy version, and a silently-defaulted `unknown` would
+    let a v2 taxonomy ship without the anchored record showing the bump.
+    """
+    p = path or TAXONOMY_DOC_PATH
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            src = f.read()
+    except OSError as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5d): registry_state cannot read taxonomy "
+            f"doc at {p}: {type(e).__name__}: {e}"
+        )
+    m = _TAXONOMY_VERSION_RE.search(src)
+    if not m:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5d): registry_state found no `**Version:** "
+            f"X.Y.Z` line in taxonomy doc at {p} — the doc format moved or "
+            f"the version line was removed"
+        )
+    return m.group(1)
+
+
+def collect_registry_state() -> dict:
+    """v4 metric collector — XRPL Token Registry state anchored to the
+    daily signed snapshot. Commits three things:
+      1. Row counts across the registry tables (issuer_facts, token_facts,
+         token_category_current, token_category_history).
+      2. Active taxonomy version (regex-read from the taxonomy doc so a
+         version bump auto-propagates).
+      3. Merkle root over token_category_history (RFC 6962 leaves, sorted
+         by primary-key id for determinism; each leaf is the canonical
+         JSON of the row).
+
+    Purpose: any future verifier can point at a specific historical daily
+    snapshot and prove (a) how many curator/toml/mechanical rows the
+    registry held that day, (b) which taxonomy version was live, (c) a
+    tamper-evident root over the full decision history. Registry state
+    becomes historically reproducible without shipping the whole registry
+    file in the snapshot payload.
+
+    Strict-refuse per §5: PG unavailability or query failure raises
+    SystemExit. An empty token_category_history is NOT an error — the
+    RFC-6962 empty-tree root (32 zero bytes) is a valid honest signal
+    that no curator/toml decisions exist yet on this deploy.
+
+    The signing of the registry FILE itself (a separate artifact from
+    this metric) waits on the receipt/registry keypair per registry-spec
+    step 4 — this collector commits to registry STATE, not to any
+    signed registry file.
+    """
+    import db as _db
+    if not _db.pg_available():
+        raise SystemExit(
+            "STRICT-REFUSE (v4 §5d): registry_state requires PG; "
+            "pg_available()=False. The registry lives entirely in "
+            "Postgres and cannot be committed without live reads."
+        )
+
+    taxonomy_version = _read_taxonomy_version()
+
+    try:
+        with _db.pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM issuer_facts")
+                issuer_facts_count = int(cur.fetchone()[0])
+                cur.execute("SELECT COUNT(*) FROM token_facts")
+                token_facts_count = int(cur.fetchone()[0])
+                cur.execute("SELECT COUNT(*) FROM token_category_current")
+                current_count = int(cur.fetchone()[0])
+                cur.execute(
+                    "SELECT COUNT(*) FROM token_category_history"
+                )
+                history_count = int(cur.fetchone()[0])
+                # Merkle root over category history — deterministic order
+                # by primary key. All content fields included so a change
+                # to any field (category, tier, source, citation, ...)
+                # perturbs the root.
+                cur.execute(
+                    """
+                    SELECT id, currency_hex, issuer, category, tier,
+                           source, citation_url, citation_secondary,
+                           curator_id, curator_authority, prior_row_id,
+                           superseded_by,
+                           EXTRACT(EPOCH FROM observed_at)::bigint AS observed_at_epoch,
+                           observed_ledger_idx, taxonomy_version, note
+                    FROM token_category_history
+                    ORDER BY id ASC
+                    """
+                )
+                rows = cur.fetchall()
+    except Exception as e:
+        raise SystemExit(
+            f"STRICT-REFUSE (v4 §5d): registry_state PG read failed: "
+            f"{type(e).__name__}: {e}"
+        )
+
+    fields = [
+        "id", "currency_hex", "issuer", "category", "tier", "source",
+        "citation_url", "citation_secondary", "curator_id",
+        "curator_authority", "prior_row_id", "superseded_by",
+        "observed_at_epoch", "observed_ledger_idx", "taxonomy_version",
+        "note",
+    ]
+    leaves: list[bytes] = []
+    for r in rows:
+        payload = {k: (v if v is None or isinstance(v, (int, float, bool, str))
+                       else str(v))
+                   for k, v in zip(fields, r)}
+        leaves.append(_hash_leaf(_canonical_json(payload)))
+    root = _merkle_root(leaves)
+
+    return {
+        "name": "registry_state",
+        "value": {
+            "taxonomy_version": taxonomy_version,
+            "issuer_facts_count": issuer_facts_count,
+            "token_facts_count": token_facts_count,
+            "token_category_current_count": current_count,
+            "token_category_history_count": history_count,
+            "history_merkle_root": root.hex(),
+            "merkle_scheme": "RFC-6962-with-Bitcoin-style-odd-duplication",
+            "history_row_order": "ORDER BY id ASC",
+        },
+        "unit": "registry",
+        "source": "issuer_facts / token_facts / token_category_current / token_category_history (Postgres)",
+    }
+
+
 def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], list[str]]:
     """Return (metrics, errors). Each metric: {name, value, unit, source}.
     Missing sources for v1-v3 metrics are recorded as errors and absent
@@ -757,11 +895,12 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
 
     # v4 metrics — appended at end (§2 insertion-order ruling). Each raises
     # SystemExit on SoT failure (§5 strict-refuse); we do NOT swallow into
-    # `errors` because the whole point of these three is proof-of-our-own-
+    # `errors` because the whole point of these is proof-of-our-own-
     # machinery-health, and a silently-absent metric would defeat that.
     metrics.append(collect_walker_health_summary(now_utc))
     metrics.append(collect_claims_index_state())
     metrics.append(collect_editorial_state())
+    metrics.append(collect_registry_state())
 
     return metrics, errors
 
