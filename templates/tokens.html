@@ -1286,48 +1286,68 @@
     }
 
     function spawnPulse(tx) {
-      if (!canvas || !ctx || W <= 0) return;
-      var leg = extractTrade(tx);
-      if (!leg) return;
-      var key = leg.currency + '|' + leg.issuer;
-      var lbl = LABELS[key];
-      var cat = lbl ? lbl.category : 'other';
-      // Taxonomy v1: category names map through CATEGORY_FAMILY before
-      // lane index; the 'fiat' → 'stablecoin' alias below is dead code
-      // post-v1 (no v1 category returns 'fiat') but kept until label
-      // caches expire.
-      if (cat === 'fiat') cat = 'stablecoin_regulated';
-      var lane = laneIndex(cat);
-      // NEW-1 hotfix: labeled tokens ship server-side collision-qualified
-      // already (see app.py enriched loop); unlabeled tokens run the
-      // client-side JS mirror. Either way, no bare "USDT" from a
-      // non-canonical issuer reaches the tooltip.
-      var sym;
-      if (lbl) {
-        sym = lbl.display;
-      } else {
-        sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
-      }
-      pulses.push({
-        laneCenter: lane + 0.5,
-        progress: 0,
-        speed: 0.20 + Math.random() * 0.06,  // 0.20-0.26 → ~4-5s traverse
-        rgb: CATEGORY_RGB[cat] || CATEGORY_RGB.other,
-        size: radiusFromAmount(leg.value, cat),
-        symbol: sym,
-        glyph: (sym || '?').replace(/[^A-Za-z0-9]/g, '').charAt(0).toUpperCase() || '?',
-        amount: leg.value,
-        kind: leg.kind,
-        // Extension B: propagate category_source ('curator' or 'toml')
-        // to the pulse so drawPulses() can render the dashed-ring
-        // overlay for inferred entries.
-        category_source: (lbl && lbl.category_source) || null,
-        born: performance.now(),
-        lastX: 0, lastY: 0, lastR: 0,
-      });
-      if (emptyEl) emptyEl.classList.add('is-hidden');
-      if (pulses.length > PULSE_MAX) {
-        pulses.splice(0, pulses.length - PULSE_MAX);
+      // Wrapped in try/catch after 2026-09-06 regression: a category
+      // string not present in CATEGORY_FAMILY / CATEGORY_RGB used to
+      // return undefined for rgb, and drawPulses' rgb[0] threw a
+      // TypeError that killed the WS onmessage handler and froze the
+      // whole live feed. One bad token can never take the feed down
+      // again — the guard catches, logs, and moves on.
+      try {
+        if (!canvas || !ctx || W <= 0) return;
+        var leg = extractTrade(tx);
+        if (!leg) return;
+        var key = leg.currency + '|' + leg.issuer;
+        var lbl = LABELS[key];
+        // Taxonomy v1 default: unknown labels/unlabeled tokens map to
+        // the 'unlabeled' family lane. Never 'other' — 'other' was
+        // retired in Step 1 of the registry build spec.
+        var cat = lbl ? lbl.category : 'unlabeled';
+        // Legacy alias — a stale label_lookup cache could still ship
+        // 'fiat' during the first few seconds after deploy.
+        if (cat === 'fiat') cat = 'stablecoin_regulated';
+        var lane = laneIndex(cat);
+        // Family fold — CATEGORY_RGB is keyed on FAMILY names, not raw
+        // v1 vocabulary. Fold every category through CATEGORY_FAMILY
+        // first; unknown categories fall through to 'unlabeled' family
+        // grey rather than throwing.
+        var fam = CATEGORY_FAMILY[cat] || 'unlabeled';
+        var rgb = CATEGORY_RGB[fam] || CATEGORY_RGB.unlabeled;
+        if (!rgb) {
+          console.warn('[tokens] spawnPulse: no RGB for cat=' + cat +
+                       ' fam=' + fam + ' — skipping pulse');
+          return;
+        }
+        var sym;
+        if (lbl) {
+          sym = lbl.display;
+        } else {
+          sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
+        }
+        pulses.push({
+          laneCenter: lane + 0.5,
+          progress: 0,
+          speed: 0.20 + Math.random() * 0.06,  // 0.20-0.26 → ~4-5s traverse
+          rgb: rgb,
+          size: radiusFromAmount(leg.value, cat),
+          symbol: sym,
+          glyph: (sym || '?').replace(/[^A-Za-z0-9]/g, '').charAt(0).toUpperCase() || '?',
+          amount: leg.value,
+          kind: leg.kind,
+          category_source: (lbl && lbl.category_source) || null,
+          born: performance.now(),
+          lastX: 0, lastY: 0, lastR: 0,
+        });
+        if (emptyEl) emptyEl.classList.add('is-hidden');
+        if (pulses.length > PULSE_MAX) {
+          pulses.splice(0, pulses.length - PULSE_MAX);
+        }
+      } catch (e) {
+        // One bad message can never take the feed down. Log for
+        // debugging, keep the WS alive.
+        try {
+          console.error('[tokens] spawnPulse threw:', e && e.message ? e.message : e,
+                        'tx.TransactionType=', tx && tx.TransactionType);
+        } catch (_) {}
       }
     }
 
@@ -1571,17 +1591,25 @@
       };
 
       ws.onmessage = function (msg) {
-        var data;
-        try { data = JSON.parse(msg.data); } catch (e) { return; }
-        if (!data || data.type !== 'transaction') return;
-        if (data.validated !== true) return;
-        var tx = data.transaction || data.tx_json;
-        var meta = data.meta || {};
-        // Strict tesSUCCESS gate (missing => can't prove the tx applied).
-        if (meta.TransactionResult !== 'tesSUCCESS') return;
-        if (isTokenTrade(tx)) {
-          bump();
-          spawnPulse(tx);
+        // Every WS message is a load-bearing part of the live feed;
+        // one thrown exception used to detach onmessage from the WS
+        // and freeze the visual. Top-level try/catch here + inside
+        // spawnPulse means the socket keeps receiving regardless.
+        try {
+          var data;
+          try { data = JSON.parse(msg.data); } catch (e) { return; }
+          if (!data || data.type !== 'transaction') return;
+          if (data.validated !== true) return;
+          var tx = data.transaction || data.tx_json;
+          var meta = data.meta || {};
+          if (meta.TransactionResult !== 'tesSUCCESS') return;
+          if (isTokenTrade(tx)) {
+            bump();
+            spawnPulse(tx);
+          }
+        } catch (e) {
+          try { console.error('[tokens] ws.onmessage threw:',
+                              e && e.message ? e.message : e); } catch (_) {}
         }
       };
 
