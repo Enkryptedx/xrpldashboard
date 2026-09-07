@@ -1337,10 +1337,25 @@
         } else {
           sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
         }
+        // Adaptive fall-speed (7b, 2026-09-07):
+        //   default   0.20 + 0-0.06 → 4-5s traverse
+        //   busy      >40 pulses → 0.28 + 0-0.04 → 3.5-4s (drain before 80 cap)
+        //   quiet+labeled  <5 pulses AND non-unlabeled → 0.14 + 0-0.03 → 6-7s (dwell)
+        // The quiet-and-labeled path gives the reader extra time on the
+        // rare stablecoin / wrapped / rwa pulses that carry the most
+        // information. Busy path prevents pile-ups during 300/min bursts.
+        var pulseSpeed;
+        if (pulses.length > 40) {
+          pulseSpeed = 0.28 + Math.random() * 0.04;
+        } else if (pulses.length < 5 && cat !== 'unlabeled') {
+          pulseSpeed = 0.14 + Math.random() * 0.03;
+        } else {
+          pulseSpeed = 0.20 + Math.random() * 0.06;
+        }
         pulses.push({
           laneCenter: lane + 0.5,
           progress: 0,
-          speed: 0.20 + Math.random() * 0.06,  // 0.20-0.26 → ~4-5s traverse
+          speed: pulseSpeed,
           rgb: rgb,
           size: radiusFromAmount(leg.value, cat),
           symbol: sym,
