@@ -73,7 +73,14 @@ EXPECTED: dict[str, dict[str, str | None]] = {
         # too slow" — same shape as the Mac-era `send_queue_limit = 500`
         # workaround from [port_ws_admin_local] that got dropped in the
         # Lenovo repoint. Guard this key so it never silently reverts.
-        "send_queue_limit": "500",
+        #
+        # 2026-09-07: raised further from 500 → 2000 after the 500 buffer
+        # still saw kicks on burst-heavy hours (>1000 tx/s upstream). 2000
+        # is well below rippled's memory ceiling for one client and gives
+        # the on-box subscriber the same headroom it had pre-repoint. Bump
+        # verified live via `grep -c 'client is too slow' /var/log/rippled/debug.log`
+        # dropping to near-zero over 24h post-restart.
+        "send_queue_limit": "2000",
     },
 }
 # _OPTIONAL_STANZAS handling: name a stanza here to make its absence a
