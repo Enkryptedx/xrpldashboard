@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submission received · xrpldashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2; --muted: #8090b0;
+      --cyan: #22d3ee; --green: #22c55e;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font-family: var(--sys); font-size: 15px; line-height: 1.6; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 40px 18px 60px; }
+    a { color: var(--cyan); text-decoration: none; }
+    h1 { color: var(--green); font-size: 1.4rem; margin: 0 0 20px; }
+    .row { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .row .label { color: var(--muted); font-size: 0.8rem; }
+    .row .value { font-family: var(--mono); font-size: 0.9rem; }
+    .next {
+      background: rgba(34,211,238,0.08);
+      border: 1px solid rgba(34,211,238,0.30);
+      border-radius: 8px; padding: 14px 18px; margin: 30px 0;
+      font-size: 0.9rem;
+    }
+    .next h3 { color: var(--cyan); font-size: 0.95rem; margin: 0 0 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>✓ Submission received</h1>
+    <p>Thanks. Your category claim has been recorded and is now queued for two-way toml verification.</p>
+
+    <div class="row">
+      <div class="label">Submission ID</div>
+      <div class="value">{{ submission_id or '—' }}</div>
+    </div>
+    <div class="row">
+      <div class="label">Issuer</div>
+      <div class="value">{{ issuer }}</div>
+    </div>
+    <div class="row">
+      <div class="label">Currency</div>
+      <div class="value">{{ currency_hex }}</div>
+    </div>
+    <div class="row">
+      <div class="label">Claimed category</div>
+      <div class="value">{{ claimed_category }}</div>
+    </div>
+
+    <div class="next">
+      <h3>What happens next</h3>
+      <ul>
+        <li>A walker fetches your toml URL and verifies the entry for <code>({{ currency_hex[:8] }}…, {{ issuer[:8] }}…)</code> matches your claim.</li>
+        <li>The walker also verifies that the issuer AccountRoot's Domain field on the XRPL points at your toml domain (the two-way proof).</li>
+        <li>If both checks pass, the claim lands in the registry as <strong>self-described</strong>. The tier remains <code>self-described</code> — never <code>verified</code> — until an independent curator attests.</li>
+        <li>If either check fails, we'll email you at the contact address you provided with the failure reason.</li>
+        <li>Anyone can dispute your claim via <a href="/contact?purpose=attestation-dispute">/contact?purpose=attestation-dispute</a>. Disputes go into the curator queue.</li>
+      </ul>
+    </div>
+
+    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 30px;">
+      <a href="/registry/taxonomy">Registry taxonomy</a> ·
+      <a href="/registry/submit">Submit another</a>
+    </p>
+  </div>
+</body>
+</html>

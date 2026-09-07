@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Token registry — self-submission · xrpldashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  {% include "_head_meta.html" ignore missing %}
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2; --muted: #8090b0; --dim: #7a8ca8;
+      --cyan: #22d3ee; --amber: #f59e0b; --red: #ef4444;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font-family: var(--sys); font-size: 15px; line-height: 1.6; }
+    a { color: var(--cyan); text-decoration: none; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 18px 60px; }
+    h1 { font-size: 1.5rem; margin: 0 0 6px; }
+    .lede { color: var(--muted); margin-bottom: 22px; font-size: 0.95rem; }
+    .closed {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 10px; padding: 18px 22px; margin-bottom: 24px;
+      color: var(--text);
+    }
+    .closed strong { color: var(--amber); }
+    label { display: block; color: var(--muted); font-size: 0.85rem;
+            margin: 14px 0 4px; font-weight: 500; }
+    label .req { color: var(--amber); margin-left: 4px; }
+    input[type="text"], input[type="url"], input[type="email"], select {
+      width: 100%; padding: 10px 12px; border-radius: 6px;
+      background: var(--card); color: var(--text);
+      border: 1px solid var(--border); font-family: var(--mono);
+      font-size: 0.92rem;
+    }
+    select { font-family: var(--sys); }
+    .checkbox { display: flex; align-items: flex-start; gap: 10px;
+                margin: 18px 0; color: var(--text); font-size: 0.9rem; }
+    .checkbox input { margin-top: 4px; }
+    .tos {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px; margin: 12px 0;
+      font-size: 0.85rem; color: var(--muted); max-height: 200px;
+      overflow-y: auto;
+    }
+    .tos h3 { color: var(--text); font-size: 0.9rem; margin: 0 0 6px; }
+    button {
+      background: var(--cyan); color: var(--bg); font-weight: 600;
+      padding: 12px 22px; border: none; border-radius: 6px;
+      font-size: 0.95rem; cursor: pointer; margin-top: 8px;
+    }
+    button[disabled] { background: rgba(255,255,255,0.10); color: var(--dim);
+                       cursor: not-allowed; }
+    .errors { background: rgba(239,68,68,0.08);
+              border: 1px solid rgba(239,68,68,0.35);
+              border-radius: 8px; padding: 12px 16px; margin: 12px 0;
+              color: var(--red); font-size: 0.9rem; }
+    .errors ul { margin: 4px 0 0; padding-left: 22px; }
+    .rule { color: var(--dim); font-size: 0.8rem; margin: 4px 0 0; }
+    .footer { color: var(--dim); font-size: 0.8rem; margin-top: 40px;
+              padding-top: 20px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Token registry — self-submission</h1>
+    <p class="lede">
+      Issuers may submit a category claim for one of their tokens. Every claim lands as <strong>self-described, never verified</strong> — the registry records that you (the issuer) said so, but the tier field remains <code>self-described</code> until an independent curator attests. This is Layer 2c of the registry per <a href="/registry/taxonomy">taxonomy v1</a>.
+    </p>
+
+    {% if not feature_open %}
+      <div class="closed">
+        <strong>Form is not yet open.</strong>
+        <p style="margin: 6px 0 0;">
+          The Terms of Service for this submission form is under legal review. The form will open publicly once the ToS is published. In the meantime, use
+          <a href="/contact?purpose=attestation-dispute">/contact?purpose=attestation-dispute</a>
+          to reach the curator directly.
+        </p>
+      </div>
+    {% endif %}
+
+    {% if errors %}
+      <div class="errors">
+        <strong>Please fix these before submitting:</strong>
+        <ul>
+          {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/registry/submit">
+      <label for="currency_hex">Currency hex <span class="req">*</span></label>
+      <input type="text" id="currency_hex" name="currency_hex"
+             value="{{ (form.currency_hex if form else '') or '' }}"
+             placeholder="40 uppercase hex characters (e.g., 5553445200000000000000000000000000000000)"
+             pattern="^[0-9A-Fa-f]{40}$" maxlength="40" required
+             {% if not feature_open %}disabled{% endif %}>
+      <p class="rule">The 40-hex-char currency code on the XRPL. Uppercase preferred.</p>
+
+      <label for="issuer">Issuer r-address <span class="req">*</span></label>
+      <input type="text" id="issuer" name="issuer"
+             value="{{ (form.issuer if form else '') or '' }}"
+             placeholder="rXXXXXXXXXXXXXXXXXXXXXXXX"
+             maxlength="35" required
+             {% if not feature_open %}disabled{% endif %}>
+      <p class="rule">The XRPL address that issues this token.</p>
+
+      <label for="claimed_category">Claimed category <span class="req">*</span></label>
+      <select id="claimed_category" name="claimed_category" required
+              {% if not feature_open %}disabled{% endif %}>
+        <option value="">— select —</option>
+        <option value="stablecoin_regulated">stablecoin_regulated</option>
+        <option value="stablecoin_gateway">stablecoin_gateway</option>
+        <option value="native_utility_chain">native_utility_chain</option>
+        <option value="dex_utility">dex_utility</option>
+        <option value="defi_lending">defi_lending</option>
+        <option value="defi_yield">defi_yield</option>
+        <option value="gaming">gaming</option>
+        <option value="wrapped_bridge">wrapped_bridge</option>
+        <option value="rwa">rwa</option>
+        <option value="community">community</option>
+      </select>
+      <p class="rule">
+        <code>memecoin</code> is curator-only per taxonomy v1 — the machine never infers memecoin, and a self-submission cannot claim it. <code>lp_token</code> is mechanical (auto-detected). See <a href="/registry/taxonomy">taxonomy v1</a> for definitions.
+      </p>
+
+      <label for="toml_url">xrp-ledger.toml URL <span class="req">*</span></label>
+      <input type="url" id="toml_url" name="toml_url"
+             value="{{ (form.toml_url if form else '') or '' }}"
+             placeholder="https://your-domain.example/.well-known/xrp-ledger.toml"
+             required {% if not feature_open %}disabled{% endif %}>
+      <p class="rule">
+        Your xrp-ledger.toml must declare this (currency, issuer) with the same claimed category, and the issuer AccountRoot's Domain field on the ledger must resolve to this same domain (two-way proof). A walker verifies both directions asynchronously; failed verification produces a follow-up email.
+      </p>
+
+      <label for="contact_email">Contact email <span class="req">*</span></label>
+      <input type="email" id="contact_email" name="contact_email"
+             value="{{ (form.contact_email if form else '') or '' }}"
+             placeholder="you@example.com"
+             required {% if not feature_open %}disabled{% endif %}>
+      <p class="rule">
+        Used for verification follow-up and to notify you if the claim is disputed. Not published on the registry surface.
+      </p>
+
+      <div class="tos">
+        <h3>Terms of Service (placeholder — attorney review pending)</h3>
+        <p>
+          By submitting this form you certify that (a) you control the issuer address named above, (b) the toml URL is under your control, (c) the category claim you're making about your token is accurate to your knowledge, (d) you understand this claim lands as <em>self-described</em> and is not an independent attestation, (e) you agree the registry may reject, dispute, or supersede your claim under the curator authority described in
+          <a href="/registry/taxonomy#curator-authority--successor-path">taxonomy v1 §Curator authority</a>, and (f) you accept the dispute path at
+          <a href="/contact?purpose=attestation-dispute">/contact?purpose=attestation-dispute</a>.
+        </p>
+        <p><em>Final ToS text pending attorney review; the placeholder above is not legally binding.</em></p>
+      </div>
+
+      <div class="checkbox">
+        <input type="checkbox" id="tos_accepted" name="tos_accepted"
+               required {% if not feature_open %}disabled{% endif %}>
+        <label for="tos_accepted" style="margin: 0; font-size: 0.9rem; color: var(--text); font-weight: normal;">
+          I've read and accept the Terms of Service above.
+        </label>
+      </div>
+
+      <button type="submit" {% if not feature_open %}disabled{% endif %}>
+        {% if feature_open %}
+          Submit for verification
+        {% else %}
+          Form closed — awaiting ToS review
+        {% endif %}
+      </button>
+    </form>
+
+    <div class="footer">
+      Registry taxonomy: <a href="/registry/taxonomy">/registry/taxonomy</a>.
+      Dispute path: <a href="/contact?purpose=attestation-dispute">/contact?purpose=attestation-dispute</a>.
+      Rate limit: 5 submissions per issuer per 7 days.
+    </div>
+  </div>
+</body>
+</html>

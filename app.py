@@ -4245,6 +4245,173 @@ def _render_taxonomy_html():
     return _TAXONOMY_HTML_CACHE, version, mtime
 
 
+@app.route("/registry/submit", methods=["GET", "POST"])
+@limiter.limit("30 per hour")
+def registry_submit():
+    """L2c self-submission form for token issuers.
+
+    Charlie ruling 2026-09-07 afternoon:
+      - Go, per the spec (docs/registry/L2C_SELF_SUBMISSION_SPEC.md when
+        it lands): two-way toml proof gates it, multi-sig signer-list
+        accepted, lands as self-described never verified,
+        rate-limited 5/issuer/week, dispute path reused.
+      - Submission ToS wording is attorney-gated: build the form behind
+        a flag, don't open until ToS is reviewed.
+
+    Feature flag: FEATURE_L2C_FORM_OPEN env var. When 'true', form
+    accepts submissions. When anything else (default) the form renders
+    a 'coming soon — pending Terms of Service review' notice and POSTs
+    return 503.
+    """
+    feature_open = (
+        (os.environ.get("FEATURE_L2C_FORM_OPEN") or "").strip().lower()
+        == "true"
+    )
+
+    if request.method == "GET":
+        return render_template(
+            "registry_submit.html",
+            feature_open=feature_open,
+            current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+        )
+
+    # POST: submission attempt
+    if not feature_open:
+        return (
+            "L2c self-submission is not yet open — the Terms of Service "
+            "for this form is under legal review. When the form opens, "
+            "an announcement will land at /registry/taxonomy. In the "
+            "meantime, use /contact?purpose=attestation-dispute for any "
+            "correction request.",
+            503,
+        )
+
+    # Validate form fields.
+    currency_hex = (request.form.get("currency_hex") or "").strip().upper()
+    issuer = (request.form.get("issuer") or "").strip()
+    claimed_category = (request.form.get("claimed_category") or "").strip()
+    toml_url = (request.form.get("toml_url") or "").strip()
+    contact_email = (request.form.get("contact_email") or "").strip()
+    tos_accepted = (request.form.get("tos_accepted") or "").strip() == "on"
+
+    errors = []
+    import re as _re
+    if not _re.match(r"^[0-9A-F]{40}$", currency_hex):
+        errors.append("currency_hex must be 40 uppercase hex characters")
+    if not _is_xrpl_address(issuer):
+        errors.append("issuer must be a valid r-address")
+    valid_categories = frozenset({
+        "stablecoin_regulated", "stablecoin_gateway", "native_utility_chain",
+        "dex_utility", "defi_lending", "defi_yield", "gaming",
+        "wrapped_bridge", "rwa", "community",
+        # deliberately excluded: memecoin (machine-never-infers,
+        # curator-only — a self-submission cannot claim memecoin);
+        # lp_token (mechanical — the walker sets this); the two
+        # review-status values (not_yet_reviewed / reviewed_unlabeled
+        # are curator-side outcomes, not issuer claims)
+    })
+    if claimed_category not in valid_categories:
+        errors.append(
+            f"claimed_category must be one of {sorted(valid_categories)}"
+        )
+    if not toml_url.startswith("https://"):
+        errors.append("toml_url must be an https:// URL")
+    if not _looks_like_email(contact_email):
+        errors.append("contact_email must be a valid email address")
+    if not tos_accepted:
+        errors.append(
+            "you must accept the Terms of Service to submit"
+        )
+
+    if errors:
+        return render_template(
+            "registry_submit.html",
+            feature_open=feature_open,
+            errors=errors,
+            form=request.form,
+            current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+        ), 400
+
+    # Per-issuer rate limit: 5 submissions/issuer/7d, enforced via a
+    # small tracking table (writable path only when the feature is
+    # open — table gets its first rows on the first accepted
+    # submission).
+    if db.pg_available():
+        try:
+            with db.pg_connect() as _conn:
+                with _conn.cursor() as _cur:
+                    _cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS registry_form_submissions (
+                            id BIGSERIAL PRIMARY KEY,
+                            issuer TEXT NOT NULL,
+                            currency_hex TEXT NOT NULL,
+                            claimed_category TEXT NOT NULL,
+                            toml_url TEXT NOT NULL,
+                            contact_email TEXT NOT NULL,
+                            submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            two_way_toml_ok BOOLEAN,
+                            two_way_toml_error TEXT,
+                            landed_history_id BIGINT
+                        );
+                        CREATE INDEX IF NOT EXISTS registry_form_submissions_issuer_idx
+                            ON registry_form_submissions (issuer, submitted_at DESC);
+                        """
+                    )
+                    _cur.execute(
+                        """
+                        SELECT COUNT(*) FROM registry_form_submissions
+                        WHERE issuer = %s
+                          AND submitted_at > NOW() - INTERVAL '7 days'
+                        """,
+                        (issuer,),
+                    )
+                    n = int(_cur.fetchone()[0])
+                    if n >= 5:
+                        return (
+                            f"rate limit: 5 submissions per issuer per 7 days "
+                            f"(seen {n} in the last week for {issuer}). "
+                            f"If you believe this is an error, contact via "
+                            f"/contact?purpose=attestation-dispute.",
+                            429,
+                        )
+                    # Two-way toml proof (deferred to a walker path —
+                    # today we accept the submission and mark
+                    # two_way_toml_ok = NULL. The walker verifies
+                    # asynchronously and updates the row).
+                    _cur.execute(
+                        """
+                        INSERT INTO registry_form_submissions
+                            (issuer, currency_hex, claimed_category,
+                             toml_url, contact_email)
+                        VALUES (%s, %s, %s, %s, %s)
+                        RETURNING id
+                        """,
+                        (issuer, currency_hex, claimed_category,
+                         toml_url, contact_email),
+                    )
+                    sub_id = _cur.fetchone()[0]
+                    _conn.commit()
+        except Exception as e:
+            return (
+                f"submission storage error: {type(e).__name__}. "
+                f"Please retry, or contact via "
+                f"/contact?purpose=attestation-dispute if it persists.",
+                503,
+            )
+    else:
+        sub_id = None
+
+    return render_template(
+        "registry_submit_thanks.html",
+        submission_id=sub_id,
+        issuer=issuer,
+        currency_hex=currency_hex,
+        claimed_category=claimed_category,
+        current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+    )
+
+
 @app.route("/registry/taxonomy")
 def registry_taxonomy():
     """Public taxonomy vocabulary for the XRPL Token Registry.
