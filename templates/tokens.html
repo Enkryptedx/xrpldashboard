@@ -1146,18 +1146,38 @@
       var note = entry.note || 'not canonical';
       return name + ' (' + hint + ' — ' + note + ')';
     }
-    var CATEGORY_RGB = {
-      stablecoin:     [34,197,94],
-      fiat:           [34,197,94],
-      wrapped_major:  [245,158,11],
-      native_utility: [34,211,238],
-      memecoin:       [236,72,153],
-      other:          [140,150,170],
+    // Taxonomy v1 (2026-09-06 Charlie ruling). 13 category slots + 2
+    // mechanical flags (ticker_collision, non_standard_code) — flags
+    // overlay any category, category values are exclusive. Lane visual
+    // stays 5-slot for now; category-family map folds specific v1
+    // slots up to the display lanes. Lanes-by-verification-tier is a
+    // separate follow-up per the 09-06 taxonomy essay.
+    var CATEGORY_FAMILY = {
+      stablecoin_regulated: 'stablecoin',
+      stablecoin_gateway:   'stablecoin',
+      wrapped_bridge:       'wrapped',
+      native_utility_chain: 'utility',
+      dex_utility:          'utility',
+      defi_lending:         'utility',
+      defi_yield:           'utility',
+      gaming:               'utility',
+      rwa:                  'utility',
+      memecoin:             'memecoin',
+      community:            'unlabeled',
+      lp_token:             'unlabeled',  // AMM-share tokens; deliberate
+      unlabeled:            'unlabeled',
     };
-    var LANE_ORDER = ['stablecoin', 'wrapped_major', 'native_utility', 'memecoin', 'other'];
+    var CATEGORY_RGB = {
+      stablecoin: [34,197,94],
+      wrapped:    [245,158,11],
+      utility:    [34,211,238],
+      memecoin:   [236,72,153],
+      unlabeled:  [140,150,170],
+    };
+    var LANE_ORDER = ['stablecoin', 'wrapped', 'utility', 'memecoin', 'unlabeled'];
     function laneIndex(cat) {
-      if (cat === 'fiat') return 0;
-      var i = LANE_ORDER.indexOf(cat);
+      var fam = CATEGORY_FAMILY[cat] || 'unlabeled';
+      var i = LANE_ORDER.indexOf(fam);
       return i >= 0 ? i : LANE_ORDER.length - 1;
     }
     var NLANES = LANE_ORDER.length;
@@ -1255,7 +1275,11 @@
       // coin, not a speck.
       var n = parseFloat(v) || 0;
       var r = 4 + Math.log10(Math.max(1, n)) * 1.6;
-      if (cat === 'stablecoin' || cat === 'fiat') {
+      // Family-aware: stablecoin_regulated / stablecoin_gateway both fold
+      // to 'stablecoin' via CATEGORY_FAMILY; keep the historical 'fiat'
+      // alias as a compatibility check while old rows drain out of caches.
+      var _fam = CATEGORY_FAMILY[cat] || cat;
+      if (_fam === 'stablecoin' || cat === 'fiat') {
         r = r * 1.55 + 2;
       }
       return Math.min(18, Math.max(4, r));
@@ -1268,7 +1292,11 @@
       var key = leg.currency + '|' + leg.issuer;
       var lbl = LABELS[key];
       var cat = lbl ? lbl.category : 'other';
-      if (cat === 'fiat') cat = 'stablecoin';
+      // Taxonomy v1: category names map through CATEGORY_FAMILY before
+      // lane index; the 'fiat' → 'stablecoin' alias below is dead code
+      // post-v1 (no v1 category returns 'fiat') but kept until label
+      // caches expire.
+      if (cat === 'fiat') cat = 'stablecoin_regulated';
       var lane = laneIndex(cat);
       // NEW-1 hotfix: labeled tokens ship server-side collision-qualified
       // already (see app.py enriched loop); unlabeled tokens run the

@@ -3371,16 +3371,16 @@ def tokens():
         if _col.get("collision"):
             display = _col["display"]
         # BROAD Axelar reading (D1 v5 §2): every currency the Axelar gateway
-        # issues counts as bridge, not just tokens hand-tagged in
-        # token_names.json (only 1 of 9 currently is). Backfill deferred.
+        # issues counts as wrapped_bridge, not just tokens hand-tagged in
+        # token_names.json (only 1 of 9 currently is). Taxonomy v1
+        # (2026-09-06): renamed 'bridge' → 'wrapped_bridge'.
         if iss == AXELAR_BRIDGE_ISSUER:
-            category = "bridge"
+            category = "wrapped_bridge"
             labeled = True
-        # Labeled-but-no-category tokens go in the "other named" bar. Distinct
-        # from unlabeled (see Zone A hero note): these have identities, they
-        # just don't fit a standard bucket.
+        # Labeled-but-no-category tokens land in 'unlabeled' per v1
+        # taxonomy — 'other' is retired, confession not category.
         if labeled and (category is None or category == "no_category"):
-            category = "other"
+            category = "unlabeled"
         # v3 §7 attestation shape — verified / self-described / (bare).
         # DOMAIN_ONLY + ANONYMOUS both display bare per Charlie's editorial
         # rule (never say "verified" for lower tiers).
@@ -3463,10 +3463,10 @@ def tokens():
                     category = None
                     labeled = False
                 if iss == AXELAR_BRIDGE_ISSUER:
-                    category = "bridge"
+                    category = "wrapped_bridge"
                     labeled = True
                 if labeled and (category is None or category == "no_category"):
-                    category = "other"
+                    category = "unlabeled"
                 hero_enriched.append({
                     "display": display if meta else (
                         _decode_currency_hex(cur)

@@ -20,7 +20,7 @@
     "source": "mpt_metadata"
   },
   "0000025F3953B4768139215BBD3BB00BFA4601C987FC1F96:raNf8ibQZECTaiFqkDXKRmM2GfdWK76cSu": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "WAVE",
     "currency_hex": "0000025F3953B4768139215BBD3BB00BFA4601C987FC1F96",
     "issuer": "raNf8ibQZECTaiFqkDXKRmM2GfdWK76cSu",
@@ -29,7 +29,7 @@
     "source": "mpt_metadata"
   },
   "00000AE825B89F24B381CABA5921FF0B634DE9111D915B2A:rhSTwqSK13zdRmzHMZZP8i7DnuG27pwX76": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "XRP NFT",
     "currency_hex": "00000AE825B89F24B381CABA5921FF0B634DE9111D915B2A",
     "desc": "XRP - svg and glb",
@@ -865,7 +865,7 @@
     "verified_via": "lp_derived"
   },
   "0476D60F478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "Xspence",
     "currency_hex": "0476D60F478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
     "desc": "Rewards token distributed by Xspence",
@@ -874,7 +874,7 @@
     "source": "mpt_metadata"
   },
   "0476D647478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "XPN",
     "currency_hex": "0476D647478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
     "desc": "A testing rewards token bridging verified Devnet testing with Mainnet through the Xspence Devnet portal.",
@@ -884,7 +884,7 @@
     "source": "mpt_metadata"
   },
   "056762A93087A14B122055FA030F9EE6F74F87116559C83D:rnRbuxseqEHbxXgaBZJu7PAMQKmVAqp9RM": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "Precious MPT",
     "currency_hex": "056762A93087A14B122055FA030F9EE6F74F87116559C83D",
     "desc": "Metaprotocol Token representing precious metals portfolio",
@@ -893,7 +893,7 @@
     "source": "mpt_metadata"
   },
   "0586FBE4CA4DB3644CDA54E95F28198316CF41F2AB2A616E:rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "MPT",
     "currency_hex": "0586FBE4CA4DB3644CDA54E95F28198316CF41F2AB2A616E",
     "desc": "MPToken Launchpad, Airdrop and claiming system ",
@@ -902,7 +902,7 @@
     "source": "mpt_metadata"
   },
   "0586FBE7CA4DB3644CDA54E95F28198316CF41F2AB2A616E:rKSg2VZbw9gRRuSwBjBFAfBoGC5Vs1FmFn": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "MPTPAD",
     "currency_hex": "0586FBE7CA4DB3644CDA54E95F28198316CF41F2AB2A616E",
     "desc": "MPToken Launchpad, Airdrop and claiming system ",
@@ -911,7 +911,7 @@
     "source": "mpt_metadata"
   },
   "0598F6D79E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "TMPT",
     "currency_hex": "0598F6D79E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
     "desc": "CLI smoke test",
@@ -920,7 +920,7 @@
     "source": "mpt_metadata"
   },
   "0598F6D89E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "TMPT",
     "currency_hex": "0598F6D89E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
     "desc": "CLI smoke test",
@@ -930,7 +930,7 @@
     "source": "mpt_metadata"
   },
   "0598F6D99E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "TMPT",
     "currency_hex": "0598F6D99E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
     "desc": "CLI smoke test",
@@ -940,7 +940,7 @@
     "source": "mpt_metadata"
   },
   "0598F6DA9E30A809E63A1F02DE789586D2F4FDA9EF5200E3:rERShrtUSEXkrwtTpugPV4v8E787vpx1kb": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "TMPT",
     "currency_hex": "0598F6DA9E30A809E63A1F02DE789586D2F4FDA9EF5200E3",
     "desc": "CLI smoke test",
@@ -950,7 +950,7 @@
     "source": "mpt_metadata"
   },
   "05DB34950E8F50CD29809257E664B7FBFF00F1F6005A30C6:rpKz9RxDJv8jFDuk9EdtWyyKRcMgrYddCp": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "Precious MPT",
     "currency_hex": "05DB34950E8F50CD29809257E664B7FBFF00F1F6005A30C6",
     "desc": "Multi-Purpose Token representing precious metals portfolio for customer 1",
@@ -959,7 +959,7 @@
     "source": "mpt_metadata"
   },
   "05DDE2E3CB353EBC4865E25BCF97C49C19051CC771DB31E8:rKXTx7SxZP4apsLtj3dNH1SgiYr6LNMhcp": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SRG",
     "currency_hex": "05DDE2E3CB353EBC4865E25BCF97C49C19051CC771DB31E8",
     "desc": "Senior Unsecured Bond - Digital representation on XRPL",
@@ -968,7 +968,7 @@
     "source": "mpt_metadata"
   },
   "05E251B180B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DEMO",
     "currency_hex": "05E251B180B597F02A5B03A862311D5A920246833C10B65A",
     "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
@@ -977,7 +977,7 @@
     "source": "mpt_metadata"
   },
   "05E251B280B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DEMO",
     "currency_hex": "05E251B280B597F02A5B03A862311D5A920246833C10B65A",
     "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
@@ -986,7 +986,7 @@
     "source": "mpt_metadata"
   },
   "05E251B380B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DEMO",
     "currency_hex": "05E251B380B597F02A5B03A862311D5A920246833C10B65A",
     "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
@@ -995,7 +995,7 @@
     "source": "mpt_metadata"
   },
   "05E251B480B597F02A5B03A862311D5A920246833C10B65A:rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DEMO",
     "currency_hex": "05E251B480B597F02A5B03A862311D5A920246833C10B65A",
     "issuer": "rUjZptmDJfkArvX7uLMoPzKL9YvpJ6NYig",
@@ -1004,7 +1004,7 @@
     "source": "mpt_metadata"
   },
   "05E5A094812A18E6A0B83F20DC317DDC181AE062766DB7EF:rUmxb5W7kBiQtoQo6SK4aX6a64xEAWaEiw": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SYN",
     "currency_hex": "05E5A094812A18E6A0B83F20DC317DDC181AE062766DB7EF",
     "desc": "Synthetics Token on XRPL",
@@ -1013,7 +1013,7 @@
     "source": "mpt_metadata"
   },
   "05EA16F076AA755D480BD7BFE4090A4009C6342909716A36:rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "AAAAAAAA",
     "currency_hex": "05EA16F076AA755D480BD7BFE4090A4009C6342909716A36",
     "desc": "WHY THIS SHIT IS SO COMPLICATED? WHO DESIGNED THIS NONSENSE?",
@@ -1022,7 +1022,7 @@
     "source": "mpt_metadata"
   },
   "05EA16F276AA755D480BD7BFE4090A4009C6342909716A36:rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "AMEN",
     "currency_hex": "05EA16F276AA755D480BD7BFE4090A4009C6342909716A36",
     "desc": "THIS TOKEN IS RWA FAITH BASED. WE PRAY TO RIPPLE AS OUR LORDS AND SAVIOURS. GIVE US MANY FREE MONEY AND XRP 589.",
@@ -1031,7 +1031,7 @@
     "source": "mpt_metadata"
   },
   "05EA170476AA755D480BD7BFE4090A4009C6342909716A36:rBFSAJNG18bEZe5wQDM8wmPs3x8aVz7YXy": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "dfadad",
     "currency_hex": "05EA170476AA755D480BD7BFE4090A4009C6342909716A36",
     "desc": "asssssssss",
@@ -1060,7 +1060,7 @@
     "source": "mpt_metadata"
   },
   "05F9CB83F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E:rP69aih8Cy4RuGCFLNV1W7DUQgoraFaiDQ": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "CREMA",
     "currency_hex": "05F9CB83F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E",
     "desc": "XRPresso closed-loop loyalty token. Non-transferable. Earn by trading, redeem for perks.",
@@ -1069,7 +1069,7 @@
     "source": "mpt_metadata"
   },
   "05F9CB84F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E:rP69aih8Cy4RuGCFLNV1W7DUQgoraFaiDQ": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "CREMA",
     "currency_hex": "05F9CB84F8EA2AFC8370A32E2BCDF7F0C78E81BB0DE1515E",
     "desc": "XRPresso closed-loop loyalty token. Non-transferable. Earn by trading, redeem for perks.",
@@ -1087,7 +1087,7 @@
     "source": "mpt_metadata"
   },
   "05FB9C8D4A9467EE3C58CB2C35702407A8862A4C6EFDF836:rfoL8dwvV7Vhgkmn31kyWT7mMx5vDf38Qx": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "AIRDROP",
     "currency_hex": "05FB9C8D4A9467EE3C58CB2C35702407A8862A4C6EFDF836",
     "desc": "Visit example.com",
@@ -1097,7 +1097,7 @@
     "source": "mpt_metadata"
   },
   "05FCD1506BEFCA2829B503F1893C0ED01A0D05AFCD7062F5:rwq5ZQ7rqZmcQf9y2wG8qxgHk5zuL1NKE5": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "RWRD",
     "currency_hex": "05FCD1506BEFCA2829B503F1893C0ED01A0D05AFCD7062F5",
     "desc": "Rewards for payments to ryouhapPYV5KNHmFUKrjNqsjxhnxvQiVt",
@@ -1106,7 +1106,7 @@
     "source": "mpt_metadata"
   },
   "05FCD1676BEFCA2829B503F1893C0ED01A0D05AFCD7062F5:rwq5ZQ7rqZmcQf9y2wG8qxgHk5zuL1NKE5": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "RWRD",
     "currency_hex": "05FCD1676BEFCA2829B503F1893C0ED01A0D05AFCD7062F5",
     "desc": "Rewards for payments to ryouhapPYV5KNHmFUKrjNqsjxhnxvQiVt",
@@ -1116,7 +1116,7 @@
     "source": "mpt_metadata"
   },
   "0601A58EE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV1",
     "currency_hex": "0601A58EE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-1-Non-Principal Protected-1w",
@@ -1126,7 +1126,7 @@
     "source": "mpt_metadata"
   },
   "0601A591E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV2",
     "currency_hex": "0601A591E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-2-Principal Protected-1m",
@@ -1136,7 +1136,7 @@
     "source": "mpt_metadata"
   },
   "0601A594E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV1",
     "currency_hex": "0601A594E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-1-Non-Principal Protected-1w",
@@ -1146,7 +1146,7 @@
     "source": "mpt_metadata"
   },
   "0601A595E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV7",
     "currency_hex": "0601A595E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-7-Non-Principal Protected-1w",
@@ -1156,7 +1156,7 @@
     "source": "mpt_metadata"
   },
   "0601A596E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV4",
     "currency_hex": "0601A596E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-4-Non-Principal Protected-1w",
@@ -1166,7 +1166,7 @@
     "source": "mpt_metadata"
   },
   "0601A597E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV13",
     "currency_hex": "0601A597E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-13-Non-Principal Protected-1w",
@@ -1176,7 +1176,7 @@
     "source": "mpt_metadata"
   },
   "0601A598E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV12",
     "currency_hex": "0601A598E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-12-Non-Principal Protected-2w",
@@ -1186,7 +1186,7 @@
     "source": "mpt_metadata"
   },
   "0601A599E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV18",
     "currency_hex": "0601A599E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-18-Principal Protected-3m",
@@ -1196,7 +1196,7 @@
     "source": "mpt_metadata"
   },
   "0601A59AE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV21",
     "currency_hex": "0601A59AE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-21-Non-Principal Protected-1w",
@@ -1206,7 +1206,7 @@
     "source": "mpt_metadata"
   },
   "0601A59BE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV20",
     "currency_hex": "0601A59BE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-20-Non-Principal Protected-1w",
@@ -1216,7 +1216,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV32",
     "currency_hex": "0601A5A3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-32-Principal Protected-1m",
@@ -1226,7 +1226,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV33",
     "currency_hex": "0601A5A4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-33-Non-Principal Protected-1w",
@@ -1236,7 +1236,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV34",
     "currency_hex": "0601A5A5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-34-Non-Principal Protected-1w",
@@ -1246,7 +1246,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV35",
     "currency_hex": "0601A5A6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-35-Principal Protected-1m",
@@ -1256,7 +1256,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV8",
     "currency_hex": "0601A5A7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-8-Principal Protected-2m",
@@ -1266,7 +1266,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV37",
     "currency_hex": "0601A5A8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-37-Non-Principal Protected-2w",
@@ -1276,7 +1276,7 @@
     "source": "mpt_metadata"
   },
   "0601A5A9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV36",
     "currency_hex": "0601A5A9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-36-Non-Principal Protected-1w",
@@ -1286,7 +1286,7 @@
     "source": "mpt_metadata"
   },
   "0601A5AAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV39",
     "currency_hex": "0601A5AAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-39-Non-Principal Protected-1w",
@@ -1296,7 +1296,7 @@
     "source": "mpt_metadata"
   },
   "0601A5ABE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV40",
     "currency_hex": "0601A5ABE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-40-Principal Protected-2m",
@@ -1306,7 +1306,7 @@
     "source": "mpt_metadata"
   },
   "0601A5ACE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV42",
     "currency_hex": "0601A5ACE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-42-Principal Protected-1m",
@@ -1316,7 +1316,7 @@
     "source": "mpt_metadata"
   },
   "0601A5AEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV44",
     "currency_hex": "0601A5AEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-44-Non-Principal Protected-1w",
@@ -1326,7 +1326,7 @@
     "source": "mpt_metadata"
   },
   "0601A5AFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV45",
     "currency_hex": "0601A5AFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-45-Non-Principal Protected-1w",
@@ -1336,7 +1336,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV46",
     "currency_hex": "0601A5B1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-46-Non-Principal Protected-1w",
@@ -1346,7 +1346,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV49",
     "currency_hex": "0601A5B2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-49-Non-Principal Protected-1w",
@@ -1356,7 +1356,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV51",
     "currency_hex": "0601A5B3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-51-Non-Principal Protected-1w",
@@ -1366,7 +1366,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV52",
     "currency_hex": "0601A5B4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-52-Non-Principal Protected-1w",
@@ -1376,7 +1376,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV56",
     "currency_hex": "0601A5B6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-56-Non-Principal Protected-1w",
@@ -1386,7 +1386,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV62",
     "currency_hex": "0601A5B7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-62-Non-Principal Protected-1w",
@@ -1396,7 +1396,7 @@
     "source": "mpt_metadata"
   },
   "0601A5B8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV66",
     "currency_hex": "0601A5B8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-66-Non-Principal Protected-1w",
@@ -1406,7 +1406,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV67",
     "currency_hex": "0601A5BAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-67-Non-Principal Protected-1w",
@@ -1416,7 +1416,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV68",
     "currency_hex": "0601A5BBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-68-Non-Principal Protected-1w",
@@ -1426,7 +1426,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV69",
     "currency_hex": "0601A5BCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-69-Non-Principal Protected-1w",
@@ -1436,7 +1436,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV70",
     "currency_hex": "0601A5BDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-70-Non-Principal Protected-1w",
@@ -1446,7 +1446,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV71",
     "currency_hex": "0601A5BEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-71-Non-Principal Protected-1w",
@@ -1456,7 +1456,7 @@
     "source": "mpt_metadata"
   },
   "0601A5BFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV72",
     "currency_hex": "0601A5BFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-72-Non-Principal Protected-1w",
@@ -1466,7 +1466,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV73",
     "currency_hex": "0601A5C0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-73-Non-Principal Protected-1w",
@@ -1476,7 +1476,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV74",
     "currency_hex": "0601A5C1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-74-Non-Principal Protected-1w",
@@ -1486,7 +1486,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV75",
     "currency_hex": "0601A5C2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-75-Principal Protected-3m",
@@ -1496,7 +1496,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV76",
     "currency_hex": "0601A5C3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-76-Non-Principal Protected-3w",
@@ -1506,7 +1506,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV78",
     "currency_hex": "0601A5C4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-78-Non-Principal Protected-1w",
@@ -1516,7 +1516,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV80",
     "currency_hex": "0601A5C5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-80-Non-Principal Protected-1w",
@@ -1526,7 +1526,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV82",
     "currency_hex": "0601A5C6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-82-Non-Principal Protected-1w",
@@ -1536,7 +1536,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV83",
     "currency_hex": "0601A5C7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-83-Non-Principal Protected-1w",
@@ -1546,7 +1546,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV84",
     "currency_hex": "0601A5C8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-84-Non-Principal Protected-3w",
@@ -1556,7 +1556,7 @@
     "source": "mpt_metadata"
   },
   "0601A5C9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV87",
     "currency_hex": "0601A5C9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-87-Non-Principal Protected-1w",
@@ -1566,7 +1566,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV88",
     "currency_hex": "0601A5CAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-88-Non-Principal Protected-1w",
@@ -1576,7 +1576,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV89",
     "currency_hex": "0601A5CBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-89-Non-Principal Protected-1w",
@@ -1586,7 +1586,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV91",
     "currency_hex": "0601A5CCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-91-Non-Principal Protected-1w",
@@ -1596,7 +1596,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV92",
     "currency_hex": "0601A5CDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-92-Non-Principal Protected-2w",
@@ -1606,7 +1606,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV99",
     "currency_hex": "0601A5CEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-99-Principal Protected-2m",
@@ -1616,7 +1616,7 @@
     "source": "mpt_metadata"
   },
   "0601A5CFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV100",
     "currency_hex": "0601A5CFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-100-Non-Principal Protected-1w",
@@ -1626,7 +1626,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV101",
     "currency_hex": "0601A5D0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-101-Principal Protected-1m",
@@ -1636,7 +1636,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV102",
     "currency_hex": "0601A5D1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-102-Non-Principal Protected-1w",
@@ -1646,7 +1646,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV105",
     "currency_hex": "0601A5D2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-105-Non-Principal Protected-2w",
@@ -1656,7 +1656,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV106",
     "currency_hex": "0601A5D3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-106-Non-Principal Protected-1w",
@@ -1666,7 +1666,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV107",
     "currency_hex": "0601A5D4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-107-Non-Principal Protected-2w",
@@ -1676,7 +1676,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV108",
     "currency_hex": "0601A5D5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-108-Non-Principal Protected-2w",
@@ -1686,7 +1686,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV112",
     "currency_hex": "0601A5D6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-112-Non-Principal Protected-1w",
@@ -1696,7 +1696,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV113",
     "currency_hex": "0601A5D7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-113-Non-Principal Protected-1w",
@@ -1706,7 +1706,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV114",
     "currency_hex": "0601A5D8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-114-Non-Principal Protected-1w",
@@ -1716,7 +1716,7 @@
     "source": "mpt_metadata"
   },
   "0601A5D9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV115",
     "currency_hex": "0601A5D9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-115-Non-Principal Protected-1w",
@@ -1726,7 +1726,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV116",
     "currency_hex": "0601A5DAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-116-Non-Principal Protected-1w",
@@ -1736,7 +1736,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV117",
     "currency_hex": "0601A5DBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-117-Non-Principal Protected-1w",
@@ -1746,7 +1746,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV118",
     "currency_hex": "0601A5DCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-118-Non-Principal Protected-1w",
@@ -1756,7 +1756,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV119",
     "currency_hex": "0601A5DDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-119-Non-Principal Protected-1w",
@@ -1766,7 +1766,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV120",
     "currency_hex": "0601A5DEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-120-Non-Principal Protected-2w",
@@ -1776,7 +1776,7 @@
     "source": "mpt_metadata"
   },
   "0601A5DFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV121",
     "currency_hex": "0601A5DFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-121-Principal Protected-2m",
@@ -1786,7 +1786,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV122",
     "currency_hex": "0601A5E0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-122-Non-Principal Protected-1w",
@@ -1796,7 +1796,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV123",
     "currency_hex": "0601A5E1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-123-Non-Principal Protected-1w",
@@ -1806,7 +1806,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV124",
     "currency_hex": "0601A5E2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-124-Non-Principal Protected-1w",
@@ -1816,7 +1816,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV125",
     "currency_hex": "0601A5E3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-125-Non-Principal Protected-1w",
@@ -1826,7 +1826,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV126",
     "currency_hex": "0601A5E4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-126-Non-Principal Protected-2w",
@@ -1836,7 +1836,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV127",
     "currency_hex": "0601A5E5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-127-Non-Principal Protected-1w",
@@ -1846,7 +1846,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV128",
     "currency_hex": "0601A5E6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-128-Non-Principal Protected-1w",
@@ -1856,7 +1856,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV129",
     "currency_hex": "0601A5E7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-129-Non-Principal Protected-1w",
@@ -1866,7 +1866,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV130",
     "currency_hex": "0601A5E8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-130-Non-Principal Protected-1w",
@@ -1876,7 +1876,7 @@
     "source": "mpt_metadata"
   },
   "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV131",
     "currency_hex": "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-131-Non-Principal Protected-1w",
@@ -1886,7 +1886,7 @@
     "source": "mpt_metadata"
   },
   "0601A5EAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV132",
     "currency_hex": "0601A5EAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-132-Non-Principal Protected-1w",
@@ -1896,7 +1896,7 @@
     "source": "mpt_metadata"
   },
   "0601A5EBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV133",
     "currency_hex": "0601A5EBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-133-Non-Principal Protected-1w",
@@ -1906,7 +1906,7 @@
     "source": "mpt_metadata"
   },
   "0601A5ECE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV134",
     "currency_hex": "0601A5ECE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7",
     "desc": "Multi-Purpose Token: SIV-134-Non-Principal Protected-1w",
@@ -1944,7 +1944,7 @@
     "source": "mpt_metadata"
   },
   "060837B658DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "HVI Spike Te",
     "currency_hex": "060837B658DFB58EBE866100FEDB2013D123744243658B7D",
     "desc": "Xaman opt-in spike 2026-08-17 \u2014 not a real ticket",
@@ -1953,7 +1953,7 @@
     "source": "mpt_metadata"
   },
   "060837F258DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "THE Y PASS",
     "currency_hex": "060837F258DFB58EBE866100FEDB2013D123744243658B7D",
     "desc": "A 30-day pass to the Y. Non-transferable. HVI3 PRODUCTIONS - hvi3.com",
@@ -1981,7 +1981,7 @@
     "source": "mpt_metadata"
   },
   "0615A7A0E6286F29815248DE524F113883280E85B482DD4B:rMyxiYL5vZ1TGohA4yjuTvZtgG6TCJQjyN": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "XRP+",
     "currency_hex": "0615A7A0E6286F29815248DE524F113883280E85B482DD4B",
     "desc": "Contro XRP+ token",
@@ -1991,7 +1991,7 @@
     "source": "mpt_metadata"
   },
   "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91:rHCx2zWMN1r9yB78mtNX9bUUHCL5eMYHUR": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "RGLD",
     "currency_hex": "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91",
     "desc": "Recycled Gold Token (RGT) is a fully traceable, ESG-compliant digital token backed by 100% certified recycled gold. Each token represents an allocated unit of recycled gold sourced from verified suppliers, with independent third-party certification for provenance, carbon footprint, and ethical sourcing. Designed for ESG-conscious investors and funds, RGT provides a secure, transparent, and environmentally responsible way to invest in gold, while enabling redemption into physical recycled gold bars through a verified partner network.",
@@ -2000,7 +2000,7 @@
     "source": "mpt_metadata"
   },
   "06176AC1D842C38D2DFF7EFFCBA0419CDE03A7EEE2835053:rL57AG6GH9osvmKGo82Y23QWsHGaiNoLAG": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "XRP3D",
     "currency_hex": "06176AC1D842C38D2DFF7EFFCBA0419CDE03A7EEE2835053",
     "desc": "3D XRP Symbol on web & in AR",
@@ -2010,7 +2010,7 @@
     "source": "mpt_metadata"
   },
   "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753:rJyNbUbcvP19KYwMq2bPnvYQNwUY2ZQrWZ": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "KLD",
     "currency_hex": "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753",
     "desc": "Debt-indexed, fixed-supply protocol token.",
@@ -2096,7 +2096,7 @@
     "source": "mpt_metadata"
   },
   "0627B6859931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SVXV1",
     "currency_hex": "0627B6859931344A3871ED63805BBF07DECBF03F9C2698BD",
     "desc": "Daily auto-rolling structured product vault. XRP base.",
@@ -2106,7 +2106,7 @@
     "source": "mpt_metadata"
   },
   "0627B6869931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "SIV135",
     "currency_hex": "0627B6869931344A3871ED63805BBF07DECBF03F9C2698BD",
     "desc": "Multi-Purpose Token: SIV-135-Non-Principal Protected-1w",
@@ -2116,7 +2116,7 @@
     "source": "mpt_metadata"
   },
   "0627B6E29931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
-    "category": "stablecoin",
+    "category": "unlabeled",
     "currency_display": "SXRLV1",
     "currency_hex": "0627B6E29931344A3871ED63805BBF07DECBF03F9C2698BD",
     "desc": "Daily auto-rolling structured product vault. RLUSD base.",
@@ -2126,7 +2126,7 @@
     "source": "mpt_metadata"
   },
   "062A13EF9969F110E3B4FE23619B389B949052231E4196F8:rNzBJJkaDVhh17wUyzpLjnL6QEohY4bdX5": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "EBIT",
     "currency_hex": "062A13EF9969F110E3B4FE23619B389B949052231E4196F8",
     "desc": "Infrastructure-backed utility token by Campione Infrastructure",
@@ -2145,7 +2145,7 @@
     "source": "mpt_metadata"
   },
   "0630D1509457BB4DAC6428F49FDC6CDE60AF0E07BA7A3733:rNX4faQ35SdtE4rDoEg8YeVLQKQ57AYyCt": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "https://trop",
     "currency_hex": "0630D1509457BB4DAC6428F49FDC6CDE60AF0E07BA7A3733",
     "issuer": "rNX4faQ35SdtE4rDoEg8YeVLQKQ57AYyCt",
@@ -2253,7 +2253,7 @@
     "source": "mpt_metadata"
   },
   "0634B7B6EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "KEY",
     "currency_hex": "0634B7B6EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
     "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
@@ -2261,7 +2261,7 @@
     "source": "mpt_metadata"
   },
   "0634B7B8EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "KEY",
     "currency_hex": "0634B7B8EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
     "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
@@ -2269,7 +2269,7 @@
     "source": "mpt_metadata"
   },
   "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB:r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "KEY",
     "currency_hex": "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
     "desc": "The native utility and governance token of the Keystone Protocol \u2014 a decentralized lending and asset management platform built on XRPL.",
@@ -2279,7 +2279,7 @@
     "source": "mpt_metadata"
   },
   "0634CAF62DABD2924D048F7C6D8F9BA2088EE68499D61B69:rnwVEnB7zQqJactNFm7ZhaAkK2yUp7HUmn": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "KEY",
     "currency_hex": "0634CAF62DABD2924D048F7C6D8F9BA2088EE68499D61B69",
     "desc": "The native utility and governance token of the Keystone Protocol, built on the XRP Ledger.",
@@ -2289,7 +2289,7 @@
     "source": "mpt_metadata"
   },
   "0634CF15DADB8E4C44F8CEAFF89B3A9FED52604FEE1A184F:rLxDKFyn1hYmLZY2Ktd8kQaLx8E35dBkoV": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "KEY",
     "currency_hex": "0634CF15DADB8E4C44F8CEAFF89B3A9FED52604FEE1A184F",
     "desc": "The native utility and governance token of the Keystone Protocol, built on the XRP Ledger.",
@@ -2812,7 +2812,7 @@
     "source": "mpt_metadata"
   },
   "0643E8EC7C5C53A212F1FC31418F5DC66593CE66F6F3210A:rULZPkxia4xpYtb9rEJUsHenmWAMZfwAzp": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "TQCCA001",
     "currency_hex": "0643E8EC7C5C53A212F1FC31418F5DC66593CE66F6F3210A",
     "issuer": "rULZPkxia4xpYtb9rEJUsHenmWAMZfwAzp",
@@ -2840,7 +2840,7 @@
     "source": "mpt_metadata"
   },
   "0644575DE4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI General",
     "currency_hex": "0644575DE4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2848,7 +2848,7 @@
     "source": "mpt_metadata"
   },
   "0644575EE4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Carbon",
     "currency_hex": "0644575EE4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2856,7 +2856,7 @@
     "source": "mpt_metadata"
   },
   "0644575FE4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Blue Car",
     "currency_hex": "0644575FE4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2864,7 +2864,7 @@
     "source": "mpt_metadata"
   },
   "06445760E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Biodiver",
     "currency_hex": "06445760E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2872,7 +2872,7 @@
     "source": "mpt_metadata"
   },
   "06445761E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Water",
     "currency_hex": "06445761E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2880,7 +2880,7 @@
     "source": "mpt_metadata"
   },
   "06445762E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Soil",
     "currency_hex": "06445762E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2888,7 +2888,7 @@
     "source": "mpt_metadata"
   },
   "06445763E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Air Qual",
     "currency_hex": "06445763E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2896,7 +2896,7 @@
     "source": "mpt_metadata"
   },
   "06445764E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Energy",
     "currency_hex": "06445764E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2904,7 +2904,7 @@
     "source": "mpt_metadata"
   },
   "06445765E4D0CC87F11167B6E0589867CE9CAFDA66C281B3:rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "VGI Waste",
     "currency_hex": "06445765E4D0CC87F11167B6E0589867CE9CAFDA66C281B3",
     "issuer": "rMi1UL1joGAn3rH6Cu9GDiTeErFx8Pc33H",
@@ -2962,7 +2962,7 @@
     "source": "mpt_metadata"
   },
   "064E1349024332DE8684360E4574B7C6934FD6B4BA772552:rUxiSsPXBhBRznVarw3Vu1Rss8FhHEnDg": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "ALERIO",
     "currency_hex": "064E1349024332DE8684360E4574B7C6934FD6B4BA772552",
     "desc": "ALERIO Tokenized Fund",
@@ -2972,7 +2972,7 @@
     "source": "mpt_metadata"
   },
   "064E27366D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8:rwA8orrVtNPuBykRvQdDJzRDQbe7CuxCiR": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "sgBENJI",
     "currency_hex": "064E27366D15D1F5614B4D4E3183F835BCD62E7F6FD9FFD8",
     "desc": "sgBENJI represents one share of the Franklin OnChain U.S. Dollar Short-Term Money Market Fund",
@@ -3027,7 +3027,7 @@
     "source": "mpt_metadata"
   },
   "0657F198D8C28B7B602323469FF6FD09EED69C7210884740:rLm3recAhoqwfnU4HF2RybjALBXVvhJ2Ku": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DTRT",
     "currency_hex": "0657F198D8C28B7B602323469FF6FD09EED69C7210884740",
     "desc": "Utility token for Do The Right Thing Health Covenant Trust. Network coupon for up to 10% of invoices across our healthcare facilities. Fixed internal value of $1. No investment yields promised.",
@@ -3037,6 +3037,7 @@
     "source": "mpt_metadata"
   },
   "4145524F00000000000000000000000000000000:rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7": {
+    "category": "unlabeled",
     "currency_display": "4145524F00000000000000000000000000000000",
     "currency_hex": "4145524F00000000000000000000000000000000",
     "desc": "AeroNeura develops advanced engineering software, intelligent control systems, propulsion testing platforms, dynamometer automation solutions, calibration technologies, simulation environments, and AI enabled industrial engineering tools serving aerospace, automotive, defense, rail, marine, energy, and advanced mobility sectors. AERO is issued through a special purpose vehicle managed by Alter SPVs, which holds an investment interest in AeroNeura Ltd. The token is intended to provide blockchain based representation of the SPV's AeroNeura related holdings. AeroNeura Ltd remains the operating company and does not administer token issuance, transfers, investor onboarding, compliance, or secondary market activities. All matters relating to AERO must be directed to Alter SPVs.",
@@ -3081,14 +3082,14 @@
     "verified_via": "TODO_curation_pass"
   },
   "4249547800000000000000000000000000000000:rBitcoiNXev8VoVxV7pwoQx1sSfonVP9i3": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "BITx",
     "currency_hex": "4249547800000000000000000000000000000000",
     "issuer": "rBitcoiNXev8VoVxV7pwoQx1sSfonVP9i3",
     "verified_via": "https://bitx.fyi"
   },
   "4339425200000000000000000000000000000000:rBCf85rmfGBTAQrqyiNv5fxTvJ5A4EQXWg": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "C9BR",
     "currency_hex": "4339425200000000000000000000000000000000",
     "issuer": "rBCf85rmfGBTAQrqyiNv5fxTvJ5A4EQXWg",
@@ -3102,6 +3103,7 @@
     "verified_via": "https://1vlp9ns2cnebeyi9fdyy.toml.firstledger.net"
   },
   "43484F4C41000000000000000000000000000000:rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy": {
+    "category": "unlabeled",
     "currency_display": "43484F4C41000000000000000000000000000000",
     "currency_hex": "43484F4C41000000000000000000000000000000",
     "desc": "CHOLA represents tokenized participation units associated with ZYR Chola Mines SPV Ltd and its underlying 12% ownership interest in Chola Mining Limited. Issued on the XRP Ledger.",
@@ -3111,14 +3113,14 @@
     "verified_via": "https://chola.zaoyuren.com/.well-known/xrp-ledger.toml"
   },
   "434F524500000000000000000000000000000000:rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "CORE",
     "currency_hex": "434F524500000000000000000000000000000000",
     "issuer": "rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D",
     "verified_via": "TODO_curation_pass"
   },
   "44524F5000000000000000000000000000000000:rszenFJoDdiGjyezQc8pME9KWDQH43Tswh": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "DROP",
     "currency_hex": "44524F5000000000000000000000000000000000",
     "issuer": "rszenFJoDdiGjyezQc8pME9KWDQH43Tswh",
@@ -3126,14 +3128,14 @@
   },
   "457175696C69627269756D000000000000000000:rpakCr61Q92abPXJnVboKENmpKssWyHpwu": {
     "_note": "currency hex spells 'Equilibrium'; display name kept short",
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "EQ",
     "currency_hex": "457175696C69627269756D000000000000000000",
     "issuer": "rpakCr61Q92abPXJnVboKENmpKssWyHpwu",
     "verified_via": "TODO_curation_pass"
   },
   "4641524D00000000000000000000000000000000:rPrAEfVATUNDTJm9CUa8tYeD7oJrVdEGhU": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "FARM",
     "currency_hex": "4641524D00000000000000000000000000000000",
     "issuer": "rPrAEfVATUNDTJm9CUa8tYeD7oJrVdEGhU",
@@ -3147,6 +3149,7 @@
     "verified_via": "https://wcanvdemmjs46iyukw6f.toml.firstledger.net"
   },
   "4752494400000000000000000000000000000000:rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL": {
+    "category": "unlabeled",
     "currency_display": "4752494400000000000000000000000000000000",
     "currency_hex": "4752494400000000000000000000000000000000",
     "desc": "GRID is an XRP Ledger issued digital token administered by Alter SPVs through a designated special purpose vehicle. GRID represents a blockchain based record linked to Alter SPVs' equity interest in WaferGrid Technologies Pte Ltd, a semiconductor test and measurement company focused on essential on wafer test technologies for engineers moving advanced devices from first silicon to profitable production.",
@@ -3163,7 +3166,7 @@
     "verified_via": "https://47mtf8onxsy3tejywnhs.toml.firstledger.net"
   },
   "486F72697A6F6E00000000000000000000000000:rDKJWtrPqKiMBzK9FTVvebMVec7FJtJLx6": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "Horizon",
     "currency_hex": "486F72697A6F6E00000000000000000000000000",
     "issuer": "rDKJWtrPqKiMBzK9FTVvebMVec7FJtJLx6",
@@ -3177,6 +3180,7 @@
     "verified_via": "https://0xjng8bdv8jxglvhdhms.toml.firstledger.net"
   },
   "4D49444153000000000000000000000000000000:": {
+    "category": "unlabeled",
     "currency_display": "MIDAS",
     "currency_hex": "4D49444153000000000000000000000000000000",
     "issuer": "",
@@ -3184,6 +3188,7 @@
     "verified_via": "xrpscan@brand-protected"
   },
   "4D5442494C4C0000000000000000000000000000:": {
+    "category": "unlabeled",
     "currency_display": "MTBILL",
     "currency_hex": "4D5442494C4C0000000000000000000000000000",
     "issuer": "",
@@ -3191,6 +3196,7 @@
     "verified_via": "xrpscan@brand-protected"
   },
   "4F4E444F00000000000000000000000000000000:": {
+    "category": "unlabeled",
     "currency_display": "ONDO",
     "currency_hex": "4F4E444F00000000000000000000000000000000",
     "issuer": "",
@@ -3198,6 +3204,7 @@
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
   },
   "4F55534700000000000000000000000000000000:rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
+    "category": "unlabeled",
     "currency_display": "OUSG",
     "currency_hex": "4F55534700000000000000000000000000000000",
     "issuer": "rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p",
@@ -3205,7 +3212,7 @@
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
   },
   "4F70756C656E6365000000000000000000000000:rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd": {
-    "category": "other",
+    "category": "dex_utility",
     "currency_display": "Opulence",
     "currency_hex": "4F70756C656E6365000000000000000000000000",
     "issuer": "rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd",
@@ -3226,6 +3233,7 @@
     "verified_via": "https://er430ff39f40zsryrccc.toml.firstledger.net"
   },
   "5241564E00000000000000000000000000000000:rQ3JsJVg3m1mw4sKXtCbifgjremnPGSLBn": {
+    "category": "unlabeled",
     "currency_display": "5241564E00000000000000000000000000000000",
     "currency_hex": "5241564E00000000000000000000000000000000",
     "desc": "RAVN is an XRP Ledger issued token representing a defined tokenized allocation linked to 1% of Ravn Robotics' equity. A total of 1,700,000 RAVN tokens were issued at a launch price of $1.00 per token, representing blockchain based participation in the Ravn Robotics equity allocation, subject to issuer terms, eligibility rules, transfer restrictions, and applicable laws.",
@@ -3243,7 +3251,7 @@
     "verified_via": "https://j9y6gvt2q9fxe8ylrskz.toml.firstledger.net"
   },
   "524C555344000000000000000000000000000000:rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De": {
-    "category": "stablecoin",
+    "category": "stablecoin_regulated",
     "currency_display": "RLUSD",
     "currency_hex": "524C555344000000000000000000000000000000",
     "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
@@ -3264,6 +3272,7 @@
     "verified_via": "https://ah7rwikw5biabpzshy6j.toml.firstledger.net"
   },
   "534F494C00000000000000000000000000000000:": {
+    "category": "unlabeled",
     "currency_display": "SOIL",
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "",
@@ -3271,7 +3280,7 @@
     "verified_via": "xrpscan@brand-protected"
   },
   "534F494C00000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "SOIL",
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3280,7 +3289,7 @@
   },
   "534F4C4F00000000000000000000000000000000:rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
     "_note": "Sologenic's official airdrop distribution report names this address as the SOLO issuer (TrustLine instructions).",
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "SOLO",
     "currency_hex": "534F4C4F00000000000000000000000000000000",
     "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
@@ -3294,7 +3303,7 @@
     "verified_via": "curator_inferred_from_activity"
   },
   "5553444300000000000000000000000000000000:rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "USDC",
     "currency_hex": "5553444300000000000000000000000000000000",
     "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
@@ -3302,7 +3311,7 @@
   },
   "555344432E61786C000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "USDC.axl",
     "currency_hex": "555344432E61786C000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3310,7 +3319,7 @@
     "verified_via": "xrpscan@axelar-bridge"
   },
   "5553445600000000000000000000000000000000:rfffsukWALJB1PXYk7H8xkR6UJUDT8nMJE": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "USDV",
     "currency_hex": "5553445600000000000000000000000000000000",
     "issuer": "rfffsukWALJB1PXYk7H8xkR6UJUDT8nMJE",
@@ -3318,7 +3327,7 @@
   },
   "5553446600000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "USDf",
     "currency_hex": "5553446600000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3326,6 +3335,7 @@
     "verified_via": "xrpscan@axelar-bridge"
   },
   "57414E475A595200000000000000000000000000:rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr": {
+    "category": "unlabeled",
     "currency_display": "57414E475A595200000000000000000000000000",
     "currency_hex": "57414E475A595200000000000000000000000000",
     "desc": "WANGZYR represents units associated with ZYR Wang Copper SPV Ltd and its underlying 5% economic interest in Wang Copper Limited, Zambia. Rights and benefits, if any, are governed solely by applicable legal documentation and SPV agreements.",
@@ -3336,7 +3346,7 @@
   },
   "5742544300000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "WBTC",
     "currency_hex": "5742544300000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3345,7 +3355,7 @@
   },
   "5745544800000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "WETH",
     "currency_hex": "5745544800000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3374,13 +3384,14 @@
     "verified_via": "curator_inferred_from_activity"
   },
   "595A5A5546000000000000000000000000000000:rarxeNrtkbRmVX8sKJ77bTuGuaQWDAQTcR": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "YZZUF",
     "currency_hex": "595A5A5546000000000000000000000000000000",
     "issuer": "rarxeNrtkbRmVX8sKJ77bTuGuaQWDAQTcR",
     "verified_via": "https://n7xebpt66gykpkjog34z.toml.firstledger.net"
   },
   "6169787270000000000000000000000000000000:rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu": {
+    "category": "unlabeled",
     "currency_display": "6169787270000000000000000000000000000000",
     "currency_hex": "6169787270000000000000000000000000000000",
     "issuer": "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu",
@@ -3403,7 +3414,7 @@
   },
   "6D42544300000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "mBTC",
     "currency_hex": "6D42544300000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3412,7 +3423,7 @@
   },
   "6D5442494C4C0000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "mTBILL",
     "currency_hex": "6D5442494C4C0000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3421,7 +3432,7 @@
   },
   "6D58525000000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "category": "bridge",
+    "category": "wrapped_bridge",
     "currency_display": "mXRP",
     "currency_hex": "6D58525000000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3437,6 +3448,7 @@
     "verified_via": "TODO_curation_pass"
   },
   "774141504C000000000000000000000000000000:rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo": {
+    "category": "unlabeled",
     "currency_display": "774141504C000000000000000000000000000000",
     "currency_hex": "774141504C000000000000000000000000000000",
     "desc": "wAAPL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Apple Inc. listed stock.",
@@ -3447,6 +3459,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77414D4154000000000000000000000000000000:rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie": {
+    "category": "unlabeled",
     "currency_display": "77414D4154000000000000000000000000000000",
     "currency_hex": "77414D4154000000000000000000000000000000",
     "desc": "wAMAT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Applied Materials, Inc. listed stock.",
@@ -3457,6 +3470,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77414D4400000000000000000000000000000000:r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6": {
+    "category": "unlabeled",
     "currency_display": "77414D4400000000000000000000000000000000",
     "currency_hex": "77414D4400000000000000000000000000000000",
     "desc": "wAMD is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Advanced Micro Devices, Inc. listed stock.",
@@ -3467,6 +3481,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77414D5A4E000000000000000000000000000000:rLpy3QeZohPjLodLsppK4P6REFVV6rCN61": {
+    "category": "unlabeled",
     "currency_display": "77414D5A4E000000000000000000000000000000",
     "currency_hex": "77414D5A4E000000000000000000000000000000",
     "desc": "wAMZN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Amazon.com, Inc. listed stock.",
@@ -3477,6 +3492,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7741524D00000000000000000000000000000000:rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf": {
+    "category": "unlabeled",
     "currency_display": "7741524D00000000000000000000000000000000",
     "currency_hex": "7741524D00000000000000000000000000000000",
     "desc": "wARM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Arm Holdings plc listed stock.",
@@ -3487,6 +3503,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7741534D4C000000000000000000000000000000:rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt": {
+    "category": "unlabeled",
     "currency_display": "7741534D4C000000000000000000000000000000",
     "currency_hex": "7741534D4C000000000000000000000000000000",
     "desc": "wASML is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to ASML Holding N.V. listed stock.",
@@ -3497,6 +3514,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7741564156000000000000000000000000000000:rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z": {
+    "category": "unlabeled",
     "currency_display": "7741564156000000000000000000000000000000",
     "currency_hex": "7741564156000000000000000000000000000000",
     "desc": "wAVAV is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to AeroVironment, Inc. listed stock.",
@@ -3507,6 +3525,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774156474F000000000000000000000000000000:rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD": {
+    "category": "unlabeled",
     "currency_display": "774156474F000000000000000000000000000000",
     "currency_hex": "774156474F000000000000000000000000000000",
     "desc": "wAVGO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Broadcom Inc. listed stock.",
@@ -3517,6 +3536,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7742414241000000000000000000000000000000:rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK": {
+    "category": "unlabeled",
     "currency_display": "7742414241000000000000000000000000000000",
     "currency_hex": "7742414241000000000000000000000000000000",
     "desc": "wBABA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alibaba Group Holding Limited listed stock.",
@@ -3527,6 +3547,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77434F494E000000000000000000000000000000:rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT": {
+    "category": "unlabeled",
     "currency_display": "77434F494E000000000000000000000000000000",
     "currency_hex": "77434F494E000000000000000000000000000000",
     "desc": "wCOIN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Coinbase Global, Inc. listed stock.",
@@ -3537,6 +3558,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7747465300000000000000000000000000000000:r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV": {
+    "category": "unlabeled",
     "currency_display": "7747465300000000000000000000000000000000",
     "currency_hex": "7747465300000000000000000000000000000000",
     "desc": "wGFS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to GlobalFoundries Inc. listed stock.",
@@ -3547,6 +3569,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77474F4F47000000000000000000000000000000:r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg": {
+    "category": "unlabeled",
     "currency_display": "77474F4F47000000000000000000000000000000",
     "currency_hex": "77474F4F47000000000000000000000000000000",
     "desc": "wGOOG is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alphabet Inc. listed stock.",
@@ -3557,6 +3580,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77494E5443000000000000000000000000000000:r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV": {
+    "category": "unlabeled",
     "currency_display": "77494E5443000000000000000000000000000000",
     "currency_hex": "77494E5443000000000000000000000000000000",
     "desc": "wINTC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Intel Corporation listed stock.",
@@ -3567,6 +3591,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774A504D00000000000000000000000000000000:rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9": {
+    "category": "unlabeled",
     "currency_display": "774A504D00000000000000000000000000000000",
     "currency_hex": "774A504D00000000000000000000000000000000",
     "desc": "wJPM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to JPMorgan Chase & Co. listed stock.",
@@ -3577,6 +3602,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774B544F53000000000000000000000000000000:rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx": {
+    "category": "unlabeled",
     "currency_display": "774B544F53000000000000000000000000000000",
     "currency_hex": "774B544F53000000000000000000000000000000",
     "desc": "wKTOS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Kratos Defense & Security Solutions, Inc. listed stock.",
@@ -3587,6 +3613,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774C485800000000000000000000000000000000:rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq": {
+    "category": "unlabeled",
     "currency_display": "774C485800000000000000000000000000000000",
     "currency_hex": "774C485800000000000000000000000000000000",
     "desc": "wLHX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to L3Harris Technologies, Inc. listed stock.",
@@ -3597,6 +3624,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774C4C5900000000000000000000000000000000:rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv": {
+    "category": "unlabeled",
     "currency_display": "774C4C5900000000000000000000000000000000",
     "currency_hex": "774C4C5900000000000000000000000000000000",
     "desc": "wLLY is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Eli Lilly and Company listed stock.",
@@ -3607,6 +3635,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774C4D5400000000000000000000000000000000:ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio": {
+    "category": "unlabeled",
     "currency_display": "774C4D5400000000000000000000000000000000",
     "currency_hex": "774C4D5400000000000000000000000000000000",
     "desc": "wLMT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lockheed Martin Corporation listed stock.",
@@ -3617,6 +3646,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774C524358000000000000000000000000000000:rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T": {
+    "category": "unlabeled",
     "currency_display": "774C524358000000000000000000000000000000",
     "currency_hex": "774C524358000000000000000000000000000000",
     "desc": "wLRCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lam Research Corporation listed stock.",
@@ -3627,6 +3657,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774D455441000000000000000000000000000000:r39KivuiizHEKe76spEk1vNALmhuTFMXhG": {
+    "category": "unlabeled",
     "currency_display": "774D455441000000000000000000000000000000",
     "currency_hex": "774D455441000000000000000000000000000000",
     "desc": "wMETA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Meta Platforms, Inc. listed stock.",
@@ -3637,6 +3668,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774D52564C000000000000000000000000000000:rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP": {
+    "category": "unlabeled",
     "currency_display": "774D52564C000000000000000000000000000000",
     "currency_hex": "774D52564C000000000000000000000000000000",
     "desc": "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock.",
@@ -3647,6 +3679,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774D534654000000000000000000000000000000:rPpEtXCzThYmWyzARbD3snF53JuasuJgSk": {
+    "category": "unlabeled",
     "currency_display": "774D534654000000000000000000000000000000",
     "currency_hex": "774D534654000000000000000000000000000000",
     "desc": "wMSFT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Microsoft Corporation listed stock.",
@@ -3657,6 +3690,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774E464C58000000000000000000000000000000:ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH": {
+    "category": "unlabeled",
     "currency_display": "774E464C58000000000000000000000000000000",
     "currency_hex": "774E464C58000000000000000000000000000000",
     "desc": "wNFLX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Netflix, Inc. listed stock.",
@@ -3667,6 +3701,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774E4F4300000000000000000000000000000000:rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT": {
+    "category": "unlabeled",
     "currency_display": "774E4F4300000000000000000000000000000000",
     "currency_hex": "774E4F4300000000000000000000000000000000",
     "desc": "wNOC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Northrop Grumman Corporation listed stock.",
@@ -3677,6 +3712,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774E4F564F000000000000000000000000000000:rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ": {
+    "category": "unlabeled",
     "currency_display": "774E4F564F000000000000000000000000000000",
     "currency_hex": "774E4F564F000000000000000000000000000000",
     "desc": "wNOVO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Novo Nordisk A/S listed stock.",
@@ -3687,6 +3723,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "774E564441000000000000000000000000000000:raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g": {
+    "category": "unlabeled",
     "currency_display": "774E564441000000000000000000000000000000",
     "currency_hex": "774E564441000000000000000000000000000000",
     "desc": "wNVDA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to NVIDIA Corporation listed stock.",
@@ -3697,6 +3734,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "77504C5452000000000000000000000000000000:rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS": {
+    "category": "unlabeled",
     "currency_display": "77504C5452000000000000000000000000000000",
     "currency_hex": "77504C5452000000000000000000000000000000",
     "desc": "wPLTR is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Palantir Technologies Inc. listed stock.",
@@ -3707,6 +3745,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7751434F4D000000000000000000000000000000:r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF": {
+    "category": "unlabeled",
     "currency_display": "7751434F4D000000000000000000000000000000",
     "currency_hex": "7751434F4D000000000000000000000000000000",
     "desc": "wQCOM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Qualcomm Incorporated listed stock.",
@@ -3717,6 +3756,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7752545800000000000000000000000000000000:rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK": {
+    "category": "unlabeled",
     "currency_display": "7752545800000000000000000000000000000000",
     "currency_hex": "7752545800000000000000000000000000000000",
     "desc": "wRTX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to RTX Corporation listed stock.",
@@ -3727,6 +3767,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7753504358000000000000000000000000000000:rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ": {
+    "category": "unlabeled",
     "currency_display": "7753504358000000000000000000000000000000",
     "currency_hex": "7753504358000000000000000000000000000000",
     "desc": "wSPCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Space Exploration Technologies Corp. listed stock.",
@@ -3737,6 +3778,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7754534C41000000000000000000000000000000:rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
+    "category": "unlabeled",
     "currency_display": "7754534C41000000000000000000000000000000",
     "currency_hex": "7754534C41000000000000000000000000000000",
     "desc": "wTSLA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Tesla, Inc. listed stock.",
@@ -3747,6 +3789,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7754534D43000000000000000000000000000000:rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH": {
+    "category": "unlabeled",
     "currency_display": "7754534D43000000000000000000000000000000",
     "currency_hex": "7754534D43000000000000000000000000000000",
     "desc": "wTSMC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Taiwan Semiconductor Manufacturing Company Limited listed stock.",
@@ -3757,6 +3800,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "7756495341000000000000000000000000000000:rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7": {
+    "category": "unlabeled",
     "currency_display": "7756495341000000000000000000000000000000",
     "currency_hex": "7756495341000000000000000000000000000000",
     "desc": "wVISA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Visa Inc. listed stock.",
@@ -3767,7 +3811,7 @@
     "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
   },
   "ARK:rf5Jzzy6oAFBJjLhokha1v8pXVgYYjee3b": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "ARK",
     "currency_hex": "ARK",
     "issuer": "rf5Jzzy6oAFBJjLhokha1v8pXVgYYjee3b",
@@ -3775,28 +3819,28 @@
   },
   "ASC:r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R": {
     "_note": "Reaper Financial DeFi token (Ascension). Same issuer as RPR.",
-    "category": "defi",
+    "category": "defi_lending",
     "currency_display": "ASC",
     "currency_hex": "ASC",
     "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
     "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
   },
   "ATM:raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "ATM",
     "currency_hex": "ATM",
     "issuer": "raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ",
     "verified_via": "https://snff2vqm0ozy1xjjppix.toml.firstledger.net"
   },
   "BOX:rhy4FUHtXrMZhbkBfeYvDv4nz6R7M4cu1t": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "BOX",
     "currency_hex": "BOX",
     "issuer": "rhy4FUHtXrMZhbkBfeYvDv4nz6R7M4cu1t",
     "verified_via": "curator_inferred_from_activity"
   },
   "BTC:rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL": {
-    "category": "wrapped_major",
+    "category": "wrapped_bridge",
     "currency_display": "BTC.Gatehub",
     "currency_hex": "BTC",
     "issuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
@@ -3804,20 +3848,21 @@
   },
   "BTC:rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B": {
     "_note": "Same Bitstamp issuer address as USD/EUR. Source establishes the address as Bitstamp-controlled.",
-    "category": "wrapped_major",
+    "category": "wrapped_bridge",
     "currency_display": "BTC.Bitstamp",
     "currency_hex": "BTC",
     "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
     "verified_via": "https://blog.bitstamp.net/post/bitstamp-eur-iou-services-on-xrp-ledger/"
   },
   "BXE:rM1J2Mc2eCSFpCz5QXxhDG2KWkGQWgy87r": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "BXE",
     "currency_hex": "BXE",
     "issuer": "rM1J2Mc2eCSFpCz5QXxhDG2KWkGQWgy87r",
     "verified_via": "curator_inferred_from_activity"
   },
   "CCR:rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi": {
+    "category": "unlabeled",
     "currency_display": "CCR",
     "currency_hex": "CCR",
     "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
@@ -3825,13 +3870,14 @@
     "verified_via": "https://cocorodzuke.jp/.well-known/xrp-ledger.toml"
   },
   "CSC:rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "CSC",
     "currency_hex": "CSC",
     "issuer": "rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr",
     "verified_via": "TODO_curation_pass"
   },
   "CVK:rNByev6jxJAy9TqLQxg7bwn4i4VJwWq3nx": {
+    "category": "unlabeled",
     "currency_display": "CVK",
     "currency_hex": "CVK",
     "desc": "CVK is a digital asset on the XRP Ledger associated with CryoVektor Systems NAO, a private Russian company specializing in cryogenic systems, industrial gas technologies, LNG infrastructure, vacuum insulated equipment, aerospace thermal management solutions, and advanced low temperature engineering.",
@@ -3842,34 +3888,35 @@
     "verified_via": "https://cvk.zaoyuren.com/.well-known/xrp-ledger.toml"
   },
   "ELS:rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "ELS",
     "currency_hex": "ELS",
     "issuer": "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg",
     "verified_via": "TODO_curation_pass"
   },
   "ETH:rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h": {
-    "category": "wrapped_major",
+    "category": "wrapped_bridge",
     "currency_display": "ETH.Gatehub",
     "currency_hex": "ETH",
     "issuer": "rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h",
     "verified_via": "TODO_curation_pass"
   },
   "EUR:rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq": {
-    "category": "fiat",
+    "category": "unlabeled",
     "currency_display": "EUR.Gatehub",
     "currency_hex": "EUR",
     "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
     "verified_via": "TODO_curation_pass"
   },
   "EVR:ra9g3LAJm9xJu8Awe7oWzR6VXFB1mpFtSe": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "EVR",
     "currency_hex": "EVR",
     "issuer": "ra9g3LAJm9xJu8Awe7oWzR6VXFB1mpFtSe",
     "verified_via": "curator_inferred_from_activity"
   },
   "FSE:rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj": {
+    "category": "unlabeled",
     "currency_display": "FSE",
     "currency_hex": "FSE",
     "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj",
@@ -3877,35 +3924,35 @@
     "verified_via": "https://strategyengine.one/.well-known/xrp-ledger.toml"
   },
   "LHT:rHashLabsu2H6hXDSunL8AcVDmTyE17Z35": {
-    "category": "other",
+    "category": "defi_yield",
     "currency_display": "LHT",
     "currency_hex": "LHT",
     "issuer": "rHashLabsu2H6hXDSunL8AcVDmTyE17Z35",
     "verified_via": "https://lhtoken.io"
   },
   "MAG:rXmagwMmnFtVet3uL26Q2iwk287SRvVMJ": {
-    "category": "other",
+    "category": "dex_utility",
     "currency_display": "MAG",
     "currency_hex": "MAG",
     "issuer": "rXmagwMmnFtVet3uL26Q2iwk287SRvVMJ",
     "verified_via": "https://xmagnetic.org"
   },
   "NPS:rMGGhcxk1cH8tRCF5cLbXCTFmUwSNYYM2G": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "NPS",
     "currency_hex": "NPS",
     "issuer": "rMGGhcxk1cH8tRCF5cLbXCTFmUwSNYYM2G",
     "verified_via": "https://t78zsdicnn0j8aotvnva.toml.firstledger.net"
   },
   "PLR:rNSYhWLhuHvmURwWbJPBKZMSPsyG5Qek17": {
-    "category": "other",
+    "category": "gaming",
     "currency_display": "PLR",
     "currency_hex": "PLR",
     "issuer": "rNSYhWLhuHvmURwWbJPBKZMSPsyG5Qek17",
     "verified_via": "https://xrpillars.com/"
   },
   "PLX:rGLEgQdktoN4Be5thhk6seg1HifGPBxY5Q": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "PLX",
     "currency_hex": "PLX",
     "issuer": "rGLEgQdktoN4Be5thhk6seg1HifGPBxY5Q",
@@ -3913,20 +3960,21 @@
   },
   "RPR:r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R": {
     "_note": "Reaper Financial DeFi token (Reaper). Issuer runs two tickers (RPR + ASC) off same address.",
-    "category": "defi",
+    "category": "defi_lending",
     "currency_display": "RPR",
     "currency_hex": "RPR",
     "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
     "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
   },
   "STX:rSTAYKxF2K77ZLZ8GoAwTqPGaphAqMyXV": {
-    "category": "other",
+    "category": "dex_utility",
     "currency_display": "STX",
     "currency_hex": "STX",
     "issuer": "rSTAYKxF2K77ZLZ8GoAwTqPGaphAqMyXV",
     "verified_via": "https://staykx.com"
   },
   "TXT:rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg": {
+    "category": "unlabeled",
     "currency_display": "TXT",
     "currency_hex": "TXT",
     "domain": "token.textrp.io",
@@ -3936,14 +3984,14 @@
     "verified_via": "https://token.textrp.io/.well-known/xrp-ledger.toml"
   },
   "URL:rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "URL",
     "currency_hex": "URL",
     "issuer": "rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp",
     "verified_via": "https://urlsurlf.com"
   },
   "USD:rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq": {
-    "category": "stablecoin",
+    "category": "stablecoin_gateway",
     "currency_display": "USD.Gatehub",
     "currency_hex": "USD",
     "issuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
@@ -3951,20 +3999,21 @@
   },
   "USD:rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B": {
     "_note": "Bitstamp blog confirms this address as Bitstamp's XRPL IOU issuer (the post discusses EUR; on-chain data shows the same address issues USD/BTC/EUR IOUs).",
-    "category": "stablecoin",
+    "category": "stablecoin_gateway",
     "currency_display": "USD.Bitstamp",
     "currency_hex": "USD",
     "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
     "verified_via": "https://blog.bitstamp.net/post/bitstamp-eur-iou-services-on-xrp-ledger/"
   },
   "WAP:rfC81JixqoHgsgBjxpEJsbc2qPwJjTykHN": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "WAP",
     "currency_hex": "WAP",
     "issuer": "rfC81JixqoHgsgBjxpEJsbc2qPwJjTykHN",
     "verified_via": "https://ddntugbzfb0vqmi9zhsz.toml.firstledger.net"
   },
   "WST:rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST": {
+    "category": "unlabeled",
     "currency_display": "WST",
     "currency_hex": "WST",
     "issuer": "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST",
@@ -3972,13 +4021,14 @@
     "verified_via": "https://pay.aiic.nz/.well-known/xrp-ledger.toml"
   },
   "XAH:rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "XAH",
     "currency_hex": "XAH",
     "issuer": "rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv",
     "verified_via": "https://xahau.network"
   },
   "XHO:r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur": {
+    "category": "unlabeled",
     "currency_display": "XHO",
     "currency_hex": "XHO",
     "domain": "xheronft.com",
@@ -3988,20 +4038,21 @@
     "verified_via": "https://xheronft.com/.well-known/xrp-ledger.toml"
   },
   "XPM:rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa": {
-    "category": "native_utility",
+    "category": "native_utility_chain",
     "currency_display": "XPM",
     "currency_hex": "XPM",
     "issuer": "rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa",
     "verified_via": "TODO_curation_pass"
   },
   "XQK:rHKrPGdpaqNRqRvmsiqQhD6azqc4npWoLC": {
-    "category": "other",
+    "category": "unlabeled",
     "currency_display": "XQK",
     "currency_hex": "XQK",
     "issuer": "rHKrPGdpaqNRqRvmsiqQhD6azqc4npWoLC",
     "verified_via": "curator_inferred_from_activity"
   },
   "XRH:r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw": {
+    "category": "unlabeled",
     "currency_display": "XRH",
     "currency_hex": "XRH",
     "issuer": "r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw",
@@ -4010,6 +4061,7 @@
     "verified_via": "https://xrhrabbithole.github.io/.well-known/xrp-ledger.toml"
   },
   "XRT:rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR": {
+    "category": "unlabeled",
     "currency_display": "XRT",
     "currency_hex": "XRT",
     "desc": "On XRPTurbo, users can stake our flagship XRT token, invest in new projects through our launchpad and manage AI Agents through a decentralized interface.",
@@ -4020,13 +4072,14 @@
     "verified_via": "https://xrpturbo.com/.well-known/xrp-ledger.toml"
   },
   "ZRP:rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe": {
-    "category": "other",
+    "category": "gaming",
     "currency_display": "ZRP",
     "currency_hex": "ZRP",
     "issuer": "rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe",
     "verified_via": "https://zerpmon.world"
   },
   "wMU:rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3": {
+    "category": "unlabeled",
     "currency_display": "wMU",
     "currency_hex": "wMU",
     "desc": "wMU is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Micron Technology, Inc. listed stock.",
