@@ -122,6 +122,32 @@ if [[ -z "$SPOOL_FREE_KB" ]] || (( SPOOL_FREE_KB < 15 * 1024 * 1024 )); then
   exit 1
 fi
 
+# TCC / write-roundtrip preflight (2026-09-07 hardening after the 9.5-hour
+# silent block). macOS Sequoia+ Removable Volumes consent is per-binary +
+# session-context sensitive; a launchd LaunchAgent may lack the consent
+# even when the same binary has it under an interactive Terminal. A stale
+# grant post-Homebrew-upgrade produces the same silent-block. This probe
+# writes a canary + reads it back at t=0; if consent is missing or the
+# volume is r/o, we fail LOUDLY here instead of hanging pg_dump for hours.
+PROBE_FILE="${SPOOL_ROOT}/.tcc_probe"
+PROBE_PAYLOAD="tcc-probe-$$-$(date -u +%s)"
+if ! printf '%s\n' "$PROBE_PAYLOAD" > "$PROBE_FILE" 2>/dev/null; then
+  log "FAIL: write-roundtrip preflight — cannot create ${PROBE_FILE}. "
+  log "       Likely macOS Removable Volumes TCC consent missing for bash/pg_dump/rclone."
+  log "       Grant: System Settings → Privacy & Security → Files and Folders →"
+  log "              pg_dump + rclone + bash (all binaries the wrapper invokes) →"
+  log "              tick Removable Volumes."
+  exit 1
+fi
+_read_back="$(cat "$PROBE_FILE" 2>/dev/null || echo '')"
+rm -f "$PROBE_FILE" 2>/dev/null || true
+if [[ "$_read_back" != "$PROBE_PAYLOAD" ]]; then
+  log "FAIL: write-roundtrip preflight — wrote payload but read back differed. "
+  log "       Volume may be truncating writes or is intermittently unmounted."
+  exit 1
+fi
+log "  preflight: write-roundtrip ok (TCC consent present, volume writable)"
+
 # Housekeeping: purge any stale tmp files left by a killed prior run
 # BEFORE this run begins so we don't accumulate uncleaned dumps if the
 # upload trap fires or the machine reboots mid-run.
@@ -129,29 +155,100 @@ find "$SPOOL_ROOT" -maxdepth 1 -type f -name 'neondb-*.dump' -mtime +1 \
      -exec rm -f {} \; 2>/dev/null || true
 
 TMPDUMP="${SPOOL_ROOT}/${DUMP_NAME}"
-# Trap: on any exit path (success, failure, signal) remove the tmp dump.
-# Guarantees zero orphans in the spool even if pg_dump / rclone crash.
-trap 'rm -f "$TMPDUMP" 2>/dev/null || true' EXIT
+# Trap: on any exit path (success, failure, signal) remove the tmp dump
+# AND kill the watchdog subshell if it's still running.
+_cleanup() {
+  rm -f "$TMPDUMP" 2>/dev/null || true
+  if [[ -n "${WATCHDOG_PID:-}" ]]; then
+    kill "$WATCHDOG_PID" 2>/dev/null || true
+  fi
+}
+trap _cleanup EXIT
 
 log "  dumping → ${TMPDUMP} (then uploading → ${DEST})"
 START_EPOCH=$(date +%s)
 
-# Direct (non-pooler) endpoint for pg_dump — 2026-08-30 wound.
-# Neon's PgBouncer pooler enforces server-side statement_timeout=25s at
-# connection setup and rejects the startup `options=` parameter, so
-# PGOPTIONS/SET statement_timeout=0 never reaches the backend through the
-# pooler. Full-table dumps of nft_activity/events grew past the 25s budget
-# → PQgetCopyData/PQgetResult failures. The direct endpoint bypasses
-# PgBouncer and honors PGOPTIONS.
-# Scope: BACKUP ONLY. Web app, walkers, canary, everything else keeps
-# the pooler + 25s ceiling untouched (Neon compute protection).
-DUMP_URL="${DATABASE_URL/-pooler./.}"
+# Stuck-write watchdog (2026-09-07 hardening). Runs in a subshell,
+# samples $TMPDUMP mtime every 60s; if the mtime hasn't advanced for
+# WATCHDOG_STALL_SECONDS, kills the parent wrapper process. That in turn
+# triggers the EXIT trap which removes the (stalled) tmp file. This is
+# the belt to the TCC preflight's suspenders: if consent revokes mid-
+# write, or the volume drops mid-write, the wrapper dies in ≤N min
+# instead of hanging for 9.5 h.
+WATCHDOG_STALL_SECONDS=1200   # 20 min
+(
+  WRAPPER_PID=$$
+  prev_mtime=0
+  stall_since=0
+  while sleep 60; do
+    if ! kill -0 "$WRAPPER_PID" 2>/dev/null; then
+      exit 0  # wrapper gone, watchdog quits
+    fi
+    if [[ ! -f "$TMPDUMP" ]]; then
+      continue  # pre-dump-start; keep watching
+    fi
+    cur_mtime="$(stat -f %m "$TMPDUMP" 2>/dev/null || echo 0)"
+    if (( cur_mtime > prev_mtime )); then
+      prev_mtime=$cur_mtime
+      stall_since=0
+      continue
+    fi
+    if (( stall_since == 0 )); then
+      stall_since=$(date +%s)
+      continue
+    fi
+    stall_age=$(( $(date +%s) - stall_since ))
+    if (( stall_age >= WATCHDOG_STALL_SECONDS )); then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] WATCHDOG: TMPDUMP mtime stalled ${stall_age}s (threshold ${WATCHDOG_STALL_SECONDS}s) — killing wrapper pid ${WRAPPER_PID}" | tee -a "$LOG_FILE" >&2
+      kill "$WRAPPER_PID" 2>/dev/null || true
+      exit 1
+    fi
+  done
+) &
+WATCHDOG_PID=$!
+log "  watchdog: pid=${WATCHDOG_PID} threshold=${WATCHDOG_STALL_SECONDS}s"
 
+# 2026-08-30 wound: direct (non-pooler) endpoint required for pg_dump
+# to honor PGOPTIONS=statement_timeout=0. Scope BACKUP ONLY; web app,
+# walkers, canary keep pooler + 25s ceiling (Neon compute protection).
+# 2026-09-07 hardening: parse DATABASE_URL into components and pass them
+# via env vars, NEVER as a positional pg_dump argv. Previously
+# `pg_dump ... "$DUMP_URL"` exposed the password to any process able to
+# read /proc / `ps -eo command`. That leak class was demonstrated when
+# a JJ diagnostic `ps` printed the URL into the transcript. Env-var
+# passing keeps the secret out of argv entirely.
+DUMP_URL_DIRECT="${DATABASE_URL/-pooler./.}"
+# Parse postgresql://user:pass@host:port/db?query with bash regex.
+if [[ "$DUMP_URL_DIRECT" =~ ^postgres(ql)?://([^:]+):([^@]+)@([^:/]+)(:([0-9]+))?/([^?]+)(\?(.*))?$ ]]; then
+  PG_USER="${BASH_REMATCH[2]}"
+  PG_PASS="${BASH_REMATCH[3]}"
+  PG_HOST="${BASH_REMATCH[4]}"
+  PG_PORT="${BASH_REMATCH[6]:-5432}"
+  PG_DB="${BASH_REMATCH[7]}"
+  # sslmode=require, channel_binding=require live in query string; forward via
+  # PGSSLMODE / PGCHANNELBINDING which libpq honors.
+  PG_QUERY="${BASH_REMATCH[9]:-}"
+else
+  log "FAIL: DATABASE_URL did not match postgres://user:pass@host:port/db shape — refusing to run"
+  exit 1
+fi
 # --no-owner / --no-acl produce portable dumps that restore cleanly into
 # a different cluster (Neon-specific role IDs would otherwise break local
-# restore).
-if PGOPTIONS='-c statement_timeout=0' \
-   pg_dump -Fc --no-owner --no-acl -f "$TMPDUMP" "$DUMP_URL"; then
+# restore). Password via PGPASSWORD env; NOT in argv.
+_pg_dump_argv_free() {
+  # PG* env vars are the standard libpq mechanism — pg_dump reads them
+  # directly. Argv contains only flags + path, never the DSN.
+  PGHOST="$PG_HOST" \
+  PGPORT="$PG_PORT" \
+  PGDATABASE="$PG_DB" \
+  PGUSER="$PG_USER" \
+  PGPASSWORD="$PG_PASS" \
+  PGSSLMODE="require" \
+  PGCHANNELBINDING="require" \
+  PGOPTIONS='-c statement_timeout=0' \
+    pg_dump -Fc --no-owner --no-acl -f "$TMPDUMP"
+}
+if _pg_dump_argv_free; then
   DUMP_EPOCH=$(date +%s)
   DUMP_DURATION=$((DUMP_EPOCH - START_EPOCH))
   LOCAL_BYTES="$(stat -f %z "$TMPDUMP" 2>/dev/null || echo unknown)"
