@@ -6543,40 +6543,47 @@ def _check_v09_load_signing_key():
 def _check_v09_sign(envelope: dict) -> dict:
     """Return envelope with a `proof.check_v09_signature` block added.
 
-    DRAFT — field names subject to Charlie's Tue 2026-09-01 EOD ruling.
-    Nested inside `proof` (rather than as a new top-level key) to keep
-    the {data, proof, server} envelope contract locked by
-    tests/test_check_json_negotiation.py.
-
     Canonical hash is SHA-256 of `signed_snapshot._canonical_json(...)` —
-    same canonicalization the snapshot signer uses, so verifiers can
-    reuse the existing verify path. Hash is computed over the envelope
-    with the signature block absent (self-reference would be circular),
-    so the signature covers exactly what a verifier reconstructs.
+    same canonicalization the snapshot signer uses. Hash covers the
+    envelope with the signature block absent (self-reference would be
+    circular), so verifiers reconstruct the same bytes.
+
+    Signing routes through the Mac sig-service (`sig_client`) over the
+    CF-Access tunnel — the private key never enters this process. Fail-
+    open: if the sig-service is unreachable/locked/rate-limited, the
+    envelope still ships with `sig_ed25519: null` and `sig_status`
+    describing why. Verifiers see the null and know it's an infra hop,
+    not a validity claim.
     """
-    import base64
     import copy
     import hashlib
     from signed_snapshot import _canonical_json
+    import sig_client
 
     envelope_for_hash = copy.deepcopy(envelope)
     envelope_for_hash.get("proof", {}).pop("check_v09_signature", None)
     canonical = _canonical_json(envelope_for_hash)
     canonical_hash = hashlib.sha256(canonical).hexdigest()
-    priv = _check_v09_load_signing_key()
-    if priv is None:
-        sig_b64 = None
-        signer = None
-    else:
-        sig_b64 = base64.b64encode(priv.sign(canonical)).decode()
-        signer = _CHECK_V09_SIGNER_ID
-    signed = copy.deepcopy(envelope)
-    signed.setdefault("proof", {})["check_v09_signature"] = {
-        "signer": signer,
-        "sig_ed25519": sig_b64,
+
+    sig_block, status = sig_client.sign_receipt(canonical_hash, kind="check")
+
+    sig_out = {
         "canonical_hash_sha256": canonical_hash,
         "canonicalization": "sorted-keys-no-whitespace-utf8",
+        "sig_status": status,
     }
+    if sig_block:
+        sig_out["signer"] = sig_block.get("signing_key_fingerprint")
+        sig_out["sig_ed25519"] = sig_block.get("signature_ed25519_hex")
+        sig_out["domain_separator"] = sig_block.get("domain_separator")
+        sig_out["signed_at_utc"] = sig_block.get("signed_at_utc")
+    else:
+        sig_out["signer"] = None
+        sig_out["sig_ed25519"] = None
+        sig_out["sig_unreachable_at_utc"] = sig_client._iso_utc_now()
+
+    signed = copy.deepcopy(envelope)
+    signed.setdefault("proof", {})["check_v09_signature"] = sig_out
     return signed
 
 
