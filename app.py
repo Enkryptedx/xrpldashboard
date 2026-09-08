@@ -8645,13 +8645,23 @@ def admin_stats():
     return redirect(url_for("analytics"), code=301)
 
 
+_ADMIN_COOKIE_NAME = "admin_token"
+_ADMIN_COOKIE_MAX_AGE = 86400   # 24h TTL — Charlie ruling 2026-09-08 for phone-friendly curation
+
+
 def _admin_authed(req):
     """Gate for /admin/* routes. ADMIN_TOKEN env var is the shared secret,
-    accepted ONLY via Authorization: Bearer <t> header. Query-string auth
-    was intentionally removed (Charlie ruling 2026-09-07) — a secret in a
-    URL lands in Render access logs, browser history, browser referrers,
-    and any well-meaning "share this link" screenshot. Header-only closes
-    all of those channels.
+    accepted via either:
+      - Authorization: Bearer <t> header (headless / API path — desktop
+        with a browser extension like ModHeader also uses this)
+      - `admin_token` cookie (set by POST /admin/set-token, HttpOnly +
+        Secure + SameSite=Strict + 24h TTL — the phone path for
+        Charlie's away-window curation)
+
+    Query-string auth is intentionally NOT accepted (Charlie ruling
+    2026-09-07): a secret in a URL lands in Render access logs, browser
+    history, referrers, and screenshots — header + cookie close those
+    channels.
 
     If ADMIN_TOKEN is unset the console is disabled entirely — a fresh
     Render deploy without the env var configured returns 503, not "open
@@ -8662,13 +8672,66 @@ def _admin_authed(req):
     tok = (os.environ.get("ADMIN_TOKEN") or "").strip()
     if not tok:
         return False, "admin_disabled_no_token"
+    # Try Bearer header first (existing header path).
     submitted = (req.headers.get("Authorization") or "").strip()
-    if not submitted.startswith("Bearer "):
-        return False, "admin_unauthenticated"
-    submitted = submitted[7:].strip()
+    if submitted.startswith("Bearer "):
+        submitted = submitted[7:].strip()
+        if submitted and secrets.compare_digest(submitted, tok):
+            return True, None
+    # Try cookie (phone-friendly path, Charlie ruling 2026-09-08).
+    cookie = (req.cookies.get(_ADMIN_COOKIE_NAME) or "").strip()
+    if cookie and secrets.compare_digest(cookie, tok):
+        return True, None
+    return False, "admin_unauthenticated"
+
+
+@app.route("/admin/set-token", methods=["POST"])
+def admin_set_token():
+    """Cookie-set endpoint for phone-friendly /admin/* auth. Accepts a
+    JSON body `{"token": "..."}`, validates via constant-time compare
+    against ADMIN_TOKEN, and on success sets an HttpOnly + Secure +
+    SameSite=Strict cookie with a 24h TTL. On failure returns 401 with
+    no cookie set. Fingerprint the request in the response so Charlie
+    can eyeball that his phone got the cookie (`{"ok": true}` vs
+    `{"ok": false}`); no diagnostic details on failure to reduce
+    guessing surface.
+
+    Charlie ruling 2026-09-08 evening — the phone path for /admin/
+    token-review during the away-window (post 2026-09-13 Sun publish).
+    Bearer header still works for desktop + API paths; this endpoint
+    only exists for the "type token once, then tap buttons for a week"
+    phone flow."""
+    tok = (os.environ.get("ADMIN_TOKEN") or "").strip()
+    if not tok:
+        return jsonify({"ok": False, "error": "admin_disabled_no_token"}), 503
+    try:
+        body = request.get_json(silent=True) or {}
+    except Exception:
+        body = {}
+    submitted = (body.get("token") or "").strip()
     if not submitted or not secrets.compare_digest(submitted, tok):
-        return False, "admin_unauthenticated"
-    return True, None
+        return jsonify({"ok": False}), 401
+    resp = jsonify({"ok": True, "expires_in": _ADMIN_COOKIE_MAX_AGE})
+    resp.set_cookie(
+        _ADMIN_COOKIE_NAME, tok,
+        max_age=_ADMIN_COOKIE_MAX_AGE,
+        httponly=True, secure=True, samesite="Strict", path="/admin",
+    )
+    return resp
+
+
+@app.route("/admin/clear-token", methods=["POST"])
+def admin_clear_token():
+    """Wipe the admin_token cookie (log-out equivalent). Always returns
+    200 — clearing a non-existent cookie is a no-op. Charlie ruling
+    2026-09-08: needed so a shared/borrowed phone can be de-authed
+    intentionally."""
+    resp = jsonify({"ok": True})
+    resp.set_cookie(
+        _ADMIN_COOKIE_NAME, "",
+        max_age=0, httponly=True, secure=True, samesite="Strict", path="/admin",
+    )
+    return resp
 
 
 def _highlight_diff_pairs(a, b):
@@ -8697,21 +8760,40 @@ def _highlight_diff_pairs(a, b):
 def admin_token_review():
     """Curator queue for the XRPL Token Registry (registry spec item 8).
     Renders the top-N rows of curator_review_queue ordered by impact
-    score, with the ticker-collision UI (both r-addresses side-by-side,
-    differing characters highlighted, canonical issuer evidence) so each
-    decision is <30s. GET only for now — POST decision endpoint is a
-    follow-up once the walker writes to token_category_history with a
-    curator-provenance envelope (view/table exist, wiring waits on the
-    signing keypair per registry-spec step 4)."""
-    ok, err = _admin_authed(request)
+    score. Each card carries the evidence a curator needs to decide in
+    <30s without external lookups:
+      - decoded ticker + collision target (ticker match)
+      - issuer address (with canonical side-by-side + char-diff when
+        collision target has a canonical XRPL issuer)
+      - issuer Domain + two-way toml status (from issuer_facts)
+      - issuer age (first_ledger_seen)
+      - trustline count (holder proxy)
+      - 30d trade volume
+      - look-alike distance ≤3 to any canonical / bridge / gateway
+        issuer, labeled "look-alike of <name>" — flags the vanity-
+        impostor attack shape (rfmS3ZFB… vs rfmS3zqr…, distance 1)
+
+    Auth path: Bearer header (desktop / API) OR admin_token cookie
+    (phone; set via POST /admin/set-token). On unauthed GET, serves a
+    token-entry HTML form that sets the cookie, so a mobile browser
+    doesn't need a header extension.
+
+    Evidence layer added 2026-09-09 (Charlie ruling 2026-09-08 evening,
+    item 4)."""
+    tok_present = bool((os.environ.get("ADMIN_TOKEN") or "").strip())
+    if not tok_present:
+        return (
+            "admin console disabled — ADMIN_TOKEN env not set on this "
+            "deploy. Set it in the Render env config and redeploy.",
+            503,
+        )
+
+    ok, _err = _admin_authed(request)
     if not ok:
-        if err == "admin_disabled_no_token":
-            return (
-                "admin console disabled — ADMIN_TOKEN env not set on this "
-                "deploy. Set it in the Render env config and redeploy.",
-                503,
-            )
-        return "unauthorized", 401
+        # Phone path: serve the token-entry form (JS sets cookie via
+        # POST /admin/set-token, then reloads). Charlie's phone flow.
+        return render_template("admin_token_review_login.html",
+                                current_locale=(request.accept_languages.best_match(["en"]) or "en"))
 
     if not db.pg_available():
         return "postgres unavailable — cannot serve queue", 503
@@ -8728,21 +8810,35 @@ def admin_token_review():
     except Exception:
         canonical_map = {}
 
+    from token_naming import lookalike_canonical_issuer
+
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
+            # Join issuer_facts a second time to grab the evidence-layer
+            # fields (first_ledger_seen, trustline_count, domain_two_way_
+            # proof) that the view doesn't currently SELECT. Domain is
+            # already in the view but we re-fetch here for consistency.
             cur.execute(
                 """
-                SELECT currency_hex, issuer, decoded_name, trades_30d,
-                       ticker_collision, ticker_collision_of, domain,
-                       blackholed, current_category, current_tier,
-                       impact_score
-                FROM curator_review_queue
-                ORDER BY impact_score DESC NULLS LAST
+                SELECT q.currency_hex, q.issuer, q.decoded_name, q.trades_30d,
+                       q.ticker_collision, q.ticker_collision_of, q.domain,
+                       q.blackholed, q.current_category, q.current_tier,
+                       q.impact_score,
+                       if.first_ledger_seen, if.trustline_count,
+                       if.domain_two_way_proof
+                FROM curator_review_queue q
+                LEFT JOIN issuer_facts if ON if.issuer = q.issuer
+                ORDER BY q.impact_score DESC NULLS LAST
                 LIMIT %s
                 """,
                 (limit,),
             )
             raw = cur.fetchall()
+
+            # Current max ledger — used to compute issuer age in days
+            # (rough: XRPL ~4s per ledger → ~21600 ledgers/day).
+            cur.execute("SELECT MAX(first_ledger_seen) FROM issuer_facts")
+            max_ledger = cur.fetchone()[0] or 0
 
     rows = []
     for r in raw:
@@ -8750,6 +8846,7 @@ def admin_token_review():
             currency_hex, issuer, decoded_name, trades_30d,
             ticker_collision, ticker_collision_of, domain,
             blackholed, current_category, current_tier, impact_score,
+            first_ledger_seen, trustline_count, domain_two_way_proof,
         ) = r
         row = {
             "currency_hex": currency_hex,
@@ -8763,7 +8860,21 @@ def admin_token_review():
             "current_category": current_category or "unlabeled",
             "current_tier": current_tier or "bare",
             "impact_score": float(impact_score or 0),
+            # Evidence-layer fields (2026-09-09 add):
+            "first_ledger_seen": first_ledger_seen,
+            "trustline_count": trustline_count or 0,
+            "domain_two_way_proof": domain_two_way_proof or "unchecked",
+            "issuer_age_days": (
+                (max_ledger - first_ledger_seen) // 21600
+                if first_ledger_seen and max_ledger else None
+            ),
         }
+        # Look-alike check — is this issuer 1-3 chars off from any
+        # canonical/bridge/gateway issuer? Flags vanity-impostor shape.
+        la = lookalike_canonical_issuer(issuer or "")
+        if la:
+            row["lookalike"] = la  # {name, source, distance, near_address}
+        # Collision diff pairs (existing UI element).
         if ticker_collision and ticker_collision_of:
             canon = canonical_map.get(ticker_collision_of) or {}
             canon_issuers = canon.get("canonical_issuers") or []

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin sign-in — xrpldashboard</title>
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.10);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --cyan: #22d3ee;
+      --red: #ef4444;
+      --green: #22c55e;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.5;
+                 min-height: 100dvh; }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 32px 20px;
+            min-height: 100dvh; display: flex; flex-direction: column;
+            justify-content: center; }
+    h1 { margin: 0 0 8px; font-size: 1.4rem; font-weight: 600; }
+    .lede { color: var(--muted); font-size: 0.95rem; margin: 0 0 24px; }
+    .card { background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px 20px; }
+    label { display: block; color: var(--muted); font-size: 0.85rem;
+            margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+    input[type=password] {
+      width: 100%; padding: 16px 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: rgba(0,0,0,0.30);
+      color: var(--text); font-size: 1rem; font-family: var(--mono);
+      -webkit-appearance: none; appearance: none;
+    }
+    input[type=password]:focus { outline: 2px solid var(--cyan);
+                                 outline-offset: 2px; }
+    button.primary {
+      width: 100%; margin-top: 16px; padding: 16px 20px;
+      border-radius: 8px; border: 1px solid var(--cyan);
+      background: var(--cyan); color: var(--bg);
+      font-size: 1rem; font-weight: 600; font-family: var(--sys);
+      cursor: pointer; min-height: 48px;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button.primary:disabled { opacity: 0.5; cursor: default; }
+    .note { color: var(--muted); font-size: 0.85rem;
+            margin-top: 16px; line-height: 1.5; }
+    .fail { color: var(--red); font-size: 0.9rem; margin-top: 12px; display: none; }
+    .fail.visible { display: block; }
+    .ok { color: var(--green); font-size: 0.9rem; margin-top: 12px; display: none; }
+    .ok.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Admin sign-in</h1>
+    <p class="lede">Enter the ADMIN_TOKEN once. A short-lived cookie (24h,
+      HttpOnly, Secure, SameSite=Strict) is set on your device so you can
+      tap curator decisions without re-typing.</p>
+    <div class="card">
+      <form id="loginForm" onsubmit="return submitToken(event)">
+        <label for="tok">ADMIN_TOKEN</label>
+        <input type="password" id="tok" name="tok" autocomplete="off"
+               autocapitalize="off" autocorrect="off" spellcheck="false"
+               required>
+        <button type="submit" class="primary" id="submitBtn">Sign in</button>
+        <div class="fail" id="failMsg">Wrong token. Try again.</div>
+        <div class="ok" id="okMsg">Signed in. Reloading…</div>
+      </form>
+      <p class="note">Sign-out (deauth this device): POST an empty body to
+        <code>/admin/clear-token</code>. This form is also served on any
+        <code>/admin/*</code> page you hit unauthed.</p>
+    </div>
+  </div>
+  <script>
+    async function submitToken(ev) {
+      ev.preventDefault();
+      var btn = document.getElementById('submitBtn');
+      var fail = document.getElementById('failMsg');
+      var ok = document.getElementById('okMsg');
+      var tokField = document.getElementById('tok');
+      fail.classList.remove('visible');
+      ok.classList.remove('visible');
+      btn.disabled = true;
+      try {
+        var r = await fetch('/admin/set-token', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token: tokField.value}),
+          credentials: 'same-origin'
+        });
+        if (r.ok) {
+          ok.classList.add('visible');
+          tokField.value = '';
+          setTimeout(function(){ window.location.reload(); }, 400);
+        } else {
+          fail.classList.add('visible');
+          btn.disabled = false;
+        }
+      } catch (e) {
+        fail.classList.add('visible');
+        btn.disabled = false;
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>

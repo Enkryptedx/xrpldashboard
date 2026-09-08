@@ -101,6 +101,167 @@ def _is_bridge_issued(issuer: Optional[str], ticker_upper: str) -> bool:
     return bool(tickers and ticker_upper in tickers)
 
 
+_canonical_neighbor_cache: Optional[list[tuple[str, str, str]]] = None
+_LOOKALIKE_CAP_DEFAULT = 3   # 1-3 char swap is the vanity-generator scam shape
+
+
+def _load_canonical_neighbors() -> list[tuple[str, str, str]]:
+    """Return [(address, name, source), ...] over the union of canonical
+    issuers, bridge issuers, and gateway issuers — the same three sets
+    resolve_display() treats as canonical. Used by
+    lookalike_canonical_issuer() below and by /admin/token-review to
+    flag look-alike vanity impostors.
+
+    Cached at module scope; call `_reset_canonical_neighbor_cache()` if
+    ticker_canonical_issuers.json is edited at runtime."""
+    global _canonical_neighbor_cache
+    if _canonical_neighbor_cache is not None:
+        return _canonical_neighbor_cache
+    _load_ticker_map()  # populates _bridge_index too
+    try:
+        with open(TICKER_CANONICAL_PATH) as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        _canonical_neighbor_cache = []
+        return _canonical_neighbor_cache
+    out: list[tuple[str, str, str]] = []
+    # Top-level ticker entries — canonical_issuers list (e.g., RLUSD has one).
+    for tk, td in raw.items():
+        if tk.startswith("_") or tk in ("bridges", "gateways"):
+            continue
+        if not isinstance(td, dict):
+            continue
+        brand = td.get("brand") or tk
+        for iss in (td.get("canonical_issuers") or []):
+            out.append((iss, brand, f"canonical:{tk}"))
+    # Bridges section
+    for bname, bdef in (raw.get("bridges") or {}).items():
+        if not isinstance(bdef, dict):
+            continue
+        name = bdef.get("name") or bname
+        for iss in (bdef.get("issuers") or []):
+            out.append((iss, name, f"bridge:{bname}"))
+    # Gateways section
+    for gname, gdef in (raw.get("gateways") or {}).items():
+        if not isinstance(gdef, dict):
+            continue
+        name = gdef.get("name") or gname
+        for iss in (gdef.get("issuers") or []):
+            out.append((iss, name, f"gateway:{gname}"))
+    _canonical_neighbor_cache = out
+    return out
+
+
+def _reset_canonical_neighbor_cache() -> None:
+    """Clear the neighbor cache. Call after editing
+    ticker_canonical_issuers.json at runtime (rarely — cache is fine
+    for the process lifetime of the render loop)."""
+    global _canonical_neighbor_cache
+    _canonical_neighbor_cache = None
+
+
+def _levenshtein(a: str, b: str, cap: int = 5) -> int:
+    """Bounded Levenshtein distance with early exit above `cap`. Same
+    shape as check_data._levenshtein — we duplicate the tiny function
+    here rather than cross-import to keep token_naming import-free of
+    check_data (avoids circular). Iterative two-row implementation;
+    returns cap+1 if the true distance exceeds cap."""
+    la, lb = len(a), len(b)
+    if abs(la - lb) > cap:
+        return cap + 1
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        cur = [i] + [0] * lb
+        row_min = i
+        for j in range(1, lb + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            cur[j] = min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            if cur[j] < row_min:
+                row_min = cur[j]
+        if row_min > cap:
+            return cap + 1
+        prev = cur
+    return prev[lb]
+
+
+_LOOKALIKE_PREFIX_MIN = 8   # 8-char shared prefix is the vanity-generator scam shape
+
+
+def _shared_prefix_len(a: str, b: str) -> int:
+    n = min(len(a), len(b))
+    i = 0
+    while i < n and a[i] == b[i]:
+        i += 1
+    return i
+
+
+def lookalike_canonical_issuer(address: str,
+                                cap: int = _LOOKALIKE_CAP_DEFAULT,
+                                prefix_min: int = _LOOKALIKE_PREFIX_MIN) -> Optional[dict]:
+    """If `address` looks like a vanity-impostor of a canonical / bridge /
+    gateway issuer, return {name, source, kind, distance|prefix_len,
+    near_address}; else None. Two overlapping shapes flagged:
+
+      1. Edit-distance ≤ `cap` (default 3): 1-3 char swap within a
+         mostly-identical address. Attack shape: brute-force wallet
+         until you land ≤3 chars off the target — computationally
+         cheap for the attacker.
+
+      2. Shared prefix ≥ `prefix_min` (default 8): first N chars
+         identical to a canonical issuer's address. Attack shape:
+         vanity-generator (each additional prefix char is 58× more
+         work), so ≥8-char shared prefix with a canonical issuer is
+         genuinely rare — and expensive to produce accidentally.
+
+    Returns the STRONGER of the two matches when both fire (edit-distance
+    wins on tie). `address` NOT considered a look-alike of itself —
+    exact matches return None.
+
+    `source` is one of:
+      - "canonical:<ticker>" — matches a top-level canonical_issuers list
+      - "bridge:<name>"      — matches an issuer in bridges section
+      - "gateway:<name>"     — matches an issuer in gateways section
+    `kind` is "edit-distance" or "prefix".
+
+    Used by /admin/token-review to catch shapes like
+    `rfmS3ZFBRe8W…wMy1` (SOL row #5, prefix `rfmS3` — actually only
+    5-char shared, below default threshold, won't flag) vs a plausible
+    stronger vanity impostor that shares 8+ chars of a canonical prefix."""
+    if not address or len(address) < 25:
+        return None
+    neighbors = _load_canonical_neighbors()
+    # Two candidate winners (one per kind) — return the stronger
+    ed_winner: Optional[tuple[str, str, str, int]] = None
+    ed_best_dist = cap + 1
+    pfx_winner: Optional[tuple[str, str, str, int]] = None
+    pfx_best_len = prefix_min - 1
+    for cand_addr, cand_name, cand_source in neighbors:
+        if cand_addr == address:
+            return None  # exact match — canonical, not an impostor
+        d = _levenshtein(address, cand_addr, cap=cap)
+        if d <= cap and d < ed_best_dist:
+            ed_winner = (cand_addr, cand_name, cand_source, d)
+            ed_best_dist = d
+        pl = _shared_prefix_len(address, cand_addr)
+        if pl >= prefix_min and pl > pfx_best_len:
+            pfx_winner = (cand_addr, cand_name, cand_source, pl)
+            pfx_best_len = pl
+    # Edit-distance wins on tie (more specific match).
+    if ed_winner:
+        return {
+            "name": ed_winner[1], "source": ed_winner[2],
+            "kind": "edit-distance", "distance": ed_winner[3],
+            "near_address": ed_winner[0],
+        }
+    if pfx_winner:
+        return {
+            "name": pfx_winner[1], "source": pfx_winner[2],
+            "kind": "prefix", "prefix_len": pfx_winner[3],
+            "near_address": pfx_winner[0],
+        }
+    return None
+
+
 def decode_currency(currency: str) -> dict:
     """Decode one currency code to its display parts. Pure function
     (no issuer lookup — that's resolve_display's job).
