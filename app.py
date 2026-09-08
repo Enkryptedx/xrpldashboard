@@ -150,6 +150,7 @@ PUBLIC_ROUTES = [
     "/subprocessors",
     "/thisweek",
     "/registry/taxonomy",
+    "/changes",
 ]
 
 
@@ -8075,6 +8076,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/methodology]({SITE_URL}/methodology): per-surface freshness contracts, cache TTLs, data sources, known limitations. See especially the "For AI agents" section.
 - [/glossary]({SITE_URL}/glossary): plain-English definitions for XRPL terms and xrpldashboard methodology concepts (AMM, amendment, trust line, signed snapshot, sovereignty tier, and more).
 - [/thisweek]({SITE_URL}/thisweek): weekly Sunday post pairing the loudest XRP news with the on-chain reality — each item linked to the on-site page that shows it. RSS at [{SITE_URL}/thisweek.xml]({SITE_URL}/thisweek.xml); JSON twin per edition at `/thisweek/YYYY-MM-DD.json`.
+- [/changes]({SITE_URL}/changes): daily machine-written XRPL changelog — one line per change, ledger-anchored, prove-URL-carrying. Sourced from signed_snapshot day-over-day deltas + UNL churn + registry snapshots. Humans write /thisweek; the machine writes /changes. RSS/Atom at [{SITE_URL}/changes.xml]({SITE_URL}/changes.xml); JSON twin per date at `/changes/YYYY-MM-DD.json`. Not covered: off-chain events, price movements, whale movements (v2).
 - [/registry/taxonomy]({SITE_URL}/registry/taxonomy): the vocabulary the XRPL Token Registry uses — 12 real categories + 2 review-status values + 2 mechanical flags. Anchored via `registry_state` in the daily signed snapshot.
 - [/about]({SITE_URL}/about): mission, funding, principles.
 - [/health]({SITE_URL}/health): live infrastructure status endpoint.
@@ -8189,6 +8191,9 @@ _AGENTS_JSON = {
         },
         "security_contact": f"{SITE_URL}/.well-known/security.txt",
         "llms_txt": f"{SITE_URL}/llms.txt",
+        "daily_changelog": f"{SITE_URL}/changes",
+        "daily_changelog_feed": f"{SITE_URL}/changes.xml",
+        "daily_changelog_json_pattern": f"{SITE_URL}/changes/YYYY-MM-DD.json",
     },
     "receipts_envelope": {
         "shape": {
@@ -8476,6 +8481,142 @@ def x402_catalog():
     return resp
 
 
+# ---------------------------------------------------------------------------
+# /changes — daily machine-written XRPL changelog (Charlie ruling 2026-09-08).
+# One line per change, ledger-anchored, prove-URL-carrying. Derived diffs only
+# from our own signed_snapshots + unl_snapshots. Humans write the weekly
+# /thisweek post; the machine writes the daily ledger.
+# ---------------------------------------------------------------------------
+
+def _load_changes_envelope(date_iso: str):
+    """Read the envelope for `date_iso` from PG, or None if not written."""
+    return db.read_changes_envelope(date_iso)
+
+
+def _list_changes_dates(limit=90):
+    """Return sorted (newest-first) list of ISO dates with envelopes in PG."""
+    return db.read_changes_envelope_dates(limit=limit)
+
+
+def _changes_neighbors(date_iso: str):
+    """Return (prev_date, next_date) strings or None for a given date."""
+    dates = _list_changes_dates()
+    if date_iso not in dates:
+        return (None, None)
+    idx = dates.index(date_iso)
+    prev_date = dates[idx + 1] if idx + 1 < len(dates) else None
+    next_date = dates[idx - 1] if idx - 1 >= 0 else None
+    return (prev_date, next_date)
+
+
+@app.route("/changes")
+@app.route("/changes/")
+@limiter.limit(agent_tier_limit_rate)
+def changes_latest():
+    """Latest available changes envelope. Redirects to /changes/<date> for
+    canonical URLs so RSS/sitemap/prev/next all share the same shape."""
+    dates = _list_changes_dates(limit=1)
+    if not dates:
+        abort(404)
+    return redirect(f"/changes/{dates[0]}", code=302)
+
+
+@app.route("/changes/<date>")
+@limiter.limit(agent_tier_limit_rate)
+def changes_by_date(date):
+    # Basic shape check — YYYY-MM-DD, no path traversal
+    try:
+        parsed = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        abort(404)
+    envelope = _load_changes_envelope(parsed.isoformat())
+    if envelope is None:
+        abort(404)
+    prev_date, next_date = _changes_neighbors(parsed.isoformat())
+    return render_template(
+        "changes.html",
+        envelope=envelope,
+        prev_date=prev_date,
+        next_date=next_date,
+    )
+
+
+@app.route("/changes/<date>.json")
+@limiter.limit(agent_tier_limit_rate)
+def changes_by_date_json(date):
+    try:
+        parsed = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        abort(404)
+    envelope = _load_changes_envelope(parsed.isoformat())
+    if envelope is None:
+        abort(404)
+    resp = make_response(jsonify(envelope))
+    # Serve day-of the changelog with a short cache; historical envelopes
+    # never change so a longer cache is safe. Distinguish on age.
+    today_iso = datetime.now(timezone.utc).date().isoformat()
+    if date == today_iso:
+        resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    else:
+        resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+    return resp
+
+
+@app.route("/changes.xml")
+@limiter.limit(agent_tier_limit_rate)
+def changes_atom_feed():
+    """Atom/RSS feed of the last 30 days of /changes envelopes. One
+    entry per date, with the full list of change lines in the summary
+    so a feed reader can render the daily changelog without a click."""
+    dates = _list_changes_dates(limit=30)
+    entries = []
+    for d in dates:
+        env = _load_changes_envelope(d)
+        if not env:
+            continue
+        change_lines = env.get("changes") or []
+        no_change = env.get("categories_no_change") or []
+        # Build a plain-text summary (Atom accepts type="text")
+        parts = []
+        for c in change_lines:
+            parts.append(f"[{c.get('category','')}] {c.get('line','')}")
+        if no_change:
+            parts.append(f"No change: {', '.join(no_change)}")
+        summary = "\n".join(parts) if parts else "No changes recorded."
+        # Atom-safe XML escape
+        def _esc(s):
+            return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+        entries.append(
+            f"  <entry>\n"
+            f"    <id>{SITE_URL}/changes/{d}</id>\n"
+            f"    <title>On the ledger — {d}</title>\n"
+            f"    <link href='{SITE_URL}/changes/{d}'/>\n"
+            f"    <updated>{d}T00:00:00Z</updated>\n"
+            f"    <author><name>xrpldashboard</name></author>\n"
+            f"    <summary type='text'>{_esc(summary)}</summary>\n"
+            f"  </entry>"
+        )
+    latest_updated = (dates[0] + "T00:00:00Z") if dates else \
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<feed xmlns="http://www.w3.org/2005/Atom">\n'
+        f'  <title>xrpldashboard — On the ledger</title>\n'
+        f'  <link href="{SITE_URL}/changes"/>\n'
+        f'  <link href="{SITE_URL}/changes.xml" rel="self"/>\n'
+        f'  <id>{SITE_URL}/changes</id>\n'
+        f'  <updated>{latest_updated}</updated>\n'
+        f'  <subtitle>Daily machine-written XRPL changelog. '
+        f'Humans write the weekly post; the machine writes the daily ledger.</subtitle>\n'
+        + "\n".join(entries)
+        + "\n</feed>\n"
+    )
+    resp = Response(body, mimetype="application/atom+xml")
+    resp.headers["Cache-Control"] = "public, max-age=1800, s-maxage=1800"
+    return resp
+
+
 @app.route("/sitemap.xml")
 @limiter.limit(agent_tier_limit_rate)
 def sitemap_xml():
@@ -8536,6 +8677,22 @@ def sitemap_xml():
                     f"    <priority>0.5</priority>\n"
                     f"  </url>"
                 )
+    except Exception:
+        pass
+
+    # /changes daily changelog: emit one URL per available date so the
+    # daily historical envelopes are indexable. Failure is silent — a
+    # missing changes/ dir means no entries, not a 500.
+    try:
+        for d in _list_changes_dates(limit=90):
+            urls.append(
+                f"  <url>\n"
+                f"    <loc>{SITE_URL}/changes/{d}</loc>\n"
+                f"    <lastmod>{d}</lastmod>\n"
+                f"    <changefreq>never</changefreq>\n"
+                f"    <priority>0.5</priority>\n"
+                f"  </url>"
+            )
     except Exception:
         pass
 

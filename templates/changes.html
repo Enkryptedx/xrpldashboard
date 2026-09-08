@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('On the ledger') }} · {{ envelope.date }} · xrpldashboard</title>
+  {% set meta_title = "On the ledger · " ~ envelope.date ~ " · xrpldashboard" %}
+  {% set meta_description = "Daily machine-written XRPL changelog — one line per change, ledger-anchored, prove-URL-carrying. " ~ envelope.date ~ "." %}
+  {% include "_head_meta.html" %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "On the ledger — {{ envelope.date }}",
+    "description": "Daily machine-written XRPL changelog for {{ envelope.date }}",
+    "datePublished": "{{ envelope.date }}T00:00:00Z",
+    "dateModified": "{{ envelope.generated_at_utc }}",
+    "author": { "@type": "Organization", "name": "xrpldashboard" },
+    "publisher": { "@type": "Organization", "name": "xrpldashboard", "url": "{{ site_url }}" }
+  }
+  </script>
+
+  <link rel="alternate" type="application/rss+xml" title="On the ledger (RSS)" href="/changes.xml">
+  <link rel="alternate" type="application/json" title="On the ledger (JSON)" href="/changes/{{ envelope.date }}.json">
+
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           max-width: 780px; margin: 0 auto; padding: 1rem; line-height: 1.55;
+           color: #1a1a1a; background: #fafafa; }
+    h1 { font-size: 1.5rem; margin: 0.4rem 0 0.2rem; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.2rem; }
+    .disclosure { background: #fff8e1; border-left: 3px solid #d9a441;
+                  padding: 0.7rem 0.9rem; margin: 1rem 0; font-size: 0.85rem;
+                  border-radius: 3px; }
+    .changes-list { list-style: none; padding: 0; margin: 1.5rem 0 0; }
+    .changes-list li { background: #fff; border-left: 3px solid #4a7c9a;
+                       padding: 0.6rem 0.9rem; margin-bottom: 0.5rem;
+                       border-radius: 3px; font-size: 0.95rem; }
+    .changes-list li.chain { border-left-color: #2e5c8a; }
+    .changes-list li.amm { border-left-color: #5c8a2e; }
+    .changes-list li.mpt { border-left-color: #8a5c2e; }
+    .changes-list li.rlusd { border-left-color: #2e8a8a; }
+    .changes-list li.rwa { border-left-color: #6a2e8a; }
+    .changes-list li.registry { border-left-color: #8a2e5c; }
+    .changes-list li.unl { border-left-color: #a4741f; }
+    .changes-list li.warn { border-left-color: #c93a3a; background: #fff5f5; }
+    .cat-tag { display: inline-block; background: #eee; color: #555;
+               font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 3px;
+               text-transform: uppercase; letter-spacing: 0.02em;
+               margin-right: 0.5rem; vertical-align: middle; }
+    .prove-link { font-size: 0.8rem; color: #4a7c9a; text-decoration: none;
+                  margin-left: 0.4rem; }
+    .prove-link:hover { text-decoration: underline; }
+    .source-tag { font-size: 0.7rem; color: #999; margin-left: 0.4rem; }
+    .quiet { margin-top: 1.5rem; padding: 0.6rem 0.9rem; background: #f0f0f0;
+             border-radius: 3px; font-size: 0.85rem; color: #555; }
+    .cite { margin-top: 1.5rem; font-size: 0.75rem; color: #888;
+            padding-top: 0.8rem; border-top: 1px solid #ddd; }
+    .cite a { color: #4a7c9a; }
+    .nav-strip { font-size: 0.85rem; margin-bottom: 0.8rem; }
+    .nav-strip a { color: #4a7c9a; text-decoration: none; margin-right: 0.6rem; }
+    .format-row { margin-top: 0.6rem; font-size: 0.8rem; color: #666; }
+    .format-row a { color: #4a7c9a; text-decoration: none; }
+  </style>
+</head>
+<body>
+  {% include "_nav.html" ignore missing %}
+
+  <div class="nav-strip">
+    {% if prev_date %}<a href="/changes/{{ prev_date }}">← {{ prev_date }}</a>{% endif %}
+    <a href="/changes">latest</a>
+    {% if next_date %}<a href="/changes/{{ next_date }}">{{ next_date }} →</a>{% endif %}
+  </div>
+
+  <h1>{{ _('On the ledger') }} — {{ envelope.date }}</h1>
+  <div class="subtitle">
+    {{ _('Machine-written daily XRPL changelog.') }}
+    {{ _('Derived from our own signed snapshots.') }}
+    {{ _('Humans write the weekly post') }} (<a href="/thisweek">/thisweek</a>){{ _('.') }}
+  </div>
+
+  <div class="format-row">
+    {{ _('Formats:') }}
+    <a href="/changes/{{ envelope.date }}.json">JSON</a> ·
+    <a href="/changes.xml">RSS</a> ·
+    <a href="/changes.xml">Atom</a>
+  </div>
+
+  {% if envelope.changes %}
+  <ul class="changes-list">
+    {% for c in envelope.changes %}
+    <li class="{{ c.category }}{% if '⚠' in c.line %} warn{% endif %}">
+      <span class="cat-tag">{{ c.category }}</span>{{ c.line }}
+      {% if c.prove_url %}<a class="prove-link" href="{{ c.prove_url }}">{{ _('proof') }} →</a>{% endif %}
+      {% if c.source %}<span class="source-tag">via {{ c.source }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p><em>{{ _('No changes recorded for this date.') }}</em></p>
+  {% endif %}
+
+  {% if envelope.categories_no_change %}
+  <div class="quiet">
+    <strong>{{ _('No change') }}:</strong>
+    {{ envelope.categories_no_change | join(', ') }}
+  </div>
+  {% endif %}
+
+  <div class="disclosure">
+    {{ envelope.disclosure }}
+  </div>
+
+  <div class="cite">
+    {{ _('Envelope generated at') }} {{ envelope.generated_at_utc }} ·
+    <a href="/methodology">/methodology</a> ·
+    <a href="/anchors">/anchors</a> ·
+    <a href="/.well-known/snapshots/">signed snapshots</a>
+  </div>
+</body>
+</html>

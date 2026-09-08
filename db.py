@@ -1474,6 +1474,24 @@ CREATE INDEX IF NOT EXISTS unbilled_calls_ts_idx        ON unbilled_calls (ts_ut
 CREATE INDEX IF NOT EXISTS unbilled_calls_endpoint_idx  ON unbilled_calls (endpoint, ts_utc DESC);
 CREATE INDEX IF NOT EXISTS unbilled_calls_reason_idx    ON unbilled_calls (billing_reason, ts_utc DESC);
 CREATE INDEX IF NOT EXISTS unbilled_calls_client_idx    ON unbilled_calls (client_identifier, ts_utc DESC) WHERE client_identifier IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────────
+-- Daily /changes envelope storage (2026-09-08).
+--
+-- The changes_walker computes a one-line-per-change envelope per UTC day
+-- by diffing signed_snapshots + unl_snapshots + registry_state day-over-
+-- day. Envelope is written here rather than to disk so Render's web app
+-- reads the same source of truth as the Mac walker without a git-and-
+-- deploy dance on every daily write. Reads are keyed by snapshot_date;
+-- most-recent scans lean on the index.
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS changes_envelopes (
+    snapshot_date       DATE        PRIMARY KEY,
+    envelope            JSONB       NOT NULL,
+    generated_at_utc    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    change_count        INTEGER     NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS changes_envelopes_date_idx ON changes_envelopes (snapshot_date DESC);
 """
 
 
@@ -3452,6 +3470,74 @@ def read_walker_health(walker_name):
                 }
     except Exception:
         return None
+
+
+def write_changes_envelope(snapshot_date, envelope):
+    """UPSERT one daily /changes envelope. `snapshot_date` is a date object;
+    `envelope` is the dict returned by changes_builder.build_changes_for_date().
+    `change_count` is denormalized for cheap sitemap / homepage-strip listing.
+
+    Silent no-op when PG isn't configured (walker will crash-loud upstream
+    when it hits pg_connect first)."""
+    def _do(conn):
+        n = len(envelope.get("changes") or [])
+        payload = json.dumps(envelope, sort_keys=False)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO changes_envelopes "
+                "  (snapshot_date, envelope, change_count) "
+                "VALUES (%s, %s::jsonb, %s) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "  envelope = EXCLUDED.envelope, "
+                "  generated_at_utc = NOW(), "
+                "  change_count = EXCLUDED.change_count",
+                (snapshot_date, payload, n),
+            )
+    _writer_execute_with_retry(
+        f"write_changes_envelope[{snapshot_date}]", _do,
+    )
+
+
+def read_changes_envelope(snapshot_date):
+    """Return the envelope dict for `snapshot_date` (date or ISO string),
+    or None when PG is unavailable or the row is missing."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT envelope FROM changes_envelopes "
+                    "WHERE snapshot_date = %s",
+                    (snapshot_date,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                env = row[0]
+                if isinstance(env, str):
+                    env = json.loads(env)
+                return env
+    except Exception:
+        return None
+
+
+def read_changes_envelope_dates(limit=90):
+    """Return sorted (newest-first) list of snapshot_date ISO strings
+    with envelopes available. Empty list when PG is unavailable."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date FROM changes_envelopes "
+                    "ORDER BY snapshot_date DESC LIMIT %s",
+                    (limit,),
+                )
+                return [r[0].isoformat() for r in cur.fetchall()]
+    except Exception:
+        return []
 
 
 def read_latest_bridge_signers():
