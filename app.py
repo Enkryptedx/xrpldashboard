@@ -4451,16 +4451,55 @@ def _load_thisweek_edition(date_str: str):
     return result
 
 
-def _list_thisweek_editions():
-    """Return sorted list of edition dates (newest first)."""
+def _thisweek_is_published(front: dict | None) -> bool:
+    """Return True when the edition's front-matter says it is publicly
+    published as of now (published_at_utc missing or in the past).
+    Missing / unparseable published_at_utc → public (existing editions
+    without the field pre-date this gate — they were already public).
+    Future-dated → 404 public + 200 admin preview.
+
+    Charlie ruling 2026-09-08 evening — before this gate, a draft file
+    committed to docs/thisweek/ would render immediately on the public
+    route once Render deployed. The gate lets a draft ride into git
+    (so Render has the file for the admin preview) without exposing it
+    to the world before the Sunday-editorial pass."""
+    if not front:
+        return True
+    val = front.get("published_at_utc")
+    if not val:
+        return True
+    from datetime import datetime as _dt, timezone as _tz
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d"):
+        try:
+            when = _dt.strptime(val, fmt)
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=_tz.utc)
+            return _dt.now(_tz.utc) >= when
+        except ValueError:
+            continue
+    return True  # unparseable — treat as no-gate rather than block
+
+
+def _list_thisweek_editions(include_unpublished: bool = False):
+    """Return sorted list of edition dates (newest first).
+
+    include_unpublished: when False (public path), filter out editions
+    whose front-matter published_at_utc is in the future. When True
+    (admin preview path), list all editions."""
     import re as _re
     if not os.path.isdir(_THISWEEK_DIR):
         return []
     out = []
     for name in os.listdir(_THISWEEK_DIR):
         m = _re.match(r"^(\d{4}-\d{2}-\d{2})\.md$", name)
-        if m:
-            out.append(m.group(1))
+        if not m:
+            continue
+        d = m.group(1)
+        if not include_unpublished:
+            front, _html = _load_thisweek_edition(d)
+            if not _thisweek_is_published(front):
+                continue
+        out.append(d)
     out.sort(reverse=True)
     return out
 
@@ -4484,6 +4523,10 @@ def thisweek_edition(date_str):
     front, html = _load_thisweek_edition(date_str)
     if html is None:
         abort(404, description=f"no edition for {date_str}")
+    # Publish gate: future-dated editions 404 to public. See
+    # /admin/thisweek/preview/<date> for Bearer/cookie-gated preview.
+    if not _thisweek_is_published(front):
+        abort(404, description=f"no edition for {date_str}")
     editions = _list_thisweek_editions()
     return render_template(
         "thisweek.html",
@@ -4495,15 +4538,55 @@ def thisweek_edition(date_str):
     )
 
 
-@app.route("/thisweek/<date_str>.json")
-@limiter.limit(agent_tier_limit_rate)
-def thisweek_edition_json(date_str):
-    """JSON twin of an edition — front-matter + body html + canonical URL."""
+@app.route("/admin/thisweek/preview/<date_str>")
+def admin_thisweek_preview(date_str):
+    """Admin preview of a /thisweek edition regardless of published_at_utc.
+    Same template as public /thisweek/<date>, but reachable while the
+    edition is future-dated (draft state). Charlie ruling 2026-09-08
+    evening — Saturday editorial pass path.
+
+    Auth: same as other /admin/* routes (Bearer header OR admin_token
+    cookie set via POST /admin/set-token). Unauthed → login form."""
+    tok_present = bool((os.environ.get("ADMIN_TOKEN") or "").strip())
+    if not tok_present:
+        return ("admin console disabled — ADMIN_TOKEN env not set", 503)
+    ok, _err = _admin_authed(request)
+    if not ok:
+        return render_template("admin_token_review_login.html",
+                                current_locale=(request.accept_languages.best_match(["en"]) or "en"))
+
     import re as _re
     if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
         abort(404)
     front, html = _load_thisweek_edition(date_str)
     if html is None:
+        abort(404, description=f"no edition for {date_str}")
+    published = _thisweek_is_published(front)
+    editions = _list_thisweek_editions(include_unpublished=True)
+    # Render the normal thisweek template. Downstream can tell it's a
+    # preview from the front-matter's published_at_utc being in the future.
+    return render_template(
+        "thisweek.html",
+        edition_date=date_str,
+        front=front,
+        body_html=html,
+        editions=editions,
+        admin_preview=True,
+        admin_preview_published=published,
+        current_locale=(request.accept_languages.best_match(["en"]) or "en"),
+    )
+
+
+@app.route("/thisweek/<date_str>.json")
+@limiter.limit(agent_tier_limit_rate)
+def thisweek_edition_json(date_str):
+    """JSON twin of an edition — front-matter + body html + canonical URL.
+    Publish gate parallels /thisweek/<date>: future-dated editions 404."""
+    import re as _re
+    if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        abort(404)
+    front, html = _load_thisweek_edition(date_str)
+    if html is None or not _thisweek_is_published(front):
         abort(404)
     resp = jsonify({
         "date": date_str,
@@ -7457,6 +7540,9 @@ def api_ledger_tip():
     }
 
 
+_HEARTBEAT_ENDPOINT_STARTUP_TS = time.time()  # process-start marker — see grace-window logic below
+
+
 @app.route("/api/heartbeat-age")
 @limiter.limit("120 per minute")
 def api_heartbeat_age():
@@ -7464,11 +7550,31 @@ def api_heartbeat_age():
     when the heartbeat row is fresh AND Postgres is reachable. Every
     failure mode (stale, missing, DB unreachable, env not set) returns 503
     so external monitors treat any break in the alarm chain as an outage —
-    a silent 200 would mean we lost the ability to detect failure."""
+    a silent 200 would mean we lost the ability to detect failure.
+
+    Warm-up grace (2026-09-08 add, Charlie ruling — belt-and-suspenders
+    with the BetterStack "2-of-3 must fail" config change): for the
+    first WARMUP_SECONDS after this process started, config_error /
+    db_error / no_heartbeat return 200 with status='warming_up' instead
+    of 503. The hard 600s stale semantics stay unchanged — a legitimately
+    stale stream will still page during warm-up. Purpose: absorb the
+    ~60s Render container-swap window where BetterStack's probe can hit
+    a fresh container before its first DB roundtrip finishes.
+
+    Grace ONLY applies to the infrastructure-not-ready class (no DB,
+    no heartbeat row yet, config missing) — not to stream_stale, which
+    is always a real signal even if the process is fresh."""
     STALE_SECONDS = 600
+    WARMUP_SECONDS = 60
+    process_age = time.time() - _HEARTBEAT_ENDPOINT_STARTUP_TS
+    warming = process_age < WARMUP_SECONDS
     headers = {"Cache-Control": "no-store"}
 
     if not db.pg_available():
+        if warming:
+            return ({"status": "warming_up",
+                     "detail": "DATABASE_URL not yet available",
+                     "process_age_seconds": round(process_age, 1)}, 200, headers)
         return ({"status": "config_error",
                  "detail": "DATABASE_URL not set"}, 503, headers)
 
@@ -7484,16 +7590,27 @@ def api_heartbeat_age():
                 )
                 row = cur.fetchone()
     except Exception as e:
+        if warming:
+            return ({"status": "warming_up",
+                     "detail": f"db_error:{type(e).__name__}",
+                     "process_age_seconds": round(process_age, 1)}, 200, headers)
         return ({"status": "db_error",
                  "detail": type(e).__name__}, 503, headers)
 
     if not row:
+        if warming:
+            return ({"status": "warming_up",
+                     "detail": "no_heartbeat_row_yet",
+                     "process_age_seconds": round(process_age, 1)}, 200, headers)
         return ({"status": "no_heartbeat"}, 503, headers)
 
     age = int(time.time()) - int(row[0])
     if age < 0:
         age = 0
     if age > STALE_SECONDS:
+        # Stream_stale is ALWAYS a real signal — even if we're still
+        # warming, a real >600s gap means the writer is down. Do NOT
+        # mask it under the grace window.
         return ({"status": "stale",
                  "age_seconds": age,
                  "threshold_seconds": STALE_SECONDS}, 503, headers)
