@@ -641,23 +641,9 @@
         <a href="/" class="brand-link"><h1>xrpl<span class="accent">dashboard</span></h1></a>
       </div>
       <nav class="nav-strip">
-        <a href="/learn"{% if _p.startswith('/learn') %} class="active" aria-current="page"{% endif %}>{{ _('learn') }}</a>
-        <a href="/pools"{% if _p.startswith('/pool') %} class="active" aria-current="page"{% endif %}>{{ _('pools') }}</a>
-        <a href="/whales"{% if _p.startswith('/whales') %} class="active" aria-current="page"{% endif %}>{{ _('whales') }}</a>
-        <a href="/tokens"{% if _p == '/tokens' or _p.startswith('/token/') %} class="active" aria-current="page"{% endif %}>{{ _('tokens') }}</a>
-        <a href="/mpts"{% if _p == '/mpts' or _p.startswith('/mpt/') %} class="active" aria-current="page"{% endif %}>{{ _('MPTs') }}</a>
-        <a href="/nfts"{% if _p.startswith('/nfts') %} class="active" aria-current="page"{% endif %}>{{ _('NFTs') }}</a>
-        {# RWA and RLUSD are proper nouns — not translated. #}
-        <a href="/rwa"{% if _p.startswith('/rwa') %} class="active" aria-current="page"{% endif %}>RWA</a>
-        <a href="/rlusd"{% if _p.startswith('/rlusd') %} class="active" aria-current="page"{% endif %}>RLUSD</a>
-        <a href="/lending"{% if _p.startswith('/lending') %} class="active" aria-current="page"{% endif %}>{{ _('lending') }}</a>
-        <a href="/amendments"{% if _p.startswith('/amendments') %} class="active" aria-current="page"{% endif %}>{{ _('amendments') }}</a>
-        <a href="/network"{% if _p.startswith('/network') %} class="active" aria-current="page"{% endif %}>{{ _('network') }}</a>
-        <a href="/sidechain"{% if _p.startswith('/sidechain') %} class="active" aria-current="page"{% endif %}>{{ _('sidechain') }}</a>
-        <a href="/health"{% if _p == '/health' %} class="active" aria-current="page"{% endif %}>{{ _('health') }}</a>
-        <a href="/methodology"{% if _p == '/methodology' %} class="active" aria-current="page"{% endif %}>{{ _('methodology') }}</a>
-        <a href="/about"{% if _p == '/about' %} class="active" aria-current="page"{% endif %}>{{ _('about') }}</a>
-        <a href="/institutional"{% if _p.startswith('/institutional') %} class="active" aria-current="page"{% endif %}>{{ _('institutional') }}</a>
+        {# 5-group consolidated nav (Charlie ruling 2026-09-08).
+           Structure shared with _nav.html via _nav_groups.html. #}
+        {% include "_nav_groups.html" %}
         <button class="search-trigger" onclick="xdSearchOpen()" aria-label="Search (Cmd+K)" title="Search (⌘K)">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <circle cx="8.5" cy="8.5" r="5.5"/>
@@ -683,6 +669,12 @@
         </details>
       </nav>
     </header>
+
+    {# ========== "On the ledger today" strip — Charlie ruling 2026-09-08.
+       Data source: changes_strip context var (populated by index() in
+       app.py from build_strip() on today's changes_envelope). Renders
+       nothing when the envelope is missing (empty context). ========== #}
+    {% include "_changes_strip.html" %}
 
     {% from "_explainer.html" import explainer %}
 

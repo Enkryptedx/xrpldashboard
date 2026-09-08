@@ -1,0 +1,227 @@
+{# 5-group nav consolidation (Charlie ruling 2026-09-08).
+   Learn / Live / Verify / Machines / About — hover/tap dropdowns on
+   desktop, single hamburger button on mobile. /amendments gets a pinned
+   ★ chip to the right of the 5 groups AND appears inside Live for
+   consistency. Included by _nav.html and templates/index.html so the
+   homepage's inline nav stays visually identical.
+
+   Data source: the NAV_GROUPS list below (kept in sync manually with
+   PUBLIC_ROUTES in app.py). Editing NAV_GROUPS is a one-line diff. #}
+{% set _p = request.path %}
+{% set NAV_GROUPS = [
+  ('learn', _('Learn'), [
+    ('/learn',        _('overview'),        ['/learn']),
+    ('/methodology',  _('methodology'),     ['/methodology']),
+    ('/glossary',     _('glossary'),        ['/glossary']),
+  ]),
+  ('live', _('Live'), [
+    ('/tokens',        _('tokens'),         ['/tokens', '/token/']),
+    ('/pools',         _('pools'),          ['/pools']),
+    ('/whales',        _('whales'),         ['/whales']),
+    ('/nfts',          _('NFTs'),           ['/nfts']),
+    ('/mpts',          _('MPTs'),           ['/mpts', '/mpt/']),
+    ('/rwa',           'RWA',               ['/rwa']),
+    ('/rlusd',         'RLUSD',             ['/rlusd']),
+    ('/cold-storage',  _('cold storage'),   ['/cold-storage']),
+    ('/price-data',    _('price data'),     ['/price-data']),
+    ('/lending',       _('lending'),        ['/lending']),
+    ('/network',       _('network'),        ['/network']),
+    ('/sidechain',     _('sidechain'),      ['/sidechain']),
+    ('/health',        _('health'),         ['/health']),
+    ('/amendments',    _('amendments'),     ['/amendments']),
+  ]),
+  ('verify', _('Verify'), [
+    ('/check',                        _('check'),          ['/check']),
+    ('/.well-known/anchors.json',     _('anchors'),        ['/.well-known/anchors']),
+    ('/.well-known/snapshots/',       _('snapshots'),      ['/.well-known/snapshots']),
+    ('/registry/taxonomy',            _('registry & taxonomy'), ['/registry']),
+    ('/coverage',                     _('coverage'),       ['/coverage']),
+    ('/claims',                       _('claims'),         ['/claims']),
+  ]),
+  ('machines', _('Machines'), [
+    ('/docs',                         'Swagger UI',        ['/docs']),
+    ('/openapi.json',                 'OpenAPI',           ['/openapi.json']),
+    ('/llms.txt',                     'llms.txt',          ['/llms.txt']),
+    ('/.well-known/agents.json',      'agents.json',       ['/.well-known/agents.json']),
+    ('/connect',                      _('connect (MCP)'),  ['/connect']),
+  ]),
+  ('about', _('About'), [
+    ('/about',           _('about'),           ['/about']),
+    ('/institutional',   _('institutional'),   ['/institutional']),
+    ('/regulation',      _('regulation'),      ['/regulation']),
+    ('/thisweek',        _('this week'),       ['/thisweek']),
+    ('/security',        _('security'),        ['/security', '/.well-known/security.txt']),
+    ('/subprocessors',   _('subprocessors'),   ['/subprocessors']),
+  ]),
+] %}
+{% macro _group_active(group) -%}
+  {% set ns = namespace(active=false) %}
+  {% for entry in group[2] %}{% for prefix in entry[2] %}
+    {% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}
+  {% endfor %}{% endfor %}
+  {{ 'active' if ns.active else '' }}
+{%- endmacro %}
+<style>
+  .nav-groups { display: inline-flex; align-items: center; gap: 0.4em; flex-wrap: wrap; }
+  .nav-groups details.group {
+    position: relative; display: inline-block;
+  }
+  .nav-groups details.group > summary {
+    list-style: none; cursor: pointer;
+    padding: 0.28em 0.85em; border-radius: 6px;
+    color: rgba(220,235,255,0.85);
+    font-size: 13px; letter-spacing: 0.01em;
+    border: 1px solid transparent;
+  }
+  .nav-groups details.group > summary::-webkit-details-marker { display: none; }
+  .nav-groups details.group > summary::after {
+    content: ' ▾'; opacity: 0.5; font-size: 0.85em;
+  }
+  .nav-groups details.group > summary:hover,
+  .nav-groups details.group[open] > summary,
+  .nav-groups details.group > summary.active {
+    color: var(--cyan, #22d3ee);
+    border-color: rgba(34,211,238,0.28);
+    background: rgba(34,211,238,0.06);
+  }
+  .nav-groups details.group[open] > summary::after { content: ' ▴'; }
+  .nav-groups details.group .menu {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 200px; padding: 6px 0;
+    background: rgba(8,12,20,0.98);
+    border: 1px solid rgba(160,180,210,0.18); border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.55);
+    z-index: 60;
+  }
+  .nav-groups details.group .menu a {
+    display: block; padding: 0.38em 0.95em;
+    color: rgba(220,235,255,0.88); text-decoration: none;
+    font-size: 12.5px; letter-spacing: 0.01em;
+  }
+  .nav-groups details.group .menu a:hover { background: rgba(34,211,238,0.08); color: var(--cyan, #22d3ee); }
+  .nav-groups details.group .menu a.active { color: var(--cyan, #22d3ee); }
+  .nav-groups details.group .menu a.starred::before {
+    content: '★ '; color: #f5b93a; margin-right: 2px;
+  }
+  .nav-groups .amendments-pin {
+    display: inline-flex; align-items: center; gap: 0.28em;
+    padding: 0.28em 0.75em; border-radius: 999px;
+    border: 1px solid rgba(245,185,58,0.42);
+    background: rgba(245,185,58,0.08);
+    color: rgba(245,220,150,0.95);
+    font-size: 12.5px; text-decoration: none;
+    letter-spacing: 0.01em;
+  }
+  .nav-groups .amendments-pin:hover { background: rgba(245,185,58,0.18); }
+  .nav-groups .amendments-pin.active {
+    background: rgba(245,185,58,0.22); border-color: rgba(245,185,58,0.62);
+  }
+  .nav-groups .amendments-pin .star { color: #f5b93a; }
+
+  .nav-groups .mobile-menu-btn { display: none; }
+  @media (max-width: 780px) {
+    .nav-groups details.group { display: none; }
+    .nav-groups .mobile-menu-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; padding: 0;
+      background: rgba(160,180,210,0.08);
+      border: 1px solid rgba(160,180,210,0.22);
+      border-radius: 6px; cursor: pointer;
+      color: rgba(220,235,255,0.9);
+    }
+    .nav-groups details.mobile-nav[open] { display: block; }
+  }
+  @media (min-width: 781px) {
+    .nav-groups details.mobile-nav { display: none !important; }
+  }
+  .nav-groups details.mobile-nav[open] .mobile-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(320px, 88vw); z-index: 200;
+    background: rgba(8,12,20,0.98);
+    border-left: 1px solid rgba(160,180,210,0.22);
+    overflow-y: auto; padding: 1rem 0;
+    box-shadow: -8px 0 32px rgba(0,0,0,0.55);
+  }
+  .nav-groups details.mobile-nav .mobile-panel h4 {
+    margin: 0.9rem 1rem 0.35rem; font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgba(160,180,210,0.55);
+  }
+  .nav-groups details.mobile-nav .mobile-panel a {
+    display: block; padding: 0.7em 1rem;
+    color: rgba(220,235,255,0.9); text-decoration: none;
+    font-size: 15px;
+  }
+  .nav-groups details.mobile-nav .mobile-panel a:active,
+  .nav-groups details.mobile-nav .mobile-panel a.active {
+    background: rgba(34,211,238,0.09); color: var(--cyan, #22d3ee);
+  }
+  .nav-groups details.mobile-nav .mobile-panel a.starred::before {
+    content: '★ '; color: #f5b93a;
+  }
+  .nav-groups details.mobile-nav .mobile-panel .close-btn {
+    position: sticky; top: 0; right: 0;
+    display: flex; justify-content: flex-end;
+    padding: 0.35rem 0.9rem;
+    background: rgba(8,12,20,0.98);
+    border-bottom: 1px solid rgba(160,180,210,0.14);
+  }
+</style>
+<div class="nav-groups">
+  {# Desktop: 5 hover/tap groups + pinned amendments star chip. #}
+  {% for group in NAV_GROUPS %}
+    {% set active_cls = _group_active(group)|trim %}
+    <details class="group">
+      <summary class="{{ active_cls }}">{{ group[1] }}</summary>
+      <div class="menu" role="menu">
+        {% for entry in group[2] %}
+          {% set ns = namespace(active=false) %}
+          {% for prefix in entry[2] %}
+            {% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}
+          {% endfor %}
+          <a role="menuitem" href="{{ entry[0] }}"
+             class="{{ 'active' if ns.active else '' }} {{ 'starred' if entry[0] == '/amendments' else '' }}">
+            {{ entry[1] }}
+          </a>
+        {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+  {# Pinned ★ Amendments chip — always visible, one tap from any page. #}
+  <a class="amendments-pin {{ 'active' if _p.startswith('/amendments') else '' }}"
+     href="/amendments"
+     title="{{ _('XRPL amendment status — flagship live tracker') }}">
+    <span class="star">★</span> {{ _('Amendments') }}
+  </a>
+
+  {# Mobile: single hamburger button, full-screen menu. #}
+  <details class="mobile-nav">
+    <summary class="mobile-menu-btn" aria-label="{{ _('Open menu') }}">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <line x1="3" y1="6" x2="17" y2="6"/>
+        <line x1="3" y1="10" x2="17" y2="10"/>
+        <line x1="3" y1="14" x2="17" y2="14"/>
+      </svg>
+    </summary>
+    <div class="mobile-panel">
+      <div class="close-btn">
+        <button type="button"
+                onclick="this.closest('details').open=false"
+                style="background:none;border:none;color:rgba(220,235,255,0.7);font-size:20px;cursor:pointer;">×</button>
+      </div>
+      {% for group in NAV_GROUPS %}
+        <h4>{{ group[1] }}</h4>
+        {% for entry in group[2] %}
+          {% set ns = namespace(active=false) %}
+          {% for prefix in entry[2] %}
+            {% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}
+          {% endfor %}
+          <a href="{{ entry[0] }}"
+             class="{{ 'active' if ns.active else '' }} {{ 'starred' if entry[0] == '/amendments' else '' }}">
+            {{ entry[1] }}
+          </a>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </details>
+</div>

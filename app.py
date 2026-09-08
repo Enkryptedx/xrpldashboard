@@ -2262,6 +2262,7 @@ def index():
         top_tokens=_top_tokens_recent(limit=5),
         cold_storage=cold,
         xrp_distribution=xrp_distribution,
+        changes_strip=_latest_changes_strip(),
     )
 
 
@@ -8498,6 +8499,45 @@ def _list_changes_dates(limit=90):
     return db.read_changes_envelope_dates(limit=limit)
 
 
+def _strip_for_envelope(envelope):
+    """Compute the "On the ledger today" strip from a changes envelope.
+    Wraps changes_builder.build_strip so template rendering never blows
+    up if the builder raises — returns None so the strip block skips."""
+    if not envelope:
+        return None
+    try:
+        import changes_builder
+        return changes_builder.build_strip(envelope, k=3)
+    except Exception:
+        return None
+
+
+def _latest_changes_strip():
+    """Fetch the strip for the most recent envelope in PG. Used by the
+    homepage. Cheap (single PG read + dict math). No cache — the strip
+    updates once a day when changes_walker fires; over-caching would
+    hide fresh envelopes."""
+    dates = _list_changes_dates(limit=1)
+    if not dates:
+        return None
+    return _strip_for_envelope(_load_changes_envelope(dates[0]))
+
+
+@app.route("/api/changes/strip.json")
+@limiter.limit(agent_tier_limit_rate)
+def api_changes_strip_json():
+    """JSON twin of the homepage strip. Same shape build_strip() returns.
+    Used by the route canary to verify the significance function is
+    producing sane output post-deploy, and available for anyone who
+    wants the "top of day" data without scraping HTML."""
+    strip = _latest_changes_strip()
+    if strip is None:
+        abort(404)
+    resp = make_response(jsonify(strip))
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
 def _changes_neighbors(date_iso: str):
     """Return (prev_date, next_date) strings or None for a given date."""
     dates = _list_changes_dates()
@@ -8538,6 +8578,7 @@ def changes_by_date(date):
         envelope=envelope,
         prev_date=prev_date,
         next_date=next_date,
+        changes_strip=_strip_for_envelope(envelope),
     )
 
 

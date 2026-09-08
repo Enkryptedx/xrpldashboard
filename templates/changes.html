@@ -67,6 +67,12 @@
 <body>
   {% include "_nav.html" ignore missing %}
 
+  {# "Top of day" strip — same significance function as the homepage, so
+     the two pages never disagree. Data source: changes_strip context var
+     from changes_by_date() in app.py, computed via build_strip() over
+     this date's envelope. #}
+  {% include "_changes_strip.html" %}
+
   <div class="nav-strip">
     {% if prev_date %}<a href="/changes/{{ prev_date }}">← {{ prev_date }}</a>{% endif %}
     <a href="/changes">latest</a>

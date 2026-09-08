@@ -52,23 +52,40 @@ DISCLOSURE = (
     "signing/anchor events. NOT covered by this feed: off-chain events (Ripple "
     "corporate news, exchange listings), XRP price movements, amendment votes "
     "not yet reflected in our amendments_state snapshot, whale movements "
-    "(daily whale line pending — v2), and any external attestations. See "
-    "/methodology for how each metric is derived."
+    "(daily whale line pending — v2), and any external attestations. "
+    "Homepage strip floors (per Charlie ruling 2026-09-08): USD metrics "
+    "qualify if |Δ| ≥ max($10,000, 0.1% × prior value); count metrics if "
+    "|Δ| ≥ 10 units AND |Δ%| ≥ 1%. Changes below floor still appear on this "
+    "page with their exact deltas, just not on the homepage strip. Anomalies "
+    "(chain discontinuity, signing-key rotation, UNL churn, taxonomy version "
+    "bump, amendment status change) always take priority over scalar deltas "
+    "in the strip. Chain-leaf advance + ledger-index advance are always true "
+    "and never take a strip slot — they live in the strip header instead. "
+    "See /methodology for how each metric is derived."
 )
 
 
 # Ordered list of scalar metric names from signed_snapshot envelopes.
-# Order determines display order when multiple scalars change in the same day.
-_SCALAR_METRICS: list[tuple[str, str, str]] = [
-    # (metric_name, human_label, prove_url)
-    ("xrpl_validated_ledger_index", "XRPL validated ledger index", "/.well-known/snapshots/"),
-    ("amm_pools_count", "AMM pools count", "/pools"),
-    ("amm_pools_total_tvl_usd", "AMM total TVL (USD)", "/pools"),
-    ("mpt_total_count", "MPT total count", "/mpts"),
-    ("named_accounts_count", "Named accounts count", "/network"),
-    ("rlusd_xrpl_supply", "RLUSD XRPL supply", "/rlusd"),
-    ("rwa_total_aum_usd", "RWA total AUM (USD)", "/rwa"),
+# metric_type controls how significant_changes() treats it:
+#   'header_only' → never slot, feeds the strip header only
+#   'usd'         → USD floor: max($10K, 0.1% × prior)
+#   'count'       → count floor: |Δ| ≥ 10 units AND |Δ%| ≥ 1%
+_SCALAR_METRICS: list[tuple[str, str, str, str]] = [
+    # (metric_name, human_label, prove_url, metric_type)
+    ("xrpl_validated_ledger_index", "XRPL validated ledger index", "/.well-known/snapshots/", "header_only"),
+    ("amm_pools_count", "AMM pools count", "/pools", "count"),
+    ("amm_pools_total_tvl_usd", "AMM total TVL (USD)", "/pools", "usd"),
+    ("mpt_total_count", "MPT total count", "/mpts", "count"),
+    ("named_accounts_count", "Named accounts count", "/network", "count"),
+    ("rlusd_xrpl_supply", "RLUSD XRPL supply", "/rlusd", "usd"),
+    ("rwa_total_aum_usd", "RWA total AUM (USD)", "/rwa", "usd"),
 ]
+
+# Floor constants (Charlie ruling 2026-09-08 "scaled floor").
+USD_ABS_FLOOR = 10_000.0     # $10,000
+USD_PCT_FLOOR = 0.001        # 0.1% of prior value
+COUNT_ABS_FLOOR = 10         # 10 units
+COUNT_PCT_FLOOR = 0.01       # 1% of prior value
 
 
 def _fmt_num(v: Any) -> str:
@@ -135,7 +152,8 @@ def _unl_validator_set(payload: Optional[dict]) -> set[str]:
 
 
 def _scalar_delta_line(name: str, label: str, prove_url: str,
-                       before: Any, after: Any) -> Optional[dict]:
+                       before: Any, after: Any,
+                       metric_type: str = "count") -> Optional[dict]:
     """Return a change dict for a scalar metric delta, or None if unchanged."""
     if before is None or after is None:
         if before != after:
@@ -145,6 +163,7 @@ def _scalar_delta_line(name: str, label: str, prove_url: str,
                         f"(now={_fmt_num(after)}, was={_fmt_num(before)})",
                 "before": before, "after": after,
                 "prove_url": prove_url, "source": "signed_snapshot",
+                "metric_name": name, "metric_type": metric_type,
             }
         return None
     if before == after:
@@ -158,12 +177,14 @@ def _scalar_delta_line(name: str, label: str, prove_url: str,
             "line": f"{label}: {_fmt_num(before)} → {_fmt_num(after)} ({sign}{_fmt_num(delta)})",
             "before": before, "after": after, "delta": delta,
             "prove_url": prove_url, "source": "signed_snapshot",
+            "metric_name": name, "metric_type": metric_type, "label": label,
         }
     return {
         "category": _category_for_metric(name),
         "line": f"{label}: {before} → {after}",
         "before": before, "after": after,
         "prove_url": prove_url, "source": "signed_snapshot",
+        "metric_name": name, "metric_type": metric_type, "label": label,
     }
 
 
@@ -223,8 +244,10 @@ def _registry_state_deltas(before: Optional[dict], after: Optional[dict]) -> lis
             lines.append({
                 "category": "registry",
                 "line": f"Registry {k}: {_fmt_num(bv)} → {_fmt_num(av)} ({sign}{_fmt_num(av - bv)})",
-                "before": bv, "after": av,
+                "before": bv, "after": av, "delta": av - bv,
                 "prove_url": "/registry/taxonomy", "source": "signed_registry_snapshot",
+                "metric_name": f"registry_{k}", "metric_type": "count",
+                "label": f"Registry {k}",
             })
     return lines
 
@@ -341,10 +364,10 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     changes.extend(_chain_lineage_delta(yesterday, today))
 
     # Scalar metric diffs — one line per changed metric
-    for name, label, prove in _SCALAR_METRICS:
+    for name, label, prove, mtype in _SCALAR_METRICS:
         b = _metric_by_name(yesterday, name) if yesterday else None
         a = _metric_by_name(today, name)
-        line = _scalar_delta_line(name, label, prove, b, a)
+        line = _scalar_delta_line(name, label, prove, b, a, metric_type=mtype)
         if line:
             changes.append(line)
 
@@ -393,49 +416,218 @@ def write_changes_file(date: dt.date, envelope: dict) -> str:
     return path
 
 
-def significant_changes(envelope: dict, k: int = 3) -> list[dict]:
-    """Return the top-k most significant changes for the homepage strip.
+def _is_anomaly(c: dict) -> bool:
+    """Anomaly = something worth flagging vs the daily heartbeat.
+    Charlie ruling 2026-09-08: chain discontinuity, signing-key rotation,
+    amendment status change (v2), UNL churn, taxonomy bump."""
+    line = c.get("line", "") or ""
+    cat = c.get("category")
+    if line.startswith("⚠"):        # chain discontinuity, key rotation
+        return True
+    if cat == "unl":
+        return True
+    if cat == "registry" and "taxonomy" in line.lower():
+        return True
+    # v2 slot — amendments status changes will emit category='amendments'
+    if cat == "amendments":
+        return True
+    return False
 
-    Deterministic significance rule (Charlie ruling 2026-09-08):
-      1. Chain-lineage anomalies (⚠ prefix in line) always win the top slot(s)
-      2. Registry taxonomy version bumps
-      3. UNL validator churn
-      4. Fill remaining slots with highest |Δ|/prior_value normalized scalar diffs
-      5. If nothing meets any bar: return an explicit "no change" placeholder line
+
+def _is_routine_heartbeat(c: dict) -> bool:
+    """Routine daily 'we wrote today' proofs — chain leaf advance,
+    registry merkle root advance. Never slot; live in header/page body."""
+    line = c.get("line", "") or ""
+    if line.startswith("Signed-snapshot chain advanced"):
+        return True
+    if line.startswith("Registry history merkle root advanced"):
+        return True
+    return False
+
+
+def _scalar_floor_check(c: dict) -> tuple[bool, str]:
+    """Return (qualifies, reason_when_below). Charlie ruling 2026-09-08:
+        USD:   |Δ| ≥ max($10,000, 0.1% × prior)
+        count: |Δ| ≥ 10 units AND |Δ%| ≥ 1%
+    """
+    mtype = c.get("metric_type")
+    b, a = c.get("before"), c.get("after")
+    if mtype not in ("usd", "count"):
+        return (False, "not a scalar metric")
+    if not isinstance(b, (int, float)) or not isinstance(a, (int, float)):
+        return (False, "non-numeric delta")
+    if not b:
+        return (False, "zero prior value")
+    delta = a - b
+    abs_delta = abs(delta)
+    pct = abs_delta / abs(b)
+    if mtype == "usd":
+        rel_floor = USD_PCT_FLOOR * abs(b)
+        floor = max(USD_ABS_FLOOR, rel_floor)
+        if abs_delta >= floor:
+            return (True, "")
+        # Human-readable reason
+        sign = "+" if delta > 0 else "−"
+        if floor <= USD_ABS_FLOOR:
+            return (False, f"Δ {sign}${abs_delta:,.2f} below $10K floor")
+        return (False, f"Δ {sign}${abs_delta:,.2f} below "
+                       f"${floor:,.0f} floor (0.1% × prior)")
+    # count
+    if abs_delta >= COUNT_ABS_FLOOR and pct >= COUNT_PCT_FLOOR:
+        return (True, "")
+    sign = "+" if delta > 0 else "−"
+    parts = []
+    if abs_delta < COUNT_ABS_FLOOR:
+        parts.append(f"|Δ|={abs_delta:g} < 10 units")
+    if pct < COUNT_PCT_FLOOR:
+        parts.append(f"|Δ%|={pct*100:.2f}% < 1%")
+    return (False, f"Δ {sign}{_fmt_num(abs_delta)} — " + " and ".join(parts))
+
+
+def _pct_signed(c: dict) -> float:
+    """Signed % change for ranking; robust to zero prior."""
+    b, a = c.get("before"), c.get("after")
+    if not isinstance(b, (int, float)) or not isinstance(a, (int, float)) or not b:
+        return 0.0
+    return (a - b) / abs(b)
+
+
+def _label_for_line(c: dict) -> str:
+    """Short label for quiet-day fill ('AMM', 'RWA', 'MPT', ...)."""
+    lab = c.get("label")
+    if lab:
+        # Strip the "(USD)" trailer and "total" filler for the fill text
+        return (lab.replace(" total TVL (USD)", " TVL")
+                    .replace(" total AUM (USD)", "")
+                    .replace(" XRPL supply", " supply")
+                    .replace(" total count", "")
+                    .strip())
+    return c.get("category", "").upper()
+
+
+def build_strip(envelope: dict, k: int = 3) -> dict:
+    """Homepage strip data. Charlie ruling 2026-09-08 (scaled floor):
+    header carries the heartbeat (ledger index + UTC time), slots go to
+    anomalies (newest first) then scalar deltas that clear the floor
+    (ranked by |%|), quiet-day fill for empty slots (below-floor category
+    first, with reason). Chain-leaf + ledger-index advances never slot.
     """
     changes = envelope.get("changes") or []
-    if not changes:
-        return [{
-            "category": "chain",
-            "line": ("Ledger closed. No amendment / UNL / signing changes today."
-                     if envelope.get("categories_no_change")
-                     else "No changes recorded."),
-            "prove_url": "/.well-known/snapshots/",
-            "source": "changes",
-        }]
-    tier1 = [c for c in changes if c.get("line", "").startswith("⚠")]
-    tier2 = [c for c in changes if c.get("category") == "registry" and "taxonomy" in c.get("line", "").lower()]
-    tier3 = [c for c in changes if c.get("category") == "unl"]
-    scalar_scored: list[tuple[float, dict]] = []
+
+    # Header: latest validated ledger index (from the ledger-index change if
+    # present, else best-effort None so the template can render dashes).
+    ledger_index = None
     for c in changes:
+        if c.get("metric_name") == "xrpl_validated_ledger_index":
+            ledger_index = c.get("after")
+            break
+
+    # Classify
+    anomalies = [c for c in changes if _is_anomaly(c)]
+    scalar_candidates = [c for c in changes
+                         if c.get("metric_type") in ("usd", "count")
+                         and c.get("metric_name") != "xrpl_validated_ledger_index"
+                         and not _is_anomaly(c)]
+
+    # Split scalars into qualifiers and below-floor
+    qualifiers, below_floor = [], []
+    for c in scalar_candidates:
+        ok, reason = _scalar_floor_check(c)
+        (qualifiers if ok else below_floor).append(
+            dict(c, _below_floor_reason=reason) if not ok else c
+        )
+    qualifiers.sort(key=lambda c: abs(_pct_signed(c)), reverse=True)
+    # Below-floor also ranked by |%| — the "biggest near-miss" is the most
+    # informative quiet-day fill (2.91% RWA reads more interesting than a
+    # 0.02% AMM-count drift).
+    below_floor.sort(key=lambda c: abs(_pct_signed(c)), reverse=True)
+
+    slots: list[dict] = []
+    # Tier 1: anomalies (newest first — envelope already emits in a stable
+    # deterministic order; we treat that as "newest first")
+    for c in anomalies:
+        if len(slots) >= k:
+            break
+        slots.append({
+            "category": c.get("category"),
+            "line": c.get("line"),
+            "prove_url": c.get("prove_url"),
+            "source": c.get("source"),
+            "kind": "anomaly",
+        })
+    # Tier 2: scalar qualifiers by |%|
+    for c in qualifiers:
+        if len(slots) >= k:
+            break
         b, a = c.get("before"), c.get("after")
-        if isinstance(b, (int, float)) and isinstance(a, (int, float)) and b:
-            score = abs((a - b) / b)
-            scalar_scored.append((score, c))
-    scalar_scored.sort(reverse=True, key=lambda x: x[0])
-    tier4 = [c for _, c in scalar_scored]
-    seen: set[int] = set()
-    out: list[dict] = []
-    for tier in (tier1, tier2, tier3, tier4):
-        for c in tier:
-            key = id(c)
-            if key in seen:
+        delta = a - b
+        pct = _pct_signed(c) * 100.0
+        sign = "+" if delta > 0 else "−"
+        pct_str = f"({sign}{abs(pct):.2f}%)"
+        if c.get("metric_type") == "usd":
+            delta_str = f"{sign}${abs(delta):,.2f}"
+        else:
+            delta_str = f"{sign}{_fmt_num(abs(delta))}"
+        line = f"{c.get('label', c.get('category', '').upper())}: " \
+               f"{_fmt_num(b)} → {_fmt_num(a)} ({delta_str} {pct_str.strip('()')})"
+        slots.append({
+            "category": c.get("category"),
+            "line": line,
+            "prove_url": c.get("prove_url"),
+            "source": c.get("source"),
+            "kind": "scalar",
+            "metric_name": c.get("metric_name"),
+            "metric_type": c.get("metric_type"),
+            "delta_pct": pct / 100.0,
+        })
+    # Tier 3: quiet-day fill — below-floor categories first
+    for c in below_floor:
+        if len(slots) >= k:
+            break
+        reason = c.get("_below_floor_reason", "below floor")
+        prefix = _label_for_line(c)
+        slots.append({
+            "category": c.get("category"),
+            "line": f"{prefix}: no material change ({reason})",
+            "prove_url": c.get("prove_url"),
+            "source": c.get("source"),
+            "kind": "quiet_day_below_floor",
+            "metric_name": c.get("metric_name"),
+        })
+    # Tier 4: pure quiet-day fill (no candidate at all in a category)
+    if len(slots) < k:
+        seen_cats = {s.get("category") for s in slots}
+        for cat in ("amm", "mpt", "rwa", "rlusd", "network", "registry", "unl"):
+            if len(slots) >= k:
+                break
+            if cat in seen_cats:
                 continue
-            seen.add(key)
-            out.append(c)
-            if len(out) >= k:
-                return out
-    return out
+            slots.append({
+                "category": cat,
+                "line": f"{cat.upper()}: no change",
+                "prove_url": None,
+                "source": None,
+                "kind": "quiet_day_no_candidate",
+            })
+            seen_cats.add(cat)
+
+    return {
+        "header": {
+            "date": envelope.get("date"),
+            "validated_ledger_index": ledger_index,
+            "as_of_utc": envelope.get("generated_at_utc"),
+        },
+        "slots": slots[:k],
+        "total_changes": len(changes),
+        "changes_url": f"/changes/{envelope.get('date')}" if envelope.get("date") else "/changes",
+    }
+
+
+# Backward-compat shim — the earlier significant_changes() name is kept
+# so external callers (route canary, /changes template historically) still
+# resolve while everything migrates to build_strip().
+def significant_changes(envelope: dict, k: int = 3) -> list[dict]:
+    return build_strip(envelope, k=k).get("slots", [])
 
 
 if __name__ == "__main__":  # pragma: no cover

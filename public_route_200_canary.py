@@ -67,6 +67,7 @@ ROUTES: list[tuple[str, int, str | None]] = [
     ("/registry/taxonomy",                10000,  "taxonomy"),
     ("/changes",                          1000,   "On the ledger"),
     ("/changes.xml",                      500,    "xrpldashboard"),
+    ("/api/changes/strip.json",           200,    "validated_ledger_index"),
     ("/methodology",                      50000,  "Event-derived metrics undercount"),
     ("/coverage",                         3000,   None),
     ("/analytics",                        3000,   None),

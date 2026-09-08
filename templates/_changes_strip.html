@@ -1,0 +1,104 @@
+{# Homepage / /changes strip: "On the ledger today".
+   Data source: build_strip(envelope, k=3) from changes_builder.py.
+   Charlie ruling 2026-09-08 — header carries the heartbeat, slots go to
+   anomalies then scaled-floor scalar deltas then quiet-day fill. #}
+{% if changes_strip and changes_strip.slots %}
+<style>
+  .changes-strip {
+    background: linear-gradient(180deg, rgba(30,40,70,0.55), rgba(20,26,50,0.55));
+    border: 1px solid rgba(160,180,210,0.14);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin: 1rem 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: rgba(230,235,245,0.92);
+  }
+  .changes-strip .strip-header {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem;
+    align-items: baseline; margin-bottom: 0.55rem;
+    font-size: 0.82rem; color: rgba(180,195,220,0.85);
+    border-bottom: 1px dashed rgba(160,180,210,0.12);
+    padding-bottom: 0.55rem;
+  }
+  .changes-strip .strip-header .strip-title {
+    font-weight: 600; color: rgba(220,235,255,0.98);
+    font-size: 0.92rem; letter-spacing: 0.01em;
+  }
+  .changes-strip .strip-header .strip-heartbeat {
+    font-family: var(--mono, "SF Mono", monospace);
+    color: rgba(160,180,210,0.75); font-size: 0.78rem;
+  }
+  .changes-strip .strip-slots {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  .changes-strip .strip-slots li {
+    display: flex; align-items: baseline; gap: 0.6rem;
+    padding: 0.32rem 0.55rem;
+    background: rgba(0,0,0,0.16);
+    border-left: 3px solid rgba(120,145,180,0.42);
+    border-radius: 4px;
+    font-size: 0.88rem; line-height: 1.4;
+  }
+  .changes-strip .strip-slots li.anomaly     { border-left-color: #ef4444; background: rgba(120,30,30,0.22); }
+  .changes-strip .strip-slots li.scalar      { border-left-color: #22d3ee; }
+  .changes-strip .strip-slots li.quiet_day_below_floor,
+  .changes-strip .strip-slots li.quiet_day_no_candidate {
+    border-left-color: rgba(120,140,170,0.28);
+    color: rgba(180,195,220,0.72); font-style: italic;
+  }
+  .changes-strip .strip-slots .cat-tag {
+    background: rgba(180,195,220,0.14); color: rgba(200,215,240,0.85);
+    font-family: var(--mono, "SF Mono", monospace);
+    font-size: 0.68rem; padding: 0.1rem 0.42rem;
+    border-radius: 3px; text-transform: uppercase;
+    letter-spacing: 0.04em; flex-shrink: 0;
+  }
+  .changes-strip .strip-slots .slot-line { flex: 1; min-width: 0; }
+  .changes-strip .strip-slots .prove-link {
+    color: rgba(120,180,220,0.72); text-decoration: none;
+    font-size: 0.78rem; margin-left: 0.4rem; flex-shrink: 0;
+  }
+  .changes-strip .strip-slots .prove-link:hover { color: var(--cyan, #22d3ee); text-decoration: underline; }
+  .changes-strip .strip-footer {
+    margin-top: 0.55rem; text-align: right;
+    font-size: 0.82rem; color: rgba(180,195,220,0.7);
+  }
+  .changes-strip .strip-footer a {
+    color: rgba(150,200,235,0.9); text-decoration: none;
+  }
+  .changes-strip .strip-footer a:hover { color: var(--cyan, #22d3ee); text-decoration: underline; }
+  @media (max-width: 640px) {
+    .changes-strip { padding: 0.7rem 0.8rem; }
+    .changes-strip .strip-slots li { font-size: 0.85rem; padding: 0.4rem 0.55rem; }
+    .changes-strip .strip-header .strip-heartbeat { font-size: 0.72rem; }
+  }
+</style>
+<aside class="changes-strip" aria-label="On the ledger today">
+  <div class="strip-header">
+    <span class="strip-title">{{ _('On the ledger today') }}</span>
+    <span class="strip-heartbeat">
+      {% if changes_strip.header.validated_ledger_index %}
+        {{ _('as of ledger') }} {{ '{:,}'.format(changes_strip.header.validated_ledger_index) }}
+      {% endif %}
+      {% if changes_strip.header.as_of_utc %}
+        · {{ changes_strip.header.as_of_utc[11:16] }} UTC
+      {% endif %}
+    </span>
+  </div>
+  <ul class="strip-slots">
+    {% for s in changes_strip.slots %}
+    <li class="{{ s.kind }}">
+      <span class="cat-tag">{{ s.category or 'other' }}</span>
+      <span class="slot-line">{{ s.line }}</span>
+      {% if s.prove_url and s.kind != 'quiet_day_no_candidate' %}
+        <a class="prove-link" href="{{ s.prove_url }}">{{ _('proof') }} →</a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="strip-footer">
+    <a href="{{ changes_strip.changes_url }}">{{ _('See all') }} {{ changes_strip.total_changes }} {{ _('changes') }} → /changes</a>
+  </div>
+</aside>
+{% endif %}

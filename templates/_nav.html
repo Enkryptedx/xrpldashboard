@@ -55,35 +55,13 @@
 
 </style>
 {% include "_search.html" %}
-{% set _p = request.path %}
-{% macro _nav_link(href, label, match=None) -%}
-  {% set m = match if match else [href] %}
-  {% set ns = namespace(active=false) %}
-  {% for prefix in m %}{% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}{% endfor %}
-  <a href="{{ href }}"{% if ns.active %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
-{%- endmacro %}
 <div class="top">
   <div class="brand"><a href="/">xrpl<span class="accent">dashboard</span></a></div>
   <div class="nav">
-    {{ _nav_link('/', _('dashboard'), match=['/$']) }}
-    {{ _nav_link('/learn', _('learn')) }}
-    {{ _nav_link('/amendments', _('amendments')) }}
-    {{ _nav_link('/network', _('network')) }}
-    {{ _nav_link('/sidechain', _('sidechain')) }}
-    {{ _nav_link('/pools', _('pools')) }}
-    {{ _nav_link('/whales', _('whales')) }}
-    {{ _nav_link('/tokens', _('tokens'), match=['/tokens', '/token/']) }}
-    {{ _nav_link('/mpts', _('MPTs'), match=['/mpts', '/mpt/']) }}
-    {{ _nav_link('/nfts', _('NFTs')) }}
-    {# RWA and RLUSD are proper nouns — not translated. #}
-    {{ _nav_link('/rwa', 'RWA') }}
-    {{ _nav_link('/rlusd', 'RLUSD') }}
-    {{ _nav_link('/lending', _('lending')) }}
-    {{ _nav_link('/health', _('health')) }}
-    {{ _nav_link('/methodology', _('methodology')) }}
-    {{ _nav_link('/regulation', _('regulation')) }}
-    {{ _nav_link('/about', _('about')) }}
-    {{ _nav_link('/institutional', _('institutional')) }}
+    {# 5-group consolidated nav (Charlie ruling 2026-09-08).
+       Group definitions + dropdown markup live in _nav_groups.html
+       so the homepage's inline nav shares the exact same structure. #}
+    {% include "_nav_groups.html" %}
     <button class="search-trigger" onclick="xdSearchOpen()" aria-label="Search (Cmd+K)" title="Search (⌘K)">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
         <circle cx="8.5" cy="8.5" r="5.5"/>
