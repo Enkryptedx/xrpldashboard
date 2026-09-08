@@ -114,5 +114,22 @@
       "citation": "curator-verified 2026-09-08 (Charlie ruling). Existing token_category_history entries for this issuer at wrapped_bridge tier since 2026-09-06 seed cover 8 of these tickers (SOIL, USDC.axl, USDf, WBTC, WETH, mBTC, mTBILL, mXRP); SOL + SHX added by this bridges section to keep the collision-check code aligned with the curator seed.",
       "note": "Bridge-issued XRPL representations of off-chain assets. Ticker match here is the bridged form, not a collision — do NOT set ticker_collision=TRUE for these (issuer, ticker) pairs."
     }
+  },
+
+  "_gateways_doc": "Custodial fiat/BTC/ETH gateway issuers on XRPL — same collision-override semantics as bridges section (bridge-issued tickers → canonical, not collision), but distinct category (stablecoin_gateway) for editorial clarity. Populated conservatively as of 2026-09-08 — only issuers with strong evidence (matching domain + long-standing public address) are whitelisted here. Two-way toml proof walker has not yet run against these issuers as of add-date (domain_two_way_proof='unchecked'), so citations lean on domain match + historical public knowledge. Any addition here should specify: issuer address(es), tickers they issue, citation URL to the issuer's own published address page (or their xrp-ledger.toml).",
+
+  "gateways": {
+    "bitstamp": {
+      "name": "Bitstamp — historic XRPL fiat/crypto gateway",
+      "issuers": ["rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"],
+      "tickers": ["USD", "EUR", "BTC", "ETH"],
+      "category": "stablecoin_gateway",
+      "tier_default": "self-described",
+      "citation": "AccountRoot Domain field = 'bitstamp.net' (issuer_facts snapshot 2026-09-08); long-standing public address (see https://xrpscan.com/account/rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B). Bitstamp deprecated new XRPL-side issuance around 2018 but the outstanding tokens remain tradeable; USD IOU shows 10,962 trades in trailing 30d, BTC shows 5,487 — clearly still-in-use custodial-gateway rails. Two-way toml proof pending — add when the walker runs against this issuer.",
+      "note": "Historic gateway. USD + EUR are fiat-backed custodial rails; BTC + ETH are the gateway's issuance of those tickers (not native, not collisions in the impostor sense)."
+    },
+
+    "_todo_gatehub": "GateHub is a significant historical XRPL gateway — no issuer with 'gatehub' in Domain field found in issuer_facts as of 2026-09-08 sweep. Their published issuer addresses (rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q and rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq per public sources) should be verified against xrpscan.com and gatehub.net/pdf/gh_iou_issuance.pdf before adding here. LEFT UNCHECKED — do not whitelist without citation. Charlie or curator to verify.",
+    "_disputed_vanity_addresses": "The addresses rBASE5KtDVqaWCTpQatezWfc4cZV7eDuyB (domain www.coinbase.com), rCoinzYTFiFMJ5qyPPXSieGYbLACw9tnM (domain https://www.coinbase.com/), rKRAKzWfCB1SA1Pz24HGUVJ8reMEeCsMEG (domain https://www.kraken.com) all use vanity-address prefixes but Kraken/Coinbase don't publicly operate XRPL gateway issuance. They look like impostor vanity registrations claiming brand affiliation. NOT whitelisted — will remain in curator_review_queue with the ticker_collision flag set."
   }
 }

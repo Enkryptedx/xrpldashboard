@@ -65,19 +65,24 @@ def _load_ticker_map() -> dict:
                 for k, v in raw.items()
                 if isinstance(v, dict) and k != "bridges" and not k.startswith("_")
             }
-            # Bridge whitelist (2026-09-08): issuer → set of tickers this
-            # bridge is authorized to mint. Bridge-issued tickers are
-            # treated as canonical (no collision label) with the bridge's
-            # declared category (typically wrapped_bridge).
-            bridges = raw.get("bridges") or {}
+            # Bridge + gateway whitelist (2026-09-08 + 2026-09-08 gateways):
+            # issuer → set of tickers this bridge/gateway is authorized to
+            # mint. Whitelisted (issuer, ticker) pairs are treated as
+            # canonical (no collision label). Bridge entries typically map
+            # to category=wrapped_bridge; gateway entries to
+            # category=stablecoin_gateway. Both override the collision
+            # path here — the category assignment is written elsewhere
+            # (token_category_history via curator flip).
             index: dict[str, set[str]] = {}
-            for _bname, bdef in bridges.items():
-                if not isinstance(bdef, dict):
-                    continue
-                issuers = bdef.get("issuers") or []
-                tickers = {t.upper() for t in (bdef.get("tickers") or [])}
-                for iss in issuers:
-                    index.setdefault(iss, set()).update(tickers)
+            for section_name in ("bridges", "gateways"):
+                section = raw.get(section_name) or {}
+                for _bname, bdef in section.items():
+                    if not isinstance(bdef, dict):
+                        continue
+                    issuers = bdef.get("issuers") or []
+                    tickers = {t.upper() for t in (bdef.get("tickers") or [])}
+                    for iss in issuers:
+                        index.setdefault(iss, set()).update(tickers)
             _bridge_index = index
         except (OSError, json.JSONDecodeError, TypeError):
             _ticker_map = {}
@@ -206,9 +211,10 @@ def resolve_display(
         # Canonical issuance — display bare, no collision label.
         return result
 
-    # Bridge-issued tickers: treat as canonical (bridge is authorized to
-    # mint this XRPL representation of the off-chain token). Overrides
-    # collision path — see ticker_canonical_issuers.json § bridges.
+    # Bridge/gateway-issued tickers: treat as canonical (issuer is
+    # authorized to mint this XRPL representation of the ticker).
+    # Overrides collision path — see ticker_canonical_issuers.json
+    # § bridges and § gateways.
     if _is_bridge_issued(issuer, upper):
         return result
 
