@@ -1,6 +1,7 @@
 {
   "_doc": "Curated map of well-known off-chain tickers → their canonical XRPL issuers (if any). Read by token_naming.resolve_display(). When a decoded currency name matches one of these keys but the issuer is NOT in canonical_issuers, /token, /whales, /check etc. render the collision-qualified form (e.g. 'USDT (usdxrp.net — not Tether)'). canonical_issuers=[] means NO canonical XRPL issuer exists — every match is a collision. Add cautiously; a new entry retroactively re-qualifies every existing display.",
   "_source_of_truth": "Ripple's RLUSD launch announcement (2024); public issuer registries at xrpscan.com and xrplf.org/registry (spot-checked 2026-09-06). Update this file, not code, when a legitimate issuer changes hands.",
+  "_bridges_doc": "Bridge/wrapped-asset issuers that legitimately mint XRPL-side representations of off-chain tokens. When a token's issuer is in a bridge's issuers list AND its decoded ticker is in that bridge's tickers list, resolve_display() treats it as canonical (no collision label) with category = wrapped_bridge. This overrides the collision path — a WBTC issued by an Axelar/Midas bridge is the bridged form, not a collision claim against mainstream WBTC. Added 2026-09-08 after row #4 (SOL from rfmS3zqr...) surfaced in the curator queue as a false-positive collision.",
 
   "RLUSD": {
     "brand": "Ripple USD",
@@ -101,5 +102,17 @@
     "brand": "Tether",
     "canonical_issuers": [],
     "note": "not Tether Ltd."
+  },
+
+  "bridges": {
+    "midas_xrpl": {
+      "name": "Midas / Axelar bridge — XRPL wrapped assets",
+      "issuers": ["rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"],
+      "tickers": ["SOL", "WBTC", "WETH", "USDC.axl", "USDf", "SOIL", "mBTC", "mTBILL", "mXRP", "SHX"],
+      "category": "wrapped_bridge",
+      "tier_default": "self-described",
+      "citation": "curator-verified 2026-09-08 (Charlie ruling). Existing token_category_history entries for this issuer at wrapped_bridge tier since 2026-09-06 seed cover 8 of these tickers (SOIL, USDC.axl, USDf, WBTC, WETH, mBTC, mTBILL, mXRP); SOL + SHX added by this bridges section to keep the collision-check code aligned with the curator seed.",
+      "note": "Bridge-issued XRPL representations of off-chain assets. Ticker match here is the bridged form, not a collision — do NOT set ticker_collision=TRUE for these (issuer, ticker) pairs."
+    }
   }
 }

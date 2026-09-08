@@ -41,6 +41,7 @@ TICKER_CANONICAL_PATH = os.path.join(HERE, "ticker_canonical_issuers.json")
 
 _lock = threading.Lock()
 _ticker_map: Optional[dict] = None
+_bridge_index: Optional[dict] = None   # issuer → set of tickers it bridges
 
 
 def _load_ticker_map() -> dict:
@@ -48,7 +49,7 @@ def _load_ticker_map() -> dict:
     on missing/malformed file — better to fail-open (no collision
     detection) than to fail-closed (render nothing) if the file gets
     corrupted."""
-    global _ticker_map
+    global _ticker_map, _bridge_index
     with _lock:
         if _ticker_map is not None:
             return _ticker_map
@@ -62,11 +63,37 @@ def _load_ticker_map() -> dict:
                     "brand": v.get("brand"),
                 }
                 for k, v in raw.items()
-                if isinstance(v, dict)
+                if isinstance(v, dict) and k != "bridges" and not k.startswith("_")
             }
+            # Bridge whitelist (2026-09-08): issuer → set of tickers this
+            # bridge is authorized to mint. Bridge-issued tickers are
+            # treated as canonical (no collision label) with the bridge's
+            # declared category (typically wrapped_bridge).
+            bridges = raw.get("bridges") or {}
+            index: dict[str, set[str]] = {}
+            for _bname, bdef in bridges.items():
+                if not isinstance(bdef, dict):
+                    continue
+                issuers = bdef.get("issuers") or []
+                tickers = {t.upper() for t in (bdef.get("tickers") or [])}
+                for iss in issuers:
+                    index.setdefault(iss, set()).update(tickers)
+            _bridge_index = index
         except (OSError, json.JSONDecodeError, TypeError):
             _ticker_map = {}
+            _bridge_index = {}
         return _ticker_map
+
+
+def _is_bridge_issued(issuer: Optional[str], ticker_upper: str) -> bool:
+    """Return True when (issuer, ticker) matches a bridge whitelist —
+    means the bridge is authorized to mint this ticker on XRPL, so the
+    ticker match is the bridged form, not a collision."""
+    if not issuer:
+        return False
+    _load_ticker_map()  # ensures _bridge_index is populated
+    tickers = _bridge_index.get(issuer)
+    return bool(tickers and ticker_upper in tickers)
 
 
 def decode_currency(currency: str) -> dict:
@@ -177,6 +204,12 @@ def resolve_display(
     canonical = entry["canonical_issuers"]
     if issuer and issuer in canonical:
         # Canonical issuance — display bare, no collision label.
+        return result
+
+    # Bridge-issued tickers: treat as canonical (bridge is authorized to
+    # mint this XRPL representation of the off-chain token). Overrides
+    # collision path — see ticker_canonical_issuers.json § bridges.
+    if _is_bridge_issued(issuer, upper):
         return result
 
     # Collision: matches a well-known ticker but issuer isn't canonical.

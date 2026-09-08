@@ -41,7 +41,8 @@ REMOTE_CMD_TEMPLATE = (
     "now=time.time()\n"
     "cut24=datetime.datetime.fromtimestamp(now-86400).strftime(\\\"%Y-%m-%d %H:%M:%S\\\")\n"
     "cut7d=datetime.datetime.fromtimestamp(now-7*86400).strftime(\\\"%Y-%m-%d %H:%M:%S\\\")\n"
-    "c24=c7=c_wd=c_sr=0\n"
+    "cut2h=datetime.datetime.fromtimestamp(now-2*3600).strftime(\\\"%Y-%m-%d %H:%M:%S\\\")\n"
+    "c24=c7=c_wd=c_wd2h=c_sr=0\n"
     "with open(p) as f:\n"
     "  for line in f:\n"
     "    if len(line)<21 or line[0]!=\\\"[\\\": continue\n"
@@ -49,9 +50,11 @@ REMOTE_CMD_TEMPLATE = (
     "    if \\\"xrpl_stream starting\\\" in line:\n"
     "      if ts>=cut7d: c7+=1\n"
     "      if ts>=cut24: c24+=1\n"
-    "    elif \\\"watchdog: no msg\\\" in line and ts>=cut24: c_wd+=1\n"
+    "    elif \\\"watchdog: no msg\\\" in line:\n"
+    "      if ts>=cut24: c_wd+=1\n"
+    "      if ts>=cut2h: c_wd2h+=1\n"
     "    elif \\\"session ended cleanly\\\" in line and ts>=cut24: c_sr+=1\n"
-    "print(f\\\"{{c24}} {{c7}} {{c_wd}} {{c_sr}}\\\")"
+    "print(f\\\"{{c24}} {{c7}} {{c_wd}} {{c_sr}} {{c_wd2h}}\\\")"
     '"'
 )
 
@@ -60,7 +63,10 @@ def _log(msg: str) -> None:
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
 
-def fetch_counts() -> tuple[int, int, int, int]:
+def fetch_counts() -> tuple[int, int, int, int, int]:
+    """Return (c24_restarts, c7_restarts, c_watchdog_24h, c_session_reconnects_24h,
+    c_watchdog_2h). The 2h watchdog count powers the density-based pager
+    (2026-09-08: page on ≥3 watchdog restarts in <2h, not raw rolling count)."""
     cmd = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
            REMOTE_HOST, REMOTE_CMD_TEMPLATE.format(log=REMOTE_LOG)]
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -70,9 +76,9 @@ def fetch_counts() -> tuple[int, int, int, int]:
             f"stderr={out.stderr.strip()[:200]}"
         )
     parts = out.stdout.strip().split()
-    if len(parts) != 4:
+    if len(parts) != 5:
         raise RuntimeError(f"unexpected stdout shape: {out.stdout!r}")
-    return int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
+    return int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4])
 
 
 def main() -> int:
@@ -88,25 +94,21 @@ def main() -> int:
     msg = "init"
     findings = None
     try:
-        c24, c7, cwd, csr = fetch_counts()
-        # 2026-09-06: findings_count = real data-loss class ONLY
-        # (process restarts + watchdog kicks). Prior compound
-        # findings=c24+csr conflated a watchdog stall (data lost,
-        # 5-53/day pre-fix) with a graceful upstream session-close
-        # (127.0.0.1:6007 idle-cycles ~45min, second reconnects,
-        # no lost data). Every hour csr ticked by ~1 the walker
-        # rewrote last_run_message, which flipped l1_pager's
-        # fingerprint (`id|sample_reason|last_message`) and
-        # bypassed the 6h re-page throttle as a "breakthrough" —
-        # producing a fresh page at the first 20-min L1 tick after
-        # each hourly walker write, so ~hourly pages routed through
-        # the 20-min pager cadence.
-        # Now: findings clears at 0 whenever process is stable, csr
-        # stays in the human-readable message (an operator can still
-        # eyeball a runaway upstream via /walker-health or the ~200/
-        # day threshold below), and l1_pager's fingerprint won't
-        # storm on csr drift.
-        findings = c24 + cwd
+        c24, c7, cwd, csr, cwd2h = fetch_counts()
+        # 2026-09-08: findings_count based on WATCHDOG-RESTART DENSITY,
+        # not raw rolling counts. Prior findings=c24+cwd fired a page on
+        # any restart uptick — noisy for a stream where 1-2 restarts/day
+        # is normal (7d avg 4-5). Two Sep 7-8 restarts (18:58Z, 13:58Z)
+        # were both benign IDLE_KILL_SECONDS watchdog kicks during
+        # rippled consensus-establish quiets — the stream self-heals in
+        # 30s via systemd, no data loss. Paging on those is wrong.
+        # Now: fire ONLY when ≥3 watchdog restarts land in a rolling
+        # 2h window (dense clustering ≈ real upstream distress). Raw
+        # 24h/7d/watchdog counts remain in the human-readable message
+        # for context.
+        WATCHDOG_DENSITY_THRESHOLD = 3      # watchdog restarts …
+        WATCHDOG_DENSITY_WINDOW_HOURS = 2   # … in this rolling window
+        findings = 1 if cwd2h >= WATCHDOG_DENSITY_THRESHOLD else 0
         # Emergency escape valve: if session_reconnects run away
         # (>200/day = one every ~7min), we DO want a page — this
         # tier caught a bad upstream node in the past.
@@ -114,9 +116,10 @@ def main() -> int:
         if csr > SESSION_RECONNECT_ALERT_THRESHOLD:
             findings += 1
         rate_per_day_7d = c7 / 7.0
-        msg = (f"24h={c24} restarts (watchdog={cwd}) · "
+        msg = (f"24h={c24} restarts (watchdog={cwd}, 2h_watchdog={cwd2h}) · "
                f"session_reconnects={csr} · "
                f"7d={c7} ({rate_per_day_7d:.1f}/day avg) · "
+               f"page_thresh=≥{WATCHDOG_DENSITY_THRESHOLD}wd/{WATCHDOG_DENSITY_WINDOW_HOURS}h · "
                f"host={REMOTE_HOST}")
         _log(f"OK: {msg}")
         ok = True

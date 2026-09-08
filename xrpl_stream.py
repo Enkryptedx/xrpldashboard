@@ -53,7 +53,14 @@ RECONNECT_BACKOFF_BASE = 2.0
 RECONNECT_BACKOFF_MAX = 60.0
 HEARTBEAT_EVERY_SECONDS = 300   # write a heartbeat log line every 5 min
 STATE_SAVE_EVERY_SECONDS = 60   # persist counters to disk every minute
-IDLE_KILL_SECONDS = 90          # force-close session if no msg in this window
+IDLE_KILL_SECONDS = 180         # force-close session if no msg in this window
+                                # Raised from 90s → 180s on 2026-09-08 after
+                                # 2 benign restarts (Sep 07 18:58Z, Sep 08 13:58Z)
+                                # traced to rippled consensus-`establish` phases
+                                # legitimately quieting the tx-subscribe channel
+                                # for 100-150s. Ledger-stream subscription
+                                # (proper fix, adds ~4s heartbeat) queued for
+                                # post-freeze — see triage/WATCHDOG_V2_PLAN.md.
 WATCHDOG_TICK_SECONDS = 10      # how often the watchdog checks for idle
 
 HERE = os.path.dirname(os.path.abspath(__file__))
