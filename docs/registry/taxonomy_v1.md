@@ -99,6 +99,21 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 
 ---
 
+## Verification tier (orthogonal to category)
+
+The verification tier is a **separate axis** from category. Category answers *what a token is* (the 12 real categories above); the tier answers *how strongly the issuer's identity is proven*. A token can be verified with no category, or richly categorized with no verification — the two never imply each other. The tier is carried on every `token_category_history` row (`tier ∈ {verified, self-described, curator-inferred, mechanical, bare}`) and renders as a lane/badge on `/tokens`, `/token/<>`, `/whales`, and `/check`.
+
+### `verified`
+- **Definition (ruled 2026-09-09):** Verified = the issuer proved control of its domain via two-way toml match. Not an endorsement. Reputation and category are separate.
+- **Rule:** The issuer's on-ledger `Domain` field points to a host, and that host publishes `/.well-known/xrp-ledger.toml` whose `[[ISSUERS]]` block names the same on-ledger wallet. Both directions must agree — if either side is missing or contradicts, no verification.
+- **What it is NOT:** not an endorsement, not KYC, not legal/regulatory verification, not a signal of financial soundness or reputation. It certifies only that the on-ledger account and the named domain are operated by the same party.
+- **Evidence:** two-way domain↔toml chain; stored with `source='toml'` (or `source=curator_authority_two_way_proof` for a curator-recorded proof).
+
+### Reputation and category are separate axes
+A curator label and its citations describe *what* a token is and show as color and glyph, **not** as a lane. The lane encodes attestation strength only. Neither implies the other.
+
+---
+
 ## Mechanical flags (orthogonal to category)
 
 Both flags may attach to a row of any category. They render as prominent badges regardless of category.

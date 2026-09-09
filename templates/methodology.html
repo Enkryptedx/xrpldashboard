@@ -409,6 +409,9 @@
 
   <h2 id="attestation">{{ _('Domain attestation') }}</h2>
   <p>
+    <strong>{{ _('Verified = the issuer proved control of its domain via two-way toml match. Not an endorsement. Reputation and category are separate.') }}</strong>
+  </p>
+  <p>
     {% trans -%}
     A "domain-attested" issuer is one we can cryptographically link to a public web domain by following a two-way chain. First, the issuer's on-ledger <code>Domain</code> field (set via <code>AccountSet</code>) points to a hostname (e.g. <code>sivax.io</code>). Second, that hostname publishes an <code>xrp-ledger.toml</code> file at <code>/.well-known/xrp-ledger.toml</code> whose <code>[[ISSUERS]]</code> block explicitly names the same on-ledger wallet. Both directions have to agree — if either side is missing or contradicts, no badge.
     {%- endtrans %}
@@ -422,6 +425,11 @@
     <strong>{{ _('What the green ✓ does NOT mean:') }}</strong>
     {% trans -%}
     it is not an endorsement, not KYC, not legal or regulatory verification, not a signal of financial soundness. It only certifies that the on-ledger account and the named domain are operated by the same party. Whether that party is trustworthy in any other sense is for the visitor to research.
+    {%- endtrans %}
+  </p>
+  <p>
+    {% trans -%}
+    Reputation and category are separate axes from verification. The verified badge is a domain-control proof only; a curator label and its citations describe <em>what</em> a token is (its category) and show as color and glyph, not as a lane. A token can be verified with no category, or richly categorized with no verification — the two never imply each other.
     {%- endtrans %}
   </p>
   <p>

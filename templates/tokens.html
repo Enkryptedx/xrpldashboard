@@ -910,7 +910,7 @@
 
     <div class="v5-tier-strip">
       <span class="v5-tier-label">{{ _('attestation of top {} pairs:').format(tier_summary.total_pairs) }}</span>
-      <span class="v5-tier v5-tier--verified" title="{{ _('cryptographically anchored via canonical TOML [[ACCOUNTS]] block on the issuer\'s own domain') }}">
+      <span class="v5-tier v5-tier--verified" title="{{ _('Verified = the issuer proved control of its domain via two-way toml match. Not an endorsement. Reputation and category are separate.') }}">
         <span>✓</span>
         <span>{{ _('verified') }}</span>
         <span class="v5-tier-n">{{ tier_summary.verified }}</span>
@@ -985,6 +985,7 @@
     </div>
     <div class="tron-legend-foot">
       {{ _('Lane = how strong the attestation is. Color + glyph = what kind of token.') }}
+      {{ _('Reputation and category are separate axes — the curator label and citations show as color and glyph, not as a lane.') }}
       {{ _('Live lane distribution this session:') }}
       <span class="tron-lane-readout" data-lane-readout>{{ _('waiting for trades…') }}</span>
     </div>
