@@ -1,10 +1,21 @@
 """
 Wallet detail data layer — feeds /wallet/<address>.
 
-Pulls live data from the XRP Ledger via JSON-RPC:
+Pulls live data from the XRP Ledger via JSON-RPC, tunnel-first:
   - account_info     → XRP balance, owner-object count, reserve math
   - account_lines    → trustline (held-token) count
   - account_tx       → last ~1000 transactions, paginated
+
+Sourcing (2026-09-09): switched from hardcoded public JsonRpcClient to
+SovereignFetcher — tunnel-first with retry-then-cascade to public RPC.
+A wallet render fans out across several independent fetches (the main
+sequential path, a 3-way escrow/offer/MPT pool, and a per-LP enrichment
+pool). SovereignFetcher is not thread-safe, so each concurrent branch
+gets its OWN fetcher; the page envelope's `sourcing` is the worse_sourcing()
+aggregate across every branch — any single fallback taints the whole page
+per the disclosure symmetry rule. Each branch fetcher logs at most one
+walker_node_fallback row on a real cascade (same per-fetch convention as
+/lending, which already emits one row per fetcher).
 
 Derives:
   - 30-day daily transaction counts ("pulse" trace)
@@ -29,7 +40,6 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import (
     AccountInfo, AccountLines, AccountTx, AMMInfo, ServerInfo,
     AccountObjects, AccountOffers,
@@ -38,6 +48,11 @@ from xrpl.models.requests.account_objects import AccountObjectType
 
 import db
 from check_data import _capability_signals
+from sovereign_tunnel_client import (
+    SovereignFetcher,
+    worse_sourcing,
+    SOURCING_SOVEREIGN,
+)
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 
@@ -85,7 +100,7 @@ _reserve_cache_lock = threading.Lock()
 _reserve_cache = {}  # node_url -> (fetched_at_unix, (base_xrp, owner_xrp))
 
 
-def _fetch_server_reserves(client):
+def _fetch_server_reserves(fetcher):
     """Pull (base_reserve_xrp, owner_reserve_xrp) from validated server_info.
     Falls back to module constants if the request fails so a transient
     node error never breaks the wallet view."""
@@ -95,7 +110,7 @@ def _fetch_server_reserves(client):
         if cached and now - cached[0] < _RESERVE_TTL_SECONDS:
             return cached[1]
     try:
-        info = (client.request(ServerInfo()).result or {}).get("info") or {}
+        info = (_safe_request(fetcher, ServerInfo()) or {}).get("info") or {}
         validated = info.get("validated_ledger") or {}
         base = validated.get("reserve_base_xrp")
         owner = validated.get("reserve_inc_xrp")
@@ -251,7 +266,7 @@ def _amm_pair_label_from_info(amm):
     return None
 
 
-def _special_account_self_info(client, account_data, address):
+def _special_account_self_info(fetcher, account_data, address):
     """Detect whether `address` is a special pseudo-account using its
     AccountRoot's stored ledger fields. Per XRPL spec:
       - AMMID present  → AMM pseudo-account (XLS-30)
@@ -271,7 +286,7 @@ def _special_account_self_info(client, account_data, address):
         if cached:
             amm_pair = _amm_pair_label(cached.get("Asset", {}), cached.get("Asset2", {}))
         else:
-            resp = _safe_request(client, AMMInfo(amm_account=address))
+            resp = _safe_request(fetcher, AMMInfo(amm_account=address))
             if resp:
                 amm_pair = _amm_pair_label_from_info(resp.get("amm") or {})
     return is_amm, is_vault, amm_pair
@@ -433,26 +448,38 @@ def _label_pos(ang):
     return -14, -14, "end"
 
 
-def _safe_request(client, request):
+def _safe_request(fetcher, request):
+    """Run an xrpl-py request model through a SovereignFetcher.
+
+    SovereignFetcher speaks raw JSON-RPC (method + params), whereas the
+    /wallet helpers are written against xrpl-py typed request models. This
+    thin adapter serializes the model to (method, params) — preserving
+    api_version:2 so response shapes (delivered_amount, tx_json, DeliverMax)
+    are identical to the old JsonRpcClient path — and returns the result
+    dict, or None on error / total failure. Never raises."""
     try:
-        resp = client.request(request)
-        if "error" in resp.result:
+        payload = request.to_dict()
+        method = payload.pop("method")
+        result = fetcher.call(method, payload)
+        if result is None:
             return None
-        return resp.result
+        if isinstance(result, dict) and "error" in result:
+            return None
+        return result
     except Exception:
         return None
 
 
-def _fetch_account_info(client, address):
+def _fetch_account_info(fetcher, address):
     # signer_lists=True piggybacks multi-sig detection for the /wallet
     # capability block on the same RPC — no extra round-trip.
-    return _safe_request(client, AccountInfo(
+    return _safe_request(fetcher, AccountInfo(
         account=address, ledger_index="validated", signer_lists=True,
     ))
 
 
-def _fetch_account_lines(client, address):
-    result = _safe_request(client, AccountLines(account=address, ledger_index="validated"))
+def _fetch_account_lines(fetcher, address):
+    result = _safe_request(fetcher, AccountLines(account=address, ledger_index="validated"))
     return (result or {}).get("lines", []) if result else []
 
 
@@ -538,7 +565,7 @@ def _amount_iou(amount):
     return None
 
 
-def _pool_24h_metrics(client, amm_account):
+def _pool_24h_metrics(fetcher, amm_account):
     """Estimate the pool's 24h XRP throughput by summing |Balance deltas|
     on the AMM AccountRoot across recent Payment txs. The trading_fee skim
     happens per-swap, so volume × fee_pct ≈ pool fees earned in the window.
@@ -566,7 +593,7 @@ def _pool_24h_metrics(client, amm_account):
         kwargs = {"account": amm_account, "limit": 400, "forward": False}
         if marker is not None:
             kwargs["marker"] = marker
-        result = _safe_request(client, AccountTx(**kwargs))
+        result = _safe_request(fetcher, AccountTx(**kwargs))
         if not result:
             break
         txs = result.get("transactions", []) or []
@@ -609,15 +636,18 @@ def _pool_24h_metrics(client, amm_account):
 
 
 def _enrich_one_lp(h):
-    """Worker for the parallel LP enrichment pool. Each call uses its own
-    JsonRpcClient since xrpl-py's JsonRpcClient is per-thread safe but we
-    want independent connections for parallelism."""
-    client = JsonRpcClient(XRPL_NODE)
+    """Worker for the parallel LP enrichment pool. Each call uses its OWN
+    SovereignFetcher — SovereignFetcher is not thread-safe (mutable
+    .sourcing + sticky fallback), so one-per-worker is required. Returns
+    (result_or_None, sourcing) so the caller can worse_sourcing()-fold every
+    LP branch into the page envelope even when a branch yields no position
+    (a fallback still counts: the AMMInfo/AccountTx calls hit public)."""
+    fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
     amm_account = h["issuer"]
     my_lp = abs(h["balance"])
-    result = _safe_request(client, AMMInfo(amm_account=amm_account))
+    result = _safe_request(fetcher, AMMInfo(amm_account=amm_account))
     if not result:
-        return None
+        return None, fetcher.sourcing
     amm = result.get("amm") or {}
     amount = amm.get("amount")
     amount2 = amm.get("amount2")
@@ -627,7 +657,7 @@ def _enrich_one_lp(h):
     except (TypeError, ValueError):
         total_lp = 0.0
     if total_lp <= 0 or my_lp <= 0:
-        return None
+        return None, fetcher.sourcing
     share = my_lp / total_lp
     xrp_total = _amount_xrp(amount)
     iou_side = _amount_iou(amount2)
@@ -638,7 +668,7 @@ def _enrich_one_lp(h):
         iou_a = _amount_iou(amount)
         iou_b = _amount_iou(amount2)
         if not iou_a or not iou_b:
-            return None
+            return None, fetcher.sourcing
         pair = f"{_short_currency(iou_a[0], iou_a[1])}/{_short_currency(iou_b[0], iou_b[1])}"
         paired_token = pair
         my_xrp = None
@@ -654,7 +684,7 @@ def _enrich_one_lp(h):
         fee_bps = 0
     fee_pct = fee_bps / 1000.0
     if my_xrp is not None:
-        pool_24h_vol_xrp, pool_24h_trades = _pool_24h_metrics(client, amm_account)
+        pool_24h_vol_xrp, pool_24h_trades = _pool_24h_metrics(fetcher, amm_account)
         pool_24h_fees_xrp = pool_24h_vol_xrp * (fee_pct / 100.0)
         my_24h_fees_xrp = pool_24h_fees_xrp * share
         est_apr_pct = (my_24h_fees_xrp * 365 / my_xrp * 100) if my_xrp > 0 else 0.0
@@ -679,27 +709,33 @@ def _enrich_one_lp(h):
         "pool_24h_fees_xrp": pool_24h_fees_xrp,
         "my_24h_fees_xrp": my_24h_fees_xrp,
         "est_apr_pct": est_apr_pct,
-    }
+    }, fetcher.sourcing
 
 
 def _enrich_lp_holdings(holdings_lp):
     """Fan out per-LP enrichment over a small thread pool. Each LP requires
     one AMMInfo call + (for XRP-paired pools) up to 5 paginated AccountTx calls
     to compute 24h volume, so total wall-clock for 4 LPs collapses from ~45s
-    sequential to ~12s with workers=4."""
+    sequential to ~12s with workers=4.
+
+    Returns (enriched_list, aggregated_sourcing): each worker runs its own
+    SovereignFetcher and reports its sourcing, folded worse_sourcing() so a
+    fallback on ANY LP branch surfaces on the page envelope."""
     if not holdings_lp:
-        return []
+        return [], SOURCING_SOVEREIGN
     enriched = []
+    agg_sourcing = SOURCING_SOVEREIGN
     max_workers = min(8, max(1, len(holdings_lp)))
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        for r in ex.map(_enrich_one_lp, holdings_lp):
+        for r, src in ex.map(_enrich_one_lp, holdings_lp):
+            agg_sourcing = worse_sourcing(agg_sourcing, src)
             if r is not None:
                 enriched.append(r)
     enriched.sort(key=lambda x: -(x["my_xrp"] if x["my_xrp"] is not None else -1))
-    return enriched
+    return enriched, agg_sourcing
 
 
-def _fetch_account_tx(client, address, max_pages=MAX_TX_PAGES):
+def _fetch_account_tx(fetcher, address, max_pages=MAX_TX_PAGES):
     """Paginated fetch of recent txs. Returns list of tx envelopes."""
     txs = []
     marker = None
@@ -707,7 +743,7 @@ def _fetch_account_tx(client, address, max_pages=MAX_TX_PAGES):
         kwargs = {"account": address, "limit": TX_PAGE_LIMIT, "forward": False}
         if marker is not None:
             kwargs["marker"] = marker
-        result = _safe_request(client, AccountTx(**kwargs))
+        result = _safe_request(fetcher, AccountTx(**kwargs))
         if not result:
             break
         txs.extend(result.get("transactions", []) or [])
@@ -1070,7 +1106,7 @@ def _load_mpt_issuance_index():
     return idx
 
 
-def _fetch_escrows(client, address):
+def _fetch_escrows(fetcher, address):
     """Return {sent_external: [...], self_locks: [...]}.
 
     account_objects only returns escrows the focal account *owns* (paid
@@ -1083,7 +1119,7 @@ def _fetch_escrows(client, address):
     """
     out = {"sent_external": [], "self_locks": []}
     result = _safe_request(
-        client,
+        fetcher,
         AccountObjects(account=address, type=AccountObjectType.ESCROW, ledger_index="validated"),
     )
     if not result:
@@ -1139,7 +1175,7 @@ def _format_amount_display(amount):
     return "?"
 
 
-def _fetch_offers(client, address):
+def _fetch_offers(fetcher, address):
     """Return [{seq, taker_gets_display, taker_pays_display, ...}, ...].
 
     Pending DEX limit orders. The wallet account is the maker on each —
@@ -1148,7 +1184,7 @@ def _fetch_offers(client, address):
     """
     out = []
     result = _safe_request(
-        client,
+        fetcher,
         AccountOffers(account=address, ledger_index="validated"),
     )
     if not result:
@@ -1169,7 +1205,7 @@ def _fetch_offers(client, address):
     return out
 
 
-def _fetch_mpt_holdings(client, address):
+def _fetch_mpt_holdings(fetcher, address):
     """Return [{issuance_id, amount_display, name, ticker, ...}, ...].
 
     account_objects type=mptoken gives the focal wallet's MPToken
@@ -1181,7 +1217,7 @@ def _fetch_mpt_holdings(client, address):
     """
     out = []
     result = _safe_request(
-        client,
+        fetcher,
         AccountObjects(account=address, type=AccountObjectType.MPTOKEN, ledger_index="validated"),
     )
     if not result:
@@ -1237,8 +1273,14 @@ def _fetch_mpt_holdings(client, address):
 
 
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
-    client = JsonRpcClient(XRPL_NODE)
-    info = _fetch_account_info(client, address)
+    # Main sequential path shares ONE fetcher (sticky fallback: once it
+    # cascades to public, all later main-path calls stay public and it
+    # logs exactly one walker_node_fallback row). The concurrent branches
+    # below (LP enrichment + escrow/offer/MPT pool) each get their own
+    # fetcher — SovereignFetcher is not thread-safe. Every branch's sourcing
+    # is worse_sourcing()-folded into the page envelope.
+    main = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    info = _fetch_account_info(main, address)
     if info is None:
         return {
             "error": "Account not found on the XRP Ledger.",
@@ -1267,18 +1309,19 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
             "offers": [],
             "mpt_holdings": [],
             "capabilities": [],
+            "sourcing": main.sourcing,
         }
     account_data = info.get("account_data", {})
-    is_amm, is_vault, amm_pair = _special_account_self_info(client, account_data, address)
+    is_amm, is_vault, amm_pair = _special_account_self_info(main, account_data, address)
     balance_drops = int(account_data.get("Balance", "0"))
     owner_count = int(account_data.get("OwnerCount", 0))
     balance_xrp = balance_drops / 1_000_000
-    base_reserve_xrp, owner_reserve_xrp = _fetch_server_reserves(client)
+    base_reserve_xrp, owner_reserve_xrp = _fetch_server_reserves(main)
     reserved_xrp = base_reserve_xrp + owner_reserve_xrp * owner_count
     available_xrp = max(0.0, balance_xrp - reserved_xrp)
     pct_locked = (reserved_xrp / balance_xrp) if balance_xrp > 0 else 0.0
 
-    lines = _fetch_account_lines(client, address)
+    lines = _fetch_account_lines(main, address)
     trustline_count = len(lines)
     holdings = _build_holdings(lines)
     holdings_token = [h for h in holdings if not h["is_lp"]]
@@ -1289,7 +1332,10 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     # so the enrichment output is unused. Without this short-circuit a
     # pool with N LP-bearing trustlines stalls the page for 5–25s on cold
     # cache because each enrichment is sequentially expensive.
-    amm_positions = [] if (is_amm or is_vault) else _enrich_lp_holdings(holdings_lp)
+    if is_amm or is_vault:
+        amm_positions, lp_sourcing = [], SOURCING_SOVEREIGN
+    else:
+        amm_positions, lp_sourcing = _enrich_lp_holdings(holdings_lp)
     amm_total_xrp = sum(p["my_xrp"] for p in amm_positions if p["my_xrp"] is not None)
     amm_24h_fees_xrp = sum(
         p["my_24h_fees_xrp"] for p in amm_positions if p["my_24h_fees_xrp"] is not None
@@ -1303,7 +1349,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     # page for AMM views — keeps the recent-swappers graph meaningful
     # without paginating thousands of historic swaps. Regular wallets
     # still get the full 5-page lookback for the 30-day pulse.
-    txs = _fetch_account_tx(client, address, max_pages=1 if (is_amm or is_vault) else MAX_TX_PAGES)
+    txs = _fetch_account_tx(main, address, max_pages=1 if (is_amm or is_vault) else MAX_TX_PAGES)
     pulse = _build_pulse(txs, lookback_days)
     counterparties = _build_counterparty_graph(txs, address, lookback_days)
     total_recent_txs = sum(pulse)
@@ -1323,10 +1369,17 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     escrows = {"sent_external": [], "self_locks": []}
     offers = []
     mpt_holdings = []
+    # One fetcher per branch — SovereignFetcher isn't thread-safe, so the
+    # three concurrent workers can't share one. We read each fetcher's
+    # .sourcing AFTER its future resolves (the worker thread is done, so no
+    # race on the mutable field) and fold it into the page envelope.
+    esc_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    off_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    mpt_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
     with ThreadPoolExecutor(max_workers=3) as ex:
-        fut_escrows = ex.submit(_fetch_escrows, JsonRpcClient(XRPL_NODE), address)
-        fut_offers = ex.submit(_fetch_offers, JsonRpcClient(XRPL_NODE), address)
-        fut_mpts = ex.submit(_fetch_mpt_holdings, JsonRpcClient(XRPL_NODE), address)
+        fut_escrows = ex.submit(_fetch_escrows, esc_fetcher, address)
+        fut_offers = ex.submit(_fetch_offers, off_fetcher, address)
+        fut_mpts = ex.submit(_fetch_mpt_holdings, mpt_fetcher, address)
         for label, fut, default in (
             ("escrows", fut_escrows, escrows),
             ("offers", fut_offers, offers),
@@ -1342,6 +1395,18 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
                 offers = value
             else:
                 mpt_holdings = value
+
+    # Aggregate sourcing across every fetch this render performed — main
+    # sequential path + LP enrichment pool + the 3 Phase-2 branches. Any
+    # single fallback taints the whole page (disclosure symmetry rule); the
+    # envelope `sourcing` is what the billing-pause middleware and the
+    # wallet.html banner both key off.
+    page_sourcing = main.sourcing
+    for branch_sourcing in (
+        lp_sourcing, esc_fetcher.sourcing,
+        off_fetcher.sourcing, mpt_fetcher.sourcing,
+    ):
+        page_sourcing = worse_sourcing(page_sourcing, branch_sourcing)
 
     top_label = "—"
     top_addr_full = None
@@ -1430,6 +1495,7 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
         "offers": offers,
         "mpt_holdings": mpt_holdings,
         "capabilities": _capability_signals(account_data),
+        "sourcing": page_sourcing,
     }
 
 
@@ -1461,6 +1527,7 @@ if __name__ == "__main__":
     if data.get("error"):
         print(f"  ERROR: {data['error']}")
         sys.exit(1)
+    print(f"  sourcing: {data.get('sourcing')}")
     print(f"  balance: {data['balance_xrp']:,.2f} XRP")
     print(f"  reserved: {data['reserved_xrp']:.2f} XRP ({data['pct_locked']*100:.2f}% locked)")
     print(f"  trustlines: {data['trustline_count']}")

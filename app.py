@@ -6591,10 +6591,17 @@ def wallet(address):
     except Exception:
         data["xrp_usd"] = None
         data["xrp_usd_sources"] = []
+    # Sourcing disclosure — the wallet envelope carries the worse_sourcing()
+    # aggregate across every fetch the render performed (main path + LP pool
+    # + escrow/offer/MPT pool). The banner + footer key off page_sourcing,
+    # mirroring /lending and /cold-storage.
+    from sovereign_tunnel_client import SOURCING_SOVEREIGN
+    page_sourcing = data.get("sourcing") or SOURCING_SOVEREIGN
     import wallet_data
     return render_template(
         "wallet.html",
         data=data,
+        page_sourcing=page_sourcing,
         wallet_qr_svg=_wallet_qr_svg(address),
         cache_ttl_seconds=wallet_data.CACHE_TTL,
     )
