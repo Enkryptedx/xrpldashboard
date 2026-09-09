@@ -211,46 +211,58 @@ class AuditLog:
         """Append one JSON line. Never raises; audit failures must not
         block a signature (log to stderr instead).
 
-        Charlie ruling 2026-09-09 morning after evening-analytics gap
-        ("sig-log doesn't record UA — can't distinguish external vs
-        JJ/canary"): every event now carries a `ua` field when a Flask
-        request context is available. UA is the raw User-Agent header
-        (may be empty string; may be spoofed — recorded verbatim, not
-        interpreted). Events emitted outside a request context (unlock
-        from env at boot, prune) get `ua="__no_request_context__"` so
-        the field is always present and downstream queries can filter
-        without null-handling."""
+        Charlie ruling 2026-09-09 morning: every event carries UA when a
+        Flask request context is available. UA is recorded verbatim (may
+        be empty; may be spoofed). Events outside a request context
+        (unlock from env at boot, prune) get "__no_request_context__" so
+        the fields are always present and downstream queries can filter
+        without null-handling.
+
+        Charlie ruling 2026-09-09 morning follow-up: two dedicated
+        fields, both populated when a request context exists:
+          * ua_origin  — visitor UA from X-Original-User-Agent
+                         (forwarded by sig_client.py, empty when a caller
+                         connected directly to sig-service without going
+                         through Render's /check.json path)
+          * ua_caller  — direct HTTP User-Agent of the /sign caller
+                         (python-httpx/x.y.z for web-app-driven signs;
+                          the canary or curl UA for direct probes)
+
+        Legacy `ua` + `ua_via` fields retained for backwards-compat:
+          * ua      = ua_origin if present else ua_caller
+          * ua_via  = "forwarded" | "direct" | "boot"
+        Downstream tools should migrate to (ua_origin, ua_caller) but
+        the legacy pair still resolves to the same information."""
         try:
             event = dict(event)
             event.setdefault(
                 "ts_utc",
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             )
-            # Attach ua when in a Flask request context (best-effort).
-            # Prefer X-Original-User-Agent (forwarded by sig_client.py
-            # 2026-09-09) — that's the end-user's browser UA. Fall back
-            # to the direct request UA (which is python-httpx/x.y.z for
-            # web-app-driven signs). `ua_via`: "forwarded" when the
-            # X-header was set, "direct" otherwise, so downstream tools
-            # can filter without inference. Events outside a request
-            # context get ua="__no_request_context__" + ua_via="boot".
-            if "ua" not in event:
+            if "ua_origin" not in event or "ua_caller" not in event or "ua" not in event:
                 try:
                     from flask import request as _req, has_request_context
                     if has_request_context():
-                        forwarded = _req.headers.get("X-Original-User-Agent")
+                        forwarded = _req.headers.get("X-Original-User-Agent") or ""
+                        direct = _req.headers.get("User-Agent") or ""
+                        event.setdefault("ua_origin", forwarded[:512])
+                        event.setdefault("ua_caller", direct[:512])
                         if forwarded:
-                            event["ua"] = forwarded[:512]
-                            event["ua_via"] = "forwarded"
+                            event.setdefault("ua", forwarded[:512])
+                            event.setdefault("ua_via", "forwarded")
                         else:
-                            event["ua"] = (_req.headers.get("User-Agent") or "")[:512]
-                            event["ua_via"] = "direct"
+                            event.setdefault("ua", direct[:512])
+                            event.setdefault("ua_via", "direct")
                     else:
-                        event["ua"] = "__no_request_context__"
-                        event["ua_via"] = "boot"
+                        event.setdefault("ua_origin", "")
+                        event.setdefault("ua_caller", "__no_request_context__")
+                        event.setdefault("ua", "__no_request_context__")
+                        event.setdefault("ua_via", "boot")
                 except Exception:
-                    event["ua"] = "__no_request_context__"
-                    event["ua_via"] = "boot"
+                    event.setdefault("ua_origin", "")
+                    event.setdefault("ua_caller", "__no_request_context__")
+                    event.setdefault("ua", "__no_request_context__")
+                    event.setdefault("ua_via", "boot")
             line = json.dumps(event, sort_keys=True) + "\n"
             with self._lock:
                 with open(self._today_path(), "a", encoding="utf-8") as f:
