@@ -278,6 +278,14 @@ ALTER TABLE page_views ADD COLUMN IF NOT EXISTS utm_source TEXT;
 -- Backfilled NULL on pre-rollout rows; the bot-filter session join uses
 -- COALESCE so NULLs do not poison classification.
 ALTER TABLE page_views ADD COLUMN IF NOT EXISTS ip_day_hash TEXT;
+-- status: HTTP response code per request (200, 404, 500, ...). Added
+-- 2026-09-09 after the /registry/taxonomy 500-storm — before this
+-- column, answering "what fraction of requests to route X got 500?"
+-- required Render's log dashboard. Now first-party: any incident, any
+-- route, any time window, answerable from PG alone. NULL on rows
+-- written before this column landed (backfill from Render logs is
+-- possible if a future incident spans the boundary, but not routine).
+ALTER TABLE page_views ADD COLUMN IF NOT EXISTS status SMALLINT;
 CREATE INDEX IF NOT EXISTS page_views_ts_idx ON page_views (ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
     ON page_views (path, ts DESC);
@@ -285,6 +293,10 @@ CREATE INDEX IF NOT EXISTS page_views_visitor_idx
     ON page_views (visitor_hash, ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_ip_day_idx
     ON page_views (ip_day_hash, ts DESC);
+-- Partial index — 5xx responses only, ~1% of rows, fast for incident
+-- analysis ("show me last 24h of /registry/taxonomy 500s").
+CREATE INDEX IF NOT EXISTS page_views_status_5xx_idx
+    ON page_views (path, ts DESC) WHERE status >= 500;
 
 -- Single-row JSONB blob mirroring mpt_snapshot.json. Mac worker writes;
 -- Render Flask reads. Render has no local snapshot file so PG is the
@@ -6179,10 +6191,13 @@ def _bot_filter_sql_lite(kind):
 
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None, utm_source=None,
-                  ip_day_hash=None, region_code=None):
+                  ip_day_hash=None, region_code=None, status=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
-    eat connection-setup latency on every request."""
+    eat connection-setup latency on every request.
+
+    `status`: HTTP response code (200, 404, 500, ...). Added 2026-09-09.
+    NULL when the caller doesn't supply one (backwards compat)."""
     conn = _get_writer_conn()
     if conn is None:
         return
@@ -6191,11 +6206,11 @@ def log_page_view(path, visitor_hash=None, referrer=None,
             cur.execute(
                 "INSERT INTO page_views "
                 "(ts, path, visitor_hash, referrer, user_agent, country, "
-                " utm_source, ip_day_hash, region_code) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                " utm_source, ip_day_hash, region_code, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
                  referrer, user_agent, country, utm_source, ip_day_hash,
-                 region_code),
+                 region_code, status),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)

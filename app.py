@@ -1611,25 +1611,33 @@ def _agent_tier_audit_header(response):
     return response
 
 
-@app.before_request
-def _log_page_view():
+@app.after_request
+def _log_page_view(response):
     """Best-effort page-view logger feeding /admin/stats. Inline insert
     via the cached writer connection — fast at our request volume, and
-    swallows every exception so a Postgres hiccup never breaks a page."""
+    swallows every exception so a Postgres hiccup never breaks a page.
+
+    2026-09-09: moved from @before_request to @after_request so we can
+    record `response.status_code`. Flask's error path converts unhandled
+    view exceptions to InternalServerError (500) responses that DO
+    trigger @after_request — so 500s land in page_views alongside 200s
+    and we can answer "what fraction of requests to route X got 500?"
+    from PG alone. This was the gap that made the /registry/taxonomy
+    incident tonight require Render-log guesswork."""
     try:
         path = request.path or "/"
         if path in _PAGEVIEW_SKIP_EXACT:
-            return
+            return response
         for prefix in _PAGEVIEW_SKIP_PREFIXES:
             if path.startswith(prefix):
-                return
+                return response
         if request.method != "GET":
-            return
+            return response
         if not db.pg_available():
-            return
+            return response
         ip = _client_ip()
         if ip and ip in _ANALYTICS_EXCLUDED_IPS:
-            return
+            return response
         ua = (request.user_agent.string or "")[:300] or None
         ref = (request.referrer or "")[:300] or None
         country = request.headers.get("CF-IPCountry") \
@@ -1660,10 +1668,12 @@ def _log_page_view():
             region_code=region_code,
             utm_source=utm,
             ip_day_hash=_ip_day_hash(ip),
+            status=int(response.status_code) if response is not None else None,
         )
     except Exception:
         # Logging must never break a page render.
         pass
+    return response
 
 
 @app.context_processor
