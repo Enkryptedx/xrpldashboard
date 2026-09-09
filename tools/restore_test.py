@@ -350,6 +350,16 @@ def main() -> int:
         )
     if rc == 0:
         _ping_betterstack_success()
+        # 2026-09-09: stamp for dockvault_mirror_freshness_canary meta-watch.
+        # Only on genuine PASS — teardown/restore failures leave the stamp
+        # stale so the canary pages. Weekly cadence → 193h ceiling.
+        try:
+            _state_dir = "/Users/charliebruce/xrpl_test/launchd_state"
+            os.makedirs(_state_dir, exist_ok=True)
+            with open(os.path.join(_state_dir, "pg_restore_test_last_ok"), "w") as _f:
+                _f.write(str(int(time.time())))
+        except OSError as _e:
+            print(f"[pg_restore_test] warn: could not write _last_ok: {_e}", file=sys.stderr)
     return rc
 
 

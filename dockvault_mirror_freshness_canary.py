@@ -61,6 +61,30 @@ JOBS: list[tuple[str, int, str]] = [
     # 5xx over a rolling window).
     ("route_5xx_rate_walker", 60 * 60,
      "every-15min rolling-1h 5xx-rate check across monitored routes from page_views.status"),
+    # Charlie ruling 2026-09-09 morning ("meta-watch all five"): after the
+    # 09-08 StartCalendarInterval → StartInterval sweep, five plists were
+    # in silent-failure state (RunAtLoad:false + no baseline stamp for
+    # any existing canary to catch). dockvault_neon_dump went 27h stale,
+    # DockVault mount-ok heartbeat was withheld, BetterStack paged
+    # 2026-09-09 11:24 UTC. Meta-watch expanded here to catch the same
+    # class next time. All four not-previously-watched jobs added, plus
+    # dockvault_neon_dump (which had a mount-ok heartbeat withholder but
+    # wasn't itself in this JOBS list). Wrappers stamp _last_ok on
+    # genuine success only (SKIP/FAIL paths deliberately leave stale so
+    # a persistent silent-skip surfaces here rather than looking healthy).
+    ("dockvault_neon_dump", 26 * 3600,
+     "daily 24h pull-back of latest Neon pg_dump from B2 → /Volumes/DockVault/neon_dumps"),
+    ("b2_backup", 26 * 3600,
+     "daily 24h rclone push of ~/xrpl_test + ~/.ssh → b2crypt bucket"),
+    ("signed_registry_snapshot", 26 * 3600,
+     "daily 24h sig-service signed registry snapshot → signed_registry_snapshots/YYYY-MM-DD.json"),
+    ("refresh_ofac_sdn", 26 * 3600,
+     "daily 24h fetch of OFAC SDN.XML → ofac_sdn_addresses.json + auto-commit+push if changed"),
+    # Weekly cadence → 193h ceiling (168 + 25h grace, ~15% margin). Wider
+    # than daily's 8% because a legitimately-delayed weekly can slip a day
+    # without being an incident.
+    ("pg_restore_test", 193 * 3600,
+     "weekly restore-test: pull latest B2 dump → ephemeral PG :5439 → smoke queries → teardown"),
 ]
 
 
