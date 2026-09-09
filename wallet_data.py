@@ -13,9 +13,16 @@ sequential path, a 3-way escrow/offer/MPT pool, and a per-LP enrichment
 pool). SovereignFetcher is not thread-safe, so each concurrent branch
 gets its OWN fetcher; the page envelope's `sourcing` is the worse_sourcing()
 aggregate across every branch — any single fallback taints the whole page
-per the disclosure symmetry rule. Each branch fetcher logs at most one
-walker_node_fallback row on a real cascade (same per-fetch convention as
-/lending, which already emits one row per fetcher).
+per the disclosure symmetry rule.
+
+Fallback logging (Charlie ruling 2026-09-09): ONE walker_node_fallback row
+per page load, not one per fetcher. A single /wallet render can cascade
+across up to 5+ branch fetchers; rather than N rows, each cascading branch
+records into a request-scoped _FallbackCollector via the fetcher's
+fallback_sink, and fetch_wallet_data flushes exactly one row at the end with
+the cascading branches listed in the reason field
+("branches=main,escrow,mpt reason=tunnel_http_502"). /lending and the other
+single-page callers keep the one-row-per-fetcher default (no sink).
 
 Derives:
   - 30-day daily transaction counts ("pulse" trace)
@@ -132,6 +139,79 @@ _cache = {}  # (address, lookback_days) -> (fetched_at_unix, data_dict)
 _POOL_CACHE_TTL = int(os.environ.get("POOL_METRICS_TTL", "600"))
 _pool_cache_lock = threading.Lock()
 _pool_metrics_cache = {}  # amm_account -> (fetched_at_unix, (volume_xrp, trade_count))
+
+
+# Deterministic branch order for the flushed fallback reason string, so the
+# single row a render emits is stable regardless of which thread finished
+# first. Unknown branch names sort last (defensive; shouldn't happen).
+_FALLBACK_BRANCH_ORDER = ("main", "lp", "escrow", "offer", "mpt")
+
+
+class _FallbackCollector:
+    """Request-scoped sink for per-branch walker_node_fallback events.
+
+    A single /wallet render fans across several SovereignFetcher instances
+    (main sequential path + LP enrichment pool + escrow/offer/MPT pool).
+    Pre-2026-09-09 each cascading fetcher wrote its OWN walker_node_fallback
+    row, so one render could emit up to 5+ rows. Charlie ruled 2026-09-09:
+    ONE row per page load, with the cascading branches listed in the reason.
+    Each fetcher records here (via its fallback_sink) instead of writing
+    directly; fetch_wallet_data flushes exactly one row at the end.
+
+    Thread-safe: the LP and Phase-2 branches run in ThreadPoolExecutors, so
+    record() (through the bound sink) is called concurrently.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._events = []  # list of (branch, reason)
+
+    def sink(self, branch):
+        """Return a (walker_name, reason) callable bound to `branch`, shaped
+        as a drop-in for db.write_walker_node_fallback so SovereignFetcher
+        calls it exactly where it would otherwise write the DB row."""
+        def _record(_walker_name, reason):
+            with self._lock:
+                self._events.append((branch, reason))
+        return _record
+
+    def combined_reason(self):
+        """Single reason string for the whole render: which branches cascaded
+        + the distinct underlying fail reason(s). Branches in fixed order and
+        deduped; reasons deduped preserving first-seen order. Returns None
+        when no branch cascaded (a fully sovereign render)."""
+        with self._lock:
+            events = list(self._events)
+        if not events:
+            return None
+        branches = []
+        for branch, _ in events:
+            if branch not in branches:
+                branches.append(branch)
+        branches.sort(key=lambda b: (
+            _FALLBACK_BRANCH_ORDER.index(b)
+            if b in _FALLBACK_BRANCH_ORDER else len(_FALLBACK_BRANCH_ORDER)
+        ))
+        reasons = []
+        for _, reason in events:
+            if reason not in reasons:
+                reasons.append(reason)
+        return "branches={0} reason={1}".format(
+            ",".join(branches), "|".join(reasons),
+        )
+
+    def flush(self, writer, walker_name):
+        """Write at most ONE walker_node_fallback row for the whole render.
+        No-op on a sovereign render. Swallows writer errors so fallback
+        logging never breaks the page load (same contract as the direct
+        SovereignFetcher write path)."""
+        reason = self.combined_reason()
+        if reason is None:
+            return
+        try:
+            writer(walker_name, reason)
+        except Exception:
+            pass
 
 
 def _load_json_safe(path):
@@ -635,14 +715,21 @@ def _pool_24h_metrics(fetcher, amm_account):
     return metrics
 
 
-def _enrich_one_lp(h):
+def _enrich_one_lp(h, fallback_sink=None):
     """Worker for the parallel LP enrichment pool. Each call uses its OWN
     SovereignFetcher — SovereignFetcher is not thread-safe (mutable
     .sourcing + sticky fallback), so one-per-worker is required. Returns
     (result_or_None, sourcing) so the caller can worse_sourcing()-fold every
     LP branch into the page envelope even when a branch yields no position
-    (a fallback still counts: the AMMInfo/AccountTx calls hit public)."""
-    fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    (a fallback still counts: the AMMInfo/AccountTx calls hit public).
+
+    fallback_sink routes any cascade into the render's shared
+    _FallbackCollector (all LP workers share the "lp" branch label) so the
+    page emits a single walker_node_fallback row."""
+    fetcher = SovereignFetcher(
+        public_url=XRPL_NODE, walker_name="wallet_data",
+        fallback_sink=fallback_sink,
+    )
     amm_account = h["issuer"]
     my_lp = abs(h["balance"])
     result = _safe_request(fetcher, AMMInfo(amm_account=amm_account))
@@ -712,7 +799,7 @@ def _enrich_one_lp(h):
     }, fetcher.sourcing
 
 
-def _enrich_lp_holdings(holdings_lp):
+def _enrich_lp_holdings(holdings_lp, fallback_sink=None):
     """Fan out per-LP enrichment over a small thread pool. Each LP requires
     one AMMInfo call + (for XRP-paired pools) up to 5 paginated AccountTx calls
     to compute 24h volume, so total wall-clock for 4 LPs collapses from ~45s
@@ -720,14 +807,16 @@ def _enrich_lp_holdings(holdings_lp):
 
     Returns (enriched_list, aggregated_sourcing): each worker runs its own
     SovereignFetcher and reports its sourcing, folded worse_sourcing() so a
-    fallback on ANY LP branch surfaces on the page envelope."""
+    fallback on ANY LP branch surfaces on the page envelope. fallback_sink is
+    the render's shared collector sink for the "lp" branch — passed to every
+    worker so all LP cascades fold into the one row the page emits."""
     if not holdings_lp:
         return [], SOURCING_SOVEREIGN
     enriched = []
     agg_sourcing = SOURCING_SOVEREIGN
     max_workers = min(8, max(1, len(holdings_lp)))
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        for r, src in ex.map(_enrich_one_lp, holdings_lp):
+        for r, src in ex.map(lambda h: _enrich_one_lp(h, fallback_sink), holdings_lp):
             agg_sourcing = worse_sourcing(agg_sourcing, src)
             if r is not None:
                 enriched.append(r)
@@ -1273,13 +1362,29 @@ def _fetch_mpt_holdings(fetcher, address):
 
 
 def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
+    # Thin wrapper: owns the request-scoped fallback collector and flushes
+    # exactly ONE walker_node_fallback row for the whole render. try/finally
+    # guarantees the flush across both the not-found early return and the
+    # normal return (and any unexpected raise), so a cascade is never lost.
+    collector = _FallbackCollector()
+    try:
+        return _fetch_wallet_data_impl(address, lookback_days, collector)
+    finally:
+        collector.flush(db.write_walker_node_fallback, "wallet_data")
+
+
+def _fetch_wallet_data_impl(address, lookback_days, collector):
     # Main sequential path shares ONE fetcher (sticky fallback: once it
-    # cascades to public, all later main-path calls stay public and it
-    # logs exactly one walker_node_fallback row). The concurrent branches
-    # below (LP enrichment + escrow/offer/MPT pool) each get their own
-    # fetcher — SovereignFetcher is not thread-safe. Every branch's sourcing
-    # is worse_sourcing()-folded into the page envelope.
-    main = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    # cascades to public, all later main-path calls stay public). The
+    # concurrent branches below (LP enrichment + escrow/offer/MPT pool) each
+    # get their own fetcher — SovereignFetcher is not thread-safe. Every
+    # branch's sourcing is worse_sourcing()-folded into the page envelope,
+    # and every branch's cascade (if any) records into `collector` via its
+    # fallback_sink so the wrapper emits a single fallback row per page load.
+    main = SovereignFetcher(
+        public_url=XRPL_NODE, walker_name="wallet_data",
+        fallback_sink=collector.sink("main"),
+    )
     info = _fetch_account_info(main, address)
     if info is None:
         return {
@@ -1335,7 +1440,9 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     if is_amm or is_vault:
         amm_positions, lp_sourcing = [], SOURCING_SOVEREIGN
     else:
-        amm_positions, lp_sourcing = _enrich_lp_holdings(holdings_lp)
+        amm_positions, lp_sourcing = _enrich_lp_holdings(
+            holdings_lp, fallback_sink=collector.sink("lp"),
+        )
     amm_total_xrp = sum(p["my_xrp"] for p in amm_positions if p["my_xrp"] is not None)
     amm_24h_fees_xrp = sum(
         p["my_24h_fees_xrp"] for p in amm_positions if p["my_24h_fees_xrp"] is not None
@@ -1373,9 +1480,18 @@ def fetch_wallet_data(address, lookback_days=LOOKBACK_DAYS):
     # three concurrent workers can't share one. We read each fetcher's
     # .sourcing AFTER its future resolves (the worker thread is done, so no
     # race on the mutable field) and fold it into the page envelope.
-    esc_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
-    off_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
-    mpt_fetcher = SovereignFetcher(public_url=XRPL_NODE, walker_name="wallet_data")
+    esc_fetcher = SovereignFetcher(
+        public_url=XRPL_NODE, walker_name="wallet_data",
+        fallback_sink=collector.sink("escrow"),
+    )
+    off_fetcher = SovereignFetcher(
+        public_url=XRPL_NODE, walker_name="wallet_data",
+        fallback_sink=collector.sink("offer"),
+    )
+    mpt_fetcher = SovereignFetcher(
+        public_url=XRPL_NODE, walker_name="wallet_data",
+        fallback_sink=collector.sink("mpt"),
+    )
     with ThreadPoolExecutor(max_workers=3) as ex:
         fut_escrows = ex.submit(_fetch_escrows, esc_fetcher, address)
         fut_offers = ex.submit(_fetch_offers, off_fetcher, address)

@@ -98,11 +98,20 @@ class SovereignFetcher:
 
     public_url: fallback URL when tunnel unavailable/unconfigured
     walker_name: identifier written to walker_node_fallback on real cascade
+    fallback_sink: optional (walker_name, reason) callable. When set, a real
+        cascade calls it INSTEAD of writing a walker_node_fallback row
+        directly, so a caller running several fetchers per page (e.g.
+        wallet_data's main + LP + escrow/offer/MPT branches) can collect
+        every branch's cascade and emit ONE row per page load. Default None
+        preserves the one-row-per-fetcher behavior every other caller relies
+        on. Shaped as a drop-in for db.write_walker_node_fallback.
     """
 
-    def __init__(self, public_url: str, walker_name: str = "unknown"):
+    def __init__(self, public_url: str, walker_name: str = "unknown",
+                 fallback_sink=None):
         self.public_url = public_url
         self.walker_name = walker_name
+        self._fallback_sink = fallback_sink
         if TUNNEL_CONFIGURED:
             self.sourcing = SOURCING_SOVEREIGN
             self._tunnel_headers = {
@@ -161,13 +170,18 @@ class SovereignFetcher:
             result, tunnel_fail_reason = self._try_tunnel(payload)
             if result is not None:
                 return result
-            # Sticky downgrade: log ONE fallback row per fetcher (not per call)
+            # Sticky downgrade: record ONE cascade per fetcher (not per call).
+            # A fallback_sink lets a multi-fetcher page collapse every branch
+            # into a single walker_node_fallback row; without one we write the
+            # row directly, as every other caller expects.
             self.sourcing = SOURCING_FALLBACK
+            reason = tunnel_fail_reason or "tunnel_unknown"
             try:
-                import db
-                db.write_walker_node_fallback(
-                    self.walker_name, tunnel_fail_reason or "tunnel_unknown",
-                )
+                if self._fallback_sink is not None:
+                    self._fallback_sink(self.walker_name, reason)
+                else:
+                    import db
+                    db.write_walker_node_fallback(self.walker_name, reason)
             except Exception:
                 # DB write failures must not break the page load
                 pass

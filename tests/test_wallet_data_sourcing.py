@@ -10,9 +10,14 @@ sovereign→public cascade end-to-end WITHOUT a real tunnel or DB:
                             envelope sourcing == "fallback-public-rpc"
                             (this is the value the wallet.html banner and
                             the billing-pause middleware both key off), and
-                            one walker_node_fallback row PER cascading
-                            fetcher (Option A: main path + the 3 Phase-2
-                            branches = 4 rows for a holdings-empty wallet).
+                            exactly ONE walker_node_fallback row for the whole
+                            render (Charlie ruling 2026-09-09), with the
+                            cascading branches listed in the reason field.
+                            For a holdings-empty wallet the cascading branches
+                            are main + escrow + offer + mpt (the LP pool is
+                            skipped when there are no LP holdings), so the row
+                            reads
+                            "branches=main,escrow,offer,mpt reason=tunnel_http_502".
   3. concurrent-branch taint → a fallback isolated to ONE Phase-2 branch
                             still surfaces on the page envelope via
                             worse_sourcing().
@@ -148,13 +153,18 @@ def _test_forced_fallback_cascades_cleanly():
     # The banner-/billing-driving field must flip to fallback.
     if data.get("sourcing") != stc.SOURCING_FALLBACK:
         problems.append(f"sourcing={data.get('sourcing')}, expected fallback-public-rpc")
-    # One row per cascading fetcher: main + escrow + offer + mpt = 4.
-    if len(rec.rows) != 4:
-        problems.append(f"fallback rows={len(rec.rows)}, expected 4 (one per fetcher)")
+    # Exactly ONE row for the whole render (2026-09-09 flip), with the
+    # cascading branches listed in the reason. Holdings-empty wallet → the
+    # LP pool never runs, so branches = main,escrow,offer,mpt.
+    if len(rec.rows) != 1:
+        problems.append(f"fallback rows={len(rec.rows)}, expected 1 (one per page load)")
     if any(name != "wallet_data" for name, _ in rec.rows):
         problems.append(f"unexpected walker_name in rows: {rec.rows}")
-    if any(reason != "tunnel_http_502" for _, reason in rec.rows):
-        problems.append(f"unexpected fail reason in rows: {rec.rows}")
+    expected_reason = "branches=main,escrow,offer,mpt reason=tunnel_http_502"
+    if rec.rows and rec.rows[0][1] != expected_reason:
+        problems.append(
+            f"reason={rec.rows[0][1]!r}, expected {expected_reason!r}"
+        )
     return (not problems), ("; ".join(problems) or "ok")
 
 
