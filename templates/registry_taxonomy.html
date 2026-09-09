@@ -84,7 +84,7 @@
     </div>
 
     {% if taxonomy_version %}<span class="version-chip">taxonomy v{{ taxonomy_version }}</span>{% endif %}
-    {% if taxonomy_mtime_utc %}<div class="last-mtime">Source last modified: {{ taxonomy_mtime_utc }}</div>{% endif %}
+    {% if taxonomy_mtime_utc %}<div class="last-mtime">Source last modified: {{ taxonomy_mtime_utc }}{% if taxonomy_is_stale %} · <span style="color:#f59e0b">serving cached copy (fresh read failed)</span>{% endif %}</div>{% endif %}
 
     <div class="content">
       {{ taxonomy_html | safe }}

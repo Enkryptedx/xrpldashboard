@@ -4219,6 +4219,7 @@ def methodology():
 
 _TAXONOMY_HTML_CACHE = None
 _TAXONOMY_HTML_CACHE_MTIME = 0.0
+_TAXONOMY_VERSION_CACHE = None
 
 
 def _render_taxonomy_html():
@@ -4226,27 +4227,62 @@ def _render_taxonomy_html():
     file mtime advances. Extras: fenced_code + tables + toc + attr_list
     so the ID anchors in the rendered doc are stable link targets.
     Auto-cache-bust on file mtime advance so a git pull picks up the
-    new markdown without a process restart."""
-    global _TAXONOMY_HTML_CACHE, _TAXONOMY_HTML_CACHE_MTIME
+    new markdown without a process restart.
+
+    Charlie ruling 2026-09-08 late-night after /registry/taxonomy 500
+    storm (canary consec_failures=3): the cache never stores an exception
+    and never depends on data that only exists on the cache-miss path.
+    Returns (html, version, mtime, is_stale). is_stale=True when we're
+    serving a cached copy because the fresh read failed — caller shows
+    a small banner rather than 500. Prior bug: `src` was referenced on
+    every serve including cache-hit, but only defined inside the cache-
+    miss `if` block, so every cache-hit request NameError'd → 500.
+    Fresh workers served 200 on their first hit, then 500 forever."""
+    global _TAXONOMY_HTML_CACHE, _TAXONOMY_HTML_CACHE_MTIME, _TAXONOMY_VERSION_CACHE
     import markdown as _md
     import re as _re
     md_path = os.path.join(HERE, "docs", "registry", "taxonomy_v1.md")
     try:
         mtime = os.path.getmtime(md_path)
     except OSError:
-        return None, None, None
-    if _TAXONOMY_HTML_CACHE is None or mtime > _TAXONOMY_HTML_CACHE_MTIME:
+        # File missing (deploy in-flight, disk hiccup, etc). Serve cached
+        # if we have it; if not, honest 503 upstream.
+        if _TAXONOMY_HTML_CACHE is not None:
+            return (_TAXONOMY_HTML_CACHE, _TAXONOMY_VERSION_CACHE,
+                    _TAXONOMY_HTML_CACHE_MTIME, True)
+        return None, None, None, False
+
+    # Cache hit — return cached triple directly. NO reparse of `src`
+    # here; the version is cached alongside the HTML.
+    if _TAXONOMY_HTML_CACHE is not None and mtime <= _TAXONOMY_HTML_CACHE_MTIME:
+        return (_TAXONOMY_HTML_CACHE, _TAXONOMY_VERSION_CACHE,
+                _TAXONOMY_HTML_CACHE_MTIME, False)
+
+    # Cache miss or stale — try to load fresh. NEVER cache an exception:
+    # if any step below fails, fall through to the last good cache.
+    try:
         with open(md_path, "r", encoding="utf-8") as f:
             src = f.read()
-        _TAXONOMY_HTML_CACHE = _md.markdown(
+        html = _md.markdown(
             src,
             extensions=["fenced_code", "tables", "toc", "attr_list"],
             output_format="html",
         )
-        _TAXONOMY_HTML_CACHE_MTIME = mtime
-    m = _re.search(r"^\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", src, _re.MULTILINE)
-    version = m.group(1) if m else None
-    return _TAXONOMY_HTML_CACHE, version, mtime
+        m = _re.search(r"^\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", src, _re.MULTILINE)
+        version = m.group(1) if m else None
+    except Exception:
+        # Bad read or parse — serve the last good render with a stale
+        # marker rather than raising a 500 into gunicorn.
+        if _TAXONOMY_HTML_CACHE is not None:
+            return (_TAXONOMY_HTML_CACHE, _TAXONOMY_VERSION_CACHE,
+                    _TAXONOMY_HTML_CACHE_MTIME, True)
+        return None, None, None, False
+
+    # Success — commit to cache atomically.
+    _TAXONOMY_HTML_CACHE = html
+    _TAXONOMY_VERSION_CACHE = version
+    _TAXONOMY_HTML_CACHE_MTIME = mtime
+    return html, version, mtime, False
 
 
 @app.route("/registry/submit", methods=["GET", "POST"])
@@ -4423,30 +4459,43 @@ _THISWEEK_MTIMES: dict = {}
 
 def _load_thisweek_edition(date_str: str):
     """Read + parse one edition markdown. Returns (front_matter, html_body)
-    or (None, None) if not found. Cache invalidates on file mtime advance."""
+    or (None, None) if not found. Cache invalidates on file mtime advance.
+
+    Charlie fail-safe rule 2026-09-08 late-night: never cache an exception.
+    On file-read / parse error, serve the last good cached copy if we have
+    one — better a stale render than a 500."""
     import re as _re
     md_path = os.path.join(_THISWEEK_DIR, f"{date_str}.md")
     try:
         mtime = os.path.getmtime(md_path)
     except OSError:
-        return None, None
+        # File missing entirely — return cached copy if we ever had one,
+        # else None (route decides 404 vs 200).
+        return _THISWEEK_CACHE.get(date_str, (None, None))
     cached = _THISWEEK_CACHE.get(date_str)
     if cached and _THISWEEK_MTIMES.get(date_str) == mtime:
         return cached
-    with open(md_path, "r", encoding="utf-8") as f:
-        src = f.read()
-    front: dict = {}
-    body = src
-    m = _re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", src, _re.DOTALL)
-    if m:
-        raw_front = m.group(1)
-        body = m.group(2)
-        for line in raw_front.splitlines():
-            if ":" in line:
-                k, v = line.split(":", 1)
-                front[k.strip()] = v.strip().strip("'\"")
-    import markdown as _md
-    html = _md.markdown(body, extensions=["fenced_code", "tables", "toc", "attr_list"])
+    # Cache miss / stale — try to load fresh. NEVER cache an exception.
+    try:
+        with open(md_path, "r", encoding="utf-8") as f:
+            src = f.read()
+        front: dict = {}
+        body = src
+        m = _re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", src, _re.DOTALL)
+        if m:
+            raw_front = m.group(1)
+            body = m.group(2)
+            for line in raw_front.splitlines():
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    front[k.strip()] = v.strip().strip("'\"")
+        import markdown as _md
+        html = _md.markdown(body, extensions=["fenced_code", "tables", "toc", "attr_list"])
+    except Exception:
+        # Bad read/parse — keep serving last good copy if we have one.
+        if cached:
+            return cached
+        return None, None
     result = (front, html)
     _THISWEEK_CACHE[date_str] = result
     _THISWEEK_MTIMES[date_str] = mtime
@@ -4656,7 +4705,7 @@ def registry_taxonomy():
     tamper-evident: a verifier can point at any historical snapshot and
     prove which taxonomy version was live on that date.
     """
-    html, version, mtime = _render_taxonomy_html()
+    html, version, mtime, is_stale = _render_taxonomy_html()
     if not html:
         return "taxonomy doc unavailable", 503
     return render_template(
@@ -4669,6 +4718,7 @@ def registry_taxonomy():
             )
             if mtime else None
         ),
+        taxonomy_is_stale=is_stale,
         current_locale=(request.accept_languages.best_match(["en"]) or "en"),
     )
 
