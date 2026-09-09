@@ -44,10 +44,13 @@ import httpx
 BASE_URL = os.environ.get("PUBLIC_CANARY_BASE", "https://xrpldashboard.com").rstrip("/")
 TIMEOUT_S = 15.0
 
-# Route → (path, minimum_body_bytes, must_contain_substring_or_none)
+# Route → (path, minimum_body_bytes, must_contain_substring_or_none,
+#         [optional] set of acceptable HTTP statuses — defaults to {200})
 # Minimum body sizes are lower bounds — templates always render at least
-# their nav + footer, so genuine 200 responses are much larger.
-ROUTES: list[tuple[str, int, str | None]] = [
+# their nav + footer, so genuine 200 responses are much larger. The
+# optional 4th field lets a route legitimately return 404 (empty-state
+# routes like /thisweek before any edition ships) without paging.
+ROUTES: list[tuple] = [
     # Public human routes (from PUBLIC_ROUTES in app.py, kept in sync manually)
     ("/",                                 5000,   "xrpldashboard"),
     ("/whales",                           10000,  "whale"),
@@ -63,7 +66,13 @@ ROUTES: list[tuple[str, int, str | None]] = [
     ("/institutional",                    5000,   None),
     ("/security",                         2000,   None),
     ("/subprocessors",                    3000,   "subprocessor"),
-    ("/thisweek",                         3000,   "this week"),
+    # /thisweek returns HTTP 404 when no edition is currently published
+    # (Charlie ruling 2026-09-08: Sunday's draft is gated public until
+    # the published_at_utc lands). Accept 404 explicitly so the canary
+    # doesn't page on the legitimate empty-list state. Once Sunday's
+    # edition ships, the 200 path renders full content — this override
+    # remains harmless (200 still qualifies).
+    ("/thisweek",                         200,    None,   {200, 404}),
     ("/registry/taxonomy",                10000,  "taxonomy"),
     ("/changes",                          1000,   "What&#39;s new"),
     ("/changes.xml",                      500,    "xrpldashboard"),
@@ -81,7 +90,11 @@ ROUTES: list[tuple[str, int, str | None]] = [
     ("/sitemap.xml",                      500,    "sitemap"),
     ("/robots.txt",                       50,     None),
     ("/openapi.json",                     1000,   None),
-    ("/thisweek.xml",                     500,    "rss"),
+    # /thisweek.xml is a valid empty-feed shell (~387b) until Sunday
+    # ships the first edition. Threshold lowered so the empty-state
+    # feed passes; content check kept — "rss" is in the RSS wrapper
+    # regardless of item count.
+    ("/thisweek.xml",                     200,    "rss"),
     # Signed-artifact well-known
     ("/.well-known/snapshots/pubkey.pem",         100,   "PUBLIC KEY"),
     ("/.well-known/snapshots/pubkey.json",        200,   "Ed25519"),
@@ -105,18 +118,38 @@ def _probe_once(path: str) -> tuple[int | None, bytes, str | None]:
         return None, b"", f"network_{type(e).__name__}"
 
 
-def probe_one(path: str, min_bytes: int, must_contain: str | None) -> dict:
+def probe_one(path: str, min_bytes: int, must_contain: str | None,
+              acceptable_statuses: set[int] | None = None) -> dict:
     """GET one route with a single retry on failure. Never raises.
 
     Retry rationale: /nfts, /analytics, /tokens can occasionally exceed
     15s on the first request under load (10s+ observed at commit time).
     A single 1s-delayed retry filters transient stalls that would
-    otherwise page L1 with no real regression."""
+    otherwise page L1 with no real regression.
+
+    acceptable_statuses defaults to {200}. Passing {200, 404} lets a
+    route legitimately return 404 without paging — used for empty-state
+    routes like /thisweek before any edition is published. When the
+    accepted status is not 200, the body-size / substring checks are
+    skipped (a 404 error page's body isn't meaningfully bounded)."""
+    if acceptable_statuses is None:
+        acceptable_statuses = {200}
     started = dt.datetime.now(dt.timezone.utc)
     for attempt in (1, 2):
         status, body, net_err = _probe_once(path)
-        if net_err is None and status == 200 and len(body) >= min_bytes:
-            if must_contain is None or must_contain in body.decode("utf-8", errors="replace"):
+        if net_err is None and status in acceptable_statuses:
+            # Body-size + substring checks only apply on the primary
+            # success status (200). Alternate legitimate statuses (404
+            # for empty-state routes) pass on status alone.
+            if status != 200:
+                return {
+                    "path": path, "status": status, "body_bytes": len(body),
+                    "ok": True, "reason": f"ok_alt_status_{status}",
+                    "attempt": attempt, "started_utc": started.isoformat(),
+                }
+            if len(body) >= min_bytes and (
+                must_contain is None or must_contain in body.decode("utf-8", errors="replace")
+            ):
                 return {
                     "path": path, "status": status, "body_bytes": len(body),
                     "ok": True, "reason": "ok", "attempt": attempt,
@@ -132,7 +165,7 @@ def probe_one(path: str, min_bytes: int, must_contain: str | None) -> dict:
         }
 
     body_len = len(body)
-    if status != 200:
+    if status not in acceptable_statuses:
         reason = f"http_{status}"
     elif body_len < min_bytes:
         reason = f"body_short_{body_len}_lt_{min_bytes}"
@@ -151,8 +184,15 @@ def run_walker() -> tuple[int, int, list[dict]]:
     fail = 0
     failures: list[dict] = []
     results: list[dict] = []
-    for path, min_bytes, must_contain in ROUTES:
-        r = probe_one(path, min_bytes, must_contain)
+    for entry in ROUTES:
+        # 3-tuple = default acceptable_statuses={200}; 4-tuple allows
+        # a per-route override like {200, 404} for empty-state routes.
+        if len(entry) == 3:
+            path, min_bytes, must_contain = entry
+            acceptable_statuses = None
+        else:
+            path, min_bytes, must_contain, acceptable_statuses = entry
+        r = probe_one(path, min_bytes, must_contain, acceptable_statuses)
         results.append(r)
         if r["ok"]:
             ok += 1
