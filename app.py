@@ -6710,7 +6710,21 @@ def _check_v09_sign(envelope: dict) -> dict:
     canonical = _canonical_json(envelope_for_hash)
     canonical_hash = hashlib.sha256(canonical).hexdigest()
 
-    sig_block, status = sig_client.sign_receipt(canonical_hash, kind="check")
+    # Forward the end-user's UA to sig-service via X-Original-User-Agent
+    # so the sig-audit log can distinguish external visitors from
+    # JJ/canary traffic (Charlie ruling 2026-09-09 morning). Guarded
+    # for the rare case someone calls _check_v09_sign outside a Flask
+    # request context (unit tests, backfill scripts).
+    _caller_ua = None
+    try:
+        if request is not None:
+            _caller_ua = request.headers.get("User-Agent")
+    except RuntimeError:  # outside request context
+        _caller_ua = None
+
+    sig_block, status = sig_client.sign_receipt(
+        canonical_hash, kind="check", caller_ua=_caller_ua,
+    )
 
     sig_out = {
         "canonical_hash_sha256": canonical_hash,

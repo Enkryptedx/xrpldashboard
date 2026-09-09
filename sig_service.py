@@ -227,15 +227,30 @@ class AuditLog:
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             )
             # Attach ua when in a Flask request context (best-effort).
+            # Prefer X-Original-User-Agent (forwarded by sig_client.py
+            # 2026-09-09) — that's the end-user's browser UA. Fall back
+            # to the direct request UA (which is python-httpx/x.y.z for
+            # web-app-driven signs). `ua_via`: "forwarded" when the
+            # X-header was set, "direct" otherwise, so downstream tools
+            # can filter without inference. Events outside a request
+            # context get ua="__no_request_context__" + ua_via="boot".
             if "ua" not in event:
                 try:
                     from flask import request as _req, has_request_context
                     if has_request_context():
-                        event["ua"] = (_req.headers.get("User-Agent") or "")[:512]
+                        forwarded = _req.headers.get("X-Original-User-Agent")
+                        if forwarded:
+                            event["ua"] = forwarded[:512]
+                            event["ua_via"] = "forwarded"
+                        else:
+                            event["ua"] = (_req.headers.get("User-Agent") or "")[:512]
+                            event["ua_via"] = "direct"
                     else:
                         event["ua"] = "__no_request_context__"
+                        event["ua_via"] = "boot"
                 except Exception:
                     event["ua"] = "__no_request_context__"
+                    event["ua_via"] = "boot"
             line = json.dumps(event, sort_keys=True) + "\n"
             with self._lock:
                 with open(self._today_path(), "a", encoding="utf-8") as f:

@@ -47,7 +47,8 @@ def _iso_utc_now() -> str:
 
 
 def sign_receipt(canonical_hash: str, kind: str = "check",
-                 response_id: str | None = None) -> tuple[dict | None, str]:
+                 response_id: str | None = None,
+                 caller_ua: str | None = None) -> tuple[dict | None, str]:
     """Sign the domain-separated (canonical_hash) via the Mac sig-service.
 
     Args:
@@ -56,6 +57,12 @@ def sign_receipt(canonical_hash: str, kind: str = "check",
         kind: one of 'check' or 'registry'. Anything else = 400 from
             the sig-service; caller should validate before calling.
         response_id: UUID v4 for tracing. Generated if not provided.
+        caller_ua: end-user User-Agent for the request that triggered
+            this signing. Forwarded to sig-service as X-Original-User-
+            Agent; sig-service records it in the audit log's `ua`
+            field. Added 2026-09-09: without this, sig-service only
+            sees the direct-caller UA (python-httpx/x.y.z) and can't
+            distinguish external visitors from JJ/canary traffic.
 
     Returns:
         (sig_block, status) where sig_block is the sig-service response
@@ -82,6 +89,10 @@ def sign_receipt(canonical_hash: str, kind: str = "check",
         "CF-Access-Client-Id": _CF_CLIENT_ID,
         "CF-Access-Client-Secret": _CF_CLIENT_SECRET,
     }
+    if caller_ua:
+        # Truncate to 512 chars to match sig-service's record() cap and
+        # avoid header-size limits on the tunnel path.
+        headers["X-Original-User-Agent"] = caller_ua[:512]
     url = SIG_TUNNEL_URL.rstrip("/") + "/sign"
 
     last_error = SIG_STATUS_UNREACHABLE
