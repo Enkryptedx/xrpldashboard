@@ -3666,17 +3666,23 @@ def tokens():
     # pulse ring so the reader can tell "we know" from "we guessed."
     label_lookup = {}
     for t in enriched:
-        if not t["labeled"]:
+        # 2026-09-09 tier-lane redesign: the live grid routes each pulse to
+        # a lane by VERIFICATION TIER, so we ship an entry for any token
+        # that is EITHER curator-labeled OR carries an attestation tier.
+        # A canonically-verified issuer with no curated name still belongs
+        # in the verified lane (trust axis ≠ name axis — the whole point of
+        # the redesign); without this it would fall to the bare lane.
+        if not t["labeled"] and not t["attestation"]:
             continue
         label_lookup[f"{t['currency_raw']}|{t['issuer']}"] = {
             "display": t["display"],
-            "category": t["category"] or "other",
-            "category_source": "curator",
-            # 2026-09-09 tier-lane redesign: the live grid routes each pulse
-            # to a lane by VERIFICATION TIER, so every label entry ships its
-            # attestation. t["attestation"] is already tier-derived above
-            # (verified / self-described / None); None → bare tier (a
-            # curator label without a canonical-TOML proof is still bare).
+            "category": (t["category"] or "unlabeled") if t["labeled"] else "unlabeled",
+            # Only real curator labels get category_source "curator" (drives
+            # the dashed inferred-ring logic client-side). Tier-only entries
+            # have no category claim, so no source and no ring.
+            "category_source": "curator" if t["labeled"] else None,
+            # t["attestation"] is tier-derived above (verified /
+            # self-described / None); None → bare tier.
             "attestation": t["attestation"] or "bare",
         }
     # Merge inferred (toml-published) categories for pairs NOT already
