@@ -179,6 +179,15 @@
           · {{ _('freshest event') }} {{ freshness_label }}.
         {% endif %}
       </div>
+      {% if cache_state == 'warming' %}
+      <div class="src-pill" style="margin-top: 0.8em; background: rgba(255,196,0,0.12); color: var(--amber, #e0a000); border: 1px solid rgba(255,196,0,0.35);">
+        {{ _('Summary warming up — counts will populate within a few minutes.') }}
+      </div>
+      {% elif cache_state == 'stale' %}
+      <div class="src-pill" style="margin-top: 0.8em; background: rgba(255,196,0,0.12); color: var(--amber, #e0a000); border: 1px solid rgba(255,196,0,0.35);">
+        {{ _('Showing last-known counts — the summary refresh is running behind.') }}
+      </div>
+      {% endif %}
     </div>
   </div>
 

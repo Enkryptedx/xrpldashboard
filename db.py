@@ -958,6 +958,37 @@ CREATE TABLE IF NOT EXISTS nft_existing_snapshot (
     source               TEXT    NOT NULL   -- e.g. 's2-clio.ripple.com'
 );
 
+-- Single-row page-summary cache for /nfts. Recomputed by
+-- nft_activity_walker --mode summary (300s cadence). Exists so the /nfts
+-- route reads ONE row by primary key (id=1) instead of running four heavy
+-- aggregates (full-table COUNT + MIN/MAX, GROUP BY tx_type over ALL rows,
+-- 24h/7d windows, top-issuers) over the ~2.2M-row nft_activity table on
+-- every COLD render. The in-process SWR cache (_NFTS_CACHE, app.py) only
+-- serves a warm gunicorn worker; a cold worker after a deploy / worker-
+-- recycle / TTL boundary paid the full aggregate synchronously — sampled
+-- 7.94s 2026-09-09, timed out under crawler bursts. This durable row
+-- survives deploys and is shared across all workers, so the cold path is
+-- a sub-ms PK lookup. Freshness ("freshest event") is derived at read time
+-- from latest_close_time — NOT computed_at — so the label stays honest
+-- even between summary recomputes. Pure DB rollup of nft_activity: it
+-- makes no XRPL node calls, so it carries no sourcing field of its own
+-- (nft_activity is own-node forward-ingest + disclosed public-Clio
+-- historical backfill; the /nfts backfill banner already covers that).
+CREATE TABLE IF NOT EXISTS nft_activity_summary (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    total_events        BIGINT      NOT NULL DEFAULT 0,
+    range_start_ledger  BIGINT,
+    range_end_ledger    BIGINT,
+    range_start_date    DATE,
+    range_end_date      DATE,
+    latest_close_time   TIMESTAMPTZ,
+    counts_24h          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    counts_7d           JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    counts_all          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    top_issuers         JSONB       NOT NULL DEFAULT '[]'::jsonb,
+    computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Per-hour transaction-type counters populated by tx_type_bucket_handler
 -- in xrpl_stream.py. Feeds the "Ledger activity" section on /network:
 -- what share of on-chain activity is Payments vs DEX offers vs AMM vs
@@ -7331,6 +7362,126 @@ def insert_nft_activity_batch(rows):
     except Exception as e:
         _log_err("insert_nft_activity_batch_failed", e)
         return 0
+
+
+# Single CREATE mirrors the nft_activity_summary block in SCHEMA_DDL. Kept
+# here so `--mode summary` can guarantee its own table on first run without
+# re-running the whole SCHEMA_DDL every 300s (init_schema is the fresh-
+# provisioning path; this is the walker-owned "ensure my table" path, same
+# spirit as seed_nft_walker_state). If you change one, change both.
+_NFT_ACTIVITY_SUMMARY_DDL = """
+CREATE TABLE IF NOT EXISTS nft_activity_summary (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    total_events        BIGINT      NOT NULL DEFAULT 0,
+    range_start_ledger  BIGINT,
+    range_end_ledger    BIGINT,
+    range_start_date    DATE,
+    range_end_date      DATE,
+    latest_close_time   TIMESTAMPTZ,
+    counts_24h          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    counts_7d           JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    counts_all          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    top_issuers         JSONB       NOT NULL DEFAULT '[]'::jsonb,
+    computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+
+def ensure_nft_activity_summary():
+    """Idempotently create the nft_activity_summary table. Called at the top
+    of `--mode summary` so the walker's first run self-provisions rather than
+    depending on an out-of-band init_schema. No-op (returns False) when PG
+    isn't configured."""
+    if not pg_available():
+        return False
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_NFT_ACTIVITY_SUMMARY_DDL)
+        conn.commit()
+    return True
+
+
+def write_nft_activity_summary(
+    total_events,
+    range_start_ledger,
+    range_end_ledger,
+    range_start_date,
+    range_end_date,
+    latest_close_time,
+    counts_24h,
+    counts_7d,
+    counts_all,
+    top_issuers,
+):
+    """UPSERT the single (id=1) /nfts summary row. counts_* are dicts keyed
+    by tx_type; top_issuers is a list of [issuer, events] pairs — all stored
+    as JSONB. computed_at is stamped now(). Raises on failure so the walker's
+    outer try/except records ok=False in walker_health (telemetry_fail_loud —
+    a silent summary-write failure would let /nfts serve a frozen row while
+    looking healthy)."""
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO nft_activity_summary "
+                "  (id, total_events, range_start_ledger, range_end_ledger, "
+                "   range_start_date, range_end_date, latest_close_time, "
+                "   counts_24h, counts_7d, counts_all, top_issuers, computed_at) "
+                "VALUES (1, %s, %s, %s, %s, %s, %s, "
+                "        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, now()) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "  total_events = EXCLUDED.total_events, "
+                "  range_start_ledger = EXCLUDED.range_start_ledger, "
+                "  range_end_ledger = EXCLUDED.range_end_ledger, "
+                "  range_start_date = EXCLUDED.range_start_date, "
+                "  range_end_date = EXCLUDED.range_end_date, "
+                "  latest_close_time = EXCLUDED.latest_close_time, "
+                "  counts_24h = EXCLUDED.counts_24h, "
+                "  counts_7d = EXCLUDED.counts_7d, "
+                "  counts_all = EXCLUDED.counts_all, "
+                "  top_issuers = EXCLUDED.top_issuers, "
+                "  computed_at = now()",
+                (
+                    total_events,
+                    range_start_ledger,
+                    range_end_ledger,
+                    range_start_date,
+                    range_end_date,
+                    latest_close_time,
+                    json.dumps(counts_24h),
+                    json.dumps(counts_7d),
+                    json.dumps(counts_all),
+                    json.dumps(top_issuers),
+                ),
+            )
+        conn.commit()
+
+
+def read_nft_activity_summary():
+    """Return the /nfts summary row as a dict, or None if the table is empty
+    (walker hasn't run yet → route shows a 'warming up' state) or PG is
+    unavailable. JSONB columns come back as Python dict/list. Never raises —
+    a read failure on this hot public route degrades to the warming state,
+    it does not 500 the page."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT total_events, range_start_ledger, range_end_ledger, "
+                    "       range_start_date, range_end_date, latest_close_time, "
+                    "       counts_24h, counts_7d, counts_all, top_issuers, "
+                    "       computed_at "
+                    "  FROM nft_activity_summary WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                cols = [d.name for d in cur.description]
+                return dict(zip(cols, row))
+    except Exception as e:
+        _log_err("read_nft_activity_summary_failed", e)
+        return None
 
 
 def count_nft_activity():

@@ -85,6 +85,15 @@ JOBS: list[tuple[str, int, str]] = [
     # without being an incident.
     ("pg_restore_test", 193 * 3600,
      "weekly restore-test: pull latest B2 dump → ephemeral PG :5439 → smoke queries → teardown"),
+    # 2026-09-09: nft_activity_summary walker (--mode summary). 300s (5-min)
+    # cadence; 1h ceiling = up to 12 missed cadences of grace. Wider ratio
+    # than the 15-min canaries because summary staleness is NOT safety-
+    # critical — the /nfts route already serves last-known-good on a stale
+    # row (30-min banner) and never 500s. This meta-watch catches the walker
+    # going fully silent (never stamping), which would eventually freeze the
+    # public NFT counts. Wrapper stamps _last_ok on genuine success only.
+    ("nft_activity_summary", 3600,
+     "every-5min recompute of the single-row /nfts page cache from nft_activity → nft_activity_summary"),
 ]
 
 

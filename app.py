@@ -3802,8 +3802,11 @@ def nfts():
     Clio archive (third-party source) — labeled at point of display, kept
     free-tier permanently under SELLABLE_REQUIRES_SOVEREIGN_SOURCE.
 
-    Cached 5min in-process. Every query is by-index (tx_type + close_time,
-    or issuer + close_time). Never touches the XRPL node from this route."""
+    Cached 5min in-process (SWR L1). The underlying data is a single
+    pre-computed row (nft_activity_summary, id=1) written by
+    nft_activity_walker --mode summary — a sub-ms PK read, NOT the four
+    live aggregates over ~2.2M rows this route used to run on every cold
+    render. Never touches the XRPL node from this route."""
     now_mono = time.monotonic()
     if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
         _cached_body = _NFTS_CACHE["body"]
@@ -3820,7 +3823,9 @@ def nfts():
             return _r
 
     # Defaults — the page still renders honestly (dashes / zero rows) if PG
-    # is unavailable at request time. Nothing crashes.
+    # is unavailable or the summary walker hasn't populated the row yet.
+    # Nothing crashes. cache_state drives an optional "warming up"/"stale"
+    # banner in the template.
     totals = {"total_events": 0}
     counts_24h = {}
     counts_7d = {}
@@ -3832,57 +3837,48 @@ def nfts():
     range_end_date = "—"
     freshness_seconds = None
     freshness_label = None
+    cache_state = "warming"  # 'ok' | 'stale' | 'warming'
 
-    if db.pg_available():
-        try:
-            with db.pg_connect() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT COUNT(*), MIN(ledger_index), MAX(ledger_index), "
-                        "MIN(close_time), MAX(close_time) FROM nft_activity"
-                    )
-                    row = cur.fetchone()
-                    if row and row[0]:
-                        totals["total_events"] = int(row[0])
-                        range_start_ledger = int(row[1] or range_start_ledger)
-                        range_end_ledger = int(row[2] or range_end_ledger)
-                        if row[3]:
-                            range_start_date = row[3].strftime("%Y-%m-%d")
-                        if row[4]:
-                            range_end_date = row[4].strftime("%Y-%m-%d")
-                            freshness_seconds = max(0, int(time.time() - row[4].timestamp()))
-                            freshness_label = _format_age_seconds(freshness_seconds)
+    # Read the single pre-computed summary row (nft_activity_summary, id=1),
+    # populated by nft_activity_walker --mode summary every 300s. This route
+    # used to run four heavy aggregates over the ~2.2M-row nft_activity table
+    # inline — on a cold gunicorn worker (post-deploy / worker-recycle / TTL
+    # boundary) that was a synchronous full-table scan, sampled 7.94s and
+    # timed out under crawler bursts. Now it's a sub-ms primary-key lookup.
+    # Freshness is derived here from latest_close_time so "freshest event"
+    # stays accurate between summary recomputes; cache_state flags a summary
+    # walker that has stopped stamping (row older than the stale ceiling).
+    _SUMMARY_STALE_CEILING_S = 1800  # 30 min = 6 missed 300s summary cadences
+    summary = db.read_nft_activity_summary()
+    if summary is not None:
+        totals["total_events"] = int(summary.get("total_events") or 0)
+        if summary.get("range_start_ledger") is not None:
+            range_start_ledger = int(summary["range_start_ledger"])
+        if summary.get("range_end_ledger") is not None:
+            range_end_ledger = int(summary["range_end_ledger"])
+        if summary.get("range_start_date"):
+            range_start_date = summary["range_start_date"].strftime("%Y-%m-%d")
+        if summary.get("range_end_date"):
+            range_end_date = summary["range_end_date"].strftime("%Y-%m-%d")
+        _lct = summary.get("latest_close_time")
+        if _lct is not None:
+            freshness_seconds = max(0, int(time.time() - _lct.timestamp()))
+            freshness_label = _format_age_seconds(freshness_seconds)
+        # JSONB → dict/list already; coerce counts to int defensively.
+        counts_24h = {k: int(v) for k, v in (summary.get("counts_24h") or {}).items()}
+        counts_7d = {k: int(v) for k, v in (summary.get("counts_7d") or {}).items()}
+        counts_all = {k: int(v) for k, v in (summary.get("counts_all") or {}).items()}
+        top_issuers = [(r[0], int(r[1])) for r in (summary.get("top_issuers") or [])]
 
-                    # `INTERVAL %s` does not parse — Postgres wants a literal
-                    # after INTERVAL, not a bound parameter. Casting the bound
-                    # value via `(%s)::interval` is the shape that works.
-                    for label, interval in (("24h", "24 hours"), ("7d", "7 days")):
-                        cur.execute(
-                            "SELECT tx_type, COUNT(*) FROM nft_activity "
-                            "WHERE close_time >= NOW() - (%s)::interval "
-                            "GROUP BY tx_type",
-                            (interval,),
-                        )
-                        bucket = {r[0]: int(r[1]) for r in cur.fetchall()}
-                        if label == "24h":
-                            counts_24h = bucket
-                        else:
-                            counts_7d = bucket
-
-                    cur.execute(
-                        "SELECT tx_type, COUNT(*) FROM nft_activity GROUP BY tx_type"
-                    )
-                    counts_all = {r[0]: int(r[1]) for r in cur.fetchall()}
-
-                    cur.execute(
-                        "SELECT issuer, COUNT(*) AS events FROM nft_activity "
-                        "WHERE issuer IS NOT NULL "
-                        "AND close_time >= NOW() - INTERVAL '7 days' "
-                        "GROUP BY issuer ORDER BY events DESC LIMIT 10"
-                    )
-                    top_issuers = [(r[0], int(r[1])) for r in cur.fetchall()]
-        except Exception:
-            app.logger.exception("nfts: PG read failed; rendering empty state")
+        _computed_at = summary.get("computed_at")
+        _summary_age = (
+            (time.time() - _computed_at.timestamp())
+            if _computed_at is not None else None
+        )
+        if _summary_age is not None and _summary_age > _SUMMARY_STALE_CEILING_S:
+            cache_state = "stale"  # last-known-good, but the walker is behind
+        else:
+            cache_state = "ok"
 
     body = render_template(
         "nfts.html",
@@ -3897,6 +3893,7 @@ def nfts():
         range_end_date=range_end_date,
         freshness_seconds=freshness_seconds,
         freshness_label=freshness_label,
+        cache_state=cache_state,
         gap_audit={
             "range_total_est":        _NFT_BACKFILL_RANGE_TOTAL_EST,
             "observed_est":           _NFT_BACKFILL_OBSERVED_EST,

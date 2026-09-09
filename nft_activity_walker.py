@@ -1,6 +1,6 @@
 """Standalone walker for the /nfts funnel + active/quiet + churn badge.
 
-Four modes, dispatched via --mode:
+Five modes, dispatched via --mode:
 
   --mode activity          Forward-only ingest from cursor_ledger up to
                            validated_ledger - 3 (safety margin), in batches
@@ -11,8 +11,16 @@ Four modes, dispatched via --mode:
                            backfill_target (2026-04-01 cutoff). Uses public
                            Clio (s2-clio) because local node ledger_history
                            is only ~10k. Populated in D2.
+  --mode summary           Recompute the single-row nft_activity_summary
+                           page cache from nft_activity (total_events, ledger/
+                           date range, 24h/7d/all-time tx_type counts, top-10
+                           issuers). The /nfts route reads this ONE row by PK
+                           instead of aggregating ~2.2M rows live on every
+                           cold render. 300s cadence, own plist. No node calls.
   --mode rollup            Recompute nft_collection_stats from nft_activity
-                           (per issuer/taxon). Populated in D3.
+                           (per issuer/taxon). Populated in D3 — distinct from
+                           summary: rollup is the per-collection churn table,
+                           summary is the page-level aggregate.
   --mode existing-snapshot One-time full-state count via Clio
                            ledger_data(NFTokenPage). HARD-FAILS on Clio
                            unreachable (walker_health.last_error) — no
@@ -512,6 +520,105 @@ def run_rollup():
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Mode: summary — recompute the single-row /nfts page cache.
+# NOT the per-collection rollup (that is D3 + carries the intra-collection
+# churn guardrail). This is the page-level aggregate the /nfts route used
+# to compute LIVE on every cold render (four heavy aggregates over ~2.2M
+# rows → sampled 7.94s, timed out under crawler bursts). Moving it here
+# means the request path is a sub-ms PK read of nft_activity_summary.
+# Reads nft_activity only — makes NO XRPL node calls.
+# ─────────────────────────────────────────────────────────────────────
+
+def run_summary():
+    """Recompute nft_activity_summary (single id=1 row) from nft_activity.
+
+    Mirrors the exact aggregates the /nfts route previously ran inline:
+      1. total_events + ledger/close_time range (full-table COUNT + MIN/MAX)
+      2. GROUP BY tx_type over the 24h and 7d windows
+      3. GROUP BY tx_type over all rows (all-time)
+      4. top-10 issuers by event count over the last 7 days
+    Then UPSERTs the row. Returns (ok: bool, message: str)."""
+    db.ensure_nft_activity_summary()
+
+    total_events = 0
+    range_start_ledger = None
+    range_end_ledger = None
+    range_start_date = None
+    range_end_date = None
+    latest_close_time = None
+    counts_24h = {}
+    counts_7d = {}
+    counts_all = {}
+    top_issuers = []
+
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*), MIN(ledger_index), MAX(ledger_index), "
+                "MIN(close_time), MAX(close_time) FROM nft_activity"
+            )
+            row = cur.fetchone()
+            if row and row[0]:
+                total_events = int(row[0])
+                range_start_ledger = int(row[1]) if row[1] is not None else None
+                range_end_ledger = int(row[2]) if row[2] is not None else None
+                if row[3]:
+                    range_start_date = row[3].date()
+                if row[4]:
+                    range_end_date = row[4].date()
+                    latest_close_time = row[4]
+
+            # `(%s)::interval` — INTERVAL wants a literal, not a bound param;
+            # casting the bound value is the shape that parses. Same idiom as
+            # the old inline /nfts query this replaces.
+            for label, interval in (("24h", "24 hours"), ("7d", "7 days")):
+                cur.execute(
+                    "SELECT tx_type, COUNT(*) FROM nft_activity "
+                    "WHERE close_time >= NOW() - (%s)::interval "
+                    "GROUP BY tx_type",
+                    (interval,),
+                )
+                bucket = {r[0]: int(r[1]) for r in cur.fetchall()}
+                if label == "24h":
+                    counts_24h = bucket
+                else:
+                    counts_7d = bucket
+
+            cur.execute(
+                "SELECT tx_type, COUNT(*) FROM nft_activity GROUP BY tx_type"
+            )
+            counts_all = {r[0]: int(r[1]) for r in cur.fetchall()}
+
+            cur.execute(
+                "SELECT issuer, COUNT(*) AS events FROM nft_activity "
+                "WHERE issuer IS NOT NULL "
+                "AND close_time >= NOW() - INTERVAL '7 days' "
+                "GROUP BY issuer ORDER BY events DESC LIMIT 10"
+            )
+            top_issuers = [[r[0], int(r[1])] for r in cur.fetchall()]
+
+    db.write_nft_activity_summary(
+        total_events=total_events,
+        range_start_ledger=range_start_ledger,
+        range_end_ledger=range_end_ledger,
+        range_start_date=range_start_date,
+        range_end_date=range_end_date,
+        latest_close_time=latest_close_time,
+        counts_24h=counts_24h,
+        counts_7d=counts_7d,
+        counts_all=counts_all,
+        top_issuers=top_issuers,
+    )
+
+    return True, (
+        f"total_events={total_events} "
+        f"types_all={len(counts_all)} types_24h={len(counts_24h)} "
+        f"top_issuers={len(top_issuers)} "
+        f"range={range_start_date}..{range_end_date}"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Mode: existing-snapshot — one-time full-state count via Clio.
 # Populated in D5-ish (post-page-shell) so we can surface the true
 # STOCK number alongside the funnel FLOW. Cadence stays MANUAL until
@@ -534,9 +641,15 @@ def run_existing_snapshot():
 MODE_DISPATCH = {
     "activity":          run_activity,
     "backfill":          run_backfill,
+    "summary":           run_summary,
     "rollup":            run_rollup,
     "existing-snapshot": run_existing_snapshot,
 }
+
+# Modes that run on a fixed StartInterval cadence and should declare it to
+# walker_health for staleness thresholds. Both fire every 300s on their
+# own plists.
+CADENCE_MODES = frozenset({"activity", "summary"})
 
 
 def main():
@@ -560,7 +673,7 @@ def main():
     walker_health_name = f"{WALKER_NAME}_{args.mode}"
     db.write_walker_health_start(
         walker_health_name,
-        cadence_seconds=WALKER_CADENCE_SECONDS if args.mode == "activity" else None,
+        cadence_seconds=WALKER_CADENCE_SECONDS if args.mode in CADENCE_MODES else None,
     )
 
     ok = False
