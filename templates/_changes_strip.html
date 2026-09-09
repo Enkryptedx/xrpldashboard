@@ -74,9 +74,9 @@
     .changes-strip .strip-header .strip-heartbeat { font-size: 0.72rem; }
   }
 </style>
-<aside class="changes-strip" aria-label="On the ledger today">
+<aside class="changes-strip" aria-label="What's new">
   <div class="strip-header">
-    <span class="strip-title">{{ _('On the ledger today') }}</span>
+    <span class="strip-title">{{ _("What's new") }}</span>
     <span class="strip-heartbeat">
       {% if changes_strip.header.validated_ledger_index %}
         {{ _('as of ledger') }} {{ '{:,}'.format(changes_strip.header.validated_ledger_index) }}

@@ -128,9 +128,20 @@ def _count_human_predicate(conn, ts_start, ts_end):
         return cur.fetchone()[0]
 
 
+#: Charlie ruling 2026-09-08 evening — writer and live-predicate can
+#: drift by up to 1% without a page. Root cause (writer + canary
+#: evaluating against different bot_hashes snapshots) is filed as a
+#: follow-up; this tolerance band keeps the canary honest about
+#: structural drift while it holds. Any drift > 1% still pages.
+DRIFT_TOLERANCE = 0.01
+
+
 def _check_window(conn, label, ts_start, ts_end):
     """Compare column vs predicate count over [ts_start, ts_end).
-    Returns (ok: bool, detail: str)."""
+    Returns (ok: bool, detail: str). Small drift within DRIFT_TOLERANCE
+    reports as WITHIN-TOLERANCE (ok=True), not MISMATCH — this catches
+    structural drift without paging on the ambient bot_hashes cache-vs-
+    live noise that Charlie ruled 2026-09-08 does not warrant a red."""
     col = _count_human_column(conn, ts_start, ts_end)
     pred = _count_human_predicate(conn, ts_start, ts_end)
     delta = col - pred
@@ -140,25 +151,39 @@ def _check_window(conn, label, ts_start, ts_end):
         detail = f"{label} [{start_dt}→{end_dt}]: humans-column={col} humans-predicate={pred} delta=0 OK"
         log.info(detail)
         return True, detail
+    # Compute the drift ratio against the larger of the two counts so a
+    # tiny delta on a big base doesn't page, but a tiny delta on a tiny
+    # base still does.
+    base = max(col, pred, 1)
+    drift_ratio = abs(delta) / base
+    # delta = column-humans − predicate-humans. Both count HUMANS.
+    # delta > 0  → column finds MORE humans (writer under-stamps bots
+    #              vs live classifier — check writer lag, cohort feed,
+    #              or CLASSIFIER_VERSION bump not yet re-swept)
+    # delta < 0  → column finds FEWER humans (writer over-stamps bots
+    #              — likely bot_hashes cache retaining classifications
+    #              the live subquery can no longer rederive, e.g. one-
+    #              off probe UAs linked via visitor/ip_day session)
+    if delta > 0:
+        hint = "writer under-stamps: check backfill/cohort/CLASSIFIER_VERSION"
     else:
-        # delta = column-humans − predicate-humans. Both count HUMANS.
-        # delta > 0  → column finds MORE humans (writer under-stamps bots
-        #              vs live classifier — check writer lag, cohort feed,
-        #              or CLASSIFIER_VERSION bump not yet re-swept)
-        # delta < 0  → column finds FEWER humans (writer over-stamps bots
-        #              — likely bot_hashes cache retaining classifications
-        #              the live subquery can no longer rederive, e.g. one-
-        #              off probe UAs linked via visitor/ip_day session)
-        if delta > 0:
-            hint = "writer under-stamps: check backfill/cohort/CLASSIFIER_VERSION"
-        else:
-            hint = "writer over-stamps: check bot_hashes cache-vs-live drift"
+        hint = "writer over-stamps: check bot_hashes cache-vs-live drift"
+    if drift_ratio <= DRIFT_TOLERANCE:
+        # Within tolerance — still note the drift so a slow-growing
+        # divergence surfaces in the log, but don't page.
         detail = (
             f"{label} [{start_dt}→{end_dt}]: humans-column={col} humans-predicate={pred} "
-            f"delta={delta:+d} MISMATCH — {hint}"
+            f"delta={delta:+d} ({drift_ratio*100:.2f}%) WITHIN-TOLERANCE (≤{DRIFT_TOLERANCE*100:g}%) — {hint}"
         )
-        log.error(detail)
-        return False, detail
+        log.info(detail)
+        return True, detail
+    # Above tolerance → page.
+    detail = (
+        f"{label} [{start_dt}→{end_dt}]: humans-column={col} humans-predicate={pred} "
+        f"delta={delta:+d} ({drift_ratio*100:.2f}%) MISMATCH — exceeds {DRIFT_TOLERANCE*100:g}% tolerance — {hint}"
+    )
+    log.error(detail)
+    return False, detail
 
 
 def run():

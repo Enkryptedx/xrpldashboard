@@ -65,7 +65,7 @@ ROUTES: list[tuple[str, int, str | None]] = [
     ("/subprocessors",                    3000,   "subprocessor"),
     ("/thisweek",                         3000,   "this week"),
     ("/registry/taxonomy",                10000,  "taxonomy"),
-    ("/changes",                          1000,   "On the ledger"),
+    ("/changes",                          1000,   "What&#39;s new"),
     ("/changes.xml",                      500,    "xrpldashboard"),
     ("/api/changes/strip.json",           200,    "validated_ledger_index"),
     ("/methodology",                      50000,  "Event-derived metrics undercount"),

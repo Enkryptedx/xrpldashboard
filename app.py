@@ -8631,7 +8631,7 @@ def changes_atom_feed():
         entries.append(
             f"  <entry>\n"
             f"    <id>{SITE_URL}/changes/{d}</id>\n"
-            f"    <title>On the ledger — {d}</title>\n"
+            f"    <title>What&#39;s new — {d}</title>\n"
             f"    <link href='{SITE_URL}/changes/{d}'/>\n"
             f"    <updated>{d}T00:00:00Z</updated>\n"
             f"    <author><name>xrpldashboard</name></author>\n"
@@ -8643,7 +8643,7 @@ def changes_atom_feed():
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<feed xmlns="http://www.w3.org/2005/Atom">\n'
-        f'  <title>xrpldashboard — On the ledger</title>\n'
+        f'  <title>xrpldashboard — What&#39;s new</title>\n'
         f'  <link href="{SITE_URL}/changes"/>\n'
         f'  <link href="{SITE_URL}/changes.xml" rel="self"/>\n'
         f'  <id>{SITE_URL}/changes</id>\n'

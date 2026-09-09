@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ _('On the ledger') }} · {{ envelope.date }} · xrpldashboard</title>
-  {% set meta_title = "On the ledger · " ~ envelope.date ~ " · xrpldashboard" %}
-  {% set meta_description = "Daily machine-written XRPL changelog — one line per change, ledger-anchored, prove-URL-carrying. " ~ envelope.date ~ "." %}
-  {% include "_head_meta.html" %}
+  <title>{{ _("What's new") }} · {{ envelope.date }} · xrpldashboard</title>
+  {% set meta_title = "What's new · " ~ envelope.date ~ " · xrpldashboard" %}
+  {% set meta_description = "Daily machine-written XRPL changelog — what changed on the ledger, ledger-anchored, prove-URL-carrying. " ~ envelope.date ~ "." %}
+  {% include "_head_meta.html" ignore missing %}
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "On the ledger — {{ envelope.date }}",
+    "headline": "What's new — {{ envelope.date }}",
     "description": "Daily machine-written XRPL changelog for {{ envelope.date }}",
     "datePublished": "{{ envelope.date }}T00:00:00Z",
     "dateModified": "{{ envelope.generated_at_utc }}",
@@ -21,108 +21,203 @@
   }
   </script>
 
-  <link rel="alternate" type="application/rss+xml" title="On the ledger (RSS)" href="/changes.xml">
-  <link rel="alternate" type="application/json" title="On the ledger (JSON)" href="/changes/{{ envelope.date }}.json">
+  <link rel="alternate" type="application/rss+xml" title="What's new (feed)" href="/changes.xml">
+  <link rel="alternate" type="application/json" title="What's new (JSON)" href="/changes/{{ envelope.date }}.json">
 
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-           max-width: 780px; margin: 0 auto; padding: 1rem; line-height: 1.55;
-           color: #1a1a1a; background: #fafafa; }
-    h1 { font-size: 1.5rem; margin: 0.4rem 0 0.2rem; }
-    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.2rem; }
-    .disclosure { background: #fff8e1; border-left: 3px solid #d9a441;
-                  padding: 0.7rem 0.9rem; margin: 1rem 0; font-size: 0.85rem;
-                  border-radius: 3px; }
-    .changes-list { list-style: none; padding: 0; margin: 1.5rem 0 0; }
-    .changes-list li { background: #fff; border-left: 3px solid #4a7c9a;
-                       padding: 0.6rem 0.9rem; margin-bottom: 0.5rem;
-                       border-radius: 3px; font-size: 0.95rem; }
-    .changes-list li.chain { border-left-color: #2e5c8a; }
-    .changes-list li.amm { border-left-color: #5c8a2e; }
-    .changes-list li.mpt { border-left-color: #8a5c2e; }
-    .changes-list li.rlusd { border-left-color: #2e8a8a; }
-    .changes-list li.rwa { border-left-color: #6a2e8a; }
-    .changes-list li.registry { border-left-color: #8a2e5c; }
-    .changes-list li.unl { border-left-color: #a4741f; }
-    .changes-list li.warn { border-left-color: #c93a3a; background: #fff5f5; }
-    .cat-tag { display: inline-block; background: #eee; color: #555;
-               font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 3px;
-               text-transform: uppercase; letter-spacing: 0.02em;
-               margin-right: 0.5rem; vertical-align: middle; }
-    .prove-link { font-size: 0.8rem; color: #4a7c9a; text-decoration: none;
-                  margin-left: 0.4rem; }
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --card-2: #1a1f3d;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --dim: #7a8ca8;
+      --cyan: #22d3ee;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --green: #10b981;
+      --purple: #a855f7;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; background: var(--bg); color: var(--text);
+      font-family: var(--sys); line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(34,211,238,0.05), transparent 60%),
+        radial-gradient(900px 500px at 85% 10%, rgba(168,85,247,0.05), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 1rem; }
+    h1 { font-size: 1.55rem; margin: 0.4rem 0 0.2rem; color: var(--text); }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.2rem; }
+    .subtitle a { color: var(--cyan); text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+
+    .format-row { margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted); }
+    .format-row a { color: var(--cyan); text-decoration: none; }
+    .format-row a:hover { text-decoration: underline; }
+
+    .nav-strip-inline {
+      font-size: 0.88rem; margin: 0.8rem 0 1rem;
+      color: var(--muted);
+    }
+    .nav-strip-inline a { color: var(--cyan); text-decoration: none; margin-right: 0.75rem; }
+    .nav-strip-inline a:hover { text-decoration: underline; }
+
+    .changes-list { list-style: none; padding: 0; margin: 1.4rem 0 0; }
+    .changes-list li {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--dim);
+      padding: 0.7rem 0.95rem;
+      margin-bottom: 0.55rem;
+      border-radius: 4px;
+      font-size: 0.93rem;
+      color: var(--text);
+    }
+    .changes-list li.chain    { border-left-color: #4a7c9a; }
+    .changes-list li.amm      { border-left-color: #10b981; }
+    .changes-list li.mpt      { border-left-color: #f59e0b; }
+    .changes-list li.rlusd    { border-left-color: #22d3ee; }
+    .changes-list li.rwa      { border-left-color: #a855f7; }
+    .changes-list li.registry { border-left-color: #ec4899; }
+    .changes-list li.unl      { border-left-color: #f5b93a; }
+    .changes-list li.warn     { border-left-color: var(--red); background: rgba(120,30,30,0.14); }
+
+    .cat-tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      padding: 0.12rem 0.44rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-right: 0.55rem;
+      vertical-align: middle;
+    }
+    .prove-link {
+      font-size: 0.82rem;
+      color: var(--cyan);
+      text-decoration: none;
+      margin-left: 0.5rem;
+    }
     .prove-link:hover { text-decoration: underline; }
-    .source-tag { font-size: 0.7rem; color: #999; margin-left: 0.4rem; }
-    .quiet { margin-top: 1.5rem; padding: 0.6rem 0.9rem; background: #f0f0f0;
-             border-radius: 3px; font-size: 0.85rem; color: #555; }
-    .cite { margin-top: 1.5rem; font-size: 0.75rem; color: #888;
-            padding-top: 0.8rem; border-top: 1px solid #ddd; }
-    .cite a { color: #4a7c9a; }
-    .nav-strip { font-size: 0.85rem; margin-bottom: 0.8rem; }
-    .nav-strip a { color: #4a7c9a; text-decoration: none; margin-right: 0.6rem; }
-    .format-row { margin-top: 0.6rem; font-size: 0.8rem; color: #666; }
-    .format-row a { color: #4a7c9a; text-decoration: none; }
+    .source-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--dim);
+      margin-left: 0.5rem;
+    }
+
+    .quiet {
+      margin-top: 1.5rem;
+      padding: 0.7rem 0.95rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      font-size: 0.87rem;
+      color: var(--muted);
+    }
+
+    .disclosure {
+      background: rgba(245,158,11,0.08);
+      border-left: 3px solid var(--amber);
+      padding: 0.75rem 0.95rem;
+      margin: 1.2rem 0;
+      font-size: 0.85rem;
+      color: rgba(230,235,245,0.88);
+      border-radius: 3px;
+    }
+
+    .cite {
+      margin-top: 2rem;
+      font-size: 0.78rem;
+      color: var(--dim);
+      padding-top: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+    .cite a { color: var(--cyan); text-decoration: none; }
+    .cite a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 0.8rem; }
+      h1 { font-size: 1.35rem; }
+      .changes-list li { padding: 0.62rem 0.75rem; font-size: 0.9rem; }
+    }
   </style>
 </head>
 <body>
+  {% include "_alive.html" ignore missing %}
   {% include "_nav.html" ignore missing %}
 
-  {# "Top of day" strip — same significance function as the homepage, so
-     the two pages never disagree. Data source: changes_strip context var
-     from changes_by_date() in app.py, computed via build_strip() over
-     this date's envelope. #}
-  {% include "_changes_strip.html" %}
+  <div class="wrap">
+    {# Same significance function as the homepage, so the two pages never
+       disagree. Data source: changes_strip context var from
+       changes_by_date() in app.py, computed via build_strip() over this
+       date's envelope. #}
+    {% include "_changes_strip.html" %}
 
-  <div class="nav-strip">
-    {% if prev_date %}<a href="/changes/{{ prev_date }}">← {{ prev_date }}</a>{% endif %}
-    <a href="/changes">latest</a>
-    {% if next_date %}<a href="/changes/{{ next_date }}">{{ next_date }} →</a>{% endif %}
-  </div>
+    <div class="nav-strip-inline">
+      {% if prev_date %}<a href="/changes/{{ prev_date }}">← {{ prev_date }}</a>{% endif %}
+      <a href="/changes">{{ _('latest') }}</a>
+      {% if next_date %}<a href="/changes/{{ next_date }}">{{ next_date }} →</a>{% endif %}
+    </div>
 
-  <h1>{{ _('On the ledger') }} — {{ envelope.date }}</h1>
-  <div class="subtitle">
-    {{ _('Machine-written daily XRPL changelog.') }}
-    {{ _('Derived from our own signed snapshots.') }}
-    {{ _('Humans write the weekly post') }} (<a href="/thisweek">/thisweek</a>){{ _('.') }}
-  </div>
+    <h1>{{ _("What's new") }} — {{ envelope.date }}</h1>
+    <div class="subtitle">
+      {{ _('Machine-written daily XRPL changelog.') }}
+      {{ _('Derived from our own signed snapshots.') }}
+      {{ _('Humans write the weekly post') }} (<a href="/thisweek">/thisweek</a>){{ _('.') }}
+    </div>
 
-  <div class="format-row">
-    {{ _('Formats:') }}
-    <a href="/changes/{{ envelope.date }}.json">JSON</a> ·
-    <a href="/changes.xml">RSS</a> ·
-    <a href="/changes.xml">Atom</a>
-  </div>
+    <div class="format-row">
+      {{ _('Formats:') }}
+      <a href="/changes/{{ envelope.date }}.json">JSON</a> ·
+      <a href="/changes.xml">RSS</a> ·
+      <a href="/changes.xml">Atom</a>
+    </div>
 
-  {% if envelope.changes %}
-  <ul class="changes-list">
-    {% for c in envelope.changes %}
-    <li class="{{ c.category }}{% if '⚠' in c.line %} warn{% endif %}">
-      <span class="cat-tag">{{ c.category }}</span>{{ c.line }}
-      {% if c.prove_url %}<a class="prove-link" href="{{ c.prove_url }}">{{ _('proof') }} →</a>{% endif %}
-      {% if c.source %}<span class="source-tag">via {{ c.source }}</span>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p><em>{{ _('No changes recorded for this date.') }}</em></p>
-  {% endif %}
+    {% if envelope.changes %}
+    <ul class="changes-list">
+      {% for c in envelope.changes %}
+      <li class="{{ c.category }}{% if '⚠' in c.line %} warn{% endif %}">
+        <span class="cat-tag">{{ c.category }}</span>{{ c.line }}
+        {% if c.prove_url %}<a class="prove-link" href="{{ c.prove_url }}">{{ _('proof') }} →</a>{% endif %}
+        {% if c.source %}<span class="source-tag">via {{ c.source }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p><em>{{ _('No changes recorded for this date.') }}</em></p>
+    {% endif %}
 
-  {% if envelope.categories_no_change %}
-  <div class="quiet">
-    <strong>{{ _('No change') }}:</strong>
-    {{ envelope.categories_no_change | join(', ') }}
-  </div>
-  {% endif %}
+    {% if envelope.categories_no_change %}
+    <div class="quiet">
+      <strong>{{ _('No change') }}:</strong>
+      {{ envelope.categories_no_change | join(', ') }}
+    </div>
+    {% endif %}
 
-  <div class="disclosure">
-    {{ envelope.disclosure }}
-  </div>
+    <div class="disclosure">
+      {{ envelope.disclosure }}
+    </div>
 
-  <div class="cite">
-    {{ _('Envelope generated at') }} {{ envelope.generated_at_utc }} ·
-    <a href="/methodology">/methodology</a> ·
-    <a href="/anchors">/anchors</a> ·
-    <a href="/.well-known/snapshots/">signed snapshots</a>
+    <div class="cite">
+      {{ _('Envelope generated at') }} {{ envelope.generated_at_utc }} ·
+      <a href="/methodology">/methodology</a> ·
+      <a href="/.well-known/anchors.json">/anchors</a> ·
+      <a href="/.well-known/snapshots/">signed snapshots</a>
+    </div>
   </div>
 </body>
 </html>

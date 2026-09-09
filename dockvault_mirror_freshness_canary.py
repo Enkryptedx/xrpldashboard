@@ -45,6 +45,13 @@ JOBS: list[tuple[str, int, str]] = [
      "daily 24h rsync ~/xrpl_test + ~/.ssh → /Volumes/DockVault/xrpl_mirror"),
     ("dockvault_memory_mirror", 14 * 3600,
      "twice-daily 12h rsync memory dirs → /Volumes/DockVault/memory_mirror"),
+    # Charlie ruling 2026-09-08: added public_route_200_canary here
+    # after it went silent for ~24h on Sunday night with no meta-watch
+    # ("a watchdog nobody watches is the pattern we keep finding").
+    # 15-min walker; 60 min ceiling = up to 4 missed cadences before
+    # this meta-canary pages.
+    ("public_route_200_canary", 60 * 60,
+     "every-15min HTTP-200 sweep of all public + agent-tier + well-known routes on xrpldashboard.com"),
 ]
 
 
