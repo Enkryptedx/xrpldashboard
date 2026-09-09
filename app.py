@@ -3672,6 +3672,12 @@ def tokens():
             "display": t["display"],
             "category": t["category"] or "other",
             "category_source": "curator",
+            # 2026-09-09 tier-lane redesign: the live grid routes each pulse
+            # to a lane by VERIFICATION TIER, so every label entry ships its
+            # attestation. t["attestation"] is already tier-derived above
+            # (verified / self-described / None); None → bare tier (a
+            # curator label without a canonical-TOML proof is still bare).
+            "attestation": t["attestation"] or "bare",
         }
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
@@ -3680,10 +3686,16 @@ def tokens():
         key = f"{cur}|{iss}"
         if key in label_lookup:
             continue  # curator wins
+        # Tier for the live-grid lane: a toml-published category is the
+        # issuer's own claim, so it is self-described unless the tier
+        # lookup independently confirms a canonical-TOML verification.
+        _tier_raw = tier_lookup.get(key)
+        _inf_att = "verified" if _tier_raw == "VERIFIED" else "self-described"
         label_lookup[key] = {
             "display": inf.get("currency_display") or cur,
             "category": inf.get("category") or "other",
             "category_source": inf.get("source") or "toml",
+            "attestation": _inf_att,
         }
     label_lookup_json = json.dumps(label_lookup, separators=(",", ":"))
 

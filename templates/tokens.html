@@ -432,6 +432,76 @@
     @media (prefers-reduced-motion: reduce) {
       .tron-grid-canvas { opacity: 0.7; }
     }
+    /* Verification-tier lane labels under the grid (2026-09-09 redesign).
+       The strip is click-through except the LP label, which is the toggle. */
+    .tron-grid-lanes { pointer-events: none; }
+    .tron-grid-lanes .tron-lane-label {
+      color: var(--dim); background: none; border: 0;
+      font-family: var(--mono); font-size: 0.62rem;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 2px 2px; margin: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .tron-grid-lanes .tron-lane-label[data-lane="verified"] { color: rgba(34,197,94,0.92); }
+    .tron-grid-lanes .tron-lane-label[data-lane="self"]     { color: rgba(203,213,225,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="bare"]     { color: rgba(122,140,168,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="warning"]  { color: rgba(245,158,11,0.92); }
+    .tron-grid-lanes .tron-lane-lp {
+      color: rgba(103,232,249,0.72); cursor: pointer;
+      pointer-events: auto;
+    }
+    .tron-grid-lanes .tron-lane-lp:hover { color: rgba(103,232,249,1); }
+    .tron-grid-lanes .tron-lane-lp.is-on { color: rgba(103,232,249,1); font-weight: 700; }
+    .tron-grid-lanes .tron-lp-state { opacity: 0.85; }
+    @media (max-width: 620px) {
+      .tron-grid-lanes { font-size: 0.55rem; bottom: 4px; }
+      .tron-grid-lanes .tron-lane-label { font-size: 0.55rem; letter-spacing: 0.02em; }
+    }
+
+    /* On-page legend for the live grid — lanes (tiers) + coins (categories). */
+    .tron-legend {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin: 0 0 16px;
+      display: grid; gap: 12px;
+    }
+    .tron-legend-head {
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 600;
+    }
+    .tron-legend-items { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+    .tron-leg {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; color: var(--text);
+    }
+    .tron-leg i {
+      width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+      display: inline-block; background: var(--dim);
+    }
+    .tron-leg b {
+      font-family: var(--mono); font-weight: 700; width: 16px;
+      text-align: center; display: inline-block; font-size: 0.9rem;
+    }
+    .tron-leg--verified i { background: rgb(34,197,94); }
+    .tron-leg--self i     { background: rgb(148,163,184); }
+    .tron-leg--bare i     { background: rgb(122,140,168); }
+    .tron-leg--warning i  { background: rgb(245,158,11); }
+    .tron-leg--lp i       { background: rgb(103,232,249); }
+    .tron-cat--stablecoin b { color: rgb(34,197,94); }
+    .tron-cat--wrapped b    { color: rgb(245,158,11); }
+    .tron-cat--utility b    { color: rgb(34,211,238); }
+    .tron-cat--memecoin b   { color: rgb(236,72,153); }
+    .tron-cat--rwa b        { color: rgb(59,130,246); }
+    .tron-cat--lp b         { color: rgb(103,232,249); }
+    .tron-cat--unlabeled b  { color: rgb(140,150,170); }
+    .tron-legend-foot {
+      color: var(--dim); font-size: 0.74rem; font-family: var(--mono);
+      border-top: 1px solid var(--border); padding-top: 8px; line-height: 1.55;
+    }
+    .tron-lane-readout { color: var(--text); }
+    @media (max-width: 620px) {
+      .tron-legend-items { gap: 6px 10px; }
+      .tron-leg { font-size: 0.72rem; }
+    }
 
     /* Honeycomb hero (kept for cross-page styling reuse but not currently
        rendered — see route hex_cells comment). */
@@ -871,12 +941,52 @@
       {{ _('waiting for the next validated token trade on the public XRPL stream…') }}
     </div>
     <div class="tron-grid-tooltip" data-tron-tooltip></div>
-    <div class="tron-grid-lanes" aria-hidden="true">
-      <span style="color: rgb(34,197,94);">{{ _('stable') }}</span>
-      <span style="color: rgb(245,158,11);">{{ _('wrapped') }}</span>
-      <span style="color: rgb(34,211,238);">{{ _('utility') }}</span>
-      <span style="color: rgb(236,72,153);">{{ _('meme') }}</span>
-      <span style="color: rgb(140,150,170);">{{ _('unnamed') }}</span>
+    {# Lanes-by-verification-tier (2026-09-09 redesign). Position encodes
+       attestation strength, NOT category. The LP lane is filtered by
+       default; its label doubles as the show/hide toggle. #}
+    <div class="tron-grid-lanes">
+      <span class="tron-lane-label" data-lane="verified">{{ _('verified') }}</span>
+      <span class="tron-lane-label" data-lane="self">{{ _('self-described') }}</span>
+      <span class="tron-lane-label" data-lane="bare">{{ _('bare') }}</span>
+      <span class="tron-lane-label" data-lane="warning">{{ _('warning') }}</span>
+      <button type="button" class="tron-lane-label tron-lane-lp" data-lane="lp"
+              data-lp-toggle aria-pressed="false"
+              title="{{ _('LP-token pulses (AMM pool shares) are hidden by default. Toggle to show them.') }}">
+        {{ _('LP') }} <span class="tron-lp-state" data-lp-state>&#9656; {{ _('show') }}</span>
+      </button>
+    </div>
+  </div>
+
+  {# On-page legend (Charlie explicit): lanes = verification tier;
+     coin color + glyph = category. Rendered from the same palette the
+     canvas JS uses so page and pulses never drift. #}
+  <div class="tron-legend" aria-label="{{ _('Live trade grid legend') }}">
+    <div class="tron-legend-block">
+      <div class="tron-legend-head">{{ _('Lanes — verification tier') }}</div>
+      <div class="tron-legend-items">
+        <span class="tron-leg tron-leg--verified"><i></i>{{ _('verified') }}</span>
+        <span class="tron-leg tron-leg--self"><i></i>{{ _('self-described') }}</span>
+        <span class="tron-leg tron-leg--bare"><i></i>{{ _('bare') }}</span>
+        <span class="tron-leg tron-leg--warning"><i></i>{{ _('warning — ticker collision or non-standard code') }}</span>
+        <span class="tron-leg tron-leg--lp"><i></i>{{ _('LP — pool-share tokens (hidden by default)') }}</span>
+      </div>
+    </div>
+    <div class="tron-legend-block">
+      <div class="tron-legend-head">{{ _('Coins — category (color + glyph)') }}</div>
+      <div class="tron-legend-items">
+        <span class="tron-leg tron-cat--stablecoin"><b>$</b>{{ _('stablecoin') }}</span>
+        <span class="tron-leg tron-cat--wrapped"><b>&#8644;</b>{{ _('wrapped') }}</span>
+        <span class="tron-leg tron-cat--utility"><b>&#9881;</b>{{ _('utility') }}</span>
+        <span class="tron-leg tron-cat--memecoin"><b>&#9786;</b>{{ _('memecoin') }}</span>
+        <span class="tron-leg tron-cat--rwa"><b>&#8962;</b>{{ _('rwa') }}</span>
+        <span class="tron-leg tron-cat--lp"><b>&#8734;</b>{{ _('lp token') }}</span>
+        <span class="tron-leg tron-cat--unlabeled"><b>?</b>{{ _('unlabeled') }}</span>
+      </div>
+    </div>
+    <div class="tron-legend-foot">
+      {{ _('Lane = how strong the attestation is. Color + glyph = what kind of token.') }}
+      {{ _('Live lane distribution this session:') }}
+      <span class="tron-lane-readout" data-lane-readout>{{ _('waiting for trades…') }}</span>
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
@@ -1106,6 +1216,33 @@
     // motion comes from the coins themselves. Labels from embedded JSON.
     var PULSE_MAX = 80;
     var pulses = [];
+    // Lane distribution (2026-09-09 redesign). EVERY pulse is counted here
+    // by lane — including LP, which may be filtered out of the render — so
+    // the live readout + the __tokenLaneCounts() probe report the true
+    // distribution regardless of what's currently drawn.
+    var laneCounts = [0, 0, 0, 0, 0];
+    var laneCountsTotal = 0;
+    var lpVisible = false; // LP filtered by default; toggle flips this.
+    var laneReadoutEl = document.querySelector('[data-lane-readout]');
+    var LANE_READOUT_LABELS = ['verified', 'self', 'bare', 'warning', 'LP'];
+    function updateLaneReadout() {
+      if (!laneReadoutEl) return;
+      var parts = [];
+      for (var i = 0; i < laneCounts.length; i++) {
+        parts.push(LANE_READOUT_LABELS[i] + ' ' + laneCounts[i]);
+      }
+      laneReadoutEl.textContent = parts.join('  ·  ') + '  ·  (' + laneCountsTotal + ' total)';
+    }
+    // Live-verification probe — Charlie wants the first-10-minute lane
+    // distribution. `window.__tokenLaneCounts()` returns the running tally
+    // any headless/console check can read without scraping the DOM.
+    window.__tokenLaneCounts = function () {
+      return {
+        counts: laneCounts.slice(),
+        total: laneCountsTotal,
+        keys: LANE_READOUT_LABELS.slice(),
+      };
+    };
     var canvas    = document.querySelector('[data-tron-canvas]');
     var emptyEl   = document.querySelector('[data-tron-empty]');
     var tooltipEl = document.querySelector('[data-tron-tooltip]');
@@ -1181,20 +1318,104 @@
       fiat:                  'stablecoin',
       stablecoin:            'stablecoin',
     };
-    var CATEGORY_RGB = {
-      stablecoin: [34,197,94],
-      wrapped:    [245,158,11],
-      utility:    [34,211,238],
-      memecoin:   [236,72,153],
-      unlabeled:  [140,150,170],
+    // 2026-09-09 redesign: lp_token + rwa now fold to their own families
+    // so they carry a distinct coin color + glyph (was: lp_token→unlabeled,
+    // rwa→utility). Lane assignment no longer uses these — see tierOf().
+    CATEGORY_FAMILY.lp_token = 'lp';
+    CATEGORY_FAMILY.rwa      = 'rwa';
+    // Category family → coin COLOR + GLYPH. Single source of truth; the
+    // on-page legend renders from the same palette (kept in sync by hand).
+    var FAMILY_STYLE = {
+      stablecoin: { rgb: [34,197,94],   glyph: '$' },
+      wrapped:    { rgb: [245,158,11],  glyph: '⇄' },  // ⇄
+      utility:    { rgb: [34,211,238],  glyph: '⚙' },  // ⚙
+      memecoin:   { rgb: [236,72,153],  glyph: '☺' },  // ☺
+      rwa:        { rgb: [59,130,246],  glyph: '⌂' },  // ⌂
+      lp:         { rgb: [103,232,249], glyph: '∞' },  // ∞
+      unlabeled:  { rgb: [140,150,170], glyph: '?' },
     };
-    var LANE_ORDER = ['stablecoin', 'wrapped', 'utility', 'memecoin', 'unlabeled'];
-    function laneIndex(cat) {
-      var fam = CATEGORY_FAMILY[cat] || 'unlabeled';
-      var i = LANE_ORDER.indexOf(fam);
-      return i >= 0 ? i : LANE_ORDER.length - 1;
+    function familyOf(cat) { return CATEGORY_FAMILY[cat] || 'unlabeled'; }
+    function styleOf(cat) { return FAMILY_STYLE[familyOf(cat)] || FAMILY_STYLE.unlabeled; }
+    // Back-compat alias — radiusFromAmount + any external caller still read
+    // CATEGORY_RGB[family]. Derived from FAMILY_STYLE so there's one palette.
+    var CATEGORY_RGB = {
+      stablecoin: FAMILY_STYLE.stablecoin.rgb,
+      wrapped:    FAMILY_STYLE.wrapped.rgb,
+      utility:    FAMILY_STYLE.utility.rgb,
+      memecoin:   FAMILY_STYLE.memecoin.rgb,
+      unlabeled:  FAMILY_STYLE.unlabeled.rgb,
+    };
+
+    // ── Verification-tier LANES ─────────────────────────────────────────
+    // Lane index encodes the STRENGTH OF ATTESTATION, not the category.
+    // Display order left→right matches Charlie's spec:
+    //   verified · self-described · bare · warning · LP(toggle).
+    // tierOf() ALWAYS returns a valid lane 0..4 — no undefined, no
+    // fallthrough. The terminal default is BARE.
+    var LANE = { VERIFIED: 0, SELF: 1, BARE: 2, WARNING: 3, LP: 4 };
+    var NLANES = 5;
+    var LANE_RGB = {
+      0: [34,197,94],    // verified — green
+      1: [148,163,184],  // self-described — slate
+      2: [122,140,168],  // bare — muted
+      3: [245,158,11],   // warning — amber
+      4: [103,232,249],  // LP — light cyan
+    };
+
+    // XRPL AMM LP (pool-share) tokens use a 160-bit currency code whose
+    // first byte is 0x03 — a 40-hex code starting "03". Also honor an
+    // explicit lp_token category label.
+    function isLpToken(currency, lbl) {
+      if (lbl && lbl.category === 'lp_token') return true;
+      return typeof currency === 'string'
+          && currency.length === 40
+          && currency.slice(0, 2).toLowerCase() === '03';
     }
-    var NLANES = LANE_ORDER.length;
+    // Non-standard (junk-hex) code: a 40-hex currency whose bytes don't
+    // decode to printable ASCII. Mirrors token_naming.decode_currency's
+    // "junk" kind. Only used to warn when there is NO label to name it.
+    function isNonStandardCode(currency) {
+      if (typeof currency !== 'string' || currency.length !== 40) return false;
+      for (var i = 0; i < 40; i += 2) {
+        var b = parseInt(currency.substr(i, 2), 16);
+        if (isNaN(b)) return true;          // not hex → junk
+        if (b === 0) break;                 // trailing nulls are fine
+        if (b < 32 || b > 126) return true; // non-printable byte → junk
+      }
+      return false;
+    }
+    // Does this decoded name collide with a known ticker minted by a
+    // non-canonical issuer? Mirrors token_naming.resolve_display's guard.
+    function hasTickerCollision(name, issuer) {
+      if (!name) return false;
+      var entry = TICKER_CANONICAL[name.toUpperCase()];
+      if (!entry) return false;
+      var canon = entry.canonical_issuers || [];
+      return !(issuer && canon.indexOf(issuer) !== -1);
+    }
+    // Deterministic lane assignment. Precedence (first match wins):
+    //   1. LP token by construction              → LP
+    //   2. verified attestation (trusted)         → VERIFIED (never warned)
+    //   3. ticker collision (imposter ticker)     → WARNING
+    //   4. non-standard hex we can't identify     → WARNING
+    //   5. self-described attestation             → SELF
+    //   6. everything else (terminal default)     → BARE
+    function tierOf(leg, lbl) {
+      if (isLpToken(leg.currency, lbl)) return LANE.LP;
+      var att = lbl ? lbl.attestation : null;
+      if (att === 'verified') return LANE.VERIFIED;
+      // Collision check uses the RAW decoded ticker (not the collision-
+      // qualified label display, which would no longer match the map).
+      if (hasTickerCollision(decodeCurrency(leg.currency), leg.issuer)) {
+        return LANE.WARNING;
+      }
+      if (!lbl && isNonStandardCode(leg.currency)) return LANE.WARNING;
+      if (att === 'self-described') return LANE.SELF;
+      return LANE.BARE; // terminal default — every pulse gets a lane.
+    }
+    // Legacy shim: category no longer decides the lane. Any stale caller
+    // of laneIndex() resolves to the bare default rather than throwing.
+    function laneIndex(cat) { return LANE.BARE; }
 
     var ctx = canvas ? canvas.getContext('2d') : null;
     var W = 0, H = 0;
@@ -1312,42 +1533,46 @@
         if (!leg) return;
         var key = leg.currency + '|' + leg.issuer;
         var lbl = LABELS[key];
-        // Taxonomy v1 default: unknown labels/unlabeled tokens map to
-        // the 'unlabeled' family lane. Never 'other' — 'other' was
-        // retired in Step 1 of the registry build spec.
+        // Taxonomy v1 default: unknown labels/unlabeled tokens carry the
+        // 'unlabeled' category. Never 'other' — 'other' was retired in
+        // Step 1 of the registry build spec.
         var cat = lbl ? lbl.category : 'unlabeled';
         // Legacy alias — a stale label_lookup cache could still ship
         // 'fiat' during the first few seconds after deploy.
         if (cat === 'fiat') cat = 'stablecoin_regulated';
-        var lane = laneIndex(cat);
-        // Family fold — CATEGORY_RGB is keyed on FAMILY names, not raw
-        // v1 vocabulary. Fold every category through CATEGORY_FAMILY
-        // first; unknown categories fall through to 'unlabeled' family
-        // grey rather than throwing.
-        var fam = CATEGORY_FAMILY[cat] || 'unlabeled';
-        var rgb = CATEGORY_RGB[fam] || CATEGORY_RGB.unlabeled;
-        if (!rgb) {
-          console.warn('[tokens] spawnPulse: no RGB for cat=' + cat +
-                       ' fam=' + fam + ' — skipping pulse');
-          return;
-        }
+        // LANE = verification tier (deterministic; ALWAYS 0..4, never
+        // undefined). COLOR + GLYPH = category family (orthogonal axis).
+        var lane = tierOf(leg, lbl);
+        var st = styleOf(cat);
+        var rgb = st.rgb || CATEGORY_RGB.unlabeled;
+        var catGlyph = st.glyph || '?';
+        // Count EVERY pulse's lane BEFORE any filter — the readout and the
+        // __tokenLaneCounts() probe must reflect the true distribution even
+        // for LP pulses that are hidden from the render.
+        laneCounts[lane]++;
+        laneCountsTotal++;
+        updateLaneReadout();
+        // LP filtered by default: routed + counted above, drawn only when
+        // the viewer toggles LP on. This is a render filter, not a lane
+        // gap — the pulse still got its lane deterministically.
+        if (lane === LANE.LP && !lpVisible) return;
         var sym;
         if (lbl) {
           sym = lbl.display;
         } else {
           sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
         }
-        // Adaptive fall-speed (7b, 2026-09-07):
-        //   default   0.20 + 0-0.06 → 4-5s traverse
-        //   busy      >40 pulses → 0.28 + 0-0.04 → 3.5-4s (drain before 80 cap)
-        //   quiet+labeled  <5 pulses AND non-unlabeled → 0.14 + 0-0.03 → 6-7s (dwell)
-        // The quiet-and-labeled path gives the reader extra time on the
-        // rare stablecoin / wrapped / rwa pulses that carry the most
-        // information. Busy path prevents pile-ups during 300/min bursts.
+        // Adaptive fall-speed (7b, retuned 2026-09-09 for tier lanes):
+        //   busy      >40 pulses → faster (drain before the 80 cap)
+        //   quiet+attested  <5 pulses AND tier ≥ self-described → dwell
+        //   default   normal traverse
+        // The dwell path now keys on attestation tier, not category —
+        // the top-lane pulses are the high-information ones (was: the old
+        // 'cat !== unlabeled' proxy, per the scope-doc fall-speed note).
         var pulseSpeed;
         if (pulses.length > 40) {
           pulseSpeed = 0.28 + Math.random() * 0.04;
-        } else if (pulses.length < 5 && cat !== 'unlabeled') {
+        } else if (pulses.length < 5 && (lane === LANE.VERIFIED || lane === LANE.SELF)) {
           pulseSpeed = 0.14 + Math.random() * 0.03;
         } else {
           pulseSpeed = 0.20 + Math.random() * 0.06;
@@ -1359,7 +1584,10 @@
           rgb: rgb,
           size: radiusFromAmount(leg.value, cat),
           symbol: sym,
-          glyph: (sym || '?').replace(/[^A-Za-z0-9]/g, '').charAt(0).toUpperCase() || '?',
+          glyph: catGlyph,
+          lane: lane,
+          isWarning: (lane === LANE.WARNING),
+          isInferred: !!(lbl && lbl.category_source && lbl.category_source !== 'curator'),
           amount: leg.value,
           kind: leg.kind,
           category_source: (lbl && lbl.category_source) || null,
@@ -1532,12 +1760,25 @@
         ctx.stroke();
         // Coin head — disc with ticker glyph.
         drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph);
+        // Warning-lane coins get a solid amber ring — the ticker-collision
+        // / non-standard-code signal the scope doc calls a "chromatic
+        // overlay," layered on top of the warning-lane position so the two
+        // signals reinforce each other.
+        if (p.isWarning) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245,158,11,' + Math.min(1, alpha * 0.9) + ')';
+          ctx.lineWidth = Math.max(1, radius * 0.16);
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, radius * 1.22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
         // NEW-1 extension B (2026-09-06): dashed ring overlay for
         // tokens whose category is INFERRED (from toml) rather than
         // curator-verified. Honest visual — the reader can tell
         // "we know" (solid coin) from "we guessed via issuer toml"
         // (dashed ring around it).
-        if (p.category_source && p.category_source !== 'curator') {
+        if (p.isInferred) {
           ctx.save();
           ctx.strokeStyle = 'rgba(255,255,255,' + (alpha * 0.55) + ')';
           ctx.setLineDash([Math.max(2, radius * 0.35),
@@ -1584,7 +1825,9 @@
         if (hover && tooltipEl) {
           tooltipEl.style.left = hover.lastX + 'px';
           tooltipEl.style.top  = hover.lastY + 'px';
-          tooltipEl.textContent = hover.symbol + ' · ' + formatAmount(hover.amount) + ' · ' + hover.kind;
+          var laneName = LANE_READOUT_LABELS[hover.lane] || '?';
+          tooltipEl.textContent = hover.symbol + ' · ' + formatAmount(hover.amount) +
+                                  ' · ' + hover.kind + ' · ' + laneName;
           tooltipEl.classList.add('is-visible');
           canvas.style.cursor = 'crosshair';
         } else if (tooltipEl) {
@@ -1594,6 +1837,22 @@
       });
       canvas.addEventListener('mouseleave', function () {
         if (tooltipEl) tooltipEl.classList.remove('is-visible');
+      });
+    }
+
+    // LP lane toggle — the LP label in the lane strip flips lpVisible.
+    // Default OFF (LP pulses counted but not drawn). No page reload; the
+    // next LP pulse simply starts rendering (or stops).
+    var lpToggleBtn = document.querySelector('[data-lp-toggle]');
+    var lpStateEl   = document.querySelector('[data-lp-state]');
+    if (lpToggleBtn) {
+      lpToggleBtn.addEventListener('click', function () {
+        lpVisible = !lpVisible;
+        lpToggleBtn.setAttribute('aria-pressed', lpVisible ? 'true' : 'false');
+        lpToggleBtn.classList.toggle('is-on', lpVisible);
+        if (lpStateEl) {
+          lpStateEl.innerHTML = lpVisible ? '▾ hide' : '▸ show';
+        }
       });
     }
 
