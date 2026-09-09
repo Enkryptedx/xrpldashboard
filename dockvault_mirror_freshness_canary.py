@@ -52,6 +52,15 @@ JOBS: list[tuple[str, int, str]] = [
     # this meta-canary pages.
     ("public_route_200_canary", 60 * 60,
      "every-15min HTTP-200 sweep of all public + agent-tier + well-known routes on xrpldashboard.com"),
+    # Charlie ruling 2026-09-09 morning: added route_5xx_rate_walker
+    # alongside its sibling — same 15-min cadence, same meta-watch
+    # ceiling. Reads page_views.status and pages any monitored route
+    # with n>=20 and pct_5xx > 5% in the last 1h. Complements the
+    # route canary: the canary catches a route breaking now (single
+    # probe); this walker catches slow burns (route degrading to N%
+    # 5xx over a rolling window).
+    ("route_5xx_rate_walker", 60 * 60,
+     "every-15min rolling-1h 5xx-rate check across monitored routes from page_views.status"),
 ]
 
 

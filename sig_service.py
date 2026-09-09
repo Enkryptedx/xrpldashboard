@@ -209,13 +209,33 @@ class AuditLog:
 
     def record(self, event: dict) -> None:
         """Append one JSON line. Never raises; audit failures must not
-        block a signature (log to stderr instead)."""
+        block a signature (log to stderr instead).
+
+        Charlie ruling 2026-09-09 morning after evening-analytics gap
+        ("sig-log doesn't record UA — can't distinguish external vs
+        JJ/canary"): every event now carries a `ua` field when a Flask
+        request context is available. UA is the raw User-Agent header
+        (may be empty string; may be spoofed — recorded verbatim, not
+        interpreted). Events emitted outside a request context (unlock
+        from env at boot, prune) get `ua="__no_request_context__"` so
+        the field is always present and downstream queries can filter
+        without null-handling."""
         try:
             event = dict(event)
             event.setdefault(
                 "ts_utc",
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             )
+            # Attach ua when in a Flask request context (best-effort).
+            if "ua" not in event:
+                try:
+                    from flask import request as _req, has_request_context
+                    if has_request_context():
+                        event["ua"] = (_req.headers.get("User-Agent") or "")[:512]
+                    else:
+                        event["ua"] = "__no_request_context__"
+                except Exception:
+                    event["ua"] = "__no_request_context__"
             line = json.dumps(event, sort_keys=True) + "\n"
             with self._lock:
                 with open(self._today_path(), "a", encoding="utf-8") as f:
