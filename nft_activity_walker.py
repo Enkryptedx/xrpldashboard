@@ -666,6 +666,17 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    # httpx logs one INFO line PER JSON-RPC POST ("HTTP Request: POST ... 200
+    # OK"). At 200 ledgers/run every 300s (activity) plus a caught-up poll
+    # every 900s (backfill), that INFO stream was the overwhelming bulk of
+    # the walker's .err.log — 161 MB (activity) + 214 MB (backfill) of
+    # near-identical success lines as of 2026-09-09, drowning the handful of
+    # WARN/ERROR lines that actually matter. Raise httpx to WARNING so only
+    # genuine transport problems get logged; the walker's own one-line
+    # per-run summary (mode=... ok=... ) is untouched. urllib3/httpcore get
+    # the same treatment defensively.
+    for _noisy in ("httpx", "httpcore", "urllib3"):
+        logging.getLogger(_noisy).setLevel(logging.WARNING)
 
     # Walker health from the first line — same discipline as escrow_walker.
     # Uncaught crash before the end-of-run write still shows as failure
