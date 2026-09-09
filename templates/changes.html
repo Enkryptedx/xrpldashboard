@@ -91,6 +91,9 @@
     .changes-list li.registry { border-left-color: #ec4899; }
     .changes-list li.unl      { border-left-color: #f5b93a; }
     .changes-list li.warn     { border-left-color: var(--red); background: rgba(120,30,30,0.14); }
+    .changes-list li .detail  { display: block; margin-top: 0.2rem;
+                                font-size: 0.78rem; color: var(--dim);
+                                font-family: var(--mono); }
 
     .cat-tag {
       display: inline-block;
@@ -194,6 +197,7 @@
         <span class="cat-tag">{{ c.category }}</span>{{ c.line }}
         {% if c.prove_url %}<a class="prove-link" href="{{ c.prove_url }}">{{ _('proof') }} →</a>{% endif %}
         {% if c.source %}<span class="source-tag">via {{ c.source }}</span>{% endif %}
+        {% if c.detail %}<span class="detail">{{ c.detail }}</span>{% endif %}
       </li>
       {% endfor %}
     </ul>

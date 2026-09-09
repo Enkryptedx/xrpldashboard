@@ -60,6 +60,10 @@
     font-size: 0.78rem; margin-left: 0.4rem; flex-shrink: 0;
   }
   .changes-strip .strip-slots .prove-link:hover { color: var(--cyan, #22d3ee); text-decoration: underline; }
+  .changes-strip .strip-explainer {
+    font-size: 0.82rem; color: rgba(180,195,220,0.75);
+    margin: -0.15rem 0 0.7rem; font-style: italic;
+  }
   .changes-strip .strip-footer {
     margin-top: 0.55rem; text-align: right;
     font-size: 0.82rem; color: rgba(180,195,220,0.7);
@@ -79,13 +83,16 @@
     <span class="strip-title">{{ _("What's new") }}</span>
     <span class="strip-heartbeat">
       {% if changes_strip.header.validated_ledger_index %}
-        {{ _('as of ledger') }} {{ '{:,}'.format(changes_strip.header.validated_ledger_index) }}
+        · {{ _('as of ledger') }} {{ '{:,}'.format(changes_strip.header.validated_ledger_index) }}
       {% endif %}
       {% if changes_strip.header.as_of_utc %}
         · {{ changes_strip.header.as_of_utc[11:16] }} UTC
       {% endif %}
     </span>
   </div>
+  {% if changes_strip.explainer %}
+  <div class="strip-explainer">{{ changes_strip.explainer }}</div>
+  {% endif %}
   <ul class="strip-slots">
     {% for s in changes_strip.slots %}
     <li class="{{ s.kind }}">

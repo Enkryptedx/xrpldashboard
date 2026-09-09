@@ -88,6 +88,59 @@ COUNT_ABS_FLOOR = 10         # 10 units
 COUNT_PCT_FLOOR = 0.01       # 1% of prior value
 
 
+# Charlie ruling 2026-09-08 evening: verb pair per metric_type. USD
+# metrics "grew by / shrank by"; count metrics "rose by / fell by"
+# (because "Named accounts shrank" reads wrong; "fell by 3" is right).
+_VERB_PAIR = {
+    "usd":   ("grew by",  "shrank by"),
+    "count": ("rose by",  "fell by"),
+}
+
+# "What this means" clause per metric_name — factual identity, never
+# speculation about causes (Charlie ruling 2026-09-08). Some metrics
+# use direction-conditioned clauses (RLUSD: issuance vs redemption is
+# an on-chain event), others use a single static definitional clause.
+# Shape: metric_name → ("up_clause", "down_clause") — if both strings
+# are identical the metric has a single static clause.
+_MEANING = {
+    "rlusd_xrpl_supply": (
+        "more issued on-chain than redeemed.",
+        "more redeemed than newly issued.",
+    ),
+    "amm_pools_total_tvl_usd": (
+        "value held in AMM liquidity pools.",
+        "value held in AMM liquidity pools.",
+    ),
+    "amm_pools_count": (
+        "the count of live AMM instances.",
+        "the count of live AMM instances.",
+    ),
+    "rwa_total_aum_usd": (
+        "tokenized real-world assets.",
+        "tokenized real-world assets.",
+    ),
+    "mpt_total_count": (
+        "the count of Multi-Purpose Tokens on XRPL.",
+        "the count of Multi-Purpose Tokens on XRPL.",
+    ),
+    "named_accounts_count": (
+        "accounts we've catalogued with an entity name.",
+        "accounts we've catalogued with an entity name.",
+    ),
+}
+
+# Short display name per metric_name — used as the lead word in the
+# strip headline. "RWA AUM grew by $50K" not "rwa_total_aum_usd..."
+_SHORT_LABEL = {
+    "rlusd_xrpl_supply":       "RLUSD supply",
+    "amm_pools_total_tvl_usd": "AMM TVL",
+    "amm_pools_count":         "AMM pools",
+    "rwa_total_aum_usd":       "RWA AUM",
+    "mpt_total_count":         "MPTs",
+    "named_accounts_count":    "Named accounts",
+}
+
+
 def _fmt_num(v: Any) -> str:
     if isinstance(v, (int, float)):
         if isinstance(v, float) and abs(v) >= 1000:
@@ -96,6 +149,33 @@ def _fmt_num(v: Any) -> str:
             return f"{v:,}"
         return f"{v:.4f}"
     return str(v)
+
+
+def _fmt_rounded_usd(v: float) -> str:
+    """Round a USD delta for the strip headline. Charlie ruling
+    2026-09-08: "Rounded figure + direction + percent". Exact number
+    stays in the .detail field for /changes body + JSON twin.
+        ≥ 1,000,000  → $9.8M (one decimal)
+        ≥ 1,000      → $110K (whole thousands)
+        < 1,000      → $9    (whole dollars)"""
+    absv = abs(v)
+    if absv >= 1_000_000:
+        return f"${absv/1_000_000:.1f}M"
+    if absv >= 1_000:
+        return f"${round(absv/1_000):,}K"
+    if absv >= 1:
+        return f"${round(absv)}"
+    return f"${absv:.2f}"
+
+
+def _fmt_rounded_count(v: float) -> str:
+    """Round a count delta for the strip headline. Whole units."""
+    absv = abs(v)
+    if absv >= 1_000_000:
+        return f"{absv/1_000_000:.1f}M"
+    if absv >= 1_000:
+        return f"{round(absv/1_000):,}K"
+    return f"{int(round(absv)):,}"
 
 
 def _metric_by_name(envelope: dict, name: str) -> Optional[Any]:
@@ -151,6 +231,40 @@ def _unl_validator_set(payload: Optional[dict]) -> set[str]:
     return set()
 
 
+def _plain_english_scalar_line(metric_name: str, before: float, after: float,
+                                metric_type: str) -> str:
+    """Charlie ruling 2026-09-08: strip and /changes body both lead with
+    plain-English "grew by / shrank by" (USD) or "rose by / fell by"
+    (count) + rounded delta + percent + "— what this means" clause."""
+    delta = after - before
+    if not before:
+        return f"{_SHORT_LABEL.get(metric_name, metric_name)}: appeared"
+    pct = (delta / abs(before)) * 100
+    up_verb, down_verb = _VERB_PAIR.get(metric_type, ("grew by", "shrank by"))
+    verb = up_verb if delta > 0 else down_verb
+    if metric_type == "usd":
+        rounded = _fmt_rounded_usd(delta)
+    else:
+        rounded = _fmt_rounded_count(delta)
+    sign = "+" if delta > 0 else "−"
+    pct_str = f"({sign}{abs(pct):.2f}%)"
+    lead = f"{_SHORT_LABEL.get(metric_name, metric_name)} {verb} {rounded} {pct_str}"
+    up_clause, down_clause = _MEANING.get(metric_name, ("", ""))
+    meaning = up_clause if delta > 0 else down_clause
+    if meaning:
+        return f"{lead} — {meaning}"
+    return lead
+
+
+def _detail_line(before: float, after: float, metric_type: str) -> str:
+    """Exact before → after — never removed per Charlie's rule, just
+    demoted from the headline. Homepage strip omits this; /changes
+    page shows it below each headline."""
+    if metric_type == "usd":
+        return f"was ${_fmt_num(before)}, now ${_fmt_num(after)}"
+    return f"was {_fmt_num(before)}, now {_fmt_num(after)}"
+
+
 def _scalar_delta_line(name: str, label: str, prove_url: str,
                        before: Any, after: Any,
                        metric_type: str = "count") -> Optional[dict]:
@@ -171,10 +285,13 @@ def _scalar_delta_line(name: str, label: str, prove_url: str,
     # Compute magnitude
     if isinstance(before, (int, float)) and isinstance(after, (int, float)):
         delta = after - before
-        sign = "+" if delta > 0 else ""
+        # `line` = plain-English headline (Charlie ruling 2026-09-08).
+        # `detail` = exact before → after, shown on /changes body,
+        # available in JSON twin. Never removed — just not the headline.
         return {
             "category": _category_for_metric(name),
-            "line": f"{label}: {_fmt_num(before)} → {_fmt_num(after)} ({sign}{_fmt_num(delta)})",
+            "line": _plain_english_scalar_line(name, before, after, metric_type),
+            "detail": _detail_line(before, after, metric_type),
             "before": before, "after": after, "delta": delta,
             "prove_url": prove_url, "source": "signed_snapshot",
             "metric_name": name, "metric_type": metric_type, "label": label,
@@ -220,7 +337,8 @@ def _registry_state_deltas(before: Optional[dict], after: Optional[dict]) -> lis
     if b_tax and a_tax and b_tax != a_tax:
         lines.append({
             "category": "registry",
-            "line": f"Registry taxonomy bumped: {b_tax} → {a_tax}",
+            "line": (f"Registry taxonomy bumped: {b_tax} → {a_tax} — "
+                     f"the vocabulary curators can classify tokens against."),
             "before": b_tax, "after": a_tax,
             "prove_url": "/registry/taxonomy", "source": "signed_registry_snapshot",
         })
@@ -279,11 +397,17 @@ def _chain_lineage_delta(before: Optional[dict], after: Optional[dict]) -> list[
                 "prove_url": "/.well-known/snapshots/", "source": "signed_snapshot",
             })
         elif a_leaf - b_leaf != 1:
+            # Charlie ruling 2026-09-08: no ops language on a public
+            # page. What happened + what we're doing + where to read
+            # more. No internal component names.
             lines.append({
                 "category": "chain",
-                "line": f"⚠ Signed-snapshot leaf discontinuity: #{b_leaf} → #{a_leaf} (expected +1)",
+                "line": (f"⚠ The signed-snapshot chain skipped from leaf "
+                         f"#{b_leaf} to #{a_leaf} (expected +1). "
+                         f"We're investigating — see /methodology."),
+                "detail": f"leaf {b_leaf} → {a_leaf}",
                 "before": b_leaf, "after": a_leaf,
-                "prove_url": "/.well-known/snapshots/", "source": "signed_snapshot",
+                "prove_url": "/methodology", "source": "signed_snapshot",
             })
     # Signing pubkey fingerprint change = key rotation event
     b_fp = b.get("signing_pubkey_fingerprint")
@@ -291,9 +415,11 @@ def _chain_lineage_delta(before: Optional[dict], after: Optional[dict]) -> list[
     if b_fp and a_fp and b_fp != a_fp:
         lines.append({
             "category": "chain",
-            "line": f"⚠ Signing key fingerprint rotated: {b_fp} → {a_fp}",
+            "line": (f"⚠ Our signing key was rotated. Verify the new key "
+                     f"before trusting today's snapshot — see /methodology."),
+            "detail": f"fingerprint {b_fp} → {a_fp}",
             "before": b_fp, "after": a_fp,
-            "prove_url": "/.well-known/snapshots/pubkey.json", "source": "signed_snapshot",
+            "prove_url": "/methodology", "source": "signed_snapshot",
         })
     return lines
 
@@ -307,12 +433,16 @@ def _unl_delta(before: Optional[dict], after: Optional[dict]) -> list[dict]:
     added = sorted(a_set - b_set)
     removed = sorted(b_set - a_set)
     lines: list[dict] = []
+    # Charlie ruling 2026-09-08 evening: readers don't run a node.
+    # UNL clause becomes "— the default list of validators the network
+    # trusts." (not "your rippled follows").
+    UNL_MEANING = " — the default list of validators the network trusts."
     if added:
         preview = ", ".join(v[:10] + "…" for v in added[:3])
         rest = f" (+{len(added) - 3} more)" if len(added) > 3 else ""
         lines.append({
             "category": "unl",
-            "line": f"UNL: {len(added)} validator(s) added ({preview}{rest})",
+            "line": f"UNL: {len(added)} validator(s) added ({preview}{rest}){UNL_MEANING}",
             "before": None, "after": added,
             "prove_url": "/network", "source": "unl_snapshot",
         })
@@ -321,7 +451,7 @@ def _unl_delta(before: Optional[dict], after: Optional[dict]) -> list[dict]:
         rest = f" (+{len(removed) - 3} more)" if len(removed) > 3 else ""
         lines.append({
             "category": "unl",
-            "line": f"UNL: {len(removed)} validator(s) removed ({preview}{rest})",
+            "line": f"UNL: {len(removed)} validator(s) removed ({preview}{rest}){UNL_MEANING}",
             "before": removed, "after": None,
             "prove_url": "/network", "source": "unl_snapshot",
         })
@@ -466,22 +596,21 @@ def _scalar_floor_check(c: dict) -> tuple[bool, str]:
         floor = max(USD_ABS_FLOOR, rel_floor)
         if abs_delta >= floor:
             return (True, "")
-        # Human-readable reason
+        # Human-readable reason (Charlie ruling 2026-09-08 evening —
+        # exact voice match to his example: "(+$9, below the $10K floor)".
+        # No Δ prefix, rounded dollars, comma before "below the".
         sign = "+" if delta > 0 else "−"
+        rounded = _fmt_rounded_usd(abs_delta)
         if floor <= USD_ABS_FLOOR:
-            return (False, f"Δ {sign}${abs_delta:,.2f} below $10K floor")
-        return (False, f"Δ {sign}${abs_delta:,.2f} below "
-                       f"${floor:,.0f} floor (0.1% × prior)")
-    # count
+            return (False, f"{sign}{rounded}, below the $10K floor")
+        return (False, f"{sign}{rounded}, below the "
+                       f"{_fmt_rounded_usd(floor)} floor (0.1% × prior)")
+    # count — same voice: "(−5, below the 10-unit / 1% floor)"
     if abs_delta >= COUNT_ABS_FLOOR and pct >= COUNT_PCT_FLOOR:
         return (True, "")
     sign = "+" if delta > 0 else "−"
-    parts = []
-    if abs_delta < COUNT_ABS_FLOOR:
-        parts.append(f"|Δ|={abs_delta:g} < 10 units")
-    if pct < COUNT_PCT_FLOOR:
-        parts.append(f"|Δ%|={pct*100:.2f}% < 1%")
-    return (False, f"Δ {sign}{_fmt_num(abs_delta)} — " + " and ".join(parts))
+    rounded = _fmt_rounded_count(abs_delta)
+    return (False, f"{sign}{rounded}, below the 10-unit / 1% floor")
 
 
 def _pct_signed(c: dict) -> float:
@@ -544,51 +673,51 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
 
     slots: list[dict] = []
     # Tier 1: anomalies (newest first — envelope already emits in a stable
-    # deterministic order; we treat that as "newest first")
+    # deterministic order; we treat that as "newest first"). The
+    # anomaly lines are pre-worded by the builder now (Charlie edit
+    # 2026-09-08 evening: "what happened + what we're doing + where to
+    # read more, no internal component names").
     for c in anomalies:
         if len(slots) >= k:
             break
         slots.append({
             "category": c.get("category"),
             "line": c.get("line"),
+            "detail": c.get("detail"),
             "prove_url": c.get("prove_url"),
             "source": c.get("source"),
             "kind": "anomaly",
         })
-    # Tier 2: scalar qualifiers by |%|
+    # Tier 2: scalar qualifiers by |%| — line already carries the
+    # plain-English lead + "what this means" clause per Charlie's
+    # ruling. detail carries the exact before → after for the /changes
+    # body and JSON twin.
     for c in qualifiers:
         if len(slots) >= k:
             break
-        b, a = c.get("before"), c.get("after")
-        delta = a - b
-        pct = _pct_signed(c) * 100.0
-        sign = "+" if delta > 0 else "−"
-        pct_str = f"({sign}{abs(pct):.2f}%)"
-        if c.get("metric_type") == "usd":
-            delta_str = f"{sign}${abs(delta):,.2f}"
-        else:
-            delta_str = f"{sign}{_fmt_num(abs(delta))}"
-        line = f"{c.get('label', c.get('category', '').upper())}: " \
-               f"{_fmt_num(b)} → {_fmt_num(a)} ({delta_str} {pct_str.strip('()')})"
         slots.append({
             "category": c.get("category"),
-            "line": line,
+            "line": c.get("line"),
+            "detail": c.get("detail"),
             "prove_url": c.get("prove_url"),
             "source": c.get("source"),
             "kind": "scalar",
             "metric_name": c.get("metric_name"),
             "metric_type": c.get("metric_type"),
-            "delta_pct": pct / 100.0,
+            "delta_pct": _pct_signed(c),
         })
-    # Tier 3: quiet-day fill — below-floor categories first
+    # Tier 3: quiet-day fill — below-floor categories first. Charlie
+    # ruling 2026-09-08: "RWA: no material change today (+$9, below the
+    # $10K floor)." — one sentence, same voice as the leads.
     for c in below_floor:
         if len(slots) >= k:
             break
         reason = c.get("_below_floor_reason", "below floor")
-        prefix = _label_for_line(c)
+        prefix = _SHORT_LABEL.get(c.get("metric_name") or "",
+                                   _label_for_line(c))
         slots.append({
             "category": c.get("category"),
-            "line": f"{prefix}: no material change ({reason})",
+            "line": f"{prefix}: no material change today ({reason}).",
             "prove_url": c.get("prove_url"),
             "source": c.get("source"),
             "kind": "quiet_day_below_floor",
@@ -597,6 +726,10 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
     # Tier 4: pure quiet-day fill (no candidate at all in a category)
     if len(slots) < k:
         seen_cats = {s.get("category") for s in slots}
+        _CAT_LABEL = {
+            "amm": "AMM", "mpt": "MPT", "rwa": "RWA", "rlusd": "RLUSD",
+            "network": "Network", "registry": "Registry", "unl": "UNL",
+        }
         for cat in ("amm", "mpt", "rwa", "rlusd", "network", "registry", "unl"):
             if len(slots) >= k:
                 break
@@ -604,7 +737,7 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
                 continue
             slots.append({
                 "category": cat,
-                "line": f"{cat.upper()}: no change",
+                "line": f"{_CAT_LABEL.get(cat, cat.upper())}: no change today.",
                 "prove_url": None,
                 "source": None,
                 "kind": "quiet_day_no_candidate",
@@ -617,6 +750,11 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
             "validated_ledger_index": ledger_index,
             "as_of_utc": envelope.get("generated_at_utc"),
         },
+        # Charlie ruling 2026-09-08: one-line explainer under the header
+        # for first-time visitors. Verbatim from the ruling.
+        "explainer": ("The biggest things that moved on the XRP Ledger "
+                      "in the last 24 hours, measured from our own node. "
+                      "Every line links to its proof."),
         "slots": slots[:k],
         "total_changes": len(changes),
         "changes_url": f"/changes/{envelope.get('date')}" if envelope.get("date") else "/changes",

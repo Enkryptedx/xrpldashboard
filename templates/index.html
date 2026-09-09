@@ -670,12 +670,6 @@
       </nav>
     </header>
 
-    {# ========== "On the ledger today" strip — Charlie ruling 2026-09-08.
-       Data source: changes_strip context var (populated by index() in
-       app.py from build_strip() on today's changes_envelope). Renders
-       nothing when the envelope is missing (empty context). ========== #}
-    {% include "_changes_strip.html" %}
-
     {% from "_explainer.html" import explainer %}
 
     {# ========== HERO ========== #}
@@ -721,6 +715,14 @@
         <div class="hero-globe-cap">{{ _('XRP · global ledger') }}</div>
       </div>
     </section>
+
+    {# ========== "What's new" strip — Charlie ruling 2026-09-08 evening.
+       Sits between the hero and the CLARITY-window banner per Charlie's
+       explicit layout ruling (nav → hero → What's new → CLARITY → rest).
+       Data source: changes_strip context var (populated by index() in
+       app.py from build_strip() on today's changes_envelope). Renders
+       nothing when the envelope is missing (empty context). ========== #}
+    {% include "_changes_strip.html" %}
 
     {# ========== CLARITY-window banner — self-expires 2026-09-14 (Senate
          recess-return). Manual removal earlier if the bill resolves is
