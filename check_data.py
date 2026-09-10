@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import db
+import shared_tier_verifier  # Part C 2026-09-10: canonical tier resolver
 import re
 import ssl
 import tomllib
@@ -1104,6 +1105,122 @@ def _lookalike_named_address(address: str) -> dict | None:
     }
 
 
+# Canonical tier ordering — best → worst. Used to combine account's own
+# standing with token-level tier per Charlie's 2026-09-10 rule.
+_TIER_ORDER = ("verified", "self-described", "labeled", "bare", "unknown")
+_TIER_RANK = {t: i for i, t in enumerate(_TIER_ORDER)}
+
+
+def _address_own_standing(named_entry: dict, pg_label: dict | None) -> tuple[str, str, str | None]:
+    """Rule (a) — the account's own standing from named_accounts / account_labels.
+    Returns (canonical_tier, source_label, citation_url).
+
+    - verified_via + PASSED two-way check → verified. But the walker-cached
+      two-way check isn't wired yet (item 5); until it is, treat as `labeled`
+      to avoid false elevation. Walker will promote when the check passes.
+    - name + citation (verified_via URL, unproven) → `labeled` (citation only).
+    - name only (no citation) → `labeled` (curator label; no proof).
+    - pg_label name only → `labeled` (account_labels table entry).
+    - no entry → `bare`.
+    """
+    if named_entry.get("verified_via"):
+        return "labeled", "named_accounts:citation", named_entry.get("verified_via")
+    if named_entry.get("name"):
+        return "labeled", "named_accounts:name-only", None
+    if pg_label and pg_label.get("name"):
+        return "labeled", f"account_labels:{pg_label.get('source') or 'n/a'}", None
+    return "bare", "no-entry", None
+
+
+def _address_token_tier(address: str, tier_lookup: dict | None) -> tuple[str | None, str | None]:
+    """Rule (b) — best tier of any token issued by this address, scanned
+    from a resolve_all_map lookup dict. Returns (canonical_tier, source)
+    or (None, None) if the address issues no cataloged tokens.
+    """
+    if not tier_lookup:
+        return None, None
+    best_tier = None
+    best_rank = None
+    suffix = f"|{address}"
+    for k, v in tier_lookup.items():
+        if not k.endswith(suffix):
+            continue
+        if v not in _TIER_RANK:
+            continue
+        r = _TIER_RANK[v]
+        if best_rank is None or r < best_rank:
+            best_rank = r
+            best_tier = v
+    if best_tier is None or best_tier == "unknown":
+        return None, None
+    return best_tier, "tokens-scan"
+
+
+def compute_address_tier(address: str, named_entry: dict | None,
+                         pg_label: dict | None, tier_lookup: dict | None
+                         ) -> tuple[str, str, str | None]:
+    """Canonical address-tier per Charlie's 2026-09-10 rule: HIGHER of
+    (a) account's own standing and (b) best tier of tokens it issues.
+    Returns (canonical_tier, source_label, citation_url_or_None).
+    """
+    a_tier, a_src, a_cit = _address_own_standing(named_entry or {}, pg_label)
+    b_tier, b_src = _address_token_tier(address, tier_lookup)
+
+    a_rank = _TIER_RANK.get(a_tier, len(_TIER_ORDER))
+    b_rank = _TIER_RANK.get(b_tier, len(_TIER_ORDER)) if b_tier else len(_TIER_ORDER)
+
+    if a_rank <= b_rank:
+        return a_tier, a_src, a_cit
+    return b_tier, b_src, None
+
+
+def address_badge(address: str, named_accounts: dict | None = None,
+                  tier_lookup: dict | None = None) -> dict:
+    """Lightweight sender/receiver badge for /whales rows.
+
+    Charlie's 2026-09-10 rule: badge = the same signal set /check computes,
+    minus the expensive live-XRPL / SSL / domain-age probes. Fast: cached
+    OFAC snapshot + cached tier_lookup + in-memory named_accounts. Safe
+    to call per whale row with zero per-request network I/O.
+
+    Returns:
+      {
+        'name': str | None,
+        'address_tier': str (canonical lowercase-hyphen),
+        'address_tier_display': str (Title Case),
+        'ofac_sanctioned': bool,
+        'attested_domain': str | None,  # from named_accounts curated toml
+      }
+    """
+    named = named_accounts if named_accounts is not None else _load_named()
+    entry = named.get(address) or {}
+    name = entry.get("name")
+    attested_domain = None
+    if entry.get("_source") == "toml":
+        extra = entry.get("_extra") or {}
+        attested_domain = extra.get("domain")
+
+    tier, _src, _cit = compute_address_tier(address, entry, None, tier_lookup)
+
+    ofac = _load_ofac_snapshot()
+    ofac_addresses = ofac.get("addresses") or {}
+    _ofac_entry = ofac_addresses.get(address)
+    # OFAC snapshot stores per-address {chain, entity_name, programs, ...}.
+    # XRPL chain code = "XRP". Case-sensitive base58 exact match; only
+    # flag when the snapshot rows explicitly say chain=XRP so we don't
+    # cross-flag an XRP address that happens to collide with an ETH-hex
+    # (impossible in practice but defensive).
+    ofac_sanctioned = bool(_ofac_entry and _ofac_entry.get("chain") == "XRP")
+
+    return {
+        "name": name,
+        "address_tier": tier,
+        "address_tier_display": shared_tier_verifier.title_case_tier(tier),
+        "ofac_sanctioned": ofac_sanctioned,
+        "attested_domain": attested_domain,
+    }
+
+
 def check_address(address: str) -> dict:
     """Build the /check D1 result for an r-address.
 
@@ -1280,6 +1397,16 @@ def check_address(address: str) -> dict:
             "negative signals found in the sources we checked."
         )
 
+    # Part C item 4: canonical tier fields — same shape as /token detail.
+    # HIGHER of (a) account's own standing (named_accounts / account_labels)
+    # and (b) best tier of tokens issued by this address. tier_lookup built
+    # once here (one query); walker-cached account-level two-way check
+    # (item 5) will promote (a) to `verified` where the toml round-trips.
+    _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
+    _can_tier, _can_src, _can_cit = compute_address_tier(
+        address, named_entry, pg_label, _tier_lookup
+    )
+
     return {
         "kind": "wallet",
         "address": address,
@@ -1287,6 +1414,13 @@ def check_address(address: str) -> dict:
         "subject": _short_addr(address),
         "ref": address,
         "tier": tier,
+        # Part C canonical fields (5-tier lowercase-hyphen, Title Case display,
+        # same shape as /token detail). Legacy `tier` above stays for
+        # backward compat with existing check.html template checks.
+        "tier_canonical": _can_tier,
+        "tier_display": shared_tier_verifier.title_case_tier(_can_tier),
+        "tier_source": _can_src,
+        "tier_citation": _can_cit,
         "status_line": status_line,
         "signals": signals,
         "capabilities": capabilities,
@@ -1561,6 +1695,17 @@ def check_token(currency: str, issuer: str) -> dict:
         "currency": currency_disp,
         "currency_normalized": currency_norm,
         "issuer": issuer,
+        # Part C item 4: canonical tier fields — same shape as /token detail.
+        # Uses shared_tier_verifier.resolve_tier (live token_category_current;
+        # hero snapshot fallback). elevate=False on this request path.
+        **({
+            "tier_canonical": _tk_rec.tier,
+            "tier_display": shared_tier_verifier.title_case_tier(_tk_rec.tier),
+            "tier_source": _tk_rec.source,
+            "tier_citation": _tk_rec.citation_url,
+        } if (_tk_rec := shared_tier_verifier.resolve_tier(
+            (currency_norm or currency).upper(), issuer, elevate=False
+        )) else {}),
         "issuer_short": _short_addr(issuer),
         "subject": subject,
         "ref": f"{currency_norm}.{issuer}",

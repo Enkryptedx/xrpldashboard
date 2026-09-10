@@ -391,18 +391,22 @@
       </div>
       <div class="event-flow">
         {% if e.from_addr %}
-          <a class="addr" href="/wallet/{{ e.from_addr }}">
+          <a class="addr{% if e.from_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.from_addr }}"{% if e.from_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
             {% if e.from_label %}<span class="label">{{ e.from_label }}</span>{% endif %}
             {{ e.from_addr_short }}
+            {% if e.from_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
+            {% if e.from_address_tier and e.from_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.from_address_tier }}" title="{{ e.from_address_tier_display }} — {{ _('sender address tier (higher of curator standing and best-token-tier)') }}">{{ e.from_address_tier_display }}</span>{% endif %}
           </a>
         {% else %}
           <span class="addr">—</span>
         {% endif %}
         <span class="arrow">→</span>
         {% if e.to_addr %}
-          <a class="addr" href="/wallet/{{ e.to_addr }}">
+          <a class="addr{% if e.to_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.to_addr }}"{% if e.to_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
             {% if e.to_label %}<span class="label">{{ e.to_label }}</span>{% endif %}
             {{ e.to_addr_short }}
+            {% if e.to_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
+            {% if e.to_address_tier and e.to_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.to_address_tier }}" title="{{ e.to_address_tier_display }} — {{ _('receiver address tier (higher of curator standing and best-token-tier)') }}">{{ e.to_address_tier_display }}</span>{% endif %}
           </a>
         {% else %}
           <span class="addr">—</span>

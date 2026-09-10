@@ -2984,6 +2984,17 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
             _token_tier = _raw
             _token_tier_display = shared_tier_verifier.title_case_tier(_raw)
 
+    # 2026-09-10 Part C item 4 (ADDRESS axis): sender + receiver badges
+    # from check_data.address_badge — named-account name, address tier
+    # (higher of own-standing + best-token-tier), OFAC sanctions flag,
+    # attested domain. Fast: cached OFAC + cached tier_lookup + in-memory
+    # named_accounts. No per-request network I/O.
+    from check_data import address_badge as _addr_badge
+    _from_badge = _addr_badge(from_addr, named_accounts=named_accounts,
+                              tier_lookup=tier_lookup) if from_addr else {}
+    _to_badge = _addr_badge(to_addr, named_accounts=named_accounts,
+                            tier_lookup=tier_lookup) if to_addr else {}
+
     return {
         "tx_hash": tx_hash,
         "tx_hash_short": (tx_hash[:10] + "…") if tx_hash else "?",
@@ -3011,6 +3022,17 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         # (None if no token — e.g., bare XRP transfer or unknown pair).
         "token_tier": _token_tier,
         "token_tier_display": _token_tier_display,
+        # Part C item 4 (ADDRESS axis): sender + receiver badges — same
+        # vocabulary as /token + /check for the same subject. Sanctions
+        # flag cross-cuts the tier (sanctioned addresses render red
+        # regardless of tier). Sender/receiver name already exposed via
+        # from_label/to_label above (retained for backcompat).
+        "from_address_tier": _from_badge.get("address_tier"),
+        "from_address_tier_display": _from_badge.get("address_tier_display"),
+        "from_ofac_sanctioned": _from_badge.get("ofac_sanctioned", False),
+        "to_address_tier": _to_badge.get("address_tier"),
+        "to_address_tier_display": _to_badge.get("address_tier_display"),
+        "to_ofac_sanctioned": _to_badge.get("ofac_sanctioned", False),
     }
 
 
