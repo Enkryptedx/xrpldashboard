@@ -1777,7 +1777,9 @@ def _recent_whale_events(limit=3):
                     }
             except Exception:
                 pass
-    return [_resolve_event(r, named, tokens) for r in rows]
+    # 2026-09-10 Part C item 3: TOKEN axis tier lookup, one query per call.
+    _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
+    return [_resolve_event(r, named, tokens, tier_lookup=_tier_lookup) for r in rows]
 
 
 def _whales_snapshot_label():
@@ -2833,12 +2835,19 @@ def _format_token_amount(value, currency_display):
     return f"{v:.8f} {currency_display}"
 
 
-def _resolve_event(row, named_accounts, token_names):
+def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
     """Turn a sqlite events row into a dict ready for the template.
 
     Falls back to raw_json when the dedicated columns are sparse — handles
     cases like RLUSD payments where the tx field is `DeliverMax`, not
     `Amount`, so the writer left currency/issuer NULL.
+
+    tier_lookup (Part C item 3, TOKEN axis): optional dict from
+    shared_tier_verifier.resolve_all_map() keyed by "CURRENCY|ISSUER" ->
+    canonical tier string. When present, event dict gains `token_tier`
+    + `token_tier_display` for the transferred token so /whales can
+    render a tier badge with the same vocabulary as /tokens. Callers
+    build the dict once per request outside the loop.
     """
     (tx_hash, ledger_index, ts, etype, from_addr, to_addr,
      amount_drops, currency, issuer, raw_json) = row
@@ -2961,6 +2970,20 @@ def _resolve_event(row, named_accounts, token_names):
         (to_label_raw, to_addr),
     ])
 
+    # 2026-09-10 Part C item 3 (TOKEN axis): tier of the transferred
+    # token, if this event has a token (bare XRP transfers have None).
+    # tier_lookup contains canonical + ASCII-alias keys per
+    # shared_tier_verifier.resolve_all_map, so either currency form works.
+    _token_tier = None
+    _token_tier_display = None
+    if tier_lookup and currency and issuer:
+        _cx_up = currency.upper() if currency else ""
+        _raw = (tier_lookup.get(f"{_cx_up}|{issuer}")
+                or tier_lookup.get(f"{currency}|{issuer}"))
+        if _raw and _raw != shared_tier_verifier.TIER_UNKNOWN:
+            _token_tier = _raw
+            _token_tier_display = shared_tier_verifier.title_case_tier(_raw)
+
     return {
         "tx_hash": tx_hash,
         "tx_hash_short": (tx_hash[:10] + "…") if tx_hash else "?",
@@ -2984,6 +3007,10 @@ def _resolve_event(row, named_accounts, token_names):
         "amount_display": amount_display,
         "row_type_pill": row_type_pill,
         "xrpscan_url": f"https://xrpscan.com/tx/{tx_hash}" if tx_hash else None,
+        # Part C item 3 (TOKEN axis): tier for the transferred token
+        # (None if no token — e.g., bare XRP transfer or unknown pair).
+        "token_tier": _token_tier,
+        "token_tier_display": _token_tier_display,
     }
 
 
@@ -3190,7 +3217,9 @@ def whales():
                 continue
             filtered_rows.append(r)
         rows = filtered_rows
-        events = [_resolve_event(r, named, tokens) for r in rows]
+        # 2026-09-10 Part C item 3: TOKEN axis tier lookup, one query per render.
+        _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
+        events = [_resolve_event(r, named, tokens, tier_lookup=_tier_lookup) for r in rows]
         # Radar blips: log-scale magnitudes from raw rows (amount_drops
         # at index 6) so 1M XRP ≈ 0.3 and 100M+ ≈ 1.0.
         for r in rows[:30]:

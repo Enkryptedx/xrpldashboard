@@ -408,7 +408,7 @@
           <span class="addr">—</span>
         {% endif %}
       </div>
-      <div class="amount">{{ e.amount_display }}</div>
+      <div class="amount">{{ e.amount_display }}{% if e.token_tier %} <span class="v5-tier v5-tier--{{ e.token_tier }}" title="{{ e.token_tier_display }} — {{ _('registry tier of this token; same vocabulary as /tokens hero') }}">{{ e.token_tier_display }}</span>{% endif %}</div>
     </div>
     {% endfor %}
   {% else %}
