@@ -75,6 +75,7 @@ from flask_babel import gettext as babel_gettext
 import db
 import og_image
 import price_oracle
+import shared_tier_verifier  # Part C 2026-09-10: live registry tier resolver
 from agent_tier_rate_limit import (
     AUDIT_URL_HEADER_NAME,
     AUDIT_URL_PATH,
@@ -3357,7 +3358,13 @@ def tokens():
 
     tokens_meta = _load_token_names_dict()
     hero_snapshot = _load_d1_hero_snapshot()
-    tier_lookup = (hero_snapshot.get("tiers") or {}).get("lookup") or {}
+    # 2026-09-10 Part C: tier_lookup now overlays LIVE token_category_current
+    # onto the hero snapshot map (DB wins on conflict). Falls back to
+    # snapshot-only if DB is unavailable. Values are canonical lowercase-hyphen
+    # (`verified` / `self-described` / `labeled` / `bare` / `unknown`) per
+    # Charlie's 09-10 vocab ruling — downstream checks below compare against
+    # the lowercase-hyphen constants.
+    tier_lookup, _tier_lookup_source = shared_tier_verifier.resolve_all_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
     # on each row. Absent rows render "—" in the template; per token_prices.py,
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
@@ -3398,11 +3405,15 @@ def tokens():
         # v3 §7 attestation shape — verified / self-described / (bare).
         # DOMAIN_ONLY + ANONYMOUS both display bare per Charlie's editorial
         # rule (never say "verified" for lower tiers).
+        # 2026-09-10 vocab: canonical lowercase-hyphen tier values.
+        # verified/self-described/labeled get badges; bare/unknown = no badge.
         tier_raw = tier_lookup.get(f"{cur}|{iss}")
-        if tier_raw == "VERIFIED":
+        if tier_raw == "verified":
             attestation = "verified"
-        elif tier_raw == "SELF_DESCRIBED":
+        elif tier_raw == "self-described":
             attestation = "self-described"
+        elif tier_raw == "labeled":
+            attestation = "labeled"
         else:
             attestation = None
         price = price_map.get((cur, iss))
@@ -3588,15 +3599,29 @@ def tokens():
     # snapshot. Displayed as three counts in the hero: verified pill
     # (green), self-described pill (grey), bare (DOMAIN_ONLY + ANONYMOUS
     # merged per Charlie's editorial: never label lower tiers as verified).
-    tier_counts = ((hero_snapshot.get("tiers") or {}).get("counts") or {})
+    # 2026-09-10 Part C: counts now come from the LIVE registry
+    # (token_category_current) via shared_tier_verifier — the frozen July
+    # snapshot said VERIFIED=1 while the registry actually had ~87. Hero
+    # snapshot remains the fallback (DB out) and still supplies total_pairs.
+    _live_tier_counts, _live_tier_counts_source = (
+        shared_tier_verifier.live_tier_counts()
+    )
+    tier_counts = _live_tier_counts
+    # 2026-09-10 Charlie ruling: canonical 5-tier vocab is lowercase-hyphen
+    # (verified / self-described / labeled / bare / unknown). `mechanical`
+    # and `sanctioned` are row-level FLAGS on separate columns, not tier
+    # values. Hero pills: verified + self-described + labeled + bare;
+    # bare pill merges `bare` + `unknown` (unknown = lookup failure).
     tier_summary = {
-        "verified": int(tier_counts.get("VERIFIED", 0)),
-        "self_described": int(tier_counts.get("SELF_DESCRIBED", 0)),
-        "bare": int(tier_counts.get("DOMAIN_ONLY", 0))
-                + int(tier_counts.get("ANONYMOUS", 0)),
+        "verified": int(tier_counts.get("verified", 0)),
+        "self_described": int(tier_counts.get("self-described", 0)),
+        "labeled": int(tier_counts.get("labeled", 0)),
+        "bare": int(tier_counts.get("bare", 0))
+                + int(tier_counts.get("unknown", 0)),
         "total_pairs": int(
             (hero_snapshot.get("tiers") or {}).get("total_pairs", 0)
         ),
+        "counts_source": _live_tier_counts_source,
     }
     rwa_caption = hero_snapshot.get("rwa_caption") or {"named_count": 0}
     floor_pct = ((hero_snapshot.get("floor") or {}).get("pct")) or 20.5
@@ -3696,7 +3721,7 @@ def tokens():
         # issuer's own claim, so it is self-described unless the tier
         # lookup independently confirms a canonical-TOML verification.
         _tier_raw = tier_lookup.get(key)
-        _inf_att = "verified" if _tier_raw == "VERIFIED" else "self-described"
+        _inf_att = "verified" if _tier_raw == "verified" else "self-described"
         label_lookup[key] = {
             "display": inf.get("currency_display") or cur,
             "category": inf.get("category") or "other",

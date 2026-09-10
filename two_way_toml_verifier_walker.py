@@ -26,11 +26,14 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import ssl
 import sys
 import tomllib
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+
+import certifi
 
 import db
 
@@ -38,6 +41,14 @@ import db
 HERE = os.path.dirname(os.path.abspath(__file__))
 POLITE_TIMEOUT_SECONDS = 15.0
 TOML_MAX_BYTES = 256 * 1024   # 256KB — larger tomls are suspicious
+
+# 2026-09-10 Charlie ruling (Part C): use certifi-backed SSL context —
+# same pattern as scripts/refresh_ofac_sdn.py + scripts/is_bot_canary.py
+# (commit 23d3061). macOS Python 3.14 doesn't ship a system trust store
+# by default; without this, urlopen() fails SSLCertVerificationError
+# against every https toml URL — which was silently blocking the entire
+# two-way verification path when run from the Mac venv.
+_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 
 def _fetch_toml(url: str) -> tuple[dict | None, str | None]:
@@ -50,7 +61,7 @@ def _fetch_toml(url: str) -> tuple[dict | None, str | None]:
         req = Request(url, headers={
             "User-Agent": "xrpldashboard-registry-verifier/1.0 (+https://xrpldashboard.com/registry/taxonomy)",
         })
-        with urlopen(req, timeout=POLITE_TIMEOUT_SECONDS) as resp:
+        with urlopen(req, timeout=POLITE_TIMEOUT_SECONDS, context=_SSL_CTX) as resp:
             body = resp.read(TOML_MAX_BYTES + 1)
             if len(body) > TOML_MAX_BYTES:
                 return None, f"toml_too_large_over_{TOML_MAX_BYTES}_bytes"
@@ -126,12 +137,28 @@ def _fetch_xrpl_domain(issuer: str) -> tuple[str | None, str | None]:
 def _domain_matches_toml_url(domain: str, toml_url: str) -> bool:
     """Two-way match: the issuer's on-ledger Domain and the toml URL's
     hostname must be the same registered root (bar the .well-known
-    subdirectory)."""
+    subdirectory).
+
+    2026-09-10 Part C: some issuers store the FULL URL in the Domain
+    field (e.g. reaper.financial's on-ledger Domain is
+    'https://www.reaper.financial/' with scheme + trailing slash) instead
+    of just the hostname. Both are valid identity claims — extract
+    hostname when Domain is URL-shaped so the compare succeeds. Strict
+    host-only compare was rejecting genuine matches.
+    """
     try:
         toml_host = urlparse(toml_url).hostname or ""
     except Exception:
         return False
-    return toml_host.lower() == domain.lower()
+    normalized_domain = domain
+    if domain.lower().startswith(("http://", "https://")):
+        try:
+            parsed_host = urlparse(domain).hostname
+            if parsed_host:
+                normalized_domain = parsed_host
+        except Exception:
+            pass
+    return toml_host.lower() == normalized_domain.lower()
 
 
 def verify_submission(row: dict) -> tuple[bool, str | None, int | None]:

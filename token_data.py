@@ -16,6 +16,7 @@ import time
 from datetime import datetime, timezone
 
 import db
+import shared_tier_verifier  # Part C 2026-09-10: live registry tier resolver
 from check_data import _capability_signals
 from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
 from token_naming import decode_currency, resolve_display
@@ -370,6 +371,13 @@ def fetch_token_data(currency, issuer):
     else:
         review_status = None  # a real category is assigned; split doesn't apply
 
+    # 2026-09-10 Part C: tier + attestation via shared_tier_verifier
+    # (LIVE token_category_current → hero snapshot fallback → 'unknown').
+    # Canonical lowercase-hyphen; template calls `tier_display` for
+    # Title Case. elevate=False — web-request path never stalls on
+    # toml fetch + XRPL RPC; a background walker handles elevation.
+    _tier_rec = shared_tier_verifier.resolve_tier(currency, issuer, elevate=False)
+
     return {
         "currency_raw": currency,
         "currency_decoded": _decode_currency_hex(currency),
@@ -408,6 +416,12 @@ def fetch_token_data(currency, issuer):
         "ticker_collision": ticker_collision,
         "non_standard_code": non_standard_code,
         "issuer_domain": _issuer_domain,
+        # 2026-09-10 Part C: tier from shared_tier_verifier (live registry).
+        "tier": _tier_rec.tier,
+        "tier_display": shared_tier_verifier.title_case_tier(_tier_rec.tier),
+        "tier_source": _tier_rec.source,
+        "tier_citation": _tier_rec.citation_url,
+        "tier_observed_at": _tier_rec.observed_at,
     }
 
 
