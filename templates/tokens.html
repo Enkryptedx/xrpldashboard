@@ -1560,6 +1560,15 @@
         var st = styleOf(cat);
         var rgb = st.rgb || CATEGORY_RGB.unlabeled;
         var catGlyph = st.glyph || '?';
+        // Coin glyph override (Charlie 2026-09-11 self-described polish):
+        // for the self-described lane, render the DECODED TICKER on the
+        // coin instead of the category glyph. Grey (lane color) stays.
+        // '?' only survives on non-standard codes we can't decode.
+        var coinGlyph = catGlyph;
+        if (lane === LANE.SELF && !isNonStandardCode(leg.currency)) {
+          var tickerRaw = sym || catGlyph;
+          coinGlyph = tickerRaw.length > 4 ? tickerRaw.slice(0, 4) : tickerRaw;
+        }
         // Count EVERY pulse's lane BEFORE any filter — the readout and the
         // __tokenLaneCounts() probe must reflect the true distribution even
         // for LP pulses that are hidden from the render.
@@ -1598,7 +1607,7 @@
           rgb: rgb,
           size: radiusFromAmount(leg.value, cat),
           symbol: sym,
-          glyph: catGlyph,
+          glyph: coinGlyph,
           lane: lane,
           isWarning: (lane === LANE.WARNING),
           isInferred: !!(lbl && lbl.category_source && lbl.category_source !== 'curator'),
@@ -1734,8 +1743,16 @@
       ctx.fill();
 
       // Embossed glyph — drop shadow + bright fill.
+      // 2026-09-11 self-described polish: multi-char glyphs (tickers)
+      // scale the font down so 2–4 chars fit inside the coin face
+      // without overflowing the bevel ring.
       if (r >= 5) {
-        ctx.font = '800 ' + Math.round(r * 1.05) + 'px ' + COIN_FONT;
+        var glyphLen = (glyph || '').length;
+        var fontMul = glyphLen >= 4 ? 0.48
+                     : glyphLen === 3 ? 0.58
+                     : glyphLen === 2 ? 0.75
+                     : 1.05;
+        ctx.font = '800 ' + Math.round(r * fontMul) + 'px ' + COIN_FONT;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = 'rgba(0,0,0,' + (alpha * 0.55) + ')';

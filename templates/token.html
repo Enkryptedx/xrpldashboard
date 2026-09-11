@@ -92,6 +92,47 @@
     .cat-reviewed-unlabeled { background: rgba(255,255,255,0.06); color: var(--muted); cursor: help; }
     .hero-meta { color: var(--muted); font-size: var(--fs-sm); margin-top: 0.4em; }
     .hero-meta .iss { font-family: var(--mono); color: var(--text); }
+    /* Part C 2026-09-11: tier pill + provenance line (labeled polish). */
+    .v5-tier {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 500;
+    }
+    .v5-tier--verified {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.35);
+      color: var(--green);
+    }
+    .v5-tier--self,
+    .v5-tier--self-described {
+      background: rgba(148,163,184,0.10);
+      border: 1px solid rgba(148,163,184,0.30);
+      color: #cbd5e1;
+    }
+    .v5-tier--labeled {
+      background: rgba(59,130,246,0.10);
+      border: 1px solid rgba(59,130,246,0.30);
+      color: #93c5fd;
+    }
+    .v5-tier--bare {
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.14);
+      color: var(--muted);
+    }
+    .tier-line {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-top: 0.7em;
+    }
+    .tier-provenance {
+      color: var(--muted); font-size: 0.82em;
+    }
+    .tier-provenance .tier-source {
+      color: var(--dim); font-family: var(--mono);
+    }
+    .tier-provenance .tier-citation {
+      color: var(--cyan, #22d3ee); text-decoration: none;
+    }
+    .tier-provenance .tier-citation:hover { text-decoration: underline; }
     .hero-tag { display: inline-flex; align-items: center; gap: 0.45em;
                 font-size: var(--fs-2xs); color: var(--cyan);
                 text-transform: uppercase; letter-spacing: 0.06em;
@@ -238,6 +279,25 @@
           · {{ _('currency hex') }} <span class="iss" style="word-break: break-all;">{{ data.currency_raw }}</span>
         {% endif %}
       </div>
+      {% if data.tier and data.tier != 'unknown' %}
+      <div class="tier-line">
+        <span class="v5-tier v5-tier--{{ data.tier }}"
+              title="{% if data.tier == 'verified' %}{{ _('Verified = the issuer proved control of its domain via two-way toml match. Not an endorsement.') }}{% elif data.tier == 'self-described' %}{{ _('Self-described = publishes an XRPL TOML but not in the canonical shape — treated as self-report, never verification.') }}{% elif data.tier == 'labeled' %}{{ _('Labeled = we labeled it, citing a source; the issuer hasn&apos;t proven control.') }}{% elif data.tier == 'bare' %}{{ _('Bare = no TOML we could verify — either domain-only or fully anonymous.') }}{% endif %}">
+          {{ data.tier_display }}
+        </span>
+        {% if data.tier_source or data.tier_citation %}
+        <span class="tier-provenance">
+          {% if data.tier_source %}
+            {{ _('source:') }} <span class="tier-source">{{ data.tier_source }}</span>
+          {% endif %}
+          {% if data.tier_citation %}
+            {% if data.tier_source %} · {% endif %}
+            <a href="{{ data.tier_citation }}" target="_blank" rel="noopener noreferrer" class="tier-citation">{{ _('citation') }} ↗</a>
+          {% endif %}
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
       <div class="hero-meta" style="margin-top:0.7em;">
         {% if data.last_seen_age and data.last_seen_age != "—" %}
           {{ freshness_badge(data.last_seen_age) }}
