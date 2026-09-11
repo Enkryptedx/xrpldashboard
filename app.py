@@ -2619,7 +2619,7 @@ def health():
 
     pulse = fetch_pulse_cached()
 
-    return render_template(
+    rendered = render_template(
         "health.html",
         overall=overall,
         pulse=pulse,
@@ -2687,7 +2687,25 @@ def health():
             "events_age_sec": pg_events_age,
         },
         recent_log=_tail_lines(STREAM_LOG_PATH, n=8),
-    ), status_code
+    )
+    # 2026-09-11 Charlie ruling: /health (human page) always returns 200 —
+    # external monitors (UptimeRobot, etc.) shouldn't page on our own
+    # backup/degrade windows. The visible page still surfaces the degrade
+    # state; the machine endpoints (/healthz, /api/health) retain their
+    # native status_code (503 on degrade) so INTERNAL monitors like
+    # BetterStack can still page correctly. Signal degrade in headers
+    # for scripts + surface it in the HTML for humans.
+    from flask import make_response
+    resp = make_response(rendered, 200)
+    if state.get("overall") == "degraded":
+        resp.headers["X-Health-Overall"] = "degraded"
+        resp.headers["X-Health-Note"] = (
+            "returned HTTP 200 by policy; see /healthz for machine "
+            "status (503 on degrade); page body shows degrade detail"
+        )
+    else:
+        resp.headers["X-Health-Overall"] = "ok"
+    return resp
 
 
 @ttl_cache(seconds=60)
