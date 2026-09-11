@@ -129,7 +129,48 @@
       "note": "Historic gateway. USD + EUR are fiat-backed custodial rails; BTC + ETH are the gateway's issuance of those tickers (not native, not collisions in the impostor sense)."
     },
 
-    "_todo_gatehub": "GateHub is a significant historical XRPL gateway — no issuer with 'gatehub' in Domain field found in issuer_facts as of 2026-09-08 sweep. Their published issuer addresses (rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q and rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq per public sources) should be verified against xrpscan.com and gatehub.net/pdf/gh_iou_issuance.pdf before adding here. LEFT UNCHECKED — do not whitelist without citation. Charlie or curator to verify.",
+    "gatehub": {
+      "name": "GateHub — XRPL fiat/crypto gateway",
+      "issuers": [
+        "rhotcWYdfn6qxhVMbPKGDF3XCKqwXar5J4",
+        "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+        "rcb6cGT25CcSaLk2NZ4CadU6XddQ5aLq9",
+        "r4GN9eEoz9K4BhMQXe4H1eYNtvtkwGdt8g",
+        "rhKgFxe7Mp38yeJzvwoNLm46RxMdXotTn6",
+        "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
+        "rh7YWTfjKXi1rbToH6pV9m5f2mHpx28Rbv",
+        "rcyS4CeCZVYvTiKcxj6Sx32ibKwcDHLds",
+        "rhPGyJfM8bGjfNCiXLL7WRU8VZ5Cw4kHVe",
+        "rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h",
+        "rsXAifedPJ3ESTgSHJ5XzrXw6oYD8Uha7x",
+        "rDAN8tzydyNfnNf2bfUQY6iR96UbpvNsze",
+        "rhnjnaUMwe6BxVkszuU6sM6qbNXBAqwQGu",
+        "rcXY84C4g14iFp6taFXjjQGVeHqSCh9RX",
+        "rhdw8pseC8fpeVLnvZDfJVG3CPuEp426AV",
+        "rcRzGWq6Ng3jeYhqnmM4zcWcUh69hrQ8V",
+        "rhrFfvzZAytd8UHPH87UHMgHQ18nnLbpgN",
+        "rctArjqVvTHihekzDeecKo6mkTYTUSBNc",
+        "rhh2jrhPBFnGZoRdM2wxww979SayUj2En6",
+        "rcvxE9PS9YBwxtGg1qNeewV6ZB3wGubZq",
+        "rh5MLV7PdpNhgAnLBEWu8AptC5NSrRAihc",
+        "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
+        "rhjx4ZWEAhFkrxZLpY1hjHm7B1FwV2nkMR",
+        "rEa5QY8tdbjgitLyfKF1E5Qx3VGgvbUhB3",
+        "rMSEtzTiszpQAMsphtkUfrQYYxVUCi1W5R",
+        "rf5YPb9y9P3fTjhxNaZqmrwaj5ar8PG1gM",
+        "rhx9UzN1z73EaW5GAUpuHGzMD1SpNH1Tpd",
+        "rcxJwVnftZzXqyH9YheB8TgeiZUhNo1Eu",
+        "rstyeL9LzmePyVyQBAu3oFFhuVi6rkrAum",
+        "rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv",
+        "rwjNnsSByRccJ7NtLAtkFLxT9tD62udLMw",
+        "ra9g3LAJm9xJu8Awe7oWzR6VXFB1mpFtSe"
+      ],
+      "tickers": ["USD", "EUR", "GBP", "BTC", "BCH", "ETH", "ETC", "DASH", "LTC", "SGB", "USDT", "USDC", "WXRP", "GALA", "FLR", "XAH", "EVR"],
+      "category": "stablecoin_gateway",
+      "tier_default": "self-described",
+      "citation": "GateHub's own published XRPL address page at https://gatehub.net/legal/xrpl-addresses (accessed 2026-09-11 by Charlie via screenshot). 16 hot + 16 cold wallets across 17 currencies; USD and EUR share the same hot/cold pair (rhotcWYdfn6qxhVMbPKGDF3XCKqwXar5J4 + rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq). Tier stays self-described per Charlie's ruling — the canonical whitelist stops the collision flag but does NOT promote these to verified. Two-way toml proof pending (domain_two_way_proof='unchecked' at add-time). Retires the 2026-09-08 `_todo_gatehub` placeholder.",
+      "note": "Long-standing XRPL gateway. Every (issuer, ticker) pair from these 32 addresses × 17 tickers is treated as canonical — ticker_collision must NOT be set. Fiat rails (USD/EUR/GBP) + crypto rails (BTC/ETH/etc.) + newer tickers (XAH/EVR from Xahau ecosystem). GALA / FLR / SGB are gaming/L1 project tokens on GateHub."
+    },
     "_disputed_vanity_addresses": "The addresses rBASE5KtDVqaWCTpQatezWfc4cZV7eDuyB (domain www.coinbase.com), rCoinzYTFiFMJ5qyPPXSieGYbLACw9tnM (domain https://www.coinbase.com/), rKRAKzWfCB1SA1Pz24HGUVJ8reMEeCsMEG (domain https://www.kraken.com) all use vanity-address prefixes but Kraken/Coinbase don't publicly operate XRPL gateway issuance. They look like impostor vanity registrations claiming brand affiliation. NOT whitelisted — will remain in curator_review_queue with the ticker_collision flag set."
   }
 }
