@@ -103,6 +103,16 @@ JOBS: list[tuple[str, int, str]] = [
     # _last_ok on success only — same discipline as siblings.
     ("pg_backup_canary", 26 * 3600,
      "hourly freshness check for pg_backup B2 dump (age <= 25h threshold; stamps last_ok on success)"),
+    # Charlie ruling 2026-09-10 evening: added token_elevation_walker
+    # (Part C item 5). Hourly scan of labeled + self-described rows with
+    # https .toml citations; runs two-way TOML verification via
+    # shared_tier_verifier.resolve_tier(elevate=True); writes
+    # source='two_way_toml' history rows on pass. Meta-watch ceiling 2h
+    # (2× cadence, tight — a silent walker means self-described tokens
+    # stop earning verified promotions and citation-only entries never
+    # reach the two-way-proven signal).
+    ("token_elevation_walker", 2 * 3600,
+     "hourly two-way TOML verification of labeled/self-described tokens with .toml citations; elevates via source=two_way_toml history rows"),
 ]
 
 
