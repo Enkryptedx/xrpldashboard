@@ -316,10 +316,18 @@
       border: 1px solid rgba(34,197,94,0.35);
       color: var(--green);
     }
-    .v5-tier--self {
+    .v5-tier--self,
+    .v5-tier--self-described {
       background: rgba(148,163,184,0.10);
       border: 1px solid rgba(148,163,184,0.30);
       color: #cbd5e1;
+    }
+    /* Part C 2026-09-10: `labeled` bucket. We labeled it, citing a
+       source; the issuer hasn't proven control (Charlie's copy). */
+    .v5-tier--labeled {
+      background: rgba(59,130,246,0.10);
+      border: 1px solid rgba(59,130,246,0.30);
+      color: #93c5fd;
     }
     .v5-tier--bare {
       background: transparent;
@@ -919,6 +927,11 @@
         <span>ⓘ</span>
         <span>{{ _('self-described') }}</span>
         <span class="v5-tier-n">{{ tier_summary.self_described }}</span>
+      </span>
+      <span class="v5-tier v5-tier--labeled" title="{{ _(&quot;Labeled = we labeled it, citing a source; the issuer hasn't proven control.&quot;) }}">
+        <span>◐</span>
+        <span>{{ _('labeled') }}</span>
+        <span class="v5-tier-n">{{ tier_summary.labeled }}</span>
       </span>
       <span class="v5-tier v5-tier--bare" title="{{ _('no TOML we could verify — either domain-only or fully anonymous') }}">
         <span>—</span>
