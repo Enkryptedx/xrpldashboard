@@ -1,6 +1,6 @@
 {
-  "canonical_hash_hex": "3bd97afcf1280ab39d68278e0cf3b7b29a3b8ab5988ee107151ebecef0785bb7",
-  "envelope_built_at_utc": "2026-09-08T02:34:58.374167Z",
+  "canonical_hash_hex": "752eb46d1d05c716c65d09648b0085f61c61f10c2ff85733eefc342805b28289",
+  "envelope_built_at_utc": "2026-09-08T06:15:02.124679Z",
   "history_merkle_root_hex": "212bd53f5b049ff1e6c2584e35587e93a53d152fb1aa06c27ea45a04dd71fc66",
   "history_row_order": "ORDER BY id ASC",
   "merkle_scheme": "RFC-6962-with-Bitcoin-style-odd-duplication",
@@ -13,8 +13,8 @@
   "schema_version": 1,
   "signature": {
     "domain_separator": "xrpldashboard/receipt/v1",
-    "signature_ed25519_hex": "d478251e72ff96a5fd5df228e7695d66466834a797654d450a3e4bd8a06fe0700c86b1caf9d713d09d3f02b27f9a041ad2ef36a29836766a1b9ce774926b0d09",
-    "signed_at_utc": "2026-09-08T02:34:58.805459Z",
+    "signature_ed25519_hex": "51fb290e88125b46cabc864681920049169d40213520a9e87ad7c5329b070bb36203229b8509a01611859db7934135c8d4110b62647d6e88dac405661bea2f01",
+    "signed_at_utc": "2026-09-08T06:15:02.595465Z",
     "signing_key_fingerprint": "A4:0F:B1:0A:9D:33:64:03"
   },
   "signing_domain": "xrpldashboard/registry/v1",

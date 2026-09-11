@@ -5173,6 +5173,21 @@ BOT_UA_PATTERNS = (
     "%BuiltWith%",
     "%FACTANKER%",
     "%xrpld-%",
+    # 2026-09-09 evening (Charlie ruling after evening analytics): the
+    # existing %xrpld-% pattern DID NOT match our own route canary UA
+    # "xrpldashboard-public-route-canary/1.0" because "xrpldashboard"
+    # has no hyphen after "xrpld". Result: since Sun 09-06, ~3,600
+    # canary probes/day were classified as HUMAN (writer only stamps
+    # bots; NULL is treated as human by is_bot_canary's predicate),
+    # inflating human counts by an order of magnitude and mislocating
+    # traffic to Indiana (canary origin). This adds the broader
+    # xrpldashboard-* self-probe pattern + Charlie's PROOF-* curl
+    # pattern to close the class. Reclassification of historical rows
+    # since 2026-09-06 00:00 UTC done in a targeted UPDATE alongside
+    # this change; site_totals recomputed same-window (decrease-guard
+    # will page — expected).
+    "%xrpldashboard-%",
+    "%PROOF-%",
     "%Palo Alto Networks%",
     # 2026-09-06 — leaked-header UA pattern (one of two approved v6 rules;
     # the growth-path-cluster predicate is the other, filed for a

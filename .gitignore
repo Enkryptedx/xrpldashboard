@@ -162,3 +162,9 @@ docs/mcp_directory_submissions/
 docs/agent_tier_ship_evidence/
 DEPLOY.md
 STORAGE_INVENTORY_2026-05-25.md
+
+# 2026-09-11 pre-anchor-#6 cleanup: walker outputs that aren't served
+# and shouldn't dirty the working tree by design.
+docs/SITE_TOTALS.json
+launchd_logs/
+tmp/
