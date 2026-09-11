@@ -202,6 +202,63 @@ def _load_envelope_for_date(cur, date: dt.date) -> Optional[dict]:
     return env
 
 
+def _scalar_metrics_map(envelope: dict) -> dict:
+    """Return {metric_name: value} for the scalar metrics that drive
+    change detection. Used to compare two envelopes for distinctness.
+
+    2026-09-11: excludes header-only metrics like `xrpl_validated_ledger_index`
+    (always monotonically increasing, so it always registers as "different"
+    even when the substantive source data hasn't changed — that would
+    defeat the whole find-previous-distinct point).
+    """
+    substantive_names = {
+        n for n, _, _, mtype in _SCALAR_METRICS if mtype != "header_only"
+    }
+    out = {}
+    if not envelope:
+        return out
+    for m in envelope.get("metrics") or []:
+        if isinstance(m, dict) and m.get("name") in substantive_names:
+            out[m["name"]] = m.get("value")
+    return out
+
+
+def _find_previous_distinct_envelope(
+    cur, today_envelope: dict, today_date: dt.date, max_lookback_days: int = 30
+) -> tuple[Optional[dict], Optional[dt.date], list[str]]:
+    """Walk back day-by-day to find the last snapshot whose scalar metrics
+    differ from today's. Charlie ruling 2026-09-11: prevents diffing
+    identical duplicates (root cause of the exact-three-zeros bug —
+    two signed_snapshot fires 2h12min apart on 2026-09-09 with no
+    source-data change created 09-09.json and 09-10.json with byte-
+    identical metrics; naive prev_date=today-1day diffed 09-10 vs 09-09
+    and reported "AMM: no change today / MPT: no change today / RWA: no
+    change today" — three exact zeros on a day when AMM TVL moved).
+
+    Returns (envelope, actual_prev_date, skipped_dates_iso).
+    - envelope: previous DISTINCT envelope or None if search exhausted.
+    - actual_prev_date: date of the returned envelope (may be != today-1).
+    - skipped_dates_iso: dates skipped because they had identical scalars
+      (transparency — logged in the envelope so a reader can see the
+      duplicate-suppression path took effect).
+    """
+    today_scalars = _scalar_metrics_map(today_envelope)
+    look_date = today_date - dt.timedelta(days=1)
+    skipped: list[str] = []
+    for _ in range(max_lookback_days):
+        prev_env = _load_envelope_for_date(cur, look_date)
+        if prev_env is None:
+            look_date -= dt.timedelta(days=1)
+            continue
+        prev_scalars = _scalar_metrics_map(prev_env)
+        if prev_scalars != today_scalars:
+            return prev_env, look_date, skipped
+        # Identical-scalars duplicate — walk past it.
+        skipped.append(look_date.isoformat())
+        look_date -= dt.timedelta(days=1)
+    return None, None, skipped
+
+
 def _load_unl_snapshot_for_date(cur, date: dt.date) -> Optional[dict]:
     """Read one unl_snapshot payload for the given date, or None."""
     cur.execute(
@@ -466,13 +523,18 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         import db as _db
         pg_connect = _db.pg_connect
 
-    prev_date = date - dt.timedelta(days=1)
     with pg_connect() as conn:
         with conn.cursor() as cur:
             today = _load_envelope_for_date(cur, date)
-            yesterday = _load_envelope_for_date(cur, prev_date)
+            # 2026-09-11 fix: walk back to previous DISTINCT snapshot so
+            # duplicate-metric days (two signed_snapshot fires with no
+            # source-data change) don't produce exact-zero-delta envelopes.
+            if today:
+                yesterday, prev_date, skipped_dup_dates = _find_previous_distinct_envelope(cur, today, date)
+            else:
+                yesterday, prev_date, skipped_dup_dates = None, date - dt.timedelta(days=1), []
             today_unl = _load_unl_snapshot_for_date(cur, date)
-            yesterday_unl = _load_unl_snapshot_for_date(cur, prev_date)
+            yesterday_unl = _load_unl_snapshot_for_date(cur, prev_date) if prev_date else None
 
     changes: list[dict] = []
     categories_no_change: list[str] = []
@@ -524,11 +586,44 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         if cat not in scalar_categories_seen and cat not in categories_no_change:
             categories_no_change.append(cat)
 
+    # 2026-09-11 fix: zero-scalar-delta suspect guard. If today's snapshot
+    # produced NO scalar changes AND we didn't find a distinct-previous
+    # (or the only "changes" are the always-present chain/ledger-index
+    # heartbeats), that's the exact-zero-deltas signature Charlie flagged
+    # 2026-09-11 morning ("AMM: no change today / MPT: no change today /
+    # RWA: no change today" on a day AMM TVL had actually moved). Mark as
+    # SUSPECT rather than confidently publishing "no change" — a reader
+    # should see "diff suspect" and know we didn't confirm zero motion.
+    scalar_change_count = sum(1 for c in changes if c.get("metric_type") in ("usd", "count"))
+    suspect_reason = None
+    if scalar_change_count == 0:
+        if prev_date is None and skipped_dup_dates:
+            suspect_reason = (
+                f"walked back {len(skipped_dup_dates)} day(s) "
+                f"({', '.join(skipped_dup_dates)}) — all had identical scalars to today; "
+                "no distinct previous snapshot within lookback window."
+            )
+        elif yesterday and prev_date and prev_date == (date - dt.timedelta(days=1)):
+            # We diffed against calendar-yesterday and got zero. Not
+            # duplicate-suppression path — could be legitimately quiet, but
+            # 5 of 5 scalar metrics all-zero on a live chain is unusual.
+            # Mark suspect if EVERY scalar metric matched exactly.
+            today_scalars = _scalar_metrics_map(today)
+            yesterday_scalars = _scalar_metrics_map(yesterday)
+            if today_scalars and today_scalars == yesterday_scalars:
+                suspect_reason = (
+                    "all 5 scalar metrics identical between today's snapshot "
+                    "and yesterday's — data-source silence suspect."
+                )
+
     return {
         "date": date.isoformat(),
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "changes": changes,
         "categories_no_change": categories_no_change,
+        "prev_snapshot_date": prev_date.isoformat() if prev_date else None,
+        "prev_skipped_duplicate_dates": skipped_dup_dates,
+        "diff_suspect_reason": suspect_reason,
         "disclosure": DISCLOSURE,
     }
 
