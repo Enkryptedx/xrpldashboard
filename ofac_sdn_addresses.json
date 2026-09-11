@@ -720,7 +720,7 @@
       "sdn_uid": "43377"
     },
     "0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2": {
-      "chain": "ETH",
+      "chain": "USDC",
       "entity_name": "VALERIAN LABS, INC.",
       "programs": [
         "ILLICIT-DRUGS-EO14059"
@@ -9720,7 +9720,7 @@
     }
   },
   "count": 1043,
-  "fetched_at_utc": "2026-09-10 12:14 UTC",
-  "publication_date": "2026-09-09",
+  "fetched_at_utc": "2026-09-11 12:14 UTC",
+  "publication_date": "2026-09-10",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
