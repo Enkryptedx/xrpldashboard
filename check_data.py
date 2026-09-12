@@ -1255,9 +1255,14 @@ def check_address(address: str) -> dict:
                 f"Listed as “{named_entry.get('name')}” "
                 f"in a first-party disclosure file."
             ),
-            source_label="curator: named_accounts.json (attested via "
-                         f"{named_entry.get('verified_via')})",
-            source_url=named_entry.get("verified_via"),
+            # 2026-09-11 NO-GO fix: raw external .toml URL removed
+            # from both source_url and source_label. `application/toml`
+            # MIME triggers browser download prompts (Charlie's report).
+            # Text-only reference — post-freeze upgrade will link to
+            # a plain-text cached copy served from our own domain.
+            source_label="curator: named_accounts.json "
+                         "(attested via issuer's xrp-ledger.toml)",
+            source_url=None,
         ))
         tier = "verified"
     elif named_entry.get("name"):
@@ -1536,8 +1541,11 @@ def check_token(currency: str, issuer: str) -> dict:
                 f"in a first-party disclosure that was verified when "
                 f"we curated this entry."
             ),
-            source_label=f"curator: token_names.json (attested via {verified_url})",
-            source_url=verified_url,
+            # 2026-09-11 NO-GO fix: see companion edit on line 1258.
+            # Raw external .toml URLs removed from both fields.
+            source_label="curator: token_names.json "
+                         "(attested via issuer's xrp-ledger.toml)",
+            source_url=None,
         ))
     elif tn_entry.get("currency_display") \
             or domain \

@@ -559,7 +559,13 @@
                 <p class="signal-meta">
                   <span class="source">
                     {{ _('Source:') }}
-                    {% if s.source_url %}
+                    {# 2026-09-11 NO-GO fix: never render a raw `.toml`
+                       URL as a clickable anchor — some browsers serve
+                       `application/toml` as a download prompt. Root-
+                       cause fix is upstream in check_data.py (source_url
+                       is None for toml-attested signals); this template
+                       guard is belt-and-suspenders. #}
+                    {% if s.source_url and not s.source_url.endswith('.toml') %}
                       <a href="{{ s.source_url }}" rel="nofollow noopener" target="_blank">{{ s.source_label }}</a>
                     {% else %}
                       {{ s.source_label }}
@@ -711,7 +717,11 @@
             <p class="signal-meta">
               <span class="source">
                 {{ _('Source:') }}
-                {% if s.source_url %}
+                {# 2026-09-11 NO-GO fix: never render a raw `.toml`
+                   URL as a clickable anchor (companion to the block
+                   above). Root-cause fix upstream in check_data.py;
+                   this template guard is belt-and-suspenders. #}
+                {% if s.source_url and not s.source_url.endswith('.toml') %}
                   <a href="{{ s.source_url }}" rel="nofollow noopener" target="_blank">{{ s.source_label }}</a>
                 {% else %}
                   {{ s.source_label }}
