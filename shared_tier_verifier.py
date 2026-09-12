@@ -198,24 +198,47 @@ def _load_hero_snapshot() -> dict:
 
 
 def _hero_snapshot_lookup(currency_hex: str, issuer: str) -> Optional[TierRecord]:
-    """Hero-snapshot fallback for one (currency, issuer) pair."""
+    """Hero-snapshot fallback for one (currency, issuer) pair.
+
+    Snapshot's `tiers.lookup` may store entries in either shape:
+      - bare string: "DOMAIN_ONLY" | "ANONYMOUS" | "VERIFIED" | "SELF_DESCRIBED"
+      - dict: {"tier": "...", "category": "...", "citation_url": "...", ...}
+    Both are accepted. Prior code assumed dict shape and called
+    `entry.get(...)`, which raised AttributeError on the bare-string
+    form and 500'd the /token page for any pair only present in the
+    snapshot (e.g., XLM on rKiCet…; caught 2026-09-11 via warnings-
+    feed click-through). The DB-registry path is preferred when
+    available and returns before this fallback.
+    """
     snap = _load_hero_snapshot()
     lookup = (snap.get("tiers") or {}).get("lookup") or {}
-    # Snapshot may key on "CURRENCY|ISSUER" or "currency|issuer"; try both.
     for k in (f"{currency_hex}|{issuer}", f"{currency_hex.upper()}|{issuer}",
               f"{currency_hex.lower()}|{issuer}"):
         entry = lookup.get(k)
-        if entry:
-            return TierRecord(
-                currency_hex=currency_hex.upper(),
-                issuer=issuer,
-                tier=_normalize_snapshot_tier(entry.get("tier")),
-                category=entry.get("category"),
-                source="hero-snapshot",
-                citation_url=entry.get("citation_url"),
-                observed_at=entry.get("observed_at"),
-                db_tier_raw=None,
-            )
+        if entry is None:
+            continue
+        if isinstance(entry, str):
+            tier_val = entry
+            category = None
+            citation_url = None
+            observed_at = None
+        elif isinstance(entry, dict):
+            tier_val = entry.get("tier")
+            category = entry.get("category")
+            citation_url = entry.get("citation_url")
+            observed_at = entry.get("observed_at")
+        else:
+            continue
+        return TierRecord(
+            currency_hex=currency_hex.upper(),
+            issuer=issuer,
+            tier=_normalize_snapshot_tier(tier_val),
+            category=category,
+            source="hero-snapshot",
+            citation_url=citation_url,
+            observed_at=observed_at,
+            db_tier_raw=None,
+        )
     return None
 
 

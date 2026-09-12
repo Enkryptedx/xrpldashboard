@@ -728,6 +728,11 @@
     .tron-warnings-feed-list .twf-trades { color: var(--muted);
                                             font-family: var(--mono);
                                             font-size: 0.78rem; }
+    .tron-warnings-feed-more { padding: 4px 14px 10px; font-size: 0.75rem; }
+    .tron-warnings-feed-more a { color: rgba(245,158,11,0.85);
+                                  text-decoration: none; }
+    .tron-warnings-feed-more a:hover { color: rgba(245,158,11,1);
+                                        text-decoration: underline; }
     @media (max-width: 480px) {
       .tron-warnings-feed-list a { grid-template-columns: 46px 1fr auto;
                                     gap: 6px; }
@@ -1198,7 +1203,11 @@
       <span class="twf-hint">{{ _('per-hour activity on flagged tokens · tap for detail') }}</span>
     </div>
     <ul class="tron-warnings-feed-list">
-      {% for w in warnings_feed %}
+      {# 2026-09-11 size cap: show only the 5 freshest per-hour rows in the
+         feed panel; if the underlying query returned more, expose a
+         "show all N →" link to /tokens?range=warnings. Keeps the panel
+         legible; the full flagged-token list lives one click away. #}
+      {% for w in warnings_feed[:5] %}
       <li>
         <a href="/token/{{ w.currency_raw }}/{{ w.issuer }}">
           <span class="twf-age">{{ w.age_label }}</span>
@@ -1212,6 +1221,11 @@
       </li>
       {% endfor %}
     </ul>
+    {% if warnings_feed|length > 5 %}
+    <div class="tron-warnings-feed-more">
+      <a href="/tokens?range=warnings">{{ _('show all') }} {{ warnings_feed|length }} →</a>
+    </div>
+    {% endif %}
   </aside>
   {% endif %}
 
