@@ -15,7 +15,9 @@
   },
   "USDC": {
     "brand": "Circle USDC",
-    "canonical_issuers": [],
+    "canonical_issuers": ["rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"],
+    "citation": "https://www.circle.com/multi-chain-usdc/xrpl",
+    "citation_note": "Circle's own multichain USDC page lists this XRPL mainnet address for native USDC (fetched 2026-09-12). Prior canonical_issuers=[] treated the empty list as positive knowledge and rendered 'not Circle USDC' on the real Circle issuer 2026-09-06 to 2026-09-12. Added tonight per Charlie's ruling.",
     "note": "not Circle USDC"
   },
   "DAI": {

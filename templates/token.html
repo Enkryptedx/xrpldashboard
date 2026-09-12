@@ -417,6 +417,17 @@
           {{ _('%(m)d of %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued); the remainder are micro-pools.', m=data.meaningful_pool_count, n=data.pool_count, thr=thr_label) }}
         {% endif %}
       </p>
+      {# 2026-09-11 minimum LP-column fix (Charlie ruling): rename
+         column header + rewrite in-row unit label so the LP number
+         reads unambiguously as a share supply, not a token amount.
+         Real fix (replacing LP column with actual pool reserves
+         "X USDC + Y OUSG") filed post-freeze. #}
+      <div class="pool-row" style="color: var(--muted); font-size: var(--fs-xs); font-weight: 500; border-bottom: 1px solid var(--border); padding-bottom: 0.5em;">
+        <div>{{ _('Pool pair') }}</div>
+        <div>{{ _('AMM account') }}</div>
+        <div style="text-align: right;">{{ _('Fee') }}</div>
+        <div style="text-align: right;">{{ _('LP supply (shares)') }}</div>
+      </div>
       {% for p in data.pools[:20] %}
       <div class="pool-row">
         <div class="pool-pair">
@@ -430,13 +441,16 @@
         <div class="pool-fee">{{ "%.2f"|format(p.fee_pct) }}%</div>
         <div class="pool-lp">
           {% if p.lp_balance %}
-            {{ "{:,.0f}".format(p.lp_balance|float) }} LP
+            {{ "{:,.0f}".format(p.lp_balance|float) }} {{ _('shares') }}
           {% else %}
             —
           {% endif %}
         </div>
       </div>
       {% endfor %}
+      <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0.8em 0 0;">
+        {{ _('“LP supply (shares)” is the total number of LP tokens the AMM has issued to depositors — a pool-share unit count, not a token or dollar amount. Divide your own LP balance by this number to get your % of the pool. Raw reserves in each asset are what most people want to see, and are queued as the next iteration.') }}
+      </p>
       {% if data.pools|length > 20 %}
         <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
           {{ _('Showing top 20 of') }} {{ data.pools|length }} {{ _('pools by issued LP balance.') }}

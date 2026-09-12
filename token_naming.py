@@ -38,10 +38,12 @@ from typing import Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TICKER_CANONICAL_PATH = os.path.join(HERE, "ticker_canonical_issuers.json")
+NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 
 _lock = threading.Lock()
 _ticker_map: Optional[dict] = None
 _bridge_index: Optional[dict] = None   # issuer → set of tickers it bridges
+_named_lookup: Optional[dict] = None   # issuer address → named_accounts entry
 
 
 def _load_ticker_map() -> dict:
@@ -61,9 +63,18 @@ def _load_ticker_map() -> dict:
                     "canonical_issuers": set(v.get("canonical_issuers") or []),
                     "note": v.get("note") or f"not {k}",
                     "brand": v.get("brand"),
+                    # 2026-09-11 Circle-USDC ruling: track whether the
+                    # entry has been audited (any canonical_issuers, or
+                    # explicit no_official_xrpl_issuer=true). Empty list
+                    # alone means UNAUDITED, not "positive no-legit-issuer
+                    # knowledge" — the three-state wording branches on
+                    # this in resolve_display below.
+                    "audited": (bool(v.get("canonical_issuers"))
+                                or bool(v.get("no_official_xrpl_issuer"))),
+                    "no_official_xrpl_issuer": bool(v.get("no_official_xrpl_issuer")),
                 }
                 for k, v in raw.items()
-                if isinstance(v, dict) and k != "bridges" and not k.startswith("_")
+                if isinstance(v, dict) and k != "bridges" and k != "gateways" and not k.startswith("_")
             }
             # Bridge + gateway whitelist (2026-09-08 + 2026-09-08 gateways):
             # issuer → set of tickers this bridge/gateway is authorized to
@@ -88,6 +99,56 @@ def _load_ticker_map() -> dict:
             _ticker_map = {}
             _bridge_index = {}
         return _ticker_map
+
+
+def _load_named_accounts() -> dict:
+    """Lazy-load named_accounts.json as issuer_address → entry dict.
+    Used by the conflict rule in resolve_display: if named_accounts
+    labels an issuer as brand X and ticker_canonical_issuers doesn't
+    list that issuer, we render 'unverified — conflicting records'
+    (curator queue) instead of a warning. Filed 2026-09-11 Circle-
+    USDC ruling. Fail-open on missing/malformed file."""
+    global _named_lookup
+    with _lock:
+        if _named_lookup is not None:
+            return _named_lookup
+        try:
+            with open(NAMED_ACCOUNTS_PATH) as f:
+                raw = json.load(f)
+            _named_lookup = {
+                addr: entry
+                for addr, entry in raw.items()
+                if isinstance(entry, dict)
+            }
+        except (OSError, json.JSONDecodeError, TypeError):
+            _named_lookup = {}
+        return _named_lookup
+
+
+def _named_brand_match(issuer: Optional[str], ticker_upper: str,
+                       brand: Optional[str]) -> bool:
+    """Return True when named_accounts.json labels `issuer` in a way
+    that plausibly matches this ticker's brand — i.e. the two data
+    files are in CONFLICT (canonical list omits the issuer; named
+    labels it as the brand). Comparison is case-insensitive substring
+    of ticker OR brand vs. the named entry's name / _note / domain /
+    verified_via."""
+    if not issuer:
+        return False
+    named = _load_named_accounts()
+    entry = named.get(issuer)
+    if not entry:
+        return False
+    name = str(entry.get("name") or "")
+    note = str(entry.get("_note") or "")
+    dom = str(entry.get("domain") or "")
+    vv = str(entry.get("verified_via") or "")
+    blob = (name + " " + note + " " + dom + " " + vv).lower()
+    if ticker_upper.lower() in blob:
+        return True
+    if brand and brand.lower() in blob:
+        return True
+    return False
 
 
 def _is_bridge_issued(issuer: Optional[str], ticker_upper: str) -> bool:
@@ -379,7 +440,27 @@ def resolve_display(
     if _is_bridge_issued(issuer, upper):
         return result
 
-    # Collision: matches a well-known ticker but issuer isn't canonical.
+    # 2026-09-11 Circle-USDC ruling — three-state wording.
+    # Prior code emitted a positive "not <brand>" claim for ANY ticker
+    # match without a canonical-list entry. Empty canonical_issuers was
+    # treated as knowledge — but empty means UNAUDITED. That misfired
+    # on Circle's real USDC issuer (rGm7W…uWhE) from Sep 6 → Sep 11:
+    # our USDC entry had canonical_issuers=[], so the real Circle
+    # address rendered as "not Circle USDC" on /tokens, /whales, /check.
+    #
+    # New wording:
+    #   1. canonical entries exist AND issuer isn't one    → "not <brand>"
+    #      (positive knowledge, cited in the JSON)
+    #   2. no canonical entries AND no_official_xrpl_issuer=true
+    #      → also positive: "not <brand>" (we know none exist)
+    #   3. empty canonical_issuers, no explicit no-issuer marker
+    #      → NEUTRAL: "issuer not on our verified list for <brand>"
+    #      A statement about OUR list, not about the issuer.
+    #
+    # PLUS conflict rule: if named_accounts.json labels this issuer as
+    # the brand AND ticker canonical list is silent on it → mark
+    # "unverified — conflicting records" (curator queue), NEVER warn.
+    audited = entry.get("audited", bool(canonical))
     hint = issuer_hint
     if hint is None:
         if issuer_domain:
@@ -388,12 +469,36 @@ def resolve_display(
             hint = f"{issuer[:5]}…{issuer[-4:]}" if len(issuer) > 12 else issuer
         else:
             hint = "unknown issuer"
+
+    # Conflict path (highest priority): named_accounts thinks this
+    # issuer IS the brand, but canonical list is silent. Do NOT warn.
+    if not canonical and _named_brand_match(issuer, upper, entry.get("brand")):
+        conflict_note = "unverified — conflicting records"
+        result["collision"] = {
+            "ticker": upper,
+            "note": conflict_note,
+            "issuer_hint": hint,
+            "conflict": True,
+        }
+        result["display"] = f"{d['display']} ({hint} — {conflict_note})"
+        return result
+
+    # Choose wording per three-state rule.
+    if audited:
+        # Positive knowledge — either canonical exists (and this isn't
+        # one) or no_official_xrpl_issuer flag is set.
+        note = entry["note"]
+    else:
+        brand_label = entry.get("brand") or upper
+        note = f"issuer not on our verified list for {brand_label}"
+
     result["collision"] = {
         "ticker": upper,
-        "note": entry["note"],
+        "note": note,
         "issuer_hint": hint,
+        "audited": audited,
     }
-    result["display"] = f"{d['display']} ({hint} — {entry['note']})"
+    result["display"] = f"{d['display']} ({hint} — {note})"
     return result
 
 

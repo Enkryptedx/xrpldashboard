@@ -8731,9 +8731,47 @@ def x402_catalog():
 # /thisweek post; the machine writes the daily ledger.
 # ---------------------------------------------------------------------------
 
+DISCLOSED_CORRECTIONS_PATH = os.path.join(HERE, "disclosed_corrections.json")
+
+
+def _load_disclosed_corrections_for(date_iso: str) -> list:
+    """Return hand-curated correction entries for `date_iso`, or [].
+    File is hand-curated and checked into the repo (see
+    disclosed_corrections.json). Overlaid onto the walker-built envelope
+    at read time so a correction survives every subsequent walker
+    rebuild. Filed 2026-09-11 after Circle's real USDC issuer was
+    publicly labeled 'not Circle USDC' for 6 days — the disclosed
+    correction went out with the fix per Charlie's ruling."""
+    try:
+        with open(DISCLOSED_CORRECTIONS_PATH) as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    entries = raw.get(date_iso) or []
+    return [e for e in entries if isinstance(e, dict)]
+
+
 def _load_changes_envelope(date_iso: str):
-    """Read the envelope for `date_iso` from PG, or None if not written."""
-    return db.read_changes_envelope(date_iso)
+    """Read the envelope for `date_iso` from PG, or None if not written.
+    Overlays any hand-curated disclosed corrections for that date (see
+    disclosed_corrections.json). If PG has no envelope for the date but
+    corrections exist, returns a corrections-only envelope so the
+    disclosure still renders. Otherwise returns None."""
+    envelope = db.read_changes_envelope(date_iso)
+    corrections = _load_disclosed_corrections_for(date_iso)
+    if not corrections:
+        return envelope
+    if envelope is None:
+        return {
+            "date": date_iso,
+            "generated_at_utc": (corrections[0].get("as_of_utc")
+                                 if corrections else None),
+            "changes": list(corrections),
+            "source": "disclosed_correction_only",
+        }
+    envelope = dict(envelope)
+    envelope["changes"] = list(corrections) + list(envelope.get("changes") or [])
+    return envelope
 
 
 def _list_changes_dates(limit=90):

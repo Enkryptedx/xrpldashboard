@@ -1,0 +1,13 @@
+{
+  "_doc": "Hand-curated ledger of publicly-disclosed errors. Overlaid onto the /changes envelope for the correction's date at read time in app._load_changes_envelope. Persistent across walker rebuilds (the walker builds from live signals; this file supplies human-authored disavowals of past mistakes). Same shape as changes_builder envelope entries so the template loop just works.",
+  "_schema": "date (YYYY-MM-DD, the date the correction is disclosed and takes effect) → [ {category: 'correction', line: <text>, prove_url: <path or full URL>, source: 'disclosed_correction', as_of_utc: <ISO>} ]",
+  "2026-09-11": [
+    {
+      "category": "correction",
+      "line": "Circle's real XRPL USDC issuer (rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE) was labeled \"not Circle USDC\" on /tokens, /token, /whales, /check, and the warnings feed from 2026-09-06 to 2026-09-11 EDT. Root cause: our ticker-canonical-issuers file had an empty canonical list for USDC, and the detector treated the empty list as positive knowledge (\"this can't be Circle\") rather than an unaudited gap. Fixed tonight by whitelisting Circle's address per circle.com/multi-chain-usdc/xrpl and changing the wording rule to render \"issuer not on our verified list for <brand>\" (a statement about our list) whenever the list is unaudited. Same fix disqualifies every other current warning that relied on an empty list; all reappear only after Saturday's per-token audit against a cited primary source.",
+      "prove_url": "/token/5553444300000000000000000000000000000000/rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
+      "source": "disclosed_correction",
+      "as_of_utc": "2026-09-12T03:00:00+00:00"
+    }
+  ]
+}
