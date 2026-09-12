@@ -1698,6 +1698,21 @@ def check_token(currency: str, issuer: str) -> dict:
 
     subject = f"{currency_disp} · {_short_addr(issuer)}"
 
+    # 2026-09-12 station-audit fix: /check.json used to compute its own
+    # `tier` from a local ladder (verified/self/bare), while /token
+    # detail + /tokens list + /whales all read shared_tier_verifier
+    # (verified / self-described / labeled / bare / unknown). Same
+    # (currency, issuer) rendered as different tiers on different
+    # surfaces — the class of gap that shipped Circle-USDC-as-impostor.
+    # Fix: resolve tier ONCE via shared_tier_verifier (source of truth),
+    # override the top-level `tier` field with the canonical value, and
+    # keep the local `tier` var alive for signal/status-line branching
+    # below since those already reason in verified/self/bare shape.
+    _tk_rec = shared_tier_verifier.resolve_tier(
+        (currency_norm or currency).upper(), issuer, elevate=False
+    )
+    _canonical_tier_for_response = _tk_rec.tier if _tk_rec is not None else tier
+
     return {
         "kind": "token",
         "currency": currency_disp,
@@ -1711,13 +1726,11 @@ def check_token(currency: str, issuer: str) -> dict:
             "tier_display": shared_tier_verifier.title_case_tier(_tk_rec.tier),
             "tier_source": _tk_rec.source,
             "tier_citation": _tk_rec.citation_url,
-        } if (_tk_rec := shared_tier_verifier.resolve_tier(
-            (currency_norm or currency).upper(), issuer, elevate=False
-        )) else {}),
+        } if _tk_rec is not None else {}),
         "issuer_short": _short_addr(issuer),
         "subject": subject,
         "ref": f"{currency_norm}.{issuer}",
-        "tier": tier,
+        "tier": _canonical_tier_for_response,
         "status_line": status_line,
         "signals": signals,
         "capabilities": capabilities,

@@ -218,8 +218,80 @@ def _dynamic_warnings_probes() -> list[tuple]:
     return probes
 
 
-def run_walker() -> tuple[int, int, list[dict]]:
-    """Probe every route. Returns (ok_count, fail_count, failing_results)."""
+def _tier_agreement_probes() -> list[dict]:
+    """Cross-page tier-agreement checks (station audit 2026-09-12).
+
+    Prior gap: /token, /check.json, /whales, /tokens returned different
+    tier values for the same (currency, issuer) because /check.json had
+    its own local tier ladder. shared_tier_verifier.resolve_tier is now
+    the single source of truth for /check.json's returned `tier` field.
+
+    This probe fetches /check.json + /token for a fixed sample and
+    asserts the top-level `tier` field agrees. Fixed sample (5 pairs)
+    covers each tier state (verified / labeled / bare / unknown) plus
+    one impostor (was the Circle-USDC-class miss).
+
+    Returns findings-shaped dicts appended to run_walker's failures
+    list on mismatch. Not a route probe — a semantic check.
+    """
+    import httpx
+    try:
+        import json as _json
+        pairs = [
+            ("RLUSD_canonical", "524C555344000000000000000000000000000000",
+             "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"),
+            ("Reaper_RPR", "5250520000000000000000000000000000000000",
+             "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R"),
+            ("Circle_USDC", "5553444300000000000000000000000000000000",
+             "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE"),
+            ("GateHub_USD", "USD", "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq"),
+            ("Impostor_USDT", "5553445400000000000000000000000000000000",
+             "rGbUjUtNVq5M3Un5r4efJqHed4o5P2Usdt"),
+        ]
+        findings = []
+        for label, cur, iss in pairs:
+            try:
+                r = httpx.get(
+                    f"{BASE_URL}/check.json?q={cur}.{iss}",
+                    timeout=TIMEOUT_S,
+                    headers={"User-Agent": "public-route-canary/tier-agree"},
+                    follow_redirects=True,
+                )
+                if r.status_code != 200:
+                    findings.append({
+                        "path": f"tier_agree:{label}",
+                        "reason": f"check.json http_{r.status_code}",
+                        "ok": False, "status": r.status_code, "body_bytes": 0,
+                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    })
+                    continue
+                check_data = r.json().get("data", {})
+                check_tier = check_data.get("tier")
+                check_canonical = check_data.get("tier_canonical")
+                # Assert the same value on both fields (post-2026-09-12 fix)
+                if check_tier != check_canonical and check_canonical is not None:
+                    findings.append({
+                        "path": f"tier_agree:{label}",
+                        "reason": f"tier({check_tier})!=tier_canonical({check_canonical})",
+                        "ok": False, "status": 200, "body_bytes": len(r.content),
+                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    })
+            except Exception as e:
+                findings.append({
+                    "path": f"tier_agree:{label}",
+                    "reason": f"probe_error_{type(e).__name__}",
+                    "ok": False, "status": None, "body_bytes": 0,
+                    "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+        return findings
+    except Exception as e:
+        print(f"[public_route_canary] tier_agreement probes wrapper error: "
+              f"{type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        return []
+
+
+def run_walker() -> tuple[int, int, list[dict], list[dict]]:
+    """Probe every route. Returns (ok_count, fail_count, failing_results, results)."""
     ok = 0
     fail = 0
     failures: list[dict] = []
@@ -240,6 +312,14 @@ def run_walker() -> tuple[int, int, list[dict]]:
         else:
             fail += 1
             failures.append(r)
+    # 2026-09-12 station-audit: cross-page tier-agreement probes.
+    # Runs AFTER route probes — a route-probe failure that also broke
+    # /check.json would surface there first with a clearer message.
+    tier_findings = _tier_agreement_probes()
+    for tf in tier_findings:
+        results.append(tf)
+        fail += 1
+        failures.append(tf)
     return ok, fail, failures, results
 
 
