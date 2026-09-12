@@ -3828,9 +3828,51 @@ def tokens():
         _ticker_client = {}
     ticker_canonical_json = json.dumps(_ticker_client, separators=(",", ":"))
 
+    # 2026-09-11 stretch 2b: rolling Warnings feed side panel. Per-hour
+    # activity rows for warning-flagged tokens over the last 3 hours,
+    # up to 15 rows, most-recent-first. Panel is server-rendered on
+    # page-load only — no polling client, no new endpoint, no new
+    # canary surface. Empty list on any DB error so the panel is simply
+    # absent rather than the page failing.
+    warnings_feed = []
+    if db.pg_available():
+        try:
+            _wf_rows = db.read_token_warnings_recent(hours_back=3, limit=15)
+            _now_hour = int(time.time() // 3600)
+            for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
+                meta = tokens_meta.get((cur, iss)) or {}
+                if meta:
+                    display = meta.get("currency_display") or cur
+                else:
+                    decoded = _decode_currency_hex(cur)
+                    display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
+                _col = _tk_resolve(cur, iss)
+                if _col.get("collision"):
+                    display = _col["display"]
+                hours_ago = max(0, _now_hour - int(hour_bucket))
+                if hours_ago == 0:
+                    age_label = "this hour"
+                elif hours_ago == 1:
+                    age_label = "1h ago"
+                else:
+                    age_label = f"{hours_ago}h ago"
+                flag_label = "ticker" if is_col else "non-standard code"
+                warnings_feed.append({
+                    "currency_raw": cur,
+                    "issuer": iss,
+                    "issuer_short": _short_addr(iss),
+                    "display": display,
+                    "trades": trades,
+                    "age_label": age_label,
+                    "flag_label": flag_label,
+                })
+        except Exception:
+            warnings_feed = []
+
     return render_template(
         "tokens.html",
         tokens=enriched,
+        warnings_feed=warnings_feed,
         earliest_iso=earliest_iso,
         latest_iso=latest_iso,
         total_buckets=total_buckets,

@@ -685,6 +685,55 @@
                                  color: rgba(245,158,11,1);
                                  border-color: rgba(245,158,11,0.55); }
 
+    /* 2026-09-11 stretch 2b: rolling Warnings feed side panel.
+       Server-rendered on page-load; up to 15 rows of recent per-hour
+       activity on warning-flagged tokens. Amber accents match the
+       filter chip so the color story is coherent. */
+    .tron-warnings-feed { margin: 12px 0 18px;
+                          border: 1px solid rgba(245,158,11,0.28);
+                          border-radius: 8px;
+                          background: rgba(245,158,11,0.03); }
+    .tron-warnings-feed-head { display: flex; align-items: baseline;
+                               justify-content: space-between;
+                               padding: 10px 14px 4px;
+                               font-size: 0.82rem;
+                               color: rgba(245,158,11,0.92); }
+    .tron-warnings-feed-head .twf-title { font-weight: 600; }
+    .tron-warnings-feed-head .twf-hint { color: var(--muted);
+                                          font-size: 0.72rem; }
+    .tron-warnings-feed-list { list-style: none; margin: 0;
+                               padding: 4px 0 10px; }
+    .tron-warnings-feed-list li { padding: 4px 14px; }
+    .tron-warnings-feed-list li:hover { background: rgba(245,158,11,0.05); }
+    .tron-warnings-feed-list a { display: grid;
+                                  grid-template-columns: 60px 1fr auto;
+                                  gap: 10px; align-items: center;
+                                  color: var(--text);
+                                  text-decoration: none;
+                                  font-size: 0.82rem; }
+    .tron-warnings-feed-list .twf-age { color: var(--muted);
+                                         font-size: 0.72rem; }
+    .tron-warnings-feed-list .twf-name { display: flex; gap: 8px;
+                                          align-items: baseline;
+                                          flex-wrap: wrap; }
+    .tron-warnings-feed-list .twf-display { font-weight: 500; }
+    .tron-warnings-feed-list .twf-iss { color: var(--dim);
+                                         font-family: var(--mono);
+                                         font-size: 0.72rem; }
+    .tron-warnings-feed-list .twf-flag { color: rgba(245,158,11,0.82);
+                                          font-size: 0.7rem;
+                                          border: 1px solid rgba(245,158,11,0.28);
+                                          border-radius: 4px;
+                                          padding: 1px 5px; }
+    .tron-warnings-feed-list .twf-trades { color: var(--muted);
+                                            font-family: var(--mono);
+                                            font-size: 0.78rem; }
+    @media (max-width: 480px) {
+      .tron-warnings-feed-list a { grid-template-columns: 46px 1fr auto;
+                                    gap: 6px; }
+      .tron-warnings-feed-list .twf-iss { display: none; }
+    }
+
     /* Search input */
     .search-bar { display: flex; align-items: center; gap: 10px;
                   margin: 6px 0 12px; flex-wrap: wrap; }
@@ -1137,6 +1186,35 @@
     <input type="search" id="token-search" placeholder="{{ _('Search token (e.g. RLUSD, SOLO, GiB)…') }}" autocomplete="off" spellcheck="false" />
     <span class="search-stats" id="token-search-stats"></span>
   </div>
+  {# 2026-09-11 stretch 2b: rolling Warnings feed. Server-rendered
+     preview of the last 3 hours of warning-flagged token activity.
+     Panel hidden entirely if the feed is empty (no false positives
+     from "showing empty state" on quiet hours). Row taps route to
+     the token detail page for immediate context. #}
+  {% if warnings_feed %}
+  <aside class="tron-warnings-feed" aria-label="{{ _('Recent warning-flagged token activity') }}">
+    <div class="tron-warnings-feed-head">
+      <span class="twf-title">⚠ {{ _('Recent warnings — last 3 hours') }}</span>
+      <span class="twf-hint">{{ _('per-hour activity on flagged tokens · tap for detail') }}</span>
+    </div>
+    <ul class="tron-warnings-feed-list">
+      {% for w in warnings_feed %}
+      <li>
+        <a href="/token/{{ w.currency_raw }}/{{ w.issuer }}">
+          <span class="twf-age">{{ w.age_label }}</span>
+          <span class="twf-name">
+            <span class="twf-display">{{ w.display }}</span>
+            <span class="twf-iss">{{ w.issuer_short }}</span>
+            <span class="twf-flag">{{ w.flag_label }}</span>
+          </span>
+          <span class="twf-trades">{{ "{:,}".format(w.trades) }} {{ _('trades') }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+
   <div class="filters">
     <a class="pill {% if range_key == '24h' %}active{% endif %}"
        href="/tokens?range=24h">{{ _('last 24h') }}</a>

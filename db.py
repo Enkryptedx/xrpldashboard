@@ -4821,6 +4821,35 @@ def read_token_warning_aggregates(hours_back=24, limit=50):
             return cur.fetchall()
 
 
+def read_token_warnings_recent(hours_back=3, limit=15):
+    """Recent per-hour activity on warning-flagged tokens for the
+    /tokens rolling-warnings side panel (2026-09-11). One row per
+    (hour_bucket, currency, issuer), ordered most-recent-first then
+    trade-count-desc. Includes the warning flag bits so the panel
+    can render "ticker collision" vs "non-standard code" per row.
+    Returns list of tuples (hour_bucket, currency, issuer,
+    trade_count, ticker_collision, non_standard_code).
+    """
+    cutoff = int(time.time() // 3600) - hours_back
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT tv.hour_bucket, tv.currency, tv.issuer, "
+                "       SUM(tv.trade_count) AS trades, "
+                "       BOOL_OR(tf.ticker_collision) AS is_collision, "
+                "       BOOL_OR(tf.non_standard_code) AS is_non_standard "
+                "FROM token_volume tv "
+                "JOIN token_facts tf "
+                "  ON tf.currency_hex = tv.currency AND tf.issuer = tv.issuer "
+                "WHERE tv.hour_bucket >= %s "
+                "  AND (tf.ticker_collision OR tf.non_standard_code) "
+                "GROUP BY tv.hour_bucket, tv.currency, tv.issuer "
+                "ORDER BY tv.hour_bucket DESC, trades DESC LIMIT %s",
+                (cutoff, limit),
+            )
+            return cur.fetchall()
+
+
 def read_token_history(currency, issuer, spark_hours=168):
     """Per-token trade history for /token/<cur>/<iss>. Mirrors the
     SQLite path in token_data._trade_history so the detail page renders
