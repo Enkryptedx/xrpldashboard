@@ -776,6 +776,43 @@
     {{ _('Since 2026-08-07, each daily') }} <code>chain_root</code> {{ _('is additionally anchored on the XRP Ledger from account') }} <code>rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ</code> {{ _('(first anchor tx') }} <code>01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8</code>, {{ _('ledger 106140698). Cadence is weekly, manual today. Memo format v1 (namespace-in-') }}<code>MemoData</code>) {{ _('and verifier rules — including the mandatory') }} <code>.strip()</code> {{ _('on') }} <code>MemoData</code> {{ _('before splitting — are documented at') }} <a href="#signed-snapshots-xrpl-anchor">{{ _('On-ledger anchor of the snapshot chain') }}</a> {{ _('above.') }}
   </p>
 
+  <h3 id="check-receipt-verify">{{ _('Verify a /check.json receipt (independent, no repo access)') }}</h3>
+  <p>
+    {{ _('Every /check.json response includes a proof envelope with a') }} <code>check_v09_signature</code> {{ _('block. An outsider with only the published pubkey can verify that the returned data was signed by us. Recipe:') }}
+  </p>
+  <ol>
+    <li>{{ _('Pin the receipt-signing key. Two mirrored sources:') }}
+      <ul>
+        <li><code>https://xrpldashboard.com/.well-known/snapshots/receipt_pubkey.pem</code> — 32-byte Ed25519 public key, PEM-encoded</li>
+        <li><code>https://xrpldashboard.com/.well-known/snapshots/receipt_pubkey.json</code> — same key, machine-readable, with fingerprint fields</li>
+        <li>{{ _('DNS TXT record') }} <code>_xrpld-receipt-key.xrpldashboard.com</code> {{ _('carries') }} <code>v=ed25519; fp=&lt;short&gt;; pub=&lt;hex&gt;; sep=xrpldashboard/receipt/v1</code>. {{ _('Pinning via DNS TXT means clients that trust their DNSSEC path do not need to trust the web-fetched .pem.') }}</li>
+      </ul>
+      {{ _('Expected fingerprint (short):') }} <code>A4:0F:B1:0A:9D:33:64:03</code>.
+    </li>
+    <li>{{ _('Extract the four sig-block fields from the response at') }} <code>proof.check_v09_signature</code>:
+      <ul>
+        <li><code>canonicalization</code>: always <code>"sorted-keys-no-whitespace-utf8"</code></li>
+        <li><code>domain_separator</code>: always <code>"xrpldashboard/receipt/v1"</code></li>
+        <li><code>canonical_hash_sha256</code>: 64 hex chars — the SHA-256 of the canonical-JSON-encoded response payload (the fields inside <code>data</code>, canonicalized per the rule above)</li>
+        <li><code>sig_ed25519</code>: 128 hex chars — the Ed25519 signature</li>
+      </ul>
+    </li>
+    <li>{{ _('Reconstruct the signed message.') }} {{ _('The message the server signed is exactly:') }}
+      <pre><code>message = domain_separator.encode("utf-8") + b"\x00" + bytes.fromhex(canonical_hash_sha256)</code></pre>
+      {{ _('That is: the UTF-8 bytes of the domain separator, followed by a single 0x00 separator byte, followed by the 32 raw bytes of the SHA-256 hash. The 0x00 is required — it separates the domain-separator string from the hash bytes so no substitution attack across surfaces is possible.') }}
+    </li>
+    <li>{{ _('Verify.') }} {{ _('Any Ed25519 library will do:') }}
+      <pre><code># Python (cryptography package)
+from cryptography.hazmat.primitives.asymmetric import ed25519
+pub = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(pub_hex))
+pub.verify(bytes.fromhex(sig_ed25519), message)</code></pre>
+      {{ _('Verify raises if the signature is invalid; returns silently on success. That is the entire test — sign-once, verify-anywhere.') }}
+    </li>
+  </ol>
+  <p>
+    {{ _('Cross-domain replay is blocked by design. The receipt key and the snapshot-signing key are distinct (') }}<code>A4:0F:B1:0A:9D:33:64:03</code> {{ _('vs') }} <code>7F:D4:F2:F4:D2:57:7C:BE</code>{{ _('), and the domain separator is included IN the signed message. A signature valid for the receipt surface cannot be replayed as a valid signature for the snapshot surface, and vice-versa.') }}
+  </p>
+
   <h3>{{ _('Rate limits') }}</h3>
   <p>
     {{ _('Free for humans and identified agents at reasonable volume. Transparent, no silent throttling. Declared shape:') }}
