@@ -954,19 +954,20 @@
       {{ _('waiting for the next validated token trade on the public XRPL stream…') }}
     </div>
     <div class="tron-grid-tooltip" data-tron-tooltip></div>
-    {# Lanes-by-verification-tier (2026-09-09 redesign). Position encodes
-       attestation strength, NOT category. The LP lane is filtered by
-       default; its label doubles as the show/hide toggle. #}
+    {# Lanes-by-verification-tier (2026-09-09 redesign; 2026-09-11 pools
+       rename). Position encodes attestation strength, NOT category. The
+       former LP lane is now "Pools · liquidity in / out" — it also carries
+       AMMDeposit/AMMWithdraw events (measured 24h: 102 LP-token payments
+       + 36 AMM deposits/withdrawals; showed by default). #}
     <div class="tron-grid-lanes">
       <span class="tron-lane-label" data-lane="verified">{{ _('verified') }}</span>
       <span class="tron-lane-label" data-lane="self">{{ _('self-described') }}</span>
       <span class="tron-lane-label" data-lane="bare">{{ _('bare') }}</span>
       <span class="tron-lane-label" data-lane="warning">{{ _('warning') }}</span>
-      <button type="button" class="tron-lane-label tron-lane-lp" data-lane="lp"
-              data-lp-toggle aria-pressed="false"
-              title="{{ _('LP-token pulses (AMM pool shares) are hidden by default. Toggle to show them.') }}">
-        {{ _('LP') }} <span class="tron-lp-state" data-lp-state>&#9656; {{ _('show') }}</span>
-      </button>
+      <span class="tron-lane-label tron-lane-lp" data-lane="lp"
+            title="{{ _('Liquidity moving into and out of AMM pools — deposits, withdrawals, and pool-share receipts. Not trades.') }}">
+        {{ _('Pools · liquidity in / out') }}
+      </span>
     </div>
   </div>
 
@@ -981,7 +982,7 @@
         <span class="tron-leg tron-leg--self"><i></i>{{ _('self-described') }}</span>
         <span class="tron-leg tron-leg--bare"><i></i>{{ _('bare') }}</span>
         <span class="tron-leg tron-leg--warning"><i></i>{{ _('warning — ticker collision or non-standard code') }}</span>
-        <span class="tron-leg tron-leg--lp"><i></i>{{ _('LP — pool-share tokens (hidden by default)') }}</span>
+        <span class="tron-leg tron-leg--lp"><i></i>{{ _('Pools · liquidity in / out (AMM deposits + withdrawals + pool-share receipts)') }}</span>
       </div>
     </div>
     <div class="tron-legend-block">
@@ -1236,9 +1237,11 @@
     // distribution regardless of what's currently drawn.
     var laneCounts = [0, 0, 0, 0, 0];
     var laneCountsTotal = 0;
-    var lpVisible = false; // LP filtered by default; toggle flips this.
+    // 2026-09-11: Pools lane shown by default (previously LP-only was hidden
+    // behind a toggle). The lane carries AMM deposits/withdrawals + LP-token
+    // payments — 24h measured traffic ~138 events, sparse but legible.
     var laneReadoutEl = document.querySelector('[data-lane-readout]');
-    var LANE_READOUT_LABELS = ['verified', 'self', 'bare', 'warning', 'LP'];
+    var LANE_READOUT_LABELS = ['verified', 'self', 'bare', 'warning', 'pools'];
     function updateLaneReadout() {
       if (!laneReadoutEl) return;
       var parts = [];
@@ -1415,6 +1418,11 @@
     //   5. self-described attestation             → SELF
     //   6. everything else (terminal default)     → BARE
     function tierOf(leg, lbl) {
+      // 2026-09-11 pools rename: AMM deposit/withdraw events route to the
+      // Pools lane BEFORE the LP-token check so a USD/RLUSD-side liquidity
+      // move doesn't fall through to its underlying asset's tier lane.
+      // LP-token payments still qualify as pool activity → same lane.
+      if (leg.kind === 'amm+' || leg.kind === 'amm-') return LANE.LP;
       if (isLpToken(leg.currency, lbl)) return LANE.LP;
       var att = lbl ? lbl.attestation : null;
       if (att === 'verified') return LANE.VERIFIED;
@@ -1575,10 +1583,10 @@
         laneCounts[lane]++;
         laneCountsTotal++;
         updateLaneReadout();
-        // LP filtered by default: routed + counted above, drawn only when
-        // the viewer toggles LP on. This is a render filter, not a lane
-        // gap — the pulse still got its lane deterministically.
-        if (lane === LANE.LP && !lpVisible) return;
+        // 2026-09-11 pools rename: the former LP lane is now the Pools
+        // lane. Shown by default (toggle removed) since the lane carries
+        // AMM liquidity moves the viewer wants to see, not just sparse
+        // LP-token payments.
         var sym;
         if (lbl) {
           sym = lbl.display;
@@ -1871,21 +1879,9 @@
       });
     }
 
-    // LP lane toggle — the LP label in the lane strip flips lpVisible.
-    // Default OFF (LP pulses counted but not drawn). No page reload; the
-    // next LP pulse simply starts rendering (or stops).
-    var lpToggleBtn = document.querySelector('[data-lp-toggle]');
-    var lpStateEl   = document.querySelector('[data-lp-state]');
-    if (lpToggleBtn) {
-      lpToggleBtn.addEventListener('click', function () {
-        lpVisible = !lpVisible;
-        lpToggleBtn.setAttribute('aria-pressed', lpVisible ? 'true' : 'false');
-        lpToggleBtn.classList.toggle('is-on', lpVisible);
-        if (lpStateEl) {
-          lpStateEl.innerHTML = lpVisible ? '▾ hide' : '▸ show';
-        }
-      });
-    }
+    // 2026-09-11 pools rename: LP toggle removed — the Pools lane is
+    // shown by default. The template no longer emits [data-lp-toggle]
+    // or [data-lp-state] elements; nothing to bind.
 
     var ws = null;
     var reconnectDelay = 1500;
