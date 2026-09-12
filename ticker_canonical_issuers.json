@@ -76,19 +76,29 @@
     "note": "not native Litecoin"
   },
   "DOGE": {
-    "brand": "Dogecoin",
+    "brand": "Dogecoin (meme)",
     "canonical_issuers": [],
-    "note": "not native Dogecoin"
+    "meme_name": true,
+    "note": "meme name — XRPL DOGE tokens reuse the name, not a backing claim",
+    "meme_name_note": "2026-09-12 (Charlie ruling): collision rule narrowed to identity-bearing assets only (stablecoins, wrapped/bridged majors, brand/exchange names). Memecoin name reuse is expected practice on XRPL and deceives no one about backing. Meme-name matches get category=memecoin and no warning; kept internally as meme-name-reuse curator-queue tag."
   },
   "SHIB": {
-    "brand": "Shiba Inu",
+    "brand": "Shiba Inu (meme)",
     "canonical_issuers": [],
-    "note": "not the mainstream SHIB"
+    "meme_name": true,
+    "note": "meme name — XRPL SHIB tokens reuse the name, not a backing claim"
   },
   "PEPE": {
-    "brand": "Pepe (mainstream memecoin)",
+    "brand": "Pepe (meme)",
     "canonical_issuers": [],
-    "note": "not the mainstream PEPE"
+    "meme_name": true,
+    "note": "meme name — XRPL PEPE tokens reuse the name, not a backing claim"
+  },
+  "BONK": {
+    "brand": "Bonk (meme)",
+    "canonical_issuers": [],
+    "meme_name": true,
+    "note": "meme name — XRPL BONK tokens reuse the name, not a backing claim"
   },
   "TRX": {
     "brand": "Tron",
@@ -129,6 +139,16 @@
       "tier_default": "self-described",
       "citation": "AccountRoot Domain field = 'bitstamp.net' (issuer_facts snapshot 2026-09-08); long-standing public address (see https://xrpscan.com/account/rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B). Bitstamp deprecated new XRPL-side issuance around 2018 but the outstanding tokens remain tradeable; USD IOU shows 10,962 trades in trailing 30d, BTC shows 5,487 — clearly still-in-use custodial-gateway rails. Two-way toml proof pending — add when the walker runs against this issuer.",
       "note": "Historic gateway. USD + EUR are fiat-backed custodial rails; BTC + ETH are the gateway's issuance of those tickers (not native, not collisions in the impostor sense)."
+    },
+
+    "ripplefox": {
+      "name": "RippleFox — long-standing XRPL/Stellar custodial gateway",
+      "issuers": ["rKiCet8SdvWxPXnAgYarFUXMh1zCPz432Y"],
+      "tickers": ["XLM", "CNY", "ETH", "USD", "FMM", "ULT"],
+      "category": "stablecoin_gateway",
+      "tier_default": "self-described",
+      "citation": "AccountRoot Domain field = 'ripplefox.com' (issuer_facts snapshot 2026-09-06); site content at https://ripplefox.com/ self-describes as an XRPL and Stellar gateway operating since 2014 (\"始于2014年\"). Long-standing Chinese-language gateway (well-known 'RippleFox anchor'). No canonical /.well-known/xrp-ledger.toml at this domain — TOML absent, but on-chain Domain match + 11-year historical operation + real gateway site are sufficient evidence to lift the ticker_collision flag from XLM/ETH matches (which would otherwise render as 'issuer not on our verified list'). Two-way toml proof cannot be attempted (404 at /.well-known/); walker will not elevate to `verified`. Verdict per Charlie's 2026-09-12 audit: legitimate custodial/bridged issuer, neutral tier.",
+      "note": "Custodial gateway issuing XRPL representations of XLM (native Stellar), CNY, and other assets. XLM on this issuer is a Ripplefox custodial IOU, not native Stellar — same class as GateHub-BTC or Bitstamp-USD: real gateway, real backing (custodial), no scam. Do NOT set ticker_collision=TRUE for these (issuer, ticker) pairs."
     },
 
     "gatehub": {

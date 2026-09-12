@@ -72,6 +72,13 @@ def _load_ticker_map() -> dict:
                     "audited": (bool(v.get("canonical_issuers"))
                                 or bool(v.get("no_official_xrpl_issuer"))),
                     "no_official_xrpl_issuer": bool(v.get("no_official_xrpl_issuer")),
+                    # 2026-09-12 memecoin narrowing (Charlie ruling):
+                    # meme-name entries (PEPE, DOGE, SHIB, BONK, …) are
+                    # NOT identity-bearing assets. Name reuse is expected
+                    # practice for XRPL memecoins and deceives no one
+                    # about backing. resolve_display below skips the
+                    # collision path entirely for meme_name=true entries.
+                    "meme_name": bool(v.get("meme_name")),
                 }
                 for k, v in raw.items()
                 if isinstance(v, dict) and k != "bridges" and k != "gateways" and not k.startswith("_")
@@ -438,6 +445,16 @@ def resolve_display(
     # Overrides collision path — see ticker_canonical_issuers.json
     # § bridges and § gateways.
     if _is_bridge_issued(issuer, upper):
+        return result
+
+    # 2026-09-12 memecoin narrowing (Charlie ruling): meme-name
+    # entries (PEPE, DOGE, SHIB, BONK, …) are NOT identity-bearing
+    # assets. Any XRPL token with this ticker is a memecoin reusing
+    # the name, which memecoins do constantly and which deceives no
+    # one about backing. Skip the collision path entirely — the
+    # curator queue keeps a "meme-name-reuse" tag internally for
+    # awareness, but no public warning renders.
+    if entry.get("meme_name"):
         return result
 
     # 2026-09-11 Circle-USDC ruling — three-state wording.
