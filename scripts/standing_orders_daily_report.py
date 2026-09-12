@@ -172,17 +172,40 @@ def line_chain_health(cur, ts_s_yday, ts_e_yday) -> str:
                 reg_verify = "✓"
         except Exception:
             reg_verify = "?"
-    # Receipt verify — sample /check.json call sig_status
-    receipt_verify = "?"
+    # Receipt verify — sample /check.json call, confirm the response
+    # carries an ed25519 signature block with a non-empty sig field.
+    # 2026-09-12: prior code looked for 'sig_status' == 'signed', a
+    # field that doesn't exist in the response schema — it never
+    # resolved to ✓ and, on any exception, stayed at "?". Charlie
+    # ruling: receipt check must resolve ✓ or ✗, never "?". Any
+    # failure path now downgrades to ✗ with the reason captured.
+    receipt_verify = "✗"
+    receipt_reason = ""
     try:
-        import httpx
-        resp = httpx.get("https://xrpldashboard.com/check.json?q=rrrrrrrrrrrrrrrrrrrrrhoLvTp",
-                         timeout=15)
-        if resp.status_code == 200:
-            sig = resp.json().get('proof', {}).get('check_v09_signature', {})
-            receipt_verify = "✓" if sig.get('sig_status') == 'signed' else "✗"
-    except Exception:
-        pass
+        import urllib.request, json as _json, ssl, certifi
+        # 2026-09-12: same certifi-backed SSL context the two-way-toml
+        # walker uses. Prior httpx-based code raised SSL cert-verify
+        # errors on the launchd wrapper and the exception silently
+        # left receipt_verify at "?".
+        _ctx = ssl.create_default_context(cafile=certifi.where())
+        req = urllib.request.Request(
+            "https://xrpldashboard.com/check.json?q=rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+            headers={"User-Agent": "xrpldashboard-standing-orders/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=15, context=_ctx) as resp:
+            code = resp.status
+            body = resp.read()
+        if code != 200:
+            receipt_reason =f"http_{code}"
+        else:
+            parsed = _json.loads(body)
+            sig = parsed.get('proof', {}).get('check_v09_signature', {})
+            if sig.get('sig_ed25519') and sig.get('canonical_hash_sha256'):
+                receipt_verify = "✓"
+            else:
+                receipt_reason ="no_sig_ed25519"
+    except Exception as e:
+        receipt_reason =f"{type(e).__name__}"
     # Stream 24h restarts + watchdog subset from walker_health msg
     stream_msg = "?"
     try:
@@ -197,7 +220,9 @@ def line_chain_health(cur, ts_s_yday, ts_e_yday) -> str:
                 stream_msg = f"restarts={m24.group(1)} (wd={m24.group(2)})"
     except Exception:
         pass
-    return f"5. Chain: snapshot {snap_verify}, registry {reg_verify}, receipt {receipt_verify}, stream 24h {stream_msg}."
+    receipt_suffix = f" ({receipt_reason})" if (receipt_verify == "✗" and receipt_reason) else ""
+    return (f"5. Chain: snapshot {snap_verify}, registry {reg_verify}, "
+            f"receipt {receipt_verify}{receipt_suffix}, stream 24h {stream_msg}.")
 
 
 def line_5xx_summary(cur, yesterday) -> str:
