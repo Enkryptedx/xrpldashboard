@@ -422,7 +422,53 @@ def fetch_token_data(currency, issuer):
         "tier_source": _tier_rec.source,
         "tier_citation": _tier_rec.citation_url,
         "tier_observed_at": _tier_rec.observed_at,
+        # 2026-09-11 NO-GO fix: raw external .toml links removed from
+        # the token page (Charlie: "A scam-checking site must never
+        # send people to a download"). Fallback tonight = text-only
+        # proof line derived from tier + source + observed_at.
+        # Post-freeze upgrade will render the two-way match inline
+        # with a plain-text view of the cached TOML.
+        "tier_proof_line": _format_tier_proof_line(_tier_rec),
     }
+
+
+def _format_tier_proof_line(rec):
+    """Text-only proof/source line for the /token page hero.
+    Replaces the pre-freeze raw-toml citation link. Format:
+        verified + toml source        → "Proof: two-way toml match — last checked YYYY-MM-DD HH:MM UTC"
+        verified + curator authority  → "Proof: curator authority two-way match — last checked ..."
+        self-described                → "Self-report only — last checked ..."
+        labeled (curator)             → "Curator label — last checked ..."
+        anything else                 → "Last checked ..." or "" if no observed_at
+    """
+    if rec is None:
+        return ""
+    tier = getattr(rec, "tier", None)
+    source = getattr(rec, "source", None) or ""
+    obs = getattr(rec, "observed_at", None)
+    when = ""
+    if obs:
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(obs.replace("Z", "+00:00"))
+            when = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        except Exception:
+            when = ""
+    when_suffix = f" — last checked {when}" if when else ""
+    if tier == "verified":
+        if "two_way_toml" in source or "two_way_proof" in source:
+            head = ("Proof: two-way toml match" if source.startswith("two_way")
+                    else "Proof: curator authority two-way match")
+        else:
+            head = "Proof: verified"
+        return head + when_suffix
+    if tier == "self-described":
+        return "Self-report only" + when_suffix
+    if tier == "labeled":
+        return "Curator label" + when_suffix
+    if when:
+        return "Last checked " + when
+    return ""
 
 
 def fetch_token_data_cached(currency, issuer, ttl=None):

@@ -129,10 +129,9 @@
     .tier-provenance .tier-source {
       color: var(--dim); font-family: var(--mono);
     }
-    .tier-provenance .tier-citation {
-      color: var(--cyan, #22d3ee); text-decoration: none;
+    .tier-provenance .tier-proof {
+      color: var(--dim); font-style: italic;
     }
-    .tier-provenance .tier-citation:hover { text-decoration: underline; }
     .hero-tag { display: inline-flex; align-items: center; gap: 0.45em;
                 font-size: var(--fs-2xs); color: var(--cyan);
                 text-transform: uppercase; letter-spacing: 0.06em;
@@ -285,14 +284,22 @@
               title="{% if data.tier == 'verified' %}{{ _('Verified = the issuer proved control of its domain via two-way toml match. Not an endorsement.') }}{% elif data.tier == 'self-described' %}{{ _('Self-described = publishes an XRPL TOML but not in the canonical shape — treated as self-report, never verification.') }}{% elif data.tier == 'labeled' %}{{ _('Labeled = we labeled it, citing a source; the issuer hasn&apos;t proven control.') }}{% elif data.tier == 'bare' %}{{ _('Bare = no TOML we could verify — either domain-only or fully anonymous.') }}{% endif %}">
           {{ data.tier_display }}
         </span>
-        {% if data.tier_source or data.tier_citation %}
+        {# 2026-09-11 NO-GO fix: raw external .toml links removed.
+           Prior UI ran <a href="{{ data.tier_citation }}"> pointing to
+           a raw .toml on the issuer's domain, which some browsers
+           render as a download prompt (Charlie: one visitor got the
+           prompt; a scam-checking site must never send users to a
+           download). Fallback = text-only proof line. Post-freeze:
+           inline two-way match rendered from a cached copy served
+           text/plain from our own domain. #}
+        {% if data.tier_source or data.tier_proof_line %}
         <span class="tier-provenance">
           {% if data.tier_source %}
             {{ _('source:') }} <span class="tier-source">{{ data.tier_source }}</span>
           {% endif %}
-          {% if data.tier_citation %}
+          {% if data.tier_proof_line %}
             {% if data.tier_source %} · {% endif %}
-            <a href="{{ data.tier_citation }}" target="_blank" rel="noopener noreferrer" class="tier-citation">{{ _('citation') }} ↗</a>
+            <span class="tier-proof">{{ data.tier_proof_line }}</span>
           {% endif %}
         </span>
         {% endif %}

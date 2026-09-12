@@ -180,8 +180,12 @@
   <div class="callout cyan">
     <p style="margin: 0;">
       <strong>{{ _('Want to see a real one?') }}</strong>
+      {# 2026-09-11 NO-GO fix: raw external xrp-ledger.toml link
+         removed (Ripple's server returns application/toml MIME which
+         triggers browser download prompts on some machines).
+         Replaced with a bare code reference. #}
       {% trans -%}
-      Ripple publishes a production TOML at <a href="https://ripple.com/.well-known/xrp-ledger.toml" target="_blank" rel="noopener noreferrer">ripple.com/.well-known/xrp-ledger.toml</a>. It uses every canonical section (<code>[METADATA]</code>, <code>[[VALIDATORS]]</code>, <code>[[SERVERS]]</code>, <code>[[ACCOUNTS]]</code>, <code>[[PRINCIPALS]]</code>) and also includes two non-canonical custom blocks of Ripple's own (<code>[[ISSUERS]]</code> and <code>[[TOKENS]]</code>) for richer asset metadata. Those custom blocks are tolerated by the spec but not parsed by general-purpose XRPL tooling — for portability, stick to the canonical schema in your own TOML.
+      Ripple publishes a production TOML at <code>ripple.com/.well-known/xrp-ledger.toml</code>. It uses every canonical section (<code>[METADATA]</code>, <code>[[VALIDATORS]]</code>, <code>[[SERVERS]]</code>, <code>[[ACCOUNTS]]</code>, <code>[[PRINCIPALS]]</code>) and also includes two non-canonical custom blocks of Ripple's own (<code>[[ISSUERS]]</code> and <code>[[TOKENS]]</code>) for richer asset metadata. Those custom blocks are tolerated by the spec but not parsed by general-purpose XRPL tooling — for portability, stick to the canonical schema in your own TOML.
       {%- endtrans %}
     </p>
   </div>

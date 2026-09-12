@@ -383,9 +383,15 @@
     </div>
 
     <div class="links" style="margin-top: 1em; padding-top: 0.8em; border-top: 1px solid var(--border);">
-      <a class="link-pill" href="https://ripple.com/.well-known/xrp-ledger.toml" target="_blank" rel="noopener">
-        xrp-ledger.toml ↗
-      </a>
+      {# 2026-09-11 NO-GO fix: raw external xrp-ledger.toml link removed.
+         Ripple's server returns `content-type: application/toml`, a non-
+         browser-native MIME that triggers download prompts in some
+         browsers (Charlie's report). Replaced with plain text pointing
+         at the canonical location; post-freeze upgrade will serve a
+         cached plain-text view from our own domain. #}
+      <span class="link-pill" style="cursor: default;">
+        xrp-ledger.toml (canonical, at ripple.com/.well-known/)
+      </span>
       <a class="link-pill" href="https://ripple.com/insights/q1-2024-xrp-markets-report/" target="_blank" rel="noopener">
         {{ _('Ripple escrow context') }} ↗
       </a>
