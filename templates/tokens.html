@@ -674,6 +674,16 @@
                   text-decoration: none; }
     .pill.active { background: rgba(34,211,238,0.12); color: var(--cyan);
                    border-color: rgba(34,211,238,0.4); }
+    /* 2026-09-11: warnings chip carries amber styling (distinct from
+       the neutral range chips) so a warning row-list is legibly
+       separate from the normal 24h/7d/all ranking. */
+    .pill.pill--warning { color: rgba(245,158,11,0.92);
+                          border-color: rgba(245,158,11,0.30); }
+    .pill.pill--warning:hover { color: rgba(245,158,11,1);
+                                border-color: rgba(245,158,11,0.55); }
+    .pill.pill--warning.active { background: rgba(245,158,11,0.12);
+                                 color: rgba(245,158,11,1);
+                                 border-color: rgba(245,158,11,0.55); }
 
     /* Search input */
     .search-bar { display: flex; align-items: center; gap: 10px;
@@ -1134,6 +1144,13 @@
        href="/tokens?range=7d">{{ _('last 7d') }}</a>
     <a class="pill {% if range_key == 'all' %}active{% endif %}"
        href="/tokens?range=all">{{ _('all') }}</a>
+    {# 2026-09-11: Warnings filter chip. Server-side filter via
+       token_facts.ticker_collision OR non_standard_code, ranked by
+       24h trades. Amber styling so it visually reads as "flagged" —
+       distinct from the neutral range chips. #}
+    <a class="pill pill--warning {% if range_key == 'warnings' %}active{% endif %}"
+       href="/tokens?range=warnings"
+       title="{{ _('Show only tokens flagged with a ticker collision (borrowing a well-known name on a non-canonical issuer) or a non-standard currency code we can&apos;t decode. Ranked by 24h trades.') }}">⚠ {{ _('warnings') }}</a>
     <span class="filters-explainer">{{ explainer(
       "row-meaning",
       _("What the row numbers mean"),

@@ -4790,6 +4790,37 @@ def read_token_volume_aggregates(hours_back=None, limit=50):
             return cur.fetchall()
 
 
+def read_token_warning_aggregates(hours_back=24, limit=50):
+    """Aggregate token_volume rows for the /tokens?range=warnings filter
+    (2026-09-11). Joins token_volume × token_facts, keeps only rows where
+    the underlying token carries a warning flag (`ticker_collision` OR
+    `non_standard_code`), ranks by 24h trades. hours_back = 24 by default
+    per Charlie's spec — the warnings filter is fixed-window; range chips
+    (24h/7d/all) reset when the user switches back to trade-count sort.
+
+    Returns list of tuples (currency, issuer, total_trades, hours_active)
+    matching read_token_volume_aggregates's shape so the template loop
+    stays unchanged.
+    """
+    cutoff = int(time.time() // 3600) - hours_back
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT tv.currency, tv.issuer, "
+                "       SUM(tv.trade_count) AS trades, "
+                "       COUNT(*) AS hours_active "
+                "FROM token_volume tv "
+                "JOIN token_facts tf "
+                "  ON tf.currency_hex = tv.currency AND tf.issuer = tv.issuer "
+                "WHERE tv.hour_bucket >= %s "
+                "  AND (tf.ticker_collision OR tf.non_standard_code) "
+                "GROUP BY tv.currency, tv.issuer "
+                "ORDER BY trades DESC LIMIT %s",
+                (cutoff, limit),
+            )
+            return cur.fetchall()
+
+
 def read_token_history(currency, issuer, spark_hours=168):
     """Per-token trade history for /token/<cur>/<iss>. Mirrors the
     SQLite path in token_data._trade_history so the detail page renders

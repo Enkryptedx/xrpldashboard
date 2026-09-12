@@ -3365,7 +3365,12 @@ def tokens():
     token_prices.py exists — for now we rank on raw trade count, which is
     already a useful "what's people are touching" signal.
     """
-    valid_ranges = {"24h": 24, "7d": 24 * 7, "all": None}
+    # 2026-09-11: added the "warnings" filter chip beside 24h/7d/all.
+    # When active, we swap the query to the token_volume × token_facts
+    # join in db.read_token_warning_aggregates (ticker_collision OR
+    # non_standard_code, ranked by 24h trades). The template treats
+    # `range_key` as the chip's active state — same round-trip UX.
+    valid_ranges = {"24h": 24, "7d": 24 * 7, "all": None, "warnings": 24}
     range_key = (request.args.get("range") or "24h").strip().lower()
     if range_key not in valid_ranges:
         range_key = "24h"
@@ -3379,9 +3384,14 @@ def tokens():
     # Prefer Postgres (worker dual-writes); fall back to local volumes.db.
     if db.pg_available():
         try:
-            rows = db.read_token_volume_aggregates(
-                hours_back=hours_back, limit=50
-            )
+            if range_key == "warnings":
+                rows = db.read_token_warning_aggregates(
+                    hours_back=24, limit=50
+                )
+            else:
+                rows = db.read_token_volume_aggregates(
+                    hours_back=hours_back, limit=50
+                )
             stats = db.read_token_volume_bucket_stats()
             earliest_bucket, latest_bucket, total_buckets = (
                 stats[0], stats[1], stats[2]
