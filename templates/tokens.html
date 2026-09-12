@@ -379,6 +379,48 @@
       border: 1px solid rgba(148,163,184,0.20);
     }
 
+    /* 2026-09-11 legibility: intro sentence above the visual.
+       Always visible; wraps naturally on phone width. */
+    .tron-intro {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin: 0 0 12px;
+      max-width: 68ch;
+    }
+    /* 2026-09-11 legibility: color legend beside/beneath the visual.
+       One line per color; grey explicitly labeled "no category". */
+    .tron-color-legend {
+      display: flex; flex-wrap: wrap;
+      gap: 8px 14px;
+      padding: 8px 12px;
+      margin: 8px 0 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .tron-color-legend .tron-cl-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap;
+    }
+    .tron-color-legend .tron-cl-dot {
+      display: inline-block; width: 10px; height: 10px;
+      border-radius: 999px; flex: 0 0 auto;
+    }
+    .tron-cl-dot--stablecoin { background: rgb(34,197,94); }
+    .tron-cl-dot--wrapped    { background: rgb(245,158,11); }
+    .tron-cl-dot--utility    { background: rgb(34,211,238); }
+    .tron-cl-dot--memecoin   { background: rgb(236,72,153); }
+    .tron-cl-dot--rwa        { background: rgb(59,130,246); }
+    .tron-cl-dot--unlabeled  { background: rgb(140,150,170); }
+    @media (max-width: 480px) {
+      .tron-color-legend { gap: 6px 10px; font-size: 0.72rem; padding: 6px 10px; }
+      .tron-color-legend .tron-cl-dot { width: 8px; height: 8px; }
+      .tron-intro { font-size: 0.82rem; }
+    }
+
     /* Live trade Tron grid. Perspective floor of glowing grid lines
        receding to a vanishing point. Each validated trade fires a colored
        pulse that travels from the horizon down its category's lane toward
@@ -948,6 +990,14 @@
   </section>
   {% endif %}
 
+  {# 2026-09-11 legibility: one sentence above the visual, always
+     visible. Explains the two-axis design in plain English before the
+     viewer sees the canvas — lane = who the issuer is, color = what
+     the token claims to be. #}
+  <p class="tron-intro">
+    {{ _('Each token falls in a lane by how well its issuer has proven who they are — from fully verified down to no claim at all. Its color shows what the token says it is.') }}
+  </p>
+
   <div class="tron-grid" data-tron-grid aria-label="{{ _('Live token trade grid') }}">
     <canvas class="tron-grid-canvas" data-tron-canvas></canvas>
     <div class="tron-grid-empty" data-tron-empty>
@@ -955,20 +1005,35 @@
     </div>
     <div class="tron-grid-tooltip" data-tron-tooltip></div>
     {# Lanes-by-verification-tier (2026-09-09 redesign; 2026-09-11 pools
-       rename). Position encodes attestation strength, NOT category. The
-       former LP lane is now "Pools · liquidity in / out" — it also carries
-       AMMDeposit/AMMWithdraw events (measured 24h: 102 LP-token payments
-       + 36 AMM deposits/withdrawals; showed by default). #}
+       rename + tier tooltips). Position encodes attestation strength,
+       NOT category. Every lane label carries a title= tooltip with the
+       plain-English definition (hover on desktop, tap on mobile). #}
     <div class="tron-grid-lanes">
-      <span class="tron-lane-label" data-lane="verified">{{ _('verified') }}</span>
-      <span class="tron-lane-label" data-lane="self">{{ _('self-described') }}</span>
-      <span class="tron-lane-label" data-lane="bare">{{ _('bare') }}</span>
-      <span class="tron-lane-label" data-lane="warning">{{ _('warning') }}</span>
+      <span class="tron-lane-label" data-lane="verified"
+            title="{{ _('Verified = the issuer proved control of its domain via two-way toml match — not an endorsement.') }}">{{ _('verified') }}</span>
+      <span class="tron-lane-label" data-lane="self"
+            title="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.') }}">{{ _('self-described') }}</span>
+      <span class="tron-lane-label" data-lane="bare"
+            title="{{ _('Bare = no claim anywhere.') }}">{{ _('bare') }}</span>
+      <span class="tron-lane-label" data-lane="warning"
+            title="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.') }}">{{ _('warning') }}</span>
       <span class="tron-lane-label tron-lane-lp" data-lane="lp"
             title="{{ _('Liquidity moving into and out of AMM pools — deposits, withdrawals, and pool-share receipts. Not trades.') }}">
         {{ _('Pools · liquidity in / out') }}
       </span>
     </div>
+  </div>
+  {# 2026-09-11 legibility: color legend moved up beside/beneath the
+     visual (was below in the old "tron-legend" block, which is now
+     the deep-dive footer). One line per color; grey explicitly
+     labeled "no category assigned yet." #}
+  <div class="tron-color-legend" aria-label="{{ _('Coin color meaning') }}">
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--stablecoin"></i>{{ _('green = stablecoin') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--wrapped"></i>{{ _('amber = wrapped') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--utility"></i>{{ _('cyan = utility') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--memecoin"></i>{{ _('pink = memecoin') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--rwa"></i>{{ _('blue = real-world asset') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--unlabeled"></i>{{ _('grey = no category assigned yet') }}</span>
   </div>
 
   {# On-page legend (Charlie explicit): lanes = verification tier;
