@@ -3820,9 +3820,21 @@ def tokens():
     try:
         from token_naming import _load_ticker_map as _load_tm
         for t, entry in _load_tm().items():
+            # 2026-09-11 Circle-USDC ruling: propagate the three-state
+            # audited flag AND rewrite `note` to neutral when unaudited,
+            # so the falling-visual client-side JS renders the same
+            # wording as the server (see token_naming.resolve_display).
+            canonical = sorted(entry.get("canonical_issuers") or [])
+            audited = entry.get("audited", bool(canonical))
+            if audited:
+                note = entry.get("note") or f"not {t}"
+            else:
+                brand_label = entry.get("brand") or t
+                note = f"issuer not on our verified list for {brand_label}"
             _ticker_client[t] = {
-                "note": entry.get("note") or f"not {t}",
-                "canonical_issuers": sorted(entry.get("canonical_issuers") or []),
+                "note": note,
+                "canonical_issuers": canonical,
+                "audited": audited,
             }
     except Exception:
         _ticker_client = {}
