@@ -733,6 +733,28 @@
                                   text-decoration: none; }
     .tron-warnings-feed-more a:hover { color: rgba(245,158,11,1);
                                         text-decoration: underline; }
+    /* 2026-09-12 expand-in-place toggle. Native <details>/<summary>
+       so mobile taps expand the panel without navigation. Big-touch
+       tap target (min-height 40px) + amber accent matching the feed's
+       color story. */
+    .tron-warnings-feed-details { border-top: 1px dashed rgba(245,158,11,0.18); }
+    .tron-warnings-feed-details > summary {
+      list-style: none; cursor: pointer;
+      padding: 12px 14px; min-height: 40px;
+      display: flex; align-items: center;
+      color: rgba(245,158,11,0.85);
+      font-size: 0.82rem; font-weight: 500;
+      -webkit-tap-highlight-color: rgba(245,158,11,0.15);
+      user-select: none;
+    }
+    .tron-warnings-feed-details > summary::-webkit-details-marker { display: none; }
+    .tron-warnings-feed-details > summary::marker { content: ""; }
+    .tron-warnings-feed-details > summary:hover { color: rgba(245,158,11,1); background: rgba(245,158,11,0.05); }
+    .tron-warnings-feed-details > summary:focus-visible { outline: 2px solid rgba(245,158,11,0.5); outline-offset: -2px; }
+    .tron-warnings-feed-details > summary .twf-toggle-open { display: none; }
+    .tron-warnings-feed-details[open] > summary .twf-toggle-closed { display: none; }
+    .tron-warnings-feed-details[open] > summary .twf-toggle-open { display: inline; }
+    .tron-warnings-feed-list--more { border-top: 1px solid rgba(245,158,11,0.10); }
     @media (max-width: 480px) {
       .tron-warnings-feed-list a { grid-template-columns: 46px 1fr auto;
                                     gap: 6px; }
@@ -1202,11 +1224,13 @@
       <span class="twf-title">⚠ {{ _('Recent warnings — last 3 hours') }}</span>
       <span class="twf-hint">{{ _('per-hour activity on flagged tokens · tap for detail') }}</span>
     </div>
+    {# 2026-09-11 size cap + 2026-09-12 expand-in-place (Charlie ruling):
+       show the 5 freshest rows always; wrap rows 6+ in a <details>/
+       <summary> block so tapping "show all N ↓" expands the panel in
+       place rather than navigating away. Native HTML5 — no JS,
+       tap-friendly on mobile, keyboard-accessible, degrades to
+       always-open when JS is disabled. #}
     <ul class="tron-warnings-feed-list">
-      {# 2026-09-11 size cap: show only the 5 freshest per-hour rows in the
-         feed panel; if the underlying query returned more, expose a
-         "show all N →" link to /tokens?range=warnings. Keeps the panel
-         legible; the full flagged-token list lives one click away. #}
       {% for w in warnings_feed[:5] %}
       <li>
         <a href="/token/{{ w.currency_raw }}/{{ w.issuer }}">
@@ -1222,9 +1246,27 @@
       {% endfor %}
     </ul>
     {% if warnings_feed|length > 5 %}
-    <div class="tron-warnings-feed-more">
-      <a href="/tokens?range=warnings">{{ _('show all') }} {{ warnings_feed|length }} →</a>
-    </div>
+    <details class="tron-warnings-feed-details">
+      <summary class="tron-warnings-feed-toggle">
+        <span class="twf-toggle-closed">{{ _('show all') }} {{ warnings_feed|length }} ↓</span>
+        <span class="twf-toggle-open">{{ _('show fewer') }} ↑</span>
+      </summary>
+      <ul class="tron-warnings-feed-list tron-warnings-feed-list--more">
+        {% for w in warnings_feed[5:] %}
+        <li>
+          <a href="/token/{{ w.currency_raw }}/{{ w.issuer }}">
+            <span class="twf-age">{{ w.age_label }}</span>
+            <span class="twf-name">
+              <span class="twf-display">{{ w.display }}</span>
+              <span class="twf-iss">{{ w.issuer_short }}</span>
+              <span class="twf-flag">{{ w.flag_label }}</span>
+            </span>
+            <span class="twf-trades">{{ "{:,}".format(w.trades) }} {{ _('trades') }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
     {% endif %}
   </aside>
   {% endif %}
