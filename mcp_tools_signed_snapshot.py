@@ -78,18 +78,67 @@ def _snapshot_path(date_str: str) -> str:
 
 
 def _load_signed_snapshot(date_str: str) -> dict:
-    """Read the on-disk signed snapshot for `date_str`. Raises when the
-    file is absent or malformed — absence IS the signal, not a stub."""
+    """Read the signed snapshot for `date_str`.
+
+    Order of sources (2026-09-12 station-audit fix — the MCP server on
+    the Lenovo box does not carry the signed_snapshots/ files the Render
+    app writes to disk; historically the tool 100% failed there. Fetch
+    from the published .well-known URL as the authoritative source
+    instead. Local disk still works as a last-resort development
+    fallback so `pytest`-style local runs don't need network.):
+
+      1. https://xrpldashboard.com/.well-known/snapshots/<date>.json
+         (published; served-from-disk on Render OR PG-mirror when the
+         PG-first-read rewrite lands post-freeze)
+      2. Local signed_snapshots/<date>.json (dev-mode fallback)
+
+    Raises when neither source has it — absence IS the signal.
+    """
     if not date_str or not _DATE_RE.match(date_str):
         raise RuntimeError(
             f"get_signed_snapshot: date_str must be ISO YYYY-MM-DD, got {date_str!r}"
         )
+    # Source 1: published URL (authoritative for the MCP server)
+    import urllib.request, urllib.error, ssl
+    _pub_url = f"https://xrpldashboard.com/.well-known/snapshots/{date_str}.json"
+    try:
+        import certifi
+        _ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        _ctx = ssl.create_default_context()
+    try:
+        req = urllib.request.Request(
+            _pub_url,
+            headers={"User-Agent": "xrpldashboard-mcp/get_signed_snapshot"},
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_ctx) as resp:
+            if resp.status == 200:
+                body = resp.read()
+                try:
+                    return json.loads(body)
+                except json.JSONDecodeError as e:
+                    raise RuntimeError(
+                        f"get_signed_snapshot: published snapshot for {date_str} "
+                        f"failed JSON parse: {e}"
+                    ) from e
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            # Any non-404 HTTP is a real transport error worth surfacing —
+            # but fall through to disk lookup rather than raising, so an
+            # air-gapped dev environment can still succeed.
+            pass
+    except (urllib.error.URLError, OSError):
+        # Network unreachable — try disk fallback below.
+        pass
+
+    # Source 2: local disk fallback (dev-mode)
     path = _snapshot_path(date_str)
     if not os.path.exists(path):
         raise RuntimeError(
-            f"get_signed_snapshot: no signed snapshot on disk for {date_str} "
-            f"(searched {path}) — walker has not produced this date yet, "
-            f"or the requested date predates the chain start"
+            f"get_signed_snapshot: no signed snapshot found for {date_str} "
+            f"(tried published URL {_pub_url} and local disk {path}) — "
+            f"walker has not produced this date yet, or the requested "
+            f"date predates the chain start"
         )
     try:
         with open(path) as f:
