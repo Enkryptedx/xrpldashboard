@@ -11,6 +11,9 @@
   "USDT": {
     "brand": "Tether",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "https://tether.to/en/supported-protocols",
+    "citation_note": "Tether's own supported-chains page (accessed 2026-09-12): USDT is issued on Ethereum, Tron, Solana, TON, Avalanche, BNB Chain, Polygon, Arbitrum, Optimism, Base, Near, Cosmos, Kaia, and others — XRPL is not on the list. Any USDT on XRPL is a community-issued IOU, not Tether Inc. There IS a self-claimed USDT via usdxrp.net at rHjUEuGTbiSc2KowsvATgfFQwP8rWGyMvK; the conflict rule handles that case with 'unverified — conflicting records'.",
     "note": "not Tether"
   },
   "USDC": {
@@ -23,56 +26,78 @@
   "DAI": {
     "brand": "MakerDAO DAI",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "DAI is Sky/MakerDAO's stablecoin on Ethereum (with wrapped presences on other L2s via Sky Protocol). Sky does not operate an XRPL issuer. Any XRPL DAI is impostor. Reference: https://sky.money (chain support does not include XRPL).",
     "note": "not MakerDAO DAI"
-  },
-  "BTC": {
-    "brand": "Bitcoin",
-    "canonical_issuers": [],
-    "note": "not native Bitcoin"
   },
   "WBTC": {
     "brand": "Wrapped Bitcoin",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "WBTC is BitGo's Ethereum-native wrapped-BTC token. The legitimate XRPL wrapped-BTC representation is Midas/Axelar's WBTC (whitelisted in bridges section) — a bridge product, not the original WBTC. Bare WBTC from non-bridge issuers is impostor. Reference: https://wbtc.network (no XRPL issuance).",
     "note": "not the mainstream WBTC"
+  },
+  "BTC": {
+    "brand": "Bitcoin",
+    "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Bitcoin is native to the Bitcoin blockchain; there is no Bitcoin Foundation / Bitcoin Core organization that issues XRPL representations. The legitimate XRPL 'BTC' rails are custodial IOUs from long-standing gateways — GateHub (whitelisted below) and Bitstamp (whitelisted below). Any BTC ticker on a non-gateway issuer is impostor. Reference: https://bitcoin.org (Bitcoin's canonical protocol page — no XRPL issuance).",
+    "note": "not native Bitcoin"
   },
   "ETH": {
     "brand": "Ethereum",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Ethereum is native to its own L1 blockchain; there is no Ethereum Foundation XRPL issuer. Legitimate XRPL 'ETH' rails are custodial gateway IOUs (GateHub — whitelisted below) or wrapped-bridge representations (Midas/Axelar — whitelisted in bridges). Any bare ETH on a non-gateway non-bridge issuer is impostor. Reference: https://ethereum.foundation (Ethereum Foundation site — no XRPL issuance).",
     "note": "not native Ethereum"
   },
   "SOL": {
     "brand": "Solana",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Solana is native to its own L1 blockchain; the Solana Foundation does not issue an XRPL representation. Legitimate XRPL SOL rails are bridge-issued via Midas/Axelar (whitelisted in bridges section). Bare SOL from non-bridge issuers is impostor. Reference: https://solana.com/ (no XRPL bridge listed).",
     "note": "not native Solana"
   },
   "ADA": {
     "brand": "Cardano",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Cardano is a separate L1; IOHK/Cardano Foundation does not operate an XRPL issuer. Any XRPL ADA is impostor. Reference: https://cardano.org.",
     "note": "not native Cardano"
   },
   "MATIC": {
     "brand": "Polygon",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "MATIC / POL is native to Polygon PoS; Polygon Labs does not issue an XRPL representation. Any XRPL MATIC is impostor. Reference: https://polygon.technology.",
     "note": "not native Polygon"
   },
   "LINK": {
     "brand": "Chainlink",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "LINK is Chainlink's Ethereum-native token with CCIP-bridged presences on multiple chains — XRPL is not on Chainlink's supported chains list. Any XRPL LINK is impostor. Reference: https://chain.link/",
     "note": "not native Chainlink"
   },
   "XLM": {
     "brand": "Stellar",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Stellar is a separate L1 blockchain; the Stellar Development Foundation does not operate an XRPL bridge or issue XLM on XRPL. Legitimate XRPL XLM rails are custodial gateway IOUs (RippleFox — whitelisted below). Bare XLM from non-gateway issuers is impostor. Reference: https://stellar.org (no XRPL bridge listed).",
     "note": "not native Stellar"
   },
   "BNB": {
     "brand": "Binance BNB",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "BNB is native to BNB Chain (formerly Binance Smart Chain). Binance does not issue XRPL representations of BNB. Any XRPL BNB is community-issued impostor. Reference: https://www.bnbchain.org.",
     "note": "not native BNB"
   },
   "LTC": {
     "brand": "Litecoin",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Litecoin is native to its own blockchain; the Litecoin Foundation does not issue XRPL representations. Legitimate XRPL LTC rails are custodial gateway IOUs (GateHub — whitelisted below). Bare LTC from non-gateway issuers is impostor. Reference: https://litecoin.org.",
     "note": "not native Litecoin"
   },
   "DOGE": {
@@ -103,16 +128,22 @@
   "TRX": {
     "brand": "Tron",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "TRX is native to the Tron blockchain; the Tron Foundation does not issue an XRPL representation. Any XRPL TRX is impostor. Reference: https://tron.network.",
     "note": "not native Tron"
   },
   "USDX": {
     "brand": "USDX (multiple projects)",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "USDX is used by multiple unrelated stablecoin projects (Kava, Ethena's USDe variant, etc.); no single 'canonical' issuer exists cross-chain, and none of them operate on XRPL. Any XRPL USDX is a community mint reusing the ticker.",
     "note": "no canonical XRPL issuer"
   },
   "TETHER": {
     "brand": "Tether",
     "canonical_issuers": [],
+    "no_official_xrpl_issuer": true,
+    "citation": "Same as USDT entry — Tether does not issue on XRPL. Any XRPL TETHER is a community-issued IOU. Reference: https://tether.to/en/supported-protocols.",
     "note": "not Tether Ltd."
   },
 
