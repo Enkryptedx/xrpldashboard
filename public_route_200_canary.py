@@ -178,13 +178,54 @@ def probe_one(path: str, min_bytes: int, must_contain: str | None,
     }
 
 
+def _dynamic_warnings_probes() -> list[tuple]:
+    """Query current warnings-feed + /tokens?range=warnings token set,
+    return route tuples for probe_one to hit each `/token/<cur>/<iss>`.
+
+    Filed 2026-09-11 after XLM (rKiCet…) 500'd on click from the
+    warnings feed — the fixed ROUTES list can't cover data-driven
+    URLs, so this dynamic layer probes whatever the feed is exposing
+    right now. Self-updating: as warnings shift, the canary sample
+    tracks them.
+
+    Returns [] if DB is unavailable (canary continues with fixed
+    ROUTES only — no failure escalation just because PG is out).
+    """
+    try:
+        import db
+        if not db.pg_available():
+            return []
+        feed = db.read_token_warnings_recent(hours_back=3, limit=5)
+        warn_list = db.read_token_warning_aggregates(hours_back=24, limit=5)
+    except Exception as e:
+        print(f"[public_route_canary] dynamic_warnings query failed: "
+              f"{type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        return []
+    seen: set[tuple[str, str]] = set()
+    probes: list[tuple] = []
+    for row in feed:
+        _hb, cur, iss = row[0], row[1], row[2]
+        if (cur, iss) in seen:
+            continue
+        seen.add((cur, iss))
+        probes.append((f"/token/{cur}/{iss}", 20000, None))
+    for row in warn_list:
+        cur, iss = row[0], row[1]
+        if (cur, iss) in seen:
+            continue
+        seen.add((cur, iss))
+        probes.append((f"/token/{cur}/{iss}", 20000, None))
+    return probes
+
+
 def run_walker() -> tuple[int, int, list[dict]]:
     """Probe every route. Returns (ok_count, fail_count, failing_results)."""
     ok = 0
     fail = 0
     failures: list[dict] = []
     results: list[dict] = []
-    for entry in ROUTES:
+    all_entries = list(ROUTES) + _dynamic_warnings_probes()
+    for entry in all_entries:
         # 3-tuple = default acceptable_statuses={200}; 4-tuple allows
         # a per-route override like {200, 404} for empty-state routes.
         if len(entry) == 3:
