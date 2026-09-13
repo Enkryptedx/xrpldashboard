@@ -4686,19 +4686,31 @@ def _load_thisweek_edition(date_str: str):
 
 
 def _thisweek_is_published(front: dict | None) -> bool:
-    """Return True when the edition's front-matter says it is publicly
-    published as of now (published_at_utc missing or in the past).
-    Missing / unparseable published_at_utc → public (existing editions
-    without the field pre-date this gate — they were already public).
-    Future-dated → 404 public + 200 admin preview.
+    """Return True only when the edition's front-matter says it is
+    publicly published by BOTH a manual go-flag AND (if present) a
+    published_at_utc that is in the past.
 
-    Charlie ruling 2026-09-08 evening — before this gate, a draft file
-    committed to docs/thisweek/ would render immediately on the public
-    route once Render deployed. The gate lets a draft ride into git
-    (so Render has the file for the admin preview) without exposing it
-    to the world before the Sunday-editorial pass."""
+    Rule (Charlie 2026-09-13, filed after a timestamp-only gate
+    auto-published edition 2026-09-13 at 16:30 UTC before he had
+    edited it): a timer NEVER publishes. `published_at_utc` is the
+    EARLIEST a thing may go live; it is not the trigger. The trigger
+    is `manual_go: true` in the edition's front-matter, committed +
+    pushed by Charlie's explicit 'go'.
+
+    Gate:
+      - `manual_go: true` AND published_at_utc missing → published
+      - `manual_go: true` AND published_at_utc in the past → published
+      - `manual_go: true` AND published_at_utc in the future → 404
+        (window not yet open; admin preview still 200)
+      - `manual_go` absent / false / anything-other-than-True → 404
+        (fail-closed; a draft file rides into git for admin preview
+        but never surfaces publicly without the explicit go)
+
+    Missing front-matter entirely → 404 (fail-closed)."""
     if not front:
-        return True
+        return False
+    if front.get("manual_go") is not True:
+        return False
     val = front.get("published_at_utc")
     if not val:
         return True
@@ -4711,7 +4723,10 @@ def _thisweek_is_published(front: dict | None) -> bool:
             return _dt.now(_tz.utc) >= when
         except ValueError:
             continue
-    return True  # unparseable — treat as no-gate rather than block
+    # Unparseable published_at_utc, but manual_go is True → treat as
+    # published (the explicit go is the load-bearing bit; timestamp
+    # is metadata).
+    return True
 
 
 def _list_thisweek_editions(include_unpublished: bool = False):
