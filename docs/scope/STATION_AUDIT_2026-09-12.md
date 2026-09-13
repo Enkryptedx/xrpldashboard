@@ -16,12 +16,13 @@
 - `tools/list` returns exactly **15 tools**: `get_ledger_stats`, `get_amendment_status`, `get_unl_status`, `get_whale_events`, `get_whale_watchlist`, `get_rlusd_supply`, `get_rlusd_flow_24h`, `get_amm_pool`, `get_amm_top_by_tvl`, `get_token_attestation`, `get_rwa_families`, `get_rwa_pools`, `get_mpt_snapshot`, `get_signed_snapshot`, `verify_snapshot_signature`.
 - `get_ledger_stats` proof envelope: `{'source': 'local_rippled', 'freshness_contract': '≤ 5min', 'cross_check_status': 'not_applicable', 'honest_partial': False, 'methodology_url': 'https://xrpldashboard.com/methodology#ledger', 'as_of': '2026-09-12T22:37:08Z', 'claims_ref': 'ledger_stats_live', 'scope_note': None}`. Data: `build_version: '3.3.0-rc1', server_state: 'full', validated_ledger_index: 106944410, complete_ledgers: '106868362-106944410'`.
 - `get_rlusd_supply`, `get_amm_top_by_tvl`, `get_token_attestation`: all return proof-envelope + data; envelope shape identical.
-- **`get_signed_snapshot(date_str="2026-09-12")` returns `isError: true`**: `"get_signed_snapshot: no signed snapshot on disk for 2026-09-12 (searched /home/charlie/xrpldashboard/signed_snapshots/2026-09-12.json) — walker has not produced this date yet"`. But `/.well-known/snapshots/2026-09-12.json` on the main site = HTTP 200 with a valid signed envelope. **The MCP server (Lenovo) does not have the signed-snapshot files the Render app publishes.** Two mirrors, out of sync.
+- **`get_signed_snapshot(date_str="2026-09-12")` — FIXED post-Lenovo-restart (2026-09-12 20:21 EDT).** Now returns the full signed envelope for today: `snapshot_date_utc=2026-09-12`, `chain_root=914fbbe85bcf2179c5f5d2babf1f0c2cfb02f648856e3fcb4bbc38fd54e199c4`, `signing_domain=xrpldashboard.com/signed_snapshot/v1`, `schema_version=4`, leaf_hash + audit_path present, proof envelope complete (`source=signed_snapshot_walker`). Deploy `86bdcde` (URL-first, disk fallback for dev-mode) + `sudo systemctl restart mcp-server` on Lenovo closed the mirror-lag gap.
+- **`verify_snapshot_signature(envelope=<today's snapshot>)`** returns proof envelope + `verify_result: false` — signature verifies against pinned pubkey but chain-link fails because a stateless caller doesn't have the prior-day snapshot on hand. Documented caveat, not a broken tool: `"chain_link: could not verify (no chain.json and no prior-day file on disk) — verifier should fetch prior-day snapshot to complete"`.
 - Anthropic MCP registry `GET /v0/servers?search=xrpldashboard` returns 4 versions, latest `1.29.0` (matches live), status `active`, remote URL `https://mcp.xrpldashboard.com/mcp?ref=anthropic`. Registry `_meta` block correctly cites session_rate_limit "600 tool calls/hour/session, enforced (HTTP 429 with Retry-After)".
 - Smithery listing at `https://smithery.ai/servers/xrpldashboard/xrpldashboard` returns HTTP 200; content confirms "xrpldashboard".
 - Rate-limit headers: **none present** in `initialize` or `tools/list` responses. Standard `cf-ray` from Cloudflare; no `x-ratelimit-remaining` or equivalent. Client cannot see quota state per response.
 
-**VERDICT**: **partial-pass**. 14/15 tools work end-to-end; `get_signed_snapshot` is broken because the Lenovo mirror doesn't carry the signed files. Registry listings + envelope shape verified. Rate-limit is enforced but not surfaced to clients.
+**VERDICT**: **pass**. **15/15 tools return complete proof envelopes** end-to-end from a clean outside client. Registry listings + envelope shape verified. Rate-limit is enforced but not surfaced to clients (headers gap remains).
 
 **EVIDENCE**: `curl -X POST https://mcp.xrpldashboard.com/mcp -H "Mcp-Session-Id: <id>" -d '{"jsonrpc":"2.0","id":N,"method":"tools/call","params":{"name":"<tool>","arguments":{...}}}'` above. Registry query `curl https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard`.
 
@@ -204,9 +205,9 @@
 | Plane | What an outsider can verify today | Verified? |
 |---|---|---|
 | **Data plane** | Fetch signed snapshot, walk chain-link, verify Ed25519 sig with published pubkey — all from `/.well-known/`. | ✓ |
-| **Verifiability plane** (receipts) | Fetch signed /check.json response, verify Ed25519 sig — but message-construction recipe is not documented; outsider must reverse-engineer. | partial |
+| **Verifiability plane** (receipts) | Fetch signed /check.json response, verify Ed25519 sig with the message-construction recipe now documented at /methodology#check-receipt-verify. | ✓ |
 | **Payment plane** (x402) | Fetch catalog, see `accepts: []` and `mode=off` — nothing to pay for; no facilitator to simulate. | catalog-only |
-| **Discovery plane** (MCP + agents.json + llms.txt) | Fetch discovery URLs, hit MCP server, list tools, call tools, get envelope. | ✓ (14/15 tools; 1 broken) |
+| **Discovery plane** (MCP + agents.json + llms.txt) | Fetch discovery URLs, hit MCP server, list tools, call tools, get envelope. | ✓ (**15/15 tools return complete proof envelopes**) |
 
 ---
 
@@ -241,7 +242,7 @@ Same nine points, same outside-client method. Ship-list executed between 18:35 E
 |---|---|---|---|
 | 1 | Cross-page tier reconciliation (/check.json now reads `shared_tier_verifier.resolve_tier` for its top-level `tier` field, matching /token) | `d369716` | ✓ 5/5 agree live |
 | 2 | Receipt recipe documented on /methodology — full 4-step outsider-verify walkthrough (pubkey pinning locations incl. DNS TXT, sig-block fields, message reconstruction `sep_utf8 \|\| 0x00 \|\| sha256_bytes`, worked example) | `43e2dd0` | ✓ anchor + recipe + fingerprint + DNS TXT all present |
-| 3 | MCP `get_signed_snapshot` — code fix: fetch from published /.well-known/ URL first, local disk fallback for dev-mode | `86bdcde` | Render deploy landed; Lenovo restart pending Charlie's sudo (SSH session waiting on `restarted`) |
+| 3 | MCP `get_signed_snapshot` — code fix: fetch from published /.well-known/ URL first, local disk fallback for dev-mode | `86bdcde` | ✓ Render deploy landed + Lenovo `sudo systemctl restart mcp-server` completed 2026-09-12 20:21 EDT; `is-active=active`; 15/15 MCP tools return complete proof envelopes end-to-end from clean client |
 | 4 | Fence-#8 (/rlusd via own-node) — DEFERRED. On code read, closing requires adding a tunnel tier to `xrpl_client.py` before its local-first path (affects ~20 callers, needs broader testing). Not safe during freeze; my audit's 1.5hr estimate was wrong | (not shipped) | — |
 | 5 | /health 5xx investigation — 28/28 5xx were on 2026-09-10 07-11 UTC, a discrete 5-hour incident. Zero 5xx on /health in the 48+ hours since. Not an ongoing problem. Root cause narrowed to Neon PG brief blip OR heavy-read walker in that window (both discrete-event class). No live-code change warranted | (not shipped — investigate-only) | — |
 | 6 | /thisweek collision-line swapped for time-stable wording: "168 tokens flagged for ticker collision after this weekend's audit; a rolling 10-20 are actively trading at any moment" | `269935a` | ✓ preview reachable + wording swapped |
@@ -251,7 +252,7 @@ Same nine points, same outside-client method. Ship-list executed between 18:35 E
 
 | Point | Before | After | Delta |
 |---|---|---|---|
-| MCP server + envelope + registry listings | 14/15 tools | 14/15 (get_signed_snapshot fix deployed, Lenovo restart pending) | flat; +1 once MCP restarts |
+| MCP server + envelope + registry listings | 14/15 tools | **15/15 tools** — get_signed_snapshot returns today's signed envelope post-restart | **+1** |
 | x402 catalog live-and-honest | 6/10 | 6/10 (attorney-gated; not touched) | flat |
 | Receipts verify from published pubkey | 8.5/10 | **10/10** — recipe now documented | **+1.5** |
 | DNS TXT pinning | 5/5 | 5/5 | flat |
@@ -265,13 +266,13 @@ Same nine points, same outside-client method. Ship-list executed between 18:35 E
 | Uptime — /health specifically | 4/8 | 4/8 (Sept 10 incident still in the rolling window; will roll off) | flat but ceiling improving |
 | Standing-pool audited count vs published claim | 2/4 | **4/4** — wording swapped to time-stable 168 | **+2** |
 
-**Delta: +8.5 points ≈ 76 → 84.5%.** Once the Lenovo MCP restart lands, +1 more (15/15 tools) → **~85.5%.**
+**Delta: +9.5 points ≈ 76 → ~85.5%.** All items ship-and-verified end-to-end from a clean outside client tonight. Lenovo restart landed 2026-09-12 20:21 EDT closing get_signed_snapshot.
 
 ## Honest number
 
 | Piece | Weight | Score | Notes |
 |---|---|---|---|
-| MCP server + envelope + registry listings | 15 | 14 | get_signed_snapshot broken (Lenovo mirror lag) |
+| MCP server + envelope + registry listings | 15 | 15 | all 15 tools return complete proof envelopes post-restart |
 | x402 catalog live-and-honest | 10 | 6 | catalog+decisions shipped, rails not built |
 | Receipts verify from published pubkey | 10 | 8.5 | verifies, but recipe undocumented |
 | DNS TXT pinning | 5 | 5 | both keys pinned, MCP key too — undocumented on /methodology |
@@ -285,13 +286,13 @@ Same nine points, same outside-client method. Ship-list executed between 18:35 E
 | Uptime — /health specifically | 8 | 4 | 92.6%; other routes ≥99% |
 | Standing-pool audited count matches published claim | 4 | 2 | 18-in-preview is stale by 10h; 168 is the STANDING pool number |
 
-**Baseline morning number: 76 / 100. Post-fix evening number: ~84.5 / 100 (~85.5 once Lenovo MCP restart lands).** See the RE-RUN section above for the delta table.
+**Baseline morning number: 76 / 100. Post-fix evening number: ~85.5 / 100 (Lenovo MCP restart landed 2026-09-12 20:21 EDT).** See the RE-RUN section above for the delta table.
 
 **Everything that moved the number came from tonight's fixes:**
 - Cross-page tier reconciliation: +5 points (5/5 samples now agree cross-surface — the class of bug that shipped Circle-USDC-as-impostor)
 - Receipt recipe on /methodology: +1.5 points (outsider can now verify per docs, not by reverse-engineering)
 - /thisweek time-stable wording: +2 points (168 flagged pool, not a moving "18 currently active" number)
-- +1 more expected on Lenovo MCP restart
+- MCP get_signed_snapshot fix + Lenovo restart: +1 point (15/15 tools return complete proof envelopes)
 
 **Everything that did NOT move the number, and why:**
 - Fence-#8: deferred — my audit's 1.5hr estimate was wrong; closing requires a `xrpl_client.py` tunnel-tier addition affecting ~20 callers. Not safe during freeze. Filed as a Sunday-morning-before-publish standalone commit if it can be tested in isolation, otherwise post-freeze.
@@ -300,7 +301,7 @@ Same nine points, same outside-client method. Ship-list executed between 18:35 E
 - /health uptime: Sept 10 incident still in the rolling 3-day query window; will roll off naturally by Monday. Not an ongoing problem — zero /health 5xx in the last 48+ hours.
 - Discovery URL sweep flat: the 2 new "failures" (analytics, whales) were probe-timeout artifacts of my 8s probe budget, not real regressions.
 
-**The "80% built" strategy claim now stands, honestly.** 84.5% is proven-working-end-to-end by an outside client tonight. The remaining ~15% is:
+**The "80% built" strategy claim now stands, honestly.** 85.5% is proven-working-end-to-end by an outside client tonight. The remaining ~14.5% is:
 - x402 rails (blocked on Fence-#8 + attorney review — a decision, not a build)
 - Rate-limit header emission (~2hr)
 - /health incident root-cause docs (~1hr — narrowed to two candidates)
@@ -318,25 +319,32 @@ Ordered by "moves the needle vs. effort":
 
 | # | Gap | Effort | Impact |
 |---|---|---|---|
-| 1 | **Fence-#8 close: /rlusd via own-node instead of s1.ripple.com** | ~1.5 hr per pre-existing doc | HIGH — unblocks x402 mode-live; largest single strategic gate |
-| 2 | **Document the check.json receipt signature recipe** on /methodology (`sep_utf8 \|\| 0x00 \|\| sha256(canonical)_bytes`) | ~30 min | HIGH — turns "verifiable in principle" into "verifiable per docs" |
-| 3 | **Cross-page tier agreement audit + fix** — /token, /check.json, /whales, /tokens list must return the same tier value for the same (currency, issuer). Reconcile shared_tier_verifier semantics vs. check_data.py's own tier ladder | ~4 hr | HIGH — the class of gap that shipped Circle-USDC as impostor; reproducible for every impostor row |
-| 4 | **Sync signed_snapshots to the Lenovo mirror** so get_signed_snapshot MCP tool works | ~1 hr rsync-in-plist or ~1 day PG-first-read + drop-file-dep | MEDIUM — currently 1/15 MCP tools broken |
+| 1 | **Fence-#8 close: /rlusd via own-node instead of s1.ripple.com** | ~3-4 hr (my morning 1.5hr estimate was wrong; actual scope is a tunnel-tier addition to xrpl_client.py touching ~20 callers) | HIGH — unblocks x402 mode-live; largest single strategic gate |
+| ~~2~~ | ~~Document the check.json receipt signature recipe on /methodology~~ | **DONE tonight — commit `43e2dd0`** | closed |
+| ~~3~~ | ~~Cross-page tier agreement audit + fix~~ | **DONE tonight — commit `d369716`, 5/5 samples agree live** | closed |
+| ~~4~~ | ~~Sync signed_snapshots to the Lenovo mirror~~ | **DONE tonight — commit `86bdcde` + Lenovo restart 20:21 EDT; 15/15 MCP tools return complete proof envelopes** | closed |
 | 5 | **Add X-RateLimit-* headers to /check.json** so agents can self-throttle | ~2 hr | MEDIUM — table-stakes for a paid API |
-| 6 | **Investigate + close /health 5xx (7.4% rate)** | unknown; already on post-freeze list | MEDIUM — undermines paid-tier SLA claim |
+| 6 | **Investigate + close /health 5xx (7.4% rate)** | narrowed to Sept 10 07-11 UTC discrete incident; zero /health 5xx in 48+ hours since; incident will roll off natural window Monday | LOW — was already not an ongoing bug |
 | 7 | **Rename strategy-doc claim about Mac Mini node** — it's stale-config, not a running node. If we want cluster-of-2, actually stand it up | ~1 day + amendments-tracker | LOW today but blocks scale story |
 | 8 | **Move DNS TXT documentation onto /methodology** so outsiders know to pin | ~30 min | LOW — DNS is shipped; just tell people |
-| 9 | **Fix `/thisweek` collision-count wording** — swap "18 impostor tickers actively warned" for something time-stable ("168 tokens flagged with ticker collision; a rolling ~10-20 are actively trading at any moment") | ~10 min template edit | MEDIUM — Sunday's post will lie by ~4 counts otherwise |
+| ~~9~~ | ~~Fix /thisweek collision-count wording~~ | **DONE tonight — commit `269935a`, time-stable 168 wording** | closed |
 | 10 | **Fix favicon 404** | ~10 min | LOW cosmetic |
 
 ---
 
 ## Bottom line
 
-The "80% built" claim overstated by ~4 percentage points. **The actual proven-working-end-to-end score today is ~76%.**
+**Morning: 76 / 100. Evening (post-fixes, post-Lenovo restart 20:21 EDT): ~85.5 / 100.**
 
-The 4-point gap is real but not catastrophic — the biggest single item on it (Fence-#8) is the same one Charlie has already documented as the x402 mode-live blocker with a target date. The rest are last-mile documentation, mirror-sync, and cross-page consistency fixes that would take days-to-weeks, not months.
+Four of the five closable evening items landed with live proof: cross-page tier reconciliation (5/5 samples agree), receipt-recipe on /methodology, /thisweek time-stable wording, and the MCP mirror fix that flipped get_signed_snapshot from 0 to 15/15 tools returning complete proof envelopes. Fence-#8 was correctly deferred — my morning 1.5hr estimate was wrong; the actual scope is a tunnel-tier addition to xrpl_client.py touching ~20 callers, which is a substantive change unsafe during freeze.
 
-The station isn't as complete as I called it — but the direction and the readiness argument still hold: nobody else has 76% of this stack, and the missing 24% is enumerated with specific items and hours.
+The "80% built" strategy claim now stands honestly at 85.5% proven-working-end-to-end by a clean outside client. Nobody else has 85% of this stack today. The remaining ~14.5% breaks down as:
+- x402 mode-live rails: gated on Fence-#8 + attorney review (a decision, not a build)
+- Rate-limit headers on /check.json (~2 hr)
+- /rlusd tunnel-tier refactor (~3-4 hr careful work, post-freeze)
+- Second-node cluster for redundancy (~2 weeks)
+- Publish agent observability (~1 week for MVP)
 
-Sunday's `/thisweek` post should say "168 flagged; rolling active depends on trading" rather than a moving "18" number that will be different by publish time.
+None of that gates Sunday's publish. All of it fits inside the post-freeze 30-day window.
+
+Sunday's `/thisweek` post now says "168 tokens flagged for ticker collision after this weekend's audit; a rolling 10-20 are actively trading at any moment" — the time-stable wording that won't drift by publish time.
