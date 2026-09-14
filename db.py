@@ -6002,7 +6002,13 @@ def refresh_bot_hash_tables():
                 # walker_health stayed green, canary flagged +22 delta 3h
                 # later). Chunk of 10000 gives 3x headroom + future growth.
                 _INSERT_CHUNK = 10000
-                cur.execute("TRUNCATE page_view_bot_hashes")
+                # DELETE (RowExclusive lock) not TRUNCATE (AccessExclusive).
+                # Analytics render reads page_view_bot_hashes; TRUNCATE blocks
+                # behind any concurrent reader and cancels at statement_timeout.
+                # DELETE is compatible with concurrent SELECTs; MVCC atomicity
+                # of the DELETE+INSERT transaction still hides the empty state
+                # from readers. Same rule at page_view_scanner_combos below.
+                cur.execute("DELETE FROM page_view_bot_hashes")
                 all_hash_rows = (
                     [("visitor", h) for h in visitor_hashes]
                     + [("ip_day", h) for h in ip_day_hashes]
@@ -6017,7 +6023,7 @@ def refresh_bot_hash_tables():
                         flat,
                     )
 
-                cur.execute("TRUNCATE page_view_scanner_combos")
+                cur.execute("DELETE FROM page_view_scanner_combos")
                 for i in range(0, len(scanner_combos), _INSERT_CHUNK):
                     chunk = scanner_combos[i:i + _INSERT_CHUNK]
                     ph = ",".join(["(%s,%s)"] * len(chunk))
