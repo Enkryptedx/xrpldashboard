@@ -302,7 +302,17 @@ def inject_site_url():
 # freshness chip AND the homepage banner both read this via the
 # inject_regulation_freshness context processor. Codified in CLAIMS.yaml
 # claim regulation_freshness_chip.
-LAST_VERIFIED_REGULATION = "2026-09-09"
+LAST_VERIFIED_REGULATION = "2026-09-14"
+
+# CLARITY Act cloture vote — Senate-scheduled date. Rendered on
+# /regulation and computed to derive its day-of-week rather than
+# typed (Charlie ruling 2026-09-14 after "Monday" survived on the
+# page for Tuesday 2026-09-15). Primary source: Senate Press
+# Gallery + Congress.gov actions list. Bump only if the Senate
+# reschedules.
+CLARITY_CLOTURE_DATE = "2026-09-15"
+CLARITY_CLOTURE_TIME_ET = "2:15 PM ET"
+CLARITY_CLOTURE_TIME_UTC = "18:15 UTC"
 
 # CLARITY-window homepage banner self-expires on this date (Senate
 # recess-return day). After this, the strip disappears from any page
@@ -5120,10 +5130,24 @@ def regulation():
         days_since = (date.today() - last_dt).days
     except Exception:
         days_since = 0
+    # Cloture vote day-name and formatted date, COMPUTED from the
+    # constant — never typed on the page (Charlie ruling 2026-09-14).
+    _cloture_dt = datetime.strptime(CLARITY_CLOTURE_DATE, "%Y-%m-%d")
+    _month_abbrev = {
+        1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "June",
+        7: "July", 8: "Aug", 9: "Sept", 10: "Oct", 11: "Nov", 12: "Dec",
+    }[_cloture_dt.month]
+    cloture_when_full = (
+        f"{_cloture_dt.strftime('%A')}, {_month_abbrev} {_cloture_dt.day}, "
+        f"{CLARITY_CLOTURE_TIME_ET} ({CLARITY_CLOTURE_TIME_UTC})"
+    )
     return render_template(
         "regulation.html",
         last_verified_iso=LAST_VERIFIED_REGULATION,
+        last_reviewed_iso=LAST_VERIFIED_REGULATION,
         days_since=days_since,
+        cloture_when_full=cloture_when_full,
+        cloture_date_iso=CLARITY_CLOTURE_DATE,
     )
 
 
