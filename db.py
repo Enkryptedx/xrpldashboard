@@ -5750,10 +5750,28 @@ def ensure_is_bot_schema():
     try:
         with rpc_loop_safe_pg_connect() as conn:
             with conn.cursor() as cur:
+                # information_schema pre-check on page_views.is_bot: Postgres'
+                # `ADD COLUMN IF NOT EXISTS` still requires ACCESS EXCLUSIVE on
+                # the target table to check existence. On the high-write
+                # page_views table, this blocks under any concurrent lock
+                # holder (autovacuum in particular) until the pooler-side
+                # statement_timeout cancels the DDL. That was the root cause
+                # of the nightly ~22:00 EDT is_bot_writer flap observed
+                # 2026-09-10 → 2026-09-13 — a lock, not compute. The
+                # information_schema lookup is a millisecond catalog read
+                # that takes no lock on page_views; the ALTER only fires
+                # on true bootstrap.
                 cur.execute(
-                    "ALTER TABLE page_views "
-                    "ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT NULL"
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_schema = 'public' "
+                    "  AND table_name = 'page_views' "
+                    "  AND column_name = 'is_bot'"
                 )
+                if cur.fetchone() is None:
+                    cur.execute(
+                        "ALTER TABLE page_views "
+                        "ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT NULL"
+                    )
                 cur.execute(
                     "CREATE TABLE IF NOT EXISTS page_view_classification_meta ("
                     "  key TEXT PRIMARY KEY,"
