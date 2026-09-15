@@ -121,6 +121,27 @@ def line_signed_surfaces(cur, ts_s, ts_e) -> str:
         WHERE ts >= %s AND ts < %s AND (path='/check.json' OR path LIKE '/check.json?%%')
     """, (ts_s, ts_e))
     check_calls = cur.fetchone()[0]
+    # External (non-JJ, non-canary) /check.json calls. Charlie 2026-09-14:
+    # this is the number that flips the signed-data story. Zero is fine —
+    # we want to see the day it isn't. Exclusion list: every UA prefix
+    # our infrastructure emits. Deliberate false-positive on curl/%,
+    # Python-urllib/%, Werkzeug/% (real external clients use these too)
+    # so a rise is a signal Charlie can investigate.
+    cur.execute(f"""
+        SELECT COUNT(*) FROM page_views
+        WHERE ts >= %s AND ts < %s
+          AND (path='/check.json' OR path LIKE '/check.json?%%')
+          AND user_agent NOT LIKE 'xrpldashboard-%%'
+          AND user_agent NOT LIKE 'public-route-canary%%'
+          AND user_agent NOT LIKE 'station-audit%%'
+          AND user_agent NOT LIKE 'PROOF-%%'
+          AND user_agent NOT LIKE 'Werkzeug/%%'
+          AND user_agent NOT LIKE 'Python-urllib/%%'
+          AND user_agent NOT LIKE 'curl/%%'
+          AND user_agent NOT IN ('audit', 'test')
+          AND user_agent IS NOT NULL
+    """, (ts_s, ts_e))
+    check_external = cur.fetchone()[0]
     cur.execute(f"""
         SELECT COUNT(*) FROM page_views
         WHERE ts >= %s AND ts < %s AND path LIKE '/thisweek%%'
@@ -144,7 +165,11 @@ def line_signed_surfaces(cur, ts_s, ts_e) -> str:
             signed = sum(1 for l in lines if l.get('event') == 'signed' and l.get('kind') == 'check')
     except Exception:
         pass
-    return f"4. Signed surfaces: /check.json {check_calls} calls (signed:{signed}), /thisweek {thisweek_hits} hits, /.well-known/registry {registry_hits}."
+    return (
+        f"4. Signed surfaces: /check.json {check_calls} calls (signed:{signed}), "
+        f"/thisweek {thisweek_hits} hits, /.well-known/registry {registry_hits}. "
+        f"/check.json external (non-JJ, non-canary) calls: {check_external}."
+    )
 
 
 def line_chain_health(cur, ts_s_yday, ts_e_yday) -> str:
