@@ -135,4 +135,25 @@ Before beginning the weekly cadence, we ran an external adversarial audit (zero 
 
 Signed_snapshot walker offline **Tue 2026-09-15 ~11:15 AM ET → Sat 2026-09-19 ~11:20 AM ET** (~96 hours; Mac lost power). No leaves were signed for 2026-09-16, 2026-09-17, or 2026-09-18. Signing resumed on Sat 2026-09-19; that day's leaf `previous_root` = `0f13f9e1a51dd941d50303c1b286b6513921066010cb0ed8574790488c4e930d` = 2026-09-15's `chain_root`, bridging the four-day gap directly with no fabricated intermediate leaves. Verification runs clean: `signed_snapshot.py --verify 2026-09-19` returns `signature OK, audit_path OK, leaf_hash OK, fingerprint OK, chain_link OK`.
 
-**Anchor #7 delayed one day** — the Friday 2026-09-18 ceremony was skipped because no fresh chain_root existed to anchor. It happens tonight (Sat 2026-09-19) recorded here as delayed with the outage as the reason. Sequence 106138937 on the anchor account, chain_root of today's 2026-09-19 leaf. Charlie ruling 2026-09-19: **workers offline Sep 15–19 (power outage). The gap IS the record. Never sign past dates.**
+**Anchor #7 delayed one day** — the Friday 2026-09-18 ceremony was skipped because no fresh chain_root existed to anchor. It happened Sat 2026-09-19 at 20:13:51 UTC (ledger 107098884, tx hash `A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C`) — recorded here as delayed with the outage as the on-record reason. Sequence 106138937 on the anchor account, chain_root of the 2026-09-19 leaf. Charlie ruling 2026-09-19: **workers offline Sep 15–19 (power outage). The gap IS the record. Never sign past dates.**
+
+---
+
+## Anchor #7 — 2026-09-19 (delayed one day; Mac power outage)
+
+| Field | Value |
+|-------|-------|
+| Type | A (weekly, **delayed one day** — Fri 2026-09-18 skipped, held Sat 2026-09-19) |
+| Tx hash | `A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C` |
+| Ledger | 107098884 |
+| Close time | 2026-09-19 20:13:51 UTC |
+| From | `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` (Anchor) |
+| To | `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd` (Dashboard) |
+| Amount | 0.000001 XRP (1 drop) |
+| Fee | 12 drops |
+| Sequence | 106138937 |
+| MemoData (decoded) | `xrpldashboard/anchor/v1\|2026-09-19\|b202095ae84d2456e29444f92736b38fb93eee18b8380f449c796b3e3d2e93ab` |
+| chain_root verified | `b202095ae84d2456e29444f92736b38fb93eee18b8380f449c796b3e3d2e93ab` matches live `/.well-known/snapshots/chain.json` `current_root` at time of stamp; today's leaf `previous_root` = `0f13f9e1a51dd941d50303c1b286b6513921066010cb0ed8574790488c4e930d` = 2026-09-15's `chain_root`, bridging the four-day outage gap with zero fabricated intermediate leaves. Validated end-to-end from own Lenovo LAN node (`192.168.40.95:5006`) — `rippled tx` returned `validated=true`, `tesSUCCESS`, `ledger_index=107098884`, `Sequence=106138937`; MemoData hex decoded byte-for-byte to the third-segment root; no public s1/s2, no external oracle. |
+| Day of week | Saturday (verified from ledger close_time — cadence break: first non-Friday anchor, driven by the outage) |
+| On-ledger result | `tesSUCCESS`, `validated=true` |
+| Notes | **First anchor stamped after a chain gap.** Signing walker was offline Tue 2026-09-15 ~11:15 AM ET → Sat 2026-09-19 ~11:20 AM ET (~96 hours; Mac lost AC power). Anchor #7 was originally scheduled for Fri 2026-09-18 and was skipped because no fresh chain_root existed to anchor — Charlie ruling 2026-09-19: **never sign past dates; the gap IS the record**. See the `Chain gap — 2026-09-16 → 2026-09-18` section above and `~/xrpl_test_private_triage/MAC_OUTAGE_2026-09-15.md`. Recovery completed today: 5 daily walkers kicked back to green, tunnel/sig-service/dockvault TCC survived, `nft_activity_summary` plist restored to `~/Library/LaunchAgents/` (had never been install-copied and did not survive cold boot — `PRE_MACOS_UPDATE_2026-09-12.md` §1 corrected 52→53 expected loaded), meta-watcher backlog left to self-clear (wrapper-stamp legacy pattern filed for post-anchor systematic normalization). Full nine-point pre-flight re-ran clean before the stamp: verify 2026-09-19 5-of-5 OKs (`signature OK, audit_path OK, leaf_hash OK, fingerprint OK, chain_link OK`); leaves 09-12/13/14/15/19 present, 09-16/17/18 correctly missing per outage; published==local (Render `current_root` == disk); own node full (`state=full · validated_seq=107,098,250 · peers=10 · complete_ledgers 107018362-107098250`); anchor sequence 106138937 monotonic (`106138931(#1)→106138932(#2)→106138933(#3)→106138934(#4)→106138935(#5)→106138936(#6)→106138937(#7)`); anchor account balance 23.999933 XRP with OwnerCount=0; sig-service state=running (PID 1256); git clean at 0 uncommitted paths after four dispositions (walker diff on `token_names.json` reverted to preserve Render name lookups; scratch `REGULATION_HARD_TRIGGER_2026-09-14.txt` moved to `~/xrpl_test_private_triage/tmp_2026-09-19/`; `docs/scope/LOCAL_LLM_2026-09-13.md` committed as `011fd7c`; `signed_registry_snapshots/2026-09-15.json` committed as `f61e4d6` per the standing daily-registry carve-out — pre-outage signed 2026-09-15T02:15:04Z, missed push window when Mac lost power). Sequence-continuity proof relies on Clio + own Lenovo node returning the same `ledger_index` / `Sequence` / `TxnResult` — chain of custody preserved end-to-end with no public-s1/s2 or external oracle in the verification path. |
