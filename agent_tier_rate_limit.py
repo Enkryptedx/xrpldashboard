@@ -253,12 +253,22 @@ def fleet_signature(req=None) -> Optional[str]:
     Signatures (add here on new-fleet observation, one per line):
     - IL_Chrome142_residential_2026_07: IL geo + Chrome/142 UA, first
       seen 2026-07-22 hitting /whales via rotating residential proxy.
+    - AionBot_declared_2026_09_19: AionBot self-declares in UA as
+      "compatible; AionBot/N.N" and the classifier does mark those rows
+      is_bot=TRUE (matched by BOT_UA_PATTERNS %bot/%), but the
+      request-time rate limiter's per-IP anon bucket (60/min) lets a
+      well-paced scraper run indefinitely without tripping — Sat 09-19
+      weekly analytics found 681 /check.json hits across 8 hashes in
+      one day, ALL served 200 with zero 429s. Same class as IL_Chrome142:
+      cost-defend at the fleet layer before the rate bucket fires.
     """
     r = req if req is not None else request
     country = r.headers.get("CF-IPCountry", "")
     ua = r.headers.get("User-Agent", "")
     if country == "IL" and "Chrome/142" in ua:
         return "IL_Chrome142_residential_2026_07"
+    if "AionBot" in ua:
+        return "AionBot_declared_2026_09_19"
     return None
 
 
