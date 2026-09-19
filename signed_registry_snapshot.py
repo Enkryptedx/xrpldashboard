@@ -181,7 +181,35 @@ def write_signed_snapshot(envelope: dict, sig_block: dict) -> str:
 
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing registry snapshot for the target date. "
+             "Off by default: the walker refuses to re-sign a date that "
+             "already has a snapshot on disk (Tier 0 debounce, 2026-09-19). "
+             "Use only for corrective anchors.",
+    )
+    args = parser.parse_args()
+
     now_utc = dt.datetime.now(dt.timezone.utc)
+
+    # DEBOUNCE (2026-09-19 Tier 0: a chain job never re-signs a date).
+    # Mirrors signed_snapshot.py — see that file for the pull-plug
+    # incident that motivated this. Same-day RunAtLoad after a cold boot
+    # would recompute canonical_hash with post-boot registry state,
+    # silently orphaning the morning's committed envelope. Skip path
+    # does NOT touch walker_health — real silence still pages via the
+    # freshness canary. --force overrides for corrective anchors.
+    date_str = now_utc.strftime("%Y-%m-%d")
+    snapshot_path = os.path.join(SNAPSHOTS_DIR, f"{date_str}.json")
+    if not args.force and os.path.exists(snapshot_path):
+        print(
+            f"[signed_registry_snapshot] snapshot exists, skipping: "
+            f"{snapshot_path} (--force to overwrite)"
+        )
+        return 0
+
     envelope = build_envelope(now_utc)
     canon_hex = canonical_hash_hex(envelope)
     print(

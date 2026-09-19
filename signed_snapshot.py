@@ -1303,6 +1303,13 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Build + sign + verify, but write nothing.")
     parser.add_argument("--verify", metavar="YYYY-MM-DD", help="Verify a stored snapshot file.")
     parser.add_argument("--date", metavar="YYYY-MM-DD", help="Override snapshot date (default: today UTC).")
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing leaf for the target date. Off by default: "
+             "the walker refuses to re-sign a date that already has a leaf on "
+             "disk (Tier 0 debounce, 2026-09-19). Use only for corrective "
+             "anchors (see ONLEDGER_ANCHOR_SPEC.md Type B).",
+    )
     args = parser.parse_args()
 
     if args.generate_keys:
@@ -1320,6 +1327,24 @@ def main():
         return 1
 
     date_str = args.date or dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
+
+    # DEBOUNCE (2026-09-19 Tier 0: a chain job never re-signs a date).
+    # Same-day RunAtLoad after a cold boot with different walker inputs
+    # was observed 2026-09-19 17:28 ET during the anchor-#7 pull-plug
+    # test: the walker recomputed a new leaf (4d8c2c9a) with post-boot
+    # metrics, orphaning anchor #7's on-ledger chain_root (b202095a).
+    # An hour of manual PG + disk + chain.json restoration followed.
+    # Debounce sits BEFORE walker_health start so the skip path leaves
+    # walker_health untouched: real silence (walker not firing at all)
+    # still pages via the freshness canary; benign RunAtLoad double-fire
+    # is a silent no-op. --force overrides (corrective anchors only).
+    leaf_path = os.path.join(SNAPSHOTS_DIR, f"{date_str}.json")
+    if not args.dry_run and not args.force and os.path.exists(leaf_path):
+        print(
+            f"[signed_snapshot] leaf exists, skipping: {leaf_path} "
+            f"(--force to overwrite)"
+        )
+        return 0
 
     _wh_db = None
     if not args.dry_run:
