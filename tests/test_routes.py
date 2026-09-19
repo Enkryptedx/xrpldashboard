@@ -646,3 +646,67 @@ def test_regulation_no_forward_looking_phrase_about_completed_cloture(client):
         "see 2:15 PM ET, the copy is quoting the scheduled time as the "
         "outcome time."
     )
+
+
+# Forward-looking-phrase blocklist, generalized across every trust-critical
+# page. If any page ships copy claiming an already-completed event is still
+# upcoming, the test fails. Filed 2026-09-19 after Charlie's ruling: extend
+# the forward-looking-phrase assertion to every page with a status block,
+# not just /regulation.
+#
+# Rules for adding to this list:
+#   1. The phrase describes a REAL EVENT that HAS HAPPENED (in past tense).
+#   2. The phrase, if it appears anywhere in the rendered body, is
+#      unambiguously wrong regardless of context.
+#   3. Historical timeline rows that document schedule-at-time-of-filing
+#      framing (e.g., "the cloture motion ripens on ..." in the 2026-08-08
+#      regulation row) are NOT candidates — they legitimately describe past
+#      scheduled state.
+FORWARD_LOOKING_ABOUT_COMPLETED = [
+    # CLARITY cloture vote — completed 2026-09-15, rejected 49-50 (Roll Call #234)
+    "cloture vote on the motion to proceed is scheduled for",
+    "invocation vote is scheduled for",
+    "No cloture vote has been taken",
+    "no cloture vote has been taken yet",
+    "draft going into cloture",
+    "this is the draft going into cloture",
+    "will hold a cloture vote",
+    "cloture vote will be held",
+    # SEC Innovation Exemption — issued 2026-09-17 (Release 34-106402)
+    "SEC will issue an Innovation Exemption",
+    "Innovation Exemption is expected",
+    "upcoming SEC Innovation Exemption",
+    # Anchor #7 — landed 2026-09-19 20:13:51 UTC on-ledger
+    "Anchor #7 will be stamped",
+    "anchor #7 is scheduled",
+    "next anchor: #7",
+    "upcoming anchor #7",
+]
+
+
+@pytest.mark.parametrize("path", TRUST_CRITICAL_PAGES)
+def test_no_page_describes_completed_event_as_upcoming(client, path):
+    """No trust-critical page may describe an event the site has already
+    reported as history in forward-looking terms. If it does, the page
+    contradicts itself the moment a first-time visitor cross-reads it
+    with any timeline or Result declaration elsewhere on the site.
+
+    Charlie ruling 2026-09-19: standard is 'no sentence on the site
+    describes the world as it was before Sept 15 unless it's labeled as
+    history.' The FORWARD_LOOKING_ABOUT_COMPLETED blocklist above is
+    the machine-enforceable half of that rule.
+
+    /regulation is doubly-covered: the earlier
+    test_regulation_no_forward_looking_phrase_about_completed_cloture
+    also asserts the Result declaration is present and uses the actual
+    vote time; this test just catches the phrase across every other page.
+    """
+    body = client.get(path).data.decode()
+    hits = [p for p in FORWARD_LOOKING_ABOUT_COMPLETED if p in body]
+    assert not hits, (
+        f"{path} contains forward-looking phrase(s) about events that "
+        f"have already happened: {hits!r}. Update the phrase to past tense "
+        f"aligned with the on-the-record outcome, or remove it. See "
+        f"FORWARD_LOOKING_ABOUT_COMPLETED blocklist in tests/test_routes.py "
+        f"for the maintained list."
+    )
