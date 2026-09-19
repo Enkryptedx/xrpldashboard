@@ -342,6 +342,13 @@
     </p>
   </div>
 
+  <p>
+    <strong>{{ _('Known gaps.') }}</strong>
+    {% trans -%}
+    The chain has no leaves for <code>2026-09-16</code>, <code>2026-09-17</code>, or <code>2026-09-18</code>. The signing walker was offline from Tuesday 2026-09-15 ~15:15 UTC (~11:15 AM ET) to Saturday 2026-09-19 ~15:20 UTC (~11:20 AM ET) because the machine that runs it lost power for approximately 96 hours. Signing resumed on 2026-09-19; that day's leaf <code>previous_root</code> field bridges directly back to 2026-09-15's <code>chain_root</code>, no fabricated intermediate leaves. The gap is the record. Backdating a leaf would be a contradiction of the entire signed-snapshot claim — we do not sign past dates.
+    {%- endtrans %}
+  </p>
+
   <h3 id="signed-snapshots-xrpl-anchor">{{ _('On-ledger anchor of the snapshot chain') }}</h3>
   <p>
     {% trans -%}
