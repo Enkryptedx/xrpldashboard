@@ -320,6 +320,11 @@
     {{ _('runs all three checks server-side and shows each pass/fail independently — the same verification you can run locally with any Ed25519 library plus a SHA-256.') }}
   </p>
   <p>
+    {% trans -%}
+    Envelope <code>schema_version</code> is <strong>4</strong>. The authoritative value lives in <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>; a version bump here is a change to the canonical field set above and will be called out on this page.
+    {%- endtrans %}
+  </p>
+  <p>
     <strong>{{ _('Trust model.') }}</strong>
     {% trans -%}
     A signed snapshot proves only that the published number existed on the recorded date and was signed by the key whose public half we pin in four places. It does not prove the number was <em>correct</em> — that depends on the source data and our collection logic, both documented in the rest of this page. Signed snapshots make it impossible for us to quietly rewrite history without being caught, but they are not a substitute for the rest of the methodology audit; they are the audit's lower bound.

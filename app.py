@@ -328,7 +328,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-05"  # Round 3 (ChatGPT) audit fixes — sourcing over-claim rewrite in llms.txt, /check.json documented as live surface, schema_version 4 propagated to methodology, pricing-transition schema added to agents.json
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-19"  # Re-verified 2026-09-19 (post-outage sweep) — all four Round-3 claims held against live surfaces: (a) llms.txt sourcing wording carries walker-computed / own-node provenance framing; (b) /check.json documented as a live surface in llms.txt AND agents.json; (c) schema_version 4 explicitly stated on /methodology (this commit added the line — the prior wording only referenced the field name); (d) pricing_transition block present in agents.json. See templates/methodology.html for the new schema_version paragraph and the re-verify test at tests/test_routes.py check-list.
 
 
 @app.context_processor
