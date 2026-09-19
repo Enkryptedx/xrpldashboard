@@ -576,3 +576,73 @@ def test_404_page_is_branded(client):
     assert 'href="/"' in body
     # 404s shouldn't be indexed
     assert 'name="robots"' in body and "noindex" in body
+
+
+def test_regulation_no_forward_looking_phrase_about_completed_cloture(client):
+    """If the Result line says an event happened, no other sentence on
+    /regulation may describe that same event as still upcoming.
+
+    Filed 2026-09-19 after Charlie caught two survivors that outlasted a
+    three-line copy fix: the freshness banner still said the cloture vote
+    "is scheduled for" a date now in the past, and a bullet in the
+    below-timeline `<div class="not-happened">` still said "No cloture
+    vote has been taken". Both directly contradicted the Result declaration
+    at the top of the status block. Charlie ruling: no forward-looking
+    phrase about an event the Result line says already happened.
+
+    Historical exception: the 2026-08-08 timeline row legitimately
+    describes what was scheduled at the moment of filing ("the cloture
+    motion ripens on ..."). That is scheduled-at-time-of-filing framing,
+    not a current claim, and it stays.
+    """
+    body = client.get("/regulation").data.decode()
+
+    # 1. Result declaration must be present — the anchor everything else
+    #    is measured against.
+    assert "rejected 49" in body, (
+        "/regulation missing the Result declaration "
+        "('rejected 49-50' cloture outcome)"
+    )
+    assert "Roll Call #234" in body or "Roll Call vote #234" in body, (
+        "/regulation missing the primary-source roll-call reference "
+        "for the completed cloture vote"
+    )
+
+    # 2. Forward-looking phrases about the (now-completed) cloture vote
+    #    must not appear. Each phrase below is a real regression the copy
+    #    has actually shipped in the past — do not delete without a
+    #    replacement Result-agreeing sentence in the same paragraph.
+    FORBIDDEN_PHRASES = [
+        # Banner regression (2026-09-19)
+        "cloture vote on the motion to proceed is scheduled for",
+        # Below-timeline bullet regression (2026-09-19)
+        "invocation vote is scheduled for",
+        "No cloture vote has been taken",
+        # Status-block regression, three-line-fix predecessor
+        "no cloture vote has been taken yet",
+        # Weekend-update regression
+        "draft going into cloture",
+        "this is the draft going into cloture",
+        # General shape: any "will hold a cloture vote" (post-vote page)
+        "will hold a cloture vote",
+        "cloture vote will be held",
+    ]
+    for phrase in FORBIDDEN_PHRASES:
+        assert phrase not in body, (
+            f"/regulation contains forward-looking phrase '{phrase}' "
+            f"about the Sept 15 cloture vote, which the Result line says "
+            f"was rejected 49-50. Either update the phrase to past tense "
+            f"and align with the Result, or remove it."
+        )
+
+    # 3. Time-line consistency: the actual vote time (2:19 PM ET) belongs
+    #    on the Result and the below-timeline bullet; the scheduled time
+    #    (2:15 PM ET) stays only in the 2026-08-08 historical timeline
+    #    row that describes what was scheduled at filing. Assert the
+    #    Result-adjacent copy uses the actual time.
+    assert "2:19 PM ET" in body, (
+        "/regulation Result / banner / not-happened bullet should carry "
+        "the ACTUAL vote time 2:19 PM ET (Roll Call #234). If you only "
+        "see 2:15 PM ET, the copy is quoting the scheduled time as the "
+        "outcome time."
+    )
