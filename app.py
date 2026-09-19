@@ -302,7 +302,7 @@ def inject_site_url():
 # freshness chip AND the homepage banner both read this via the
 # inject_regulation_freshness context processor. Codified in CLAIMS.yaml
 # claim regulation_freshness_chip.
-LAST_VERIFIED_REGULATION = "2026-09-14"
+LAST_VERIFIED_REGULATION = "2026-09-19"
 
 # CLARITY Act cloture vote — Senate-scheduled date. Rendered on
 # /regulation and computed to derive its day-of-week rather than
