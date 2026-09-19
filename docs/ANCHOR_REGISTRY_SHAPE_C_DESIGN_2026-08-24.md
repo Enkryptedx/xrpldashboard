@@ -318,7 +318,7 @@ Phase 4: Mac cleanup
   Confirm Lenovo's copy is also gone (or was never synced)
 ```
 
-**Timing:** cert is Wednesday 2026-08-27. Anchor #4 ceremony is ~2026-08-28 (Thursday, 7 days after #3 on 2026-08-21). Shape C should be built and deployed to Lenovo on Wednesday evening (post-cert) or Thursday morning before the ceremony. This is a hard deadline — if Shape C isn't ready by ceremony time, run the ceremony anyway and do the old Step 4 append as a one-time bridge.
+**Timing:** cert is Thursday 2026-08-27. Anchor #4 ceremony is ~2026-08-28 (Friday, 7 days after #3 on 2026-08-21). Shape C should be built and deployed to Lenovo on Thursday evening (post-cert) or Friday morning before the ceremony. This is a hard deadline — if Shape C isn't ready by ceremony time, run the ceremony anyway and do the old Step 4 append as a one-time bridge.
 
 **Fallback if Shape C isn't ready for #4:** run the old `anchor_registry_append.py` for anchor #4. Shape C can still ship afterward — it will correctly discover all 4 anchors from Clio. The registry file just gets git-tracked and then deleted.
 
@@ -397,7 +397,7 @@ Ceremony Step 4 (`anchor_registry_append.py`) is eliminated. The new ceremony en
 ---
 
 **R4 — Migration timing**  
-- Option A: Ship Shape C post-cert (Wednesday 2026-08-27 evening) — deployed to Lenovo before anchor #4 ceremony Thursday  
+- Option A: Ship Shape C post-cert (Thursday 2026-08-27 evening) — deployed to Lenovo before anchor #4 ceremony Friday  
 - Option B: Ship post-cert but don't hard-deadline before #4 — run old append tool for #4 if Shape C isn't ready, Shape C catches up  
 - Option C: Ship before cert — risk introducing a rewritten safety-critical tool into the cert window
 

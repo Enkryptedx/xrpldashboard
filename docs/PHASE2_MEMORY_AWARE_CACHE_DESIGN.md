@@ -4,7 +4,7 @@
 **Author:** JJ 🦞
 **Date started:** 2026-08-21
 **Reviewer:** Charlie
-**Deadline (Charlie's ruling):** approved-and-shipped by Day 4 / Sunday 2026-08-24 restores the strict bar on the 7-day stability clock.
+**Deadline (Charlie's ruling):** approved-and-shipped by Day 4 / Monday 2026-08-24 restores the strict bar on the 7-day stability clock.
 **Tier assumption:** Render Standard, 2GB RAM, workers 3 × threads 8 (per current `render.yaml`).
 
 ---
