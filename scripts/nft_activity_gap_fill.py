@@ -70,6 +70,19 @@ def main() -> int:
     )
     p.add_argument("--dry-run", action="store_true",
                    help="fetch + parse; print row count per ledger; don't insert.")
+    # Retry/backoff for the public Clio tooBusy long tail. Pass 1 + Pass 2
+    # each left ~71-72 skipped ledgers; those are dispersed across the range
+    # and hit Clio's per-connection concurrency ceiling under load. Filed
+    # 2026-09-20 for Pass 3 sweep. Defaults are no-retry so existing
+    # invocations keep behaving identically.
+    p.add_argument(
+        "--max-retries", type=int, default=0,
+        help="per-ledger retry count on fetch failure (default: 0 = no retry).",
+    )
+    p.add_argument(
+        "--backoff-start", type=float, default=2.0,
+        help="initial backoff in seconds; doubles each retry (default: 2.0).",
+    )
     args = p.parse_args()
 
     if not args.allow_any_range and (args.lo != GAP_LO or args.hi != GAP_HI):
@@ -113,6 +126,18 @@ def main() -> int:
     try:
         for seq in range(args.lo, args.hi + 1):
             close_time, txs = _fetch_ledger_txs_from(client, seq)
+            # Exponential backoff retry on fetch failure. Only kicks in when
+            # --max-retries > 0. Motivated by pass-1/2 tail of ~71 tooBusy
+            # skips where a second in-loop attempt after a brief sleep
+            # usually succeeds. Not the same as re-running the whole script:
+            # the retry is inline before we move to the next ledger, so
+            # the tail doesn't drift further behind.
+            retries_used = 0
+            while close_time is None and retries_used < args.max_retries:
+                sleep_s = args.backoff_start * (2 ** retries_used)
+                time.sleep(sleep_s)
+                close_time, txs = _fetch_ledger_txs_from(client, seq)
+                retries_used += 1
             total_ledgers += 1
             if close_time is None:
                 fetch_fails += 1
