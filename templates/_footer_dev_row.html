@@ -1,0 +1,62 @@
+{# Site-wide footer row: "For developers & AI agents" — five machine-
+   readable surfaces that used to live in the Machines header group.
+   Charlie ruling 2026-09-20 (evening): machine discovery is unchanged,
+   the header simplifies to four groups + widgets. Every page includes
+   this partial just before </body> so the surfaces are one click away
+   on any route. #}
+<footer class="dev-footer-row" aria-label="{{ _('For developers and AI agents') }}">
+  <div class="dev-footer-inner">
+    <span class="dev-footer-label">{{ _('For developers & AI agents') }}</span>
+    <nav class="dev-footer-links" aria-label="{{ _('Machine-readable surfaces') }}">
+      <a href="/docs">{{ _('Swagger UI') }}</a>
+      <a href="/openapi.json">OpenAPI</a>
+      <a href="/llms.txt">llms.txt</a>
+      <a href="/.well-known/agents.json">agents.json</a>
+      <a href="/connect">{{ _('MCP connect') }}</a>
+    </nav>
+  </div>
+</footer>
+<style>
+  .dev-footer-row {
+    margin-top: 3rem;
+    padding: 0.85em 0;
+    border-top: 1px solid rgba(160,180,210,0.14);
+    color: rgba(220,235,255,0.72);
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+  }
+  .dev-footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em 1.4em;
+  }
+  .dev-footer-label {
+    color: rgba(160,180,210,0.6);
+    text-transform: uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+  }
+  .dev-footer-links {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.4em 1.05em;
+  }
+  .dev-footer-links a {
+    color: rgba(220,235,255,0.82);
+    text-decoration: none;
+    padding: 0.15em 0;
+    border-bottom: 1px dotted transparent;
+  }
+  .dev-footer-links a:hover {
+    color: var(--cyan, #22d3ee);
+    border-bottom-color: rgba(34,211,238,0.5);
+  }
+  @media (max-width: 520px) {
+    .dev-footer-inner { gap: 0.35em 0.9em; }
+    .dev-footer-links { gap: 0.35em 0.9em; }
+  }
+</style>

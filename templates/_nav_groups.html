@@ -1,9 +1,15 @@
-{# 5-group nav consolidation (Charlie ruling 2026-09-08).
-   Learn / Live / Verify / Machines / About — hover/tap dropdowns on
-   desktop, single hamburger button on mobile. /amendments gets a pinned
-   ★ chip to the right of the 5 groups AND appears inside Live for
-   consistency. Included by _nav.html and templates/index.html so the
-   homepage's inline nav stays visually identical.
+{# 4-group nav — Charlie ruling 2026-09-20 (evening). Machines group
+   removed from the header; its five links (Swagger UI, OpenAPI,
+   llms.txt, agents.json, MCP connect) moved to a footer row
+   "For developers & AI agents" rendered by _footer_dev_row.html on
+   every page. /connect stays discoverable from the header via the
+   About group so the four-group hamburger mirrors the desktop nav.
+
+   Learn / Live / Verify / About — hover/tap dropdowns on desktop,
+   single hamburger button on mobile. /amendments gets a pinned ★
+   chip to the right of the 4 groups AND appears inside Live for
+   consistency. Included by _nav.html and templates/index.html so
+   the homepage's inline nav stays visually identical.
 
    Data source: the NAV_GROUPS list below (kept in sync manually with
    PUBLIC_ROUTES in app.py). Editing NAV_GROUPS is a one-line diff. #}
@@ -38,18 +44,12 @@
     ('/coverage',                     _('coverage'),       ['/coverage']),
     ('/claims',                       _('claims'),         ['/claims']),
   ]),
-  ('machines', _('Machines'), [
-    ('/docs',                         'Swagger UI',        ['/docs']),
-    ('/openapi.json',                 'OpenAPI',           ['/openapi.json']),
-    ('/llms.txt',                     'llms.txt',          ['/llms.txt']),
-    ('/.well-known/agents.json',      'agents.json',       ['/.well-known/agents.json']),
-    ('/connect',                      _('connect (MCP)'),  ['/connect']),
-  ]),
   ('about', _('About'), [
     ('/about',           _('about'),           ['/about']),
     ('/institutional',   _('institutional'),   ['/institutional']),
     ('/regulation',      _('regulation'),      ['/regulation']),
     ('/thisweek',        _('this week'),       ['/thisweek']),
+    ('/connect',         _('connect (MCP)'),   ['/connect']),
     ('/security',        _('security'),        ['/security', '/.well-known/security.txt']),
     ('/subprocessors',   _('subprocessors'),   ['/subprocessors']),
   ]),
