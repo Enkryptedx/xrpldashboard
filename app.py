@@ -4879,7 +4879,7 @@ def thisweek_rss():
         title = f"This week on XRPL — {d}"
         link = f"{SITE_URL}/thisweek/{d}"
         pub_date = front.get("published_at_utc", d + "T16:30:00Z")
-        teaser = front.get("tweet_teaser", "")
+        teaser = front.get("summary", "")
         # Escape XML minimally
         def esc(s):
             return (s.replace("&", "&amp;").replace("<", "&lt;")
