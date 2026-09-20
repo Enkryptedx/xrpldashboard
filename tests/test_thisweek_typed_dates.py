@@ -8,7 +8,7 @@ a constant in code, never typed) doesn't apply. But the visitor-facing
 result still has to be correct, and the class of drift — human types
 a weekday next to a date and the calendar moved under them — is real.
 
-This test scans every `docs/thisweek/*.md` and `*.tweet.md`, extracts
+This test scans every `docs/thisweek/*.md` and `*.summary.md`, extracts
 every typed `<weekday> <date>` pair (long-form date like `2026-09-17`
 or short-form like `Sept 17` where the year is inferable from the
 filename), computes the actual weekday from the calendar, and asserts
@@ -66,7 +66,7 @@ def _iter_docs():
 
 
 def _year_from_filename(p: Path) -> int | None:
-    """Weekly-post filenames are `YYYY-MM-DD.md` or `YYYY-MM-DD.tweet.md`.
+    """Weekly-post filenames are `YYYY-MM-DD.md` or `YYYY-MM-DD.summary.md`.
     Extract the year to disambiguate short-form 'Sept 17' style pairs."""
     m = re.match(r"(\d{4})-\d{2}-\d{2}", p.name)
     return int(m.group(1)) if m else None
