@@ -347,53 +347,166 @@
     </div>
   </div>
 
-  <div class="card">
+  {# 2026-09-20 activity redesign (Charlie ruling): headline sentence
+     first, labeled 7-bar daily chart (empty days visible), count/volume
+     toggle, and — on flagged tokens — the canonical issuer's 7-day
+     trade count for comparison. #}
+  <div class="card daily-activity-card"
+       data-mode="count"
+       data-daily-trades='{{ data.daily_trades|tojson }}'
+       data-daily-volume='{{ data.daily_volume|tojson }}'
+       data-daily-labels='{{ data.daily_day_labels|tojson }}'>
     <div class="section-head">
-      <h2>{{ _('Trade activity · last 7 days') }}</h2>
-      <span class="meta">{{ _('hourly buckets') }} · {{ data.hours_active }}{{ _('h active') }}</span>
+      <h2>{{ _('Activity · last 7 days') }}</h2>
+      <div class="activity-toggle" role="tablist" aria-label="{{ _('Chart mode') }}">
+        <button type="button" class="mode-btn active" data-mode="count" onclick="xdTokenActivityMode(this, 'count')">{{ _('count') }}</button>
+        <button type="button" class="mode-btn" data-mode="volume" onclick="xdTokenActivityMode(this, 'volume')">{{ _('XRP volume') }}</button>
+      </div>
     </div>
+    <p class="activity-headline" style="margin: 0 0 1em; color: var(--text); font-size: var(--fs-md);">
+      {% if data.trades_7d > 0 %}
+        <strong>{{ "{:,}".format(data.trades_7d) }}</strong> {{ _('trades') }} ·
+        <strong>{{ "{:,.2f}".format(data.volume_7d_xrp) }} XRP</strong> {{ _('volume') }} ·
+        <span style="color: var(--muted);">{{ _('last 7 days') }}</span>
+      {% else %}
+        <span style="color: var(--muted);">{{ _('No trades in the last 7 days.') }}</span>
+      {% endif %}
+    </p>
     {% if data.trades_7d > 0 %}
-      {% set max_val = data.sparkline | max %}
-      <svg class="sparkline-svg" viewBox="0 0 600 140" preserveAspectRatio="none" aria-label="{{ _('Price sparkline for') }} {{ data.display }}">
+      <svg class="daily-chart" viewBox="0 0 700 190" preserveAspectRatio="xMidYMid meet"
+           aria-label="{{ _('7-day daily activity for') }} {{ data.display }}">
         <defs>
-          <linearGradient id="sparkLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"  stop-color="#22d3ee"/>
+          <linearGradient id="dailyBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#22d3ee"/>
             <stop offset="100%" stop-color="#3b82f6"/>
           </linearGradient>
-          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.28"/>
-            <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
-          </linearGradient>
         </defs>
-        <line x1="0" y1="120" x2="600" y2="120"
-              stroke="rgba(255,255,255,0.06)" stroke-width="0.5"
-              stroke-dasharray="2 4"/>
-        {% set hours = data.sparkline | length %}
-        {% set bar_w = 600 / hours %}
-        {% set max_h = 110 %}
-        {% for c in data.sparkline %}
-          {% if c > 0 %}
-            {% set h = (c / max_val) * max_h %}
-            <rect x="{{ "%.2f"|format(loop.index0 * bar_w) }}"
-                  y="{{ "%.2f"|format(120 - h) }}"
-                  width="{{ "%.2f"|format(bar_w * 0.8) }}"
-                  height="{{ "%.2f"|format(h) }}"
-                  rx="1" ry="1"
-                  fill="url(#sparkLine)" opacity="0.85"/>
-          {% endif %}
+        {# 7 bars, x positions computed left-to-right, gap 12 px, bar width auto. #}
+        {% set chart_w = 700 %}
+        {% set chart_h = 140 %}
+        {% set gap = 12 %}
+        {% set bar_w = (chart_w - gap * 8) / 7 %}
+        <line x1="0" y1="{{ chart_h }}" x2="{{ chart_w }}" y2="{{ chart_h }}"
+              stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+        {% for i in range(7) %}
+          {% set x = gap + i * (bar_w + gap) %}
+          {# Y height is set client-side via data-attributes so the toggle
+             flips instantly without a re-render. Server draws initial 'count'
+             state as a fallback for no-JS clients. #}
+          {% set c = data.daily_trades[i] %}
+          {% set max_val = (data.daily_trades | max) or 1 %}
+          {% set h = ((c / max_val) * 130) if c > 0 else 0 %}
+          <g class="daily-bar-group" data-idx="{{ i }}"
+             data-trades="{{ c }}"
+             data-volume="{{ data.daily_volume[i] }}"
+             data-label="{{ data.daily_day_labels[i] }}">
+            <rect class="daily-bar" x="{{ "%.1f"|format(x) }}"
+                  y="{{ "%.1f"|format(chart_h - h) }}"
+                  width="{{ "%.1f"|format(bar_w) }}"
+                  height="{{ "%.1f"|format(h) }}"
+                  rx="2" ry="2" fill="url(#dailyBar)" opacity="0.9">
+              <title>{{ data.daily_day_labels[i] }}: {{ "{:,}".format(c) }} {{ _('trades') }} · {{ "{:,.2f}".format(data.daily_volume[i]) }} XRP</title>
+            </rect>
+            <text x="{{ "%.1f"|format(x + bar_w / 2) }}" y="{{ chart_h - h - 6 }}"
+                  class="daily-bar-value"
+                  text-anchor="middle" font-family="var(--mono)" font-size="11"
+                  fill="rgba(220,235,255,0.72)">
+              {% if c > 0 %}{{ "{:,}".format(c) }}{% endif %}
+            </text>
+            <text x="{{ "%.1f"|format(x + bar_w / 2) }}" y="{{ chart_h + 22 }}"
+                  text-anchor="middle" font-family="var(--sys)" font-size="11"
+                  fill="rgba(160,180,210,0.72)">
+              {{ data.daily_day_labels[i] }}
+            </text>
+          </g>
         {% endfor %}
       </svg>
-      <div class="spark-axis">
-        <span>{{ _('7 days ago') }}</span>
-        <span>{{ _('now') }}</span>
-      </div>
+      <p style="margin: 0.6em 0 0; color: var(--muted); font-size: var(--fs-xs);">
+        {{ _('Empty days remain visible as zero-height bars — silence is a signal.') }}
+      </p>
     {% else %}
       <div class="empty" style="margin-top:0.5em;">
-        <div class="big">{{ _('No trade activity in the last 7 days.') }}</div>
-        <div>{{ _('Either this token isn\'t being traded, or the watcher hasn\'t picked it up yet. Check') }} <a href="/health">/health</a>.</div>
+        <div>{{ _("Either this token isn't being traded, or the watcher hasn't picked it up yet. Check") }} <a href="/health">/health</a>.</div>
+      </div>
+    {% endif %}
+    {% if data.canonical_activity_comparison %}
+      {% set _ca = data.canonical_activity_comparison %}
+      <div class="activity-canonical-compare"
+           style="margin-top: 1em; padding: 0.75em 0.9em; border-radius: 6px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25);">
+        <div style="font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35em;">
+          {{ _('Canonical comparison') }}
+        </div>
+        <div style="font-size: var(--fs-sm); line-height: 1.45;">
+          {{ _("The canonical %(disp)s issuer", disp=data.display) }}
+          (<span class="pool-acct" style="font-family: var(--mono);">{{ _ca.canonical_issuer_short }}</span>)
+          {{ _('had') }}
+          <strong>{{ "{:,}".format(_ca.trades_7d) }} {{ _('trades') }}</strong>
+          {{ _('and') }}
+          <strong>{{ "{:,.0f}".format(_ca.volume_7d_xrp) }} XRP {{ _('volume') }}</strong>
+          {{ _('in the same 7-day window.') }}
+        </div>
       </div>
     {% endif %}
   </div>
+  <style>
+    .daily-activity-card .activity-toggle {
+      display: inline-flex; gap: 4px;
+      background: rgba(160,180,210,0.06);
+      padding: 3px; border-radius: 6px;
+    }
+    .daily-activity-card .mode-btn {
+      background: transparent; border: none; cursor: pointer;
+      padding: 0.28em 0.75em; border-radius: 4px;
+      color: rgba(220,235,255,0.72); font-size: 12px;
+      font-family: var(--sys);
+    }
+    .daily-activity-card .mode-btn:hover { color: var(--cyan); }
+    .daily-activity-card .mode-btn.active {
+      background: rgba(34,211,238,0.14);
+      color: var(--cyan, #22d3ee);
+    }
+    .daily-chart { width: 100%; height: auto; display: block; margin-top: 0.4em; }
+  </style>
+  <script>
+  (function(){
+    // Client-side toggle: re-height each bar based on the current mode.
+    // Pure DOM, no dependency; falls through if JS is disabled (server
+    // renders count as the default fallback).
+    window.xdTokenActivityMode = function(btn, mode){
+      var card = btn.closest('.daily-activity-card');
+      if(!card) return;
+      card.querySelectorAll('.mode-btn').forEach(function(b){
+        b.classList.toggle('active', b === btn);
+      });
+      card.setAttribute('data-mode', mode);
+      var groups = card.querySelectorAll('.daily-bar-group');
+      // Compute max across visible mode.
+      var values = [];
+      groups.forEach(function(g){
+        values.push(parseFloat(g.getAttribute('data-' + (mode === 'volume' ? 'volume' : 'trades'))) || 0);
+      });
+      var max = Math.max.apply(null, values.concat([1]));
+      groups.forEach(function(g){
+        var v = parseFloat(g.getAttribute('data-' + (mode === 'volume' ? 'volume' : 'trades'))) || 0;
+        var h = v > 0 ? (v / max) * 130 : 0;
+        var rect = g.querySelector('rect');
+        var val = g.querySelector('.daily-bar-value');
+        rect.setAttribute('y', (140 - h).toFixed(1));
+        rect.setAttribute('height', h.toFixed(1));
+        if(val){
+          val.setAttribute('y', (140 - h - 6).toFixed(1));
+          if(v > 0){
+            val.textContent = mode === 'volume' ?
+              Math.round(v).toLocaleString() :
+              v.toLocaleString();
+          } else {
+            val.textContent = '';
+          }
+        }
+      });
+    };
+  })();
+  </script>
 
   <div class="card">
     <div class="section-head">

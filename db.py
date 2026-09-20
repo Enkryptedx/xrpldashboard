@@ -4888,15 +4888,50 @@ def read_token_history(currency, issuer, spark_hours=168):
             )
             trades_7d = (cur.fetchone() or (0,))[0]
 
+            # 2026-09-20: redesign per Charlie ruling — return daily
+            # 7-bar trade counts + daily 7-bar XRP volumes so /token
+            # can render the labeled bar chart with count/volume toggle.
+            # We keep the hourly sparkline for backward compatibility
+            # (other consumers may still want it) but the /token page
+            # now shows daily bars, headline sentence, and (on flagged
+            # tokens) a comparison count against the canonical issuer.
             cur.execute(
-                "SELECT hour_bucket, trade_count FROM token_volume "
+                "SELECT hour_bucket, trade_count, volume_xrp FROM token_volume "
                 "WHERE currency = %s AND issuer = %s AND hour_bucket >= %s "
                 "ORDER BY hour_bucket ASC",
                 (currency, issuer, cutoff_spark),
             )
-            by_hour = {b: c for (b, c) in cur.fetchall()}
+            _hourly_rows = cur.fetchall()
+            by_hour = {b: c for (b, c, _v) in _hourly_rows}
+            vol_by_hour = {b: float(v or 0) for (b, _c, v) in _hourly_rows}
+
+            cur.execute(
+                "SELECT COALESCE(SUM(volume_xrp), 0) FROM token_volume "
+                "WHERE currency = %s AND issuer = %s AND hour_bucket >= %s",
+                (currency, issuer, cutoff_7d),
+            )
+            volume_7d_xrp = float((cur.fetchone() or (0,))[0])
 
     sparkline = [by_hour.get(cutoff_spark + 1 + i, 0) for i in range(spark_hours)]
+    # Daily aggregation for the labeled 7-bar chart. Day D = trailing 24
+    # hours ending at now_hour - (6-D)*24. bar[0] = 6 days ago through 5
+    # days ago; bar[6] = last 24 hours. Preserves the "some days empty"
+    # signal Charlie wants visible (bar with 0 height + still a labeled
+    # date underneath).
+    daily_trades = []
+    daily_volume = []
+    daily_labels_hour = []  # end-of-day hour_bucket, so template can label
+    for day_idx in range(7):
+        day_start_hour = now_hour - (7 - day_idx) * 24 + 1
+        day_end_hour = day_start_hour + 23
+        d_trades = 0
+        d_vol = 0.0
+        for h in range(day_start_hour, day_end_hour + 1):
+            d_trades += by_hour.get(h, 0)
+            d_vol += vol_by_hour.get(h, 0.0)
+        daily_trades.append(int(d_trades))
+        daily_volume.append(round(d_vol, 4))
+        daily_labels_hour.append(day_end_hour)
     # hours_active is rendered on the "last 7 days" sparkline card; derive
     # it from the sparkline result so the count is anchored to the same
     # window the card displays (cutoff_spark == cutoff_7d == now_hour - 168).
@@ -4911,7 +4946,11 @@ def read_token_history(currency, issuer, spark_hours=168):
         "last_bucket": last_b,
         "trades_24h": int(trades_24h or 0),
         "trades_7d": int(trades_7d or 0),
+        "volume_7d_xrp": volume_7d_xrp,
         "sparkline": sparkline,
+        "daily_trades": daily_trades,
+        "daily_volume": daily_volume,
+        "daily_labels_hour": daily_labels_hour,
     }
 
 

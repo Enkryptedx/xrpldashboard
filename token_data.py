@@ -514,6 +514,38 @@ def fetch_token_data(currency, issuer):
         except Exception:
             _canonical_comparison = None
 
+    # 3c. Daily activity chart labels + optional canonical activity
+    # comparison. Charlie 2026-09-20: `/token` shows a labeled 7-bar
+    # daily chart with a headline sentence and a count/volume toggle;
+    # flagged-token pages also show the canonical issuer's 7-day trade
+    # count so a reader can compare impostor activity against real
+    # activity in one glance.
+    daily_day_labels = []
+    if history.get("daily_labels_hour"):
+        for h in history["daily_labels_hour"]:
+            end_ts = int(h) * 3600
+            try:
+                dt_end = datetime.fromtimestamp(end_ts, tz=timezone.utc)
+                daily_day_labels.append(dt_end.strftime("%a %m-%d"))
+            except (ValueError, OSError):
+                daily_day_labels.append("")
+    _canonical_activity = None
+    if ticker_collision:
+        canonical_iss = _canonical_issuer_for_currency(currency)
+        if canonical_iss and canonical_iss != issuer:
+            try:
+                canonical_hist = db.read_token_history(
+                    currency, canonical_iss, SPARKLINE_HOURS
+                )
+                _canonical_activity = {
+                    "canonical_issuer_short": _short_addr(canonical_iss),
+                    "trades_7d": int(canonical_hist.get("trades_7d") or 0),
+                    "volume_7d_xrp": float(canonical_hist.get("volume_7d_xrp") or 0),
+                    "daily_trades": canonical_hist.get("daily_trades") or [],
+                }
+            except Exception:
+                _canonical_activity = None
+
     # 4. XRP price (None when no XRP-paired pool clears the dust floor — the
     # absence IS the signal; template renders "—" so consumers don't backfill
     # with stale data. See token_prices.py for the floor rationale.)
@@ -614,6 +646,15 @@ def fetch_token_data(currency, issuer):
         # ticker-collision tokens. None when canonical is unresolvable
         # or reserves are unavailable — template gates on presence.
         "canonical_pool_comparison": _canonical_comparison,
+        # 2026-09-20 activity redesign: daily 7-bar chart data + optional
+        # canonical activity comparison. Template renders whichever the
+        # count/volume toggle selects; empty days remain visible as
+        # zero-height labeled bars.
+        "daily_trades": history.get("daily_trades") or [0]*7,
+        "daily_volume": history.get("daily_volume") or [0.0]*7,
+        "daily_day_labels": daily_day_labels or [""]*7,
+        "volume_7d_xrp": float(history.get("volume_7d_xrp") or 0),
+        "canonical_activity_comparison": _canonical_activity,
         "history_source": history_source,
         "capabilities": capabilities,
         "capabilities_sourcing": capabilities_sourcing,
