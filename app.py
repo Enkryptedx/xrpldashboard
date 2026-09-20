@@ -1562,18 +1562,27 @@ def _block_ai_crawlers():
 
 @app.before_request
 def _agent_tier_fleet_block():
-    """Day 6: extend the proven /whales fleet-block signature to the
-    agent-tier surfaces (llms.txt, agents.json, snapshot well-knowns,
-    OpenAPI, /docs). Same fingerprint as the /whales inline block
-    (IL + Chrome/142 residential 2026-07); factored into
-    agent_tier_rate_limit.fleet_signature() so a future second-fleet
-    observation adds ONE line covering /whales + the agent-tier surface
-    at once. Returns 429 + Retry-After (well-behaved compliance signal;
-    the same shape /whales serves). Non-agent-tier paths fall through
-    untouched — /whales retains its own inline block by design so this
-    hook cannot regress that surface."""
-    if not is_agent_tier_route(request.path):
-        return
+    """Fleet-block: when the request UA matches a known fleet fingerprint
+    (per agent_tier_rate_limit.fleet_signature), return 429 + Retry-After
+    regardless of route.
+
+    Was gated on `is_agent_tier_route(request.path)` (Day 6 design) —
+    that shape covered llms.txt, agents.json, snapshot well-knowns, and
+    /docs but NOT /check. Sun 2026-09-20 morning AionBot before/after
+    proved the miss: AionBot targets /check (684 hits over 5 days,
+    all 200s) and never touched an agent-tier route. Same class as the
+    prior mistake where the /whales inline block existed but the
+    agent-tier hook only covered the machine surfaces — the new UA
+    slipped through the ungoverned middle.
+
+    Fleet signatures are narrow-positive-match against a known fingerprint,
+    so the false-positive risk of firing on humans is minimal. If a
+    future signature widens (e.g., a Chrome/142 fingerprint that
+    overlaps with a common browser version), the fix is to narrow the
+    signature — not to re-gate this hook.
+
+    /whales retains its own inline block by design (older, more specific
+    per-route logic). This hook is safe alongside it."""
     label = fleet_signature()
     if label:
         return Response(
