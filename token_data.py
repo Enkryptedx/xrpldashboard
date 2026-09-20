@@ -135,10 +135,18 @@ def _amm_reserves_cached(amm_account):
 
     data = None
     try:
-        resp = xrpl_client._post_rpc(
-            xrpl_client.LOCAL_NODE,
-            AMMInfo(amm_account=amm_account),
-        )
+        # Use the sovereign-preferring XrplClient (LOCAL_NODE tries first,
+        # cascades to PUBLIC_NODES with walker_node_fallback logging on
+        # failure). Prior version used raw _post_rpc against LOCAL_NODE
+        # only — that returned None whenever the tunnel path silently
+        # failed on Render, and the impostor page rendered "reserves
+        # unavailable" for every row. The cascade preserves sovereignty
+        # telemetry via walker_node_fallback but keeps the impostor
+        # comparison visible when the tunnel is degraded. Charlie ruling
+        # 2026-09-20 (evening): "the live impostor page shows shares
+        # alone in prod" is the failure mode we're closing.
+        client = xrpl_client.get_client("token_page_amm_reserves")
+        resp = client.request(AMMInfo(amm_account=amm_account))
         result = getattr(resp, "result", None) or {}
         amm = result.get("amm") or {}
         a1 = amm.get("amount")
