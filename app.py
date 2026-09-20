@@ -4728,7 +4728,17 @@ def _thisweek_is_published(front: dict | None) -> bool:
     Missing front-matter entirely → 404 (fail-closed)."""
     if not front:
         return False
-    if front.get("manual_go") is not True:
+    # Accept both Python bool True (post-YAML-lib parse) and string
+    # 'true' (current line-based frontmatter parser stringifies every
+    # value). 2026-09-20 regression fix: pre-fix, str-'true' failed the
+    # `is not True` identity check → gate always closed → no weekly
+    # edition ever went public since a1941d3 introduced the gate. Any
+    # other value (false, missing, garbage) still closes the gate — the
+    # "a timer NEVER publishes" invariant is preserved.
+    _raw_go = front.get("manual_go")
+    if _raw_go is not True and (
+        not isinstance(_raw_go, str) or _raw_go.strip().lower() != "true"
+    ):
         return False
     val = front.get("published_at_utc")
     if not val:
