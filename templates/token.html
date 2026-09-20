@@ -417,16 +417,40 @@
           {{ _('%(m)d of %(n)d pools hold meaningful LP balances (≥ %(thr)s LP issued); the remainder are micro-pools.', m=data.meaningful_pool_count, n=data.pool_count, thr=thr_label) }}
         {% endif %}
       </p>
-      {# 2026-09-11 minimum LP-column fix (Charlie ruling): rename
-         column header + rewrite in-row unit label so the LP number
-         reads unambiguously as a share supply, not a token amount.
-         Real fix (replacing LP column with actual pool reserves
-         "X USDC + Y OUSG") filed post-freeze. #}
+      {# 2026-09-20 pool render (Charlie ruling): show BOTH the reserves
+         and the LP share count, plus a per-row teaching line that a
+         large share count does not imply pool value. For ticker-
+         collision (impostor) tokens, prepend an impostor-vs-canonical
+         XRP-reserve comparison box so the scam is explained where it
+         happens. Reserves come from live amm_info via the sovereign
+         tunnel, cached per pool; fail-open renders "reserves
+         unavailable" rather than shares alone. #}
+      {% if data.canonical_pool_comparison %}
+        {% set _c = data.canonical_pool_comparison %}
+        <div class="impostor-comparison" style="border: 1px solid var(--warn, #f59e0b); background: rgba(245,158,11,0.08); border-radius: 6px; padding: 0.75em 0.9em; margin: 0 0 1em;">
+          <div style="font-weight: 600; color: var(--warn, #f59e0b); margin-bottom: 0.3em;">
+            ⚠ {{ _('Ticker collision — impostor pool') }}
+          </div>
+          <div style="font-size: var(--fs-sm); line-height: 1.45;">
+            {{ _('The biggest %(disp)s/XRP pool for this issuer holds', disp=data.display) }}
+            <strong>{{ "{:,.1f}".format(_c.impostor_xrp_reserve) }} XRP</strong>.
+            {% if _c.canonical_brand %}{{ _('The canonical %(brand)s (issuer', brand=_c.canonical_brand) }}
+            {% else %}{{ _('The canonical issuer for this ticker (') }}{% endif %}
+            <span class="pool-acct" style="font-family: var(--font-mono, monospace);">{{ _c.canonical_issuer_short }}</span>)
+            {{ _('has a %(disp)s/XRP pool holding', disp=data.display) }}
+            <strong>{{ "{:,.0f}".format(_c.canonical_xrp_reserve) }} XRP</strong>.
+          </div>
+          <div style="color: var(--muted); font-size: var(--fs-xs); margin-top: 0.4em;">
+            {{ _('LP share counts are chosen at pool creation and do not measure pool value. Reserves are the real deposit sizes. Live amm_info, refreshed at') }}
+            {{ _c.fetched_at_iso }}.
+          </div>
+        </div>
+      {% endif %}
       <div class="pool-row" style="color: var(--muted); font-size: var(--fs-xs); font-weight: 500; border-bottom: 1px solid var(--border); padding-bottom: 0.5em;">
-        <div>{{ _('Pool pair') }}</div>
+        <div>{{ _('Pool pair + reserves') }}</div>
         <div>{{ _('AMM account') }}</div>
         <div style="text-align: right;">{{ _('Fee') }}</div>
-        <div style="text-align: right;">{{ _('LP supply (shares)') }}</div>
+        <div style="text-align: right;">{{ _('LP shares') }}</div>
       </div>
       {% for p in data.pools[:20] %}
       <div class="pool-row">
@@ -436,21 +460,33 @@
           {% if p.other_issuer_short %}
             <span class="pool-acct" style="margin-left:0.4em;">{{ p.other_issuer_short }}</span>
           {% endif %}
+          <div style="font-size: var(--fs-xs); color: var(--muted); font-weight: normal; margin-top: 0.15em;">
+            {% if p.reserves and p.reserves.xrp is not none %}
+              <strong style="color: var(--fg);">{{ "{:,.2f}".format(p.reserves.xrp) }} XRP</strong>
+              {%- if p.reserves.other_amount %}
+                +
+                <strong style="color: var(--fg);">{{ "{:,.0f}".format(p.reserves.other_amount|float) }}</strong>
+                <span>{{ p.other_display }}</span>
+              {%- endif %}
+            {% else %}
+              <em>{{ _('reserves unavailable') }}</em>
+            {% endif %}
+          </div>
         </div>
         <div class="pool-acct">{{ p.account_short }}</div>
         <div class="pool-fee">{{ "%.2f"|format(p.fee_pct) }}%</div>
         <div class="pool-lp">
           {% if p.lp_balance %}
-            {{ "{:,.0f}".format(p.lp_balance|float) }} {{ _('shares') }}
+            {{ "{:,.0f}".format(p.lp_balance|float) }}
           {% else %}
             —
           {% endif %}
         </div>
       </div>
-      {% endfor %}
-      <p style="color: var(--muted); font-size: var(--fs-xs); margin: 0.8em 0 0;">
-        {{ _('“LP supply (shares)” is the total number of LP tokens the AMM has issued to depositors — a pool-share unit count, not a token or dollar amount. Divide your own LP balance by this number to get your share of the pool. Raw reserves in each asset are what most people want to see, and are queued as the next iteration.') }}
+      <p class="pool-teach" style="color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin: 0.15em 0 0.9em 0; grid-column: 1 / -1;">
+        {{ _('Share counts are chosen by whoever creates the pool. A large share count does not mean the pool holds value.') }}
       </p>
+      {% endfor %}
       {% if data.pools|length > 20 %}
         <div style="color: var(--muted); font-size: var(--fs-xs); padding-top: 0.6em; text-align: center;">
           {{ _('Showing top 20 of') }} {{ data.pools|length }} {{ _('pools by issued LP balance.') }}

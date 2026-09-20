@@ -15,11 +15,18 @@ import threading
 import time
 from datetime import datetime, timezone
 
+from xrpl.models.requests import AMMInfo
+
 import db
 import shared_tier_verifier  # Part C 2026-09-10: live registry tier resolver
+import xrpl_client
 from check_data import _capability_signals
 from sovereign_tunnel_client import SOURCING_SOVEREIGN, SOURCING_STALE_CACHE
-from token_naming import decode_currency, resolve_display
+from token_naming import (
+    TICKER_CANONICAL_PATH,
+    decode_currency,
+    resolve_display,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOLUMES_DB_PATH = os.path.join(HERE, "volumes.db")
@@ -45,6 +52,23 @@ MEANINGFUL_LP_THRESHOLD = 1000.0
 
 _cache_lock = threading.Lock()
 _cache = {}  # (currency, issuer) -> (fetched_at_unix, data_dict)
+
+# ── AMM reserves fetch (2026-09-20 Charlie ruling) ────────────────────
+#
+# Show reserves + LP shares + a per-row teaching line + a canonical
+# comparison block when the token collides with a curated ticker. That's
+# the presentation fix for impostor-token pages where the LP-token count
+# alone reads impressively (rLUSDtyk's RLUSD/XRP pool renders "8,994,790
+# shares" but the pool holds 82.7 XRP of real value). Reserves come from
+# live amm_info via xrpl_client._post_rpc against the sovereign tunnel;
+# cached per AMM account with a freshness stamp. Fail-open: reserves=None
+# → template renders "reserves unavailable" rather than shares alone.
+_amm_reserves_cache = {}  # {amm_account: (fetched_at_mono, data_or_None)}
+_amm_reserves_lock = threading.Lock()
+AMM_RESERVES_TTL = int(os.environ.get("TOKEN_AMM_RESERVES_TTL", "300"))
+
+_canonical_registry_cache = None
+_canonical_registry_lock = threading.Lock()
 
 
 def _load_json_safe(path):
@@ -86,6 +110,161 @@ def _short_addr(addr):
     if not addr:
         return None
     return f"{addr[:6]}…{addr[-4:]}" if len(addr) > 14 else addr
+
+
+def _amm_reserves_cached(amm_account):
+    """Fetch AMM pool reserves via amm_info against the sovereign tunnel.
+    Cached per amm_account for AMM_RESERVES_TTL seconds. Fail-open —
+    returns None on any error so the template can render "reserves
+    unavailable" without shares alone; per Charlie 2026-09-20:
+    never show shares without reserves.
+
+    Return shape:
+      {"xrp_drops": int|None, "xrp": float|None, "other_amount": str,
+       "other_currency": str, "other_issuer": str|None, "fetched_at_iso":
+       str}
+    or None on error / non-XRP-paired pool.
+    """
+    if not amm_account:
+        return None
+    now_mono = time.monotonic()
+    with _amm_reserves_lock:
+        entry = _amm_reserves_cache.get(amm_account)
+        if entry and (now_mono - entry[0]) < AMM_RESERVES_TTL:
+            return entry[1]
+
+    data = None
+    try:
+        resp = xrpl_client._post_rpc(
+            xrpl_client.LOCAL_NODE,
+            AMMInfo(amm_account=amm_account),
+        )
+        result = getattr(resp, "result", None) or {}
+        amm = result.get("amm") or {}
+        a1 = amm.get("amount")
+        a2 = amm.get("amount2")
+        # One leg is XRP (str of drops); the other is an IOU dict.
+        # Both-IOU pools aren't in the display comparison scope; leave
+        # data=None so the row shows "reserves unavailable".
+        if isinstance(a1, str):
+            xrp_drops = int(a1)
+            other = a2 if isinstance(a2, dict) else None
+        elif isinstance(a2, str):
+            xrp_drops = int(a2)
+            other = a1 if isinstance(a1, dict) else None
+        else:
+            xrp_drops = None
+            other = None
+        if other:
+            data = {
+                "xrp_drops": xrp_drops,
+                "xrp": xrp_drops / 1_000_000.0 if xrp_drops is not None else None,
+                "other_amount": other.get("value"),
+                "other_currency": other.get("currency"),
+                "other_issuer": other.get("issuer"),
+                "fetched_at_iso": (
+                    datetime.now(timezone.utc)
+                    .replace(microsecond=0)
+                    .isoformat()
+                    .replace("+00:00", "Z")
+                ),
+            }
+    except Exception:
+        data = None
+
+    with _amm_reserves_lock:
+        _amm_reserves_cache[amm_account] = (now_mono, data)
+    return data
+
+
+def _load_canonical_registry():
+    """Cached load of ticker_canonical_issuers.json for the impostor
+    comparison lookup. Returns a dict[ticker → set(issuers)] or {}."""
+    global _canonical_registry_cache
+    with _canonical_registry_lock:
+        if _canonical_registry_cache is not None:
+            return _canonical_registry_cache
+        try:
+            with open(TICKER_CANONICAL_PATH) as f:
+                raw = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            _canonical_registry_cache = {}
+            return _canonical_registry_cache
+        reg = {}
+        for ticker, entry in raw.items():
+            if ticker.startswith("_") or not isinstance(entry, dict):
+                continue
+            reg[ticker] = {
+                "canonical_issuers": set(entry.get("canonical_issuers") or []),
+                "brand": entry.get("brand"),
+            }
+        _canonical_registry_cache = reg
+        return reg
+
+
+def _canonical_issuer_for_currency(currency):
+    """If `currency` decodes to a ticker that has exactly one canonical
+    XRPL issuer in ticker_canonical_issuers.json, return that issuer.
+    Return None for the ambiguous cases (no canonical, multiple, or
+    unresolvable). Multi-issuer canonicals (e.g. bridged assets) fall
+    through — the /token page renders no comparison for those."""
+    d = decode_currency(currency)
+    if d.get("kind") not in ("decoded", "short"):
+        return None
+    ticker = d.get("display")
+    if not ticker:
+        return None
+    entry = _load_canonical_registry().get(ticker) or {}
+    issuers = entry.get("canonical_issuers") or set()
+    if len(issuers) == 1:
+        return next(iter(issuers))
+    return None
+
+
+def _canonical_pool_comparison(currency, impostor_issuer, impostor_pools):
+    """Build the impostor-vs-canonical XRP-reserve comparison block.
+
+    Picks the biggest XRP-paired AMM for the canonical issuer, fetches
+    live reserves for both sides, returns None if either side can't be
+    resolved (canonical isn't a single-issuer ticker, or reserves aren't
+    available). The template gates the whole comparison box on this
+    dict's presence — no reserves = no comparison = no claim.
+    """
+    canonical_iss = _canonical_issuer_for_currency(currency)
+    if not canonical_iss or canonical_iss == impostor_issuer:
+        return None
+    # Impostor's own biggest XRP-paired pool (from the enriched pools list).
+    impostor_pool = None
+    for p in impostor_pools:
+        if p.get("other_display") == "XRP" and p.get("reserves"):
+            impostor_pool = p
+            break
+    if not impostor_pool:
+        return None
+    impostor_xrp = (impostor_pool.get("reserves") or {}).get("xrp")
+    if impostor_xrp is None:
+        return None
+    # Canonical's biggest XRP-paired pool (fresh index lookup).
+    canonical_pools = _amm_pools_holding(currency, canonical_iss)
+    for cp in canonical_pools:
+        if cp.get("other_display") == "XRP":
+            r = _amm_reserves_cached(cp["account"])
+            if r and r.get("xrp") is not None:
+                brand = (_load_canonical_registry().get(
+                    decode_currency(currency).get("display") or ""
+                ) or {}).get("brand")
+                return {
+                    "canonical_issuer": canonical_iss,
+                    "canonical_issuer_short": _short_addr(canonical_iss),
+                    "canonical_amm_account": cp["account"],
+                    "canonical_amm_account_short": _short_addr(cp["account"]),
+                    "canonical_xrp_reserve": r["xrp"],
+                    "canonical_brand": brand,
+                    "impostor_amm_account_short": _short_addr(impostor_pool["account"]),
+                    "impostor_xrp_reserve": impostor_xrp,
+                    "fetched_at_iso": r["fetched_at_iso"],
+                }
+    return None
 
 
 def _decode_currency_hex(hex_str):
@@ -309,6 +488,32 @@ def fetch_token_data(currency, issuer):
         except (TypeError, ValueError):
             continue
 
+    # 3a. Enrich the top 20 pools (what the template renders) with live
+    # reserves via amm_info. Charlie 2026-09-20: LP shares alone read
+    # impressively but say nothing about pool value; show reserves +
+    # shares + a per-row teaching line so the honest read is unavoidable.
+    # Fail-open — p["reserves"]=None → template shows "reserves
+    # unavailable" for that row.
+    for p in pools[:20]:
+        try:
+            p["reserves"] = _amm_reserves_cached(p["account"])
+        except Exception:
+            p["reserves"] = None
+
+    # 3b. For ticker-collision (impostor) tokens, resolve the canonical
+    # issuer's biggest XRP-paired AMM reserves so the template can render
+    # a side-by-side "the impostor's pool holds X XRP; Ripple's holds
+    # Y XRP" comparison — the scam explained where it happens. None if
+    # canonical isn't a single-issuer ticker or reserves aren't live.
+    _canonical_comparison = None
+    if ticker_collision:
+        try:
+            _canonical_comparison = _canonical_pool_comparison(
+                currency, issuer, pools[:20]
+            )
+        except Exception:
+            _canonical_comparison = None
+
     # 4. XRP price (None when no XRP-paired pool clears the dust floor — the
     # absence IS the signal; template renders "—" so consumers don't backfill
     # with stale data. See token_prices.py for the floor rationale.)
@@ -405,6 +610,10 @@ def fetch_token_data(currency, issuer):
         "pool_count": len(pools),
         "meaningful_pool_count": meaningful_pool_count,
         "meaningful_lp_threshold": MEANINGFUL_LP_THRESHOLD,
+        # 2026-09-20: impostor-vs-canonical XRP reserve comparison for
+        # ticker-collision tokens. None when canonical is unresolvable
+        # or reserves are unavailable — template gates on presence.
+        "canonical_pool_comparison": _canonical_comparison,
         "history_source": history_source,
         "capabilities": capabilities,
         "capabilities_sourcing": capabilities_sourcing,
