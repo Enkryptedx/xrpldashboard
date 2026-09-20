@@ -155,6 +155,21 @@ PUBLIC_ROUTES = [
 ]
 
 
+
+def _is_valid_utm_value(v):
+    """Reject anything outside the Google utm_source convention. Charlie
+    ruling 2026-09-20: drop stranger-controlled utm_source BEFORE
+    storing. Values that pass this check are HTML-safe by construction
+    (no <, >, ", ', &, backslashes, whitespace) — even without Jinja
+    escape, they cannot form a tag or an event handler."""
+    if not isinstance(v, str):
+        return False
+    if not v or len(v) > 100:
+        return False
+    import re as _re
+    return bool(_re.match(r"^[A-Za-z0-9._~-]+$", v))
+
+
 def ttl_cache(seconds=60):
     """Per-process TTL cache for hot helpers that re-fetch identical results
     within seconds. Sized to a single value per arg-tuple — fine for the
@@ -1678,7 +1693,16 @@ def _log_page_view(response):
             or None
         )
         utm = request.args.get("utm_source")
-        utm = utm[:100] if utm else None
+        # Drop-on-store validation (Charlie ruling 2026-09-20): reject
+        # utm_source values that don't match Google's own convention
+        # `[A-Za-z0-9._~-]+`. XSS scanners and adversarial probes get
+        # dropped BEFORE they reach the DB, so /analytics never renders
+        # a scanner payload even if Jinja auto-escape were bypassed
+        # somewhere downstream.
+        if not _is_valid_utm_value(utm):
+            utm = None
+        else:
+            utm = utm[:100]
         db.log_page_view(
             path=path[:300],
             visitor_hash=_visitor_hash(ip, ua),
