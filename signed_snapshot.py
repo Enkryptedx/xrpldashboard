@@ -957,6 +957,106 @@ def append_or_replace_leaf(chain: dict, date_str: str, leaf_hash_hex: str, ledge
 # Build + sign
 # ---------------------------------------------------------------------------
 
+def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 600) -> dict | None:
+    """Assemble the per-amendment vote-tally block for envelope inclusion
+    (Charlie ruling 2026-09-20). Returns a dict with per-amendment
+    hash/enabled/supported_by_responding_node/network_votes, plus a
+    responding_node_source label so any future press citation of
+    /amendments can be checked against a tamper-evident record.
+
+    Fail-loud on stale cache (>max_stale_seconds): raises RuntimeError
+    so the walker_health_end path stamps ok=False and the leaf is not
+    written. Per Tier-0 telemetry_fail_loud rule.
+
+    Returns None if the assembly fails for any non-stale reason (e.g.
+    the amendments modules import fail on a dev box) — in that case
+    the envelope simply omits the block, preserving current v4 shape.
+
+    Gated behind SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED so the code
+    can land tonight without changing production envelopes; tomorrow
+    morning after review, Charlie flips the env var to enable and the
+    next scheduled snapshot picks it up. First proving run is a
+    controlled dry-run against the block builder before the plist
+    fires — the LaunchAgent's own next run is the deployment gate.
+    """
+    if os.environ.get("SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED") not in ("1", "true", "yes"):
+        return None
+    try:
+        import amendments_state
+        import amendments_network_votes
+    except ImportError:
+        return None
+
+    # Fetch both sources; check freshness. Charlie ruling: "fail loud" on
+    # stale caches per Tier-0 — reject the write rather than silently
+    # attaching stale numbers to a signed leaf.
+    state = amendments_state.fetch_amendments_state_cached()
+    votes = amendments_network_votes.fetch_network_vote_tallies_cached()
+    now_ts = int(now_utc.timestamp())
+    for source_name, source in (("amendments_state", state), ("network_votes", votes)):
+        # Both cache dicts have "cached_age_seconds" or equivalent
+        # freshness signal. Absence = fresh (just fetched).
+        age = 0
+        if isinstance(source, dict):
+            age = int(source.get("cached_age_seconds") or 0)
+        if age > max_stale_seconds:
+            raise RuntimeError(
+                f"amendments block: {source_name} cache is {age}s stale "
+                f"(>{max_stale_seconds}s cap); refusing to sign — Tier-0 "
+                f"telemetry_fail_loud, per plan doc PLAN_amendments_in_signed_snapshot.md"
+            )
+
+    # Responding-node source label. amendments_state stamps `sourced_from`
+    # (own-node vs public-RPC) if the module tracks it; fall back to
+    # XRPL_NODE env introspection.
+    responding_source = "lenovo_tunnel"
+    if isinstance(state, dict):
+        responding_source = state.get("responding_node_source") or state.get(
+            "sourced_from"
+        ) or responding_source
+    xrpl_node = os.environ.get("XRPL_NODE") or os.environ.get(
+        "XRPL_LOCAL_NODE"
+    ) or ""
+    if "s1.ripple.com" in xrpl_node or "s2.ripple.com" in xrpl_node:
+        responding_source = "public_ripple_" + (
+            "s1" if "s1.ripple.com" in xrpl_node else "s2"
+        )
+
+    per_amendment = {}
+    known = state.get("known_amendments", []) if isinstance(state, dict) else []
+    vote_map = votes.get("data", {}) if isinstance(votes, dict) else {}
+    threshold_display = None
+    for a in known:
+        name = a.get("name")
+        if not name:
+            continue
+        h = a.get("amendment") or a.get("hash")
+        v = vote_map.get((h or "").upper()) if h else None
+        if v and threshold_display is None:
+            # Every in-flight amendment shares the network-wide threshold
+            # display ("N/M"); record once for envelope-level reader use.
+            thr_str = v.get("threshold_raw") or v.get("threshold")
+            threshold_display = thr_str
+        per_amendment[name] = {
+            "hash": h,
+            "enabled": bool(a.get("enabled")),
+            "supported_by_responding_node": bool(a.get("supported")),
+            "network_votes": {
+                "count": (v.get("count") if v else None),
+                "validations": (v.get("validations") if v else None),
+                "threshold": (v.get("threshold") if v else None),
+            } if v else None,
+        }
+
+    return {
+        "as_of_unix": now_ts,
+        "responding_node_source": responding_source,
+        "unl_source": "vl.ripple.com",
+        "threshold_display": threshold_display or "28/35",
+        "per_amendment": per_amendment,
+    }
+
+
 def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
     """Pure metric collection + structuring. Signing is a separate step
     (sign_snapshot) so tests can drive build without holding a key.
@@ -970,7 +1070,7 @@ def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
         now_utc = dt.datetime.now(dt.timezone.utc)
     metrics, errors = collect_metrics(now_utc=now_utc)
     started_at = int(now_utc.timestamp())
-    return {
+    snap = {
         "signing_domain": SIGNING_DOMAIN,
         "schema_version": SCHEMA_VERSION,
         "snapshot_date_utc": date_str,
@@ -978,6 +1078,17 @@ def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
         "metrics": metrics,
         "errors": errors,
     }
+    # 2026-09-20 Charlie ruling: attach amendment vote tallies to each
+    # daily leaf so any future press citation of /amendments can be
+    # cross-checked against a tamper-evident record. Gated by env var
+    # so the code lands overnight without changing production output;
+    # after Charlie's proving run, flip the env in the LaunchAgent
+    # plist and the next scheduled snapshot picks it up (first real
+    # leaf carries schema_version=5 in a follow-up commit).
+    amendments_block = _assemble_amendments_block(now_utc=now_utc)
+    if amendments_block is not None:
+        snap["amendments"] = amendments_block
+    return snap
 
 
 def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
