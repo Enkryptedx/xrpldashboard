@@ -6605,11 +6605,15 @@ def read_country_breakdown(window_seconds, limit=10, kind="human",
 
 
 def read_country_count(window_seconds, kind="human", precomputed_bots=None):
-    """Count of distinct origins (countries + Cloudflare special codes
-    like T1 for Tor) seen in the trailing window. Mirrors
+    """Count of distinct origins seen in the trailing window. Mirrors
     read_country_breakdown's bot-filter + window semantics so the count
     lines up with the table. Pass window_seconds=None for all-time.
-    `precomputed_bots` — see read_page_view_stats."""
+    `precomputed_bots` — see read_page_view_stats.
+
+    Charlie ruling 2026-09-20: for kind='human' this ALSO applies the
+    shared allow-lists in public_analytics_filters (self-probe UAs,
+    known-bot UAs, and strict geo shape) so /analytics and
+    scripts/weekly_analytics.py agree on public numbers."""
     if not pg_available():
         return 0
     bot_frag, bot_params = _bot_filter_sql(kind, precomputed=precomputed_bots)
@@ -6618,12 +6622,27 @@ def read_country_count(window_seconds, kind="human", precomputed_bots=None):
     else:
         cutoff = int(time.time()) - int(window_seconds)
         time_frag, time_params = "WHERE ts >= %s", [cutoff]
+    # 2026-09-20 convergence: on human queries, layer in the shared
+    # allow-lists so googlebot/AI-crawler/junk-country rows can't drift
+    # into the public count.
+    shared_frag = ""
+    if kind == "human":
+        try:
+            from public_analytics_filters import (
+                sql_not_bot_ua_clause, sql_valid_country_clause,
+            )
+            shared_frag = (
+                f" AND ({sql_valid_country_clause('page_views')}) "
+                f"AND ({sql_not_bot_ua_clause('page_views', psycopg_escape=True)})"
+            )
+        except ImportError:
+            shared_frag = ""
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT COUNT(DISTINCT COALESCE(country, '?')) "
-                    f"FROM page_views {time_frag} {bot_frag}",
+                    "SELECT COUNT(DISTINCT country) "
+                    f"FROM page_views {time_frag} {bot_frag}{shared_frag}",
                     [*time_params, *bot_params],
                 )
                 row = cur.fetchone()

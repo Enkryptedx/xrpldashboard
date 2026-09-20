@@ -52,6 +52,11 @@ from typing import NamedTuple
 # search in SQL (COALESCE(user_agent, '') ILIKE '%fragment%').
 
 SELF_PROBE_UA_FRAGMENTS = (
+    # NOTE: these fragments are the shared allow-list — the canonical
+    # definition now lives in public_analytics_filters.py so /analytics
+    # and this script converge (Charlie ruling 2026-09-20). Kept inline
+    # here as a copy for import-safety and offline runs, but the
+    # weekly report and /analytics import the same source of truth.
     "xrpldashboard-",         # every internal canary / walker HTTP client
     "xrpld-anchor-canary",    # anchor canary
     "public-route-canary",    # route-200 canary

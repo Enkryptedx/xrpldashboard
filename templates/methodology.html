@@ -594,6 +594,12 @@
     {{ _('The') }} <a href="/analytics">/analytics</a> {{ _('page renders the same visitor counts twice: filtered ("humans") and unfiltered ("bots"). Both series come from') }} <code>page_views</code> {{ _('rows; the filter is a query-time predicate, not a stored label, so the rule is transparent and reversible.') }}
   </p>
   <p>
+    <strong>{{ _('One definition (2026-09-20).') }}</strong>
+    {{ _('The allow-lists that decide "human" vs "bot" for public numbers live in a single module') }} <code>public_analytics_filters.py</code>. {{ _('Both /analytics and the weekly report (') }}<code>scripts/weekly_analytics.py</code>{{ _(') import the same constants:') }}
+    <code>SELF_PROBE_UA_FRAGMENTS</code> {{ _('(our canaries, walkers, the JJ shell — never counted as visitors),') }}
+    <code>KNOWN_BOT_UA_FRAGMENTS</code> {{ _('(googlebot, bingbot, chatgpt-user, claudebot, perplexitybot, headless clients, HTTP libraries — excluded from every public "human" count even if the is_bot_writer walker has not yet stamped the row), and a strict two-letter ISO-country allow-list that excludes T1 (the Cloudflare Tor pseudo-code) and any malformed geo values. Editing any list is a one-line diff that propagates simultaneously to the /analytics dashboard, the Sunday weekly report, and the standing-orders morning report.') }}
+  </p>
+  <p>
     <strong>{{ _('Rule.') }}</strong> {{ _('A row is classified as bot if its (path, user-agent) pair has appeared') }} <strong>{{ _('≥ 30 times in the trailing 7 days') }}</strong> {{ _('AND the total hit count is') }} <strong>{{ _('≤ 1.10 × distinct visitor identifiers') }}</strong> {{ _('for that pair. The volume threshold isolates aggregate scanner activity from ambient traffic; the ratio clause distinguishes rotating-IP proxies (many one-shot visitors) from viral human bursts arriving from a shared link (also many one-shot visitors, but usually staying below the volume floor).') }}
   </p>
   <p>
