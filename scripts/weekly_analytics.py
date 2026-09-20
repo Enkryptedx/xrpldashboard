@@ -107,6 +107,75 @@ KNOWN_BOT_UA_FRAGMENTS = (
 )
 
 
+# ── News-domain referrer resolution ───────────────────────────────────
+#
+# Chrome's default Referrer-Policy is `strict-origin-when-cross-origin`,
+# which strips the referring URL to bare origin on cross-origin
+# navigation. So a news-site inbound arrives as `https://<site>/` with no
+# article path. Out-of-band author confirmation, direct citation quote,
+# or manual page-scan is the only way to resolve which specific article
+# sent the traffic. When resolved, record it in
+# docs/PRESS_CITATIONS.md and add a NEWS_DOMAIN_REFERRERS entry so future
+# weekly reports surface the source page next to the raw-referrer count.
+#
+# Each entry maps the SEEN referrer origin (byte-exact) to a
+# {resolved_url, cited_date, cited_page} record. `resolved_url` may be
+# None if we know the origin but haven't confirmed the article yet.
+NEWS_DOMAIN_REFERRERS = {
+    "https://cryptoslate.com/": {
+        "resolved_url": "https://cryptoslate.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades/",
+        "cited_date": "2026-09-18",
+        "cited_page": "/amendments",
+        "citation_ref": "docs/PRESS_CITATIONS.md",
+    },
+    "https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact": {
+        "resolved_url": "https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact",
+        "cited_date": "2026-09-19",
+        "cited_page": "/amendments",
+        "citation_ref": None,
+    },
+    "https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-t": {
+        "resolved_url": "https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades",
+        "cited_date": "2026-09-18",
+        "cited_page": "/amendments",
+        "citation_ref": None,
+    },
+    "https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window": {
+        "resolved_url": "https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window",
+        "cited_date": "2026-09-18",
+        "cited_page": "/amendments",
+        "citation_ref": None,
+    },
+}
+
+# Bare origins we treat as news for the "News referrers" bucket. Includes
+# both resolved (see NEWS_DOMAIN_REFERRERS) and known-but-unresolved
+# outlets that have sent traffic before. Kept explicit — the classifier
+# elsewhere considers anything not in the search/social/AI buckets as
+# "direct", which would swallow news. This list is the news-specific
+# override so those show up under NEWS instead of DIRECT.
+NEWS_DOMAIN_ORIGINS = frozenset({
+    "cryptoslate.com",
+    "wordupnews.com",
+    "amznusa.com",
+    "allaboutxrp.com",
+    "coindesk.com",
+    "cointelegraph.com",
+    "theblock.co",
+    "decrypt.co",
+    "cryptobriefing.com",
+    "cryptopolitan.com",
+    "coingape.com",
+    "cryptonews.net",
+    "cryptonews.com",
+    "protos.com",
+    "crypto.news",
+    "beincrypto.com",
+    "u.today",
+    "watcher.guru",
+})
+
+
 # ── Country / region validators (strict allowlists) ──────────────────
 
 _US_STATE_CODES = frozenset({
@@ -348,6 +417,57 @@ def country_5x_anomalies(week_start: str, week_end: str,
     ]
 
 
+# ── News-referrer resolver ────────────────────────────────────────────
+
+def news_referrals_for_week(start_et: str, end_et: str) -> list[dict]:
+    """Return each news-origin referrer seen this week with count and
+    resolving article when known.
+
+    Groups by raw referrer value (byte-exact). For each row that matches
+    a `NEWS_DOMAIN_REFERRERS` entry, attaches the resolved article; for
+    ones that only match a `NEWS_DOMAIN_ORIGINS` domain, returns the
+    entry with `resolved_url=None` so we surface unresolved news traffic
+    to prompt a follow-up. Excludes bot UAs so this is human-only news
+    inbound."""
+    domain_ilike = " OR ".join(
+        f"p.referrer ILIKE 'https://{d}%'" for d in NEWS_DOMAIN_ORIGINS
+    )
+    if not domain_ilike:
+        return []
+    ua_clause = _sql_not_bot_ua_clause("p")
+    sql = f"""
+        SELECT p.referrer, COUNT(*) AS n
+          FROM page_views p
+         WHERE p.ts >= EXTRACT(EPOCH FROM TIMESTAMPTZ '{start_et}')
+           AND p.ts <  EXTRACT(EPOCH FROM TIMESTAMPTZ '{end_et}')
+           AND (p.is_bot IS NULL OR p.is_bot = FALSE)
+           AND ({domain_ilike})
+           AND {ua_clause}
+      GROUP BY 1
+      ORDER BY 2 DESC
+    """
+    rows = _q_rows(sql)
+    out = []
+    for row in rows:
+        if len(row) < 2:
+            continue
+        referrer, n = row[0], row[1]
+        try:
+            n = int(n)
+        except ValueError:
+            continue
+        entry = NEWS_DOMAIN_REFERRERS.get(referrer)
+        out.append({
+            "referrer": referrer,
+            "count": n,
+            "resolved_url": entry["resolved_url"] if entry else None,
+            "cited_date": entry["cited_date"] if entry else None,
+            "cited_page": entry["cited_page"] if entry else None,
+            "citation_ref": entry["citation_ref"] if entry else None,
+        })
+    return out
+
+
 # ── Report builder ────────────────────────────────────────────────────
 
 def build_report(anchor_date: dt.date, writer_off_days: set[str]) -> str:
@@ -362,6 +482,7 @@ def build_report(anchor_date: dt.date, writer_off_days: set[str]) -> str:
     country_t = all_time_country_tallies()
     state_t = all_time_us_state_split()
     regions_ct = regions_all()
+    news_refs = news_referrals_for_week(start, end)
 
     lines = []
     lines.append(f"# Weekly analytics — week starting {start[:10]}\n")
@@ -386,6 +507,23 @@ def build_report(anchor_date: dt.date, writer_off_days: set[str]) -> str:
             lines.append(f"| {c} | {tw} | {avg} | {ratio}x{flag} |")
     else:
         lines.append("(none above 5x threshold)")
+    lines.append("")
+
+    lines.append(f"## News referrers (this week, human-only)")
+    if news_refs:
+        lines.append("| referrer | hits | resolved article | cited page |")
+        lines.append("|---|---:|---|---|")
+        for r in news_refs:
+            resolved = r["resolved_url"] or "(unresolved — needs manual link-check)"
+            cited_page = r["cited_page"] or "?"
+            cited_note = (
+                f"{resolved}"
+                + (f" · cited {r['cited_date']}" if r["cited_date"] else "")
+                + (f" · see {r['citation_ref']}" if r["citation_ref"] else "")
+            )
+            lines.append(f"| `{r['referrer']}` | {r['count']} | {cited_note} | {cited_page} |")
+    else:
+        lines.append("(no news-domain referrers this week)")
     lines.append("")
 
     lines.append(f"## All-time tally (strict allowlist)")
