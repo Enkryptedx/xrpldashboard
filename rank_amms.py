@@ -431,6 +431,25 @@ def main():
     })
     ranked = load_json(RANKED_PATH, [])
 
+    # 2026-09-21 Charlie fix (item 2): rank_amms writes token_prices at
+    # the top of EVERY invocation using whatever ranked pools are on
+    # disk right now. Prior state: token_prices.run_once() was called
+    # only after a FULL ranker pass completed (line ~513 below), which
+    # takes ~24h given ~31K pools at pacing≤1/s — so hourly launchd
+    # invocations produced only one token_prices row per day. Snapshot
+    # timestamp is int(time.time()) so ON CONFLICT DO NOTHING doesn't
+    # drop the row; each hour writes a fresh (currency, issuer,
+    # snapshot_ts) tuple. This is redundant with the end-of-pass call
+    # below (which stays for the "just-finished-full-sweep" freshness
+    # guarantee) but the ON CONFLICT dedup makes the double-write
+    # cheap and harmless.
+    try:
+        import token_prices as _tp
+        w, dust, other = _tp.run_once(pools=ranked, snapshot_ts=int(time.time()))
+        log(f"token_prices (invocation-start): written={w} dust_skipped={dust} other_skipped={other}")
+    except Exception as e:
+        log(f"token_prices (invocation-start): derivation failed (non-fatal): {e}")
+
     if state.get("finished_at") and state.get("cursor", 0) >= len(index):
         log(f"already finished: {len(ranked)} ranked pools in {RANKED_PATH}")
         log("pass --reset to re-rank")
@@ -547,9 +566,25 @@ if __name__ == "__main__":
             )
         except Exception:
             message = f"rc={rc}"
+    except SystemExit as exc:
+        # argparse and other early sys.exit() paths land here; without
+        # this branch, message stays None and the walker_health
+        # blank-failure guard (added 2026-09-21) raises before we can
+        # stamp a failure. Prefer the exit code as the reason.
+        message = f"sys.exit({exc.code})"
+        ok = (exc.code == 0)
+        rc = exc.code if isinstance(exc.code, int) else 1
     except Exception as exc:
         message = f"exception: {type(exc).__name__}: {exc}"
         raise
     finally:
-        db.write_walker_health_end("rank_amms", ok=ok, message=message)
+        # Belt-and-suspenders: the blank-failure guard rejects None or
+        # empty; on any code path where we didn't set a message
+        # (shouldn't happen after the SystemExit branch above), fall
+        # back to a labeled placeholder instead of letting the guard
+        # raise on the stamp itself.
+        db.write_walker_health_end(
+            "rank_amms", ok=ok,
+            message=message or ("clean_no_message" if ok else "unlabeled_failure"),
+        )
     sys.exit(rc)
