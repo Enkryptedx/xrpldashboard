@@ -36,6 +36,21 @@ HIT_THRESHOLD = int(os.environ.get("SCRAPER_TRACKER_HIT_THRESHOLD", "100"))
 PATH_THRESHOLD = int(os.environ.get("SCRAPER_TRACKER_PATH_THRESHOLD", "2"))
 BAN_SECONDS = int(os.environ.get("SCRAPER_TRACKER_BAN_S", "86400"))  # 24h
 
+# Log-only mode — Charlie ruling 2026-09-21: every request-path filter
+# ships in log-only for 24h first. Report what it would have blocked;
+# do not actually block. Flip this env var to arm the filter after the
+# shadow period confirms the shape.
+#
+# For the session-scraper tracker: this filter has ALREADY landed
+# enforcing (shipped 6c4b7fe → live-verified → 15:18 ET Render alert
+# from the /healthz false-positive → exemption fixed in 255ee84 →
+# still enforcing). Charlie's new rule applies to the NEXT filter
+# (disguised-Chrome fleet block, deferred). We keep the env var here
+# so any future filter can inherit the same pattern by importing
+# `LOG_ONLY_MODE` and short-circuiting the block emission behind it
+# — but for THIS filter the default stays enforcing (log_only=False).
+LOG_ONLY_MODE = os.environ.get("SCRAPER_TRACKER_LOG_ONLY", "0") in ("1", "true", "yes")
+
 _STATIC_PREFIXES = (
     "/static/", "/assets/", "/favicon", "/apple-touch-icon",
     "/robots.txt", "/sitemap", "/lang/",
@@ -172,6 +187,23 @@ class SessionScraperTracker:
             # Trip condition
             if (len(st.hits) >= HIT_THRESHOLD
                     and len(st.paths) <= PATH_THRESHOLD):
+                # Log-only shadow mode: report but do not enforce. The
+                # caller sees a normal `False` return and serves the
+                # request; the log line records what WOULD have been
+                # blocked so we can eyeball 24h of shadow output before
+                # arming. Also: no banned_until stamp in shadow mode so
+                # we don't accidentally persist a phantom ban that a
+                # later flip-to-enforce would surface as a real 429.
+                if LOG_ONLY_MODE:
+                    import logging as _logging
+                    _logging.getLogger("session_scraper_tracker").info(
+                        "SHADOW_TRIP visitor_hash=%s hits=%d paths=%d "
+                        "top_path=%s (log-only, not enforcing)",
+                        visitor_hash[:12] if visitor_hash else "",
+                        len(st.hits), len(st.paths),
+                        next(iter(st.paths), ""),
+                    )
+                    return False
                 st.banned_until = now + BAN_SECONDS
                 return True
             return False

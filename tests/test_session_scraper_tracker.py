@@ -178,6 +178,53 @@ def test_our_own_canary_ua_exempt():
                               user_agent="xrpldashboard-public-route-canary/1.0")
 
 
+def test_log_only_mode_reports_but_does_not_ban(monkeypatch, capsys):
+    """Charlie ruling 2026-09-21 (post-Render-alert): every request-
+    path filter ships in log-only mode for 24h first. In this mode a
+    session that would normally trip is reported to the log but the
+    tracker returns False so the request goes through unharmed. No
+    banned_until stamp — flipping to enforce mode later must not
+    surface phantom bans."""
+    import importlib
+    import logging
+    monkeypatch.setenv("SCRAPER_TRACKER_LOG_ONLY", "1")
+    import session_scraper_tracker as st_mod
+    importlib.reload(st_mod)
+    tr = st_mod.SessionScraperTracker()
+    logger = logging.getLogger("session_scraper_tracker")
+    records = []
+    class _Handler(logging.Handler):
+        def emit(self, record):
+            records.append(record.getMessage())
+    h = _Handler()
+    logger.addHandler(h)
+    logger.setLevel(logging.INFO)
+    try:
+        now = 1_800_000_000.0
+        tripped = False
+        for i in range(150):
+            if tr.observe("shadow_hash", "/", now=now + i):
+                tripped = True
+                break
+        assert not tripped, (
+            "LOG_ONLY mode must NOT enforce — the tracker returns False "
+            "so the request is served, and only the log records the shape"
+        )
+        # Confirm the SHADOW_TRIP log line fired at least once
+        assert any("SHADOW_TRIP" in r for r in records), (
+            f"expected a SHADOW_TRIP log line; got records={records!r}"
+        )
+        # And no ban was stamped — arming later must not surface phantom
+        snap = tr._snapshot("shadow_hash")
+        assert snap.get("banned_until", 0) == 0, (
+            f"shadow mode must not stamp banned_until; got {snap!r}"
+        )
+    finally:
+        logger.removeHandler(h)
+        monkeypatch.delenv("SCRAPER_TRACKER_LOG_ONLY", raising=False)
+        importlib.reload(st_mod)  # restore module default for other tests
+
+
 def test_monitor_exempt_does_not_leak_to_normal_traffic():
     """Exempting monitor probes must not accidentally exempt the
     normal traffic from the same visitor_hash. A hash that ONLY hits
