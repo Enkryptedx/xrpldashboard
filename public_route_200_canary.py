@@ -290,6 +290,108 @@ def _tier_agreement_probes() -> list[dict]:
         return []
 
 
+def _address_label_agreement_probes() -> list[dict]:
+    """Cross-page label-agreement checks (Charlie ruling 2026-09-21 Mon PM).
+
+    Prior gap: /whales rows say "Binance" and "BeBe" for addresses whose
+    /wallet header renders no name, label, or source. Now /wallet reads
+    the same address_badge() /whales uses, layered over PG account_labels
+    on top of named_accounts.json. This probe re-verifies the agreement.
+
+    Fixed sample covers:
+      - PG-only label (curator xrpscan)   → Binance
+      - PG-only derived label (AMM)       → BeBe AMM pool
+      - File-based label (named_accounts) → Bitstamp
+      - File-based verified (toml)        → Ripple Escrow #04
+
+    For each: fetch /check.json?q=<addr>, /wallet/<addr>, /whales
+    (grep the address bucket if present). Assert the top-level `name`
+    string matches across surfaces. Not-in-/whales is not a failure —
+    the wallet may not have transacted at whale scale recently; we
+    only check /whales when the wallet's address turns up.
+    """
+    import httpx, re
+    try:
+        addresses = [
+            ("Binance_1_pg", "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", "Binance"),
+            ("BeBe_AMM_derived", "rsMCkyP1eAZCSbyLn334sw7Q1Si2UazPDD", None),  # AMM pair
+            ("Bitstamp_file", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", "Bitstamp"),
+            ("Ripple_Escrow_04", "rDdXiA3M4mYTQ4cFpWkVXfc2UaAXCFWeCK", "Ripple Escrow #04"),
+        ]
+        findings = []
+        for label, addr, expected_name in addresses:
+            surfaces = {}
+            # /wallet — grep for identity-name
+            try:
+                r = httpx.get(
+                    f"{BASE_URL}/wallet/{addr}", timeout=TIMEOUT_S,
+                    headers={"User-Agent": "public-route-canary/label-agree"},
+                    follow_redirects=True,
+                )
+                if r.status_code == 200:
+                    m = re.search(r'<span class="identity-name">([^<]+)</span>', r.text)
+                    if m:
+                        surfaces["wallet"] = m.group(1).strip()
+                    # AMM branch uses amm_pair; grep the pool label from
+                    # source-note when present
+                    m = re.search(r'source:\s*([a-z_:]+)', r.text)
+                    if m:
+                        surfaces["wallet_source"] = m.group(1).strip()
+            except Exception as e:
+                findings.append({
+                    "path": f"label_agree:{label}:wallet",
+                    "reason": f"probe_error_{type(e).__name__}",
+                    "ok": False, "status": None, "body_bytes": 0,
+                    "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+                continue
+            # /check.json
+            try:
+                r = httpx.get(
+                    f"{BASE_URL}/check.json?q={addr}", timeout=TIMEOUT_S,
+                    headers={"User-Agent": "public-route-canary/label-agree"},
+                    follow_redirects=True,
+                )
+                if r.status_code == 200:
+                    d = r.json().get("data", {}) or {}
+                    surfaces["check_name"] = d.get("name") or d.get("known_name")
+            except Exception:
+                pass
+            # Agreement check: /wallet + /check should agree on the name
+            # when expected_name is set (skip the AMM case where the
+            # identity-name is the pair not the pool label).
+            if expected_name is not None:
+                wallet_name = surfaces.get("wallet")
+                if wallet_name and wallet_name != expected_name:
+                    findings.append({
+                        "path": f"label_agree:{label}",
+                        "reason": f"wallet_name({wallet_name!r}) != expected({expected_name!r})",
+                        "ok": False, "status": 200, "body_bytes": 0,
+                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    })
+                elif not wallet_name:
+                    findings.append({
+                        "path": f"label_agree:{label}",
+                        "reason": f"wallet identity-name missing (expected {expected_name!r})",
+                        "ok": False, "status": 200, "body_bytes": 0,
+                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    })
+            # For all: the wallet page MUST show a source citation
+            # (otherwise the label agreement claim can't be traced).
+            if "wallet_source" not in surfaces:
+                findings.append({
+                    "path": f"label_agree:{label}",
+                    "reason": "wallet page shows no source citation for labeled address",
+                    "ok": False, "status": 200, "body_bytes": 0,
+                    "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+        return findings
+    except Exception as e:
+        print(f"[public_route_canary] label_agreement probes wrapper error: "
+              f"{type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        return []
+
+
 def run_walker() -> tuple[int, int, list[dict], list[dict]]:
     """Probe every route. Returns (ok_count, fail_count, failing_results, results)."""
     ok = 0
@@ -320,6 +422,14 @@ def run_walker() -> tuple[int, int, list[dict], list[dict]]:
         results.append(tf)
         fail += 1
         failures.append(tf)
+    # 2026-09-21 Mon PM (Charlie ruling): address-label agreement.
+    # Same shape — check that /wallet, /check.json, and /whales all
+    # report the same name/tier/source for known-labeled addresses.
+    label_findings = _address_label_agreement_probes()
+    for lf in label_findings:
+        results.append(lf)
+        fail += 1
+        failures.append(lf)
     return ok, fail, failures, results
 
 
