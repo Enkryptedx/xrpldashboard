@@ -79,10 +79,22 @@
       </svg>
     </button>
     {% if live_xrp_usd %}
-      {# XRP/AMM/self-sourced are crypto proper nouns — not translated. #}
-      <span class="xrp-chip" title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }})">
+      {# XRP/AMM/self-sourced are crypto proper nouns — not translated.
+         Freshness marker (HH:MM UTC) added 2026-09-21 per Charlie
+         ruling: the chip reads live via 60s in-memory cache, so if
+         the anchor pool set ever stalls the reader can see it at a
+         glance. Tooltip states the expected spread vs centralized
+         exchanges (~1-2%) because the number will always trail CEX
+         mid by that band — XRPL stablecoin AMMs settle at their own
+         constant-product midpoint. #}
+      <span class="xrp-chip"
+            title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }}); 60s in-memory cache. Real spread vs centralized exchanges (CEX) is typically 1–2% because XRPL AMM prices settle at each pool's constant-product midpoint, not at CEX order-book mid — a wider gap for a few minutes during high-volume moves is normal. Freshness stamp shows the last successful anchor fetch.">
         XRP ${{ '%.4f' | format(live_xrp_usd) }}
-        <span class="src">· self-sourced</span>
+        {% if live_xrp_usd_fetched_hhmm %}
+          <span class="src">· as of {{ live_xrp_usd_fetched_hhmm }} UTC</span>
+        {% else %}
+          <span class="src">· self-sourced</span>
+        {% endif %}
       </span>
     {% endif %}
     {% include "_liveness_chip.html" %}

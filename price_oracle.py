@@ -211,11 +211,19 @@ def xrp_usd() -> Optional[float]:
         # all anchors immediately — gives XRPL/network a moment to recover.
         _cache_put(("xrp_usd",), None)
         _cache_put(("xrp_usd_sources",), [])
+        _cache_put(("xrp_usd_fetched_at",), None)
         return None
     # Median is robust to a single anchor depegging or going thin.
     rate = statistics.median(samples)
     _cache_put(("xrp_usd",), rate)
     _cache_put(("xrp_usd_sources",), debug)
+    # Stamp the wall-clock time of the successful sample fetch so the
+    # header chip can show "as of HH:MM UTC" — a frozen anchor pool set
+    # would otherwise be invisible to the reader (they'd blame the
+    # ~1-2% divergence vs centralized exchanges on us serving stale
+    # data, when it's a real XRPL-AMM-vs-CEX spread). Charlie ruling
+    # 2026-09-21.
+    _cache_put(("xrp_usd_fetched_at",), int(time.time()))
     return rate
 
 
@@ -223,6 +231,13 @@ def xrp_usd_sources():
     """Returns the list of (label, usd_per_xrp) samples used in the last
     median calculation. Useful for the methodology page and debugging."""
     return _cache_get(("xrp_usd_sources",)) or []
+
+
+def xrp_usd_fetched_at() -> Optional[int]:
+    """Unix timestamp (UTC seconds) of the LAST successful xrp_usd()
+    sample fetch, or None if we've never successfully sampled. Read by
+    the header chip so a stalled anchor pool set is visible."""
+    return _cache_get(("xrp_usd_fetched_at",))
 
 
 def token_usd(currency: str, issuer: str) -> Optional[float]:
