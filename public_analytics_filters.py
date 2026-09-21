@@ -112,6 +112,24 @@ def sql_not_bot_ua_clause(alias: str = "p", psycopg_escape: bool = False) -> str
     )
 
 
+def sql_not_self_probe_ua_clause(alias: str = "p", psycopg_escape: bool = False) -> str:
+    """Return an AND-joined SQL clause that excludes rows whose
+    `user_agent` matches any SELF_PROBE_UA_FRAGMENTS entry — but NOT
+    the declared-bot list.
+
+    Use for kind='all' analytics where we want humans+declared-bots
+    combined but not our own canaries/walkers. Charlie ruling
+    2026-09-21: /analytics's "countries (all)" must exclude self-probes
+    so we don't inflate the count with our own infra.
+
+    Same `psycopg_escape` semantics as sql_not_bot_ua_clause."""
+    wc = "%%" if psycopg_escape else "%"
+    return " AND ".join(
+        f"COALESCE({alias}.user_agent, '') NOT ILIKE '{wc}{f}{wc}'"
+        for f in SELF_PROBE_UA_FRAGMENTS
+    )
+
+
 def sql_valid_country_clause(alias: str = "p") -> str:
     """Return a SQL fragment that keeps only rows whose `country`
     field is a real ISO-3166-1 alpha-2 code (two uppercase letters,

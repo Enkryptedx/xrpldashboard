@@ -6523,16 +6523,36 @@ def read_top_pages(window_seconds, limit=10, kind="human",
 
 
 def read_recent_page_views(limit=100):
-    """Last `limit` page views, newest first. Returns list of dicts."""
+    """Last `limit` page views, newest first, EXCLUDING self-probes
+    (canaries, walker HTTP clients, JJ's shell, BetterStack).
+
+    Charlie ruling 2026-09-21 (item 5 convergence): the recent-visits
+    panel on /analytics is a "what did visitors just do" surface, so
+    our own canary hits (public-route-canary, xrpldashboard-*, JJ-,
+    etc.) don't belong there. They're already excluded from every
+    aggregate that layers the shared allow-list; the panel is the
+    last surface where they leak through. Uses
+    public_analytics_filters.sql_not_self_probe_ua_clause so the
+    exclusion list is edited in one place.
+
+    Declared bots (Googlebot, ClaudeBot, etc.) are STILL shown here —
+    the panel's job is to see what's currently hitting the site; a
+    live crawler visit is signal, not noise. Returns list of dicts."""
     if not pg_available():
         return []
+    try:
+        from public_analytics_filters import sql_not_self_probe_ua_clause
+        probe_frag = sql_not_self_probe_ua_clause("page_views", psycopg_escape=True)
+    except ImportError:
+        probe_frag = "TRUE"
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT ts, path, visitor_hash, referrer, "
                     "       user_agent, country "
-                    "FROM page_views ORDER BY ts DESC LIMIT %s",
+                    f"FROM page_views WHERE ({probe_frag}) "
+                    "ORDER BY ts DESC LIMIT %s",
                     (limit,),
                 )
                 return [
@@ -6575,13 +6595,26 @@ def read_utm_landings(window_seconds, limit=15):
 
 
 def read_external_referrers(window_seconds, limit=15):
-    """Top external referrer hosts over the trailing window. Excludes
-    self-referrals (xrpldashboard.com) and null/empty referrers. Folds
+    """Top external referrer hosts over the trailing window from
+    HUMAN traffic. Excludes self-referrals (xrpldashboard.com),
+    null/empty referrers, self-probe UAs, and declared bot UAs. Folds
     `www.` so `www.example.com` and `example.com` collapse to one row.
-    Returns list of (host, hits)."""
+    Returns list of (host, hits).
+
+    Charlie ruling 2026-09-21 (item 5 convergence): prior version had
+    NO bot filter, so /analytics's search-referral panel counted
+    Googlebot visits (which arrive with referrer='https://www.google.com/')
+    as human search clickthroughs — showing "Google 398/7d" against
+    the morning report's ~14/day. Applying the shared allow-list
+    reconciles the two."""
     if not pg_available():
         return []
     cutoff = int(time.time()) - int(window_seconds)
+    try:
+        from public_analytics_filters import sql_not_bot_ua_clause
+        bot_frag = sql_not_bot_ua_clause("page_views", psycopg_escape=True)
+    except ImportError:
+        bot_frag = "TRUE"
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
@@ -6594,6 +6627,7 @@ def read_external_referrers(window_seconds, limit=15):
                     "  WHERE ts >= %s "
                     "    AND referrer IS NOT NULL AND referrer != '' "
                     "    AND referrer !~ 'xrpldashboard' "
+                    f"    AND ({bot_frag}) "
                     ") sub "
                     "WHERE host IS NOT NULL AND host != '' "
                     "GROUP BY host "
@@ -6658,16 +6692,34 @@ def read_country_count(window_seconds, kind="human", precomputed_bots=None):
     # 2026-09-20 convergence: on human queries, layer in the shared
     # allow-lists so googlebot/AI-crawler/junk-country rows can't drift
     # into the public count.
+    # 2026-09-21 fix (item 5): also apply the strict-geo + self-probe
+    # allow-lists on kind='all'. Rationale: self-probes and the T1 Tor
+    # pseudo-country are junk from a public-analytics perspective
+    # regardless of whether we bucket them as human or bot. Excluding
+    # them from the "all" path aligns /analytics with weekly_analytics
+    # for the "all-time all" number too (178→177 drift closes).
+    # Bot-UA fragments themselves stay OUT of the 'all' allow-list —
+    # 'all' is defined as human+bot combined. Only self-probes and
+    # junk-country codes are removed.
     shared_frag = ""
-    if kind == "human":
+    if kind in ("human", "all"):
         try:
             from public_analytics_filters import (
                 sql_not_bot_ua_clause, sql_valid_country_clause,
+                sql_not_self_probe_ua_clause,
             )
-            shared_frag = (
-                f" AND ({sql_valid_country_clause('page_views')}) "
-                f"AND ({sql_not_bot_ua_clause('page_views', psycopg_escape=True)})"
-            )
+            geo = sql_valid_country_clause("page_views")
+            if kind == "human":
+                # Full allow-list: strict geo + self-probes + declared bots
+                ua = sql_not_bot_ua_clause("page_views", psycopg_escape=True)
+                shared_frag = f" AND ({geo}) AND ({ua})"
+            else:
+                # kind='all': strict geo + self-probes only (declared
+                # bots stay counted — they ARE part of 'all')
+                self_probe = sql_not_self_probe_ua_clause(
+                    "page_views", psycopg_escape=True
+                )
+                shared_frag = f" AND ({geo}) AND ({self_probe})"
         except ImportError:
             shared_frag = ""
     try:
