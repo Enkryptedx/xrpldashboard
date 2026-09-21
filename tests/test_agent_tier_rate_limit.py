@@ -190,6 +190,34 @@ def test_fleet_signature_empty_headers_no_match():
     assert fleet_signature(req) is None
 
 
+def test_fleet_signature_lightpanda_matches():
+    """Lightpanda is a self-declared headless-browser library; the UA
+    fragment is a hard positive signal (Charlie ruling 2026-09-21,
+    Monday build item 7). 7-day baseline was 1,156 hits from 1,147
+    distinct visitor_hashes — rotating residential-proxy fleet."""
+    from agent_tier_rate_limit import fleet_signature
+    req = _FakeReq({"User-Agent": "Lightpanda/1.0"})
+    assert fleet_signature(req) == "Lightpanda_declared_2026_09_21"
+
+
+def test_fleet_signature_lightpanda_substring_matches():
+    """UA can carry Lightpanda in a chained token, still catches."""
+    from agent_tier_rate_limit import fleet_signature
+    req = _FakeReq({
+        "User-Agent": "Mozilla/5.0 Lightpanda/1.1 (+headless) Chrome/140",
+    })
+    assert fleet_signature(req) == "Lightpanda_declared_2026_09_21"
+
+
+def test_fleet_signature_chrome140_alone_no_lightpanda_match():
+    """A bare Chrome UA — no Lightpanda fragment — does NOT match.
+    Signature is narrow-positive on the self-declared library, not on
+    Chrome-version guessing."""
+    from agent_tier_rate_limit import fleet_signature
+    req = _FakeReq({"User-Agent": "Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36"})
+    assert fleet_signature(req) is None
+
+
 # ── integration: audit-URL header ───────────────────────────────────
 
 def test_ai_crawler_response_has_audit_url_header(client):
@@ -247,10 +275,15 @@ def test_fleet_signature_returns_429_on_agent_tier_route(client):
     assert r.headers.get("X-Fleet-Signature") == "IL_Chrome142_residential_2026_07"
 
 
-def test_fleet_signature_not_applied_to_human_pages(client):
-    """Fleet block only guards agent-tier routes. The /whales inline
-    block still exists (unchanged), but the homepage is untouched by
-    the agent-tier hook — verifying isolation."""
+def test_fleet_signature_fires_on_any_route_including_human_pages(client):
+    """Fleet block widened 2026-09-20 (Sun) to fire on every route,
+    not just agent-tier surfaces (see app.py `_agent_tier_fleet_block`
+    docstring: 'Was gated on is_agent_tier_route(request.path) (Day 6
+    design) — that shape covered llms.txt … but NOT /check. AionBot
+    proved the miss.'). Homepage / must 429 when the fleet signature
+    matches — the block is UA-fingerprint-scoped, not route-scoped,
+    because a scraper fleet targets whichever endpoint has the data
+    it wants, including the human-facing pages."""
     r = client.get(
         "/",
         headers={
@@ -258,10 +291,22 @@ def test_fleet_signature_not_applied_to_human_pages(client):
             "User-Agent": "Mozilla/5.0 Chrome/142.0.0.0 Safari/537.36",
         },
     )
-    # Homepage may return 200 or a redirect; it must NOT be 429 from
-    # the agent-tier fleet block. (The /whales route has its own
-    # inline block; we're not testing that path here.)
-    assert r.status_code != 429
+    assert r.status_code == 429
+    assert r.headers.get("X-Fleet-Signature") == "IL_Chrome142_residential_2026_07"
+
+
+def test_fleet_signature_lightpanda_fires_on_any_route(client):
+    """Lightpanda-declared UA gets 429 on /, /check, /amendments,
+    /llms.txt — every route, no allow-listed page. This is the whole
+    point of item 7: push the block upstream so we save the render
+    cost, not just count-and-discard post-hoc."""
+    for path in ("/", "/check", "/amendments", "/llms.txt"):
+        r = client.get(path, headers={"User-Agent": "Lightpanda/1.0"})
+        assert r.status_code == 429, (
+            f"Lightpanda on {path} did NOT 429 (got {r.status_code})"
+        )
+        assert r.headers.get("X-Fleet-Signature") == "Lightpanda_declared_2026_09_21"
+        assert r.headers.get("Retry-After") == "86400"
 
 
 # ── integration: rate-limit boundary ────────────────────────────────

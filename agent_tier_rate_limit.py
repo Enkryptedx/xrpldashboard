@@ -261,6 +261,16 @@ def fleet_signature(req=None) -> Optional[str]:
       weekly analytics found 681 /check.json hits across 8 hashes in
       one day, ALL served 200 with zero 429s. Same class as IL_Chrome142:
       cost-defend at the fleet layer before the rate bucket fires.
+    - Lightpanda_declared_2026_09_21: Lightpanda is a self-declared
+      headless-browser library ("Lightpanda/N.N" in UA). Charlie
+      Monday build item 7: the disguised-Chrome fleet investigation
+      surfaced 1,156 hits from 1,147 distinct visitor_hashes over
+      7 days — a rotating residential-proxy fleet. Real users don't
+      emit this UA, so false-positive risk is essentially zero.
+      Prior state: caught by is_bot_writer (Lightpanda already in
+      KNOWN_BOT_UA_FRAGMENTS), served 200, counted-and-discarded
+      post-hoc. This signature pushes the block one hop upstream so
+      we save the render + write cost.
     """
     r = req if req is not None else request
     country = r.headers.get("CF-IPCountry", "")
@@ -269,6 +279,8 @@ def fleet_signature(req=None) -> Optional[str]:
         return "IL_Chrome142_residential_2026_07"
     if "AionBot" in ua:
         return "AionBot_declared_2026_09_19"
+    if "Lightpanda" in ua:
+        return "Lightpanda_declared_2026_09_21"
     return None
 
 
