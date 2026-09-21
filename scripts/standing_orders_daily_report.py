@@ -35,7 +35,13 @@ def _yesterday_utc_window() -> tuple[int, int, str]:
 def line_referrers(cur, ts_s, ts_e) -> str:
     cur.execute(f"""
         SELECT
-          SUM(CASE WHEN referrer ~* 'twitter|x\\.com' THEN 1 ELSE 0 END) x,
+          -- Charlie ruling 2026-09-21: X bucket must include t.co
+          -- (Twitter's shortener). The evening Sunday-close report
+          -- included it and showed 6 clicks off the /thisweek tweet;
+          -- this daily report read X=0 because the regex only matched
+          -- twitter|x\.com. Align on the same definition everywhere
+          -- the site groups referrers.
+          SUM(CASE WHEN referrer ~* 't\\.co|twitter|x\\.com' THEN 1 ELSE 0 END) x,
           SUM(CASE WHEN referrer ~* 'reddit' THEN 1 ELSE 0 END) reddit,
           SUM(CASE WHEN referrer ~* 'news|hackernews|linkedin' THEN 1 ELSE 0 END) news,
           SUM(CASE WHEN referrer IS NULL OR referrer = '' THEN 1 ELSE 0 END) direct,
