@@ -2105,9 +2105,18 @@
 
     function connect() {
       if (closed) return;
-      try { ws = new WebSocket('wss://xrplcluster.com'); }
+      // Prefer our node when configured, fall back to public cluster
+      // on connect failure. Charlie ruling 2026-09-21 (item 1).
+      var streamPrimary = {{ live_stream_wss_primary | tojson }};
+      var streamFallback = {{ live_stream_wss_fallback | tojson }};
+      var streamPrimaryLabel = {{ live_stream_wss_primary_label | tojson }};
+      var streamFallbackLabel = {{ live_stream_wss_fallback_label | tojson }};
+      var usingFallback = window.__xrpldashboardWssUsingFallback === true;
+      var targetUrl = usingFallback ? streamFallback : streamPrimary;
+      var targetLabel = usingFallback ? streamFallbackLabel : streamPrimaryLabel;
+      try { ws = new WebSocket(targetUrl); }
       catch (e) { setState('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
-      setState('connecting', 'connecting to xrplcluster.com…');
+      setState('connecting', 'connecting to ' + targetLabel + '…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
@@ -2145,8 +2154,28 @@
       };
 
       ws.onerror = function () {};
-      ws.onclose = function () {
+      ws.onclose = function (evt) {
         if (closed) return;
+        // Charlie ruling 2026-09-21 (item 1): after 2 consecutive
+        // failures on the primary (our node), fall back to xrplcluster
+        // for the rest of the tab. Ping /api/walker-node-fallback so
+        // the same telemetry table logs a browser-side fallback
+        // alongside walker fallbacks.
+        var configuredOwnNode = streamPrimary !== streamFallback;
+        if (configuredOwnNode && !usingFallback) {
+          window.__xrpldashboardWssFailCount = (window.__xrpldashboardWssFailCount || 0) + 1;
+          if (window.__xrpldashboardWssFailCount >= 2) {
+            window.__xrpldashboardWssUsingFallback = true;
+            try {
+              // Fire-and-forget telemetry; no PII, just the label of what fell back
+              fetch('/api/walker-node-fallback?source=browser_wss&primary=' +
+                    encodeURIComponent(streamPrimaryLabel) +
+                    '&fallback=' + encodeURIComponent(streamFallbackLabel), {
+                method: 'POST', keepalive: true,
+              }).catch(function () {});
+            } catch (e) {}
+          }
+        }
         setState('closed', 'reconnecting…');
         scheduleReconnect();
       };

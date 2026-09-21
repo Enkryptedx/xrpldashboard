@@ -1367,6 +1367,71 @@ def inject_xrp_usd():
         }
 
 
+@app.route("/api/walker-node-fallback", methods=["POST"])
+@limiter.limit("60 per minute")
+def api_walker_node_fallback():
+    """Browser-side ping when a page's live WSS stream falls back
+    from our node to the public XRPL cluster (Charlie ruling
+    2026-09-21 item 1). Fire-and-forget: no body, no return payload.
+    Writes one row into `walker_node_fallback` labeled `browser_wss`
+    so the fallback rate is visible in the same telemetry as walker
+    fallbacks. Query params: source, primary, fallback. Silent
+    no-op when PG isn't configured."""
+    src = (request.args.get("source") or "browser_wss")[:32]
+    prim = (request.args.get("primary") or "")[:64]
+    fall = (request.args.get("fallback") or "")[:64]
+    reason = f"{src}: {prim} → {fall}"[:200]
+    try:
+        db.write_walker_node_fallback("browser_wss", reason)
+    except Exception:
+        pass
+    return ("", 204)
+
+
+@app.context_processor
+def inject_live_stream_wss():
+    """Live-stream WebSocket URLs for the browser-side stream widgets on
+    /tokens, /whales, /pools, /wallet. Charlie ruling 2026-09-21 (Mon
+    PM, item 1): browser live feed should come from OUR node, not
+    xrplcluster. Migration in two steps:
+
+    1. **Config plumbing (this commit)**: template context carries a
+       primary URL (env `LIVE_STREAM_WSS_PRIMARY`, default
+       `wss://xrplcluster.com` so behavior is unchanged until we point
+       it) and a fallback URL + label. Templates use these instead of
+       hardcoding xrplcluster.
+    2. **Server-side WSS relay (owed)**: cloudflared tunnel gains
+       `rpc.xrpldashboard.com` hostname → `ws://127.0.0.1:6007` (or a
+       Render-side fan-out fed from the Lenovo stream). Once the
+       server side lands, flip `LIVE_STREAM_WSS_PRIMARY` to
+       `wss://rpc.xrpldashboard.com` in Render env. Clients migrate
+       automatically on next page load. Client-side onerror falls
+       back to `LIVE_STREAM_WSS_FALLBACK` (xrplcluster) with the
+       amber banner state + `/api/walker-node-fallback` telemetry
+       ping.
+    """
+    primary = os.environ.get(
+        "LIVE_STREAM_WSS_PRIMARY", "wss://xrplcluster.com",
+    )
+    fallback = os.environ.get(
+        "LIVE_STREAM_WSS_FALLBACK", "wss://xrplcluster.com",
+    )
+
+    def _host(url):
+        try:
+            return url.split("://", 1)[1].split("/", 1)[0]
+        except Exception:
+            return url
+
+    return {
+        "live_stream_wss_primary": primary,
+        "live_stream_wss_primary_label": _host(primary),
+        "live_stream_wss_fallback": fallback,
+        "live_stream_wss_fallback_label": _host(fallback),
+        "live_stream_wss_own_node": primary != fallback,
+    }
+
+
 # Allowlist of external origins our pages legitimately load. Keep narrow —
 # every entry is a trust decision. jsdelivr serves vendored front-end deps
 # (Geist fonts, Lenis, GSAP, CountUp) and is disclosed at /security; the
@@ -8688,7 +8753,7 @@ def security_txt():
 # agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
-> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own rippled node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own rippled node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own rippled node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own rippled node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). Browser-side live streams on `/tokens`, `/whales`, `/pools`, and `/wallet` migrate to our own-node WSS relay in a staged rollout (2026-09-21); until the relay lands, `wss://xrplcluster.com` remains the primary and telemetry logs any browser-side fallback into the same `walker_node_fallback` table the server-side walkers use. (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
 Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
 
