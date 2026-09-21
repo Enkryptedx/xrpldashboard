@@ -31,9 +31,13 @@ Codifies (so this cannot silently drift):
   excluded) applied to the outage days, and report the weekly total as
   a RANGE with the reason spelled out.
 
-- 5x-baseline anomaly guard: any country with this-week "humans" > 5x
-  its prior-4-week weekly average gets flagged as POSSIBLE FLEET
-  ACTIVITY — do not treat as humans in the summary.
+- Baseline anomaly guard (Charlie ruling 2026-09-21, threshold 3×):
+  any country with this-week "humans" > 3× its prior-4-week weekly
+  average gets flagged AND a three-axis diagnostic (top-hash share,
+  page depth, peak-2h burst) prints on the next line. The 5× tier
+  still gets a ⚠. No surge reaches a headline unverified — BR Sunday
+  2026-09-20 headlined 5.2× and turned out to be one home-polling
+  client + a quiet Sunday.
 
 Rule the humans out, then count what's left.
 """
@@ -385,12 +389,20 @@ def regions_all() -> int:
 
 # ── 5x-baseline anomaly detector ──────────────────────────────────────
 
-def country_5x_anomalies(week_start: str, week_end: str,
-                        baseline_start: str) -> list[tuple[str, int, float, float]]:
-    """Report countries where this-week 'humans' > 5x prior-4-week weekly
-    average, KNOWN_BOT_UA fragments already excluded. Returns:
+def country_baseline_anomalies(
+    week_start: str, week_end: str, baseline_start: str,
+    min_ratio: float = 3.0,
+) -> list[tuple[str, int, float, float]]:
+    """Report countries where this-week 'humans' > `min_ratio` × prior-4-week
+    weekly average, KNOWN_BOT_UA fragments already excluded. Returns:
         [(country, this_wk_humans, weekly_baseline_avg, ratio), ...]
-    Sorted by ratio DESC. Countries with < 20 this-week hits filtered out."""
+    Sorted by ratio DESC. Countries with < 20 this-week hits filtered out.
+
+    Charlie ruling 2026-09-21: threshold lowered from 5× to 3× so the
+    three-axis diagnostic (`country_three_axis_check`) fires on any
+    surge before it reaches a headline unverified. The 5× row still
+    gets a ⚠ flag in the printed table; the 3× floor just widens what
+    the diagnostic prints under."""
     bot_filter = _sql_not_bot_ua_clause("p")
     country_filter = _sql_valid_country_clause("p")
     rows = _q_rows(f"""
@@ -418,8 +430,118 @@ def country_5x_anomalies(week_start: str, week_end: str,
     """)
     return [
         (r[0], int(r[1]), float(r[3]), float(r[4]))
-        for r in rows if r[4]
+        for r in rows if r[4] and float(r[4]) >= min_ratio
     ]
+
+
+# Kept as backward-compat shim so external callers that import
+# `country_5x_anomalies` don't break. Same underlying query, threshold
+# defaults to 5× to preserve the prior public contract.
+def country_5x_anomalies(week_start: str, week_end: str,
+                        baseline_start: str) -> list[tuple[str, int, float, float]]:
+    return country_baseline_anomalies(
+        week_start, week_end, baseline_start, min_ratio=5.0,
+    )
+
+
+def country_three_axis_check(country: str, week_start: str, week_end: str) -> dict:
+    """Three-axis diagnostic for a flagged country (Charlie ruling
+    2026-09-21). Answers "is this surge real readers?" without touching
+    the UA field — the axes are behavioral:
+
+    1. **hash_dominance** — top visitor_hash's share of country hits.
+       A rotating-proxy fleet spreads hits across many hashes; a
+       single loud client shows up as one hash taking 50-90%. The
+       "one loud client" pattern (BR Sunday: 168/201 = 83%) is
+       diagnostic all by itself.
+
+    2. **peak_2h_share** — % of this-week hits that fall inside the
+       peak 2-hour UTC window. A metronome-polling client (BR: 82%
+       of a Sunday inside a 2h burst) tells you the traffic isn't
+       distributed like reader browsing.
+
+    3. **top_hash_paths / top_hash_hits** — the top hash's distinct-
+       path count and hit count. 168 hits × 1 path = homepage-only
+       polling loop; 3 hits × 3 paths = brief real reader.
+
+    Returns a dict {top_hash, top_hash_hits, this_wk_hits,
+    top_hash_pct, top_hash_paths, top_hash_top_path, median_hits,
+    peak_2h_hits, peak_2h_share}. Empty dict when country isn't seen
+    in the window."""
+    bot_filter = _sql_not_bot_ua_clause("p")
+    country_filter = _sql_valid_country_clause("p")
+    country_sql = country.replace("'", "''")
+    row = _q_rows(f"""
+        WITH wk AS (
+          SELECT p.ts, p.visitor_hash, p.path
+          FROM page_views p
+          WHERE p.country = '{country_sql}'
+            AND to_timestamp(p.ts) >= '{week_start}'
+            AND to_timestamp(p.ts) <  '{week_end}'
+            AND is_bot IS NULL AND {bot_filter} AND {country_filter}
+        ),
+        per_hash AS (
+          SELECT visitor_hash, COUNT(*) AS hits,
+                 COUNT(DISTINCT path) AS paths,
+                 (array_agg(path ORDER BY ts))[1] AS first_path
+          FROM wk GROUP BY 1
+        ),
+        top_hash AS (
+          SELECT visitor_hash, hits, paths, first_path
+          FROM per_hash ORDER BY hits DESC LIMIT 1
+        ),
+        peak AS (
+          SELECT MAX(cnt) AS peak_2h FROM (
+            SELECT COUNT(*) AS cnt FROM wk
+            GROUP BY (ts / 7200)
+          ) x
+        )
+        SELECT
+          (SELECT visitor_hash FROM top_hash),
+          (SELECT hits FROM top_hash),
+          (SELECT paths FROM top_hash),
+          (SELECT first_path FROM top_hash),
+          (SELECT COUNT(*) FROM wk),
+          (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY hits) FROM per_hash),
+          (SELECT peak_2h FROM peak);
+    """)
+    if not row or not row[0][0]:
+        return {}
+    r = row[0]
+    top_hash = r[0]
+    top_hits = int(r[1] or 0)
+    top_paths = int(r[2] or 0)
+    top_path = r[3] or ""
+    this_wk = int(r[4] or 0)
+    median = float(r[5] or 0)
+    peak_2h = int(r[6] or 0)
+    return {
+        "top_hash": top_hash[:12] if top_hash else "",
+        "top_hash_hits": top_hits,
+        "top_hash_paths": top_paths,
+        "top_hash_top_path": top_path,
+        "this_wk_hits": this_wk,
+        "top_hash_pct": round(100.0 * top_hits / this_wk, 1) if this_wk else 0.0,
+        "median_hits": median,
+        "peak_2h_hits": peak_2h,
+        "peak_2h_share": round(100.0 * peak_2h / this_wk, 1) if this_wk else 0.0,
+    }
+
+
+def _format_three_axis(check: dict) -> str:
+    """Compact single-line summary for printing under an anomaly row."""
+    if not check:
+        return "(no data for this country in window)"
+    return (
+        f"top hash {check['top_hash']}: "
+        f"{check['top_hash_hits']}/{check['this_wk_hits']} hits "
+        f"({check['top_hash_pct']}%), "
+        f"{check['top_hash_paths']} distinct path"
+        f"{'s' if check['top_hash_paths'] != 1 else ''} "
+        f"({check['top_hash_top_path']}); "
+        f"median hits/visitor = {check['median_hits']:.1f}; "
+        f"peak 2h window = {check['peak_2h_share']}% of week"
+    )
 
 
 # ── News-referrer resolver ────────────────────────────────────────────
@@ -483,7 +605,14 @@ def build_report(anchor_date: dt.date, writer_off_days: set[str]) -> str:
     )
     days = week_human_estimate(start, end, writer_off_days)
     low, mid, high = week_range(days)
-    anomalies = country_5x_anomalies(start, end, baseline_start)
+    # Charlie ruling 2026-09-21: threshold lowered from 5× to 3× so the
+    # three-axis diagnostic prints under every meaningful surge. The 5×
+    # tier still gets a ⚠ flag; the 3× floor exposes the middle range
+    # (BR Sunday 09-20 was a 5.2× headline that turned out to be one
+    # loud client + a quiet Sunday) so no surge reaches print unverified.
+    anomalies = country_baseline_anomalies(
+        start, end, baseline_start, min_ratio=3.0,
+    )
     country_t = all_time_country_tallies()
     state_t = all_time_us_state_split()
     regions_ct = regions_all()
@@ -503,15 +632,22 @@ def build_report(anchor_date: dt.date, writer_off_days: set[str]) -> str:
     lines.append(f"\n**Weekly humans range: {low:,} – {high:,}** "
                  f"(best point ~{mid:,})\n")
 
-    lines.append(f"## 5x-baseline anomalies (possible fleet activity)")
+    lines.append(f"## Baseline anomalies (3× floor, ⚠ at 5×) with three-axis check")
     if anomalies:
         lines.append("| country | this_wk | weekly_avg_prior_4wk | ratio |")
         lines.append("|---|---|---|---|")
         for c, tw, avg, ratio in anomalies:
             flag = " ⚠" if ratio >= 5 else ""
             lines.append(f"| {c} | {tw} | {avg} | {ratio}x{flag} |")
+            # Three-axis diagnostic (Charlie ruling 2026-09-21): every
+            # anomaly row gets a follow-up line stating the top-hash
+            # dominance, page-depth, and burst share so a headline
+            # like "BR 201, 5.2×" is never printed without the "168 of
+            # 201 on / by one hash" counter-evidence right below it.
+            check = country_three_axis_check(c, start, end)
+            lines.append(f"| ↳ | | | {_format_three_axis(check)} |")
     else:
-        lines.append("(none above 5x threshold)")
+        lines.append("(none above 3x threshold)")
     lines.append("")
 
     lines.append(f"## News referrers (this week, human-only)")
