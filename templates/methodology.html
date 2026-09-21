@@ -325,6 +325,18 @@
     {%- endtrans %}
   </p>
   <p>
+    <strong>{{ _('Verified-tokens manifest.') }}</strong>
+    {% trans -%}
+    The hourly signed manifest at <a href="/.well-known/verified-tokens.json"><code>/.well-known/verified-tokens.json</code></a> lists every ticker whose canonical issuer we have verified. Each row: <code>ticker</code>, <code>currency_hex</code>, <code>canonical_issuers[]</code>, <code>citation_url</code>, <code>no_official_xrpl_issuer</code>, <code>meme_name</code>, <code>gateway_or_bridge</code>, <code>tier</code>, <code>last_reviewed_at</code>. The envelope's <code>schema_note</code> field states the rule up front: <em>verified = the canonical issuer proved control of its brand's domain (either via an xrp-ledger.toml two-way match or a curator-confirmed public statement cited by the citation_url). This is a signal about issuer provenance; it is NOT an endorsement of the token's economics, legal standing, or safety.</em> Absence from the list is not a "unsafe" verdict — some tickers are absent because a domain claim isn't the right identity primitive (memecoins), because no canonical issuer exists on XRPL (BTC/ETH natively), or because the issuer is a curator-registered gateway (see the <code>gateway_or_bridge</code> flag). Verification recipe:
+    {%- endtrans %}
+  </p>
+  <ol>
+    <li>{{ _('Fetch') | safe }} <code>/.well-known/verified-tokens.json</code>.</li>
+    <li>{{ _('Fetch') | safe }} <a href="/.well-known/snapshots/receipt_pubkey.pem"><code>/.well-known/snapshots/receipt_pubkey.pem</code></a>{{ _(' and cross-check the fingerprint against the DNS TXT record and the') | safe }} <a href="/.well-known/snapshots/receipt_pubkey.json"><code>receipt_pubkey.json</code></a>{{ _(' triangulation view.') | safe }}</li>
+    <li>{{ _('Recompute') | safe }} <code>canonical_hash_hex = SHA-256(canonical-JSON(envelope minus signature and canonical_hash_hex))</code>. {{ _('Compare to the value in the envelope.') }}</li>
+    <li>{{ _('Verify the Ed25519 signature over') | safe }} <code>b"xrpldashboard/receipt/v1" || 0x00 || bytes.fromhex(canonical_hash_hex)</code> {{ _('using the public key from step 2.') }}</li>
+  </ol>
+  <p>
     <strong>{{ _('Trust model.') }}</strong>
     {% trans -%}
     A signed snapshot proves only that the published number existed on the recorded date and was signed by the key whose public half we pin in four places. It does not prove the number was <em>correct</em> — that depends on the source data and our collection logic, both documented in the rest of this page. Signed snapshots make it impossible for us to quietly rewrite history without being caught, but they are not a substitute for the rest of the methodology audit; they are the audit's lower bound.

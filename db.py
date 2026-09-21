@@ -667,6 +667,26 @@ CREATE TABLE IF NOT EXISTS permissioned_domain_walker_runs (
 -- uses it to compute staleness multiples (green/yellow/red) per row
 -- without hardcoding thresholds. NULL allowed for walkers that haven't
 -- declared one yet — page renders such rows with "unknown cadence".
+-- signed_verified_tokens — PG-first store for the hourly signed
+-- verified-tokens manifest (Charlie ruling 2026-09-21 afternoon,
+-- item 4). Each row is a fully-signed envelope for one hourly
+-- snapshot. Public URL /.well-known/verified-tokens.json serves the
+-- MOST RECENT row PG-first with disk fallback. Envelope schema is
+-- documented in the manifest itself ("schema_note" field). Written
+-- by signed_verified_tokens.py, gated behind
+-- SIGNED_VERIFIED_TOKENS_ENABLED — nothing publishes until it
+-- verifies through one full overnight cycle. Retention: keep
+-- indefinitely (hourly cadence + ~1KB per row = ~9MB/year).
+CREATE TABLE IF NOT EXISTS signed_verified_tokens (
+    snapshot_hour_utc   TIMESTAMPTZ PRIMARY KEY,
+    envelope            JSONB NOT NULL,
+    signature           JSONB NOT NULL,
+    canonical_hash_hex  TEXT NOT NULL,
+    written_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS signed_verified_tokens_written_at_idx
+    ON signed_verified_tokens (written_at DESC);
+
 -- signed_registry_snapshots — PG-first store for the daily signed
 -- registry envelope. Written by signed_registry_snapshot.py after the
 -- disk file lands; served by /.well-known/registry/<date>.json with
@@ -7267,6 +7287,71 @@ def read_signed_registry_snapshot(date_str):
                     "FROM signed_registry_snapshots "
                     "WHERE snapshot_date_utc = %s::date",
                     (date_str,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                envelope, signature, canonical_hash_hex = row
+                if not isinstance(envelope, dict):
+                    return None
+                signed = dict(envelope)
+                signed["signature"] = signature
+                signed["canonical_hash_hex"] = canonical_hash_hex
+                return signed
+    except Exception:
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Signed verified-tokens manifest — hourly cadence, receipt-key signed.
+# Charlie ruling 2026-09-21 (Mon PM item 4). Schema per row lives in
+# the envelope itself (`schema_note`); the disk/PG shape is envelope +
+# signature + canonical_hash_hex.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def write_signed_verified_tokens(envelope, signature, canonical_hash_hex):
+    """Persist an hourly signed verified-tokens envelope to PG.
+    Idempotent: ON CONFLICT (snapshot_hour_utc) DO NOTHING per the
+    Tier-0 chain_job_never_re_signs_a_date rule (extended to same-hour
+    for this hourly cadence). Fail-loud on write failure so the walker
+    stamps ok=False; silent no-op only when PG isn't configured."""
+    if not pg_available():
+        return
+    import json as _json
+
+    def _do(conn):
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO signed_verified_tokens "
+                "  (snapshot_hour_utc, envelope, signature, canonical_hash_hex) "
+                "VALUES (%s::timestamptz, %s::jsonb, %s::jsonb, %s) "
+                "ON CONFLICT (snapshot_hour_utc) DO NOTHING",
+                (envelope["snapshot_hour_utc"],
+                 _json.dumps(envelope, sort_keys=True),
+                 _json.dumps(signature, sort_keys=True),
+                 canonical_hash_hex),
+            )
+    _writer_execute_with_retry(
+        f"write_signed_verified_tokens[{envelope['snapshot_hour_utc']}]",
+        _do,
+    )
+
+
+def read_signed_verified_tokens_latest():
+    """Return the most-recent signed verified-tokens envelope
+    (reconstructed to match the disk-file shape), or None when PG has
+    no rows. Powers the /.well-known/verified-tokens.json route
+    PG-first with disk fallback."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT envelope, signature, canonical_hash_hex "
+                    "FROM signed_verified_tokens "
+                    "ORDER BY snapshot_hour_utc DESC LIMIT 1"
                 )
                 row = cur.fetchone()
                 if not row:

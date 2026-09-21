@@ -5903,6 +5903,60 @@ def well_known_signed_registry(date_str):
     return resp
 
 
+SIGNED_VERIFIED_TOKENS_DISK_PATH = os.path.join(
+    HERE, "signed_verified_tokens_latest.json"
+)
+
+
+@app.route("/.well-known/verified-tokens.json")
+@limiter.limit(agent_tier_limit_rate)
+def well_known_verified_tokens():
+    """Serve the most-recent hourly signed verified-tokens manifest.
+    PG-first (`signed_verified_tokens` table, populated by
+    signed_verified_tokens.py); disk fallback
+    (`signed_verified_tokens_latest.json`) when PG has no rows yet.
+
+    Charlie ruling 2026-09-21 (Mon PM, item 4). The manifest is
+    gated behind `SIGNED_VERIFIED_TOKENS_ENABLED` at the walker; if
+    the walker never wrote, this route 404s and the reader sees no
+    data — no half-published manifest.
+
+    Verifier flow:
+      1. Fetch this file.
+      2. Fetch /.well-known/snapshots/receipt_pubkey.pem.
+      3. Recompute canonical_hash over the envelope minus the
+         `signature` and `canonical_hash_hex` fields. Compare to
+         `canonical_hash_hex`.
+      4. Verify Ed25519 signature over
+         b"xrpldashboard/receipt/v1" + 0x00
+         + bytes.fromhex(canonical_hash_hex)
+         using the pubkey.
+      5. Cross-check the pubkey fingerprint against the DNS TXT
+         record and the /.well-known/snapshots/receipt_pubkey.json
+         endpoint (three-way pin).
+    """
+    envelope = db.read_signed_verified_tokens_latest()
+    if envelope is not None:
+        import json as _json
+        body = _json.dumps(envelope, sort_keys=True, indent=2)
+        resp = make_response(body)
+        resp.headers["Content-Type"] = "application/json"
+        # 30-min max-age matches the hourly cadence with slack for
+        # readers to catch the next update without a full miss.
+        resp.headers["Cache-Control"] = "public, max-age=1800, s-maxage=1800"
+        resp.headers["X-Verified-Tokens-Source"] = "pg"
+        return resp
+    if not os.path.exists(SIGNED_VERIFIED_TOKENS_DISK_PATH):
+        abort(404, description="no signed verified-tokens manifest yet")
+    resp = send_from_directory(
+        HERE, "signed_verified_tokens_latest.json",
+        mimetype="application/json",
+    )
+    resp.headers["Cache-Control"] = "public, max-age=1800, s-maxage=1800"
+    resp.headers["X-Verified-Tokens-Source"] = "disk"
+    return resp
+
+
 @app.route("/.well-known/snapshots/receipt_pubkey.pem")
 @limiter.limit(agent_tier_limit_rate)
 def well_known_receipt_pubkey():
