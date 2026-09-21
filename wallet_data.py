@@ -901,6 +901,26 @@ def _tx_counterparty(tx, owner_address):
     return None
 
 
+def _tx_actual_span_days(txs) -> float | None:
+    """Return the real span in days between the oldest fetched tx and
+    now — that's what the pulse chart's data actually covers. Returns
+    None if we couldn't determine (no txs or missing timestamps)."""
+    if not txs:
+        return None
+    oldest_unix = None
+    for tx in txs:
+        inner = tx.get("tx") or tx.get("tx_json") or {}
+        u = _ripple_to_unix(inner.get("date"))
+        if u is None:
+            continue
+        if oldest_unix is None or u < oldest_unix:
+            oldest_unix = u
+    if oldest_unix is None:
+        return None
+    span_sec = max(0, int(time.time()) - int(oldest_unix))
+    return round(span_sec / 86400.0, 1)
+
+
 def _build_pulse(txs, lookback_days):
     """Return list of length lookback_days with daily tx count, oldest first.
     Index lookback_days-1 is today; index 0 is (lookback_days-1) days ago."""
@@ -1592,6 +1612,16 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "tx_count_30d": total_recent_txs,
         "active_days_30d": active_days,
         "lookback_days": lookback_days,
+        # Charlie ruling 2026-09-21 Mon PM: the pulse chart's "Last 30
+        # days" label is FALSE for busy accounts. We fetch at most
+        # MAX_TX_PAGES × TX_PAGE_LIMIT tx envelopes; a whale with 1000+
+        # tx/day fills that quota in <1 day, so the 29 leading zero
+        # buckets in `pulse` reflect the FETCH CAP, not real
+        # inactivity. Expose the real span (oldest fetched tx → now)
+        # + a cap flag so the template can label honestly.
+        "tx_fetch_cap": MAX_TX_PAGES * TX_PAGE_LIMIT,
+        "tx_fetch_capped": len(txs) >= MAX_TX_PAGES * TX_PAGE_LIMIT,
+        "tx_actual_span_days": _tx_actual_span_days(txs),
         "last_seen": last_seen,
         "top_counterparty_label": top_label,
         "top_counterparty_addr": top_addr_full,

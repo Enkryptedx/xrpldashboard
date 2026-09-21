@@ -1224,14 +1224,31 @@
         {% endif %}
 
         {% if not data.is_amm %}
-          {# ---- Slim Wallet Pulse strip (paired with network graph) ---- #}
+          {# ---- Slim Wallet Pulse strip (paired with network graph) ----
+             Charlie ruling 2026-09-21 Mon PM: labels must reflect the
+             real span, not the requested lookback. For busy accounts
+             we hit the fetch cap (MAX_TX_PAGES × TX_PAGE_LIMIT tx
+             envelopes) within a fraction of the 30-day window, so
+             the header now says the real span and drops the "Live"
+             tag (the chart is a static render from a 5-min cached
+             fetch — not a streamed feed). #}
           <div class="wp-wrap" aria-hidden="true">
             <div class="wp-head">
-              <span class="wp-tag"><span class="dot"></span> {{ _('Live · Wallet Pulse') }}</span>
-              <span class="wp-meta">{{ _('Last') }} {{ data.lookback_days }} {{ _('days') }}</span>
+              <span class="wp-tag"><span class="dot"></span> {{ _('Wallet Pulse') }}</span>
+              <span class="wp-meta">
+                {% if data.tx_actual_span_days is not none %}
+                  {% if data.tx_fetch_capped %}
+                    {{ _('Last') }} {{ "{:,}".format(data.tx_fetch_cap) }} {{ _('txs · covers') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}
+                  {% else %}
+                    {{ _('Last') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}
+                  {% endif %}
+                {% else %}
+                  {{ _('No recent activity in our node window') }}
+                {% endif %}
+              </span>
             </div>
             <div class="wp-svg-wrap">
-              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse aria-label="{{ _('Transaction activity over last') }} {{ data.lookback_days }} {{ _('days') }}">
+              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse aria-label="{% if data.tx_actual_span_days is not none %}{{ _('Transaction activity over the last') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}{% else %}{{ _('No recent activity in our node window') }}{% endif %}">
                 <defs>
                   <linearGradient id="wpGrad" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.45"/>
@@ -1262,9 +1279,24 @@
           </div>
 
           <div class="cp-stats">
-            <span><span class="v" data-live-tx-count>{{ data.tx_count_30d }}</span> {{ _('txs') }} / {{ data.lookback_days }}d</span>
+            {# 2026-09-21 label fix: show the count with a "cap" marker
+               when we hit the fetch ceiling, and label the span as
+               "our node's ~N-day view" instead of the fixed 30d that
+               isn't what we actually have. Also drop `data-live-tx-count`
+               attribute since the chart is not stream-fed. #}
+            <span>
+              {% if data.tx_fetch_capped %}
+                <span class="v">{{ "{:,}".format(data.tx_fetch_cap) }}+</span> {{ _('txs') }}
+                <span class="dim" style="opacity:.7;font-size:.85em;">({{ _('our node\'s ~') }}{{ data.tx_actual_span_days or 0 }}{{ _('d view; fetch cap') }} {{ "{:,}".format(data.tx_fetch_cap) }})</span>
+              {% else %}
+                <span class="v">{{ "{:,}".format(data.tx_count_30d) }}</span> {{ _('txs') }}
+                {% if data.tx_actual_span_days is not none %}
+                  / <span class="v">{{ data.tx_actual_span_days }}d</span>
+                {% endif %}
+              {% endif %}
+            </span>
             <span class="sep">·</span>
-            <span><span class="v">{{ data.active_days_30d }}</span> / {{ data.lookback_days }} {{ _('active') }}</span>
+            <span><span class="v">{{ data.active_days_30d }}</span>{% if data.tx_actual_span_days is not none %} / {{ data.tx_actual_span_days|round|int }}{% endif %} {{ _('active') }}</span>
             {% if data.top_counterparty_label != "—" %}
               <span class="sep">·</span>
               <button type="button" class="cp-stat-top"
