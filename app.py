@@ -6443,7 +6443,8 @@ CONTACT_PURPOSES = {
 }
 
 
-def _is_bot_contact_submission(ua: str, message: str) -> tuple[bool, str]:
+def _is_bot_contact_submission(ua: str, message: str,
+                               email: str = "", name: str = "") -> tuple[bool, str]:
     """Return (is_bot, signature) for a /contact form submission.
 
     Three signatures cover the two campaigns observed in contact_inquiries
@@ -6480,6 +6481,48 @@ def _is_bot_contact_submission(ua: str, message: str) -> tuple[bool, str]:
         return True, "seo_spam_owner"
     if "ccleaner/" in ua_lower or "avast/" in ua_lower:
         return True, "av_bundle_ua"
+
+    # XRPL-relevance drop filter (Charlie ruling 2026-09-21, Monday
+    # build item 6 — cheap second layer while Turnstile waits on the
+    # site key). Real contact traffic to xrpldashboard names an
+    # XRPL-adjacent topic: XRPL, XRP, RLUSD, AMM, MPT, NFT, trustline,
+    # tokens, credentials, /check, etc. Yesterday's 2,431 bot hits
+    # were universally off-topic (SEO backlink pitches, "improve your
+    # rankings", "we build websites", "hi I want to know your price").
+    # Any submission that names NONE of the on-topic terms in either
+    # subject/name/email/message is dropped as XRPL-irrelevant.
+    #
+    # This is a soft filter — genuine contact from someone who omits
+    # every keyword is possible but rare (the visitor is already on
+    # xrpldashboard.com; naming XRP-adjacent terms is natural). If it
+    # ever mis-fires we hear about it via email fallback (footer
+    # contact address). Not an XSS/security surface; just spam
+    # attrition.
+    # Terms use surrounding-space anchoring where a bare fragment would
+    # false-positive on common English words. Every term is matched
+    # against `_blob` which has a leading + trailing space stitched in,
+    # so " mpt " catches "mpt"/"mpts" without matching "attempt/prompt/empty".
+    _XRPL_RELEVANCE_TERMS = (
+        " xrpl", " xrp ", " xrp,", " xrp.", " xrp!", " xrp?", " xrp:", " xrp;",
+        " xrp\n", " rlusd", " amm", " mpt", " nft", " trustline", " issuer",
+        " token", " credential", " /check", " dashboard", " wallet",
+        " ledger", " ripple", " stablecoin", " receipt", " anchor",
+        " signed snapshot", " signed-snapshot", " amendment",
+    )
+    # Email/domain hint: `jane@ripple.com` should match ` ripple` even
+    # though the '@' would otherwise glue the local-part to the domain.
+    # Convert '@' → ' ' before stitching, so domain fragments (ripple,
+    # xrpl, xrpldashboard, etc.) get a leading space and match cleanly.
+    _email_blob = (email or "").lower().replace("@", " ")
+    _blob = (
+        " " + msg_lower.replace("\r", " ").replace("\n", " ")
+        + " " + ua_lower
+        + " " + _email_blob
+        + " " + (name or "").lower()
+        + " "
+    )
+    if not any(term in _blob for term in _XRPL_RELEVANCE_TERMS):
+        return True, "xrpl_irrelevant"
 
     return False, ""
 
@@ -6635,7 +6678,9 @@ def contact_submit():
     # Bot filter — soft-drop: bot gets a fake-200 success page, payload
     # goes nowhere, bot never learns it was filtered. The drop is logged
     # (ts + UA + signature only, no payload) so campaign decay is auditable.
-    is_bot, bot_sig = _is_bot_contact_submission(ua or "", message)
+    is_bot, bot_sig = _is_bot_contact_submission(
+        ua or "", message, email=email, name=name or "",
+    )
     if is_bot:
         db.log_contact_bot_drop(ua, bot_sig)
         return render_template(
