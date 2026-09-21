@@ -94,6 +94,13 @@ JOBS: list[tuple[str, int, str]] = [
     # public NFT counts. Wrapper stamps _last_ok on genuine success only.
     ("nft_activity_summary", 3600,
      "every-5min recompute of the single-row /nfts page cache from nft_activity → nft_activity_summary"),
+    # Charlie ruling 2026-09-21 Mon PM: /whales cold-render was 5-19s
+    # on 3 of 12 tier×filter combos; walker precomputes all 12 cell
+    # bodies into whales_summary so the route serves sub-ms. Same
+    # meta-watch shape as nft_activity_summary: 5-min cadence, 1h
+    # ceiling. Wrapper stamps _last_ok on success only.
+    ("whales_summary_walker", 3600,
+     "every-5min recompute of the 12 (tier, filter) cell bodies for /whales into whales_summary"),
     # Charlie ruling 2026-09-10 morning: added pg_backup_canary after
     # it went stale for ~35h during 09-09/09-10 with no meta-watch
     # (last stamp before the kick was 09-09 13:51 UTC — 35h > 25h

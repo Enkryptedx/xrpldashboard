@@ -7338,6 +7338,38 @@ def write_signed_verified_tokens(envelope, signature, canonical_hash_hex):
     )
 
 
+def read_whales_summary_cell(tier: str, filter_type: str) -> tuple[str | None, float | None]:
+    """Return (body_str, age_seconds) for the (tier, filter_type) cell
+    of the whales_summary singleton row, or (None, None) when the row
+    doesn't exist yet or the cell key isn't present. Powers the sub-ms
+    cold-path serve for /whales (Charlie ruling 2026-09-21 Mon PM).
+
+    `age_seconds` is `now() - computed_at` so the route can decide
+    whether to serve directly (fresh), serve with a stale banner
+    (>30 min old), or fall back to inline render (row missing)."""
+    if not pg_available():
+        return None, None
+    key = f"{tier}:{filter_type}"
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT cells ->> %s, "
+                    "       EXTRACT(EPOCH FROM (now() - computed_at))::float "
+                    "FROM whales_summary WHERE id = 1",
+                    (key,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None, None
+                body, age = row
+                if body is None:
+                    return None, None
+                return body, float(age)
+    except Exception:
+        return None, None
+
+
 def read_signed_verified_tokens_latest():
     """Return the most-recent signed verified-tokens envelope
     (reconstructed to match the disk-file shape), or None when PG has

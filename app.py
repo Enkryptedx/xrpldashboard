@@ -3304,6 +3304,71 @@ def whales():
             _trigger_whales_rebuild(tier, filter_type)
         _maybe_flush_whales_receipts(force=False)
         return _cached_body
+
+    # Charlie ruling 2026-09-21 Mon PM (item /whales performance):
+    # walker-written PG summary is the sub-ms cold-render path.
+    # After the in-process L1 misses, read whales_summary.cells for
+    # this cell. Fresh (<STALE_CEILING) → serve directly (also seat
+    # into L1 so subsequent hits in this process stay sub-ms).
+    # >30 min stale → serve with a "refresh running behind" banner
+    # prepended (see WARN_BANNER). Row missing entirely → fall
+    # through to inline render (the "warming up" first-ever miss).
+    if not getattr(_CACHE_REBUILD_LOCAL, "bypass", False):
+        try:
+            pg_body, age_s = db.read_whales_summary_cell(tier, filter_type)
+        except Exception:
+            pg_body, age_s = None, None
+        if pg_body:
+            if age_s is not None and age_s > _WHALES_CACHE_STALE_CEILING_S:
+                # Row is very old — walker likely hasn't run in a while.
+                # Serve with a banner rather than trying to inline-render
+                # a page that already timed out for the last caller.
+                banner = (
+                    "<div style=\"background:#3b2612;color:#fbbf24;"
+                    "padding:.6em 1em;text-align:center;font-family:"
+                    "system-ui,sans-serif;font-size:.85rem;border-bottom:"
+                    "1px solid rgba(251,191,36,.4);\">"
+                    "⚠ /whales summary is "
+                    + str(int(age_s // 60))
+                    + " min behind — walker refresh running behind. "
+                    "Numbers below are last-good; see /health for walker status."
+                    "</div>"
+                )
+                pg_body = banner + pg_body
+            # Seat into L1 with a 5-min forward TTL so this worker
+            # doesn't hit PG on every request.
+            _seat_ts = _whales_now
+            with _WHALES_CACHE_LOCK:
+                _WHALES_CACHE[_whales_cache_key] = (
+                    _seat_ts + _WHALES_CACHE_TTL_S,
+                    pg_body,
+                    0,
+                )
+                _WHALES_CACHE_STATS["hits"] += 1
+            _maybe_flush_whales_receipts(force=False)
+            return pg_body
+        # No PG summary row yet → serve a lightweight warming-up
+        # placeholder rather than a 5-19s inline render that will
+        # time out on Render. Walker runs every 5 min; the first
+        # non-empty response after this arrives once the walker
+        # writes.
+        warming = (
+            "<!doctype html><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<title>whales · warming up</title>"
+            "<div style='max-width:34rem;margin:6rem auto;"
+            "padding:2rem;color:#e6e9f2;font-family:system-ui,sans-serif;"
+            "background:#141832;border-radius:12px;text-align:center;"
+            "line-height:1.6;'>"
+            "<h1 style='margin:0 0 .6rem;font-size:1.4rem;'>whales · warming up</h1>"
+            "<p style='color:#8090b0;margin:0;'>The whales summary walker is "
+            "computing this tier's aggregates. Refresh in ~30 seconds. "
+            "See <a href='/health' style='color:#22d3ee;'>/health</a> for status.</p>"
+            "</div>"
+        )
+        _maybe_flush_whales_receipts(force=False)
+        return warming
+
     _whales_render_start = time.perf_counter()
 
     # Default view = value movement. Trustset events have no Amount and are
