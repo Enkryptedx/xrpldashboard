@@ -225,6 +225,69 @@ def test_log_only_mode_reports_but_does_not_ban(monkeypatch, capsys):
         importlib.reload(st_mod)  # restore module default for other tests
 
 
+def test_disguised_chrome_signature_log_only_by_default():
+    """Charlie ruling 2026-09-21 (Mon PM, item 5, post-Render alert):
+    the disguised-Chrome fleet signature ships log-only. Lightpanda UA
+    + no static fetch + 50+ hits + ≤3 paths → SHADOW_TRIP line, no
+    ban, request served. FLEET_DISGUISED_CHROME_ENFORCE default is off."""
+    import logging
+    tr = _fresh_tracker()
+    records = []
+    class _H(logging.Handler):
+        def emit(self, record):
+            records.append(record.getMessage())
+    logger = logging.getLogger("session_scraper_tracker")
+    h = _H()
+    logger.addHandler(h)
+    logger.setLevel(logging.INFO)
+    try:
+        now = 1_800_000_000.0
+        tripped = False
+        for i in range(60):
+            if tr.observe("lightpanda_hash", "/tokens", now=now + i,
+                          user_agent="Mozilla/5.0 Lightpanda/1.0"):
+                tripped = True
+                break
+        assert not tripped, "log-only default must not enforce"
+        assert any("SHADOW_TRIP:disguised_chrome" in r for r in records), (
+            f"expected disguised-Chrome SHADOW_TRIP; records={records!r}"
+        )
+    finally:
+        logger.removeHandler(h)
+
+
+def test_disguised_chrome_signature_exempts_real_browsers():
+    """Even with Lightpanda-adjacent UA, a session that fetched a
+    static asset is exempt (real-browser guard). Should not emit a
+    SHADOW_TRIP line."""
+    import logging
+    tr = _fresh_tracker()
+    records = []
+    class _H(logging.Handler):
+        def emit(self, record):
+            records.append(record.getMessage())
+    logger = logging.getLogger("session_scraper_tracker")
+    h = _H()
+    logger.addHandler(h)
+    logger.setLevel(logging.INFO)
+    try:
+        now = 1_800_000_000.0
+        tr.observe("real_browser_hash", "/static/vendor/foo.css", now=now,
+                   user_agent="Mozilla/5.0 HeadlessChrome/126.0")
+        for i in range(60):
+            tr.observe("real_browser_hash", "/tokens", now=now + 1 + i,
+                       user_agent="Mozilla/5.0 HeadlessChrome/126.0")
+        assert not any(
+            "SHADOW_TRIP:disguised_chrome" in r
+            for r in records
+        ), (
+            f"real-browser (fetched CSS) must not trip disguised-Chrome "
+            f"even with HeadlessChrome UA; records={records!r}"
+        )
+    finally:
+        logger.removeHandler(h)
+
+
 def test_monitor_exempt_does_not_leak_to_normal_traffic():
     """Exempting monitor probes must not accidentally exempt the
     normal traffic from the same visitor_hash. A hash that ONLY hits

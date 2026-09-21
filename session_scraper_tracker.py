@@ -98,6 +98,37 @@ _MONITOR_EXEMPT_UA_FRAGMENTS = (
 )
 
 
+# Disguised-Chrome fleet signature (Charlie ruling 2026-09-21 Mon PM,
+# item 5). Ships log-only per the new rule — SHADOW_TRIP lines only,
+# no enforcement until Charlie reviews the 24h shadow output tomorrow
+# morning and flips FLEET_DISGUISED_CHROME_ENFORCE=1.
+#
+# Signature (three-axis, all must match at observation time):
+#   1. UA contains "Lightpanda" fragment — self-declared headless
+#      browser used by scrapers spoofing Chrome. Already caught by the
+#      `Lightpanda_declared_2026_09_21` fleet_signature, but the
+#      session-scoped shape can catch OTHER Lightpanda-alike headless
+#      browsers before we know their name.
+#   2. Session has NEVER fetched a static asset (CSS/JS/font/image).
+#      Real browsers pull these on first paint; scrapers only pull
+#      HTML.
+#   3. Path-mix predicate: session has scraped ≥50 hits across ≤3
+#      distinct paths — narrower than the general 100/2 shape so it
+#      catches the mid-volume disguised fleets.
+FLEET_DISGUISED_CHROME_ENFORCE = os.environ.get(
+    "FLEET_DISGUISED_CHROME_ENFORCE", "0"
+) in ("1", "true", "yes")
+
+# Lightpanda-adjacent UA fragments. Any request whose UA contains one
+# of these — combined with #2 no-static-fetch and #3 path-mix — trips
+# the disguised-Chrome shadow log. Case-insensitive substring match.
+_DISGUISED_CHROME_UA_FRAGMENTS = (
+    "lightpanda",           # self-declared headless
+    "headlesschrome",       # Puppeteer / Selenium default
+    "phantomjs",            # legacy but still seen
+)
+
+
 def _is_monitor_probe(path: str, user_agent: str) -> bool:
     if not path:
         return False
@@ -183,6 +214,38 @@ class SessionScraperTracker:
             st.hits.append((now, path))
             st.paths.add(path)
             self._trim(st, now)
+
+            # Disguised-Chrome fleet check (Charlie ruling 2026-09-21
+            # Mon PM, item 5). Log-only until
+            # FLEET_DISGUISED_CHROME_ENFORCE is flipped. Same short-
+            # circuit shape as LOG_ONLY_MODE — emit SHADOW_TRIP line,
+            # don't stamp a ban, don't enforce.
+            ua_lower = (user_agent or "").lower()
+            has_disguised_ua = any(
+                frag in ua_lower for frag in _DISGUISED_CHROME_UA_FRAGMENTS
+            )
+            disguised_hit = (
+                has_disguised_ua
+                and not st.fetched_static
+                and len(st.hits) >= 50
+                and len(st.paths) <= 3
+            )
+            if disguised_hit:
+                import logging as _logging
+                _logging.getLogger("session_scraper_tracker").info(
+                    "SHADOW_TRIP:disguised_chrome visitor_hash=%s "
+                    "hits=%d paths=%d ua_snippet=%s (log-only%s)",
+                    visitor_hash[:12] if visitor_hash else "",
+                    len(st.hits), len(st.paths),
+                    ua_lower[:60],
+                    ", would-enforce" if FLEET_DISGUISED_CHROME_ENFORCE else "",
+                )
+                if FLEET_DISGUISED_CHROME_ENFORCE:
+                    st.banned_until = now + BAN_SECONDS
+                    return True
+                # Otherwise fall through to the regular threshold check —
+                # a disguised UA hitting the regular high-volume shape
+                # still trips the general filter.
 
             # Trip condition
             if (len(st.hits) >= HIT_THRESHOLD
