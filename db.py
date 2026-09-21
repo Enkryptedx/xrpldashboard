@@ -7370,6 +7370,38 @@ def read_whales_summary_cell(tier: str, filter_type: str) -> tuple[str | None, f
         return None, None
 
 
+def read_wallet_summary(address: str) -> tuple[str | None, float | None, int | None]:
+    """Return (body_html, age_seconds, gen_ms) for the given address's
+    pre-rendered /wallet body from `wallet_summary`, or (None, None, None)
+    when no row exists yet. Powers sub-ms cold-path serves for
+    exchange-scale addresses (Charlie ruling 2026-09-21 Mon PM after
+    the 8s Bitstamp cold-render tripped the label-agreement canary).
+
+    `age_seconds` lets the route decide fresh vs. stale-banner vs.
+    inline-fallback."""
+    if not pg_available():
+        return None, None, None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT body_html, "
+                    "       EXTRACT(EPOCH FROM (now() - computed_at))::float, "
+                    "       gen_ms "
+                    "FROM wallet_summary WHERE address = %s",
+                    (address,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None, None, None
+                body, age, gen_ms = row
+                if body is None:
+                    return None, None, None
+                return body, float(age), int(gen_ms or 0)
+    except Exception:
+        return None, None, None
+
+
 def read_signed_verified_tokens_latest():
     """Return the most-recent signed verified-tokens envelope
     (reconstructed to match the disk-file shape), or None when PG has

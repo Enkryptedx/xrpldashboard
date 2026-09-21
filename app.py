@@ -7267,6 +7267,23 @@ def wallet(address):
         # doubles as an integrity check.
         return render_template("404.html"), 404
 
+    # Charlie ruling 2026-09-21 Mon PM: exchange-scale wallets (~8s
+    # cold render) blew past the label-agreement canary's 4s timeout
+    # and made a real reader wait. wallet_summary_walker pre-renders
+    # the top-20 hot wallets every 5 min; check PG first, serve sub-ms
+    # if fresh (<30 min old), fall through to the adaptive live fetch
+    # for everyone else.
+    try:
+        body_html, age_s, gen_ms = db.read_wallet_summary(address)
+        if body_html and age_s is not None and age_s < 30 * 60:
+            from flask import make_response
+            resp = make_response(body_html)
+            resp.headers["Content-Type"] = "text/html; charset=utf-8"
+            resp.headers["X-Wallet-Cache"] = f"wallet_summary age={int(age_s)}s gen_ms={gen_ms}"
+            return resp
+    except Exception:
+        pass
+
     data = fetch_wallet_data_cached(address)
     # Surface the live USD anchor on every wallet render so the user can
     # see where the dollar figures come from. Cheap (cached ~60s in oracle).
