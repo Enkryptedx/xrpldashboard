@@ -901,10 +901,10 @@ def _tx_counterparty(tx, owner_address):
     return None
 
 
-def _tx_actual_span_days(txs) -> float | None:
-    """Return the real span in days between the oldest fetched tx and
-    now — that's what the pulse chart's data actually covers. Returns
-    None if we couldn't determine (no txs or missing timestamps)."""
+def _tx_actual_span_seconds(txs) -> int | None:
+    """Return the real span in seconds between the oldest fetched tx
+    and now — the raw quantity that drives both the pulse chart span
+    and the human-readable label. None if no timestamps found."""
     if not txs:
         return None
     oldest_unix = None
@@ -917,8 +917,24 @@ def _tx_actual_span_days(txs) -> float | None:
             oldest_unix = u
     if oldest_unix is None:
         return None
-    span_sec = max(0, int(time.time()) - int(oldest_unix))
-    return round(span_sec / 86400.0, 1)
+    return max(0, int(time.time()) - int(oldest_unix))
+
+
+def _tx_actual_span_label(span_sec) -> str | None:
+    """Format a span in seconds into a human-readable label. Charlie
+    ruling 2026-09-21: sub-day spans must render as minutes/hours, not
+    '0.0 days' which is what a naive 1-dp days rounding produced."""
+    if span_sec is None:
+        return None
+    if span_sec < 60:
+        return "under 1 min"
+    if span_sec < 3600:
+        return f"~{span_sec // 60} min"
+    if span_sec < 86400:
+        h = span_sec / 3600.0
+        return f"~{h:.1f} hours" if h < 10 else f"~{int(round(h))} hours"
+    d = span_sec / 86400.0
+    return f"{d:.1f} days" if d < 10 else f"{int(round(d))} days"
 
 
 def _build_pulse(txs, lookback_days):
@@ -1621,7 +1637,8 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         # + a cap flag so the template can label honestly.
         "tx_fetch_cap": MAX_TX_PAGES * TX_PAGE_LIMIT,
         "tx_fetch_capped": len(txs) >= MAX_TX_PAGES * TX_PAGE_LIMIT,
-        "tx_actual_span_days": _tx_actual_span_days(txs),
+        "tx_actual_span_days": (_tx_actual_span_seconds(txs) / 86400.0) if _tx_actual_span_seconds(txs) is not None else None,
+        "tx_actual_span_label": _tx_actual_span_label(_tx_actual_span_seconds(txs)),
         "last_seen": last_seen,
         "top_counterparty_label": top_label,
         "top_counterparty_addr": top_addr_full,

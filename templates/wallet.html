@@ -683,31 +683,24 @@
                           border-radius: 5px; }
     .cp-stat-top-detail.is-open { display: block; }
 
-    /* reserve gauge */
-    .gauge-card { display: flex; flex-direction: column; align-items: center;
-                  text-align: center; min-height: 220px; }
-    .gauge-card .card-label { align-self: flex-start; }
-    .gauge-wrap { position: relative; width: 100%; max-width: 200px;
-                  margin: 0.6em auto 0.4em; }
-    .gauge-svg { width: 100%; display: block; }
-    .gauge-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 10;
-                   stroke-linecap: round; }
-    .gauge-fill  { fill: none; stroke: url(#gaugeGrad); stroke-width: 10;
-                   stroke-linecap: round;
-                   stroke-dasharray: 0 251;
-                   animation: gaugeIn 1.2s cubic-bezier(0.2,0.8,0.2,1) 0.2s forwards; }
-    @keyframes gaugeIn { to { stroke-dasharray: var(--gauge-target, 0) 251; } }
-    .gauge-center { position: absolute; left: 0; right: 0; bottom: 18%;
-                    text-align: center; }
-    .gauge-pct { font-family: var(--mono); font-size: 1.7rem; font-weight: 700;
-                 color: var(--text); letter-spacing: -0.025em; line-height: 1; }
-    .gauge-caption { font-size: var(--fs-2xs); text-transform: uppercase;
-                     letter-spacing: 0.12em; color: var(--text-3); font-weight: 600;
-                     margin-top: 0.3em; }
-    .gauge-end-labels { display: flex; justify-content: space-between;
-                        width: 100%; max-width: 200px; margin: -0.2em auto 0;
-                        font-size: 0.65rem; color: var(--text-3);
-                        font-family: var(--mono); }
+    /* spendable vs reserved (replaces the % locked gauge which read
+       0.00% for every high-balance wallet; Charlie ruling 2026-09-21) */
+    .gauge-card { display: flex; flex-direction: column;
+                  min-height: 220px; }
+    .spendable-block { padding: 0.4em 0 0.6em; }
+    .spendable-big  { display: flex; flex-direction: column;
+                      margin-bottom: 0.55em; }
+    .spendable-big strong { font-family: var(--mono); font-size: 1.6rem;
+                            font-weight: 700; color: var(--text);
+                            letter-spacing: -0.02em; line-height: 1.05; }
+    .spendable-unit { font-size: var(--fs-2xs); text-transform: uppercase;
+                      letter-spacing: 0.11em; color: var(--text-3);
+                      font-weight: 600; margin-top: 0.25em; }
+    .reserved-line  { font-size: var(--fs-sm); color: var(--text-2);
+                      line-height: 1.5; }
+    .reserved-line strong { color: var(--text); font-family: var(--mono); }
+    .reserved-pct   { font-size: var(--fs-xs); color: var(--text-3);
+                      margin-left: 0.3em; }
     .gauge-foot { font-size: var(--fs-xs); color: var(--text-2);
                   margin-top: auto; padding-top: 0.7em; line-height: 1.5; }
     .gauge-foot strong { color: var(--text); font-family: var(--mono); }
@@ -1079,11 +1072,31 @@
         <div class="cp-wrap" aria-hidden="true">
           <div class="cp-head">
             <span class="cp-tag"><span class="dot"></span> {{ _('Counterparty Network') }}</span>
-            <span class="cp-meta">{{ data.nodes|length }} {{ _('entities') }} · {{ data.lookback_days }} {{ _('days') }}</span>
+            {# Charlie ruling 2026-09-21: the meta line used to read
+               "N entities · 30 days" for every wallet, false for
+               fetch-capped wallets whose real span is a few hours.
+               Show the actual span from our node instead. #}
+            <span class="cp-meta">{{ data.nodes|length }} {{ _('entities') }} ·
+              {% if data.tx_actual_span_label %}
+                {% if data.tx_fetch_capped %}
+                  {{ _('last') }} {{ "{:,}".format(data.tx_fetch_cap) }} {{ _('txs (') }}{{ data.tx_actual_span_label }}{{ _(')') }}
+                {% else %}
+                  {{ data.tx_actual_span_label }} {{ _('from our node') }}
+                {% endif %}
+              {% else %}
+                {{ _('no recent tx in our node window') }}
+              {% endif %}
+            </span>
           </div>
-          <div class="cp-wallet-flag" data-cp-wallet-flag aria-live="polite">
+          {# Amber "all counterparties are brand-new" banner: only fires
+             when we actually have >=7 days of tx history. On a 0.5-day
+             fetch-capped view every counterparty looks new — that's
+             the fetch-window artifact, not a real signal. JS gates on
+             this data-real-span attribute. #}
+          <div class="cp-wallet-flag" data-cp-wallet-flag aria-live="polite"
+               data-real-span-days="{{ data.tx_actual_span_days if data.tx_actual_span_days is not none else 0 }}">
             <span class="cp-wallet-flag-bang">!</span>
-            <span class="cp-wallet-flag-text">{{ _('All current counterparties first-seen within the last 7 days of the 30-day window.') }}</span>
+            <span class="cp-wallet-flag-text">{{ _('All current counterparties are first-seen within the last 7 days of a ≥7-day window from our node.') }}</span>
           </div>
           <div class="cp-svg-wrap">
             <svg class="cp-svg" viewBox="0 0 540 340" data-cp role="img" aria-label="{{ _('Counterparty exposure network') }}">
@@ -1236,11 +1249,11 @@
             <div class="wp-head">
               <span class="wp-tag"><span class="dot"></span> {{ _('Wallet Pulse') }}</span>
               <span class="wp-meta">
-                {% if data.tx_actual_span_days is not none %}
+                {% if data.tx_actual_span_label %}
                   {% if data.tx_fetch_capped %}
-                    {{ _('Last') }} {{ "{:,}".format(data.tx_fetch_cap) }} {{ _('txs · covers') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}
+                    {{ _('Last') }} {{ "{:,}".format(data.tx_fetch_cap) }} {{ _('txs · covers') }} {{ data.tx_actual_span_label }} {{ _('from our node') }}
                   {% else %}
-                    {{ _('Last') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}
+                    {{ _('Last') }} {{ data.tx_actual_span_label }} {{ _('from our node') }}
                   {% endif %}
                 {% else %}
                   {{ _('No recent activity in our node window') }}
@@ -1248,7 +1261,7 @@
               </span>
             </div>
             <div class="wp-svg-wrap">
-              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse aria-label="{% if data.tx_actual_span_days is not none %}{{ _('Transaction activity over the last') }} {{ data.tx_actual_span_days }} {{ _('days from our node') }}{% else %}{{ _('No recent activity in our node window') }}{% endif %}">
+              <svg class="wp-svg" viewBox="0 0 600 110" preserveAspectRatio="none" data-pulse aria-label="{% if data.tx_actual_span_label %}{{ _('Transaction activity over the last') }} {{ data.tx_actual_span_label }} {{ _('from our node') }}{% else %}{{ _('No recent activity in our node window') }}{% endif %}">
                 <defs>
                   <linearGradient id="wpGrad" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0.45"/>
@@ -1287,11 +1300,11 @@
             <span>
               {% if data.tx_fetch_capped %}
                 <span class="v">{{ "{:,}".format(data.tx_fetch_cap) }}+</span> {{ _('txs') }}
-                <span class="dim" style="opacity:.7;font-size:.85em;">({{ _('our node\'s ~') }}{{ data.tx_actual_span_days or 0 }}{{ _('d view; fetch cap') }} {{ "{:,}".format(data.tx_fetch_cap) }})</span>
+                <span class="dim" style="opacity:.7;font-size:.85em;">({{ _('our node view:') }} {{ data.tx_actual_span_label or 'unknown' }}; {{ _('fetch cap') }} {{ "{:,}".format(data.tx_fetch_cap) }})</span>
               {% else %}
                 <span class="v">{{ "{:,}".format(data.tx_count_30d) }}</span> {{ _('txs') }}
-                {% if data.tx_actual_span_days is not none %}
-                  / <span class="v">{{ data.tx_actual_span_days }}d</span>
+                {% if data.tx_actual_span_label %}
+                  / <span class="v">{{ data.tx_actual_span_label }}</span>
                 {% endif %}
               {% endif %}
             </span>
@@ -1299,11 +1312,11 @@
             <span>
               {% if data.tx_fetch_capped %}
                 {# span < fetch cap window, so a denominator would be misleading #}
-                <span class="v">{{ data.active_days_30d }}</span> {{ _('active') }}
-              {% elif data.tx_actual_span_days is not none and data.tx_actual_span_days >= 1 %}
-                <span class="v">{{ data.active_days_30d }}</span> / {{ data.tx_actual_span_days|round|int }} {{ _('active') }}
+                <span class="v">{{ data.active_days_30d }}</span> {{ _('active days') }}
+              {% elif data.tx_actual_span_days is not none and data.tx_actual_span_days >= 2 %}
+                <span class="v">{{ data.active_days_30d }}</span> / {{ data.tx_actual_span_days|round|int }} {{ _('active days') }}
               {% else %}
-                <span class="v">{{ data.active_days_30d }}</span> {{ _('active') }}
+                <span class="v">{{ data.active_days_30d }}</span> {{ _('active days') }}
               {% endif %}
             </span>
             {% if data.top_counterparty_label != "—" %}
@@ -1347,36 +1360,29 @@
 
       <div class="row-2-right{% if data.is_amm %} row-2-right-amm{% elif data.is_vault %} row-2-right-pool{% endif %}">
       {% if not data.is_amm %}
+      {# Charlie ruling 2026-09-21 Mon PM: replace the "% locked" gauge —
+         which reads 0.00% for every account whose balance >> reserve —
+         with concrete "Spendable vs Reserved XRP" values. The
+         percentage is only interesting when it's meaningful, so show
+         it as a small subtitle only when >= 1% of balance. #}
       <div class="card gauge-card">
-        <span class="card-label">{{ _('Reserve usage') }}</span>
-        <div class="gauge-wrap">
-          <svg class="gauge-svg" viewBox="0 0 200 120" aria-label="{{ _('Reserve usage gauge:') }} {{ '{:.1f}'.format(data.pct_locked * 100) }}% {{ _('locked') }}">
-            <defs>
-              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%"  stop-color="#22d3ee"/>
-                <stop offset="100%" stop-color="#3b82f6"/>
-              </linearGradient>
-            </defs>
-            {# half-circle arc, r=80, length ~ pi*80 ~ 251 #}
-            <path class="gauge-track"
-                  d="M 20 100 A 80 80 0 0 1 180 100" />
-            <path class="gauge-fill"
-                  style="--gauge-target: {{ "{:.3f}".format([data.pct_locked, 1.0]|min) }};"
-                  d="M 20 100 A 80 80 0 0 1 180 100" />
-          </svg>
-          <div class="gauge-center">
-            <div class="gauge-pct">{{ "{:.2f}".format(data.pct_locked * 100) }}%</div>
-            <div class="gauge-caption">{{ _('of balance locked') }}</div>
+        <span class="card-label">{{ _('Spendable vs reserved') }}</span>
+        <div class="spendable-block">
+          <div class="spendable-big">
+            <strong>{{ "{:,.2f}".format(data.available_xrp) }}</strong>
+            <span class="spendable-unit">XRP {{ _('spendable') }}</span>
           </div>
-        </div>
-        <div class="gauge-end-labels">
-          <span>0%</span><span>100%</span>
+          <div class="reserved-line">
+            <strong>{{ "{:,.2f}".format(data.reserved_xrp) }} XRP</strong> {{ _('reserved') }}
+            {% if data.pct_locked >= 0.01 %}
+              <span class="reserved-pct">({{ "{:.1f}".format(data.pct_locked * 100) }}% {{ _('of balance') }})</span>
+            {% endif %}
+          </div>
         </div>
         <div class="gauge-foot">
           {{ "{:g}".format(data.base_reserve_xrp) }} XRP {{ _('base') }} +
           {{ data.owner_count }} {{ _('owned objects') }} ×
-          {{ "{:g}".format(data.owner_reserve_xrp) }} XRP =
-          <strong>{{ "{:.1f}".format(data.reserved_xrp) }} XRP</strong> {{ _('reserved.') }}
+          {{ "{:g}".format(data.owner_reserve_xrp) }} XRP {{ _('per owned object') }}.
           {{ _('Reserved XRP can\'t be sent.') }}
         </div>
       </div>
@@ -1973,12 +1979,19 @@
        // is alarm fatigue. Suppress per-node badges and surface a single
        // wallet-level banner instead. Need >=2 nodes for the swap to be
        // meaningful (1-of-1 isn't a "wallet woke up" pattern).
+       //
+       // Charlie ruling 2026-09-21 Mon PM: the banner MUST NOT fire when
+       // our tx-fetch window is shorter than 7 days — every counterparty
+       // will look "first-seen within 7d" on a 0.5-day view. Read the
+       // real span from data-real-span-days and require >= 7d before
+       // showing the banner.
       var allNewPeers = nodes.length >= 2 && nodes.every(function (n) {
         return typeof n.firstSeenDays === 'number' && n.firstSeenDays <= 7;
       });
-      if (allNewPeers) {
-        var flag = document.querySelector('[data-cp-wallet-flag]');
-        if (flag) flag.classList.add('is-visible');
+      var flagEl = document.querySelector('[data-cp-wallet-flag]');
+      var realSpanDays = flagEl ? parseFloat(flagEl.getAttribute('data-real-span-days') || '0') : 0;
+      if (allNewPeers && realSpanDays >= 7 && flagEl) {
+        flagEl.classList.add('is-visible');
       }
 
       nodes.forEach(function (node, idx) {
