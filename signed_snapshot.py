@@ -82,7 +82,7 @@ NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 CLAIMS_YAML_PATH = os.path.join(HERE, "CLAIMS.yaml")
 APP_PY_PATH = os.path.join(HERE, "app.py")
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # v4 walker-health-summary thresholds (mirror /walker_health severity buckets;
 # if these drift from the app-side page the digest becomes worthless as
@@ -1023,29 +1023,63 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
         )
 
     per_amendment = {}
-    known = state.get("known_amendments", []) if isinstance(state, dict) else []
-    vote_map = votes.get("data", {}) if isinstance(votes, dict) else {}
+    if not isinstance(state, dict):
+        state = {}
+    # 2026-09-21 Charlie proving-run fix: the extractor previously read
+    # `known_amendments` which never existed. The real keys on
+    # amendments_state.fetch_amendments_state_cached() are `in_flight`
+    # (list of dicts each with hash/name/network_vote) and `superseded`
+    # (list of dicts each with hash/name, no vote — already enacted).
+    # `unrecognized_enabled` covers enacted-but-unnamed amendments; we
+    # record those too so a future rippled introducing one still ends
+    # up in the signed leaf. `vote_map` is redundant now — each
+    # in_flight entry carries its own `network_vote` dict — but we keep
+    # amendments_network_votes.fetch_network_vote_tallies_cached()
+    # around as the fail-loud freshness gate above.
     threshold_display = None
-    for a in known:
+    in_flight = state.get("in_flight") or []
+    superseded = state.get("superseded") or []
+    unrecognized_enabled = state.get("unrecognized_enabled") or []
+    for a in in_flight:
         name = a.get("name")
         if not name:
             continue
-        h = a.get("amendment") or a.get("hash")
-        v = vote_map.get((h or "").upper()) if h else None
+        h = a.get("hash")
+        v = a.get("network_vote") or {}
         if v and threshold_display is None:
-            # Every in-flight amendment shares the network-wide threshold
-            # display ("N/M"); record once for envelope-level reader use.
-            thr_str = v.get("threshold_raw") or v.get("threshold")
-            threshold_display = thr_str
+            thr = v.get("threshold")
+            val = v.get("validations")
+            if thr is not None and val is not None:
+                threshold_display = f"{thr}/{val}"
         per_amendment[name] = {
             "hash": h,
-            "enabled": bool(a.get("enabled")),
-            "supported_by_responding_node": bool(a.get("supported")),
+            "enabled": False,
             "network_votes": {
-                "count": (v.get("count") if v else None),
-                "validations": (v.get("validations") if v else None),
-                "threshold": (v.get("threshold") if v else None),
+                "count": v.get("count"),
+                "validations": v.get("validations"),
+                "threshold": v.get("threshold"),
+                "as_of_iso": v.get("as_of_iso"),
+                "source_url": v.get("source_url"),
             } if v else None,
+        }
+    for a in superseded:
+        name = a.get("name")
+        if not name:
+            continue
+        per_amendment[name] = {
+            "hash": a.get("hash"),
+            "enabled": True,
+            "network_votes": None,
+        }
+    for a in unrecognized_enabled:
+        name = a.get("name") or a.get("hash")
+        if not name:
+            continue
+        per_amendment[name] = {
+            "hash": a.get("hash"),
+            "enabled": True,
+            "network_votes": None,
+            "unrecognized": True,
         }
 
     return {
@@ -1085,9 +1119,29 @@ def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
     # after Charlie's proving run, flip the env in the LaunchAgent
     # plist and the next scheduled snapshot picks it up (first real
     # leaf carries schema_version=5 in a follow-up commit).
+    #
+    # 2026-09-21 fix (proving run): `metrics` is a LIST of metric dicts
+    # (name/source/unit/value), not a mapping. Append the amendments
+    # tally as a well-formed metric entry so it flows through the
+    # existing signing/verifying path unchanged — sign_snapshot's
+    # leaf_payload hashes {signing_domain, schema_version,
+    # snapshot_date_utc, metrics}, so being inside `metrics` means the
+    # tally is signed. A top-level `amendments` key would be unsigned
+    # decoration a tamperer could edit freely. SCHEMA_VERSION bumps to
+    # 5 as the machine-readable marker for "metrics list may contain
+    # an entry with name='amendments_block'"; the leaf_payload
+    # structure is unchanged so older readers can still verify v5.
     amendments_block = _assemble_amendments_block(now_utc=now_utc)
     if amendments_block is not None:
-        snap["amendments"] = amendments_block
+        snap["metrics"].append({
+            "name": "amendments_block",
+            "source": (
+                f"amendments_state({amendments_block.get('responding_node_source')}) "
+                f"+ amendments_network_votes({amendments_block.get('unl_source')})"
+            ),
+            "unit": "dict",
+            "value": amendments_block,
+        })
     return snap
 
 

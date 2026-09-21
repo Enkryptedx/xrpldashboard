@@ -3385,7 +3385,23 @@ def write_walker_health_end(walker_name, ok, message=None, findings_count=None):
     Only true run failures (crash/timeout/subprocess broke) set ok=False
     and increment consecutive_failures. Pass None (default) to leave the
     column untouched; pass 0 to explicitly clear it after fixes land.
+
+    Charlie ruling 2026-09-21: a blank last_run_message on ok=False is
+    a bug in the walker, not just the run. Fail LOUD here — the walker
+    must always name why it failed. The exception surfaces the caller
+    file:line in tracebacks; fix the walker to pass a real message
+    (exception type, upstream code, whatever it knows) before it can
+    stamp a failure. Empty-string equivalents (None, "", whitespace)
+    all count as blank.
     """
+    if not ok:
+        if message is None or not str(message).strip():
+            raise ValueError(
+                f"write_walker_health_end[{walker_name}]: ok=False requires a "
+                f"non-blank message. A blank failure is a bug in the walker "
+                f"— name why it failed (exception type, upstream code, etc.). "
+                f"See db.py write_walker_health_end docstring."
+            )
     def _do(conn):
         with conn.cursor() as cur:
             if ok:

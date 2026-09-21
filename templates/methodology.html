@@ -321,7 +321,7 @@
   </p>
   <p>
     {% trans -%}
-    Envelope <code>schema_version</code> is <strong>4</strong>. The authoritative value lives in <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>; a version bump here is a change to the canonical field set above and will be called out on this page.
+    Envelope <code>schema_version</code> is <strong>5</strong> as of 2026-09-22. Version 5 leaves add an <code>amendments_block</code> entry to the <code>metrics</code> list containing the per-amendment tally (vote count, validation count, enact threshold, source URL) for every in-flight XRPL amendment observed by our node at build time. Because <code>metrics</code> is one of the four keys the leaf hash covers, the tally is signed — a future press citation of <a href="/amendments">/amendments</a> can be cross-checked against a tamper-evident record. The canonical field set for the hash is unchanged, so a v5 leaf verifies with the same Ed25519 + SHA-256 code path as a v4 leaf. The authoritative version lives in <a href="/.well-known/snapshots/chain.json"><code>/.well-known/snapshots/chain.json</code></a>; further changes to the canonical field set will be called out here.
     {%- endtrans %}
   </p>
   <p>
