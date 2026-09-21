@@ -1296,7 +1296,16 @@
               {% endif %}
             </span>
             <span class="sep">·</span>
-            <span><span class="v">{{ data.active_days_30d }}</span>{% if data.tx_actual_span_days is not none %} / {{ data.tx_actual_span_days|round|int }}{% endif %} {{ _('active') }}</span>
+            <span>
+              {% if data.tx_fetch_capped %}
+                {# span < fetch cap window, so a denominator would be misleading #}
+                <span class="v">{{ data.active_days_30d }}</span> {{ _('active') }}
+              {% elif data.tx_actual_span_days is not none and data.tx_actual_span_days >= 1 %}
+                <span class="v">{{ data.active_days_30d }}</span> / {{ data.tx_actual_span_days|round|int }} {{ _('active') }}
+              {% else %}
+                <span class="v">{{ data.active_days_30d }}</span> {{ _('active') }}
+              {% endif %}
+            </span>
             {% if data.top_counterparty_label != "—" %}
               <span class="sep">·</span>
               <button type="button" class="cp-stat-top"
