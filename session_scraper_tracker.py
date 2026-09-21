@@ -43,6 +43,58 @@ _STATIC_PREFIXES = (
 _STATIC_SUFFIXES = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif",
                     ".svg", ".ico", ".woff", ".woff2", ".ttf", ".map")
 
+# Monitor / healthcheck paths — never trip the tracker regardless of
+# hit count. These are polled continuously by Render's HTTP health
+# check + BetterStack + our own canaries; they hit at a metronome
+# cadence on ONE path from a stable source-hash, which is exactly
+# the shape the tracker was designed to catch. Charlie triage
+# 2026-09-21 (Mon PM, session-tracker false-positive on Render's
+# healthcheck: shipped 6c4b7fe → Render alert @ 15:18 ET → this fix).
+_MONITOR_EXEMPT_PATHS = (
+    "/healthz",
+    "/api/health",
+    "/health",
+    "/.well-known/security.txt",
+    "/robots.txt",  # also static-classified above; belt-and-suspenders
+    "/api/xrp-usd",  # our own chip context poller
+    "/analytics/live",  # 15s poll from /analytics JS interval
+    "/status",
+)
+
+# UA fragments that identify known monitor/probe clients. Same
+# rationale as the path exemption: they poll rapidly on stable paths
+# and would trip the tracker. All entries are lowercased at compare
+# time.
+_MONITOR_EXEMPT_UA_FRAGMENTS = (
+    "go-http-client",       # Render's HTTP health check UA
+    "renderhealth",
+    "render-",
+    "betterstack",          # BetterStack Uptime monitor
+    "uptimerobot",
+    "pingdom",
+    "kube-probe",
+    "elb-healthchecker",
+    "aws-elb-",
+    "google-cloud-scheduler",
+    "cloudfront-healthcheck",
+    "xrpldashboard-",       # every internal canary / walker HTTP client
+    "public-route-canary",
+    "openclaw-",
+)
+
+
+def _is_monitor_probe(path: str, user_agent: str) -> bool:
+    if not path:
+        return False
+    for p in _MONITOR_EXEMPT_PATHS:
+        if path == p or path.startswith(p + "?") or path.startswith(p + "/"):
+            return True
+    ua = (user_agent or "").lower()
+    for fragment in _MONITOR_EXEMPT_UA_FRAGMENTS:
+        if fragment in ua:
+            return True
+    return False
+
 
 def _is_static_path(path: str) -> bool:
     if not path:
@@ -74,13 +126,23 @@ class SessionScraperTracker:
         self._states: dict[str, _HashState] = defaultdict(_HashState)
         self._lock = threading.Lock()
 
-    def observe(self, visitor_hash: str, path: str, now: Optional[float] = None) -> bool:
+    def observe(self, visitor_hash: str, path: str, now: Optional[float] = None,
+                user_agent: str = "") -> bool:
         """Record one request. Returns True if the hash is banned (caller
         should return 429 + Retry-After); False otherwise. Static-asset
         fetches never trigger the ban and mark the hash as
-        real-browser-shaped."""
+        real-browser-shaped. Monitor / healthcheck probes are
+        SHORT-CIRCUITED (no state written) so a stable-hash probe
+        cadence on one path doesn't trip the tracker."""
         if not visitor_hash:
             return False
+
+        # Monitor / healthcheck probes exit before any state write.
+        # We don't want them to count in the sliding window, mark the
+        # session real-browser-shaped, or ever trigger a ban.
+        if _is_monitor_probe(path, user_agent):
+            return False
+
         if now is None:
             now = time.time()
         with self._lock:

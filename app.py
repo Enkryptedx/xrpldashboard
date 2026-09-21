@@ -1618,7 +1618,7 @@ def _session_scraper_block():
     ip = _client_ip()
     ua = (request.user_agent.string or "")[:300] or None
     vh = _visitor_hash(ip, ua)
-    if tracker.observe(vh, request.path):
+    if tracker.observe(vh, request.path, user_agent=ua or ""):
         return Response(
             "",
             status=429,

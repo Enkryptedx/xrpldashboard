@@ -129,6 +129,79 @@ def test_empty_visitor_hash_never_trips():
     assert not tr.observe(None, "/", now=now + 1000)
 
 
+def test_render_healthz_probe_exempt():
+    """Render's HTTP health check hits /healthz continuously from a
+    stable source-hash on ONE path. That's the exact shape the tracker
+    catches — must be exempted BEFORE state is written, or the
+    Render instance takes itself down with 429s. Triage 2026-09-21
+    afternoon after Render alert."""
+    tr = _fresh_tracker()
+    now = 1_800_000_000.0
+    tripped = False
+    for i in range(300):
+        # UA + path shape typical of Render's HTTP health check
+        if tr.observe("render_health_hash", "/healthz", now=now + i,
+                      user_agent="Go-http-client/1.1"):
+            tripped = True
+            break
+    assert not tripped, (
+        "/healthz probes must never trip the tracker regardless of "
+        "hit count — Render's health check would take the instance "
+        "down with 429s"
+    )
+    # The exemption is short-circuit: nothing recorded, no state at all
+    snap = tr._snapshot("render_health_hash")
+    assert snap == {}, (
+        f"monitor probes must not write session state; got {snap!r}"
+    )
+
+
+def test_betterstack_uptime_probe_exempt():
+    """BetterStack Uptime polls at cadence; UA fragment 'BetterStack'
+    tags the hits. Same shape as Render's healthcheck."""
+    tr = _fresh_tracker()
+    now = 1_800_000_000.0
+    for i in range(150):
+        assert not tr.observe("betterstack_hash", "/",
+                              now=now + i,
+                              user_agent="Mozilla/5.0 BetterStack/1.0")
+
+
+def test_our_own_canary_ua_exempt():
+    """Our public-route-canary hits at a metronome cadence; the tracker
+    must never trip on our own infrastructure UAs."""
+    tr = _fresh_tracker()
+    now = 1_800_000_000.0
+    for i in range(150):
+        assert not tr.observe("canary_hash", "/tokens",
+                              now=now + i,
+                              user_agent="xrpldashboard-public-route-canary/1.0")
+
+
+def test_monitor_exempt_does_not_leak_to_normal_traffic():
+    """Exempting monitor probes must not accidentally exempt the
+    normal traffic from the same visitor_hash. A hash that ONLY hits
+    monitor paths stays clean; a hash that ALSO scrapes normal paths
+    should still trip."""
+    tr = _fresh_tracker()
+    now = 1_800_000_000.0
+    # 200 monitor hits (should be no-ops)
+    for i in range(200):
+        tr.observe("mixed_hash", "/healthz", now=now + i,
+                   user_agent="Go-http-client/1.1")
+    # Now 150 scrape hits on a bare path with a real-browser UA
+    tripped = False
+    for i in range(150):
+        if tr.observe("mixed_hash", "/", now=now + 300 + i,
+                      user_agent="Mozilla/5.0"):
+            tripped = True
+            break
+    assert tripped, (
+        "monitor exemption must not spill onto normal traffic — a "
+        "hash that scrapes / after probing /healthz should still trip"
+    )
+
+
 if __name__ == "__main__":
     test_brazil_poller_shape_trips_block()
     test_aion_bot_shape_two_paths_trips_block()
