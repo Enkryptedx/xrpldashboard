@@ -205,6 +205,7 @@ def _load_canonical_registry():
             reg[ticker] = {
                 "canonical_issuers": set(entry.get("canonical_issuers") or []),
                 "brand": entry.get("brand"),
+                "issuer_name": entry.get("issuer_name"),
             }
         _canonical_registry_cache = reg
         return reg
@@ -258,9 +259,16 @@ def _canonical_pool_comparison(currency, impostor_issuer, impostor_pools):
         if cp.get("other_display") == "XRP":
             r = _amm_reserves_cached(cp["account"])
             if r and r.get("xrp") is not None:
-                brand = (_load_canonical_registry().get(
+                reg_entry = (_load_canonical_registry().get(
                     decode_currency(currency).get("display") or ""
-                ) or {}).get("brand")
+                ) or {})
+                brand = reg_entry.get("brand")
+                # canonical_issuer_name is the ORG that issues the token
+                # (e.g. "Ripple" for RLUSD, "Circle" for USDC), used in
+                # possessive comparison copy ("Ripple's RLUSD/XRP pool
+                # holds…"). Falls back to brand so tickers without an
+                # explicit issuer_name still render the older shape.
+                issuer_name = reg_entry.get("issuer_name") or brand
                 return {
                     "canonical_issuer": canonical_iss,
                     "canonical_issuer_short": _short_addr(canonical_iss),
@@ -268,6 +276,7 @@ def _canonical_pool_comparison(currency, impostor_issuer, impostor_pools):
                     "canonical_amm_account_short": _short_addr(cp["account"]),
                     "canonical_xrp_reserve": r["xrp"],
                     "canonical_brand": brand,
+                    "canonical_issuer_name": issuer_name,
                     "impostor_amm_account_short": _short_addr(impostor_pool["account"]),
                     "impostor_xrp_reserve": impostor_xrp,
                     "fetched_at_iso": r["fetched_at_iso"],
