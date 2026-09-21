@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _('observatory') }} · xrpldashboard</title>
+  {% set meta_title = "AI Web Observatory · xrpldashboard" %}
+  {% set meta_description = "One-week-delayed weekly view of AI + search crawler traffic on xrpldashboard, grouped by crawler and page family. No human visitor data, ever." %}
+  {% include "_head_meta.html" %}
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2; --muted: #8090b0; --dim: #7a8ca8;
+      --cyan: #22d3ee; --amber: #fbbf24;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --fs-xs: 0.72rem; --fs-sm: 0.9rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.6; }
+    body {
+      background:
+        radial-gradient(circle at 15% 0%, rgba(34,211,238,0.06), transparent 40%),
+        radial-gradient(circle at 85% 0%, rgba(59,130,246,0.05), transparent 40%),
+        var(--bg);
+    }
+    .wrap { max-width: 68rem; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; font-weight: 600; letter-spacing: -0.01em; }
+    p { color: var(--text); margin: 0 0 14px; }
+    code { font-family: var(--mono); background: rgba(160,180,210,0.09);
+           padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .window { color: var(--muted); font-size: var(--fs-sm); margin: 0.5rem 0 1.5rem; }
+    .lede {
+      background: rgba(160,180,210,0.05);
+      border-left: 3px solid rgba(34,211,238,0.4);
+      padding: 0.9em 1em;
+      border-radius: 6px;
+      margin: 1rem 0 2rem;
+    }
+    .lede p { margin: 0.4em 0; }
+    .lede strong { color: var(--cyan); }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: var(--fs-sm); }
+    th, td { text-align: right; padding: 0.4em 0.6em;
+             border-bottom: 1px solid rgba(160,180,210,0.14); }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+    tr:hover td { background: rgba(34,211,238,0.03); }
+    .empty { color: var(--muted); font-style: italic; padding: 1em; }
+    .note { color: var(--muted); font-size: var(--fs-xs); margin-top: 0.6em; }
+    @media (max-width: 780px) {
+      .wrap { padding: 20px 12px 40px; }
+      h1 { font-size: 1.5rem; }
+      h2 { font-size: 1.05rem; }
+      table { font-size: 12px; }
+      th, td { padding: 0.3em 0.35em; }
+      /* Phone width: hide long family columns beyond the first 3 so the
+         table stays scannable rather than overflowing. Desktop shows all. */
+      th:nth-child(n+5), td:nth-child(n+5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+{% include "_nav.html" %}
+<div class="wrap">
+  <h1>{{ _('AI Web Observatory') }}</h1>
+  <p class="window">
+    {% trans start=window_start, end=window_end -%}
+    Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed).
+    {%- endtrans %}
+  </p>
+
+  <div class="lede">
+    <p>
+      {% trans -%}
+      What this is: a <strong>public view of machine traffic</strong> on xrpldashboard. Every row below is a bot — an AI-answer crawler (ChatGPT, Claude, Perplexity, You, Google's AI-extended crawl, etc.) or a classic search crawler (Bing, Amazon, Bytespider). We report at weekly granularity, always one week delayed, so today's telemetry stays private and there's a settling window for our own dedup and audit.
+      {%- endtrans %}
+    </p>
+    <p>
+      {% trans -%}
+      What this is <strong>not</strong>: no human visitor data appears here. Ever. No per-hour numbers, no exact query strings, no per-endpoint detail — those stay in our private telemetry so we can debug ours without publishing yours.
+      {%- endtrans %}
+    </p>
+  </div>
+
+  <h2>{{ _('Crawlers × page families') }}</h2>
+  {% if crawlers %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in families %}
+          <th>{{ f }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ua_class, per_family in crawlers %}
+      <tr>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in families %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {% trans total=total_hits -%}
+    Total classified crawler hits in the window: <strong>{{ total }}</strong>. Page families are a small closed vocabulary (amendments, tokens, check, changes, registry, snapshots, whales, pools, lending, rlusd, nfts, mpts, methodology, home, thisweek, other) — the exact endpoint each crawler hit stays private.
+    {%- endtrans %}
+  </p>
+  {% else %}
+  <div class="empty">{{ _('No classified crawler hits in this window yet.') }}</div>
+  {% endif %}
+
+  <h2>{{ _('Top 5 token pages fetched by AI crawlers') }}</h2>
+  {% if top_token_pages %}
+  <table>
+    <thead>
+      <tr><th>{{ _('token') }}</th><th>{{ _('hits') }}</th></tr>
+    </thead>
+    <tbody>
+      {% for name, hits in top_token_pages %}
+      <tr>
+        <td>{{ name }}</td>
+        <td>{{ "{:,}".format(hits) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {{ _("Names only. Issuer addresses and exact paths stay in private telemetry.") }}
+  </p>
+  {% else %}
+  <div class="empty">{{ _('No AI crawler hits on token pages in this window.') }}</div>
+  {% endif %}
+
+  <p class="note" style="margin-top: 2rem;">
+    {% trans -%}
+    Sources: <code>ai_crawler_hits</code> (populated by our request-time classifier) rolled up daily into <code>ai_crawler_daily_rollup</code>. Self-probes and internal canaries are excluded upstream. Historical windows are additive — this page will grow to a rolling 8-week comparison once four weeks of data are settled.
+    {%- endtrans %}
+  </p>
+</div>
+{% include "_footer_dev_row.html" ignore missing %}
+</body>
+</html>

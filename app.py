@@ -152,6 +152,7 @@ PUBLIC_ROUTES = [
     "/thisweek",
     "/registry/taxonomy",
     "/changes",
+    "/observatory",
 ]
 
 
@@ -5236,6 +5237,117 @@ def claim_detail(uri):
     return resp
 
 
+@app.route("/observatory")
+@limiter.limit(agent_tier_limit_rate)
+def observatory():
+    """AI Web Observatory — public narrative, private instrument
+    (Charlie ruling 2026-09-21 Mon PM, item 3).
+
+    Weekly view, ONE WEEK DELAYED. Shows only:
+    - AI + search crawler hits by (crawler, page-family, day) for
+      a full 7-day window ending one week ago.
+    - Top 5 token pages (names only) fetched by AI crawlers in the
+      same window.
+    - Nothing about human visitors, ever.
+    - No hourly granularity, no per-endpoint detail, no exact query
+      strings.
+
+    Data source: `ai_crawler_daily_rollup` (walker-written; hourly
+    cadence via ai_crawler_daily_rollup_walker.py). Self-probes are
+    excluded upstream — walker reads from ai_crawler_hits which only
+    stamps rows for classified crawler UAs.
+    """
+    import datetime as _dt
+    today = _dt.date.today()
+    # Week ending one week ago — inclusive end, exclusive start:
+    #   window: [today - 14 days, today - 7 days)
+    window_end = today - _dt.timedelta(days=7)
+    window_start = window_end - _dt.timedelta(days=7)
+
+    rollup_rows: list[tuple[str, str, str, int]] = []  # (day, class, family, hits)
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT as_of_date, ua_class, page_family, hits "
+                        "FROM ai_crawler_daily_rollup "
+                        "WHERE as_of_date >= %s AND as_of_date < %s "
+                        "ORDER BY as_of_date, ua_class, page_family",
+                        (window_start.isoformat(), window_end.isoformat()),
+                    )
+                    rollup_rows = [
+                        (r[0].isoformat(), r[1], r[2], int(r[3]))
+                        for r in cur.fetchall()
+                    ]
+        except Exception:
+            rollup_rows = []
+
+    # Pivot into crawler → family → hits totals over the week.
+    by_crawler: dict[str, dict[str, int]] = {}
+    families_seen: set[str] = set()
+    total_hits = 0
+    for _day, ua_class, family, hits in rollup_rows:
+        d = by_crawler.setdefault(ua_class, {})
+        d[family] = d.get(family, 0) + hits
+        families_seen.add(family)
+        total_hits += hits
+    crawlers_sorted = sorted(
+        by_crawler.items(),
+        key=lambda kv: -sum(kv[1].values()),
+    )
+    families_sorted = sorted(families_seen)
+
+    # Top 5 token-page NAMES fetched by any AI crawler in the window.
+    # Names only — no wallet address, no issuer, no path leak.
+    top_token_pages: list[tuple[str, int]] = []
+    if db.pg_available():
+        try:
+            import token_names as _tn
+            names_map = _tn.load_display_map() if hasattr(_tn, "load_display_map") else {}
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    start_ts = int(_dt.datetime.combine(
+                        window_start, _dt.time.min,
+                    ).replace(tzinfo=_dt.timezone.utc).timestamp())
+                    end_ts = int(_dt.datetime.combine(
+                        window_end, _dt.time.min,
+                    ).replace(tzinfo=_dt.timezone.utc).timestamp())
+                    cur.execute(
+                        "SELECT path, COUNT(*) AS hits "
+                        "FROM ai_crawler_hits "
+                        "WHERE ts >= %s AND ts < %s "
+                        "  AND path LIKE '/token/%%' "
+                        "  AND ua_class IS NOT NULL AND ua_class <> '' "
+                        "GROUP BY path ORDER BY hits DESC LIMIT 5",
+                        (start_ts, end_ts),
+                    )
+                    for path, hits in cur.fetchall():
+                        # /token/<currency_hex>/<issuer> — recover the
+                        # display name; fall back to the currency
+                        # portion if the map doesn't have it. NEVER
+                        # publish the issuer or the raw path.
+                        parts = (path or "").split("/")
+                        display = "?"
+                        if len(parts) >= 4:
+                            cur_hex, issuer = parts[2], parts[3]
+                            key = (cur_hex, issuer)
+                            display = names_map.get(key) or cur_hex[:8]
+                        top_token_pages.append((display, int(hits)))
+        except Exception:
+            top_token_pages = []
+
+    return render_template(
+        "observatory.html",
+        window_start=window_start.isoformat(),
+        window_end=window_end.isoformat(),
+        crawlers=crawlers_sorted,
+        families=families_sorted,
+        total_hits=total_hits,
+        top_token_pages=top_token_pages,
+    )
+
+
 @app.route("/regulation")
 def regulation():
     """Plain-English legislative-status tracker for the CLARITY Act
@@ -8595,6 +8707,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/coverage]({SITE_URL}/coverage): what this site covers versus the XRPL's canonical object-type inventory.
 - [/lending]({SITE_URL}/lending): LendingProtocol amendment status.
 - [/regulation]({SITE_URL}/regulation): plain-English CLARITY Act (H.R. 3633) status tracker.
+- [/observatory]({SITE_URL}/observatory): AI Web Observatory — one-week-delayed weekly view of machine traffic by crawler and page family. Public narrative on how AI answer engines and search crawlers use this site. No human visitor data appears here.
 - [/check]({SITE_URL}/check): typed triage for XRPL addresses, tokens, URLs, and pasted messages. Address/token inputs return OFAC SDN + identity + on-chain signals; URL inputs return domain-age + earliest-SSL-cert; message inputs extract and triage every subject inside. Facts-not-verdicts — every signal carries source + timestamp.
 - [/cold-storage]({SITE_URL}/cold-storage): known cold-wallet balances.
 
