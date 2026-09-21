@@ -926,6 +926,18 @@ _SNAPSHOT_FP_CACHE = {"path_mtime": None, "value": None}
 _WHALES_CACHE_LOCK = threading.Lock()
 _WHALES_CACHE = {}  # (tier, filter_type) -> (expiry_ts, body_str, gen_ms)
 _WHALES_CACHE_TTL_S = 60
+# Charlie ruling 2026-09-21 (Mon PM item 4): /whales cold-cache miss
+# on ?tier=1m, ?tier=50k, and ?type=trustset takes 5-19s on Render
+# because the SQL aggregate scans events with no matching summary row
+# to short-circuit. Interim mitigation: extend the STALE serve
+# ceiling so SWR keeps expired-but-cached bodies servable for much
+# longer than the 60s TTL. First hit generates the body (5-19s);
+# subsequent hits for 30 min serve the cached body instantly and
+# rebuild in the background. The proper fix — a walker-written
+# summary row (like /nfts) — is filed as follow-up.
+_WHALES_CACHE_STALE_CEILING_S = int(os.environ.get(
+    "WHALES_CACHE_STALE_CEILING_S", "1800",  # 30 min
+))
 _WHALES_CACHE_STATS = {
     "hits": 0,
     "misses": 0,
@@ -3209,10 +3221,18 @@ def whales():
                 _cached_body = _cached_entry[1]
                 if _cached_entry[0] > _whales_now:
                     _WHALES_CACHE_STATS["hits"] += 1
-                else:
-                    # SWR: expired but body exists — serve it now, rebuild in bg.
+                # Charlie ruling 2026-09-21 (item 4): stretch the SWR
+                # stale ceiling to 30 min so 5-19s cold-miss rebuilds
+                # don't happen on every second visitor. Prior behavior
+                # returned the stale body only within the 60s TTL,
+                # which meant a slow rebuild + slow next visitor. Now
+                # any body ≤ CEILING_S old serves instantly.
+                elif (_whales_now - _cached_entry[0]) < _WHALES_CACHE_STALE_CEILING_S:
                     _WHALES_CACHE_STATS["stale_serves"] += 1
                     _whales_serve_stale = True
+                else:
+                    # Body older than the ceiling — treat as no cache.
+                    _cached_body = None
     if _cached_body is not None:
         if _whales_serve_stale:
             _trigger_whales_rebuild(tier, filter_type)
