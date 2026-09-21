@@ -186,9 +186,45 @@ def _xrp_per_unit_via_amm(currency: str, issuer: str) -> Optional[float]:
     return xrp_side / tok_amount
 
 
+# Charlie ruling 2026-09-21 (Mon afternoon): RLUSD is the PRIMARY XRP/USD
+# anchor. USD.GH and USD.Bitstamp are sanity checks — RLUSD is Ripple's
+# own regulated stablecoin, so it's the single trusted source. If
+# RLUSD diverges from BOTH sanity checks by more than PRICE_CHECK_MAX_ABS_PCT,
+# the oracle refuses to serve a number and the chip renders "price
+# check failed" with the three values in the tooltip. Divergence from
+# ONE sanity check is fine (one anchor is thin, or is depegging alone);
+# divergence from BOTH suggests RLUSD itself has drifted, which we
+# won't paper over with a median.
+PRICE_CHECK_MAX_ABS_PCT = float(os.environ.get("PRICE_CHECK_MAX_ABS_PCT", "3.0"))
+
+
+def _rlusd_diverges_from_both(rlusd: float, sanity: list[tuple[str, float]]) -> bool:
+    """True if RLUSD diverges by >PRICE_CHECK_MAX_ABS_PCT from EVERY sanity
+    check anchor. Empty sanity list = no divergence detectable (only
+    RLUSD resolved) → False."""
+    if rlusd <= 0 or not sanity:
+        return False
+    threshold = PRICE_CHECK_MAX_ABS_PCT / 100.0
+    for _label, value in sanity:
+        if value <= 0:
+            return False  # can't compare; be permissive
+        pct = abs(rlusd - value) / rlusd
+        if pct <= threshold:
+            return False  # this sanity check agrees; RLUSD passes
+    return True  # every sanity check disagreed
+
+
 def xrp_usd() -> Optional[float]:
-    """USD per 1 XRP, derived from the median of multiple XRP/stablecoin AMMs.
-    Returns None if no anchor pool resolves (full outage; should be rare)."""
+    """USD per 1 XRP, derived from the RLUSD/XRP AMM as the PRIMARY
+    anchor, with USD.GH and USD.Bitstamp as sanity checks. Returns:
+    - None if RLUSD didn't resolve at all (fail-closed on the primary),
+    - None if RLUSD resolved but disagrees with EVERY sanity check
+      by >PRICE_CHECK_MAX_ABS_PCT (Charlie ruling 2026-09-21: refuse
+      to paper over a primary-anchor drift with a median).
+
+    The chip surface reads xrp_usd_sources() when this returns None to
+    render "price check failed" with the three values in the tooltip
+    — the reader sees exactly what disagreed."""
     # Honor a fresh cache entry even when the cached value is None — that's
     # the negative-cache path that prevents re-spamming XRPL during an outage.
     if _cache_has_fresh(("xrp_usd",)):
@@ -197,34 +233,55 @@ def xrp_usd() -> Optional[float]:
     # For each anchor (XRP/STABLE), the AMM tells us how many XRP equal 1
     # stablecoin. If 1 stable ≈ $1, then 1 stable ≈ that-many XRP, so:
     #     XRP/USD = 1 / (XRP_per_stable)
-    samples = []
     debug = []
+    rlusd_rate = None
+    sanity = []
     for cur, iss, label in _USD_ANCHORS:
         xrp_per_stable = _xrp_per_unit_via_amm(cur, iss)
-        if xrp_per_stable and xrp_per_stable > 0:
-            usd_per_xrp = 1.0 / xrp_per_stable
-            samples.append(usd_per_xrp)
-            debug.append((label, usd_per_xrp))
+        if not xrp_per_stable or xrp_per_stable <= 0:
+            continue
+        usd_per_xrp = 1.0 / xrp_per_stable
+        debug.append((label, usd_per_xrp))
+        if label == "RLUSD":
+            rlusd_rate = usd_per_xrp
+        else:
+            sanity.append((label, usd_per_xrp))
 
-    if not samples:
-        # Negative-cache the failure so the next page render doesn't refetch
-        # all anchors immediately — gives XRPL/network a moment to recover.
-        _cache_put(("xrp_usd",), None)
-        _cache_put(("xrp_usd_sources",), [])
-        _cache_put(("xrp_usd_fetched_at",), None)
-        return None
-    # Median is robust to a single anchor depegging or going thin.
-    rate = statistics.median(samples)
-    _cache_put(("xrp_usd",), rate)
     _cache_put(("xrp_usd_sources",), debug)
+
+    if rlusd_rate is None:
+        # RLUSD primary unavailable — fail-closed even if sanity checks
+        # resolved. Charlie ruling: RLUSD is the source of truth; the
+        # sanity checks are for divergence detection, not fallback.
+        _cache_put(("xrp_usd",), None)
+        _cache_put(("xrp_usd_fetched_at",), None)
+        _cache_put(("xrp_usd_check_failed",), False)
+        return None
+
+    if _rlusd_diverges_from_both(rlusd_rate, sanity):
+        # RLUSD disagrees with EVERY sanity check by >threshold — refuse
+        # to serve. The chip renders "price check failed"; the tooltip
+        # shows all three values so the reader can see what disagreed.
+        _cache_put(("xrp_usd",), None)
+        _cache_put(("xrp_usd_fetched_at",), int(time.time()))
+        _cache_put(("xrp_usd_check_failed",), True)
+        return None
+
+    _cache_put(("xrp_usd",), rlusd_rate)
     # Stamp the wall-clock time of the successful sample fetch so the
     # header chip can show "as of HH:MM UTC" — a frozen anchor pool set
-    # would otherwise be invisible to the reader (they'd blame the
-    # ~1-2% divergence vs centralized exchanges on us serving stale
-    # data, when it's a real XRPL-AMM-vs-CEX spread). Charlie ruling
-    # 2026-09-21.
+    # would otherwise be invisible to the reader.
     _cache_put(("xrp_usd_fetched_at",), int(time.time()))
-    return rate
+    _cache_put(("xrp_usd_check_failed",), False)
+    return rlusd_rate
+
+
+def xrp_usd_check_failed() -> bool:
+    """True if the last fetch produced a divergence-check failure
+    (RLUSD diverged from both sanity checks by >3%). Read by the header
+    chip to render "price check failed" with the three values in the
+    tooltip instead of a bogus number."""
+    return bool(_cache_get(("xrp_usd_check_failed",)))
 
 
 def xrp_usd_sources():

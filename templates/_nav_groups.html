@@ -336,17 +336,23 @@
           <span class="hotkey">⌘K</span>
         </button>
         {% if live_xrp_usd %}
-          {# XRP/AMM/self-sourced are crypto proper nouns — not translated.
-             Freshness marker + expected-spread tooltip match the desktop
-             chip in _nav.html — Charlie ruling 2026-09-21. #}
+          {# Mobile chip mirrors the desktop chip in _nav.html — Charlie
+             ruling 2026-09-21: RLUSD primary + USD.GH/Bitstamp sanity
+             + "price check failed" on >3% divergence from both. #}
           <div class="mobile-utility-chip"
-               title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }}); 60s in-memory cache. Real spread vs centralized exchanges (CEX) is typically 1–2% because XRPL AMM prices settle at each pool's constant-product midpoint, not at CEX order-book mid — a wider gap for a few minutes during high-volume moves is normal. Freshness stamp shows the last successful anchor fetch.">
+               title="XRP/USD — RLUSD/XRP AMM as primary anchor (Ripple's regulated stablecoin), USD.GH + USD.Bitstamp as sanity checks. 60s in-memory cache. Real spread vs centralized exchanges (CEX) is typically 1–2%. If RLUSD ever diverges from BOTH sanity checks by >3%, the chip shows 'price check failed' instead of a number.">
             XRP ${{ '%.4f' | format(live_xrp_usd) }}
             {% if live_xrp_usd_fetched_hhmm %}
               <span class="src">· as of {{ live_xrp_usd_fetched_hhmm }} UTC</span>
             {% else %}
               <span class="src">· self-sourced</span>
             {% endif %}
+          </div>
+        {% elif live_xrp_usd_check_failed %}
+          <div class="mobile-utility-chip"
+               style="border-color: rgba(245, 158, 11, 0.55); color: #f59e0b;"
+               title="RLUSD (primary) diverged from BOTH sanity checks (USD.GH, USD.Bitstamp) by >3%. Refusing to serve a median that would paper over a primary-anchor drift. Values fetched: {% for label, value in live_xrp_usd_sources %}{{ label }}=${{ '%.4f' | format(value) }}{% if not loop.last %}; {% endif %}{% endfor %}. Retry after the 60s cache expires.">
+            ⚠ price check failed
           </div>
         {% endif %}
 

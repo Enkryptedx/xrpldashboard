@@ -80,21 +80,27 @@
     </button>
     {% if live_xrp_usd %}
       {# XRP/AMM/self-sourced are crypto proper nouns — not translated.
-         Freshness marker (HH:MM UTC) added 2026-09-21 per Charlie
-         ruling: the chip reads live via 60s in-memory cache, so if
-         the anchor pool set ever stalls the reader can see it at a
-         glance. Tooltip states the expected spread vs centralized
-         exchanges (~1-2%) because the number will always trail CEX
-         mid by that band — XRPL stablecoin AMMs settle at their own
-         constant-product midpoint. #}
+         Freshness marker (HH:MM UTC) + expected-spread tooltip added
+         2026-09-21. Second Charlie ruling same day: RLUSD is the
+         primary anchor; USD.GH + USD.Bitstamp are sanity checks. If
+         RLUSD diverges >3% from BOTH, the chip renders "price check
+         failed" with the three values in the tooltip so the reader
+         sees exactly what disagreed — never a bogus number papered
+         over by a median. #}
       <span class="xrp-chip"
-            title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }}); 60s in-memory cache. Real spread vs centralized exchanges (CEX) is typically 1–2% because XRPL AMM prices settle at each pool's constant-product midpoint, not at CEX order-book mid — a wider gap for a few minutes during high-volume moves is normal. Freshness stamp shows the last successful anchor fetch.">
+            title="XRP/USD — RLUSD/XRP AMM as primary anchor (Ripple's regulated stablecoin), USD.GH + USD.Bitstamp as sanity checks. 60s in-memory cache. Real spread vs centralized exchanges (CEX) is typically 1–2% because XRPL AMM prices settle at each pool's constant-product midpoint, not at CEX order-book mid — a wider gap for a few minutes during high-volume moves is normal. If RLUSD ever diverges from BOTH sanity checks by >3%, the chip shows 'price check failed' instead of a number.">
         XRP ${{ '%.4f' | format(live_xrp_usd) }}
         {% if live_xrp_usd_fetched_hhmm %}
           <span class="src">· as of {{ live_xrp_usd_fetched_hhmm }} UTC</span>
         {% else %}
           <span class="src">· self-sourced</span>
         {% endif %}
+      </span>
+    {% elif live_xrp_usd_check_failed %}
+      <span class="xrp-chip xrp-chip-check-failed"
+            style="border-color: rgba(245, 158, 11, 0.55); color: #f59e0b;"
+            title="RLUSD (primary) diverged from BOTH sanity checks (USD.GH, USD.Bitstamp) by >3%. Refusing to serve a median that would paper over a primary-anchor drift. Values fetched: {% for label, value in live_xrp_usd_sources %}{{ label }}=${{ '%.4f' | format(value) }}{% if not loop.last %}; {% endif %}{% endfor %}. Retry after the 60s cache expires.">
+        ⚠ price check failed
       </span>
     {% endif %}
     {% include "_liveness_chip.html" %}

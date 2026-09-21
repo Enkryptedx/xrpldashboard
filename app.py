@@ -1323,9 +1323,13 @@ def inject_xrp_usd():
     XRPL-native AMMs) to every template — so any page can render a live
     pricing chip without per-route plumbing. Cached ~60s in the oracle."""
     try:
-        from price_oracle import xrp_usd, xrp_usd_sources, xrp_usd_fetched_at
+        from price_oracle import (
+            xrp_usd, xrp_usd_sources, xrp_usd_fetched_at,
+            xrp_usd_check_failed,
+        )
         rate = xrp_usd()
-        fetched_at = xrp_usd_fetched_at() if rate is not None else None
+        fetched_at = xrp_usd_fetched_at()
+        check_failed = xrp_usd_check_failed()
         # Pre-format "HH:MM" UTC for the chip so the template doesn't
         # need a custom strftime filter (Charlie ruling 2026-09-21 —
         # the chip's freshness marker; a stalled anchor set is visible
@@ -1338,6 +1342,7 @@ def inject_xrp_usd():
             "live_xrp_usd_sources": xrp_usd_sources(),
             "live_xrp_usd_fetched_at": fetched_at,
             "live_xrp_usd_fetched_hhmm": fetched_hhmm,
+            "live_xrp_usd_check_failed": check_failed,
         }
     except Exception:
         return {
@@ -1345,6 +1350,7 @@ def inject_xrp_usd():
             "live_xrp_usd_sources": [],
             "live_xrp_usd_fetched_at": None,
             "live_xrp_usd_fetched_hhmm": None,
+            "live_xrp_usd_check_failed": False,
         }
 
 
