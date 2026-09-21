@@ -6522,6 +6522,45 @@ def read_top_pages(window_seconds, limit=10, kind="human",
         return []
 
 
+def read_ai_crawler_counts(window_seconds):
+    """Per-crawler hit counts from `ai_crawler_hits`, populated by
+    `app._agent_tier_audit_header` on every request. Returns a list of
+    (ua_class, hits) tuples ordered by hits desc.
+
+    Charlie ruling 2026-09-21: /analytics per-crawler counts must
+    read from the SAME table the morning report reads from
+    (standing_orders_daily_report.line_ai_crawlers). Prior state:
+    /analytics's bot panel showed top pages by kind='bot', which is
+    raw is_bot=TRUE (mixed disguised-Chrome + declared crawlers +
+    self-probes). This function surfaces the declared-crawler
+    breakdown directly.
+
+    ua_class values follow AI_CRAWLER_UA_SUBSTRINGS classification
+    (googlebot / bingbot / claudebot / chatgpt-user / gptbot /
+    perplexitybot / anthropic-ai / oai-searchbot / bytespider /
+    amazonbot / applebot / youbot / googleother / google-extended /
+    UNLISTED / etc.). Excludes classifier-misses (NULL) and empty
+    strings."""
+    if not pg_available():
+        return []
+    cutoff = int(time.time()) - int(window_seconds)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ua_class, COUNT(*) AS hits "
+                    "FROM ai_crawler_hits "
+                    "WHERE ts >= %s "
+                    "  AND ua_class IS NOT NULL AND ua_class <> '' "
+                    "GROUP BY ua_class "
+                    "ORDER BY hits DESC",
+                    (cutoff,),
+                )
+                return [(r[0], int(r[1])) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
 def read_recent_page_views(limit=100):
     """Last `limit` page views, newest first, EXCLUDING self-probes
     (canaries, walker HTTP clients, JJ's shell, BetterStack).

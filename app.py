@@ -9313,6 +9313,14 @@ def analytics():
     bot_countries_24h = db.read_country_breakdown(24 * 60 * 60, limit=10,
                                                   kind="bot",
                                                   precomputed_bots=_precomputed_bots)
+    # Charlie ruling 2026-09-21: per-crawler counts read from the
+    # SAME ai_crawler_hits table the standing-orders morning report
+    # uses. Bot-top-pages above is raw is_bot=TRUE (mixed disguised-
+    # Chrome + declared crawlers + self-probes); this table is
+    # populated by `_agent_tier_audit_header`'s classify_ai_crawler()
+    # pass, so it's a clean declared-crawler breakdown.
+    ai_crawler_counts_24h = db.read_ai_crawler_counts(24 * 60 * 60)
+    ai_crawler_counts_7d = db.read_ai_crawler_counts(7 * 24 * 60 * 60)
 
     recent = db.read_recent_page_views(limit=100)
 
@@ -9356,6 +9364,8 @@ def analytics():
         bot_rollups=bot_rollups,
         bot_top_24h=bot_top_24h,
         bot_countries_24h=bot_countries_24h,
+        ai_crawler_counts_24h=ai_crawler_counts_24h,
+        ai_crawler_counts_7d=ai_crawler_counts_7d,
         recent=recent_view,
         pg_ok=db.pg_available(),
     )

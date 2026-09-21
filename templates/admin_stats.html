@@ -495,6 +495,44 @@
         {% else %}<div class="empty">no bot traffic in the last 24h</div>{% endif %}
       </div>
     </div>
+
+    {# Per-crawler counts — Charlie ruling 2026-09-21. Reads from
+       `ai_crawler_hits` (populated by _agent_tier_audit_header's
+       classify_ai_crawler pass on every request). Same source the
+       morning standing-orders report uses; the "Probed paths · 24h"
+       panel above is raw is_bot=TRUE which mixes disguised-Chrome
+       and self-probes, this panel is the declared-crawler breakdown. #}
+    <div class="row">
+      <div class="panel">
+        <h2>Declared AI + search crawlers · 24h</h2>
+        {% if ai_crawler_counts_24h %}
+        <table>
+          <tr><th>class</th><th class="num">hits</th></tr>
+          {% for ua_class, hits in ai_crawler_counts_24h %}
+          <tr>
+            <td class="path">{{ ua_class }}</td>
+            <td class="num">{{ "{:,}".format(hits) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no classified crawler hits in the last 24h</div>{% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Declared AI + search crawlers · 7d</h2>
+        {% if ai_crawler_counts_7d %}
+        <table>
+          <tr><th>class</th><th class="num">hits</th></tr>
+          {% for ua_class, hits in ai_crawler_counts_7d %}
+          <tr>
+            <td class="path">{{ ua_class }}</td>
+            <td class="num">{{ "{:,}".format(hits) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}<div class="empty">no classified crawler hits in the last 7d</div>{% endif %}
+      </div>
+    </div>
   </div>
   <script>
     // Delta poller — swaps the meta-refresh full-page reload for a tiny
