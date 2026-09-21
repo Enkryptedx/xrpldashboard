@@ -133,10 +133,17 @@ def line_signed_surfaces(cur, ts_s, ts_e) -> str:
     # our infrastructure emits. Deliberate false-positive on curl/%,
     # Python-urllib/%, Werkzeug/% (real external clients use these too)
     # so a rise is a signal Charlie can investigate.
+    #
+    # Charlie ruling 2026-09-21: count DELIVERED SIGNED ENVELOPES only.
+    # A 429 (fleet-block) or 4xx (bad request) never made it to the sign
+    # step, so it isn't a consumer of signed data. Adding `status = 200`
+    # to the filter. Yesterday's report showed "1 external" — that was
+    # an AionBot 429; today it correctly reads 0.
     cur.execute(f"""
         SELECT COUNT(*) FROM page_views
         WHERE ts >= %s AND ts < %s
           AND (path='/check.json' OR path LIKE '/check.json?%%')
+          AND status = 200
           AND user_agent NOT LIKE 'xrpldashboard-%%'
           AND user_agent NOT LIKE 'public-route-canary%%'
           AND user_agent NOT LIKE 'station-audit%%'
