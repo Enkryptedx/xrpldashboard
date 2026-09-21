@@ -53,6 +53,16 @@
     color: rgba(160,180,210,0.55); font-size: 10px; margin-left: 0.4em;
   }
 
+  {# Phone fold (Charlie ruling 2026-09-20 evening). At <=780px the
+     header row keeps only: brand · hamburger · ★ Amendments · live
+     ledger dot. Search, XRP price chip, and language switcher are
+     rendered inside the hamburger panel (see _nav_groups.html
+     `.mobile-utilities` block). #}
+  @media (max-width: 780px) {
+    .nav .search-trigger,
+    .nav .xrp-chip,
+    .nav .lang-switch { display: none !important; }
+  }
 </style>
 {% include "_search.html" %}
 <div class="top">

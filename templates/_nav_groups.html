@@ -166,6 +166,79 @@
     background: rgba(8,12,20,0.98);
     border-bottom: 1px solid rgba(160,180,210,0.14);
   }
+  {# Folded-utilities block — Search + XRP price + language switcher.
+     Visible only inside the mobile hamburger panel (parent is already
+     mobile-only). #}
+  .nav-groups .mobile-utilities {
+    display: flex; flex-direction: column; gap: 0.55rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(160,180,210,0.14);
+    background: rgba(160,180,210,0.03);
+  }
+  .nav-groups .mobile-utility-btn {
+    display: flex; align-items: center; gap: 0.55em;
+    padding: 0.55em 0.75em; border-radius: 8px;
+    border: 1px solid rgba(160,180,210,0.22);
+    background: rgba(8,12,20,0.6);
+    color: rgba(220,235,255,0.92);
+    font-size: 14px; text-align: left; cursor: pointer;
+    width: 100%;
+  }
+  .nav-groups .mobile-utility-btn:hover,
+  .nav-groups .mobile-utility-btn:focus {
+    border-color: rgba(34,211,238,0.4);
+    color: var(--cyan, #22d3ee);
+  }
+  .nav-groups .mobile-utility-btn .hotkey {
+    margin-left: auto;
+    color: rgba(160,180,210,0.55);
+    font-family: var(--mono, monospace); font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .nav-groups .mobile-utility-chip {
+    display: inline-flex; align-items: center; gap: 0.35em;
+    align-self: flex-start;
+    padding: 0.28em 0.75em; border-radius: 999px;
+    border: 1px solid rgba(34,211,238,0.32);
+    background: rgba(34,211,238,0.06);
+    color: rgba(220,235,255,0.92);
+    font-family: var(--mono, monospace); font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .nav-groups .mobile-utility-chip .src {
+    color: rgba(160,180,210,0.6); font-size: 0.85em;
+  }
+  .nav-groups .mobile-lang-row {
+    display: flex; flex-direction: column; gap: 0.35em;
+    padding-top: 0.15em;
+  }
+  .nav-groups .mobile-lang-current {
+    font-size: 12px; letter-spacing: 0.02em;
+    color: rgba(160,180,210,0.7);
+  }
+  .nav-groups .mobile-lang-current .en {
+    color: rgba(160,180,210,0.5); font-size: 10px; margin-left: 0.4em;
+  }
+  .nav-groups .mobile-lang-menu {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .nav-groups .mobile-lang-menu a {
+    display: flex; align-items: baseline;
+    padding: 0.4em 0.6em; border-radius: 6px;
+    color: rgba(220,235,255,0.88); text-decoration: none;
+    font-size: 13px;
+    background: rgba(8,12,20,0.5);
+    border: 1px solid rgba(160,180,210,0.14);
+  }
+  .nav-groups .mobile-lang-menu a.current {
+    color: var(--cyan, #22d3ee);
+    border-color: rgba(34,211,238,0.4);
+    background: rgba(34,211,238,0.06);
+  }
+  .nav-groups .mobile-lang-menu a .en {
+    color: rgba(160,180,210,0.55); font-size: 10px; margin-left: 0.35em;
+  }
 </style>
 <div class="nav-groups">
   {# Desktop: 5 hover/tap groups + pinned amendments star chip. #}
@@ -187,14 +260,12 @@
       </div>
     </details>
   {% endfor %}
-  {# Pinned ★ Amendments chip — always visible, one tap from any page. #}
-  <a class="amendments-pin {{ 'active' if _p.startswith('/amendments') else '' }}"
-     href="/amendments"
-     title="{{ _('XRPL amendment status — flagship live tracker') }}">
-    <span class="star">★</span> {{ _('Amendments') }}
-  </a>
-
-  {# Mobile: single hamburger button, full-screen menu. #}
+  {# Mobile: single hamburger button, full-screen menu.
+     DOM-placed BEFORE the amendments pin (Charlie ruling 2026-09-20
+     evening) so at <=780px the visible row reads left-to-right as
+     brand · hamburger · ★ Amendments · live ledger dot. On desktop
+     the mobile-nav is display:none via the (min-width: 781px) rule
+     above, so the order there is unchanged. #}
   <details class="mobile-nav">
     <summary class="mobile-menu-btn" aria-label="{{ _('Open menu') }}">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -209,6 +280,49 @@
                 onclick="this.closest('details').open=false"
                 style="background:none;border:none;color:rgba(220,235,255,0.7);font-size:20px;cursor:pointer;">×</button>
       </div>
+
+      {# Folded utilities (Charlie ruling 2026-09-20 evening): Search,
+         XRP price chip, and language switcher hidden from the mobile
+         header row and reintroduced here at the top of the hamburger
+         panel. Desktop is unchanged. #}
+      <div class="mobile-utilities">
+        <button type="button" class="mobile-utility-btn"
+                onclick="this.closest('details').open=false; xdSearchOpen();"
+                aria-label="{{ _('Search (Cmd+K)') }}">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="5.5"/>
+            <line x1="13" y1="13" x2="18" y2="18"/>
+          </svg>
+          <span>{{ _('Search') }}</span>
+          <span class="hotkey">⌘K</span>
+        </button>
+        {% if live_xrp_usd %}
+          {# XRP/AMM/self-sourced are crypto proper nouns — not translated. #}
+          <div class="mobile-utility-chip"
+               title="XRP/USD — median of XRPL stablecoin AMMs ({{ live_xrp_usd_sources | map(attribute=0) | join(', ') }})">
+            XRP ${{ '%.4f' | format(live_xrp_usd) }}
+            <span class="src">· self-sourced</span>
+          </div>
+        {% endif %}
+        <div class="mobile-lang-row" role="group" aria-label="{{ _('Change language') }}">
+          <div class="mobile-lang-current">
+            {%- for entry in language_list if entry[0] == current_locale -%}
+              {{ entry[1] }}
+              <span class="en">{{ entry[2] }}</span>
+            {%- endfor -%}
+          </div>
+          <div class="mobile-lang-menu">
+            {% for entry in language_list %}
+              {% set code = entry[0] %}{% set native = entry[1] %}{% set en = entry[2] %}
+              <a href="/lang/{{ code }}"
+                 class="{{ 'current' if code == current_locale else '' }}">
+                {{ native }}<span class="en">{{ en }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
       {% for group in NAV_GROUPS %}
         <h4>{{ group[1] }}</h4>
         {% for entry in group[2] %}
@@ -224,4 +338,11 @@
       {% endfor %}
     </div>
   </details>
+
+  {# Pinned ★ Amendments chip — always visible, one tap from any page. #}
+  <a class="amendments-pin {{ 'active' if _p.startswith('/amendments') else '' }}"
+     href="/amendments"
+     title="{{ _('XRPL amendment status — flagship live tracker') }}">
+    <span class="star">★</span> {{ _('Amendments') }}
+  </a>
 </div>
