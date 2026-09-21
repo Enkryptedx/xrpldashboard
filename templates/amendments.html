@@ -386,9 +386,27 @@
   {% set summaries = {
     "Batch": {
       "kind": "feature",
-      "summary": _("Allows multiple transactions to be bundled into one atomic group. Either every transaction in the batch succeeds, or none of them do — no partial state. Designed for multi-leg AMM routing, coordinated payouts, and workflows where 'most succeeded' is worse than 'all rolled back'."),
+      "summary": _("Allows multiple transactions to be bundled into one atomic group. Either every transaction in the batch succeeds, or none of them do — no partial state. Designed for multi-leg AMM routing, coordinated payouts, and workflows where 'most succeeded' is worse than 'all rolled back'. Superseded by BatchV1_1, which fixes a critical bug discovered in the original implementation."),
       "source_label": "XLS-56 Batch (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
+    },
+    "BatchV1_1": {
+      "kind": "feature",
+      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. First majority reached on-ledger 2026-09-15; scheduled activation 2026-09-29 14:06:41 UTC per the ledger's Majorities entry."),
+      "source_label": "XLS-56 Batch (XRPL-Standards) · xrpl.org · Known Amendments",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
+    },
+    "ConfidentialTransfer": {
+      "kind": "feature",
+      "summary": _("Provides institutional-grade privacy for Multi-Purpose Tokens (MPTs) using EC-ElGamal encryption and zero-knowledge proofs. Individual balances and transfer amounts stay shielded from the public ledger while designated parties (issuers, auditors, or authorized entities) can verify total supply and meet regulatory obligations. Targets tokenized-RWA and stablecoin issuers whose compliance requirements are incompatible with fully-public balances."),
+      "source_label": "XLS-96 Confidential Transfers (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-transfers"
+    },
+    "Sponsor": {
+      "kind": "feature",
+      "summary": _("Lets one account subsidize the transaction fees and reserve requirements of another account. Sponsors can co-sign transactions or pre-fund sponsorships, covering fees and reserves while sponsees retain full control of their accounts and keys. Removes the onboarding-friction wall where a new user must acquire XRP for the base reserve before receiving any other asset — the sponsor covers it, the user keeps custody."),
+      "source_label": "XLS-68 Sponsored Fees and Reserves (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves"
     },
     "CryptoConditionsSuite": {
       "kind": "feature",
