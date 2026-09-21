@@ -667,6 +667,23 @@ CREATE TABLE IF NOT EXISTS permissioned_domain_walker_runs (
 -- uses it to compute staleness multiples (green/yellow/red) per row
 -- without hardcoding thresholds. NULL allowed for walkers that haven't
 -- declared one yet — page renders such rows with "unknown cadence".
+-- signed_registry_snapshots — PG-first store for the daily signed
+-- registry envelope. Written by signed_registry_snapshot.py after the
+-- disk file lands; served by /.well-known/registry/<date>.json with
+-- disk fallback. Retires the daily-registry-push carve-out — the
+-- envelope is now durable in PG (Neon backups + point-in-time
+-- restore) without any git push. Introduced 2026-09-21 (Charlie
+-- Monday build item 4). Per Tier-0 chain_job_never_re_signs_a_date,
+-- ON CONFLICT DO NOTHING so a same-day re-run cannot silently
+-- replace a signed envelope.
+CREATE TABLE IF NOT EXISTS signed_registry_snapshots (
+    snapshot_date_utc   DATE PRIMARY KEY,
+    envelope            JSONB NOT NULL,
+    signature           JSONB NOT NULL,
+    canonical_hash_hex  TEXT NOT NULL,
+    written_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS walker_health (
     walker_name           TEXT PRIMARY KEY,
     last_run_started      TIMESTAMPTZ NOT NULL,
@@ -7093,6 +7110,98 @@ def read_signed_snapshot_dates():
                 cur.execute(
                     "SELECT snapshot_date FROM signed_snapshots "
                     "ORDER BY snapshot_date DESC"
+                )
+                return [r[0].isoformat() for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Signed registry snapshots — PG-first store for the daily registry
+# envelope. Retires the git-based daily-registry-push carve-out
+# (Charlie ruling 2026-09-21, Monday build item 4).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def write_signed_registry_snapshot(envelope, signature, canonical_hash_hex):
+    """Persist a fully-signed registry envelope to PG. `envelope` is the
+    dict written to disk MINUS the `signature` and `canonical_hash_hex`
+    fields (those are stored as separate columns for query convenience).
+    Idempotent: same-date INSERT is DO NOTHING per the Tier-0
+    chain_job_never_re_signs_a_date rule — a corrective anchor must go
+    through a manual --force + explicit PG UPDATE, not silent overwrite.
+
+    Fail-loud: raises on write failure so the walker's outer try/except
+    stamps ok=False and BetterStack pages. Silent no-op only when
+    Postgres isn't configured at all (dev boxes)."""
+    if not pg_available():
+        return
+    import json as _json
+
+    def _do(conn):
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO signed_registry_snapshots "
+                "  (snapshot_date_utc, envelope, signature, canonical_hash_hex) "
+                "VALUES (%s::date, %s::jsonb, %s::jsonb, %s) "
+                "ON CONFLICT (snapshot_date_utc) DO NOTHING",
+                (envelope["snapshot_date_utc"],
+                 _json.dumps(envelope, sort_keys=True),
+                 _json.dumps(signature, sort_keys=True),
+                 canonical_hash_hex),
+            )
+    _writer_execute_with_retry(
+        f"write_signed_registry_snapshot[{envelope['snapshot_date_utc']}]",
+        _do,
+    )
+
+
+def read_signed_registry_snapshot(date_str):
+    """Return the fully-signed registry envelope dict for `date_str`
+    (ISO YYYY-MM-DD), reconstructed from PG (envelope + signature +
+    canonical_hash_hex reassembled to match the disk file shape), or
+    None when not in PG. Caller validates the date format first.
+
+    Reconstruction is byte-lossless because the disk file is written
+    with `json.dump(signed, sort_keys=True, indent=2)` where
+    `signed = envelope | {signature, canonical_hash_hex}`; we store
+    the same three parts and rebuild the same dict."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT envelope, signature, canonical_hash_hex "
+                    "FROM signed_registry_snapshots "
+                    "WHERE snapshot_date_utc = %s::date",
+                    (date_str,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                envelope, signature, canonical_hash_hex = row
+                if not isinstance(envelope, dict):
+                    return None
+                signed = dict(envelope)
+                signed["signature"] = signature
+                signed["canonical_hash_hex"] = canonical_hash_hex
+                return signed
+    except Exception:
+        return None
+
+
+def read_signed_registry_snapshot_dates():
+    """Newest-first list of YYYY-MM-DD strings of every signed registry
+    snapshot in PG. Empty list when PG empty."""
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date_utc FROM signed_registry_snapshots "
+                    "ORDER BY snapshot_date_utc DESC"
                 )
                 return [r[0].isoformat() for r in cur.fetchall()]
     except Exception:

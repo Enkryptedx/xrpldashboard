@@ -5854,6 +5854,21 @@ def well_known_signed_registry(date_str):
     import re as _re
     if not _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
         abort(404)
+    # 2026-09-21 Charlie ruling: PG-first. The daily registry envelope
+    # is durable in signed_registry_snapshots (Neon backups + PITR);
+    # disk stays as the fallback resilience layer. Serve whichever
+    # exists — PG wins when both are present (writer stamps PG before
+    # touching disk, so a PG hit implies the disk file is at least
+    # equally fresh).
+    envelope = db.read_signed_registry_snapshot(date_str)
+    if envelope is not None:
+        import json as _json
+        body = _json.dumps(envelope, sort_keys=True, indent=2)
+        resp = make_response(body)
+        resp.headers["Content-Type"] = "application/json"
+        resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+        resp.headers["X-Registry-Source"] = "pg"
+        return resp
     path = os.path.join(SIGNED_REGISTRY_SNAPSHOTS_DIR, f"{date_str}.json")
     if not os.path.exists(path):
         abort(404, description=f"no signed registry snapshot for {date_str}")
@@ -5862,6 +5877,7 @@ def well_known_signed_registry(date_str):
         mimetype="application/json",
     )
     resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+    resp.headers["X-Registry-Source"] = "disk"
     return resp
 
 

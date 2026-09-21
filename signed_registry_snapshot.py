@@ -165,11 +165,36 @@ def _make_uuid_v4() -> str:
 
 
 def write_signed_snapshot(envelope: dict, sig_block: dict) -> str:
-    """Write the fully-signed envelope to disk. Returns the file path."""
+    """Write the fully-signed envelope to disk AND mirror to PG. Returns
+    the disk file path.
+
+    Charlie ruling 2026-09-21 (Monday build item 4): PG is now the
+    authoritative store for served snapshots; disk stays as a
+    resilience fallback and as the on-the-side git artifact. The
+    daily-registry-push carve-out is retired — PG durability plus
+    Neon PITR/backups mean the git push isn't needed to make the
+    envelope reachable.
+
+    PG-first mirror runs BEFORE the disk write so a PG failure fails
+    loud (raises from write_signed_registry_snapshot) and the disk
+    file never lands with a stale/absent PG counterpart. Disk write
+    is atomic via tmp+rename, matching the previous shape.
+    """
+    canon_hex = canonical_hash_hex(envelope)
+
+    # Mirror to PG first; a failure here raises out to main()'s error
+    # path so the walker stamps ok=False and the disk file is not
+    # written with a broken PG counterpart.
+    try:
+        import db as _db
+        _db.write_signed_registry_snapshot(envelope, sig_block, canon_hex)
+    except Exception:
+        raise
+
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
     signed = dict(envelope)
     signed["signature"] = sig_block
-    signed["canonical_hash_hex"] = canonical_hash_hex(envelope)
+    signed["canonical_hash_hex"] = canon_hex
 
     date_str = envelope["snapshot_date_utc"]
     out_path = os.path.join(SNAPSHOTS_DIR, f"{date_str}.json")
