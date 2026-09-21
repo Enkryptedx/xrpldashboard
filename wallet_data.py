@@ -324,15 +324,66 @@ def _self_info(address):
     """Identity metadata for the focal wallet — name, category, and the
     public attestation URL (e.g. xrp-ledger.toml). Surfaced in the WALLET
     card as a verified badge so users can tell a curated/disclosed entity
-    apart from an arbitrary address. Returns all-None for unknown wallets."""
+    apart from an arbitrary address. Returns all-None for unknown wallets.
+
+    Charlie ruling 2026-09-21 Mon PM (address-label agreement): if the
+    file-based named_accounts doesn't have this address, fall back to
+    the PG account_labels table so the /wallet header shows the same
+    label /whales does. Curator paste-ins from xrpscan and derived
+    AMM/MPT labels live in PG only. Fail silently if PG is unreachable
+    — the wallet page still renders with all-None labels."""
     entry = _NAMED.get(address)
     if not entry:
+        try:
+            if db.pg_available():
+                pg_labels = db.read_account_labels([address]) or {}
+                pg_entry = pg_labels.get(address)
+                if pg_entry and pg_entry.get("name"):
+                    return {
+                        "name": pg_entry.get("name"),
+                        "category": pg_entry.get("category"),
+                        # PG rows don't carry a canonical attestation URL;
+                        # extra.domain when present is the closest proxy.
+                        "verified_via": (pg_entry.get("extra") or {}).get("domain"),
+                        "_source": pg_entry.get("source"),
+                    }
+        except Exception:
+            pass
         return {"name": None, "category": None, "verified_via": None}
     return {
         "name": entry.get("name"),
         "category": entry.get("category"),
         "verified_via": entry.get("verified_via"),
     }
+
+
+def _wallet_badge(address):
+    """Same address_badge() /whales uses — name + address_tier + tier
+    display + OFAC + attested domain. Returns None on error so template
+    can degrade gracefully. Charlie ruling 2026-09-21: /whales, /wallet,
+    /check must agree on label + tier + source for the same address."""
+    try:
+        from check_data import address_badge
+        # Best-effort tier_lookup enrichment — pull PG account_labels
+        # into the badge scope so PG-labeled accounts (Binance et al.)
+        # render with the same badge shape as /whales.
+        named = dict(_NAMED)
+        try:
+            if db.pg_available():
+                pg_labels = db.read_account_labels([address]) or {}
+                pg_entry = pg_labels.get(address)
+                if pg_entry and address not in named:
+                    named[address] = {
+                        "name": pg_entry.get("name"),
+                        "category": pg_entry.get("category"),
+                        "_source": pg_entry.get("source"),
+                        "_extra": pg_entry.get("extra"),
+                    }
+        except Exception:
+            pass
+        return address_badge(address, named_accounts=named)
+    except Exception:
+        return None
 
 
 def _amm_pair_label_from_info(amm):
@@ -1504,6 +1555,7 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "address": address,
             "address_short": _short_addr(address),
             "self_info": _self_info(address),
+            "wallet_badge": _wallet_badge(address),
             "is_amm": False,
             "is_vault": False,
             "amm_pair": None,
@@ -1727,6 +1779,7 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "address": address,
         "address_short": _short_addr(address),
         "self_info": _self_info(address),
+        "wallet_badge": _wallet_badge(address),
         "is_amm": is_amm,
         "is_vault": is_vault,
         "amm_pair": amm_pair,

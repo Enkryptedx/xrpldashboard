@@ -228,6 +228,35 @@
                                     rgba(120,53,15,0.22) 100%); }
     .identity-badge-blackhole:hover { border-color: rgba(245,158,11,0.85);
                                       color: #fcd34d; }
+    /* address-tier pill next to the identity name — same shape as
+       /whales row badges. Charlie ruling 2026-09-21 Mon PM. */
+    .identity-tier-pill { display: inline-flex; align-items: center;
+                          padding: 2px 8px; border-radius: 3px;
+                          font-family: var(--sys); font-size: 10px;
+                          font-weight: 700; letter-spacing: 0.06em;
+                          text-transform: uppercase; margin-left: 0.4em;
+                          background: rgba(160,180,210,0.14);
+                          color: var(--text-2);
+                          border: 1px solid rgba(160,180,210,0.18); }
+    .identity-tier-verified { color: #34d399;
+                              background: rgba(52,211,153,0.10);
+                              border-color: rgba(52,211,153,0.30); }
+    .identity-tier-self-described { color: #93c5fd;
+                                    background: rgba(147,197,253,0.12);
+                                    border-color: rgba(147,197,253,0.28); }
+    .identity-tier-labeled { color: #fbbf24;
+                             background: rgba(251,191,36,0.10);
+                             border-color: rgba(251,191,36,0.28); }
+    .identity-tier-bare { color: var(--text-3);
+                          background: rgba(160,180,210,0.06); }
+    .identity-tier-ofac { color: #f87171;
+                          background: rgba(248,113,113,0.14);
+                          border-color: rgba(248,113,113,0.45); }
+    .identity-source-note { font-size: 10.5px;
+                            color: var(--text-3);
+                            font-family: var(--mono);
+                            margin-left: 0.4em;
+                            letter-spacing: -0.01em; }
     .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
                          flex-wrap: wrap; }
     .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
@@ -1008,10 +1037,27 @@
           {% if data.is_amm %}
             <div class="identity-name-row">
               <span class="identity-name">{{ data.amm_pair or data.address_short }}</span>
+              {% if data.wallet_badge and data.wallet_badge.address_tier_display and data.wallet_badge.address_tier != 'unknown' %}
+                <span class="identity-tier-pill identity-tier-{{ data.wallet_badge.address_tier }}"
+                      title="{{ _('Address tier — same signal /whales and /check use') }}">
+                  {{ data.wallet_badge.address_tier_display }}
+                </span>
+              {% endif %}
+              {% if data.self_info and data.self_info._source %}
+                <span class="identity-source-note" title="{{ _('Label source') }}">
+                  {{ _('source:') }} {{ data.self_info._source }}
+                </span>
+              {% endif %}
             </div>
           {% elif data.is_vault %}
             <div class="identity-name-row">
               <span class="identity-name">{{ data.address_short }}</span>
+              {% if data.wallet_badge and data.wallet_badge.address_tier_display and data.wallet_badge.address_tier != 'unknown' %}
+                <span class="identity-tier-pill identity-tier-{{ data.wallet_badge.address_tier }}"
+                      title="{{ _('Address tier — same signal /whales and /check use') }}">
+                  {{ data.wallet_badge.address_tier_display }}
+                </span>
+              {% endif %}
             </div>
           {% elif data.self_info and data.self_info.name %}
             <div class="identity-name-row">
@@ -1020,6 +1066,33 @@
                 <a class="identity-verified" href="{{ data.self_info.verified_via }}"
                    target="_blank" rel="noopener noreferrer"
                    title="{{ _('Identity attested via') }} {{ data.self_info.verified_via }}">✓ {{ _('verified') }}</a>
+              {% endif %}
+              {# Charlie ruling 2026-09-21: /whales and /wallet must show the
+                 same badge — tier pill + source citation. wallet_badge is
+                 populated via check_data.address_badge() with PG account_labels
+                 layered on top of named_accounts.json, so PG-labeled
+                 addresses (Binance, BeBe AMM, etc.) get the same label
+                 shape here as they do in /whales rows. #}
+              {% if data.wallet_badge and data.wallet_badge.address_tier_display and data.wallet_badge.address_tier != 'unknown' %}
+                <span class="identity-tier-pill identity-tier-{{ data.wallet_badge.address_tier }}"
+                      title="{{ _('Address tier — same signal /whales and /check use') }}">
+                  {{ data.wallet_badge.address_tier_display }}
+                </span>
+              {% endif %}
+              {% if data.wallet_badge and data.wallet_badge.ofac_sanctioned %}
+                <span class="identity-tier-pill identity-tier-ofac"
+                      title="{{ _('OFAC-sanctioned per current SDN list') }}">
+                  {{ _('OFAC') }}
+                </span>
+              {% endif %}
+              {# Source citation — what named the address. Same source string
+                 the whales row exposes in its badge tooltip. #}
+              {% if data.self_info._source or data.self_info.category %}
+                <span class="identity-source-note"
+                      title="{{ _('Label source') }}">
+                  {{ _('source:') }}
+                  {% if data.self_info._source %}{{ data.self_info._source }}{% else %}named_accounts.json{% endif %}
+                </span>
               {% endif %}
             </div>
           {% endif %}
