@@ -540,18 +540,28 @@
          unavailable" rather than shares alone. #}
       {% if data.canonical_pool_comparison %}
         {% set _c = data.canonical_pool_comparison %}
-        <div class="impostor-comparison" style="border: 1px solid var(--warn, #f59e0b); background: rgba(245,158,11,0.08); border-radius: 6px; padding: 0.75em 0.9em; margin: 0 0 1em;">
+        {# 2026-09-20 (late evening): Charlie ruling — state facts, never
+           verdicts. Prior banner header said "impostor pool" (a verdict).
+           Replaced with positive-knowledge wording: this pool's RLUSD is
+           not the canonical brand's RLUSD, live figures side-by-side,
+           reader draws the inference. #}
+        <div class="ticker-collision-compare" style="border: 1px solid var(--warn, #f59e0b); background: rgba(245,158,11,0.08); border-radius: 6px; padding: 0.75em 0.9em; margin: 0 0 1em;">
           <div style="font-weight: 600; color: var(--warn, #f59e0b); margin-bottom: 0.3em;">
-            ⚠ {{ _('Ticker collision — impostor pool') }}
+            ⚠
+            {% if _c.canonical_brand %}
+              {{ _('Ticker collision — this pool\'s %(disp)s is not %(brand)s\'s %(disp)s.', disp=data.display, brand=_c.canonical_brand) }}
+            {% else %}
+              {{ _('Ticker collision — this pool\'s %(disp)s is not the canonical %(disp)s.', disp=data.display) }}
+            {% endif %}
           </div>
           <div style="font-size: var(--fs-sm); line-height: 1.45;">
-            {{ _('The biggest %(disp)s/XRP pool for this issuer holds', disp=data.display) }}
+            {% if _c.canonical_brand %}{{ _('%(brand)s\'s %(disp)s/XRP pool holds', brand=_c.canonical_brand, disp=data.display) }}
+            {% else %}{{ _('The canonical issuer\'s %(disp)s/XRP pool holds', disp=data.display) }}{% endif %}
+            <strong>{{ "{:,.0f}".format(_c.canonical_xrp_reserve) }} XRP</strong>;
+            {{ _('this pool holds') }}
             <strong>{{ "{:,.1f}".format(_c.impostor_xrp_reserve) }} XRP</strong>.
-            {% if _c.canonical_brand %}{{ _('The canonical %(brand)s (issuer', brand=_c.canonical_brand) }}
-            {% else %}{{ _('The canonical issuer for this ticker (') }}{% endif %}
-            <span class="pool-acct" style="font-family: var(--font-mono, monospace);">{{ _c.canonical_issuer_short }}</span>)
-            {{ _('has a %(disp)s/XRP pool holding', disp=data.display) }}
-            <strong>{{ "{:,.0f}".format(_c.canonical_xrp_reserve) }} XRP</strong>.
+            {{ _('Canonical issuer:') }}
+            <span class="pool-acct" style="font-family: var(--font-mono, monospace);">{{ _c.canonical_issuer_short }}</span>.
           </div>
           <div style="color: var(--muted); font-size: var(--fs-xs); margin-top: 0.4em;">
             {{ _('LP share counts are chosen at pool creation and do not measure pool value. Reserves are the real deposit sizes. Live amm_info, refreshed at') }}

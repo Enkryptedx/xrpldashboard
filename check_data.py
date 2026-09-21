@@ -635,7 +635,8 @@ def _capability_signals(account_data: dict) -> list[dict]:
             ),
             note=(
                 "A technical commitment about what the account can do, "
-                "not a safety signal. Scam tokens can lack freeze too."
+                "not a safety signal. Tokens run by bad actors can lack "
+                "freeze too."
             ),
         ))
     elif flags & _FLAG_LSF_GLOBAL_FREEZE:

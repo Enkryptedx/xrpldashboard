@@ -15,7 +15,7 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 - **Definition:** Fiat-pegged token issued by a legally accountable entity with a canonical XRPL issuer address on the curated whitelist.
 - **Rule:** Curator whitelist entry in `ticker_canonical_issuers.json` matching (currency, issuer) AND MPT `asset_subclass=stablecoin` OR toml-attested fiat-peg claim.
 - **Evidence:** L2a (MPT metadata) or L3 (curator + citation URL).
-- **Boundaries:** ≠ `stablecoin_gateway` (which is a named exchange's USD/EUR IOU without regulated-entity status). Impostor USDT/USDC/DAI DO NOT qualify — they land outside the 12 real categories (`not_yet_reviewed` by default, promotable to `reviewed_unlabeled` once a curator confirms) and carry `ticker_collision=true`.
+- **Boundaries:** ≠ `stablecoin_gateway` (which is a named exchange's USD/EUR IOU without regulated-entity status). Non-canonical USDT/USDC/DAI (any issuer not on the `ticker_canonical_issuers.json` whitelist) DO NOT qualify — they land outside the 12 real categories (`not_yet_reviewed` by default, promotable to `reviewed_unlabeled` once a curator confirms) and carry `ticker_collision=true`.
 
 ## `stablecoin_gateway`
 - **Definition:** USD/EUR IOU from a named XRPL gateway (Bitstamp, GateHub, historical exchanges); custody-backed but not regulated-entity-issued.
