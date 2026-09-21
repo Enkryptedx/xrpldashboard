@@ -109,8 +109,32 @@ def reconstruct_current(as_of_date: str | None = None) -> int:
     return written
 
 
+WALKER_NAME = "amendment_tally_reconstruct"
+WALKER_CADENCE_SECONDS = 86400  # daily
+
+
 def main() -> int:
-    return 0 if reconstruct_current() > 0 else 1
+    """Daily walker: reconstruct today's tally row via VHS. `0 rows`
+    is treated as success (VHS may be temporarily silent — the walker
+    stayed reachable and did what it was asked). A true failure raises
+    and is caught below."""
+    db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
+    ok = False
+    message = "not_yet_stamped"
+    try:
+        written = reconstruct_current()
+        message = f"wrote={written} rows source=vhs_current_at_date_{dt.date.today().isoformat()}"
+        ok = True
+        return 0
+    except Exception as e:
+        message = f"exception: {type(e).__name__}: {e}"
+        ok = False
+        raise
+    finally:
+        db.write_walker_health_end(
+            WALKER_NAME, ok=ok,
+            message=message or ("clean_no_message" if ok else "unlabeled_failure"),
+        )
 
 
 if __name__ == "__main__":

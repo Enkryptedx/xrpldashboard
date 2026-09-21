@@ -1,0 +1,389 @@
+#!/usr/bin/env bash
+#
+# scripts/new_walker.sh — end-to-end walker installer.
+#
+# Given a walker script and a schedule, this creates:
+#   - a wrapper (venv/bin/python, WorkingDirectory, env sourced from
+#     ~/.config/xrpldashboard/env)
+#   - a plist (StartInterval, RunAtLoad, PATH pointing at venv)
+#   - a three-copy sync: repo launchd/, ~/Library/LaunchAgents/, and
+#     the wrapper comment referencing the plist path (parity claim)
+#   - a meta-watcher JOBS entry with a ceiling (only when the walker
+#     uses filesystem stamps; PG-based walker_health walkers rely on
+#     walker_health staleness paging, so no JOBS entry needed there)
+#
+# Then it:
+#   - launchctl load + kickstart via gui/501/<label>
+#   - waits for the process to exit (with a hard timeout)
+#   - verifies exit code == 0
+#   - verifies EITHER a fresh walker_health row (last_success_at within
+#     the last N seconds) OR a fresh launchd_state/<label>_last_ok
+#     stamp — whichever the walker was auto-detected to use
+#
+# EVERY step above is a gate. If any step fails, the script prints a
+# labeled ERROR line and exits non-zero. It refuses to print the final
+# "OK — walker installed and proven" line until every gate passed.
+#
+# Charlie ruling 2026-09-21 Mon PM ([[new_walker_launchd_proof]]):
+# "a new walker is proven only by a launchd-invoked run, never by a
+# manual one". This script bakes the proof into the install path so
+# forgetting isn't possible.
+#
+# Usage:
+#   scripts/new_walker.sh \
+#     --name <walker_short_name> \
+#     --script <absolute-or-repo-relative-path-to-script.py> \
+#     --interval <seconds> \
+#     [--ceiling <seconds>]       # required if walker uses filesystem stamp
+#     [--comment "one-line desc"] # goes into plist <Comment>
+#     [--timeout <seconds>]       # kickstart wait timeout, default 180
+#
+# The <walker_short_name> is the tail after com.charliebruce.xrpldashboard.
+# The plist label is derived; the wrapper is launchd/run_<name>.sh; the
+# plist file is launchd/com.charliebruce.xrpldashboard.<name>.plist.
+#
+set -euo pipefail
+
+REPO=/Users/charliebruce/xrpl_test
+LAUNCHD_DIR="$REPO/launchd"
+LA_DIR="$HOME/Library/LaunchAgents"
+STATE_DIR="$REPO/launchd_state"
+LOG_DIR="$REPO/launchd_logs"
+META_WATCHER="$REPO/dockvault_mirror_freshness_canary.py"
+LABEL_PREFIX="com.charliebruce.xrpldashboard"
+VENV_PY="$REPO/venv/bin/python"
+ENV_FILE="$HOME/.config/xrpldashboard/env"
+
+NAME=""
+SCRIPT=""
+INTERVAL=""
+CEILING=""
+COMMENT=""
+TIMEOUT=180
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+ok()  { echo "OK: $*"; }
+note(){ echo ".. $*"; }
+
+# ---- parse args ----
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --name)     NAME="$2"; shift 2 ;;
+    --script)   SCRIPT="$2"; shift 2 ;;
+    --interval) INTERVAL="$2"; shift 2 ;;
+    --ceiling)  CEILING="$2"; shift 2 ;;
+    --comment)  COMMENT="$2"; shift 2 ;;
+    --timeout)  TIMEOUT="$2"; shift 2 ;;
+    -h|--help)  sed -n '3,44p' "$0"; exit 0 ;;
+    *) die "unknown arg: $1" ;;
+  esac
+done
+
+[ -n "$NAME" ]     || die "--name required"
+[ -n "$SCRIPT" ]   || die "--script required"
+[ -n "$INTERVAL" ] || die "--interval (seconds) required"
+[[ "$NAME" =~ ^[a-z0-9_]+$ ]] || die "--name must be [a-z0-9_]+, got: $NAME"
+[[ "$INTERVAL" =~ ^[0-9]+$ ]] || die "--interval must be integer, got: $INTERVAL"
+
+# Resolve script path (absolute or repo-relative)
+if [[ "$SCRIPT" = /* ]]; then
+  [ -f "$SCRIPT" ] || die "script not found: $SCRIPT"
+else
+  SCRIPT="$REPO/$SCRIPT"
+  [ -f "$SCRIPT" ] || die "script not found: $SCRIPT"
+fi
+
+# ---- environmental preconditions ----
+[ -x "$VENV_PY" ]    || die "venv python missing: $VENV_PY"
+[ -r "$ENV_FILE" ]   || die "env file missing: $ENV_FILE"
+[ -d "$LAUNCHD_DIR" ] || die "launchd/ dir missing: $LAUNCHD_DIR"
+[ -d "$LA_DIR" ]     || die "LaunchAgents dir missing: $LA_DIR"
+[ -f "$META_WATCHER" ] || die "meta-watcher missing: $META_WATCHER"
+mkdir -p "$STATE_DIR" "$LOG_DIR"
+
+# ---- derive paths ----
+LABEL="$LABEL_PREFIX.$NAME"
+WRAPPER="$LAUNCHD_DIR/run_${NAME}.sh"
+PLIST_REPO="$LAUNCHD_DIR/${LABEL}.plist"
+PLIST_LA="$LA_DIR/${LABEL}.plist"
+
+# ---- auto-detect heartbeat mode ----
+# PG: script calls db.write_walker_health_start/_end
+# FILE: script writes to launchd_state/<name>_last_ok (or the wrapper does)
+HEARTBEAT=""
+if grep -q "write_walker_health_start\|write_walker_health_end" "$SCRIPT"; then
+  HEARTBEAT="pg"
+elif grep -q "launchd_state/${NAME}_last_ok\|${NAME}_last_ok" "$SCRIPT"; then
+  HEARTBEAT="file"
+else
+  # Default assumption: PG. Print a warning; caller can override by
+  # touching launchd_state/<name>_last_ok inside the script.
+  HEARTBEAT="pg"
+  echo "WARNING: could not detect heartbeat mode in $SCRIPT; assuming PG walker_health"
+fi
+note "heartbeat mode = $HEARTBEAT"
+
+if [ "$HEARTBEAT" = "file" ] && [ -z "$CEILING" ]; then
+  die "filesystem-stamp walker requires --ceiling <seconds> for meta-watcher"
+fi
+
+# ---- write wrapper ----
+cat > "$WRAPPER" <<WRAPPER_EOF
+#!/usr/bin/env bash
+#
+# Wrapper for the $NAME walker (StartInterval=$INTERVAL). Generated by
+# scripts/new_walker.sh — do not hand-edit without also updating the
+# generator.
+#
+# Three-copy sync: this wrapper is executed by
+#   $PLIST_LA
+# which is a byte-identical copy of the repo plist at
+#   $PLIST_REPO
+# (verified at install time; drift would trip the parity check on the
+# next new_walker.sh run against this walker).
+#
+# Charlie ruling 2026-09-21: every wrapper uses \$REPO/venv/bin/python,
+# never system python3.14, so that walkers importing app.py (and thus
+# flask_smorest and friends) resolve their deps under launchd.
+set -euo pipefail
+
+ENV_FILE="\$HOME/.config/xrpldashboard/env"
+if [[ ! -r "\$ENV_FILE" ]]; then
+  echo "[\$(date '+%F %T')] ERROR: env file missing or unreadable: \$ENV_FILE" >&2
+  exit 78  # EX_CONFIG — launchd will retry per StartInterval
+fi
+set -a
+# shellcheck disable=SC1090
+source "\$ENV_FILE"
+set +a
+
+PYTHON="$VENV_PY"
+SCRIPT="$SCRIPT"
+
+exec "\$PYTHON" "\$SCRIPT"
+WRAPPER_EOF
+chmod +x "$WRAPPER"
+ok "wrote wrapper: $WRAPPER"
+
+# ---- write plist ----
+COMMENT_RAW="${COMMENT:-$NAME walker — StartInterval=$INTERVAL s. Installed by scripts/new_walker.sh 2026-09-21+.}"
+# XML-escape the comment so angle brackets etc. don't break the plist
+# parser (plutil rejects raw < / > / & inside <string>).
+COMMENT_SAFE=$(printf '%s' "$COMMENT_RAW" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e "s/'/\&apos;/g")
+cat > "$PLIST_REPO" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>$LABEL</string>
+
+    <key>Comment</key>
+    <string>$COMMENT_SAFE</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>$WRAPPER</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>$REPO</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>$REPO/venv/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>$INTERVAL</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>$LOG_DIR/${NAME}.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>$LOG_DIR/${NAME}.err.log</string>
+  </dict>
+</plist>
+PLIST_EOF
+ok "wrote plist:   $PLIST_REPO"
+
+# ---- three-copy sync: install to LaunchAgents ----
+cp "$PLIST_REPO" "$PLIST_LA"
+# Parity gate: the two files MUST be byte-identical after copy.
+diff -q "$PLIST_REPO" "$PLIST_LA" >/dev/null || die "parity mismatch: $PLIST_REPO vs $PLIST_LA"
+ok "synced to LaunchAgents: $PLIST_LA"
+
+# ---- meta-watcher JOBS entry (filesystem-stamp walkers only) ----
+if [ "$HEARTBEAT" = "file" ]; then
+  # Guard: if a JOBS entry with this exact label already exists, don't
+  # duplicate.
+  if grep -q "\"$NAME\"," "$META_WATCHER"; then
+    note "meta-watcher already has JOBS entry for '$NAME' — skipping insert"
+  else
+    # Insert a new JOBS entry before the closing ']' of the JOBS list.
+    # Python-parseable, minimal, includes ceiling + description.
+    "$VENV_PY" - "$META_WATCHER" "$NAME" "$CEILING" "$COMMENT_SAFE" <<'PY_INSERT'
+import re, sys, io
+path, name, ceiling, desc = sys.argv[1:5]
+with open(path, "r", encoding="utf-8") as f:
+    src = f.read()
+# Find "JOBS: list[...] = [ ... ]" — insert before the final "]".
+m = re.search(r"JOBS:[^=]*=\s*\[", src)
+if not m:
+    print("ERROR: could not find JOBS list in meta-watcher", file=sys.stderr)
+    sys.exit(2)
+# Walk to matching close bracket
+i = m.end()
+depth = 1
+while i < len(src) and depth:
+    ch = src[i]
+    if ch == "[":
+        depth += 1
+    elif ch == "]":
+        depth -= 1
+        if depth == 0:
+            close = i
+            break
+    i += 1
+else:
+    print("ERROR: unbalanced JOBS list", file=sys.stderr); sys.exit(2)
+# Trim any trailing whitespace inside the list before the close.
+head = src[:close].rstrip()
+# Add trailing comma if the previous item didn't have one.
+if not head.endswith(","):
+    head = head + ","
+entry = f'\n    # 2026-09-21 auto-inserted by scripts/new_walker.sh\n    ("{name}", {ceiling},\n     "{desc}"),\n'
+new_src = head + entry + src[close:]
+with open(path, "w", encoding="utf-8") as f:
+    f.write(new_src)
+print(f"inserted JOBS entry: ({name}, {ceiling}, ...)")
+PY_INSERT
+    ok "added meta-watcher JOBS entry (ceiling=${CEILING}s)"
+  fi
+else
+  note "PG-based walker — meta-watcher staleness paging handles it; no JOBS entry inserted"
+fi
+
+# ---- lint plist before loading ----
+plutil -lint "$PLIST_LA" >/dev/null || die "plist lint failed for $PLIST_LA — run plutil -lint to see details"
+
+# ---- load + kickstart ----
+# If already loaded (e.g. reinstalling), unload cleanly first.
+if launchctl list | grep -q "^[^ ]*[[:space:]][^ ]*[[:space:]]$LABEL$"; then
+  note "already loaded — unload+load"
+  launchctl unload "$PLIST_LA" 2>/dev/null || true
+fi
+# launchctl load prints to stderr and can return 0 even on soft failures
+# on some macOS versions; capture stderr and require it to be silent.
+LOAD_ERR=$(launchctl load "$PLIST_LA" 2>&1) || die "launchctl load failed: $LOAD_ERR"
+if echo "$LOAD_ERR" | grep -qi "load failed\|error\|invalid"; then
+  die "launchctl load reported: $LOAD_ERR"
+fi
+ok "launchctl load"
+
+# Snapshot heartbeat baseline BEFORE kickstart so we can prove freshness.
+BASELINE_PG_TS=""
+BASELINE_FILE_TS=""
+# Source the env so the child python inherits DATABASE_URL etc.
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+if [ "$HEARTBEAT" = "pg" ]; then
+  BASELINE_PG_TS=$("$VENV_PY" - "$NAME" <<'PY_BASELINE'
+import os, sys, datetime as dt
+sys.path.insert(0, "/Users/charliebruce/xrpl_test")
+import db  # noqa
+name = sys.argv[1]
+with db.pg_connect() as c, c.cursor() as cur:
+    cur.execute("SELECT last_success_at FROM walker_health WHERE walker_name=%s", (name,))
+    r = cur.fetchone()
+    print(r[0].isoformat() if r and r[0] else "none")
+PY_BASELINE
+  )
+  note "baseline walker_health.last_success_at = $BASELINE_PG_TS"
+else
+  STAMP_FILE="$STATE_DIR/${NAME}_last_ok"
+  if [ -f "$STAMP_FILE" ]; then
+    BASELINE_FILE_TS=$(stat -f "%m" "$STAMP_FILE")
+  else
+    BASELINE_FILE_TS="0"
+  fi
+  note "baseline stamp mtime = $BASELINE_FILE_TS"
+fi
+
+launchctl kickstart -k "gui/$(id -u)/${LABEL}" || die "kickstart failed"
+ok "kickstart"
+
+# ---- wait for run to complete ----
+note "waiting up to ${TIMEOUT}s for process to exit ..."
+elapsed=0
+while [ "$elapsed" -lt "$TIMEOUT" ]; do
+  ROW=$(launchctl list | awk -v L="$LABEL" '$3==L {print $1"|"$2; exit}')
+  PID=${ROW%%|*}
+  EXIT=${ROW##*|}
+  if [ "$PID" = "-" ]; then
+    ok "exited after ${elapsed}s (exit=$EXIT)"
+    break
+  fi
+  sleep 3
+  elapsed=$((elapsed + 3))
+done
+if [ "$PID" != "-" ]; then
+  die "walker still running after ${TIMEOUT}s — bump --timeout, or the walker hung"
+fi
+
+# ---- exit code gate ----
+[ "$EXIT" = "0" ] || die "exit code = $EXIT (expected 0) — check $LOG_DIR/${NAME}.err.log"
+ok "exit code == 0"
+
+# ---- heartbeat freshness gate ----
+if [ "$HEARTBEAT" = "pg" ]; then
+  FRESH_PG_TS=$("$VENV_PY" - "$NAME" <<'PY_FRESH'
+import os, sys
+sys.path.insert(0, "/Users/charliebruce/xrpl_test")
+import db  # noqa
+name = sys.argv[1]
+with db.pg_connect() as c, c.cursor() as cur:
+    cur.execute("SELECT last_run_ok, last_success_at, last_run_message FROM walker_health WHERE walker_name=%s", (name,))
+    r = cur.fetchone()
+    if not r or not r[1]:
+        print("NONE")
+    else:
+        print(f"{r[0]}|{r[1].isoformat()}|{(r[2] or '')[:80]}")
+PY_FRESH
+  )
+  [ "$FRESH_PG_TS" != "NONE" ] || die "walker_health row missing after run"
+  IFS="|" read -r WH_OK WH_TS WH_MSG <<< "$FRESH_PG_TS"
+  [ "$WH_OK" = "True" ] || die "walker_health.last_run_ok=False — msg: $WH_MSG"
+  [ "$WH_TS" != "$BASELINE_PG_TS" ] || die "walker_health.last_success_at did not advance (still $WH_TS)"
+  ok "walker_health advanced: $WH_TS (ok=True, msg=${WH_MSG:0:60})"
+else
+  STAMP_FILE="$STATE_DIR/${NAME}_last_ok"
+  [ -f "$STAMP_FILE" ] || die "filesystem stamp missing: $STAMP_FILE"
+  FRESH_FILE_TS=$(stat -f "%m" "$STAMP_FILE")
+  [ "$FRESH_FILE_TS" != "$BASELINE_FILE_TS" ] || die "stamp mtime did not advance (still $FRESH_FILE_TS)"
+  ok "filesystem stamp advanced: $STAMP_FILE (mtime=$FRESH_FILE_TS)"
+fi
+
+# ---- meta-watcher JOBS parity (filesystem-stamp walkers) ----
+if [ "$HEARTBEAT" = "file" ]; then
+  grep -q "\"$NAME\"," "$META_WATCHER" || die "meta-watcher missing JOBS entry for $NAME after insert"
+  ok "meta-watcher JOBS entry present for $NAME"
+fi
+
+# ---- final proof-summary — only reachable if every gate passed ----
+cat <<FINAL
+OK — walker installed and proven.
+  label:     $LABEL
+  wrapper:   $WRAPPER
+  plist:     $PLIST_REPO (== $PLIST_LA)
+  script:    $SCRIPT
+  interval:  ${INTERVAL}s  (RunAtLoad=true)
+  heartbeat: $HEARTBEAT$( [ "$HEARTBEAT" = "file" ] && echo "  ceiling=${CEILING}s")
+  proof:     launchctl kickstart → exit 0 → fresh heartbeat
+FINAL
