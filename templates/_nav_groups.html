@@ -208,24 +208,47 @@
   .nav-groups .mobile-utility-chip .src {
     color: rgba(160,180,210,0.6); font-size: 0.85em;
   }
-  .nav-groups .mobile-lang-row {
-    display: flex; flex-direction: column; gap: 0.35em;
-    padding-top: 0.15em;
+  {# Language picker — collapsed at the bottom of the hamburger panel
+     (Charlie ruling 2026-09-20 late evening). Single row trigger; the
+     picker only opens on explicit tap. #}
+  .nav-groups .mobile-lang-collapse {
+    margin-top: 0.15em;
   }
-  .nav-groups .mobile-lang-current {
-    font-size: 12px; letter-spacing: 0.02em;
+  .nav-groups .mobile-lang-collapse > summary {
+    list-style: none; cursor: pointer;
+    display: flex; align-items: center; gap: 0.4em;
+    padding: 0.55em 0.75em; border-radius: 8px;
+    border: 1px solid rgba(160,180,210,0.22);
+    background: rgba(8,12,20,0.6);
+    color: rgba(220,235,255,0.92);
+    font-size: 14px;
+  }
+  .nav-groups .mobile-lang-collapse > summary::-webkit-details-marker { display: none; }
+  .nav-groups .mobile-lang-collapse[open] > summary {
+    border-color: rgba(34,211,238,0.4);
+    color: var(--cyan, #22d3ee);
+  }
+  .nav-groups .mobile-lang-collapse .mobile-lang-label {
     color: rgba(160,180,210,0.7);
+    letter-spacing: 0.02em;
   }
-  .nav-groups .mobile-lang-current .en {
-    color: rgba(160,180,210,0.5); font-size: 10px; margin-left: 0.4em;
+  .nav-groups .mobile-lang-collapse .mobile-lang-current-inline {
+    color: inherit; font-weight: 500;
   }
+  .nav-groups .mobile-lang-collapse .mobile-lang-caret {
+    margin-left: auto;
+    color: rgba(160,180,210,0.55);
+    font-size: 0.8em;
+  }
+  .nav-groups .mobile-lang-collapse[open] .mobile-lang-caret { content: '▴'; }
   .nav-groups .mobile-lang-menu {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
+    margin-top: 0.5em;
   }
   .nav-groups .mobile-lang-menu a {
     display: flex; align-items: baseline;
-    padding: 0.4em 0.6em; border-radius: 6px;
+    padding: 0.5em 0.65em; border-radius: 6px;
     color: rgba(220,235,255,0.88); text-decoration: none;
     font-size: 13px;
     background: rgba(8,12,20,0.5);
@@ -236,6 +259,7 @@
     border-color: rgba(34,211,238,0.4);
     background: rgba(34,211,238,0.06);
   }
+  .nav-groups .mobile-lang-menu a .native { color: inherit; }
   .nav-groups .mobile-lang-menu a .en {
     color: rgba(160,180,210,0.55); font-size: 10px; margin-left: 0.35em;
   }
@@ -281,13 +305,28 @@
                 style="background:none;border:none;color:rgba(220,235,255,0.7);font-size:20px;cursor:pointer;">×</button>
       </div>
 
-      {# Folded utilities (Charlie ruling 2026-09-20 evening): Search,
-         XRP price chip, and language switcher hidden from the mobile
-         header row and reintroduced here at the top of the hamburger
-         panel. Desktop is unchanged. #}
+      {# Menu order (Charlie ruling 2026-09-20 late evening): nav groups
+         first, then utility rows (Search, price, Language). Language
+         sits at the bottom behind a collapsed row so accidental taps
+         near the top of the panel can't drop the user into the picker
+         with no obvious way back. #}
+      {% for group in NAV_GROUPS %}
+        <h4>{{ group[1] }}</h4>
+        {% for entry in group[2] %}
+          {% set ns = namespace(active=false) %}
+          {% for prefix in entry[2] %}
+            {% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}
+          {% endfor %}
+          <a href="{{ entry[0] }}"
+             class="{{ 'active' if ns.active else '' }} {{ 'starred' if entry[0] == '/amendments' else '' }}">
+            {{ entry[1] }}
+          </a>
+        {% endfor %}
+      {% endfor %}
+
       <div class="mobile-utilities">
         <button type="button" class="mobile-utility-btn"
-                onclick="this.closest('details').open=false; xdSearchOpen();"
+                onclick="this.closest('details.mobile-nav').open=false; xdSearchOpen();"
                 aria-label="{{ _('Search (Cmd+K)') }}">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
             <circle cx="8.5" cy="8.5" r="5.5"/>
@@ -304,38 +343,38 @@
             <span class="src">· self-sourced</span>
           </div>
         {% endif %}
-        <div class="mobile-lang-row" role="group" aria-label="{{ _('Change language') }}">
-          <div class="mobile-lang-current">
-            {%- for entry in language_list if entry[0] == current_locale -%}
-              {{ entry[1] }}
-              <span class="en">{{ entry[2] }}</span>
-            {%- endfor -%}
-          </div>
+
+        {# Language picker — collapsed by default. Trigger row shows
+           "Language: <current native name>". Tap expands the picker.
+           Each option is rendered as `native name · English name`; the
+           English option is always labeled "English" (both native and
+           English name are "English" in language_list, so this is the
+           natural output regardless of current_locale). The word
+           "Language:" in the trigger stays translatable so the row is
+           readable in every locale; only the option labels are held
+           constant. #}
+        <details class="mobile-lang-collapse">
+          <summary aria-label="{{ _('Change language') }}">
+            <span class="mobile-lang-label">{{ _('Language:') }}</span>
+            <span class="mobile-lang-current-inline">
+              {%- for entry in language_list if entry[0] == current_locale -%}
+                {{ entry[1] }}
+              {%- endfor -%}
+            </span>
+            <span class="mobile-lang-caret" aria-hidden="true">▾</span>
+          </summary>
           <div class="mobile-lang-menu">
             {% for entry in language_list %}
               {% set code = entry[0] %}{% set native = entry[1] %}{% set en = entry[2] %}
               <a href="/lang/{{ code }}"
                  class="{{ 'current' if code == current_locale else '' }}">
-                {{ native }}<span class="en">{{ en }}</span>
+                <span class="native">{{ native }}</span>
+                {% if native != en %}<span class="en">· {{ en }}</span>{% endif %}
               </a>
             {% endfor %}
           </div>
-        </div>
+        </details>
       </div>
-
-      {% for group in NAV_GROUPS %}
-        <h4>{{ group[1] }}</h4>
-        {% for entry in group[2] %}
-          {% set ns = namespace(active=false) %}
-          {% for prefix in entry[2] %}
-            {% if (prefix.endswith('$') and _p == prefix[:-1]) or (not prefix.endswith('$') and _p.startswith(prefix)) %}{% set ns.active = true %}{% endif %}
-          {% endfor %}
-          <a href="{{ entry[0] }}"
-             class="{{ 'active' if ns.active else '' }} {{ 'starred' if entry[0] == '/amendments' else '' }}">
-            {{ entry[1] }}
-          </a>
-        {% endfor %}
-      {% endfor %}
     </div>
   </details>
 
