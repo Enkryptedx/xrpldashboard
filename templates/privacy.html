@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('Privacy policy') }} · xrpldashboard</title>
   {% set meta_title = "privacy policy · xrpldashboard" %}
-  {% set meta_description = "No accounts, no analytics tracker, no fingerprinting. The minimum data needed to serve a webpage, and nothing else." %}
+  {% set meta_description = "No accounts, no third-party trackers, no cookies for tracking, no ad networks. First-party cookie-less visit logs — page, country, browser family, a fingerprint that rotates daily; no IP addresses stored — aggregated at /analytics." %}
   {% include "_head_meta.html" %}
 
   <style>
@@ -64,12 +64,12 @@
   <h1>{{ _('Privacy policy') }}</h1>
   <p class="updated">{{ _('Last updated:') }} 2026-07-05</p>
   <p class="lede">
-    {{ _('xrpldashboard is a public website with no accounts, no analytics tracker, and no fingerprinting. We collect the minimum data needed to serve a webpage, and nothing else.') }}
+    {{ _('xrpldashboard is a public website with no accounts, no third-party trackers, no cookies for tracking, and no ad networks. We keep first-party, cookie-less visit logs (page, country, browser family, a fingerprint that rotates daily; no IP addresses stored in our own table) and publish aggregates at') }} <a href="/analytics">/analytics</a>. {{ _('The exact schema is at') }} <a href="/methodology#analytics-bot-filter">/methodology#analytics-bot-filter</a>.
   </p>
 
   <div class="callout">
     <p style="margin: 0;">
-      {{ _('Plain-English summary: standard server logs (IP, browser, page visited) flow through our host\'s infrastructure for security and uptime. One cookie remembers your language choice. That\'s it. No Google Analytics, no Meta pixel, no third-party trackers.') }}
+      {{ _('Plain-English summary: Cloudflare and Render see the IP that connects (needed for transport + abuse defense); we do NOT store that IP in our own table. What we do write per visit — page path, country, a browser-family label, a fingerprint that resets every UTC day — is published in aggregate at /analytics with a live bot filter. One cookie remembers your language choice. That is all. No Google Analytics, no Meta pixel, no third-party trackers, no ad networks.') }}
     </p>
   </div>
 
@@ -84,7 +84,12 @@
     <li>{{ _('Referrer (the previous page that linked here, if any)') }}</li>
   </ul>
   <p>
-    {{ _('We don\'t aggregate this into a user profile, sell it, or share it with marketers. Logs are retained only as long as our hosting provider keeps them, and we use them solely for security and operational debugging.') }}
+    {{ _('We don\'t aggregate this into a user profile, sell it, or share it with marketers. These platform logs are retained only as long as our hosting provider keeps them, and we use them solely for security and operational debugging.') }}
+  </p>
+
+  <p>
+    <strong>{{ _('First-party visit log, kept by us, cookie-less.') }}</strong>
+    {{ _('In addition to the platform logs above, we also write ONE row per HTML page load into a first-party table called') }} <code>page_views</code>. {{ _('That row carries: the page path (or a normalized version — /wallet/&lt;addr&gt; is normalized to /wallet before being written); the country code from CF-IPCountry; a browser-family label (e.g. Chrome, Safari); a visitor fingerprint that hashes the connecting IP together with a salt that ROTATES EVERY UTC DAY (') }}<code>ip_day_hash</code>{{ _('), so the same visitor cannot be linked across days; a referrer host if present; a UTC timestamp; and a machine-classified') }} <code>is_bot</code> {{ _('flag. We do') }} <strong>{{ _('not') }}</strong> {{ _('store raw IP addresses in this table. We publish aggregate counts (page, country, browser family, bot vs human) at') }} <a href="/analytics">/analytics</a>. {{ _('The exact schema and the bot filter are documented at') }} <a href="/methodology#analytics-bot-filter">/methodology#analytics-bot-filter</a>. {{ _('This is what "first-party analytics" means for us: our own table, no third parties, no cookies, cannot be joined to any external database.') }}
   </p>
   <p>
     {{ _('If you visit the language menu and pick a locale, we set a single cookie named') }}
