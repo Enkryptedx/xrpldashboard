@@ -257,6 +257,16 @@
                             font-family: var(--mono);
                             margin-left: 0.4em;
                             letter-spacing: -0.01em; }
+    /* Third-party domain claim — deliberately understated, no green tick.
+       Charlie ruling 2026-09-21: our ✓ means our own two-way proof; a
+       third-party's "verified" flag is NOT that. */
+    .identity-claimed-domain { font-size: 10.5px;
+                               color: var(--text-3);
+                               margin-left: 0.4em; }
+    .identity-claimed-domain a { color: var(--text-3);
+                                 text-decoration: underline dotted;
+                                 text-underline-offset: 2px; }
+    .identity-claimed-domain a:hover { color: var(--text-2); }
     .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
                          flex-wrap: wrap; }
     .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
@@ -1062,10 +1072,27 @@
           {% elif data.self_info and data.self_info.name %}
             <div class="identity-name-row">
               <span class="identity-name">{{ data.self_info.name }}</span>
+              {# Charlie ruling 2026-09-21 Mon PM: ✓ verified means WE
+                 own the proof (curator ran two-way TOML: fetched the
+                 domain's xrp-ledger.toml, confirmed it lists this
+                 address). XRPScan's own `verified: true` field is
+                 NOT our proof — it's their say-so. `verified_via` is
+                 only set on named_accounts.json entries (curator-
+                 verified with a TOML URL); PG account_labels rows
+                 (source=xrpscan) never populate it. If XRPScan
+                 reported a domain we render it as a claim below
+                 with no tick and a stark disclosure. #}
               {% if data.self_info.verified_via %}
                 <a class="identity-verified" href="{{ data.self_info.verified_via }}"
                    target="_blank" rel="noopener noreferrer"
-                   title="{{ _('Identity attested via') }} {{ data.self_info.verified_via }}">✓ {{ _('verified') }}</a>
+                   title="{{ _('Two-way TOML verified — curator fetched') }} {{ data.self_info.verified_via }} {{ _('and confirmed it lists this address.') }}">✓ {{ _('verified') }}</a>
+              {% elif data.self_info.claimed_domain %}
+                <span class="identity-claimed-domain"
+                      title="{{ _('Third-party claim only — we have not independently verified this. The domain is what the label source reports; our own two-way TOML check has not been run.') }}">
+                  {{ _('domain claimed:') }}
+                  <a href="https://{{ data.self_info.claimed_domain }}"
+                     target="_blank" rel="noopener noreferrer">{{ data.self_info.claimed_domain }}</a>
+                </span>
               {% endif %}
               {# Charlie ruling 2026-09-21: /whales and /wallet must show the
                  same badge — tier pill + source citation. wallet_badge is

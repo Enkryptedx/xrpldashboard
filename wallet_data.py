@@ -331,7 +331,19 @@ def _self_info(address):
     the PG account_labels table so the /wallet header shows the same
     label /whales does. Curator paste-ins from xrpscan and derived
     AMM/MPT labels live in PG only. Fail silently if PG is unreachable
-    — the wallet page still renders with all-None labels."""
+    — the wallet page still renders with all-None labels.
+
+    Charlie ruling 2026-09-21 Mon PM (✓ semantics fix): `verified_via`
+    is the URL of OUR OWN two-way TOML verification — the curator
+    fetched the domain's xrp-ledger.toml, confirmed it lists this
+    address, saved the URL. PG account_labels rows (source=xrpscan)
+    inherit XRPScan's `extra.verified=true` claim but we did NOT
+    perform the two-way check ourselves, so `verified_via` MUST be
+    None for those. A separate `claimed_domain` field carries the
+    xrpscan-reported domain so the template can render it as a
+    third-party claim ("XRPScan says: unionchain.ai") without implying
+    we verified anything. 1,174 xrpscan rows were false-positive-✓
+    under the old rule; this fix removes every one."""
     entry = _NAMED.get(address)
     if not entry:
         try:
@@ -342,18 +354,20 @@ def _self_info(address):
                     return {
                         "name": pg_entry.get("name"),
                         "category": pg_entry.get("category"),
-                        # PG rows don't carry a canonical attestation URL;
-                        # extra.domain when present is the closest proxy.
-                        "verified_via": (pg_entry.get("extra") or {}).get("domain"),
+                        # PG rows never carry OUR verification — leave
+                        # verified_via None so the ✓ tick doesn't fire.
+                        "verified_via": None,
+                        "claimed_domain": (pg_entry.get("extra") or {}).get("domain"),
                         "_source": pg_entry.get("source"),
                     }
         except Exception:
             pass
-        return {"name": None, "category": None, "verified_via": None}
+        return {"name": None, "category": None, "verified_via": None, "claimed_domain": None}
     return {
         "name": entry.get("name"),
         "category": entry.get("category"),
         "verified_via": entry.get("verified_via"),
+        "claimed_domain": None,
     }
 
 
