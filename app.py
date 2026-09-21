@@ -1598,6 +1598,38 @@ def _block_ai_crawlers():
 
 
 @app.before_request
+def _session_scraper_block():
+    """Session-scoped scraper block (Charlie ruling 2026-09-21, item 5).
+    In-memory per-worker tracker: one visitor_hash × ≥100 hits × ≤2
+    distinct paths within 2h → 429 for 24h. False-positive guard:
+    hashes that ever fetched a static asset (CSS/JS/font/image) in
+    the window are exempt — real browsers fetch those; scrapers
+    typically don't.
+
+    Runs BEFORE `_agent_tier_fleet_block` so a session-tripped hash
+    gets 429 even if its UA doesn't match a known fleet signature.
+    Runs AFTER `_block_ai_crawlers` so an AI-training UA still 403s
+    first.
+    """
+    try:
+        from session_scraper_tracker import tracker
+    except Exception:
+        return
+    ip = _client_ip()
+    ua = (request.user_agent.string or "")[:300] or None
+    vh = _visitor_hash(ip, ua)
+    if tracker.observe(vh, request.path):
+        return Response(
+            "",
+            status=429,
+            headers={
+                "Retry-After": "86400",
+                "X-Session-Scraper-Block": "1",
+            },
+        )
+
+
+@app.before_request
 def _agent_tier_fleet_block():
     """Fleet-block: when the request UA matches a known fleet fingerprint
     (per agent_tier_rate_limit.fleet_signature), return 429 + Retry-After
