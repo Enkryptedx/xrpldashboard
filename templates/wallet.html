@@ -218,6 +218,16 @@
                                   color: #ddd6fe; }
     .identity-badge-whale .whale-glyph { font-size: 0.95em; color: #a855f7;
                                          transform: translateY(-0.5px); }
+    /* blackhole / zero-key badge (Charlie ruling 2026-09-21): amber
+       so a user notices it, but not red — the account isn't broken,
+       it's just supply-frozen. */
+    .identity-badge-blackhole { color: #fbbf24;
+                                border: 1px solid rgba(245,158,11,0.55);
+                                background: linear-gradient(135deg,
+                                    rgba(245,158,11,0.18) 0%,
+                                    rgba(120,53,15,0.22) 100%); }
+    .identity-badge-blackhole:hover { border-color: rgba(245,158,11,0.85);
+                                      color: #fcd34d; }
     .identity-addr-row { display: flex; align-items: center; gap: 0.55em;
                          flex-wrap: wrap; }
     .identity-addr { font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
@@ -958,7 +968,34 @@
 
       <div class="card identity-card">
         <div class="identity-top">
-          <div class="identity-greeting">{% if data.is_amm %}{{ _('AMM Pool') }}{% elif data.is_vault %}{{ _('Vault Account') }}{% else %}{{ _('Wallet') }}{% endif %}</div>
+          <div class="identity-greeting">
+            {% if data.is_amm %}{{ _('AMM Pool') }}
+            {%- elif data.is_vault %}{{ _('Vault Account') }}
+            {%- elif data.is_zero_account %}{{ _('Zero Account') }}
+            {%- elif data.is_blackholed or data.is_blackholed_via_regular_key %}{{ _('Blackholed Account') }}
+            {%- else %}{{ _('Wallet') }}
+            {%- endif %}
+          </div>
+          {% if data.is_blackholed or data.is_blackholed_via_regular_key or data.is_zero_account %}
+          <div class="identity-badges-row">
+            {% if data.is_zero_account %}
+              <span class="identity-badge identity-badge-blackhole"
+                    title="{{ _('This address is the zero-key AccountID. Anyone with the public zero-key could sign transactions. Not blackholed in the strict sense; useful as a null-sink target.') }}">
+                <span aria-hidden="true">◇</span> {{ _('ZERO-KEY ADDRESS') }}
+              </span>
+            {% elif data.is_blackholed_via_regular_key %}
+              <span class="identity-badge identity-badge-blackhole"
+                    title="{{ _('Master key disabled AND RegularKey set to a well-known blackhole address') }} ({{ data.blackhole_regular_key }}). {{ _('Nobody can sign for this account — supply is frozen.') }}">
+                <span aria-hidden="true">◆</span> {{ _('BLACKHOLED · via RegularKey') }}
+              </span>
+            {% else %}
+              <span class="identity-badge identity-badge-blackhole"
+                    title="{{ _('Master key disabled AND no RegularKey set — nobody can sign for this account. Supply is frozen; the account cannot send.') }}">
+                <span aria-hidden="true">◆</span> {{ _('BLACKHOLED') }}
+              </span>
+            {% endif %}
+          </div>
+          {% endif %}
           {% if data.whale_flag %}
           <div class="identity-badges-row">
             {# "100,000 XRP" mirrors WHALE_XRP_THRESHOLD, "7 days" mirrors WHALE_WINDOW_DAYS; both injected via inject_whale_thresholds #}

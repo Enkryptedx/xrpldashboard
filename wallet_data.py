@@ -71,6 +71,15 @@ TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
 CACHE_TTL = int(os.environ.get("WALLET_CACHE_TTL", "300"))
 MAX_TX_PAGES = 5
 TX_PAGE_LIMIT = 200
+# Adaptive cap for exchange-scale accounts (Charlie ruling 2026-09-21
+# Mon PM). Wallets doing >= EXCHANGE_TX_RATE_THRESHOLD_PER_DAY tx/day
+# get pages fetched up to HIGH_RATE_MAX_TX_PAGES (or 24h of history,
+# whichever comes first). 20k tx max = 100 pages × 200/page. Measured
+# cold render on Lenovo 2026-09-21: 8.1s for Bitstamp @ 100 pages, vs
+# 2.6s at 5 pages — with 5-min in-process cache the amortized user
+# cost is negligible.
+EXCHANGE_TX_RATE_THRESHOLD_PER_DAY = 500
+HIGH_RATE_MAX_TX_PAGES = 100
 LOOKBACK_DAYS = 30
 TOP_N_COUNTERPARTIES = 8
 
@@ -825,21 +834,88 @@ def _enrich_lp_holdings(holdings_lp, fallback_sink=None):
 
 
 def _fetch_account_tx(fetcher, address, max_pages=MAX_TX_PAGES):
-    """Paginated fetch of recent txs. Returns list of tx envelopes."""
+    """Paginated fetch of recent txs. Returns list of tx envelopes.
+
+    Adaptive cap (Charlie ruling 2026-09-21 Mon PM): busy wallets get
+    more pages so the label doesn't lie for exchange-scale accounts.
+    After the first page we peek at the tx-rate; if the estimated
+    daily rate exceeds `EXCHANGE_TX_RATE_THRESHOLD_PER_DAY`, we allow
+    up to `HIGH_RATE_MAX_TX_PAGES` pages (20k tx) or 24h of history,
+    whichever comes first. Quiet wallets still stop at 1 page as
+    early as page 2 has no marker. Median cost measured on Lenovo
+    2026-09-21: 5→100 pages on Bitstamp = 2.6s → 8.1s cold render;
+    quiet wallets unchanged (~0.6s).
+    """
     txs = []
     marker = None
-    for _ in range(max_pages):
+    # Only allow adaptive expansion when the caller passed the default
+    # MAX_TX_PAGES; specialized callers (AMM/vault pinned to 1 page)
+    # keep their pinned cap. This prevents the exchange-scale branch
+    # from stalling AMM renders on a 20k-tx page walk.
+    allow_adaptive = (max_pages == MAX_TX_PAGES)
+    hard_cap = max_pages
+    now_ripple = int(time.time()) - RIPPLE_EPOCH
+    for page_idx in range(HIGH_RATE_MAX_TX_PAGES):
+        if page_idx >= hard_cap:
+            break
         kwargs = {"account": address, "limit": TX_PAGE_LIMIT, "forward": False}
         if marker is not None:
             kwargs["marker"] = marker
         result = _safe_request(fetcher, AccountTx(**kwargs))
         if not result:
             break
-        txs.extend(result.get("transactions", []) or [])
+        page_txs = result.get("transactions", []) or []
+        txs.extend(page_txs)
         marker = result.get("marker")
         if not marker:
             break
+        # After page 1, re-decide the hard cap based on rate.
+        if page_idx == 0 and page_txs and allow_adaptive:
+            rate_per_day = _estimated_tx_rate_per_day(page_txs)
+            if rate_per_day is not None and rate_per_day >= EXCHANGE_TX_RATE_THRESHOLD_PER_DAY:
+                hard_cap = HIGH_RATE_MAX_TX_PAGES
+        # 24h coverage stop: if the oldest tx we've fetched is already
+        # > 24h old, we have full daily coverage — no need to page.
+        oldest = _oldest_ripple_ts(txs)
+        if oldest is not None and (now_ripple - oldest) > 86400:
+            break
     return txs
+
+
+def _estimated_tx_rate_per_day(page_txs):
+    """From a single page, estimate the tx-rate/day of the wallet.
+    Returns None if we can't determine (no timestamps)."""
+    if not page_txs or len(page_txs) < 2:
+        return None
+    oldest = None
+    newest = None
+    for tx in page_txs:
+        inner = tx.get("tx") or tx.get("tx_json") or {}
+        u = _ripple_to_unix(inner.get("date"))
+        if u is None:
+            continue
+        if oldest is None or u < oldest:
+            oldest = u
+        if newest is None or u > newest:
+            newest = u
+    if oldest is None or newest is None or newest == oldest:
+        return None
+    span_days = (newest - oldest) / 86400.0
+    if span_days <= 0:
+        return None
+    return len(page_txs) / span_days
+
+
+def _oldest_ripple_ts(txs):
+    oldest = None
+    for tx in txs:
+        inner = tx.get("tx") or tx.get("tx_json") or {}
+        d = inner.get("date")
+        if d is None:
+            continue
+        if oldest is None or int(d) < oldest:
+            oldest = int(d)
+    return oldest
 
 
 def _tx_envelope(tx):
@@ -1431,6 +1507,11 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "is_amm": False,
             "is_vault": False,
             "amm_pair": None,
+            "is_blackholed": False,
+            "is_blackholed_via_regular_key": False,
+            "blackhole_regular_key": None,
+            "is_zero_account": False,
+            "master_disabled": False,
             "balance_xrp": 0.0, "available_xrp": 0.0, "reserved_xrp": 0.0,
             "base_reserve_xrp": BASE_RESERVE_XRP,
             "owner_reserve_xrp": OWNER_RESERVE_XRP,
@@ -1454,6 +1535,38 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         }
     account_data = info.get("account_data", {})
     is_amm, is_vault, amm_pair = _special_account_self_info(main, account_data, address)
+    # Blackhole detection (Charlie ruling 2026-09-21 Mon PM): true
+    # blackhole = master key disabled AND no RegularKey set. Common with
+    # token issuers that want to guarantee no more issuance. The
+    # AccountID=0 zero-account (rrrrrrrrrrrrrrrrrrrrrhoLvTp / rrrrrrr…BZbvji
+    # variants) is a different case — it may have Flags=0 with no key
+    # but its address decodes to the zero AccountID, so anyone with the
+    # canonical zero-key could sign. Flag both, differently.
+    _flags = int(account_data.get("Flags", 0))
+    _regular_key = account_data.get("RegularKey") or None
+    _master_disabled = bool(_flags & 0x00100000)   # lsfDisableMaster
+    is_blackholed = _master_disabled and not _regular_key
+    # Well-known blackhole regular keys (accounts with these RegularKeys
+    # are effectively controlled by nobody because the private keys are
+    # public / mathematically un-derivable). Sourced from XRPL folklore
+    # + issuer TOMLs.
+    _WELL_KNOWN_BLACKHOLE_KEYS = {
+        # ACCID_ZERO = rrrrrrrrrrrrrrrrrrrrrhoLvTp (zero-key)
+        "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+        # ACCID_ONE = rrrrrrrrrrrrrrrrrrrrBZbvji
+        "rrrrrrrrrrrrrrrrrrrrBZbvji",
+        # Bitmap "name" address used by some issuers as a null-key sink
+        "rrrrrrrrrrrrrrrrrNAMEtxvNvQ",
+    }
+    is_blackholed_via_regular_key = (
+        _master_disabled
+        and _regular_key
+        and _regular_key in _WELL_KNOWN_BLACKHOLE_KEYS
+    )
+    # Zero-account itself (its OWN address is one of the well-known
+    # zero-keys). Flag separately — it's not blackholed, it's just an
+    # address nobody controls the key material for.
+    is_zero_account = address in _WELL_KNOWN_BLACKHOLE_KEYS
     balance_drops = int(account_data.get("Balance", "0"))
     owner_count = int(account_data.get("OwnerCount", 0))
     balance_xrp = balance_drops / 1_000_000
@@ -1617,6 +1730,11 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "is_amm": is_amm,
         "is_vault": is_vault,
         "amm_pair": amm_pair,
+        "is_blackholed": is_blackholed,
+        "is_blackholed_via_regular_key": is_blackholed_via_regular_key,
+        "blackhole_regular_key": _regular_key if is_blackholed_via_regular_key else None,
+        "is_zero_account": is_zero_account,
+        "master_disabled": _master_disabled,
         "balance_xrp": balance_xrp,
         "available_xrp": available_xrp,
         "reserved_xrp": reserved_xrp,
@@ -1635,8 +1753,18 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         # buckets in `pulse` reflect the FETCH CAP, not real
         # inactivity. Expose the real span (oldest fetched tx → now)
         # + a cap flag so the template can label honestly.
-        "tx_fetch_cap": MAX_TX_PAGES * TX_PAGE_LIMIT,
-        "tx_fetch_capped": len(txs) >= MAX_TX_PAGES * TX_PAGE_LIMIT,
+        # The effective fetch cap is HIGH_RATE for exchange-scale
+        # wallets, MAX for everyone else — we report the value that
+        # actually applied so the label matches what the user sees.
+        "tx_fetch_cap": (HIGH_RATE_MAX_TX_PAGES * TX_PAGE_LIMIT
+                        if len(txs) > MAX_TX_PAGES * TX_PAGE_LIMIT
+                        else MAX_TX_PAGES * TX_PAGE_LIMIT),
+        "tx_fetch_capped": (
+            len(txs) >= HIGH_RATE_MAX_TX_PAGES * TX_PAGE_LIMIT
+            or (len(txs) >= MAX_TX_PAGES * TX_PAGE_LIMIT
+                and len(txs) < HIGH_RATE_MAX_TX_PAGES * TX_PAGE_LIMIT
+                and (_tx_actual_span_seconds(txs) or 0) < 86400)
+        ),
         "tx_actual_span_days": (_tx_actual_span_seconds(txs) / 86400.0) if _tx_actual_span_seconds(txs) is not None else None,
         "tx_actual_span_label": _tx_actual_span_label(_tx_actual_span_seconds(txs)),
         "last_seen": last_seen,
