@@ -5,6 +5,20 @@
    Active-page highlighting derives from request.path. #}
 {% include "_alive.html" %}
 <style>
+  /* Charlie ruling 2026-09-22 Tue PM (post-6d91177): _alive.html sets
+     `body > * { position: relative; z-index: 1 }` on every direct body
+     child. Templates vary in DOM order — some open `<body>` then
+     include _nav.html (making `.top` a body child), others open
+     `<div class="wrap">` first (nesting `.top` inside `.wrap`). Either
+     way, the nav-groups .menu (z-index:9999) can get trapped behind
+     the page content because it's competing against a sibling at
+     equal or greater paint order. Fix: give `.top` its own stacking
+     context at z-index 100 unconditionally so it wins against `.wrap`
+     when it's a body sibling AND against radar canvases / hero blocks
+     when it's a `.wrap` sibling. The `isolation: isolate` on
+     details.group from 6d91177 stays as a belt-and-braces guard. */
+  .top { position: relative; z-index: 100; }
+
   .nav a.active {
     color: var(--cyan);
     text-shadow: 0 0 10px rgba(34,211,238,0.35);
@@ -44,7 +58,10 @@
        filter/transform) can't leave the dropdown transparent or
        trapped behind content. */
     background-color: #060a14;
-    background: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
+    /* `background-image` (not the `background` shorthand) so the
+       fully-opaque background-color above is preserved — the shorthand
+       silently resets background-color to transparent. */
+    background-image: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
     border: 1px solid rgba(160,180,210,0.22); border-radius: 10px;
     box-shadow: 0 14px 30px rgba(0,0,0,0.55);
     z-index: 9999;

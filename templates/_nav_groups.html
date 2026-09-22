@@ -99,9 +99,13 @@
     position: absolute; top: calc(100% + 6px); left: 0;
     min-width: 200px; padding: 6px 0;
     /* solid + belt-and-braces color so ANY container backdrop-filter
-       or opacity on a parent can't leak through */
+       or opacity on a parent can't leak through. `background-image`
+       (not the `background` shorthand) so the fully-opaque
+       background-color above is preserved — the shorthand form
+       silently resets background-color to transparent, which was the
+       "still transparent after 6d91177" report on 2026-09-22 Tue. */
     background-color: #060a14;
-    background: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
+    background-image: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
     border: 1px solid rgba(160,180,210,0.22); border-radius: 8px;
     box-shadow: 0 14px 30px rgba(0,0,0,0.65);
     /* very high z-index so page-level content with its own
