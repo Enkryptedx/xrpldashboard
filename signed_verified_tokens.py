@@ -348,13 +348,26 @@ RECEIPT_PUBKEY_PEM_PATH = os.path.join(HERE, "receipt_pubkey.pem")
 RECEIPT_DOMAIN_SEPARATOR = b"xrpldashboard/receipt/v1"
 RECEIPT_SEP_BYTE = b"\x00"
 
-# Fields written by the sig-service that must be stripped from the
-# envelope body before recomputing the canonical hash.
-_SIG_BLOCK_FIELDS = (
+# Signature fields that MUST be present on a signed envelope (after
+# normalising the nested `signature` object to flat top-level).
+_REQUIRED_SIG_FIELDS = (
     "signature_ed25519_hex",
     "signing_key_fingerprint",
     "domain_separator",
     "signed_at_utc",
+)
+
+# Fields that must be STRIPPED from the envelope body before recomputing
+# the canonical hash. Includes the required sig fields, the nested
+# `signature` container itself, and the memoised `canonical_hash_hex` —
+# the signed canonical hash is computed over the pure envelope body only.
+_STRIP_FROM_CANONICAL = (
+    "signature_ed25519_hex",
+    "signing_key_fingerprint",
+    "domain_separator",
+    "signed_at_utc",
+    "signature",
+    "canonical_hash_hex",
 )
 
 
@@ -383,13 +396,29 @@ def verify_envelope(signed: dict, pubkey_pem_path: str = RECEIPT_PUBKEY_PEM_PATH
     signature over the domain-separated hash bytes using the receipt
     pubkey, cross-checks the fingerprint.
 
+    Accepts BOTH wire formats:
+      (a) nested `signature: {signature_ed25519_hex, signing_key_fingerprint,
+          domain_separator, signed_at_utc}` (the ACTUAL published shape at
+          /.well-known/verified-tokens.json — write_signed_to_disk +
+          db.write_signed_verified_tokens both store this shape).
+      (b) flat top-level signature_ed25519_hex etc. (internal in-memory
+          shape from sig-service round-trip in tests).
+
     Returns (ok, issues). issues is empty on success.
     """
     from cryptography.exceptions import InvalidSignature
     issues: list[str] = []
 
-    # 1) Required signature fields present
-    for f in _SIG_BLOCK_FIELDS:
+    # Normalise to flat: promote nested signature block to top-level for
+    # the rest of the verification path.
+    if "signature" in signed and isinstance(signed["signature"], dict):
+        sig_nested = signed["signature"]
+        signed = dict(signed)
+        for k, v in sig_nested.items():
+            signed.setdefault(k, v)
+
+    # 1) Required signature fields present (after nested→flat normalisation)
+    for f in _REQUIRED_SIG_FIELDS:
         if f not in signed:
             issues.append(f"missing signature field: {f}")
     if issues:
@@ -403,7 +432,7 @@ def verify_envelope(signed: dict, pubkey_pem_path: str = RECEIPT_PUBKEY_PEM_PATH
         )
 
     # 3) Recompute canonical hash from stripped envelope body
-    body = {k: v for k, v in signed.items() if k not in _SIG_BLOCK_FIELDS}
+    body = {k: v for k, v in signed.items() if k not in _STRIP_FROM_CANONICAL}
     canon_hex = canonical_hash_hex(body)
 
     # 4) Load receipt pubkey + verify fingerprint

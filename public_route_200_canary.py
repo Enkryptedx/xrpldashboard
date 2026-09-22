@@ -101,6 +101,11 @@ ROUTES: list[tuple] = [
     ("/.well-known/snapshots/receipt_pubkey.pem", 100,   "PUBLIC KEY"),
     ("/.well-known/snapshots/receipt_pubkey.json", 200,  "Ed25519"),
     ("/.well-known/anchors.json",         100,   None),
+    # Signed verified-tokens manifest (env-flipped 2026-09-22 Tue evening).
+    # 71 rows, ~50KB. Content check on 'xrpldashboard/verified-tokens/v1'
+    # catches route regressions AND schema drift together — if the walker
+    # ever writes a wrong signing_domain, this fails.
+    ("/.well-known/verified-tokens.json", 8000,  "xrpldashboard/verified-tokens/v1"),
     # /check.json with a known-good address (Ripple's genesis cold wallet)
     ("/check.json?q=rrrrrrrrrrrrrrrrrrrrrhoLvTp", 200,   "kind"),
 ]

@@ -8988,6 +8988,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 ## Integrity and verification
 - Signed snapshot chain: [{SITE_URL}/.well-known/snapshots/chain.json]({SITE_URL}/.well-known/snapshots/chain.json) — daily Ed25519-signed database snapshots, chain-linked.
 - Snapshot public key: [{SITE_URL}/.well-known/snapshots/pubkey.pem]({SITE_URL}/.well-known/snapshots/pubkey.pem) — pin this for verification. Machine-friendly JSON equivalent (hex + base64 fields, same fingerprint) at [{SITE_URL}/.well-known/snapshots/pubkey.json]({SITE_URL}/.well-known/snapshots/pubkey.json) — added 2026-09-05 for clients that choke on `application/x-pem-file`.
+- Verified-tokens manifest: [{SITE_URL}/.well-known/verified-tokens.json]({SITE_URL}/.well-known/verified-tokens.json) — hourly Ed25519-signed list of every (ticker, currency_hex, canonical_issuer) pair with a curator-confirmed provenance claim on XRPL. Signed with the SEPARATE receipt key at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03), domain-separator `xrpldashboard/receipt/v1`, envelope schema `xrpldashboard/verified-tokens/v1`. Each row carries `tier` (verified / self-described / labeled / bare / unknown / meme_name / informational / umbrella) resolved live from the site registry — matches what the site displays. Verify recipe: canonical_hash = sha256(canonical_json(envelope minus `signature` and `canonical_hash_hex`)); check Ed25519(signature.signature_ed25519_hex, DOMAIN_SEP + 0x00 + bytes.fromhex(canonical_hash)).
 - Machine-readable anchor index: [{SITE_URL}/.well-known/anchors.json]({SITE_URL}/.well-known/anchors.json) — every anchor tx with tx hash, ledger index, close time, chain_root, memo, explorer URLs, and a chain.json cross-check (`roots_match: true|false`). Added 2026-09-05.
 - On-ledger anchor of the snapshot chain (since 2026-08-07): each daily `chain_root` is additionally committed inside an XRPL Payment memo from anchor account `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` to ops account `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd`. First anchor tx: `01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8` at ledger 106140698 (2026-08-07 21:49:32 UTC). Cadence is weekly, manual today; language upgrades when automation lands. Memo format v1 (namespace-in-MemoData) and verifier rules (including the `.strip()` rule for wallet-appended newlines) documented at [{SITE_URL}/methodology#signed-snapshots-xrpl-anchor]({SITE_URL}/methodology#signed-snapshots-xrpl-anchor).
 - Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
@@ -9079,6 +9080,20 @@ _AGENTS_JSON = {
         "signed_snapshot_chain": f"{SITE_URL}/.well-known/snapshots/chain.json",
         "signed_snapshot_pubkey": f"{SITE_URL}/.well-known/snapshots/pubkey.pem",
         "signed_snapshot_pubkey_json": f"{SITE_URL}/.well-known/snapshots/pubkey.json",
+        "verified_tokens_manifest": f"{SITE_URL}/.well-known/verified-tokens.json",
+        "verified_tokens_receipt_pubkey": f"{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem",
+        "verified_tokens_receipt_pubkey_json": f"{SITE_URL}/.well-known/snapshots/receipt_pubkey.json",
+        "verified_tokens_domain_separator": "xrpldashboard/receipt/v1",
+        "verified_tokens_verify_recipe": (
+            "1) GET the manifest. 2) GET the receipt_pubkey.pem. "
+            "3) Compute canonical hash = sha256 over JSON.dumps(envelope minus "
+            "['signature','canonical_hash_hex'], sort_keys=True, "
+            "separators=(',',':')). 4) Verify Ed25519(signature.signature_ed25519_hex, "
+            "b'xrpldashboard/receipt/v1' + 0x00 + bytes.fromhex(canonical_hash)) "
+            "with the pubkey. 5) Cross-check signature.signing_key_fingerprint == "
+            "sha256(pubkey_raw)[:8] as XX:XX:XX:XX:XX:XX:XX:XX (currently "
+            "A4:0F:B1:0A:9D:33:64:03)."
+        ),
         "onchain_anchors_json": f"{SITE_URL}/.well-known/anchors.json",
         "signed_snapshot_xrpl_anchor": {
             "anchor_account": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
