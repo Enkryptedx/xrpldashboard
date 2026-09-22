@@ -1806,6 +1806,14 @@ def _log_page_view(response):
         if ip and ip in _ANALYTICS_EXCLUDED_IPS:
             return response
         ua = (request.user_agent.string or "")[:300] or None
+        # Charlie ruling 2026-09-22 Tue AM: skip our own test_client
+        # self-probes at ingest — they show up as `Werkzeug/<ver>` and
+        # inflate signed-surface counts in the daily report (yesterday
+        # 121 of 122 /.well-known/registry pulls were Werkzeug). Any
+        # walker/canary using app.test_client() will match this
+        # prefix; real reader UAs never start with "Werkzeug/".
+        if ua and ua.startswith("Werkzeug/"):
+            return response
         ref = (request.referrer or "")[:300] or None
         country = request.headers.get("CF-IPCountry") \
             or request.headers.get("X-Vercel-IP-Country") \
@@ -2381,16 +2389,21 @@ def index():
     # Charlie ruling 2026-09-22 Tue AM: homepage cold-render was ~4.8s
     # (cold gunicorn worker aggregating several PG + XRPL summaries at
     # request time). homepage_summary_walker pre-renders the body
-    # every 5 min; check PG first, serve sub-ms if fresh (<30 min),
-    # fall through to inline render otherwise. Same shape as
-    # /whales, /wallet, /nfts.
+    # every 5 min PER LOCALE (Brazil is our #2 audience — one cached
+    # English body served to a `pt` reader would be a wrong-language
+    # regression); route reads by resolved locale. Serve sub-ms if
+    # fresh (<30 min); fall through to inline render otherwise.
     try:
-        body_html, age_s, gen_ms = db.read_homepage_summary()
+        from i18n import select_locale
+        loc = select_locale()
+        body_html, age_s, gen_ms = db.read_homepage_summary(loc)
         if body_html and age_s is not None and age_s < 30 * 60:
             from flask import make_response
             resp = make_response(body_html)
             resp.headers["Content-Type"] = "text/html; charset=utf-8"
-            resp.headers["X-Homepage-Cache"] = f"homepage_summary age={int(age_s)}s gen_ms={gen_ms}"
+            resp.headers["X-Homepage-Cache"] = (
+                f"homepage_summary locale={loc} age={int(age_s)}s gen_ms={gen_ms}"
+            )
             return resp
     except Exception:
         pass

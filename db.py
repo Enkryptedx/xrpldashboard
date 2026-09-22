@@ -7370,13 +7370,17 @@ def read_whales_summary_cell(tier: str, filter_type: str) -> tuple[str | None, f
         return None, None
 
 
-def read_homepage_summary() -> tuple[str | None, float | None, int | None]:
+def read_homepage_summary(locale: str) -> tuple[str | None, float | None, int | None]:
     """Return (body_html, age_seconds, gen_ms) for the pre-rendered `/`
-    body from `homepage_summary`, or (None, None, None) when no row
-    exists yet. Sub-ms PK read, powers the sub-2s cold-visitor render
-    for the homepage (Charlie ruling 2026-09-22 Tue AM after the
-    render-alert audit surfaced a 4.8s cold render on `/`)."""
-    if not pg_available():
+    body from `homepage_summary` for the given locale, or (None,None,None)
+    if no row exists yet. Sub-ms PK read.
+
+    Charlie ruling 2026-09-22 Tue AM: Brazil is our #2 audience —
+    serving one cached English body to a `pt` reader is a
+    wrong-language regression. The walker renders once per supported
+    locale; this reader-facing helper is called with the resolved
+    request locale so the served body matches the reader's language."""
+    if not pg_available() or not locale:
         return None, None, None
     try:
         with pg_connect() as conn:
@@ -7385,7 +7389,8 @@ def read_homepage_summary() -> tuple[str | None, float | None, int | None]:
                     "SELECT body_html, "
                     "       EXTRACT(EPOCH FROM (now() - computed_at))::float, "
                     "       gen_ms "
-                    "FROM homepage_summary WHERE id = 1"
+                    "FROM homepage_summary WHERE locale = %s",
+                    (locale,),
                 )
                 row = cur.fetchone()
                 if not row:
