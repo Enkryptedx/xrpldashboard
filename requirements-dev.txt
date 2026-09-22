@@ -3,3 +3,8 @@
 -r requirements.txt
 pytest==9.0.3
 playwright==1.55.0
+# Research-only: rwa_nav_transparency_walker (env-gated OFF by default).
+# Kept in requirements-dev because the walker is research; not run by
+# any prod job until Charlie flips RWA_NAV_TRANSPARENCY_ENABLED after
+# three clean cycles.
+pypdf>=6.0.0

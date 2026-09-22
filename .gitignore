@@ -174,3 +174,4 @@ tmp/
 # keeps any accidental in-repo copy from being tracked.
 mac_heartbeat_url
 nav_screenshots/
+rwa_nav_transparency_cache/
