@@ -208,17 +208,113 @@ def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
     }
 
 
+def _ticker_from_hex(currency_hex: str) -> str:
+    """Decode an XRPL currency code to a human ticker. 3-char ASCII codes
+    stay as-is; 40-hex codes get ASCII-decoded with null padding stripped.
+    Non-decodable 40-hex codes return the hex itself (uppercased)."""
+    ch = (currency_hex or "").strip().upper()
+    if len(ch) == 3:
+        return ch
+    if len(ch) == 40:
+        try:
+            raw = bytes.fromhex(ch)
+            decoded = raw.rstrip(b"\x00").decode("ascii", errors="strict")
+            # Trim any trailing whitespace / control bytes some issuers pad with.
+            decoded = decoded.strip()
+            return decoded if decoded else ch
+        except (ValueError, UnicodeDecodeError):
+            return ch
+    return ch
+
+
+def _row_from_verified_issuer(currency_hex: str, issuer: str, category: str,
+                              source: str, citation_url: str,
+                              observed_at) -> dict:
+    """Build one envelope row from a token_category_current tier='verified'
+    entry. Single-issuer per row (unlike yaml entries that may aggregate
+    multiple canonical_issuers). Fields match the yaml-derived row shape
+    so verifiers don't branch."""
+    ticker = _ticker_from_hex(currency_hex)
+    return {
+        "ticker": ticker,
+        "currency_hex": currency_hex.upper(),
+        "canonical_issuers": [issuer],
+        "canonical_issuer_known": True,
+        "citation_url": citation_url,
+        "no_official_xrpl_issuer": False,
+        "meme_name": False,
+        "gateway_or_bridge": False,
+        "tier": "verified",  # query filter is WHERE tier='verified'
+        "per_issuer_tier": [{
+            "issuer": issuer,
+            "tier": "verified",
+            "source": source,
+            "citation_url": citation_url,
+        }],
+        "last_reviewed_at": observed_at.isoformat() if observed_at else None,
+        "category": category,
+        "canonical_source": "registry_verified",  # distinguishes from yaml
+    }
+
+
+def _load_verified_issuers_from_registry() -> list:
+    """Fetch every (currency_hex, issuer) currently tier='verified' in
+    token_category_current. Charlie ruling 2026-09-22 Tue 6:56 PM ET:
+    wallets need the full verified-issuer list, not just the 23 famous
+    tickers. Envelope carries both lists deduped by (currency_hex, issuer)."""
+    import db
+    if not db.pg_available():
+        return []
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT currency_hex, issuer, category, source, citation_url,
+                       observed_at
+                  FROM token_category_current
+                 WHERE tier = 'verified'
+                 ORDER BY currency_hex, issuer
+            """)
+            return list(cur.fetchall())
+
+
 def build_envelope(now_utc: dt.datetime | None = None) -> dict:
-    """Assemble the unsigned envelope."""
+    """Assemble the unsigned envelope. Two sources merged:
+    (a) yaml canonical registry (the 23 famous tickers with curator context),
+    (b) token_category_current tier='verified' (the 49 verified issuers —
+        the full wallet-facing verified list). Deduped by (currency_hex,
+        issuer): yaml row wins when both cover the same pair."""
     if now_utc is None:
         now_utc = dt.datetime.now(dt.timezone.utc)
     registry = _load_canonical_registry()
-    tokens = []
+    tokens: list[dict] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    # (a) yaml canonical registry — 23 famous tickers (yaml wins in dedup)
     for ticker, entry in registry.items():
         if ticker.startswith("_") or not isinstance(entry, dict):
             continue
-        tokens.append(_row_for_ticker(ticker, entry, now_utc.isoformat()))
-    tokens.sort(key=lambda r: r["ticker"])
+        row = _row_for_ticker(ticker, entry, now_utc.isoformat())
+        tokens.append(row)
+        for issuer in row.get("canonical_issuers", []) or []:
+            seen_pairs.add((row["currency_hex"].upper(), issuer))
+        # Rows without canonical_issuers (memes, umbrella, informational)
+        # still take their ticker slot; no dedup key.
+
+    # (b) token_category_current tier='verified' — merge those NOT already
+    # covered by the yaml rows above.
+    for currency_hex, issuer, category, source, citation_url, observed_at in \
+            _load_verified_issuers_from_registry():
+        key = (currency_hex.upper(), issuer)
+        if key in seen_pairs:
+            continue
+        tokens.append(_row_from_verified_issuer(
+            currency_hex, issuer, category, source, citation_url, observed_at,
+        ))
+        seen_pairs.add(key)
+
+    # Deterministic order: primary sort by ticker, secondary by issuer
+    # (so multiple rows for the same ticker cluster).
+    tokens.sort(key=lambda r: (r["ticker"], (r.get("canonical_issuers") or [""])[0]))
 
     envelope = {
         "schema_version": SCHEMA_VERSION,
