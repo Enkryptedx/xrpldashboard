@@ -4618,7 +4618,13 @@ def rwa():
          "reason": "Wallet sets Domain to franklinresources.com but no "
                    "xrp-ledger.toml exists at that host — vanity-domain spoof. "
                    "No on-XRPL Franklin Templeton attestation chain published."},
-        {"name": "Archax", "status": "pending",
+        # Charlie ruling 2026-09-21 Mon PM: every pending row carries a
+        # `since` date so the >30-day queue-freshness rule can fire. If
+        # nothing on our side is blocking after 30d, the row is a
+        # tracking gap, not a data fact. Dates below are when the row
+        # was created OR last re-checked with a substantive external
+        # attempt (TOML probe / press-coverage validation).
+        {"name": "Archax", "status": "pending", "since": "2026-08-08",
          "reason": "Archax is a real institutional broker (archax.com). "
                    "Re-checked 2026-08-08 after CoinDesk cited a $55.4M "
                    "position via RWA.xyz aggregation — that figure is a "
@@ -4628,7 +4634,7 @@ def rwa():
                    "issuer wallet appears in our own dataset. Promote pending "
                    "an accessible xrp-ledger.toml and a verifiable issuer "
                    "wallet."},
-        {"name": "Aviva Investors", "status": "pending",
+        {"name": "Aviva Investors", "status": "pending", "since": "2026-07-15",
          "reason": "Aviva Investors US Dollar Liquidity Fund MPT "
                    "(064D94DE…F95EA90A, issuer r9o37ZXw…mHmr2) declares "
                    "'Aviva Investors Liquidity Funds plc' via on-chain MPT "
@@ -4639,6 +4645,7 @@ def rwa():
                    "verified /rwa tier until Aviva publishes a TOML pinning "
                    "the issuer address."},
         {"name": "Societe Generale (SG-FORGE)", "status": "pending",
+         "since": "2026-08-07",
          "reason": "CoinDesk (2026-08-07) cites RWA.xyz aggregating ~$11.6M "
                    "of Societe Generale tokenized assets on XRPL — a "
                    "third-party estimate we cannot restate as our own. Checked "
@@ -4647,7 +4654,7 @@ def rwa():
                    "trust-line issuer wallet appears in our own dataset. "
                    "Promote pending an accessible TOML and a verifiable "
                    "issuer wallet."},
-        {"name": "Justoken (JMWH)", "status": "pending",
+        {"name": "Justoken (JMWH)", "status": "pending", "since": "2026-06-20",
          "reason": "Real project with legitimate press coverage (YPF Luz energy "
                    "partnership, tokenized-energy claims via the JMWH token). "
                    "However the issuer wallet r976xbKc6om7WYTFwZHByvxnYFi1y5hJXH "

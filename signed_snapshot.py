@@ -873,8 +873,26 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
                         and p.get("amm_account") in rwa_pool_addresses
                         and p.get("tvl_status") in ("exact", "estimated")
                     )
+                    # Legacy field kept for chain continuity (schema v3+
+                    # leaves carry this name). Value is AMM pool TVL, not
+                    # asset AUM.
                     metrics.append({
                         "name": "rwa_total_aum_usd",
+                        "value": round(rwa_tvl, 2),
+                        "unit": "usd",
+                        "source": "amm_ranked.json (rwa_pool_attribution cross-ref)",
+                        "deprecated": "Legacy name kept for chain continuity. "
+                                      "Same value as rwa_amm_attributed_tvl_usd. "
+                                      "Prefer the honest name in downstream code.",
+                    })
+                    # Charlie ruling 2026-09-21 Mon PM / shipped in v5 leaf
+                    # 2026-09-23: honest-named metric — same value, correct
+                    # name. Downstream code (/changes, /rwa methodology)
+                    # migrates to this over time. rwa_onledger_supply_usd
+                    # (= issuer supply × cited NAV) lands separately once
+                    # each verified family has a cited primary-source NAV.
+                    metrics.append({
+                        "name": "rwa_amm_attributed_tvl_usd",
                         "value": round(rwa_tvl, 2),
                         "unit": "usd",
                         "source": "amm_ranked.json (rwa_pool_attribution cross-ref)",
@@ -884,6 +902,14 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
             else:
                 metrics.append({
                     "name": "rwa_total_aum_usd",
+                    "value": 0.0,
+                    "unit": "usd",
+                    "source": "rwa_pool_attribution (no pools attributed)",
+                    "deprecated": "Legacy name kept for chain continuity. "
+                                  "Same value as rwa_amm_attributed_tvl_usd.",
+                })
+                metrics.append({
+                    "name": "rwa_amm_attributed_tvl_usd",
                     "value": 0.0,
                     "unit": "usd",
                     "source": "rwa_pool_attribution (no pools attributed)",
