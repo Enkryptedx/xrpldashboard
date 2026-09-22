@@ -86,13 +86,27 @@
     background: rgba(34,211,238,0.06);
   }
   .nav-groups details.group[open] > summary::after { content: ' ▴'; }
+  .nav-groups details.group {
+    /* isolate so a parent stacking context on any page (e.g.
+       /observatory's .wrap or a filter/transform elsewhere) can't
+       trap the dropdown BEHIND the page content. Charlie ruling
+       2026-09-22 Tue PM after a "dropdowns open transparent on
+       /observatory" report — root cause was the menu rendering
+       under a page section that created a stacking context. */
+    isolation: isolate;
+  }
   .nav-groups details.group .menu {
     position: absolute; top: calc(100% + 6px); left: 0;
     min-width: 200px; padding: 6px 0;
-    background: rgba(8,12,20,0.98);
-    border: 1px solid rgba(160,180,210,0.18); border-radius: 8px;
-    box-shadow: 0 12px 28px rgba(0,0,0,0.55);
-    z-index: 60;
+    /* solid + belt-and-braces color so ANY container backdrop-filter
+       or opacity on a parent can't leak through */
+    background-color: #060a14;
+    background: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
+    border: 1px solid rgba(160,180,210,0.22); border-radius: 8px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+    /* very high z-index so page-level content with its own
+       z-index/transform can't render on top of the open menu */
+    z-index: 9999;
   }
   .nav-groups details.group .menu a {
     display: block; padding: 0.38em 0.95em;
@@ -269,7 +283,10 @@
   {# Desktop: 5 hover/tap groups + pinned amendments star chip. #}
   {% for group in NAV_GROUPS %}
     {% set active_cls = _group_active(group)|trim %}
-    <details class="group">
+    {# data-group=<slug> uses the tuple's internal slug (not the
+       translated label), so the nav_dropdown_screenshot_canary can
+       target "live" reliably across locales. #}
+    <details class="group" data-group="{{ group[0] }}">
       <summary class="{{ active_cls }}">{{ group[1] }}</summary>
       <div class="menu" role="menu">
         {% for entry in group[2] %}

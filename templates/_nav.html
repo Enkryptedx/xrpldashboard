@@ -34,13 +34,20 @@
   }
   .nav .lang-switch summary::-webkit-details-marker { display: none; }
   .nav .lang-switch[open] summary { color: var(--cyan); border-color: rgba(34,211,238,0.4); }
+  .nav .lang-switch { isolation: isolate; }
   .nav .lang-switch .menu {
     position: absolute; top: calc(100% + 6px); right: 0;
     min-width: 160px; padding: 6px 0;
-    background: rgba(8,12,20,0.96);
-    border: 1px solid rgba(160,180,210,0.18); border-radius: 10px;
-    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
-    z-index: 50;
+    /* Charlie ruling 2026-09-22 Tue PM: same fix as the primary
+       nav-groups dropdown — solid background + very high z-index
+       so a page-level stacking context (observatory .wrap, any
+       filter/transform) can't leave the dropdown transparent or
+       trapped behind content. */
+    background-color: #060a14;
+    background: linear-gradient(180deg, rgba(12,18,32,0.995), rgba(8,12,20,0.995));
+    border: 1px solid rgba(160,180,210,0.22); border-radius: 10px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.55);
+    z-index: 9999;
   }
   .nav .lang-switch .menu a {
     display: block; padding: 0.35em 0.85em;
