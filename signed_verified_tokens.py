@@ -92,6 +92,35 @@ def _hex_from_ticker(ticker: str) -> str:
     return ticker
 
 
+def _derive_tier(entry: dict) -> str:
+    """Compute the manifest-scoped tier from the entry's flags. Manifest
+    tier is DIFFERENT from the site-wide 5-tier ladder — it categorises
+    WHY a ticker sits in this list at all:
+      - verified      : has canonical_issuers[] non-empty (real XRPL issuer
+                        proven by curator + citation)
+      - meme_name     : reused name with no backing claim (memecoins)
+      - informational : asset exists natively elsewhere (BTC/ETH/etc.);
+                        included so readers see the honest "we don't
+                        verify what doesn't have an XRPL issuer" note
+      - umbrella      : summary rows (bridges/gateways) that describe a
+                        category rather than a specific ticker
+      - unknown       : registry entry missing enough signals to categorise
+                        — should never happen in prod; audit if it does
+    Charlie ruling 2026-09-22 Tue 5:22 PM ET: every row must carry a
+    tier; walker DERIVES it from flags so the yaml stays DRY.
+    """
+    if entry.get("umbrella"):
+        return "umbrella"
+    if entry.get("meme_name"):
+        return "meme_name"
+    if entry.get("no_official_xrpl_issuer"):
+        return "informational"
+    canonical = entry.get("canonical_issuers") or []
+    if canonical:
+        return "verified"
+    return "unknown"
+
+
 def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
     """Assemble one manifest row. Charlie's schema per row:
     ticker, currency_hex, canonical_issuers[], citation_url,
@@ -119,7 +148,9 @@ def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
         # Falls back to False when the entry doesn't declare it — the
         # curator sets it explicitly during review.
         "gateway_or_bridge": bool(entry.get("gateway_or_bridge")),
-        "tier": entry.get("tier"),
+        # Explicit entry.tier wins if the curator set one; otherwise
+        # derive from flags. Charlie ruling 2026-09-22 Tue 5:22 PM ET.
+        "tier": entry.get("tier") or _derive_tier(entry),
         "last_reviewed_at": entry.get("last_reviewed_at"),
     }
 
@@ -150,6 +181,116 @@ def build_envelope(now_utc: dt.datetime | None = None) -> dict:
 def canonical_hash_hex(envelope: dict) -> str:
     canonical = signed_snapshot._canonical_json(envelope)
     return hashlib.sha256(canonical).hexdigest()
+
+
+# ── Verifier ────────────────────────────────────────────────────────────
+#
+# Charlie ruling 2026-09-22 Tue 5:22 PM ET: the verified-tokens envelope
+# has its own shape (hourly, no leaf/audit_path/chain) so signed_snapshot's
+# verify_envelope isn't a fit. Own verifier below.
+#
+# Contract: the sig-service (sig_service.py) signs
+#     b"xrpldashboard/receipt/v1" + b"\x00" + bytes.fromhex(canonical_hash_hex)
+# using the ed25519 receipt key. Verifier re-derives the canonical hash
+# from the stripped envelope body, checks the signature against the
+# published receipt pubkey, and verifies the fingerprint matches.
+
+RECEIPT_PUBKEY_PEM_PATH = os.path.join(HERE, "receipt_pubkey.pem")
+RECEIPT_DOMAIN_SEPARATOR = b"xrpldashboard/receipt/v1"
+RECEIPT_SEP_BYTE = b"\x00"
+
+# Fields written by the sig-service that must be stripped from the
+# envelope body before recomputing the canonical hash.
+_SIG_BLOCK_FIELDS = (
+    "signature_ed25519_hex",
+    "signing_key_fingerprint",
+    "domain_separator",
+    "signed_at_utc",
+)
+
+
+def _load_receipt_pubkey(pem_path: str = RECEIPT_PUBKEY_PEM_PATH):
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+    with open(pem_path, "rb") as f:
+        return load_pem_public_key(f.read())
+
+
+def _fingerprint_from_pubkey(pub) -> str:
+    """Match sig_service.py's fingerprint format: first 8 bytes of sha256
+    of raw public key, colon-separated XX:XX:XX:XX:XX:XX:XX:XX."""
+    from cryptography.hazmat.primitives import serialization
+    raw = pub.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    digest = hashlib.sha256(raw).hexdigest()[:16].upper()
+    return ":".join(digest[i:i + 2] for i in range(0, 16, 2))
+
+
+def verify_envelope(signed: dict, pubkey_pem_path: str = RECEIPT_PUBKEY_PEM_PATH
+                    ) -> tuple[bool, list[str]]:
+    """Independent verification path for a signed verified-tokens envelope.
+    Re-derives canonical hash from the stripped body, verifies ed25519
+    signature over the domain-separated hash bytes using the receipt
+    pubkey, cross-checks the fingerprint.
+
+    Returns (ok, issues). issues is empty on success.
+    """
+    from cryptography.exceptions import InvalidSignature
+    issues: list[str] = []
+
+    # 1) Required signature fields present
+    for f in _SIG_BLOCK_FIELDS:
+        if f not in signed:
+            issues.append(f"missing signature field: {f}")
+    if issues:
+        return False, issues
+
+    # 2) Domain separator matches
+    if signed["domain_separator"] != RECEIPT_DOMAIN_SEPARATOR.decode():
+        issues.append(
+            f"domain_separator mismatch (file={signed['domain_separator']!r}, "
+            f"expected={RECEIPT_DOMAIN_SEPARATOR.decode()!r})"
+        )
+
+    # 3) Recompute canonical hash from stripped envelope body
+    body = {k: v for k, v in signed.items() if k not in _SIG_BLOCK_FIELDS}
+    canon_hex = canonical_hash_hex(body)
+
+    # 4) Load receipt pubkey + verify fingerprint
+    try:
+        pub = _load_receipt_pubkey(pubkey_pem_path)
+    except Exception as e:
+        return False, [f"cannot load receipt pubkey at {pubkey_pem_path}: {e}"]
+    local_fp = _fingerprint_from_pubkey(pub)
+    if local_fp != signed["signing_key_fingerprint"]:
+        issues.append(
+            f"pubkey fingerprint mismatch (file={signed['signing_key_fingerprint']}, "
+            f"local={local_fp})"
+        )
+
+    # 5) Verify signature over domain-separator + 0x00 + hash_bytes
+    hash_bytes = bytes.fromhex(canon_hex)
+    signed_input = RECEIPT_DOMAIN_SEPARATOR + RECEIPT_SEP_BYTE + hash_bytes
+    try:
+        sig_bytes = bytes.fromhex(signed["signature_ed25519_hex"])
+    except ValueError as e:
+        return False, [f"signature_ed25519_hex is not valid hex: {e}"]
+    try:
+        pub.verify(sig_bytes, signed_input)
+    except InvalidSignature:
+        issues.append("Ed25519 signature did NOT verify against receipt pubkey")
+
+    # 6) Envelope shape sanity
+    for f in ("schema_version", "signing_domain", "snapshot_hour_utc",
+              "envelope_built_at_utc", "schema_note", "tokens"):
+        if f not in signed:
+            issues.append(f"envelope missing field: {f}")
+    if signed.get("signing_domain") != SIGNING_DOMAIN:
+        issues.append(f"signing_domain mismatch (file={signed.get('signing_domain')}, "
+                      f"expected={SIGNING_DOMAIN})")
+
+    return not issues, issues
 
 
 def write_signed_to_disk(signed_envelope: dict) -> str:
