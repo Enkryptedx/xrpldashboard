@@ -4415,9 +4415,13 @@ def about():
         if db.pg_available():
             with db.pg_connect() as conn:
                 with conn.cursor() as cur:
+                    # Count both 'verified' (strict two-way TOML) and
+                    # 'labeled' (curator-labeled with citation) — /about's
+                    # tally represents the attested-families surface, not
+                    # only the strict verified band.
                     cur.execute(
                         "SELECT COUNT(*) FROM rwa_family "
-                        "WHERE attestation_level = 'verified'"
+                        "WHERE attestation_level IN ('verified','labeled')"
                     )
                     rwa_family_count = cur.fetchone()[0]
     except Exception:
@@ -4540,6 +4544,8 @@ def rwa():
                     cur.execute("""
                         SELECT f.family_slug, f.family_name, f.description,
                                f.external_url, f.attestation_level,
+                               f.attestation_citation,
+                               f.attestation_verified_at,
                                COALESCE(
                                  array_agg(p.pool_address)
                                    FILTER (WHERE p.pool_address IS NOT NULL),
@@ -4549,7 +4555,8 @@ def rwa():
                      LEFT JOIN rwa_pool_attribution p
                             ON f.family_slug = p.family_slug
                       GROUP BY f.family_slug, f.family_name, f.description,
-                               f.external_url, f.attestation_level
+                               f.external_url, f.attestation_level,
+                               f.attestation_citation, f.attestation_verified_at
                       ORDER BY array_length(array_agg(p.pool_address), 1)
                                  DESC NULLS LAST,
                                f.family_name
@@ -4561,7 +4568,12 @@ def rwa():
                             "description": row[2],
                             "external_url": row[3],
                             "attestation_level": row[4],
-                            "pool_addresses": list(row[5] or []),
+                            "attestation_citation": row[5],
+                            "attestation_verified_at": (
+                                row[6].strftime("%Y-%m-%d")
+                                if row[6] else None
+                            ),
+                            "pool_addresses": list(row[7] or []),
                             "pool_details": [],
                             "total_tvl_usd": 0.0,
                             "tokens": [],
@@ -4615,12 +4627,29 @@ def rwa():
                     tokens.add(disp)
         family["tokens"] = sorted(tokens)
 
-    verified_families = [
+    # Charlie 2026-09-22 Tue PM: after the two-way TOML verification
+    # sweep, 'verified' means the family's canonical domain pins the
+    # issuer via xrp-ledger.toml AND our two-way verifier confirmed it.
+    # As of tonight, zero families hold that standard — Ondo (no XRPL
+    # issuance), OpenEden (toml 404), Midas (toml 403). All three
+    # dropped to 'labeled' with a citation. The /rwa section still
+    # surfaces them because they carry real on-XRPL activity we can
+    # PROVE (pool + AMM curator flag), just not two-way-domain-attested.
+    #
+    # Display totals count 'verified' + 'labeled' families together (any
+    # family with a citation-based curator flag). A separate strict
+    # counter (verified_strict_count) counts only two-way-attested rows.
+    attested_families = [
+        f for f in families
+        if f["attestation_level"] in ("verified", "labeled")
+    ]
+    verified_strict_families = [
         f for f in families if f["attestation_level"] == "verified"
     ]
-    total_family_count = len(verified_families)
-    total_pool_count = sum(len(f["pool_addresses"]) for f in verified_families)
-    total_tvl = sum(f["total_tvl_usd"] for f in verified_families)
+    total_family_count = len(attested_families)
+    verified_strict_count = len(verified_strict_families)
+    total_pool_count = sum(len(f["pool_addresses"]) for f in attested_families)
+    total_tvl = sum(f["total_tvl_usd"] for f in attested_families)
 
     snap_ts = ranked_meta.get("snapshot_ts") if isinstance(ranked_meta, dict) else None
     snapshot_age = (
@@ -4640,7 +4669,8 @@ def rwa():
          "reason": "Real treasury-management software company at gtreasury.com "
                    "but no XRPL tokenization announcement. Suspected brand "
                    "spoof."},
-        # Ondo Finance moved to verified families (TOML chain closed at ondo.finance).
+        # Ondo Finance sits in the attested-families surface as 'labeled':
+        # no on-XRPL issuance to bind a two-way TOML citation to (2026-09-22).
         {"name": "Franklin Templeton (sgBENJI)", "status": "excluded",
          "reason": "Wallet sets Domain to franklinresources.com but no "
                    "xrp-ledger.toml exists at that host — vanity-domain spoof. "
@@ -4693,11 +4723,12 @@ def rwa():
 
     return render_template(
         "rwa.html",
-        families=verified_families,
+        families=attested_families,
         mpt_attested=mpt_attested,
         exclude_list=exclude_list,
         total_pool_count=total_pool_count,
         total_family_count=total_family_count,
+        verified_strict_count=verified_strict_count,
         total_tvl=total_tvl,
         snapshot_age=snapshot_age,
         curation_last_updated=curation_last_updated,

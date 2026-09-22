@@ -470,7 +470,17 @@ CREATE TABLE IF NOT EXISTS rwa_family (
     description        TEXT,
     external_url       TEXT,
     attestation_level  TEXT NOT NULL
-        CHECK (attestation_level IN ('verified','inferred','preliminary')),
+        CHECK (attestation_level IN ('verified','labeled','inferred','preliminary')),
+    -- Charlie 2026-09-22 Tue PM: 'labeled' is the honest downgrade when
+    -- two-way TOML verification fails. attestation_citation records the
+    -- specific reason (e.g. "toml_http_404" or "no XRPL issuer attributed")
+    -- so the /rwa card can render it under the pill. Populated by
+    -- scripts/verify_rwa_families.py (one-shot) and, later, by a walker
+    -- that re-verifies daily and demotes to 'labeled' when verification
+    -- lapses (queued).
+    attestation_citation      TEXT,
+    attestation_verified_at   TIMESTAMPTZ,
+    attestation_check_error   TEXT,
     created_at         TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS rwa_pool_attribution (
@@ -3258,12 +3268,14 @@ def read_rwa_families():
             cur.execute("""
                 SELECT f.family_slug, f.family_name, f.description,
                        f.external_url, f.attestation_level,
+                       f.attestation_citation, f.attestation_verified_at,
                        COUNT(p.pool_address) AS pool_count
                   FROM rwa_family f
              LEFT JOIN rwa_pool_attribution p
                     ON f.family_slug = p.family_slug
               GROUP BY f.family_slug, f.family_name, f.description,
-                       f.external_url, f.attestation_level
+                       f.external_url, f.attestation_level,
+                       f.attestation_citation, f.attestation_verified_at
               ORDER BY pool_count DESC NULLS LAST, f.family_name
             """)
             return [
@@ -3273,7 +3285,9 @@ def read_rwa_families():
                     "description": r[2],
                     "external_url": r[3],
                     "attestation_level": r[4],
-                    "pool_count": int(r[5] or 0),
+                    "attestation_citation": r[5],
+                    "attestation_verified_at": r[6],
+                    "pool_count": int(r[7] or 0),
                 }
                 for r in cur.fetchall()
             ]

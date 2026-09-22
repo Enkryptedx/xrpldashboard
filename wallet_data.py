@@ -400,6 +400,88 @@ def _wallet_badge(address):
         return None
 
 
+def _rwa_family_attribution(address):
+    """Return the RWA family attribution for `address` — the family this
+    account is attributed to, plus the family's attestation_level +
+    citation. None if the address has no attribution.
+
+    Charlie ruling 2026-09-22 Tue PM (page and wallet must agree): when
+    /rwa marks a family as 'labeled', the wallet page for that family's
+    issuer accounts must show the same story. Otherwise a reader clicks
+    "verified" on /wallet after seeing "labeled" on /rwa and gets a
+    contradiction.
+
+    Two-step lookup:
+      1. Is `address` the amm_account of an attributed pool? (rare —
+         the pool addresses are usually curated).
+      2. Is `address` the issuer of asset_a or asset_b of any attributed
+         pool? (common — mTBILL / TBILL / OpenEden issuers).
+
+    Returns dict:
+      {family_slug, family_name, attestation_level,
+       attestation_citation, attestation_verified_at}
+    or None.
+    """
+    if not db.pg_available():
+        return None
+    try:
+        with db.pg_connect() as conn:
+            with conn.cursor() as cur:
+                # Fast path: direct pool_address hit.
+                cur.execute(
+                    """
+                    SELECT f.family_slug, f.family_name,
+                           f.attestation_level, f.attestation_citation,
+                           f.attestation_verified_at
+                      FROM rwa_pool_attribution a
+                      JOIN rwa_family f ON f.family_slug = a.family_slug
+                     WHERE a.pool_address = %s
+                     LIMIT 1
+                    """,
+                    (address,),
+                )
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "family_slug": row[0],
+                        "family_name": row[1],
+                        "attestation_level": row[2],
+                        "attestation_citation": row[3],
+                        "attestation_verified_at": (
+                            row[4].strftime("%Y-%m-%d") if row[4] else None
+                        ),
+                    }
+                # Chain path: address is an asset issuer of an attributed pool.
+                cur.execute(
+                    """
+                    SELECT DISTINCT f.family_slug, f.family_name,
+                           f.attestation_level, f.attestation_citation,
+                           f.attestation_verified_at
+                      FROM amm_ranked_pools p
+                      JOIN rwa_pool_attribution a ON a.pool_address = p.amm_account
+                      JOIN rwa_family f ON f.family_slug = a.family_slug
+                     WHERE p.asset_a->>'issuer' = %s
+                        OR p.asset_b->>'issuer' = %s
+                     LIMIT 1
+                    """,
+                    (address, address),
+                )
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "family_slug": row[0],
+                        "family_name": row[1],
+                        "attestation_level": row[2],
+                        "attestation_citation": row[3],
+                        "attestation_verified_at": (
+                            row[4].strftime("%Y-%m-%d") if row[4] else None
+                        ),
+                    }
+    except Exception:
+        return None
+    return None
+
+
 def _amm_pair_label_from_info(amm):
     """Build a pair label like "XRP/RLUSD" from an amm_info response's
     `amm` dict (whose `amount`/`amount2` may be XRP-drops strings or
@@ -1570,6 +1652,7 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "address_short": _short_addr(address),
             "self_info": _self_info(address),
             "wallet_badge": _wallet_badge(address),
+            "rwa_family_attribution": _rwa_family_attribution(address),
             "is_amm": False,
             "is_vault": False,
             "amm_pair": None,
@@ -1794,6 +1877,7 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "address_short": _short_addr(address),
         "self_info": _self_info(address),
         "wallet_badge": _wallet_badge(address),
+        "rwa_family_attribution": _rwa_family_attribution(address),
         "is_amm": is_amm,
         "is_vault": is_vault,
         "amm_pair": amm_pair,
