@@ -62,6 +62,22 @@ services:
       - key: DATABASE_URL
         sync: false
 
+      # Session-scraper block: armed. Charlie ruling 2026-09-21 Mon PM
+      # after the /healthz 429 near-miss required a log-only 24h
+      # window; and 2026-09-22 Tue midday after the shadow list came
+      # back clean (only Lightpanda/1.0 pattern, no monitors, no real
+      # browsers). Both filters are now enforcing.
+      - key: SCRAPER_TRACKER_LOG_ONLY
+        value: "0"
+
+      # Disguised-Chrome fleet block: armed. Shadow list yesterday was
+      # 32 hits, all Lightpanda/1.0 on /, /amendments, /check, /llms.txt.
+      # No BetterStack, Render, or real-browser UAs in the block set.
+      # Flipping to enforce takes those from 429 (rate-limited already)
+      # to a clean 403 at request-path, saving downstream cycles.
+      - key: FLEET_DISGUISED_CHROME_ENFORCE
+        value: "1"
+
     # Auto-deploy on every push to the connected branch.
     autoDeploy: true
 

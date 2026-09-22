@@ -1,0 +1,130 @@
+# RWA family NAV-source registry
+#
+# One entry per verified rwa_family. Powers the on-roadmap
+# `rwa_onledger_supply_usd` metric (= gateway_balances.obligations × cited
+# NAV). Only families with a machine-readable, cited primary-source NAV
+# contribute a non-zero value; families without one stay $0 (honest
+# absence, not a stealth zero).
+#
+# Charlie ruling 2026-09-22 Tue: research and cite each family's NAV
+# source today; the metric lands in tomorrow's leaf. This file is the
+# source of truth for what counts as "our own measurement".
+#
+# Schema per family:
+#   family_slug:        matches rwa_family.family_slug in PG
+#   nav_status:         published | on_chain_oracle | not_public
+#   nav_url:            human-visible dashboard URL (for the citation)
+#   nav_machine_url:    URL a walker can fetch programmatically, or null
+#   nav_symbol:         which on-XRPL currency this NAV applies to
+#   xrpl_issuer:        the XRPL issuer address whose obligations we count
+#   as_of_check:        date we last verified the NAV source was accessible
+#   nav_publish_cadence: daily | eod | intraday | monthly
+#   nav_notes:          curator notes on what CAN and CANNOT be automated
+
+ondo_finance:
+  nav_status: on_chain_oracle
+  nav_url: https://app.ondo.finance/assets/ousg
+  nav_machine_url: null   # Ondo publishes to an Ethereum on-chain OUSG
+                          # Price Oracle. NAV is machine-readable via
+                          # that contract, but we would need an ETH RPC
+                          # to query it. Not currently in the walker.
+                          # For XRPL specifically, per Ondo docs, mint
+                          # and redeem require emailing
+                          # support@ondo.finance — no public XRPL-side
+                          # NAV feed exists.
+  nav_docs_url: https://docs.ondo.finance/qualified-access-products/ousg/overview
+  nav_symbol: OUSG
+  xrpl_issuer: rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p
+  as_of_check: 2026-09-22
+  nav_publish_cadence: daily
+  nav_notes: >-
+    Ondo maintains an on-chain Price Oracle (Ethereum mainnet) that is
+    updated with each NAV computation. NAV per OUSG token =
+    NAV of OUSG share class / total OUSG tokens outstanding. Human
+    dashboard at app.ondo.finance/assets/ousg shows current APY and
+    NAV. On-XRPL specifically, per docs.ondo.finance: "To mint and
+    redeem OUSG on Polygon, Solana, or XRPL, please contact
+    support@ondo.finance" — implying no public XRPL-side price oracle
+    is deployed today. Recommend: cite the Ethereum on-chain oracle in
+    signed_snapshot metadata but count the on-XRPL supply from our own
+    node's gateway_balances read; if that computation ever ships we
+    also stamp the Ethereum oracle block-height + response in the
+    signed leaf so a downstream verifier can re-execute the fetch.
+
+openeden:
+  nav_status: published
+  nav_url: https://openeden.com/tbill
+  nav_machine_url: null   # openeden.com/tbill is a marketing page;
+                          # NAV is announced EOD in reports, not
+                          # exposed via a public JSON API. The on-chain
+                          # oracle for TBILL is on Ethereum and would
+                          # require an ETH RPC.
+  nav_docs_url: https://docs.openeden.com/tbill/token-price
+  nav_symbol: TBILL
+  xrpl_issuer: rTBLjLp1sWxCrMPjKruhaDrEB61wy4X36
+  as_of_check: 2026-09-22
+  nav_publish_cadence: eod
+  nav_notes: >-
+    Per docs.openeden.com/tbill/token-price: "The TBILL token price
+    is calculated as the Net Asset Value ('NAV') per token. The token
+    price can be derived by dividing the NAV of the Fund by the total
+    outstanding supply of TBILL tokens." NAV reports published EOD
+    each business day; monthly customized client statements produced
+    by an Independent Fund Administrator. No public machine-readable
+    NAV feed URL exists at openeden.com or docs.openeden.com.
+    Recommend: contact OpenEden ir@openeden.com to request a
+    JSON/CSV NAV endpoint. Until then, the on-XRPL TBILL row shows
+    "no cited NAV; supply reported without a USD figure" on /rwa.
+
+midas:
+  nav_status: not_public
+  nav_url: https://midas.app
+  nav_machine_url: null   # midas.app and docs.midas.app are behind a
+                          # Cloudflare challenge — programmatic fetch
+                          # returns 403 "Just a moment...". Only
+                          # accessible via an interactive browser
+                          # session.
+  nav_docs_url: null
+  nav_symbol: mTBILL, mBASIS  # multiple products
+  xrpl_issuer: rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw  # the Axelar bridge
+                                                  # issuer; NOT the
+                                                  # Midas Capital
+                                                  # counterparty
+                                                  # itself
+  as_of_check: 2026-09-22
+  nav_publish_cadence: unknown
+  nav_notes: >-
+    Midas publishes NAV data to Chainlink Data Feeds on Ethereum
+    (mTBILL/USD is a public Chainlink feed). We could technically
+    query the Chainlink aggregator via an ETH RPC to get a
+    machine-readable NAV. BUT: the on-XRPL "Midas" family is bridged
+    via Axelar, and the XRPL-side issuer
+    (rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw) issues an entire basket of
+    tokens (mTBILL, mBASIS, mBTC, mEDGE, mMEV, mRe7YIELD, mXRP,
+    plus WBTC, WETH, USDC.axl, SHX, SOL — Axelar's whole set). Using
+    the issuer's obligations directly would grossly over-count "Midas
+    AUM" by attributing every bridged asset to them. Correct approach:
+    filter obligations to the currency codes that match Midas products
+    only (mTBILL, mBASIS, mBTC, mEDGE, mMEV, mRe7YIELD), then multiply
+    each by its Chainlink NAV. STAYS $0 in tomorrow's leaf until we
+    ship the ETH-side Chainlink read AND the Midas-product-code
+    filter. Note in methodology.
+
+# ---------------------------------------------------------------------
+# WHAT LANDS IN TOMORROW'S LEAF vs LATER
+#
+# For 2026-09-23 leaf (tomorrow, first `rwa_onledger_supply_usd` fire):
+#   - Emit metric with value 0.0 and reason "no cited NAV feed automated
+#     yet; awaiting NAV-registry pass" for all three families.
+#   - This is the honest-empty state. It lets the metric name land in
+#     schema_v5 leaves without a value we can't defend.
+#
+# For a follow-on leaf (once Ondo Ethereum oracle read + supply count
+# lands):
+#   - Ondo:      supply(XRPL) × NAV(Ethereum oracle)
+#   - OpenEden:  supply(XRPL) × NAV(nominal $1 fallback, cited)
+#   - Midas:     supply(XRPL, filtered to Midas codes) × NAV(Chainlink)
+#
+# Ripple ruling: the signed metric stamps the source URL AND the
+# fetch-response block-height/timestamp so a downstream verifier can
+# re-execute the fetch and reproduce the number.
