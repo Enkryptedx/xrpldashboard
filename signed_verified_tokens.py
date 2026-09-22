@@ -92,22 +92,17 @@ def _hex_from_ticker(ticker: str) -> str:
     return ticker
 
 
-def _derive_tier(entry: dict) -> str:
-    """Compute the manifest-scoped tier from the entry's flags. Manifest
-    tier is DIFFERENT from the site-wide 5-tier ladder — it categorises
-    WHY a ticker sits in this list at all:
-      - verified      : has canonical_issuers[] non-empty (real XRPL issuer
-                        proven by curator + citation)
-      - meme_name     : reused name with no backing claim (memecoins)
-      - informational : asset exists natively elsewhere (BTC/ETH/etc.);
-                        included so readers see the honest "we don't
-                        verify what doesn't have an XRPL issuer" note
-      - umbrella      : summary rows (bridges/gateways) that describe a
-                        category rather than a specific ticker
-      - unknown       : registry entry missing enough signals to categorise
-                        — should never happen in prod; audit if it does
-    Charlie ruling 2026-09-22 Tue 5:22 PM ET: every row must carry a
-    tier; walker DERIVES it from flags so the yaml stays DRY.
+def _derive_manifest_flag_tier(entry: dict) -> str:
+    """Fallback tier for entries WITHOUT canonical_issuers. Used when
+    no (currency_hex, issuer) pair exists to look up in
+    token_category_current (memes, natively-elsewhere, umbrella).
+
+    Charlie ruling 2026-09-22 Tue 5:38 PM ET: for entries WITH
+    canonical_issuers, tier MUST come from the site's real registry
+    (shared_tier_verifier.resolve_tier over token_category_current),
+    never from the presence of canonical_issuers. USDC is the
+    load-bearing example — canonical_issuer_known but tier=self-described
+    (no two-way TOML). This helper handles only the no-canonical case.
     """
     if entry.get("umbrella"):
         return "umbrella"
@@ -115,10 +110,51 @@ def _derive_tier(entry: dict) -> str:
         return "meme_name"
     if entry.get("no_official_xrpl_issuer"):
         return "informational"
-    canonical = entry.get("canonical_issuers") or []
-    if canonical:
-        return "verified"
     return "unknown"
+
+
+# Site 5-tier order (strongest → weakest) — used when a ticker has
+# multiple canonical issuers with different tiers; the manifest reports
+# the STRONGEST since the ticker as a whole is at least that verified.
+_SITE_TIER_STRENGTH = {
+    "verified": 5,
+    "self-described": 4,
+    "labeled": 3,
+    "bare": 2,
+    "unknown": 1,
+}
+
+
+def _site_tier_for(currency_hex: str, canonical_issuers: list) -> tuple[str, list]:
+    """Look up the site tier for (currency_hex, issuer) pairs via
+    shared_tier_verifier.resolve_tier. Returns (strongest_tier,
+    per_issuer_records) where per_issuer_records is a list of dicts
+    {issuer, tier, source, citation_url} for audit / verify tests.
+
+    NEVER derived from the presence of canonical_issuers — the whole
+    point of Charlie's 2026-09-22 5:38 PM ruling is that "canonical
+    known" and "verified tier" are separate claims. USDC has canonical
+    known but tier=self-described.
+    """
+    import shared_tier_verifier as stv
+    per_issuer = []
+    strongest = None
+    strongest_strength = 0
+    for issuer in canonical_issuers:
+        rec = stv.resolve_tier(currency_hex, issuer, elevate=False)
+        per_issuer.append({
+            "issuer": issuer,
+            "tier": rec.tier,
+            "source": rec.source,
+            "citation_url": rec.citation_url,
+        })
+        s = _SITE_TIER_STRENGTH.get(rec.tier, 0)
+        if s > strongest_strength:
+            strongest_strength = s
+            strongest = rec.tier
+    if strongest is None:
+        strongest = "unknown"
+    return strongest, per_issuer
 
 
 def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
@@ -136,10 +172,25 @@ def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
         # For longer names, hex-encode uppercase ASCII to 40 chars
         raw = ticker.encode("ascii", errors="replace")
         currency_hex = raw.hex().upper().ljust(40, "0")[:40]
+    # Charlie ruling 2026-09-22 Tue 5:38 PM ET: `canonical_issuer_known`
+    # is a curator claim (we know WHICH XRPL address the brand uses);
+    # `tier` is the site's real registry tier from token_category_current
+    # via shared_tier_verifier.resolve_tier. They are SEPARATE — USDC
+    # has canonical_issuer_known but tier=self-described (no two-way TOML).
+    canonical_issuer_known = bool(canonical)
+    if canonical:
+        site_tier, per_issuer = _site_tier_for(currency_hex, canonical)
+    else:
+        # No canonical issuer to resolve — fall back to the flag-derived
+        # meta-tier that categorises WHY the ticker is on the list
+        # (meme_name / informational / umbrella / unknown).
+        site_tier = _derive_manifest_flag_tier(entry)
+        per_issuer = []
     return {
         "ticker": ticker,
         "currency_hex": currency_hex,
         "canonical_issuers": sorted(canonical),
+        "canonical_issuer_known": canonical_issuer_known,
         "citation_url": entry.get("citation") or entry.get("source_url"),
         "no_official_xrpl_issuer": bool(entry.get("no_official_xrpl_issuer")),
         "meme_name": bool(entry.get("meme_name")),
@@ -148,9 +199,11 @@ def _row_for_ticker(ticker: str, entry: dict, verified_at_iso: str) -> dict:
         # Falls back to False when the entry doesn't declare it — the
         # curator sets it explicitly during review.
         "gateway_or_bridge": bool(entry.get("gateway_or_bridge")),
-        # Explicit entry.tier wins if the curator set one; otherwise
-        # derive from flags. Charlie ruling 2026-09-22 Tue 5:22 PM ET.
-        "tier": entry.get("tier") or _derive_tier(entry),
+        # Tier from the site registry (never from canonical_issuers
+        # presence). Per-issuer records included so a verifier can
+        # re-execute the tier lookup independently.
+        "tier": site_tier,
+        "per_issuer_tier": per_issuer,
         "last_reviewed_at": entry.get("last_reviewed_at"),
     }
 

@@ -46,12 +46,57 @@ def test_every_row_has_citation_and_tier():
     assert not missing_tier, f"rows missing tier: {missing_tier}"
 
 
-def test_derive_tier_from_flags():
-    assert SVT._derive_tier({"canonical_issuers": ["r123"]}) == "verified"
-    assert SVT._derive_tier({"meme_name": True, "canonical_issuers": []}) == "meme_name"
-    assert SVT._derive_tier({"no_official_xrpl_issuer": True, "canonical_issuers": []}) == "informational"
-    assert SVT._derive_tier({"umbrella": True}) == "umbrella"
-    assert SVT._derive_tier({"canonical_issuers": []}) == "unknown"
+def test_manifest_flag_tier_no_canonical_cases_only():
+    """`_derive_manifest_flag_tier` handles ONLY entries without
+    canonical issuers. Entries WITH canonical issuers get their tier
+    from shared_tier_verifier.resolve_tier — see
+    test_manifest_tier_matches_site_registry."""
+    assert SVT._derive_manifest_flag_tier({"meme_name": True, "canonical_issuers": []}) == "meme_name"
+    assert SVT._derive_manifest_flag_tier({"no_official_xrpl_issuer": True, "canonical_issuers": []}) == "informational"
+    assert SVT._derive_manifest_flag_tier({"umbrella": True}) == "umbrella"
+    assert SVT._derive_manifest_flag_tier({"canonical_issuers": []}) == "unknown"
+
+
+def test_manifest_tier_matches_site_registry():
+    """Charlie ruling 2026-09-22 Tue 5:38 PM ET: manifest tier per row MUST
+    equal what shared_tier_verifier.resolve_tier returns for the same
+    (currency_hex, issuer). USDC is the load-bearing case — canonical
+    known but tier=self-described. This guards against future drift
+    where the manifest could claim 'verified' for a token the site
+    reports as anything weaker."""
+    import shared_tier_verifier as stv
+    env = SVT.build_envelope()
+    tokens = env["tokens"]
+    mismatches = []
+    for t in tokens:
+        if not t.get("canonical_issuers"):
+            continue
+        # Manifest reports the STRONGEST tier across issuers; verify each
+        # per_issuer_tier record equals what resolve_tier says now.
+        for rec in t.get("per_issuer_tier", []):
+            fresh = stv.resolve_tier(t["currency_hex"], rec["issuer"], elevate=False)
+            if fresh.tier != rec["tier"]:
+                mismatches.append({
+                    "ticker": t["ticker"], "issuer": rec["issuer"],
+                    "manifest_tier": rec["tier"], "site_tier": fresh.tier,
+                })
+    assert not mismatches, (
+        f"manifest tier drifted from site registry: {mismatches}"
+    )
+
+
+def test_manifest_canonical_issuer_known_flag_is_bool():
+    """Every row must carry a boolean `canonical_issuer_known` — separate
+    from the tier claim."""
+    env = SVT.build_envelope()
+    for t in env["tokens"]:
+        assert isinstance(t.get("canonical_issuer_known"), bool), t["ticker"]
+        # Coherence: bool matches truthy canonical_issuers list.
+        expected = bool(t.get("canonical_issuers"))
+        assert t["canonical_issuer_known"] == expected, (
+            f"{t['ticker']}: canonical_issuer_known={t['canonical_issuer_known']} "
+            f"but canonical_issuers={t.get('canonical_issuers')}"
+        )
 
 
 def test_verify_missing_signature_fields_fails():
