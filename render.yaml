@@ -78,6 +78,18 @@ services:
       - key: FLEET_DISGUISED_CHROME_ENFORCE
         value: "1"
 
+      # Crawler-identity check (reverse-DNS forgery detection): ships
+      # log-only per the standing request_path_filter_log_only_first
+      # rule. CRAWLER_FORGERY_SHADOW: log lines emitted for 24h;
+      # flip to "1" 2026-09-23 after Charlie reviews the shadow list
+      # and confirms no monitors / real-crawler-atypical-IPs are in
+      # the block set. Motivating incident: 13 GPTBot-claiming requests
+      # probed /.env / /firebase-admin.json / /awsConfig.js /
+      # /actuator/threaddump on 2026-09-21 — real GPTBot doesn't do
+      # that.
+      - key: CRAWLER_FORGERY_ENFORCE
+        value: "0"
+
     # Auto-deploy on every push to the connected branch.
     autoDeploy: true
 

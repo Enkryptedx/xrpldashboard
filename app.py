@@ -1742,6 +1742,33 @@ def _agent_tier_fleet_block():
         )
 
 
+@app.before_request
+def _crawler_identity_check():
+    """Reverse-DNS forgery detection for named crawlers. Charlie ruling
+    2026-09-22 Tue after 13 GPTBot-claiming requests probed for /.env
+    and secret-config paths yesterday. Real crawlers publish rDNS
+    domains; a UA claiming GPTBot from a non-.openai.com PTR is a
+    forgery. Ships in log-only mode per the standing
+    `request_path_filter_log_only_first` rule — emits
+    CRAWLER_FORGERY_SHADOW lines for 24h; flip
+    CRAWLER_FORGERY_ENFORCE=1 on Render after review.
+    See crawler_identity_check.py for the semantics."""
+    try:
+        from crawler_identity_check import evaluate_request
+        ua = request.user_agent.string if request.user_agent else None
+        ip = _client_ip()
+        if evaluate_request(ua, ip, path=request.path):
+            return Response(
+                "",
+                status=403,
+                headers={"X-Crawler-Identity": "forgery"},
+            )
+    except Exception:
+        # Never let a crawler-identity failure break a request. The
+        # shadow log is best-effort; the request continues.
+        pass
+
+
 @app.after_request
 def _agent_tier_audit_header(response):
     """Day 6: identified AI-crawler responses on agent-tier routes get
