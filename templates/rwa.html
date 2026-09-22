@@ -243,7 +243,10 @@
     <h2 class="section">{{ _('Verified issuer families') }}</h2>
     {% if curation_last_updated %}
     <p class="curation-note" style="font-size:0.72rem;color:var(--dim);margin:-6px 0 10px;font-family:var(--mono);letter-spacing:0.04em;">
-      {{ _('Curation last updated:') }} {{ curation_last_updated }}
+      {{ _('Attribution set last updated:') }} {{ curation_last_updated }}
+      <span style="font-family:var(--sys);text-transform:none;letter-spacing:normal;font-size:0.9em;">
+        &nbsp;&mdash;&nbsp;{{ _('the date the last pool→family attribution was added; not a re-verification date for the listed families') }}
+      </span>
     </p>
     {% endif %}
     <div class="family-grid">
@@ -354,7 +357,7 @@
     {% endif %}
   </p>
   <p>{{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.</p>
-  <p class="muted" style="font-size:var(--fs-xs);margin-top:0.25rem;">{{ _('Total AUM signed in today\'s snapshot reflects on-chain liquidity only — institutional presence not yet fully captured.') }}</p>
+  <p class="muted" style="font-size:var(--fs-xs);margin-top:0.25rem;line-height:1.55;">{{ _('The field named') }} <code>rwa_total_aum_usd</code> {{ _('in the signed snapshot is a legacy name kept for chain continuity. Its value is the sum of AMM pool TVL for XRP-paired pools attributed to verified RWA families — NOT asset AUM. Ondo OUSG (1.64M outstanding on our node as of 2026-09-21) contributes $0 because it has no attributed AMM pool; the same is true for MPT-attested issuers with no liquidity pool. A true on-ledger AUM figure (issuer supply × cited NAV) is on the roadmap and will surface as') }} <code>rwa_onledger_supply_usd</code>{{ _(' once each family has a cited primary-source NAV feed.') }}</p>
 </div>
   {% include "_footer_dev_row.html" %}
 </body>

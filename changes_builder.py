@@ -78,7 +78,14 @@ _SCALAR_METRICS: list[tuple[str, str, str, str]] = [
     ("mpt_total_count", "MPT total count", "/mpts", "count"),
     ("named_accounts_count", "Named accounts count", "/network", "count"),
     ("rlusd_xrpl_supply", "RLUSD XRPL supply", "/rlusd", "usd"),
-    ("rwa_total_aum_usd", "RWA total AUM (USD)", "/rwa", "usd"),
+    # Charlie ruling 2026-09-21 Mon PM: the field is named
+    # `rwa_total_aum_usd` in the signed leaf (chain continuity from
+    # schema_v3+), but its value is actually AMM pool TVL for
+    # XRP-paired pools attributed to verified RWA families, NOT
+    # true AUM. Human-facing label updated to reflect that. Ondo
+    # OUSG (1.64M outstanding on-XRPL) contributes $0 because it
+    # has no attributed AMM pool. See /rwa methodology.
+    ("rwa_total_aum_usd", "RWA AMM-attributed pool TVL (USD)", "/rwa", "usd"),
 ]
 
 # Floor constants (Charlie ruling 2026-09-08 "scaled floor").
@@ -116,8 +123,10 @@ _MEANING = {
         "the count of live AMM instances.",
     ),
     "rwa_total_aum_usd": (
-        "tokenized real-world assets.",
-        "tokenized real-world assets.",
+        "AMM-pool liquidity attributed to verified RWA families "
+        "(not on-ledger issuer supply).",
+        "AMM-pool liquidity attributed to verified RWA families "
+        "(not on-ledger issuer supply).",
     ),
     "mpt_total_count": (
         "the count of Multi-Purpose Tokens on XRPL.",
@@ -135,7 +144,7 @@ _SHORT_LABEL = {
     "rlusd_xrpl_supply":       "RLUSD supply",
     "amm_pools_total_tvl_usd": "AMM TVL",
     "amm_pools_count":         "AMM pools",
-    "rwa_total_aum_usd":       "RWA AUM",
+    "rwa_total_aum_usd":       "RWA AMM liquidity",
     "mpt_total_count":         "MPTs",
     "named_accounts_count":    "Named accounts",
 }
