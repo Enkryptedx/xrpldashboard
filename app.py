@@ -10199,13 +10199,18 @@ def admin_token_review_decision():
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
             if decision == "confirm_collision":
+                # Charlie ruling 2026-09-22 Tue PM: use canonical tier
+                # 'labeled' (per shared_tier_verifier._DB_TIER_TO_CANONICAL,
+                # legacy 'curator-inferred' maps to 'labeled' anyway — this
+                # stops MINTING new drift-tier rows). Regression test in
+                # tests/test_no_curator_inferred_new_rows.py guards it.
                 cur.execute(
                     """
                     INSERT INTO token_category_history
                         (currency_hex, issuer, category, tier, source,
                          citation_url, curator_id, curator_authority,
                          taxonomy_version, note)
-                    VALUES (%s, %s, 'unlabeled', 'curator-inferred', 'curator',
+                    VALUES (%s, %s, 'unlabeled', 'labeled', 'curator',
                             NULL, %s, 'owner', '1.0.0', %s)
                     RETURNING id
                     """,
