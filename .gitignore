@@ -173,3 +173,4 @@ tmp/
 # ~/.config/xrpldashboard/mac_heartbeat_url (chmod 600, outside this repo) — this pattern
 # keeps any accidental in-repo copy from being tracked.
 mac_heartbeat_url
+nav_screenshots/

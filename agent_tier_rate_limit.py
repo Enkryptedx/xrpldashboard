@@ -290,14 +290,64 @@ def fleet_signature(req=None) -> Optional[str]:
 # is invoked in request context so `flask.request` works. Env-var
 # overrides let tests exercise the boundary with a tight rate.
 
+def _client_ip_for_tier() -> Optional[str]:
+    """Prefer CF-Connecting-IP (Render sits behind Cloudflare), then
+    X-Forwarded-For's first hop, then request.remote_addr. Kept local
+    to this module to avoid a circular import with app._client_ip."""
+    cf = request.headers.get("CF-Connecting-IP")
+    if cf:
+        return cf.strip()
+    xff = request.headers.get("X-Forwarded-For")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr
+
+
 def agent_tier_limit_rate() -> str:
-    """Return the rate-limit string for the current request. AI crawlers
-    get AGENT_TIER_AI_RATE (default 300/min); everything else (including
-    unidentified requests and fleet-signature matches, which are handled
-    upstream by the fleet-block hook) gets AGENT_TIER_ANON_RATE (60/min).
+    """Return the rate-limit string for the current request.
+
+    Charlie ruling 2026-09-22 Tue PM: the elevated rate is a verified-
+    identity tier, not a citation-intent tier. Only crawlers whose UA
+    claim we can INDEPENDENTLY VERIFY via rDNS + forward-confirm
+    (crawler_identity_check.verify) get AGENT_TIER_AI_RATE. A UA that
+    CLAIMS to be GPTBot / Googlebot / Bingbot / ClaudeBot / Perplexity
+    but connects from an IP whose PTR doesn't resolve back to the
+    operator's published domain gets the ANONYMOUS rate — same as any
+    browser.
+
+    Assignment:
+    - UA matches an rDNS-verifiable claim (crawler_identity_check
+      policy dict) AND verify() == "trusted": AGENT_TIER_AI_RATE
+      (default 300/hr).
+    - UA matches an rDNS-verifiable claim but verify() ∈ {forged,
+      no_ptr, resolve_failed}: AGENT_TIER_ANON_RATE (60/min). Claimant
+      not proven; treated as anonymous. rDNS failure never grants the
+      elevated tier (Charlie's rule: fail closed on identity check).
+    - UA matches a citation class we know but don't verify by rDNS
+      (bytespider, ccbot, youbot, google-extended, applebot-extended,
+      meta-searchbot, claude-searchbot, perplexity-user):
+      AGENT_TIER_ANON_RATE (60/min). Still logged to ai_crawler_hits by
+      the caller — the UA signal is real, we just don't grant the tier
+      without an identity anchor.
+    - No AI-crawler UA claim at all: AGENT_TIER_ANON_RATE.
 
     Tests override via env vars to exercise the boundary."""
     ua = request.headers.get("User-Agent", "")
-    if is_ai_crawler(ua):
-        return os.environ.get("AGENT_TIER_AI_RATE", "300 per minute")
+
+    # Verified-identity gate takes precedence over is_ai_crawler. Even
+    # a UA outside AI_CRAWLER_UA_SUBSTRINGS (e.g. plain "Googlebot",
+    # "bingbot") gets the elevated tier IF the rDNS check passes.
+    try:
+        from crawler_identity_check import match_ua_claim, verify
+        if match_ua_claim(ua):
+            ip = _client_ip_for_tier()
+            verdict, _ptr = verify(ua, ip)
+            if verdict == "trusted":
+                return os.environ.get("AGENT_TIER_AI_RATE", "300 per hour")
+            return os.environ.get("AGENT_TIER_ANON_RATE", "60 per minute")
+    except Exception:
+        pass
+
+    # No rDNS-verifiable UA claim. Everything else — including citation
+    # crawlers we can't PTR-verify — goes to the anonymous tier.
     return os.environ.get("AGENT_TIER_ANON_RATE", "60 per minute")

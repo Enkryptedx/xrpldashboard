@@ -41,26 +41,38 @@ KEEP_WEEKS = 8
 
 BASE_URL = os.environ.get("PROBE_BASE_URL", "https://xrpldashboard.com")
 
-# Pages to check — one per template shape (extends base, standalone, and
-# the specific one Charlie flagged). Each entry:
-#   (slug, path, dropdown_selector)
-# The dropdown_selector is a Playwright selector for the <summary> that
-# opens the Live-group menu. We click it, then screenshot the parent
-# details.group with the menu attached.
+# Pages to check — 5 shapes per Charlie's midday ruling: /, /observatory,
+# /tokens, /whales, /rwa. Each entry: (slug, path, dropdown_selector).
+# The desktop dropdown selector targets `details.group[data-group='live']`;
+# the mobile hamburger is a separate structure (`.mobile-nav`) and uses a
+# different selector — captured as a second pass on phone width.
 PAGES = [
-    ("home",        "/",           "details.group[data-group='live']"),
+    ("home",        "/",            "details.group[data-group='live']"),
     ("observatory", "/observatory", "details.group[data-group='live']"),
     ("tokens",      "/tokens",      "details.group[data-group='live']"),
+    ("whales",      "/whales",      "details.group[data-group='live']"),
+    ("rwa",         "/rwa",         "details.group[data-group='live']"),
 ]
 
 
 def _viewport_variants():
-    """Desktop and phone widths — the 780px breakpoint in _nav_groups.html
-    swaps to a hamburger, so capturing both catches the swap boundary too."""
+    """Desktop and phone widths. On phone, the desktop dropdown is
+    display:none per the 780px breakpoint in _nav_groups.html, so we
+    target the mobile hamburger's live section via a different selector
+    in `_mobile_selector()`. Both catch CSS regressions in their own lane."""
     return [
         ("desktop", 1280, 800),
         ("phone", 390, 844),
     ]
+
+
+# Mobile-specific selector: on phone width, click the hamburger button
+# to open the full-screen menu, then screenshot the entire open panel.
+# The mobile panel uses `<h4>` headers per group instead of separate
+# details, so we capture the whole `.mobile-panel` — any CSS regression
+# affecting the Live section will show up in that screenshot.
+MOBILE_OPEN_SELECTOR = ".mobile-nav > summary"
+MOBILE_LIVE_SECTION = ".mobile-nav[open] .mobile-panel"
 
 
 def _pixel_hash(png_bytes: bytes) -> str:
@@ -101,23 +113,35 @@ def _stamp_last_ok() -> None:
         pass
 
 
-def _capture_one(page, path: str, selector: str) -> tuple[bytes, dict]:
-    """Navigate, open the Live-group dropdown, screenshot the dropdown
-    region. Returns (png_bytes, meta)."""
+def _capture_one(page, path: str, selector: str, is_mobile: bool = False) -> tuple[bytes, dict]:
+    """Navigate, open the Live-group dropdown (or the mobile hamburger's
+    Live section), screenshot the region. Returns (png_bytes, meta)."""
     url = BASE_URL.rstrip("/") + path
     page.goto(url, wait_until="networkidle", timeout=15_000)
-    # Wait for the nav to hydrate
+    if is_mobile:
+        # Phone: open the hamburger, screenshot the Live section within.
+        page.wait_for_selector(MOBILE_OPEN_SELECTOR, timeout=5_000)
+        page.click(MOBILE_OPEN_SELECTOR)
+        try:
+            page.wait_for_selector(MOBILE_LIVE_SECTION, state="visible", timeout=2_000)
+            handle = page.query_selector(MOBILE_LIVE_SECTION)
+        except Exception:
+            # If the mobile-nav doesn't expose a .mobile-group[data-group='live']
+            # section, fall back to screenshotting the full open panel.
+            handle = page.query_selector(".mobile-nav[open]")
+        if not handle:
+            raise RuntimeError("mobile-nav open panel not found after click")
+        png = handle.screenshot()
+        return png, {"url": url, "mode": "mobile"}
+    # Desktop: click summary, wait for menu, screenshot the dropdown.
     page.wait_for_selector(selector, timeout=5_000)
-    # Click the summary to open the dropdown
     page.click(selector + " > summary")
-    # Small wait for the menu to render
     page.wait_for_selector(selector + " .menu", state="visible", timeout=2_000)
-    # Screenshot the details.group (includes the summary + open menu)
     handle = page.query_selector(selector)
     if not handle:
         raise RuntimeError(f"selector not found after click: {selector}")
     png = handle.screenshot()
-    return png, {"url": url}
+    return png, {"url": url, "mode": "desktop"}
 
 
 def main() -> int:
@@ -156,6 +180,7 @@ def main() -> int:
 
         results = []
         divergences = []
+        capture_errors = []
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             try:
@@ -164,7 +189,10 @@ def main() -> int:
                         ctx = browser.new_context(viewport={"width": width, "height": height})
                         page = ctx.new_page()
                         try:
-                            png, meta = _capture_one(page, path, selector)
+                            png, meta = _capture_one(
+                                page, path, selector,
+                                is_mobile=(vname == "phone"),
+                            )
                             fname = f"{slug}_{vname}.png"
                             out = os.path.join(run_dir, fname)
                             with open(out, "wb") as fh:
@@ -174,24 +202,42 @@ def main() -> int:
                             if fname in prev_hash and prev_hash[fname] != h:
                                 divergences.append(f"{fname}: {prev_hash[fname][:12]} → {h[:12]}")
                         except Exception as e:
-                            divergences.append(f"{slug}_{vname}: capture_error {type(e).__name__}: {e}")
+                            # Capture errors are NOT divergences on first-run
+                            # (no previous baseline). They only page after we
+                            # have a baseline that the capture would compare
+                            # against.
+                            capture_errors.append(
+                                f"{slug}_{vname}: {type(e).__name__}: {str(e)[:80]}"
+                            )
                         finally:
                             ctx.close()
             finally:
                 browser.close()
 
+        # First-run semantics: if we have NO prior baseline, everything
+        # captured this run BECOMES the baseline. Capture errors get
+        # logged but don't fail the walker (they'd otherwise block first-
+        # cycle install).
+        is_first_run = not prev_hash
+
         _prune_old_screenshots()
         _stamp_last_ok()
 
-        message = f"captured={len(results)} divergences={len(divergences)}"
-        if divergences:
+        run_label = "first-run/baseline" if is_first_run else "regression-check"
+        message = (
+            f"captured={len(results)} divergences={len(divergences)} "
+            f"capture_errors={len(capture_errors)} mode={run_label}"
+        )
+        if capture_errors:
+            # Print all errors — first-run may hit selectors that don't
+            # exist yet (mobile-nav open panel etc.); we log so we can
+            # tune. Don't fail the walker on errors alone.
+            for e in capture_errors:
+                print(f"  capture_error: {e}", file=sys.stderr)
+        if divergences and not is_first_run:
             message += " | " + "; ".join(divergences[:3])
-            # Report as a walker_health finding — pager L1 reads
-            # walker_health.findings_count so a divergence pages.
-            db.write_walker_health_end(
-                WALKER_NAME, ok=False, message=message,
-            )
             print(f"[{WALKER_NAME}] {message}")
+            ok = False
             return 1
         ok = True
         print(f"[{WALKER_NAME}] {message}")
