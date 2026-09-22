@@ -47,7 +47,12 @@ BASE_URL = os.environ.get("PROBE_BASE_URL", "https://xrpldashboard.com")
 # the mobile hamburger is a separate structure (`.mobile-nav`) and uses a
 # different selector — captured as a second pass on phone width.
 PAGES = [
-    ("home",        "/",            "details.group[data-group='live']"),
+    # Home uses its own nav-strip (index.html) — the `.lang-switch` details
+    # is the only real dropdown on that surface (no Live-group nav-group on /
+    # despite _nav_groups.html being included). Regression surface on / is
+    # therefore the language menu, not a nav-group menu. Charlie ruling
+    # 2026-09-22 Tue 4:54 PM ET.
+    ("home",        "/",            "nav.nav-strip .lang-switch"),
     ("observatory", "/observatory", "details.group[data-group='live']"),
     ("tokens",      "/tokens",      "details.group[data-group='live']"),
     ("whales",      "/whales",      "details.group[data-group='live']"),
