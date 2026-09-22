@@ -2378,6 +2378,23 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
 def index():
     """The public landing page. Mosaic of every subsystem so visitors
     immediately see the full scope of the dashboard, not just AMM pools."""
+    # Charlie ruling 2026-09-22 Tue AM: homepage cold-render was ~4.8s
+    # (cold gunicorn worker aggregating several PG + XRPL summaries at
+    # request time). homepage_summary_walker pre-renders the body
+    # every 5 min; check PG first, serve sub-ms if fresh (<30 min),
+    # fall through to inline render otherwise. Same shape as
+    # /whales, /wallet, /nfts.
+    try:
+        body_html, age_s, gen_ms = db.read_homepage_summary()
+        if body_html and age_s is not None and age_s < 30 * 60:
+            from flask import make_response
+            resp = make_response(body_html)
+            resp.headers["Content-Type"] = "text/html; charset=utf-8"
+            resp.headers["X-Homepage-Cache"] = f"homepage_summary age={int(age_s)}s gen_ms={gen_ms}"
+            return resp
+    except Exception:
+        pass
+
     pulse = fetch_pulse_cached()
     # Render-time heartbeat for the hidden cached-meta hook that drives the
     # 30s [data-live] panel refresh in templates/index.html. Visible label

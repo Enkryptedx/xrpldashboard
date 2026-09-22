@@ -7370,6 +7370,34 @@ def read_whales_summary_cell(tier: str, filter_type: str) -> tuple[str | None, f
         return None, None
 
 
+def read_homepage_summary() -> tuple[str | None, float | None, int | None]:
+    """Return (body_html, age_seconds, gen_ms) for the pre-rendered `/`
+    body from `homepage_summary`, or (None, None, None) when no row
+    exists yet. Sub-ms PK read, powers the sub-2s cold-visitor render
+    for the homepage (Charlie ruling 2026-09-22 Tue AM after the
+    render-alert audit surfaced a 4.8s cold render on `/`)."""
+    if not pg_available():
+        return None, None, None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT body_html, "
+                    "       EXTRACT(EPOCH FROM (now() - computed_at))::float, "
+                    "       gen_ms "
+                    "FROM homepage_summary WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None, None, None
+                body, age, gen_ms = row
+                if body is None:
+                    return None, None, None
+                return body, float(age), int(gen_ms or 0)
+    except Exception:
+        return None, None, None
+
+
 def read_wallet_summary(address: str) -> tuple[str | None, float | None, int | None]:
     """Return (body_html, age_seconds, gen_ms) for the given address's
     pre-rendered /wallet body from `wallet_summary`, or (None, None, None)
