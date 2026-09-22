@@ -20,6 +20,21 @@
 #   as_of_check:        date we last verified the NAV source was accessible
 #   nav_publish_cadence: daily | eod | intraday | monthly
 #   nav_notes:          curator notes on what CAN and CANNOT be automated
+#
+# Curator-mode NAV fields (Charlie ruling 2026-09-22 Tue PM, "simple
+# version, no Ethereum"): the app.ondo.finance and openeden.com URLs are
+# React SPAs — no NAV in static HTML, no public JSON endpoint, and we
+# won't add an ETH RPC dependency. Curator (Charlie) reads the human page
+# and updates these fields when he refreshes:
+#   nav_curator_usd:      USD NAV per 1 token (float), or null
+#   nav_curator_as_of:    ISO date the NAV was measured (per page), or null
+#   nav_curator_source:   URL the curator actually read (usually == nav_url)
+#   nav_curator_updated:  ISO date the yaml was last curator-refreshed
+# When nav_curator_usd is set, walker computes value_usd = supply × NAV
+# and cites the source_url + as_of in the envelope. When null, walker
+# writes value_usd=0 with reason "curator_nav_not_set_yet" — honest
+# absence, not stealth zero. Refresh cadence: every NAV publish cycle
+# per nav_publish_cadence (daily/eod/monthly).
 
 ondo_finance:
   nav_status: on_chain_oracle
@@ -37,6 +52,10 @@ ondo_finance:
   xrpl_issuer: rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p
   as_of_check: 2026-09-22
   nav_publish_cadence: daily
+  nav_curator_usd: null           # TODO Charlie: read app.ondo.finance/assets/ousg
+  nav_curator_as_of: null         #   → set both fields together with an ISO date
+  nav_curator_source: https://app.ondo.finance/assets/ousg
+  nav_curator_updated: null
   nav_notes: >-
     Ondo maintains an on-chain Price Oracle (Ethereum mainnet) that is
     updated with each NAV computation. NAV per OUSG token =
@@ -64,6 +83,10 @@ openeden:
   xrpl_issuer: rTBLjLp1sWxCrMPjKruhaDrEB61wy4X36
   as_of_check: 2026-09-22
   nav_publish_cadence: eod
+  nav_curator_usd: null           # TODO Charlie: read openeden.com/tbill
+  nav_curator_as_of: null         #   → EOD updates each business day
+  nav_curator_source: https://openeden.com/tbill
+  nav_curator_updated: null
   nav_notes: >-
     Per docs.openeden.com/tbill/token-price: "The TBILL token price
     is calculated as the Net Asset Value ('NAV') per token. The token

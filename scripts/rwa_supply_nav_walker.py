@@ -170,10 +170,14 @@ def _ensure_table():
                     value_usd             NUMERIC NOT NULL DEFAULT 0,
                     nav_source_url        TEXT,
                     nav_fetched_at_utc    TIMESTAMPTZ,
+                    nav_as_of             DATE,
                     nav_fetch_http_status INTEGER,
                     reason                TEXT,
                     PRIMARY KEY (fetch_date, family_slug)
                 );
+                -- Additive migration for existing tables from the pre-curator schema.
+                ALTER TABLE rwa_supply_nav_daily
+                    ADD COLUMN IF NOT EXISTS nav_as_of DATE;
             """)
         conn.commit()
 
@@ -186,12 +190,12 @@ def _upsert_row(row: dict):
                 INSERT INTO rwa_supply_nav_daily (
                     fetch_date, family_slug, xrpl_issuer, nav_symbol,
                     supply_units, nav_per_unit_usd, value_usd,
-                    nav_source_url, nav_fetched_at_utc,
+                    nav_source_url, nav_fetched_at_utc, nav_as_of,
                     nav_fetch_http_status, reason
                 ) VALUES (
                     %(fetch_date)s, %(family_slug)s, %(xrpl_issuer)s, %(nav_symbol)s,
                     %(supply_units)s, %(nav_per_unit_usd)s, %(value_usd)s,
-                    %(nav_source_url)s, %(nav_fetched_at_utc)s,
+                    %(nav_source_url)s, %(nav_fetched_at_utc)s, %(nav_as_of)s,
                     %(nav_fetch_http_status)s, %(reason)s
                 )
                 ON CONFLICT (fetch_date, family_slug) DO UPDATE SET
@@ -202,6 +206,7 @@ def _upsert_row(row: dict):
                     value_usd = EXCLUDED.value_usd,
                     nav_source_url = EXCLUDED.nav_source_url,
                     nav_fetched_at_utc = EXCLUDED.nav_fetched_at_utc,
+                    nav_as_of = EXCLUDED.nav_as_of,
                     nav_fetch_http_status = EXCLUDED.nav_fetch_http_status,
                     reason = EXCLUDED.reason
                 """,
@@ -259,22 +264,43 @@ def main() -> int:
                 else:
                     supply_units = _obligations_sum_for_symbol(obligations, nav_symbol)
 
-            # 2. NAV fetch (best-effort)
+            # 2. NAV fetch (best-effort — records HTTP status; body preview
+            #    still stored on disk via the walker log line).
             status, _ct, _preview = _attempt_nav_fetch(nav_url) if nav_url else (None, "", None)
+
+            # 3. Curator-mode NAV (Charlie ruling 2026-09-22 Tue PM):
+            #    when nav_curator_usd is set in yaml, walker uses it and
+            #    cites nav_curator_source + nav_curator_as_of. Charlie
+            #    reads the human page + updates the yaml.
+            nav_curator_usd = cfg.get("nav_curator_usd")
+            nav_curator_as_of = cfg.get("nav_curator_as_of")
+            nav_curator_source = cfg.get("nav_curator_source") or nav_url
+
             nav_per_unit_usd = None
             value_usd = 0.0
+            nav_as_of = None
+            source_url = nav_url
             reasons = []
             if supply_err:
                 reasons.append(supply_err)
             if nav_status == "not_public":
                 reasons.append("nav_not_public_per_registry")
+            elif nav_curator_usd is not None:
+                # Curator populated the NAV — compute value.
+                try:
+                    nav_per_unit_usd = float(nav_curator_usd)
+                    if supply_units is not None:
+                        value_usd = float(supply_units) * nav_per_unit_usd
+                    nav_as_of = nav_curator_as_of
+                    source_url = nav_curator_source
+                except (TypeError, ValueError):
+                    reasons.append("nav_curator_usd_not_numeric")
             elif nav_status == "on_chain_oracle":
                 reasons.append("nav_on_ethereum_oracle_no_eth_rpc_dep")
             elif nav_status == "published":
-                # published but not machine-readable in this pass; the
-                # registry marks nav_machine_url=null for tonight.
-                if not cfg.get("nav_machine_url"):
-                    reasons.append("no_machine_readable_nav_endpoint")
+                # Published human page, no curator value yet (no machine
+                # endpoint per registry) — honest absence.
+                reasons.append("curator_nav_not_set_yet")
 
             reason = ";".join(reasons) if reasons else None
             row = {
@@ -285,15 +311,17 @@ def main() -> int:
                 "supply_units": supply_units,
                 "nav_per_unit_usd": nav_per_unit_usd,
                 "value_usd": value_usd,
-                "nav_source_url": nav_url,
+                "nav_source_url": source_url,
                 "nav_fetched_at_utc": dt.datetime.now(dt.timezone.utc),
+                "nav_as_of": nav_as_of,
                 "nav_fetch_http_status": status,
                 "reason": reason,
             }
             _upsert_row(row)
             wrote += 1
             print(f"[{WALKER_NAME}] {family_slug}: supply={supply_units} "
-                  f"nav_http={status} value_usd={value_usd} reason={reason}")
+                  f"nav={nav_per_unit_usd} value_usd={value_usd} "
+                  f"as_of={nav_as_of} reason={reason}")
 
         _stamp_last_ok()
         message = f"wrote_rows={wrote}"
