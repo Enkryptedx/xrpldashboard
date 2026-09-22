@@ -928,7 +928,72 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
     metrics.append(collect_editorial_state())
     metrics.append(collect_registry_state())
 
+    # Charlie ruling 2026-09-22 Tue PM: rwa_onledger_supply_usd lands
+    # env-gated (RWA_SUPPLY_NAV_IN_LEAF) so tonight's 2026-09-22 leaf
+    # does NOT include it. The walker rwa_supply_nav_walker runs the
+    # daily fetch; after one dry cycle (2026-09-23), Charlie flips this
+    # env var and the metric enters the leaf. That's the "enters the
+    # leaf tomorrow after one dry cycle" contract from the midday
+    # message.
+    if os.environ.get("RWA_SUPPLY_NAV_IN_LEAF", "0") in ("1", "true", "yes"):
+        try:
+            metrics.append(_collect_rwa_supply_nav(now_utc))
+        except Exception as e:
+            errors.append(f"rwa_supply_nav: {type(e).__name__}")
+
     return metrics, errors
+
+
+def _collect_rwa_supply_nav(now_utc: dt.datetime) -> dict:
+    """Read rwa_supply_nav_daily for today, return the aggregate metric.
+    Per-family breakdown in metadata; total value_usd is the top-level
+    number. Raises on PG unavailability so the errors list surfaces it —
+    same STRICT-REFUSE semantics as other v4/v5 metrics."""
+    import db
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT family_slug, xrpl_issuer, nav_symbol,
+                       supply_units, nav_per_unit_usd, value_usd,
+                       nav_source_url, nav_fetch_http_status, reason,
+                       nav_fetched_at_utc
+                  FROM rwa_supply_nav_daily
+                 WHERE fetch_date = %s
+                 ORDER BY family_slug
+                """,
+                (now_utc.date(),),
+            )
+            rows = cur.fetchall()
+    total = 0.0
+    per_family = []
+    for r in rows:
+        v = float(r[5] or 0)
+        total += v
+        per_family.append({
+            "family_slug": r[0],
+            "xrpl_issuer": r[1],
+            "nav_symbol": r[2],
+            "supply_units": float(r[3]) if r[3] is not None else None,
+            "nav_per_unit_usd": float(r[4]) if r[4] is not None else None,
+            "value_usd": v,
+            "nav_source_url": r[6],
+            "nav_fetch_http_status": r[7],
+            "reason": r[8],
+            "nav_fetched_at_utc": (
+                r[9].isoformat() if r[9] else None
+            ),
+        })
+    return {
+        "name": "rwa_onledger_supply_usd",
+        "value": round(total, 2),
+        "unit": "usd",
+        "source": "rwa_supply_nav_daily (own-node gateway_balances × cited NAV)",
+        "metadata": {
+            "families": per_family,
+            "families_with_value": sum(1 for f in per_family if f["value_usd"] > 0),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
