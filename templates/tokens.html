@@ -494,7 +494,9 @@
     }
     .tron-grid-lanes .tron-lane-label[data-lane="verified"] { color: rgba(34,197,94,0.92); }
     .tron-grid-lanes .tron-lane-label[data-lane="self"]     { color: rgba(203,213,225,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="labeled"]  { color: rgba(251,191,36,0.90); }
     .tron-grid-lanes .tron-lane-label[data-lane="bare"]     { color: rgba(122,140,168,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="unknown"]  { color: rgba(122,140,168,0.65); }
     .tron-grid-lanes .tron-lane-label[data-lane="warning"]  { color: rgba(245,158,11,0.92); }
     .tron-grid-lanes .tron-lane-lp {
       color: rgba(103,232,249,0.72); cursor: pointer;
@@ -879,7 +881,14 @@
       {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw.') }}
     </p>
     <p class="lede labeling-note">
-      {{ _("Most XRPL tokens don't publish issuer attestation — those appear as UNNAMED here. We only label tokens with cryptographic verification.") }}
+      {# Charlie ruling 2026-09-21 Mon PM: this line was drift from an
+         earlier single-tier world. The site now runs a 5-tier ladder
+         (Verified, Self-described, Labeled, Bare, Unknown), and only
+         the top tier is "cryptographic" (two-way TOML). The rest are
+         curator paste-ins, self-published domains, or absent-entirely
+         — none of which is a crypto proof. Rewrite to name the ladder
+         + point at the tier column. #}
+      {{ _("XRPL tokens are placed on a 5-tier ladder — Verified, Self-described, Labeled, Bare, Unknown — based on what evidence exists for the issuer. Only Verified is a two-way TOML proof; the other tiers surface weaker signals honestly. Tokens with no identity land in Unlabeled below.") }}
       <a href="/methodology">{{ _('How we verify →') }}</a>
     </p>
     <p class="lede coverage-note">
@@ -1094,15 +1103,26 @@
        rename + tier tooltips). Position encodes attestation strength,
        NOT category. Every lane label carries a title= tooltip with the
        plain-English definition (hover on desktop, tap on mobile). #}
+    {# Charlie ruling 2026-09-21 Mon PM: the lane row was missing
+       Labeled and Unknown — the canonical 5-tier per
+       shared_tier_verifier is Verified/Self-described/Labeled/Bare/
+       Unknown. "Warning" is a row-flag, not a tier — kept as a lane
+       for the visual (impostor/unreadable-code paths still fire
+       there) but placed after Unknown to match the tier reading
+       order. #}
     <div class="tron-grid-lanes">
       <span class="tron-lane-label" data-lane="verified"
             title="{{ _('Verified = the issuer proved control of its domain via two-way toml match — not an endorsement.') }}">{{ _('verified') }}</span>
       <span class="tron-lane-label" data-lane="self"
             title="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.') }}">{{ _('self-described') }}</span>
+      <span class="tron-lane-label" data-lane="labeled"
+            title="{{ _('Labeled = a third party (curator paste-in, xrpscan) attached a name, but we didn&apos;t verify it ourselves.') }}">{{ _('labeled') }}</span>
       <span class="tron-lane-label" data-lane="bare"
             title="{{ _('Bare = no claim anywhere.') }}">{{ _('bare') }}</span>
+      <span class="tron-lane-label" data-lane="unknown"
+            title="{{ _('Unknown = no domain, no TOML, no external claim — the issuer is anonymous.') }}">{{ _('unknown') }}</span>
       <span class="tron-lane-label" data-lane="warning"
-            title="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.') }}">{{ _('warning') }}</span>
+            title="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code. This is a row-flag, not a tier.') }}">{{ _('warning') }}</span>
       <span class="tron-lane-label tron-lane-lp" data-lane="lp"
             title="{{ _('Liquidity moving into and out of AMM pools — deposits, withdrawals, and pool-share receipts. Not trades.') }}">
         {{ _('Pools · liquidity in / out') }}
@@ -1119,7 +1139,7 @@
     <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--utility"></i>{{ _('cyan = utility') }}</span>
     <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--memecoin"></i>{{ _('pink = memecoin') }}</span>
     <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--rwa"></i>{{ _('blue = real-world asset') }}</span>
-    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--unlabeled"></i>{{ _('grey = no category assigned yet') }}</span>
+    <span class="tron-cl-item"><i class="tron-cl-dot tron-cl-dot--unlabeled"></i>{{ _('grey = unlabeled') }}</span>
   </div>
 
   {# On-page legend (Charlie explicit): lanes = verification tier;
