@@ -133,14 +133,52 @@ def _capture_one(page, path: str, selector: str, is_mobile: bool = False) -> tup
             raise RuntimeError("mobile-nav open panel not found after click")
         png = handle.screenshot()
         return png, {"url": url, "mode": "mobile"}
-    # Desktop: click summary, wait for menu, screenshot the dropdown.
+    # Desktop: click summary, wait for menu, screenshot the summary+menu
+    # region. Screenshotting the details element itself is wrong here —
+    # `.menu` is `position: absolute`, so it does not contribute to the
+    # details bounding box, and `handle.screenshot()` on the details
+    # returns a summary-sized ~57x30 placeholder that misses the menu
+    # entirely. Instead, take a viewport screenshot clipped to a rect
+    # that spans the summary and the open menu together, so any CSS
+    # regression to the dropdown surface actually lands in the image.
     page.wait_for_selector(selector, timeout=5_000)
     page.click(selector + " > summary")
     page.wait_for_selector(selector + " .menu", state="visible", timeout=2_000)
-    handle = page.query_selector(selector)
-    if not handle:
-        raise RuntimeError(f"selector not found after click: {selector}")
-    png = handle.screenshot()
+    # `state="visible"` returns as soon as .menu.display != "none", which
+    # can happen a frame before the native <details> toggle finishes and
+    # the menu's getBoundingClientRect() reports non-zero dimensions.
+    # Without this wait, the clip below collapses to just the summary
+    # rect (~57x30) and the screenshot is a useless placeholder — that
+    # was the 2026-09-22 desktop-placeholder incident. Wait for a
+    # meaningful menu height before taking the clip rect.
+    page.wait_for_function(
+        f"() => {{ const m = document.querySelector({selector!r} + ' .menu'); "
+        "return m && m.getBoundingClientRect().height > 20; }",
+        timeout=2_000,
+    )
+    clip = page.evaluate(
+        """
+        (sel) => {
+          const d = document.querySelector(sel);
+          if (!d) return null;
+          const s = d.querySelector('summary');
+          const m = d.querySelector('.menu');
+          if (!s || !m) return null;
+          const sr = s.getBoundingClientRect();
+          const mr = m.getBoundingClientRect();
+          const pad = 6;
+          const x = Math.max(0, Math.floor(Math.min(sr.left, mr.left) - pad));
+          const y = Math.max(0, Math.floor(Math.min(sr.top, mr.top) - pad));
+          const right = Math.ceil(Math.max(sr.right, mr.right) + pad);
+          const bottom = Math.ceil(Math.max(sr.bottom, mr.bottom) + pad);
+          return { x, y, width: right - x, height: bottom - y };
+        }
+        """,
+        selector,
+    )
+    if not clip or clip["width"] <= 0 or clip["height"] <= 0:
+        raise RuntimeError(f"clip not computable for {selector}")
+    png = page.screenshot(clip=clip)
     return png, {"url": url, "mode": "desktop"}
 
 
