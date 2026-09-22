@@ -1440,12 +1440,33 @@ _CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
 _CSP_IMG_SRC = "'self' data:"
-_CSP_CONNECT_SRC = (
-    # Browsers connect to wss://xrplcluster.com (primary). s2 and s1 are
-    # kept in the allowlist as automatic fallbacks so a cluster outage
-    # can be mitigated without also pushing a CSP header change.
-    "'self' wss://xrplcluster.com wss://s2.ripple.com wss://s1.ripple.com"
-)
+def _build_csp_connect_src():
+    # Browsers connect to wss://xrplcluster.com by default. s2 and s1
+    # are kept in the allowlist as automatic fallbacks so a cluster
+    # outage can be mitigated without also pushing a CSP header
+    # change. When LIVE_STREAM_WSS_PRIMARY / LIVE_STREAM_WSS_FALLBACK
+    # point at our own-node relay (e.g. wss://rpc.xrpldashboard.com),
+    # they get added here so live_stream.js can actually open the
+    # connection.
+    origins = [
+        "'self'",
+        "wss://xrplcluster.com",
+        "wss://s2.ripple.com",
+        "wss://s1.ripple.com",
+    ]
+    for env_key in ("LIVE_STREAM_WSS_PRIMARY", "LIVE_STREAM_WSS_FALLBACK"):
+        url = os.environ.get(env_key, "").strip()
+        if not url:
+            continue
+        origin = url.split("/", 3)
+        if len(origin) >= 3:
+            base = "/".join(origin[:3])
+            if base not in origins:
+                origins.append(base)
+    return " ".join(origins)
+
+
+_CSP_CONNECT_SRC = _build_csp_connect_src()
 
 _CSP_VALUE = "; ".join([
     "default-src 'self'",

@@ -30,5 +30,21 @@
 {# Shared XRPL ledger-stream WebSocket. Loads on every page so any panel
    can subscribe via window.LiveStream.onLedger(cb) — no per-page boilerplate.
    Not `defer` on purpose: body-level inline scripts that subscribe must see
-   window.LiveStream defined at parse time, and the file is tiny + cached. #}
+   window.LiveStream defined at parse time, and the file is tiny + cached.
+
+   Charlie ruling 2026-09-22 Tue PM: when LIVE_STREAM_WSS_PRIMARY points
+   at our own-node relay (different from the fallback), inject the URL
+   pair + labels so live_stream.js can prepend the primary, watchdog
+   the first ledger for ~10s, fail open to the fallback with an amber
+   banner, and ping /api/walker-node-fallback once per session. When
+   primary == fallback (default), skip the block — JS uses its bundled
+   URL list. #}
+{% if live_stream_wss_own_node %}
+  <script>
+    window.LIVE_STREAM_WSS_PRIMARY = {{ live_stream_wss_primary | tojson }};
+    window.LIVE_STREAM_WSS_PRIMARY_LABEL = {{ live_stream_wss_primary_label | tojson }};
+    window.LIVE_STREAM_WSS_FALLBACK = {{ live_stream_wss_fallback | tojson }};
+    window.LIVE_STREAM_WSS_FALLBACK_LABEL = {{ live_stream_wss_fallback_label | tojson }};
+  </script>
+{% endif %}
 <script src="/static/js/live_stream.js"></script>
