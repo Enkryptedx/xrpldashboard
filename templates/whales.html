@@ -947,14 +947,24 @@
 
     function connect() {
       if (closed) return;
+      // Prefer the own-node relay when the template injected it; fall back
+      // to the public cluster otherwise. Own-node URL is set on
+      // window.LIVE_STREAM_WSS_PRIMARY by templates/_head_meta.html when
+      // Render env LIVE_STREAM_WSS_PRIMARY differs from the fallback.
+      var _wsPrimary = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string' && window.LIVE_STREAM_WSS_PRIMARY.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY.trim()
+        : 'wss://xrplcluster.com';
+      var _wsLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string' && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim()
+        : 'xrplcluster.com';
       try {
-        ws = new WebSocket('wss://xrplcluster.com');
+        ws = new WebSocket(_wsPrimary);
       } catch (e) {
         setState('closed', 'connect failed · retrying');
         scheduleReconnect();
         return;
       }
-      setState('connecting', 'connecting to xrplcluster.com…');
+      setState('connecting', 'connecting to ' + _wsLabel + '…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
