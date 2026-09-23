@@ -5512,92 +5512,122 @@ def observatory():
     """
     import datetime as _dt
     today = _dt.date.today()
-    # Week ending one week ago — inclusive end, exclusive start:
-    #   window: [today - 14 days, today - 7 days)
-    window_end = today - _dt.timedelta(days=7)
-    window_start = window_end - _dt.timedelta(days=7)
+    # Charlie ruling 2026-09-23 Wed: two windows, never empty.
+    #   FINAL window: [today - 14, today - 7) — one full completed week
+    #                 (settled, deduped, safe to publish).
+    #   LIVE window:  [today - 7,  today)     — current rolling 7 days,
+    #                 updates daily. Labeled 'live — updating daily'.
+    final_end = today - _dt.timedelta(days=7)
+    final_start = final_end - _dt.timedelta(days=7)
+    live_end = today
+    live_start = live_end - _dt.timedelta(days=7)
 
-    rollup_rows: list[tuple[str, str, str, int]] = []  # (day, class, family, hits)
-    if db.pg_available():
-        try:
-            with db.pg_connect() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT as_of_date, ua_class, page_family, hits "
-                        "FROM ai_crawler_daily_rollup "
-                        "WHERE as_of_date >= %s AND as_of_date < %s "
-                        "ORDER BY as_of_date, ua_class, page_family",
-                        (window_start.isoformat(), window_end.isoformat()),
-                    )
-                    rollup_rows = [
-                        (r[0].isoformat(), r[1], r[2], int(r[3]))
-                        for r in cur.fetchall()
-                    ]
-        except Exception:
-            rollup_rows = []
+    def _fetch_rollup(w_start, w_end):
+        """Return (by_crawler, families_sorted, total_hits) for the window."""
+        rows = []
+        if db.pg_available():
+            try:
+                with db.pg_connect() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT as_of_date, ua_class, page_family, hits "
+                            "FROM ai_crawler_daily_rollup "
+                            "WHERE as_of_date >= %s AND as_of_date < %s "
+                            "ORDER BY as_of_date, ua_class, page_family",
+                            (w_start.isoformat(), w_end.isoformat()),
+                        )
+                        rows = [(r[0].isoformat(), r[1], r[2], int(r[3]))
+                                for r in cur.fetchall()]
+            except Exception:
+                rows = []
+        by_crawler = {}
+        fams = set()
+        total = 0
+        for _d, ua_class, family, hits in rows:
+            d = by_crawler.setdefault(ua_class, {})
+            d[family] = d.get(family, 0) + hits
+            fams.add(family)
+            total += hits
+        sorted_c = sorted(by_crawler.items(), key=lambda kv: -sum(kv[1].values()))
+        return sorted_c, sorted(fams), total
 
-    # Pivot into crawler → family → hits totals over the week.
-    by_crawler: dict[str, dict[str, int]] = {}
-    families_seen: set[str] = set()
-    total_hits = 0
-    for _day, ua_class, family, hits in rollup_rows:
-        d = by_crawler.setdefault(ua_class, {})
-        d[family] = d.get(family, 0) + hits
-        families_seen.add(family)
-        total_hits += hits
-    crawlers_sorted = sorted(
-        by_crawler.items(),
-        key=lambda kv: -sum(kv[1].values()),
-    )
-    families_sorted = sorted(families_seen)
+    def _fetch_top_tokens(w_start, w_end):
+        pages = []
+        if db.pg_available():
+            try:
+                import token_names as _tn
+                names_map = _tn.load_display_map() if hasattr(_tn, "load_display_map") else {}
+                with db.pg_connect() as conn:
+                    with conn.cursor() as cur:
+                        start_ts = int(_dt.datetime.combine(
+                            w_start, _dt.time.min,
+                        ).replace(tzinfo=_dt.timezone.utc).timestamp())
+                        end_ts = int(_dt.datetime.combine(
+                            w_end, _dt.time.min,
+                        ).replace(tzinfo=_dt.timezone.utc).timestamp())
+                        cur.execute(
+                            "SELECT path, COUNT(*) AS hits "
+                            "FROM ai_crawler_hits "
+                            "WHERE ts >= %s AND ts < %s "
+                            "  AND path LIKE '/token/%%' "
+                            "  AND ua_class IS NOT NULL AND ua_class <> '' "
+                            "GROUP BY path ORDER BY hits DESC LIMIT 5",
+                            (start_ts, end_ts),
+                        )
+                        for path, hits in cur.fetchall():
+                            parts = (path or "").split("/")
+                            display = "?"
+                            if len(parts) >= 4:
+                                cur_hex, issuer = parts[2], parts[3]
+                                key = (cur_hex, issuer)
+                                display = names_map.get(key) or cur_hex[:8]
+                            pages.append((display, int(hits)))
+            except Exception:
+                pages = []
+        return pages
 
-    # Top 5 token-page NAMES fetched by any AI crawler in the window.
-    # Names only — no wallet address, no issuer, no path leak.
-    top_token_pages: list[tuple[str, int]] = []
-    if db.pg_available():
-        try:
-            import token_names as _tn
-            names_map = _tn.load_display_map() if hasattr(_tn, "load_display_map") else {}
-            with db.pg_connect() as conn:
-                with conn.cursor() as cur:
-                    start_ts = int(_dt.datetime.combine(
-                        window_start, _dt.time.min,
-                    ).replace(tzinfo=_dt.timezone.utc).timestamp())
-                    end_ts = int(_dt.datetime.combine(
-                        window_end, _dt.time.min,
-                    ).replace(tzinfo=_dt.timezone.utc).timestamp())
-                    cur.execute(
-                        "SELECT path, COUNT(*) AS hits "
-                        "FROM ai_crawler_hits "
-                        "WHERE ts >= %s AND ts < %s "
-                        "  AND path LIKE '/token/%%' "
-                        "  AND ua_class IS NOT NULL AND ua_class <> '' "
-                        "GROUP BY path ORDER BY hits DESC LIMIT 5",
-                        (start_ts, end_ts),
-                    )
-                    for path, hits in cur.fetchall():
-                        # /token/<currency_hex>/<issuer> — recover the
-                        # display name; fall back to the currency
-                        # portion if the map doesn't have it. NEVER
-                        # publish the issuer or the raw path.
-                        parts = (path or "").split("/")
-                        display = "?"
-                        if len(parts) >= 4:
-                            cur_hex, issuer = parts[2], parts[3]
-                            key = (cur_hex, issuer)
-                            display = names_map.get(key) or cur_hex[:8]
-                        top_token_pages.append((display, int(hits)))
-        except Exception:
-            top_token_pages = []
+    final_crawlers, final_families, final_total = _fetch_rollup(final_start, final_end)
+    live_crawlers,  live_families,  live_total  = _fetch_rollup(live_start,  live_end)
+    final_top_tokens = _fetch_top_tokens(final_start, final_end)
+    live_top_tokens  = _fetch_top_tokens(live_start,  live_end)
+
+    # "So what" one-liner based on live-week activity + top crawler.
+    so_what = None
+    if live_crawlers:
+        top_ua, top_per = live_crawlers[0]
+        so_what = (
+            f"{live_total:,} classified crawler hits in the last 7 days across "
+            f"{len(live_crawlers)} crawler classes — {top_ua} is the most active "
+            f"({sum(top_per.values()):,} hits)."
+        )
+    elif final_crawlers:
+        top_ua, top_per = final_crawlers[0]
+        so_what = (
+            f"No classified crawler traffic in the last 7 days yet — the completed week "
+            f"({final_start.isoformat()} → {final_end.isoformat()}) had {final_total:,} hits "
+            f"led by {top_ua}."
+        )
+    else:
+        so_what = (
+            "No classified crawler traffic in either the current or completed week. "
+            "The classifier is running — new hits will surface tomorrow."
+        )
 
     return render_template(
         "observatory.html",
-        window_start=window_start.isoformat(),
-        window_end=window_end.isoformat(),
-        crawlers=crawlers_sorted,
-        families=families_sorted,
-        total_hits=total_hits,
-        top_token_pages=top_token_pages,
+        final_window_start=final_start.isoformat(),
+        final_window_end=final_end.isoformat(),
+        final_crawlers=final_crawlers,
+        final_families=final_families,
+        final_total=final_total,
+        final_top_tokens=final_top_tokens,
+        live_window_start=live_start.isoformat(),
+        live_window_end=live_end.isoformat(),
+        live_crawlers=live_crawlers,
+        live_families=live_families,
+        live_total=live_total,
+        live_top_tokens=live_top_tokens,
+        so_what=so_what,
     )
 
 

@@ -67,16 +67,17 @@
 {% include "_nav.html" %}
 <div class="wrap">
   <h1>{{ _('AI Web Observatory') }}</h1>
-  <p class="window">
-    {% trans start=window_start, end=window_end -%}
-    Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed).
-    {%- endtrans %}
+
+  {% if so_what %}
+  <p class="so-what" style="font-size:1.05rem;padding:12px 14px;background:rgba(34,211,238,0.08);border-left:3px solid rgba(34,211,238,0.5);border-radius:4px;margin:14px 0 22px;line-height:1.5;">
+    <strong>{{ _('So what:') }}</strong> {{ so_what }}
   </p>
+  {% endif %}
 
   <div class="lede">
     <p>
       {% trans -%}
-      What this is: a <strong>public view of machine traffic</strong> on xrpldashboard. Every row below is a bot — an AI-answer crawler (ChatGPT, Claude, Perplexity, You, Google's AI-extended crawl, etc.) or a classic search crawler (Bing, Amazon, Bytespider). We report at weekly granularity, always one week delayed, so today's telemetry stays private and there's a settling window for our own dedup and audit.
+      What this is: a <strong>public view of machine traffic</strong> on xrpldashboard. Every row below is a bot — an AI-answer crawler (ChatGPT, Claude, Perplexity, You, Google's AI-extended crawl, etc.) or a classic search crawler (Bing, Amazon, Bytespider).
       {%- endtrans %}
     </p>
     <p>
@@ -86,24 +87,32 @@
     </p>
   </div>
 
-  <h2>{{ _('Crawlers × page families') }}</h2>
-  {% if crawlers %}
+  {# ── LIVE (rolling 7 days, updates daily) ────────────────────────── #}
+  <h2 style="margin-top:1.6rem;">{{ _('This week — live') }}
+    <span style="font-size:0.72em;color:rgba(34,211,238,0.85);font-weight:400;letter-spacing:0.06em;">
+      &nbsp;{{ _('updating daily') }}
+    </span>
+  </h2>
+  <p class="window">
+    {% trans start=live_window_start, end=live_window_end -%}
+    Rolling 7-day window: <code>{{ start }}</code> → <code>{{ end }}</code> (today included; today's row will settle overnight).
+    {%- endtrans %}
+  </p>
+  {% if live_crawlers %}
   <table>
     <thead>
       <tr>
         <th>{{ _('crawler') }}</th>
         <th>{{ _('total') }}</th>
-        {% for f in families %}
-          <th>{{ f }}</th>
-        {% endfor %}
+        {% for f in live_families %}<th>{{ f }}</th>{% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for ua_class, per_family in crawlers %}
+      {% for ua_class, per_family in live_crawlers %}
       <tr>
         <td><code>{{ ua_class }}</code></td>
         <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
-        {% for f in families %}
+        {% for f in live_families %}
           <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
         {% endfor %}
       </tr>
@@ -111,39 +120,80 @@
     </tbody>
   </table>
   <p class="note">
-    {% trans total=total_hits -%}
-    Total classified crawler hits in the window: <strong>{{ total }}</strong>. Page families are a small closed vocabulary (amendments, tokens, check, changes, registry, snapshots, whales, pools, lending, rlusd, nfts, mpts, methodology, home, thisweek, other) — the exact endpoint each crawler hit stays private.
+    {% trans total=live_total -%}
+    Total classified crawler hits in the live window: <strong>{{ total }}</strong>.
     {%- endtrans %}
   </p>
+  {% if live_top_tokens %}
+  <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (live)') }}</h3>
+  <table>
+    <thead><tr><th>{{ _('token') }}</th><th>{{ _('hits') }}</th></tr></thead>
+    <tbody>
+      {% for name, hits in live_top_tokens %}
+      <tr><td>{{ name }}</td><td>{{ "{:,}".format(hits) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
   {% else %}
-  <div class="empty">{{ _('No classified crawler hits in this window yet.') }}</div>
+  <div class="empty">{{ _('No classified crawler hits yet in the current rolling 7 days — see the completed week below.') }}</div>
   {% endif %}
 
-  <h2>{{ _('Top 5 token pages fetched by AI crawlers') }}</h2>
-  {% if top_token_pages %}
+  {# ── FINAL (one-week delayed, settled) ──────────────────────────── #}
+  <h2 style="margin-top:2rem;">{{ _('Completed week — final') }}
+    <span style="font-size:0.72em;color:rgba(160,180,210,0.7);font-weight:400;letter-spacing:0.06em;">
+      &nbsp;{{ _('settled, will not change') }}
+    </span>
+  </h2>
+  <p class="window">
+    {% trans start=final_window_start, end=final_window_end -%}
+    Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed for dedup + audit).
+    {%- endtrans %}
+  </p>
+  {% if final_crawlers %}
   <table>
     <thead>
-      <tr><th>{{ _('token') }}</th><th>{{ _('hits') }}</th></tr>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in final_families %}<th>{{ f }}</th>{% endfor %}
+      </tr>
     </thead>
     <tbody>
-      {% for name, hits in top_token_pages %}
+      {% for ua_class, per_family in final_crawlers %}
       <tr>
-        <td>{{ name }}</td>
-        <td>{{ "{:,}".format(hits) }}</td>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in final_families %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
   <p class="note">
-    {{ _("Names only. Issuer addresses and exact paths stay in private telemetry.") }}
+    {% trans total=final_total -%}
+    Total classified crawler hits in the completed week: <strong>{{ total }}</strong>.
+    {%- endtrans %}
   </p>
+  {% if final_top_tokens %}
+  <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (completed week)') }}</h3>
+  <table>
+    <thead><tr><th>{{ _('token') }}</th><th>{{ _('hits') }}</th></tr></thead>
+    <tbody>
+      {% for name, hits in final_top_tokens %}
+      <tr><td>{{ name }}</td><td>{{ "{:,}".format(hits) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
   {% else %}
-  <div class="empty">{{ _('No AI crawler hits on token pages in this window.') }}</div>
+  <div class="empty">{{ _('The completed week had no classified crawler activity.') }}</div>
   {% endif %}
 
   <p class="note" style="margin-top: 2rem;">
     {% trans -%}
-    Sources: <code>ai_crawler_hits</code> (populated by our request-time classifier) rolled up daily into <code>ai_crawler_daily_rollup</code>. Self-probes and internal canaries are excluded upstream. Historical windows are additive — this page will grow to a rolling 8-week comparison once four weeks of data are settled.
+    Page families are a small closed vocabulary (amendments, tokens, check, changes, registry, snapshots, whales, pools, lending, rlusd, nfts, mpts, methodology, home, thisweek, other) — the exact endpoint each crawler hit stays private. Sources: <code>ai_crawler_hits</code> (populated by our request-time classifier) rolled up daily into <code>ai_crawler_daily_rollup</code>. Self-probes and internal canaries are excluded upstream.
     {%- endtrans %}
   </p>
 </div>
