@@ -98,21 +98,23 @@
     Rolling 7-day window: <code>{{ start }}</code> → <code>{{ end }}</code> (today included; today's row will settle overnight). Every classified crawler hit on the site — including <code>/whales</code>, <code>/pools</code>, <code>/tokens</code>, and token detail pages. Self-probes and SEO-backlink crawlers are excluded; SEO activity is broken out in the "what they fetch to verify" sub-table below.
     {%- endtrans %}
   </p>
-  {% if live_crawlers %}
+  {# ── AI answer engines (the headline bucket) ─────────────────── #}
+  {% if live_ai_answer %}
+  <h3 style="font-size:1rem;margin-top:0.6rem;">{{ _('AI answer engines') }} <span style="font-size:0.85em;color:var(--muted);font-weight:400;">&nbsp;{{ _('retrieval → citation; the crawlers that put you into an AI answer') }}</span></h3>
   <table>
     <thead>
       <tr>
         <th>{{ _('crawler') }}</th>
         <th>{{ _('total') }}</th>
-        {% for f in live_families %}<th>{{ f }}</th>{% endfor %}
+        {% for f in live_ai_answer_fams %}<th>{{ f }}</th>{% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for ua_class, per_family in live_crawlers if ua_class|upper != 'UNLISTED' %}
+      {% for ua_class, per_family in live_ai_answer %}
       <tr>
         <td><code>{{ ua_class }}</code></td>
         <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
-        {% for f in live_families %}
+        {% for f in live_ai_answer_fams %}
           <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
         {% endfor %}
       </tr>
@@ -120,13 +122,52 @@
     </tbody>
   </table>
   <p class="note">
-    {% trans total=live_total -%}
-    Total classified crawler hits in the live window: <strong>{{ total }}</strong>.
+    {% trans total=live_ai_answer_total -%}
+    Total AI-answer crawler hits in the live window: <strong>{{ total }}</strong>.
     {%- endtrans %}
-    {% if live_unlisted %}
-    &nbsp;{{ _('Of those,') }} <strong>{{ "{:,}".format(live_unlisted) }}</strong> {{ _('are unclassified bots — UAs the classifier does not yet recognize; not headlined and not broken down by page family. Being triaged into new crawler classes.') }}
-    {% endif %}
   </p>
+  {% else %}
+  <div class="empty">{{ _('No AI-answer crawler hits yet in the current rolling 7 days.') }}</div>
+  {% endif %}
+
+  {# ── Other buckets: training, search-seo, scraper ─────────────── #}
+  {% for bucket in live_other_buckets %}
+  <h3 style="font-size:0.95rem;margin-top:1.2rem;color:var(--muted);font-weight:500;">
+    {{ _(bucket.label) }}
+    <span style="font-size:0.85em;font-weight:400;">
+      {% if bucket.key == 'training' %}&nbsp;{{ _('bulk-ingest for model training; no citation path') }}{% endif %}
+      {% if bucket.key == 'search-seo' %}&nbsp;{{ _('search-index + SEO backlink crawlers') }}{% endif %}
+      {% if bucket.key == 'scraper' %}&nbsp;{{ _('declared headless frameworks + unfamiliar probes') }}{% endif %}
+    </span>
+  </h3>
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in bucket.fams %}<th>{{ f }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ua_class, per_family in bucket.rows %}
+      <tr>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in bucket.fams %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">{{ _('Total') }} <strong>{{ "{:,}".format(bucket.total) }}</strong> {{ _('hits in this bucket.') }}</p>
+  {% endfor %}
+
+  {% if live_unlisted %}
+  <p class="note" style="margin-top:0.8rem;">
+    <strong>{{ _('Unclassified:') }}</strong>&nbsp;<strong>{{ "{:,}".format(live_unlisted) }}</strong>&nbsp;{{ _('bot-shaped UAs that did not match any tracked crawler class. Being triaged into new classes; not headlined and not broken down by page family.') }}
+  </p>
+  {% endif %}
   {% if live_top_tokens %}
   <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (live)') }}</h3>
   <table>
@@ -190,21 +231,23 @@
     Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed for dedup + audit). Site-wide from page_views; self-probes and SEO excluded.
     {%- endtrans %}
   </p>
-  {% if final_crawlers %}
+  {# ── AI answer engines (the headline bucket) ─────────────────── #}
+  {% if final_ai_answer %}
+  <h3 style="font-size:1rem;margin-top:0.6rem;">{{ _('AI answer engines') }}</h3>
   <table>
     <thead>
       <tr>
         <th>{{ _('crawler') }}</th>
         <th>{{ _('total') }}</th>
-        {% for f in final_families %}<th>{{ f }}</th>{% endfor %}
+        {% for f in final_ai_answer_fams %}<th>{{ f }}</th>{% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for ua_class, per_family in final_crawlers if ua_class|upper != 'UNLISTED' %}
+      {% for ua_class, per_family in final_ai_answer %}
       <tr>
         <td><code>{{ ua_class }}</code></td>
         <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
-        {% for f in final_families %}
+        {% for f in final_ai_answer_fams %}
           <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
         {% endfor %}
       </tr>
@@ -212,13 +255,47 @@
     </tbody>
   </table>
   <p class="note">
-    {% trans total=final_total -%}
-    Total classified crawler hits in the completed week: <strong>{{ total }}</strong>.
+    {% trans total=final_ai_answer_total -%}
+    Total AI-answer crawler hits in the completed week: <strong>{{ total }}</strong>.
     {%- endtrans %}
-    {% if final_unlisted %}
-    &nbsp;{{ _('Of those,') }} <strong>{{ "{:,}".format(final_unlisted) }}</strong> {{ _('are unclassified bots — UAs the classifier does not yet recognize.') }}
-    {% endif %}
   </p>
+  {% else %}
+  <div class="empty">{{ _('The completed week had no AI-answer crawler activity.') }}</div>
+  {% endif %}
+
+  {# ── Other buckets: training, search-seo, scraper ─────────────── #}
+  {% for bucket in final_other_buckets %}
+  <h3 style="font-size:0.95rem;margin-top:1.2rem;color:var(--muted);font-weight:500;">
+    {{ _(bucket.label) }}
+  </h3>
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in bucket.fams %}<th>{{ f }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ua_class, per_family in bucket.rows %}
+      <tr>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in bucket.fams %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">{{ _('Total') }} <strong>{{ "{:,}".format(bucket.total) }}</strong> {{ _('hits in this bucket.') }}</p>
+  {% endfor %}
+
+  {% if final_unlisted %}
+  <p class="note" style="margin-top:0.8rem;">
+    <strong>{{ _('Unclassified:') }}</strong>&nbsp;<strong>{{ "{:,}".format(final_unlisted) }}</strong>&nbsp;{{ _('bot-shaped UAs that did not match any tracked crawler class.') }}
+  </p>
+  {% endif %}
   {% if final_top_tokens %}
   <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (completed week)') }}</h3>
   <table>

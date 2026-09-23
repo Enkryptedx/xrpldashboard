@@ -5601,55 +5601,100 @@ def observatory():
     final_top_tokens = _fetch_top_tokens(final_start, final_end)
     live_top_tokens  = _fetch_top_tokens(live_start,  live_end)
 
-    # UNLISTED = the classifier's catch-all for UAs that didn't match any
-    # tracked crawler pattern. Charlie ruling 2026-09-23 Wed 06:58 ET:
-    # a public page must NEVER headline "unclassified" — the "so what"
-    # line names the top KNOWN crawler; UNLISTED renders as a separate
-    # "unclassified bots (N)" note below the table.
-    def _top_known(crawlers):
-        for ua_class, per_family in crawlers:
-            if ua_class and ua_class.upper() != "UNLISTED":
-                return ua_class, per_family
-        return None
+    # Group each window's crawlers into the four kind buckets (Charlie
+    # ruling 2026-09-23 Wed 07:35 ET): ai-answer, training, search-seo,
+    # scraper. Headline + primary table restricted to ai-answer; the
+    # other three render as sub-tables below. UNLISTED stays out of the
+    # buckets and renders as a separate unclassified count.
+    import agent_tier_rate_limit as _atrl
 
-    def _unlisted_hits(crawlers):
+    def _bucketize(crawlers):
+        """Return (buckets_dict, unlisted_hits) where buckets_dict maps
+        bucket_key -> list of (ua_class, per_family) tuples ordered by
+        hits desc."""
+        buckets = {b: [] for b in _atrl.BUCKET_ORDER}
+        unlisted = 0
         for ua_class, per_family in crawlers:
             if ua_class and ua_class.upper() == "UNLISTED":
-                return sum(per_family.values())
-        return 0
+                unlisted += sum(per_family.values())
+                continue
+            b = _atrl.bucket_for(ua_class)
+            buckets[b].append((ua_class, per_family))
+        return buckets, unlisted
 
+    def _bucket_total(bucket_rows):
+        return sum(sum(pf.values()) for _uc, pf in bucket_rows)
+
+    live_buckets, live_unlisted = _bucketize(live_crawlers)
+    final_buckets, final_unlisted = _bucketize(final_crawlers)
+
+    def _families_for(bucket_rows):
+        fams = set()
+        for _uc, pf in bucket_rows:
+            fams.update(pf.keys())
+        return sorted(fams)
+
+    live_ai_answer = live_buckets["ai-answer"]
+    live_ai_answer_fams = _families_for(live_ai_answer)
+    live_ai_answer_total = _bucket_total(live_ai_answer)
+    final_ai_answer = final_buckets["ai-answer"]
+    final_ai_answer_fams = _families_for(final_ai_answer)
+    final_ai_answer_total = _bucket_total(final_ai_answer)
+
+    # "So what" line: restricted to AI answer engines (Charlie ruling
+    # 2026-09-23 Wed 07:35 ET). Names the top AI-answer crawler; if
+    # none in the live window, falls back to the completed week; if
+    # still none, honest empty copy.
     so_what = None
-    top_known_live = _top_known(live_crawlers)
-    top_known_final = _top_known(final_crawlers)
-    if top_known_live:
-        top_ua, top_per = top_known_live
+    if live_ai_answer:
+        top_ua, top_per = live_ai_answer[0]
         so_what = (
-            f"{live_total:,} classified crawler hits in the last 7 days across "
-            f"{len(live_crawlers)} crawler classes — {top_ua} is the most active "
-            f"known crawler ({sum(top_per.values()):,} hits)."
+            f"{live_ai_answer_total:,} AI-answer crawler hits in the last 7 days "
+            f"across {len(live_ai_answer)} answer-engine classes — {top_ua} is the "
+            f"most active ({sum(top_per.values()):,} hits)."
         )
-    elif top_known_final:
-        top_ua, top_per = top_known_final
+    elif final_ai_answer:
+        top_ua, top_per = final_ai_answer[0]
         so_what = (
-            f"No known crawler traffic in the last 7 days yet — the completed week "
-            f"({final_start.isoformat()} → {final_end.isoformat()}) had {final_total:,} hits "
-            f"led by {top_ua}."
+            f"No AI-answer crawler traffic in the last 7 days yet — the completed "
+            f"week ({final_start.isoformat()} → {final_end.isoformat()}) had "
+            f"{final_ai_answer_total:,} hits led by {top_ua}."
         )
     else:
         so_what = (
-            "No known crawler traffic in either the current or completed week. "
+            "No AI-answer crawler traffic in either the current or completed week. "
             "The classifier is running — new hits will surface tomorrow."
         )
 
-    live_unlisted = _unlisted_hits(live_crawlers)
-    final_unlisted = _unlisted_hits(final_crawlers)
+    # Non-AI buckets for the sub-tables below the headline.
+    def _pack_buckets(buckets):
+        packed = []
+        for b in _atrl.BUCKET_ORDER:
+            if b == "ai-answer":
+                continue
+            rows = buckets.get(b) or []
+            if not rows:
+                continue
+            packed.append({
+                "key": b,
+                "label": _atrl.BUCKET_LABELS[b],
+                "rows": rows,
+                "fams": _families_for(rows),
+                "total": _bucket_total(rows),
+            })
+        return packed
+
+    live_other_buckets = _pack_buckets(live_buckets)
+    final_other_buckets = _pack_buckets(final_buckets)
 
     return render_template(
         "observatory.html",
         final_window_start=final_start.isoformat(),
         final_window_end=final_end.isoformat(),
-        final_crawlers=final_crawlers,
-        final_families=final_families,
+        final_ai_answer=final_ai_answer,
+        final_ai_answer_fams=final_ai_answer_fams,
+        final_ai_answer_total=final_ai_answer_total,
+        final_other_buckets=final_other_buckets,
         final_total=final_total,
         final_top_tokens=final_top_tokens,
         final_unlisted=final_unlisted,
@@ -5658,8 +5703,10 @@ def observatory():
         final_agent_total=final_agent_total,
         live_window_start=live_start.isoformat(),
         live_window_end=live_end.isoformat(),
-        live_crawlers=live_crawlers,
-        live_families=live_families,
+        live_ai_answer=live_ai_answer,
+        live_ai_answer_fams=live_ai_answer_fams,
+        live_ai_answer_total=live_ai_answer_total,
+        live_other_buckets=live_other_buckets,
         live_total=live_total,
         live_top_tokens=live_top_tokens,
         live_unlisted=live_unlisted,

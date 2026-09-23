@@ -168,6 +168,83 @@ _CLASS_LABEL_OVERRIDES = {
 }
 
 
+# ── Crawler kind buckets (Charlie ruling 2026-09-23 Wed 07:35 ET) ────
+#
+# Four buckets tell an honest story on /observatory: which crawler
+# hit us for what purpose. Ordering used in the display:
+#   ai-answer   — retrieval-to-cite. In-conversation lookups, AI-answer
+#                 index crawls. This is the bucket the "so what" line
+#                 names and the headline table shows.
+#   training    — bulk-ingest for model training corpora. Distinct from
+#                 answer engines: no citation path back to us.
+#   search-seo  — search-index crawlers + SEO backlink audit crawlers.
+#   scraper     — declared headless-scraping frameworks and unfamiliar
+#                 probes we haven't attributed to a legitimate operator.
+#
+# Anything not in the map falls into 'other' — a small residual bucket
+# rendered as a footnote.
+CRAWLER_BUCKETS = {
+    # AI answer engines
+    "chatgpt-user":      "ai-answer",
+    "oai-searchbot":     "ai-answer",
+    "claudebot":         "ai-answer",
+    "claude-web":        "ai-answer",
+    "claude-searchbot":  "ai-answer",
+    "perplexitybot":     "ai-answer",
+    "perplexity-user":   "ai-answer",
+    "google-extended":   "ai-answer",
+    "googleother":       "ai-answer",
+    "applebot-extended": "ai-answer",
+    "meta-searchbot":    "ai-answer",
+    "youbot":            "ai-answer",
+    "kimi":              "ai-answer",
+    "yibot":             "ai-answer",
+    "chatglm-spider":    "ai-answer",
+    "bravebot":          "ai-answer",
+    "grokbot":           "ai-answer",
+    "deepseekbot":       "ai-answer",
+    "qwenbot":           "ai-answer",
+    "cohere-ai":         "ai-answer",
+    "pangubot":          "ai-answer",
+    "duckassistbot":     "ai-answer",
+    "reflectionbot":     "ai-answer",
+    "keenablebot":       "ai-answer",
+    # Training crawlers
+    "gptbot":            "training",   # OpenAI's training crawler
+                                       # (retrieval is chatgpt-user +
+                                       # oai-searchbot; docs at
+                                       # platform.openai.com/docs/gptbot)
+    "ccbot":             "training",   # Common Crawl corpus
+    "bytespider":        "training",   # ByteDance training + search
+    # Search / SEO
+    "seo-crawler":       "search-seo", # Ahrefs / Semrush / MJ12 / DotBot
+                                       # / DataForSeo / SERanking
+                                       # (collapsed by _CLASS_LABEL_OVERRIDES)
+    "petalbot":          "search-seo", # Huawei Petal Search
+    # Scrapers
+    "lightpanda":        "scraper",    # Declared headless framework
+    "mcp-cloud":         "scraper",    # Unfamiliar probe (github.com/mcp-cloud)
+}
+
+BUCKET_ORDER = ("ai-answer", "training", "search-seo", "scraper", "other")
+BUCKET_LABELS = {
+    "ai-answer":  "AI answer engines",
+    "training":   "Training crawlers",
+    "search-seo": "Search / SEO",
+    "scraper":    "Scrapers",
+    "other":      "Other",
+}
+
+
+def bucket_for(ua_class: str | None) -> str:
+    """Return the bucket for a ua_class label, or 'other' if unknown.
+    UNLISTED is treated separately by the observatory template (rendered
+    below the buckets as an unclassified count)."""
+    if not ua_class:
+        return "other"
+    return CRAWLER_BUCKETS.get(ua_class, "other")
+
+
 AUDIT_URL_HEADER_NAME = "X-XRPL-Dashboard-Audit-URL"
 AUDIT_URL_PATH = "/coverage"
 
