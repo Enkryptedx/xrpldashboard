@@ -52,10 +52,15 @@ ondo_finance:
   xrpl_issuer: rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p
   as_of_check: 2026-09-22
   nav_publish_cadence: daily
-  nav_curator_usd: null           # TODO Charlie: read app.ondo.finance/assets/ousg
-  nav_curator_as_of: null         #   → set both fields together with an ISO date
+  # Populated 2026-09-23 09:41 ET from Charlie's screenshot of
+  # app.ondo.finance/assets/ousg (page state: "Asset Open for Trade",
+  # 1 OUSG = $116.65 in the trade widget, headline NAV $116.6508 with
+  # +$16.65 (+14.27%) all-time). Ondo's NAV updates continuously per
+  # the Ethereum on-chain oracle; using today's ET date as the as-of.
+  nav_curator_usd: 116.6508
+  nav_curator_as_of: 2026-09-23
   nav_curator_source: https://app.ondo.finance/assets/ousg
-  nav_curator_updated: null
+  nav_curator_updated: 2026-09-23
   nav_notes: >-
     Ondo maintains an on-chain Price Oracle (Ethereum mainnet) that is
     updated with each NAV computation. NAV per OUSG token =
