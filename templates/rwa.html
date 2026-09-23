@@ -225,8 +225,14 @@
   <div class="agg-strip">
     <div class="agg-stat">
       <span class="agg-big">{{ total_family_count + mpt_attested|length }}</span>
-      <span class="agg-small">{{ _('verified families') }}</span>
-      <span class="agg-sub">{{ total_family_count }} {{ _('AMM-verified') }} · {{ mpt_attested|length }} {{ _('MPT-attested') }}</span>
+      <span class="agg-small">{{ _('attested families') }}</span>
+      <span class="agg-sub">
+        {%- if verified_strict_count -%}
+        {{ verified_strict_count }} {{ _('two-way verified') }} ·
+        {%- endif %}
+        {{ total_family_count - verified_strict_count }} {{ _('labeled AMM') }} ·
+        {{ mpt_attested|length }} {{ _('MPT-attested') }}
+      </span>
     </div>
     <div class="agg-stat">
       <span class="agg-big">{{ total_pool_count }}</span>
@@ -244,11 +250,6 @@
   <p class="agg-context">
     {{ _('Liquidity is currently nominal — institutional RWA adoption on XRPL is in early phase. This page tracks presence, not size.') }}
   </p>
-  <div class="agg-callout">
-    <strong>{{ _('Ecosystem context:') }}</strong>
-    {{ _('Per RWA.xyz\'s 2026-05-03 snapshot: $3.6B in real-world assets on the XRP Ledger (excluding stablecoins) — split roughly $1B in distributed assets and $2.6B in represented assets across 301 projects. Justoken\'s JMWH accounts for $1.76B of that — roughly half the total. Each JMWH token represents one real megawatt-hour of energy backed by energy companies. We exclude Justoken from the figure above pending TOML / attestation evidence — see the') }} <a href="/verify#how-it-works">{{ _('candidates list') }}</a> {{ _('for the gating criteria.') }}
-    <span class="agg-source">{{ _('Source:') }} <a href="https://cryptoslate.com/why-xrp-ledger-is-becoming-a-3-6b-hot-spot-for-tokenized-energy-commodities/" target="_blank" rel="noopener noreferrer">CryptoSlate, 2026-05-03</a></span>
-  </div>
   <div class="agg-callout" style="margin-top: 10px;">
     <strong>{{ _('Governance context:') }}</strong>
     {{ _('rippled v3.3.0 (2026-08-06) ships six amendments aimed at institutional MPT-based tokenization — including ConfidentialTransfer, DynamicMPT, and MPTokensV2, all of which shape the product surface the issuers on this page live on. Live validator status and plain-language descriptions:') }} <a href="/amendments#rippled-3-3-0">/amendments</a>.
@@ -390,6 +391,14 @@
   <p class="footer-note" style="margin-top:0.5em;">
     {{ _('See a family, name, or attestation that looks wrong?') }}
     <a href="/contact?purpose=attestation-dispute&ref=rwa">{{ _('Dispute a label →') }}</a>
+  </p>
+</div>
+{# --- ecosystem-context footnote (moved out of headline neighbor 2026-09-22 per Grok Round 4 item 9) --- #}
+<div class="callout" style="margin-top:1.5em;font-size:0.85rem;">
+  <p class="muted" style="font-size:var(--fs-xs);margin:0;line-height:1.55;">
+    <strong>{{ _('Footnote — ecosystem context (2026-05-03, third-party):') }}</strong>
+    {{ _('Per RWA.xyz\'s 2026-05-03 snapshot: $3.6B in real-world assets on the XRP Ledger (excluding stablecoins) — split roughly $1B in distributed assets and $2.6B in represented assets across 301 projects. Justoken\'s JMWH accounts for $1.76B of that. Each JMWH token represents one real megawatt-hour of energy backed by energy companies. We exclude Justoken from the family count above pending TOML / attestation evidence — see the') }} <a href="/verify#how-it-works">{{ _('candidates list') }}</a> {{ _('for the gating criteria. The $3.6B figure is a third-party aggregation dated 2026-05-03 (~4 months old at time of writing) and is NOT one of our own measurements — treat it as directional, not as our snapshot.') }}
+    <span class="agg-source">{{ _('Source:') }} <a href="https://cryptoslate.com/why-xrp-ledger-is-becoming-a-3-6b-hot-spot-for-tokenized-energy-commodities/" target="_blank" rel="noopener noreferrer">CryptoSlate, 2026-05-03</a></span>
   </p>
 </div>
 {# --- signed-snapshot fingerprint pin --- #}

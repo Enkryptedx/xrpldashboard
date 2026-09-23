@@ -246,7 +246,8 @@
     {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Used by the browser for all per-page real-time subscriptions (whales, tokens, pools, wallet, liveness chip).') }}</li>
+    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Since 2026-09-22, this is the primary browser-side subscription for whales, tokens, pools, and wallet real-time streams.') }}</li>
+    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Retained as fallback only for the browser-side subscriptions above; any fallback event logs into') }} <code>walker_node_fallback</code>.</li>
     <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Kept as the first browser fallback if xrplcluster.com is unreachable. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
   </ul>
