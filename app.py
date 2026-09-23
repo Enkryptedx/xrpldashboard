@@ -8457,6 +8457,46 @@ def token_detail(currency, issuer):
         return render_template("404.html"), 404
 
     data = fetch_token_data_cached(currency, issuer)
+    # Attach tier re-verify state so the template can surface a visible
+    # "issuer's site no longer publishes its token file" note when a TOML
+    # has been failing for ≥3 days (Charlie ruling 2026-09-23 17:44 ET).
+    # NOT a demotion — the tier stays where the walker left it; this is
+    # the honest fact readers see while the 14-day grace runs.
+    reverify_state = None
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT last_check_at, last_ok, last_fail_reason, "
+                    "first_fail_at, last_fail_at, downgraded_at "
+                    "FROM token_reverify_state "
+                    "WHERE currency_hex = %s AND issuer = %s",
+                    (currency, issuer),
+                )
+                r = cur.fetchone()
+                if r:
+                    days_failing = 0
+                    if r[3] and not r[1]:  # first_fail_at + last_ok=False
+                        from datetime import datetime, timezone
+                        days_failing = (
+                            datetime.now(timezone.utc) - r[3]
+                        ).days
+                    reverify_state = {
+                        "last_check_at": r[0],
+                        "last_ok": r[1],
+                        "last_fail_reason": r[2],
+                        "first_fail_at": r[3],
+                        "last_fail_at": r[4],
+                        "downgraded_at": r[5],
+                        "days_failing": days_failing,
+                        "show_toml_missing_note": (
+                            not r[1] and days_failing >= 3
+                            and r[5] is None
+                        ),
+                    }
+        except Exception:
+            reverify_state = None
+    data["reverify_state"] = reverify_state
     return render_template("token.html", data=data)
 
 

@@ -239,11 +239,47 @@
   <div class="error-banner">{{ data.error }}</div>
   {% endif %}
 
+  {# 3-day-404 note (Charlie ruling 2026-09-23 17:44 ET): when the
+     issuer's TOML has been failing to load for ≥3 days, surface the
+     fact as a visible banner. Never a demotion — the tier stays
+     where the walker left it. Fires only for non-downgraded rows so
+     it disappears the day tier flips to labeled. #}
+  {% if data.reverify_state and data.reverify_state.show_toml_missing_note %}
+    <div class="toml-missing-note" style="
+        margin: 8px 0 14px; padding: 10px 14px;
+        border-left: 3px solid rgba(245,158,11,0.85);
+        background: rgba(245,158,11,0.06);
+        color: var(--text); font-size: 0.86rem; line-height: 1.45;
+        border-radius: 4px;
+      " role="status">
+      <strong>{{ _('Note:') }}</strong>
+      {{ _('the issuer\'s site no longer publishes its token file (xrp-ledger.toml has returned') }}
+      <code style="font-family: var(--mono);">{{ data.reverify_state.last_fail_reason or 'an error' }}</code>
+      {{ _('for %(days)d days).', days=data.reverify_state.days_failing) }}
+      {{ _('Attestation stays where our walker last recorded it; the row will be re-verified daily and demoted to') }} <em>{{ _('labeled') }}</em> {{ _('after 14 days of sustained failure.') }}
+    </div>
+  {% endif %}
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-eyebrow">{{ _('Token detail') }}</div>
       <div class="hero-name">
-        <h1{% if not data.labeled %} class="unnamed"{% endif %}>{{ data.display }}</h1>
+        {# Emblem — same lookup + same flagged-token rule as /tokens
+           canvas (Charlie 2026-09-23 17:44 ET). Renders the cached
+           128×128 PNG when we have one; skipped for ticker collisions
+           and non-standard codes (walker excludes flagged pairs at
+           insert time, so the lookup returns null for impostors, and
+           the fallback letters render alongside the amber warning
+           badge that's already in this hero block above). #}
+        {% set _emblem_key = (data.currency_raw or data.display) ~ '::' ~ data.issuer %}
+        {% set _emblem_url = token_icon_lookup.get(_emblem_key) if token_icon_lookup else None %}
+        {% if _emblem_url and not data.ticker_collision and not data.non_standard_code %}
+          <img src="{{ _emblem_url }}" alt=""
+               style="width: 44px; height: 44px; border-radius: 50%;
+                      vertical-align: middle; margin-right: 12px;
+                      box-shadow: 0 1px 4px rgba(0,0,0,0.15);"
+               loading="eager" decoding="async">
+        {% endif %}
+        <h1{% if not data.labeled %} class="unnamed"{% endif %} style="display: inline-block; vertical-align: middle;">{{ data.display }}</h1>
         {% if data.category and data.category != 'unlabeled' %}
           <span class="cat-badge cat-{{ data.category }}">{{ data.category|replace("_"," ") }}</span>
         {% elif data.review_status == 'reviewed_unlabeled' %}
