@@ -4679,6 +4679,35 @@ def rwa():
     total_pool_count = sum(len(f["pool_addresses"]) for f in attested_families)
     total_tvl = sum(f["total_tvl_usd"] for f in attested_families)
 
+    # On-ledger supply value from rwa_supply_nav_daily (Charlie ruling
+    # 2026-09-23 Wed 11:43 ET: /rwa headline shows the on-ledger supply
+    # value with a per-family status line beside it — Ondo enters with
+    # its citation, OpenEden + Midas stay $0 with their reasons).
+    onledger_supply_usd = 0.0
+    onledger_families = []  # [{family_slug, nav_symbol, value_usd, has_nav, reason}]
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute("""
+                    SELECT family_slug, nav_symbol, value_usd, nav_per_unit_usd, reason
+                      FROM rwa_supply_nav_daily
+                     WHERE fetch_date = CURRENT_DATE
+                     ORDER BY value_usd DESC NULLS LAST, family_slug
+                """)
+                for slug, sym, value, nav, reason in cur.fetchall():
+                    v = float(value or 0.0)
+                    onledger_supply_usd += v
+                    onledger_families.append({
+                        "family_slug": slug,
+                        "nav_symbol": sym,
+                        "value_usd": v,
+                        "has_nav": nav is not None,
+                        "reason": reason or "",
+                    })
+        except Exception:
+            onledger_families = []
+            onledger_supply_usd = 0.0
+
     snap_ts = ranked_meta.get("snapshot_ts") if isinstance(ranked_meta, dict) else None
     snapshot_age = (
         max(0, int(time.time()) - int(snap_ts)) if snap_ts else None
@@ -4758,6 +4787,8 @@ def rwa():
         total_family_count=total_family_count,
         verified_strict_count=verified_strict_count,
         total_tvl=total_tvl,
+        onledger_supply_usd=onledger_supply_usd,
+        onledger_families=onledger_families,
         snapshot_age=snapshot_age,
         curation_last_updated=curation_last_updated,
     )

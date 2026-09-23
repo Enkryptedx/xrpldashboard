@@ -223,6 +223,22 @@
   </p>
 
   <div class="agg-strip">
+    {% if onledger_supply_usd and onledger_supply_usd > 0 %}
+    <div class="agg-stat" style="border-left:3px solid rgba(34,211,238,0.6);padding-left:12px;">
+      <span class="agg-tvl">{{ fmt_money(onledger_supply_usd) }}</span>
+      <span class="agg-small">{{ _('on-ledger RWA supply value') }}</span>
+      <span class="agg-sub" style="font-size:0.72rem;color:var(--muted);">
+        {% set counted = [] %}
+        {% set pending = [] %}
+        {% for f in onledger_families %}
+          {% if f.value_usd > 0 %}{% set _ = counted.append(f.family_slug) %}{% else %}{% set _ = pending.append(f.family_slug) %}{% endif %}
+        {% endfor %}
+        {{ counted | map('capitalize') | join(', ') }} {{ _('only so far') }}
+        {%- if pending %}; {{ pending | map('capitalize') | join(', ') }} {{ _('pending PDF') }}{% endif -%}
+        .
+      </span>
+    </div>
+    {% endif %}
     <div class="agg-stat">
       <span class="agg-big">{{ total_family_count + mpt_attested|length }}</span>
       <span class="agg-small">{{ _('attested families') }}</span>
