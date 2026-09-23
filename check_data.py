@@ -823,13 +823,20 @@ _SEED_WORD_RE = re.compile(r"\b[a-z]{3,8}\b")
 _KNOWN_CRYPTO_BRAND_RE = (
     r"coinbase|binance|kraken|uphold|gemini|xaman|xrpscan|bithomp|"
     r"ripple|xumm|sologenic|okx|kucoin|crypto\.com|metamask|ledger|"
-    r"trezor|phantom"
+    r"trezor|phantom|bitrue|xrpldashboard|flare|elon\s+musk"
 )
 
 _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
     "seed_request": [
         re.compile(
-            r"\b(enter|provide|share|type|paste|input|verify|confirm|submit|sync|need|give|show|tell|send)\b.{0,25}\b(your\s+)?(seed|recovery|mnemonic|12[-\s]word|24[-\s]word|private\s+key)",
+            r"\b(enter|provide|share|type|paste|input|verify|confirm|submit|sync|need|give|show|tell|send|dm|message|reply\s+with)\b.{0,25}\b(your\s+)?(seed|recovery|mnemonic|12[-\s]word|24[-\s]word|private\s+key|account\s+key|secret\s+key|wallet\s+key)",
+            re.IGNORECASE,
+        ),
+        # 2026-09-23: standalone "your seed" / "your recovery phrase" as
+        # an object of a DM/messaging verb, more permissive than the
+        # 25-char proximity above (catches "DM me your seed to fix …").
+        re.compile(
+            r"\b(dm|message|text|send|share|provide|give)\s+(me|us)?\s*your\s+(seed|recovery|mnemonic|private\s+key|secret|12[-\s]word|24[-\s]word)",
             re.IGNORECASE,
         ),
         re.compile(
@@ -866,10 +873,23 @@ _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
             r"\b(1|10|100|1000|10000)\s*xrp\s+giveaway",
             re.IGNORECASE,
         ),
+        # 2026-09-23: "receive Nx" / "get Nx back" — catches
+        # "send 1000+ XRP, receive 2x within 24h" where the noun
+        # after Nx is elided.
+        re.compile(
+            r"\b(receive|get)\s+(\d+x|2x|3x|5x|10x)\b",
+            re.IGNORECASE,
+        ),
+        # 2026-09-23: "free|bonus|promotion" tied to a brand or XRP.
+        # Catches "Free XRP promotion from Coinbase" / "Claim your bonus".
+        re.compile(
+            r"\b(free|bonus|promotion|claim\s+your\s+bonus)\b.{0,80}\b(xrp|xrpl|" + _KNOWN_CRYPTO_BRAND_RE + r")",
+            re.IGNORECASE,
+        ),
     ],
     "fake_support_urgency": [
         re.compile(
-            r"\b(your\s+)?(wallet|account|address)\s+(has\s+been\s+)?(compromised|locked|suspended|frozen|hacked|flagged|blocked|disabled|deactivated)",
+            r"\b(your\s+)?(wallet|account|address|trustlines?|assets?|funds?|holdings?|position|balance|mpt|nft)\s+(is|are|has\s+been|have\s+been)?\s*(compromised|locked|suspended|frozen|hacked|flagged|blocked|disabled|deactivated|stuck|held|on\s+hold)",
             re.IGNORECASE,
         ),
         re.compile(
@@ -919,9 +939,11 @@ _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
         ),
     ],
     "fake_airdrop_connect_wallet": [
-        # "connect your wallet ... claim/receive/airdrop/reward"
+        # "connect|link (your)? (wallet|Xumm|Xaman|Ledger|Metamask|…)
+        # ... claim/receive/airdrop/reward" — extended 2026-09-23 to
+        # accept "link Ledger" and named-wallet variants.
         re.compile(
-            r"\bconnect\s+your\s+wallet\b.{0,120}\b(claim|receive|airdrop|reward|earn|drop|mint)",
+            r"\b(connect|link)\s+(your\s+)?(wallet|xumm|xaman|ledger|metamask|trezor|phantom)\b.{0,120}\b(claim|receive|airdrop|reward|earn|drop|mint|distribution|release)",
             re.IGNORECASE,
         ),
         # reverse order — "claim your airdrop ... connect"
@@ -941,9 +963,17 @@ _SCAM_PATTERNS: dict[str, list[re.Pattern]] = {
         ),
     ],
     "brand_impersonation": [
-        # Named brand + urgency word within 200 chars
+        # Named brand + urgency word within 200 chars — 2026-09-23:
+        # extended to catch "upgrade required" / "update required" and
+        # "download …apk|exe" combinations (Xaman APK impersonation).
         re.compile(
-            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\b.{0,200}\b(verify|secure|confirm|urgent|immediate|suspended|locked|compromised|reactivate|reset|action\s+required)",
+            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\b.{0,200}\b(verify|secure|confirm|urgent|immediate|suspended|locked|compromised|reactivate|reset|action\s+required|upgrade\s+required|update\s+required|whitelist\s+us|download\s+.{0,20}\.(apk|exe|dmg))",
+            re.IGNORECASE,
+        ),
+        # "<brand> (support|team|customer service) on <platform>" —
+        # catches "Ripple Support on Discord — DM me your seed…".
+        re.compile(
+            r"\b(" + _KNOWN_CRYPTO_BRAND_RE + r")\s+(support|team|customer\s+service|security(\s+team)?|help|service)\s+(on|via|through|at)\s+(discord|telegram|twitter|whatsapp|signal|dm|instagram)",
             re.IGNORECASE,
         ),
         # Named brand + "click here / below / link"
