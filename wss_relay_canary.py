@@ -86,6 +86,55 @@ async def _probe(url: str, timeout_s: float) -> dict:
     return result
 
 
+async def _probe_tx_sub(url: str, timeout_s: float) -> str:
+    """LOG-ONLY probe (Charlie ruling 2026-09-23 19:17 ET, per Option B
+    prep). Opens a FRESH socket, sends a transactions-stream subscribe,
+    and records the outcome as a short token.
+
+    Returns one of:
+      'ok'         — subscribe response with status=success within timeout
+      'close_1008' — relay closed with 1008 subscribe_only (expected today)
+      'close_other'— relay closed with a different code/reason
+      'timeout'    — no response + no close within timeout_s
+
+    NEVER FAILS THE CANARY on its own — this is the log-only phase per
+    the standing rule (feedback: request_path_filter_log_only_first).
+    Result string is appended to walker_health.message as
+    `TX_SUB_STATUS=<token>`. After 24h of `TX_SUB_STATUS=ok`, a follow-
+    up commit will flip the canary to fail if this returns anything
+    other than 'ok'."""
+    import websockets
+    from websockets.exceptions import ConnectionClosed
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    TX_SUB_MSG = {"id": "canary-tx", "command": "subscribe",
+                  "streams": ["transactions"]}
+    try:
+        async with websockets.connect(url, ssl=ctx, open_timeout=timeout_s) as ws:
+            await ws.send(json.dumps(TX_SUB_MSG))
+            deadline = time.time() + timeout_s
+            while time.time() < deadline:
+                remaining = max(0.01, deadline - time.time())
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+                except asyncio.TimeoutError:
+                    return "timeout"
+                except ConnectionClosed as e:
+                    if e.code == 1008 and str(e.reason) == "subscribe_only":
+                        return "close_1008"
+                    return f"close_other_code={e.code}_reason={str(e.reason)[:32]}"
+                try:
+                    d = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if (d.get("type") == "response"
+                        and d.get("id") == "canary-tx"
+                        and d.get("status") == "success"):
+                    return "ok"
+            return "timeout"
+    except Exception as e:
+        return f"probe_error_{type(e).__name__}"
+
+
 def _stamp_last_ok() -> None:
     try:
         os.makedirs(os.path.dirname(LAST_OK_STAMP), exist_ok=True)
@@ -125,6 +174,17 @@ def main() -> int:
                        f"total_elapsed_s={result['elapsed_s']}")
             _stamp_last_ok()
 
+        # LOG-ONLY tx-sub probe (Charlie 2026-09-23 19:17 ET, Option B
+        # prep). Runs regardless of ledger-sub outcome so we get a
+        # baseline reading even during transient ledger issues. Result
+        # appended to walker_health.message as TX_SUB_STATUS=<token>.
+        # Does NOT modify ok/failure — pure observation for 24h until
+        # the enforce flip.
+        try:
+            tx_status = asyncio.run(_probe_tx_sub(RELAY_URL, 5.0))
+        except Exception as e:
+            tx_status = f"probe_error_{type(e).__name__}"
+        message = f"{message} TX_SUB_STATUS={tx_status}"
         print(f"[{WALKER_NAME}] {message}")
         return 0 if ok else 1
     finally:
