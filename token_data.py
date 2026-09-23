@@ -135,19 +135,24 @@ def _amm_reserves_cached(amm_account):
 
     data = None
     try:
-        # Use the sovereign-preferring XrplClient (LOCAL_NODE tries first,
-        # cascades to PUBLIC_NODES with walker_node_fallback logging on
-        # failure). Prior version used raw _post_rpc against LOCAL_NODE
-        # only — that returned None whenever the tunnel path silently
-        # failed on Render, and the impostor page rendered "reserves
-        # unavailable" for every row. The cascade preserves sovereignty
-        # telemetry via walker_node_fallback but keeps the impostor
-        # comparison visible when the tunnel is degraded. Charlie ruling
-        # 2026-09-20 (evening): "the live impostor page shows shares
-        # alone in prod" is the failure mode we're closing.
-        client = xrpl_client.get_client("token_page_amm_reserves")
-        resp = client.request(AMMInfo(amm_account=amm_account))
-        result = getattr(resp, "result", None) or {}
+        # Route amm_info through sovereign_tunnel_client, matching
+        # /check, /lending, /mpts, /cold-storage, /escrow-supply. Prior
+        # version used xrpl_client.get_client(), which resolves LOCAL_NODE
+        # from XRPL_LOCAL_NODE (default http://localhost:5005). On Render
+        # there is no localhost:5005, so every AMM reserves lookup
+        # hit ConnectError instantly and cascaded to public RPC —
+        # 6,614 walker_node_fallback rows in 48h before this fix
+        # (Charlie ruling 2026-09-22 Tue 22:00 ET). The tunnel path
+        # (XRPL_TUNNEL_NODE + CF_ACCESS_CLIENT_ID/SECRET, already set
+        # on Render for the other sovereign surfaces) reaches the
+        # Lenovo rippled directly. Public fallback preserved for the
+        # local-dev / tunnel-degraded case.
+        from sovereign_tunnel_client import SovereignFetcher
+        fetcher = SovereignFetcher(
+            public_url="https://s1.ripple.com:51234",
+            walker_name="token_page_amm_reserves",
+        )
+        result = fetcher.call("amm_info", {"amm_account": amm_account}) or {}
         amm = result.get("amm") or {}
         a1 = amm.get("amount")
         a2 = amm.get("amount2")

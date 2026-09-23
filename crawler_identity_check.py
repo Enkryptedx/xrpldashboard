@@ -77,22 +77,33 @@ _UA_RDNS_POLICY = {
     "bingbot":      (".search.msn.com", ".msn.com", ".bing.com"),
     "Amazonbot":    (".amazonbot.amazon.com",),
     "Applebot":     (".applebot.apple.com", ".apple.com"),
+    # Meta-ExternalAgent surfaces content into Meta AI answers on
+    # Facebook/Instagram/WhatsApp (fetch-to-cite retrieval, not training-
+    # only). Prior policy fleet-blocked it as training-only — reversed
+    # 2026-09-22 after the Tuesday-close analytics showed 40 × 403s in
+    # one day. Meta's crawler docs (developers.facebook.com/docs/sharing/
+    # webmasters/web-crawlers) publish `.crawl.facebook.com` as the
+    # verified PTR suffix; `.tfbnw.net` is also cited by some operators
+    # in transit. Real Meta crawler passes; anyone with the UA but
+    # off-suffix PTR is forged (shadow-logged, then enforceable).
+    "Meta-ExternalAgent": (".crawl.facebook.com", ".tfbnw.net"),
 }
 
 # UA substring match — first hit wins. Lower-case comparison against
 # the request's raw User-Agent string.
 _UA_MATCHERS = [
-    ("gptbot",         "GPTBot"),
-    ("chatgpt-user",   "ChatGPT-User"),
-    ("oai-searchbot",  "OAI-SearchBot"),
-    ("claudebot",      "ClaudeBot"),
-    ("claude-user",    "Claude-User"),
-    ("perplexitybot",  "PerplexityBot"),
-    ("adsbot-google",  "AdsBot-Google"),
-    ("googlebot",      "Googlebot"),
-    ("bingbot",        "bingbot"),
-    ("amazonbot",      "Amazonbot"),
-    ("applebot",       "Applebot"),
+    ("gptbot",             "GPTBot"),
+    ("chatgpt-user",       "ChatGPT-User"),
+    ("oai-searchbot",      "OAI-SearchBot"),
+    ("claudebot",          "ClaudeBot"),
+    ("claude-user",        "Claude-User"),
+    ("perplexitybot",      "PerplexityBot"),
+    ("adsbot-google",      "AdsBot-Google"),
+    ("googlebot",          "Googlebot"),
+    ("bingbot",            "bingbot"),
+    ("amazonbot",          "Amazonbot"),
+    ("applebot",           "Applebot"),
+    ("meta-externalagent", "Meta-ExternalAgent"),
 ]
 
 
@@ -259,6 +270,28 @@ def evaluate_request(user_agent: str | None, client_ip: str | None,
         path or "?",
         "1" if ENFORCE else "0-log-only",
     )
+    try:
+        import hashlib as _hashlib
+        import db as _db
+        ip_hash = (
+            _hashlib.sha256((client_ip or "").encode()).hexdigest()[:32]
+            if client_ip else None
+        )
+        _db.write_crawler_forgery_shadow(
+            kind="crawler_forgery",
+            claimed_ua=(user_agent or "")[:300],
+            ip_hash=ip_hash,
+            path=path,
+            verdict=("enforced" if ENFORCE else "would_enforce"),
+            details={
+                "ua_class": ua_class,
+                "verdict": verdict,
+                "ptr": ptr or "",
+                "expected_suffixes": list(_UA_RDNS_POLICY.get(ua_class, ())),
+            },
+        )
+    except Exception:
+        pass
     if ENFORCE:
         return True
     return False

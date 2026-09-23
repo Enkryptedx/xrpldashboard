@@ -240,6 +240,22 @@ class SessionScraperTracker:
                     ua_lower[:60],
                     ", would-enforce" if FLEET_DISGUISED_CHROME_ENFORCE else "",
                 )
+                try:
+                    import db as _db
+                    _db.write_crawler_forgery_shadow(
+                        kind="disguised_chrome",
+                        claimed_ua=(user_agent or "")[:300],
+                        ip_hash=(visitor_hash or "")[:64],
+                        path=path,
+                        verdict=("enforced" if FLEET_DISGUISED_CHROME_ENFORCE
+                                 else "would_enforce"),
+                        details={
+                            "hits": len(st.hits), "paths": len(st.paths),
+                            "top_path": next(iter(st.paths), ""),
+                        },
+                    )
+                except Exception:
+                    pass
                 if FLEET_DISGUISED_CHROME_ENFORCE:
                     st.banned_until = now + BAN_SECONDS
                     return True
@@ -266,7 +282,40 @@ class SessionScraperTracker:
                         len(st.hits), len(st.paths),
                         next(iter(st.paths), ""),
                     )
+                    try:
+                        import db as _db
+                        _db.write_crawler_forgery_shadow(
+                            kind="session_scraper",
+                            claimed_ua=(user_agent or "")[:300],
+                            ip_hash=(visitor_hash or "")[:64],
+                            path=path,
+                            verdict="shadow_only",
+                            details={
+                                "hits": len(st.hits), "paths": len(st.paths),
+                                "top_path": next(iter(st.paths), ""),
+                            },
+                        )
+                    except Exception:
+                        pass
                     return False
+                # Enforce path: emit the shadow row too so the table has
+                # a single source of truth for both would-enforce and
+                # enforced events.
+                try:
+                    import db as _db
+                    _db.write_crawler_forgery_shadow(
+                        kind="session_scraper",
+                        claimed_ua=(user_agent or "")[:300],
+                        ip_hash=(visitor_hash or "")[:64],
+                        path=path,
+                        verdict="enforced",
+                        details={
+                            "hits": len(st.hits), "paths": len(st.paths),
+                            "top_path": next(iter(st.paths), ""),
+                        },
+                    )
+                except Exception:
+                    pass
                 st.banned_until = now + BAN_SECONDS
                 return True
             return False

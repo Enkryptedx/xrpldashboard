@@ -775,6 +775,45 @@ CREATE INDEX IF NOT EXISTS walker_node_fallback_ts_idx
 CREATE INDEX IF NOT EXISTS walker_node_fallback_walker_idx
     ON walker_node_fallback (walker_name, ts DESC);
 
+-- crawler_forgery_shadow — one row per SHADOW_TRIP event alongside the
+-- existing app-log line. Charlie ruling 2026-09-22 Tue 22:00 ET: the
+-- enforce decision (which fleet-block signals to arm from log-only to
+-- 429/403) must come from a queryable table, not a Render-log grep.
+--
+-- kind:
+--   'session_scraper'  — visitor_hash hit HIT_THRESHOLD with
+--                        <= PATH_THRESHOLD distinct paths in the window
+--                        and never fetched a static asset. Would 429.
+--   'disguised_chrome' — same window, but UA matches the
+--                        _DISGUISED_CHROME_UA_FRAGMENTS list. Would 429
+--                        earlier than the general threshold.
+--   'crawler_forgery'  — UA claims a tracked crawler (GPTBot, Meta-
+--                        ExternalAgent, etc.) but rDNS PTR is off-suffix
+--                        or forward-confirm fails. Would 403.
+--
+-- verdict:
+--   'shadow_only'    — flag is not enforced (LOG_ONLY_MODE / ENFORCE=0)
+--   'would_enforce'  — enforcement is off but the trip is real
+--   'enforced'       — enforce was on; the request received 429/403
+--
+-- No backfill. Rows written from now on. Grant SELECT to jj_ro so the
+-- weekly analytics + nightly reports can classify shadow events by
+-- claimed_ua and pick the enforce-decision path.
+CREATE TABLE IF NOT EXISTS crawler_forgery_shadow (
+    id             BIGSERIAL PRIMARY KEY,
+    ts             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    kind           TEXT NOT NULL,
+    claimed_ua     TEXT,
+    ip_hash        TEXT,
+    path           TEXT,
+    verdict        TEXT NOT NULL,
+    details        JSONB
+);
+CREATE INDEX IF NOT EXISTS crawler_forgery_shadow_ts_idx
+    ON crawler_forgery_shadow (ts DESC);
+CREATE INDEX IF NOT EXISTS crawler_forgery_shadow_kind_ts_idx
+    ON crawler_forgery_shadow (kind, ts DESC);
+
 -- Escrows snapshot — one row per active EscrowCreate ledger object owned
 -- by a tracked named-account. Backs the /cold-storage per-escrow browser
 -- and the upcoming-releases calendar. Populated by escrow_walker.py on
@@ -3393,10 +3432,19 @@ def read_credentials_snapshot():
 
 def write_walker_health_start(walker_name, cadence_seconds=None):
     """UPSERT walker_health at the top of a walker run. Sets
-    last_run_started=now() and last_run_ok=False as a defensive default
-    so an uncaught crash before the end-of-run write still shows as a
-    failure to the reader (rather than the prior run's ok=True).
+    last_run_started=now(), last_run_ok=False, and last_run_message to
+    the sentinel 'run_in_progress' so readers can distinguish "walker
+    crashed silently" (ok=False + real message) from "walker still
+    running" (ok=False + 'run_in_progress' + last_run_completed IS NULL).
     consecutive_failures is NOT touched here; the end-of-run write owns it.
+
+    Charlie ruling 2026-09-22 Tue 22:00 ET: prior version cleared
+    last_run_message to NULL at start, which slipped past the
+    write_walker_health_end blank-message guard (guard applies only to
+    end-of-run writes). A reader that queried between start and end saw
+    ok=False + empty message — indistinguishable from a real silent
+    failure. Motivating incident: whales_summary_walker at 01:49 UTC
+    2026-09-23 caught mid-run by the Tuesday-close analytics pull.
 
     cadence_seconds: walker's self-declared expected run frequency
     (mirrors its launchd plist StartInterval). When provided, /walker_health
@@ -3409,13 +3457,14 @@ def write_walker_health_start(walker_name, cadence_seconds=None):
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO walker_health "
-                "  (walker_name, last_run_started, last_run_ok, cadence_seconds) "
-                "VALUES (%s, now(), false, %s) "
+                "  (walker_name, last_run_started, last_run_ok, "
+                "   last_run_message, cadence_seconds) "
+                "VALUES (%s, now(), false, 'run_in_progress', %s) "
                 "ON CONFLICT (walker_name) DO UPDATE SET "
                 "  last_run_started = EXCLUDED.last_run_started, "
                 "  last_run_ok = false, "
                 "  last_run_completed = NULL, "
-                "  last_run_message = NULL, "
+                "  last_run_message = 'run_in_progress', "
                 "  cadence_seconds = COALESCE(EXCLUDED.cadence_seconds, walker_health.cadence_seconds)",
                 (walker_name, cadence_seconds),
             )
@@ -7512,6 +7561,43 @@ def write_walker_node_fallback(walker_name, reason):
             )
     except Exception as e:
         _log_err(f"write_walker_node_fallback_failed[{walker_name}]", e)
+        _drop_writer_conn()
+
+
+def write_crawler_forgery_shadow(kind, claimed_ua=None, ip_hash=None,
+                                 path=None, verdict="shadow_only", details=None):
+    """Append one row per SHADOW_TRIP / CRAWLER_FORGERY_SHADOW event.
+    Called alongside the existing log-line emit; the log line stays for
+    Render's stream. The table gives jj_ro the classifiable record.
+
+    Charlie ruling 2026-09-22 Tue 22:00 ET: the enforce decision comes
+    from the table, not a Render-log grep.
+
+    Fire-and-forget: exceptions are swallowed so a shadow-log write can
+    never break a request. Silent no-op when PG isn't configured.
+
+    kind: 'session_scraper' | 'disguised_chrome' | 'crawler_forgery'
+    verdict: 'shadow_only' | 'would_enforce' | 'enforced'
+    details: optional JSON-serializable dict with per-event context
+             (e.g. {'hits': 200, 'paths': 2, 'top_path': '/whales'} for
+             session_scraper; {'ptr': 'evil.example', 'expected_suffix':
+             '.openai.com'} for crawler_forgery).
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        import json as _json
+        details_json = _json.dumps(details) if details is not None else None
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO crawler_forgery_shadow "
+                "  (kind, claimed_ua, ip_hash, path, verdict, details) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (kind, claimed_ua, ip_hash, path, verdict, details_json),
+            )
+    except Exception as e:
+        _log_err(f"write_crawler_forgery_shadow_failed[{kind}]", e)
         _drop_writer_conn()
 
 

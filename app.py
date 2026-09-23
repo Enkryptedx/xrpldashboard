@@ -1678,10 +1678,17 @@ _ANALYTICS_EXCLUDED_IPS = frozenset(
 # AI training-only crawlers blocked per three-audience policy (2026-07-21):
 # "AI retrieval crawlers (fetch-to-cite): NEVER blocked. AI training-only
 # crawlers (bulk-ingest, no citation path): Charlie's discretion, per-crawler,
-# documented." meta-externalagent = Meta AI training; no citation path. Every
-# entry here must be explicitly approved and noted. See memory:
-# feedback_three_audience_rule.md.
-_BLOCKED_UA_FRAGMENTS = ("meta-externalagent",)
+# documented." Every entry here must be explicitly approved and noted.
+# See memory: feedback_three_audience_rule.md.
+#
+# Charlie ruling 2026-09-22 Tue 22:00 ET: meta-externalagent removed —
+# Meta's declared AI crawler DOES surface content into Meta AI answers
+# (fetch-to-cite path via Meta AI on Facebook/Instagram/WhatsApp), not
+# training-only. Moved to crawler_identity_check with rDNS policy
+# .crawl.facebook.com per Meta's crawler documentation. Fleet-blocked
+# UAs (unstamped scrapers pretending to be desktop browsers) still 429
+# via session_scraper_tracker.
+_BLOCKED_UA_FRAGMENTS: tuple[str, ...] = ()
 
 
 @app.before_request
