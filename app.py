@@ -344,7 +344,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-19"  # Re-verified 2026-09-19 (post-outage sweep) — all four Round-3 claims held against live surfaces: (a) llms.txt sourcing wording carries walker-computed / own-node provenance framing; (b) /check.json documented as a live surface in llms.txt AND agents.json; (c) schema_version 4 explicitly stated on /methodology (this commit added the line — the prior wording only referenced the field name); (d) pricing_transition block present in agents.json. See templates/methodology.html for the new schema_version paragraph and the re-verify test at tests/test_routes.py check-list.
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-22"  # Re-verified 2026-09-22 (post-Round-4 sweep) — three surface updates landed same day: (a) /check.json responses now carry the full `proof.check_v09_signature` block with Ed25519 sig, canonical_hash, domain_separator, signer fingerprint (live-tested via curl -X POST); llms.txt + agents.json rewritten to match. (b) Live-feed sovereignty flipped 2026-09-22 — own-node WSS relay at wss.xrpldashboard.com is primary; xrplcluster is fallback only. (c) Verified-tokens manifest widened to 71 rows including the full 49 verified-issuer list; RLUSD row-level citation cleaned to align with the row's own ripple.com two-way TOML proof (regression at tests/test_verified_row_no_negation.py).
 
 
 @app.context_processor
@@ -9003,7 +9003,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - MCP server (public beta through 2026-09): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
-- Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Signature envelope: v0.9 per-verdict Ed25519 signing is in progress; today's `/check.json` responses carry per-capability `source_label` and `checked_at_utc` fields but not yet the full `proof` envelope shape MCP tools use. The full envelope migration for HTTP is tracked as a build item — until then, treat `/check.json` as machine-consumable with per-field provenance, not per-envelope signature.
+- Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Accepts GET with `?q=<subject>` for one-shot triage and POST with `Content-Type: application/json` `{{"q": "<subject or full pasted message>"}}` for longer messages that extract multiple subjects. Signature envelope: v0.9 per-verdict Ed25519 signing is LIVE as of 2026-09-22 — every response carries `proof.check_v09_signature` with `sig_status`, `canonical_hash_sha256`, `sig_ed25519`, `domain_separator = "xrpldashboard/receipt/v1"`, `signed_at_utc`, and `signer` fingerprint. Verify recipe matches the verified-tokens manifest: canonical_hash over sorted-keys-no-whitespace JSON of the `data` object; Ed25519 over `domain_separator + 0x00 + bytes.fromhex(canonical_hash)` against the receipt pubkey at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03). Per-capability `source_label` + `checked_at_utc` fields are still present for field-level provenance.
 - Directory listings for this MCP server (same endpoint + tool inventory as above; the directories are discovery aids, not different endpoints):
   - Anthropic MCP Registry: [registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard) — server id `com.xrpldashboard/xrpldashboard-mcp`, DNS-verified namespace, listed 2026-08-05.
   - Smithery: [smithery.ai/servers/xrpldashboard/xrpldashboard](https://smithery.ai/servers/xrpldashboard/xrpldashboard) — Smithery gateway URL `https://xrpldashboard--xrpldashboard.run.tools`, listed 2026-08-05.
@@ -9122,29 +9122,32 @@ _AGENTS_JSON = {
         },
         "spec_url": f"{SITE_URL}/methodology#for-ai-agents",
         "note": (
-            "Envelope is normative for the MCP server (public at "
-            "https://mcp.xrpldashboard.com/mcp — see mcp_servers below — "
-            "backed by our own rippled node on the Lenovo box). The "
-            "read-only HTTP API surface today is /check.json (live at "
-            f"{SITE_URL}/check.json); it currently carries per-capability "
-            "source_label + checked_at_utc metadata but not yet the full "
-            "envelope shape MCP tools use — full envelope migration for "
-            "HTTP is tracked as a build item. HTML surfaces expose the "
-            "same source metadata inline via per-page methodology chips "
-            "and the /methodology page."
+            "Envelope is normative for both the MCP server (public at "
+            "https://mcp.xrpldashboard.com/mcp, backed by our own rippled "
+            "node on the Lenovo box) and the /check.json HTTP surface "
+            f"({SITE_URL}/check.json). Since 2026-09-22, every /check.json "
+            "response carries the full v0.9 proof envelope including "
+            "`proof.check_v09_signature` with sig_ed25519, canonical_hash, "
+            "domain_separator, signer fingerprint, and signed_at_utc — "
+            "verify against the same receipt pubkey used by the "
+            "verified-tokens manifest. HTML surfaces expose the same "
+            "source metadata inline via per-page methodology chips and "
+            "the /methodology page."
         ),
     },
     "http_endpoints": [
         {
             "url": f"{SITE_URL}/check.json",
-            "method": "GET",
+            "method": "GET | POST",
             "params": {
-                "q": "XRPL account address (r-address), token ID (currency+issuer), URL, or free-text",
+                "q (GET)": "XRPL account address (r-address), token ID (currency+issuer), URL, or free-text — single subject",
+                "q (POST body)": "same as GET but supports longer pasted messages that extract multiple subjects; send as JSON `{\"q\": \"<subject or pasted message>\"}` with Content-Type: application/json",
                 "format": "'json' (optional; omit — the .json suffix implies it)",
             },
             "response_shape": {
                 "data": "object — typed triage payload with capabilities[], checked_at_utc, kind, next_action, source_label per capability",
-                "note": "top-level `proof` envelope is not yet present on this endpoint; per-capability `source_label` + `checked_at_utc` provide field-level provenance today",
+                "proof": "object — full v0.9 proof envelope with check_v09_signature (Ed25519 sig, canonical_hash, domain_separator, signer fingerprint, signed_at_utc), source, freshness_contract, methodology_url. Verify against receipt pubkey at /.well-known/snapshots/receipt_pubkey.pem (fingerprint A4:0F:B1:0A:9D:33:64:03).",
+                "server": "object — server identity block (name, version, public_key_fingerprint, docs)",
             },
             "rate_limit_anonymous": "60 requests/hour/IP",
             "rate_limit_identified_bot": "300 requests/hour by verified UA",
