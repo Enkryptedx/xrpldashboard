@@ -947,28 +947,54 @@
 
     function connect() {
       if (closed) return;
-      // Prefer the own-node relay when the template injected it; fall back
-      // to the public cluster otherwise. Own-node URL is set on
-      // window.LIVE_STREAM_WSS_PRIMARY by templates/_head_meta.html when
-      // Render env LIVE_STREAM_WSS_PRIMARY differs from the fallback.
-      var _wsPrimary = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string' && window.LIVE_STREAM_WSS_PRIMARY.trim())
-        ? window.LIVE_STREAM_WSS_PRIMARY.trim()
-        : 'wss://xrplcluster.com';
-      var _wsLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string' && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
-        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim()
-        : 'xrplcluster.com';
+      // Same stopgap pattern as /pools (commit 2f3e9a6, Charlie ruling
+      // 2026-09-23 18:52 ET): backoff only resets after proof-of-live
+      // (subscribe response OR first transaction frame); after
+      // CONSECUTIVE_FAIL_TO_FALLBACK dead sockets, flip to xrplcluster
+      // for the rest of the tab. Root cause identical: relay whitelist
+      // rejects streams:['transactions'] with close 1008 subscribe_only
+      // (proven via /tmp/pools_relay_isolate.py H1/H2/H3/H4). Marked
+      // STOPGAP — will revert once Charlie's go on the Lenovo relay
+      // change lands and named-feed subs (Option B) go live.
+      var _wsPrimaryLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string'
+                             && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim() : 'xrplcluster.com';
+      var _wsFallbackLabel = (typeof window.LIVE_STREAM_WSS_FALLBACK_LABEL === 'string'
+                              && window.LIVE_STREAM_WSS_FALLBACK_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_FALLBACK_LABEL.trim() : 'xrplcluster.com';
+      function _pri() {
+        var p = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string'
+                 && window.LIVE_STREAM_WSS_PRIMARY.trim())
+          ? window.LIVE_STREAM_WSS_PRIMARY.trim() : '';
+        return p || 'wss://xrplcluster.com';
+      }
+      function _fal() {
+        var f = (typeof window.LIVE_STREAM_WSS_FALLBACK === 'string'
+                 && window.LIVE_STREAM_WSS_FALLBACK.trim())
+          ? window.LIVE_STREAM_WSS_FALLBACK.trim() : '';
+        return f || 'wss://xrplcluster.com';
+      }
+      var targetUrl = wsUsingFallback ? _fal() : _pri();
+      var targetLabel = wsUsingFallback ? _wsFallbackLabel : _wsPrimaryLabel;
       try {
-        ws = new WebSocket(_wsPrimary);
+        ws = new WebSocket(targetUrl);
       } catch (e) {
         setState('closed', 'connect failed · retrying');
         scheduleReconnect();
         return;
       }
-      setState('connecting', 'connecting to ' + _wsLabel + '…');
+      setState('connecting', 'connecting to ' + targetLabel + '…');
+
+      // Per-socket flag: was this WS ever proven functional? Guards the
+      // reconnectDelay reset + fail-counter reset. TCP handshake alone
+      // (ws.onopen) is NOT proof — the relay closes the socket seconds
+      // later on the transactions sub, and the earlier reset created
+      // the reconnect loop.
+      ws.__provenLive = false;
 
       ws.onopen = function () {
-        reconnectDelay = 1500;
-        setState('live', 'live · streaming');
+        // Deliberately do NOT reset reconnectDelay here — wait for proof.
+        setState('connecting', 'subscribing at ' + targetLabel + '…');
         try {
           ws.send(JSON.stringify({
             id: 'whales-stream',
@@ -981,7 +1007,23 @@
       ws.onmessage = function (msg) {
         var data;
         try { data = JSON.parse(msg.data); } catch (e) { return; }
-        if (!data || data.type !== 'transaction') return;
+        if (!data) return;
+        // Subscribe response — proof the relay accepted our stream sub.
+        if (data.type === 'response' && data.id === 'whales-stream'
+            && data.status === 'success') {
+          ws.__provenLive = true;
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+          setState('live', 'live · streaming');
+          return;
+        }
+        if (data.type !== 'transaction') return;
+        if (!ws.__provenLive) {
+          ws.__provenLive = true;
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+          setState('live', 'live · streaming');
+        }
         if (data.validated !== true) return;
         var tx = data.transaction || data.tx_json;
         if (!tx || tx.TransactionType !== 'Payment') return;
@@ -1002,14 +1044,34 @@
       ws.onerror = function () { /* onclose handles reconnect */ };
       ws.onclose = function () {
         if (closed) return;
-        setState('closed', 'reconnecting…');
+        var provenLive = ws && ws.__provenLive === true;
+        if (!provenLive) {
+          wsFailCount++;
+        } else {
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+        }
+        if (!wsUsingFallback && wsFailCount >= CONSECUTIVE_FAIL_TO_FALLBACK
+            && _pri() !== _fal()) {
+          wsUsingFallback = true;
+          reconnectDelay = 1500;
+          setState('closed',
+            'own-node stream unreachable — falling back to ' +
+            (window.LIVE_STREAM_WSS_FALLBACK_LABEL || 'public cluster'));
+        } else {
+          setState('closed', 'reconnecting…');
+        }
         scheduleReconnect();
       };
     }
 
+    var CONSECUTIVE_FAIL_TO_FALLBACK = 3;
+    var wsFailCount = 0;
+    var wsUsingFallback = false;
+
     function scheduleReconnect() {
       setTimeout(connect, reconnectDelay);
-      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+      reconnectDelay = Math.min(reconnectDelay * 1.7, 30000);
     }
 
     window.addEventListener('beforeunload', function () {
