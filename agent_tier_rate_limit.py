@@ -140,6 +140,20 @@ AI_CRAWLER_UA_SUBSTRINGS = (
     "lightpanda",
     # MCP-Cloud probe
     "mcp-cloud",
+    # ── Charlie ruling 2026-09-23 Wed 09:27 ET: search-index crawlers
+    # ── (bucket = search-seo). Kept as their own classes rather than
+    # ── collapsed — they're distinct operators with different crawl
+    # ── behavior, unlike the SEO-backlink brands that all do the same
+    # ── thing. Order matters: applebot-extended and google-extended
+    # ── are already in the AI-answer list ABOVE these entries; the
+    # ── tuple iterates top-to-bottom and returns first match, so
+    # ── extended-variant UAs correctly match the AI-answer entries
+    # ── before falling through to the bare search-index labels below.
+    "googlebot",
+    "bingbot",
+    "amazonbot",
+    "applebot",
+    "duckduckbot",
 )
 
 
@@ -221,6 +235,14 @@ CRAWLER_BUCKETS = {
                                        # / DataForSeo / SERanking
                                        # (collapsed by _CLASS_LABEL_OVERRIDES)
     "petalbot":          "search-seo", # Huawei Petal Search
+    # ── Charlie ruling 2026-09-23 Wed 09:27 ET: search-index crawlers
+    # ── as their own labels (distinct operators, not collapsed).
+    "googlebot":         "search-seo",
+    "bingbot":           "search-seo",
+    "amazonbot":         "search-seo",
+    "applebot":          "search-seo", # bare Applebot; applebot-extended
+                                       # stays in the AI-answer bucket above
+    "duckduckbot":       "search-seo",
     # Scrapers
     "lightpanda":        "scraper",    # Declared headless framework
     "mcp-cloud":         "scraper",    # Unfamiliar probe (github.com/mcp-cloud)
