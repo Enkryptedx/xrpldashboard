@@ -1432,6 +1432,37 @@ def api_walker_node_fallback():
 
 
 @app.context_processor
+def inject_token_icon_lookup():
+    """Token-icon emblem lookup for /tokens (canvas coin faces) and
+    downstream surfaces (/token, warnings feed). Charlie ruling
+    2026-09-11 (extended 2026-09-23 17:29 ET to all lanes): coins render
+    emblem when we have one; else decoded ticker letters; else '?'.
+
+    Returns a dict `token_icon_lookup` keyed `<currency_hex>::<issuer>`
+    pointing at the served-file path. Flagged tokens (ticker_collision
+    OR non_standard_code) are excluded at the walker's SQL insert layer,
+    so this lookup naturally has no rows for impostors — the letters
+    fallback fires + the warning-lane amber ring paints over.
+
+    Empty on Postgres-unreachable envs — the JS side treats an empty
+    lookup as 'no emblems available' and falls straight through to
+    letters, which is the correct honest-partial behavior."""
+    lookup = {}
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT currency_hex, issuer, stored_path "
+                    "FROM token_icon WHERE fetch_status = 'ok'"
+                )
+                for cx, issuer, stored_path in cur.fetchall():
+                    lookup[f"{cx}::{issuer}"] = "/static/" + stored_path
+        except Exception:
+            lookup = {}
+    return {"token_icon_lookup": lookup}
+
+
+@app.context_processor
 def inject_live_stream_wss():
     """Live-stream WebSocket URLs for the browser-side stream widgets on
     /tokens, /whales, /pools, /wallet. Charlie ruling 2026-09-21 (Mon

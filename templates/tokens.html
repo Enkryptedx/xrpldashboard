@@ -1247,6 +1247,36 @@
     </div>
   </div>
   <script type="application/json" id="token-labels-data">{{ label_lookup_json|safe }}</script>
+  {# Token-icon emblem lookup: <currency_hex>::<issuer> → /static/coin_emblems/<sha>.png.
+     Only pairs whose walker fetch succeeded appear; flagged tokens are
+     excluded at the walker's SQL insert layer so no impostor entry ships. #}
+  <script type="application/json" id="token-icon-lookup-data">{{ token_icon_lookup|tojson|safe }}</script>
+  <script>
+    (function loadTokenIconLookup() {
+      window.TOKEN_ICON_LOOKUP = {};
+      window.TOKEN_ICON_IMAGES = {};
+      try {
+        var el = document.getElementById('token-icon-lookup-data');
+        if (el && el.textContent) {
+          window.TOKEN_ICON_LOOKUP = JSON.parse(el.textContent) || {};
+        }
+      } catch (e) { window.TOKEN_ICON_LOOKUP = {}; }
+      // Preload every emblem so the first pulse for a pair paints an
+      // image, not a text fallback (Image.complete stays false until the
+      // network fetch resolves; drawCoin falls through to letters until
+      // the image is ready).
+      Object.keys(window.TOKEN_ICON_LOOKUP).forEach(function (k) {
+        try {
+          var url = window.TOKEN_ICON_LOOKUP[k];
+          if (!url || window.TOKEN_ICON_IMAGES[url]) return;
+          var img = new Image();
+          img.decoding = 'async';
+          img.src = url;
+          window.TOKEN_ICON_IMAGES[url] = img;
+        } catch (e) {}
+      });
+    })();
+  </script>
   {# NEW-1 hotfix 2026-09-06: ticker-canonical-issuers map ships to the
      client so the live falling visual applies the SAME collision guard
      used server-side by token_naming.resolve_display. A subset of the
@@ -1879,14 +1909,45 @@
         var st = styleOf(cat);
         var rgb = st.rgb || CATEGORY_RGB.unlabeled;
         var catGlyph = st.glyph || '?';
-        // Coin glyph override (Charlie 2026-09-11 self-described polish):
-        // for the self-described lane, render the DECODED TICKER on the
-        // coin instead of the category glyph. Grey (lane color) stays.
-        // '?' only survives on non-standard codes we can't decode.
-        var coinGlyph = catGlyph;
-        if (lane === LANE.SELF && !isNonStandardCode(leg.currency)) {
-          var tickerRaw = sym || catGlyph;
+        // Ticker display — resolve BEFORE coinGlyph so the letters
+        // fallback isn't clobbered by JS var-hoisting (2026-09-23 fix:
+        // sym was declared farther down and was `undefined` at the
+        // glyph-override use site, so the ticker override silently
+        // no-op'd on every pulse).
+        var sym;
+        if (lbl) {
+          sym = lbl.display;
+        } else {
+          sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
+        }
+        // Coin face — Charlie's Sept 11 rule (extended 2026-09-23 to
+        // ALL lanes): emblem if we have one; else decoded ticker
+        // letters (3-char codes or any 40-hex that decodes to readable
+        // ASCII); else '?' only for codes that truly can't be read.
+        //
+        // Flagged tokens (ticker collision, non-standard code) never
+        // get an emblem — the walker's SQL filter excludes them from
+        // token_icon at INSERT time so the lookup returns null for
+        // impostors, and drawPulses paints the amber warning ring
+        // on top of the letters. Belt-and-suspenders here: also skip
+        // the emblem if the pulse routed to the warning lane.
+        var coinEmblemUrl = null;
+        if (lane !== LANE.WARNING && window.TOKEN_ICON_LOOKUP) {
+          coinEmblemUrl = window.TOKEN_ICON_LOOKUP[leg.currency + '::' + leg.issuer] || null;
+        }
+        var coinEmblemImg = null;
+        if (coinEmblemUrl && window.TOKEN_ICON_IMAGES) {
+          coinEmblemImg = window.TOKEN_ICON_IMAGES[coinEmblemUrl] || null;
+        }
+        var coinGlyph;
+        var decodedTicker = decodeCurrency(leg.currency);
+        var readable = decodedTicker && decodedTicker !== '?'
+                       && !isNonStandardCode(leg.currency);
+        if (readable) {
+          var tickerRaw = sym || decodedTicker;
           coinGlyph = tickerRaw.length > 4 ? tickerRaw.slice(0, 4) : tickerRaw;
+        } else {
+          coinGlyph = '?';
         }
         // Count EVERY pulse's lane BEFORE any filter — the readout and the
         // __tokenLaneCounts() probe must reflect the true distribution even
@@ -1898,12 +1959,6 @@
         // lane. Shown by default (toggle removed) since the lane carries
         // AMM liquidity moves the viewer wants to see, not just sparse
         // LP-token payments.
-        var sym;
-        if (lbl) {
-          sym = lbl.display;
-        } else {
-          sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
-        }
         // Adaptive fall-speed (7b, retuned 2026-09-09 for tier lanes):
         //   busy      >40 pulses → faster (drain before the 80 cap)
         //   quiet+attested  <5 pulses AND tier ≥ self-described → dwell
@@ -1927,6 +1982,7 @@
           size: radiusFromAmount(leg.value, cat),
           symbol: sym,
           glyph: coinGlyph,
+          emblemImg: coinEmblemImg,
           lane: lane,
           isWarning: (lane === LANE.WARNING),
           isInferred: !!(lbl && lbl.category_source && lbl.category_source !== 'curator'),
@@ -1936,6 +1992,17 @@
           born: performance.now(),
           lastX: 0, lastY: 0, lastR: 0,
         });
+        // Telemetry for the Sept 11 rule (Charlie 2026-09-23 17:29 ET):
+        // count what the coin actually rendered so we can grade the
+        // emblem/letters/? mix from the browser side. window-level
+        // counter so the /tokens?debug=coin-glyph probe (added later)
+        // can read it; keep the counter cheap (three integers).
+        try {
+          window.__coinGlyphCounts = window.__coinGlyphCounts || {emblem: 0, letters: 0, qmark: 0};
+          if (coinEmblemImg) window.__coinGlyphCounts.emblem++;
+          else if (coinGlyph === '?') window.__coinGlyphCounts.qmark++;
+          else window.__coinGlyphCounts.letters++;
+        } catch (e) {}
         if (emptyEl) emptyEl.classList.add('is-hidden');
         if (pulses.length > PULSE_MAX) {
           pulses.splice(0, pulses.length - PULSE_MAX);
@@ -2005,7 +2072,7 @@
         Math.max(0, Math.min(255, rgb[2] + delta)),
       ];
     }
-    function drawCoin(x, y, r, rgb, alpha, glyph) {
+    function drawCoin(x, y, r, rgb, alpha, glyph, emblemImg) {
       // Stacked 3D coin (always round): tinted halo → dark edge → beveled
       // face → bright bevel crescent + dark bevel crescent → specular
       // hotspot → embossed glyph.
@@ -2061,11 +2128,35 @@
       ctx.arc(-r * 0.32, -r * 0.38, r * 0.50, 0, Math.PI * 2);
       ctx.fill();
 
+      // Emblem OR embossed glyph. Emblem takes precedence when the
+      // caller supplied a loaded Image (Charlie's Sept 11 rule
+      // extended to all lanes on 2026-09-23: emblem → letters → '?').
+      // The image is drawn inside the bevel ring at r*0.78, centered,
+      // with the same alpha the coin body uses so the fade-in/out
+      // matches. On unloaded/broken images, silently falls back to
+      // the ticker letters below.
+      var emblemDrawn = false;
+      if (r >= 5 && emblemImg && emblemImg.complete
+          && emblemImg.naturalWidth > 0) {
+        try {
+          var imgR = r * 0.78;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.arc(0, 0, imgR, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(emblemImg, -imgR, -imgR, imgR * 2, imgR * 2);
+          ctx.restore();
+          emblemDrawn = true;
+        } catch (e) {
+          emblemDrawn = false;
+        }
+      }
       // Embossed glyph — drop shadow + bright fill.
       // 2026-09-11 self-described polish: multi-char glyphs (tickers)
       // scale the font down so 2–4 chars fit inside the coin face
       // without overflowing the bevel ring.
-      if (r >= 5) {
+      if (!emblemDrawn && r >= 5) {
         var glyphLen = (glyph || '').length;
         var fontMul = glyphLen >= 4 ? 0.48
                      : glyphLen === 3 ? 0.58
@@ -2108,8 +2199,9 @@
         ctx.moveTo(tail.x, tail.y);
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
-        // Coin head — disc with ticker glyph.
-        drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph);
+        // Coin head — disc with either the cached emblem image (when
+        // we have one and it's loaded) or the ticker letters / '?'.
+        drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph, p.emblemImg);
         // Warning-lane coins get a solid amber ring — the ticker-collision
         // / non-standard-code signal the scope doc calls a "chromatic
         // overlay," layered on top of the warning-lane position so the two
