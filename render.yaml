@@ -87,8 +87,19 @@ services:
       # probed /.env / /firebase-admin.json / /awsConfig.js /
       # /actuator/threaddump on 2026-09-21 — real GPTBot doesn't do
       # that.
+      # Flipped 0 → 1 by Charlie ruling 2026-09-23 Wed 06:44 ET. Shadow
+      # table (crawler_forgery_shadow) had zero real forgery events in
+      # the 8.5h since wiring landed (2026-09-23 02:16 UTC). Ten tracked
+      # crawlers active in the window (ChatGPT-User, OAI-SearchBot,
+      # Googlebot, ClaudeBot, Amazonbot, Applebot, bingbot, PerplexityBot,
+      # GPTBot, Meta-ExternalAgent) — zero 403s across all of them.
+      # rDNS check functionally silent on real crawler traffic; enforce
+      # only affects requests whose PTR doesn't match their claimed UA
+      # (the incident this rule was built for). Enforced verdicts still
+      # land in crawler_forgery_shadow — revert here if a real crawler
+      # shows up as verdict='enforced'.
       - key: CRAWLER_FORGERY_ENFORCE
-        value: "0"
+        value: "1"
 
     # Auto-deploy on every push to the connected branch.
     autoDeploy: true
