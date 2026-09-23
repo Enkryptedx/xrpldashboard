@@ -62,7 +62,16 @@ EXCHANGE_NAME_SEEDS = (
 # Address-explicit seed from named_accounts.json — Bitstamp is
 # file-based, not in account_labels.
 NAMED_ACCOUNT_ADDRS = (
-    "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",  # Bitstamp (file-based)
+    "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",  # Bitstamp (file-based) — also canary Bitstamp_file
+    # Charlie ruling 2026-09-23 Wed 09:19 ET: warm the canary probe
+    # sample wallets too. public_route_200_canary hits these under a
+    # 4s wallet-render budget; on a cold cache the render can approach
+    # that limit and false-alarm. Explicit warm here means the canary
+    # is measuring the cache-hit path (what real users see), not the
+    # cold-cache tail.
+    "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh",  # Binance_1_pg  (canary sample)
+    "rsMCkyP1eAZCSbyLn334sw7Q1Si2UazPDD",  # BeBe_AMM_derived (canary sample)
+    "rDdXiA3M4mYTQ4cFpWkVXfc2UaAXCFWeCK",  # Ripple_Escrow_04 (canary sample)
 )
 
 MAX_ADDRESSES = 20

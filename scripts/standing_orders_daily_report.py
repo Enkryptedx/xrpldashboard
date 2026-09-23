@@ -84,41 +84,87 @@ def line_geo(cur, ts_s, ts_e) -> str:
 
 
 def line_ai_crawlers(cur, ts_s, ts_e) -> str:
-    # AI-citation crawlers — classified into ai_crawler_hits by
-    # classify_ai_crawler (agent_tier_rate_limit.py:207) against
-    # AI_CRAWLER_UA_SUBSTRINGS. bingbot/amazonbot/googlebot are NOT in
-    # that list (search-index legacy, not AI-citation), so they never
-    # land in ai_crawler_hits — they get counted separately below from
-    # page_views raw UA per Charlie's Option 2 ruling (2026-09-10,
-    # escalation #17729): keep AI-citation semantics clean but still
-    # surface search-crawler volume in the same report line.
-    AI_UAS = ["chatgpt-user", "claudebot", "oai-searchbot", "gptbot",
-              "perplexitybot", "google-extended"]
-    cur.execute(f"""
-        SELECT lower(ua_class) AS uac, COUNT(*) FROM ai_crawler_hits
-        WHERE ts >= %s AND ts < %s AND lower(ua_class) = ANY(%s)
-        GROUP BY 1
-    """, (ts_s, ts_e, AI_UAS))
-    ai_counts = {r[0]: r[1] for r in cur.fetchall()}
-    ai_parts = [f"{ua}={ai_counts.get(ua, 0)}" for ua in AI_UAS]
+    """Line 3 reads from ai_crawler_sitewide_daily_rollup (Charlie ruling
+    2026-09-23 Wed 09:19 ET: same source as /observatory). Prior version
+    read from ai_crawler_hits — that stream only sees the 9 agent-tier
+    files, so daily reports understated real crawler activity by 10-100×.
 
-    # Traditional search crawlers — count from page_views raw user_agent.
-    # These aren't AI-citation, so they don't earn a spot in ai_crawler_hits;
-    # but they're the loudest bots on the site and worth surfacing.
-    SEARCH_PATTERNS = [("bingbot", "%bingbot%"),
-                       ("amazonbot", "%amazonbot%"),
-                       ("googlebot", "%googlebot%")]
-    search_parts = []
-    for name, pat in SEARCH_PATTERNS:
-        cur.execute(
-            "SELECT COUNT(*) FROM page_views "
-            "WHERE ts >= %s AND ts < %s AND user_agent ILIKE %s",
-            (ts_s, ts_e, pat),
-        )
-        search_parts.append(f"{name}={cur.fetchone()[0]}")
+    Format: AI answer engines detail on the numbered line; training +
+    search-seo + scraper buckets on a wrapped sub-line under it.
+    Bucket assignment is the module's own CRAWLER_BUCKETS map so
+    /observatory and this report can't drift.
+    """
+    import datetime as _dt
+    import agent_tier_rate_limit as _atrl
 
-    return (f"3. AI crawlers: {', '.join(ai_parts)}. "
-            f"Search: {', '.join(search_parts)}.")
+    y = _dt.datetime.fromtimestamp(ts_s, tz=_dt.timezone.utc).date().isoformat()
+    cur.execute(
+        "SELECT ua_class, SUM(hits)::bigint "
+        "FROM ai_crawler_sitewide_daily_rollup "
+        "WHERE as_of_date = %s::date "
+        "GROUP BY ua_class",
+        (y,),
+    )
+    rows = cur.fetchall()  # [(ua_class, hits), ...]
+
+    # Bucket every row via the shared classifier. UNLISTED is not in a
+    # bucket — surface it as its own aggregate count.
+    from collections import defaultdict
+    per_bucket = defaultdict(list)  # bucket -> [(ua_class, hits), ...]
+    unlisted_hits = 0
+    for uac, hits in rows:
+        if not uac:
+            continue
+        if uac.upper() == "UNLISTED":
+            unlisted_hits += int(hits)
+            continue
+        per_bucket[_atrl.bucket_for(uac)].append((uac, int(hits)))
+
+    def _sort(lst):
+        return sorted(lst, key=lambda kv: -kv[1])
+
+    ai_answer = _sort(per_bucket.get("ai-answer") or [])
+    training = _sort(per_bucket.get("training") or [])
+    search_seo = _sort(per_bucket.get("search-seo") or [])
+    scraper = _sort(per_bucket.get("scraper") or [])
+    other = _sort(per_bucket.get("other") or [])
+
+    ai_total = sum(h for _u, h in ai_answer)
+    tr_total = sum(h for _u, h in training)
+    ss_total = sum(h for _u, h in search_seo)
+    sc_total = sum(h for _u, h in scraper)
+
+    # Line 3 (numbered): AI answer engines detail. Cap at top-6 to fit
+    # the phone-report format; overflow rolls into an "+N more" suffix.
+    TOP_N = 6
+    top_ai = ai_answer[:TOP_N]
+    ai_parts = [f"{u}={h}" for u, h in top_ai]
+    ai_overflow = len(ai_answer) - TOP_N
+    ai_suffix = f", +{ai_overflow} more" if ai_overflow > 0 else ""
+    line3 = (
+        f"3. AI answer engines ({ai_total} hits / {len(ai_answer)} classes): "
+        f"{', '.join(ai_parts)}{ai_suffix}."
+    )
+
+    # Sub-line: other buckets. Compact per-bucket totals + top-3 members.
+    def _bucket_bit(label, total, members):
+        if not members:
+            return f"{label}=0"
+        top3 = ", ".join(f"{u}:{h}" for u, h in members[:3])
+        rest = len(members) - 3
+        rest_suffix = f",+{rest}" if rest > 0 else ""
+        return f"{label}={total} ({top3}{rest_suffix})"
+
+    sub_bits = [
+        _bucket_bit("training", tr_total, training),
+        _bucket_bit("search-seo", ss_total, search_seo),
+        _bucket_bit("scrapers", sc_total, scraper),
+    ]
+    if other:
+        sub_bits.append(_bucket_bit("other", sum(h for _u, h in other), other))
+    sub_line = "   " + " · ".join(sub_bits) + f" · UNLISTED={unlisted_hits}"
+
+    return f"{line3}\n{sub_line}"
 
 
 def line_signed_surfaces(cur, ts_s, ts_e) -> str:
