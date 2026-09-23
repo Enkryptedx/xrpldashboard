@@ -1923,6 +1923,74 @@ def ensure_rwa_family_attestation_current():
         conn.commit()
 
 
+def ensure_tier_reverify_and_claim_verify_tables():
+    """Idempotent, targeted schema additions (Charlie ruling 2026-09-23
+    16:09 ET, items A + B — two walkers):
+
+    A) `token_reverify_state` — per (currency_hex, issuer) state for the
+       weekly/daily two-way TOML re-verify walker. Tracks last check,
+       consecutive-fail streak, and downgrade decision. Downgrade only
+       fires after ≥14 days of sustained failure (Charlie's grace rule:
+       'a transient fetch error must never demote a real issuer').
+
+    B) `claim_verify_samples` — per-sample audit result for the weekly
+       claim-verify sampler walker. Ten public claims per run, checked
+       against their primary source. Readable by jj_ro. FAIL rows page
+       via a downstream monitor (walker itself just records)."""
+    if not pg_available():
+        return
+    stmts = (
+        # A — tier re-verify state
+        "CREATE TABLE IF NOT EXISTS token_reverify_state ("
+        " currency_hex TEXT NOT NULL,"
+        " issuer TEXT NOT NULL,"
+        " last_check_at TIMESTAMPTZ NOT NULL,"
+        " last_ok BOOLEAN NOT NULL,"
+        " last_fail_reason TEXT,"
+        " first_fail_at TIMESTAMPTZ,"
+        " last_fail_at TIMESTAMPTZ,"
+        " downgraded_at TIMESTAMPTZ,"
+        " PRIMARY KEY (currency_hex, issuer)"
+        ")",
+        "CREATE INDEX IF NOT EXISTS idx_token_reverify_state_last_check_at "
+        "ON token_reverify_state (last_check_at DESC)",
+        # B — claim-verify samples
+        "CREATE TABLE IF NOT EXISTS claim_verify_samples ("
+        " id BIGSERIAL PRIMARY KEY,"
+        " sample_at TIMESTAMPTZ NOT NULL,"
+        " claim_kind TEXT NOT NULL,"
+        " claim_id TEXT NOT NULL,"
+        " claim_text TEXT NOT NULL,"
+        " primary_source_url TEXT NOT NULL,"
+        " verdict TEXT NOT NULL,"
+        " verdict_detail TEXT,"
+        " check_duration_ms INT,"
+        " run_id TEXT NOT NULL"
+        ")",
+        "CREATE INDEX IF NOT EXISTS idx_claim_verify_samples_run_id "
+        "ON claim_verify_samples (run_id)",
+        "CREATE INDEX IF NOT EXISTS idx_claim_verify_samples_verdict "
+        "ON claim_verify_samples (verdict) WHERE verdict = 'FAIL'",
+        # jj_ro grants — SELECT-only reads, mirrors the pattern used
+        # by every other jj_ro-readable table.
+        "GRANT SELECT ON token_reverify_state TO jj_ro",
+        "GRANT SELECT ON claim_verify_samples TO jj_ro",
+    )
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            for s in stmts:
+                try:
+                    cur.execute(s)
+                except Exception as e:
+                    # GRANT can fail if jj_ro role is absent locally;
+                    # keep the schema DDL from blocking on that.
+                    if "jj_ro" in s and "does not exist" in str(e).lower():
+                        conn.rollback()
+                        continue
+                    raise
+        conn.commit()
+
+
 def ensure_turnstile_verified_column():
     """Idempotent, targeted migration (Charlie ruling 2026-09-23 15:28 ET):
     add `turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE` to
