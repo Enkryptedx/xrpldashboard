@@ -5766,6 +5766,57 @@ def observatory():
     live_other_buckets = _pack_buckets(live_buckets)
     final_other_buckets = _pack_buckets(final_buckets)
 
+    # ── Human-referral panel (Charlie ruling 2026-09-23 Wed 13:32 ET,
+    # build #4): "does AI send humans?". Readers arriving from an AI
+    # answer engine's public UI (chatgpt.com, perplexity.ai, claude.ai,
+    # gemini.google.com, copilot.microsoft.com) — by day + landing page.
+    # Self-probes excluded; page_views is the source.
+    ai_referral_patterns = [
+        ("chatgpt.com",   "%chatgpt.%"),
+        ("perplexity.ai", "%perplexity.%"),
+        ("claude.ai",     "%claude.%"),
+        ("gemini",        "%gemini.%"),
+        ("copilot",       "%copilot.%"),
+    ]
+    ai_referral_by_source: list[dict] = []
+    if db.pg_available():
+        try:
+            import agent_tier_rate_limit as _atrl_hr
+            from public_analytics_filters import SELF_PROBE_UA_FRAGMENTS as _SELF_HR
+            self_pats = [f"%{f}%" for f in _SELF_HR]
+            cutoff_ts = int((_dt.datetime.now(_dt.timezone.utc)
+                             - _dt.timedelta(days=14)).timestamp())
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                for label, pat in ai_referral_patterns:
+                    cur.execute("""
+                        SELECT (to_timestamp(ts) AT TIME ZONE 'America/New_York')::date AS et_date,
+                               COUNT(*) AS humans,
+                               (ARRAY_AGG(path ORDER BY ts DESC))[1:3] AS recent_paths
+                          FROM page_views
+                         WHERE ts >= %s
+                           AND referrer ILIKE %s
+                           AND is_bot IS NULL
+                           AND NOT (COALESCE(user_agent,'') ILIKE ANY(%s))
+                         GROUP BY et_date
+                         ORDER BY et_date DESC
+                    """, (cutoff_ts, pat, self_pats))
+                    days = []
+                    total = 0
+                    for et_date, humans, paths in cur.fetchall():
+                        days.append({
+                            "date": et_date.isoformat(),
+                            "humans": int(humans),
+                            "recent_paths": [p for p in (paths or []) if p][:3],
+                        })
+                        total += int(humans)
+                    ai_referral_by_source.append({
+                        "source": label,
+                        "total": total,
+                        "days": days,
+                    })
+        except Exception:
+            ai_referral_by_source = []
+
     return render_template(
         "observatory.html",
         final_window_start=final_start.isoformat(),
@@ -5792,6 +5843,7 @@ def observatory():
         live_agent=live_agent,
         live_agent_fams=live_agent_fams,
         live_agent_total=live_agent_total,
+        ai_referral_by_source=ai_referral_by_source,
         so_what=so_what,
     )
 

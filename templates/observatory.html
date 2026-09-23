@@ -339,6 +339,46 @@
   <div class="empty">{{ _('No agent-tier fetches in the completed week.') }}</div>
   {% endif %}
 
+  {# ── Human-referral panel — "does AI send humans?" ─────────────── #}
+  <h2 style="margin-top:2.4rem;">{{ _('Does AI send humans?') }}
+    <span style="font-size:0.72em;color:rgba(160,180,210,0.7);font-weight:400;letter-spacing:0.06em;">
+      &nbsp;{{ _('14-day rolling · referrers from AI answer UIs · humans only') }}
+    </span>
+  </h2>
+  <p class="window">
+    {{ _('Readers arriving at xrpldashboard from a public AI-answer UI (chatgpt.com, perplexity.ai, claude.ai, gemini, copilot). Bot traffic excluded (is_bot IS NULL); self-probes excluded.') }}
+  </p>
+  {% set _any_ai_ref = ai_referral_by_source | selectattr('total') | list %}
+  {% if _any_ai_ref %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('AI source') }}</th>
+        <th>{{ _('14-day total') }}</th>
+        <th>{{ _('most recent landing paths') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for src in ai_referral_by_source if src.total %}
+      <tr>
+        <td><code>{{ src.source }}</code></td>
+        <td>{{ "{:,}".format(src.total) }}</td>
+        <td>
+          {%- for p in src.days[0].recent_paths[:3] if p -%}
+            <code style="font-size:0.85em;">{{ p }}</code>{% if not loop.last %} · {% endif %}
+          {%- endfor -%}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {{ _("Landing paths are the last 3 URLs a referred visitor hit from that source; useful for reading which xrpldashboard pages AI answers cite. Full per-day breakdown available on request.") }}
+  </p>
+  {% else %}
+  <div class="empty">{{ _('No AI-answer-referred human traffic in the last 14 days.') }}</div>
+  {% endif %}
+
   <p class="note" style="margin-top: 2rem;">
     {% trans -%}
     Page families are a small closed vocabulary (amendments, tokens, check, changes, registry, snapshots, whales, pools, lending, rlusd, nfts, mpts, methodology, home, thisweek, other) — the exact endpoint each crawler hit stays private. Sources: <code>ai_crawler_hits</code> (populated by our request-time classifier) rolled up daily into <code>ai_crawler_daily_rollup</code>. Self-probes and internal canaries are excluded upstream.
