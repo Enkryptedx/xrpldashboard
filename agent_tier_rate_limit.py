@@ -96,6 +96,39 @@ AI_CRAWLER_UA_SUBSTRINGS = (
     "ccbot",
     # You.com
     "youbot",
+    # ── Charlie ruling 2026-09-23 Wed 07:06 ET: promote UNLISTED-bucket
+    # ── classes to first-class ua_class labels. Classification only —
+    # ── no rDNS gate (unverified-declared: vendor either doesn't
+    # ── publish a PTR contract or we haven't confirmed it). Rate tier
+    # ── stays anonymous (agent_tier_limit_rate only elevates on
+    # ── crawler_identity_check.verify() == "trusted"; without a
+    # ── _UA_RDNS_POLICY entry, verify() returns "not_a_bot_claim").
+    # Moonshot AI (Kimi)
+    "kimibot",
+    "kimi-searchbot",
+    "moonshotbot",
+    # 01.ai (Yi)
+    "yibot",
+    # Zhipu AI (ChatGLM, China)
+    "chatglm-spider",
+    # Brave Search
+    "bravebot",
+    # xAI (Grok — Twitter/X's AI)
+    "grokbot",
+    # DeepSeek
+    "deepseekbot",
+    # Alibaba (Qwen)
+    "qwenbot",
+    # Cohere
+    "cohere-ai",
+    # Huawei Cloud (Pangu)
+    "pangubot",
+    # DuckDuckGo (Duck Assist — retrieval, distinct from index bot)
+    "duckassistbot",
+    # Reflection AI
+    "reflectionbot",
+    # Keenable AI
+    "keenablebot",
 )
 
 

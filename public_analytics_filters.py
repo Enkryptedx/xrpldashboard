@@ -37,6 +37,15 @@ SELF_PROBE_UA_FRAGMENTS = (
     "openclaw_",              # openclaw_cli_backend_drift
     "JJ-",                    # JJ interactive shell (owner-authenticated)
     "PROOF-",                 # Charlie's proof-of-life curl wrapper
+    # ── Charlie ruling 2026-09-23 Wed 07:06 ET: tests that hit prod
+    # ── endpoints (via `client.get(...)` in the test suite) pollute
+    # ── production analytics + shadow-log rows. Tests already tag
+    # ── their UAs with these markers (see
+    # ── tests/test_agent_tier_rate_limit.py: `curl/rate-test-*`,
+    # ── `GPTBot/rate-test-*`). Exclude those from every public count.
+    "rate-test",              # rate-limit boundary tests
+    "smoke-test",             # smoke-test writes (shadow-log wiring, etc.)
+    "integration-test",       # integration-test scaffolding
 )
 
 

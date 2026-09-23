@@ -88,15 +88,35 @@ def rollup_day(day_iso: str) -> int:
         day + dt.timedelta(days=1), dt.time.min
     ).replace(tzinfo=dt.timezone.utc).timestamp())
 
+    # Charlie ruling 2026-09-23 Wed 07:06 ET: exclude self-probe UAs from
+    # the rollup. ai_crawler_hits has no UA column, so LEFT JOIN with
+    # page_views on (ts, path) and skip rows whose UA matches any
+    # SELF_PROBE_UA_FRAGMENTS entry (rate-test, smoke-test,
+    # integration-test, xrpldashboard-, canary probes, etc.). The join
+    # can miss (multiple UAs on same (ts, path)); when the page_views UA
+    # is NULL the row still counts — the walker keeps the historical
+    # behavior for un-joinable rows.
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.abspath(
+        _os.path.join(_os.path.dirname(__file__), "..")
+    ))
+    from public_analytics_filters import SELF_PROBE_UA_FRAGMENTS
+    self_probe_patterns = [f"%{f}%" for f in SELF_PROBE_UA_FRAGMENTS]
+
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT ua_class, path, COUNT(*) "
-                "FROM ai_crawler_hits "
-                "WHERE ts >= %s AND ts < %s "
-                "  AND ua_class IS NOT NULL AND ua_class <> '' "
-                "GROUP BY ua_class, path",
-                (start_ts, end_ts),
+                "SELECT ach.ua_class, ach.path, COUNT(*) "
+                "FROM ai_crawler_hits ach "
+                "LEFT JOIN LATERAL ( "
+                "  SELECT user_agent FROM page_views "
+                "   WHERE ts = ach.ts AND path = ach.path LIMIT 1 "
+                ") pv ON true "
+                "WHERE ach.ts >= %s AND ach.ts < %s "
+                "  AND ach.ua_class IS NOT NULL AND ach.ua_class <> '' "
+                "  AND NOT (COALESCE(pv.user_agent, '') ILIKE ANY(%s)) "
+                "GROUP BY ach.ua_class, ach.path",
+                (start_ts, end_ts, self_probe_patterns),
             )
             rows = cur.fetchall()
 
