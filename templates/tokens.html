@@ -1865,23 +1865,34 @@
       return null;
     }
 
-    function radiusFromAmount(v, cat) {
-      // Log-scaled: ~$1 → 4px, $1k → 7px, $1M → 11px, $1B+ → 16px.
-      // Stablecoin values are already in dollars (pegged), so their
-      // nominal numbers look small next to inflated token counts on other
-      // categories — bias them up so a $1k RLUSD trade reads as a real
-      // coin, not a speck.
+    // Coin growth rule (Charlie 2026-09-23 17:38 ET): every coin follows
+    // ONE rule — small at the top, growing as it falls, finishing at the
+    // size the largest coins reached under the old amount-driven sizing.
+    // Trade amount no longer sets base radius — it shows as an outer
+    // ring whose thickness scales log-linearly with the trade value.
+    // At the bottom size, the emblem or up to 5 letters (RLUSD, not
+    // RLUS) must be legible; drawCoin's font-mul table gets a 5-char
+    // row alongside the existing 1..4.
+    var BASE_COIN_R = 18;   // matches the old radiusFromAmount hard-cap
+                            // so bottom-of-lane size stays 18 * 1.20 = 21.6px
+    var AMOUNT_RING_MAX_W = 3.2; // px, at r=BASE_COIN_R * perspScale bottom
+    function amountWeight01(v, cat) {
+      // Log-scaled 0..1: ~$1 → 0.0, $1k → 0.33, $1M → 0.67, $1B+ → 1.0.
+      // Stablecoins already carry dollar-nominal so the same bias the
+      // old radiusFromAmount used (× 1.55 + 2 for stablecoin family) is
+      // preserved as a weight bias below.
       var n = parseFloat(v) || 0;
-      var r = 4 + Math.log10(Math.max(1, n)) * 1.6;
-      // Family-aware: stablecoin_regulated / stablecoin_gateway both fold
-      // to 'stablecoin' via CATEGORY_FAMILY; keep the historical 'fiat'
-      // alias as a compatibility check while old rows drain out of caches.
+      var w = Math.log10(Math.max(1, n)) / 9;   // 9 ≈ log10($1B)
       var _fam = CATEGORY_FAMILY[cat] || cat;
       if (_fam === 'stablecoin' || cat === 'fiat') {
-        r = r * 1.55 + 2;
+        w = Math.min(1, w * 1.35 + 0.10);
       }
-      return Math.min(18, Math.max(4, r));
+      return Math.max(0, Math.min(1, w));
     }
+    // Back-compat: any lingering caller of radiusFromAmount now returns
+    // the fixed BASE_COIN_R (was a per-amount radius). Kept as an alias
+    // so removal in a follow-up doesn't need a hunt across the file.
+    function radiusFromAmount(_v, _cat) { return BASE_COIN_R; }
 
     function spawnPulse(tx) {
       // Wrapped in try/catch after 2026-09-06 regression: a category
@@ -1945,7 +1956,10 @@
                        && !isNonStandardCode(leg.currency);
         if (readable) {
           var tickerRaw = sym || decodedTicker;
-          coinGlyph = tickerRaw.length > 4 ? tickerRaw.slice(0, 4) : tickerRaw;
+          // Charlie ruling 2026-09-23 17:38 ET: up to 5 letters (RLUSD,
+          // not RLUS). drawCoin font-mul has a 5-char row so the letters
+          // still fit inside the bevel ring at the bottom-lane size.
+          coinGlyph = tickerRaw.length > 5 ? tickerRaw.slice(0, 5) : tickerRaw;
         } else {
           coinGlyph = '?';
         }
@@ -1979,7 +1993,8 @@
           progress: 0,
           speed: pulseSpeed,
           rgb: rgb,
-          size: radiusFromAmount(leg.value, cat),
+          size: BASE_COIN_R,                    // uniform base — grows via perspScale
+          amountWeight: amountWeight01(leg.value, cat),
           symbol: sym,
           glyph: coinGlyph,
           emblemImg: coinEmblemImg,
@@ -2072,7 +2087,7 @@
         Math.max(0, Math.min(255, rgb[2] + delta)),
       ];
     }
-    function drawCoin(x, y, r, rgb, alpha, glyph, emblemImg) {
+    function drawCoin(x, y, r, rgb, alpha, glyph, emblemImg, amountWeight) {
       // Stacked 3D coin (always round): tinted halo → dark edge → beveled
       // face → bright bevel crescent + dark bevel crescent → specular
       // hotspot → embossed glyph.
@@ -2128,6 +2143,23 @@
       ctx.arc(-r * 0.32, -r * 0.38, r * 0.50, 0, Math.PI * 2);
       ctx.fill();
 
+      // Amount-weight outer ring (Charlie 2026-09-23 17:38 ET): thicker
+      // white-cyan ring around the coin scales with the trade's log-
+      // amount. amountWeight ∈ [0,1]. At 0 the ring is invisible; at 1
+      // it approaches AMOUNT_RING_MAX_W pixels wide at bottom-lane size.
+      // Sits OUTSIDE the bevel ring so it never fights the glyph inside.
+      if ((amountWeight || 0) > 0.02) {
+        var aw = Math.min(1, Math.max(0, amountWeight));
+        var ringR = r * 1.02;
+        var ringW = AMOUNT_RING_MAX_W * aw * (0.4 + 0.6 * (r / BASE_COIN_R));
+        ctx.save();
+        ctx.strokeStyle = 'rgba(226,240,255,' + (alpha * (0.35 + 0.55 * aw)) + ')';
+        ctx.lineWidth = ringW;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringR + ringW * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
       // Emblem OR embossed glyph. Emblem takes precedence when the
       // caller supplied a loaded Image (Charlie's Sept 11 rule
       // extended to all lanes on 2026-09-23: emblem → letters → '?').
@@ -2158,9 +2190,12 @@
       // without overflowing the bevel ring.
       if (!emblemDrawn && r >= 5) {
         var glyphLen = (glyph || '').length;
-        var fontMul = glyphLen >= 4 ? 0.48
-                     : glyphLen === 3 ? 0.58
-                     : glyphLen === 2 ? 0.75
+        // 2026-09-23 17:38 ET: 5-char row added so RLUSD fits legibly at
+        // the bottom-lane size instead of truncating to RLUS.
+        var fontMul = glyphLen >= 5 ? 0.44
+                     : glyphLen === 4 ? 0.50
+                     : glyphLen === 3 ? 0.60
+                     : glyphLen === 2 ? 0.78
                      : 1.05;
         ctx.font = '800 ' + Math.round(r * fontMul) + 'px ' + COIN_FONT;
         ctx.textAlign = 'center';
@@ -2201,7 +2236,11 @@
         ctx.stroke();
         // Coin head — disc with either the cached emblem image (when
         // we have one and it's loaded) or the ticker letters / '?'.
-        drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph, p.emblemImg);
+        // amountWeight (0..1) scales the outer amount-ring width so
+        // trade size still reads at a glance even though base radius
+        // is now uniform across all pulses.
+        drawCoin(pos.x, pos.y, radius, rgb, alpha, p.glyph, p.emblemImg,
+                 p.amountWeight || 0);
         // Warning-lane coins get a solid amber ring — the ticker-collision
         // / non-standard-code signal the scope doc calls a "chromatic
         // overlay," layered on top of the warning-lane position so the two
