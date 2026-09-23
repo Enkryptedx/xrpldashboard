@@ -243,6 +243,14 @@ except Exception as _e:
         "SMTP_DIAG tier_reverify_and_claim_verify_tables ERR exc=%s: %s",
         type(_e).__name__, str(_e)[:200],
     )
+try:
+    db.ensure_token_icon_table()
+    app.logger.warning("SMTP_DIAG token_icon_table ok")
+except Exception as _e:
+    app.logger.warning(
+        "SMTP_DIAG token_icon_table ERR exc=%s: %s",
+        type(_e).__name__, str(_e)[:200],
+    )
 
 # Cloudflare → Render → Flask is a two-proxy chain: Cloudflare puts the
 # visitor IP at the head of X-Forwarded-For, Render's edge appends its own

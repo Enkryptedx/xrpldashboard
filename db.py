@@ -1991,6 +1991,52 @@ def ensure_tier_reverify_and_claim_verify_tables():
         conn.commit()
 
 
+def ensure_token_icon_table():
+    """Idempotent boot-time migration for the token_icon table.
+
+    Charlie ruling 2026-09-23 16:29 ET (Coin emblems overnight cycle):
+    each verified/self-described issuer's TOML may publish [[TOKENS]]
+    with an `icon` URL. The token_icon_walker fetches, rasterizes (SVG →
+    PNG), stores under a sha256-hashed filename in static/coin_emblems/,
+    and records provenance here. Templates render the cached image when
+    present; ticker initials otherwise. Flagged tokens (ticker_collision
+    or non_standard_code) NEVER get an emblem — no row is inserted for
+    them, so template fallback logic (initials + amber ring) fires."""
+    if not pg_available():
+        return
+    stmts = (
+        "CREATE TABLE IF NOT EXISTS token_icon ("
+        " currency_hex TEXT NOT NULL,"
+        " issuer TEXT NOT NULL,"
+        " sha256 TEXT NOT NULL,"
+        " source_url TEXT NOT NULL,"
+        " source_mime_type TEXT,"
+        " stored_path TEXT NOT NULL,"
+        " width_px INT,"
+        " height_px INT,"
+        " source_size_bytes INT,"
+        " fetched_at TIMESTAMPTZ NOT NULL,"
+        " fetch_status TEXT NOT NULL,"
+        " fail_reason TEXT,"
+        " PRIMARY KEY (currency_hex, issuer)"
+        ")",
+        "CREATE INDEX IF NOT EXISTS idx_token_icon_fetched_at "
+        "ON token_icon (fetched_at DESC)",
+        "GRANT SELECT ON token_icon TO jj_ro",
+    )
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            for s in stmts:
+                try:
+                    cur.execute(s)
+                except Exception as e:
+                    if "jj_ro" in s and "does not exist" in str(e).lower():
+                        conn.rollback()
+                        continue
+                    raise
+        conn.commit()
+
+
 def ensure_turnstile_verified_column():
     """Idempotent, targeted migration (Charlie ruling 2026-09-23 15:28 ET):
     add `turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE` to
