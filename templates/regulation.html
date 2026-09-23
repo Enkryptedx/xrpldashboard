@@ -145,57 +145,64 @@
   <table class="timeline">
     <thead><tr><th>Date</th><th>Action</th><th>Where to verify</th></tr></thead>
     <tbody>
-      <tr>
+      {# Each timeline <tr> carries `data-primary-source="URL"` — the single
+         URL the claim-verify sampler walker uses to check that the row's
+         load-bearing citation still resolves. One source of truth in the
+         template, no sidecar (Charlie ruling 2026-09-23 16:48 ET). Rows
+         whose "Where to verify" cell is a bare text pointer (no anchor)
+         omit the attribute; the walker treats the row as "no machine-
+         verifiable primary source" and does not fail on absence. #}
+      <tr data-primary-source="https://clerk.house.gov/Votes/2025199">
         <td class="date">2025-07-17</td>
         <td><strong>House passed 294–134</strong> (Roll Call #199)</td>
         <td><a href="https://clerk.house.gov/Votes/2025199" target="_blank" rel="noopener noreferrer">clerk.house.gov/Votes/2025199</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.congress.gov/bill/119th-congress/house-bill/3633/all-actions">
         <td class="date">2025-09-18</td>
         <td>Received in Senate; referred to the Committee on Banking, Housing, and Urban Affairs</td>
         <td>Congress.gov actions list</td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.banking.senate.gov/newsroom/majority/chairman-scott-senate-banking-committee-advance-clarity-act-in-historic-bipartisan-vote">
         <td class="date">2026-05-14</td>
         <td><strong>Senate Banking Committee ordered reported</strong> with amendment in the nature of a substitute, favorable, <strong>15–9</strong></td>
         <td><a href="https://www.banking.senate.gov/newsroom/majority/chairman-scott-senate-banking-committee-advance-clarity-act-in-historic-bipartisan-vote" target="_blank" rel="noopener noreferrer">banking.senate.gov</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.congress.gov/bill/119th-congress/house-bill/3633/all-actions">
         <td class="date">2026-06-01</td>
         <td>Reported by Sen. Scott (R-SC); <strong>placed on Senate Legislative Calendar under General Orders, Calendar No. 423</strong></td>
         <td>Congress.gov actions list</td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.lummis.senate.gov/press-releases/lummis-releases-updated-clarity-act-text/">
         <td class="date">2026-07-22</td>
         <td><strong>New combined draft</strong> released by Sen. Cynthia Lummis (R-WY), merging Banking and Agriculture Committee work</td>
         <td><a href="https://www.lummis.senate.gov/press-releases/lummis-releases-updated-clarity-act-text/" target="_blank" rel="noopener noreferrer">lummis.senate.gov</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://news.bgov.com/bloomberg-government-news/thune-says-crypto-bill-will-likely-get-initial-vote-pre-recess">
         <td class="date">2026-08-03</td>
         <td>Senate Majority Leader John Thune (R-SD) stated the Senate would hold an initial floor vote on H.R. 3633 <strong>before</strong> the August recess</td>
         <td><a href="https://news.bgov.com/bloomberg-government-news/thune-says-crypto-bill-will-likely-get-initial-vote-pre-recess" target="_blank" rel="noopener noreferrer">Bloomberg Government (news report)</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.theblock.co/post/411083/senate-delays-clarity-act-vote">
         <td class="date">2026-08-06</td>
         <td>Thune reversed course; with the ethics-provision impasse unresolved, the pre-recess vote was pulled. Thune: <em>"We're getting that queued up first thing when we come back."</em></td>
         <td><a href="https://www.theblock.co/post/411083/senate-delays-clarity-act-vote" target="_blank" rel="noopener noreferrer">The Block 2026-08-06 (news report)</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.coindesk.com/policy/2026/08/08/u-s-senate-opens-first-stage-of-crypto-clarity-act-voting-to-give-bill-a-chance-next-month">
         <td class="date">2026-08-08</td>
         <td>Senate Majority Leader Thune filed <strong>cloture on the motion to proceed</strong> to H.R. 3633 (Calendar No. 423) before recess. This is a procedural first step, not passage; under the Senate floor schedule the cloture motion ripens on <strong>{{ cloture_when_full }}</strong>. Cloture requires 60 votes to invoke. No floor vote on the bill itself has yet been held.</td>
         <td>Congress.gov actions list; <a href="https://www.coindesk.com/policy/2026/08/08/u-s-senate-opens-first-stage-of-crypto-clarity-act-voting-to-give-bill-a-chance-next-month" target="_blank" rel="noopener noreferrer">CoinDesk 2026-08-08 (news report)</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.washingtonpost.com/business/2026/09/14/trump-agrees-stricter-ethics-rules-democrats-demanded-cryptocurrency-bill/">
         <td class="date">2026-09-13</td>
         <td>Senate Republicans released a <strong>revised CLARITY Act text</strong> (approximately 635 pages) on Sunday night with roughly 126 changes reflecting Democratic requests. The White House agreed to <strong>strengthened ethics language</strong> barring the President, Vice President, senior executive-branch officials, members of Congress, and their spouses from issuing or sponsoring digital assets while in office, with a divestment-or-blind-trust requirement for substantial crypto-related interests and a provision allowing state attorneys general to sue if federal officials violate the ethics rules. At the time of release, Republican sponsors described the revised text as a "last, best and final" offer ahead of the cloture vote. Not enacted law — this was the negotiated draft that went to the Sept 15 cloture vote.</td>
         <td><a href="https://www.washingtonpost.com/business/2026/09/14/trump-agrees-stricter-ethics-rules-democrats-demanded-cryptocurrency-bill/" target="_blank" rel="noopener noreferrer">Washington Post 2026-09-14</a>; <a href="https://thehill.com/policy/technology/6087405-white-house-accepts-clarity-act-ethics/" target="_blank" rel="noopener noreferrer">The Hill 2026-09-14</a>; <a href="https://www.theblock.co/news/regulation/2026-09-14-senate-republicans-release-final-clarity-act-draft-414575" target="_blank" rel="noopener noreferrer">The Block 2026-09-14</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.senate.gov/legislative/LIS/roll_call_votes/vote1192/vote_119_2_00234.htm">
         <td class="date">2026-09-15</td>
         <td><strong>Cloture on the motion to proceed to H.R. 3633 REJECTED, 49&ndash;50</strong>, on Tuesday 2026-09-15 at 2:19 PM ET (18:19 UTC). Senate Roll Call vote #234; 3/5 majority (60 votes) was required and not reached. The bill remains at the motion-to-proceed stage on the Senate Calendar under General Orders (Cal. No. 423); no motion-to-proceed agreement, no subsequent floor vote on the bill itself.<br><br><strong>Same day, 3:01 PM ET (19:01 UTC):</strong> Sen. Tillis <strong>made a motion to reconsider</strong> H.R. 3633 (per the Senate's own daily-press record). Under Senate Rule XXII this preserves the option to bring the cloture motion back to the floor for a second vote without filing a new motion to proceed; it is a procedural hold-open, not a scheduled revote. The motion to reconsider is recorded as a Congress.gov action on the same date.</td>
         <td><a href="https://www.senate.gov/legislative/LIS/roll_call_votes/vote1192/vote_119_2_00234.htm" target="_blank" rel="noopener noreferrer">Senate.gov Roll Call vote #234 (primary source)</a>; <a href="https://www.dailypress.senate.gov/tuesday-september-15-2026/" target="_blank" rel="noopener noreferrer">Senate Daily Press, Tue 2026-09-15 3:01 PM entry (primary source for the motion to reconsider)</a>; <a href="https://www.congress.gov/bill/119th-congress/house-bill/3633/all-actions" target="_blank" rel="noopener noreferrer">Congress.gov actions list for H.R. 3633</a></td>
       </tr>
-      <tr>
+      <tr data-primary-source="https://www.sec.gov/newsroom/press-releases/2026-90-sec-issues-innovation-exemption-facilitate-trading-tokenized-nms-stock-request-comment">
         <td class="date">2026-09-17</td>
         <td>SEC issued an <strong>"Innovation Exemption" for Tokenized NMS Stock</strong> (Release 2026-90; SEC Release No. 34-106402, File No. 4-927) &mdash; a time-limited exemption from the Exchange Act "exchange" and "dealer" definitions for the use of certain distributed-ledger trading venues to trade tokenized NMS stocks. <strong>Chain-agnostic</strong> &mdash; the release does not name a specific blockchain; venues choose. This is an SEC exemptive order alongside a request for comment, not statute; unrelated to H.R. 3633's status.</td>
         <td><a href="https://www.sec.gov/newsroom/press-releases/2026-90-sec-issues-innovation-exemption-facilitate-trading-tokenized-nms-stock-request-comment" target="_blank" rel="noopener noreferrer">SEC 2026-90 press release (primary source)</a>; <a href="https://www.sec.gov/files/rules/exorders/2026/34-106402.pdf" target="_blank" rel="noopener noreferrer">SEC Release No. 34-106402 (PDF, primary source)</a></td>
