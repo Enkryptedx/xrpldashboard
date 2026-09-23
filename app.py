@@ -460,6 +460,10 @@ AGENT_TIER_MCP_INVENTORY = [
     {"name": "get_mpt_snapshot",      "source": "neon_postgres",             "freshness": "daily",          "batch": "amm-tokens"},
     {"name": "get_signed_snapshot",   "source": "signed_snapshot_walker",     "freshness": "daily",          "batch": "signed-snapshot"},
     {"name": "verify_snapshot_signature", "source": "signed_snapshot.verify_envelope+pinned_pubkey", "freshness": "≤ 5min", "batch": "signed-snapshot"},
+    {"name": "get_tokens",            "source": "token_category_current+token_facts", "freshness": "≤ 30min", "batch": "broad-surfaces"},
+    {"name": "get_whales",            "source": "whales_summary",             "freshness": "≤ 5min",         "batch": "broad-surfaces"},
+    {"name": "get_pools",             "source": "rank_amms_walker+amm_tvl_recorder", "freshness": "≤ 30min", "batch": "broad-surfaces"},
+    {"name": "get_amendments",        "source": "amendments_state+amendments_network_votes", "freshness": "daily", "batch": "broad-surfaces"},
 ]
 
 
@@ -586,7 +590,7 @@ app.config["API_SPEC_OPTIONS"] = {
             "status": (
                 "Public-beta live at https://mcp.xrpldashboard.com/mcp "
                 "through 2026-09 — server publicly reachable (streamable "
-                "HTTP, MCP protocol 2025-06-18, 15 read-only tools, no "
+                "HTTP, MCP protocol 2025-06-18, 19 read-only tools, no "
                 "auth, 600 tool calls/hour/session enforced). Backed by "
                 "our own rippled node. Listed in the Anthropic MCP "
                 "Registry (server id com.xrpldashboard/xrpldashboard-mcp, "

@@ -473,7 +473,51 @@ def _register_tools(mcp) -> int:
         signed payload. Wrapped in the proof envelope."""
         return mcp_tools_signed_snapshot.tool_verify_snapshot_signature(envelope)
 
-    return 15
+    # Day 8 broad-surface batch (Charlie ruling 2026-09-23 16:29 ET, item 3
+    # MCP breadth). Four tools mirror the /tokens.json, /whales.json,
+    # /pools.json, /amendments.json sellable-surface JSON endpoints. Same
+    # data sources, same freshness contracts as the HTTP surfaces so an
+    # agent with both open sees identical guarantees.
+    import mcp_tools_broad
+
+    @mcp.tool()
+    def get_tokens(limit: int = 100) -> dict:
+        """Return the top-N tokens by trades_30d, joined against
+        attestation tier + warning flags. Mirrors /tokens.json's data
+        path (token_category_current JOIN token_facts). Third-party-
+        naming — data payload includes `dispute_contact_url`. Wrapped
+        in the proof envelope."""
+        return mcp_tools_broad.tool_get_tokens(limit)
+
+    @mcp.tool()
+    def get_whales() -> dict:
+        """Return the whales_summary rollup cells (per-tier × per-filter
+        body metadata). Mirrors /whales.json. Live stream on
+        wss://wss.xrpldashboard.com — this tool returns generation stats
+        + body length, not the live payload. Third-party-naming — data
+        payload includes `dispute_contact_url`. Wrapped in the proof
+        envelope."""
+        return mcp_tools_broad.tool_get_whales()
+
+    @mcp.tool()
+    def get_pools(limit: int = 50) -> dict:
+        """Return AMM pools ranked by TVL, broader list contract than
+        get_amm_top_by_tvl (default limit=50 vs 10). Mirrors /pools.json.
+        Same source snapshot (amm_ranked_pools). Third-party-naming —
+        data payload includes `dispute_contact_url`. Wrapped in the proof
+        envelope."""
+        return mcp_tools_broad.tool_get_pools(limit)
+
+    @mcp.tool()
+    def get_amendments() -> dict:
+        """Return the amendments block with per-amendment vote tallies.
+        Mirrors /amendments.json. Distinct from get_amendment_status
+        (state-only) — this tool adds live vote counts vs UNL-threshold
+        per amendment. Not third-party-naming. Wrapped in the proof
+        envelope."""
+        return mcp_tools_broad.tool_get_amendments()
+
+    return 19
 
 
 _SESSION_LIMITER = None
