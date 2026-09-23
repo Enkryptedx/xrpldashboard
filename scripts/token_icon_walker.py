@@ -65,9 +65,16 @@ except Exception:
 WALKER_NAME = "token_icon_walker"
 WALKER_CADENCE_SECONDS = 3600  # hourly
 
-ICON_MAX_BYTES = 256 * 1024  # 256 KB
-FETCH_TIMEOUT = 8  # seconds
-RASTER_SIZE = 128  # square PNG output, matches most /tokens grid cells
+ICON_MAX_BYTES = 2 * 1024 * 1024  # 2 MB — Charlie ruling 2026-09-23 16:48
+                                  # ET: 256 KB rejected 29/48 real logos on the
+                                  # first run. The served PNG is downscaled to
+                                  # 128×128 by the rasterizer below (typically
+                                  # <5 KB out), so the source cap is only about
+                                  # what we're willing to pull over the wire.
+FETCH_TIMEOUT = 15  # seconds — bumped with the cap so a 2 MB fetch on a slow
+                    # gateway has room to finish inside one attempt.
+RASTER_SIZE = 128  # square PNG output — the served-file dimension. Source is
+                   # always downscaled to this, so any fetched size is tiny out.
 
 EMBLEM_DIR = Path(REPO_ROOT) / "static" / "coin_emblems"
 EMBLEM_DIR.mkdir(parents=True, exist_ok=True)

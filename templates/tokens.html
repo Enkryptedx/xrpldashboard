@@ -473,7 +473,7 @@
     .tron-grid-tooltip.is-visible { opacity: 1; }
     .tron-grid-lanes {
       position: absolute; left: 0; right: 0; bottom: 6px;
-      display: grid; grid-template-columns: repeat(6, 1fr);
+      display: grid; grid-template-columns: repeat(5, 1fr);
       font-family: var(--mono); font-size: 0.62rem;
       color: var(--dim); text-align: center;
       letter-spacing: 0.10em; text-transform: uppercase;
@@ -482,65 +482,27 @@
     @media (prefers-reduced-motion: reduce) {
       .tron-grid-canvas { opacity: 0.7; }
     }
-    /* Verification-tier lane row (2026-09-23 redesign, Charlie item 1
-       before leaf): six tier chips in ONE row, warning LAST (was rendering
-       under verified on second row because grid was 5-cols). Every chip
-       is tappable — mobile no longer relies on hover title tooltips.
-       Definition line below opens on tap; second row is the LP toggle,
-       kept out of the tier grid so future new tiers don't reflow it. */
-    .tron-grid-lanes { pointer-events: auto; }
-    .tron-grid-lanes .tron-lane-chip {
-      color: var(--dim); background: none;
-      border: 1px solid transparent; border-radius: 4px;
+    /* INSIDE-visual lane labels — 5 columns matching the canvas
+       LANE enum (VERIFIED=0, SELF=1, BARE=2, WARNING=3, LP=4) so each
+       label centers under its own lane at every width (Charlie ruling
+       2026-09-23 16:48 ET Miss C). Chips + definitions live in the
+       BELOW-visual legend at .tron-legend, not here — this is a plain
+       label strip. */
+    .tron-grid-lanes .tron-lane-label {
+      color: var(--dim); background: none; border: 0;
       font-family: var(--mono); font-size: 0.62rem;
       letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 2px 4px; margin: 0; cursor: pointer;
+      padding: 2px 2px; margin: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      -webkit-tap-highlight-color: transparent;
     }
-    .tron-grid-lanes .tron-lane-chip:hover,
-    .tron-grid-lanes .tron-lane-chip:focus-visible {
-      border-color: rgba(103,232,249,0.4); outline: none;
-    }
-    .tron-grid-lanes .tron-lane-chip.is-open {
-      border-color: rgba(103,232,249,0.75);
-      background: rgba(103,232,249,0.08);
-    }
-    .tron-grid-lanes .tron-lane-chip[data-lane="verified"] { color: rgba(34,197,94,0.92); }
-    .tron-grid-lanes .tron-lane-chip[data-lane="self"]     { color: rgba(203,213,225,0.85); }
-    .tron-grid-lanes .tron-lane-chip[data-lane="labeled"]  { color: rgba(251,191,36,0.90); }
-    .tron-grid-lanes .tron-lane-chip[data-lane="bare"]     { color: rgba(122,140,168,0.85); }
-    .tron-grid-lanes .tron-lane-chip[data-lane="unknown"]  { color: rgba(122,140,168,0.65); }
-    .tron-grid-lanes .tron-lane-chip[data-lane="warning"]  { color: rgba(245,158,11,0.92); }
-    .tron-lane-def {
-      color: var(--muted); font-size: 0.72rem; line-height: 1.35;
-      padding: 6px 10px; margin: 4px 0 0; min-height: 2.6em;
-      background: rgba(103,232,249,0.04);
-      border: 1px dashed rgba(103,232,249,0.25);
-      border-radius: 4px; text-align: left;
-      white-space: pre-line; font-family: var(--mono);
-    }
-    .tron-lane-def:empty::before {
-      content: "Tap a tier chip above for a plain-English definition.";
-      color: var(--dim); font-style: italic;
-    }
-    .tron-lane-lp-row {
-      display: flex; justify-content: center;
-      margin-top: 4px; font-size: 0.62rem;
-      font-family: var(--mono); letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-    .tron-lane-lp-row .tron-lane-lp {
-      color: rgba(103,232,249,0.72); cursor: pointer;
-      border: 0; background: none; padding: 2px 6px;
-    }
-    .tron-lane-lp-row .tron-lane-lp:hover { color: rgba(103,232,249,1); }
-    .tron-lane-lp-row .tron-lane-lp.is-on { color: rgba(103,232,249,1); font-weight: 700; }
-    .tron-lane-lp-row .tron-lp-state { opacity: 0.85; }
+    .tron-grid-lanes .tron-lane-label[data-lane="verified"] { color: rgba(34,197,94,0.92); }
+    .tron-grid-lanes .tron-lane-label[data-lane="self"]     { color: rgba(203,213,225,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="bare"]     { color: rgba(122,140,168,0.85); }
+    .tron-grid-lanes .tron-lane-label[data-lane="warning"]  { color: rgba(245,158,11,0.92); }
+    .tron-grid-lanes .tron-lane-label[data-lane="lp"]       { color: rgba(103,232,249,0.72); }
     @media (max-width: 620px) {
       .tron-grid-lanes { font-size: 0.55rem; bottom: 4px; }
-      .tron-grid-lanes .tron-lane-chip { font-size: 0.55rem; letter-spacing: 0.02em; padding: 2px 2px; }
-      .tron-lane-def { font-size: 0.68rem; padding: 5px 8px; }
+      .tron-grid-lanes .tron-lane-label { font-size: 0.55rem; letter-spacing: 0.02em; }
     }
 
     /* On-page legend for the live grid — lanes (tiers) + coins (categories). */
@@ -568,9 +530,38 @@
     }
     .tron-leg--verified i { background: rgb(34,197,94); }
     .tron-leg--self i     { background: rgb(148,163,184); }
+    .tron-leg--labeled i  { background: rgb(251,191,36); }
     .tron-leg--bare i     { background: rgb(122,140,168); }
+    .tron-leg--unknown i  { background: rgb(122,140,168); opacity: 0.55; }
     .tron-leg--warning i  { background: rgb(245,158,11); }
     .tron-leg--lp i       { background: rgb(103,232,249); }
+    /* Tappable-chip variant of .tron-leg for the "Lanes — verification
+       tier" row (Charlie ruling 2026-09-23 16:48 ET Miss B). Same
+       swatch styling; adds button semantics + a data-def attribute the
+       inline JS reads to populate .tron-legend-def below the row. */
+    button.tron-leg {
+      cursor: pointer; border: 1px solid transparent;
+      border-radius: 4px; padding: 2px 6px;
+      -webkit-tap-highlight-color: transparent;
+      background: none; color: var(--text); font: inherit;
+    }
+    button.tron-leg:hover,
+    button.tron-leg:focus-visible {
+      border-color: rgba(103,232,249,0.4); outline: none;
+    }
+    button.tron-leg.is-open {
+      border-color: rgba(103,232,249,0.75);
+      background: rgba(103,232,249,0.10);
+    }
+    .tron-legend-def {
+      color: var(--muted); font-size: 0.78rem; line-height: 1.4;
+      padding: 6px 10px; margin: 6px 0 0; min-height: 2.6em;
+      background: rgba(103,232,249,0.03);
+      border-left: 3px solid rgba(103,232,249,0.35);
+      border-radius: 2px; text-align: left;
+      white-space: pre-line; font-family: var(--mono);
+    }
+    .tron-legend-def:empty { display: none; }
     .tron-cat--stablecoin b { color: rgb(34,197,94); }
     .tron-cat--wrapped b    { color: rgb(245,158,11); }
     .tron-cat--utility b    { color: rgb(34,211,238); }
@@ -1143,70 +1134,18 @@
        for the visual (impostor/unreadable-code paths still fire
        there) but placed after Unknown to match the tier reading
        order. #}
-    {# Charlie ruling 2026-09-23 16:09 ET: tier row = ONE row of 6 chips,
-       warning LAST (was rendering under verified on second row because
-       the grid was 5-cols with 7 items). Each chip is a <button> so
-       mobile tap opens the definition below — hover title tooltips
-       don't fire on touch surfaces. LP toggle moved to its own row
-       so future new tiers don't reshuffle it back into the grid. #}
-    <div class="tron-grid-lanes" role="toolbar" aria-label="{{ _('Verification tier chips') }}">
-      <button class="tron-lane-chip" data-lane="verified" type="button"
-              data-def="{{ _('Verified = the issuer proved control of its domain via two-way TOML match.\nProof of who — not an endorsement of what.') }}">{{ _('verified') }}</button>
-      <button class="tron-lane-chip" data-lane="self" type="button"
-              data-def="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.\nAnyone can claim a domain; verified goes one step further.') }}">{{ _('self-described') }}</button>
-      <button class="tron-lane-chip" data-lane="labeled" type="button"
-              data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nWe surface the name without verifying it ourselves.') }}">{{ _('labeled') }}</button>
-      <button class="tron-lane-chip" data-lane="bare" type="button"
-              data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nA thin surface — signal exists, content doesn&apos;t.') }}">{{ _('bare') }}</button>
-      <button class="tron-lane-chip" data-lane="unknown" type="button"
-              data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nThe issuer is anonymous to the network.') }}">{{ _('unknown') }}</button>
-      <button class="tron-lane-chip" data-lane="warning" type="button"
-              data-def="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.\nA row-flag, not a tier — it can pair with any tier above.') }}">{{ _('warning') }}</button>
+    {# INSIDE-visual lane labels — 5 columns, one per canvas LANE
+       (VERIFIED, SELF, BARE, WARNING, LP) so each label centers
+       under its own lane at every width. Plain label strip; chips +
+       definitions live in the below-visual legend at .tron-legend
+       (Charlie ruling 2026-09-23 16:48 ET Miss C). #}
+    <div class="tron-grid-lanes" aria-hidden="true">
+      <span class="tron-lane-label" data-lane="verified">{{ _('verified') }}</span>
+      <span class="tron-lane-label" data-lane="self">{{ _('self-described') }}</span>
+      <span class="tron-lane-label" data-lane="bare">{{ _('bare') }}</span>
+      <span class="tron-lane-label" data-lane="warning">{{ _('warning') }}</span>
+      <span class="tron-lane-label" data-lane="lp">{{ _('pools') }}</span>
     </div>
-    <div class="tron-lane-def" id="tronLaneDef" role="status" aria-live="polite"></div>
-    <div class="tron-lane-lp-row">
-      <button class="tron-lane-lp" data-lane="lp" type="button"
-              title="{{ _('Liquidity moving into and out of AMM pools — deposits, withdrawals, and pool-share receipts. Not trades.') }}">
-        {{ _('Pools · liquidity in / out') }}
-      </button>
-    </div>
-    <script>
-      // Tappable tier chips: click / touch → show two-line definition below,
-      // highlight the active chip, and clear on outside click. No hover
-      // dependency — mobile-safe. Uses event delegation for a single
-      // listener on the toolbar.
-      (function initTierChips() {
-        var chips = document.querySelectorAll('.tron-grid-lanes .tron-lane-chip');
-        var defEl = document.getElementById('tronLaneDef');
-        if (!chips.length || !defEl) return;
-        function setActive(chip) {
-          chips.forEach(function(c) { c.classList.remove('is-open'); c.setAttribute('aria-pressed', 'false'); });
-          if (chip) {
-            chip.classList.add('is-open');
-            chip.setAttribute('aria-pressed', 'true');
-            defEl.textContent = chip.getAttribute('data-def') || '';
-          } else {
-            defEl.textContent = '';
-          }
-        }
-        chips.forEach(function(chip) {
-          chip.setAttribute('aria-pressed', 'false');
-          chip.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (chip.classList.contains('is-open')) {
-              setActive(null);  // second tap closes
-            } else {
-              setActive(chip);
-            }
-          });
-        });
-        document.addEventListener('click', function(e) {
-          if (!e.target.closest('.tron-grid-lanes') && !e.target.closest('.tron-lane-def')) {
-            setActive(null);
-          }
-        });
-      })();
-    </script>
   </div>
   {# 2026-09-11 legibility: color legend moved up beside/beneath the
      visual (was below in the old "tron-legend" block, which is now
@@ -1227,13 +1166,66 @@
   <div class="tron-legend" aria-label="{{ _('Live trade grid legend') }}">
     <div class="tron-legend-block">
       <div class="tron-legend-head">{{ _('Lanes — verification tier') }}</div>
-      <div class="tron-legend-items">
-        <span class="tron-leg tron-leg--verified"><i></i>{{ _('verified') }}</span>
-        <span class="tron-leg tron-leg--self"><i></i>{{ _('self-described') }}</span>
-        <span class="tron-leg tron-leg--bare"><i></i>{{ _('bare') }}</span>
-        <span class="tron-leg tron-leg--warning"><i></i>{{ _('warning — ticker collision or non-standard code') }}</span>
-        <span class="tron-leg tron-leg--lp"><i></i>{{ _('Pools · liquidity in / out (AMM deposits + withdrawals + pool-share receipts)') }}</span>
+      {# Charlie ruling 2026-09-23 16:48 ET Miss B: all seven lanes here
+         (labeled + unknown were missing after three "fixed" reports).
+         Same order as the visual (verified → self → labeled → bare →
+         unknown → warning → pools). Each is a tappable button — the
+         data-def two-line text renders in the .tron-legend-def line
+         below on click. Mobile-safe (no hover dependency). #}
+      <div class="tron-legend-items" role="toolbar" aria-label="{{ _('Verification tier chips') }}" id="tronLegendChips">
+        <button type="button" class="tron-leg tron-leg--verified" data-lane="verified"
+                data-def="{{ _('Verified = the issuer proved control of its domain via two-way TOML match.\nProof of who — not an endorsement of what.') }}"><i></i>{{ _('verified') }}</button>
+        <button type="button" class="tron-leg tron-leg--self" data-lane="self-described"
+                data-def="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.\nAnyone can claim a domain; verified goes one step further.') }}"><i></i>{{ _('self-described') }}</button>
+        <button type="button" class="tron-leg tron-leg--labeled" data-lane="labeled"
+                data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nWe surface the name without verifying it ourselves.') }}"><i></i>{{ _('labeled') }}</button>
+        <button type="button" class="tron-leg tron-leg--bare" data-lane="bare"
+                data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nA thin surface — signal exists, content doesn&apos;t.') }}"><i></i>{{ _('bare') }}</button>
+        <button type="button" class="tron-leg tron-leg--unknown" data-lane="unknown"
+                data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nThe issuer is anonymous to the network.') }}"><i></i>{{ _('unknown') }}</button>
+        <button type="button" class="tron-leg tron-leg--warning" data-lane="warning"
+                data-def="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.\nA row-flag, not a tier — it can pair with any tier above.') }}"><i></i>{{ _('warning') }}</button>
+        <button type="button" class="tron-leg tron-leg--lp" data-lane="pools"
+                data-def="{{ _('Pools = AMM liquidity moving in and out — deposits, withdrawals, and pool-share receipts.\nNot trades — a distinct signal on its own lane.') }}"><i></i>{{ _('pools') }}</button>
       </div>
+      <div class="tron-legend-def" id="tronLegendDef" role="status" aria-live="polite"></div>
+      <script>
+        // Tappable tier chips in the below-visual legend. Click / tap →
+        // show two-line definition below the chip row; click same chip
+        // again OR click outside → clear. Mobile-safe; no hover deps.
+        (function initTierLegendChips() {
+          var chips = document.querySelectorAll('#tronLegendChips button.tron-leg');
+          var defEl = document.getElementById('tronLegendDef');
+          if (!chips.length || !defEl) return;
+          function setActive(chip) {
+            chips.forEach(function(c) {
+              c.classList.remove('is-open');
+              c.setAttribute('aria-pressed', 'false');
+            });
+            if (chip) {
+              chip.classList.add('is-open');
+              chip.setAttribute('aria-pressed', 'true');
+              defEl.textContent = chip.getAttribute('data-def') || '';
+            } else {
+              defEl.textContent = '';
+            }
+          }
+          chips.forEach(function(chip) {
+            chip.setAttribute('aria-pressed', 'false');
+            chip.addEventListener('click', function(e) {
+              e.preventDefault();
+              if (chip.classList.contains('is-open')) setActive(null);
+              else setActive(chip);
+            });
+          });
+          document.addEventListener('click', function(e) {
+            if (!e.target.closest('#tronLegendChips')
+                && !e.target.closest('#tronLegendDef')) {
+              setActive(null);
+            }
+          });
+        })();
+      </script>
     </div>
     <div class="tron-legend-block">
       <div class="tron-legend-head">{{ _('Coins — category (color + glyph)') }}</div>
