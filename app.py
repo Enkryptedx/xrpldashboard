@@ -7229,7 +7229,8 @@ CONTACT_PURPOSES = {
 
 
 def _is_bot_contact_submission(ua: str, message: str,
-                               email: str = "", name: str = "") -> tuple[bool, str]:
+                               email: str = "", name: str = "",
+                               turnstile_verified: bool = False) -> tuple[bool, str]:
     """Return (is_bot, signature) for a /contact form submission.
 
     Three signatures cover the two campaigns observed in contact_inquiries
@@ -7266,6 +7267,17 @@ def _is_bot_contact_submission(ua: str, message: str,
         return True, "seo_spam_owner"
     if "ccleaner/" in ua_lower or "avast/" in ua_lower:
         return True, "av_bundle_ua"
+
+    # Turnstile gate (Charlie ruling 2026-09-23 15:00 ET after real
+    # phone submission "Turnstile test 4" was false-dropped by the
+    # keyword filter below). When Turnstile has verified server-side,
+    # the 3 targeted signatures above still fire (they're campaign-
+    # specific and high-precision) but the blunt XRPL-keyword filter
+    # is skipped — Turnstile is a much stronger bot signal than
+    # keyword matching, and the keyword rule now costs more legitimate
+    # short messages than it saves.
+    if turnstile_verified:
+        return False, ""
 
     # XRPL-relevance drop filter (Charlie ruling 2026-09-21, Monday
     # build item 6 — cheap second layer while Turnstile waits on the
@@ -7533,6 +7545,7 @@ def contact_submit():
     # (ts + UA + signature only, no payload) so campaign decay is auditable.
     is_bot, bot_sig = _is_bot_contact_submission(
         ua or "", message, email=email, name=name or "",
+        turnstile_verified=True,  # got here only if layer-1 passed
     )
     if is_bot:
         _log("drop_layer2", "sig=" + bot_sig)

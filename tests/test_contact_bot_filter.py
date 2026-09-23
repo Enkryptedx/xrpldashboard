@@ -14,7 +14,21 @@ from __future__ import annotations
 
 import pytest
 import app as app_module
+import turnstile_verify
 from app import _is_bot_contact_submission
+
+
+@pytest.fixture(autouse=True)
+def _force_turnstile_pass(monkeypatch):
+    """Integration tests below POST to /contact. Post-Turnstile
+    (2026-09-23) the route requires a verified token; force-enable
+    Turnstile + stub verify to always-pass so the integration tests
+    exercise the layer-2 signatures they're testing rather than
+    getting bounced at layer 1."""
+    monkeypatch.setattr(turnstile_verify, "TURNSTILE_ENABLED", True)
+    monkeypatch.setattr(turnstile_verify, "TURNSTILE_SITE_KEY", "0x_test")
+    monkeypatch.setattr(turnstile_verify, "verify_turnstile",
+                        lambda token, remote_ip=None: (True, "ok"))
 
 
 # ── Unit tests for the detection function ─────────────────────────────────────
@@ -77,15 +91,27 @@ class TestIsBotContactSubmission:
         assert sig == ""
 
     def test_empty_ua_with_clean_message_passes(self):
-        is_bot, sig = _is_bot_contact_submission("", "Genuine message with some length")
+        # Post-Turnstile (2026-09-23): keyword filter skipped when
+        # turnstile_verified=True. Without a Turnstile pass the
+        # short generic message would trip the XRPL-relevance layer.
+        is_bot, sig = _is_bot_contact_submission(
+            "", "Genuine message with some length",
+            turnstile_verified=True,
+        )
         assert is_bot is False
 
     def test_none_ua_handled_safely(self):
-        is_bot, sig = _is_bot_contact_submission(None, "Hello world message")
+        is_bot, sig = _is_bot_contact_submission(
+            None, "Hello world message",
+            turnstile_verified=True,
+        )
         assert is_bot is False
 
     def test_none_message_handled_safely(self):
-        is_bot, sig = _is_bot_contact_submission("Mozilla/5.0", None)
+        is_bot, sig = _is_bot_contact_submission(
+            "Mozilla/5.0", None,
+            turnstile_verified=True,
+        )
         assert is_bot is False
 
     def test_closed_paren_ua_not_flagged(self):
