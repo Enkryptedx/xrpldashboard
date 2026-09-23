@@ -236,7 +236,7 @@
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five surfaces use browser-side WebSocket push (Live) from') }} <code>wss://xrplcluster.com</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
+    {{ _('Five surfaces use browser-side WebSocket push (Live) from our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('sovereign since 2026-09-22 — Lenovo rippled → cloudflared tunnel → subscribe-only fan-out; public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only, tracked in walker_node_fallback if it fires.') }}) {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>

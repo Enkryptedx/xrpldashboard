@@ -120,6 +120,16 @@ JOBS: list[tuple[str, int, str]] = [
     # reach the two-way-proven signal).
     ("token_elevation_walker", 2 * 3600,
      "hourly two-way TOML verification of labeled/self-described tokens with .toml citations; elevates via source=two_way_toml history rows"),
+    # Charlie ruling 2026-09-22 Tue 8:42 PM ET (post live-feed sovereignty
+    # flip): browser live feed on /tokens, /whales, /pools, /wallet now
+    # rides our own-node WSS relay at wss://wss.xrpldashboard.com. If the
+    # relay flaps or the CF tunnel goes down, browsers fall back to
+    # xrplcluster and walker_node_fallback fills — but that's a client-
+    # side signal. This meta-watch catches the same class from an
+    # independent Mac-side handshake probe every 15 min. Ceiling 1h (4x
+    # cadence), same shape as the 15-min canaries above.
+    ("wss_relay_canary", 3600,
+     "every-15min WSS handshake to wss://wss.xrpldashboard.com + subscribe:ledger — waits ≤10s for one ledgerClosed; stamps last_ok on success"),
 ]
 
 
