@@ -1991,6 +1991,39 @@ def ensure_tier_reverify_and_claim_verify_tables():
         conn.commit()
 
 
+def check_page_render_env_or_fail() -> str | None:
+    """Shared env guard for walkers that render pages via app.test_client()
+    (homepage_summary_walker, whales_summary_walker, wallet_summary_walker,
+    any future pre-rendered surface). Charlie ruling 2026-09-23 19:44 ET:
+    no silent defaults.
+
+    Returns None when the env is OK. Returns a REASON STRING when
+    LIVE_STREAM_WSS_PRIMARY is unset OR equal to LIVE_STREAM_WSS_FALLBACK
+    — in either case, the context processor `inject_live_stream_wss`
+    resolves `live_stream_wss_own_node = False`, `_head_meta.html`'s
+    URL-inject block is skipped, and every cached page body is baked
+    without the relay URL. Visitors then go straight to xrplcluster,
+    the amber fallback banner shows, and the sovereignty regression
+    is invisible because the cache serves back its own stale output on
+    every request.
+
+    Motivating incident 2026-09-23 19:37 ET (recovered 19:45 ET):
+    homepage_summary_walker had been quietly caching bodies without the
+    relay URL since first ship; the sovereignty flip 2026-09-22 made
+    that visible on-site once /methodology + about.html claimed the
+    relay was primary. Fix was three lines to
+    ~/.config/xrpldashboard/env. Guard cover the class."""
+    import os as _os
+    primary = _os.environ.get("LIVE_STREAM_WSS_PRIMARY", "").strip()
+    fallback = _os.environ.get("LIVE_STREAM_WSS_FALLBACK", "").strip()
+    if not primary:
+        return "LIVE_STREAM_WSS_PRIMARY unset — refusing to render (would cache without relay URL)"
+    if primary == fallback:
+        return (f"LIVE_STREAM_WSS_PRIMARY == LIVE_STREAM_WSS_FALLBACK "
+                f"({primary!r}) — refusing to render (would cache without relay URL)")
+    return None
+
+
 def ensure_token_icon_table():
     """Idempotent boot-time migration for the token_icon table.
 

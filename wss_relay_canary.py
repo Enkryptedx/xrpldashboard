@@ -86,6 +86,40 @@ async def _probe(url: str, timeout_s: float) -> dict:
     return result
 
 
+def _probe_homepage_url() -> str:
+    """Fetch xrpldashboard.com/ and check the served body contains
+    `wss.xrpldashboard.com`. Charlie ruling 2026-09-23 19:44 ET
+    canary — homepage is served from a pre-render cache built by
+    homepage_summary_walker (on THIS Mac), and a silent env miss
+    bakes bodies without the relay URL. This canary catches that
+    regression regardless of whether the walker env-guard is in
+    place. Runs every 15 min alongside the ledger + tx probes.
+
+    Returns one of:
+      'ok'          — homepage body contains 'wss.xrpldashboard.com'
+      'missing'     — homepage body served OK but relay URL absent
+      'http_<code>' — non-200 status from the site
+      'error_<T>'   — hard fetch failure"""
+    import urllib.request as _ur
+    import urllib.error as _ue
+    _ctx = ssl.create_default_context(cafile=certifi.where())
+    try:
+        req = _ur.Request(
+            "https://xrpldashboard.com/",
+            headers={"User-Agent": "xrpldashboard-wss-relay-canary/1.0",
+                     "Cache-Control": "no-cache"},
+        )
+        with _ur.urlopen(req, timeout=10, context=_ctx) as resp:
+            if resp.status != 200:
+                return f"http_{resp.status}"
+            body = resp.read(300 * 1024).decode("utf-8", errors="replace")
+        return "ok" if "wss.xrpldashboard.com" in body else "missing"
+    except _ue.HTTPError as e:
+        return f"http_{e.code}"
+    except Exception as e:
+        return f"error_{type(e).__name__}"
+
+
 async def _probe_tx_sub(url: str, timeout_s: float) -> str:
     """LOG-ONLY probe (Charlie ruling 2026-09-23 19:17 ET, per Option B
     prep). Opens a FRESH socket, sends a transactions-stream subscribe,
@@ -184,7 +218,24 @@ def main() -> int:
             tx_status = asyncio.run(_probe_tx_sub(RELAY_URL, 5.0))
         except Exception as e:
             tx_status = f"probe_error_{type(e).__name__}"
-        message = f"{message} TX_SUB_STATUS={tx_status}"
+        # HOMEPAGE_URL_STATUS: does the served homepage body contain the
+        # relay URL? Charlie 2026-09-23 19:44 ET — catches the pre-render
+        # env-gap regression at the served-body layer (walker env guard
+        # catches it at build time; this catches it at serve time).
+        try:
+            homepage_status = _probe_homepage_url()
+        except Exception as e:
+            homepage_status = f"error_{type(e).__name__}"
+        # Enforce: HOMEPAGE_URL_STATUS != ok is a regression — mark ok=False
+        # so walker_health pages via staleness. Not log-only because the
+        # regression it catches is a sovereignty-visible failure and we
+        # want it loud immediately.
+        if homepage_status != "ok":
+            ok = False
+            # Do NOT overwrite the ledger-sub message on the failure path;
+            # append the reason so downstream monitors see both.
+        message = (f"{message} TX_SUB_STATUS={tx_status} "
+                   f"HOMEPAGE_URL_STATUS={homepage_status}")
         print(f"[{WALKER_NAME}] {message}")
         return 0 if ok else 1
     finally:

@@ -83,6 +83,11 @@ def main() -> int:
     ok = False
     message = "not_yet_stamped"
     try:
+        env_fail = db.check_page_render_env_or_fail()
+        if env_fail:
+            message = f"env_guard_fail: {env_fail}"
+            print(f"[homepage_summary_walker] REFUSE {message}", file=sys.stderr, flush=True)
+            return 1
         import app as app_module
         from i18n import LANGUAGE_CODES
 

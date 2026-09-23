@@ -196,6 +196,16 @@ def main() -> int:
     ok = False
     message = "not_yet_stamped"
     try:
+        # Fail loudly if the WSS-primary env is missing — this walker
+        # renders /wallet/<addr> via test_client which reads env from
+        # THIS process. Silent default = cached body without the relay
+        # URL = sovereignty regression on every wallet visitor. Charlie
+        # ruling 2026-09-23 19:44 ET, shared helper in db.py.
+        env_fail = db.check_page_render_env_or_fail()
+        if env_fail:
+            message = f"env_guard_fail: {env_fail}"
+            print(f"[wallet_summary_walker] REFUSE {message}", file=sys.stderr, flush=True)
+            return 1
         addrs = _select_addresses()
         if not addrs:
             message = "no_addresses_selected (PG unavailable or no matches)"
