@@ -1176,13 +1176,13 @@
         <button type="button" class="tron-leg tron-leg--verified" data-lane="verified"
                 data-def="{{ _('Verified = the issuer proved control of its domain via two-way TOML match.\nProof of who — not an endorsement of what.') }}"><i></i>{{ _('verified') }}</button>
         <button type="button" class="tron-leg tron-leg--self" data-lane="self-described"
-                data-def="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.\nAnyone can claim a domain; verified goes one step further.') }}"><i></i>{{ _('self-described') }}</button>
+                data-def="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.\nShares the self-described lane on the visual with labeled (both are information without proof).') }}"><i></i>{{ _('self-described') }}</button>
         <button type="button" class="tron-leg tron-leg--labeled" data-lane="labeled"
-                data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nShown in the bare lane on the visual — the canvas has 5 lanes and labeled shares the bare lane with unknown.') }}"><i></i>{{ _('labeled') }}</button>
+                data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nShown in the self-described lane on the visual — information without proof, same class as self-described.') }}"><i></i>{{ _('labeled') }}</button>
         <button type="button" class="tron-leg tron-leg--bare" data-lane="bare"
-                data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nThe bare lane on the visual also holds labeled + unknown pulses (5-lane canvas collapses those three).') }}"><i></i>{{ _('bare') }}</button>
+                data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nShares the bare lane on the visual with unknown (both have no external claim to read).') }}"><i></i>{{ _('bare') }}</button>
         <button type="button" class="tron-leg tron-leg--unknown" data-lane="unknown"
-                data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nShown in the bare lane on the visual — the canvas has 5 lanes and unknown shares the bare lane with labeled.') }}"><i></i>{{ _('unknown') }}</button>
+                data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nShown in the bare lane on the visual — no external claim to read, same class as bare.') }}"><i></i>{{ _('unknown') }}</button>
         <button type="button" class="tron-leg tron-leg--warning" data-lane="warning"
                 data-def="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.\nA row-flag, not a tier — it can pair with any tier above.') }}"><i></i>{{ _('warning') }}</button>
         <button type="button" class="tron-leg tron-leg--lp" data-lane="pools"
@@ -1723,7 +1723,10 @@
     //   3. ticker collision (non-canonical issuer) → WARNING
     //   4. non-standard hex we can't identify     → WARNING
     //   5. self-described attestation             → SELF
-    //   6. everything else (terminal default)     → BARE
+    //   6. labeled attestation                    → SELF (Charlie 2026-09-23
+    //      17:15 ET: labeled is "information without proof", same class as
+    //      self-described visually; unknown stays terminal-default BARE)
+    //   7. everything else (terminal default)     → BARE
     function tierOf(leg, lbl) {
       // 2026-09-11 pools rename: AMM deposit/withdraw events route to the
       // Pools lane BEFORE the LP-token check so a USD/RLUSD-side liquidity
@@ -1740,6 +1743,7 @@
       }
       if (!lbl && isNonStandardCode(leg.currency)) return LANE.WARNING;
       if (att === 'self-described') return LANE.SELF;
+      if (att === 'labeled') return LANE.SELF; // information without proof
       return LANE.BARE; // terminal default — every pulse gets a lane.
     }
     // Legacy shim: category no longer decides the lane. Any stale caller
