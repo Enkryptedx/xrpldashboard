@@ -82,9 +82,9 @@
     "canonical_issuers": [
       "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
     ],
-    "citation": "https://xrpldashboard.com/rlusd \u2014 curator note (2026-09-22): this XRPL issuer (rMxCK\u2026) is the on-XRPL canonical for the ticker string \"RLUSD\" but is NOT Ripple's official RLUSD stablecoin (which is issued primarily on Ethereum). Ripple has not confirmed an official XRPL RLUSD issuer to us. The site's /rlusd page explains both entities.",
+    "citation": "https://ripple.com/.well-known/xrp-ledger.toml \u2014 two-way TOML match: Ripple's own domain lists rMxCK\u2026 as an issuer. The /rlusd page shows the XRPL and Ethereum sides side-by-side.",
     "issuer_name": "Ripple",
-    "note": "not Ripple's RLUSD"
+    "note": "Ripple's XRPL RLUSD issuer (Ethereum side lives at a separate contract; /rlusd shows both)"
   },
   "SHIB": {
     "brand": "Shiba Inu (meme)",
