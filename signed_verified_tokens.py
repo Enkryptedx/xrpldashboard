@@ -277,12 +277,91 @@ def _load_verified_issuers_from_registry() -> list:
             return list(cur.fetchall())
 
 
+def _rows_from_section(section_name: str, section: dict,
+                       gateway_or_bridge: bool,
+                       verified_at_iso: str,
+                       seen_pairs: set) -> list:
+    """Explode a `gateways` or `bridges` container into per-(gateway_slug,
+    ticker) manifest rows. Each row asserts the gateway's whole issuers
+    list as the canonical issuers for that ticker, so a wallet can
+    resolve any (ticker, issuer) pair from the gateway to a known
+    canonical-issuer set.
+
+    Rows are keyed for dedup on (currency_hex, issuer): if a yaml
+    canonical registry row already covers the pair (e.g. RLUSD's Ripple
+    issuer), that row wins and the gateway variant is skipped.
+
+    Charlie ruling 2026-09-23 Wed 06:52 ET: previous manifest only had
+    a single "gateways" / "bridges" umbrella row per section; each
+    named gateway (Bitstamp, GateHub, RippleFox, Midas) now emits one
+    row per ticker it issues, with canonical_issuer_known=True and the
+    full issuers list. Tier comes from the section's tier_default
+    (typically 'self-described' — the gateway registered the address
+    at a matching domain but hasn't yet passed two-way TOML)."""
+    out = []
+    for slug, entry in section.items():
+        if slug.startswith("_") or not isinstance(entry, dict):
+            continue
+        if not entry.get("issuers") or not entry.get("tickers"):
+            # 'citation' / doc-only entries at the section level
+            continue
+        issuers = sorted(entry["issuers"])
+        tickers = entry["tickers"]
+        tier = entry.get("tier_default") or "self-described"
+        citation = entry.get("citation") or ""
+        category = entry.get("category") or ("stablecoin_gateway"
+                                             if section_name == "gateways"
+                                             else "wrapped_bridge")
+        name = entry.get("name") or slug
+        for ticker in tickers:
+            if len(ticker) == 3:
+                currency_hex = ticker
+            else:
+                raw = ticker.encode("ascii", errors="replace")
+                currency_hex = raw.hex().upper().ljust(40, "0")[:40]
+            # dedup: skip pairs already covered by yaml / registry sources
+            all_seen = all((currency_hex.upper(), i) in seen_pairs
+                           for i in issuers)
+            if all_seen:
+                continue
+            per_issuer = [{
+                "issuer": i,
+                "tier": tier,
+                "source": f"{section_name}_registry:{slug}",
+                "citation_url": citation[:200],
+            } for i in issuers]
+            out.append({
+                "ticker": ticker,
+                "currency_hex": currency_hex,
+                "canonical_issuers": issuers,
+                "canonical_issuer_known": True,
+                "citation_url": citation,
+                "no_official_xrpl_issuer": False,
+                "meme_name": False,
+                "gateway_or_bridge": gateway_or_bridge,
+                "tier": tier,
+                "per_issuer_tier": per_issuer,
+                "last_reviewed_at": None,
+                "category": category,
+                "canonical_source": f"{section_name}_registry:{slug}",
+                "gateway_name": name,
+            })
+            for i in issuers:
+                seen_pairs.add((currency_hex.upper(), i))
+    return out
+
+
 def build_envelope(now_utc: dt.datetime | None = None) -> dict:
-    """Assemble the unsigned envelope. Two sources merged:
+    """Assemble the unsigned envelope. Sources merged in order:
     (a) yaml canonical registry (the 23 famous tickers with curator context),
     (b) token_category_current tier='verified' (the 49 verified issuers —
-        the full wallet-facing verified list). Deduped by (currency_hex,
-        issuer): yaml row wins when both cover the same pair."""
+        the full wallet-facing verified list),
+    (c) gateways container (Bitstamp, GateHub, RippleFox) —
+        canonical_issuer_known=True, tier from tier_default,
+    (d) bridges container (Midas/Axelar wrapped-bridge issuers) —
+        same shape as gateways.
+    Deduped by (currency_hex, issuer): earlier source wins when both
+    cover the same pair."""
     if now_utc is None:
         now_utc = dt.datetime.now(dt.timezone.utc)
     registry = _load_canonical_registry()
@@ -292,6 +371,9 @@ def build_envelope(now_utc: dt.datetime | None = None) -> dict:
     # (a) yaml canonical registry — 23 famous tickers (yaml wins in dedup)
     for ticker, entry in registry.items():
         if ticker.startswith("_") or not isinstance(entry, dict):
+            continue
+        # Skip container entries — they're processed by _rows_from_section below
+        if ticker in ("gateways", "bridges"):
             continue
         row = _row_for_ticker(ticker, entry, now_utc.isoformat())
         tokens.append(row)
@@ -311,6 +393,22 @@ def build_envelope(now_utc: dt.datetime | None = None) -> dict:
             currency_hex, issuer, category, source, citation_url, observed_at,
         ))
         seen_pairs.add(key)
+
+    # (c) gateways container — Bitstamp, GateHub, RippleFox
+    tokens.extend(_rows_from_section(
+        "gateways", registry.get("gateways") or {},
+        gateway_or_bridge=True,
+        verified_at_iso=now_utc.isoformat(),
+        seen_pairs=seen_pairs,
+    ))
+
+    # (d) bridges container — Midas/Axelar wrapped-bridge issuers
+    tokens.extend(_rows_from_section(
+        "bridges", registry.get("bridges") or {},
+        gateway_or_bridge=True,
+        verified_at_iso=now_utc.isoformat(),
+        seen_pairs=seen_pairs,
+    ))
 
     # Deterministic order: primary sort by ticker, secondary by issuer
     # (so multiple rows for the same ticker cluster).
