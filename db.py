@@ -1878,14 +1878,24 @@ def init_schema():
 
 def ensure_rwa_family_attestation_current():
     """Idempotent, targeted DB reconciliation (Charlie ruling 2026-09-23
-    15:35 ET, item #2 agreement probe): rwa_family.attestation_level is
-    a curator-maintained field that goes stale when a family's TOML
-    starts passing two-way verification but nobody reruns the curator
-    hand-set. Manifest is authoritative; sync the row on boot.
+    15:35 ET agreement probe; slug fix 2026-09-23 15:57 ET follow-up):
+    rwa_family.attestation_level is a curator-maintained field that goes
+    stale when a family's TOML starts passing two-way verification but
+    nobody reruns the curator hand-set. Manifest is authoritative; sync
+    the row on boot.
 
     Ondo: two-way TOML at ondo.finance passes for OUSG @ rHuiXX (both
     [[TOKENS]] and [[ISSUERS]] present). Manifest tier=verified. Bump
-    rwa_family from labeled→verified.
+    rwa_family from labeled→verified AND replace the stale citation
+    ("No XRPL issuer address attributed") with the real TOML URL so the
+    green pill doesn't render next to a contradicting citation.
+
+    Canonical rwa_family slug for Ondo is 'ondo' (matches
+    rwa_pool_attribution.family_slug + scripts/verify_rwa_families.FAMILIES).
+    NOT 'ondo_finance' — that's the rwa_supply_nav_daily / rwa_nav_sources.yaml
+    namespace (a separate slug space for the on-ledger supply headline).
+    The original commit (b038214) crossed the namespaces and the migration
+    was a permanent no-op. See tests/test_rwa_family_attestation_migration.py.
 
     Guard clause is `attestation_level='labeled'` so this becomes a no-op
     after the fix takes and can never silently downgrade a manual curator
@@ -1895,8 +1905,15 @@ def ensure_rwa_family_attestation_current():
         return
     stmts = (
         ("UPDATE rwa_family "
-         "SET attestation_level='verified' "
-         "WHERE family_slug='ondo_finance' "
+         "SET attestation_level='verified', "
+         "    attestation_citation="
+         "'https://ondo.finance/.well-known/xrp-ledger.toml — "
+         "[[TOKENS]] issuer=rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p currency=OUSG "
+         "AND [[ISSUERS]] address=rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p; "
+         "two-way TOML PASS via two_way_toml_verifier_walker (see "
+         "token_category_history)', "
+         "    attestation_verified_at=NOW() "
+         "WHERE family_slug='ondo' "
          "  AND attestation_level='labeled'"),
     )
     with pg_connect() as conn:
