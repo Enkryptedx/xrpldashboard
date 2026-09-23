@@ -44,9 +44,17 @@
     WS_URLS.unshift(PRIMARY_URL);
   }
 
-  // ~10s watchdog: if the socket opens on the primary but no ledgerClosed
-  // arrives by this deadline, treat as failed and step to the next URL.
-  var PRIMARY_LEDGER_WATCHDOG_MS = 10000;
+  // Watchdog for primary: if the socket opens on the primary but no
+  // ledgerClosed arrives by this deadline, treat as failed and step to
+  // the next URL. Bumped 2026-09-23 17:15 ET (Charlie ruling) from 10s
+  // to 15s — the 10s window was too tight for cold Cloudflare-tunnel
+  // handshakes, tripping ~24 false-positive fallback events / 24h.
+  var PRIMARY_LEDGER_WATCHDOG_MS = 15000;
+
+  // Background primary-retry interval — while on a fallback URL, quietly
+  // attempt to reconnect to the primary every N ms. If it succeeds + a
+  // ledger arrives, we switch back and clear the fallback banner.
+  var PRIMARY_RETRY_MS = 30000;
 
   var urlIdx = 0;
   var ws = null;
@@ -62,8 +70,18 @@
   var lastLedgerReceivedAt = null;
 
   var primaryWatchdogTimer = null;
+  var primaryRetryTimer = null;
   var fallbackPinged = false;
   var bannerEl = null;
+
+  // Three-state banner sequence (Charlie ruling 2026-09-23 17:15 ET):
+  //   'connecting'  → "Connecting to our own node…"
+  //   'fallback'    → "Our node is still connecting — showing the public feed until it does"
+  //   'hidden'      → banner removed (primary is live)
+  // Never lead with the fallback. Start in 'connecting' the moment the
+  // page loads (if PRIMARY_URL is configured); flip to 'fallback' only
+  // if the watchdog trips AND we've actually landed on a non-primary URL.
+  var bannerState = 'hidden';
 
   function currentUrl() {
     return WS_URLS[urlIdx % WS_URLS.length];
@@ -80,52 +98,80 @@
     }
   }
 
-  function showFallbackBanner() {
-    if (typeof document === 'undefined') return;
-    if (bannerEl) return;
-    var el = document.createElement('div');
-    el.setAttribute('role', 'status');
-    el.setAttribute('data-live-stream-fallback-banner', '1');
-    el.style.cssText = [
-      'position:fixed', 'left:12px', 'bottom:12px', 'z-index:2147483000',
-      'padding:8px 12px', 'border-radius:6px',
-      'background:#ffb020', 'color:#1a1400',
-      'font:12px/1.4 system-ui,-apple-system,Segoe UI,sans-serif',
-      'box-shadow:0 2px 8px rgba(0,0,0,0.15)',
-      'max-width:320px', 'cursor:default'
-    ].join(';');
-    el.textContent = 'Live stream: using ' + FALLBACK_LABEL +
-      ' — own-node stream (' + (PRIMARY_LABEL || 'primary') +
-      ') temporarily unreachable';
-    if (document.body) {
-      document.body.appendChild(el);
-      bannerEl = el;
-    } else {
-      document.addEventListener('DOMContentLoaded', function () {
-        if (!bannerEl && document.body) {
-          document.body.appendChild(el);
-          bannerEl = el;
-        }
-      });
+  function clearPrimaryRetry() {
+    if (primaryRetryTimer) {
+      clearTimeout(primaryRetryTimer);
+      primaryRetryTimer = null;
     }
   }
 
-  function hideFallbackBanner() {
-    if (bannerEl && bannerEl.parentNode) {
-      bannerEl.parentNode.removeChild(bannerEl);
+  var BANNER_STYLE = [
+    'position:fixed', 'left:12px', 'bottom:12px', 'z-index:2147483000',
+    'padding:8px 12px', 'border-radius:6px',
+    'background:#ffb020', 'color:#1a1400',
+    'font:12px/1.4 system-ui,-apple-system,Segoe UI,sans-serif',
+    'box-shadow:0 2px 8px rgba(0,0,0,0.15)',
+    'max-width:320px', 'cursor:default'
+  ].join(';');
+
+  function setBanner(state) {
+    if (typeof document === 'undefined') return;
+    if (state === bannerState) return;
+    bannerState = state;
+    if (state === 'hidden') {
+      if (bannerEl && bannerEl.parentNode) {
+        bannerEl.parentNode.removeChild(bannerEl);
+      }
+      bannerEl = null;
+      return;
     }
-    bannerEl = null;
+    var text = state === 'connecting'
+      ? 'Connecting to our own node…'
+      : 'Our node is still connecting — showing the public feed until it does';
+    var dataAttr = state === 'connecting'
+      ? 'connecting'
+      : 'fallback';
+    if (!bannerEl) {
+      var el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.setAttribute('data-live-stream-banner', dataAttr);
+      el.style.cssText = BANNER_STYLE;
+      el.textContent = text;
+      if (document.body) {
+        document.body.appendChild(el);
+        bannerEl = el;
+      } else {
+        document.addEventListener('DOMContentLoaded', function () {
+          if (bannerState !== 'hidden' && !bannerEl && document.body) {
+            document.body.appendChild(el);
+            bannerEl = el;
+          }
+        });
+      }
+    } else {
+      bannerEl.setAttribute('data-live-stream-banner', dataAttr);
+      bannerEl.textContent = text;
+    }
   }
+
+  // Preserve the old API name for any legacy caller — routes through the
+  // new state machine so we never fire the fallback banner spuriously.
+  function hideFallbackBanner() { setBanner('hidden'); }
 
   function pingFallbackTelemetry(reason) {
+    // Only fire once per session, and only after we've actually stepped
+    // to a non-primary URL — logging primary→primary was the bulk of
+    // the false-positive events last 24h.
     if (fallbackPinged) return;
-    fallbackPinged = true;
     if (!PRIMARY_URL) return;
+    var fallbackUrl = currentUrl();
+    if (fallbackUrl === PRIMARY_URL) return; // still on primary — skip
+    fallbackPinged = true;
     try {
       var params = new URLSearchParams({
         source: 'browser_wss',
         primary: PRIMARY_URL,
-        fallback: currentUrl(),
+        fallback: fallbackUrl,
         reason: reason || ''
       });
       var url = '/api/walker-node-fallback?' + params.toString();
@@ -137,9 +183,25 @@
     } catch (e) {}
   }
 
-  function noteFallbackReached(reason) {
-    showFallbackBanner();
+  // Called after a successful step to a fallback URL AND its first
+  // ledger — this is when the "fallback banner" state is genuinely
+  // correct. Callers who fire ON PRIMARY (watchdog trip, onerror)
+  // must NOT call this — they should just close + step, and this fires
+  // when the fallback URL's ledger actually lands.
+  function noteFallbackLive(reason) {
+    setBanner('fallback');
     pingFallbackTelemetry(reason);
+    // Background retry to the primary — every PRIMARY_RETRY_MS, try to
+    // reconnect. If the retry succeeds + a ledger arrives, we'll switch
+    // back and clear the banner.
+    if (PRIMARY_URL && !primaryRetryTimer) {
+      primaryRetryTimer = setInterval(function () {
+        if (closed || isOnPrimary()) { clearPrimaryRetry(); return; }
+        // Reset urlIdx to primary; close current; reconnect will pick it up.
+        urlIdx = WS_URLS.indexOf(PRIMARY_URL);
+        if (ws) { try { ws.close(); } catch (e) {} }
+      }, PRIMARY_RETRY_MS);
+    }
   }
 
   function fireLedger(data) {
@@ -156,13 +218,40 @@
     }
   }
 
+  // Called on the FIRST ledger arrival for a given ws.onopen — decides
+  // whether to show/hide the banner state machine.
+  function onFirstLedgerForThisSocket() {
+    clearWatchdog();
+    if (isOnPrimary()) {
+      // Primary is delivering — hide any banner, stop the primary-retry
+      // background loop.
+      setBanner('hidden');
+      clearPrimaryRetry();
+    } else {
+      // We're on a fallback URL and it's live — now (and only now)
+      // is the "fallback banner" state genuinely correct.
+      noteFallbackLive('fallback:first-ledger-on-non-primary');
+    }
+  }
+
   function connect() {
     if (closed) return;
     if (typeof WebSocket === 'undefined') return;
 
     var url = currentUrl();
+    // First-connect UX: if PRIMARY_URL is configured and we're aiming at
+    // it, immediately show the "Connecting to our own node…" state so the
+    // reader sees the primary intent, not a jarring "fallback" banner.
+    if (PRIMARY_URL && url === PRIMARY_URL && bannerState === 'hidden'
+        && !lastLedger) {
+      setBanner('connecting');
+    }
     try { ws = new WebSocket(url); }
     catch (e) { scheduleReconnect(); return; }
+
+    // Per-socket flag so onmessage's first-ledger hook only fires once
+    // per WebSocket lifetime (not for every ledgerClosed after the first).
+    ws.__gotFirstLedger = false;
 
     ws.onopen = function () {
       reconnectDelay = 1500;
@@ -176,8 +265,10 @@
         }));
       } catch (e) {}
       // Primary-only watchdog: subscribe response usually carries an
-      // immediate ledger, so no ledger within 10s means the primary is
-      // half-open (TCP up, no data) — close and step to next.
+      // immediate ledger, so no ledger within PRIMARY_LEDGER_WATCHDOG_MS
+      // means the primary is half-open (TCP up, no data) — close and
+      // step to next. Do NOT fire fallback banner or telemetry here —
+      // fallback state fires only on FIRST-LEDGER-on-non-primary.
       if (isOnPrimary()) {
         clearWatchdog();
         primaryWatchdogTimer = setTimeout(function () {
@@ -186,7 +277,9 @@
               Date.now() - lastLedgerReceivedAt < PRIMARY_LEDGER_WATCHDOG_MS) {
             return; // got a ledger in time
           }
-          noteFallbackReached('watchdog:no-ledger');
+          // Silent close + step to next URL. Banner stays on 'connecting'
+          // until either the next URL delivers a ledger (→ 'fallback') or
+          // primary reconnects successfully later (→ 'hidden').
           urlIdx++;
           try { ws.close(); } catch (e) {}
         }, PRIMARY_LEDGER_WATCHDOG_MS);
@@ -200,8 +293,10 @@
       // Subscribe response carries the current validated ledger — fire
       // immediately so the first paint isn't blank for 3.5s.
       if (data.type === 'response' && data.result && data.result.ledger_index) {
-        clearWatchdog();
-        if (isOnPrimary()) hideFallbackBanner();
+        if (!ws.__gotFirstLedger) {
+          ws.__gotFirstLedger = true;
+          onFirstLedgerForThisSocket();
+        }
         fireLedger({
           type: 'ledgerClosed',
           ledger_index: data.result.ledger_index,
@@ -215,14 +310,19 @@
         return;
       }
       if (data.type === 'ledgerClosed') {
-        clearWatchdog();
-        if (isOnPrimary()) hideFallbackBanner();
+        if (!ws.__gotFirstLedger) {
+          ws.__gotFirstLedger = true;
+          onFirstLedgerForThisSocket();
+        }
         fireLedger(data);
       }
     };
 
     ws.onerror = function () {
-      if (isOnPrimary()) noteFallbackReached('onerror');
+      // Do NOT ping fallback telemetry or flip banner here — onerror
+      // is followed by onclose which handles the step. Firing on
+      // onerror while still on the primary URL was the source of the
+      // primary→primary false-positive telemetry rows.
     };
 
     ws.onclose = function () {
@@ -230,8 +330,9 @@
       connected = false;
       fireStatus('closed');
       if (closed) return;
-      // If we were on the primary and never got a ledger, we already
-      // pinged; step off. If we were downstream, keep stepping.
+      // Step to the next URL in the WS_URLS list. If we started on
+      // primary and it failed, urlIdx++ moves to the fallback list;
+      // if we're already downstream, keep stepping.
       urlIdx++;
       scheduleReconnect();
     };
@@ -245,6 +346,7 @@
   window.addEventListener('beforeunload', function () {
     closed = true;
     clearWatchdog();
+    clearPrimaryRetry();
     if (ws) { try { ws.close(); } catch (e) {} }
   });
 
