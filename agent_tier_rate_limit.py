@@ -344,10 +344,18 @@ def agent_tier_limit_rate() -> str:
             verdict, _ptr = verify(ua, ip)
             if verdict == "trusted":
                 return os.environ.get("AGENT_TIER_AI_RATE", "300 per hour")
-            return os.environ.get("AGENT_TIER_ANON_RATE", "60 per minute")
+            return os.environ.get("AGENT_TIER_ANON_RATE", "60 per hour")
     except Exception:
         pass
 
     # No rDNS-verifiable UA claim. Everything else — including citation
     # crawlers we can't PTR-verify — goes to the anonymous tier.
-    return os.environ.get("AGENT_TIER_ANON_RATE", "60 per minute")
+    # Charlie ruling 2026-09-23 Wed 06:58 ET: default corrected from
+    # "60 per minute" (= 3,600/hr) to "60 per hour" — the prior value
+    # inverted the design (anon 3,600/hr outranked verified 300/hr).
+    # Sept 6 design: 60/hr anon, 300/hr verified, 600/hr MCP; verified
+    # strictly above anon, MCP above both. Human-facing HTML routes
+    # (that never call agent_tier_limit_rate) keep their hardcoded
+    # @limiter.limit("60 per minute") — that's a distinct browser-page
+    # tier, documented in agents.json.rate_limits.human_html_pages.
+    return os.environ.get("AGENT_TIER_ANON_RATE", "60 per hour")

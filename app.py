@@ -5591,27 +5591,48 @@ def observatory():
     final_top_tokens = _fetch_top_tokens(final_start, final_end)
     live_top_tokens  = _fetch_top_tokens(live_start,  live_end)
 
-    # "So what" one-liner based on live-week activity + top crawler.
+    # UNLISTED = the classifier's catch-all for UAs that didn't match any
+    # tracked crawler pattern. Charlie ruling 2026-09-23 Wed 06:58 ET:
+    # a public page must NEVER headline "unclassified" — the "so what"
+    # line names the top KNOWN crawler; UNLISTED renders as a separate
+    # "unclassified bots (N)" note below the table.
+    def _top_known(crawlers):
+        for ua_class, per_family in crawlers:
+            if ua_class and ua_class.upper() != "UNLISTED":
+                return ua_class, per_family
+        return None
+
+    def _unlisted_hits(crawlers):
+        for ua_class, per_family in crawlers:
+            if ua_class and ua_class.upper() == "UNLISTED":
+                return sum(per_family.values())
+        return 0
+
     so_what = None
-    if live_crawlers:
-        top_ua, top_per = live_crawlers[0]
+    top_known_live = _top_known(live_crawlers)
+    top_known_final = _top_known(final_crawlers)
+    if top_known_live:
+        top_ua, top_per = top_known_live
         so_what = (
             f"{live_total:,} classified crawler hits in the last 7 days across "
             f"{len(live_crawlers)} crawler classes — {top_ua} is the most active "
-            f"({sum(top_per.values()):,} hits)."
+            f"known crawler ({sum(top_per.values()):,} hits)."
         )
-    elif final_crawlers:
-        top_ua, top_per = final_crawlers[0]
+    elif top_known_final:
+        top_ua, top_per = top_known_final
         so_what = (
-            f"No classified crawler traffic in the last 7 days yet — the completed week "
+            f"No known crawler traffic in the last 7 days yet — the completed week "
             f"({final_start.isoformat()} → {final_end.isoformat()}) had {final_total:,} hits "
             f"led by {top_ua}."
         )
     else:
         so_what = (
-            "No classified crawler traffic in either the current or completed week. "
+            "No known crawler traffic in either the current or completed week. "
             "The classifier is running — new hits will surface tomorrow."
         )
+
+    live_unlisted = _unlisted_hits(live_crawlers)
+    final_unlisted = _unlisted_hits(final_crawlers)
 
     return render_template(
         "observatory.html",
@@ -5621,12 +5642,14 @@ def observatory():
         final_families=final_families,
         final_total=final_total,
         final_top_tokens=final_top_tokens,
+        final_unlisted=final_unlisted,
         live_window_start=live_start.isoformat(),
         live_window_end=live_end.isoformat(),
         live_crawlers=live_crawlers,
         live_families=live_families,
         live_total=live_total,
         live_top_tokens=live_top_tokens,
+        live_unlisted=live_unlisted,
         so_what=so_what,
     )
 
@@ -9100,12 +9123,21 @@ _AGENTS_JSON = {
         "backoff": "429 with Retry-After header; no silent throttling",
     },
     "rate_limits": {
-        "anonymous": "60 requests/minute/IP",
+        # Four documented tiers; ordering is invariant: verified > anon,
+        # MCP > everything else on the agent side. Human-page tier is
+        # separate (route-level, applies to HTML surfaces browsers hit).
+        # Change ordering here and tests/test_agent_tier_rate_limit.py
+        # will fail — see the ordering-assertion test.
+        "anonymous": "60 requests/hour/IP (agent tier — un-cookied API-shaped clients that don't claim a tracked crawler UA)",
         "identified_ai_crawler": (
-            "300 requests/minute (by UA: GPTBot, ClaudeBot, PerplexityBot, "
-            "Google-Extended, and others on Cloudflare's verified-bot list)"
+            "300 requests/hour by verified UA + rDNS (GPTBot, ChatGPT-User, "
+            "OAI-SearchBot, ClaudeBot, Claude-User, PerplexityBot, Googlebot, "
+            "AdsBot-Google, bingbot, Amazonbot, Applebot, Meta-ExternalAgent; "
+            "rDNS PTR must match the crawler's published suffix — see "
+            "crawler_identity_check._UA_RDNS_POLICY)"
         ),
         "mcp_session": "600 tool calls/hour/session, enforced live at https://mcp.xrpldashboard.com/mcp (see mcp_session_rate_limit.py; 429 with Retry-After on breach, walker_health surfaces block frequency)",
+        "human_html_pages": "60 requests/minute/IP (browser-page tier — HTML routes browsers fetch with assets; separate flask-limiter decorator, not the agent tier callable; covers /, /whales, /pools, /tokens, /rwa, etc.)",
         "signed_snapshot_verify": "unlimited (stateless, cryptographic-only)",
     },
     "trust_surfaces": {

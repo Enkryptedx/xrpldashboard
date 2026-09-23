@@ -337,11 +337,23 @@ def test_ai_crawler_gets_higher_bucket(client, monkeypatch):
     """Same bucket count for the AI crawler UA should NOT breach
     when the anon rate is pinched — verifies the two-tier bucket
     routing works. Anon rate = 1/min; AI rate = 100/min; fire 3
-    requests as the AI crawler → all pass."""
+    requests as the AI crawler → all pass.
+
+    Charlie ruling 2026-09-23 Wed 06:58 ET: the AI-tier branch fires
+    only when crawler_identity_check.verify() returns 'trusted' (rDNS
+    PTR + forward-confirm both pass against the UA's published
+    suffix). A unit test can't produce a real trusted PTR, so we
+    monkeypatch verify() to return ('trusted', 'bot.openai.com').
+    Without this monkeypatch the AI-tier branch never fires and the
+    test collapses to the anon branch — that's the shape the test
+    was silently failing in before this ruling."""
     from app import limiter
     limiter.reset()
     monkeypatch.setenv("AGENT_TIER_ANON_RATE", "1 per minute")
     monkeypatch.setenv("AGENT_TIER_AI_RATE", "100 per minute")
+
+    import crawler_identity_check as _cic
+    monkeypatch.setattr(_cic, "verify", lambda ua, ip: ("trusted", "bot.openai.com"))
 
     ua = "GPTBot/rate-test-ai-bucket/1.2"
     for i in range(3):
@@ -376,25 +388,38 @@ def test_fleet_block_bypasses_rate_limit_bucket(client, monkeypatch):
 
 # ── contract: agents.json rate-limit copy mentions the enforcement ──
 
-def test_agents_json_rate_limit_copy_matches_module(client):
-    """agents.json declares '60 requests/minute/IP' and '300
-    requests/minute'. If we ever change the defaults in
-    agent_tier_rate_limit.agent_tier_limit_rate, we must also update
-    the agents.json copy — this test guards the two staying in sync."""
+def test_agents_json_rate_limit_copy_matches_module(client, monkeypatch):
+    """agents.json declares '60 requests/hour/IP' and '300 requests/hour'.
+    If we ever change the defaults in agent_tier_rate_limit.agent_tier_limit_rate,
+    we must also update the agents.json copy — this test guards the two
+    staying in sync.
+
+    Charlie ruling 2026-09-23 Wed 06:58 ET: the AI-tier module-side
+    computation only fires when rDNS verify() returns 'trusted'. In a
+    unit test we can't produce that from a real PTR, so we monkeypatch
+    verify() → ('trusted', 'bot.openai.com') for the AI-tier call and
+    let the anon-tier call fall through the natural 'not-a-bot-claim'
+    branch. Prior version of this test never actually exercised the
+    AI branch — it always fell back to anon and asserted '300' in a
+    string that read '60 per minute', which was silently failing."""
     aj = client.get("/.well-known/agents.json").get_json()
     anon_copy = aj["rate_limits"]["anonymous"]
     ai_copy = aj["rate_limits"]["identified_ai_crawler"]
-    # Defaults come from the module's default-rate strings.
+    mcp_copy = aj["rate_limits"]["mcp_session"]
+    human_copy = aj["rate_limits"]["human_html_pages"]
+
     import agent_tier_rate_limit as atrl
-    # Read via the callable's default-branch by clearing overrides.
+    import crawler_identity_check as _cic
     saved_anon = os.environ.pop("AGENT_TIER_ANON_RATE", None)
     saved_ai = os.environ.pop("AGENT_TIER_AI_RATE", None)
     try:
-        # Compute the defaults through the module (source of truth).
+        # Anon default: no crawler UA claim → 'not_a_bot_claim' path.
         with client.application.test_request_context(
             "/", headers={"User-Agent": "curl/8.4.0"}
         ):
             default_anon = atrl.agent_tier_limit_rate()
+        # AI default: fake rDNS 'trusted' verdict so the AI branch fires.
+        monkeypatch.setattr(_cic, "verify", lambda ua, ip: ("trusted", "bot.openai.com"))
         with client.application.test_request_context(
             "/", headers={"User-Agent": "GPTBot/1.2"}
         ):
@@ -404,9 +429,68 @@ def test_agents_json_rate_limit_copy_matches_module(client):
             os.environ["AGENT_TIER_ANON_RATE"] = saved_anon
         if saved_ai is not None:
             os.environ["AGENT_TIER_AI_RATE"] = saved_ai
+
+    # (a) numbers must appear in both copy and default
     assert "60" in anon_copy and "60" in default_anon, (
         f"anon copy {anon_copy!r} vs module default {default_anon!r}"
     )
     assert "300" in ai_copy and "300" in default_ai, (
         f"AI copy {ai_copy!r} vs module default {default_ai!r}"
     )
+    assert "600" in mcp_copy, f"mcp copy {mcp_copy!r} missing 600"
+    assert "60" in human_copy, f"human copy {human_copy!r} missing 60"
+
+    # (b) units — agent-tier is hourly; human page tier is per-minute.
+    assert "hour" in anon_copy.lower() and "hour" in default_anon.lower(), (
+        f"anon must be hourly (agent tier): copy={anon_copy!r} default={default_anon!r}"
+    )
+    assert "hour" in ai_copy.lower() and "hour" in default_ai.lower(), (
+        f"AI must be hourly (agent tier): copy={ai_copy!r} default={default_ai!r}"
+    )
+    assert "hour" in mcp_copy.lower(), f"MCP must be hourly: {mcp_copy!r}"
+    assert "minute" in human_copy.lower(), (
+        f"human html tier must be per-minute (browser-page): {human_copy!r}"
+    )
+
+
+def test_agent_tier_ordering_invariant(client, monkeypatch):
+    """Charlie ruling 2026-09-23 Wed 06:58 ET, Sept 6 design:
+      verified crawler (300/hr) > anonymous agent (60/hr)
+      MCP session (600/hr)     > verified crawler (300/hr)
+      MCP session (600/hr)     > anonymous agent (60/hr)
+    If someone ever bumps anonymous above verified (the inversion
+    that shipped from ~2026-09-11 through 2026-09-23), or bumps
+    verified above MCP, this test fails."""
+    aj = client.get("/.well-known/agents.json").get_json()
+
+    def _hourly(copy: str) -> int:
+        """Parse the leading number from a rate-limit copy string and
+        convert to hourly. Handles 'N requests/hour', 'N requests/minute',
+        'N tool calls/hour', etc."""
+        import re
+        m = re.search(r"(\d[\d,]*)\s*(?:requests|tool calls)?/?\s*(hour|minute)", copy.lower())
+        assert m, f"could not parse rate from: {copy!r}"
+        n = int(m.group(1).replace(",", ""))
+        return n if m.group(2) == "hour" else n * 60
+
+    anon_hr = _hourly(aj["rate_limits"]["anonymous"])
+    ai_hr = _hourly(aj["rate_limits"]["identified_ai_crawler"])
+    mcp_hr = _hourly(aj["rate_limits"]["mcp_session"])
+    human_hr = _hourly(aj["rate_limits"]["human_html_pages"])
+
+    # Sept 6 design ordering — verified strictly above anonymous, MCP above both.
+    assert ai_hr > anon_hr, (
+        f"verified AI crawler ({ai_hr}/hr) must be strictly above anonymous "
+        f"agent ({anon_hr}/hr); Sept 6 design"
+    )
+    assert mcp_hr > ai_hr, (
+        f"MCP session ({mcp_hr}/hr) must be strictly above verified AI "
+        f"crawler ({ai_hr}/hr); Sept 6 design"
+    )
+    assert mcp_hr > anon_hr, (
+        f"MCP session ({mcp_hr}/hr) must be strictly above anonymous "
+        f"agent ({anon_hr}/hr); Sept 6 design"
+    )
+    # Human page tier is separate; its numeric hourly can be anywhere —
+    # only sanity-check that it exists.
+    assert human_hr > 0, "human_html_pages tier missing or malformed"

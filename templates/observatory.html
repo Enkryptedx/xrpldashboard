@@ -108,7 +108,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for ua_class, per_family in live_crawlers %}
+      {% for ua_class, per_family in live_crawlers if ua_class|upper != 'UNLISTED' %}
       <tr>
         <td><code>{{ ua_class }}</code></td>
         <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
@@ -123,6 +123,9 @@
     {% trans total=live_total -%}
     Total classified crawler hits in the live window: <strong>{{ total }}</strong>.
     {%- endtrans %}
+    {% if live_unlisted %}
+    &nbsp;{{ _('Of those,') }} <strong>{{ "{:,}".format(live_unlisted) }}</strong> {{ _('are unclassified bots — UAs the classifier does not yet recognize; not headlined and not broken down by page family. Being triaged into new crawler classes.') }}
+    {% endif %}
   </p>
   {% if live_top_tokens %}
   <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (live)') }}</h3>
@@ -160,7 +163,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for ua_class, per_family in final_crawlers %}
+      {% for ua_class, per_family in final_crawlers if ua_class|upper != 'UNLISTED' %}
       <tr>
         <td><code>{{ ua_class }}</code></td>
         <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
@@ -175,6 +178,9 @@
     {% trans total=final_total -%}
     Total classified crawler hits in the completed week: <strong>{{ total }}</strong>.
     {%- endtrans %}
+    {% if final_unlisted %}
+    &nbsp;{{ _('Of those,') }} <strong>{{ "{:,}".format(final_unlisted) }}</strong> {{ _('are unclassified bots — UAs the classifier does not yet recognize.') }}
+    {% endif %}
   </p>
   {% if final_top_tokens %}
   <h3 style="font-size:1rem;margin-top:1rem;">{{ _('Top 5 token pages fetched by AI crawlers (completed week)') }}</h3>
