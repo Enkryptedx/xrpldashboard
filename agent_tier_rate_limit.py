@@ -96,13 +96,7 @@ AI_CRAWLER_UA_SUBSTRINGS = (
     "ccbot",
     # You.com
     "youbot",
-    # ── Charlie ruling 2026-09-23 Wed 07:06 ET: promote UNLISTED-bucket
-    # ── classes to first-class ua_class labels. Classification only —
-    # ── no rDNS gate (unverified-declared: vendor either doesn't
-    # ── publish a PTR contract or we haven't confirmed it). Rate tier
-    # ── stays anonymous (agent_tier_limit_rate only elevates on
-    # ── crawler_identity_check.verify() == "trusted"; without a
-    # ── _UA_RDNS_POLICY entry, verify() returns "not_a_bot_claim").
+    # ── Charlie ruling 2026-09-23 Wed 07:06 ET: AI-answer crawlers
     # Moonshot AI (Kimi)
     "kimibot",
     "kimi-searchbot",
@@ -129,7 +123,49 @@ AI_CRAWLER_UA_SUBSTRINGS = (
     "reflectionbot",
     # Keenable AI
     "keenablebot",
+    # ── Charlie ruling 2026-09-23 Wed 07:20 ET: classify the SEO
+    # ── crawler bucket + other big UNLISTED groups into first-class
+    # ── labels. Fragments below all map to shared class labels via
+    # ── _CLASS_LABEL_OVERRIDES to keep observatory reporting clean.
+    # SEO / backlink crawlers (collectively 'seo-crawler')
+    "ahrefsbot",
+    "semrushbot",
+    "mj12bot",
+    "dotbot",
+    "dataforseobot",
+    "seranking",
+    # Huawei PetalBot (real, declared — not the spoofed Android 7.0 cluster)
+    "petalbot",
+    # Lightpanda (declared headless-scraping framework)
+    "lightpanda",
+    # MCP-Cloud probe
+    "mcp-cloud",
 )
+
+
+# Fragment → canonical class label. Fragments NOT in this map return
+# themselves as the class label (backwards compatible with the earlier
+# tuple-of-labels design). Present here for two reasons:
+#   1) Collapse Moonshot's three UAs (KimiBot, Kimi-SearchBot,
+#      MoonshotBot) into one 'kimi' class so /observatory reports the
+#      operator, not the SKU.
+#   2) Bucket the six SEO / backlink crawlers into one 'seo-crawler'
+#      class — Charlie's ruling 2026-09-23 Wed 07:20 ET. Same operator
+#      kind, same tier, same policy story: they crawl for SEO products,
+#      not for AI answers. Keeping them as one row on /observatory keeps
+#      the unclassified bucket honest and small without pretending the
+#      six brands are the same product.
+_CLASS_LABEL_OVERRIDES = {
+    "kimibot":        "kimi",
+    "kimi-searchbot": "kimi",
+    "moonshotbot":    "kimi",
+    "ahrefsbot":      "seo-crawler",
+    "semrushbot":     "seo-crawler",
+    "mj12bot":        "seo-crawler",
+    "dotbot":         "seo-crawler",
+    "dataforseobot":  "seo-crawler",
+    "seranking":      "seo-crawler",
+}
 
 
 AUDIT_URL_HEADER_NAME = "X-XRPL-Dashboard-Audit-URL"
@@ -257,7 +293,7 @@ def classify_ai_crawler(user_agent: Optional[str]) -> Optional[str]:
     ua_lower = user_agent.lower()
     for fragment in AI_CRAWLER_UA_SUBSTRINGS:
         if fragment in ua_lower:
-            return fragment
+            return _CLASS_LABEL_OVERRIDES.get(fragment, fragment)
     for hint in _BOTLIKE_UA_HINTS:
         if hint in ua_lower:
             return UA_CLASS_UNLISTED
