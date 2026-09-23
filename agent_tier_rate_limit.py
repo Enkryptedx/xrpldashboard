@@ -246,6 +246,13 @@ CRAWLER_BUCKETS = {
     # Scrapers
     "lightpanda":        "scraper",    # Declared headless framework
     "mcp-cloud":         "scraper",    # Unfamiliar probe (github.com/mcp-cloud)
+    # Charlie ruling 2026-09-23 Wed 13:32 ET: behavioral fingerprint
+    # class for generic-browser UAs with a session shape that reads as
+    # scraping (no static-asset fetches + high hit count + narrow path
+    # set). Labeled by the sitewide rollup query, not by
+    # classify_ai_crawler — the UA is a real browser string; the
+    # signal is the session profile. Classification only, no blocks.
+    "scraper-unclassified": "scraper",
 }
 
 BUCKET_ORDER = ("ai-answer", "training", "search-seo", "scraper", "other")

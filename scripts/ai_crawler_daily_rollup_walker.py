@@ -191,11 +191,65 @@ def sitewide_rollup_day(day_iso: str) -> int:
             )
             rows = cur.fetchall()
 
+    # Charlie ruling 2026-09-23 Wed 13:32 ET (build #3): behavioral
+    # fingerprint for the ~600/day UNLISTED. Relabel UNLISTED rows to
+    # `scraper-unclassified` when their visitor_hash matches the
+    # scraper session profile:
+    #   - zero static-asset fetches (never hit /static/* or /favicon*)
+    #   - >= 20 non-asset hits in the day (high rate)
+    #   - <= 3 distinct non-asset paths (narrow path set)
+    # UNLISTED rows whose visitor_hash doesn't match the profile stay
+    # as UNLISTED. Classification only, no blocks — nothing about
+    # rate-limits or content changes.
+    scraper_hashes: set[str] = set()
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT visitor_hash "
+                        "  FROM page_views "
+                        " WHERE ts >= %s AND ts < %s "
+                        "   AND visitor_hash IS NOT NULL AND visitor_hash <> '' "
+                        " GROUP BY visitor_hash "
+                        "HAVING COUNT(*) FILTER (WHERE path NOT LIKE '/static/%%' "
+                        "                             AND path NOT LIKE '/favicon%%') >= 20 "
+                        "   AND COUNT(DISTINCT path) FILTER (WHERE path NOT LIKE '/static/%%' "
+                        "                                       AND path NOT LIKE '/favicon%%') <= 3 "
+                        "   AND COUNT(*) FILTER (WHERE path LIKE '/static/%%' "
+                        "                             OR  path LIKE '/favicon%%') = 0",
+                        (start_ts, end_ts),
+                    )
+                    scraper_hashes = {r[0] for r in cur.fetchall() if r[0]}
+        except Exception:
+            scraper_hashes = set()
+
+    # Re-fetch with visitor_hash to apply the reclassification.
+    if scraper_hashes:
+        with db.pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT user_agent, path, visitor_hash "
+                    "FROM page_views "
+                    "WHERE ts >= %s AND ts < %s "
+                    "  AND user_agent IS NOT NULL AND user_agent <> '' "
+                    "  AND NOT (user_agent ILIKE ANY(%s))",
+                    (start_ts, end_ts, self_probe_patterns),
+                )
+                rows = cur.fetchall()
+
     per_family: dict[tuple[str, str], int] = {}
-    for user_agent, path in rows:
+    for row in rows:
+        if len(row) == 3:
+            user_agent, path, visitor_hash = row
+        else:
+            user_agent, path = row
+            visitor_hash = None
         ua_class = classify_ai_crawler(user_agent)
         if ua_class is None or ua_class == "seo-crawler":
             continue
+        if ua_class == "UNLISTED" and visitor_hash and visitor_hash in scraper_hashes:
+            ua_class = "scraper-unclassified"
         family = _classify_path(path or "")
         key = (ua_class, family)
         per_family[key] = per_family.get(key, 0) + 1
