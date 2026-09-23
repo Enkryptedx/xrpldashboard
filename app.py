@@ -227,6 +227,14 @@ except Exception as _e:
         "SMTP_DIAG turnstile_migration ERR exc=%s: %s",
         type(_e).__name__, str(_e)[:200],
     )
+try:
+    db.ensure_rwa_family_attestation_current()
+    app.logger.warning("SMTP_DIAG rwa_family_reconcile ok")
+except Exception as _e:
+    app.logger.warning(
+        "SMTP_DIAG rwa_family_reconcile ERR exc=%s: %s",
+        type(_e).__name__, str(_e)[:200],
+    )
 
 # Cloudflare → Render → Flask is a two-proxy chain: Cloudflare puts the
 # visitor IP at the head of X-Forwarded-For, Render's edge appends its own
@@ -4687,14 +4695,18 @@ def rwa():
                     tokens.add(disp)
         family["tokens"] = sorted(tokens)
 
-    # Charlie 2026-09-22 Tue PM: after the two-way TOML verification
-    # sweep, 'verified' means the family's canonical domain pins the
-    # issuer via xrp-ledger.toml AND our two-way verifier confirmed it.
-    # As of tonight, zero families hold that standard — Ondo (no XRPL
-    # issuance), OpenEden (toml 404), Midas (toml 403). All three
-    # dropped to 'labeled' with a citation. The /rwa section still
-    # surfaces them because they carry real on-XRPL activity we can
-    # PROVE (pool + AMM curator flag), just not two-way-domain-attested.
+    # Charlie 2026-09-22 Tue PM (updated 2026-09-23 Wed 15:35 ET after
+    # item #2 agreement probe): 'verified' means the family's canonical
+    # domain pins the issuer via xrp-ledger.toml AND our two-way verifier
+    # confirmed it.
+    #
+    # Ondo: rHuiXX… issues OUSG on XRPL; ondo.finance publishes both
+    #   [[TOKENS]] (currency=OUSG, issuer=rHuiXX…) and [[ISSUERS]]
+    #   (address=rHuiXX…). Manifest tier: verified. rwa_family row
+    #   reconciled to 'verified' by ensure_rwa_family_attestation_current
+    #   on boot.
+    # OpenEden: toml 404 → labeled.
+    # Midas: toml 403 → labeled.
     #
     # Display totals count 'verified' + 'labeled' families together (any
     # family with a citation-based curator flag). A separate strict

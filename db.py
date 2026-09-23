@@ -1876,6 +1876,36 @@ def init_schema():
         conn.commit()
 
 
+def ensure_rwa_family_attestation_current():
+    """Idempotent, targeted DB reconciliation (Charlie ruling 2026-09-23
+    15:35 ET, item #2 agreement probe): rwa_family.attestation_level is
+    a curator-maintained field that goes stale when a family's TOML
+    starts passing two-way verification but nobody reruns the curator
+    hand-set. Manifest is authoritative; sync the row on boot.
+
+    Ondo: two-way TOML at ondo.finance passes for OUSG @ rHuiXX (both
+    [[TOKENS]] and [[ISSUERS]] present). Manifest tier=verified. Bump
+    rwa_family from labeled→verified.
+
+    Guard clause is `attestation_level='labeled'` so this becomes a no-op
+    after the fix takes and can never silently downgrade a manual curator
+    action. Add new rows here only when a manifest→family disagreement
+    is observed AND is stable enough to hard-code."""
+    if not pg_available():
+        return
+    stmts = (
+        ("UPDATE rwa_family "
+         "SET attestation_level='verified' "
+         "WHERE family_slug='ondo_finance' "
+         "  AND attestation_level='labeled'"),
+    )
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            for s in stmts:
+                cur.execute(s)
+        conn.commit()
+
+
 def ensure_turnstile_verified_column():
     """Idempotent, targeted migration (Charlie ruling 2026-09-23 15:28 ET):
     add `turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE` to

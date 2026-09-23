@@ -1,4 +1,10 @@
 {
+  "rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
+    "name": "Ondo Short-Term US Govt Fund (OUSG)",
+    "category": "issuer",
+    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
+    "_note": "Two-way TOML verified 2026-09-23: ondo.finance publishes [[TOKENS]] issuer=rHuiXX… currency=OUSG AND [[ISSUERS]] address=rHuiXX…. Manifest tier verified via two_way_toml. Added to close /rwa vs /wallet vs manifest disagreement."
+  },
   "r9NpyVfLfUG8hatuCCHKzosyDtKnBdsEN3": {
     "name": "Ripple Escrow #01",
     "category": "ripple",
