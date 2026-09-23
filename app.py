@@ -1437,10 +1437,14 @@ def inject_live_stream_wss():
 # every entry is a trust decision. jsdelivr serves vendored front-end deps
 # (Geist fonts, Lenis, GSAP, CountUp) and is disclosed at /security; the
 # self-host plan replaces it with /static/vendor/ (tracked as #93).
-_CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
+# Cloudflare Turnstile (added 2026-09-23): script-src for the widget
+# loader (api.js), frame-src for the challenge iframe. Docs:
+# https://developers.cloudflare.com/turnstile/get-started/content-security-policy/
+_CSP_SCRIPT_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com"
 _CSP_STYLE_SRC = "'self' 'unsafe-inline' https://cdn.jsdelivr.net"
 _CSP_FONT_SRC = "'self' https://cdn.jsdelivr.net data:"
 _CSP_IMG_SRC = "'self' data:"
+_CSP_FRAME_SRC = "https://challenges.cloudflare.com"
 def _build_csp_connect_src():
     # Browsers connect to wss://xrplcluster.com by default. s2 and s1
     # are kept in the allowlist as automatic fallbacks so a cluster
@@ -1476,6 +1480,7 @@ _CSP_VALUE = "; ".join([
     f"img-src {_CSP_IMG_SRC}",
     f"font-src {_CSP_FONT_SRC}",
     f"connect-src {_CSP_CONNECT_SRC}",
+    f"frame-src {_CSP_FRAME_SRC}",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
