@@ -499,7 +499,7 @@
     .tron-grid-lanes .tron-lane-label[data-lane="self"]     { color: rgba(203,213,225,0.85); }
     .tron-grid-lanes .tron-lane-label[data-lane="bare"]     { color: rgba(122,140,168,0.85); }
     .tron-grid-lanes .tron-lane-label[data-lane="warning"]  { color: rgba(245,158,11,0.92); }
-    .tron-grid-lanes .tron-lane-label[data-lane="lp"]       { color: rgba(103,232,249,0.72); }
+    .tron-grid-lanes .tron-lane-label[data-lane="pools"]    { color: rgba(103,232,249,0.72); }
     @media (max-width: 620px) {
       .tron-grid-lanes { font-size: 0.55rem; bottom: 4px; }
       .tron-grid-lanes .tron-lane-label { font-size: 0.55rem; letter-spacing: 0.02em; }
@@ -1144,7 +1144,7 @@
       <span class="tron-lane-label" data-lane="self">{{ _('self-described') }}</span>
       <span class="tron-lane-label" data-lane="bare">{{ _('bare') }}</span>
       <span class="tron-lane-label" data-lane="warning">{{ _('warning') }}</span>
-      <span class="tron-lane-label" data-lane="lp">{{ _('pools') }}</span>
+      <span class="tron-lane-label" data-lane="pools">{{ _('pools') }}</span>
     </div>
   </div>
   {# 2026-09-11 legibility: color legend moved up beside/beneath the
@@ -1178,11 +1178,11 @@
         <button type="button" class="tron-leg tron-leg--self" data-lane="self-described"
                 data-def="{{ _('Self-described = the issuer set a website but hasn&apos;t proven it.\nAnyone can claim a domain; verified goes one step further.') }}"><i></i>{{ _('self-described') }}</button>
         <button type="button" class="tron-leg tron-leg--labeled" data-lane="labeled"
-                data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nWe surface the name without verifying it ourselves.') }}"><i></i>{{ _('labeled') }}</button>
+                data-def="{{ _('Labeled = a third party (curator paste-in, xrpscan, etc.) attached a name.\nShown in the bare lane on the visual — the canvas has 5 lanes and labeled shares the bare lane with unknown.') }}"><i></i>{{ _('labeled') }}</button>
         <button type="button" class="tron-leg tron-leg--bare" data-lane="bare"
-                data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nA thin surface — signal exists, content doesn&apos;t.') }}"><i></i>{{ _('bare') }}</button>
+                data-def="{{ _('Bare = the issuer publishes a website but no name, ticker map, or claim we can read.\nThe bare lane on the visual also holds labeled + unknown pulses (5-lane canvas collapses those three).') }}"><i></i>{{ _('bare') }}</button>
         <button type="button" class="tron-leg tron-leg--unknown" data-lane="unknown"
-                data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nThe issuer is anonymous to the network.') }}"><i></i>{{ _('unknown') }}</button>
+                data-def="{{ _('Unknown = no domain, no TOML, no external claim.\nShown in the bare lane on the visual — the canvas has 5 lanes and unknown shares the bare lane with labeled.') }}"><i></i>{{ _('unknown') }}</button>
         <button type="button" class="tron-leg tron-leg--warning" data-lane="warning"
                 data-def="{{ _('Warning = borrowing a well-known ticker on a non-canonical issuer, or an unreadable code.\nA row-flag, not a tier — it can pair with any tier above.') }}"><i></i>{{ _('warning') }}</button>
         <button type="button" class="tron-leg tron-leg--lp" data-lane="pools"
