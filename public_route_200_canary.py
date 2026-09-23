@@ -90,6 +90,13 @@ ROUTES: list[tuple] = [
     ("/sitemap.xml",                      500,    "sitemap"),
     ("/robots.txt",                       50,     None),
     ("/openapi.json",                     1000,   None),
+    # Charlie ruling 2026-09-23 Wed 13:32 ET — API breadth (build #2):
+    # four new signed JSON surfaces. Content check requires the
+    # check_v09_signature block name so we catch envelope drops.
+    ("/tokens.json",                      500,    "check_v09_signature"),
+    ("/whales.json",                      500,    "check_v09_signature"),
+    ("/pools.json",                       500,    "check_v09_signature"),
+    ("/amendments.json",                  500,    "check_v09_signature"),
     # /thisweek.xml is a valid empty-feed shell (~387b) until Sunday
     # ships the first edition. Threshold lowered so the empty-state
     # feed passes; content check kept — "rss" is in the RSS wrapper

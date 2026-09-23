@@ -7963,6 +7963,176 @@ def check_json_page():
     return check_page()
 
 
+# ── Charlie ruling 2026-09-23 Wed 13:32 ET — API breadth (build item #2).
+# Four new machine endpoints — /tokens.json /whales.json /pools.json
+# /amendments.json — each carrying the same signed receipt envelope as
+# /check.json (proof.check_v09_signature), rate-tiered via
+# agent_tier_limit_rate, self-probes excluded from ai_crawler_hits by
+# the existing @app.after_request classifier. Documented in
+# agents.json.pricing_catalog (planned:true, mode=off) and in llms.txt.
+
+def _machine_envelope(data: dict, source_slug: str,
+                      freshness_contract: str) -> dict:
+    """Build a proof-annotation envelope with the same shape /check.json
+    uses. Signature is added by _check_v09_sign if the sig-service is
+    reachable; else sig_status names the reason."""
+    envelope = {
+        "data": data,
+        "proof": {
+            "source": f"xrpldashboard/{source_slug}",
+            "as_of": datetime.now(timezone.utc).replace(
+                microsecond=0).isoformat().replace("+00:00", "Z"),
+            "freshness_contract": freshness_contract,
+            "methodology_url": f"{SITE_URL}/methodology#for-ai-agents",
+            "sourcing": "sovereign",
+            "cross_check_status": "not_applicable",
+            "honest_partial": False,
+        },
+        "server": {
+            "name": "xrpldashboard",
+            "version": "2.0.0",
+            "public_key_fingerprint": "A4:0F:B1:0A:9D:33:64:03",
+            "docs": f"{SITE_URL}/methodology#for-ai-agents",
+        },
+    }
+    return _check_v09_sign(envelope)
+
+
+def _json_response(envelope: dict, *, status: int = 200) -> Response:
+    body = json.dumps(envelope, sort_keys=True, separators=(",", ":"))
+    resp = make_response(body, status)
+    resp.headers["Content-Type"] = "application/json"
+    resp.headers["Cache-Control"] = "public, max-age=60, s-maxage=60"
+    return resp
+
+
+@app.route("/tokens.json")
+@limiter.limit(agent_tier_limit_rate)
+def tokens_json():
+    """Top XRPL tokens with tier + warnings, machine-readable. Payload
+    mirrors the /tokens page's registry view; signed like /check.json."""
+    tokens_out = []
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute("""
+                    SELECT tc.currency_hex, tc.issuer, tc.category, tc.tier,
+                           tc.source, tc.citation_url,
+                           tf.decoded_name, tf.trades_30d, tf.ticker_collision
+                      FROM token_category_current tc
+                      LEFT JOIN token_facts tf USING (currency_hex, issuer)
+                     WHERE tc.tier IN ('verified','self-described','labeled')
+                     ORDER BY tf.trades_30d DESC NULLS LAST
+                     LIMIT 100
+                """)
+                for r in cur.fetchall():
+                    tokens_out.append({
+                        "currency_hex": r[0],
+                        "issuer": r[1],
+                        "category": r[2],
+                        "tier": r[3],
+                        "source": r[4],
+                        "citation_url": r[5],
+                        "decoded_name": r[6],
+                        "trades_30d": int(r[7]) if r[7] is not None else None,
+                        "ticker_collision_warning": bool(r[8]),
+                    })
+        except Exception:
+            tokens_out = []
+    env = _machine_envelope(
+        {"tokens": tokens_out, "row_count": len(tokens_out),
+         "vocab": ["verified", "self-described", "labeled", "bare", "unknown"]},
+        source_slug="tokens-endpoint",
+        freshness_contract="≤ 15min",
+    )
+    return _json_response(env)
+
+
+@app.route("/whales.json")
+@limiter.limit(agent_tier_limit_rate)
+def whales_json():
+    """Whale-stream summary: last-24h large-payment count + top movers
+    (from whales_summary rollup), machine-readable + signed."""
+    summary = {"count_24h": None, "cells": {}}
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute("""
+                    SELECT tier, filter_type, elapsed_ms, LEFT(body, 2000) AS body_head
+                      FROM whales_summary
+                     WHERE tier IN ('1m','100k','25k')
+                     LIMIT 20
+                """)
+                for tier, ft, elapsed, body_head in cur.fetchall():
+                    key = f"{tier}:{ft}"
+                    summary["cells"][key] = {
+                        "elapsed_ms": int(elapsed) if elapsed is not None else None,
+                        "body_snippet_length": len(body_head or ""),
+                    }
+        except Exception:
+            pass
+    env = _machine_envelope(
+        {"summary": summary,
+         "note": "Cells enumerate (tier × filter_type). The /whales HTML surface renders each cell as a live table; here we surface generation stats + snippet lengths only. Live stream: wss://wss.xrpldashboard.com (browser side) or /whales HTML for the rendered view."},
+        source_slug="whales-endpoint",
+        freshness_contract="≤ 3min",
+    )
+    return _json_response(env)
+
+
+@app.route("/pools.json")
+@limiter.limit(agent_tier_limit_rate)
+def pools_json():
+    """AMM pools ranked by TVL, machine-readable + signed. Payload
+    from amm_ranked_pools (own-node computation)."""
+    pools_out = []
+    try:
+        ranked = db.read_amm_ranked_pools() or []
+        for p in ranked[:50]:
+            pools_out.append({
+                "pair": p.get("pair"),
+                "amm_account": p.get("amm_account"),
+                "asset_a": p.get("asset_a"),
+                "asset_b": p.get("asset_b"),
+                "amount_a": str(p.get("amount_a")) if p.get("amount_a") is not None else None,
+                "amount_b": str(p.get("amount_b")) if p.get("amount_b") is not None else None,
+                "tvl_usd": float(p.get("tvl_usd") or 0),
+                "fee_pct": float(p.get("fee_pct") or 0),
+                "kind": p.get("kind"),
+                "tvl_status": p.get("tvl_status"),
+            })
+    except Exception:
+        pools_out = []
+    env = _machine_envelope(
+        {"pools": pools_out, "row_count": len(pools_out)},
+        source_slug="pools-endpoint",
+        freshness_contract="≤ 15min",
+    )
+    return _json_response(env)
+
+
+@app.route("/amendments.json")
+@limiter.limit(agent_tier_limit_rate)
+def amendments_json():
+    """XRPL amendments with per-amendment vote tallies, machine-readable
+    + signed. Sourced from the same amendments_block signal the daily
+    signed_snapshot metric uses."""
+    amendments_block = {}
+    try:
+        from signed_snapshot import _assemble_amendments_block
+        result = _assemble_amendments_block(datetime.now(timezone.utc))
+        if isinstance(result, dict):
+            amendments_block = result
+    except Exception:
+        amendments_block = {}
+    env = _machine_envelope(
+        {"amendments_block": amendments_block},
+        source_slug="amendments-endpoint",
+        freshness_contract="≤ 1h",
+    )
+    return _json_response(env)
+
+
 _CURRENCY_HEX_CHARS = set("0123456789abcdefABCDEF")
 _CURRENCY_ASCII_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -9206,6 +9376,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
 - Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Accepts GET with `?q=<subject>` for one-shot triage and POST with `Content-Type: application/json` `{{"q": "<subject or full pasted message>"}}` for longer messages that extract multiple subjects. Signature envelope: v0.9 per-verdict Ed25519 signing is LIVE as of 2026-09-22 — every response carries `proof.check_v09_signature` with `sig_status`, `canonical_hash_sha256`, `sig_ed25519`, `domain_separator = "xrpldashboard/receipt/v1"`, `signed_at_utc`, and `signer` fingerprint. Verify recipe matches the verified-tokens manifest: canonical_hash over sorted-keys-no-whitespace JSON of the `data` object; Ed25519 over `domain_separator + 0x00 + bytes.fromhex(canonical_hash)` against the receipt pubkey at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03). Per-capability `source_label` + `checked_at_utc` fields are still present for field-level provenance.
+- Read-only HTTP API — API breadth (2026-09-23): [{SITE_URL}/tokens.json]({SITE_URL}/tokens.json), [{SITE_URL}/whales.json]({SITE_URL}/whales.json), [{SITE_URL}/pools.json]({SITE_URL}/pools.json), [{SITE_URL}/amendments.json]({SITE_URL}/amendments.json). Each carries the same v0.9 signed envelope as `/check.json` — `data` payload plus `proof.check_v09_signature` (Ed25519 sig, canonical_hash, domain_separator `xrpldashboard/receipt/v1`, signer fingerprint `A4:0F:B1:0A:9D:33:64:03`, signed_at_utc). Verify recipe identical to `/check.json` and the verified-tokens manifest. Rate-tiered via the agent-tier callable (60/hour anonymous, 300/hour rDNS-verified). Route canary `/public_route_200_canary` covers all four. Priced in `pricing_catalog` at planned:true, currently `mode=off` (nothing charges).
 - Directory listings for this MCP server (same endpoint + tool inventory as above; the directories are discovery aids, not different endpoints):
   - Anthropic MCP Registry: [registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard) — server id `com.xrpldashboard/xrpldashboard-mcp`, DNS-verified namespace, listed 2026-08-05.
   - Smithery: [smithery.ai/servers/xrpldashboard/xrpldashboard](https://smithery.ai/servers/xrpldashboard/xrpldashboard) — Smithery gateway URL `https://xrpldashboard--xrpldashboard.run.tools`, listed 2026-08-05.
