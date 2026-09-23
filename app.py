@@ -9391,6 +9391,239 @@ _AGENTS_JSON = {
             "date; check this section on each poll."
         ),
     },
+    # Charlie ruling 2026-09-23 Wed 13:32 ET — paid-tier catalog, mode=off.
+    # Machine-readable pricing packet the attorney can read alongside the
+    # existing pricing_transition block. Every field is documentation; no
+    # billing wire fires until pricing_transition.future_effective_from
+    # is set AND status.pricing_catalog_mode flips to 'live'.
+    "pricing_catalog": {
+        "mode": "off",
+        "spec_url": f"{SITE_URL}/methodology#pricing-catalog",
+        "sourcing_billing_rule": {
+            "predicate": "billed == (response.proof.sourcing == 'sovereign')",
+            "explanation": (
+                "A call is billed ONLY when the response is served from our "
+                "own sovereign infrastructure (own rippled node + CF-Access "
+                "tunnel). Any fallback to public XRPL RPC (s1/s2/xrplcluster) "
+                "sets billed=false + billing_reason='sourcing_not_sovereign' "
+                "in the receipt envelope and does not consume a paid unit. "
+                "Symmetry rule: free and paid responses carry identical "
+                "sourcing fields — the price bit is the only difference."
+            ),
+            "receipt_fields": {
+                "billed": "bool — whether this call consumed a paid unit",
+                "billing_reason": (
+                    "string — 'sourcing_sovereign' | 'sourcing_not_sovereign' "
+                    "| 'free_by_design' | 'catalog_mode_off'"
+                ),
+                "sourcing": "string — 'sovereign' | 'fallback-public-rpc' | 'stale-cache'",
+                "unbilled_calls_row_id": "int? — audit row when billed=false on a normally-paid endpoint",
+            },
+        },
+        "billable_endpoints": [
+            {
+                "resource": f"{SITE_URL}/check.json",
+                "kinds": ["address", "token_id", "url", "text"],
+                "methods": ["GET", "POST"],
+                "price": {"amount": "0.001", "unit": "call"},
+                "accepted_assets": [
+                    {"asset": "USDC", "chain": "ethereum",
+                     "facilitator": "x402.io/facilitator",
+                     "note": "x402 HTTP-native settlement"},
+                    {"asset": "RLUSD", "chain": "xrpl",
+                     "facilitator": f"{SITE_URL}/.well-known/x402-xrpl-facilitator",
+                     "note": "XRPL facilitator planned; endpoint not yet live"},
+                ],
+                "billed_when": "sourcing=sovereign",
+                "billed_currently": False,
+                "billed_currently_reason": "catalog_mode_off",
+            },
+            {
+                "resource": f"{SITE_URL}/tokens.json",
+                "planned": True,
+                "kinds": ["registry"],
+                "methods": ["GET"],
+                "price": {"amount": "0.001", "unit": "call"},
+                "accepted_assets": [
+                    {"asset": "USDC", "chain": "ethereum"},
+                    {"asset": "RLUSD", "chain": "xrpl"},
+                ],
+                "billed_when": "sourcing=sovereign",
+                "billed_currently": False,
+                "billed_currently_reason": "endpoint_not_yet_live",
+            },
+            {
+                "resource": f"{SITE_URL}/whales.json",
+                "planned": True,
+                "kinds": ["stream_summary"],
+                "methods": ["GET"],
+                "price": {"amount": "0.001", "unit": "call"},
+                "accepted_assets": [
+                    {"asset": "USDC", "chain": "ethereum"},
+                    {"asset": "RLUSD", "chain": "xrpl"},
+                ],
+                "billed_when": "sourcing=sovereign",
+                "billed_currently": False,
+                "billed_currently_reason": "endpoint_not_yet_live",
+            },
+            {
+                "resource": f"{SITE_URL}/pools.json",
+                "planned": True,
+                "kinds": ["amm"],
+                "methods": ["GET"],
+                "price": {"amount": "0.001", "unit": "call"},
+                "accepted_assets": [
+                    {"asset": "USDC", "chain": "ethereum"},
+                    {"asset": "RLUSD", "chain": "xrpl"},
+                ],
+                "billed_when": "sourcing=sovereign",
+                "billed_currently": False,
+                "billed_currently_reason": "endpoint_not_yet_live",
+            },
+            {
+                "resource": f"{SITE_URL}/amendments.json",
+                "planned": True,
+                "kinds": ["governance"],
+                "methods": ["GET"],
+                "price": {"amount": "0.001", "unit": "call"},
+                "accepted_assets": [
+                    {"asset": "USDC", "chain": "ethereum"},
+                    {"asset": "RLUSD", "chain": "xrpl"},
+                ],
+                "billed_when": "sourcing=sovereign",
+                "billed_currently": False,
+                "billed_currently_reason": "endpoint_not_yet_live",
+            },
+        ],
+        "free_by_design": [
+            {
+                "resource_pattern": f"{SITE_URL}/nfts",
+                "reason": (
+                    "NFT-activity backfill is a public-good ledger reconstruction; "
+                    "billed access would gate a canonical historical view."
+                ),
+            },
+            {
+                "resource_pattern": f"{SITE_URL}/.well-known/snapshots/*",
+                "reason": (
+                    "Anchor / witness surfaces (chain.json, pubkey.pem, "
+                    "anchors.json) are cryptographic public infrastructure — "
+                    "verifying an anchored root must never cost."
+                ),
+            },
+            {
+                "resource_pattern": f"{SITE_URL}/.well-known/verified-tokens.json",
+                "reason": (
+                    "Hourly signed manifest — witness surface, same rule as "
+                    "the daily chain."
+                ),
+            },
+            {
+                "resource_pattern": (
+                    "Every HTML page: /, /whales, /pools, /tokens, /rwa, "
+                    "/observatory, /methodology, /about, /regulation, "
+                    "/thisweek, /changes, /check, /rlusd, /nfts, /mpts, "
+                    "/lending, /amendments, /wallet/<addr>, /token/<..>/<..>, "
+                    "/mpt/<..>, /claims, /coverage, /glossary, /connect, /docs"
+                ),
+                "reason": (
+                    "Human-facing HTML tier stays free forever — the machine "
+                    "surface (.json + MCP) is what carries the price signal."
+                ),
+            },
+            {
+                "resource_pattern": f"{SITE_URL}/check.json (triage-only text input)",
+                "reason": (
+                    "Triage of pasted messages (POST with {q:'<message>'}) "
+                    "stays free as a safety utility — reporting suspected "
+                    "scam or phishing subjects should never require payment. "
+                    "Programmatic address / token / URL lookups are the "
+                    "billable shape when catalog_mode='live'."
+                ),
+            },
+        ],
+        "receipt_example": {
+            "note": (
+                "Illustrative shape only; nothing charges while "
+                "pricing_catalog.mode='off'. Every field in the receipt "
+                "block would be present on a live billed response."
+            ),
+            "example_response": {
+                "data": {"…": "endpoint-specific payload"},
+                "proof": {
+                    "source": "xrpldashboard/tokens-endpoint",
+                    "as_of": "2026-09-23T17:32:00Z",
+                    "sourcing": "sovereign",
+                    "freshness_contract": "≤ 5min",
+                    "methodology_url": f"{SITE_URL}/methodology#for-ai-agents",
+                    "check_v09_signature": {
+                        "sig_status": "signed",
+                        "sig_ed25519": "…hex…",
+                        "signer": "A4:0F:B1:0A:9D:33:64:03",
+                        "domain_separator": "xrpldashboard/receipt/v1",
+                        "canonical_hash_sha256": "…hex…",
+                        "signed_at_utc": "2026-09-23T17:32:00.000Z",
+                    },
+                },
+                "receipt": {
+                    "resource": f"{SITE_URL}/tokens.json",
+                    "billed": True,
+                    "billing_reason": "sourcing_sovereign",
+                    "sourcing": "sovereign",
+                    "price": {
+                        "amount": "0.001", "unit": "call",
+                        "asset": "USDC", "chain": "ethereum",
+                    },
+                    "payment": {
+                        "settled_tx": "0x…",
+                        "facilitator": "x402.io/facilitator",
+                        "settled_at_utc": "2026-09-23T17:32:00.500Z",
+                    },
+                    "catalog_version": "v0.9-mode-off-2026-09-23",
+                },
+                "server": {
+                    "name": "xrpldashboard",
+                    "version": "2.0.0",
+                    "public_key_fingerprint": "A4:0F:B1:0A:9D:33:64:03",
+                    "docs": f"{SITE_URL}/methodology#for-ai-agents",
+                },
+            },
+            "example_response_fallback_public_rpc": {
+                "data": {"…": "same endpoint-specific payload"},
+                "proof": {
+                    "source": "xrpldashboard/tokens-endpoint",
+                    "as_of": "2026-09-23T17:32:00Z",
+                    "sourcing": "fallback-public-rpc",
+                    "freshness_contract": "≤ 5min",
+                    "methodology_url": f"{SITE_URL}/methodology#for-ai-agents",
+                    "check_v09_signature": {
+                        "sig_status": "signed",
+                        "sig_ed25519": "…hex…",
+                        "signer": "A4:0F:B1:0A:9D:33:64:03",
+                        "domain_separator": "xrpldashboard/receipt/v1",
+                        "canonical_hash_sha256": "…hex…",
+                        "signed_at_utc": "2026-09-23T17:32:00.000Z",
+                    },
+                },
+                "receipt": {
+                    "resource": f"{SITE_URL}/tokens.json",
+                    "billed": False,
+                    "billing_reason": "sourcing_not_sovereign",
+                    "sourcing": "fallback-public-rpc",
+                    "price": {"amount": "0.001", "unit": "call",
+                              "asset": "USDC", "chain": "ethereum"},
+                    "unbilled_calls_row_id": 123456,
+                    "catalog_version": "v0.9-mode-off-2026-09-23",
+                },
+                "server": {
+                    "name": "xrpldashboard",
+                    "version": "2.0.0",
+                    "public_key_fingerprint": "A4:0F:B1:0A:9D:33:64:03",
+                    "docs": f"{SITE_URL}/methodology#for-ai-agents",
+                },
+            },
+        },
+    },
     "mcp_servers": [
         {
             "url": "https://mcp.xrpldashboard.com/mcp",
@@ -9596,6 +9829,11 @@ _X402_CATALOG = {
         "x402_rails_ready": False,
         "free_tier_ready": True,
         "signing_key_wired": False,
+        # Charlie ruling 2026-09-23 Wed 13:32 ET: paid-tier catalog is
+        # published mode=off. Full pricing packet in
+        # /.well-known/agents.json under `pricing_catalog`.
+        "pricing_catalog_mode": "off",
+        "pricing_catalog_ref": f"{SITE_URL}/.well-known/agents.json#pricing_catalog",
     },
 }
 
