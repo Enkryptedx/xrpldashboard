@@ -142,6 +142,86 @@ def rollup_day(day_iso: str) -> int:
     return len(per_family)
 
 
+def sitewide_rollup_day(day_iso: str) -> int:
+    """Site-wide rollup — classifies UAs across ALL page_views paths
+    (not just the 9 agent-tier files ai_crawler_hits covers). Powers
+    the primary /observatory view; the agent-tier rollup remains as
+    the "what they fetch to verify" sub-table.
+
+    Charlie ruling 2026-09-23 Wed 07:27 ET: ai_crawler_hits' 9-path
+    scope was showing 0.6% of the real AI-crawler activity on the
+    site; observatory needed the full picture. `classify_ai_crawler`
+    is called on the raw UA string, so we get real AI-answer /
+    unlisted / etc. bucketing on every page_views row without touching
+    the request path.
+
+    Exclusions:
+    - SELF_PROBE_UA_FRAGMENTS (canaries, walkers, JJ shell,
+      rate-test/smoke-test/integration-test markers)
+    - ua_class = 'seo-crawler' (they crawl for SEO products, not for
+      AI answers; documented separately in the agent-tier sub-view)
+    - ua_class IS NULL (normal browser / empty UA — not a crawler)
+
+    Returns number of (ua_class, family) rows written."""
+    if not db.pg_available():
+        return 0
+    day = dt.date.fromisoformat(day_iso)
+    start_ts = int(dt.datetime.combine(day, dt.time.min).replace(
+        tzinfo=dt.timezone.utc).timestamp())
+    end_ts = int(dt.datetime.combine(
+        day + dt.timedelta(days=1), dt.time.min
+    ).replace(tzinfo=dt.timezone.utc).timestamp())
+
+    HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    from public_analytics_filters import SELF_PROBE_UA_FRAGMENTS
+    from agent_tier_rate_limit import classify_ai_crawler
+    self_probe_patterns = [f"%{f}%" for f in SELF_PROBE_UA_FRAGMENTS]
+
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT user_agent, path "
+                "FROM page_views "
+                "WHERE ts >= %s AND ts < %s "
+                "  AND user_agent IS NOT NULL AND user_agent <> '' "
+                "  AND NOT (user_agent ILIKE ANY(%s))",
+                (start_ts, end_ts, self_probe_patterns),
+            )
+            rows = cur.fetchall()
+
+    per_family: dict[tuple[str, str], int] = {}
+    for user_agent, path in rows:
+        ua_class = classify_ai_crawler(user_agent)
+        if ua_class is None or ua_class == "seo-crawler":
+            continue
+        family = _classify_path(path or "")
+        key = (ua_class, family)
+        per_family[key] = per_family.get(key, 0) + 1
+
+    def _do(conn):
+        with conn.cursor() as cur:
+            # Delete the day's rows first so classes that dropped to 0
+            # (e.g. after a class collapse) don't leave stale entries.
+            cur.execute(
+                "DELETE FROM ai_crawler_sitewide_daily_rollup "
+                "WHERE as_of_date = %s::date",
+                (day_iso,),
+            )
+            for (ua_class, family), hits in per_family.items():
+                cur.execute(
+                    "INSERT INTO ai_crawler_sitewide_daily_rollup "
+                    "  (as_of_date, ua_class, page_family, hits, computed_at) "
+                    "VALUES (%s::date, %s, %s, %s, now()) "
+                    "ON CONFLICT (as_of_date, ua_class, page_family) "
+                    "DO UPDATE SET hits = EXCLUDED.hits, computed_at = now()",
+                    (day_iso, ua_class, family, hits),
+                )
+    db._writer_execute_with_retry(f"ai_crawler_sitewide_rollup[{day_iso}]", _do)
+    return len(per_family)
+
+
 def main() -> int:
     db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
@@ -154,8 +234,13 @@ def main() -> int:
         # settles at day boundary.
         n_today = rollup_day(today)
         n_yesterday = rollup_day(yesterday)
+        # Site-wide rollup (page_views, all paths, self-probe + SEO excluded).
+        # Charlie ruling 2026-09-23 Wed 07:27 ET — primary observatory source.
+        s_today = sitewide_rollup_day(today)
+        s_yesterday = sitewide_rollup_day(yesterday)
         message = (
-            f"today={today}:{n_today} yesterday={yesterday}:{n_yesterday}"
+            f"agent-tier today={today}:{n_today} yesterday={yesterday}:{n_yesterday} · "
+            f"sitewide today={today}:{s_today} yesterday={yesterday}:{s_yesterday}"
         )
         print(f"[ai_crawler_daily_rollup] {message}")
         ok = True

@@ -87,15 +87,15 @@
     </p>
   </div>
 
-  {# ── LIVE (rolling 7 days, updates daily) ────────────────────────── #}
+  {# ── LIVE (rolling 7 days, updates daily) — SITE-WIDE from page_views ── #}
   <h2 style="margin-top:1.6rem;">{{ _('This week — live') }}
     <span style="font-size:0.72em;color:rgba(34,211,238,0.85);font-weight:400;letter-spacing:0.06em;">
-      &nbsp;{{ _('updating daily') }}
+      &nbsp;{{ _('updating daily · site-wide') }}
     </span>
   </h2>
   <p class="window">
     {% trans start=live_window_start, end=live_window_end -%}
-    Rolling 7-day window: <code>{{ start }}</code> → <code>{{ end }}</code> (today included; today's row will settle overnight).
+    Rolling 7-day window: <code>{{ start }}</code> → <code>{{ end }}</code> (today included; today's row will settle overnight). Every classified crawler hit on the site — including <code>/whales</code>, <code>/pools</code>, <code>/tokens</code>, and token detail pages. Self-probes and SEO-backlink crawlers are excluded; SEO activity is broken out in the "what they fetch to verify" sub-table below.
     {%- endtrans %}
   </p>
   {% if live_crawlers %}
@@ -142,15 +142,52 @@
   <div class="empty">{{ _('No classified crawler hits yet in the current rolling 7 days — see the completed week below.') }}</div>
   {% endif %}
 
-  {# ── FINAL (one-week delayed, settled) ──────────────────────────── #}
+  {# ── Agent-tier sub-view: what they fetch to verify ─────────────── #}
+  <h3 style="font-size:0.95rem;margin-top:1.3rem;color:var(--muted);font-weight:500;">
+    {{ _('What they fetch to verify — live') }}
+    <span style="font-size:0.85em;font-weight:400;">
+      &nbsp;<code>/llms.txt</code>, <code>/.well-known/agents.json</code>, <code>/openapi.json</code>, <code>/robots.txt</code>, <code>/sitemap.xml</code>, <code>/.well-known/snapshots/*</code>, <code>/.well-known/security.txt</code>, <code>/docs</code>
+    </span>
+  </h3>
+  {% if live_agent %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in live_agent_fams %}<th>{{ f }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ua_class, per_family in live_agent if ua_class|upper != 'UNLISTED' %}
+      <tr>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in live_agent_fams %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {% trans total=live_agent_total -%}
+    Total agent-tier hits in the live window: <strong>{{ total }}</strong>. This is the 9-file view — the machine surfaces crawlers fetch to verify identity and rate policy, not what they read on the site (that's above).
+    {%- endtrans %}
+  </p>
+  {% else %}
+  <div class="empty">{{ _('No agent-tier fetches yet in the current rolling 7 days.') }}</div>
+  {% endif %}
+
+  {# ── FINAL (one-week delayed, settled) — site-wide ──────────────── #}
   <h2 style="margin-top:2rem;">{{ _('Completed week — final') }}
     <span style="font-size:0.72em;color:rgba(160,180,210,0.7);font-weight:400;letter-spacing:0.06em;">
-      &nbsp;{{ _('settled, will not change') }}
+      &nbsp;{{ _('settled · site-wide') }}
     </span>
   </h2>
   <p class="window">
     {% trans start=final_window_start, end=final_window_end -%}
-    Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed for dedup + audit).
+    Week of <code>{{ start }}</code> through <code>{{ end }}</code> (one-week delayed for dedup + audit). Site-wide from page_views; self-probes and SEO excluded.
     {%- endtrans %}
   </p>
   {% if final_crawlers %}
@@ -195,6 +232,40 @@
   {% endif %}
   {% else %}
   <div class="empty">{{ _('The completed week had no classified crawler activity.') }}</div>
+  {% endif %}
+
+  {# ── Agent-tier sub-view for the completed week ─────────────────── #}
+  <h3 style="font-size:0.95rem;margin-top:1.3rem;color:var(--muted);font-weight:500;">
+    {{ _('What they fetch to verify — completed week') }}
+  </h3>
+  {% if final_agent %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ _('crawler') }}</th>
+        <th>{{ _('total') }}</th>
+        {% for f in final_agent_fams %}<th>{{ f }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for ua_class, per_family in final_agent if ua_class|upper != 'UNLISTED' %}
+      <tr>
+        <td><code>{{ ua_class }}</code></td>
+        <td>{{ "{:,}".format(per_family.values() | sum) }}</td>
+        {% for f in final_agent_fams %}
+          <td>{{ "{:,}".format(per_family.get(f, 0)) if per_family.get(f, 0) else '·' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {% trans total=final_agent_total -%}
+    Total agent-tier hits in the completed week: <strong>{{ total }}</strong>.
+    {%- endtrans %}
+  </p>
+  {% else %}
+  <div class="empty">{{ _('No agent-tier fetches in the completed week.') }}</div>
   {% endif %}
 
   <p class="note" style="margin-top: 2rem;">

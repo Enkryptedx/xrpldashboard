@@ -5522,18 +5522,21 @@ def observatory():
     live_end = today
     live_start = live_end - _dt.timedelta(days=7)
 
-    def _fetch_rollup(w_start, w_end):
-        """Return (by_crawler, families_sorted, total_hits) for the window."""
+    def _fetch_rollup(w_start, w_end, table="ai_crawler_sitewide_daily_rollup"):
+        """Return (by_crawler, families_sorted, total_hits) for the window.
+        Defaults to the site-wide rollup (page_views classifier, all paths,
+        self-probe + SEO excluded); pass table='ai_crawler_daily_rollup' for
+        the agent-tier sub-view ("what they fetch to verify")."""
         rows = []
         if db.pg_available():
             try:
                 with db.pg_connect() as conn:
                     with conn.cursor() as cur:
                         cur.execute(
-                            "SELECT as_of_date, ua_class, page_family, hits "
-                            "FROM ai_crawler_daily_rollup "
-                            "WHERE as_of_date >= %s AND as_of_date < %s "
-                            "ORDER BY as_of_date, ua_class, page_family",
+                            f"SELECT as_of_date, ua_class, page_family, hits "
+                            f"FROM {table} "
+                            f"WHERE as_of_date >= %s AND as_of_date < %s "
+                            f"ORDER BY as_of_date, ua_class, page_family",
                             (w_start.isoformat(), w_end.isoformat()),
                         )
                         rows = [(r[0].isoformat(), r[1], r[2], int(r[3]))
@@ -5586,8 +5589,15 @@ def observatory():
                 pages = []
         return pages
 
+    # Primary view: site-wide rollup (page_views classifier across ALL paths,
+    # self-probe + SEO excluded). Sub-view: agent-tier rollup (what they
+    # fetch to verify from the 9 well-known files).
     final_crawlers, final_families, final_total = _fetch_rollup(final_start, final_end)
     live_crawlers,  live_families,  live_total  = _fetch_rollup(live_start,  live_end)
+    final_agent, final_agent_fams, final_agent_total = _fetch_rollup(
+        final_start, final_end, table="ai_crawler_daily_rollup")
+    live_agent, live_agent_fams, live_agent_total = _fetch_rollup(
+        live_start, live_end, table="ai_crawler_daily_rollup")
     final_top_tokens = _fetch_top_tokens(final_start, final_end)
     live_top_tokens  = _fetch_top_tokens(live_start,  live_end)
 
@@ -5643,6 +5653,9 @@ def observatory():
         final_total=final_total,
         final_top_tokens=final_top_tokens,
         final_unlisted=final_unlisted,
+        final_agent=final_agent,
+        final_agent_fams=final_agent_fams,
+        final_agent_total=final_agent_total,
         live_window_start=live_start.isoformat(),
         live_window_end=live_end.isoformat(),
         live_crawlers=live_crawlers,
@@ -5650,6 +5663,9 @@ def observatory():
         live_total=live_total,
         live_top_tokens=live_top_tokens,
         live_unlisted=live_unlisted,
+        live_agent=live_agent,
+        live_agent_fams=live_agent_fams,
+        live_agent_total=live_agent_total,
         so_what=so_what,
     )
 
