@@ -897,19 +897,20 @@ CREATE INDEX IF NOT EXISTS oracles_snapshot_last_update_idx
 -- regardless of the sender's mail-client posture. visitor_hash reuses
 -- the same day-bucketed HMAC as page_views for optional cross-signal.
 CREATE TABLE IF NOT EXISTS institutional_inquiries (
-    id            BIGSERIAL PRIMARY KEY,
-    ts            BIGINT NOT NULL,
-    name          TEXT,
-    email         TEXT NOT NULL,
-    org           TEXT,
-    best_time     TEXT,
-    message       TEXT NOT NULL,
-    ref_param     TEXT,
-    referrer      TEXT,
-    visitor_hash  TEXT,
-    user_agent    TEXT,
-    country       TEXT,
-    email_alerted BOOLEAN NOT NULL DEFAULT FALSE
+    id                 BIGSERIAL PRIMARY KEY,
+    ts                 BIGINT NOT NULL,
+    name               TEXT,
+    email              TEXT NOT NULL,
+    org                TEXT,
+    best_time          TEXT,
+    message            TEXT NOT NULL,
+    ref_param          TEXT,
+    referrer           TEXT,
+    visitor_hash       TEXT,
+    user_agent         TEXT,
+    country            TEXT,
+    email_alerted      BOOLEAN NOT NULL DEFAULT FALSE,
+    turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS institutional_inquiries_ts_idx
     ON institutional_inquiries (ts DESC);
@@ -924,18 +925,19 @@ CREATE INDEX IF NOT EXISTS institutional_inquiries_ts_idx
 -- learn-feedback, verify-attestation, rwa-attestation, subprocessor-404,
 -- methodology-discrepancy, data-correction, institutional-general).
 CREATE TABLE IF NOT EXISTS contact_inquiries (
-    id            BIGSERIAL PRIMARY KEY,
-    ts            BIGINT NOT NULL,
-    purpose       TEXT NOT NULL,
-    name          TEXT,
-    email         TEXT NOT NULL,
-    message       TEXT NOT NULL,
-    ref_param     TEXT,
-    referrer      TEXT,
-    visitor_hash  TEXT,
-    user_agent    TEXT,
-    country       TEXT,
-    email_alerted BOOLEAN NOT NULL DEFAULT FALSE
+    id                 BIGSERIAL PRIMARY KEY,
+    ts                 BIGINT NOT NULL,
+    purpose            TEXT NOT NULL,
+    name               TEXT,
+    email              TEXT NOT NULL,
+    message            TEXT NOT NULL,
+    ref_param          TEXT,
+    referrer           TEXT,
+    visitor_hash       TEXT,
+    user_agent         TEXT,
+    country            TEXT,
+    email_alerted      BOOLEAN NOT NULL DEFAULT FALSE,
+    turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS contact_inquiries_ts_idx
     ON contact_inquiries (ts DESC);
@@ -1871,6 +1873,31 @@ def init_schema():
     with pg_connect() as conn:
         with conn.cursor() as cur:
             cur.execute(SCHEMA_DDL)
+        conn.commit()
+
+
+def ensure_turnstile_verified_column():
+    """Idempotent, targeted migration (Charlie ruling 2026-09-23 15:28 ET):
+    add `turnstile_verified BOOLEAN NOT NULL DEFAULT FALSE` to
+    contact_inquiries + institutional_inquiries when missing. Ships as
+    a boot-time migration because init_schema() is too heavy to run
+    every restart on Neon and the full SCHEMA_DDL has other blocks that
+    would rewrite. `ADD COLUMN IF NOT EXISTS` on a NOT NULL BOOLEAN
+    with a DEFAULT is metadata-only on PG 11+ — no table rewrite."""
+    if not pg_available():
+        return
+    stmts = (
+        "ALTER TABLE contact_inquiries "
+        "ADD COLUMN IF NOT EXISTS turnstile_verified "
+        "BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE institutional_inquiries "
+        "ADD COLUMN IF NOT EXISTS turnstile_verified "
+        "BOOLEAN NOT NULL DEFAULT FALSE",
+    )
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            for s in stmts:
+                cur.execute(s)
         conn.commit()
 
 
@@ -6967,11 +6994,15 @@ def insert_institutional_inquiry(
     name, email, org, best_time, message,
     ref_param=None, referrer=None,
     visitor_hash=None, user_agent=None, country=None,
+    turnstile_verified=False,
 ):
     """Insert one /institutional/contact submission. Returns the new row id,
     or None if Postgres isn't configured. Raises on real DB errors so the
     caller can surface a submission failure to the visitor (unlike click
-    logging, which is best-effort telemetry)."""
+    logging, which is best-effort telemetry).
+
+    turnstile_verified (2026-09-23): same auditable per-row column as
+    contact_inquiries."""
     if not pg_available():
         return None
     with pg_connect() as conn:
@@ -6979,11 +7010,13 @@ def insert_institutional_inquiry(
             cur.execute(
                 "INSERT INTO institutional_inquiries "
                 "(ts, name, email, org, best_time, message, ref_param, "
-                " referrer, visitor_hash, user_agent, country) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                " referrer, visitor_hash, user_agent, country, "
+                " turnstile_verified) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "RETURNING id",
                 (int(time.time()), name, email, org, best_time, message,
-                 ref_param, referrer, visitor_hash, user_agent, country),
+                 ref_param, referrer, visitor_hash, user_agent, country,
+                 bool(turnstile_verified)),
             )
             row = cur.fetchone()
         conn.commit()
@@ -7016,11 +7049,18 @@ def insert_contact_inquiry(
     purpose, name, email, message,
     ref_param=None, referrer=None,
     visitor_hash=None, user_agent=None, country=None,
+    turnstile_verified=False,
 ):
     """Insert one /contact submission. Returns the new row id, or None if
     Postgres isn't configured. Raises on real DB errors so the caller can
     surface a submission failure to the visitor (unlike click logging,
-    which is best-effort telemetry)."""
+    which is best-effort telemetry).
+
+    turnstile_verified (2026-09-23) records whether Cloudflare Turnstile
+    validated this submission server-side. In practice this call is only
+    reached when Turnstile passed, so the caller passes True — but the
+    column is auditable per-row so a future re-analysis can prove which
+    rows crossed the gate."""
     if not pg_available():
         return None
     with pg_connect() as conn:
@@ -7028,11 +7068,13 @@ def insert_contact_inquiry(
             cur.execute(
                 "INSERT INTO contact_inquiries "
                 "(ts, purpose, name, email, message, ref_param, "
-                " referrer, visitor_hash, user_agent, country) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                " referrer, visitor_hash, user_agent, country, "
+                " turnstile_verified) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "RETURNING id",
                 (int(time.time()), purpose, name, email, message,
-                 ref_param, referrer, visitor_hash, user_agent, country),
+                 ref_param, referrer, visitor_hash, user_agent, country,
+                 bool(turnstile_verified)),
             )
             row = cur.fetchone()
         conn.commit()

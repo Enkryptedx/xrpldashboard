@@ -214,6 +214,20 @@ app.secret_key = (
 )
 _VISITOR_HASH_KEY = app.secret_key.encode("utf-8")
 
+# Boot-time targeted migration (2026-09-23): add turnstile_verified BOOLEAN
+# to contact_inquiries + institutional_inquiries when missing. Idempotent
+# `ADD COLUMN IF NOT EXISTS` — metadata-only, no table rewrite. Fail-open
+# so a migration hiccup doesn't take the app down; the CONTACT_DIAG line
+# `SMTP_DIAG turnstile_migration ERR` gives a paper trail.
+try:
+    db.ensure_turnstile_verified_column()
+    app.logger.warning("SMTP_DIAG turnstile_migration ok")
+except Exception as _e:
+    app.logger.warning(
+        "SMTP_DIAG turnstile_migration ERR exc=%s: %s",
+        type(_e).__name__, str(_e)[:200],
+    )
+
 # Cloudflare → Render → Flask is a two-proxy chain: Cloudflare puts the
 # visitor IP at the head of X-Forwarded-For, Render's edge appends its own
 # hop. x_for=2 strips both trusted hops so request.remote_addr is the
@@ -7173,6 +7187,7 @@ def institutional_contact_submit():
             ref_param=ref_param, referrer=referrer,
             visitor_hash=_visitor_hash(ip, ua),
             user_agent=ua, country=country,
+            turnstile_verified=True,  # only reachable path
         )
     except Exception:
         return render_template(
@@ -7566,6 +7581,7 @@ def contact_submit():
             ref_param=ref_param, referrer=referrer,
             visitor_hash=_visitor_hash(ip, ua),
             user_agent=ua, country=country,
+            turnstile_verified=True,  # only reachable path
         )
     except Exception as _e:
         _log("insert_fail", "exc=" + type(_e).__name__)
