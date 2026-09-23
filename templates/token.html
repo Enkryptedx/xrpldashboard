@@ -421,8 +421,11 @@
           </g>
         {% endfor %}
       </svg>
-      <p style="margin: 0.6em 0 0; color: var(--muted); font-size: var(--fs-xs);">
-        {{ _('Empty days remain visible as zero-height bars — silence is a signal.') }}
+      <p class="activity-readout" role="status" aria-live="polite"
+         style="margin: 0.4em 0 0; color: var(--text); font-size: var(--fs-xs); min-height: 1.2em;">
+        <span class="activity-readout-placeholder" style="color: var(--muted);">
+          {{ _('Tap a bar to see the day. Empty days stay visible as zero-height bars — silence is a signal.') }}
+        </span>
       </p>
     {% else %}
       <div class="empty" style="margin-top:0.5em;">
@@ -466,6 +469,14 @@
       color: var(--cyan, #22d3ee);
     }
     .daily-chart { width: 100%; height: auto; display: block; margin-top: 0.4em; }
+    .daily-bar-group { cursor: pointer; }
+    .daily-bar-group.active .daily-bar { opacity: 1 !important; }
+    .daily-bar-group.active .daily-bar-value { fill: var(--cyan, #22d3ee); }
+    @media (max-width: 480px) {
+      .daily-chart { height: 180px; }
+      .daily-bar-value { font-size: 10px; }
+      .daily-activity-card .activity-toggle { font-size: 11px; }
+    }
   </style>
   <script>
   (function(){
@@ -505,6 +516,42 @@
         }
       });
     };
+
+    // Tap/click readout: works on desktop and mobile. SVG <title> stays
+    // for desktop hover; this fills a live-region <p> that reliably fires
+    // on touch. Charlie ruling 2026-09-23 13:52 ET.
+    function xdWireActivityReadout(){
+      document.querySelectorAll('.daily-activity-card').forEach(function(card){
+        var readout = card.querySelector('.activity-readout');
+        if(!readout) return;
+        var placeholderHTML = readout.innerHTML;
+        var groups = card.querySelectorAll('.daily-bar-group');
+        function show(g){
+          groups.forEach(function(x){ x.classList.toggle('active', x === g); });
+          var lbl = g.getAttribute('data-label') || '';
+          var t = parseFloat(g.getAttribute('data-trades')) || 0;
+          var v = parseFloat(g.getAttribute('data-volume')) || 0;
+          readout.innerHTML = '<strong>' + lbl + '</strong> — ' +
+            t.toLocaleString() + ' trades · ' +
+            v.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' XRP';
+        }
+        groups.forEach(function(g){
+          g.addEventListener('click', function(e){ e.preventDefault(); show(g); });
+          g.addEventListener('touchstart', function(e){ show(g); }, {passive: true});
+        });
+        card.addEventListener('click', function(e){
+          if(!e.target.closest('.daily-bar-group')){
+            groups.forEach(function(x){ x.classList.remove('active'); });
+            readout.innerHTML = placeholderHTML;
+          }
+        });
+      });
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', xdWireActivityReadout);
+    } else {
+      xdWireActivityReadout();
+    }
   })();
   </script>
 
