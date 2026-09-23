@@ -8,6 +8,10 @@
   {% set meta_description = "Reach the xrpldashboard institutional team — launch-partner inquiries, API access, compliance review." %}
   {% include "_head_meta.html" %}
 
+  {% if turnstile_enabled %}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {% endif %}
+
   <style>
     :root {
       --bg: #0a0e27;
@@ -148,8 +152,17 @@
         <textarea name="message" id="message" required minlength="10" maxlength="5000"
                   placeholder="{{ _('Use case, current XRPL tooling, rough budget range — whatever is useful. One or two sentences is fine.') }}">{{ form.message if form else '' }}</textarea>
 
+        {% if turnstile_enabled %}
+          <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"
+               data-theme="dark" style="margin-top: 16px;"></div>
+        {% else %}
+          <p style="margin-top: 16px; color: var(--err); font-size: 0.92rem;">
+            {{ _('The form is temporarily unavailable. Please email contact@xrpldashboard.com directly.') }}
+          </p>
+        {% endif %}
+
         <div class="submit-row">
-          <button type="submit" class="submit">{{ _('Send message') }}</button>
+          <button type="submit" class="submit"{% if not turnstile_enabled %} disabled{% endif %}>{{ _('Send message') }}</button>
           <span class="fallback">
             {{ _('Prefer email?') }} <a href="{{ 'mailto:contact@xrpldashboard.com' | entity_encode }}">{{ 'contact@xrpldashboard.com' | entity_encode }}</a>
           </span>

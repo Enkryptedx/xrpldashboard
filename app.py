@@ -76,6 +76,7 @@ import db
 import og_image
 import price_oracle
 import shared_tier_verifier  # Part C 2026-09-10: live registry tier resolver
+import turnstile_verify  # 2026-09-23: Cloudflare Turnstile for /contact + /institutional
 from agent_tier_rate_limit import (
     AUDIT_URL_HEADER_NAME,
     AUDIT_URL_PATH,
@@ -1913,6 +1914,18 @@ def _log_page_view(response):
         # Logging must never break a page render.
         pass
     return response
+
+
+@app.context_processor
+def inject_turnstile():
+    """Expose the public Turnstile site key + enabled flag to every
+    template so contact forms can render the widget without every route
+    handler having to pass them. Secret is NOT exposed (never was; that's
+    kept in turnstile_verify._SECRET and only used server-side)."""
+    return {
+        "turnstile_enabled": turnstile_verify.TURNSTILE_ENABLED,
+        "turnstile_site_key": turnstile_verify.TURNSTILE_SITE_KEY,
+    }
 
 
 @app.context_processor
@@ -7083,7 +7096,34 @@ def institutional_contact_submit():
     Rate limit is aggressive (6/hour/IP) because this endpoint writes to
     a table Charlie reads by hand — a spam flood would drown legitimate
     inquiries. Honeypot field 'website' (invisible in the UI) catches the
-    naive bot floor; the limiter catches the rest."""
+    naive bot floor; the limiter catches the rest.
+
+    Turnstile (2026-09-23) is layer 1 — verified server-side. Fail-closed
+    when env is missing."""
+    if not turnstile_verify.TURNSTILE_ENABLED:
+        return render_template(
+            "institutional_contact.html",
+            submitted=False,
+            ref_param=None,
+            errors=["The form is temporarily unavailable. "
+                    "Please email contact@xrpldashboard.com directly."],
+        ), 503
+
+    ts_token = (request.form.get("cf-turnstile-response") or "").strip()
+    ts_ok, ts_reason = turnstile_verify.verify_turnstile(
+        ts_token, remote_ip=_client_ip(),
+    )
+    if not ts_ok:
+        db.log_contact_bot_drop(
+            (request.user_agent.string or "")[:300] or None,
+            "turnstile_fail:" + ts_reason,
+        )
+        return render_template(
+            "institutional_contact.html",
+            submitted=True,  # soft-drop
+            ref_param=None,
+        )
+
     if (request.form.get("website") or "").strip():
         return render_template(
             "institutional_contact.html",
@@ -7363,6 +7403,8 @@ def contact_form():
         purposes=CONTACT_PURPOSES,
         ref_param=ref,
         submitted=False,
+        turnstile_enabled=turnstile_verify.TURNSTILE_ENABLED,
+        turnstile_site_key=turnstile_verify.TURNSTILE_SITE_KEY,
     )
 
 
@@ -7371,7 +7413,45 @@ def contact_form():
 def contact_submit():
     """Validate + persist + fire Brevo alert. Same aggressive rate limit
     as the institutional form because Charlie reads by hand. Honeypot
-    field 'website' (invisible in the UI) catches naive bots."""
+    field 'website' (invisible in the UI) catches naive bots.
+
+    Turnstile (2026-09-23) is layer 1 — verified server-side against
+    Cloudflare's siteverify. XRPL-relevance filter is layer 2. Fail-closed
+    when the env is missing."""
+    if not turnstile_verify.TURNSTILE_ENABLED:
+        return render_template(
+            "contact.html",
+            submitted=False,
+            purpose="general",
+            purpose_label=CONTACT_PURPOSES["general"],
+            purposes=CONTACT_PURPOSES,
+            ref_param=None,
+            errors=["The form is temporarily unavailable. "
+                    "Please email contact@xrpldashboard.com directly."],
+            turnstile_enabled=False,
+            turnstile_site_key="",
+        ), 503
+
+    ts_token = (request.form.get("cf-turnstile-response") or "").strip()
+    ts_ok, ts_reason = turnstile_verify.verify_turnstile(
+        ts_token, remote_ip=_client_ip(),
+    )
+    if not ts_ok:
+        db.log_contact_bot_drop(
+            (request.user_agent.string or "")[:300] or None,
+            "turnstile_fail:" + ts_reason,
+        )
+        return render_template(
+            "contact.html",
+            submitted=True,  # soft-drop: same fake-200 as other bot signatures
+            purpose="general",
+            purpose_label=CONTACT_PURPOSES["general"],
+            purposes=CONTACT_PURPOSES,
+            ref_param=None,
+            turnstile_enabled=turnstile_verify.TURNSTILE_ENABLED,
+            turnstile_site_key=turnstile_verify.TURNSTILE_SITE_KEY,
+        )
+
     if (request.form.get("website") or "").strip():
         return render_template(
             "contact.html",
@@ -7380,6 +7460,8 @@ def contact_submit():
             purpose_label=CONTACT_PURPOSES["general"],
             purposes=CONTACT_PURPOSES,
             ref_param=None,
+            turnstile_enabled=turnstile_verify.TURNSTILE_ENABLED,
+            turnstile_site_key=turnstile_verify.TURNSTILE_SITE_KEY,
         )
 
     purpose = (request.form.get("purpose") or "general").strip().lower()
