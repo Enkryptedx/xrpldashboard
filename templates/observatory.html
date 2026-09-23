@@ -179,9 +179,6 @@
     </tbody>
   </table>
   {% endif %}
-  {% else %}
-  <div class="empty">{{ _('No classified crawler hits yet in the current rolling 7 days — see the completed week below.') }}</div>
-  {% endif %}
 
   {# ── Agent-tier sub-view: what they fetch to verify ─────────────── #}
   <h3 style="font-size:0.95rem;margin-top:1.3rem;color:var(--muted);font-weight:500;">
@@ -306,9 +303,6 @@
       {% endfor %}
     </tbody>
   </table>
-  {% endif %}
-  {% else %}
-  <div class="empty">{{ _('The completed week had no classified crawler activity.') }}</div>
   {% endif %}
 
   {# ── Agent-tier sub-view for the completed week ─────────────────── #}
