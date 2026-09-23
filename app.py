@@ -7353,7 +7353,13 @@ def _send_contact_alert(inquiry):
     pw = os.environ.get("SMTP_PASS", "").strip()
     sender = os.environ.get("SMTP_FROM", "").strip()
     to = os.environ.get("SMTP_TO", "").strip()
-    if not (host and port and user and pw and sender and to):
+    missing = [k for k, v in (
+        ("SMTP_HOST", host), ("SMTP_PORT", port), ("SMTP_USER", user),
+        ("SMTP_PASS", pw), ("SMTP_FROM", sender), ("SMTP_TO", to),
+    ) if not v]
+    if missing:
+        app.logger.warning("SMTP_DIAG contact alert skipped — missing env: %s",
+                           ",".join(missing))
         return False
     try:
         import smtplib
@@ -7387,8 +7393,12 @@ def _send_contact_alert(inquiry):
             s.starttls()
             s.login(user, pw)
             s.send_message(msg)
+        app.logger.warning("SMTP_DIAG contact alert sent row_id=%s to=%s",
+                           inquiry.get("id"), to)
         return True
-    except Exception:
+    except Exception as e:
+        app.logger.warning("SMTP_DIAG contact alert FAILED exc=%s: %s",
+                           type(e).__name__, str(e)[:200])
         return False
 
 
@@ -7423,7 +7433,20 @@ def contact_submit():
     Turnstile (2026-09-23) is layer 1 — verified server-side against
     Cloudflare's siteverify. XRPL-relevance filter is layer 2. Fail-closed
     when the env is missing."""
+    _diag = {
+        "ip_last": (_client_ip() or "")[-6:],
+        "ua_head": (request.user_agent.string or "")[:24],
+        "ts_len": len((request.form.get("cf-turnstile-response") or "").strip()),
+        "email_ok": _looks_like_email(
+            (request.form.get("email") or "").strip()),
+        "msg_len": len((request.form.get("message") or "").strip()),
+        "hp": bool((request.form.get("website") or "").strip()),
+    }
+    def _log(stage, extra=""):
+        app.logger.warning("CONTACT_DIAG stage=%s %s %s", stage, _diag, extra)
+
     if not turnstile_verify.TURNSTILE_ENABLED:
+        _log("503_env_missing")
         return render_template(
             "contact.html",
             submitted=False,
@@ -7442,6 +7465,7 @@ def contact_submit():
         ts_token, remote_ip=_client_ip(),
     )
     if not ts_ok:
+        _log("drop_turnstile", "reason=" + ts_reason)
         db.log_contact_bot_drop(
             (request.user_agent.string or "")[:300] or None,
             "turnstile_fail:" + ts_reason,
@@ -7456,8 +7480,10 @@ def contact_submit():
             turnstile_enabled=turnstile_verify.TURNSTILE_ENABLED,
             turnstile_site_key=turnstile_verify.TURNSTILE_SITE_KEY,
         )
+    _log("layer1_pass")
 
     if (request.form.get("website") or "").strip():
+        _log("drop_honeypot")
         return render_template(
             "contact.html",
             submitted=True,
@@ -7509,6 +7535,7 @@ def contact_submit():
         ua or "", message, email=email, name=name or "",
     )
     if is_bot:
+        _log("drop_layer2", "sig=" + bot_sig)
         db.log_contact_bot_drop(ua, bot_sig)
         return render_template(
             "contact.html",
@@ -7518,6 +7545,7 @@ def contact_submit():
             purposes=CONTACT_PURPOSES,
             ref_param=ref_param,
         )
+    _log("layer2_pass")
 
     try:
         row_id = db.insert_contact_inquiry(
@@ -7526,7 +7554,8 @@ def contact_submit():
             visitor_hash=_visitor_hash(ip, ua),
             user_agent=ua, country=country,
         )
-    except Exception:
+    except Exception as _e:
+        _log("insert_fail", "exc=" + type(_e).__name__)
         return render_template(
             "contact.html",
             submitted=False,
@@ -7539,12 +7568,15 @@ def contact_submit():
             form={"name": name, "email": email, "message": message},
         ), 500
 
+    _log("inserted", "row_id=%s" % row_id)
+
     if row_id is not None:
         sent = _send_contact_alert({
             "id": row_id, "purpose": purpose, "name": name, "email": email,
             "message": message, "ref_param": ref_param,
             "referrer": referrer, "country": country,
         })
+        _log("alert", "sent=%s" % sent)
         if sent:
             db.mark_contact_inquiry_alerted(row_id)
 
