@@ -1049,29 +1049,66 @@
     var ws = null;
     var reconnectDelay = 1500;
     var closed = false;
+    // Charlie ruling 2026-09-23 18:21 ET: the own-node relay is
+    // subscribe-only whitelisted (ledger + transactions streams). The
+    // old `accounts: amms` subscription was silently rejected, the
+    // relay closed the socket, and reconnectDelay reset on `onopen`
+    // gave us a tight reconnect loop (~1s). Fix:
+    //   1) Subscribe to the transactions stream (same shape /tokens
+    //      and /whales use successfully) and filter to our AMM
+    //      accounts client-side. Same signal, subscription that
+    //      the relay allows.
+    //   2) Only reset `reconnectDelay` after we've received a
+    //      SUBSCRIBE RESPONSE ({type:'response',status:'success'})
+    //      or the first `type:'transaction'` frame — not on TCP
+    //      handshake success. onopen firing before the subscribe
+    //      reply arrives is exactly what let the loop escape backoff.
+    //   3) After N consecutive close events without a valid subscribe
+    //      response, fall back to xrplcluster.com for the rest of
+    //      the tab. Same pattern as tokens.html / live_stream.js.
+    var CONSECUTIVE_FAIL_TO_FALLBACK = 3;
+    var wsFailCount = 0;
+    var wsUsingFallback = false;
+
+    function currentWsPrimary() {
+      var p = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string' && window.LIVE_STREAM_WSS_PRIMARY.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY.trim() : '';
+      return p || 'wss://xrplcluster.com';
+    }
+    function currentWsFallback() {
+      var f = (typeof window.LIVE_STREAM_WSS_FALLBACK === 'string' && window.LIVE_STREAM_WSS_FALLBACK.trim())
+        ? window.LIVE_STREAM_WSS_FALLBACK.trim() : '';
+      return f || 'wss://xrplcluster.com';
+    }
 
     function connect() {
       if (closed) return;
-      // Honor the own-node relay when the template injected it; fall
-      // back to the public cluster otherwise. Same shape as /whales fix.
-      var _wsPrimary = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string' && window.LIVE_STREAM_WSS_PRIMARY.trim())
-        ? window.LIVE_STREAM_WSS_PRIMARY.trim()
-        : 'wss://xrplcluster.com';
-      var _wsLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string' && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
-        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim()
-        : 'xrplcluster.com';
-      try { ws = new WebSocket(_wsPrimary); }
+      var _wsPrimaryLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string'
+                             && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim() : 'xrplcluster.com';
+      var _wsFallbackLabel = (typeof window.LIVE_STREAM_WSS_FALLBACK_LABEL === 'string'
+                              && window.LIVE_STREAM_WSS_FALLBACK_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_FALLBACK_LABEL.trim() : 'xrplcluster.com';
+      var targetUrl = wsUsingFallback ? currentWsFallback() : currentWsPrimary();
+      var targetLabel = wsUsingFallback ? _wsFallbackLabel : _wsPrimaryLabel;
+      try { ws = new WebSocket(targetUrl); }
       catch (e) { setLsb('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
-      setLsb('connecting', 'connecting to ' + _wsLabel + '…');
+      setLsb('connecting', 'connecting to ' + targetLabel + '…');
+
+      // Per-socket flag: was this WS ever proven functional (received
+      // a subscribe response or a transaction)? Used to decide whether
+      // to reset reconnectDelay + reset the fail counter on close.
+      ws.__provenLive = false;
 
       ws.onopen = function () {
-        reconnectDelay = 1500;
-        setLsb('live', 'connected — listening for AMM events');
+        // Deliberately do NOT reset reconnectDelay here. Reset happens
+        // only after a subscribe response (proof the relay accepts us).
+        setLsb('connecting', 'subscribing at ' + targetLabel + '…');
         try {
           ws.send(JSON.stringify({
             id: 'pools-stream',
             command: 'subscribe',
-            accounts: amms
+            streams: ['transactions']
           }));
         } catch (e) {}
       };
@@ -1079,7 +1116,25 @@
       ws.onmessage = function (msg) {
         var data;
         try { data = JSON.parse(msg.data); } catch (e) { return; }
-        if (!data || data.type !== 'transaction') return;
+        if (!data) return;
+        // Subscribe response — proof the relay accepted our stream sub.
+        // Now we can reset backoff + failure counter safely.
+        if (data.type === 'response' && data.id === 'pools-stream'
+            && data.status === 'success') {
+          ws.__provenLive = true;
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+          setLsb('live', 'connected — listening for AMM events');
+          return;
+        }
+        if (data.type !== 'transaction') return;
+        // First transaction is also proof of a live subscription.
+        if (!ws.__provenLive) {
+          ws.__provenLive = true;
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+          setLsb('live', 'connected — listening for AMM events');
+        }
         if (data.validated !== true) return;
         var tx   = data.transaction || data.tx_json;
         var meta = data.meta || {};
@@ -1135,14 +1190,36 @@
       ws.onerror = function () {};
       ws.onclose = function () {
         if (closed) return;
-        setLsb('closed', 'reconnecting…');
+        // Bump the fail counter ONLY if this socket never proved live.
+        // Onclose after a successful subscribe means normal drop (e.g.
+        // relay restart) — reset counter, retry with a short delay.
+        var provenLive = ws && ws.__provenLive === true;
+        if (!provenLive) {
+          wsFailCount++;
+        } else {
+          wsFailCount = 0;
+          reconnectDelay = 1500;
+        }
+        // After N consecutive rejections, flip to the fallback URL for
+        // the rest of the tab so we stop hammering a relay that won't
+        // accept the subscription.
+        if (!wsUsingFallback && wsFailCount >= CONSECUTIVE_FAIL_TO_FALLBACK
+            && currentWsPrimary() !== currentWsFallback()) {
+          wsUsingFallback = true;
+          reconnectDelay = 1500;
+          setLsb('closed',
+            'own-node stream unreachable — falling back to ' +
+            (window.LIVE_STREAM_WSS_FALLBACK_LABEL || 'public cluster'));
+        } else {
+          setLsb('closed', 'reconnecting…');
+        }
         scheduleReconnect();
       };
     }
 
     function scheduleReconnect() {
       setTimeout(connect, reconnectDelay);
-      reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+      reconnectDelay = Math.min(reconnectDelay * 1.7, 30000);
     }
 
     window.addEventListener('beforeunload', function () {
