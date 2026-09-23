@@ -65,14 +65,15 @@ except Exception:
 WALKER_NAME = "token_icon_walker"
 WALKER_CADENCE_SECONDS = 3600  # hourly
 
-ICON_MAX_BYTES = 2 * 1024 * 1024  # 2 MB — Charlie ruling 2026-09-23 16:48
-                                  # ET: 256 KB rejected 29/48 real logos on the
-                                  # first run. The served PNG is downscaled to
-                                  # 128×128 by the rasterizer below (typically
-                                  # <5 KB out), so the source cap is only about
-                                  # what we're willing to pull over the wire.
-FETCH_TIMEOUT = 15  # seconds — bumped with the cap so a 2 MB fetch on a slow
-                    # gateway has room to finish inside one attempt.
+ICON_MAX_BYTES = 8 * 1024 * 1024  # 8 MB — Charlie ruling 2026-09-23 17:44
+                                  # ET: the cap was about what we serve, not
+                                  # what we fetch; downscale to 128×128 makes
+                                  # the served file tiny regardless of source.
+                                  # Bumped 2 MB → 8 MB to pull the last three
+                                  # over-cap logos that were still being
+                                  # rejected. Serve size stays a few KB.
+FETCH_TIMEOUT = 20  # seconds — bumped alongside the cap so an 8 MB fetch on
+                    # a slow gateway has room to finish inside one attempt.
 RASTER_SIZE = 128  # square PNG output — the served-file dimension. Source is
                    # always downscaled to this, so any fetched size is tiny out.
 
