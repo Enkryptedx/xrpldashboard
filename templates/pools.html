@@ -1052,9 +1052,17 @@
 
     function connect() {
       if (closed) return;
-      try { ws = new WebSocket('wss://xrplcluster.com'); }
+      // Honor the own-node relay when the template injected it; fall
+      // back to the public cluster otherwise. Same shape as /whales fix.
+      var _wsPrimary = (typeof window.LIVE_STREAM_WSS_PRIMARY === 'string' && window.LIVE_STREAM_WSS_PRIMARY.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY.trim()
+        : 'wss://xrplcluster.com';
+      var _wsLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string' && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())
+        ? window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim()
+        : 'xrplcluster.com';
+      try { ws = new WebSocket(_wsPrimary); }
       catch (e) { setLsb('closed', 'connect failed · retrying'); scheduleReconnect(); return; }
-      setLsb('connecting', 'connecting to xrplcluster.com…');
+      setLsb('connecting', 'connecting to ' + _wsLabel + '…');
 
       ws.onopen = function () {
         reconnectDelay = 1500;
