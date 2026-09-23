@@ -4679,12 +4679,52 @@ def rwa():
     total_pool_count = sum(len(f["pool_addresses"]) for f in attested_families)
     total_tvl = sum(f["total_tvl_usd"] for f in attested_families)
 
-    # On-ledger supply value from rwa_supply_nav_daily (Charlie ruling
-    # 2026-09-23 Wed 11:43 ET: /rwa headline shows the on-ledger supply
-    # value with a per-family status line beside it — Ondo enters with
-    # its citation, OpenEden + Midas stay $0 with their reasons).
+    # On-ledger supply value from rwa_supply_nav_daily (Charlie rulings
+    # 2026-09-23 11:43 + 13:23 ET: /rwa headline shows the on-ledger
+    # supply value with a per-family status line beside it, using
+    # display names and the real per-family reason string —
+    # "Ondo only so far; OpenEden pending its transparency report;
+    # Midas has no public NAV.").
+    #
+    # Display-name map: family_slug → the operator's brand as we spell
+    # it in copy elsewhere on the site.
+    _DISPLAY_NAME = {
+        "ondo_finance": "Ondo",
+        "openeden":     "OpenEden",
+        "midas":        "Midas",
+    }
+    # Per-family status phrase for the sub-line. Selected by
+    # (value_usd > 0) OR the walker's `reason` field. Keeps the
+    # copy human even as new families join / status codes evolve.
+    def _status_phrase(family_slug: str, value_usd: float, reason: str) -> str:
+        if value_usd > 0:
+            return "only so far"
+        r = (reason or "").strip()
+        # OpenEden: NAV is announced EOD in the OpenEden transparency
+        # report (per rwa_nav_sources.yaml notes); walker writes
+        # 'curator_nav_not_set_yet' until Charlie curator-fills it
+        # from the report.
+        if r == "curator_nav_not_set_yet" or family_slug == "openeden":
+            return "pending its transparency report"
+        # Midas: NAV is not published on midas.app; on-chain oracle
+        # is Chainlink on Ethereum + per-product-code filter is
+        # unshipped (per yaml notes). Real reason: no public NAV.
+        if r == "nav_not_public_per_registry" or family_slug == "midas":
+            return "has no public NAV"
+        # Fallback for future families: name the raw reason so we
+        # notice a new code before publishing marketing prose over it.
+        return f"pending ({r or 'no NAV'})"
+
+    # Sub-line ordering (Charlie ruling 2026-09-23 Wed 13:23 ET):
+    # value-carrying families first (Ondo), then the family closest to
+    # getting a value (OpenEden — awaits transparency-report NAV),
+    # then the deferred one (Midas — no public NAV feed). Kept as a
+    # curator-defined list, not SQL alphabetical, so a new family
+    # doesn't reshuffle the copy.
+    _FAMILY_DISPLAY_ORDER = ("ondo_finance", "openeden", "midas")
+
     onledger_supply_usd = 0.0
-    onledger_families = []  # [{family_slug, nav_symbol, value_usd, has_nav, reason}]
+    onledger_families = []  # [{family_slug, display_name, nav_symbol, value_usd, has_nav, reason, status_phrase}]
     if db.pg_available():
         try:
             with db.pg_connect() as conn, conn.cursor() as cur:
@@ -4692,17 +4732,25 @@ def rwa():
                     SELECT family_slug, nav_symbol, value_usd, nav_per_unit_usd, reason
                       FROM rwa_supply_nav_daily
                      WHERE fetch_date = CURRENT_DATE
-                     ORDER BY value_usd DESC NULLS LAST, family_slug
                 """)
-                for slug, sym, value, nav, reason in cur.fetchall():
+                unordered = list(cur.fetchall())
+                # Sort by curator-defined display order; unknown families
+                # fall to the end (99), then alpha.
+                def _rank(slug):
+                    return (_FAMILY_DISPLAY_ORDER.index(slug)
+                            if slug in _FAMILY_DISPLAY_ORDER else 99, slug)
+                unordered.sort(key=lambda r: _rank(r[0]))
+                for slug, sym, value, nav, reason in unordered:
                     v = float(value or 0.0)
                     onledger_supply_usd += v
                     onledger_families.append({
                         "family_slug": slug,
+                        "display_name": _DISPLAY_NAME.get(slug, slug.title()),
                         "nav_symbol": sym,
                         "value_usd": v,
                         "has_nav": nav is not None,
                         "reason": reason or "",
+                        "status_phrase": _status_phrase(slug, v, reason or ""),
                     })
         except Exception:
             onledger_families = []
