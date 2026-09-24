@@ -321,6 +321,20 @@ def line_5xx_summary(cur, yesterday) -> str:
         return f"6. 5xx: (walker query failed — {type(e).__name__})"
 
 
+def line_memory(cur, ts_s: int, ts_e: int) -> str:
+    """Line 7 (Charlie ruling 2026-09-24 15:37 ET, post-OOM-post-mortem):
+    peak/avg RSS from the self-hosted getrusage sampler running on the
+    Render web dyno. Renders 'no samples' if the sampler isn't running
+    (e.g. first day after deploy, or PG mirror down)."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import memory_sampler
+        return memory_sampler.daily_memory_line(cur, ts_s, ts_e)
+    except Exception as e:  # noqa: BLE001
+        return f"7. Memory: (import/query failed — {type(e).__name__})"
+
+
 def main() -> int:
     ts_s, ts_e, ymd = _yesterday_utc_window()
     import datetime as dt
@@ -334,6 +348,7 @@ def main() -> int:
                 line_signed_surfaces(cur, ts_s, ts_e),
                 line_chain_health(cur, ts_s, ts_e),
                 line_5xx_summary(cur, y),
+                line_memory(cur, ts_s, ts_e),
             ])
     print(f"# Standing-orders daily report — window {ymd} UTC (full day)")
     print(report)

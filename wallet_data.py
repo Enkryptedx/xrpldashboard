@@ -80,6 +80,15 @@ TX_PAGE_LIMIT = 200
 # cost is negligible.
 EXCHANGE_TX_RATE_THRESHOLD_PER_DAY = 500
 HIGH_RATE_MAX_TX_PAGES = 100
+# FIX-B (OOM post-mortem 2026-09-24 15:37 ET ruling): the 100-page
+# adaptive path materializes up to 20k tx in memory (~60 MB peak). On a
+# Render Starter dyno with baseline ~250-350 MB used, escalating a
+# concurrent request over this cap is what tips the worker into OOM.
+# `_rss_ok_for_wallet_escalation()` gates the escalation on current RSS:
+# only allow the 100-page path when we're below the ceiling. Fail-closed
+# (no escalation) on any check error — a paranoid /wallet is a safer
+# /wallet than one that crashes gunicorn.
+WALLET_MEMORY_CEILING_MB = int(os.environ.get("WALLET_MEMORY_CEILING_MB", "350"))
 LOOKBACK_DAYS = 30
 TOP_N_COUNTERPARTIES = 8
 
@@ -980,6 +989,32 @@ def _enrich_lp_holdings(holdings_lp, fallback_sink=None):
     return enriched, agg_sourcing
 
 
+def _current_rss_mb() -> float | None:
+    """Return the process's peak RSS in MB, or None if unavailable.
+
+    `resource.getrusage.ru_maxrss` is in KB on Linux and bytes on macOS.
+    Render runs Linux; we treat the value as KB. On macOS dev boxes it
+    misreports (returns bytes); the guard fail-closes rather than fail-
+    opens, so a wrong scale on dev disables the escalation locally —
+    surfaces as a slower /wallet dev experience, not a crash. Acceptable.
+    """
+    try:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+    except Exception:
+        return None
+
+
+def _rss_ok_for_wallet_escalation() -> bool:
+    """FIX-B guard: return True iff we're safely below the memory ceiling.
+    Fail-closed — an unknown RSS returns False so the /wallet route
+    stays at MAX_TX_PAGES rather than risking an OOM."""
+    rss_mb = _current_rss_mb()
+    if rss_mb is None:
+        return False
+    return rss_mb < WALLET_MEMORY_CEILING_MB
+
+
 def _fetch_account_tx(fetcher, address, max_pages=MAX_TX_PAGES):
     """Paginated fetch of recent txs. Returns list of tx envelopes.
 
@@ -1020,7 +1055,14 @@ def _fetch_account_tx(fetcher, address, max_pages=MAX_TX_PAGES):
         if page_idx == 0 and page_txs and allow_adaptive:
             rate_per_day = _estimated_tx_rate_per_day(page_txs)
             if rate_per_day is not None and rate_per_day >= EXCHANGE_TX_RATE_THRESHOLD_PER_DAY:
-                hard_cap = HIGH_RATE_MAX_TX_PAGES
+                # FIX-B (2026-09-24): only escalate to 100-page mode if
+                # the process has memory headroom. If RSS is already high,
+                # this request stays at MAX_TX_PAGES (5 pages = 1000 tx).
+                # The label truthfully reads "last 1,000 account_tx
+                # entries" for this render; a low-RAM render is better
+                # than a worker OOM that dies mid-response.
+                if _rss_ok_for_wallet_escalation():
+                    hard_cap = HIGH_RATE_MAX_TX_PAGES
         # 24h coverage stop: if the oldest tx we've fetched is already
         # > 24h old, we have full daily coverage — no need to page.
         oldest = _oldest_ripple_ts(txs)

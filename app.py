@@ -227,6 +227,21 @@ except Exception as _e:
         "SMTP_DIAG turnstile_migration ERR exc=%s: %s",
         type(_e).__name__, str(_e)[:200],
     )
+
+# OOM post-mortem follow-up (Charlie ruling 2026-09-24 15:37 ET):
+# self-hosted getrusage sampler, no Render API key. Runs a daemon thread
+# that samples RSS every 60s and inserts into memory_samples. The
+# standing-orders daily report reads a summary line from the same table.
+# Import inside the try/except so a sampler bug can never break app boot.
+try:
+    import memory_sampler
+    memory_sampler.start_background_sampler(process_role="web")
+    app.logger.info("memory_sampler: started")
+except Exception as _e:
+    app.logger.warning(
+        "memory_sampler: start failed exc=%s: %s",
+        type(_e).__name__, str(_e)[:200],
+    )
 try:
     db.ensure_rwa_family_attestation_current()
     app.logger.warning("SMTP_DIAG rwa_family_reconcile ok")

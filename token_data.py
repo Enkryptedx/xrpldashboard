@@ -63,9 +63,20 @@ _cache = {}  # (currency, issuer) -> (fetched_at_unix, data_dict)
 # live amm_info via xrpl_client._post_rpc against the sovereign tunnel;
 # cached per AMM account with a freshness stamp. Fail-open: reserves=None
 # → template renders "reserves unavailable" rather than shares alone.
-_amm_reserves_cache = {}  # {amm_account: (fetched_at_mono, data_or_None)}
+# OOM post-mortem 2026-09-24 07:42 UTC (03:42 ET): confirmed unbounded
+# leak — TTL below is a per-entry READ gate, not an eviction. Keys never
+# seen again stayed in the dict for the process lifetime. On XRPL there
+# are thousands of AMM accounts; each request-path visitor can push a
+# fresh key. FIX-A (2026-09-24 15:37 ET ruling): OrderedDict-backed LRU
+# with a hard cap. Hot entries stick (move_to_end on read hit); cold
+# entries evict when the cap is reached. TTL semantics preserved.
+from collections import OrderedDict
+_amm_reserves_cache: "OrderedDict[str, tuple[float, dict | None]]" = OrderedDict()
 _amm_reserves_lock = threading.Lock()
 AMM_RESERVES_TTL = int(os.environ.get("TOKEN_AMM_RESERVES_TTL", "300"))
+AMM_RESERVES_MAX_ENTRIES = int(
+    os.environ.get("TOKEN_AMM_RESERVES_MAX_ENTRIES", "2000")
+)
 
 _canonical_registry_cache = None
 _canonical_registry_lock = threading.Lock()
@@ -131,6 +142,9 @@ def _amm_reserves_cached(amm_account):
     with _amm_reserves_lock:
         entry = _amm_reserves_cache.get(amm_account)
         if entry and (now_mono - entry[0]) < AMM_RESERVES_TTL:
+            # LRU: mark this key as recently used so the eviction pass
+            # below leaves it alone even if the process runs long.
+            _amm_reserves_cache.move_to_end(amm_account)
             return entry[1]
 
     data = None
@@ -187,6 +201,11 @@ def _amm_reserves_cached(amm_account):
 
     with _amm_reserves_lock:
         _amm_reserves_cache[amm_account] = (now_mono, data)
+        _amm_reserves_cache.move_to_end(amm_account)
+        # Hard-cap the cache. Popping the OLDEST (least-recently used)
+        # entry keeps hot working set intact.
+        while len(_amm_reserves_cache) > AMM_RESERVES_MAX_ENTRIES:
+            _amm_reserves_cache.popitem(last=False)
     return data
 
 
