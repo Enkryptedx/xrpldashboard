@@ -865,7 +865,7 @@
     <section class="xrp-constellation" aria-label="{{ _('XRP supply distribution') }}">
       <div class="xrp-constell-head">
         <h2>{{ _('XRP supply distribution') }}</h2>
-        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share from our own node, cached rows refreshed every 15 min') }}</div>
+        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share from our own node · totals updated every ~60s, escrow every ~15 min') }}</div>
       </div>
       <div class="xrp-constell-svg-wrap">
         <svg class="xrp-constell-svg" viewBox="0 0 520 320" role="img"
@@ -927,15 +927,40 @@
           <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
         </svg>
       </div>
-      <div class="xrp-constell-freshness" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 2px; letter-spacing: 0.02em;">
+      <div class="xrp-constell-freshness" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 2px; letter-spacing: 0.02em; line-height: 1.5;">
         {% if xd.total_is_fallback %}
         <span style="color: #f59e0b;">{{ _('supply lookup unavailable · showing design constant') }}</span>
-        {% elif xd.total_age_seconds is not none and xd.total_age_seconds < 3600 %}
-        <span style="color: rgba(255,255,255,0.55);">{{ _('live from XRPL ledger') }} · {{ (xd.total_age_seconds // 60)|int }}m {{ _('ago') }}</span>
-        {% elif xd.total_age_seconds is not none %}
-        <span style="color: rgba(255,255,255,0.5);">{{ _('cached') }} · {{ (xd.total_age_seconds // 3600)|int }}h {{ _('ago') }}</span>
+        {% else %}
+          {# TOTAL side (fast walker, 60s cadence) — its own ledger stamp #}
+          {% if xd.total_ledger_index and xd.total_age_seconds is not none %}
+          <span style="color: rgba(255,255,255,0.6);">{{ _('total') }}:
+            {{ _('ledger') }} #{{ "{:,}".format(xd.total_ledger_index) }} ·
+            {% if xd.total_age_seconds < 120 %}{{ xd.total_age_seconds|int }}s
+            {% elif xd.total_age_seconds < 3600 %}{{ (xd.total_age_seconds // 60)|int }}m
+            {% else %}{{ (xd.total_age_seconds // 3600)|int }}h{% endif %}
+            {{ _('ago') }}</span><br>
+          {% elif xd.total_age_seconds is not none and xd.total_age_seconds < 3600 %}
+          <span style="color: rgba(255,255,255,0.55);">{{ _('live from XRPL ledger') }} · {{ (xd.total_age_seconds // 60)|int }}m {{ _('ago') }}</span><br>
+          {% elif xd.total_age_seconds is not none %}
+          <span style="color: rgba(255,255,255,0.5);">{{ _('cached') }} · {{ (xd.total_age_seconds // 3600)|int }}h {{ _('ago') }}</span><br>
+          {% endif %}
+          {# ESCROW side (slow walker, 15-min cadence) — its own ledger stamp #}
+          {% if xd.escrow_ledger_index and xd.escrow_age_seconds is not none %}
+          <span style="color: rgba(255,255,255,0.55);">{{ _('escrow') }}:
+            {{ _('ledger') }} #{{ "{:,}".format(xd.escrow_ledger_index) }} ·
+            {% if xd.escrow_age_seconds < 120 %}{{ xd.escrow_age_seconds|int }}s
+            {% elif xd.escrow_age_seconds < 3600 %}{{ (xd.escrow_age_seconds // 60)|int }}m
+            {% else %}{{ (xd.escrow_age_seconds // 3600)|int }}h{% endif %}
+            {{ _('ago') }}</span>
+          {% endif %}
         {% endif %}
       </div>
+      {% if xd.escrow_ripple_xrp is not none and xd.escrowed_xrp > 0 %}
+      <div class="xrp-constell-ripple-sub" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 4px; color: rgba(255,255,255,0.5); letter-spacing: 0.02em;">
+        {{ _('of which') }} <strong style="color: rgba(255,255,255,0.75);">{{ "%.2f"|format(xd.escrow_ripple_xrp/1000000000) }}B</strong>
+        {{ _("Ripple's scheduled monthly-release escrows") }} ({{ xd.escrow_ripple_object_count }} {{ _('objects') }})
+      </div>
+      {% endif %}
       {% if xd.burned_since_genesis_xrp %}
       <div class="xrp-constell-burn" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 4px; letter-spacing: 0.02em; color: rgba(255,255,255,0.45);">
         ≈{{ "%.2f"|format(xd.burned_since_genesis_xrp/1000000) }}M XRP {{ _('burned since genesis (transaction fees, derived from the total above)') }}
@@ -971,7 +996,7 @@
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
           <div class="stat-l">{{ _('XRP locked in escrows') }}</div>
-          <div class="stat-sub">{{ xrp_distribution.escrow_object_count }} {{ _('escrow objects across') }} {{ cold_storage.escrow_account_count if cold_storage else 20 }} {{ _('Ripple monthly-release accounts — full escrow universe coming') }}</div>
+          <div class="stat-sub">{{ "{:,}".format(xrp_distribution.escrow_object_count) }} {{ _('escrow objects') }}{% if xrp_distribution.escrow_account_count %} · {{ "{:,}".format(xrp_distribution.escrow_account_count) }} {{ _('holder accounts') }}{% endif %}</div>
         </div>
         {% if xrp_distribution.escrowed_xrp >= 1000000000 %}
         <div class="stat-v" data-countup="{{ xrp_distribution.escrowed_xrp / 1000000000 }}" data-countup-decimals="1" data-countup-suffix="B XRP">{{ "%.1f"|format(xrp_distribution.escrowed_xrp / 1000000000) }}B XRP</div>

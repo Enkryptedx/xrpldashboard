@@ -2344,23 +2344,50 @@ _XRP_AMM_STALE_AFTER = 7200     # 2 h (rank_amms cadence is 1h; stay 2× in lock
 def _build_xrp_distribution(ranked_full):
     """Build the XRP supply-distribution payload shared by the index
     render (constellation viz) and the /api/xrp-distribution endpoint.
-    Backed by the same in-process caches the rest of the homepage uses,
-    so calling it is essentially free on the hot path unless a walker
-    landed a new snapshot since the last hit. Every bucket carries an
-    age_seconds and is_stale flag; the endpoint uses them, the current
-    homepage viz does not (retained shape in case a future viz wants
-    the freshness signal without recomputing it)."""
+
+    Charlie ruling 2026-09-24 15:37 ET (Interpretation B) + 16:08 ET
+    (cadence c): the block reads from xrp_supply_block (populated by
+    supply_fast_walker at 60s cadence and supply_escrow_walker at 15-min
+    cadence). The HEADLINE `escrowed_xrp` = all escrow objects on the
+    ledger; a sibling `escrow_ripple_xrp` (sub-line) = Ripple's monthly-
+    release cohort. Each side carries its OWN ledger_index + age so the
+    template can render per-figure "ledger #N · updated Ns ago".
+
+    Legacy fallback: if `xrp_supply_block` is not populated yet (fresh
+    deploy, walker downtime), fall back to the prior escrow_supply +
+    total_supply path so the block still renders. Every bucket carries
+    an age_seconds and is_stale flag."""
     try:
-        # 2026-09-03: switched from fetch_escrow_locked_cached (live RPC to
-        # public XRPL, ~52/hr walker_node_fallback) to DB-backed read
-        # populated by escrow_supply_walker every 15 min via LAN rippled.
-        from escrow_supply import fetch_escrow_locked_from_db
-        esc = fetch_escrow_locked_from_db()
+        from supply_block import read_supply_block as _read_sb
+        sb = _read_sb()
     except Exception:
-        esc = None
-    escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
-    escrow_age = float(esc.get("cached_age_seconds")) if esc and esc.get(
-        "cached_age_seconds") is not None else None
+        sb = None
+
+    # ── HEADLINE + Ripple sub-line: prefer xrp_supply_block; fall back
+    # to legacy escrow_supply if the walker hasn't populated yet.
+    sb_escrow = (sb or {}).get("escrow_all")
+    sb_ripple = (sb or {}).get("escrow_ripple")
+    if sb_escrow is not None:
+        escrowed_xrp = float(sb_escrow["total_xrp"])
+        escrow_age = float(sb_escrow["age_seconds"])
+        escrow_ledger_index = int(sb_escrow["ledger_index"])
+        escrow_object_count = int(sb_escrow["object_count"])
+        escrow_account_count = int(sb_escrow["account_count"])
+    else:
+        try:
+            from escrow_supply import fetch_escrow_locked_from_db
+            esc = fetch_escrow_locked_from_db()
+        except Exception:
+            esc = None
+        escrowed_xrp = float(esc.get("total_xrp") or 0) if esc else 0.0
+        escrow_age = float(esc.get("cached_age_seconds")) if esc and esc.get(
+            "cached_age_seconds") is not None else None
+        escrow_ledger_index = None
+        escrow_object_count = (esc.get("object_count") if esc else 0) or 0
+        escrow_account_count = None
+    escrow_ripple_xrp = float(sb_ripple["total_xrp"]) if sb_ripple else None
+    escrow_ripple_object_count = (int(sb_ripple["object_count"])
+                                   if sb_ripple else None)
 
     amm_xrp = 0.0
     amm_snap_ts = None
@@ -2378,16 +2405,25 @@ def _build_xrp_distribution(ranked_full):
         pass
     amm_age = (time.time() - amm_snap_ts) if amm_snap_ts else None
 
-    try:
-        tot = fetch_total_supply_cached()
-    except Exception:
-        tot = None
-    total_xrp = float(tot.get("total_xrp") or 0) if tot else 0.0
-    if total_xrp <= 0:
-        total_xrp = XRP_DESIGN_SUPPLY_FALLBACK
-    total_age = float(tot.get("cached_age_seconds")) if tot and tot.get(
-        "cached_age_seconds") is not None else None
-    total_is_fallback = bool(tot.get("is_fallback")) if tot else True
+    # ── TOTAL: prefer xrp_supply_block; fall back to total_supply_cached.
+    sb_total = (sb or {}).get("total")
+    if sb_total is not None:
+        total_xrp = float(sb_total["xrp"])
+        total_age = float(sb_total["age_seconds"])
+        total_is_fallback = False
+        total_ledger_index = int(sb_total["ledger_index"])
+    else:
+        try:
+            tot = fetch_total_supply_cached()
+        except Exception:
+            tot = None
+        total_xrp = float(tot.get("total_xrp") or 0) if tot else 0.0
+        if total_xrp <= 0:
+            total_xrp = XRP_DESIGN_SUPPLY_FALLBACK
+        total_age = float(tot.get("cached_age_seconds")) if tot and tot.get(
+            "cached_age_seconds") is not None else None
+        total_is_fallback = bool(tot.get("is_fallback")) if tot else True
+        total_ledger_index = None
 
     locked = escrowed_xrp + amm_xrp
     wallets_xrp = max(0.0, total_xrp - locked)
@@ -2416,11 +2452,16 @@ def _build_xrp_distribution(ranked_full):
         "escrowed_pct": (escrowed_xrp / total_xrp) * 100,
         "amm_pct": (amm_xrp / total_xrp) * 100,
         "wallets_pct": (wallets_xrp / total_xrp) * 100,
-        "escrow_object_count": (esc.get("object_count") if esc else 0) or 0,
+        "escrow_object_count": escrow_object_count,
+        "escrow_account_count": escrow_account_count,
+        "escrow_ripple_xrp": escrow_ripple_xrp,
+        "escrow_ripple_object_count": escrow_ripple_object_count,
         "escrow_age_seconds": escrow_age,
+        "escrow_ledger_index": escrow_ledger_index,
         "amm_age_seconds": amm_age,
         "wallets_age_seconds": wallets_age,
         "total_age_seconds": total_age,
+        "total_ledger_index": total_ledger_index,
         "total_is_fallback": total_is_fallback,
         "burned_since_genesis_xrp": burned_since_genesis_xrp,
         "escrow_stale": escrow_stale,
