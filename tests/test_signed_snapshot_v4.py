@@ -213,6 +213,10 @@ def test_gate_4a_v4_leaf_contains_three_new_metrics(monkeypatch, tmp_path, stub_
     monkeypatch.setattr(signed_snapshot, "collect_metrics", _v3_pure_stub)
     monkeypatch.setattr(signed_snapshot, "CHAIN_PATH", str(tmp_path / "chain.json"))
     monkeypatch.setattr(signed_snapshot, "SNAPSHOTS_DIR", str(tmp_path))
+    # Post-Ship-A (2026-09-24): _assemble_amendments_block now always runs
+    # (no env gate). Stub it to None here so the v3-pure test scope holds.
+    monkeypatch.setattr(signed_snapshot, "_assemble_amendments_block",
+                        lambda now_utc=None: None)
 
     snap = signed_snapshot.build_snapshot("2026-08-29", now_utc=FROZEN_NOW)
     names = [m["name"] for m in snap["metrics"]]

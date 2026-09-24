@@ -84,6 +84,49 @@ APP_PY_PATH = os.path.join(HERE, "app.py")
 
 SCHEMA_VERSION = 5
 
+# Pre-sign gate — Charlie ruling 2026-09-23:
+# schema metrics are code, never env toggles. The full 14-key set is
+# hardcoded here. Any code path that produces a leaf missing one of these
+# keys, or with a zero/null scalar outside the allowlist, BLOCKS the sign.
+# Motivating incident: 2026-09-24 01:00 UTC leaf carried rwa_onledger_supply_usd=0
+# because a plist edit dropped SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED and
+# RWA_SUPPLY_NAV_IN_LEAF from the launchd env; my draft gate would have PASSED
+# it because it computed "expected" as code-set ∪ current-envs.
+EXPECTED_METRIC_KEYS_SCHEMA_5 = frozenset({
+    "xrpl_validated_ledger_index",
+    "amm_pools_count",
+    "amm_pools_total_tvl_usd",
+    "mpt_total_count",
+    "named_accounts_count",
+    "rlusd_xrpl_supply",
+    "rwa_total_aum_usd",
+    "rwa_amm_attributed_tvl_usd",
+    "rwa_onledger_supply_usd",
+    "amendments_block",
+    "walker_health_summary",
+    "claims_index_state",
+    "editorial_state",
+    "registry_state",
+})
+
+# Metrics allowed to be zero without blocking. rwa_total_aum_usd is a
+# deprecated legacy alias of rwa_amm_attributed_tvl_usd; when no pools are
+# RWA-attributed it is legitimately 0. Any addition here requires a
+# written reason above the entry.
+PRE_SIGN_ZERO_ALLOWLIST_SCHEMA_5 = frozenset({
+    "rwa_total_aum_usd",
+})
+
+# Metric names whose value is a nested dict / block (not a scalar number).
+# The zero-check is skipped for these; presence is verified separately.
+PRE_SIGN_NON_SCALAR_SCHEMA_5 = frozenset({
+    "amendments_block",
+    "walker_health_summary",
+    "claims_index_state",
+    "editorial_state",
+    "registry_state",
+})
+
 # v4 walker-health-summary thresholds (mirror /walker_health severity buckets;
 # if these drift from the app-side page the digest becomes worthless as
 # cross-check evidence, so any change here MUST update the /walker_health
@@ -928,24 +971,40 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
     metrics.append(collect_editorial_state())
     metrics.append(collect_registry_state())
 
-    # Charlie ruling 2026-09-22 Tue PM: rwa_onledger_supply_usd lands
-    # env-gated (RWA_SUPPLY_NAV_IN_LEAF) so tonight's 2026-09-22 leaf
-    # does NOT include it. The walker rwa_supply_nav_walker runs the
-    # daily fetch; after one dry cycle (2026-09-23), Charlie flips this
-    # env var and the metric enters the leaf. That's the "enters the
-    # leaf tomorrow after one dry cycle" contract from the midday
-    # message.
-    if os.environ.get("RWA_SUPPLY_NAV_IN_LEAF", "0") in ("1", "true", "yes"):
-        try:
-            metrics.append(_collect_rwa_supply_nav(now_utc))
-        except Exception as e:
-            errors.append(f"rwa_supply_nav: {type(e).__name__}")
+    # Charlie ruling 2026-09-23 evening (schema-metrics-are-code-never-env-toggles):
+    # rwa_onledger_supply_usd is always collected. If unavailable, the
+    # pre-sign gate catches the missing/zero metric and blocks the leaf.
+    # The env flag RWA_SUPPLY_NAV_IN_LEAF was removed 2026-09-24 as part of
+    # Ship A; motivating incident 2026-09-24 01:00 UTC where a dropped env
+    # var silently shrank the leaf.
+    try:
+        metrics.append(_collect_rwa_supply_nav(now_utc))
+    except Exception as e:
+        errors.append(f"rwa_supply_nav: {type(e).__name__}")
 
     return metrics, errors
 
 
+RWA_SUPPLY_NAV_MAX_STALE_DAYS = 3
+
+
 def _collect_rwa_supply_nav(now_utc: dt.datetime) -> dict:
-    """Read rwa_supply_nav_daily for today, return the aggregate metric.
+    """Read rwa_supply_nav_daily for the most recent fetch_date on or
+    before today, return the aggregate metric.
+
+    Ship B (Charlie ruling 2026-09-23 evening, shipped 2026-09-24):
+      - Query MAX(fetch_date) WHERE fetch_date <= now AND value_usd > 0.
+        Old query was `WHERE fetch_date = today` — if the walker had
+        written nothing yet for today (e.g. walker slipped a day), the
+        signer got 0 rows → 0.00 default. That was the 2026-09-24 01:00
+        UTC leaf's zero-value bug.
+      - Store the actual fetch_date used in metadata.as_of_date so the
+        envelope carries "which day's data this is" rather than lying by
+        omission.
+      - Block if the resolved as_of_date is more than 3 days stale (age
+        > RWA_SUPPLY_NAV_MAX_STALE_DAYS). Raises so the pre-sign gate
+        sees the metric missing entirely, which blocks the leaf.
+
     Per-family breakdown in metadata; total value_usd is the top-level
     number. Raises on PG unavailability so the errors list surfaces it —
     same STRICT-REFUSE semantics as other v4/v5 metrics."""
@@ -957,14 +1016,33 @@ def _collect_rwa_supply_nav(now_utc: dt.datetime) -> dict:
                 SELECT family_slug, xrpl_issuer, nav_symbol,
                        supply_units, nav_per_unit_usd, value_usd,
                        nav_source_url, nav_fetch_http_status, reason,
-                       nav_fetched_at_utc
+                       nav_fetched_at_utc, fetch_date
                   FROM rwa_supply_nav_daily
-                 WHERE fetch_date = %s
+                 WHERE fetch_date = (
+                     SELECT MAX(fetch_date)
+                       FROM rwa_supply_nav_daily
+                      WHERE fetch_date <= %s
+                        AND value_usd > 0
+                 )
                  ORDER BY family_slug
                 """,
                 (now_utc.date(),),
             )
             rows = cur.fetchall()
+    if not rows:
+        raise RuntimeError(
+            f"rwa_supply_nav: no rows in rwa_supply_nav_daily with "
+            f"fetch_date <= {now_utc.date().isoformat()} AND value_usd > 0. "
+            f"Walker never ran successfully, or all rows were retracted."
+        )
+    as_of_date = rows[0][10]
+    age_days = (now_utc.date() - as_of_date).days
+    if age_days > RWA_SUPPLY_NAV_MAX_STALE_DAYS:
+        raise RuntimeError(
+            f"rwa_supply_nav: as_of_date={as_of_date.isoformat()} is "
+            f"{age_days} days stale (> {RWA_SUPPLY_NAV_MAX_STALE_DAYS}-day "
+            f"cap). rwa_supply_nav_walker has been silent for too long."
+        )
     total = 0.0
     per_family = []
     for r in rows:
@@ -988,12 +1066,41 @@ def _collect_rwa_supply_nav(now_utc: dt.datetime) -> dict:
         "name": "rwa_onledger_supply_usd",
         "value": round(total, 2),
         "unit": "usd",
-        "source": "rwa_supply_nav_daily (own-node gateway_balances × cited NAV)",
+        "source": _derive_rwa_supply_nav_source(per_family),
         "metadata": {
+            "as_of_date": as_of_date.isoformat(),
+            "as_of_age_days": age_days,
             "families": per_family,
             "families_with_value": sum(1 for f in per_family if f["value_usd"] > 0),
         },
     }
+
+
+def _derive_rwa_supply_nav_source(per_family: list[dict]) -> str:
+    """Ship C (Charlie ruling 2026-09-23 evening, shipped 2026-09-24):
+    derive the top-level `source` string from the per-family
+    nav_source_url hostnames instead of a hardcoded string. Single source
+    of truth: change the URL in rwa_supply_nav_daily rows, the envelope
+    reflects it automatically.
+
+    Format: "<host1>, <host2>, ... (rwa_supply_nav_daily)" — sorted,
+    deduped hostnames. Falls back to the legacy static string if no URLs
+    are present (defensive)."""
+    from urllib.parse import urlparse
+    hosts = set()
+    for f in per_family:
+        u = f.get("nav_source_url")
+        if not u:
+            continue
+        try:
+            h = urlparse(u).hostname
+        except Exception:
+            h = None
+        if h:
+            hosts.add(h)
+    if not hosts:
+        return "rwa_supply_nav_daily (own-node gateway_balances × cited NAV)"
+    return f"{', '.join(sorted(hosts))} (rwa_supply_nav_daily)"
 
 
 # ---------------------------------------------------------------------------
@@ -1061,17 +1168,15 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
 
     Returns None if the assembly fails for any non-stale reason (e.g.
     the amendments modules import fail on a dev box) — in that case
-    the envelope simply omits the block, preserving current v4 shape.
+    the envelope omits the block and the pre-sign gate (Ship A,
+    2026-09-24) blocks the leaf because `amendments_block` is missing
+    from EXPECTED_METRIC_KEYS_SCHEMA_5.
 
-    Gated behind SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED so the code
-    can land tonight without changing production envelopes; tomorrow
-    morning after review, Charlie flips the env var to enable and the
-    next scheduled snapshot picks it up. First proving run is a
-    controlled dry-run against the block builder before the plist
-    fires — the LaunchAgent's own next run is the deployment gate.
+    Charlie ruling 2026-09-23 evening (schema-metrics-are-code-never-
+    env-toggles): the SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED env
+    flag was removed 2026-09-24 as part of Ship A. Assembly is always
+    attempted; failure blocks via the pre-sign gate.
     """
-    if os.environ.get("SIGNED_SNAPSHOT_AMENDMENTS_BLOCK_ENABLED") not in ("1", "true", "yes"):
-        return None
     try:
         import amendments_state
         import amendments_network_votes
@@ -1234,6 +1339,77 @@ def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
             "value": amendments_block,
         })
     return snap
+
+
+def _pre_sign_gate(snap: dict) -> list[str]:
+    """Structural pre-sign gate — Ship A (Charlie ruling 2026-09-23 evening).
+
+    Returns a list of block reasons. Empty list = pass. Non-empty = the
+    caller must NOT sign; walker_health.ok=False must be recorded and
+    BetterStack pages via staleness. A later sign for the same date
+    happens only on Charlie's explicit go (never by the timer, never by
+    JJ), and only after the underlying data condition is fixed.
+
+    Gate checks:
+      1. All EXPECTED_METRIC_KEYS_SCHEMA_5 are present (missing OR extra
+         keys → block, so schema drift can't sneak past).
+      2. Every scalar-valued metric is non-zero and non-null, except
+         those in PRE_SIGN_ZERO_ALLOWLIST_SCHEMA_5. Metrics in
+         PRE_SIGN_NON_SCALAR_SCHEMA_5 are exempt from the zero-check
+         (their value is a nested dict; presence is the check).
+
+    Rationale from Charlie's 2026-09-23 21:33 ET ruling:
+      - Absolute-zero is PRIMARY because tonight's rwa_onledger_supply_usd
+        had no yesterday, and the day-over-day check I originally drafted
+        would have passed the 2026-09-24 leaf.
+      - Yesterday-comparison stays as a secondary regression check for
+        non-zero metrics elsewhere; that's not this function's job.
+    """
+    reasons: list[str] = []
+    metrics = snap.get("metrics") or []
+
+    present = {m.get("name") for m in metrics if isinstance(m, dict) and m.get("name")}
+
+    missing = EXPECTED_METRIC_KEYS_SCHEMA_5 - present
+    if missing:
+        reasons.append(f"missing_metric_keys:{','.join(sorted(missing))}")
+    unexpected = present - EXPECTED_METRIC_KEYS_SCHEMA_5
+    if unexpected:
+        reasons.append(f"unexpected_metric_keys:{','.join(sorted(unexpected))}")
+
+    for m in metrics:
+        if not isinstance(m, dict):
+            continue
+        name = m.get("name")
+        if not name:
+            continue
+        if name in PRE_SIGN_NON_SCALAR_SCHEMA_5:
+            continue
+        if name in PRE_SIGN_ZERO_ALLOWLIST_SCHEMA_5:
+            continue
+        v = m.get("value")
+        if v is None:
+            reasons.append(f"null_scalar:{name}")
+            continue
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            reasons.append(f"non_numeric_scalar:{name}:{type(v).__name__}")
+            continue
+        if fv == 0.0:
+            reasons.append(f"zero_scalar:{name}")
+
+    return reasons
+
+
+class PreSignGateBlocked(SystemExit):
+    """Raised when _pre_sign_gate returns non-empty reasons. Extends
+    SystemExit so main()'s try/finally still runs walker_health_end with
+    ok=False, and the process exits with a distinct non-zero code (3)."""
+
+    def __init__(self, reasons: list[str]):
+        self.reasons = reasons
+        super().__init__(3)
 
 
 def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
@@ -1615,6 +1791,23 @@ def main():
     _msg = "init"
     try:
         snap = build_snapshot(date_str)
+
+        # Pre-sign gate — Ship A (Charlie ruling 2026-09-23 evening).
+        # Runs on scheduled AND --force runs. Corrective anchors that
+        # intentionally accept a 0/missing metric are Charlie's explicit
+        # decision and require a source-fix + re-run (never a gate skip).
+        gate_reasons = _pre_sign_gate(snap)
+        if gate_reasons:
+            _msg = "pre_sign_gate_blocked: " + " | ".join(gate_reasons)
+            print(f"[signed_snapshot] PRE-SIGN GATE BLOCKED for {date_str}:",
+                  file=sys.stderr, flush=True)
+            for r in gate_reasons:
+                print(f"  - {r}", file=sys.stderr, flush=True)
+            print(f"[signed_snapshot] no leaf written; walker_health ok=False; "
+                  f"BetterStack will page via staleness.",
+                  file=sys.stderr, flush=True)
+            raise PreSignGateBlocked(gate_reasons)
+
         signed = sign_snapshot(snap, dry_run=args.dry_run)
         print(summarize(signed))
 
