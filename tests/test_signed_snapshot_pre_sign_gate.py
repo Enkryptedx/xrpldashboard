@@ -165,6 +165,43 @@ def test_closed_3_env_flags_not_read_anywhere():
         )
 
 
+def test_ship_c_source_excludes_zero_value_families():
+    """Ship C fix (Charlie ruling 2026-09-24 10:07 ET): the top-level
+    `source` string only names hostnames of families whose value_usd > 0.
+    Zero-contribution families (Midas, OpenEden at $0) stay in
+    metadata.families with their `reason`, but must not appear in the
+    top-line source — that string names WHERE the number came from.
+    Also asserts the suffix is the honest description of the derivation
+    ("curator NAV × own-node gateway_balances"), not the internal
+    table name."""
+    from signed_snapshot import _derive_rwa_supply_nav_source
+    per_family = [
+        {"family_slug": "midas", "value_usd": 0.0,
+         "nav_source_url": "https://midas.app"},
+        {"family_slug": "ondo_finance", "value_usd": 191295581.77,
+         "nav_source_url": "https://app.ondo.finance/assets/ousg"},
+        {"family_slug": "openeden", "value_usd": 0.0,
+         "nav_source_url": "https://openeden.com/tbill"},
+    ]
+    src = _derive_rwa_supply_nav_source(per_family)
+    assert src == "app.ondo.finance (curator NAV × own-node gateway_balances)", src
+    assert "midas.app" not in src
+    assert "openeden.com" not in src
+    assert "rwa_supply_nav_daily" not in src
+
+
+def test_ship_c_source_falls_back_when_no_contributors():
+    """If every family contributed 0 (walker degenerate case), the
+    source string still names the derivation honestly."""
+    from signed_snapshot import _derive_rwa_supply_nav_source
+    per_family = [
+        {"family_slug": "midas", "value_usd": 0.0,
+         "nav_source_url": "https://midas.app"},
+    ]
+    src = _derive_rwa_supply_nav_source(per_family)
+    assert src == "rwa_supply_nav_daily (curator NAV × own-node gateway_balances)"
+
+
 def test_pre_sign_gate_blocked_exit_code_is_3():
     """PreSignGateBlocked subclasses SystemExit(3) so main()'s finally
     runs walker_health_end(ok=False) and the process exits with a
@@ -186,5 +223,7 @@ if __name__ == "__main__":
     test_allowlisted_zero_passes()
     test_non_scalar_dict_metric_skips_zero_check()
     test_closed_3_env_flags_not_read_anywhere()
+    test_ship_c_source_excludes_zero_value_families()
+    test_ship_c_source_falls_back_when_no_contributors()
     test_pre_sign_gate_blocked_exit_code_is_3()
     print("ALL PASS")

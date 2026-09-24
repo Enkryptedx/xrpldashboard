@@ -1077,18 +1077,23 @@ def _collect_rwa_supply_nav(now_utc: dt.datetime) -> dict:
 
 
 def _derive_rwa_supply_nav_source(per_family: list[dict]) -> str:
-    """Ship C (Charlie ruling 2026-09-23 evening, shipped 2026-09-24):
+    """Ship C (Charlie ruling 2026-09-23 evening + 2026-09-24 10:07 ET fix):
     derive the top-level `source` string from the per-family
-    nav_source_url hostnames instead of a hardcoded string. Single source
-    of truth: change the URL in rwa_supply_nav_daily rows, the envelope
-    reflects it automatically.
+    nav_source_url hostnames of families that ACTUALLY CONTRIBUTED to
+    the total — i.e. value_usd > 0. Non-contributing families remain in
+    metadata.families with their `reason` field so the disclosure is
+    honest, but they don't inflate the top-line source.
 
-    Format: "<host1>, <host2>, ... (rwa_supply_nav_daily)" — sorted,
-    deduped hostnames. Falls back to the legacy static string if no URLs
-    are present (defensive)."""
+    Format: "<host1>, <host2>, ... (curator NAV × own-node gateway_balances)"
+    — sorted, deduped hostnames. Falls back to the descriptive suffix
+    alone if no contributing families have URLs.
+    """
     from urllib.parse import urlparse
+    suffix = "(curator NAV × own-node gateway_balances)"
     hosts = set()
     for f in per_family:
+        if not (f.get("value_usd") and float(f["value_usd"]) > 0):
+            continue
         u = f.get("nav_source_url")
         if not u:
             continue
@@ -1099,8 +1104,8 @@ def _derive_rwa_supply_nav_source(per_family: list[dict]) -> str:
         if h:
             hosts.add(h)
     if not hosts:
-        return "rwa_supply_nav_daily (own-node gateway_balances × cited NAV)"
-    return f"{', '.join(sorted(hosts))} (rwa_supply_nav_daily)"
+        return f"rwa_supply_nav_daily {suffix}"
+    return f"{', '.join(sorted(hosts))} {suffix}"
 
 
 # ---------------------------------------------------------------------------
