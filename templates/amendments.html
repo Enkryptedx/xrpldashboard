@@ -338,6 +338,63 @@
     <p class="dim">{{ _('Nothing in the 14-day activation window right now. The Amendments ledger object shows no current Majority entries.') }}</p>
   {% endif %}
 
+  {# ── Majority history timeline (Charlie 2026-09-25) ──────────────────
+     Records gained / lost / regained transitions per amendment, sourced
+     from the Amendments ledger object read at flag ledgers by
+     amendment_majority_walker (table: amendment_majority_history). Its
+     job: when press cites an activation date that later changed because a
+     majority reset, a reader clicking through sees WHY the live date
+     differs.
+
+     Facts here are ledger-sourced (majority CloseTime, activation ETA,
+     first-seen / removed timestamps, vote count at first observation).
+     Timestamps are emitted as UTC ISO in data-*-iso attributes; the
+     existing client localizer renders ET first with UTC alongside
+     (same pattern as the countdown timers above). ALL human-facing copy
+     below is placeholder — Charlie writes the final wording. #}
+  {% if majority_history and majority_history|length > 0 %}
+    <h2>{{ _('Majority history') }}</h2>
+    {# PLACEHOLDER COPY — Charlie to write. Suggested intent: explain that
+       a 14-day countdown restarts if support drops below threshold, so a
+       date cited elsewhere may differ from the live projection. #}
+    <p class="dim" style="font-size: 0.92rem;">
+      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support falls below the threshold, the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
+    </p>
+    {% for mh in majority_history %}
+      <div class="maj-history-row{{ ' regained' if not mh.active and false else '' }}"
+           data-amendment-hash="{{ mh.hash }}"
+           data-majority-close-iso="{{ mh.majority_close_iso }}"
+           data-activation-iso="{{ mh.activation_eta_iso }}"
+           data-first-seen-iso="{{ mh.first_seen_iso }}"
+           {% if mh.removed_iso %}data-removed-iso="{{ mh.removed_iso }}"{% endif %}
+           style="border-left: 3px solid {{ 'var(--cyan)' if mh.active else 'var(--muted)' }}; padding: 6px 0 6px 10px; margin: 8px 0;">
+        <div class="name" style="font-weight: 600;">
+          {{ mh.name or _('Unrecognized amendment') }}
+          {% if mh.active %}
+            <span class="tag">{{ _('active majority') }}</span>
+          {% else %}
+            <span class="tag" style="opacity: 0.7;">{{ _('majority lost — superseded') }}</span>
+          {% endif %}
+        </div>
+        {# ET-first is applied client-side from the data-*-iso attrs; the
+           inline text is the UTC fallback for no-JS / crawlers. #}
+        <div class="maj-history-timeline" style="font-size: 0.85rem; color: var(--muted); margin-top: 3px;">
+          <span class="maj-gained" data-iso="{{ mh.majority_close_iso }}">
+            {{ _('majority reached') }} {{ mh.majority_close_iso }}
+          </span>
+          {% if mh.vote_count_at_first and mh.unl_threshold %}
+            <span class="maj-votes mono">({{ mh.vote_count_at_first }}/{{ mh.unl_threshold }})</span>
+          {% endif %}
+          {% if mh.removed_iso %}
+            · <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ _('removed') }} {{ mh.removed_iso }}</span>
+          {% else %}
+            · <span class="maj-activation" data-iso="{{ mh.activation_eta_iso }}">{{ _('projected activation') }} {{ mh.activation_eta_iso }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
   {# In-development amendments. XLS specs published by XRPLF that
      haven't shipped in a rippled release yet — they're not in the
      `feature` RPC, so the in-flight loop below won't surface them.

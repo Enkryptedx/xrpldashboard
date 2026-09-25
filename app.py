@@ -6068,9 +6068,18 @@ def amendments():
     facts (hash, majority close time, projected activation if majority
     holds, link to off-ledger metadata if any)."""
     state = fetch_amendments_state_cached()
+    # Majority-history timeline (Charlie 2026-09-25): gained/lost/regained
+    # transitions recorded by amendment_majority_walker at flag-ledger
+    # granularity, so click-throughs from press citing a since-reset
+    # activation date see WHY the live date differs. Facts only; copy in
+    # the template is Charlie's. Read is best-effort — a DB hiccup must
+    # never 500 the page (the render-killer lesson from the /rwa 55h
+    # outage). Falls back to [] and the timeline block hides.
+    majority_history = _load_amendment_majority_history()
     resp = make_response(render_template(
         "amendments.html",
         state=state,
+        majority_history=majority_history,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
@@ -6078,6 +6087,56 @@ def amendments():
     # origin at 60s just returned the same cached state 5× per real refresh.
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp
+
+
+def _load_amendment_majority_history():
+    """Return per-amendment majority epochs (gained/lost/regained) from
+    amendment_majority_history, newest-first, grouped by amendment.
+    Source: our own node at flag ledgers (amendment_majority_walker).
+
+    Shape (one dict per majority epoch):
+      {name, hash, majority_close_iso, activation_eta_iso,
+       first_seen_iso, removed_iso (None if still active), active (bool),
+       vote_count_at_first, unl_threshold}
+
+    ET-first display is the template's job; we hand it UTC ISO strings and
+    let the client/template localize (matches the existing data-*-iso
+    pattern used by the countdown timers).
+
+    Best-effort: any error returns [] so /amendments never 500s on a DB
+    hiccup (render-killer guard).
+    """
+    try:
+        if not db.pg_available():
+            return []
+        rows = []
+        with db.pg_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT amendment_name, amendment_hash,
+                       majority_close_iso, activation_eta_iso,
+                       first_seen_iso, removed_iso,
+                       vote_count_at_first, unl_threshold
+                  FROM amendment_majority_history
+                 ORDER BY amendment_name NULLS LAST,
+                          majority_close_time DESC
+                """
+            )
+            for r in cur.fetchall():
+                rows.append({
+                    "name": r[0],
+                    "hash": r[1],
+                    "majority_close_iso": r[2],
+                    "activation_eta_iso": r[3],
+                    "first_seen_iso": r[4],
+                    "removed_iso": r[5],
+                    "active": r[5] is None,
+                    "vote_count_at_first": r[6],
+                    "unl_threshold": r[7],
+                })
+        return rows
+    except Exception:  # noqa: BLE001 — never let history reads 500 the page
+        return []
 
 
 def _load_latest_bridge_signers():
