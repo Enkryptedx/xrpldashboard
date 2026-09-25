@@ -10,6 +10,10 @@ inconsistent public numbers.
 This module is the ONE DEFINITION:
 - SELF_PROBE_UA_FRAGMENTS — canaries, walkers, JJ's shell — excluded
   from every public number.
+- SELF_PROBE_PATHS / SELF_PROBE_PATH_PREFIXES — /health and every
+  monitor/canary path (Charlie ruling 2026-09-25) — excluded from every
+  public number regardless of UA, stamped is_bot=TRUE at ingest via
+  is_self_probe(), and folded into db.BOT_PATH_PATTERNS for the writer.
 - KNOWN_BOT_UA_FRAGMENTS — bots that self-declare (googlebot,
   bingbot, chatgpt-user, claudebot, …) or that the is_bot_writer may
   not have caught — excluded from every public number.
@@ -98,6 +102,73 @@ KNOWN_BOT_UA_FRAGMENTS = (
 _KNOWN_JUNK_COUNTRIES = frozenset({"T1"})
 
 
+# ── Self-probe PATHS (Charlie ruling 2026-09-25 18:39 ET) ────────────
+# /health and every monitor/canary path are part of the ONE self-probe
+# definition, alongside the UA fragments above. Rationale: uptime monitors
+# and health checkers that present a browser UA (yesterday: 12 hits from
+# 11 distinct visitor hashes, identical Mac-Chrome UA, no referrer, all on
+# /health) slip past the UA list and inflate the human count. A hit on a
+# monitor path is infrastructure traffic regardless of UA.
+#   SELF_PROBE_PATHS          — exact matches (request.path, no query string)
+#   SELF_PROBE_PATH_PREFIXES  — prefix matches
+# /healthz is already skipped at ingest (app._PAGEVIEW_SKIP_PREFIXES); it is
+# listed here so the SQL side agrees with the ingest side if that ever
+# changes. Consumers: sql_not_bot_ua_clause + sql_not_self_probe_ua_clause
+# (weekly_analytics + every db.py public-analytics reader), is_self_probe()
+# (ingest-time stamp in app.py), and db.BOT_PATH_PATTERNS (is_bot_writer).
+SELF_PROBE_PATHS = (
+    "/health",
+    "/healthz",
+)
+SELF_PROBE_PATH_PREFIXES = (
+    "/health/",
+    "/healthz/",
+    "/api/health",
+    "/_status",
+    "/ping",
+)
+
+
+def is_self_probe_path(path) -> bool:
+    """True when `path` (request.path, no query string) is a monitor/canary
+    path per SELF_PROBE_PATHS / SELF_PROBE_PATH_PREFIXES."""
+    p = (path or "").split("?", 1)[0]
+    if p in SELF_PROBE_PATHS:
+        return True
+    return any(p.startswith(pre) for pre in SELF_PROBE_PATH_PREFIXES)
+
+
+def is_self_probe_ua(user_agent) -> bool:
+    """True when the UA carries any SELF_PROBE_UA_FRAGMENTS entry
+    (case-insensitive substring, mirroring the SQL ILIKE)."""
+    ua = (user_agent or "").lower()
+    return any(f.lower() in ua for f in SELF_PROBE_UA_FRAGMENTS)
+
+
+def is_self_probe(user_agent, path) -> bool:
+    """THE python-side self-probe predicate: UA fragment OR monitor path.
+    Used at ingest (app.py) to stamp is_bot=TRUE on our own traffic the
+    moment it lands, so the row never counts as human even before the
+    is_bot_writer pass."""
+    return is_self_probe_ua(user_agent) or is_self_probe_path(path)
+
+
+def sql_not_self_probe_path_clause(alias: str = "p") -> str:
+    """AND-joined SQL fragment excluding rows on monitor/canary paths.
+    No wildcards in the exact list, so no psycopg escaping needed for
+    those; prefixes use LIKE with a trailing % — callers that splice into
+    cursor.execute(sql, params) pass psycopg_escape via the wrappers."""
+    exact = ", ".join(f"'{p}'" for p in SELF_PROBE_PATHS)
+    parts = [f"{alias}.path NOT IN ({exact})"]
+    parts += [f"{alias}.path NOT LIKE '{pre}%'" for pre in SELF_PROBE_PATH_PREFIXES]
+    return " AND ".join(parts)
+
+
+def _path_clause(alias: str, psycopg_escape: bool) -> str:
+    c = sql_not_self_probe_path_clause(alias)
+    return c.replace("%", "%%") if psycopg_escape else c
+
+
 def sql_not_bot_ua_clause(alias: str = "p", psycopg_escape: bool = False) -> str:
     """Return an AND-joined SQL clause that excludes rows whose
     `user_agent` matches any SELF_PROBE_UA_FRAGMENTS or
@@ -115,10 +186,12 @@ def sql_not_bot_ua_clause(alias: str = "p", psycopg_escape: bool = False) -> str
     raw-SQL callers (e.g. subprocess psql, or SQL rendered offline)."""
     fragments = SELF_PROBE_UA_FRAGMENTS + KNOWN_BOT_UA_FRAGMENTS
     wc = "%%" if psycopg_escape else "%"
-    return " AND ".join(
+    ua = " AND ".join(
         f"COALESCE({alias}.user_agent, '') NOT ILIKE '{wc}{f}{wc}'"
         for f in fragments
     )
+    # 2026-09-25: monitor/canary PATHS are part of the same definition.
+    return ua + " AND " + _path_clause(alias, psycopg_escape)
 
 
 def sql_not_self_probe_ua_clause(alias: str = "p", psycopg_escape: bool = False) -> str:
@@ -133,10 +206,12 @@ def sql_not_self_probe_ua_clause(alias: str = "p", psycopg_escape: bool = False)
 
     Same `psycopg_escape` semantics as sql_not_bot_ua_clause."""
     wc = "%%" if psycopg_escape else "%"
-    return " AND ".join(
+    ua = " AND ".join(
         f"COALESCE({alias}.user_agent, '') NOT ILIKE '{wc}{f}{wc}'"
         for f in SELF_PROBE_UA_FRAGMENTS
     )
+    # 2026-09-25: monitor/canary PATHS are part of the same definition.
+    return ua + " AND " + _path_clause(alias, psycopg_escape)
 
 
 def sql_valid_country_clause(alias: str = "p") -> str:

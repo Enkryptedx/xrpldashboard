@@ -39,6 +39,15 @@ import threading
 import time
 from contextlib import contextmanager
 
+# 2026-09-25 (Charlie ruling): the ONE self-probe definition. Readers
+# exclude by it, the ingest stamps by it, and BOT_UA_PATTERNS /
+# BOT_PATH_PATTERNS below fold it in so the is_bot_writer agrees.
+from public_analytics_filters import (  # noqa: E402
+    SELF_PROBE_UA_FRAGMENTS as _SELF_PROBE_UA_FRAGMENTS,
+    SELF_PROBE_PATHS as _SELF_PROBE_PATHS,
+    SELF_PROBE_PATH_PREFIXES as _SELF_PROBE_PATH_PREFIXES,
+)
+
 try:
     import psycopg  # psycopg 3 (psycopg[binary])
 except ImportError:
@@ -5501,6 +5510,12 @@ def count_table(table):
 # file leak probes, PHP fingerprinting. We're not WordPress and not PHP, so
 # any hit on these is bot noise, not a real user. SQL LIKE patterns.
 BOT_PATH_PATTERNS = (
+    # 2026-09-25 (Charlie ruling): /health and every monitor/canary path
+    # are self-probe traffic regardless of UA. Same source of truth as the
+    # readers (public_analytics_filters.SELF_PROBE_PATHS / _PREFIXES);
+    # rendered here as SQL LIKE patterns for the is_bot_writer predicate.
+    *_SELF_PROBE_PATHS,
+    *(f"{_p}%" for _p in _SELF_PROBE_PATH_PREFIXES),
     "%/.env%",
     "%wp-login%",
     "%wp-admin%",
@@ -5770,7 +5785,11 @@ BOT_UA_PATTERNS = (
     # Additions-only. First shipped 2026-09-06 with no version bump so
     # only new rows were caught; the v6 bump (below) now backfills.
     "%User-Agent:%Mozilla%",
-)
+    # 2026-09-25 (Charlie ruling): every SELF_PROBE_UA_FRAGMENTS entry from
+    # public_analytics_filters — the ONE self-probe definition — so the
+    # is_bot_writer stamps our own canaries/monitors TRUE with the same
+    # list the readers exclude by. Appended below, not duplicated here.
+) + tuple(f"%{_f}%" for _f in _SELF_PROBE_UA_FRAGMENTS)
 
 # Increment whenever BOT_PATH_PATTERNS, BOT_UA_PATTERNS, scanner thresholds,
 # or any other _bot_filter_sql input changes. The is_bot writer detects a
@@ -6832,13 +6851,20 @@ def _bot_filter_sql_lite(kind):
 
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None, utm_source=None,
-                  ip_day_hash=None, region_code=None, status=None):
+                  ip_day_hash=None, region_code=None, status=None,
+                  is_bot=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
     eat connection-setup latency on every request.
 
     `status`: HTTP response code (200, 404, 500, ...). Added 2026-09-09.
-    NULL when the caller doesn't supply one (backwards compat)."""
+    NULL when the caller doesn't supply one (backwards compat).
+
+    `is_bot`: 2026-09-25 (Charlie ruling) — the ingest path stamps TRUE
+    when public_analytics_filters.is_self_probe(ua, path) says the hit is
+    our own monitor/canary traffic (UA fragment OR monitor path such as
+    /health), so it never counts as human even before the is_bot_writer
+    pass. None (default) leaves the writer to classify."""
     conn = _get_writer_conn()
     if conn is None:
         return
@@ -6847,11 +6873,11 @@ def log_page_view(path, visitor_hash=None, referrer=None,
             cur.execute(
                 "INSERT INTO page_views "
                 "(ts, path, visitor_hash, referrer, user_agent, country, "
-                " utm_source, ip_day_hash, region_code, status) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                " utm_source, ip_day_hash, region_code, status, is_bot) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
                  referrer, user_agent, country, utm_source, ip_day_hash,
-                 region_code, status),
+                 region_code, status, is_bot),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)

@@ -28,6 +28,7 @@ from amm_scan_pools import (
     fmt_money,
     fmt_num,
 )
+from public_analytics_filters import is_self_probe as _is_self_probe
 from network_pulse import fetch_pulse_cached
 from tx_type_mix import fetch_tx_type_mix, WINDOWS as TX_MIX_WINDOWS, DEFAULT_WINDOW as TX_MIX_DEFAULT_WINDOW
 from xrp_price import fetch_xrp_price_cached
@@ -1992,6 +1993,13 @@ def _log_page_view(response):
             utm = None
         else:
             utm = utm[:100]
+        # 2026-09-25 (Charlie ruling): stamp our own monitor/canary traffic
+        # is_bot=TRUE at ingest using the ONE self-probe definition
+        # (public_analytics_filters.is_self_probe: UA fragment OR monitor
+        # path such as /health). Readers exclude by the same definition;
+        # the is_bot_writer re-stamps by the same lists. Real readers get
+        # None and the writer classifies them later, exactly as before.
+        _self_probe = _is_self_probe(ua, path)
         db.log_page_view(
             path=path[:300],
             visitor_hash=_visitor_hash(ip, ua),
@@ -2002,6 +2010,7 @@ def _log_page_view(response):
             utm_source=utm,
             ip_day_hash=_ip_day_hash(ip),
             status=int(response.status_code) if response is not None else None,
+            is_bot=True if _self_probe else None,
         )
     except Exception:
         # Logging must never break a page render.

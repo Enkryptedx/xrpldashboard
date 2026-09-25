@@ -207,14 +207,41 @@ _US_TERRITORY_CODES = frozenset({"US-AS","US-GU","US-MP","US-PR","US-VI"})
 _KNOWN_JUNK_COUNTRIES = frozenset({"T1"})
 
 
+def _shared_filters():
+    """Import the ONE DEFINITION module from the repo root (this script
+    lives in scripts/). Returns the module or None for offline runs where
+    the repo layout isn't available."""
+    try:
+        import public_analytics_filters as paf  # already on sys.path?
+        return paf
+    except ImportError:
+        pass
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import public_analytics_filters as paf
+        return paf
+    except ImportError:
+        return None
+
+
 def _sql_not_bot_ua_clause(alias: str = "p") -> str:
     """Returns a SQL fragment excluding rows whose user_agent matches
-    any SELF_PROBE_UA_FRAGMENTS or KNOWN_BOT_UA_FRAGMENTS entry."""
+    any SELF_PROBE_UA_FRAGMENTS or KNOWN_BOT_UA_FRAGMENTS entry, AND
+    (2026-09-25, Charlie ruling) rows on monitor/canary PATHS such as
+    /health. Delegates to public_analytics_filters so this script and
+    /analytics can never disagree; the inline lists above are only the
+    offline fallback."""
+    paf = _shared_filters()
+    if paf is not None:
+        return paf.sql_not_bot_ua_clause(alias)
     fragments = SELF_PROBE_UA_FRAGMENTS + KNOWN_BOT_UA_FRAGMENTS
     clauses = " AND ".join(
         f"COALESCE({alias}.user_agent, '') NOT ILIKE '%{f}%'"
         for f in fragments
     )
+    # Offline fallback keeps the path half of the definition too.
+    clauses += f" AND {alias}.path NOT IN ('/health', '/healthz')"
+    clauses += f" AND {alias}.path NOT LIKE '/health/%' AND {alias}.path NOT LIKE '/api/health%'"
     return clauses
 
 
