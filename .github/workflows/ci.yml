@@ -1,0 +1,44 @@
+name: CI
+
+# Charlie ruling 2026-09-25 (item 4). Motivating incident: /rwa served
+# 100% 5xx for ~55h (9e3620d 2026-09-22 -> e03829d 2026-09-24) because a
+# broken template merged to main and Render auto-deployed it with nothing
+# running the tests. test_routes.py::test_trust_critical_page_renders_200[/rwa]
+# existed and would have caught it — but no CI ran it. This closes the
+# PREVENTION gap (the route canary added the same day closes DETECTION).
+#
+# Scope (deliberately conservative on day one):
+#  - render-killer tests only (trust_critical + amendment), NOT the full
+#    62-file suite — those are the ones that catch a public 500. Widen
+#    later once green and trusted.
+#  - NO DATABASE_URL: the trust-critical render tests must pass with no DB
+#    (routes are wrapped to not-500 on DB errors — that's the property we
+#    protect). A test that needs the DB to pass is a FINDING to fix, not a
+#    secret to wire into CI.
+#  - Python 3.12.7 to match render.yaml PYTHON_VERSION.
+#
+# This workflow only RUNS tests; it gates nothing yet. The deploy gate
+# (Render "Wait for CI") is enabled separately in the Render dashboard by
+# Charlie AFTER the first green run.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  trust-critical-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.7"
+      - name: Install pinned dependencies
+        run: pip install -r requirements.txt
+      - name: Trust-critical render tests (no DB)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_routes.py -k "trust_critical or amendment" -q

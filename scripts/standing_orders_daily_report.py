@@ -33,7 +33,7 @@ def _yesterday_utc_window() -> tuple[int, int, str]:
 
 
 def line_referrers(cur, ts_s, ts_e) -> str:
-    cur.execute(f"""
+    cur.execute(rf"""
         SELECT
           -- Charlie ruling 2026-09-21: X bucket must include t.co
           -- (Twitter's shortener). The evening Sunday-close report
