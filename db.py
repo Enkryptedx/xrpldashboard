@@ -3864,11 +3864,38 @@ def write_walker_health_end(walker_name, ok, message=None, findings_count=None):
     _writer_execute_with_retry(f"write_walker_health_end[{walker_name}]", _do)
 
 
+def _walker_run_state(last_run_ok, last_run_completed, last_run_message):
+    """Tri-state run status (Charlie ruling 2026-09-25, item: run_in_progress
+    != ok=false). walker_health uses last_run_ok=False as BOTH the in-flight
+    marker (start-of-run) AND the failure marker (end-of-run failure) — so a
+    long-running walker (e.g. supply_escrow_walker's ~14.7min full-ledger walk
+    on a 15min cadence) shows ok=False almost continuously and reads as
+    'failed' to any glance, inviting repeated false re-diagnosis.
+
+    This derives an honest tri-state WITHOUT changing the stored columns
+    (so nothing downstream that keys on last_run_ok/consecutive_failures
+    breaks):
+      - 'running'  = start written, no end yet
+                     (last_run_ok=False AND last_run_completed IS NULL
+                      AND last_run_message == 'run_in_progress')
+      - 'ok'       = last_run_ok is True
+      - 'failed'   = last_run_ok is False with a completed run (real failure)
+    The pager already keys on consecutive_failures (which start-of-run never
+    increments), so this is purely to stop humans mis-reading the row."""
+    if last_run_ok:
+        return "ok"
+    if last_run_completed is None and (last_run_message or "") == "run_in_progress":
+        return "running"
+    return "failed"
+
+
 def read_walker_health_all():
     """Return every walker_health row as a list of dicts (alphabetical by
-    walker_name). Each row includes `last_success_age_seconds` and
-    `cadence_seconds` so /walker_health can compute per-row severity
-    without a second query. Returns [] when PG is unavailable."""
+    walker_name). Each row includes `last_success_age_seconds`,
+    `cadence_seconds`, and a derived `run_state` (ok|running|failed) so
+    /walker_health can compute per-row severity without a second query and
+    without mis-reading an in-flight long walk as failed. Returns [] when PG
+    is unavailable."""
     if not pg_available():
         return []
     try:
@@ -3906,6 +3933,7 @@ def read_walker_health_all():
                         "last_success_age_seconds": (
                             round(age_secs, 1) if age_secs is not None else None
                         ),
+                        "run_state": _walker_run_state(row[3], row[2], row[4]),
                     })
                 return out
     except Exception:
@@ -3951,6 +3979,7 @@ def read_walker_health(walker_name):
                     "last_success_age_seconds": (
                         round(age_secs, 1) if age_secs is not None else None
                     ),
+                    "run_state": _walker_run_state(row[2], row[1], row[3]),
                 }
     except Exception:
         return None
