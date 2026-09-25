@@ -4606,8 +4606,21 @@ def nfts():
         else:
             cache_state = "ok"
 
+    # GAP-6 (2026-09-25): the forward-walker (activity mode) stamps
+    # `sourcing=<flag>` into its walker_health message. Own node is the
+    # code default; a public rippled is the labeled fallback and the
+    # banner discloses it when the LAST forward pass had to cascade.
+    # Backfill history is separately and permanently labeled third-party
+    # in the source table below — this banner is about the live path.
+    try:
+        _fw = db.read_walker_health("nft_activity_activity")
+    except Exception:
+        _fw = None
+    page_sourcing = _walker_page_sourcing(_fw)
+
     body = render_template(
         "nfts.html",
+        page_sourcing=page_sourcing,
         totals=totals,
         counts_24h=counts_24h,
         counts_7d=counts_7d,
@@ -6298,11 +6311,12 @@ def network():
     return resp
 
 
-def _bridge_signer_page_sourcing(walker):
-    """Parse the `sourcing=<flag>` token bridge_signer_walker writes into
-    its walker_health message. Absent token (pre-GAP-2 row, or walker_health
-    unreadable) → 'sovereign' so the banner only ever fires on a positive
-    fallback signal, never on missing data."""
+def _walker_page_sourcing(walker):
+    """Parse the `sourcing=<flag>` token a walker writes into its
+    walker_health message (bridge_signer_walker GAP-2, nft_activity GAP-6).
+    Absent token (pre-fix row, or walker_health unreadable) → 'sovereign'
+    so the banner only ever fires on a positive fallback signal, never on
+    missing data."""
     msg = (walker or {}).get("last_run_message") or ""
     for tok in str(msg).split():
         if tok.startswith("sourcing="):
@@ -6335,7 +6349,7 @@ def sidechain():
     # fallback). This is a DB-cache page, so page_sourcing is the
     # provenance of the LAST refresh, and the banner discloses it when
     # that refresh had to cascade to a public rippled.
-    page_sourcing = _bridge_signer_page_sourcing(walker)
+    page_sourcing = _walker_page_sourcing(walker)
     # Gateway r-address mirrors bridge_signer_walker.AXELAR_GATEWAY.
     gateway_address = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
     resp = make_response(render_template(

@@ -31,9 +31,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from xrpl.clients import JsonRpcClient  # type: ignore
-
 import db  # noqa: E402
+import xrpl_client  # noqa: E402
 from nft_activity_walker import (  # noqa: E402
     _fetch_ledger_txs_from,
     _nft_rows_from_ledger,
@@ -103,9 +102,18 @@ def main() -> int:
 
     print(
         f"[gap-fill] ledgers {args.lo:,} → {args.hi:,} "
-        f"({args.hi - args.lo + 1:,} total) via {args.clio_url}"
+        f"({args.hi - args.lo + 1:,} total) own-node-first "
+        f"({xrpl_client.LOCAL_NODE}); labeled fallback {args.clio_url}"
     )
-    client = JsonRpcClient(args.clio_url)
+    # GAP-6: same own-node-first client as the walker; the Clio archive is
+    # the labeled fallback list, one walker_node_fallback row per run.
+    sink = xrpl_client.RunFallbackSink()
+    client = xrpl_client.get_client(
+        "nft_activity_gap_fill", fallback_sink=sink,
+        public_urls=[args.clio_url] + [
+            u for u in xrpl_client.PUBLIC_NODES if u.rstrip("/") != args.clio_url.rstrip("/")
+        ],
+    )
     started = time.monotonic()
 
     rows_buf: list[dict] = []

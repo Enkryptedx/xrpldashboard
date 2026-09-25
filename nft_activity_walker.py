@@ -6,11 +6,14 @@ Five modes, dispatched via --mode:
                            validated_ledger - 3 (safety margin), in batches
                            of BATCH_LEDGERS. Idempotent (unique tx_hash).
                            Local rippled primary via xrpl_client.get_client;
-                           public s1/s2 fallback.
+                           public s1/s2 LABELED fallback, ONE
+                           walker_node_fallback row per run (GAP-6).
   --mode backfill          Walks backward from backfill_ledger toward
-                           backfill_target (2026-04-01 cutoff). Uses public
-                           Clio (s2-clio) because local node ledger_history
-                           is only ~10k. Populated in D2.
+                           backfill_target (2026-04-01 cutoff). Same
+                           own-node-first client; the labeled fallback list
+                           is the public Clio archive (s2-clio) FIRST because
+                           our node's rolling window cannot hold 2026-04
+                           history. Populated in D2.
   --mode summary           Recompute the single-row nft_activity_summary
                            page cache from nft_activity (total_events, ledger/
                            date range, 24h/7d/all-time tx_type counts, top-10
@@ -45,12 +48,11 @@ import logging
 import sys
 import time
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import Ledger
 from xrpl.utils import parse_nftoken_id
 
 import db
-from xrpl_client import get_client
+from xrpl_client import get_client, PUBLIC_NODES, RunFallbackSink
 
 # Mirrors launchd/com.charliebruce.xrpldashboard.nft_activity_walker.plist
 # StartInterval (activity mode). /walker_health uses it for per-row
@@ -65,14 +67,25 @@ BATCH_LEDGERS = 200
 # Safety margin from validated tip — avoid racing consensus.
 HEAD_SAFETY_LEDGERS = 3
 
-# Backfill mode targets a public Clio node with full history. Local
-# rippled's ledger_history is only ~10k so it cannot answer for the
-# 2026-04-01 window we need. Kept as a module constant so an operator
-# can override via env if s2-clio needs to be swapped.
+# GAP-6 (Charlie 2026-09-25): own node is the CODE default in every mode.
+# Backfill's LABELED fallback list puts the public Clio archive (s2-clio)
+# first because our rippled's rolling window (~66k ledgers at the
+# 2026-09-25 probe) cannot answer for the 2026-04-01 history the backfill
+# needs; the standard PUBLIC_NODES follow. Pre-fix backfill built a bare
+# JsonRpcClient straight on Clio (no own-node attempt, no sourcing flag),
+# and activity mode wrote one walker_node_fallback row PER cascading call
+# (685k rows during the 2026-09-19/20 post-outage catch-up). Both modes
+# now share xrpl_client.RunFallbackSink: ONE row per run, and the run's
+# sourcing is stamped into the walker_health message that /nfts reads for
+# its disclosure banner. Kept as an env-overridable constant so an operator
+# can swap the archive host.
 import os as _os  # noqa: E402
 BACKFILL_CLIO_URL = _os.environ.get(
     "XRPL_BACKFILL_CLIO", "https://s2-clio.ripple.com:51234/"
 )
+BACKFILL_FALLBACK_URLS = [BACKFILL_CLIO_URL] + [
+    u for u in PUBLIC_NODES if u.rstrip("/") != BACKFILL_CLIO_URL.rstrip("/")
+]
 
 # Backfill runs on a 900s (15 min) launchd cadence. Each invocation
 # processes ledgers in BATCH_LEDGERS-sized state-write chunks and exits
@@ -282,7 +295,10 @@ def _nft_rows_from_ledger(ledger_seq, close_time_ripple, txs):
 def run_activity():
     """Forward ingest one batch. Seeds walker state on first run.
     Returns (ok: bool, message: str)."""
-    client = get_client(WALKER_NAME)
+    # GAP-6: one sink per run → one walker_node_fallback row per run; the
+    # run's sourcing rides in the message /nfts keys its banner off.
+    sink = RunFallbackSink()
+    client = get_client(WALKER_NAME, fallback_sink=sink)
     validated = _fetch_validated_ledger_index(client)
     target_tip = validated - HEAD_SAFETY_LEDGERS
 
@@ -296,13 +312,14 @@ def run_activity():
             cursor_ledger=target_tip,
             backfill_target=None,
         )
-        return True, f"seeded cursor_ledger={target_tip} (validated={validated})"
+        return True, (f"seeded cursor_ledger={target_tip} (validated={validated}) "
+                      f"sourcing={sink.sourcing}")
 
     cursor = int(state["cursor_ledger"])
     if cursor > target_tip:
         return True, (
             f"caught_up cursor={cursor} target_tip={target_tip} "
-            f"validated={validated}"
+            f"validated={validated} sourcing={sink.sourcing}"
         )
 
     batch_end = min(cursor + BATCH_LEDGERS - 1, target_tip)
@@ -327,7 +344,7 @@ def run_activity():
     if ledgers_ok == 0:
         return False, (
             f"no_ledgers_fetched cursor={cursor} first_fail={cursor} "
-            f"validated={validated}"
+            f"validated={validated} sourcing={sink.sourcing}"
         )
 
     new_cursor = cursor + ledgers_ok
@@ -336,7 +353,9 @@ def run_activity():
     return True, (
         f"ledgers_ok={ledgers_ok} ledgers_err={ledgers_err} "
         f"nft_rows_seen={len(all_rows)} inserted={inserted} "
-        f"cursor={cursor}->{new_cursor} tip={target_tip}"
+        f"cursor={cursor}->{new_cursor} tip={target_tip} "
+        f"sourcing={sink.sourcing}"
+        + (f" fallback_reason={sink.reason}" if sink.reason else "")
     )
 
 
@@ -347,12 +366,12 @@ def run_activity():
 # ─────────────────────────────────────────────────────────────────────
 
 def _fetch_ledger_txs_from(client, ledger_seq):
-    """Same shape as _fetch_ledger_txs but takes a pre-built client so
-    backfill mode can bypass the local-first cascade. Local rippled would
-    return lgrNotFound for every backfill request (~10k history vs ~2M
-    ledgers back), and while the xrpl_client cascade handles that
-    correctly, forcing local + cascade for every request wastes RTT and
-    spams walker_node_fallback rows."""
+    """Same shape as _fetch_ledger_txs but takes a pre-built client.
+    GAP-6: backfill's client is the same own-node-first XrplClient with the
+    Clio archive as its LABELED fallback list and a per-run sink, so a
+    local lgrNotFound cascades once, writes ONE walker_node_fallback row
+    for the whole run, and the run is stamped fallback-public-rpc — which
+    for 2026-04 history is the honest, expected answer."""
     req = Ledger(
         ledger_index=ledger_seq,
         transactions=True,
@@ -415,10 +434,14 @@ def run_backfill():
     if backfill_ledger <= target:
         return True, (
             f"caught_up backfill_ledger={backfill_ledger} "
-            f"target={target}"
+            f"target={target} sourcing=sovereign (no rpc this run)"
         )
 
-    client = JsonRpcClient(BACKFILL_CLIO_URL)
+    # GAP-6: own node first (code default), public Clio archive as the
+    # labeled fallback list, one fallback row per run.
+    sink = RunFallbackSink()
+    client = get_client(WALKER_NAME, fallback_sink=sink,
+                        public_urls=BACKFILL_FALLBACK_URLS)
 
     started = time.monotonic()
     total_ledgers_ok = 0
@@ -487,7 +510,8 @@ def run_backfill():
         f"ledgers_ok={total_ledgers_ok} ledgers_err={total_ledgers_err} "
         f"inserted={total_rows_inserted} "
         f"backfill_ledger={backfill_ledger} target={target} "
-        f"remaining={remaining}"
+        f"remaining={remaining} sourcing={sink.sourcing}"
+        + (f" fallback_reason={sink.reason}" if sink.reason else "")
     )
 
 

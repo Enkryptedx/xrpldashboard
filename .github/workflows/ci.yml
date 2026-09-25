@@ -50,5 +50,5 @@ jobs:
         env:
           DATABASE_URL: ""
         run: |
-          pytest tests/test_bridge_signer_sourcing.py tests/test_credentials_sourcing.py tests/test_amm_ranking_sourcing.py -q
+          pytest tests/test_bridge_signer_sourcing.py tests/test_credentials_sourcing.py tests/test_amm_ranking_sourcing.py tests/test_nft_activity_sourcing.py -q
           python tests/test_network_pulse_sourcing.py
