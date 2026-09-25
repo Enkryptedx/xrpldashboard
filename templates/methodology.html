@@ -236,7 +236,7 @@
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five surfaces use browser-side WebSocket push (Live) from our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('sovereign since 2026-09-22 — Lenovo rippled → cloudflared tunnel → subscribe-only fan-out; public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only, tracked in walker_node_fallback if it fires.') }}) {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
+    {{ _('Five surfaces use browser-side WebSocket push (Live). Today the whales, tokens, pools, and wallet streams subscribe to the public') }} <code>wss://xrplcluster.com</code> ({{ _('labeled public source') }}); {{ _('our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo rippled → cloudflared tunnel → subscribe-only fan-out') }}) {{ _('carries the ledger stream, and moving those four to own-node named feeds is in progress — relay deploy first, pages switch after the canary is green. Fallback events are tracked in walker_node_fallback.') }} {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
@@ -246,8 +246,8 @@
     {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Since 2026-09-22, this is the primary browser-side subscription for whales, tokens, pools, and wallet real-time streams.') }}</li>
-    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Retained as fallback only for the browser-side subscriptions above; any fallback event logs into') }} <code>walker_node_fallback</code>.</li>
+    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Carries the ledger stream today; the whales, tokens, pools, and wallet browser feeds move here after the relay deploy and a green canary.') }}</li>
+    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Current source (public, labeled) for the whales, tokens, pools, and wallet browser streams until the own-node migration completes; any fallback event logs into') }} <code>walker_node_fallback</code>.</li>
     <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Kept as the first browser fallback if xrplcluster.com is unreachable. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
   </ul>

@@ -327,7 +327,17 @@ def process_family(family_slug: str, cfg: dict, now_utc: dt.datetime) -> dict:
 
 
 def main() -> int:
-    db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
+    # 2026-09-25 (Charlie): this walker has NO launchd job and is env-gated
+    # OFF by the 2026-09-22 research-only ruling, yet its 2026-09-22 manual
+    # research run stamped cadence_seconds=86400 — so tools/l1_pager.py's
+    # walker_stale rule paged it three days later for a run that was never
+    # scheduled. Stamp a cadence only when the gate is ON (i.e. when it is
+    # meant to run on a schedule); a research/disabled pass stamps NULL so
+    # the row is visible in /walker_health but never counts as stale.
+    db.write_walker_health_start(
+        WALKER_NAME,
+        cadence_seconds=WALKER_CADENCE_SECONDS if ENABLED else None,
+    )
     ok = False
     message = "not_yet_stamped"
     try:
