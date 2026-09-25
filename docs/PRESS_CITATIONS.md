@@ -71,7 +71,7 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
 | # | Date | Outlet | URL | Read | Amendment cited | Links to us | Verbatim mention |
 |---|---|---|---|---|---|---|---|
 | 1 | 2026-09-24 | Yahoo Finance (TheStreet syndication) | https://finance.yahoo.com/markets/crypto/articles/xrp-ledger-eyes-october-upgrade-205658238.html | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | **sourced attribution (link-as-name)**: "The upgrade in question, PermissionDelegationV1_1, entered a 14-day activation countdown on Sep. 21 after 29 of the network's 35 trusted validators backed it, according to the XRPL amendments dashboard." — Verified **y** (see below) |
-| 2 | 2026-09-20 | Blockonomi | https://blockonomi.com/xrp-ledger-batch-v1-1-nears-activation-as-asset-managers-prepare | full | Batch v1.1 | `xrpldashboard.com/amendments` | **linked+quoted**: "The XRPL Dashboard lists support from 30 of 35 tracked validators." |
+| 2 | 2026-09-20 | Blockonomi | https://blockonomi.com/xrp-ledger-batch-v1-1-nears-activation-as-asset-managers-prepare | full | Batch v1.1 | `xrpldashboard.com/amendments` | **linked+quoted**: "The XRPL Dashboard lists support from 30 of 35 tracked validators." — Verified **y** (fetch 2026-09-20 06:34 UTC; Batch 30/28 + Sep-15 14:06:41 UTC majority start both match ledger; see below) |
 | 3 | 2026-09-23 | Blockto | https://blockto.io/news/xrp-ledger-sets-new-date-for-feature-letting-banks-split-account-permissions | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | "The update, called [Batch V1.1], …" — link is inline in the sentence naming the update; our name not spelled in prose (link only) |
 | 4 | 2026-09-21 | Coin Insider | https://coininsider.org/news/ripple-says-asset-managers-are-eyeing-batch-v1-1-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
 | 5 | 2026-09-19 | Coinwelt (DE) | https://coinwelt.de/news/xrp-ledger-batch-v11-atomare-zahlungen | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
@@ -111,6 +111,21 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   September 11 projection" claim cannot be reconstructed from first-party
   archived data. Do not promote. (Referrer hit on Sep 18 is a re-visit of an
   old article, not fresh coverage.)
+- **#2 Blockonomi — VERIFIED y (fetch-date caveat).** Fetch date pinned:
+  article `datePublished` = **2026-09-20 06:34 UTC** (Brenda Mary). The 30/35
+  claim is about **BatchV1_1**, not PermissionDelegation — the article states
+  the majority "began September 15 at 14:06:41 UTC" and "activation could
+  follow September 29," both an EXACT match to our ledger read (Batch majority
+  CloseTime 2026-09-15 14:06:41 UTC → activation 2026-09-29 14:06:41 UTC, from
+  amendment_majority_history). The "30 of 35" figure: `amendment_tally_recon`
+  has Batch (hash 9F287AED…) at **30/28** on Sep 21, 22, 24 (dipped to 29 only
+  Sep 23), and amendment_majority_history records Batch's majority at
+  `vote_count_at_first = 30/28`. CAVEAT: the fetch date (Sep 20) is one day
+  before the reconstruction table's earliest row (Sep 21), so the tally is
+  not first-party archived FOR Sep 20 specifically — but the value is stable
+  30/28 on every date we hold on both sides of that boundary, and the
+  majority-start timestamp Blockonomi cites is an exact ledger match.
+  Verdict: promote to y; the amendment, figure, and timestamp all reconcile.
 
 ### Corrections to the initial pass
 - **#2 Blockonomi was mis-tagged "link only" in the first draft — it DOES name
