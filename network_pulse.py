@@ -25,7 +25,12 @@ import xrpl_client
 from sovereign_tunnel_client import SovereignFetcher
 
 
-XRPL_NODE = "https://s1.ripple.com:51234"
+# GAP-1 (Charlie 2026-09-25): fetch_pulse() reads own-node-first via
+# SovereignFetcher (own node primary, PUBLIC_NODES labeled fallback, sourcing
+# flag + walker_node_fallback on cascade). This module-level constant was a
+# dead, misleading hardcoded-s1 (unused by fetch_pulse); removed to keep the
+# file free of any bare public-node default. The public fallback is defined in
+# one place: xrpl_client.PUBLIC_NODES.
 
 # XRPL ledger close_time is seconds since Jan 1 2000 UTC (the "ripple epoch").
 RIPPLE_EPOCH_OFFSET = 946684800
@@ -117,7 +122,7 @@ def fetch_pulse():
         return {
             "error": "server_info failed",
             "timestamp": timestamp,
-            "node": xrpl_client.PUBLIC_NODES[0],
+            "node": fetcher.effective_node_url,
             "sourcing": fetcher.sourcing,
         }
     si = si_result.get("info", {}) if isinstance(si_result, dict) else {}
