@@ -59,6 +59,19 @@ ROUTES: list[tuple] = [
     ("/mpts",                             5000,   "MPT"),
     ("/nfts",                             5000,   "NFT"),
     ("/rlusd",                            5000,   "RLUSD"),
+    # Trust-critical routes added 2026-09-25 (Charlie ruling): these six
+    # were in tests/test_routes.py::TRUST_CRITICAL_PAGES but missing here,
+    # so the canary never GET'd them. /rwa proved the gap — it served 100%
+    # 5xx for ~55h (commit 9e3620d 2026-09-22 14:54 ET -> e03829d
+    # 2026-09-24 21:58 ET) with no canary alert because it wasn't listed.
+    # Detection-only add: closes the observability hole the /rwa outage
+    # exposed. (CI deploy-gate is a separate proposal.)
+    ("/rwa",                              5000,   "RWA"),
+    ("/claims",                          5000,   "claim"),
+    ("/connect",                         2000,   None),
+    ("/amendments",                      5000,   "amendment"),
+    ("/sidechain",                       3000,   None),
+    ("/snapshots/",                      2000,   None),
     ("/cold-storage",                     5000,   "cold"),
     ("/price-data",                       3000,   None),
     ("/health",                           1000,   None),
