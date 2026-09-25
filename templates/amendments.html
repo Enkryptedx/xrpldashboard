@@ -691,9 +691,29 @@
     </p>
   </div>
 
+  {# Sovereign-fallback disclosure banner (Charlie 2026-09-25 own-node switch).
+     Same mechanism as /lending: shows only when the amendment fetch cascaded
+     off our own node to public XRPL infra. page_sourcing is set by the route
+     from the SovereignFetcher result. #}
+  {% if page_sourcing in ('fallback-public-rpc', 'public-no-tunnel-configured') %}
+    <div class="sovereign-fallback-banner" role="status" style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--amber,#c90);border-radius:8px;padding:10px 12px;margin:14px 0;background:rgba(204,153,0,0.06);">
+      <span class="icon" aria-hidden="true" style="font-weight:700;color:var(--amber,#c90);">!</span>
+      <div class="body">
+        <div class="headline" style="font-weight:600;">{{ _('Live data via public XRPL infrastructure') }}</div>
+        <div class="detail" style="font-size:0.88rem;color:var(--muted);">{{ _('Our sovereign rippled node was unavailable for this fetch — amendment data on this page was served through a public rippled server. Refreshes retry the sovereign path.') }}</div>
+      </div>
+    </div>
+  {% endif %}
+
   <p class="source-note">
-    {{ _('Data sourced from the public') }} <code>feature</code> {{ _('RPC at') }} <code>s1.ripple.com:51234</code>
-    {{ _('and the canonical Amendments ledger object. Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the public RPC; for those, see') }}
+    {# Dynamic sourcing disclosure — names the ACTUAL source of this render,
+       never a hardcoded endpoint (Charlie 2026-09-25). #}
+    {% if page_sourcing == 'sovereign' %}
+      {{ _('Data sourced from our own sovereign') }} <code>rippled</code> {{ _('node via the') }} <code>feature</code> {{ _('RPC and the canonical Amendments ledger object; public') }} <code>s1.ripple.com:51234</code> {{ _('is labeled fallback only.') }}
+    {% else %}
+      {{ _('Data served via public') }} <code>s1.ripple.com:51234</code> {{ _('(sovereign-node fallback — see banner above) plus the canonical Amendments ledger object.') }}
+    {% endif %}
+    {{ _('Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the') }} <code>feature</code> {{ _('RPC; for those, see') }}
     <a href="https://xrpl.org/known-amendments.html" rel="nofollow noopener" target="_blank">xrpl.org/known-amendments</a>.
     {% if state.fetched_at_iso %}
       <br>{{ _('Fetched') }} <span class="mono">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.

@@ -6141,10 +6141,18 @@ def amendments():
     # never 500 the page (the render-killer lesson from the /rwa 55h
     # outage). Falls back to [] and the timeline block hides.
     majority_history = _load_amendment_majority_history()
+    # Sourcing disclosure (Charlie 2026-09-25 own-node switch): the page
+    # reads sovereign-first via SovereignFetcher; `sourcing` reports whether
+    # our own node served the fetch ('sovereign') or it cascaded to public
+    # XRPL ('fallback-public-rpc' / 'public-no-tunnel-configured'). The
+    # banner + footer key off page_sourcing so the disclosure always matches
+    # the ACTUAL source of this render, never a hardcoded endpoint name.
+    page_sourcing = state.get("sourcing") or "sovereign"
     resp = make_response(render_template(
         "amendments.html",
         state=state,
         majority_history=majority_history,
+        page_sourcing=page_sourcing,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
