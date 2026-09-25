@@ -31,17 +31,62 @@ Run modes:
 import argparse
 import datetime as dt
 import json
-import os
 import sys
 import time
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountObjects, AccountTx, Ledger
 
 import db
+import xrpl_client
 
-XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+# GAP-2 (Charlie 2026-09-25): own-node-first as CODE default, public as a
+# LABELED fallback. Pre-fix this walker built a bare JsonRpcClient on
+# XRPL_NODE with a hardcoded s1.ripple.com default — sovereign only for as
+# long as the plist env happened to say so, silent s1 the moment it didn't
+# (the GAP-4 fragility shape), and no fallback at all if our node was down.
+#
+# Now every RPC goes through xrpl_client.XrplClient: LOCAL_NODE
+# (XRPL_LOCAL_NODE, our LAN rippled) with retry-before-cascade, then
+# xrpl_client.PUBLIC_NODES in order. This is the Mac-side own-node primitive
+# every other walker uses. SovereignFetcher (the CF-Access tunnel client)
+# is the Render-side primitive; the walker env has no tunnel vars, so
+# SovereignFetcher here would have reported public-no-tunnel-configured
+# and gone straight to s1 — the opposite of the fix.
+#
+# One walker_node_fallback row per RUN (not per call): a steady-state pass
+# is 1 ledger + N account_tx pages, and a bootstrap pass is up to 50
+# account_objects pages. _RunFallbackSink collapses every cascade into a
+# single row and carries the sourcing flag into the walker_health message
+# (`sourcing=sovereign|fallback-public-rpc`), which /sidechain reads to
+# render its disclosure banner.
 AXELAR_GATEWAY = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+
+
+class _RunFallbackSink:
+    """Per-run sink for XrplClient cascades. Writes ONE walker_node_fallback
+    row on the first cascade of the run, then swallows the rest. Shaped as a
+    drop-in for db.write_walker_node_fallback (same (walker_name, reason)
+    signature SovereignFetcher.fallback_sink uses)."""
+
+    def __init__(self):
+        self.reason = None
+        self.rows_written = 0
+
+    def __call__(self, walker_name, reason):
+        if self.reason is not None:
+            return
+        self.reason = reason or "unknown"
+        try:
+            db.write_walker_node_fallback(walker_name, self.reason)
+            self.rows_written += 1
+        except Exception:
+            # A DB hiccup must not break the scan; the sourcing flag still
+            # lands in the walker_health message below.
+            pass
+
+    @property
+    def sourcing(self):
+        return "sovereign" if self.reason is None else "fallback-public-rpc"
 WALKER_NAME = "bridge_signer_walker"
 WALKER_CADENCE_SECONDS = 3600
 
@@ -356,8 +401,11 @@ def main():
     rotations_added = 0
     from_ledger = None
     to_ledger = None
+    sink = _RunFallbackSink()
     try:
-        client = JsonRpcClient(XRPL_NODE)
+        # Own-node-first with labeled public fallback; sink collapses every
+        # cascade in this run into one walker_node_fallback row (GAP-2).
+        client = xrpl_client.get_client(WALKER_NAME, fallback_sink=sink)
 
         # rpc_loop_safe_pg_connect: this scan holds one conn across a long
         # AccountTx pagination loop; a plain pg_connect() socket goes idle
@@ -367,7 +415,7 @@ def main():
             if not has_bootstrap_row(conn):
                 snap = fetch_current_signer_list(client)
                 if not snap or not snap.get("ledger_index"):
-                    _msg = "bootstrap_fetch_failed"
+                    _msg = f"bootstrap_fetch_failed sourcing={sink.sourcing}"
                     print("ERROR: bootstrap failed — could not fetch current "
                           "SignerList for Axelar XRPL gateway")
                     return 1
@@ -387,13 +435,14 @@ def main():
 
             if args.bootstrap_only:
                 _ok = True
-                _msg = f"bootstrap_only bootstrap_written={bootstrap_written}"
+                _msg = (f"bootstrap_only bootstrap_written={bootstrap_written} "
+                        f"sourcing={sink.sourcing}")
                 return 0
 
             from_ledger = last_scanned_ledger(conn) or bootstrap_ledger(conn) or 0
             to_ledger = current_validated_ledger(client)
             if to_ledger is None:
-                _msg = "current_validated_unresolved"
+                _msg = f"current_validated_unresolved sourcing={sink.sourcing}"
                 print("ERROR: could not resolve current validated ledger")
                 return 1
             if to_ledger - from_ledger > MAX_LEDGERS_PER_RUN:
@@ -406,14 +455,17 @@ def main():
             )
             mode = "DRY " if args.dry_run else ""
             print(f"{mode}scan: range=({from_ledger}, {to_ledger}] "
-                  f"events_added={rotations_added}")
+                  f"events_added={rotations_added} "
+                  f"sourcing={sink.sourcing}"
+                  + (f" fallback_reason={sink.reason}" if sink.reason else ""))
             _ok = True
             _msg = (f"bootstrap_written={bootstrap_written} "
                     f"rotations_added={rotations_added} "
-                    f"range=({from_ledger},{to_ledger}]")
+                    f"range=({from_ledger},{to_ledger}] "
+                    f"sourcing={sink.sourcing}")
             return 0
     except Exception as e:
-        _msg = f"{type(e).__name__}: {e}"
+        _msg = f"{type(e).__name__}: {e} sourcing={sink.sourcing}"
         raise
     finally:
         if track_health:

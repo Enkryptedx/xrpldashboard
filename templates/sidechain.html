@@ -184,6 +184,40 @@
     }
     .crosslinks a { color: var(--cyan); }
     .crosslinks .label { color: var(--muted); margin-right: 8px; }
+
+    /* Sovereign-fallback disclosure banner — same shape as /wallet,
+       /lending, /cold-storage so the disclosure reads identically
+       site-wide. GAP-2, 2026-09-25. */
+    .sovereign-fallback-banner {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-left: 3px solid var(--amber, #f59e0b);
+      border-radius: 10px;
+      padding: 0.85em 1.1em;
+      margin: 0 0 1em;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7em;
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+    .sovereign-fallback-banner .icon {
+      flex: 0 0 auto;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(245,158,11,0.15);
+      color: var(--amber, #f59e0b);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-family: ui-monospace, monospace; font-size: 12px;
+      margin-top: 1px;
+    }
+    .sovereign-fallback-banner .body { flex: 1; }
+    .sovereign-fallback-banner .headline {
+      font-weight: 600; color: var(--amber, #f59e0b); margin-bottom: 0.25em;
+    }
+    .sovereign-fallback-banner .detail {
+      color: var(--muted); font-size: 0.82rem;
+    }
   </style>
 </head>
 <body>
@@ -204,6 +238,21 @@
     {{ freshness_badge_css() }}
     {{ freshness_badge(data_age_label) }}
 
+    {# Sovereign-fallback disclosure (GAP-2, 2026-09-25). This is a
+       DB-cache page: the walker reads our own rippled first and only
+       cascades to a public server when ours is unreachable; it stamps the
+       outcome into its walker_health message and the route parses it into
+       page_sourcing. Banner fires only on a positive fallback signal. #}
+    {% if page_sourcing is defined and page_sourcing == 'fallback-public-rpc' %}
+    <div class="sovereign-fallback-banner" role="status">
+      <span class="icon" aria-hidden="true">!</span>
+      <div class="body">
+        <div class="headline">{{ _('Last refresh via public XRPL infrastructure') }}</div>
+        <div class="detail">{{ _('Our own node was unavailable when the bridge-signer walker last ran, so that pass read the gateway account through a public rippled server. The keyholder data itself is the same on-ledger record; only its source differs. The next hourly pass retries our own node first.') }}</div>
+      </div>
+    </div>
+    {% endif %}
+
     {# honest_partial marker for bridge_signer_walker. Human-first rewrite
        2026-08-18 per "made legible" principle — technical identifiers moved
        to the collapsed disclosure; all honest limits preserved. #}
@@ -216,7 +265,7 @@
         </li>
         <li>
           <strong>{{ _('Where the data comes from:') }}</strong>
-          {{ _('Ripple\'s public servers, polled at a respectful pace.') }}
+          {{ _('our own XRPL node, polled hourly. If our node is unreachable, that pass reads Ripple\'s public servers instead and this page says so above.') }}
         </li>
         <li>
           <strong>{{ _('What\'s permanently missing:') }}</strong>

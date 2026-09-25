@@ -188,8 +188,31 @@ class XrplClient:
     write to walker_node_fallback — it's logged at INFO with the tag
     'local_retry_recovered'. Grep launchd_logs to count recoveries."""
 
-    def __init__(self, walker_name="unknown"):
+    def __init__(self, walker_name="unknown", fallback_sink=None):
+        """fallback_sink: optional (walker_name, reason) callable. When set,
+        a cascade calls it INSTEAD of writing a walker_node_fallback row
+        directly — so a walker that makes many paginated calls per run
+        (e.g. bridge_signer_walker's account_tx pages) can collapse every
+        cascade into ONE row per run. Default None preserves the
+        one-row-per-cascading-call behavior every other walker relies on.
+        Same shape as SovereignFetcher.fallback_sink (GAP-2, 2026-09-25).
+
+        .sourcing mirrors SovereignFetcher's flag for the walker's own
+        reporting: "sovereign" until the first cascade, then
+        "fallback-public-rpc" for the life of this client."""
         self.walker_name = walker_name
+        self._fallback_sink = fallback_sink
+        self.sourcing = "sovereign"
+
+    def _record_fallback(self, reason):
+        self.sourcing = "fallback-public-rpc"
+        if self._fallback_sink is not None:
+            try:
+                self._fallback_sink(self.walker_name, reason)
+            except Exception:
+                logger.exception("fallback_sink raised")
+            return
+        _log_fallback(self.walker_name, reason)
 
     def _try_local_with_retry(self, req):
         """Try LOCAL_NODE up to LOCAL_RETRY_ATTEMPTS. Returns (resp, None)
@@ -234,10 +257,11 @@ class XrplClient:
                 return resp
             # All local attempts failed — force fresh health probe next time
             _health["checked_at"] = 0.0
-            _log_fallback(self.walker_name, local_failure_reason or "unreachable:Unknown")
+            self._record_fallback(local_failure_reason or "unreachable:Unknown")
         else:
-            # Health cached as bad — one log row per call, same as before.
-            _log_fallback(self.walker_name, reason)
+            # Health cached as bad — one log row per call, same as before
+            # (unless the caller installed a fallback_sink to collapse them).
+            self._record_fallback(reason)
 
         # Cascade to public
         last = None
@@ -250,5 +274,5 @@ class XrplClient:
         raise last or RuntimeError("all xrpl endpoints failed")
 
 
-def get_client(walker_name="unknown"):
-    return XrplClient(walker_name)
+def get_client(walker_name="unknown", fallback_sink=None):
+    return XrplClient(walker_name, fallback_sink=fallback_sink)

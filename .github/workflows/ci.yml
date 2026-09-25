@@ -42,3 +42,13 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_routes.py -k "trust_critical or amendment" -q
+      # Sovereignty sourcing locks (GAP-1 / GAP-2, 2026-09-25). Hermetic:
+      # every RPC + the walker_node_fallback writer is patched, no DB, no
+      # network. A red here means a raw public read crept back into a
+      # surface the audit table marks sovereign-first.
+      - name: Sovereignty sourcing tests (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: |
+          pytest tests/test_bridge_signer_sourcing.py -q
+          python tests/test_network_pulse_sourcing.py

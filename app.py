@@ -6293,6 +6293,18 @@ def network():
     return resp
 
 
+def _bridge_signer_page_sourcing(walker):
+    """Parse the `sourcing=<flag>` token bridge_signer_walker writes into
+    its walker_health message. Absent token (pre-GAP-2 row, or walker_health
+    unreadable) → 'sovereign' so the banner only ever fires on a positive
+    fallback signal, never on missing data."""
+    msg = (walker or {}).get("last_run_message") or ""
+    for tok in str(msg).split():
+        if tok.startswith("sourcing="):
+            return tok[len("sourcing="):] or "sovereign"
+    return "sovereign"
+
+
 @app.route("/sidechain")
 def sidechain():
     """Live view of the XRPL ↔ XRPL EVM Sidechain bridge multisig.
@@ -6313,6 +6325,12 @@ def sidechain():
     data_age_label = _format_age_seconds(
         int(walker_age) if walker_age is not None else None
     )
+    # GAP-2 (2026-09-25): the walker stamps `sourcing=<flag>` into its
+    # walker_health message (own node first, public RPC as labeled
+    # fallback). This is a DB-cache page, so page_sourcing is the
+    # provenance of the LAST refresh, and the banner discloses it when
+    # that refresh had to cascade to a public rippled.
+    page_sourcing = _bridge_signer_page_sourcing(walker)
     # Gateway r-address mirrors bridge_signer_walker.AXELAR_GATEWAY.
     gateway_address = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
     resp = make_response(render_template(
@@ -6321,6 +6339,7 @@ def sidechain():
         rotations=rotations,
         data_age_label=data_age_label,
         gateway_address=gateway_address,
+        page_sourcing=page_sourcing,
     ))
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
     return resp

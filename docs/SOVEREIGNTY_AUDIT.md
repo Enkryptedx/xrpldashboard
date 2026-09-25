@@ -32,7 +32,7 @@ the weekly claim-verify check.
 | forward walker (`app.py` own-node reads) | Ledger RPC (tx feed) | own node | own only | ✅ | own-node (correct) |
 | `cross_check_walker.py` | vocab/amendment cross-check | own node (4) + public (6) | own + public by design | ✅ intentional | own-node primary; public is the *cross-check counterparty* (correct — the whole point is to compare) |
 | `ledger_definitions_walker.py` | ledger definitions | own node (`XRPL_LOCAL_NODE`) | own only | ✅ | own-node (correct) |
-| `bridge_signer_walker.py` | SignerList on bridge acct | `XRPL_NODE` default `s1.ripple.com` | public default | ❌ | **GAP-2** — walker defaults to s1, no SovereignFetcher |
+| `bridge_signer_walker.py` | SignerList on bridge acct | `xrpl_client.XrplClient` → own node (`XRPL_LOCAL_NODE`); `PUBLIC_NODES` fallback | own primary, public fallback | ✅ | disclosed third-party fallback (correct) — **GAP-2 closed 2026-09-25**: one `walker_node_fallback` row per run via `_RunFallbackSink`, `sourcing=` stamped in walker_health, `/sidechain` banner keys off it; locked by `tests/test_bridge_signer_sourcing.py` |
 | `credentials_state.py` (`/credentials`) | credential objects via Clio | `XRPL_CLIO_NODE` default `s2.ripple.com` | public default | ❌ | **GAP-3** — Clio read on public s2; own Clio (`192.168.40.95:5006`?) exists |
 | `daily_snapshot.py`, `signed_snapshot.py` | snapshot metric reads | `XRPL_NODE` default s1; signed_snapshot has 1 own-node ref | mostly public default | ⚠️ | **GAP-4** — snapshot walkers default to s1; the SIGNED anchored metrics should be own-node-sourced per covenant |
 | `rank_amms.py`, `scan_all_amms.py`, `amm_test.py` | AMM pool enumeration | `s1.ripple.com` (hardcoded in some) | public | ❌ | **GAP-5** — AMM ranking reads public s1 (amm_test.py/amm_scan_pools.py hardcoded) |
@@ -47,8 +47,8 @@ the weekly claim-verify check.
 
 | ID | Surface | Gap | Proposed fix | Target |
 |---|---|---|---|---|
-| GAP-1 | `network_pulse.py` | some server_info/ledger calls raw public, not all SovereignFetcher | route all reads through SovereignFetcher | post-Saturday relay deploy |
-| GAP-2 | `bridge_signer_walker.py` | defaults to s1, no sovereign path | switch to `XRPL_LOCAL_NODE` primary + SovereignFetcher fallback | this sprint |
+| GAP-1 | `network_pulse.py` | some server_info/ledger calls raw public, not all SovereignFetcher | **CLOSED 2026-09-25** — all reads via one SovereignFetcher per fetch (a5af6f6 + 4ba836c); locked by `tests/test_network_pulse_sourcing.py` (681ccad) | done |
+| GAP-2 | `bridge_signer_walker.py` | defaults to s1, no sovereign path | **CLOSED 2026-09-25** — `xrpl_client.XrplClient` (own node primary, labeled public cascade); one fallback row per run; `/sidechain` disclosure banner. Note: SovereignFetcher is the Render/tunnel primitive; the Mac walker env has no tunnel vars, so XrplClient is the correct own-node path here. | done |
 | GAP-3 | `credentials_state.py` | Clio read on public s2 | point `XRPL_CLIO_NODE` at own Clio; s2 fallback | this sprint (needs own-Clio confirm) |
 | GAP-4 | snapshot walkers | anchored metrics default-source public s1 | own-node primary — the SIGNED metrics MUST be own-node per the covenant | **priority — covenant-relevant** |
 | GAP-5 | AMM ranking scripts | hardcoded s1 | env-var + SovereignFetcher | this sprint |
