@@ -364,12 +364,17 @@
       <div class="maj-history-row{{ ' regained' if not mh.active and false else '' }}"
            data-amendment-hash="{{ mh.hash }}"
            data-majority-close-iso="{{ mh.majority_close_iso }}"
-           data-activation-iso="{{ mh.activation_eta_iso }}"
+           {# Charlie ruling 2026-09-25: a superseded (removed) run's projected
+              activation is history, not a live date — only the ACTIVE run carries
+              data-activation-iso so a stale projection never leaks into the DOM. #}
+           {% if mh.active %}data-activation-iso="{{ mh.activation_eta_iso }}"{% endif %}
            data-first-seen-iso="{{ mh.first_seen_iso }}"
            {% if mh.removed_iso %}data-removed-iso="{{ mh.removed_iso }}"{% endif %}
            style="border-left: 3px solid {{ 'var(--cyan)' if mh.active else 'var(--muted)' }}; padding: 6px 0 6px 10px; margin: 8px 0;">
         <div class="name" style="font-weight: 600;">
-          {{ mh.name or _('Unrecognized amendment') }}
+          {# (a) Charlie ruling 2026-09-25: unrecognized hash shows the hash +
+             "present but unnamed in our node's feature list (rippled <ver>)". #}
+          {{ mh.name or (mh.hash[:8] ~ '… — ' ~ _('present but unnamed in our node’s feature list (rippled 3.3.0-rc1)')) }}
           {% if mh.active %}
             <span class="tag">{{ _('active majority') }}</span>
           {% else %}
@@ -379,16 +384,28 @@
         {# ET-first is applied client-side from the data-*-iso attrs; the
            inline text is the UTC fallback for no-JS / crawlers. #}
         <div class="maj-history-timeline" style="font-size: 0.85rem; color: var(--muted); margin-top: 3px;">
+          {# Charlie ruling 2026-09-25: every gained/lost/regained transition
+             shows the FLAG-LEDGER index + its close time, never poll wall-clock.
+             majority_close_iso is the ledger's own Majority.CloseTime; the flag
+             ledger where we observed it is first_seen_ledger/close. #}
           <span class="maj-gained" data-iso="{{ mh.majority_close_iso }}">
             {{ _('majority reached') }} {{ mh.majority_close_iso }}
           </span>
+          {% if mh.first_seen_ledger %}
+            <span class="maj-flag mono" style="opacity:0.75;">{{ _('(flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %})</span>
+          {% endif %}
           {% if mh.vote_count_at_first and mh.unl_threshold %}
             <span class="maj-votes mono">({{ mh.vote_count_at_first }}/{{ mh.unl_threshold }})</span>
           {% endif %}
           {% if mh.removed_iso %}
-            · <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ _('removed') }} {{ mh.removed_iso }}</span>
+            · <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ _('majority lost at flag ledger') }}{% if mh.removed_seen_ledger %} {{ mh.removed_seen_ledger }}{% endif %}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% else %} {{ mh.removed_iso }}{% endif %}</span>
           {% else %}
             · <span class="maj-activation" data-iso="{{ mh.activation_eta_iso }}">{{ _('projected activation') }} {{ mh.activation_eta_iso }}</span>
+          {% endif %}
+          {% if mh.correction_note %}
+            <div class="maj-correction" style="font-size: 0.78rem; color: var(--amber, #c90); margin-top: 2px;">
+              {{ _('Correction note:') }} {{ mh.correction_note }}
+            </div>
           {% endif %}
         </div>
       </div>
@@ -449,7 +466,7 @@
     },
     "BatchV1_1": {
       "kind": "feature",
-      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. First majority reached on-ledger 2026-09-15; scheduled activation 2026-09-29 14:06:41 UTC per the ledger's Majorities entry."),
+      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Its majority window and projected activation date are shown live below from the ledger's Majorities entry — the countdown restarts from the ledger if validator support ever dips and re-forms."),
       "source_label": "XLS-56 Batch (XRPL-Standards) · xrpl.org · Known Amendments",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
     },

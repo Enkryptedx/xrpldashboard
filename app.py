@@ -6154,6 +6154,16 @@ def amendments():
     return resp
 
 
+def _xrpl_close_to_iso_or_none(close_time):
+    """XRPL epoch seconds -> UTC ISO string, or None. Used to render the
+    flag-ledger close time on majority-history rows (Charlie 2026-09-25:
+    flag-ledger times only, never poll wall-clock)."""
+    if close_time is None:
+        return None
+    import time as _t
+    return _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime(int(close_time) + 946684800))
+
+
 def _load_amendment_majority_history():
     """Return per-amendment majority epochs (gained/lost/regained) from
     amendment_majority_history, newest-first, grouped by amendment.
@@ -6181,7 +6191,10 @@ def _load_amendment_majority_history():
                 SELECT amendment_name, amendment_hash,
                        majority_close_iso, activation_eta_iso,
                        first_seen_iso, removed_iso,
-                       vote_count_at_first, unl_threshold
+                       vote_count_at_first, unl_threshold,
+                       first_seen_ledger, first_seen_close_time,
+                       removed_seen_ledger, removed_close_time,
+                       correction_note
                   FROM amendment_majority_history
                  ORDER BY amendment_name NULLS LAST,
                           majority_close_time DESC
@@ -6198,6 +6211,17 @@ def _load_amendment_majority_history():
                     "active": r[5] is None,
                     "vote_count_at_first": r[6],
                     "unl_threshold": r[7],
+                    # Charlie ruling 2026-09-25: every gained/lost/regained row
+                    # shows the FLAG-LEDGER index + its close time, never poll
+                    # wall-clock. These are the on-ledger anchors for each
+                    # transition (majority_close_iso is the ledger's own
+                    # Majority.CloseTime; first_seen/removed are the flag ledgers
+                    # where we observed the window begin/end).
+                    "first_seen_ledger": r[8],
+                    "first_seen_close_iso": _xrpl_close_to_iso_or_none(r[9]),
+                    "removed_seen_ledger": r[10],
+                    "removed_close_iso": _xrpl_close_to_iso_or_none(r[11]),
+                    "correction_note": r[12],
                 })
         return rows
     except Exception:  # noqa: BLE001 — never let history reads 500 the page
