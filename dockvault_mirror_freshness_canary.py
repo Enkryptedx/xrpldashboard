@@ -101,6 +101,18 @@ JOBS: list[tuple[str, int, str]] = [
     # ceiling. Wrapper stamps _last_ok on success only.
     ("whales_summary_walker", 3600,
      "every-5min recompute of the 12 (tier, filter) cell bodies for /whales into whales_summary"),
+    # Charlie ruling 2026-09-25 (item 3): homepage_summary_walker joins the
+    # meta-watch. It pre-renders the `/` body per locale every 5 min into
+    # the homepage_summary PG row; the route serves it if <30 min old else
+    # falls to a slow live render. Same shape as whales_summary_walker
+    # (5-min cadence, 1h ceiling = up to 12 missed cadences of grace before
+    # paging). Motivating class: the 2026-09-23 relay-URL regression cached
+    # a sovereignty-broken body and served it silently for 30 min — this
+    # meta-watch catches the walker going fully silent (never stamping),
+    # which would freeze the homepage on its last body. Wrapper stamps
+    # _last_ok on success only.
+    ("homepage_summary_walker", 3600,
+     "every-5min per-locale pre-render of the / body into homepage_summary; route serves <30min-old else live-renders"),
     # Charlie ruling 2026-09-10 morning: added pg_backup_canary after
     # it went stale for ~35h during 09-09/09-10 with no meta-watch
     # (last stamp before the kick was 09-09 13:51 UTC — 35h > 25h

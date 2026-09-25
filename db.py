@@ -7750,6 +7750,59 @@ def read_homepage_summary(locale: str) -> tuple[str | None, float | None, int | 
         return None, None, None
 
 
+def invalidate_homepage_summary(locale: str | None = None) -> int:
+    """One-time cache invalidation for the pre-rendered homepage body
+    (Charlie item 3, 2026-09-25). Deletes homepage_summary rows so the
+    next request/walker run rebuilds from scratch. Pass a locale to flush
+    one language; None flushes all. Returns rows deleted.
+
+    Use when a bad body may have been cached (e.g. the 2026-09-23 relay-URL
+    regression that served a stale sovereignty-broken page for 30 min).
+    Safe: the route falls through to a live inline render when the row is
+    absent, so invalidation never blanks the page — worst case is one
+    cold render until the walker repopulates."""
+    if not pg_available():
+        return 0
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                if locale:
+                    cur.execute(
+                        "DELETE FROM homepage_summary WHERE locale = %s",
+                        (locale,),
+                    )
+                else:
+                    cur.execute("DELETE FROM homepage_summary")
+                deleted = cur.rowcount
+            conn.commit()
+        return deleted or 0
+    except Exception:
+        return 0
+
+
+def read_homepage_summary_freshness() -> tuple[int, float | None]:
+    """For the homepage-summary stamp canary (Charlie item 3): return
+    (row_count, oldest_age_seconds). A healthy walker keeps every locale
+    row younger than its 5-min cadence; if the oldest row ages past the
+    30-min serve ceiling the route silently falls to live render (slow,
+    not broken) and nothing pages — this helper gives the canary the
+    signal the WSS-relay incident lacked."""
+    if not pg_available():
+        return 0, None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*), "
+                    "       MAX(EXTRACT(EPOCH FROM (now() - computed_at)))::float "
+                    "FROM homepage_summary"
+                )
+                row = cur.fetchone()
+                return int(row[0] or 0), (float(row[1]) if row[1] is not None else None)
+    except Exception:
+        return 0, None
+
+
 def read_wallet_summary(address: str) -> tuple[str | None, float | None, int | None]:
     """Return (body_html, age_seconds, gen_ms) for the given address's
     pre-rendered /wallet body from `wallet_summary`, or (None, None, None)

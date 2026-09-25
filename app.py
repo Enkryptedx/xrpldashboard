@@ -2595,10 +2595,23 @@ def index():
     # English body served to a `pt` reader would be a wrong-language
     # regression); route reads by resolved locale. Serve sub-ms if
     # fresh (<30 min); fall through to inline render otherwise.
+    # Cache-bypass render (Charlie item 3, 2026-09-25): ?nocache=1 (or the
+    # SWR rebuild thread-local) forces the live render, skipping the
+    # pre-rendered homepage_summary row. Lets us always fetch a truly-fresh
+    # page to compare against the cached one, and is the render path the
+    # invalidation/rebuild uses. Mirrors the _CACHE_REBUILD_LOCAL.bypass
+    # pattern already used by /whales and /analytics.
+    _hp_bypass = (
+        getattr(_CACHE_REBUILD_LOCAL, "bypass", False)
+        or request.args.get("nocache") == "1"
+    )
     try:
         from i18n import select_locale
         loc = select_locale()
-        body_html, age_s, gen_ms = db.read_homepage_summary(loc)
+        body_html, age_s, gen_ms = (
+            (None, None, None) if _hp_bypass
+            else db.read_homepage_summary(loc)
+        )
         if body_html and age_s is not None and age_s < 30 * 60:
             from flask import make_response
             resp = make_response(body_html)
