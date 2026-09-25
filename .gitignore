@@ -175,3 +175,5 @@ tmp/
 mac_heartbeat_url
 nav_screenshots/
 rwa_nav_transparency_cache/
+signed_verified_tokens_latest.json
+static/coin_emblems/

@@ -7755,5 +7755,271 @@
       }
     ],
     "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "06361CB09DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB09DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "LIQUCF",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Liquidez OTC tBRL 6",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 6",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CB39DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB39DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "OTC",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Liquidez OTC tBRL 5",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 5",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CB19DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB19DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "LIQUD0",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Liquidez OTC tBRL 4",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 4",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CB29DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB29DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "BUTE04",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "b.U Tech - EUA",
+    "desc": "Token de capta\u00e7\u00e3o b.U Tech - EUA ",
+    "issuer_name": "Tokeniza"
+  },
+  "0641C7E8F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7E8F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Friday 4:54 test",
+    "issuer_name": "SC.PO"
+  },
+  "0660BFBE02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFBE02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "New Buyer XRP PO Test",
+    "issuer_name": "SC.PO"
+  },
+  "06361CB69DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB69DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "MMV",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Mira Mar Vile",
+    "desc": "Token de capta\u00e7\u00e3o Mira Mar Vile",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CB79DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB79DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "CLIC39",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Click Antecipa - Deb\u00eantures 05",
+    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 05",
+    "issuer_name": "Tokeniza"
+  },
+  "0660BFC902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFC902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Computer Hardware",
+    "issuer_name": "SC.PO"
+  },
+  "065F6B6604D89B7BE2A614EEDCF94AC81307CA720B8DC3C4:rSdBuoiBmWgcHQfXbCJYTWDGU13fvZUcs": {
+    "currency_hex": "065F6B6604D89B7BE2A614EEDCF94AC81307CA720B8DC3C4",
+    "currency_display": "VSCORE",
+    "issuer": "rSdBuoiBmWgcHQfXbCJYTWDGU13fvZUcs",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "VaultScore Network Token",
+    "desc": "Concept-stage utility token for the VaultScore on-chain credit network. Mainnet issuance held entirely in the project treasury -- not sold, distributed, or in public circulation. See vaultscore.io/tokenomics.html",
+    "issuer_name": "VaultScore"
+  },
+  "06361CB59DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB59DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "ONHOFC",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "On House",
+    "desc": "Token de capta\u00e7\u00e3o On House ",
+    "issuer_name": "Tokeniza"
+  },
+  "0641C7E6F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7E6F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "iPhone",
+    "issuer_name": "SC.PO"
+  },
+  "06361CB89DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB89DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "CLIC29",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Click Antecipa - Deb\u00eantures 06",
+    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 06",
+    "issuer_name": "Tokeniza"
+  },
+  "0641C7E1F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7E1F9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Tues Test",
+    "issuer_name": "SC.PO"
+  },
+  "06361CB99DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB99DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "OFER80",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CBB9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CBB9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "OFERDF",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CBA9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CBA9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "OFER63",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
+    "issuer_name": "Tokeniza"
+  },
+  "06361CB49DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
+    "currency_hex": "06361CB49DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7",
+    "currency_display": "ONHO72",
+    "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "On House",
+    "desc": "Token de capta\u00e7\u00e3o On House ",
+    "issuer_name": "Tokeniza"
+  },
+  "0641C7EAF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
+    "currency_hex": "0641C7EAF9C6BB3B75EA31B353A54E2EFAC423498EF25045",
+    "currency_display": "SCPO",
+    "issuer": "rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Friday 4:54 test #1",
+    "issuer_name": "SC.PO"
+  },
+  "EVE:r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd": {
+    "currency_hex": "EVE",
+    "currency_display": "EVE",
+    "issuer": "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd",
+    "source": "toml",
+    "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
+    "name": "EVE Token",
+    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain \u2014 every hour, forever."
+  },
+  "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0:rQDCL2vZNVndsyCpdP6ChhsAsqsGoShDEP": {
+    "currency_hex": "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0",
+    "currency_display": "LP: XRP/EVE",
+    "issuer": "rQDCL2vZNVndsyCpdP6ChhsAsqsGoShDEP",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "EVE",
+        "issuer": "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "06627D4E220285F1AD759D37411EC9CB456CDA93AA1416DC:rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h": {
+    "currency_hex": "06627D4E220285F1AD759D37411EC9CB456CDA93AA1416DC",
+    "currency_display": "SCPOINV",
+    "issuer": "rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "DMC-888",
+    "issuer_name": "SC.PO"
+  },
+  "06627D42220285F1AD759D37411EC9CB456CDA93AA1416DC:rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h": {
+    "currency_hex": "06627D42220285F1AD759D37411EC9CB456CDA93AA1416DC",
+    "currency_display": "SCPOINV",
+    "issuer": "rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NVD123",
+    "issuer_name": "SC.PO"
+  },
+  "06627D48220285F1AD759D37411EC9CB456CDA93AA1416DC:rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h": {
+    "currency_hex": "06627D48220285F1AD759D37411EC9CB456CDA93AA1416DC",
+    "currency_display": "SCPOINV",
+    "issuer": "rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "HSE-765",
+    "issuer_name": "SC.PO"
+  },
+  "0660BFD002C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFD002C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "AI Computer",
+    "issuer_name": "SC.PO"
+  },
+  "06627D54220285F1AD759D37411EC9CB456CDA93AA1416DC:rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h": {
+    "currency_hex": "06627D54220285F1AD759D37411EC9CB456CDA93AA1416DC",
+    "currency_display": "SCPOINV",
+    "issuer": "rhaFzqdvJDaPxWvCQngKtgh7Q4i1djfp3h",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TR-789",
+    "issuer_name": "SC.PO"
+  },
+  "0660BFCE02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFCE02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Big Tire",
+    "issuer_name": "SC.PO"
   }
 }
