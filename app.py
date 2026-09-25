@@ -15,7 +15,7 @@ import time
 from collections import Counter
 from datetime import date, datetime, timezone
 
-from flask import Flask, Response, abort, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, Response, abort, g, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
 from flask_smorest import Api
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -2007,6 +2007,58 @@ def _log_page_view(response):
         # Logging must never break a page render.
         pass
     return response
+
+
+# ── Route status log (Charlie item 11, 2026-09-25) ──────────────────────────
+# Fail-safe terminal-status capture INDEPENDENT of _log_page_view's skip-lists,
+# GET-only gate, and Werkzeug filter. Two hooks:
+#   • _route_status_after: every response (all methods, all paths).
+#   • _route_status_teardown: the exception path — a view that raises before
+#     Flask builds a response never reaches @after_request; teardown always
+#     fires. We only log HERE when an exception is present AND after_request
+#     did not already record this request (guarded by a per-request flag) so
+#     we don't double-count normal 500 responses.
+# HARD RULE (Charlie): a logging failure must NEVER alter the response. Every
+# path swallows exceptions and returns the response unchanged.
+import time as _time_route_status
+
+
+@app.after_request
+def _route_status_after(response):
+    try:
+        g._route_status_logged = True
+        db.log_route_status(
+            ts=_time_route_status.time(),
+            path=request.path,
+            method=request.method,
+            status=(response.status_code if response is not None else None),
+            via="after_request",
+        )
+    except Exception:
+        # Availability logging must never break a response.
+        pass
+    return response
+
+
+@app.teardown_request
+def _route_status_teardown(exc):
+    # Only the exception path matters here; normal responses are already
+    # captured by _route_status_after. If after_request ran, skip.
+    if exc is None:
+        return
+    try:
+        if getattr(g, "_route_status_logged", False):
+            return
+        db.log_route_status(
+            ts=_time_route_status.time(),
+            path=(request.path if request else None),
+            method=(request.method if request else None),
+            status=500,  # unhandled exception → Flask will emit 500
+            via="teardown_exception",
+            exc_type=type(exc).__name__,
+        )
+    except Exception:
+        pass
 
 
 @app.context_processor

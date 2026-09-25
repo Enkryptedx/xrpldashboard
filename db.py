@@ -608,6 +608,35 @@ CREATE TABLE IF NOT EXISTS unl_snapshots (
 CREATE INDEX IF NOT EXISTS unl_snapshots_date_idx
     ON unl_snapshots (snapshot_date DESC);
 
+-- Route status log — terminal HTTP status per request, captured at the WSGI
+-- boundary INDEPENDENT of the page_views classifier (Charlie ruling
+-- 2026-09-25, item 11). page_views._log_page_view drops non-GET, skip-listed
+-- paths, and Werkzeug self-probes, and never fires when a view raises before
+-- Flask builds a response — exactly the blind spots that hid /rwa's outage
+-- from the 5xx walker. This table is the fail-safe second source: one row per
+-- request with its final status, written from @after_request AND
+-- @teardown_request (exception path). A logging failure here must NEVER alter
+-- the response (all writes best-effort, swallow every exception).
+--
+-- Deliberately minimal: no visitor hash, no UA, no geo — this is an
+-- availability signal, not analytics. Hour-bucketed rollup is enough to answer
+-- "what fraction of requests to route X returned 5xx in window W" without the
+-- monitored-path whitelist dependency that made route_5xx_rate_walker blind to
+-- /rwa (it only saw canary-listed routes).
+CREATE TABLE IF NOT EXISTS route_status_log (
+    id            BIGSERIAL PRIMARY KEY,
+    ts            BIGINT  NOT NULL,      -- unix seconds
+    path          TEXT    NOT NULL,
+    method        TEXT    NOT NULL,
+    status        INTEGER,               -- NULL only if even teardown couldn't resolve one
+    via           TEXT    NOT NULL,      -- 'after_request' | 'teardown_exception'
+    exc_type      TEXT                   -- exception class name when via='teardown_exception'
+);
+CREATE INDEX IF NOT EXISTS route_status_log_ts_idx ON route_status_log (ts DESC);
+CREATE INDEX IF NOT EXISTS route_status_log_path_ts_idx ON route_status_log (path, ts DESC);
+CREATE INDEX IF NOT EXISTS route_status_log_5xx_idx
+    ON route_status_log (ts DESC) WHERE status >= 500;
+
 -- Amendment majority history — one row per (amendment_hash, majority epoch).
 -- Records the Majorities entries of the Amendments ledger object as read at
 -- flag ledgers (every 256 ledgers) by the amendment_majority_walker. The
@@ -2244,6 +2273,33 @@ def _writer_execute_with_retry(category, do_write):
 # ─────────────────────────────────────────────────────────────────────
 # Worker-side: write helpers (silent no-ops when DATABASE_URL unset)
 # ─────────────────────────────────────────────────────────────────────
+
+def log_route_status(ts, path, method, status, via, exc_type=None):
+    """Fail-safe terminal-status logger (Charlie item 11, 2026-09-25).
+    Writes one route_status_log row per request at the WSGI boundary,
+    INDEPENDENT of the page_views classifier (no skip-lists, no GET-only,
+    no UA filter) so outage-class 5xx can't hide the way /rwa's did.
+
+    Hard rule: a logging failure must NEVER alter the response. Every path
+    swallows exceptions; a dropped connection just reconnects next call.
+    Silent no-op when Postgres isn't configured."""
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO route_status_log (ts, path, method, status, via, exc_type) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (int(ts), (path or "/")[:300], (method or "?")[:16],
+                 (int(status) if status is not None else None),
+                 (via or "?")[:32],
+                 (exc_type[:64] if exc_type else None)),
+            )
+    except Exception as e:
+        _log_err("log_route_status_failed", e)
+        _drop_writer_conn()
+
 
 def write_event(
     tx_hash, ledger_index, ts, type_, from_addr, to_addr,
