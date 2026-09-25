@@ -77,3 +77,38 @@ Add to the Sunday weekly report (or a dedicated weekly walker):
 
 *This file is the source-of-record. Update the table + gap list whenever an
 endpoint is added, closed, or reclassified; the weekly check reads against it.*
+
+---
+
+## GAP-4 deep audit (2026-09-25, read-only, before the leaf)
+
+**Finding: GAP-4 is a LATENT FRAGILITY, not a live breach.** All 7 anchored
+data metrics resolve to our OWN node at runtime (via `XRPL_NODE=http://192.168.40.95:5006`
+in `~/.config/xrpldashboard/env`, sourced by every walker's launchd wrapper).
+Same-ledger value comparison own-node vs s1 at ledger 107233740: ledger hash
+IDENTICAL (BBC4ED449FDFF262…), RLUSD obligations IDENTICAL (1087811209.031171).
+The covenant ("originated from our own node") HOLDS today.
+
+Per-metric source (runtime-resolved):
+| Metric | Immediate | Underlying node | Own at runtime |
+|---|---|---|---|
+| xrpl_validated_ledger_index | JsonRpcClient(XRPL_NODE) | $XRPL_NODE=own | ✅ |
+| amm_pools_count / total_tvl_usd | amm_ranked.json | rank_amms.py → $XRPL_NODE=own | ✅ |
+| mpt_total_count | mpt_snapshot.json | mpt walker → $XRPL_NODE | ✅ |
+| named_accounts_count | named_accounts.json | curated static (no ledger read) | n/a |
+| rlusd_xrpl_supply | PG rlusd_state_cache | rlusd_live.py → $XRPL_NODE=own (labels 'own-node (LAN)') | ✅ |
+| rwa trio | PG rwa_supply_nav_daily | rwa_supply_nav_walker → $XRPL_NODE | ✅ |
+
+**The fragility:** the CODE DEFAULT in every one of these
+(`XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")`) is
+s1. If the env var is ever dropped from a plist — which is EXACTLY the
+2026-09-24 incident that produced the rwa_onledger_supply_usd=0 leaf — the
+signer silently falls back to s1 with NO sourcing flag and NO disclosure banner
+(unlike the SovereignFetcher-based web surfaces). Own-node-first is
+env-dependent, not code-enforced, on the signing path.
+
+**Fix (tomorrow AM, before relay deploy — Charlie ruling 2026-09-25):**
+own-node-first as CODE default, s1 an explicit LABELED fallback with a sourcing
+flag on the signing path; dry-run proving identical values own vs s1; then a
+normal 21:00 ET run as proof. Do NOT change the signer tonight — tonight's
+01:00 UTC leaf runs on the current (correct, own-node-via-env) config.
