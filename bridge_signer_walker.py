@@ -62,31 +62,9 @@ import xrpl_client
 AXELAR_GATEWAY = "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
 
 
-class _RunFallbackSink:
-    """Per-run sink for XrplClient cascades. Writes ONE walker_node_fallback
-    row on the first cascade of the run, then swallows the rest. Shaped as a
-    drop-in for db.write_walker_node_fallback (same (walker_name, reason)
-    signature SovereignFetcher.fallback_sink uses)."""
-
-    def __init__(self):
-        self.reason = None
-        self.rows_written = 0
-
-    def __call__(self, walker_name, reason):
-        if self.reason is not None:
-            return
-        self.reason = reason or "unknown"
-        try:
-            db.write_walker_node_fallback(walker_name, self.reason)
-            self.rows_written += 1
-        except Exception:
-            # A DB hiccup must not break the scan; the sourcing flag still
-            # lands in the walker_health message below.
-            pass
-
-    @property
-    def sourcing(self):
-        return "sovereign" if self.reason is None else "fallback-public-rpc"
+# Per-run one-row sink; shared with credentials_walker (GAP-3) and any
+# future paginated walker. Lives in xrpl_client so there is one copy.
+_RunFallbackSink = xrpl_client.RunFallbackSink
 WALKER_NAME = "bridge_signer_walker"
 WALKER_CADENCE_SECONDS = 3600
 

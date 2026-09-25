@@ -30,9 +30,13 @@ def main():
     ok = False
     message = None
     try:
-        credentials_state.run_once()
+        # GAP-3: run_once returns the page-level sourcing flag (own node
+        # vs labeled public Clio fallback); stamp it into walker_health
+        # and stdout so a fallback run is visible without opening the DB.
+        sourcing = credentials_state.run_once()
         ok = True
-        message = "walked"
+        message = f"walked sourcing={sourcing}"
+        print(f"credentials_walker: {message}")
     except Exception as exc:
         message = f"exception: {type(exc).__name__}: {exc}"
         raise

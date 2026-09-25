@@ -188,8 +188,17 @@ class XrplClient:
     write to walker_node_fallback — it's logged at INFO with the tag
     'local_retry_recovered'. Grep launchd_logs to count recoveries."""
 
-    def __init__(self, walker_name="unknown", fallback_sink=None):
-        """fallback_sink: optional (walker_name, reason) callable. When set,
+    def __init__(self, walker_name="unknown", fallback_sink=None,
+                 public_urls=None):
+        """public_urls: optional ordered list of public fallback URLs. Default
+        None = PUBLIC_NODES (s1 → s2). A caller whose reads are Clio-shaped
+        (GAP-3 credentials: account_objects / ledger_data / expanded ledger)
+        passes [s2, s1] so the labeled fallback is the public Clio first.
+        LOCAL_NODE stays the primary either way — there is no LAN Clio;
+        our rippled's RPC (port 5006) answers every method these callers
+        use (probed 2026-09-25).
+
+        fallback_sink: optional (walker_name, reason) callable. When set,
         a cascade calls it INSTEAD of writing a walker_node_fallback row
         directly — so a walker that makes many paginated calls per run
         (e.g. bridge_signer_walker's account_tx pages) can collapse every
@@ -202,6 +211,7 @@ class XrplClient:
         "fallback-public-rpc" for the life of this client."""
         self.walker_name = walker_name
         self._fallback_sink = fallback_sink
+        self._public_urls = list(public_urls) if public_urls else PUBLIC_NODES
         self.sourcing = "sovereign"
 
     def _record_fallback(self, reason):
@@ -265,7 +275,7 @@ class XrplClient:
 
         # Cascade to public
         last = None
-        for url in PUBLIC_NODES:
+        for url in self._public_urls:
             try:
                 return _post_rpc(url, req)
             except Exception as e:
@@ -274,5 +284,40 @@ class XrplClient:
         raise last or RuntimeError("all xrpl endpoints failed")
 
 
-def get_client(walker_name="unknown", fallback_sink=None):
-    return XrplClient(walker_name, fallback_sink=fallback_sink)
+class RunFallbackSink:
+    """Per-run sink for XrplClient cascades. Writes ONE walker_node_fallback
+    row on the first cascade of the run, then swallows the rest. Shaped as a
+    drop-in for db.write_walker_node_fallback (same (walker_name, reason)
+    signature SovereignFetcher.fallback_sink uses).
+
+    Use it for walkers that make many paginated calls per run (account_tx /
+    account_objects / ledger pages): pass it as fallback_sink and stamp
+    `sourcing=<sink.sourcing>` into the walker_health message so the page
+    the walker feeds can render its disclosure banner. First used by
+    bridge_signer_walker (GAP-2) and credentials_walker (GAP-3), 2026-09-25.
+    """
+
+    def __init__(self):
+        self.reason = None
+        self.rows_written = 0
+
+    def __call__(self, walker_name, reason):
+        if self.reason is not None:
+            return
+        self.reason = reason or "unknown"
+        try:
+            db.write_walker_node_fallback(walker_name, self.reason)
+            self.rows_written += 1
+        except Exception:
+            # A DB hiccup must not break the walk; the sourcing flag still
+            # lands in the walker_health message.
+            pass
+
+    @property
+    def sourcing(self):
+        return "sovereign" if self.reason is None else "fallback-public-rpc"
+
+
+def get_client(walker_name="unknown", fallback_sink=None, public_urls=None):
+    return XrplClient(walker_name, fallback_sink=fallback_sink,
+                      public_urls=public_urls)

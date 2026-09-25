@@ -30,12 +30,71 @@ import os
 import threading
 import time
 
-import httpx
+from urllib.parse import urlparse
+
+from xrpl.models.requests import GenericRequest
 
 import db
+import xrpl_client
+from sovereign_tunnel_client import SOURCING_SOVEREIGN, worse_sourcing
 
-XRPL_FULL = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
-XRPL_CLIO = os.environ.get("XRPL_CLIO_NODE", "https://s2.ripple.com:51234")
+# GAP-3 (Charlie 2026-09-25): own-node-first as CODE default, public Clio as
+# a LABELED fallback. Pre-fix every read was a raw httpx.post to
+# XRPL_FULL / XRPL_CLIO with hardcoded s1 / s2 defaults — sovereign only
+# while the plist env said so, silent public the moment it didn't, no
+# fallback if our node was down, and the page footer printed the raw URL
+# (a LAN address on a public page).
+#
+# There is no LAN Clio: the env's "Clio" host is our rippled's JSON-RPC
+# port (probed 2026-09-25: rippled build fields, no clio_version), and it
+# answers every method this walker uses (feature, account_objects
+# type=credential, ledger_current, ledger expand=True, ledger_data
+# type=credential). So the primary is xrpl_client.LOCAL_NODE via
+# XrplClient (retry-before-cascade), and the fallback is the public Clio
+# (s2) first, then s1. One walker_node_fallback row per RUN via
+# xrpl_client.RunFallbackSink; `sourcing` is persisted in the snapshot so
+# /credentials can render the disclosure banner off the LAST refresh.
+WALKER_NAME = "credentials_walker"
+PUBLIC_CLIO_FALLBACK = os.environ.get("XRPL_PUBLIC_CLIO", "https://s2.ripple.com:51234")
+PUBLIC_FALLBACK_URLS = [PUBLIC_CLIO_FALLBACK] + [
+    u for u in xrpl_client.PUBLIC_NODES if u != PUBLIC_CLIO_FALLBACK
+]
+OWN_NODE_LABEL = "our own rippled node (LAN)"
+
+
+def _public_label():
+    host = urlparse(PUBLIC_FALLBACK_URLS[0]).hostname or "public Clio"
+    return f"public Clio fallback ({host})"
+
+
+# Per-run client + sink. run_once() opens a fresh pair so the sticky
+# fallback (and the one-row rule) is scoped to one walker pass.
+_run = {"client": None, "sink": None}
+
+
+def _begin_run():
+    sink = xrpl_client.RunFallbackSink()
+    _run["sink"] = sink
+    _run["client"] = xrpl_client.get_client(
+        WALKER_NAME, fallback_sink=sink, public_urls=PUBLIC_FALLBACK_URLS,
+    )
+    return sink
+
+
+def _client():
+    if _run["client"] is None:
+        _begin_run()
+    return _run["client"]
+
+
+def _run_sourcing():
+    sink = _run["sink"]
+    return sink.sourcing if sink is not None else SOURCING_SOVEREIGN
+
+
+def _node_label():
+    """Human label for the node that served this run — never a raw URL."""
+    return OWN_NODE_LABEL if _run_sourcing() == SOURCING_SOVEREIGN else _public_label()
 
 CUMULATIVE_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_CUM_BUDGET", str(5 * 60)))
 RECENT_BUDGET_SECONDS = int(os.environ.get("CREDENTIALS_RECENT_BUDGET", str(3 * 60)))
@@ -99,16 +158,16 @@ def _xrpl_close_to_iso(close_time):
         return None
 
 
-def _post(url, method, params, timeout=20):
+def _rpc(method, params):
+    """One RPC through the run's own-node-first client. Returns the result
+    dict (may carry an `error` key, exactly as the old raw POST did) or
+    None when every endpoint failed. XrplClient handles local retry, the
+    labeled public cascade, and the one-row fallback record."""
     try:
-        r = httpx.post(
-            url,
-            json={"method": method, "params": [params]},
-            timeout=timeout,
-        )
-        return (r.json() or {}).get("result") or {}
+        resp = _client().request(GenericRequest(method=method, **(params or {})))
+        return resp.result or {}
     except Exception as exc:
-        log.debug("rpc %s failed: %s", method, exc)
+        log.debug("rpc %s failed on every endpoint: %s", method, exc)
         return None
 
 
@@ -143,7 +202,7 @@ def _clean_credential(e):
 
 
 def _fetch_amendment_status():
-    res = _post(XRPL_FULL, "feature", {})
+    res = _rpc("feature", {})
     if not res:
         return None
     features = res.get("features") or {}
@@ -157,9 +216,12 @@ def _fetch_amendment_status():
                 "enabled": bool(info.get("enabled")),
                 "supported": bool(info.get("supported")),
                 "fetched_at_iso": _now_iso(),
+                "node": _node_label(),
+                "sourcing": _run_sourcing(),
             }
     return {"hash": None, "name": "Credentials", "enabled": None,
-            "supported": None, "fetched_at_iso": _now_iso()}
+            "supported": None, "fetched_at_iso": _now_iso(),
+            "node": _node_label(), "sourcing": _run_sourcing()}
 
 
 def _account_objects_credentials(account, ledger_index="validated"):
@@ -175,7 +237,7 @@ def _account_objects_credentials(account, ledger_index="validated"):
         }
         if marker:
             params["marker"] = marker
-        res = _post(XRPL_CLIO, "account_objects", params, timeout=15)
+        res = _rpc("account_objects", params)
         if res is None:
             return objs
         for o in res.get("account_objects") or []:
@@ -255,7 +317,8 @@ def _walk_via_account_objects(seed_accounts):
         "started_at_iso": started_at_iso,
         "fetched_at_iso": _now_iso(),
         "duration_seconds": int(time.time() - started_at),
-        "node": XRPL_CLIO,
+        "node": _node_label(),
+        "sourcing": _run_sourcing(),
         "ledger_index": ledger_index,
     }
 
@@ -282,7 +345,7 @@ def _walk_cumulative():
         }
         if marker:
             params["marker"] = marker
-        res = _post(XRPL_CLIO, "ledger_data", params, timeout=30)
+        res = _rpc("ledger_data", params)
         if res is None:
             time.sleep(2)
             continue
@@ -316,13 +379,14 @@ def _walk_cumulative():
         "started_at_iso": started_at_iso,
         "fetched_at_iso": _now_iso(),
         "duration_seconds": int(time.time() - started_at),
-        "node": XRPL_CLIO,
+        "node": _node_label(),
+        "sourcing": _run_sourcing(),
     }
 
 
 def _scan_recent():
     """Sweep recent validated ledgers for Credential* txs within time budget."""
-    cur = _post(XRPL_CLIO, "ledger_current", {})
+    cur = _rpc("ledger_current", {})
     if not cur:
         return None
     head = cur.get("ledger_current_index")
@@ -343,11 +407,9 @@ def _scan_recent():
         offset += 1
         if li < 0:
             break
-        res = _post(
-            XRPL_CLIO,
+        res = _rpc(
             "ledger",
             {"ledger_index": li, "transactions": True, "expand": True},
-            timeout=15,
         )
         if res is None:
             continue
@@ -387,7 +449,8 @@ def _scan_recent():
         "started_at_iso": started_at_iso,
         "fetched_at_iso": _now_iso(),
         "duration_seconds": int(time.time() - started_at),
-        "node": XRPL_CLIO,
+        "node": _node_label(),
+        "sourcing": _run_sourcing(),
     }
 
 
@@ -429,13 +492,28 @@ def _persist_snapshot():
             )
             local_cum = None
 
+    # Page-level sourcing = worst across the sections the page will show.
+    # Sections written by THIS run carry the run's sourcing; a section
+    # carried over from the existing snapshot keeps its own recorded
+    # sourcing (disclosure symmetry — any public-sourced section taints
+    # the page).
+    sourcing = _run_sourcing()
+    for local, key in ((local_amend, "amendment"), (local_cum, "cumulative"),
+                       (local_rec, "recent")):
+        if local is None:
+            prev = (existing.get(key) or {}).get("sourcing")
+            if prev:
+                sourcing = worse_sourcing(sourcing, prev)
+
     payload = {
         "amendment": local_amend or existing.get("amendment"),
         "cumulative": local_cum or existing.get("cumulative"),
         "recent": local_rec or existing.get("recent"),
+        "sourcing": sourcing,
         "written_at": int(time.time()),
     }
     db.write_credentials_snapshot(payload)
+    return sourcing
 
 
 def run_once():
@@ -443,6 +521,7 @@ def run_once():
     under launchd every 30 minutes. Forces all three steps (amendment,
     cumulative, recent) and persists the resulting snapshot to Postgres."""
     log.info("credentials walker: starting one-shot pass")
+    sink = _begin_run()
 
     amend = _fetch_amendment_status()
     if amend is not None:
@@ -472,8 +551,13 @@ def run_once():
             rec["ledgers_scanned"], rec["total"],
         )
 
-    _persist_snapshot()
-    log.info("credentials walker: persisted snapshot")
+    page_sourcing = _persist_snapshot()
+    log.info(
+        "credentials walker: persisted snapshot sourcing=%s%s",
+        page_sourcing,
+        f" fallback_reason={sink.reason}" if sink.reason else "",
+    )
+    return page_sourcing
 
 
 def get_credentials_state():

@@ -6615,6 +6615,11 @@ def credentials():
         if perm_walker_last and perm_walker_last.get("fetched_at_iso") \
         and _iso_to_age_seconds(perm_walker_last.get("fetched_at_iso")) is not None else None
     perm_walker_is_stale = perm_walker_age_hours is not None and perm_walker_age_hours >= 48.0
+    # GAP-3 (2026-09-25): credentials_walker persists the page-level
+    # `sourcing` in the snapshot (own node first, public Clio as labeled
+    # fallback). DB-cache page, so this is the LAST refresh's provenance;
+    # the banner fires only on a positive fallback signal.
+    page_sourcing = (state or {}).get("sourcing") or "sovereign"
 
     resp = make_response(render_template(
         "credentials.html",
@@ -6625,6 +6630,7 @@ def credentials():
         perm_walker_last=perm_walker_last,
         perm_walker_age_hours=perm_walker_age_hours,
         perm_walker_is_stale=perm_walker_is_stale,
+        page_sourcing=page_sourcing,
     ))
     # Explicit: 60s browser cache + 60s CF edge cache. Visitors always
     # see fresh-within-a-minute data; without this header, CF returns
