@@ -608,6 +608,54 @@ CREATE TABLE IF NOT EXISTS unl_snapshots (
 CREATE INDEX IF NOT EXISTS unl_snapshots_date_idx
     ON unl_snapshots (snapshot_date DESC);
 
+-- Amendment majority history — one row per (amendment_hash, majority epoch).
+-- Records the Majorities entries of the Amendments ledger object as read at
+-- flag ledgers (every 256 ledgers) by the amendment_majority_walker. The
+-- point is to RECORD majority gained/lost/regained transitions at the moment
+-- they happen instead of bisecting them after the fact.
+--
+-- Motivating incident (2026-09-25): five outlets (CoinDesk, Yahoo/TheStreet,
+-- Blockto, WordUp, Crinance) printed "PermissionDelegationV1_1 activates
+-- Oct 5 11:18 UTC" sourced to /amendments. Correct at publication (majority
+-- CloseTime was 2026-09-21 11:18:40 UTC). But support dipped to the 28/35
+-- floor and the Majority was removed from the ledger object at
+-- 2026-09-23 12:47:20 UTC, then re-recorded 2026-09-24 21:25:01 UTC ->
+-- activation slipped to Oct 8 21:25 UTC. We only learned this by bisecting
+-- flag ledgers after the fact; this table makes such resets first-party.
+--
+-- Shape: append-only. "Majority epoch" = a continuous majority window,
+-- keyed by its CloseTime (the value rippled stamps in Majority.CloseTime,
+-- which is stable for the life of a window and changes on reset). One row
+-- per (amendment_hash, majority_close_time): first_seen / last_seen mark the
+-- flag-ledger window we observed it present; removed_at_* is filled when a
+-- later pass finds the majority gone. activation_eta = close_time + 14d.
+CREATE TABLE IF NOT EXISTS amendment_majority_history (
+    amendment_hash         TEXT   NOT NULL,
+    amendment_name         TEXT,
+    majority_close_time    BIGINT NOT NULL,   -- XRPL epoch seconds (Majority.CloseTime)
+    majority_close_iso     TEXT   NOT NULL,   -- UTC ISO, for display
+    activation_eta_close   BIGINT NOT NULL,   -- majority_close_time + 1209600 (14d)
+    activation_eta_iso     TEXT   NOT NULL,   -- UTC ISO
+    first_seen_ledger      BIGINT NOT NULL,   -- flag ledger where we first saw this window
+    first_seen_close_time  BIGINT NOT NULL,   -- that flag ledger's own close time
+    first_seen_iso         TEXT   NOT NULL,
+    last_seen_ledger       BIGINT NOT NULL,   -- most recent flag ledger still showing it
+    last_seen_close_time   BIGINT NOT NULL,
+    last_seen_iso          TEXT   NOT NULL,
+    removed_seen_ledger    BIGINT,            -- first flag ledger where it was GONE (NULL = still present)
+    removed_close_time     BIGINT,
+    removed_iso            TEXT,
+    vote_count_at_first    SMALLINT,          -- UNL votes when first observed (from tally reconstructions, best-effort)
+    unl_threshold          SMALLINT,
+    source                 TEXT   NOT NULL DEFAULT 'own_node_flag_ledger',
+    updated_at_iso         TEXT   NOT NULL,
+    PRIMARY KEY (amendment_hash, majority_close_time)
+);
+CREATE INDEX IF NOT EXISTS amendment_majority_history_name_idx
+    ON amendment_majority_history (amendment_name, majority_close_time DESC);
+CREATE INDEX IF NOT EXISTS amendment_majority_history_active_idx
+    ON amendment_majority_history (amendment_hash) WHERE removed_seen_ledger IS NULL;
+
 -- XLS-80 PermissionedDomains Phase 1: walker + schema, no UI yet.
 -- Append-only history shape from day 1 — the trajectory IS the data we
 -- want (count rises 0→1→N as institutions adopt the primitive). Do NOT
