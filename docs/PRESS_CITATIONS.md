@@ -83,6 +83,14 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
 | 11 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact | full | other (off-topic Revolut) | none | none — no link, no mention (off-topic Revolut piece; referrer likely site-nav bleed) |
 | 12 | 2026-09-19 | CoinDesk | https://www.coindesk.com/tech/2026/09/19/ripple-says-asset-managers-are-preparing-for-xrp-ledger-s-next-payments-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no name in prose — but **link-citation as the source of the validator count**: the `/amendments` href sits inside the "The amendment has support from [link]" sentence, i.e. CoinDesk sources the vote tally to our page via the link rather than naming us. |
 | 13 | 2026-09-18 | amznusa.com (aggregator of CryptoSlate/Akiba Wright) | https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades-liam-akiba-wright-amznusa-com/ | full | other (lending/vault) | `xrpldashboard.com/amendments` | link only, no mention in text (scraped repost of the Sep-18 CryptoSlate lending article) |
+| 14 | 2026-09-2x | New Economy (JP) | https://www.neweconomy.jp/posts/610604 | **DRAFT — not read** | (unread) | (referrer, 2 hits since Sep 24) | **DRAFT link-only** — not fetched/read; referrer bleed from analytics 2026-09-25. No naming sentence recorded. Verify + classify on next read pass. |
+| 15 | 2026-09-23 | CoinDesk (2nd article) | https://www.coindesk.com/tech/2026/09/23/xrp-ledger-retries-upgrade-that-lets-banks-split-payment-and-compliance-duties | **DRAFT — not read** | (unread) | (referrer, 1 hit since Sep 24) | **DRAFT link-only** — distinct newer CoinDesk piece (domain already filed at #12 for the Sep-19 article; this is a different Sep-23 URL). Not fetched/read; no naming sentence recorded. Verify on next read pass. |
+
+### MCP / agent-directory listings (not press citations)
+
+| Date seen | Directory | Listing URL | Status |
+|---|---|---|---|
+| 2026-09-25 | mcpindex.ai | https://mcpindex.ai/server/com-xrpldashboard-xrpldashboard-mcp | **DRAFT link-only** — our MCP server appeared as a referrer 2026-09-25 (1 hit), indicating an indexed listing. Not verified beyond the referrer; confirm the listing content on next pass. |
 
 ### Headline-only (blocked, not read-in-full)
 
