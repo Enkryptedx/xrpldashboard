@@ -9979,16 +9979,59 @@ def llms_txt():
 _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
-        "Public read-only data for the XRP Ledger. Sourcing is per-surface: "
-        "walker-cached from our own rippled node (LAN) for anchored metrics, "
-        "sovereign-tunnel for /check + /lending, public XRPL RPC for surfaces "
-        "where tunnel wiring is not yet complete, and public Ethereum RPC for "
-        "the RLUSD Ethereum-side. Every response is proof-annotated with "
-        "source, freshness stamp, and CLAIMS reference (MCP: full envelope; "
-        "HTTP /check.json: per-capability source_label + checked_at_utc, "
-        "full envelope migration in progress). Free for humans and identified "
+        "Public read-only data for the XRP Ledger. Ledger-state data is read "
+        "from our own rippled node first (LAN for walkers, CF-Access tunnel "
+        "for the web app); public XRPL RPC (s1/s2/xrplcluster) is a labeled "
+        "fallback that flips the response's sourcing field and the page's "
+        "disclosure banner when used. Public Ethereum RPC for the RLUSD "
+        "Ethereum-side. Every response is proof-annotated with source, "
+        "freshness stamp, and CLAIMS reference (MCP: full envelope; HTTP "
+        "/check.json: per-capability source_label + checked_at_utc, full "
+        "envelope migration in progress). Free for humans and identified "
         "agents at v1."
     ),
+    # Source-disclosure block (Charlie ruling 2026-09-25: sourcing labeling
+    # is data labeling, machine-readable here as on every human page).
+    "data_sourcing": {
+        "rule": (
+            "own rippled node first; public XRPL servers are a labeled "
+            "fallback; any surface that used one says so"
+        ),
+        "classes": {
+            "own-node": (
+                "walkers on our infrastructure read our own rippled node over "
+                "LAN and write the rows the site serves (anchored signed-snapshot "
+                "metrics, /pools, /cold-storage, /escrow-supply, /credentials, "
+                "/sidechain, /nfts live path, /whales stream)"
+            ),
+            "sovereign-tunnel": (
+                "the web app reads our own rippled node through the CF-Access "
+                "tunnel rpc.xrpldashboard.com (/check, /wallet, /lending, "
+                "/amendments, /tokens, /mpts cache lookups, nav liveness chip)"
+            ),
+            "public-fallback": (
+                "s1.ripple.com / s2.ripple.com / xrplcluster.com, used only when "
+                "our node is unreachable; sourcing='fallback-public-rpc' in machine "
+                "responses, disclosure banner on the page, one walker_node_fallback "
+                "row per walker run"
+            ),
+            "third-party-history": (
+                "Ripple's public Clio archive for NFT history before our node's "
+                "window (2026-04-01 onward); labeled third-party at point of use"
+            ),
+            "public-ethereum": "Alchemy / 1rpc.io for /rlusd Ethereum-side supply",
+        },
+        "live_browser_streams": (
+            "whales/tokens/pools/wallet currently subscribe to public "
+            "wss://xrplcluster.com (labeled); our own-node relay "
+            "wss://wss.xrpldashboard.com carries the ledger stream; migration of "
+            "the four page feeds to own-node named feeds is in progress — relay "
+            "deploy first, pages switch after a green canary"
+        ),
+        "sourcing_field_values": ["sovereign", "fallback-public-rpc", "stale-cache",
+                                  "public-no-tunnel-configured"],
+        "audit": f"{SITE_URL}/methodology and docs/SOVEREIGNTY_AUDIT.md in the source repo",
+    },
     "disambiguation": (
         "Independent project — not affiliated with Ripple, the XRP Ledger "
         "Foundation, any exchange, or with xrpdashboard.com (note: missing "
