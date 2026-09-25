@@ -270,7 +270,7 @@
     <h2 class="section">{{ _('Attested issuer families') }}</h2>
     <p class="section-desc" style="font-size:0.85rem;color:var(--muted);margin:-4px 0 10px;">
       {%- if verified_strict_count -%}
-        {{ ngettext('%(n)d family holds our strict two-way TOML attestation', '%(n)d families hold our strict two-way TOML attestation', verified_strict_count) | format(n=verified_strict_count) }};
+        {{ ngettext('%(n)d family holds our strict two-way TOML attestation', '%(n)d families hold our strict two-way TOML attestation', verified_strict_count, n=verified_strict_count) }};
       {%- else -%}
         {{ _('No family currently holds our strict two-way TOML attestation.') }}
       {%- endif %}
