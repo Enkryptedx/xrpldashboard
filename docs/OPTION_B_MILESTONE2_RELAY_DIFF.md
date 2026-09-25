@@ -236,12 +236,145 @@ stopgaps remain in place, so pages regress cleanly to today's baseline.
 
 ## 5. Review checklist for Charlie
 
-- [ ] Upstream sub change (`ledger` → `transactions`+`ledger`) acceptable on
-      the Lenovo rippled's load? (10–20 tx/s sustained; one sub.)
-- [ ] log_only default + 72h clock correct.
-- [ ] Canary using RLUSD issuer (no synthetic) as specified.
-- [ ] Deploy sequence + rollback acceptable.
-- [ ] Give the go for Milestone 2 deploy (or request changes to this diff).
+- [x] Upstream sub change (`ledger` → `transactions`+`ledger`) acceptable on
+      the Lenovo rippled's load? (10–20 tx/s sustained; one sub.) — GO (Charlie 2026-09-25)
+- [x] log_only default + 72h clock correct. — GO
+- [x] Canary using RLUSD issuer (no synthetic) as specified. — GO
+- [x] Deploy sequence + rollback acceptable. — GO
+- [x] **Milestone 2 GO** (Charlie 2026-09-25): deploy **Saturday morning ET**,
+      **log-only**. Final "go" comes from Charlie at the terminal at deploy time;
+      JJ executes over SSH, NOTHING before that. **Enforce flip not before
+      Wednesday** — Tuesday is Batch activation; NOTHING changes on the relay
+      Tuesday.
 
-*No code changed on Lenovo. This document is the diff-in-hand for the
-Milestone-2 go decision.*
+---
+
+## 6. EXACT DEPLOY CHECKLIST (Saturday AM ET, log-only)
+
+**Preconditions (do not start until ALL true):**
+- It is Saturday morning ET, low traffic, clear of the 21:00 ET leaf.
+- Charlie has given the live "go" at the terminal for THIS session.
+- CI on `main` is green (the relay code + filters merged; last green run
+  recorded before deploy).
+
+All commands run on the Mac over `ssh rippled-node` unless marked LOCAL.
+Host alias `rippled-node`; Lenovo checkout `/home/charlie/xrpldashboard`;
+unit `xrpld-live-stream-relay`; relay port 6011, healthz 6012 (per the
+tracked mirror deploy/lenovo/xrpld-live-stream-relay.service).
+
+### A. PRE-CHECKS (read-only; abort if any fails)
+
+1. **Relay canary green NOW (baseline):**
+   ```
+   ssh rippled-node "cd /home/charlie/xrpldashboard && ./.venv/bin/python wss_relay_canary.py --once"
+   ```
+   Expect exit 0. Also confirm walker_health `wss_relay_canary` findings_count=0
+   (LOCAL: read via jj_query). If red, ABORT — don't deploy onto a broken baseline.
+
+2. **Healthz baseline (upstream connected, current mode):**
+   ```
+   ssh rippled-node "curl -s http://127.0.0.1:6012/healthz"
+   ```
+   Record: `upstream_connected=true`, `last_ledger_index`, `clients`.
+
+3. **Backup the two files that change (timestamped, on Lenovo):**
+   ```
+   ssh rippled-node "cd /home/charlie/xrpldashboard && cp live_stream_relay.py live_stream_relay.py.bak-$(date +%Y%m%d-%H%M%S)"
+   ssh rippled-node "sudo cp /etc/systemd/system/xrpld-live-stream-relay.service /etc/systemd/system/xrpld-live-stream-relay.service.bak-$(date +%Y%m%d-%H%M%S)"
+   ```
+   (The unit file only changes if we add the RELAY_MODE env via a drop-in; if
+   using a systemd drop-in instead of editing the unit, back up the drop-in dir.)
+
+4. **Record current ledger index (reconnect proof baseline):**
+   ```
+   ssh rippled-node "curl -s http://127.0.0.1:6012/healthz" | grep -o '"last_ledger_index":[0-9]*'
+   ```
+   Note the value + wall-clock time.
+
+5. **Record current git HEAD on Lenovo (rollback ref):**
+   ```
+   ssh rippled-node "cd /home/charlie/xrpldashboard && git rev-parse HEAD"
+   ```
+
+### B. DEPLOY
+
+6. **Pull the merged relay code:**
+   ```
+   ssh rippled-node "cd /home/charlie/xrpldashboard && git fetch origin && git checkout main && git pull --ff-only"
+   ```
+   Confirm HEAD now includes the Option-B relay commit.
+
+7. **Set log-only mode** (systemd drop-in, preferred — leaves the unit file clean):
+   ```
+   ssh rippled-node "sudo mkdir -p /etc/systemd/system/xrpld-live-stream-relay.service.d && printf '[Service]\nEnvironment=LIVE_STREAM_RELAY_MODE=log_only\n' | sudo tee /etc/systemd/system/xrpld-live-stream-relay.service.d/mode.conf && sudo systemctl daemon-reload"
+   ```
+
+8. **Restart the relay** (~1s upstream blip; reconnect loop + browser fallback cover it):
+   ```
+   ssh rippled-node "sudo systemctl restart xrpld-live-stream-relay"
+   ```
+   Note the restart wall-clock time (for the reconnect-within-seconds proof).
+
+### C. POST-CHECKS (all must pass; else ROLLBACK per §D)
+
+9. **Ledger stream reconnects within seconds:**
+   ```
+   ssh rippled-node "sleep 5; curl -s http://127.0.0.1:6012/healthz"
+   ```
+   Expect `upstream_connected=true` and `last_ledger_index` >= the §A.4 baseline
+   (advanced or equal) within ~5–10s of restart. Record the gap.
+
+10. **Healthz shows the new shape:** `relay_mode=log_only`, a `feeds` object
+    present, `slow_consumer_drops=0`.
+
+11. **All 6 feeds subscribe-success via canary:**
+    ```
+    ssh rippled-node "cd /home/charlie/xrpldashboard && ./.venv/bin/python wss_relay_canary.py --once --all-feeds"
+    ```
+    Expect per-feed OK for: ledger, amm_transactions, token_top100_transactions,
+    whale_transactions (clean handshake; silence OK), wallet_transactions
+    (accounts=[RLUSD issuer rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De], ≤30s for a tx),
+    supply_updates (≤30s for a decorated ledgerClosed w/ total_coins). Exit 0.
+
+12. **SHADOW_TRIP logging is live (log-only working):** trigger one benign
+    violation (e.g. a wallet sub with 2 addresses > PER_CLIENT_ADDR_CAP) and
+    confirm a `SHADOW_TRIP` line appears in the journal, request NOT rejected:
+    ```
+    ssh rippled-node "journalctl -u xrpld-live-stream-relay --since '2 min ago' | grep SHADOW_TRIP | tail"
+    ```
+    (If no natural trip in the window, this proves the log path exists; enforce
+    is off so nothing closes.)
+
+13. **No client-fallback flips on / and /amendments** (the sovereignty proof):
+    LOCAL — watch the walker-node-fallback telemetry for browser_wss flips on
+    those two routes for ~5 min post-deploy:
+    ```
+    (LOCAL) jj_query: SELECT * FROM walker_node_fallback WHERE source='browser_wss' AND created_at > now() - interval '10 min';
+    ```
+    Also load `/` and `/amendments` in a real browser, confirm the live pill
+    stays on our node (no fallback to xrplcluster). Expect ZERO new browser_wss
+    fallback rows for those routes.
+
+### D. ROLLBACK (if any post-check fails)
+
+14. Revert code + mode, restart:
+    ```
+    ssh rippled-node "cd /home/charlie/xrpldashboard && git checkout <§A.5 HEAD> && sudo rm -f /etc/systemd/system/xrpld-live-stream-relay.service.d/mode.conf && sudo systemctl daemon-reload && sudo systemctl restart xrpld-live-stream-relay"
+    ```
+    (Or restore the `.bak-*` files from §A.3.) Browsers were on client-side
+    fallback throughout, so they regress cleanly to today's baseline. Confirm
+    healthz `upstream_connected=true` and report the failing check.
+
+### E. AFTER A CLEAN DEPLOY
+
+15. **72h log-only clock starts** at the restart time (§B.8). Report the clock
+    start + all post-check results to Charlie.
+16. **Enforce flip: NOT before Wednesday** (Tuesday = Batch activation; relay
+    untouched Tuesday). The flip is a separate action needing its own Charlie
+    go after reviewing 72h of SHADOW_TRIP lines.
+17. Update `deploy/lenovo/xrpld-live-stream-relay.service` mirror in
+    `~/xrpl_test_private_infra` if the unit/drop-in changed (drift canary
+    parity), read-only, committed.
+
+*No code changed on Lenovo until Charlie's live terminal-time "go" Saturday AM.
+This document is the diff + deploy checklist for that execution.*
