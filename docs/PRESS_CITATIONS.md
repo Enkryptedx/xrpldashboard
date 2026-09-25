@@ -65,21 +65,24 @@ Verified key (this batch): **y** = figure attributed to us reconstructed from
 our reconstruction range (table starts 2026-09-21) or no archived tally exists;
 blank = no us-attributed figure to verify (link/mention only).
 
-| # | Date | Outlet | URL | Read | Links to us | Verbatim mention |
-|---|---|---|---|---|---|---|
-| 1 | 2026-09-24 | Yahoo Finance (TheStreet syndication) | https://finance.yahoo.com/markets/crypto/articles/xrp-ledger-eyes-october-upgrade-205658238.html | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 2 | 2026-09-20 | Blockonomi | https://blockonomi.com/xrp-ledger-batch-v1-1-nears-activation-as-asset-managers-prepare | full | `xrpldashboard.com/amendments` | **linked+quoted**: "The XRPL Dashboard lists support from 30 of 35 tracked validators." |
-| 3 | 2026-09-23 | Blockto | https://blockto.io/news/xrp-ledger-sets-new-date-for-feature-letting-banks-split-account-permissions | full | `xrpldashboard.com/amendments` | "The update, called [Batch V1.1], …" — link is inline in the sentence naming the update; our name not spelled in prose (link only) |
-| 4 | 2026-09-21 | Coin Insider | https://coininsider.org/news/ripple-says-asset-managers-are-eyeing-batch-v1-1-upgrade | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 5 | 2026-09-19 | Coinwelt (DE) | https://coinwelt.de/news/xrp-ledger-batch-v11-atomare-zahlungen | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 6 | (undated) | Crinance | https://crinance.com/xrpl-fixes-critical-pre-mainnet-flaw-but-client-apps-remain-at-risk-123890.html | full | `xrpldashboard.com/amendments` | **linked+quoted**: "…22, xrpldashboard showed 30 of 35 trusted validators supporting the amendment, above its displayed 28-vote threshold." — Verified **y** (see below) |
-| 7 | 2026-09-23 | Cryptomaan (NL) | https://cryptomaan.nl/nieuws/xrp-ledger-permission-delegation-upgrade | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 8 | 2026-08-28 | AllAboutXRP | https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window | full | `xrpldashboard.com/amendments` | **linked+quoted**: "XRPLDashboard independently displays the same count and a conditional September 11 projection." — Verified **unverifiable** (see below). ⚠ OLD article (Aug 28); Sep-11 projection is now a past date. |
-| 9 | 2026-09-21 | UseTheBitcoin | https://usethebitcoin.com/news/xrp-ledger-batch-v1-1-gains-institutional-interest-ahead-of-activation | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 10 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/xrp-ledger-delegation-upgrade-could-go-live-oct-5-will-xrp-benefit | full | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 11 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact | full | none | none — no link, no mention (off-topic Revolut piece; referrer likely site-nav bleed) |
-| 12 | 2026-09-19 | CoinDesk | https://www.coindesk.com/tech/2026/09/19/ripple-says-asset-managers-are-preparing-for-xrp-ledger-s-next-payments-upgrade | full | `xrpldashboard.com/amendments` | link only, no name in prose — but **link-citation as the source of the validator count**: the `/amendments` href sits inside the "The amendment has support from [link]" sentence, i.e. CoinDesk sources the vote tally to our page via the link rather than naming us. |
-| 13 | 2026-09-18 | amznusa.com (aggregator of CryptoSlate/Akiba Wright) | https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades-liam-akiba-wright-amznusa-com/ | full | `xrpldashboard.com/amendments` | link only, no mention in text (scraped repost of the Sep-18 CryptoSlate lending article) |
+Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
+**PermissionDelegationV1_1** / **both** / **other**.
+
+| # | Date | Outlet | URL | Read | Amendment cited | Links to us | Verbatim mention |
+|---|---|---|---|---|---|---|---|
+| 1 | 2026-09-24 | Yahoo Finance (TheStreet syndication) | https://finance.yahoo.com/markets/crypto/articles/xrp-ledger-eyes-october-upgrade-205658238.html | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | **sourced attribution (link-as-name)**: "The upgrade in question, PermissionDelegationV1_1, entered a 14-day activation countdown on Sep. 21 after 29 of the network's 35 trusted validators backed it, according to the XRPL amendments dashboard." — Verified **y** (see below) |
+| 2 | 2026-09-20 | Blockonomi | https://blockonomi.com/xrp-ledger-batch-v1-1-nears-activation-as-asset-managers-prepare | full | Batch v1.1 | `xrpldashboard.com/amendments` | **linked+quoted**: "The XRPL Dashboard lists support from 30 of 35 tracked validators." |
+| 3 | 2026-09-23 | Blockto | https://blockto.io/news/xrp-ledger-sets-new-date-for-feature-letting-banks-split-account-permissions | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | "The update, called [Batch V1.1], …" — link is inline in the sentence naming the update; our name not spelled in prose (link only) |
+| 4 | 2026-09-21 | Coin Insider | https://coininsider.org/news/ripple-says-asset-managers-are-eyeing-batch-v1-1-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
+| 5 | 2026-09-19 | Coinwelt (DE) | https://coinwelt.de/news/xrp-ledger-batch-v11-atomare-zahlungen | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
+| 6 | (undated) | Crinance | https://crinance.com/xrpl-fixes-critical-pre-mainnet-flaw-but-client-apps-remain-at-risk-123890.html | full | other (pre-mainnet flaw fix) | `xrpldashboard.com/amendments` | **linked+quoted**: "…22, xrpldashboard showed 30 of 35 trusted validators supporting the amendment, above its displayed 28-vote threshold." — Verified **y** (see below) |
+| 7 | 2026-09-23 | Cryptomaan (NL) | https://cryptomaan.nl/nieuws/xrp-ledger-permission-delegation-upgrade | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | link only, no mention in text |
+| 8 | 2026-08-28 | AllAboutXRP | https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window | full | other (FixCleanup3_3_0) | `xrpldashboard.com/amendments` | **linked+quoted**: "XRPLDashboard independently displays the same count and a conditional September 11 projection." — Verified **unverifiable** (see below). ⚠ OLD article (Aug 28); Sep-11 projection is now a past date. |
+| 9 | 2026-09-21 | UseTheBitcoin | https://usethebitcoin.com/news/xrp-ledger-batch-v1-1-gains-institutional-interest-ahead-of-activation | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
+| 10 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/xrp-ledger-delegation-upgrade-could-go-live-oct-5-will-xrp-benefit | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | link only, no mention in text |
+| 11 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact | full | other (off-topic Revolut) | none | none — no link, no mention (off-topic Revolut piece; referrer likely site-nav bleed) |
+| 12 | 2026-09-19 | CoinDesk | https://www.coindesk.com/tech/2026/09/19/ripple-says-asset-managers-are-preparing-for-xrp-ledger-s-next-payments-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no name in prose — but **link-citation as the source of the validator count**: the `/amendments` href sits inside the "The amendment has support from [link]" sentence, i.e. CoinDesk sources the vote tally to our page via the link rather than naming us. |
+| 13 | 2026-09-18 | amznusa.com (aggregator of CryptoSlate/Akiba Wright) | https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades-liam-akiba-wright-amznusa-com/ | full | other (lending/vault) | `xrpldashboard.com/amendments` | link only, no mention in text (scraped repost of the Sep-18 CryptoSlate lending article) |
 
 ### Headline-only (blocked, not read-in-full)
 
@@ -88,6 +91,15 @@ blank = no us-attributed figure to verify (link/mention only).
 | 2026-09-24 | TheStreet | https://www.thestreet.com/crypto/markets/xrp-ledger-eyes-an-october-upgrade-that-banks-have-been-waiting-for | HTTP 403 (anti-bot wall) | Wayback lookup itself 429'd 2026-09-24; retry. Body readable via the Yahoo syndication (entry #1). |
 
 ### Verification pass (run 2026-09-24, source: amendment_tally_reconstructions)
+- **#1 Yahoo/TheStreet — VERIFIED y.** Article: "PermissionDelegationV1_1 …
+  entered a 14-day activation countdown on Sep. 21 after 29 of the network's 35
+  trusted validators backed it, according to the XRPL amendments dashboard."
+  `amendment_tally_reconstructions` for `as_of_date='2026-09-21'` holds an
+  amendment (hash `0F48FF56…`) at **29 votes** vs **unl_threshold=28**
+  (source `vhs_current_at_date_2026-09-21`) — matches "29 of 35" exactly. This
+  is a **sourced attribution**: the outlet credits the count to our dashboard
+  via the `/amendments` link (link-as-name), the strongest citation form in
+  this batch.
 - **#6 Crinance — VERIFIED y.** `amendment_tally_reconstructions` for
   `as_of_date='2026-09-22'` holds exactly one amendment at **30 votes** against
   **unl_threshold=28** (source `vhs_current_at_date_2026-09-22`). Matches the
