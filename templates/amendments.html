@@ -302,7 +302,10 @@
           {% elif m.known_meta and m.known_meta.name %}
             {{ m.known_meta.name }} <span class="dim" style="font-size: 0.78rem; font-weight: 400;">({{ _('per off-ledger source — see below') }})</span>
           {% else %}
-            {{ _('Unrecognized amendment') }}
+            {# Charlie ruling 2026-09-25: no "Unrecognized amendment" label —
+               show the short-form hash + the "present but unnamed" framing so
+               the block reads as a fact about our node, not a mystery. #}
+            {{ m.hash[:8] }}… <span class="dim" style="font-size: 0.78rem; font-weight: 400;">{{ _('present but unnamed in our node’s feature list (rippled 3.3.0-rc1)') }}</span>
           {% endif %}
         </div>
         <div class="hash">{{ m.hash }}</div>
