@@ -17,18 +17,21 @@ Run:
     python3 amm_test.py
 """
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo, LedgerCurrent
 from datetime import datetime, timezone
 import sys
+
+import xrpl_client
 
 
 # ---------------------------------------------------------------------------
 # CONFIG — real XRPL addresses verified from xrpscan.com
 # ---------------------------------------------------------------------------
 
-# Public XRPL node. s1.ripple.com is Ripple's public server.
-XRPL_NODE = "https://s1.ripple.com:51234"
+# GAP-5 (2026-09-25): own node first via xrpl_client.XrplClient; the
+# public node is a labeled fallback, not a hardcoded default.
+NODE_DESCRIPTION = (f"own-node-first ({xrpl_client.LOCAL_NODE}); "
+                    f"labeled fallback {xrpl_client.PUBLIC_NODES[0]}")
 
 # RLUSD token info — verified from xrpscan.com and chainagnostic.org
 # Currency code is the 40-char hex representation ("RLUSD" padded)
@@ -71,11 +74,12 @@ def main():
     print("=" * 70)
     print("XRPL AMM POOL READER — PROOF OF CONCEPT")
     print("=" * 70)
-    print(f"Connecting to: {XRPL_NODE}")
+    print(f"Connecting to: {NODE_DESCRIPTION}")
     print()
 
     try:
-        client = JsonRpcClient(XRPL_NODE)
+        client = xrpl_client.get_client("amm_test",
+                                        fallback_sink=xrpl_client.RunFallbackSink())
     except Exception as e:
         print(f"✗ Connection setup failed: {e}")
         return 1

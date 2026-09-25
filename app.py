@@ -20,13 +20,13 @@ from flask_limiter import Limiter
 from flask_smorest import Api
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# GAP-5 (2026-09-25): the web app no longer imports the scan module's RPC
+# client / node / live scan — its last live caller
+# (wallet_explainer._build_amm_lookup) reads walker-cached rows. Only the
+# pure formatters remain.
 from amm_scan_pools import (
-    JsonRpcClient,
-    XRPL_NODE,
-    fetch_pool,
     fmt_money,
     fmt_num,
-    scan_all_pools_cached,
 )
 from network_pulse import fetch_pulse_cached
 from tx_type_mix import fetch_tx_type_mix, WINDOWS as TX_MIX_WINDOWS, DEFAULT_WINDOW as TX_MIX_DEFAULT_WINDOW
@@ -2370,6 +2370,11 @@ def _ranked_amm_snapshot():
                 "finished_at": extra.get("finished_at"),
                 "snapshot_ts": snap_ts,
                 "source": "postgres",
+                # GAP-5: rank_amms records own-node vs labeled public
+                # fallback for the reads behind this snapshot. Absent on
+                # pre-GAP-5 heartbeats → treated as sovereign (banner
+                # fires only on a positive fallback signal).
+                "sourcing": extra.get("sourcing") or "sovereign",
             }
     rows = _safe_load_json(AMM_RANKED_PATH) or []
     index = _safe_load_json(AMM_INDEX_PATH) or []
@@ -8052,6 +8057,9 @@ def pools():
         snapshot_age_label=snapshot_age_label,
         page=page,
         total_pages=total_pages,
+        # GAP-5: provenance of the ranking pass behind this snapshot
+        # (rank_amms heartbeat); banner fires only on fallback-public-rpc.
+        page_sourcing=meta.get("sourcing") or "sovereign",
     )
 
 

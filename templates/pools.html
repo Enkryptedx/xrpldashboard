@@ -437,6 +437,39 @@
       .row .tvl { grid-area: tvl; }
       .row .fee, .row .reserves { display: none; }
     }
+
+    /* Sovereign-fallback disclosure banner — same shape as /wallet,
+       /lending, /cold-storage, /sidechain, /credentials. GAP-5, 2026-09-25. */
+    .sovereign-fallback-banner {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-left: 3px solid var(--amber);
+      border-radius: 10px;
+      padding: 0.85em 1.1em;
+      margin: 0 0 1.2em;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7em;
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+    .sovereign-fallback-banner .icon {
+      flex: 0 0 auto;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(245,158,11,0.15);
+      color: var(--amber);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-family: var(--mono); font-size: 12px;
+      margin-top: 1px;
+    }
+    .sovereign-fallback-banner .body { flex: 1; }
+    .sovereign-fallback-banner .headline {
+      font-weight: 600; color: var(--amber); margin-bottom: 0.25em;
+    }
+    .sovereign-fallback-banner .detail {
+      color: var(--muted); font-size: 0.82rem;
+    }
   </style>
   {% include "_vibes_head.html" %}
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"
@@ -476,6 +509,21 @@
         {{ _('Shows AMM (automated market maker) pools only. XRPL\'s order-book DEX isn\'t included yet — order-book liquidity and volume are tracked separately and coming soon.') }}
       </p>
     </div>
+
+    {# Sovereign-fallback disclosure (GAP-5, 2026-09-25). DB-cache page:
+       the rank_amms walker reads amm_info from our own rippled first and
+       only cascades to a public server when ours is unreachable; it records
+       the outcome in its heartbeat and the route hands it here as
+       page_sourcing. Fires only on a positive fallback signal. #}
+    {% if page_sourcing is defined and page_sourcing == 'fallback-public-rpc' %}
+    <div class="sovereign-fallback-banner" role="status">
+      <span class="icon" aria-hidden="true">!</span>
+      <div class="body">
+        <div class="headline">{{ _('Last ranking pass via public XRPL infrastructure') }}</div>
+        <div class="detail">{{ _('Our own node was unavailable during the most recent pool-ranking pass, so those reserve reads came from a public rippled server. Pool reserves are the same on-ledger record; only their source differs. The next hourly pass retries our own node first.') }}</div>
+      </div>
+    </div>
+    {% endif %}
     {% if rows %}
     <div class="stats">
       <div class="stat vibes-spot">
@@ -701,7 +749,7 @@
     <details>
       <summary>{{ _('Data sources') }}</summary>
       <p>
-        {{ _('Pool index + TVL snapshot are walker-written cached rows: the') }} <code>rank_amms</code> {{ _('walker on our Mac queries') }} <code>amm_info</code> {{ _('against our own rippled node over LAN and refreshes the') }} <code>amm_ranked.json</code> {{ _('artifact ~daily (auto-reset once the artifact ages past 20h). Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only.') }}
+        {{ _('Pool index + TVL snapshot are walker-written cached rows: the') }} <code>rank_amms</code> {{ _('walker on our Mac queries') }} <code>amm_info</code> {{ _('against our own rippled node over LAN (a public rippled is the labeled fallback, disclosed above when used) and refreshes the') }} <code>amm_ranked.json</code> {{ _('artifact ~daily (auto-reset once the artifact ages past 20h). Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only.') }}
       </p>
     </details>
   </div>

@@ -305,20 +305,26 @@ def _resolve_lp_position(client, lp, amm_lookup):
 
 def _build_amm_lookup():
     """
-    Best-effort {amm_account: 'XRP/FOO'} map built from the curated pool list.
-    Used to label LP positions without a per-position AMMInfo call. Falls
-    back gracefully if the scanner module isn't importable.
+    Best-effort {amm_account: 'XRP/FOO'} map used to label LP positions
+    without a per-position AMMInfo call.
+
+    GAP-5 (Charlie 2026-09-25): this used to call
+    amm_scan_pools.scan_all_pools_cached(), a LIVE amm_info sweep against a
+    hardcoded public s1 — from Render, on every /wallet render that had LP
+    positions, outside any SovereignFetcher accounting. The ranked-pools
+    table already carries amm_account + pair for every indexed AMM,
+    written by the rank_amms walker from our own node, so read that
+    instead: sovereign by construction, no live RPC, ~30k pairs instead of
+    the curated dozen. Falls back to an empty map (labels degrade to the
+    bare account) when PG is unavailable.
     """
     try:
-        from amm_scan_pools import scan_all_pools_cached
-    except ImportError:
-        return {}
-    try:
-        scan = scan_all_pools_cached()
+        import db
+        rows = db.read_amm_ranked_pools() or []
     except Exception:
         return {}
     out = {}
-    for p in scan.get("pools") or []:
+    for p in rows:
         if p.get("amm_account") and p.get("pair"):
             out[p["amm_account"]] = p["pair"]
     return out

@@ -26,7 +26,6 @@ Outputs (next to this script):
     amm_rank.log           — progress log (tail -f to watch)
 """
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo
 from datetime import datetime, timezone
 import json
@@ -35,12 +34,25 @@ import sys
 import time
 
 import db
+import xrpl_client
 
 # Mirrors ~/Library/LaunchAgents/com.charliebruce.xrpldashboard.rank_amms.plist
 # StartInterval. Read by /walker_health for per-row staleness thresholds.
 WALKER_CADENCE_SECONDS = 3600
 
-XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+# GAP-5 (Charlie 2026-09-25): own-node-first as CODE default, s1 as a
+# LABELED fallback. Pre-fix this ranker built a bare JsonRpcClient on
+# XRPL_NODE with a hardcoded s1.ripple.com default — sovereign only while
+# the plist env said so, silent s1 the moment it didn't, no fallback if our
+# node was down. Now every amm_info goes through xrpl_client.XrplClient
+# (LOCAL_NODE with retry-before-cascade, then PUBLIC_NODES s1 → s2), and
+# xrpl_client.RunFallbackSink collapses every cascade in a pass into ONE
+# walker_node_fallback row. The pass's sourcing rides in the amm_ranker
+# heartbeat `extra` (read by /pools for its disclosure banner) and in the
+# walker_health message.
+WALKER_NAME = "rank_amms"
+_sink = None            # xrpl_client.RunFallbackSink for the current pass
+_rpc_made_this_run = False
 XRP_USD_PRICE = 1.44   # mirrors amm_scan_pools.py — single source of truth later
 DEFAULT_RPS = 5.0      # safe under public-node throttling
 MAX_RETRIES = 6
@@ -210,7 +222,27 @@ def amount_to_float(amt):
     return 0.0
 
 
+def _run_sourcing():
+    """Sourcing flag for THIS pass. If the pass made no RPC (the
+    'already finished' early return), carry over the previous heartbeat's
+    recorded sourcing rather than claiming sovereign for reads that never
+    happened."""
+    if _rpc_made_this_run and _sink is not None:
+        return _sink.sourcing
+    try:
+        hb = db.read_heartbeat("amm_ranker") or {}
+        extra = hb.get("extra") if isinstance(hb, dict) else None
+        prev = (extra or {}).get("sourcing") if isinstance(extra, dict) else None
+        if prev:
+            return prev
+    except Exception:
+        pass
+    return "sovereign"
+
+
 def request_with_retry(client, request):
+    global _rpc_made_this_run
+    _rpc_made_this_run = True
     last_err = None
     for attempt in range(MAX_RETRIES):
         try:
@@ -369,6 +401,9 @@ def _mirror_to_postgres(ranked, state, indexed_count):
                 "cursor": state.get("cursor"),
                 "errors": state.get("errors"),
                 "skipped": state.get("skipped"),
+                # GAP-5: own node vs labeled public fallback for the reads
+                # behind this snapshot; /pools keys its banner off this.
+                "sourcing": _run_sourcing(),
             },
         )
         if _mirror_consec_failures:
@@ -458,11 +493,15 @@ def main():
 
     if state["started_at"] is None:
         state["started_at"] = datetime.now(timezone.utc).isoformat()
-        log(f"start: {len(index)} AMMs · pacing={args['rps']} rps · node={XRPL_NODE}")
+        log(f"start: {len(index)} AMMs · pacing={args['rps']} rps · "
+            f"node=own-node-first ({xrpl_client.LOCAL_NODE}) · "
+            f"fallback={xrpl_client.PUBLIC_NODES[0]} (labeled)")
     else:
         log(f"resume: {state['cursor']}/{len(index)} done · {len(ranked)} ranked so far")
 
-    client = JsonRpcClient(XRPL_NODE)
+    # GAP-5: own node primary, public labeled fallback, one fallback row
+    # per pass via the module-level sink (created in __main__).
+    client = xrpl_client.get_client(WALKER_NAME, fallback_sink=_sink)
     delay = 1.0 / max(args["rps"], 0.1)
     t_run_start = time.time()
     n_run_start = state["cursor"]
@@ -520,7 +559,9 @@ def main():
     save_json(RANKED_PATH, ranked)
     save_json(STATE_PATH, state)
     _mirror_to_postgres(ranked, state, indexed_count=len(index))
-    log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']}")
+    log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']} "
+        f"· sourcing={_run_sourcing()}"
+        + (f" fallback_reason={_sink.reason}" if _sink is not None and _sink.reason else ""))
 
     # Derive XRP-equivalent token prices from the just-ranked in-memory
     # pool list and upsert to Postgres. Piggybacks here rather than
@@ -550,7 +591,8 @@ if __name__ == "__main__":
     # finished" no-op (line 430-433) — both are forward progress from the
     # walker_health reader's perspective. Cursor advance shows in message
     # so partial vs. full-pass is visible without flagging as failure.
-    db.write_walker_health_start("rank_amms", cadence_seconds=WALKER_CADENCE_SECONDS)
+    db.write_walker_health_start(WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS)
+    _sink = xrpl_client.RunFallbackSink()
     ok = False
     message = None
     rc = 1
@@ -562,10 +604,12 @@ if __name__ == "__main__":
             message = (
                 f"rc={rc} cursor={st.get('cursor')} "
                 f"errors={st.get('errors')} skipped={st.get('skipped')} "
-                f"finished_at={st.get('finished_at')}"
+                f"finished_at={st.get('finished_at')} "
+                f"sourcing={_run_sourcing()}"
+                + ("" if _rpc_made_this_run else " (no rpc this pass)")
             )
         except Exception:
-            message = f"rc={rc}"
+            message = f"rc={rc} sourcing={_run_sourcing()}"
     except SystemExit as exc:
         # argparse and other early sys.exit() paths land here; without
         # this branch, message stays None and the walker_health
@@ -584,7 +628,7 @@ if __name__ == "__main__":
         # back to a labeled placeholder instead of letting the guard
         # raise on the stamp itself.
         db.write_walker_health_end(
-            "rank_amms", ok=ok,
+            WALKER_NAME, ok=ok,
             message=message or ("clean_no_message" if ok else "unlabeled_failure"),
         )
     sys.exit(rc)

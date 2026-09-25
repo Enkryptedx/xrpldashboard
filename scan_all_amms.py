@@ -22,7 +22,6 @@ Outputs (next to this script):
     amm_scan.log          — progress log (tail -f to watch)
 """
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests.ledger_data import LedgerData, LedgerEntryType
 from datetime import datetime, timezone
 import json
@@ -30,11 +29,20 @@ import os
 import sys
 import time
 
-# s2.ripple.com is Ripple's full-history public node. s1 only retains
-# ~32k ledgers (~4-7 hours), which isn't enough for a 10+ hour scan
-# locked to a single ledger version. s2 keeps the snapshot alive for
-# the duration of the walk.
-XRPL_NODE = "https://s2.ripple.com:51234"
+import xrpl_client
+
+# GAP-5 (Charlie 2026-09-25): own node first via xrpl_client.XrplClient.
+# Our rippled keeps a rolling window of ~66k ledgers (~2.5 days at
+# 2026-09-25 probe), comfortably longer than the 6–12 h scan locked to one
+# ledger version. The labeled public fallback is s2 FIRST (Ripple's
+# full-history node) then s1, because s1 only retains ~32k ledgers — not
+# enough for a 10+ hour scan pinned to a single ledger. Pre-fix this file
+# hardcoded s2 with no own-node path at all.
+WALKER_NAME = "scan_all_amms"
+PUBLIC_FULL_HISTORY = os.environ.get("XRPL_PUBLIC_FULL_HISTORY", "https://s2.ripple.com:51234")
+PUBLIC_FALLBACK_URLS = [PUBLIC_FULL_HISTORY] + [
+    u for u in xrpl_client.PUBLIC_NODES if u != PUBLIC_FULL_HISTORY
+]
 PAGE_LIMIT = 500
 SAVE_INDEX_EVERY = 50            # pages between full index writes
 LOG_EVERY = 25                   # pages between log lines
@@ -126,11 +134,15 @@ def main():
 
     if state["started_at"] is None:
         state["started_at"] = datetime.now(timezone.utc).isoformat()
-        log(f"starting fresh scan against {XRPL_NODE}")
+        log(f"starting fresh scan: own-node-first ({xrpl_client.LOCAL_NODE}), "
+            f"labeled fallback {PUBLIC_FALLBACK_URLS[0]}")
     else:
         log(f"resuming scan: {state['pages']} pages done, {len(index)} AMMs found so far")
 
-    client = JsonRpcClient(XRPL_NODE)
+    # One sink per scan → one walker_node_fallback row per scan (not per page).
+    sink = xrpl_client.RunFallbackSink()
+    client = xrpl_client.get_client(WALKER_NAME, fallback_sink=sink,
+                                    public_urls=PUBLIC_FALLBACK_URLS)
 
     # Lock the ledger version for the whole scan so pagination stays consistent.
     if state["ledger_index"] is None:

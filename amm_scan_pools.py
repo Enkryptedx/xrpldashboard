@@ -3,7 +3,6 @@ XRPL AMM Multi-Pool Scanner
 Queries multiple real XRPL AMM pools and displays them in a ranked table.
 """
 
-from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AMMInfo, LedgerCurrent
 from datetime import datetime, timezone
 import json
@@ -12,9 +11,25 @@ import sys
 import threading
 import time
 
+import xrpl_client
 
-XRPL_NODE = "https://s1.ripple.com:51234"
+
+# GAP-5 (Charlie 2026-09-25): this module used to hardcode s1.ripple.com
+# and build a bare JsonRpcClient on it. It is now a Mac-side CLI /
+# KNOWN_TOKENS provider only — the web app's last live caller
+# (wallet_explainer._build_amm_lookup) reads walker-cached rows instead.
+# scan_all_pools() goes own-node-first via xrpl_client.XrplClient with
+# PUBLIC_NODES as the labeled fallback, and reports `sourcing` + a node
+# LABEL (never a raw URL) in its result.
+WALKER_NAME = "amm_scan_pools"
+OWN_NODE_LABEL = "our own rippled node (LAN)"
 XRP_USD_PRICE = 1.44
+
+
+def _node_label(client):
+    if client.sourcing == "sovereign":
+        return OWN_NODE_LABEL
+    return f"public fallback ({xrpl_client.PUBLIC_NODES[0]})"
 
 # Curated XRP/token AMM pool list now lives in token_names.json so it can
 # be edited (and contributed to via PR) without touching code. See
@@ -164,7 +179,9 @@ def fetch_pool(client, token_info):
 def scan_all_pools():
     """Run the multi-pool scan and return structured results. No printing."""
     timestamp = datetime.now(timezone.utc)
-    client = JsonRpcClient(XRPL_NODE)
+    # One sink per scan → one walker_node_fallback row per scan, not per pool.
+    sink = xrpl_client.RunFallbackSink()
+    client = xrpl_client.get_client(WALKER_NAME, fallback_sink=sink)
 
     try:
         ledger = client.request(LedgerCurrent()).result["ledger_current_index"]
@@ -173,7 +190,8 @@ def scan_all_pools():
             "error": f"Ledger connection failed: {e}",
             "timestamp": timestamp,
             "ledger": None,
-            "node": XRPL_NODE,
+            "node": _node_label(client),
+            "sourcing": client.sourcing,
             "pools": [],
             "missing": [],
             "total_tvl_usd": 0.0,
@@ -196,7 +214,8 @@ def scan_all_pools():
         "error": None,
         "timestamp": timestamp,
         "ledger": ledger,
-        "node": XRPL_NODE,
+        "node": _node_label(client),
+        "sourcing": client.sourcing,
         "pools": results,
         "missing": missing,
         "total_tvl_usd": total_tvl_all,
@@ -245,7 +264,8 @@ def main():
     print("=" * 92)
     print("XRPL AMM MULTI-POOL SCANNER")
     print("=" * 92)
-    print(f"Node:   {XRPL_NODE}")
+    print(f"Node:   own-node-first ({xrpl_client.LOCAL_NODE}); "
+          f"labeled fallback {xrpl_client.PUBLIC_NODES[0]}")
     print(f"Time:   {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"Pools:  {len(KNOWN_TOKENS)} curated pool pairs")
     print()
@@ -257,6 +277,7 @@ def main():
         return 1
 
     print(f"Ledger: {data['ledger']:,}")
+    print(f"Served: {data['node']} · sourcing={data['sourcing']}")
     print()
 
     results = data["pools"]
