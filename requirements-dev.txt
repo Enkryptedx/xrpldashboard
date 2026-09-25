@@ -1,10 +1,11 @@
-# Dev/test dependencies. Not deployed to Render.
-# Install with: pip install -r requirements-dev.txt
+# Test / CI tooling only — NOT installed by Render's prod build
+# (render.yaml runs `pip install -r requirements.txt` alone, so prod stays
+# lean). CI installs this file on top of requirements.txt.
+#
+# Added 2026-09-25 (item 4): the first CI run went red with
+# "No module named pytest" — pytest was never in requirements.txt; it only
+# existed in the local dev venv. That is exactly the environment/finding
+# CI is meant to surface. Pinned to the version the local venv proved
+# against.
 -r requirements.txt
 pytest==9.0.3
-playwright==1.55.0
-# Research-only: rwa_nav_transparency_walker (env-gated OFF by default).
-# Kept in requirements-dev because the walker is research; not run by
-# any prod job until Charlie flips RWA_NAV_TRANSPARENCY_ENABLED after
-# three clean cycles.
-pypdf>=6.0.0
