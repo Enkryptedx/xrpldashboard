@@ -62,7 +62,64 @@ from cryptography.exceptions import InvalidSignature
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import Ledger
 
-XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
+# GAP-4 fix (Charlie ruling 2026-09-25): own-node-first as CODE default, not
+# just env. The signing path commits the anchored metrics that the covenant
+# says "originate from our own node" — so the DEFAULT must be our own node, with
+# s1 an explicit LABELED fallback. Previously XRPL_NODE defaulted to
+# s1.ripple.com; if a plist dropped the env var (the 2026-09-24 rwa=0 incident)
+# the signer silently stamped s1-sourced metrics with no disclosure. Now:
+#   OWN_NODE  = XRPL_LOCAL_NODE || XRPL_NODE (if it points at a LAN/loopback host)
+#   S1_NODE   = labeled public fallback
+# _resolve_signing_node() probes own-node health and returns (url, is_own,
+# label) so every metric's source string names the ACTUAL node used.
+_OWN_NODE = (
+    os.environ.get("XRPL_LOCAL_NODE")
+    or (os.environ.get("XRPL_NODE") or "")
+    or "http://localhost:5005"
+)
+_S1_FALLBACK = os.environ.get("XRPL_PUBLIC_PRIMARY", "https://s1.ripple.com:51234")
+
+
+def _is_own_node(url: str) -> bool:
+    """True if url points at a LAN/loopback host (our own rippled), not public."""
+    u = (url or "").lower()
+    return (
+        "192.168." in u or "10." in u.split("://")[-1][:3] or
+        "127." in u or "localhost" in u or u.startswith("http://10.")
+    )
+
+
+def _resolve_signing_node():
+    """Own-node-first with s1 labeled fallback. Returns (url, is_own, label).
+    Probes the own node's server_state; only falls back to s1 if the own node
+    is unreachable or not 'full'. A fallback on the SIGNING path is a loud
+    disclosure event (logged), never silent — unlike the pre-GAP-4 default.
+    """
+    own = _OWN_NODE
+    if own and _is_own_node(own):
+        try:
+            from xrpl.clients import JsonRpcClient as _JC
+            from xrpl.models.requests import ServerInfo as _SI
+            r = _JC(own).request(_SI())
+            state = ((r.result or {}).get("info") or {}).get("server_state")
+            if state == "full":
+                return own, True, "own-node (LAN)"
+            _sign_node_fallback_reason = f"own-node state={state}"
+        except Exception as e:  # noqa: BLE001
+            _sign_node_fallback_reason = f"own-node unreachable:{type(e).__name__}"
+        try:
+            import db as _db
+            _db.write_walker_node_fallback("signed_snapshot", _sign_node_fallback_reason)
+        except Exception:
+            pass
+        return _S1_FALLBACK, False, f"s1-fallback ({_sign_node_fallback_reason})"
+    # env pointed at a non-LAN host — treat as public fallback, labeled honestly
+    return (own or _S1_FALLBACK), False, "public-fallback (own-node not configured)"
+
+
+# Back-compat: XRPL_NODE still resolves for any legacy reference, but the
+# signing path uses _resolve_signing_node() so it can label the source.
+XRPL_NODE = _OWN_NODE or _S1_FALLBACK
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Public artefacts (committed to the repo so anyone can verify offline)
@@ -780,14 +837,19 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
     metrics: list[dict] = []
     errors: list[str] = []
 
-    client = JsonRpcClient(XRPL_NODE)
+    # GAP-4: own-node-first with labeled fallback. _node_label names the ACTUAL
+    # node that served this read ("own-node (LAN)" | "s1-fallback (...)") so the
+    # signed source string is truthful about sovereignty, and a fallback is a
+    # loud, logged event rather than a silent s1 default.
+    _node_url, _node_is_own, _node_label = _resolve_signing_node()
+    client = JsonRpcClient(_node_url)
     li = _validated_ledger_index(client)
     if li:
         metrics.append({
             "name": "xrpl_validated_ledger_index",
             "value": int(li),
             "unit": "ledger",
-            "source": f"{XRPL_NODE} → ledger(validated)",
+            "source": f"{_node_label} → ledger(validated)",
         })
     else:
         errors.append("xrpl_validated_ledger_index_unavailable")
