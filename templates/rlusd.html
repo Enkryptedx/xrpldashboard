@@ -381,8 +381,9 @@
     .ribbon strong { color: var(--text); font-weight: 600; }
 
     /* Freshness chip — always-on indicator paired with the supply totals.
-       Fresh state (post-successful poll) reads "Live · updated Ns ago" in
-       muted grey; stale state (rendering from PG fallback) shifts to amber
+       Fresh state (post-successful poll) reads "Snapshot · refreshed Ns ago"
+       (age anchored on the server's fetched_at, 2026-09-26) in muted grey;
+       stale state (rendering from PG fallback) shifts to amber
        and reads "Last updated · X ago · reconnecting" until poll succeeds. */
     .rlusd-freshness-chip {
       font-family: var(--mono);
@@ -530,10 +531,10 @@
       {% if age_seconds is not none %}
       <div id="rlusd-freshness-chip"
            class="rlusd-freshness-chip{% if not fresh %} is-stale{% endif %}"
-           data-fresh-tmpl="{{ _('Live · updated {age} ago') }}"
+           data-fresh-tmpl="{{ _('Snapshot · refreshed {age} ago') }}"
            data-stale-tmpl="{{ _('Last updated · {age} ago · reconnecting') }}">
         {%- if fresh -%}
-          {% trans age=age_seconds %}Live · updated {{ age }}s ago{% endtrans %}
+          {% trans age=age_seconds %}Snapshot · refreshed {{ age }}s ago{% endtrans %}
         {%- else -%}
           {%- set human_age -%}
             {%- if age_seconds < 60 -%}{{ age_seconds }}s
@@ -832,8 +833,19 @@
   </div>
 
   <div class="ticker">
-    <h3>Live event log</h3>
+    {# Honest cadence label (Charlie 2026-09-26): this log is a polled
+       SNAPSHOT — the rlusd_refresher walker re-reads both chains every
+       REFRESH_INTERVAL (5 min) and writes Postgres; the page re-checks
+       every 60 s. It is not a stream. Row times and the "refreshed" age
+       are data-ts + client-side relative time, re-rendered every 30 s. #}
+    <h3>{{ _('Event log') }}
+      <span class="cadence" style="font-weight: 400; font-size: 0.78rem; color: var(--muted); font-family: var(--mono);">
+        · {{ _('snapshot every') }} {{ refresh_interval_minutes }} {{ _('min') }}
+        · <span id="tickerRefreshed" data-ts="{{ cached_at or '' }}">{% if age_seconds is not none %}{{ _('refreshed') }} {{ age_seconds }}s {{ _('ago') }}{% else %}{{ _('refresh time unknown') }}{% endif %}</span>
+      </span>
+    </h3>
     <div class="legend">
+      {{ _('A polled snapshot, not a live stream: our walker re-reads both chains every') }} {{ refresh_interval_minutes }} {{ _('minutes; this page re-checks every 60 seconds. Times below are on-chain event times.') }}
       Most-recent RLUSD activity on either chain. <b style="color:var(--green)">Mints</b>
       and <b style="color:var(--red)">burns</b> are rare treasury actions at the issuer;
       <b style="color:var(--eth)">transfers</b> move RLUSD between Ethereum holders;
@@ -1422,9 +1434,10 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
       const badge = eventBadge(r.ev);
       const chain = r.ev.chain;
       const chainLabel = chain === 'eth' ? 'Ethereum' : 'XRPL';
+      const iso = new Date(r.t).toISOString();
       return `
         <div class="row">
-          <span class="when">${when}</span>
+          <span class="when"><time data-ts="${Math.floor(r.t / 1000)}" datetime="${iso}" title="${iso}">${when}</time></span>
           <span class="what">
             <span class="badge ${badge}">${badge}</span>
             <span class="addr">${eventLabel(r.ev)}</span>
@@ -1434,6 +1447,22 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
         </div>`;
     }).join('');
   }
+  /* "refreshed Xm ago" next to the Event log heading: anchored on the
+     server's fetched_at (data-ts), ticked client-side. */
+  function updateRefreshedLabel(ts) {
+    const el = document.getElementById('tickerRefreshed');
+    if (!el) return;
+    const t = Number(ts || el.getAttribute('data-ts'));
+    if (!t) return;
+    el.setAttribute('data-ts', String(Math.floor(t)));
+    el.textContent = 'refreshed ' + fmtAge((Date.now() / 1000) - t);
+  }
+  /* Relative times drift while the tab sits open; re-render every 30 s
+     so "3m ago" does not stay "3m ago" for an hour. */
+  setInterval(() => {
+    renderTickerRows();
+    updateRefreshedLabel();
+  }, 30_000);
   function pushTickerRow(ev) {
     // Anchor the timestamp to the on-chain event time when the server
     // gives one; only fall back to Date.now() for events that arrive
@@ -1604,7 +1633,7 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
       renderTickerRows();
       LIVE_DATA = true;
       hidePreviewRibbon();
-      chipSetFresh();
+      chipSetFresh(data.fetched_at);
       renderState();
       return;
     }
@@ -1617,6 +1646,9 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
       seenTx.add(e.tx);
       eventQueue.push(e);
     }
+    // Re-anchor the freshness chip + "refreshed" label on the server's
+    // refresh time every poll (not on poll time — see chipSetFresh).
+    chipSetFresh(data.fetched_at);
     renderState();
   }
 
@@ -1647,9 +1679,11 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
      served a cached payload we anchor to its cachedAt. A 1s tick keeps
      the visible age honest without spamming layout. */
   const freshnessChip = document.getElementById('rlusd-freshness-chip');
-  let chipAnchor = (SSR && SSR.fresh)
-        ? (Date.now() / 1000)
-        : (SSR && SSR.cachedAt) ? SSR.cachedAt : null;
+  /* 2026-09-26: anchor on the SERVER's refresh time (fetched_at /
+     cachedAt), never on "now" — the walker refreshes every 5 min and the
+     page polls every 60 s, so anchoring on poll time read "updated 5s
+     ago" for data up to 5 min old. */
+  let chipAnchor = (SSR && SSR.cachedAt) ? SSR.cachedAt : null;
   let chipFresh = !!(SSR && SSR.fresh);
 
   function fmtChipAge(seconds) {
@@ -1670,10 +1704,13 @@ window.__RLUSD_INITIAL__ = {% if initial and initial.eth and initial.eth.supply 
     freshnessChip.classList.toggle('is-stale', !chipFresh);
   }
 
-  function chipSetFresh() {
+  function chipSetFresh(serverTs) {
     chipFresh = true;
-    chipAnchor = Date.now() / 1000;
+    // Server refresh time wins; only fall back to now if the payload
+    // carried no fetched_at (older cache rows).
+    chipAnchor = (serverTs && Number(serverTs) > 0) ? Number(serverTs) : (Date.now() / 1000);
     renderChip();
+    updateRefreshedLabel(chipAnchor);
   }
 
   function chipSetStale() {
