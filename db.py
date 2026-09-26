@@ -1709,6 +1709,64 @@ CREATE TABLE IF NOT EXISTS changes_envelopes (
     change_count        INTEGER     NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS changes_envelopes_date_idx ON changes_envelopes (snapshot_date DESC);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- Amendment roll-call (design approved 2026-09-25 20:51 ET).
+--
+-- Recorder: scripts/roll_call_recorder.py, run on the Lenovo as systemd
+-- unit xrpld-roll-call, subscribed to the `validations` stream on the
+-- loopback ws (no new LAN port). Validators attach their amendment
+-- yes-votes ONLY to validations of the VOTING ledger (index % 256 == 255,
+-- the ledger before a flag ledger — rippled RCLConsensus isVotingLedger).
+-- Append-only, three tables:
+--   amendment_roll_call_rounds  — one row per voting ledger
+--   amendment_roll_call_votes   — one row per (voting ledger, UNL validator)
+--   amendment_roll_call_tallies — one row per (voting ledger, amendment)
+-- Both denominators are stored (Charlie decision 2): unl_size (list size,
+-- for the display "of 35") and trusted_available (rippled's TrustedVotes
+-- denominator: trusted validators heard from within 24h). threshold and
+-- passes follow rippled AmendmentTable.cpp verbatim:
+--   threshold = max(1, trusted_available * 80 // 100)
+--   passes    = yes > threshold   (yes >= threshold when trusted_available == 1)
+-- The /amendments card reads these only after one full day of recording
+-- (decision 3); until then Foundation VHS stays the labeled fallback.
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS amendment_roll_call_rounds (
+    voting_ledger_index  BIGINT      PRIMARY KEY,
+    flag_ledger_index    BIGINT      NOT NULL,          -- voting_ledger_index + 1
+    voting_ledger_hash   TEXT,
+    signing_time_max     BIGINT,                        -- XRPL epoch seconds, latest validation seen
+    observed_iso         TEXT        NOT NULL,          -- UTC ISO when the round was finalized
+    unl_source           TEXT        NOT NULL,          -- e.g. vl.ripple.com
+    unl_sequence         BIGINT,
+    unl_size             SMALLINT    NOT NULL,          -- list size ("of 35")
+    validations_seen     SMALLINT    NOT NULL,          -- UNL validators whose FULL validation we saw this round
+    trusted_available    SMALLINT    NOT NULL,          -- rippled denominator (24h carry-forward)
+    threshold_rippled    SMALLINT    NOT NULL,
+    recorder_version     TEXT        NOT NULL,
+    source               TEXT        NOT NULL DEFAULT 'own-node validations stream (Lenovo loopback ws)'
+);
+CREATE TABLE IF NOT EXISTS amendment_roll_call_votes (
+    voting_ledger_index  BIGINT      NOT NULL,
+    master_key           TEXT        NOT NULL,          -- base58 nH… (UNL identity)
+    signing_key          TEXT,                          -- base58 n9… as seen on the wire
+    signing_time         BIGINT,
+    server_version       TEXT,
+    amendments           TEXT[]      NOT NULL,          -- yes-votes in this validation ('{}' = yes on nothing)
+    PRIMARY KEY (voting_ledger_index, master_key)
+);
+CREATE INDEX IF NOT EXISTS amendment_roll_call_votes_key_idx
+    ON amendment_roll_call_votes (master_key, voting_ledger_index DESC);
+CREATE TABLE IF NOT EXISTS amendment_roll_call_tallies (
+    voting_ledger_index  BIGINT      NOT NULL,
+    amendment_hash       TEXT        NOT NULL,
+    yes_votes_round      SMALLINT    NOT NULL,          -- UNL yes votes in THIS round's validations only
+    yes_votes_carried    SMALLINT    NOT NULL,          -- rippled rule: last vote per trusted validator, 24h carry
+    passes_rippled       BOOLEAN     NOT NULL,
+    PRIMARY KEY (voting_ledger_index, amendment_hash)
+);
+CREATE INDEX IF NOT EXISTS amendment_roll_call_tallies_hash_idx
+    ON amendment_roll_call_tallies (amendment_hash, voting_ledger_index DESC);
 """
 
 
