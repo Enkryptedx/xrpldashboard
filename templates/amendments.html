@@ -355,6 +355,75 @@
      existing client localizer renders ET first with UTC alongside
      (same pattern as the countdown timers above). ALL human-facing copy
      below is placeholder — Charlie writes the final wording. #}
+  {# Validator roll call — our own node's validations stream, recorded per
+     voting ledger (every 256th ledger) by the Lenovo roll-call recorder
+     (design approved 2026-09-25). COUNTS ONLY on this surface (standing
+     rule 2026-09-26): no per-validator rows. Hidden unless `roll_call` is
+     set — env flag ROLL_CALL_CARD_ENABLED plus the hard 24 h not-before
+     gate live in roll_call_card.py. Red border = a majority was lost this
+     round (reset) or the recorder is stale. #}
+  {% if roll_call %}
+    <h2>{{ _('Validator roll call') }}</h2>
+    <div class="recent-callout" data-roll-call data-voting-ledger="{{ roll_call.voting_ledger }}"
+         style="border-color: {{ 'rgba(239,68,68,0.5)' if (roll_call.any_reset or roll_call.stale) else 'rgba(34,211,238,0.24)' }};">
+      <p style="margin: 0 0 6px;">
+        <strong>{{ _('Voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.voting_ledger) }}</span></strong>
+        ({{ _('flag ledger') }} <span class="mono">{{ "{:,}".format(roll_call.flag_ledger) }}</span>)
+        · {{ roll_call.observed_et }} · <span class="dim">{{ roll_call.observed_utc }}</span>
+      </p>
+      <p style="margin: 0 0 6px;">
+        {{ _('Heard') }} <strong>{{ roll_call.seen }} {{ _('of') }} {{ roll_call.unl_size }}</strong> {{ _('validators on the current UNL') }}
+        · {{ _('threshold') }} {{ roll_call.threshold }}
+        · {{ _('a majority needs') }} <strong>{{ roll_call.needed }}</strong>
+        <span class="dim">({{ _('rippled takes 80 percent of the') }} {{ roll_call.trusted_available }} {{ _('trusted validators it could hear and requires strictly more than that') }})</span>
+      </p>
+      {% if roll_call.stale %}
+        <p style="margin: 0 0 8px; color: #ef4444;">
+          <strong>{{ _('Recorder stale:') }}</strong>
+          {{ _('last round observed') }} {{ roll_call.age_min }} {{ _('minutes ago; rounds normally arrive every 17 minutes or so. The Foundation-sourced vote strips further down stay as the labeled fallback.') }}
+        </p>
+      {% else %}
+        <p class="dim" style="margin: 0 0 8px;">
+          {{ _('Next roll call at voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.next_voting_ledger) }}</span>{% if roll_call.next_eta_min is not none %}, {{ _('in about') }} {{ roll_call.next_eta_min }} {{ _('minutes') }}{% endif %}.
+        </p>
+      {% endif %}
+      {% if roll_call.rows %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 4px 6px;">{{ _('Amendment') }}</th>
+              <th style="padding: 4px 6px;">{{ _('Yes this round') }}</th>
+              <th style="padding: 4px 6px;">{{ _('Yes incl. 24h carry') }}</th>
+              <th style="padding: 4px 6px;">{{ _('State') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in roll_call.rows %}
+              <tr data-roll-call-row="{{ r.status }}" style="border-top: 1px solid var(--border);">
+                <td style="padding: 4px 6px;">{{ r.name }}</td>
+                <td class="mono" style="padding: 4px 6px;">{{ r.yes_round }}</td>
+                <td class="mono" style="padding: 4px 6px;">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
+                <td style="padding: 4px 6px;">
+                  {% if r.status == 'passing' %}
+                    <span style="color: var(--green, #22c55e);">{{ _('majority') }}</span>
+                  {% elif r.status == 'reset' %}
+                    <strong style="color: #ef4444;">{{ _('RESET — lost its majority this round') }}</strong>
+                  {% else %}
+                    <span class="dim">{{ _('short by') }} {{ r.short_by }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      <p class="dim" style="margin: 8px 0 0; font-size: 0.82rem;">
+        {{ _('Counts only. Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>.
+        {{ _('A yes vote carries forward for 24 hours after a validator last sent it, matching how rippled tallies.') }}
+      </p>
+    </div>
+  {% endif %}
+
   {% if majority_history and majority_history|length > 0 %}
     <h2>{{ _('Majority history') }}</h2>
     {# PLACEHOLDER COPY — Charlie to write. Suggested intent: explain that

@@ -6175,11 +6175,21 @@ def amendments():
     # banner + footer key off page_sourcing so the disclosure always matches
     # the ACTUAL source of this render, never a hardcoded endpoint name.
     page_sourcing = state.get("sourcing") or "sovereign"
+    # Validator roll-call card (design approved 2026-09-25; counts only per
+    # the 2026-09-26 standing rule). Double-gated: ROLL_CALL_CARD_ENABLED env
+    # + hard NOT_BEFORE (24 h after the first recorded round). Best-effort
+    # read — None hides the card, never 500s the page.
+    try:
+        import roll_call_card
+        roll_call = roll_call_card.load_for_page(state)
+    except Exception:  # noqa: BLE001
+        roll_call = None
     resp = make_response(render_template(
         "amendments.html",
         state=state,
         majority_history=majority_history,
         page_sourcing=page_sourcing,
+        roll_call=roll_call,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
