@@ -866,6 +866,31 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
         },
     )
     _register(
+        "/amendments/<date>.json",
+        {
+            "get": {
+                "tags": ["signed-snapshots"],
+                "summary": "Signed amendment tallies for a specific date (YYYY-MM-DD) — machine twin of /amendments/<date>",
+                "description": (
+                    "The day's signed leaf (leaf_hash, chain_root, signature, "
+                    "audit path, verifier verdict) with its amendments_block "
+                    "tallies, plus the day's majority events and roll-call "
+                    "counts — the latter two labeled NOT inside the leaf. "
+                    "Unsigned/gap days return 200 with a notice and no tallies; "
+                    "dates before the first leaf or in the future return 404."
+                ),
+                "responses": _json_ok(),
+            },
+        },
+        parameters=[{
+            "name": "date",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            "description": "UTC calendar date, YYYY-MM-DD.",
+        }],
+    )
+    _register(
         "/.well-known/snapshots/<date>.json",
         {
             "get": {
@@ -6205,18 +6230,159 @@ def amendments():
         roll_call = roll_call_card.load_for_page(state)
     except Exception:  # noqa: BLE001
         roll_call = None
+    # "Cite this day" (permalinks build 2026-09-26): newest SIGNED date
+    # with an amendments_block, its leaf-hash prefix, and whether today's
+    # leaf has landed yet. Best-effort — None hides the line.
+    cite = _amendments_cite_this_day()
     resp = make_response(render_template(
         "amendments.html",
         state=state,
         majority_history=majority_history,
         page_sourcing=page_sourcing,
         roll_call=roll_call,
+        cite=cite,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
     # refreshes every AMENDMENTS_CACHE_TTL (default 300s), so re-hitting the
     # origin at 60s just returned the same cached state 5× per real refresh.
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
+def _amendments_cite_this_day():
+    """Newest signed date carrying an amendments_block, for the "Cite this
+    day" line on /amendments. Returns {date, leaf_hash12, today_signed}
+    or None (best-effort; a DB hiccup hides the line, never 500s)."""
+    try:
+        import amendments_permalink as ap
+        dates = [d for d in _list_signed_snapshots() if d >= ap.AMENDMENTS_BLOCK_SINCE]
+        if not dates:
+            return None
+        newest = max(dates)
+        env = _read_signed_envelope(newest) or {}
+        today = datetime.now(timezone.utc).date().isoformat()
+        return {
+            "date": newest,
+            "leaf_hash12": (env.get("leaf_hash") or "")[:12],
+            "today_signed": newest == today,
+        }
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _amendments_permalink_payload(date_str):
+    """Everything /amendments/<date> and its .json twin render. Returns
+    (payload, http_status). Caller has validated the date format.
+
+    Signed truth comes from the leaf; majority events + roll-call counts
+    are ledger-sourced walkers' rows and are LABELED not-in-the-leaf
+    (design open question 1, Charlie 2026-09-26: v1 labeled; schema 6 is
+    a separate proposal)."""
+    import amendments_permalink as ap
+    today = datetime.now(timezone.utc).date()
+    signed_dates = _list_signed_snapshots()
+    state = ap.classify_date(date_str, signed_dates, today)
+    base = {
+        "date": date_str,
+        "state": state,
+        "signing_time_note": ap.SIGNING_TIME_NOTE,
+        "first_signed_date": min(signed_dates) if signed_dates else None,
+        "newest_signed_date": max(signed_dates) if signed_dates else None,
+        "amendments_block_since": ap.AMENDMENTS_BLOCK_SINCE,
+        "verify_url": f"{SITE_URL}/snapshots/verify?date={date_str}&metric=amendments_block",
+        "json_url": f"{SITE_URL}/amendments/{date_str}.json",
+        "leaf_url": f"{SITE_URL}/.well-known/snapshots/{date_str}.json",
+        "sourcing": {
+            "signed_tallies": "inside the signed leaf (amendments_block metric, schema 5)",
+            "majority_events": "ledger-sourced by amendment_majority_walker at flag ledgers; NOT inside this day's signed leaf",
+            "roll_call_day_counts": "own-node validations stream recorded by the roll-call recorder; counts only; NOT inside this day's signed leaf",
+        },
+    }
+    if state in ("future", "before_first"):
+        return base, 404
+    if state == "known_gap":
+        base["notice"] = ap.KNOWN_GAP_SENTENCE
+        return base, 200
+    if state == "missing":
+        base["notice"] = ap.MISSING_SENTENCE
+        return base, 200
+    if state == "not_yet_signed":
+        base["notice"] = (
+            f"No signed record yet for {date_str} — the leaf for a date is "
+            f"{ap.SIGNING_TIME_NOTE}; come back after.")
+        return base, 200
+
+    envelope = _read_signed_envelope(date_str) or {}
+    verify = _verify_snapshot(date_str, "", "")
+    block = ap.amendments_block_from_envelope(envelope)
+    names = ap.hash_to_name_map(block)
+    base.update({
+        "leaf": {
+            "leaf_hash": envelope.get("leaf_hash"),
+            "leaf_index": envelope.get("leaf_index"),
+            "leaves_total": envelope.get("leaves_total"),
+            "chain_root": envelope.get("chain_root"),
+            "previous_root": envelope.get("previous_root"),
+            "schema_version": envelope.get("schema_version"),
+            "signing_domain": envelope.get("signing_domain"),
+            "signing_pubkey_fingerprint": envelope.get("signing_pubkey_fingerprint"),
+            "signature_ed25519": envelope.get("signature_ed25519"),
+            "audit_path": envelope.get("audit_path"),
+        },
+        "verifier": ap.verdict_from_verify(verify),
+        "amendments_block": block,
+        "signed_rows": ap.signed_rows(block),
+        "block_as_of_iso": (
+            datetime.fromtimestamp(block["as_of_unix"], tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if block and isinstance(block.get("as_of_unix"), (int, float)) else None),
+        "block_sources": {
+            "responding_node_source": (block or {}).get("responding_node_source"),
+            "unl_source": (block or {}).get("unl_source"),
+            "threshold_display": (block or {}).get("threshold_display"),
+        },
+        "majority_events_utc_day": ap.majority_events_for_day(
+            _load_amendment_majority_history(), date_str),
+        "roll_call_day_counts": ap.roll_call_day_counts(
+            ap.load_roll_call_rounds_for_day(date_str), date_str, names),
+    })
+    return base, 200
+
+
+@app.route("/amendments/<date>")
+def amendments_permalink(date):
+    """Dated, signed record of the amendment tallies: a press citation of
+    "/amendments on <date>" resolves to the day's signed leaf, not the live
+    page. Design: docs/AMENDMENTS_PERMALINKS_DESIGN_2026-09-26.md."""
+    if not _safe_date_str(date):
+        abort(404)
+    import amendments_permalink as ap
+    payload, status = _amendments_permalink_payload(date)
+    if status == 404:
+        return render_template("404.html"), 404
+    resp = make_response(render_template(
+        "amendments_permalink.html", p=payload, et_label=ap.et_label), 200)
+    if payload["state"] == "signed":
+        # A leaf is never re-signed; the record for a past date is fixed.
+        resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400, immutable"
+    else:
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.route("/amendments/<date>.json")
+@limiter.limit(agent_tier_limit_rate)
+def amendments_permalink_json(date):
+    """Machine twin of /amendments/<date>: the same numbers, same labels."""
+    if not _safe_date_str(date):
+        abort(404)
+    payload, status = _amendments_permalink_payload(date)
+    resp = jsonify(payload)
+    resp.status_code = status
+    if status == 200 and payload["state"] == "signed":
+        resp.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400, immutable"
+    else:
+        resp.headers["Cache-Control"] = "no-store"
     return resp
 
 
@@ -7265,6 +7431,48 @@ def _verify_snapshot(date_str, metric, expected):
         return {"ok": False, "issues": [f"snapshot for {date_str}: not found"]}
 
     ok, issues = ss.verify_envelope(envelope)
+    # Chain-link completion from Postgres (found 2026-09-26 while building
+    # /amendments/<date>): verify_envelope's chain-link step only knows
+    # disk (chain.json / prior-day file). Render has neither, so every
+    # prod verification carried the soft note and rendered as FAILED even
+    # though signature, leaf hash, audit path and fingerprint all passed.
+    # PG holds the same chain (signed_snapshots + chain head), so finish
+    # the check here: (a) recompute the merkle root over leaves[:leaf_index]
+    # from the PG chain, else (b) compare against the prior LEAF's
+    # chain_root (prior leaf by index, so the 09-16..18 gap bridges).
+    soft = [i for i in issues if i.startswith("chain_link: could not verify")]
+    if soft:
+        try:
+            verified_via = None
+            leaf_index = envelope.get("leaf_index")
+            prev_claimed = envelope.get("previous_root")
+            chain = _read_chain_meta()
+            leaves = (chain or {}).get("leaves") or []
+            if isinstance(leaf_index, int) and len(leaves) > leaf_index > 0:
+                prev = [bytes.fromhex(le["leaf_hash"]) for le in leaves[:leaf_index]]
+                computed = ss._merkle_root(prev).hex()
+                if computed != prev_claimed:
+                    issues.append(
+                        f"chain_link: previous_root mismatch "
+                        f"(file={str(prev_claimed)[:24]}…, "
+                        f"chain[0..{leaf_index - 1}]={computed[:24]}…)")
+                verified_via = "chain"
+            elif isinstance(leaf_index, int) and leaf_index > 0:
+                prior = db.read_signed_snapshot_by_leaf_index(leaf_index - 1) \
+                    if hasattr(db, "read_signed_snapshot_by_leaf_index") else None
+                if prior and prior.get("chain_root"):
+                    if prior["chain_root"] != prev_claimed:
+                        issues.append(
+                            f"chain_link: previous_root != prior-leaf chain_root "
+                            f"(prior leaf {leaf_index - 1} chain_root="
+                            f"{prior['chain_root'][:24]}…, our previous_root="
+                            f"{str(prev_claimed)[:24]}…)")
+                    verified_via = "prior_leaf"
+            if verified_via:
+                issues = [i for i in issues if i not in soft]
+                ok = not issues
+        except Exception as e:  # noqa: BLE001 — keep the soft note, never 500
+            issues.append(f"chain_link: PG completion failed: {type(e).__name__}")
     matched_metric = None
     if ok and metric:
         for m in envelope.get("metrics", []):
@@ -9940,6 +10148,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/nfts]({SITE_URL}/nfts): XLS-20 NFT activity on XRPL — mints, burns, offers, and sales, with per-source labels (live: own rippled; historical backfill: Ripple's public Clio archive, disclosed and free-tier only under SELLABLE_REQUIRES_SOVEREIGN_SOURCE).
 - [/pools]({SITE_URL}/pools): AMM pools ranked by TVL and volume.
 - [/amendments]({SITE_URL}/amendments): current XRPL amendment status — enabled, voting, and vetoed amendments with validator support tallies.
+- [/amendments/YYYY-MM-DD]({SITE_URL}/amendments/2026-09-25): dated, signed record of that day's amendment tallies (the leaf's amendments_block, since 2026-09-24) with leaf hash, chain root, Ed25519 signature and verifier verdict; majority events and roll-call counts for the day shown but labeled not inside the leaf. Machine twin at `/amendments/YYYY-MM-DD.json`. Cite this instead of the live page.
 - [/analytics]({SITE_URL}/analytics): first-party page-view analytics, bot-filtered.
 - [/coverage]({SITE_URL}/coverage): what this site covers versus the XRPL's canonical object-type inventory.
 - [/lending]({SITE_URL}/lending): LendingProtocol amendment status.
@@ -10953,6 +11162,24 @@ def sitemap_xml():
             urls.append(
                 f"  <url>\n"
                 f"    <loc>{SITE_URL}/changes/{d}</loc>\n"
+                f"    <lastmod>{d}</lastmod>\n"
+                f"    <changefreq>never</changefreq>\n"
+                f"    <priority>0.5</priority>\n"
+                f"  </url>"
+            )
+    except Exception:
+        pass
+
+    # Dated signed amendment records (/amendments/<date>), one per signed
+    # leaf that carries an amendments_block. Immutable once signed.
+    try:
+        import amendments_permalink as _ap
+        for d in _list_signed_snapshots():
+            if d < _ap.AMENDMENTS_BLOCK_SINCE:
+                continue
+            urls.append(
+                f"  <url>\n"
+                f"    <loc>{SITE_URL}/amendments/{d}</loc>\n"
                 f"    <lastmod>{d}</lastmod>\n"
                 f"    <changefreq>never</changefreq>\n"
                 f"    <priority>0.5</priority>\n"

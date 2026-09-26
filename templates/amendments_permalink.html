@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Amendments on {{ p.date }} · signed record · xrpldashboard</title>
+  {% set meta_title = "XRPL amendments on " ~ p.date ~ " — signed record · xrpldashboard" %}
+  {% set meta_description = "Tamper-evident record of XRPL amendment tallies on " ~ p.date ~ ": the day's Ed25519-signed leaf, chain root, and verifier verdict." %}
+  {% include "_head_meta.html" %}
+  <style>
+    :root {
+      --bg: #0a0e27; --card: #141832; --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2; --muted: #8090b0; --dim: #7a8ca8; --cyan: #22d3ee;
+      --green: #4ade80; --red: #f87171; --amber: #fbbf24;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sys: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+                 font-family: var(--sys); font-size: 16px; line-height: 1.6; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 1.7rem; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+    h2 { font-size: 1.15rem; margin: 28px 0 10px; }
+    .lede { color: var(--muted); margin: 0 0 20px; }
+    a { color: var(--cyan); } a:hover { color: var(--text); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px 18px; margin: 0 0 16px; }
+    .mono { font-family: var(--mono); font-size: 0.9rem; word-break: break-all; }
+    .dim { color: var(--dim); font-size: 0.9rem; }
+    .muted { color: var(--muted); font-size: 0.92rem; }
+    .tag { display: inline-block; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
+           padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+    .tag.in { color: var(--green); border-color: rgba(74,222,128,0.4); }
+    .tag.out { color: var(--amber); border-color: rgba(251,191,36,0.4); }
+    .verdict { font-weight: 700; }
+    .verdict.verified { color: var(--green); }
+    .verdict.partial { color: var(--amber); }
+    .verdict.failed { color: var(--red); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+    details summary { cursor: pointer; color: var(--muted); }
+    .notice { border-color: rgba(251,191,36,0.4); }
+    .kv { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; font-size: 0.92rem; }
+    .kv div:nth-child(odd) { color: var(--muted); }
+    @media (max-width: 640px) { .kv { grid-template-columns: 1fr; } .kv div:nth-child(odd) { margin-top: 6px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  {% include "_nav.html" %}
+
+  <h1>Amendments on {{ p.date }} — signed record</h1>
+  <p class="lede">
+    A dated, tamper-evident record of the XRPL amendment tallies for this day. Everything
+    marked <span class="tag in">in the leaf</span> is inside the Ed25519-signed daily leaf and can be
+    re-verified by anyone; sections marked <span class="tag out">not in the leaf</span> are ledger-sourced
+    by our walkers and shown for context. The live page is <a href="/amendments">/amendments</a>.
+  </p>
+
+  {% if p.state != 'signed' %}
+    <div class="card notice" data-permalink-state="{{ p.state }}">
+      <h2 style="margin-top:0">
+        {% if p.state == 'not_yet_signed' %}Not yet signed{% elif p.state == 'known_gap' %}No leaf for this date — known gap{% else %}No leaf for this date{% endif %}
+      </h2>
+      <p style="margin:0">{{ p.notice }}</p>
+      {% if p.newest_signed_date %}
+      <p class="muted" style="margin:10px 0 0">
+        Newest signed record: <a href="/amendments/{{ p.newest_signed_date }}">/amendments/{{ p.newest_signed_date }}</a>.
+        Known gaps are recorded on <a href="/methodology#signed-snapshots">/methodology</a>.
+      </p>
+      {% endif %}
+    </div>
+  {% else %}
+
+    <div class="card" data-permalink-state="signed">
+      <div class="kv">
+        <div>Leaf date</div><div class="mono">{{ p.date }} <span class="dim">({{ p.signing_time_note }})</span></div>
+        <div>Leaf index</div><div class="mono">{{ p.leaf.leaf_index }} of {{ p.leaf.leaves_total }} · schema {{ p.leaf.schema_version }}</div>
+        <div>Leaf hash</div><div class="mono" data-leaf-hash>{{ p.leaf.leaf_hash }}</div>
+        <div>Chain root</div><div class="mono">{{ p.leaf.chain_root }}</div>
+        <div>Previous root</div><div class="mono">{{ p.leaf.previous_root }}</div>
+        <div>Signer</div><div class="mono">{{ p.leaf.signing_pubkey_fingerprint }} <span class="dim">· <a href="/.well-known/snapshots/pubkey.pem">pubkey.pem</a></span></div>
+        <div>Verifier</div>
+        <div>
+          <span class="verdict {{ p.verifier.state }}" data-verifier="{{ p.verifier.state }}">
+            {% if p.verifier.state == 'verified' %}VERIFIED{% elif p.verifier.state == 'partial' %}VERIFIED (chain link unproven from this host){% else %}VERIFICATION FAILED{% endif %}
+          </span>
+          <span class="dim">· <a href="{{ p.verify_url }}">re-run</a> · <a href="{{ p.leaf_url }}">raw leaf</a> · <a href="{{ p.json_url }}">this page as JSON</a></span>
+          {% if p.verifier.issues %}
+          <ul class="mono" style="margin:6px 0 0; padding-left:18px; color: var(--amber);">
+            {% for i in p.verifier.issues %}<li>{{ i }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+      <details style="margin-top:10px">
+        <summary>Signature and audit path</summary>
+        <div class="kv" style="margin-top:8px">
+          <div>signature_ed25519</div><div class="mono">{{ p.leaf.signature_ed25519 }}</div>
+          <div>signing_domain</div><div class="mono">{{ p.leaf.signing_domain }}</div>
+          <div>audit_path</div>
+          <div class="mono">
+            {% for step in (p.leaf.audit_path or []) %}{{ step.side }}:{{ step.hash }}<br>{% endfor %}
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <h2>Signed tallies <span class="tag in">in the leaf</span></h2>
+    {% if p.signed_rows %}
+      <p class="muted" style="margin:0 0 8px">
+        Snapshot of the amendments_block metric as signed
+        {% if p.block_as_of_iso %}(block assembled {{ p.block_as_of_iso }}{% if et_label(p.block_as_of_iso) %} · {{ et_label(p.block_as_of_iso) }}{% endif %}){% endif %}.
+        Network votes: count of UNL validators voting yes / validators heard / needed.
+        {% if p.block_sources.responding_node_source %}Responding node: <span class="mono">{{ p.block_sources.responding_node_source }}</span>.{% endif %}
+      </p>
+      <div class="card" style="padding:6px 8px; overflow-x:auto">
+      <table data-signed-tallies>
+        <thead><tr><th>Amendment</th><th>Enabled</th><th>Our node supports</th><th style="text-align:right">Yes</th><th style="text-align:right">Heard</th><th style="text-align:right">Needed</th><th>Hash</th></tr></thead>
+        <tbody>
+        {% for r in p.signed_rows %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td>{{ 'yes' if r.enabled else 'no' }}</td>
+            <td>{% if r.supported_by_responding_node is none %}—{% else %}{{ 'yes' if r.supported_by_responding_node else 'no' }}{% endif %}</td>
+            <td class="num">{% if r.votes_count is none %}—{% else %}{{ r.votes_count }}{% endif %}</td>
+            <td class="num">{% if r.votes_validations is none %}—{% else %}{{ r.votes_validations }}{% endif %}</td>
+            <td class="num">{% if r.votes_threshold is none %}—{% else %}{{ r.votes_threshold }}{% endif %}</td>
+            <td class="mono dim">{{ (r.hash or '')[:12] }}…</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="card"><p class="muted" style="margin:0">
+        This leaf predates the amendments block: signed amendment tallies begin {{ p.amendments_block_since }}.
+        The leaf above is still signed and verifiable; it just carries no amendment tallies.
+      </p></div>
+    {% endif %}
+
+    <h2>Majority events that UTC day <span class="tag out">not in the leaf</span></h2>
+    <p class="muted" style="margin:0 0 8px">Ledger-sourced by amendment_majority_walker at flag ledgers; not inside this day's signed leaf.</p>
+    <div class="card" data-majority-events>
+      {% if p.majority_events_utc_day %}
+      <table>
+        <thead><tr><th>Event</th><th>Amendment</th><th>Flag ledger</th><th>Close time</th><th>Detail</th></tr></thead>
+        <tbody>
+        {% for e in p.majority_events_utc_day %}
+          <tr>
+            <td>{{ e.kind }}</td>
+            <td>{{ e.name or (e.hash or '')[:12] }}</td>
+            <td class="num">{% if e.ledger %}{{ "{:,}".format(e.ledger) }}{% else %}—{% endif %}</td>
+            <td class="mono">{{ e.close_iso or '—' }}</td>
+            <td class="dim">
+              {% if e.vote_count_at_first is not none %}{{ e.vote_count_at_first }} yes at first sight, threshold {{ e.unl_threshold }}.{% endif %}
+              {% if e.activation_eta_iso %} Activation if held: {{ e.activation_eta_iso }}.{% endif %}
+              {% if e.correction_note %} {{ e.correction_note }}{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted" style="margin:0">No majority gained or lost on this day.</p>
+      {% endif %}
+    </div>
+
+    <h2>Validator roll call that day <span class="tag out">not in the leaf</span></h2>
+    <p class="muted" style="margin:0 0 8px">Own-node validations stream, one round per voting ledger. Counts only — no per-validator rows on any public surface.</p>
+    <div class="card" data-roll-call-day>
+      {% if p.roll_call_day_counts %}
+        {% set rc = p.roll_call_day_counts %}
+        <p style="margin:0 0 8px">
+          <strong>{{ rc.rounds }}</strong> round{{ '' if rc.rounds == 1 else 's' }} recorded
+          (voting ledgers <span class="mono">{{ "{:,}".format(rc.first_voting_ledger) }}</span> → <span class="mono">{{ "{:,}".format(rc.last_voting_ledger) }}</span>)
+          · heard {{ rc.heard_min }}{% if rc.heard_max != rc.heard_min %}–{{ rc.heard_max }}{% endif %} of {{ rc.unl_size }}
+          · threshold {{ rc.threshold }}, needed {{ rc.needed }} <span class="dim">(denominator: {{ rc.trusted_available }} trusted validators heard in the last round)</span>
+        </p>
+        <table>
+          <thead><tr><th>Amendment</th><th style="text-align:right">Yes, last round</th><th style="text-align:right">Yes incl. 24h carry</th><th>State</th></tr></thead>
+          <tbody>
+          {% for a in rc.per_amendment %}
+            <tr>
+              <td>{{ a.name }}</td>
+              <td class="num">{{ a.yes_round }}</td>
+              <td class="num">{{ a.yes_incl_carry }}</td>
+              <td>{% if a.passes %}majority{% else %}short by {{ rc.needed - a.yes_incl_carry }}{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+      <p class="muted" style="margin:0">No roll-call rounds recorded on this day (recording began 2026-09-26).</p>
+      {% endif %}
+    </div>
+
+  {% endif %}
+
+  <p class="muted" style="margin-top:24px">
+    How to verify this yourself: <a href="/methodology#signed-snapshots">/methodology</a> ·
+    all signed days: <a href="/snapshots/">/snapshots/</a> ·
+    machine-readable: <a href="{{ p.json_url }}">{{ p.json_url }}</a>
+  </p>
+  {% include "_footer_dev_row.html" %}
+</div>
+</body>
+</html>

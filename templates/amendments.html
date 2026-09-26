@@ -218,6 +218,20 @@
     {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
   </p>
 
+  {# "Cite this day" — dated, signed permalink (build 2026-09-26). Points at
+     the newest signed leaf carrying an amendments_block; when today's leaf
+     has not landed yet it says so and links yesterday's. Hidden if the
+     lookup fails. #}
+  {% if cite %}
+  <p class="dim" data-cite-this-day style="margin: -8px 0 18px; font-size: 0.92rem;">
+    {{ _('Cite this day:') }}
+    <a href="/amendments/{{ cite.date }}"><span class="mono">/amendments/{{ cite.date }}</span></a>
+    · {{ _('leaf') }} <span class="mono">{{ cite.leaf_hash12 }}…</span>
+    · {{ _('signed') }} {{ cite.date }} 01:00 UTC
+    {% if not cite.today_signed %}· {{ _("today's leaf signs at 01:00 UTC (21:00 ET the evening before)") }}{% endif %}
+  </p>
+  {% endif %}
+
   <div id="rippled-3-3-0" class="recent-callout" style="border-color: rgba(34,211,238,0.24); background: linear-gradient(180deg, rgba(34,211,238,0.04), var(--card));">
     <div class="label" style="color: var(--cyan);">{{ _('rippled v3.3.0 · released 2026-08-06 · six new amendments') }}</div>
     <p style="margin: 6px 0 0;">

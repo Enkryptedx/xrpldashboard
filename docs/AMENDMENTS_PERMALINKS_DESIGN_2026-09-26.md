@@ -1,7 +1,22 @@
 # Dated permalinks for /amendments — Design Report (2026-09-26)
 
-Status: **DESIGN ONLY — awaiting Charlie's go.** No route, template or
-schema change made. Build (3) of the 2026-09-26 queue.
+Status: **BUILT 2026-09-26** (Charlie go, all four recommendations taken:
+v1 labels majority events + roll-call "not in the leaf"; unsigned day =
+200 "not yet signed"; roll-call day counts included; URL form
+`/amendments/YYYY-MM-DD`). Route + `.json` twin in `app.py`
+(`_amendments_permalink_payload`), logic in `amendments_permalink.py`,
+template `templates/amendments_permalink.html`, tests
+`tests/test_amendments_permalink.py` (16, OPEN + CLOSED, no DB — fixture
+leaf `tests/fixtures/signed_leaf_2026-09-25.json`). Build (3) of the
+2026-09-26 queue.
+
+Found while building: production `/snapshots/verify` had reported
+VERIFICATION FAILED for every date because the chain-link step only knew
+disk (`chain.json` / prior-day file) and Render has neither; fixed by
+completing the chain link from Postgres inside `_verify_snapshot`
+(recompute the Merkle root over the PG chain's leaves, else compare the
+prior LEAF's chain_root). Correction to this doc: the leaf dated D is
+written at **D 01:00 UTC = 21:00 ET on D-1**, not "21:00 ET on D".
 
 ## Goal
 

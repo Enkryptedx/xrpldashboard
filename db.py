@@ -7703,6 +7703,29 @@ def read_signed_snapshot(date_str):
         return None
 
 
+def read_signed_snapshot_by_leaf_index(leaf_index):
+    """Return the signed envelope dict at chain position `leaf_index`, or
+    None. Used to complete the chain-link check on hosts with no disk
+    files (Render): the prior LEAF, not the prior calendar day, so the
+    2026-09-16..18 gap bridges correctly."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT envelope FROM signed_snapshots WHERE leaf_index = %s",
+                    (int(leaf_index),),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                payload = row[0]
+                return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
 def read_signed_snapshot_chain():
     """Return the live chain head dict matching disk's chain.json shape:
         {schema_version, current_root, leaves_total, first_date, leaves,
