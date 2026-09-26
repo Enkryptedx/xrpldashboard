@@ -1418,6 +1418,20 @@ CREATE TABLE IF NOT EXISTS cold_storage_snapshot (
 CREATE INDEX IF NOT EXISTS cold_storage_snapshot_fetched_at_idx
     ON cold_storage_snapshot (fetched_at DESC);
 
+-- GeoLite2 database store (2026-09-26 MaxMind daily-download-limit incident):
+-- ONE gzip'd GeoLite2-City.mmdb per edition, refreshed weekly by the Mac
+-- walker geoip_db_refresh_walker (or seeded by the first successful direct
+-- download). Render containers boot from THIS row (geoip_state.ensure_database
+-- PG-first), so a deploy costs 0 MaxMind downloads. ~30 MB gz per row.
+CREATE TABLE IF NOT EXISTS geoip_db_blob (
+    edition      TEXT PRIMARY KEY,
+    fetched_at   TIMESTAMPTZ NOT NULL,
+    sha256       TEXT NOT NULL,
+    size_bytes   INTEGER NOT NULL,
+    source       TEXT NOT NULL,
+    blob_gz      BYTEA NOT NULL
+);
+
 -- Per-issuer AccountRoot flags snapshot. Mac walker (token_issuer_flags_
 -- walker.py) enumerates DISTINCT issuers from token_volume every 30 min,
 -- fetches AccountInfo(signer_lists=True) per issuer via LAN rippled, and
@@ -9546,4 +9560,78 @@ def write_unbilled_call(*, endpoint, request_id, sourcing, billing_reason,
         # helpers (write_signed_snapshot etc.) which BLOCK the walker;
         # this is a request-path helper where blocking harms the user.
         _log_err("write_unbilled_call_failed", e)
+        return False
+
+
+# ---------------------------------------------------------------------------
+# geoip_db_blob — our own copy of GeoLite2-City.mmdb (2026-09-26 incident:
+# MaxMind's 30-per-24h GeoLite download limit). Readers: geoip_state.py
+# (Render boot + Mac walkers). Writer: geoip_db_refresh_walker (weekly) and
+# geoip_state after a successful direct download (seed).
+# ---------------------------------------------------------------------------
+
+def read_geoip_db_blob_meta(edition="GeoLite2-City"):
+    """(fetched_at, sha256, size_bytes) without pulling the ~30 MB blob, or
+    None when absent/PG unavailable."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT fetched_at, sha256, size_bytes FROM geoip_db_blob WHERE edition = %s",
+                    (edition,),
+                )
+                row = cur.fetchone()
+                return (row[0], row[1], int(row[2])) if row else None
+    except Exception as e:
+        _log_err("read_geoip_db_blob_meta_failed", e)
+        return None
+
+
+def read_geoip_db_blob(edition="GeoLite2-City"):
+    """(gz_bytes, fetched_at, sha256) or None."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT blob_gz, fetched_at, sha256 FROM geoip_db_blob WHERE edition = %s",
+                    (edition,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return (bytes(row[0]), row[1], row[2])
+    except Exception as e:
+        _log_err("read_geoip_db_blob_failed", e)
+        return None
+
+
+def write_geoip_db_blob(edition, gz_bytes, sha256, source, fetched_at=None):
+    """UPSERT the store row. Returns True on success; logs and returns
+    False on failure (never raises — callers are fail-open boot paths)."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO geoip_db_blob (edition, fetched_at, sha256, size_bytes, source, blob_gz)
+                    VALUES (%s, COALESCE(%s, NOW()), %s, %s, %s, %s)
+                    ON CONFLICT (edition) DO UPDATE SET
+                        fetched_at = EXCLUDED.fetched_at,
+                        sha256     = EXCLUDED.sha256,
+                        size_bytes = EXCLUDED.size_bytes,
+                        source     = EXCLUDED.source,
+                        blob_gz    = EXCLUDED.blob_gz
+                    """,
+                    (edition, fetched_at, sha256, len(gz_bytes), source, gz_bytes),
+                )
+            conn.commit()
+        return True
+    except Exception as e:
+        _log_err("write_geoip_db_blob_failed", e)
         return False

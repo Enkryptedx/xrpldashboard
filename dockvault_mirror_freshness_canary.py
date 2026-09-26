@@ -50,6 +50,11 @@ JOBS: list[tuple[str, int, str]] = [
     # ("a watchdog nobody watches is the pattern we keep finding").
     # 15-min walker; 60 min ceiling = up to 4 missed cadences before
     # this meta-canary pages.
+    # 2026-09-26: geoip_health_canary (15-min) — pages when /healthz.geoip is
+    # unavailable or region_code goes NULL (MaxMind download-limit incident).
+    # Same 60-min ceiling as public_route_200_canary.
+    ("geoip_health_canary", 60 * 60,
+     "15-min /healthz.geoip + page_views region NULL-ratio canary"),
     ("public_route_200_canary", 60 * 60,
      "every-15min HTTP-200 sweep of all public + agent-tier + well-known routes on xrpldashboard.com"),
     # Charlie ruling 2026-09-09 morning: added route_5xx_rate_walker
