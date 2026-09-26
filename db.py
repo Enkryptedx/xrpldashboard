@@ -1163,6 +1163,25 @@ CREATE TABLE IF NOT EXISTS nft_activity_summary (
     computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Incremental all-time aggregates for nft_activity (Charlie 2026-09-26):
+-- the summary walker folds in only rows with id > through_id each run, so
+-- the 7.77M-row COUNT(*)/GROUP BY tx_type is never recomputed (it was
+-- tripping the 25 s statement cap). Single row, id=1. Seeded once by a
+-- manual full scan (statement_timeout=0); verified by
+-- `nft_activity_walker.py --mode reconcile-type-rollup`.
+-- Mirrored in db._NFT_ACTIVITY_TYPE_ROLLUP_DDL — change both.
+CREATE TABLE IF NOT EXISTS nft_activity_type_rollup (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    through_id          BIGINT      NOT NULL DEFAULT 0,
+    total_events        BIGINT      NOT NULL DEFAULT 0,
+    counts_all          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    range_start_ledger  BIGINT,
+    range_end_ledger    BIGINT,
+    range_start_close   TIMESTAMPTZ,
+    range_end_close     TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Per-hour transaction-type counters populated by tx_type_bucket_handler
 -- in xrpl_stream.py. Feeds the "Ledger activity" section on /network:
 -- what share of on-chain activity is Payments vs DEX offers vs AMM vs
@@ -8618,6 +8637,117 @@ def write_nft_activity_summary(
                 ),
             )
         conn.commit()
+
+
+# ── nft_activity_type_rollup (incremental all-time aggregates, 2026-09-26) ──
+# Mirrors the block in SCHEMA_DDL — change both.
+_NFT_ACTIVITY_TYPE_ROLLUP_DDL = """
+CREATE TABLE IF NOT EXISTS nft_activity_type_rollup (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    through_id          BIGINT      NOT NULL DEFAULT 0,
+    total_events        BIGINT      NOT NULL DEFAULT 0,
+    counts_all          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    range_start_ledger  BIGINT,
+    range_end_ledger    BIGINT,
+    range_start_close   TIMESTAMPTZ,
+    range_end_close     TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+_NFT_TYPE_DELTA_SQL = (
+    "SELECT tx_type, COUNT(*), MIN(ledger_index), MAX(ledger_index), "
+    "       MIN(close_time), MAX(close_time), MAX(id) "
+    "FROM nft_activity WHERE id > %s GROUP BY tx_type"
+)
+
+
+def ensure_nft_activity_type_rollup():
+    """Idempotent CREATE IF NOT EXISTS for the rollup table (walker-owned
+    ensure path, same spirit as ensure_nft_activity_summary)."""
+    if not pg_available():
+        return False
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_NFT_ACTIVITY_TYPE_ROLLUP_DDL)
+        conn.commit()
+    return True
+
+
+def read_nft_activity_type_rollup(cur) -> dict | None:
+    """Return the rollup state dict (see nft_type_rollup.empty_state) or
+    None when the row does not exist yet (never seeded)."""
+    cur.execute(
+        "SELECT through_id, total_events, counts_all, range_start_ledger, "
+        "       range_end_ledger, range_start_close, range_end_close "
+        "FROM nft_activity_type_rollup WHERE id = 1"
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    counts = row[2]
+    if isinstance(counts, str):
+        counts = json.loads(counts)
+    return {
+        "through_id": int(row[0] or 0),
+        "total_events": int(row[1] or 0),
+        "counts_all": {k: int(v) for k, v in (counts or {}).items()},
+        "range_start_ledger": row[3],
+        "range_end_ledger": row[4],
+        "range_start_close": row[5],
+        "range_end_close": row[6],
+    }
+
+
+def read_nft_type_delta(cur, through_id: int):
+    """Rows added since the watermark, one tuple per tx_type:
+    (tx_type, n, min_ledger, max_ledger, min_close, max_close, max_id).
+    PK range scan — cost scales with rows added since last run, not with
+    table size."""
+    cur.execute(_NFT_TYPE_DELTA_SQL, (int(through_id),))
+    return cur.fetchall()
+
+
+def write_nft_activity_type_rollup(cur, state: dict) -> None:
+    """UPSERT the single rollup row from a state dict. Raises on failure
+    (telemetry_fail_loud)."""
+    cur.execute(
+        "INSERT INTO nft_activity_type_rollup "
+        "  (id, through_id, total_events, counts_all, range_start_ledger, "
+        "   range_end_ledger, range_start_close, range_end_close, updated_at) "
+        "VALUES (1, %s, %s, %s::jsonb, %s, %s, %s, %s, now()) "
+        "ON CONFLICT (id) DO UPDATE SET "
+        "  through_id = EXCLUDED.through_id, "
+        "  total_events = EXCLUDED.total_events, "
+        "  counts_all = EXCLUDED.counts_all, "
+        "  range_start_ledger = EXCLUDED.range_start_ledger, "
+        "  range_end_ledger = EXCLUDED.range_end_ledger, "
+        "  range_start_close = EXCLUDED.range_start_close, "
+        "  range_end_close = EXCLUDED.range_end_close, "
+        "  updated_at = now()",
+        (
+            int(state["through_id"]),
+            int(state["total_events"]),
+            json.dumps(state["counts_all"]),
+            state["range_start_ledger"],
+            state["range_end_ledger"],
+            state["range_start_close"],
+            state["range_end_close"],
+        ),
+    )
+
+
+def full_scan_nft_type_state(cur) -> dict:
+    """The expensive path — a full-table aggregate in the rollup's state
+    shape. ONLY for the one-time seed and `--mode reconcile-type-rollup`;
+    callers lift statement_timeout themselves. Never in the 300 s path."""
+    cur.execute(
+        "SELECT tx_type, COUNT(*), MIN(ledger_index), MAX(ledger_index), "
+        "       MIN(close_time), MAX(close_time), MAX(id) "
+        "FROM nft_activity GROUP BY tx_type"
+    )
+    import nft_type_rollup
+    return nft_type_rollup.advance(nft_type_rollup.empty_state(), cur.fetchall())
 
 
 def read_nft_activity_summary():

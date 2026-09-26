@@ -43,6 +43,7 @@ See: memory/feedback_nft_churn_intra_collection_only.md
 """
 
 import argparse
+import nft_type_rollup  # pure merge for nft_activity_type_rollup (2026-09-26)
 import datetime
 import logging
 import sys
@@ -577,20 +578,31 @@ def run_summary():
 
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*), MIN(ledger_index), MAX(ledger_index), "
-                "MIN(close_time), MAX(close_time) FROM nft_activity"
-            )
-            row = cur.fetchone()
-            if row and row[0]:
-                total_events = int(row[0])
-                range_start_ledger = int(row[1]) if row[1] is not None else None
-                range_end_ledger = int(row[2]) if row[2] is not None else None
-                if row[3]:
-                    range_start_date = row[3].date()
-                if row[4]:
-                    range_end_date = row[4].date()
-                    latest_close_time = row[4]
+            # All-time aggregates come from the incremental rollup (Charlie
+            # 2026-09-26): fold in only rows past the watermark, never the
+            # whole table. A missing/unseeded rollup fails LOUD — the seed
+            # is a one-time manual full scan (see nft_type_rollup.py).
+            state = db.read_nft_activity_type_rollup(cur)
+            if state is None or int(state["through_id"]) <= 0:
+                raise RuntimeError(
+                    "nft_activity_type_rollup not seeded — run the manual "
+                    "seed (full_scan_nft_type_state with statement_timeout=0) "
+                    "before --mode summary"
+                )
+            delta = db.read_nft_type_delta(cur, state["through_id"])
+            state = nft_type_rollup.advance(state, delta)
+            db.write_nft_activity_type_rollup(cur, state)
+            conn.commit()
+            rollup_added = sum(int(r[1]) for r in delta)
+            total_events = int(state["total_events"])
+            range_start_ledger = state["range_start_ledger"]
+            range_end_ledger = state["range_end_ledger"]
+            if state["range_start_close"]:
+                range_start_date = state["range_start_close"].date()
+            if state["range_end_close"]:
+                range_end_date = state["range_end_close"].date()
+                latest_close_time = state["range_end_close"]
+            counts_all = dict(state["counts_all"])
 
             # `(%s)::interval` — INTERVAL wants a literal, not a bound param;
             # casting the bound value is the shape that parses. Same idiom as
@@ -607,11 +619,6 @@ def run_summary():
                     counts_24h = bucket
                 else:
                     counts_7d = bucket
-
-            cur.execute(
-                "SELECT tx_type, COUNT(*) FROM nft_activity GROUP BY tx_type"
-            )
-            counts_all = {r[0]: int(r[1]) for r in cur.fetchall()}
 
             cur.execute(
                 "SELECT issuer, COUNT(*) AS events FROM nft_activity "
@@ -638,8 +645,37 @@ def run_summary():
         f"total_events={total_events} "
         f"types_all={len(counts_all)} types_24h={len(counts_24h)} "
         f"top_issuers={len(top_issuers)} "
-        f"range={range_start_date}..{range_end_date}"
+        f"range={range_start_date}..{range_end_date} "
+        f"rollup_through_id={state['through_id']} rollup_added={rollup_added}"
     )
+
+
+def run_reconcile_type_rollup():
+    """MANUAL verification of the incremental rollup against a full scan
+    (statement_timeout lifted on this connection only). ok iff every
+    aggregate matches. Never scheduled — this is the expensive path the
+    rollup exists to avoid. Run after the seed, and whenever the rollup is
+    suspected (e.g. after any bulk gap-fill)."""
+    with db.pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 0")
+            state = db.read_nft_activity_type_rollup(cur)
+            if state is None:
+                return False, "rollup row missing (not seeded)"
+            # Compare at the rollup's own watermark so rows landing during
+            # the scan can't produce a false mismatch.
+            cur.execute(
+                "SELECT tx_type, COUNT(*), MIN(ledger_index), MAX(ledger_index), "
+                "       MIN(close_time), MAX(close_time), MAX(id) "
+                "FROM nft_activity WHERE id <= %s GROUP BY tx_type",
+                (int(state["through_id"]),),
+            )
+            full = nft_type_rollup.advance(nft_type_rollup.empty_state(), cur.fetchall())
+    equal, diffs = nft_type_rollup.equals_full_count(state, full)
+    msg = (f"through_id={state['through_id']} rollup_total={state['total_events']} "
+           f"full_total={full['total_events']} types={len(full['counts_all'])} "
+           f"{'MATCH' if equal else 'MISMATCH: ' + '; '.join(diffs)[:400]}")
+    return equal, msg
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -668,6 +704,8 @@ MODE_DISPATCH = {
     "summary":           run_summary,
     "rollup":            run_rollup,
     "existing-snapshot": run_existing_snapshot,
+    # Manual only: full-scan check of nft_activity_type_rollup (2026-09-26).
+    "reconcile-type-rollup": run_reconcile_type_rollup,
 }
 
 # Modes that run on a fixed StartInterval cadence and should declare it to
