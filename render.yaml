@@ -23,7 +23,10 @@ services:
     # Build: install pinned dependencies, then generate the static search
     # index from glossary.json + CLAIMS.yaml. Deploy fails if either
     # source is missing or malformed (build_search_index.py exits non-zero).
-    buildCommand: pip install -r requirements.txt && python scripts/build_search_index.py
+    # fetch_geoip_db.py: ONE GeoLite2 download per deploy at build time
+    # (persists into the container; workers reuse it). Fail-open — never
+    # fails the build. See geoip_state.py (2026-09-26 MaxMind limit incident).
+    buildCommand: pip install -r requirements.txt && python scripts/build_search_index.py && python scripts/fetch_geoip_db.py
 
     # Run: gunicorn binds to Render's $PORT.
     # 3 workers x 8 threads = 24 concurrent request slots.

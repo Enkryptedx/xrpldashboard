@@ -10022,7 +10022,16 @@ def healthz():
     green while attack surface shrinks."""
     try:
         db.ping()
-        return {"status": "ok", "db": "reachable"}, 200
+        # geoip: informational only — never changes the routing verdict.
+        # Makes a disabled state-level lookup visible (2026-09-26: MaxMind
+        # daily download limit left region_code NULL for 5 h unseen).
+        try:
+            g = geoip_state.status()
+            geo = {"available": g.get("available"), "source": g.get("source"),
+                   "file_age_s": g.get("file_age_s"), "last_error": g.get("last_error")}
+        except Exception:  # noqa: BLE001
+            geo = {"available": None}
+        return {"status": "ok", "db": "reachable", "geoip": geo}, 200
     except Exception as e:
         return {"status": "unhealthy", "db": "unreachable", "error": str(e)[:120]}, 503
 

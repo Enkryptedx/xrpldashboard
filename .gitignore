@@ -177,3 +177,8 @@ nav_screenshots/
 rwa_nav_transparency_cache/
 signed_verified_tokens_latest.json
 static/coin_emblems/
+
+# GeoLite2 database fetched at build/boot by geoip_state.py (MaxMind-licensed, never committed)
+GeoLite2-City.mmdb
+GeoLite2-City.mmdb.part
+GeoLite2-City.mmdb.lock
