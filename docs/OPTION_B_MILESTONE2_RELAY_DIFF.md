@@ -1,8 +1,15 @@
 # Option B — Milestone 2 Relay Diff (PR-shaped, for Charlie's review)
 
-**Status: IMPLEMENTED on main 2026-09-26 (Sat AM ET) — relay + canary code
-landed per this diff; NOT yet deployed to the Lenovo. Deploy still needs
-Charlie's live terminal-time go (§6).** Implementation notes vs. this outline:
+**Status: DEPLOYED to the Lenovo in LOG-ONLY mode 2026-09-26 11:36:48Z (Sat
+07:36 ET, Charlie at the terminal). 72h log-only clock started then; enforce
+flip not before Wed 2026-09-30 (Tuesday = Batch activation, relay untouched).
+Post-checks passed: healthz relay_mode=log_only + feeds{} + refs_source=pg
+(30,388 pool accounts / 100 tokens), ledger reconnect within 3 s, SHADOW_TRIP
+addr_cap logged with the sub accepted, canary --all-feeds green on all six
+feeds. Two deploy-time fixes: the unit sandbox needed IPAddressAllow for the
+systemd-resolved stub 127.0.0.53 (drop-in mirrored in private infra), and
+matches_wallet now walks every account field like rippled's accounts stream
+(7b4c943) — the first probe missed RLUSD-issuer trust-line traffic.** Implementation notes vs. this outline:
 `total_coins` is read from the upstream node (`ledger` command on the same
 loopback socket), not PG; pool/top-100 refs come from `amm_ranked_pools` /
 `token_volume` (the tables that exist — `amm_pools_metadata` and
