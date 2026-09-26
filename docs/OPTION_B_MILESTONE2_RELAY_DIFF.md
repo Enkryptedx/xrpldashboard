@@ -1,7 +1,15 @@
 # Option B — Milestone 2 Relay Diff (PR-shaped, for Charlie's review)
 
-**Status: DRAFT for review. NO Lenovo touch. Needs Charlie's explicit go
-before any deploy.** This is the diff-in-hand the Milestone-2 rule requires.
+**Status: IMPLEMENTED on main 2026-09-26 (Sat AM ET) — relay + canary code
+landed per this diff; NOT yet deployed to the Lenovo. Deploy still needs
+Charlie's live terminal-time go (§6).** Implementation notes vs. this outline:
+`total_coins` is read from the upstream node (`ledger` command on the same
+loopback socket), not PG; pool/top-100 refs come from `amm_ranked_pools` /
+`token_volume` (the tables that exist — `amm_pools_metadata` and
+`tokens_top100_24h_volume` named below do not) when `DATABASE_URL` is set,
+else `LIVE_STREAM_RELAY_REFS_FILE`, else empty with `refs_source=none` in
+healthz. The live unit's `IPAddressAllow=127.0.0.1` sandbox blocks Neon, so
+PG-backed refs need the env file + an IPAddress drop-in at deploy time (§6 B.7).
 
 Author: JJ · 2026-09-25
 Depends on: Milestone 1 (`relay_feed_filters.py`, committed 92b0bc6, 22 tests

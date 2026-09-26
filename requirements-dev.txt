@@ -9,3 +9,8 @@
 # against.
 -r requirements.txt
 pytest==9.0.3
+# Relay tests (tests/test_live_stream_relay*.py, test_wss_relay_canary_feeds.py)
+# boot the Lenovo-side WSS relay on loopback; websockets is a Lenovo-venv dep,
+# not a Render prod dep. Pinned to the local venv version the tests were
+# proven against (2026-09-26).
+websockets==16.0

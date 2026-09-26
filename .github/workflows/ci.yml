@@ -52,3 +52,11 @@ jobs:
         run: |
           pytest tests/test_bridge_signer_sourcing.py tests/test_credentials_sourcing.py tests/test_amm_ranking_sourcing.py tests/test_nft_activity_sourcing.py tests/test_public_analytics_filters.py -q
           python tests/test_network_pulse_sourcing.py
+      # Option B relay (Milestone 1 filters + Milestone 2 named-feed relay +
+      # canary feed probes). Loopback-only fake upstream, no DB, no internet.
+      # This is the "CI green with the relay code merged" precondition in
+      # docs/OPTION_B_MILESTONE2_RELAY_DIFF.md §6 before any Lenovo deploy.
+      - name: Live-stream relay tests (loopback, no DB)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_relay_feed_filters.py tests/test_live_stream_relay.py tests/test_live_stream_relay_feeds.py tests/test_wss_relay_canary_feeds.py -q
