@@ -153,7 +153,7 @@
         <td class="route">/wallet/&lt;addr&gt;<br>{{ _('tx counter, last seen, sparkline today bin') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
-        <td>{{ _('Browser subscribes directly to') }} <code>wss://xrplcluster.com</code></td>
+        <td>{{ _('Browser subscribes to our own-node relay') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('feed') }} <code>wallet_transactions</code>); <code>wss://xrplcluster.com</code> {{ _('fallback only, logged') }}</td>
       </tr>
       <tr>
         <td class="route">/wallet/&lt;addr&gt;<br>{{ _('balances, holdings, network graph, AMM positions') }}</td>
@@ -166,19 +166,19 @@
         <td class="route">/whales<br>{{ _('large-XRP / tagged / trustset feed') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push (~3–5 sec per validated ledger)') }}</td>
-        <td>{{ _('Browser subscribes directly to') }} <code>wss://xrplcluster.com</code>; {{ _('initial page load is from worker → Neon') }}</td>
+        <td>{{ _('Browser subscribes to our own-node relay') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('feed') }} <code>whale_transactions</code>); <code>wss://xrplcluster.com</code> {{ _('fallback only, logged; initial page load is from worker → Neon') }}</td>
       </tr>
       <tr>
         <td class="route">/tokens, /token/&lt;currency&gt;/&lt;issuer&gt;<br>{{ _('per-token swap activity') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push for new swaps; aggregates rebuild on next reload') }}</td>
-        <td>{{ _('Browser WS to') }} <code>wss://xrplcluster.com</code>; {{ _('rollups from worker → Neon') }}</td>
+        <td>{{ _('Browser WS to our own-node relay') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('feeds') }} <code>token_top100_transactions</code> + <code>amm_transactions</code>); <code>wss://xrplcluster.com</code> {{ _('fallback only, logged; rollups from worker → Neon') }}</td>
       </tr>
       <tr>
         <td class="route">{{ _('/pools constellation') }}<br>{{ _('swap pulses + per-pool TVL') }}</td>
         <td><span class="pill pill-live"><span class="pill-dot"></span>{{ _('Live') }}</span></td>
         <td>{{ _('WebSocket push; TVL adjusts on each AMM LP-token delta') }}</td>
-        <td>{{ _('Browser WS to') }} <code>wss://xrplcluster.com</code>; {{ _('static pool index seeded from') }} <code>amm_info</code></td>
+        <td>{{ _('Browser WS to our own-node relay') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('feed') }} <code>amm_transactions</code>); <code>wss://xrplcluster.com</code> {{ _('fallback only, logged; static pool index seeded from') }} <code>amm_info</code></td>
       </tr>
       <tr>
         <td class="route">/api/pools/recent_events</td>
@@ -236,7 +236,7 @@
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five surfaces use browser-side WebSocket push (Live). Today the whales, tokens, pools, and wallet streams subscribe to the public') }} <code>wss://xrplcluster.com</code> ({{ _('labeled public source') }}); {{ _('our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo rippled → cloudflared tunnel → subscribe-only fan-out') }}) {{ _('carries the ledger stream, and moving those four to own-node named feeds is in progress — relay deploy first, pages switch after the canary is green. Fallback events are tracked in walker_node_fallback.') }} {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
+    {{ _('Five surfaces use browser-side WebSocket push (Live). The whales, tokens, pools, and wallet streams subscribe to our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo rippled → cloudflared tunnel → subscribe-only, server-filtered named feeds') }}). {{ _('The public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move is logged in') }} <code>walker_node_fallback</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
@@ -246,9 +246,9 @@
     {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Carries the ledger stream today; the whales, tokens, pools, and wallet browser feeds move here after the relay deploy and a green canary.') }}</li>
-    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Current source (public, labeled) for the whales, tokens, pools, and wallet browser streams until the own-node migration completes; any fallback event logs into') }} <code>walker_node_fallback</code>.</li>
-    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Kept as the first browser fallback if xrplcluster.com is unreachable. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
+    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Serves the ledger stream and the server-filtered named feeds the whales, tokens, pools, and wallet pages subscribe to.') }}</li>
+    <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Browser fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move logs into') }} <code>walker_node_fallback</code>.</li>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Not in the browser stream path. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
   </ul>
 
@@ -260,9 +260,9 @@
     <li><strong><code>1rpc.io/eth</code></strong> — {{ _('Public, key-free Ethereum JSON-RPC endpoint. Used by /api/rlusd/state to read the RLUSD ERC-20 totalSupply and recent Transfer logs at contract 0x8292…17eD.') }}</li>
   </ul>
   <p>
-    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side traffic runs against the community-operated cluster') }}
+    <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side live streams run against our own-node relay') }} <code>wss://wss.xrpldashboard.com</code>, {{ _('with the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation), with') }} <code>wss://s2.ripple.com</code> {{ _('and') }} <code>wss://s1.ripple.com</code> {{ _('retained as automatic fallbacks. Our own') }} <code>rippled</code> {{ _('node on the LAN carries the forward-walker, MCP tool envelope reads, and — since 2026-09 — the continuous XRPL streaming worker (all classified') }} <code>own-node</code> {{ _('in the source-tier table below). Server-side reads from Render still fall through public XRPL RPC where the tunnel path is not wired; each such page discloses its source.') }}
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation) as the logged fallback. Our own') }} <code>rippled</code> {{ _('node on the LAN carries the forward-walker, MCP tool envelope reads, the relay, and — since 2026-09 — the continuous XRPL streaming worker (all classified') }} <code>own-node</code> {{ _('in the source-tier table below). Server-side reads from Render still fall through public XRPL RPC where the tunnel path is not wired; each such page discloses its source.') }}
   </p>
 
   <h3>{{ _('Database') }}</h3>

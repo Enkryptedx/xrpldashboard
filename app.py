@@ -399,7 +399,7 @@ REGULATION_BANNER_EXPIRES = "2026-09-14"
 # agent-tier surface change; three surfaces refresh from one edit.
 # Codified in CLAIMS.yaml (agents_json_status_booleans,
 # methodology_for_ai_agents_envelope_matches_agents_json siblings).
-LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-22"  # Re-verified 2026-09-22 (post-Round-4 sweep) — three surface updates landed same day: (a) /check.json responses now carry the full `proof.check_v09_signature` block with Ed25519 sig, canonical_hash, domain_separator, signer fingerprint (live-tested via curl -X POST); llms.txt + agents.json rewritten to match. (b) Live-feed sovereignty — INTERIM (opened 2026-09-23 18:45 ET, Charlie ruling): the own-node WSS relay at wss.xrpldashboard.com is the client-side primary target for browser live streams on /pools, /tokens, /whales, but its subscribe-only whitelist currently accepts only `streams:['ledger']` and closes `streams:['transactions']` with 1008 subscribe_only; those three pages therefore fall back to wss://xrplcluster.com after 3 attempts and stay on the public feed for the tab. /wallet has always been hardcoded to xrplcluster (no relay attempt). Option B relay change (named feeds amm_transactions / token_top100_transactions / whale_transactions with server-side filtering) is the durable fix — awaiting Charlie sign-off before Lenovo config touch. Bump this constant back to "sovereign since <date>" wording ONLY after Playwright shows all four surfaces subscribed on wss.xrpldashboard.com with zero fallbacks. (c) Verified-tokens manifest widened to 71 rows including the full 49 verified-issuer list; RLUSD row-level citation cleaned to align with the row's own ripple.com two-way TOML proof (regression at tests/test_verified_row_no_negation.py).
+LAST_VERIFIED_AGENT_TIER_METHODOLOGY = "2026-09-26"  # Re-verified 2026-09-26 — (a) /check.json responses carry the full `proof.check_v09_signature` block with Ed25519 sig, canonical_hash, domain_separator, signer fingerprint (live-tested 2026-09-22); llms.txt + agents.json match. (b) Live-feed sovereignty — CURRENT TRUTH (Option B Milestone 2 deployed log-only 2026-09-26 11:36:48Z, template swap 8e087dc): /pools, /tokens, /whales, /wallet subscribe to the own-node relay wss.xrpldashboard.com named feeds (amm_transactions / token_top100_transactions + amm_transactions / whale_transactions / wallet_transactions); Playwright on prod showed all four on wss.xrpldashboard.com with zero browser_wss fallback rows since the deploy. wss://xrplcluster.com is fallback only (after repeated relay connections fail to prove live; logged in walker_node_fallback). Copy on /about, /methodology, agents.json states this as current truth with no "sovereign since" date (Charlie microcopy ruling 2026-09-26). (c) Verified-tokens manifest 71 rows incl. the full 49 verified-issuer list; RLUSD row-level citation aligned with the row's own ripple.com two-way TOML proof (regression at tests/test_verified_row_no_negation.py).
 
 
 @app.context_processor
@@ -10022,11 +10022,13 @@ _AGENTS_JSON = {
             "public-ethereum": "Alchemy / 1rpc.io for /rlusd Ethereum-side supply",
         },
         "live_browser_streams": (
-            "whales/tokens/pools/wallet currently subscribe to public "
-            "wss://xrplcluster.com (labeled); our own-node relay "
-            "wss://wss.xrpldashboard.com carries the ledger stream; migration of "
-            "the four page feeds to own-node named feeds is in progress — relay "
-            "deploy first, pages switch after a green canary"
+            "whales/tokens/pools/wallet subscribe to our own-node relay "
+            "wss://wss.xrpldashboard.com (server-filtered named feeds: "
+            "whale_transactions, token_top100_transactions + amm_transactions, "
+            "amm_transactions, wallet_transactions); public wss://xrplcluster.com "
+            "is fallback only — a page moves to it after repeated relay "
+            "connections fail to prove live, and every such move is logged in "
+            "walker_node_fallback"
         ),
         "sourcing_field_values": ["sovereign", "fallback-public-rpc", "stale-cache",
                                   "public-no-tunnel-configured"],
