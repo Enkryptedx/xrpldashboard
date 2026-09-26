@@ -53,6 +53,11 @@ JOBS: list[tuple[str, int, str]] = [
     # 2026-09-26: geoip_health_canary (15-min) — pages when /healthz.geoip is
     # unavailable or region_code goes NULL (MaxMind download-limit incident).
     # Same 60-min ceiling as public_route_200_canary.
+    # 2026-09-26: weekly GeoLite2 refresher (StartInterval 604800). Ceiling
+    # 9 days = one missed weekly slot + margin; geoip_health_canary also
+    # pages if the store blob itself goes stale (>14 d) via /healthz.
+    ("geoip_db_refresh_walker", 9 * 86400,
+     "weekly GeoLite2-City download → Postgres geoip_db_blob"),
     ("geoip_health_canary", 60 * 60,
      "15-min /healthz.geoip + page_views region NULL-ratio canary"),
     ("public_route_200_canary", 60 * 60,
