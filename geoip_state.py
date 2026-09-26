@@ -62,8 +62,14 @@ _DEFAULT_MMDB_PATH = os.path.join(HERE, "GeoLite2-City.mmdb")
 _FETCH_TIMEOUT_S = 30
 MMDB_MAX_AGE_S = int(os.environ.get("GEOIP_MMDB_MAX_AGE_S", str(7 * 86400)))
 BLOB_MAX_AGE_S = int(os.environ.get("GEOIP_BLOB_MAX_AGE_S", str(14 * 86400)))
-RETRY_S = int(os.environ.get("GEOIP_RETRY_S", "3600"))
+# Retry is store-only (cheap: one metadata SELECT), so poll every 10 min —
+# a freshly seeded geoip_db_blob is picked up without a redeploy.
+RETRY_S = int(os.environ.get("GEOIP_RETRY_S", "600"))
 MIN_MMDB_BYTES = 1_000_000
+# Charlie ruling 2026-09-26 15:55 ET: the app NEVER calls MaxMind on boot or
+# retry. Direct download is opt-in (GEOIP_ALLOW_DIRECT=1) for the weekly
+# walker / a manual seed only. Boot + retry = local file → our store.
+ALLOW_DIRECT = os.environ.get("GEOIP_ALLOW_DIRECT", "0") == "1"
 
 _reader = None
 _state = {
@@ -255,9 +261,15 @@ def ensure_database(force: bool = False) -> bool:
                 _state["source"] = "pg"
                 ok = True
             else:
-                # Step 3: MaxMind direct, only if the store can't serve.
+                # Step 3: MaxMind direct — opt-in only (GEOIP_ALLOW_DIRECT=1),
+                # and only if the store can't serve. Containers never take it.
                 key = (os.environ.get("MAXMIND_LICENSE_KEY") or "").strip()
-                if not key:
+                if not ALLOW_DIRECT:
+                    _state["last_error"] = ((_state.get("last_error") or "store empty")
+                                            + " | direct download disabled (GEOIP_ALLOW_DIRECT!=1)")[:200]
+                    log.warning("geoip_state: store cannot serve and direct download is disabled — "
+                                "state lookup disabled until geoip_db_blob is refreshed")
+                elif not key:
                     _state["last_error"] = (_state.get("last_error") or "") + " | MAXMIND_LICENSE_KEY unset"
                     log.info("geoip_state: no store blob and MAXMIND_LICENSE_KEY unset — state lookup disabled")
                 elif force or _store_needs_direct():

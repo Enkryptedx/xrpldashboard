@@ -29,6 +29,7 @@ def G(monkeypatch, tmp_path):
     store stubbed EMPTY (never touch a real Postgres from tests)."""
     monkeypatch.delenv("MAXMIND_LICENSE_KEY", raising=False)
     monkeypatch.setenv("GEOIP_DISABLE_RETRY", "1")
+    monkeypatch.delenv("GEOIP_ALLOW_DIRECT", raising=False)
     monkeypatch.setenv("GEOIP_MMDB_PATH", str(tmp_path / "GeoLite2-City.mmdb"))
     monkeypatch.setattr(db, "pg_available", lambda: False)
     monkeypatch.setattr(db, "read_geoip_db_blob_meta", lambda edition="GeoLite2-City": None)
@@ -64,7 +65,7 @@ def test_no_key_no_store_no_file_is_disabled_and_fail_open(G):
     assert G.available() is False
     assert G.lookup_region_code("8.8.8.8") is None
     s = G.status()
-    assert s["available"] is False and "MAXMIND_LICENSE_KEY unset" in (s["last_error"] or "")
+    assert s["available"] is False and "direct download disabled" in (s["last_error"] or "")
 
 
 def test_fresh_local_file_is_reused_without_any_fetch(G, monkeypatch):
@@ -94,6 +95,7 @@ def test_store_serves_boot_with_zero_maxmind_calls(G, monkeypatch):
 
 
 def test_store_too_old_falls_to_direct_and_seeds_store(G, monkeypatch):
+    monkeypatch.setattr(G, "ALLOW_DIRECT", True)
     calls = []
     monkeypatch.setenv("MAXMIND_LICENSE_KEY", "k")
     monkeypatch.setattr(G, "_download_and_extract", _fake_download(calls))
@@ -104,6 +106,7 @@ def test_store_too_old_falls_to_direct_and_seeds_store(G, monkeypatch):
 
 
 def test_missing_everything_downloads_once_and_second_worker_reuses(G, monkeypatch):
+    monkeypatch.setattr(G, "ALLOW_DIRECT", True)
     calls = []
     monkeypatch.setenv("MAXMIND_LICENSE_KEY", "k")
     monkeypatch.setattr(G, "_download_and_extract", _fake_download(calls))
@@ -122,6 +125,7 @@ def test_store_sha_mismatch_is_rejected(G, monkeypatch):
 
 
 def test_download_failure_keeps_stale_file_and_reports_error(G, monkeypatch):
+    monkeypatch.setattr(G, "ALLOW_DIRECT", True)
     calls = []
     monkeypatch.setenv("MAXMIND_LICENSE_KEY", "k")
     monkeypatch.setattr(G, "_download_and_extract", _fake_download(calls, succeed=False))
@@ -144,3 +148,15 @@ def test_build_script_never_fails_the_build(G, tmp_path):
                        capture_output=True, text=True, env=env, timeout=60)
     assert r.returncode == 0, r.stderr
     assert "available=False" in r.stdout and "WARNING" in r.stdout
+
+
+def test_container_never_calls_maxmind_when_store_empty(G, monkeypatch):
+    """Charlie 2026-09-26 15:55 ET: boot + retry are store-only. Even with a
+    key present, an empty store means disabled — not a MaxMind download."""
+    calls = []
+    monkeypatch.setenv("MAXMIND_LICENSE_KEY", "k")
+    monkeypatch.setattr(G, "_download_and_extract", _fake_download(calls))
+    assert G.ALLOW_DIRECT is False
+    assert G.ensure_database() is False
+    assert calls == []
+    assert "direct download disabled" in (G.status()["last_error"] or "")
