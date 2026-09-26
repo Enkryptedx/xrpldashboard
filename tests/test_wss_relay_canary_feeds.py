@@ -112,3 +112,42 @@ def test_verdict_dict_shape():
     d = {"ledger": "OK", "amm_transactions": "OK_SILENT", "supply_updates": "FAIL_no_event"}
     s = json.dumps(d, sort_keys=True, separators=(",", ":"))
     assert s == '{"amm_transactions":"OK_SILENT","ledger":"OK","supply_updates":"FAIL_no_event"}'
+
+
+# ── Served-homepage freshness gate (incident 2026-09-26, frozen pre-render) ──
+
+_HP = ('<html><head></head><body><span id="cached-ts" data-iso="{iso}">x</span>'
+       '<script>var u="wss://wss.xrpldashboard.com";</script></body></html>')
+
+
+def test_homepage_fresh_ok_within_budget():
+    import datetime as dt
+    now = dt.datetime(2026, 9, 26, 15, 0, 0, tzinfo=dt.timezone.utc)
+    body = _HP.format(iso="2026-09-26T14:50:00Z")  # 600 s old
+    assert C._classify_homepage_body(body, now=now) == ("ok", "ok", 600)
+
+
+def test_homepage_stale_beyond_budget_is_flagged():
+    # The 25.5 h freeze shape: relay URL present (URL check green), body
+    # baked long ago. The freshness axis must trip on its own.
+    import datetime as dt
+    now = dt.datetime(2026, 9, 26, 14, 0, 0, tzinfo=dt.timezone.utc)
+    body = _HP.format(iso="2026-09-25T12:35:39Z")
+    url, fresh, age = C._classify_homepage_body(body, now=now)
+    assert (url, fresh) == ("ok", "stale")
+    assert age > C.HOMEPAGE_SERVED_MAX_BAKED_AGE_S
+
+
+def test_homepage_no_ts_is_flagged_not_ok():
+    body = '<html><body>wss.xrpldashboard.com</body></html>'
+    assert C._classify_homepage_body(body) == ("ok", "no_ts", None)
+
+
+def test_homepage_budget_exact_edge():
+    import datetime as dt
+    now = dt.datetime(2026, 9, 26, 15, 0, 0, tzinfo=dt.timezone.utc)
+    edge = now - dt.timedelta(seconds=C.HOMEPAGE_SERVED_MAX_BAKED_AGE_S)
+    body = _HP.format(iso=edge.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    assert C._classify_homepage_body(body, now=now)[1] == "ok"
+    body = _HP.format(iso=(edge - dt.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    assert C._classify_homepage_body(body, now=now)[1] == "stale"

@@ -93,20 +93,49 @@ async def _probe(url: str, timeout_s: float) -> dict:
     return result
 
 
-def _probe_homepage_url() -> str:
-    """Fetch xrpldashboard.com/ and check the served body contains
-    `wss.xrpldashboard.com`. Charlie ruling 2026-09-23 19:44 ET
-    canary — homepage is served from a pre-render cache built by
-    homepage_summary_walker (on THIS Mac), and a silent env miss
-    bakes bodies without the relay URL. This canary catches that
-    regression regardless of whether the walker env-guard is in
-    place. Runs every 15 min alongside the ledger + tx probes.
+# Served-homepage freshness gate (incident 2026-09-26: the pre-render walker
+# re-saved its own cached body for ~25.5 h while every health signal stayed
+# green — they measured "the walker ran", not "the page is fresh"). This
+# canary fetches the SERVED page (no cache bypass — we want what a visitor
+# gets) and reads the render time the route bakes into
+# `id="cached-ts" data-iso=…`. Budget: walker cadence 300 s + route serve
+# window 1800 s + slack → anything older than this is a frozen homepage.
+HOMEPAGE_SERVED_MAX_BAKED_AGE_S = int(
+    os.environ.get("HOMEPAGE_SERVED_MAX_BAKED_AGE_S", "2700"))
 
-    Returns one of:
+
+def _classify_homepage_body(body: str, now=None) -> tuple[str, str, "int | None"]:
+    """Pure classifier for a 200 homepage body.
+
+    Returns (url_status, fresh_status, baked_age_s):
+      url_status   'ok' | 'missing'          — relay URL present in body?
+      fresh_status 'ok' | 'no_ts' | 'stale'  — baked render age within budget?
+      baked_age_s  int seconds, or None when no parseable cached-ts."""
+    import datetime as _dt
+    from homepage_summary_walker import baked_render_time
+    url_status = "ok" if "wss.xrpldashboard.com" in body else "missing"
+    baked = baked_render_time(body)
+    if baked is None:
+        return url_status, "no_ts", None
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    age = int((now - baked).total_seconds())
+    fresh = "ok" if age <= HOMEPAGE_SERVED_MAX_BAKED_AGE_S else "stale"
+    return url_status, fresh, age
+
+
+def _probe_homepage() -> tuple[str, str, "int | None"]:
+    """Fetch xrpldashboard.com/ (the served page, cache included) and
+    classify it. Charlie ruling 2026-09-23 19:44 ET (relay-URL presence)
+    + 2026-09-26 freshness gate. Runs every 15 min alongside the ledger
+    + tx probes.
+
+    Returns (url_status, fresh_status, baked_age_s) where url_status is
+    one of:
       'ok'          — homepage body contains 'wss.xrpldashboard.com'
       'missing'     — homepage body served OK but relay URL absent
       'http_<code>' — non-200 status from the site
-      'error_<T>'   — hard fetch failure"""
+      'error_<T>'   — hard fetch failure
+    and fresh_status is 'ok' | 'no_ts' | 'stale' | 'unknown' (fetch failed)."""
     import urllib.request as _ur
     import urllib.error as _ue
     _ctx = ssl.create_default_context(cafile=certifi.where())
@@ -118,13 +147,18 @@ def _probe_homepage_url() -> str:
         )
         with _ur.urlopen(req, timeout=10, context=_ctx) as resp:
             if resp.status != 200:
-                return f"http_{resp.status}"
+                return f"http_{resp.status}", "unknown", None
             body = resp.read(300 * 1024).decode("utf-8", errors="replace")
-        return "ok" if "wss.xrpldashboard.com" in body else "missing"
+        return _classify_homepage_body(body)
     except _ue.HTTPError as e:
-        return f"http_{e.code}"
+        return f"http_{e.code}", "unknown", None
     except Exception as e:
-        return f"error_{type(e).__name__}"
+        return f"error_{type(e).__name__}", "unknown", None
+
+
+def _probe_homepage_url() -> str:
+    """Back-compat: url_status only."""
+    return _probe_homepage()[0]
 
 
 async def _probe_tx_sub(url: str, timeout_s: float) -> str:
@@ -346,9 +380,10 @@ def main() -> int:
         # env-gap regression at the served-body layer (walker env guard
         # catches it at build time; this catches it at serve time).
         try:
-            homepage_status = _probe_homepage_url()
+            homepage_status, homepage_fresh, homepage_age = _probe_homepage()
         except Exception as e:
-            homepage_status = f"error_{type(e).__name__}"
+            homepage_status, homepage_fresh, homepage_age = (
+                f"error_{type(e).__name__}", "unknown", None)
         # Enforce: HOMEPAGE_URL_STATUS != ok is a regression — mark ok=False
         # so walker_health pages via staleness. Not log-only because the
         # regression it catches is a sovereignty-visible failure and we
@@ -357,8 +392,20 @@ def main() -> int:
             ok = False
             # Do NOT overwrite the ledger-sub message on the failure path;
             # append the reason so downstream monitors see both.
+        # Enforce: HOMEPAGE_FRESH != ok on a 200 body is the 2026-09-26
+        # frozen-homepage incident class (served page older than the
+        # walker+serve budget, or no baked timestamp at all). Loud, not
+        # log-only: it took 25.5 h to notice by eye.
+        if homepage_status == "ok" and homepage_fresh != "ok":
+            ok = False
+            findings.append({
+                "severity": "high", "reason": f"homepage_{homepage_fresh}",
+                "baked_age_s": homepage_age,
+                "budget_s": HOMEPAGE_SERVED_MAX_BAKED_AGE_S})
         message = (f"{message} TX_SUB_STATUS={tx_status} "
-                   f"HOMEPAGE_URL_STATUS={homepage_status}")
+                   f"HOMEPAGE_URL_STATUS={homepage_status} "
+                   f"HOMEPAGE_FRESH={homepage_fresh} "
+                   f"HOMEPAGE_BAKED_AGE_S={homepage_age}")
         # Milestone 2 named-feed probes (opt-in until the relay is deployed).
         # Any FAIL_* verdict is a real finding: ok=False, findings_count>0,
         # and FEEDS=<json dict> in the message so L1 sees WHICH feed broke.
