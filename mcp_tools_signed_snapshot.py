@@ -257,6 +257,15 @@ def tool_verify_snapshot_signature(envelope: Any) -> dict:
 
     import signed_snapshot as _ss
     ok, issues = _ss.verify_envelope(signed)
+    # Chain-link completion from Postgres (2026-09-26): verify_envelope's
+    # chain-link step only knows disk (chain.json / prior-day file). On
+    # Render there is neither, so from 2026-09-04 (commit 60e9925) every
+    # call returned verify_result=false with the "could not verify" soft
+    # note even though signature, leaf hash, audit path and fingerprint all
+    # passed. PG holds the same chain — finish the check from it. If PG has
+    # nothing either, the soft note stays and the result is honestly false.
+    from chain_link_pg import complete_chain_link
+    ok, issues, chain_link_via = complete_chain_link(signed, ok, issues)
 
     pub = _ss.load_public_key()
     from cryptography.hazmat.primitives import serialization
@@ -272,6 +281,12 @@ def tool_verify_snapshot_signature(envelope: Any) -> dict:
         "issues": list(issues),
         "snapshot_date_utc": signed.get("snapshot_date_utc"),
         "chain_root": signed.get("chain_root"),
+        # How the chain-link step was completed: "disk" (chain.json or
+        # prior-day file present), "chain" / "prior_leaf" (from Postgres),
+        # or "unproven" (the soft note is in `issues`; never null — the
+        # envelope contract forbids null top-level fields).
+        "chain_link_via": chain_link_via or (
+            "unproven" if any(i.startswith("chain_link: could not verify") for i in issues) else "disk"),
     }
     out = mcp_server.wrap_envelope(
         data,

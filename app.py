@@ -6302,7 +6302,7 @@ def _amendments_permalink_payload(date_str):
     if state in ("future", "before_first"):
         return base, 404
     if state == "known_gap":
-        base["notice"] = ap.KNOWN_GAP_SENTENCE
+        base["notice"] = ap.KNOWN_GAP_SENTENCES.get(date_str, ap.KNOWN_GAP_SENTENCE)
         return base, 200
     if state == "missing":
         base["notice"] = ap.MISSING_SENTENCE
@@ -7440,39 +7440,9 @@ def _verify_snapshot(date_str, metric, expected):
     # the check here: (a) recompute the merkle root over leaves[:leaf_index]
     # from the PG chain, else (b) compare against the prior LEAF's
     # chain_root (prior leaf by index, so the 09-16..18 gap bridges).
-    soft = [i for i in issues if i.startswith("chain_link: could not verify")]
-    if soft:
-        try:
-            verified_via = None
-            leaf_index = envelope.get("leaf_index")
-            prev_claimed = envelope.get("previous_root")
-            chain = _read_chain_meta()
-            leaves = (chain or {}).get("leaves") or []
-            if isinstance(leaf_index, int) and len(leaves) > leaf_index > 0:
-                prev = [bytes.fromhex(le["leaf_hash"]) for le in leaves[:leaf_index]]
-                computed = ss._merkle_root(prev).hex()
-                if computed != prev_claimed:
-                    issues.append(
-                        f"chain_link: previous_root mismatch "
-                        f"(file={str(prev_claimed)[:24]}…, "
-                        f"chain[0..{leaf_index - 1}]={computed[:24]}…)")
-                verified_via = "chain"
-            elif isinstance(leaf_index, int) and leaf_index > 0:
-                prior = db.read_signed_snapshot_by_leaf_index(leaf_index - 1) \
-                    if hasattr(db, "read_signed_snapshot_by_leaf_index") else None
-                if prior and prior.get("chain_root"):
-                    if prior["chain_root"] != prev_claimed:
-                        issues.append(
-                            f"chain_link: previous_root != prior-leaf chain_root "
-                            f"(prior leaf {leaf_index - 1} chain_root="
-                            f"{prior['chain_root'][:24]}…, our previous_root="
-                            f"{str(prev_claimed)[:24]}…)")
-                    verified_via = "prior_leaf"
-            if verified_via:
-                issues = [i for i in issues if i not in soft]
-                ok = not issues
-        except Exception as e:  # noqa: BLE001 — keep the soft note, never 500
-            issues.append(f"chain_link: PG completion failed: {type(e).__name__}")
+    # Shared with the MCP tool verify_snapshot_signature (chain_link_pg.py).
+    from chain_link_pg import complete_chain_link
+    ok, issues, _via = complete_chain_link(envelope, ok, issues)
     matched_metric = None
     if ok and metric:
         for m in envelope.get("metrics", []):

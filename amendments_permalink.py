@@ -30,14 +30,27 @@ import db  # noqa: E402
 # Dates with no leaf because the signing machine was down. The gap IS the
 # record (Charlie ruling: never sign past dates). Copy mirrors
 # /methodology "Known gaps".
-KNOWN_GAP_DATES = frozenset({"2026-09-16", "2026-09-17", "2026-09-18"})
-KNOWN_GAP_SENTENCE = (
+KNOWN_GAP_SENTENCES = {
+    "2026-07-15": (
+        "No leaf exists for this date. The signing job was unloaded by a "
+        "launchd session restart on the evening of 2026-07-14 and re-bootstrapped "
+        "at 20:13 ET on 2026-07-15; its first run landed after 00:00 UTC, so the "
+        "next leaf is dated 2026-07-16. That leaf's previous_root equals "
+        "2026-07-14's chain_root — the chain bridges the day directly. The gap "
+        "is the record — we do not sign past dates."
+    ),
+}
+_SEPT_OUTAGE_SENTENCE = (
     "No leaf exists for this date. The signing walker was offline from "
     "Tuesday 2026-09-15 ~15:15 UTC to Saturday 2026-09-19 ~15:20 UTC because "
     "the machine that runs it lost power for approximately 96 hours. Signing "
     "resumed on 2026-09-19; that day's leaf bridges directly back to "
     "2026-09-15's chain root. The gap is the record — we do not sign past dates."
 )
+for _d in ("2026-09-16", "2026-09-17", "2026-09-18"):
+    KNOWN_GAP_SENTENCES[_d] = _SEPT_OUTAGE_SENTENCE
+KNOWN_GAP_DATES = frozenset(KNOWN_GAP_SENTENCES)
+KNOWN_GAP_SENTENCE = _SEPT_OUTAGE_SENTENCE  # back-compat name
 MISSING_SENTENCE = (
     "No signed leaf was recorded for this date. We never sign a past date, "
     "so nothing is shown for it."

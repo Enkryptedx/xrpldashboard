@@ -131,6 +131,16 @@ Before beginning the weekly cadence, we ran an external adversarial audit (zero 
 
 ---
 
+## Chain gap — 2026-07-15 (launchd session restart; recorded 2026-09-26)
+
+No leaf exists for 2026-07-15. Reconstructed 2026-09-26 from `signed_snapshots.written_at`, `launchd_logs/signed_snapshot.out.log`, and the 2026-07-15 launchd incident record — the walker itself logged no error:
+
+- The signing job ran on a `StartInterval` cadence at the time: write times drift by ~3 s/day from 08:25:49 ET (2026-07-01) to 08:26:27 ET (2026-07-14). A calendar job would not drift.
+- No run fired on the morning of 2026-07-15. The out log goes straight from `date=2026-07-14 … leaf_index=61/62` to `date=2026-07-16 … leaf_index=62/63`; the err log is clean.
+- A new drift series starts at **20:13:01 ET on 2026-07-15** (then 20:13:04, 20:13:08, 20:13:12 on the following days): the job was re-bootstrapped at that moment. Its first run landed after 00:00 UTC, so `snapshot_date_utc` became 2026-07-16.
+- Same day as the recorded launchd incident in which the NFT walkers were found silent because their plists lived only in `~/xrpl_test/launchd/` and a session logout/reboot after 19:40 ET on 2026-07-14 unloaded them; the signing job most plausibly went down with them and came back during that repair. No commit touched `signed_snapshot.py` between 2026-07-10 and 2026-07-20.
+- **Chain intact:** the 2026-07-16 leaf's `previous_root` = `c4181f5f73d1facd…` = 2026-07-14's `chain_root` (leaf 61 → leaf 62). No fabricated intermediate leaf; the gap is the record. Never sign past dates.
+
 ## Chain gap — 2026-09-16 → 2026-09-18 (Mac power outage)
 
 Signed_snapshot walker offline **Tue 2026-09-15 ~11:15 AM ET → Sat 2026-09-19 ~11:20 AM ET** (~96 hours; Mac lost power). No leaves were signed for 2026-09-16, 2026-09-17, or 2026-09-18. Signing resumed on Sat 2026-09-19; that day's leaf `previous_root` = `0f13f9e1a51dd941d50303c1b286b6513921066010cb0ed8574790488c4e930d` = 2026-09-15's `chain_root`, bridging the four-day gap directly with no fabricated intermediate leaves. Verification runs clean: `signed_snapshot.py --verify 2026-09-19` returns `signature OK, audit_path OK, leaf_hash OK, fingerprint OK, chain_link OK`.

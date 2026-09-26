@@ -53,7 +53,8 @@ def test_classify_date_states():
     assert ap.classify_date("2026-09-26", signed, today) == "not_yet_signed"
     assert ap.classify_date("2026-09-27", signed, today) == "future"
     assert ap.classify_date("2026-09-17", signed, today) == "known_gap"
-    assert ap.classify_date("2026-07-15", signed, today) == "missing"
+    assert ap.classify_date("2026-07-15", signed, today) == "known_gap"
+    assert ap.classify_date("2026-08-10", signed, today) == "missing"
     assert ap.classify_date("2026-05-01", signed, today) == "before_first"
 
 
@@ -181,10 +182,21 @@ def test_known_gap_is_200_with_outage_sentence(client, monkeypatch):
 
 def test_missing_non_gap_day_is_200_no_tallies(client, monkeypatch):
     monkeypatch.setattr(app_module, "_list_signed_snapshots",
+                        lambda: ["2026-09-25", "2026-08-11", "2026-08-09", "2026-05-14"])
+    r = client.get("/amendments/2026-08-10")
+    assert r.status_code == 200
+    assert 'data-permalink-state="missing"' in r.get_data(as_text=True)
+
+
+def test_july_15_is_a_known_gap_with_its_own_sentence(client, monkeypatch):
+    monkeypatch.setattr(app_module, "_list_signed_snapshots",
                         lambda: ["2026-09-25", "2026-07-16", "2026-07-14", "2026-05-14"])
     r = client.get("/amendments/2026-07-15")
     assert r.status_code == 200
-    assert 'data-permalink-state="missing"' in r.get_data(as_text=True)
+    html = r.get_data(as_text=True)
+    assert 'data-permalink-state="known_gap"' in html
+    assert "re-bootstrapped" in html and "2026-07-16" in html
+    assert "data-signed-tallies" not in html
 
 
 def test_before_first_leaf_future_and_malformed_404(client, monkeypatch):
