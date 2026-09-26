@@ -63,6 +63,15 @@ def rippled_threshold(trusted_available: int) -> int:
     return max(1, (int(trusted_available) * MAJORITY_NUM) // MAJORITY_DEN)
 
 
+def votes_needed(trusted_available: int) -> int:
+    """Smallest yes count that passes: threshold + 1 (strict '>'), except the
+    single-validator case where the threshold itself passes. 35 → 29.
+    Confirmed against our own record: PermissionDelegationV1_1 sat at 28/35
+    and lost its majority at flag ledger 107181569 (2026-09-23)."""
+    thr = rippled_threshold(trusted_available)
+    return thr if int(trusted_available) == 1 else thr + 1
+
+
 def rippled_passes(yes_votes: int, trusted_available: int) -> bool:
     """AmendmentSet::passes — strict '>' unless exactly one trusted validation."""
     thr = rippled_threshold(trusted_available)
@@ -285,6 +294,7 @@ def tally_round(voting_ledger_index: int, votes: Iterable[Vote], maps: UnlKeyMap
         "validations_seen": len(round_votes),
         "trusted_available": available,
         "threshold_rippled": thr,
+        "votes_needed": votes_needed(available),
         "recorder_version": RECORDER_VERSION,
     }
     vote_rows = [{

@@ -156,10 +156,18 @@ def _parse_amendments(payload: dict, source_url: str, fetched_iso: str) -> dict:
         if not isinstance(hash_id, str) or not hash_id:
             continue
 
+        # `threshold` is rippled's AmendmentSet::threshold_ (trusted*80/100,
+        # integer division; VHS reports the same number). rippled requires
+        # yes votes STRICTLY GREATER than it — with 35 trusted validators the
+        # threshold is 28 and a majority needs 29; 28 loses it. Confirmed
+        # against our own record: PermissionDelegationV1_1 sat at 28/35 and
+        # lost its majority at flag ledger 107181569 (2026-09-23). `needed`
+        # is the human number the page shows.
         out[hash_id.upper()] = {
             "count": unl_yes,
             "validations": thr_den,
             "threshold": thr_num,
+            "needed": thr_num + 1,
             "as_of_iso": fetched_iso,
             "source_url": source_url,
         }

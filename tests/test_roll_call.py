@@ -52,6 +52,16 @@ def test_single_trusted_validator_exception_uses_greater_or_equal():
     assert not rc.rippled_passes(0, 1)
 
 
+def test_votes_needed_is_threshold_plus_one_and_matches_our_sep_23_record():
+    # PermissionDelegationV1_1 held 28/35 at the 2026-09-23 roll call and lost
+    # its majority at flag ledger 107181569 — 28 is NOT enough, 29 is.
+    assert rc.votes_needed(35) == 29
+    assert not rc.rippled_passes(28, 35)
+    assert rc.rippled_passes(rc.votes_needed(35), 35)
+    assert rc.votes_needed(1) == 1
+    assert rc.votes_needed(0) == 2          # nothing can pass with no trusted validations
+
+
 # --- UNL maps ----------------------------------------------------------------
 
 def _blob():
@@ -176,6 +186,7 @@ def test_tally_round_stores_both_denominators_and_both_counts():
     assert r1.round_row["validations_seen"] == 29
     assert r1.round_row["trusted_available"] == 29
     assert r1.round_row["threshold_rippled"] == 23
+    assert r1.round_row["votes_needed"] == 24
     assert r1.round_row["flag_ledger_index"] == 107238656
     assert r1.tally_rows == [{"voting_ledger_index": 107238655, "amendment_hash": A1,
                               "yes_votes_round": 29, "yes_votes_carried": 29,

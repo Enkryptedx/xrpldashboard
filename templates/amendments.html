@@ -291,7 +291,7 @@
   {% if state.majorities %}
     <h2>{{ _('In countdown') }}</h2>
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('Amendments that have crossed the 80 percent validator-majority threshold. If the majority holds for 14 consecutive days, the amendment activates at the close of the first ledger after that window.') }}
+      {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes — 29 of the 35 on the current list, since rippled requires strictly more than its 80 percent threshold of 28. If the majority holds for 14 consecutive days, the amendment activates at the close of the first ledger after that window.') }}
     </p>
     {% for m in state.majorities %}
       <div class="countdown">
@@ -361,7 +361,13 @@
        a 14-day countdown restarts if support drops below threshold, so a
        date cited elsewhere may differ from the live projection. #}
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support falls below the threshold, the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
+      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support drops to the 80 percent threshold or below (28 of 35 or fewer), the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
+    </p>
+    {# Correction note (JJ, source-disclosure microcopy per Charlie ruling
+       2026-09-25 19:16 ET). Dated; stays on the page. #}
+    <p class="dim maj-correction" style="font-size: 0.8rem; color: var(--amber, #c90);">
+      {{ _('Correction 2026-09-25:') }}
+      {{ _('this page previously described 28 of 35 as the number of yes votes a majority needs. rippled\'s rule is strictly more than its 80 percent threshold (28), so a majority needs 29 yes votes and 28 loses it — confirmed against PermissionDelegationV1_1, which sat at 28 of 35 and lost its majority at flag ledger 107181569 on 2026-09-23. Vote counts below now read "yes · needs N".') }}
     </p>
     {% for mh in majority_history %}
       <div class="maj-history-row{{ ' regained' if not mh.active and false else '' }}"
@@ -398,7 +404,8 @@
             <span class="maj-flag mono" style="opacity:0.75;">{{ _('(flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %})</span>
           {% endif %}
           {% if mh.vote_count_at_first and mh.unl_threshold %}
-            <span class="maj-votes mono">({{ mh.vote_count_at_first }}/{{ mh.unl_threshold }})</span>
+            {# unl_threshold is rippled's threshold_ (28); a majority needs threshold+1. #}
+            <span class="maj-votes mono">({{ mh.vote_count_at_first }} {{ _('yes') }} · {{ _('needs') }} {{ mh.unl_threshold + 1 }})</span>
           {% endif %}
           {% if mh.removed_iso %}
             · <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ _('majority lost at flag ledger') }}{% if mh.removed_seen_ledger %} {{ mh.removed_seen_ledger }}{% endif %}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% else %} {{ mh.removed_iso }}{% endif %}</span>
@@ -613,7 +620,7 @@
               <strong>{{ _('Trusted-validator vote:') }}</strong>
               <strong>{{ nv.count }}/{{ nv.validations }}</strong>
               {{ _('yes') }}
-              ({{ nv.threshold }} {{ _('threshold') }}; ~{{ pct }}% {{ _('support') }}).
+              ({{ _('needs') }} {{ nv.needed if nv.needed is defined else nv.threshold + 1 }} {{ _('of') }} {{ nv.validations }}; ~{{ pct }}% {{ _('support') }}).
               {% if is_stale %}
                 <strong style="color: #c99a2e;">{{ _('(stale)') }}</strong>
               {% endif %}

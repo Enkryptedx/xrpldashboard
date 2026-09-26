@@ -1742,7 +1742,8 @@ CREATE TABLE IF NOT EXISTS amendment_roll_call_rounds (
     unl_size             SMALLINT    NOT NULL,          -- list size ("of 35")
     validations_seen     SMALLINT    NOT NULL,          -- UNL validators whose FULL validation we saw this round
     trusted_available    SMALLINT    NOT NULL,          -- rippled denominator (24h carry-forward)
-    threshold_rippled    SMALLINT    NOT NULL,
+    threshold_rippled    SMALLINT    NOT NULL,          -- rippled AmendmentSet::threshold_ (trusted*80//100)
+    votes_needed         SMALLINT    NOT NULL,          -- threshold_rippled + 1 (strict '>'); the human number
     recorder_version     TEXT        NOT NULL,
     source               TEXT        NOT NULL DEFAULT 'own-node validations stream (Lenovo loopback ws)'
 );

@@ -14,10 +14,29 @@ window (caught 2026-05-27). Mirrors credentials_walker / mpt_snapshot.
 """
 
 import logging
+import re
 import sys
 
 import db
 import rlusd_live
+
+
+class _RedactQueryKeys(logging.Filter):
+    """Redact API keys riding in URL query strings before any handler sees
+    the record. httpx logs every request URL at INFO and the Etherscan
+    client passes `apikey=` in the query — on 2026-09-25 that key was found
+    verbatim in launchd_logs/rlusd_refresher.err.log. Attached to every
+    root handler so it covers every logger in this process."""
+
+    _PAT = re.compile(r"(?i)\b(apikey|api_key|key|token)=([^&\s\"']+)")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        redacted = self._PAT.sub(r"\1=REDACTED", msg)
+        if redacted != msg:
+            record.msg = redacted
+            record.args = ()
+        return True
 
 # Mirrors launchd/com.charliebruce.xrpldashboard.rlusd_refresher.plist
 # StartInterval. Read by /walker_health for per-row staleness thresholds.
@@ -29,6 +48,11 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(_RedactQueryKeys())
+    # httpx request-URL lines carry no diagnostic value here and were the
+    # vector for the key leak; keep only its warnings.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     db.write_walker_health_start("rlusd_refresher", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None

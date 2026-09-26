@@ -112,11 +112,13 @@ def write_round(result: roll_call.RoundResult) -> bool:
             cur.execute(
                 "INSERT INTO amendment_roll_call_rounds (voting_ledger_index, flag_ledger_index, "
                 " voting_ledger_hash, signing_time_max, observed_iso, unl_source, unl_sequence, "
-                " unl_size, validations_seen, trusted_available, threshold_rippled, recorder_version) "
+                " unl_size, validations_seen, trusted_available, threshold_rippled, votes_needed, "
+                " recorder_version) "
                 "VALUES (%(voting_ledger_index)s, %(flag_ledger_index)s, %(voting_ledger_hash)s, "
                 " %(signing_time_max)s, %(observed_iso)s, %(unl_source)s, %(unl_sequence)s, "
                 " %(unl_size)s, %(validations_seen)s, %(trusted_available)s, %(threshold_rippled)s, "
-                " %(recorder_version)s) ON CONFLICT (voting_ledger_index) DO NOTHING", r)
+                " %(votes_needed)s, %(recorder_version)s) "
+                "ON CONFLICT (voting_ledger_index) DO NOTHING", r)
             for v in result.vote_rows:
                 cur.execute(
                     "INSERT INTO amendment_roll_call_votes (voting_ledger_index, master_key, "
