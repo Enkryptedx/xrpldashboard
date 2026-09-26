@@ -50,16 +50,40 @@ CREATE INDEX IF NOT EXISTS memory_samples_ts_idx ON memory_samples (ts);
 """
 
 
+# Render dyno hostnames are the pod name, "srv-<service-id>-<rs>-<pod>".
+# The daily report only aggregates rows from these hosts; anything else
+# (a Mac walker that imported app.py, a Lenovo process) is counted and
+# named as "off-dyno" so the line can never blend two machines again.
+RENDER_HOSTNAME_PREFIX = os.environ.get("MEMORY_SAMPLER_HOST_PREFIX", "srv-")
+
+
+def _maxrss_divisor(platform: str | None = None) -> float:
+    """ru_maxrss unit -> MB divisor. Linux reports KB; macOS (darwin)
+    reports BYTES. 2026-09-26 founding bug: a single Mac-mini sample
+    (377664 "MB" = 369 MB real) made line 7 read peak 377664 MB / avg
+    531 MB for a Render dyno that never left ~270 MB."""
+    plat = platform if platform is not None else sys.platform
+    return 1024.0 * 1024.0 if plat.startswith("darwin") else 1024.0
+
+
 def _current_rss_mb() -> float | None:
-    """Peak RSS in MB. Linux ru_maxrss is KB; macOS is bytes. Render is
-    Linux, so we treat as KB. On macOS the number is off by 1024×; the
-    daily report still summarizes correctly per-dyno since the sampler
-    is per-process."""
+    """Peak RSS in MB, unit-corrected per platform (see _maxrss_divisor)."""
     try:
         import resource
-        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / _maxrss_divisor()
     except Exception:
         return None
+
+
+def should_run_sampler(env: dict | None = None) -> bool:
+    """The sampler exists to watch the Render web dyno. Run only when the
+    process is on Render (Render sets RENDER=true) or explicitly forced
+    with MEMORY_SAMPLER_FORCE=1 — never from a Mac shell that happened to
+    import app.py (tests, walkers, one-off scripts)."""
+    e = os.environ if env is None else env
+    if str(e.get("MEMORY_SAMPLER_FORCE", "")).strip().lower() in ("1", "true", "yes"):
+        return True
+    return str(e.get("RENDER", "")).strip().lower() in ("1", "true", "yes")
 
 
 def _ensure_table() -> None:
@@ -123,6 +147,10 @@ def start_background_sampler(process_role: str = "web") -> None:
     global _sampler_thread
     if _sampler_thread is not None and _sampler_thread.is_alive():
         return
+    if not should_run_sampler():
+        log.info("memory_sampler: not on Render (RENDER unset) and "
+                 "MEMORY_SAMPLER_FORCE unset — sampler not started")
+        return
     try:
         _ensure_table()
     except Exception as e:  # noqa: BLE001
@@ -158,25 +186,44 @@ def daily_memory_line(cur, ts_start: int, ts_end: int) -> str:
         cur.execute(
             """
             SELECT MAX(rss_mb), AVG(rss_mb), COUNT(*),
-                   SUM(CASE WHEN rss_mb > %s THEN 1 ELSE 0 END)
+                   SUM(CASE WHEN rss_mb > %s THEN 1 ELSE 0 END),
+                   COUNT(DISTINCT hostname)
               FROM memory_samples
              WHERE ts >= %s AND ts < %s
                AND process_role = 'web'
+               AND hostname LIKE %s
             """,
-            (MEMORY_SOFT_CEILING_MB * 0.9, ts_start, ts_end),
+            (MEMORY_SOFT_CEILING_MB * 0.9, ts_start, ts_end,
+             RENDER_HOSTNAME_PREFIX + "%"),
         )
         row = cur.fetchone()
+        cur.execute(
+            """
+            SELECT COUNT(*)
+              FROM memory_samples
+             WHERE ts >= %s AND ts < %s
+               AND process_role = 'web'
+               AND hostname NOT LIKE %s
+            """,
+            (ts_start, ts_end, RENDER_HOSTNAME_PREFIX + "%"),
+        )
+        off = cur.fetchone()
+        off_dyno = int((off or [0])[0] or 0)
     except Exception as e:  # noqa: BLE001
         return f"7. Memory: (query failed — {type(e).__name__})"
     if not row or row[2] == 0:
         return "7. Memory: no samples (self-hosted sampler not running or PG unreachable)."
-    peak, avg, n, hi = row
+    peak, avg, n, hi, hosts = row
     peak = float(peak or 0)
     avg = float(avg or 0)
     hi = int(hi or 0)
     n = int(n)
-    return (f"7. Memory (self-hosted getrusage sampler): peak {peak:.0f} MB, "
-            f"avg {avg:.0f} MB across {n} samples; "
+    hosts = int(hosts or 0)
+    line = (f"7. Memory (Render web dyno, getrusage sampler): peak {peak:.0f} MB, "
+            f"avg {avg:.0f} MB across {n} samples on {hosts} dyno{'s' if hosts != 1 else ''}; "
             f"{hi} sample{'s' if hi != 1 else ''} above "
             f"{int(MEMORY_SOFT_CEILING_MB * 0.9)} MB "
             f"(soft ceiling {MEMORY_SOFT_CEILING_MB} MB).")
+    if off_dyno:
+        line += f" {off_dyno} off-dyno sample{'s' if off_dyno != 1 else ''} excluded."
+    return line
