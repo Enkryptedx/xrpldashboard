@@ -466,3 +466,17 @@ def test_upstream_loop_passes_queue_kwargs_to_connect(monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(R.upstream_loop(state, "ws://127.0.0.1:1"))
     assert seen["max_queue"] == R.UPSTREAM_MAX_QUEUE
+
+
+def test_default_upstream_is_port_ws_public_6007(monkeypatch):
+    """2026-09-26: the admin ws (6006) keeps rippled's default
+    send_queue_limit=100 and closes a transactions subscriber with 1008
+    "client is too slow" on every ledger burst; 6007 ([port_ws_public])
+    carries the raised limit. The code default must never regress to 6006."""
+    import importlib
+    monkeypatch.delenv("LIVE_STREAM_RELAY_UPSTREAM", raising=False)
+    mod = importlib.reload(R)
+    try:
+        assert mod.UPSTREAM_URL == "ws://127.0.0.1:6007"
+    finally:
+        importlib.reload(R)

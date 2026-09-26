@@ -1,7 +1,9 @@
 """
 Lenovo-side live-stream WSS relay for xrpldashboard.com browser panels.
 
-One upstream connection to the local rippled (ws://127.0.0.1:6006), subscribed
+One upstream connection to the local rippled (ws://127.0.0.1:6007, the
+[port_ws_public] stanza with the raised send_queue_limit — never the admin
+ws 6006, see UPSTREAM_URL), subscribed
 to the `transactions` + `ledger` streams. Fan-out to N browser clients over
 WebSockets as NAMED FEEDS, server-side filtered with the Milestone-1 filters in
 relay_feed_filters.py (byte-for-byte ports of the browser JS). Subscribe-only
@@ -38,7 +40,9 @@ Ports (defaults; the live unit overrides via env to 6011/6012):
   6008  HTTP /healthz (localhost monitoring)
 
 Env:
-  LIVE_STREAM_RELAY_UPSTREAM               default ws://127.0.0.1:6006
+  LIVE_STREAM_RELAY_UPSTREAM               default ws://127.0.0.1:6007 (port_ws_public;
+                                           6006 = admin ws with send_queue_limit 100
+                                           → 1008 "client is too slow" on tx bursts)
   LIVE_STREAM_RELAY_HOST                   default 127.0.0.1
   LIVE_STREAM_RELAY_PORT                   default 6007
   LIVE_STREAM_RELAY_HEALTHZ_PORT           default 6008
@@ -85,7 +89,15 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import relay_feed_filters  # noqa: E402
 
-UPSTREAM_URL = os.environ.get("LIVE_STREAM_RELAY_UPSTREAM", "ws://127.0.0.1:6006")
+# Upstream = rippled's [port_ws_public] 6007, NOT the admin ws 6006.
+# INCIDENT 2026-09-26: 6006 keeps rippled's default send_queue_limit (100);
+# a transactions+ledger subscriber gets closed with 1008 "client is too
+# slow" on every ledger-close burst (531 closes 11:00Z–18:12Z; the client
+# read-queue size makes no difference — rippled closed us 330 ms after
+# subscribe). 6007 carries the raised send_queue_limit for exactly this
+# subscriber class (2026-09-05 lesson, guarded by rippled_cfg_drift_guard)
+# and is where xrpld-xrpl-stream and xrpld-roll-call already subscribe.
+UPSTREAM_URL = os.environ.get("LIVE_STREAM_RELAY_UPSTREAM", "ws://127.0.0.1:6007")
 LISTEN_HOST = os.environ.get("LIVE_STREAM_RELAY_HOST", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("LIVE_STREAM_RELAY_PORT", "6007"))
 HEALTHZ_PORT = int(os.environ.get("LIVE_STREAM_RELAY_HEALTHZ_PORT", "6008"))
