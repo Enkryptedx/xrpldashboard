@@ -18,8 +18,10 @@ but slowly — the "warming up" state).
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
+import re
 import sys
 import time
 
@@ -34,20 +36,69 @@ WALKER_CADENCE_SECONDS = 300  # 5 min
 LAST_OK_STAMP = os.path.join(HERE, "launchd_state", "homepage_summary_walker_last_ok")
 
 
+# Freshness guard (2026-09-26 incident): the body we persist must be a LIVE
+# render. The route bakes the render time into `id="cached-ts" data-iso=…`;
+# anything older than this is either a cache echo or a broken clock, and
+# persisting it would freeze the homepage. Fail loud instead.
+MAX_BAKED_AGE_S = int(os.environ.get("HOMEPAGE_PRERENDER_MAX_BAKED_AGE_S", "900"))
+_BAKED_TS_RE = re.compile(r'id="cached-ts"\s+data-iso="([^"]+)"')
+
+
+def baked_render_time(body) -> "dt.datetime | None":
+    """UTC datetime baked into the homepage body, or None if absent."""
+    text = body.decode("utf-8", "replace") if isinstance(body, bytes) else body
+    m = _BAKED_TS_RE.search(text)
+    if not m:
+        return None
+    try:
+        return dt.datetime.fromisoformat(m.group(1).replace("Z", "+00:00")).astimezone(dt.timezone.utc)
+    except ValueError:
+        return None
+
+
+def assert_fresh_render(body, served_from_cache_header, now=None, locale: str = "?") -> float:
+    """Raise unless `body` is a live render younger than MAX_BAKED_AGE_S.
+    Returns the baked age in seconds. Founding incident 2026-09-26: the
+    walker fetched `/` WITHOUT the cache bypass, the route handed back the
+    walker's own fresh homepage_summary row, and the walker re-saved it
+    every 5 min — every locale froze at the 2026-09-25 12:35Z render
+    (baked ledger 107,226,154) for ~25.5 h while walker_health, the stamp
+    and the meta-watcher all stayed green."""
+    if served_from_cache_header:
+        raise RuntimeError(
+            f"/ [locale={locale}] was served from the homepage_summary cache "
+            f"({served_from_cache_header}) — walker refusing to persist a cache echo"
+        )
+    baked = baked_render_time(body)
+    if baked is None:
+        raise RuntimeError(f"/ [locale={locale}] body carries no cached-ts — refusing to persist")
+    now = now or dt.datetime.now(dt.timezone.utc)
+    age = (now - baked).total_seconds()
+    if age > MAX_BAKED_AGE_S:
+        raise RuntimeError(
+            f"/ [locale={locale}] baked render time {baked.isoformat()} is {int(age)}s old "
+            f"(> {MAX_BAKED_AGE_S}s) — stale render, refusing to persist"
+        )
+    return age
+
+
 def _render_homepage_locale(app_module, locale: str) -> tuple[bytes, int]:
-    """Render `/` via test_client with the `xrpl_lang` cookie set so
-    Flask-Babel picks up the given locale. Returns (body, gen_ms)."""
+    """Render `/` LIVE via test_client (cache bypass `?nocache=1`, the same
+    switch the route exposes for fresh-vs-cached comparisons) with the
+    `xrpl_lang` cookie set so Flask-Babel picks up the given locale.
+    Returns (body, gen_ms). Refuses cache echoes and stale renders."""
     c = app_module.app.test_client()
     # Set the language cookie so i18n.select_locale() returns this locale
     # instead of the Accept-Language fallback (which is empty in test).
     c.set_cookie(key="xrpl_lang", value=locale, domain="localhost")
     t0 = time.perf_counter()
-    r = c.get("/")
+    r = c.get("/?nocache=1")
     gen_ms = int((time.perf_counter() - t0) * 1000)
     if r.status_code != 200:
         raise RuntimeError(
             f"/ [locale={locale}] returned {r.status_code} — walker refusing to persist"
         )
+    assert_fresh_render(r.data, r.headers.get("X-Homepage-Cache"), locale=locale)
     return r.data, gen_ms
 
 
