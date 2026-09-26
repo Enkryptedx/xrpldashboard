@@ -122,6 +122,39 @@ def test_wallet_affected_node_match():
 def test_wallet_empty_set_never_matches():
     assert not F.matches_wallet(env({"Account": "rWATCH"}), set())
 
+def test_wallet_issuer_trust_line_match():
+    """2026-09-26 founding case: a third-party OfferCreate that moves an RLUSD
+    trust line must fire for the ISSUER (rippled affected-accounts rule:
+    HighLimit.issuer / LowLimit.issuer are AccountID fields)."""
+    e = env({"Account": "rTRADER", "TransactionType": "OfferCreate"},
+            meta={"TransactionResult": "tesSUCCESS", "AffectedNodes": [{"ModifiedNode": {
+                "LedgerEntryType": "RippleState",
+                "FinalFields": {
+                    "Balance": {"currency": "524C5553", "issuer": "rrrrrrrrrrrrrrrrrrrrBZbvji", "value": "-10"},
+                    "HighLimit": {"currency": "524C5553", "issuer": "rISSUER", "value": "0"},
+                    "LowLimit": {"currency": "524C5553", "issuer": "rTRADER", "value": "1000"}},
+                "PreviousFields": {
+                    "Balance": {"currency": "524C5553", "issuer": "rrrrrrrrrrrrrrrrrrrrBZbvji", "value": "-12"}},
+            }}]})
+    assert F.matches_wallet(e, {"rISSUER"})
+    assert F.matches_wallet(e, {"rTRADER"})
+    assert not F.matches_wallet(e, {"rSOMEONE_ELSE"})
+
+def test_wallet_amount_issuer_in_tx_matches():
+    e = env({"Account": "rX", "Destination": "rY", "TransactionType": "Payment",
+             "Amount": {"currency": "USD", "issuer": "rISSUER", "value": "1"}})
+    assert F.matches_wallet(e, {"rISSUER"})
+
+def test_wallet_new_and_previous_fields_walked():
+    e = env({"Account": "rX", "TransactionType": "AccountSet"},
+            meta={"TransactionResult": "tesSUCCESS", "AffectedNodes": [
+                {"CreatedNode": {"LedgerEntryType": "Offer", "NewFields": {"Owner": "rOWNER"}}},
+                {"DeletedNode": {"LedgerEntryType": "Offer", "FinalFields": {"Account": "rGONE"},
+                                 "PreviousFields": {"Account": "rGONE"}}}]})
+    assert F.matches_wallet(e, {"rOWNER"})
+    assert F.matches_wallet(e, {"rGONE"})
+    assert not F.matches_wallet(e, {"rNOPE"})
+
 
 # ── §11.1 address validation ──
 

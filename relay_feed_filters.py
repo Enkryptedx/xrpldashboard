@@ -165,15 +165,32 @@ def _parse_int_js(v) -> int | None:
 # ── §3d wallet_transactions (port of §3d / xrplcluster per-account behavior) ──
 
 def matches_wallet(data: dict, addresses: set[str]) -> bool:
-    """Include if tx.Account or tx.Destination is in the subscriber's address
-    set, OR any AffectedNode's FinalFields.Account is in the set. Same set of
-    matches an xrplcluster per-account subscription yields today."""
+    """Include if the tx AFFECTS any address in the subscriber's set — the
+    same set a rippled/xrplcluster per-account subscription yields today.
+
+    rippled (TxMeta::getAffectedAccounts) fires the `accounts` stream for
+    every AccountID-typed field in the tx and in every affected node's
+    FinalFields / NewFields / PreviousFields: Account, Destination, Owner,
+    RegularKey, trust-line HighLimit.issuer / LowLimit.issuer, amount
+    issuers, … So an RLUSD OfferCreate by a third party that moves an
+    issuer trust line fires for the ISSUER even though the issuer is
+    neither tx.Account nor tx.Destination.
+
+    Port: walk every string value in the tx and the affected nodes (all
+    three field dicts, nested objects included) and match on set membership.
+    A superset of rippled's typed walk only where a non-account string field
+    happens to equal a watched address (e.g. a Domain/Memo hex) — negligible
+    and never a false negative.
+
+    Founding case 2026-09-26: the first --all-feeds canary run after the
+    Milestone-2 restart returned FAIL_no_event for the RLUSD issuer while
+    the own node showed six issuer-affecting OfferCreates in one ledger —
+    the previous Account/Destination/FinalFields.Account-only match missed
+    every one of them."""
     if not addresses:
         return False
     tx = _tx(data)
-    if tx.get("Account") in addresses:
-        return True
-    if tx.get("Destination") in addresses:
+    if _walk_matches(tx, addresses):
         return True
     nodes = _meta(data).get("AffectedNodes")
     if isinstance(nodes, list):
@@ -183,11 +200,31 @@ def matches_wallet(data: dict, addresses: set[str]) -> bool:
             node = n.get("ModifiedNode") or n.get("CreatedNode") or n.get("DeletedNode")
             if not isinstance(node, dict):
                 continue
-            f = (node.get("FinalFields")
-                 or node.get("NewFields")
-                 or node.get("PreviousFields")
-                 or {})
-            if f.get("Account") in addresses:
+            for key in ("FinalFields", "NewFields", "PreviousFields"):
+                f = node.get(key)
+                if isinstance(f, dict) and _walk_matches(f, addresses):
+                    return True
+    return False
+
+
+def _walk_matches(obj, addresses: set[str], _depth: int = 0) -> bool:
+    """True if any string value inside obj (dict/list, nested ≤ 6 deep) is
+    in addresses. Cheap: set-membership only, no base58 work per tx."""
+    if _depth > 6:
+        return False
+    if isinstance(obj, dict):
+        for v in obj.values():
+            if isinstance(v, str):
+                if v in addresses:
+                    return True
+            elif isinstance(v, (dict, list)) and _walk_matches(v, addresses, _depth + 1):
+                return True
+    elif isinstance(obj, list):
+        for v in obj:
+            if isinstance(v, str):
+                if v in addresses:
+                    return True
+            elif isinstance(v, (dict, list)) and _walk_matches(v, addresses, _depth + 1):
                 return True
     return False
 
