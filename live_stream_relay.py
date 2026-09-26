@@ -104,6 +104,16 @@ TOP100_LIMIT = 100
 UPSTREAM_RECONNECT_BASE_S = 2.0
 UPSTREAM_RECONNECT_MAX_S = 60.0
 UPSTREAM_PING_INTERVAL_S = 20.0
+# Upstream read queue (frames buffered by the websockets client before it
+# applies TCP back-pressure). INCIDENT 2026-09-26: Milestone 2 switched the
+# upstream subscription from ledger-only to transactions+ledger; on loopback
+# rippled delivers a whole ledger's transactions in one burst, websockets
+# 17's default max_queue=16 pushed back after 16 frames, rippled's own send
+# queue passed its limit (default 100) and it closed us with 1008 "client is
+# too slow" — 531 times between 11:00Z and 18:12Z (24→119/h), each a ~2 s
+# gap the browsers saw as a reconnect. 4096 frames × ~5 KB = ~20 MB worst
+# case, absorbing any burst rippled can produce per ledger.
+UPSTREAM_MAX_QUEUE = int(os.environ.get("LIVE_STREAM_RELAY_UPSTREAM_MAX_QUEUE", "4096"))
 CLIENT_PING_INTERVAL_S = 25.0
 SEND_TIMEOUT_S = 1.0
 TOTAL_COINS_REQ_ID = "relay_total_coins"
@@ -258,14 +268,23 @@ def is_valid_subscribe(data) -> bool:
 
 # ── upstream ──
 
+def upstream_connect_kwargs() -> dict:
+    """websockets.connect kwargs for the rippled upstream. Kept as a function
+    so the queue sizing is testable (see test_upstream_read_queue_absorbs_bursts)."""
+    return {
+        "ping_interval": UPSTREAM_PING_INTERVAL_S,
+        "max_size": None,
+        "max_queue": UPSTREAM_MAX_QUEUE,
+    }
+
+
 async def upstream_loop(state: RelayState, url: str) -> None:
     """Maintain the single upstream subscription with backoff reconnect."""
     backoff = UPSTREAM_RECONNECT_BASE_S
     while True:
         try:
             log.info("upstream: connecting to %s", url)
-            async with websockets.connect(url, ping_interval=UPSTREAM_PING_INTERVAL_S,
-                                          max_size=None) as ws:
+            async with websockets.connect(url, **upstream_connect_kwargs()) as ws:
                 state.upstream_connected = True
                 state.upstream_ws = ws
                 backoff = UPSTREAM_RECONNECT_BASE_S

@@ -437,3 +437,32 @@ def test_refs_file_loader(tmp_path):
     refs = R.load_refs_from_file(str(p))
     assert refs["pool_accounts"] == {AMM}
     assert refs["top100"] == {(RLUSD_CUR, RLUSD_ISSUER)}
+
+
+# ── upstream read queue (incident 2026-09-26: rippled 1008 "client is too slow") ──
+
+def test_upstream_read_queue_absorbs_bursts(monkeypatch):
+    """Milestone 2 subscribes upstream to transactions+ledger; rippled dumps a
+    ledger's transactions in one loopback burst. websockets' default
+    max_queue=16 applied back-pressure at 16 frames and rippled closed the
+    socket 531 times in 7 h. The connect kwargs must carry a burst-sized
+    queue, env-tunable."""
+    kw = R.upstream_connect_kwargs()
+    assert kw["max_queue"] >= 1024
+    assert kw["max_size"] is None
+    monkeypatch.setattr(R, "UPSTREAM_MAX_QUEUE", 777)
+    assert R.upstream_connect_kwargs()["max_queue"] == 777
+
+
+def test_upstream_loop_passes_queue_kwargs_to_connect(monkeypatch):
+    seen = {}
+
+    def fake_connect(url, **kwargs):
+        seen.update(kwargs)
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(R.websockets, "connect", fake_connect)
+    state = R.RelayState()
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(R.upstream_loop(state, "ws://127.0.0.1:1"))
+    assert seen["max_queue"] == R.UPSTREAM_MAX_QUEUE
