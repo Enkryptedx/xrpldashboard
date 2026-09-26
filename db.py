@@ -9422,8 +9422,32 @@ def upsert_escrow_supply_snapshot(total_xrp, object_count, accounts_scanned,
         return False
 
 
+def _read_escrow_side_from_supply_block(cur):
+    """Ripple-cohort escrow totals from xrp_supply_block (escrow_ripple_*),
+    shaped like a legacy escrow_supply_snapshot row:
+      (total_xrp, object_count, accounts_scanned, accounts_total,
+       ledger_index, fetched_at)
+    accounts_scanned/total = the cold_storage_snapshot account set (the
+    same Ripple monthly-release cohort the supply walker aggregates).
+    None when the block has no escrow side yet."""
+    cur.execute(
+        "SELECT escrow_ripple_total_xrp, escrow_ripple_object_count, "
+        "       escrow_ledger_index, escrow_fetched_at_utc "
+        "  FROM xrp_supply_block WHERE singleton_key = '1'"
+    )
+    b = cur.fetchone()
+    if not b or b[3] is None or b[0] is None:
+        return None
+    cur.execute(
+        "SELECT count(*) FILTER (WHERE fetch_ok), count(*) FROM cold_storage_snapshot"
+    )
+    a = cur.fetchone() or (0, 0)
+    return (b[0], b[1] or 0, int(a[0] or 0), int(a[1] or 0), b[2] or 0, b[3])
+
+
 def read_escrow_supply_snapshot():
-    """Read singleton escrow_supply_snapshot row. Returns dict:
+    """Read the singleton escrow-supply figures (supply block first, legacy
+    escrow_supply_snapshot table as fallback). Returns dict:
         {"total_xrp": ..., "object_count": ..., "accounts_scanned": ...,
          "accounts_total": ..., "ledger_index": ..., "fetched_at": ...,
          "age_seconds": int}
@@ -9433,15 +9457,26 @@ def read_escrow_supply_snapshot():
              "age_seconds": None}
     if not pg_available():
         return empty
+    # 2026-09-26: the escrow_supply_snapshot table's only writer
+    # (escrow_supply_walker) was retired 2026-09-25 as redundant with the
+    # supply block — but this reader was never repointed, so /cold-storage's
+    # "XRP locked" block went stale at 2026-09-24 21:21Z and the page wore
+    # the "walker refresh delayed" banner for ~2 days. Source of truth now:
+    # xrp_supply_block's escrow_ripple_* side (supply_escrow_walker, 15 min,
+    # same Ripple monthly-release cohort — 31.7B XRP / 100 objects matched
+    # the last legacy row exactly). Legacy table only as a fallback when
+    # the block has no escrow side yet.
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT total_xrp, object_count, accounts_scanned, "
-                    "       accounts_total, ledger_index, fetched_at "
-                    "  FROM escrow_supply_snapshot WHERE id = 1"
-                )
-                row = cur.fetchone()
+                row = _read_escrow_side_from_supply_block(cur)
+                if row is None:
+                    cur.execute(
+                        "SELECT total_xrp, object_count, accounts_scanned, "
+                        "       accounts_total, ledger_index, fetched_at "
+                        "  FROM escrow_supply_snapshot WHERE id = 1"
+                    )
+                    row = cur.fetchone()
     except Exception as e:
         _log_err("read_escrow_supply_snapshot_failed", e)
         return empty

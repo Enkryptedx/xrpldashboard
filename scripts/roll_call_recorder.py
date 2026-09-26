@@ -242,8 +242,13 @@ class Recorder:
                 log.exception("round %d write failed", idx)
                 db.write_walker_health_end(WALKER_NAME, ok=False, message=f"write failed: {exc}"[:400])
             else:
+                # findings_count is the L1 pager's "this walker found a
+                # problem" signal (check_walker_findings pages on >0). A
+                # clean round has NO findings — `passing` is a tally, not
+                # an anomaly, and it stays in the message. (2026-09-26:
+                # passing=3 had been paging as 3 findings every round.)
                 db.write_walker_health_end(WALKER_NAME, ok=True, message=summary[:400],
-                                           findings_count=passing)
+                                           findings_count=0)
                 log.info("WROTE %s", summary)
         self.rounds_done += 1
         if self.max_rounds is not None and self.rounds_done >= self.max_rounds:
