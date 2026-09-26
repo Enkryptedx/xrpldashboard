@@ -176,6 +176,7 @@ def _from_store(dest_path: str) -> bool:
         import db
         meta = db.read_geoip_db_blob_meta(EDITION)
         if not meta:
+            _state["last_error"] = "store empty (no geoip_db_blob row or meta read failed)"
             return False
         fetched_at, sha256, _size = meta
         age = time.time() - fetched_at.timestamp()
@@ -184,6 +185,7 @@ def _from_store(dest_path: str) -> bool:
             return False
         got = db.read_geoip_db_blob(EDITION)
         if not got:
+            _state["last_error"] = "store blob read returned None (see db read_geoip_db_blob_failed)"
             return False
         gz, fetched_at, sha256 = got
         data = gzip.decompress(gz)
@@ -315,20 +317,34 @@ def _initialize() -> bool:
 
 
 def _retry_loop():
+    """Every 60 s: adopt a fresh local file another worker/process wrote
+    (no DB). Every RETRY_S: full chain (store). Counts are surfaced in
+    status() so a non-recovering worker is diagnosable from /healthz."""
+    last_full = time.time()
     while _reader is None:
-        time.sleep(RETRY_S)
+        time.sleep(60)
         try:
-            if _initialize():
-                log.info("geoip_state: recovered after retry (%s)", _state["source"])
-                return
+            _state["retry_ticks"] = _state.get("retry_ticks", 0) + 1
+            if _fresh(_mmdb_path()) or (time.time() - last_full) >= RETRY_S:
+                if (time.time() - last_full) >= RETRY_S:
+                    last_full = time.time()
+                    _state["retries"] = _state.get("retries", 0) + 1
+                if _initialize():
+                    log.info("geoip_state: recovered after retry (%s)", _state["source"])
+                    return
         except Exception as e:  # noqa: BLE001
+            _state["last_error"] = f"retry failed: {e!r}"[:200]
             log.warning("geoip_state: retry failed: %r", e)
 
 
+_retry_thread = None
+
+
 def _start_retry_thread():
+    global _retry_thread
     if _reader is None and os.environ.get("GEOIP_DISABLE_RETRY") != "1":
-        t = threading.Thread(target=_retry_loop, name="geoip-retry", daemon=True)
-        t.start()
+        _retry_thread = threading.Thread(target=_retry_loop, name="geoip-retry", daemon=True)
+        _retry_thread.start()
 
 
 _initialize()
@@ -346,6 +362,9 @@ def status() -> dict:
     out["available"] = _reader is not None
     p = out.get("path")
     out["file_age_s"] = round(_file_age_s(p)) if p and os.path.exists(p) else None
+    out["file_bytes"] = os.path.getsize(p) if p and os.path.exists(p) else None
+    out["retry_thread_alive"] = bool(_retry_thread and _retry_thread.is_alive())
+    out["pid"] = os.getpid()
     return out
 
 
