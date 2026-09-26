@@ -118,11 +118,60 @@ def _stamp_last_ok() -> None:
         pass
 
 
+# ── Determinism (2026-09-26, Charlie chore "region mask") ──
+# Two captures minutes apart differed on 1–8 percent of pixels across the
+# WHOLE clip (see DAILY_2026-09-26): the dropdown's padding + box-shadow
+# and its 0.5 percent translucency show the live page underneath (ledger
+# chip, hero animations, coin runway), so identical CSS still hashed
+# differently. Fix = paint an opaque overlay UNDER the nav (same page
+# background colour) before capturing, kill animations/transitions, wait
+# for web fonts. Belt-and-braces: compare with a small pixel tolerance
+# (anti-aliasing) instead of an exact hash, and report the max share.
+STABILIZE_CSS = """
+  html, body { background: #0a0e27 !important; }
+  body::before { content: ''; position: fixed; inset: 0; background: #0a0e27; z-index: 2147483000; pointer-events: none; }
+  header, .nav, .nav-groups, .mobile-nav, nav { position: relative; z-index: 2147483100; }
+  *, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }
+  body::before { animation: none !important; }
+  /* live XRP price chip sits INSIDE the nav (above the overlay): freeze it */
+  .nav .xrp-chip { visibility: hidden !important; }
+"""
+DIVERGENCE_MAX_PCT = float(os.environ.get("NAV_CANARY_DIVERGENCE_MAX_PCT", "1.0"))
+
+
+def _stabilize(page) -> None:
+    page.add_style_tag(content=STABILIZE_CSS)
+    try:
+        page.evaluate("() => document.fonts && document.fonts.ready")
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+
+
+def _diff_pct(png_a: bytes, png_b: bytes) -> float | None:
+    """Share (percent) of pixels whose max channel delta exceeds 24/255.
+    None when sizes differ (that IS a divergence) or Pillow is missing."""
+    try:
+        import io
+        from PIL import Image, ImageChops
+    except ImportError:
+        return None
+    a = Image.open(io.BytesIO(png_a)).convert("RGB")
+    b = Image.open(io.BytesIO(png_b)).convert("RGB")
+    if a.size != b.size:
+        return None
+    d = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 24 else 0)
+    hist = d.histogram()
+    changed = hist[255] if len(hist) > 255 else 0
+    return 100.0 * changed / float(a.size[0] * a.size[1])
+
+
 def _capture_one(page, path: str, selector: str, is_mobile: bool = False) -> tuple[bytes, dict]:
     """Navigate, open the Live-group dropdown (or the mobile hamburger's
     Live section), screenshot the region. Returns (png_bytes, meta)."""
     url = BASE_URL.rstrip("/") + path
     page.goto(url, wait_until="networkidle", timeout=15_000)
+    _stabilize(page)
     if is_mobile:
         # Phone: open the hamburger, screenshot the Live section within.
         page.wait_for_selector(MOBILE_OPEN_SELECTOR, timeout=5_000)
@@ -208,6 +257,8 @@ def main() -> int:
 
         # Load previous run's hashes for regression detection
         prev_hash = {}
+        prev_png = {}
+        max_pct = 0.0
         prev_dirs = sorted(
             (e for e in os.listdir(SCREENSHOT_DIR)
              if os.path.isdir(os.path.join(SCREENSHOT_DIR, e))
@@ -219,7 +270,8 @@ def main() -> int:
             for f in os.listdir(prev):
                 if f.endswith(".png"):
                     with open(os.path.join(prev, f), "rb") as fh:
-                        prev_hash[f] = _pixel_hash(fh.read())
+                        prev_png[f] = fh.read()
+                        prev_hash[f] = _pixel_hash(prev_png[f])
 
         results = []
         divergences = []
@@ -243,7 +295,13 @@ def main() -> int:
                             h = _pixel_hash(png)
                             results.append((fname, h))
                             if fname in prev_hash and prev_hash[fname] != h:
-                                divergences.append(f"{fname}: {prev_hash[fname][:12]} → {h[:12]}")
+                                pct = _diff_pct(prev_png[fname], png)
+                                if pct is not None:
+                                    max_pct = max(max_pct, pct)
+                                if pct is None or pct > DIVERGENCE_MAX_PCT:
+                                    divergences.append(
+                                        f"{fname}: {prev_hash[fname][:12]} → {h[:12]}"
+                                        f" ({'size' if pct is None else f'{pct:.2f}%'})")
                         except Exception as e:
                             # Capture errors are NOT divergences on first-run
                             # (no previous baseline). They only page after we
@@ -269,7 +327,8 @@ def main() -> int:
         run_label = "first-run/baseline" if is_first_run else "regression-check"
         message = (
             f"captured={len(results)} divergences={len(divergences)} "
-            f"capture_errors={len(capture_errors)} mode={run_label}"
+            f"capture_errors={len(capture_errors)} mode={run_label} "
+            f"max_diff_pct={max_pct:.2f} tolerance_pct={DIVERGENCE_MAX_PCT:g}"
         )
         if capture_errors:
             # Print all errors — first-run may hit selectors that don't
