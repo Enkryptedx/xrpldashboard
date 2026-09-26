@@ -1182,6 +1182,23 @@ CREATE TABLE IF NOT EXISTS nft_activity_type_rollup (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- New-accounts block (docs/NEW_ACCOUNTS_BLOCK_DESIGN_2026-09-25.md, v1
+-- count-only, FORWARD-ONLY from 2026-09-26). One row per AccountRoot
+-- CreatedNode seen by new_accounts_walker on our own node. `funder` is
+-- kept for v2 concentration and is not surfaced in v1.
+-- Mirrored in db._NEW_ACCOUNTS_DDL — change both.
+CREATE TABLE IF NOT EXISTS new_accounts (
+    address        TEXT PRIMARY KEY,
+    funding_tx     TEXT NOT NULL,
+    funder         TEXT,
+    amount_drops   BIGINT,
+    ledger_index   BIGINT NOT NULL,
+    close_time     BIGINT NOT NULL,          -- XRPL epoch seconds
+    first_seen_iso TEXT NOT NULL,
+    source         TEXT NOT NULL DEFAULT 'own_node_stream'
+);
+CREATE INDEX IF NOT EXISTS new_accounts_close_time_idx ON new_accounts (close_time DESC);
+
 -- Per-hour transaction-type counters populated by tx_type_bucket_handler
 -- in xrpl_stream.py. Feeds the "Ledger activity" section on /network:
 -- what share of on-chain activity is Payments vs DEX offers vs AMM vs
@@ -8735,6 +8752,110 @@ def write_nft_activity_type_rollup(cur, state: dict) -> None:
             state["range_end_close"],
         ),
     )
+
+
+# ── new_accounts (forward-only account-creation record, 2026-09-26) ──
+# Mirrors the block in SCHEMA_DDL — change both.
+_NEW_ACCOUNTS_DDL = """
+CREATE TABLE IF NOT EXISTS new_accounts (
+    address        TEXT PRIMARY KEY,
+    funding_tx     TEXT NOT NULL,
+    funder         TEXT,
+    amount_drops   BIGINT,
+    ledger_index   BIGINT NOT NULL,
+    close_time     BIGINT NOT NULL,
+    first_seen_iso TEXT NOT NULL,
+    source         TEXT NOT NULL DEFAULT 'own_node_stream'
+);
+CREATE INDEX IF NOT EXISTS new_accounts_close_time_idx ON new_accounts (close_time DESC);
+"""
+_RIPPLE_EPOCH = 946684800
+
+
+def ensure_new_accounts_table():
+    if not pg_available():
+        return False
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(_NEW_ACCOUNTS_DDL)
+        conn.commit()
+    return True
+
+
+def insert_new_accounts_batch(rows) -> int:
+    """Batched INSERT … ON CONFLICT (address) DO NOTHING. Returns rows
+    inserted. Raises on failure (telemetry_fail_loud)."""
+    if not rows:
+        return 0
+    inserted = 0
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            for r in rows:
+                cur.execute(
+                    "INSERT INTO new_accounts (address, funding_tx, funder, amount_drops, "
+                    "  ledger_index, close_time, first_seen_iso, source) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (address) DO NOTHING",
+                    (r["address"], r["funding_tx"], r.get("funder"), r.get("amount_drops"),
+                     r["ledger_index"], r["close_time"], r["first_seen_iso"],
+                     r.get("source") or "own_node_stream"),
+                )
+                inserted += cur.rowcount
+        conn.commit()
+    return inserted
+
+
+def read_new_accounts_summary(cur, now_unix: int | None = None, days: int = 30) -> dict | None:
+    """Homepage-block numbers from new_accounts (index-backed, cheap):
+    count_24h, count_7d, daily counts (UTC) for the last `days`, and the
+    highest full UTC day since tracking began. None when the table is
+    empty (tracking not started)."""
+    import time as _t
+    now_unix = int(now_unix if now_unix is not None else _t.time())
+    now_r = now_unix - _RIPPLE_EPOCH
+    cur.execute("SELECT count(*), min(close_time), max(close_time) FROM new_accounts")
+    total, first_ct, last_ct = cur.fetchone()
+    if not total:
+        return None
+    cur.execute("SELECT count(*) FROM new_accounts WHERE close_time >= %s", (now_r - 86400,))
+    c24 = int(cur.fetchone()[0])
+    cur.execute("SELECT count(*) FROM new_accounts WHERE close_time >= %s", (now_r - 7 * 86400,))
+    c7 = int(cur.fetchone()[0])
+    cur.execute(
+        "SELECT to_char(to_timestamp(close_time + %s) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS d, count(*) "
+        "FROM new_accounts WHERE close_time >= %s GROUP BY 1 ORDER BY 1",
+        (_RIPPLE_EPOCH, now_r - days * 86400),
+    )
+    daily = [(d, int(n)) for d, n in cur.fetchall()]
+    today = _t.strftime("%Y-%m-%d", _t.gmtime(now_unix))
+    cur.execute(
+        "SELECT d, n FROM (SELECT to_char(to_timestamp(close_time + %s) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS d, "
+        "count(*) AS n FROM new_accounts GROUP BY 1) t WHERE d < %s ORDER BY n DESC, d DESC LIMIT 1",
+        (_RIPPLE_EPOCH, today),
+    )
+    hi = cur.fetchone()
+    return {
+        "total": int(total),
+        "count_24h": c24,
+        "count_7d": c7,
+        "daily": daily,
+        "highest_day": {"date": hi[0], "count": int(hi[1])} if hi else None,
+        "first_seen_iso": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime(int(first_ct) + _RIPPLE_EPOCH)),
+        "latest_seen_iso": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime(int(last_ct) + _RIPPLE_EPOCH)),
+        "latest_age_s": max(0, now_unix - (int(last_ct) + _RIPPLE_EPOCH)),
+    }
+
+
+def read_new_accounts_summary_safe() -> dict | None:
+    """Route-facing wrapper: None on any failure (render-killer rule)."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                return read_new_accounts_summary(cur)
+    except Exception as e:  # noqa: BLE001
+        _log_err("read_new_accounts_summary_failed", e)
+        return None
 
 
 def full_scan_nft_type_state(cur) -> dict:

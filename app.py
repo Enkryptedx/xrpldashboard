@@ -2746,8 +2746,21 @@ def index():
     # by ~0.02%/year via transaction-fee burns, well below display rounding.
     xrp_distribution = _build_xrp_distribution(ranked_full)
 
+    # New-accounts block (docs/NEW_ACCOUNTS_BLOCK_DESIGN_2026-09-25.md):
+    # counts from our own-node stream capture, FORWARD-ONLY since
+    # new_accounts_walker.TRACKING_SINCE. None hides the block; the
+    # pre-render walker picks this up like every other block here.
+    try:
+        import new_accounts_walker as _naw
+        new_accounts = db.read_new_accounts_summary_safe()
+        new_accounts_tracking_since = _naw.TRACKING_SINCE
+    except Exception:  # noqa: BLE001
+        new_accounts, new_accounts_tracking_since = None, None
+
     return render_template(
         "index.html",
+        new_accounts=new_accounts,
+        new_accounts_tracking_since=new_accounts_tracking_since,
         timestamp_str=timestamp_str,
         timestamp_iso=timestamp_iso,
         cached_age=cached_age,
@@ -5089,8 +5102,16 @@ def rwa():
 def methodology():
     """Per-surface freshness, cache TTLs, data sources, known limitations.
     The differentiator page — no other XRPL dashboard discloses its
-    caching/source dependencies in one public document."""
-    return render_template("methodology.html")
+    caching/source dependencies in one public document.
+
+    new_accounts_tracking_since is injected so the methodology definition
+    and the homepage block can never disagree on the date."""
+    try:
+        import new_accounts_walker as _naw
+        _na_since = _naw.TRACKING_SINCE
+    except Exception:  # noqa: BLE001
+        _na_since = None
+    return render_template("methodology.html", new_accounts_tracking_since=_na_since)
 
 
 _TAXONOMY_HTML_CACHE = None

@@ -569,6 +569,8 @@
     <li><strong>{{ _('Whale movement.') }}</strong> {{ _('A single XRP') }} <code>Payment</code>
       {{ _('transaction of') }} <strong>{{ "{:,}".format(whale_xrp_threshold) }} {{ _('XRP or more') }}</strong>. {{ _('Smaller transfers don\'t appear on') }} <a href="/whales">/whales</a>. {{ _('We do') }}
       <em>{{ _('not') }}</em> {{ _('aggregate multiple smaller transfers — each row is one on-chain payment.') }}</li>
+    <li><strong>{{ _('New accounts.') }}</strong> {{ _('An XRPL account exists once a payment funds an address the ledger has never seen; the transaction\'s metadata then carries a') }} <code>CreatedNode</code> {{ _('of type') }} <code>AccountRoot</code>. {{ _('Our walker reads every validated ledger from our own node and records one row per such node, so the homepage count is the ledger\'s own record of creations, not a guess from transaction types.') }}
+      {{ _('Provenance boundary: counts are forward-only from') }} <strong>{{ new_accounts_tracking_since or '2026-09-26' }}</strong>{{ _(', the day the walker started. Earlier stream captures exist but their scope narrowed on 2026-09-09 to watchlisted accounts and large transfers, so they are not a complete record and are not backfilled. "Highest day" therefore means highest since that date — never an all-time claim.') }}</li>
     <li><strong>{{ _('Token volume.') }}</strong> {{ _('Sum of') }} <code>Payment</code> +
       <code>OfferCreate</code> {{ _('fills + AMM swap legs touching that currency/issuer pair, over a 30-day window.') }}</li>
     <li><strong>{{ _('AMM "current price".') }}</strong> {{ _('Computed live from the pool\'s reserves') }} (<code>account_info</code> + <code>account_lines</code>),

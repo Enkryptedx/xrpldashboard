@@ -986,6 +986,41 @@
     </section>
     {% endif %}
 
+    {# ========== New accounts (docs/NEW_ACCOUNTS_BLOCK_DESIGN_2026-09-25.md) ==========
+       v1 = count only, FORWARD-ONLY from our own-node stream capture. No
+       all-time claims: "highest daily since <tracking-since>" is the only
+       superlative allowed. Hidden until the walker has rows. #}
+    {% if new_accounts %}
+    <section class="xrp-constellation" aria-label="{{ _('New XRPL accounts') }}" data-new-accounts data-tracking-since="{{ new_accounts_tracking_since }}">
+      <div class="xc-head">
+        <h2>{{ _('New accounts') }}</h2>
+        <div class="xc-sub">{{ _('accounts created on the XRP Ledger, counted from our own node · tracking since') }} {{ new_accounts_tracking_since }}</div>
+      </div>
+      <div class="xc-legend" style="margin-top: 10px;">
+        <span class="xrp-chip" style="cursor:default">
+          <span>{{ _('last 24h') }}</span>
+          <span class="v">{{ "{:,}".format(new_accounts.count_24h) }}</span>
+        </span>
+        <span class="xrp-chip" style="cursor:default">
+          <span>{{ _('last 7 days') }}</span>
+          <span class="v">{{ "{:,}".format(new_accounts.count_7d) }}</span>
+        </span>
+        {% if new_accounts.highest_day %}
+        <span class="xrp-chip" style="cursor:default">
+          <span>{{ _('highest day since') }} {{ new_accounts_tracking_since }}</span>
+          <span class="v">{{ "{:,}".format(new_accounts.highest_day.count) }}</span>
+          <span class="src">{{ new_accounts.highest_day.date }}</span>
+        </span>
+        {% endif %}
+      </div>
+      <p class="xc-sub" style="margin-top: 8px;">
+        {{ _('An account exists once a payment funds a never-seen address; we count each AccountRoot the ledger creates, read from our own node. Latest seen') }}
+        <span class="mono" data-iso="{{ new_accounts.latest_seen_iso }}">{{ new_accounts.latest_seen_iso }}</span>.
+        <a href="/methodology">{{ _('How we count') }}</a>
+      </p>
+    </section>
+    {% endif %}
+
     {# ========== ROW 2: where XRP is locked (cold storage + AMMs) ========== #}
     {# Cold-storage tile shows the LOCKED escrow total (sum of EscrowCreate
        Amount fields across Ripple's monthly-release accounts) — matches the
