@@ -2348,11 +2348,30 @@
         reconnectDelay = 1500;
         setState('live', 'connected — listening for token trades');
         try {
-          ws.send(JSON.stringify({
-            id: 'tokens-stream',
-            command: 'subscribe',
-            streams: ['transactions']
-          }));
+          if (usingFallback) {
+            // Public cluster: raw transactions stream, client filters.
+            ws.send(JSON.stringify({
+              id: 'tokens-stream',
+              command: 'subscribe',
+              streams: ['transactions']
+            }));
+          } else {
+            // Option B Milestone 2 (2026-09-26): two server-filtered
+            // named feeds on one socket — top-100 token payments for
+            // the trade lanes, and AMM-touching transactions so the
+            // Pools lane (AMMDeposit / AMMWithdraw) keeps its events.
+            // isTokenTrade() below still gates every frame.
+            ws.send(JSON.stringify({
+              id: 'tokens-stream',
+              command: 'subscribe',
+              stream: 'token_top100_transactions'
+            }));
+            ws.send(JSON.stringify({
+              id: 'tokens-stream-amm',
+              command: 'subscribe',
+              stream: 'amm_transactions'
+            }));
+          }
         } catch (e) {}
       };
 

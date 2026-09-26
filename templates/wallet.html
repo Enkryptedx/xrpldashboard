@@ -2647,23 +2647,44 @@
       };
     })();
 
-    /* Live wallet WebSocket — subscribes the browser directly to
-       wss://xrplcluster.com for this wallet's account. On every validated
-       transaction, bumps the 30d tx counter, the pulse sparkline's
-       today bin, and refreshes "last seen" to "just now". One socket
-       per open tab; closes on unload. The site's /whales and /tokens
-       panels are still fed by the Render worker — this is independent. */
+    /* Live wallet WebSocket — Option B Milestone 2 (2026-09-26): subscribes
+       to our own-node relay's `wallet_transactions` named feed for this
+       wallet's account (relay validates the address, matches every
+       account the tx affects — same set a public per-account sub gives).
+       After CONSECUTIVE_FAIL_TO_FALLBACK sockets that never prove live,
+       falls back to the public cluster's per-account subscription for the
+       rest of the tab and logs a browser_wss fallback row. On every
+       validated transaction, bumps the 30d tx counter, the pulse
+       sparkline's today bin, and refreshes "last seen" to "just now".
+       One socket per open tab; closes on unload. */
     (function () {
       var addr = {{ data.address|tojson }};
       if (!addr || typeof WebSocket === 'undefined') return;
 
-      var WS_URL = 'wss://xrplcluster.com';
+      var streamPrimary = {{ live_stream_wss_primary | tojson }};
+      var streamFallback = {{ live_stream_wss_fallback | tojson }};
+      var streamPrimaryLabel = {{ live_stream_wss_primary_label | tojson }};
+      var streamFallbackLabel = {{ live_stream_wss_fallback_label | tojson }};
+      var CONSECUTIVE_FAIL_TO_FALLBACK = 3;
+      var wsFailCount = 0;
+      var wsUsingFallback = (streamPrimary === streamFallback);
       var ws = null;
       var RECONNECT_MIN_MS = 3000;
       var RECONNECT_MAX_MS = 60000;
       var reconnectMs = RECONNECT_MIN_MS;
       var reconnectTimer = null;
       var closed = false;
+
+      function noteFallback() {
+        // Same telemetry the /tokens page emits: no PII, just labels.
+        try {
+          fetch('/api/walker-node-fallback?source=browser_wss&primary=' +
+                encodeURIComponent(streamPrimaryLabel) +
+                '&fallback=' + encodeURIComponent(streamFallbackLabel), {
+            method: 'POST', keepalive: true,
+          }).catch(function () {});
+        } catch (_e) {}
+      }
 
       function bump() {
         // Tx counter
@@ -2697,18 +2718,19 @@
 
       function connect() {
         if (closed) return;
-        try { ws = new WebSocket(WS_URL); }
+        var targetUrl = wsUsingFallback ? streamFallback : streamPrimary;
+        try { ws = new WebSocket(targetUrl); }
         catch (_e) { return scheduleReconnect(); }
+        // Proof-of-life: a subscribe response or a transaction frame.
+        // TCP open is not proof (the relay may still reject the sub).
+        ws.__provenLive = false;
 
         ws.addEventListener('open', function () {
-          // Successful connection — reset backoff so a brief blip doesn't
-          // leave us at 60s reconnect intervals after recovery.
-          reconnectMs = RECONNECT_MIN_MS;
           try {
-            ws.send(JSON.stringify({
-              command: 'subscribe',
-              accounts: [addr]
-            }));
+            ws.send(JSON.stringify(wsUsingFallback
+              ? { id: 'wallet-stream', command: 'subscribe', accounts: [addr] }
+              : { id: 'wallet-stream', command: 'subscribe',
+                  stream: 'wallet_transactions', accounts: [addr] }));
           } catch (_e) {}
         });
 
@@ -2718,11 +2740,37 @@
           // the rest of the session, silently freezing the live feed.
           try {
             var msg = JSON.parse(ev.data);
-            if (msg && msg.type === 'transaction' && msg.validated) bump();
+            if (!msg) return;
+            if (msg.type === 'response' && msg.id === 'wallet-stream'
+                && msg.status === 'success') {
+              ws.__provenLive = true;
+              wsFailCount = 0;
+              reconnectMs = RECONNECT_MIN_MS;
+              return;
+            }
+            if (msg.type === 'transaction' && msg.validated) {
+              ws.__provenLive = true;
+              wsFailCount = 0;
+              reconnectMs = RECONNECT_MIN_MS;
+              bump();
+            }
           } catch (_e) { /* swallow — next tick keeps streaming */ }
         });
 
-        ws.addEventListener('close', scheduleReconnect);
+        ws.addEventListener('close', function () {
+          if (closed) return;
+          if (ws && ws.__provenLive === true) {
+            wsFailCount = 0;
+          } else {
+            wsFailCount++;
+            if (!wsUsingFallback && wsFailCount >= CONSECUTIVE_FAIL_TO_FALLBACK) {
+              wsUsingFallback = true;
+              reconnectMs = RECONNECT_MIN_MS;
+              noteFallback();
+            }
+          }
+          scheduleReconnect();
+        });
         ws.addEventListener('error', function () {
           try { ws.close(); } catch (_e) {}
         });

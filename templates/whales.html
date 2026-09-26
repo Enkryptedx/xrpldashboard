@@ -996,11 +996,13 @@
         // Deliberately do NOT reset reconnectDelay here — wait for proof.
         setState('connecting', 'subscribing at ' + targetLabel + '…');
         try {
-          ws.send(JSON.stringify({
-            id: 'whales-stream',
-            command: 'subscribe',
-            streams: ['transactions']
-          }));
+          // Option B Milestone 2 (2026-09-26): our relay serves the
+          // server-filtered `whale_transactions` feed (XRP Payments at
+          // or above RELAY_WHALE_TIER_DROPS). The tier gate below still
+          // applies. Public-cluster fallback keeps the raw stream.
+          ws.send(JSON.stringify(wsUsingFallback
+            ? { id: 'whales-stream', command: 'subscribe', streams: ['transactions'] }
+            : { id: 'whales-stream', command: 'subscribe', stream: 'whale_transactions' }));
         } catch (e) { /* connection will fail through onerror */ }
       };
 
@@ -1068,6 +1070,15 @@
     var CONSECUTIVE_FAIL_TO_FALLBACK = 3;
     var wsFailCount = 0;
     var wsUsingFallback = false;
+    // The relay's whale_transactions feed is cut at 100K XRP (its
+    // LIVE_STREAM_RELAY_WHALE_TIER_DROPS default). A ?tier=50k view
+    // needs the 50K–100K band the feed does not carry, so that tier
+    // stays on the public raw stream until the relay tier is lowered.
+    // Truth over sovereignty: never show fewer whales than the tier says.
+    var RELAY_WHALE_TIER_DROPS = 100000000000;
+    if (tierDrops > 0 && tierDrops < RELAY_WHALE_TIER_DROPS) {
+      wsUsingFallback = true;
+    }
 
     function scheduleReconnect() {
       setTimeout(connect, reconnectDelay);

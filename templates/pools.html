@@ -1153,11 +1153,14 @@
         // only after a subscribe response (proof the relay accepts us).
         setLsb('connecting', 'subscribing at ' + targetLabel + '…');
         try {
-          ws.send(JSON.stringify({
-            id: 'pools-stream',
-            command: 'subscribe',
-            streams: ['transactions']
-          }));
+          // Option B Milestone 2 (2026-09-26): our relay serves the
+          // server-filtered `amm_transactions` named feed (same match
+          // rule as the client-side filter below, which stays as a
+          // belt-and-braces gate). The public cluster only knows the
+          // raw transactions stream, so the fallback keeps that shape.
+          ws.send(JSON.stringify(wsUsingFallback
+            ? { id: 'pools-stream', command: 'subscribe', streams: ['transactions'] }
+            : { id: 'pools-stream', command: 'subscribe', stream: 'amm_transactions' }));
         } catch (e) {}
       };
 
