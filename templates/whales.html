@@ -1070,12 +1070,13 @@
     var CONSECUTIVE_FAIL_TO_FALLBACK = 3;
     var wsFailCount = 0;
     var wsUsingFallback = false;
-    // The relay's whale_transactions feed is cut at 100K XRP (its
-    // LIVE_STREAM_RELAY_WHALE_TIER_DROPS default). A ?tier=50k view
-    // needs the 50K–100K band the feed does not carry, so that tier
-    // stays on the public raw stream until the relay tier is lowered.
-    // Truth over sovereignty: never show fewer whales than the tier says.
-    var RELAY_WHALE_TIER_DROPS = 100000000000;
+    // The relay's whale_transactions feed is cut at RELAY_WHALE_TIER_DROPS
+    // (LIVE_STREAM_RELAY_WHALE_TIER_DROPS on the Lenovo unit, 50K XRP since
+    // 2026-09-26 13:24Z — the lowest page tier). Any tier at or above it is
+    // fully served by the relay; the tier gate below still applies. If a
+    // tier below the relay cut is ever added, pin it to the public raw
+    // stream here — never show fewer whales than the tier says.
+    var RELAY_WHALE_TIER_DROPS = 50000000000;
     if (tierDrops > 0 && tierDrops < RELAY_WHALE_TIER_DROPS) {
       wsUsingFallback = true;
     }

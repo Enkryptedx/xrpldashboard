@@ -20,7 +20,7 @@ sys.path.insert(0, ROOT)
 EXPECT = {
     "pools.html": ["stream: 'amm_transactions'"],
     "tokens.html": ["stream: 'token_top100_transactions'", "stream: 'amm_transactions'"],
-    "whales.html": ["stream: 'whale_transactions'", "RELAY_WHALE_TIER_DROPS = 100000000000"],
+    "whales.html": ["stream: 'whale_transactions'", "RELAY_WHALE_TIER_DROPS = 50000000000"],
     "wallet.html": ["stream: 'wallet_transactions'", "accounts: [addr]",
                     "walker-node-fallback?source=browser_wss"],
 }
