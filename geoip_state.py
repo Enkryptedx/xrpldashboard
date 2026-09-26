@@ -121,10 +121,18 @@ def _download_mmdb_bytes(license_key: str):
     = MaxMind's daily download limit (30 per rolling 24 h on GeoLite)."""
     url = _MAXMIND_URL_TEMPLATE.format(key=license_key)
     tarball_path = None
+    # macOS python.org builds ship no system CA bundle for urllib; the Mac
+    # walkers use certifi (2026-09-26: first refresher run failed with
+    # CERTIFICATE_VERIFY_FAILED before any download counted).
+    try:
+        import certifi, ssl  # noqa: E401
+        _ctx = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        _ctx = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
             tarball_path = tmp.name
-        with urllib.request.urlopen(url, timeout=_FETCH_TIMEOUT_S) as resp:
+        with urllib.request.urlopen(url, timeout=_FETCH_TIMEOUT_S, context=_ctx) as resp:
             with open(tarball_path, "wb") as f:
                 f.write(resp.read())
         with tarfile.open(tarball_path, "r:gz") as tf:

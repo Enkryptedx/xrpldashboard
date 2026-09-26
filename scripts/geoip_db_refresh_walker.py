@@ -46,7 +46,17 @@ def main() -> int:
         return 1
     data = geoip_state._download_mmdb_bytes(key)
     if not data:
-        msg = f"MaxMind download failed: {geoip_state.status().get('last_error')}"
+        err = geoip_state.status().get("last_error") or ""
+        if "429" in err:
+            # Expected while the account's rolling 24 h window is exhausted
+            # (2026-09-26 incident). Not a walker failure: the store still
+            # serves, and geoip_health_canary pages if it grows stale. Defer
+            # to the next scheduled run instead of escalating for a week.
+            msg = f"deferred: MaxMind download window exhausted (429); store untouched"
+            print(f"[{WALKER_NAME}] DEFER {msg}")
+            db.write_walker_health_end(WALKER_NAME, ok=True, message=msg[:400], findings_count=0)
+            return 0
+        msg = f"MaxMind download failed: {err}"
         print(f"[{WALKER_NAME}] FAIL {msg}", file=sys.stderr)
         db.write_walker_health_end(WALKER_NAME, ok=False, message=msg[:400])
         return 1
