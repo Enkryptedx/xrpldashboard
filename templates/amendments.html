@@ -580,7 +580,18 @@
           {% if mh.removed_iso %}
             <span class="maj-plain">
               <strong>{{ _('Lost') }}</strong> <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ mh.removed_iso }}</span>:
-              {{ _('support dropped below') }} {{ mh.unl_threshold + 1 }} {{ _('for one roll call — countdown restarted.') }}
+              {{ _('support dropped below') }} {{ mh.unl_threshold + 1 }}
+              {# Charlie 2026-09-27: 'for one roll call' is only true when the
+                 majority re-formed almost immediately (Batch, same-day). When
+                 there is a distinct regained timestamp (mh.regained_iso, set
+                 server-side to the next active run's majority_close_iso), say
+                 how long it was down instead — never claim 'one roll call'
+                 for a multi-hour gap (PD: lost Sep 23, regained Sep 24). #}
+              {% if mh.regained_iso %}
+                — {{ _('countdown restarted; majority regained') }} <span class="maj-regained" data-iso="{{ mh.regained_iso }}">{{ mh.regained_iso }}</span>.
+              {% else %}
+                {{ _('for one roll call — countdown restarted.') }}
+              {% endif %}
             </span>
           {% else %}
             <span class="maj-plain">
@@ -601,13 +612,16 @@
               {{ _('Majority reached') }} {{ mh.majority_close_iso }} (UTC){% if mh.first_seen_ledger %} · {{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}<br>
               {% if mh.removed_iso %}{{ _('Majority lost') }} {{ mh.removed_iso }} (UTC){% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {{ mh.activation_eta_iso }} (UTC)<br>{% endif %}
               {% if mh.vote_count_at_first and mh.unl_threshold %}
-              {# Source label (Charlie 2026-09-27, CORRECTED): this count is
-                 vote_count_at_first from amendment_majority_history, source column
-                 own_node_flag_ledger[_backfill] — i.e. our node read the yes-count
-                 off the ledger's own Majority entry at the flag ledger. It is NOT
-                 our roll call (which only began 2026-09-26). Label it truthfully. #}
+              {# Source label (Charlie 2026-09-27, CORRECTED AGAIN): the ledger's
+                 Majorities entry holds ONLY Amendment + CloseTime — no vote count.
+                 vote_count_at_first is filled by the walker's _vote_at() from
+                 amendment_tally_reconstructions (unl_votes_count), whose source
+                 column is 'vhs_current_at_date_*' = XRPL Foundation daily vote
+                 data. The previous 'read from the ledger's Majority entry' label
+                 was false. If a count ever lacks a traceable source, the row sets
+                 vote_count_at_first to None and no count renders. #}
               {{ mh.vote_count_at_first }} {{ _('yes') }} · {{ _('needs') }} {{ mh.unl_threshold + 1 }}
-              · <span class="dim">{{ _('source: our node, read from the ledger\'s flag-ledger Majority entry') }}</span>
+              · <span class="dim">{{ _('source: XRPL Foundation daily vote data') }}</span>
               {% endif %}
             </div>
           </details>

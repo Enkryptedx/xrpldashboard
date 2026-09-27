@@ -6547,6 +6547,33 @@ def _load_amendment_majority_history():
                     _row["source_url"] = _meta.get("source_url")
         except Exception:  # noqa: BLE001 — desc is best-effort, never 500s
             pass
+        # Charlie 2026-09-27: for a superseded (removed) run, compute the
+        # regained timestamp = the SAME amendment's next later run's
+        # majority_close_iso. Lets the template say "lost Sep 23, regained
+        # Sep 24" for a multi-hour gap (PD) instead of the false "for one
+        # roll call", while a same-day re-form (Batch) has no distinct later
+        # run within the window and keeps "for one roll call". Rows are
+        # newest-first per amendment, so the regained run is the immediately
+        # preceding row for that amendment name.
+        try:
+            by_name = {}
+            for _row in rows:
+                by_name.setdefault(_row.get("name"), []).append(_row)
+            for _name, _group in by_name.items():
+                # _group is newest-first; a removed row's regained run is the
+                # row just before it (more recent majority_close).
+                for _idx in range(len(_group) - 1, -1, -1):
+                    _r = _group[_idx]
+                    if _r.get("removed_iso") and _idx > 0:
+                        _later = _group[_idx - 1]
+                        _lc = _later.get("majority_close_iso")
+                        # Only treat it as "regained" if the later run began at
+                        # or after this run was lost (a genuine re-form), and
+                        # the gap is more than one roll call (~a few minutes).
+                        if _lc and _r.get("removed_iso") and _lc > _r["removed_iso"]:
+                            _r["regained_iso"] = _lc
+        except Exception:  # noqa: BLE001 — regained is best-effort, never 500s
+            pass
         return rows
     except Exception:  # noqa: BLE001 — never let history reads 500 the page
         return []
