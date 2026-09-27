@@ -3237,6 +3237,24 @@ def _load_named_accounts_dict():
     return _safe_load_json(NAMED_ACCOUNTS_PATH) or {}
 
 
+@ttl_cache(seconds=300)
+def _watch_everything_accounts():
+    """Accounts explicitly opted into "watch everything" — exempt from the
+    /whales amount tier so EVERY tx they touch surfaces regardless of size
+    (Charlie 2026-09-27). Default: EMPTY — no account is exempt, so the tier
+    gate applies to all `tagged` rows. Opt-in is a named_accounts.json entry
+    with "watch_everything": true (first-party, hand-curated only; a
+    self-described/toml label can never set it). Returns a set of addresses.
+    """
+    out = set()
+    named = _load_named_accounts_dict()
+    if isinstance(named, dict):
+        for addr, info in named.items():
+            if isinstance(info, dict) and info.get("watch_everything") is True:
+                out.add(addr)
+    return out
+
+
 @ttl_cache(seconds=3600)
 def _load_continent_map():
     """ISO-3166 alpha-2 → continent (UN M49 5-region + Antarctica).
@@ -3512,6 +3530,24 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         (to_label_raw, to_addr),
     ])
 
+    # Label provenance (Charlie 2026-09-27): a toml/self-attested label is
+    # NOT a first-party fact — the account owner published it. Surface the
+    # existing self-described vocabulary (same as /wallet + /tokens) so a
+    # reader sees "self-described · source: <domain> toml" instead of a plain
+    # name. Only the toml source maps to self-described; curated file entries
+    # and xrpscan reference labels keep their own tiering elsewhere.
+    def _label_provenance(addr):
+        info = named_accounts.get(addr) if addr else None
+        if not isinstance(info, dict):
+            return None, None
+        src = info.get("_source")
+        if src == "toml":
+            dom = (info.get("_extra") or {}).get("domain")
+            return "self-described", (f"{dom} toml" if dom else "toml")
+        return None, None
+    from_label_tier, from_label_source = _label_provenance(from_addr)
+    to_label_tier, to_label_source = _label_provenance(to_addr)
+
     # 2026-09-10 Part C item 3 (TOKEN axis): tier of the transferred
     # token, if this event has a token (bare XRP transfers have None).
     # tier_lookup contains canonical + ASCII-alias keys per
@@ -3552,10 +3588,14 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         "from_addr": from_addr,
         "from_addr_short": _short_addr(from_addr),
         "from_label": from_label,
+        "from_label_tier": from_label_tier,
+        "from_label_source": from_label_source,
         "from_attested_domain": _attested_domain(from_addr),
         "to_addr": to_addr,
         "to_addr_short": _short_addr(to_addr),
         "to_label": to_label,
+        "to_label_tier": to_label_tier,
+        "to_label_source": to_label_source,
         "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
         "row_type_pill": row_type_pill,
@@ -3821,19 +3861,38 @@ def whales():
         # amounts we price-convert via the AMM-backed oracle. Unknown prices
         # are kept so we don't silently hide a possibly-large move.
         tier_xrp = tier_drops / 1_000_000
+        # Charlie 2026-09-27: the whales feed shows ONLY transactions at or
+        # above the selected tier. `tagged` (watchlist) events must clear the
+        # SAME amount threshold as everything else — they no longer bypass it.
+        # The only exemption is an explicit "watch everything" account (see
+        # _watch_everything_accounts; default empty, so every account is gated
+        # today). Bug this closes: a labeled donation wallet
+        # (r3YBCMcF7pp… aibull.fun) received 34k micro-donations — 33.5k were
+        # token-denominated tagged events that priced to None and, under the
+        # old "keep unless priced-and-below" rule, ALL slipped through and
+        # flooded /whales. New rule: a tagged row is kept only when we can
+        # PROVE it is >= tier (XRP drops >= tier, or a priced token >= tier).
+        # Unpriced / unknown-amount tagged rows are EXCLUDED (can't prove big).
+        watch_all = _watch_everything_accounts()
         filtered_rows = []
         for r in rows:
             etype = r[3]
             if etype != "tagged":
                 filtered_rows.append(r)
                 continue
+            # Explicit "watch everything" account: exempt from the amount gate.
+            if watch_all and (r[4] in watch_all or r[5] in watch_all):
+                filtered_rows.append(r)
+                continue
             drops = r[6]
             if isinstance(drops, int) and drops > 0:
+                # XRP-denominated tagged row: gate exactly on drops (same as
+                # every other row). Below tier -> excluded.
                 if drops >= tier_drops:
                     filtered_rows.append(r)
                 continue
-            # Token-denominated tagged event: pull Amount/delivered from raw_json
-            # and convert to XRP. Skip if priced and below threshold.
+            # Token-denominated (or NULL/zero-drops) tagged event: pull
+            # Amount/delivered from raw_json and price to XRP.
             raw_json = r[9]
             amount_obj = None
             if raw_json:
@@ -3850,9 +3909,11 @@ def whales():
                     xrp_value = price_oracle.value_amount_xrp(amount_obj)
                 except Exception:
                     xrp_value = None
-            if xrp_value is not None and xrp_value < tier_xrp:
-                continue
-            filtered_rows.append(r)
+            # Keep ONLY when we can prove it clears the tier. Unpriced /
+            # unknown -> excluded (previously kept, which was the leak).
+            if xrp_value is not None and xrp_value >= tier_xrp:
+                filtered_rows.append(r)
+            # else: below tier, or unprovable -> drop.
         rows = filtered_rows
         # 2026-09-10 Part C item 3: TOKEN axis tier lookup, one query per render.
         _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
