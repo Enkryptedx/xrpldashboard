@@ -14,6 +14,13 @@ Column key:
 - Sovereignty: whether our page served from the sovereign path (Lenovo
   rpc tunnel) or fell back to public RPC at the cited fetch time —
   read from walker_node_fallback.
+- Archive: private local copy (full HTML + readable text) under
+  `~/xrpl_test_private_triage/press_archive/YYYY-MM-DD_outlet_slug/`, plus a
+  Wayback Machine snapshot. **Private records only — never republished.**
+  Standing rule (Charlie 2026-09-27): every new citation is archived the day
+  it is found. Per-article archive paths + Wayback links are tabled at the
+  bottom under **Archive index**. The folder is included in the DockVault
+  memory mirror.
 
 ---
 
@@ -85,6 +92,7 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
 | 13 | 2026-09-18 | amznusa.com (aggregator of CryptoSlate/Akiba Wright) | https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades-liam-akiba-wright-amznusa-com/ | full | other (lending/vault) | `xrpldashboard.com/amendments` | link only, no mention in text (scraped repost of the Sep-18 CryptoSlate lending article) |
 | 14 | 2026-09-2x | New Economy (JP) | https://www.neweconomy.jp/posts/610604 | **DRAFT — not read** | (unread) | (referrer, 2 hits since Sep 24) | **DRAFT link-only** — not fetched/read; referrer bleed from analytics 2026-09-25. No naming sentence recorded. Verify + classify on next read pass. |
 | 15 | 2026-09-23 | CoinDesk (2nd article) | https://www.coindesk.com/tech/2026/09/23/xrp-ledger-retries-upgrade-that-lets-banks-split-payment-and-compliance-duties | **DRAFT — not read** | (unread) | (referrer, 1 hit since Sep 24) | **DRAFT link-only** — distinct newer CoinDesk piece (domain already filed at #12 for the Sep-19 article; this is a different Sep-23 URL). Not fetched/read; no naming sentence recorded. Verify on next read pass. |
+| 16 | 2026-09-27 | WordUp News | https://wordupnews.com/cryptocurrency/ripple-news-xrp-ledger-upgrade-delayed-10-days-after-validators-reset-activation-clock | full | Batch v1.1 | `xrpldashboard.com/amendments` | **DRAFT — linked+quoted**: "The corrected upgrade, formally named BatchV1_1, regained support from 30 of 35 trusted validators on Sept. 25, according to the XRPL amendment dashboard. That started a fresh two-week countdown, putting its earliest activation at Oct. 9 around 14:46 UTC if support holds." — new referrer Sep 27 (1 human hit, 09:42 ET). Verified: **pending** (Batch 30/35 on Sep 25 is within the reconstruction table range — verify next pass against `amendment_tally_reconstructions` as_of_date 2026-09-25). Archived 2026-09-27 (see Archive index). |
 
 ### MCP / agent-directory listings (not press citations)
 
@@ -146,4 +154,42 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   **link-citation** (the link IS the source attribution) rather than a
   named-source citation. Recorded as link only per the mention key, with #12
   annotated as a link-citation source of the validator count.
+
+---
+
+## Archive index (private local copies + Wayback)
+
+Started 2026-09-27 (Charlie). Every article referenced above has a private
+local copy — full `page.html` + `readable.txt` — under
+`~/xrpl_test_private_triage/press_archive/<dir>/`, mirrored to DockVault.
+**Private records only — never republished; no outlet contacted.** Wayback
+column: a `web.archive.org` snapshot; `PENDING` = Save Page Now retry loop
+running (their API was rate-limiting on 2026-09-27; `_wayback_retry.sh`
+re-resolves and updates `_index.json`). Regenerate with
+`python3 press_archive/_wayback_save.py`.
+
+| Date | Outlet | Archive dir (under press_archive/) | HTTP | Wayback |
+|---|---|---|---|---|
+| 2026-08-28 | AllAboutXRP | `2026-08-28_allaboutxrp-news-xrpl-fixcleanup3-3-0-majority-a` | 200 | PENDING |
+| 2026-09-18 | CryptoSlate | `2026-09-18_cryptoslate-xrpls-new-lending-tool-could-lock-up` | 200 | web/20260920071642 |
+| 2026-09-18 | amznusa.com (aggregator) | `2026-09-18_amznusa-com-aggregator-xrpls-new-lending-tool-co` | 200 | PENDING |
+| 2026-09-19 | CoinDesk (Sep19) | `2026-09-19_coindesk-sep19-tech-2026-09-19-ripple-says-asset` | 200 | PENDING |
+| 2026-09-19 | Coinwelt (DE) | `2026-09-19_coinwelt-de-news-xrp-ledger-batch-v11-atomare-za` | 200 | PENDING |
+| 2026-09-20 | Blockonomi | `2026-09-20_blockonomi-xrp-ledger-batch-v1-1-nears-activatio` | 200 | PENDING |
+| 2026-09-20 | WordUp News (Oct5 delegation) | `2026-09-20_wordup-news-oct5-delegation-cryptocurrency-xrp-l` | 200 | PENDING |
+| 2026-09-20 | WordUp News (Revolut off-topic) | `2026-09-20_wordup-news-revolut-off-topic-cryptocurrency-rev` | 200 | PENDING |
+| 2026-09-21 | Coin Insider | `2026-09-21_coin-insider-news-ripple-says-asset-managers-are` | 200 | PENDING |
+| 2026-09-21 | UseTheBitcoin | `2026-09-21_usethebitcoin-news-xrp-ledger-batch-v1-1-gains-i` | 200 | PENDING |
+| 2026-09-22 | Crinance | `2026-09-22_crinance-xrpl-fixes-critical-pre-mainnet-flaw-bu` | 200 | PENDING |
+| 2026-09-23 | Blockto | `2026-09-23_blockto-news-xrp-ledger-sets-new-date-for-featur` | 200 | PENDING |
+| 2026-09-23 | CoinDesk (Sep23) | `2026-09-23_coindesk-sep23-tech-2026-09-23-xrp-ledger-retrie` | 200 | PENDING |
+| 2026-09-23 | Cryptomaan (NL) | `2026-09-23_cryptomaan-nl-nieuws-xrp-ledger-permission-deleg` | 200 | PENDING |
+| 2026-09-24 | TheStreet | `2026-09-24_thestreet-crypto-markets-xrp-ledger-eyes-an-octo` | 403 | PENDING (headline-only; body via Yahoo syndication) |
+| 2026-09-24 | Yahoo Finance (TheStreet syndication) | `2026-09-24_yahoo-finance-thestreet-syndication-markets-cryp` | 200 | PENDING |
+| 2026-09-25 | New Economy (JP) | `2026-09-25_new-economy-jp-posts-610604` | 200 | PENDING |
+| 2026-09-27 | WordUp News (upgrade delayed 10 days) | `2026-09-27_wordup-news-cryptocurrency-ripple-news-xrp-ledge` | 200 | PENDING |
+
+Machine-readable index: `press_archive/_index.json`. Archiver:
+`press_archive/_archive_article.py` (stdlib-only fetch → HTML + readable text
++ Wayback lookup/save).
 
