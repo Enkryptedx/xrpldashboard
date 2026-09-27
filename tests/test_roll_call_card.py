@@ -107,6 +107,46 @@ def test_headline_is_ledger_truth_not_vote_count():
     assert card3["rows"][0]["ledger_holding"] is None
 
 
+def test_tallied_hash_absent_from_in_flight_still_gets_its_count():
+    # THE BUG (Charlie 2026-09-27): fixBatchV1_2 (14A2B45E) is tallied by the
+    # recorder (32/32/passes, our node runs 3.4.1 and supports it) but is NOT
+    # in state['in_flight'] (no in-flight name). The old builder only walked
+    # in_flight, so its box showed "not in our roll call" instead of its real
+    # count. Rows must be built from the TALLIES, keyed by HASH; a tally row
+    # with a null in-flight name must still surface its count (name falls back
+    # to the short hash, and the template can name it from the majority box).
+    FB = "14A2B45E48A4A124D1BBA657AC7B0DC3D5EA8C256C89E8F0D8142D32960A7944"
+    now = dt.datetime(2026, 9, 27, 13, 45, 0, tzinfo=UTC)
+    rounds = [
+        _round(107249407, "2026-09-27T13:40:13Z", {FB: (32, 32, True)}),
+        _round(107249151, "2026-09-27T13:23:31Z", {FB: (32, 32, True)}),
+    ]
+    # in_flight is EMPTY -> the old code produced no row for FB at all.
+    card = C.build_card(rounds, [], now, majority_active={FB: True})
+    fb = next((r for r in card["rows"] if r["hash"] == FB), None)
+    assert fb is not None, "tallied hash must get a row even when absent from in_flight"
+    assert fb["yes_carried"] == 32 and fb["count_state"] == "passing"
+    assert fb["ledger_holding"] is True
+    # Null in-flight name -> name falls back to the short hash, count still shown.
+    assert fb["name"] == FB[:8]
+
+
+def test_row_matches_by_hash_even_with_named_inflight_entry():
+    # Same hash present in in_flight WITH a name, and tallied -> one row, named,
+    # count shown. Proves the union is keyed by hash (no duplicate, name wins).
+    FB = "14A2B45E48A4A124D1BBA657AC7B0DC3D5EA8C256C89E8F0D8142D32960A7944"
+    now = dt.datetime(2026, 9, 27, 13, 45, 0, tzinfo=UTC)
+    rounds = [
+        _round(107249407, "2026-09-27T13:40:13Z", {FB: (32, 32, True)}),
+        _round(107249151, "2026-09-27T13:23:31Z", {FB: (32, 32, True)}),
+    ]
+    card = C.build_card(rounds, [{"hash": FB, "name": "fixBatchV1_2"}], now,
+                        majority_active={FB: True})
+    fbs = [r for r in card["rows"] if r["hash"] == FB]
+    assert len(fbs) == 1 and fbs[0]["name"] == "fixBatchV1_2"
+    assert fbs[0]["yes_carried"] == 32 and fbs[0]["count_state"] == "passing"
+
+
 def test_reset_state_when_previous_round_passed():
     now = dt.datetime(2026, 9, 23, 12, 50, tzinfo=UTC)
     rounds = [

@@ -146,10 +146,23 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     thr_full = max(1, (unl_full * 80) // 100)
     needed_full = thr_full if unl_full == 1 else thr_full + 1
     not_heard = max(0, unl_full - latest["seen"])
+    # Build a row for EVERY hash the recorder tallied this round, keyed by
+    # hash — not just the in_flight list (Charlie 2026-09-27). An amendment our
+    # node recognizes on a newer binary (e.g. fixBatchV1_2 on rippled 3.4.1)
+    # is a live Majorities entry with a real tally (32/32) but may be absent
+    # from state['in_flight']; matching by name/in_flight dropped its count.
+    # in_flight only supplies the display name when we have one.
+    name_by_hash = {(a.get("hash") or "").upper(): a.get("name")
+                    for a in (in_flight or []) if a.get("hash")}
+    tally_hashes = list(latest["tallies"].keys())
+    # Union preserves in_flight order first, then any tally-only hashes.
+    ordered_hashes = [h for h in ({**name_by_hash}.keys())]
+    for h in tally_hashes:
+        if h not in ordered_hashes:
+            ordered_hashes.append(h)
     rows = []
     any_reset = False
-    for a in in_flight or []:
-        h = (a.get("hash") or "").upper()
+    for h in ordered_hashes:
         yr, yc, passes = latest["tallies"].get(h, (0, 0, False))
         prev_passes = prev["tallies"].get(h, (0, 0, False))[2] if prev else None
         # Count-line certainty against the full-UNL bar (needed_full):
@@ -179,7 +192,7 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         # majority walker -> template omits the headline. Never vote-derived.
         ledger_holding = majority_active.get(h)  # True / False / None
         rows.append({
-            "hash": h, "name": a.get("name") or h[:8],
+            "hash": h, "name": name_by_hash.get(h) or h[:8],
             "yes_round": yr, "yes_carried": yc, "passes": passes,
             "prev_passes": prev_passes, "status": status,
             "count_state": count_state, "not_heard": not_heard,
