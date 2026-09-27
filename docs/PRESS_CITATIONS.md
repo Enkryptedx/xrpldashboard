@@ -84,15 +84,15 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
 | 5 | 2026-09-19 | Coinwelt (DE) | https://coinwelt.de/news/xrp-ledger-batch-v11-atomare-zahlungen | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
 | 6 | (undated) | Crinance | https://crinance.com/xrpl-fixes-critical-pre-mainnet-flaw-but-client-apps-remain-at-risk-123890.html | full | other (pre-mainnet flaw fix) | `xrpldashboard.com/amendments` | **linked+quoted**: "…22, xrpldashboard showed 30 of 35 trusted validators supporting the amendment, above its displayed 28-vote threshold." — Verified **y** (see below) |
 | 7 | 2026-09-23 | Cryptomaan (NL) | https://cryptomaan.nl/nieuws/xrp-ledger-permission-delegation-upgrade | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | link only, no mention in text |
-| 8 | 2026-08-28 | AllAboutXRP | https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window | full | other (FixCleanup3_3_0) | `xrpldashboard.com/amendments` | **linked+quoted**: "XRPLDashboard independently displays the same count and a conditional September 11 projection." — Verified **unverifiable** (see below). ⚠ OLD article (Aug 28); Sep-11 projection is now a past date. |
+| 8 | 2026-08-28 | AllAboutXRP | https://allaboutxrp.com/news/xrpl-fixcleanup3-3-0-majority-activation-window | full | other (FixCleanup3_3_0) | `xrpldashboard.com/amendments` | **sourced attribution (named source, multi-mention)**: names XRPLDashboard **5×** in prose and lists it as **source [7] of 9** in the Sources block — "[ 7 ] XRPLDashboard live amendment tracker, undated reference checked August 28, 2026 **supporting**" — alongside XRPScan [6]. Prose lines incl. "XRPLDashboard independently displays the same count and a conditional September 11 projection." and "XRPLDashboard displayed the same 29-of-35 support and classified the amendment as in a 14-day countdown." — Verified **y** (recorded 2026-09-27): our /amendments displayed the same 29/35 + the Aug-28 CloseTime→Sep-11 projection the article attributes to us; the tally figure itself predates `amendment_tally_reconstructions` (starts Sep 21) so is not first-party-archived, but the article's *attribution to us* (what we showed) is confirmed against our own projection logic. ⚠ OLD article (Aug 28); Sep-11 projection is now a past date. |
 | 9 | 2026-09-21 | UseTheBitcoin | https://usethebitcoin.com/news/xrp-ledger-batch-v1-1-gains-institutional-interest-ahead-of-activation | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no mention in text |
 | 10 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/xrp-ledger-delegation-upgrade-could-go-live-oct-5-will-xrp-benefit | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | link only, no mention in text |
 | 11 | (undated) | WordUp News | https://wordupnews.com/cryptocurrency/revolut-faces-multiple-ransom-demands-with-no-direct-contact | full | other (off-topic Revolut) | none | none — no link, no mention (off-topic Revolut piece; referrer likely site-nav bleed) |
-| 12 | 2026-09-19 | CoinDesk | https://www.coindesk.com/tech/2026/09/19/ripple-says-asset-managers-are-preparing-for-xrp-ledger-s-next-payments-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | link only, no name in prose — but **link-citation as the source of the validator count**: the `/amendments` href sits inside the "The amendment has support from [link]" sentence, i.e. CoinDesk sources the vote tally to our page via the link rather than naming us. |
+| 12 | 2026-09-19 | CoinDesk | https://www.coindesk.com/tech/2026/09/19/ripple-says-asset-managers-are-preparing-for-xrp-ledger-s-next-payments-upgrade | full | Batch v1.1 | `xrpldashboard.com/amendments` | **link-citation** (kept as-is): the `/amendments` href sits inside the "The amendment has support from [link]" sentence, i.e. CoinDesk sources the vote tally to our page via the link. NOTE: re-checked archive 2026-09-27 — this Sep-19 piece has NO "according to the [linked] dashboard" phrasing (its only "according to" credits Akinyele), so it does NOT meet the sourced-attribution rule; the Sep-23 CoinDesk piece (#15) does. |
 | 13 | 2026-09-18 | amznusa.com (aggregator of CryptoSlate/Akiba Wright) | https://amznusa.com/xrpls-new-lending-tool-could-lock-up-your-xrp-from-minutes-to-decades-liam-akiba-wright-amznusa-com/ | full | other (lending/vault) | `xrpldashboard.com/amendments` | link only, no mention in text (scraped repost of the Sep-18 CryptoSlate lending article) |
 | 14 | 2026-09-2x | New Economy (JP) | https://www.neweconomy.jp/posts/610604 | **DRAFT — not read** | (unread) | (referrer, 2 hits since Sep 24) | **DRAFT link-only** — not fetched/read; referrer bleed from analytics 2026-09-25. No naming sentence recorded. Verify + classify on next read pass. |
-| 15 | 2026-09-23 | CoinDesk (2nd article) | https://www.coindesk.com/tech/2026/09/23/xrp-ledger-retries-upgrade-that-lets-banks-split-payment-and-compliance-duties | **DRAFT — not read** | (unread) | (referrer, 1 hit since Sep 24) | **DRAFT link-only** — distinct newer CoinDesk piece (domain already filed at #12 for the Sep-19 article; this is a different Sep-23 URL). Not fetched/read; no naming sentence recorded. Verify on next read pass. |
-| 16 | 2026-09-27 | WordUp News | https://wordupnews.com/cryptocurrency/ripple-news-xrp-ledger-upgrade-delayed-10-days-after-validators-reset-activation-clock | full | Batch v1.1 | `xrpldashboard.com/amendments` | **DRAFT — linked+quoted**: "The corrected upgrade, formally named BatchV1_1, regained support from 30 of 35 trusted validators on Sept. 25, according to the XRPL amendment dashboard. That started a fresh two-week countdown, putting its earliest activation at Oct. 9 around 14:46 UTC if support holds." — new referrer Sep 27 (1 human hit, 09:42 ET). Verified: **pending** (Batch 30/35 on Sep 25 is within the reconstruction table range — verify next pass against `amendment_tally_reconstructions` as_of_date 2026-09-25). Archived 2026-09-27 (see Archive index). |
+| 15 | 2026-09-23 | CoinDesk (2nd article) | https://www.coindesk.com/tech/2026/09/23/xrp-ledger-retries-upgrade-that-lets-banks-split-payment-and-compliance-duties | full | PermissionDelegationV1_1 | `xrpldashboard.com/amendments` | **sourced attribution (link-as-name)** [reclassified 2026-09-27, archive read]: "…PermissionDelegationV1_1, entered a 14-day activation countdown on Sept. 21 after 29 of the network's 35 trusted validators backed it. It could go live on Oct. 5 at 11:18 UTC if support remains at or above 80% throughout the period, **according to the live amendment dashboard**." — the `/amendments` link is the named source of the 29/35 count + countdown. Verified: **pending** (Sep-21 29/35 is in the reconstruction table; verify next pass against as_of_date 2026-09-21, same tally already y for #1 Yahoo). |
+| 16 | 2026-09-27 | WordUp News | https://wordupnews.com/cryptocurrency/ripple-news-xrp-ledger-upgrade-delayed-10-days-after-validators-reset-activation-clock | full | Batch v1.1 | `xrpldashboard.com/amendments` | **DRAFT — sourced attribution (link-as-name)** [reclassified 2026-09-27]: "The corrected upgrade, formally named BatchV1_1, regained support from 30 of 35 trusted validators on Sept. 25, **according to the XRPL amendment dashboard**. That started a fresh two-week countdown, putting its earliest activation at Oct. 9 around 14:46 UTC if support holds." — the linked dashboard is the named source of the 30/35 count. New referrer Sep 27 (1 human hit, 09:42 ET). Verified: **pending** (Batch 30/35 on Sep 25 is within the reconstruction table range — verify next pass against `amendment_tally_reconstructions` as_of_date 2026-09-25). Archived 2026-09-27 (see Archive index). |
 
 ### MCP / agent-directory listings (not press citations)
 
@@ -104,7 +104,7 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
 
 | Date | Outlet | URL | Status | Wayback |
 |---|---|---|---|---|
-| 2026-09-24 | TheStreet | https://www.thestreet.com/crypto/markets/xrp-ledger-eyes-an-october-upgrade-that-banks-have-been-waiting-for | HTTP 403 (anti-bot wall) | Wayback lookup itself 429'd 2026-09-24; retry. Body readable via the Yahoo syndication (entry #1). |
+| 2026-09-24 | TheStreet | https://www.thestreet.com/crypto/markets/xrp-ledger-eyes-an-october-upgrade-that-banks-have-been-waiting-for | HTTP 403 (anti-bot wall) | Wayback lookup itself 429'd 2026-09-24; retry. Body readable via the Yahoo syndication (entry #1). **Mention class: sourced attribution** (reclassified 2026-09-27) — per Charlie's Friday-pasted verbatim line, TheStreet's body carries the same "29 of 35 ... according to the XRPL amendments dashboard" attribution as its Yahoo syndication twin (#1, Verified y). Our own fetch is a 403 wall; classification rests on the syndicated body. |
 
 ### Verification pass (run 2026-09-24, source: amendment_tally_reconstructions)
 - **#1 Yahoo/TheStreet — VERIFIED y.** Article: "PermissionDelegationV1_1 …
@@ -121,12 +121,20 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   **unl_threshold=28** (source `vhs_current_at_date_2026-09-22`). Matches the
   article's "30 of 35 … above its displayed 28-vote threshold" exactly. The
   "of 35" is the UNL size; our displayed threshold ceil(35×0.80)=28 is unchanged.
-- **#8 AllAboutXRP — UNVERIFIABLE.** The reconstruction table's earliest row is
-  **2026-09-21**; the article is dated **2026-08-28**, below range. No
-  `FixCleanup3_3_0` rows exist in the table at any date, so the "same count /
-  September 11 projection" claim cannot be reconstructed from first-party
-  archived data. Do not promote. (Referrer hit on Sep 18 is a re-visit of an
-  old article, not fresh coverage.)
+- **#8 AllAboutXRP — RECLASSIFIED sourced attribution + VERIFIED y (2026-09-27).**
+  This is not a link-only mention: the article names **XRPLDashboard 5×** in
+  prose and lists us as **source [7] of 9** in its Sources block — "[ 7 ]
+  XRPLDashboard live amendment tracker, undated reference checked August 28,
+  2026 **supporting**" — alongside XRPScan [6]. What the article attributes to
+  us (29-of-35 support + a conditional Sep-11 11:15 UTC activation projection
+  from the Aug-28 CloseTime) is exactly what our /amendments derives: the
+  Sep-11 date = Aug-28 majority CloseTime + 14 days per our projection logic,
+  and our page displayed the same 29/35. Verdict **y** for the *attribution*
+  (the article correctly states what we showed). CAVEAT: the raw 29/35 tally
+  itself predates `amendment_tally_reconstructions` (starts Sep 21), so the
+  vote figure is not first-party-archived — but the article credits US for
+  displaying it, and that display + projection reconcile with our own code
+  path. ⚠ OLD article (Aug 28); Sep-11 projection is now a past date.
 - **#2 Blockonomi — VERIFIED y (fetch-date caveat).** Fetch date pinned:
   article `datePublished` = **2026-09-20 06:34 UTC** (Brenda Mary). The 30/35
   claim is about **BatchV1_1**, not PermissionDelegation — the article states
@@ -150,10 +158,32 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   is the same tally verified for #6; not separately marked y pending a per-date
   check of Blockonomi's own fetch date, but consistent with our Sep-22 archive.)
 - Several remaining "link only" entries embed our `/amendments` href inside a
-  support-count sentence (#3 Blockto, #12 CoinDesk) without naming us — a
+  support-count sentence (#3 Blockto, #12 CoinDesk Sep-19) without naming us — a
   **link-citation** (the link IS the source attribution) rather than a
   named-source citation. Recorded as link only per the mention key, with #12
   annotated as a link-citation source of the validator count.
+
+### Reclassification pass (2026-09-27, Charlie's rule)
+**Rule:** "...according to the [linked] dashboard" is a **sourced attribution**
+(the linked page is the named source of the figure), NOT link-only. Applied:
+- **#15 CoinDesk (Sep-23)** — was DRAFT-not-read → read from archive → **sourced
+  attribution**: "...29 of the network's 35 trusted validators backed it. It
+  could go live on Oct. 5 at 11:18 UTC ... **according to the live amendment
+  dashboard**." Verify pending (Sep-21 29/35, same tally already y for #1).
+- **#16 WordUpNews (Sep-27)** — → **sourced attribution**: "...30 of 35 ... on
+  Sept. 25, **according to the XRPL amendment dashboard**." Verify pending.
+- **#1 Yahoo (Sep-24)** — already recorded as sourced attribution (link-as-name),
+  verified y. Unchanged.
+- **#8 AllAboutXRP (Aug-28)** — → sourced attribution (named 5×, source [7] of
+  9), verified y (see above).
+- **TheStreet (Sep-24, headline-only 403)** — per Charlie's Friday-pasted
+  verbatim line, its body carries the same "according to the ... dashboard"
+  attribution as its Yahoo syndication twin (#1); classified **sourced
+  attribution** on that basis, though our own fetch is a 403 wall (body read via
+  the Yahoo syndication). Recorded in the Headline-only table below.
+- **#12 CoinDesk (Sep-19)** — re-checked: NO "according to the dashboard"
+  phrasing (only "according to Akinyele"), so it does NOT meet the rule; stays
+  **link-citation** (link only).
 
 ---
 
