@@ -272,7 +272,7 @@
   {% endif %}
 
   <div id="rippled-3-3-0" class="recent-callout" style="border-color: rgba(34,211,238,0.24); background: linear-gradient(180deg, rgba(34,211,238,0.04), var(--card));">
-    <div class="label" style="color: var(--cyan);">{{ _('rippled v3.3.0 · released 2026-08-06 · six new amendments') }}</div>
+    <div class="label" style="color: var(--cyan);">{{ _('rippled 3.3.0 amendment set · six new amendments · our node runs 3.4.1') }}</div>
     <p style="margin: 6px 0 0;">
       {{ _('The 3.3.0 release bundles six amendments aimed at institutional Multi-Purpose-Token tokenization:') }}
       <code>BatchV1_1</code>, <code>ConfidentialTransfer</code>, <code>DynamicMPT</code>,
@@ -281,8 +281,8 @@
     </p>
     <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
       {{ _('Two of the six — ConfidentialTransfer (XLS-96) and Sponsor (XLS-68) — currently appear on this page under') }}
-      <em>{{ _('In development — not yet on-chain') }}</em>{{ _(' because the XRPL node answering this request is on an earlier binary. They will migrate to the in-flight list once the responding node upgrades to 3.3.0 and returns them from the') }}
-      <code>feature</code> {{ _('RPC. No manual edit here — the page follows the wire.') }}
+      <em>{{ _('In development — not yet in a voting window') }}</em>{{ _('. Our node (rippled 3.4.1) already recognises both from the') }}
+      <code>feature</code> {{ _('RPC (supported, not yet enabled), but neither has opened an on-ledger Amendments Majorities entry, so there is no 14-day countdown to track yet. They move to the in-flight list the moment the ledger records a majority for them. No manual edit here — the page follows the wire.') }}
     </p>
     <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
       {{ _('Release notes:') }}
