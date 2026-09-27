@@ -289,11 +289,22 @@ def _unl_validator_set(payload: Optional[dict]) -> set[str]:
     Returns empty set if payload shape unfamiliar."""
     if not isinstance(payload, dict):
         return set()
-    # Various UNL formats — try common shapes
+    # Various UNL formats — try common shapes. Drop blank/empty keys: a
+    # payload entry with no validation_public_key must NEVER become an empty
+    # string in the set (bug 2026-09-27: an unkeyed entry injected '' into the
+    # set, so the daily diff manufactured a phantom '' added/removed every day
+    # — surfaced on the homepage as "UNL: 1 validator removed" with an empty
+    # preview, no real list change behind it).
     for key in ("validators", "public_validation_keys", "pubkeys"):
         vals = payload.get(key)
         if isinstance(vals, list):
-            return {v if isinstance(v, str) else v.get("validation_public_key", "") for v in vals if v}
+            out = set()
+            for v in vals:
+                k = v if isinstance(v, str) else (v.get("validation_public_key") or v.get("pubkey") or "")
+                k = (k or "").strip()
+                if k:
+                    out.add(k.upper())
+            return out
     return set()
 
 
@@ -490,37 +501,82 @@ def _chain_lineage_delta(before: Optional[dict], after: Optional[dict]) -> list[
     return lines
 
 
-def _unl_delta(before: Optional[dict], after: Optional[dict]) -> list[dict]:
-    """UNL validator churn — added/removed pubkeys between two UNL snapshots."""
+# Raw signed-list URLs so a reader can decode the before/after themselves.
+# Keyed by the unl_snapshots `source` value.
+_UNL_RAW_URLS = {
+    "ripple": "https://vl.ripple.com/",
+    "xrplf": "https://unl.xrpl.foundation/",
+}
+
+
+def _unl_seq(payload: Optional[dict]):
+    """Signed-list sequence from a UNL snapshot payload, or None."""
+    if not isinstance(payload, dict):
+        return None
+    return payload.get("sequence")
+
+
+def _unl_delta(before: Optional[dict], after: Optional[dict],
+               source: Optional[str] = None) -> list[dict]:
+    """UNL validator churn between two signed-list snapshots.
+
+    TRUTH GATE (Charlie 2026-09-27): a UNL change item is emitted ONLY when a
+    real signed-list transition is provable — i.e. the sequence actually
+    changed between before/after AND we can name the added/removed validator
+    key(s). No sequence change, or an empty key set, => NOTHING is emitted.
+    This closes the 2026-09-27 phantom-removal bug where an empty-string key
+    and/or a same-sequence re-sign produced a daily "1 validator removed" line
+    with no evidence a reader could check.
+    """
     b_set = _unl_validator_set(before)
     a_set = _unl_validator_set(after)
     if not a_set and not b_set:
         return []
     added = sorted(a_set - b_set)
     removed = sorted(b_set - a_set)
-    lines: list[dict] = []
+    if not added and not removed:
+        return []
+
+    # Require a captured before/after sequence AND a real sequence change.
+    b_seq = _unl_seq(before)
+    a_seq = _unl_seq(after)
+    if b_seq is None or a_seq is None:
+        # No captured before/after sequence -> we cannot prove a transition.
+        return []
+    if str(b_seq) == str(a_seq):
+        # Same signed-list sequence: any set difference here is a parse/data
+        # artifact, not a real list change. A genuine add/remove bumps the
+        # sequence. Emit nothing.
+        return []
+
+    raw_url = _UNL_RAW_URLS.get((source or "").lower())
     # Charlie ruling 2026-09-08 evening: readers don't run a node.
-    # UNL clause becomes "— the default list of validators the network
-    # trusts." (not "your rippled follows").
     UNL_MEANING = " — the default list of validators the network trusts."
+    lines: list[dict] = []
+
+    def _item(kind: str, keys: list[str]) -> dict:
+        preview = ", ".join(v[:10] + "…" for v in keys[:3])
+        rest = f" (+{len(keys) - 3} more)" if len(keys) > 3 else ""
+        item = {
+            "category": "unl",
+            "line": f"UNL: {len(keys)} validator(s) {kind} ({preview}{rest}){UNL_MEANING}",
+            "before": removed or None,
+            "after": added or None,
+            # Proof payload so the item can be checked, not just claimed.
+            "unl_source": source,
+            "before_sequence": b_seq,
+            "after_sequence": a_seq,
+            "validator_keys": keys,
+            "raw_list_url": raw_url,
+            "prove_url": "/network",
+            "source": "unl_snapshot",
+        }
+        return item
+
     if added:
-        preview = ", ".join(v[:10] + "…" for v in added[:3])
-        rest = f" (+{len(added) - 3} more)" if len(added) > 3 else ""
-        lines.append({
-            "category": "unl",
-            "line": f"UNL: {len(added)} validator(s) added ({preview}{rest}){UNL_MEANING}",
-            "before": None, "after": added,
-            "prove_url": "/network", "source": "unl_snapshot",
-        })
+        lines.append(_item("added", added))
     if removed:
-        preview = ", ".join(v[:10] + "…" for v in removed[:3])
-        rest = f" (+{len(removed) - 3} more)" if len(removed) > 3 else ""
-        lines.append({
-            "category": "unl",
-            "line": f"UNL: {len(removed)} validator(s) removed ({preview}{rest}){UNL_MEANING}",
-            "before": removed, "after": None,
-            "prove_url": "/network", "source": "unl_snapshot",
-        })
+        lines.append(_item("removed", removed))
     return lines
 
 
@@ -744,8 +800,14 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
     anomalies (newest first) then scalar deltas that clear the floor
     (ranked by |%|), quiet-day fill for empty slots (below-floor category
     first, with reason). Chain-leaf + ledger-index advances never slot.
+
+    Corrected items (Charlie 2026-09-27) never reach the homepage strip: an
+    item flagged corrected / exclude_from_homepage is retained in the stored
+    envelope for the record but is filtered out here so a known-wrong line
+    (e.g. the phantom "validator removed") can't slot.
     """
-    changes = envelope.get("changes") or []
+    changes = [c for c in (envelope.get("changes") or [])
+               if not c.get("exclude_from_homepage") and not c.get("corrected")]
 
     # Header: latest validated ledger index (from the ledger-index change if
     # present, else best-effort None so the template can render dashes).
