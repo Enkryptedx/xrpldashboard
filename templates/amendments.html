@@ -280,9 +280,8 @@
       {{ _('Each still has to hold an 80 percent validator majority for 14 consecutive days before activation.') }}
     </p>
     <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
-      {{ _('Two of the six — ConfidentialTransfer (XLS-96) and Sponsor (XLS-68) — currently appear on this page under') }}
-      <em>{{ _('In development — not yet in a voting window') }}</em>{{ _('. Our node (rippled 3.4.1) already recognises both from the') }}
-      <code>feature</code> {{ _('RPC (supported, not yet enabled), but neither has opened an on-ledger Amendments Majorities entry, so there is no 14-day countdown to track yet. They move to the in-flight list the moment the ledger records a majority for them. No manual edit here — the page follows the wire.') }}
+      {{ _('All six are recognised by our node (rippled 3.4.1) from the') }}
+      <code>feature</code> {{ _('RPC and are tracked below in the in-flight list with their live trusted-validator vote counts. No manual edit here — the page follows the wire.') }}
     </p>
     <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
       {{ _('Release notes:') }}
@@ -585,8 +584,17 @@
             <span class="maj-flag mono" style="opacity:0.75;">{{ _('(flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %})</span>
           {% endif %}
           {% if mh.vote_count_at_first and mh.unl_threshold %}
-            {# unl_threshold is rippled's threshold_ (28); a majority needs threshold+1. #}
-            <span class="maj-votes mono">({{ mh.vote_count_at_first }} {{ _('yes') }} · {{ _('needs') }} {{ mh.unl_threshold + 1 }})</span>
+            {# unl_threshold is rippled's threshold_ (28); a majority needs threshold+1.
+               Source label (Charlie 2026-09-27): this count comes from the ledger's
+               own Majority entry as read by our node, so it is labeled 'our node'
+               to distinguish it from the Foundation-sourced vote strips below. #}
+            <span class="maj-votes mono">({{ mh.vote_count_at_first }} {{ _('yes') }} · {{ _('needs') }} {{ mh.unl_threshold + 1 }} · <span class="dim">{{ _('source: our node') }}</span>)</span>
+          {% endif %}
+          {% if mh.desc %}
+            <div class="maj-desc dim" style="font-size: 0.8rem; margin-top: 2px;">
+              {{ _(mh.desc) }}
+              {% if mh.source_label %}<span style="opacity:0.8;"> — {{ _('source:') }} {% if mh.source_url %}<a href="{{ mh.source_url }}" rel="nofollow noopener" target="_blank">{{ mh.source_label }}</a>{% else %}{{ mh.source_label }}{% endif %}</span>{% endif %}
+            </div>
           {% endif %}
           {% if mh.removed_iso %}
             · <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ _('majority lost at flag ledger') }}{% if mh.removed_seen_ledger %} {{ mh.removed_seen_ledger }}{% endif %}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% else %} {{ mh.removed_iso }}{% endif %}</span>

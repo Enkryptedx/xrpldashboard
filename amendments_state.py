@@ -81,25 +81,15 @@ OBSOLETE_AMENDMENTS = {
 #
 # Empty list = section does not render on /amendments. Content commits
 # add entries one at a time so each ships and verifies in isolation.
+# Charlie 2026-09-27: Sponsor (XLS-68) and Confidential Transfers for MPTs
+# (XLS-96) were REMOVED from this list. Our node (rippled 3.4.1) recognises
+# both from the feature RPC and trusted validators are actively voting on
+# them (Sponsor 6 yes, ConfidentialTransfer 14 yes as of 2026-09-27), so they
+# belong in the in-flight list with their live vote counts — not in
+# "in development". Smart Escrows (XLS-100) remains: it genuinely has not
+# shipped in a released binary (its companion WASM-engine XLS has no number
+# assigned yet), so it does not appear in any node's feature RPC.
 IN_DEVELOPMENT_AMENDMENTS = [
-    {
-        "xls_number":   "XLS-68",
-        "name":         "Sponsor",
-        "kind":         "feature",
-        "summary":      _l(
-            "Lets one account pay the transaction fees and reserves for "
-            "another account, so end users can transact on XRPL without "
-            "holding XRP themselves. Supports two modes: co-signed (the "
-            "sponsor signs each transaction) and pre-funded (the sponsor "
-            "opens a Sponsorship ledger object the other account can draw "
-            "from). Defines two granular permissions — SponsorFee and "
-            "SponsorReserve — both drawn from the account-permission "
-            "namespace established by XLS-74."
-        ),
-        "source_label": "XLS-68 Sponsored Fees and Reserves (XRPL-Standards)",
-        "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves",
-        "dependencies": ["XLS-74 Account Permissions (Final)"],
-    },
     {
         "xls_number":   "XLS-100",
         "name":         "Smart Escrows",
@@ -120,28 +110,6 @@ IN_DEVELOPMENT_AMENDMENTS = [
         "source_label": "XLS-100 Smart Escrows (XRPL-Standards)",
         "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0100-smart-escrows",
         "dependencies": ["WASM engine and API spec (companion XLS, no number assigned yet)"],
-    },
-    {
-        "xls_number":   "XLS-96",
-        "name":         "Confidential Transfers for Multi-Purpose Tokens",
-        "kind":         "feature",
-        "summary":      _l(
-            "Adds confidential balances and transfers to Multi-Purpose "
-            "Tokens: individual balances and transfer amounts are "
-            "encrypted under EC-ElGamal and validated by zero-knowledge "
-            "proofs, so validators and external observers can't see "
-            "them while supply invariants are still enforced. Introduces "
-            "five new transaction types covering the confidential-MPT "
-            "round-trip and clawback. Builds on XLS-33 MPTokensV1 "
-            "(already enabled on mainnet); the sfMutableFlags portion "
-            "also requires DynamicMPT once it activates."
-        ),
-        "source_label": "XLS-96 Confidential Transfers for MPTs (XRPL-Standards)",
-        "source_url":   "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-mpt",
-        "dependencies": [
-            "XLS-33 MPTokensV1 (enabled on mainnet)",
-            "XLS-94 DynamicMPT (in-flight; required for sfMutableFlags)",
-        ],
     },
 ]
 
@@ -172,6 +140,10 @@ KNOWN_UNRECOGNIZED_HASHES = {
     # by computing SHA-512Half("fixBatchV1_2") == this exact hash.
     "14A2B45E48A4A124D1BBA657AC7B0DC3D5EA8C256C89E8F0D8142D32960A7944": {
         "name": "fixBatchV1_2",
+        # Charlie 2026-09-27: XRPScan lists it (name + introduced 3.4.1) but
+        # publishes no description, and there is no XLS/blog text for it yet.
+        # Do not guess at behaviour — state exactly what is knowable + cite.
+        "desc": "Fix to Batch; details not yet published.",
         "source_label": "XRPScan amendments API · SHA-512Half(\"fixBatchV1_2\") match",
         "source_url": "https://api.xrpscan.com/api/v1/amendments",
     },
@@ -302,6 +274,9 @@ def fetch_amendments_state():
             "name": name,
             "recognized": recognized,
             "known_meta": known_meta,
+            "desc": (known_meta or {}).get("desc"),
+            "source_label": (known_meta or {}).get("source_label"),
+            "source_url": (known_meta or {}).get("source_url"),
             "majority_close_time_xrpl": close,
             "majority_reached_iso": majority_iso,
             "activation_eta_iso": activation_iso,

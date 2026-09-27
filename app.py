@@ -6531,6 +6531,22 @@ def _load_amendment_majority_history():
                     "removed_close_iso": _xrpl_close_to_iso_or_none(r[11]),
                     "correction_note": r[12],
                 })
+        # Charlie 2026-09-27: attach a one-line description + citable source
+        # for any row whose amendment we can only name from an off-ledger
+        # source (e.g. fixBatchV1_2, introduced in rippled 3.4.1 and not yet
+        # documented). Pulled from amendments_state.KNOWN_UNRECOGNIZED_HASHES
+        # so the citation lives in one place. Rows without an entry get no
+        # desc (template renders nothing) — we never guess at behaviour.
+        try:
+            from amendments_state import KNOWN_UNRECOGNIZED_HASHES as _KUH
+            for _row in rows:
+                _meta = _KUH.get(_row.get("hash") or "")
+                if _meta and _meta.get("desc"):
+                    _row["desc"] = _meta["desc"]
+                    _row["source_label"] = _meta.get("source_label")
+                    _row["source_url"] = _meta.get("source_url")
+        except Exception:  # noqa: BLE001 — desc is best-effort, never 500s
+            pass
         return rows
     except Exception:  # noqa: BLE001 — never let history reads 500 the page
         return []
