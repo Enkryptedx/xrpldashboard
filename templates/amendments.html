@@ -128,6 +128,19 @@
       border-left: 1px solid var(--border);
       padding-left: 18px;
     }
+    /* Phone (Charlie 2026-09-27): once the grid wraps and the roll-call box
+       stacks UNDER the main column, a left border + left indent is wrong —
+       it reads as a stray vertical line. Flip to a full-width top divider. */
+    @media (max-width: 560px) {
+      .countdown-grid { gap: 0; }
+      .countdown-rollcall {
+        flex-basis: 100%; min-width: 0; width: 100%;
+        border-left: none; padding-left: 0;
+        border-top: 1px solid var(--border);
+        margin-top: 14px; padding-top: 12px;
+      }
+      .countdown-rollcall .rc-count { font-size: 1.05rem; }
+    }
     .countdown-rollcall .rc-headline {
       font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em;
       text-transform: uppercase; color: var(--cyan); margin-bottom: 4px;
