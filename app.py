@@ -6227,7 +6227,22 @@ def amendments():
     # read — None hides the card, never 500s the page.
     try:
         import roll_call_card
-        roll_call = roll_call_card.load_for_page(state)
+        # LEDGER TRUTH for the per-amendment Holding/Countdown-restarted headline:
+        # {HASH_UPPER: active}, active = removed_iso is None on the newest epoch.
+        # This alone drives the headline; the vote count never does (Charlie
+        # 2026-09-27 bug fix). A regained amendment is active -> Holding.
+        majority_active = {}
+        for _mh in (majority_history or []):
+            _h = (_mh.get("hash") or "").upper()
+            if not _h:
+                continue
+            # majority_history is newest-first per amendment; the first row we
+            # see for a hash is its current epoch. active True wins for the hash.
+            if _h not in majority_active:
+                majority_active[_h] = bool(_mh.get("active"))
+            elif _mh.get("active"):
+                majority_active[_h] = True
+        roll_call = roll_call_card.load_for_page(state, majority_active=majority_active)
     except Exception:  # noqa: BLE001
         roll_call = None
     # "Cite this day" (permalinks build 2026-09-26): newest SIGNED date

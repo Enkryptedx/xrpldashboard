@@ -337,10 +337,15 @@
       {# Roll-call join (Charlie 2026-09-26 20:12 ET): the count lives in the
          right-hand space of THIS box, matched by amendment hash. Headline
          Holding/Countdown-restarted is LEDGER TRUTH from the majority walker
-         (amendment_majority_history) — more than one history epoch for this
-         hash means it was lost and regained at least once, so the current
-         active run is a restart, not the original reach. Never the vote count. #}
+         (amendment_majority_history). LEDGER TRUTH ONLY (Charlie 2026-09-27):
+         the ACTIVE flag on the newest epoch (removed_iso is None) decides
+         Holding vs Countdown-restarted. A regained amendment is active =
+         Holding, NOT a permanent "restarted". Never the vote count, never the
+         epoch count. When the walker has no row yet but this IS a live
+         Majorities entry (m), it is holding right now → default true. #}
       {% set mh_epochs = (majority_history | selectattr('hash', 'equalto', m.hash) | list) if majority_history else [] %}
+      {% set mh_active = (mh_epochs | selectattr('active') | list | length) > 0 %}
+      {% set is_holding = mh_active if mh_epochs else true %}
       {% set rc_row = ((roll_call.rows | selectattr('hash', 'equalto', m.hash) | list | first)) if roll_call and roll_call.rows else none %}
       <div class="countdown">
         <span class="tag">{{ _('at majority · tracking 14-day window') }}</span>
@@ -372,9 +377,17 @@
         </div>
         </div>
 
-        {% if rc_row %}
-          <div class="countdown-rollcall" data-roll-call-box data-roll-call-hash="{{ m.hash }}">
-            <div class="rc-headline">{{ _('Countdown restarted') if mh_epochs|length > 1 else _('Holding') }}</div>
+        {% if roll_call %}
+          {# All three countdown boxes carry the sub-box. Headline is LEDGER
+             TRUTH (is_holding); the count line renders only when OUR node has a
+             roll-call tally for this hash (rc_row). An amendment our node does
+             not recognize (e.g. fixBatchV1_2) is in the ledger's Majorities but
+             never in our in_flight tallies, so it shows the ledger headline +
+             an honest "not in our roll call" note instead of a fabricated count. #}
+          <div class="countdown-rollcall" data-roll-call-box data-roll-call-hash="{{ m.hash }}" data-ledger-holding="{{ 'true' if is_holding else 'false' }}">
+            {# Headline = LEDGER TRUTH (is_holding), never the vote count. #}
+            <div class="rc-headline">{{ _('Holding') if is_holding else _('Countdown restarted') }}</div>
+            {% if rc_row %}
             <div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.unl_full }} {{ _('validators voted yes') }}</div>
             <div class="rc-need dim">{{ _('Needs') }} {{ roll_call.needed_full }} {{ _('to keep its countdown') }}</div>
             <div class="rc-state{{ ' rc-amber' if rc_row.count_state == 'too_close' else '' }}">
@@ -386,14 +399,19 @@
                 {{ _('Even if every unheard validator voted yes, it would still fall short.') }}
               {% endif %}
             </div>
+            {% else %}
+            {# Majorities entry our node doesn't recognize: no tally, so no count.
+               Never fabricate one. #}
+            <div class="rc-need dim">{{ _('Not in our node\'s roll call — present in the ledger\'s Majorities but not recognized by our node, so it carries no vote tally here.') }}</div>
+            {% endif %}
             <div class="rc-meta dim">
               {{ _('Last roll call') }} {{ roll_call.observed_et }}{% if roll_call.next_eta_min is not none %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% endif %}
             </div>
             <details class="rc-details">
               <summary>{{ _('Technical details') }}</summary>
               <div class="dim mono" style="font-size: 0.78rem; margin-top: 6px; line-height: 1.6;">
-                {{ _('Heard') }} {{ roll_call.seen }}/{{ roll_call.unl_size }} {{ _('trusted validators') }} ·
-                {{ _('best possible') }} {{ rc_row.best_possible }}
+                {% if rc_row %}{{ _('Heard') }} {{ roll_call.seen }}/{{ roll_call.unl_size }} {{ _('trusted validators') }} ·
+                {{ _('best possible') }} {{ rc_row.best_possible }}<br>{% endif %}{{ _('Headline source: on-ledger Amendments Majorities (majority walker), not the vote count.') }}
                 <br>{{ _('Voting ledger') }} {{ "{:,}".format(roll_call.voting_ledger) }} ({{ _('flag ledger') }} {{ "{:,}".format(roll_call.flag_ledger) }})
                 <br>{{ _('Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>
               </div>

@@ -21,13 +21,16 @@ FAKE_CARD = {
     "rows": [
         {"hash": "0F48", "name": "PermissionDelegationV1_1", "yes_round": 29, "yes_carried": 29,
          "passes": True, "prev_passes": True, "status": "passing", "short_by": 0,
-         "count_state": "passing", "not_heard": 1, "needed_full": 29, "best_possible": 30},
+         "count_state": "passing", "not_heard": 1, "needed_full": 29, "best_possible": 30,
+         "ledger_holding": True},
         {"hash": "9F28", "name": "Other", "yes_round": 16, "yes_carried": 16,
          "passes": False, "prev_passes": True, "status": "reset", "short_by": 12,
-         "count_state": "short", "not_heard": 1, "needed_full": 29, "best_possible": 17},
+         "count_state": "short", "not_heard": 1, "needed_full": 29, "best_possible": 17,
+         "ledger_holding": False},
         {"hash": "5A5A", "name": "Third", "yes_round": 6, "yes_carried": 6,
          "passes": False, "prev_passes": False, "status": "short", "short_by": 22,
-         "count_state": "too_close", "not_heard": 1, "needed_full": 29, "best_possible": 29},
+         "count_state": "too_close", "not_heard": 1, "needed_full": 29, "best_possible": 29,
+         "ledger_holding": True},
     ],
     "any_reset": True, "rounds_recorded": 8, "first_round_iso": "2026-09-26T11:44:53Z",
     "source": C.SOURCE_LABEL,
@@ -51,7 +54,7 @@ def test_card_hidden_by_default(client, monkeypatch):
 
 
 def test_card_renders_counts_only_and_reset_state(client, monkeypatch):
-    monkeypatch.setattr(C, "load_for_page", lambda state, now=None: dict(FAKE_CARD))
+    monkeypatch.setattr(C, "load_for_page", lambda state, now=None, majority_active=None: dict(FAKE_CARD))
     r = client.get("/amendments")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
@@ -71,7 +74,7 @@ def test_card_renders_counts_only_and_reset_state(client, monkeypatch):
 
 def test_card_stale_state_renders_red_notice(client, monkeypatch):
     card = dict(FAKE_CARD, stale=True, age_min=80, any_reset=False, rows=[])
-    monkeypatch.setattr(C, "load_for_page", lambda state, now=None: card)
+    monkeypatch.setattr(C, "load_for_page", lambda state, now=None, majority_active=None: card)
     r = client.get("/amendments")
     html = r.data.decode("utf-8")
     assert "Recorder stale:" in html and "80" in html

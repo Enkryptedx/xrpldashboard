@@ -77,6 +77,36 @@ def test_too_close_when_unheard_votes_could_decide():
     assert pd["count_state"] == "too_close" and pd["best_possible"] == 29
 
 
+def test_headline_is_ledger_truth_not_vote_count():
+    # THE BUG (Charlie 2026-09-27): the ledger's Amendments Majorities object
+    # says PD's majority is HOLDING (active, not removed) and the box counts
+    # to Oct 8 — but our node has only heard 28 of the needed 29 yes votes.
+    # The headline MUST read "Holding" from ledger truth; the shortfall only
+    # drives the amber count line. It must never flip the headline to
+    # "Countdown restarted" off a vote-count/epoch-count heuristic.
+    now = dt.datetime(2026, 9, 27, 13, 45, 0, tzinfo=UTC)
+    rounds = [
+        _round(107249407, "2026-09-27T13:40:13Z", {PD: (28, 28, True)}),
+        _round(107249151, "2026-09-27T13:23:31Z", {PD: (28, 28, True)}),
+    ]
+    # Ledger truth: PD majority is active/holding right now.
+    card = C.build_card(rounds, [IN_FLIGHT[0]], now, majority_active={PD: True})
+    pd = card["rows"][0]
+    # Headline input: ledger says holding.
+    assert pd["ledger_holding"] is True
+    # Count line still honestly amber (28 heard, 1 unheard, needs 29).
+    assert pd["count_state"] == "too_close" and pd["best_possible"] == 29
+    # And when the ledger says the run was removed, the SAME vote count must
+    # instead read as a restarted headline — proving the headline follows the
+    # ledger flag, not the count.
+    card2 = C.build_card(rounds, [IN_FLIGHT[0]], now, majority_active={PD: False})
+    assert card2["rows"][0]["ledger_holding"] is False
+    assert card2["rows"][0]["count_state"] == "too_close"  # count line unchanged
+    # Unknown hash (walker has no row) -> None -> template omits the headline.
+    card3 = C.build_card(rounds, [IN_FLIGHT[0]], now, majority_active={})
+    assert card3["rows"][0]["ledger_holding"] is None
+
+
 def test_reset_state_when_previous_round_passed():
     now = dt.datetime(2026, 9, 23, 12, 50, tzinfo=UTC)
     rounds = [

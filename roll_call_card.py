@@ -111,9 +111,20 @@ def seconds_per_ledger(rounds: list[dict]) -> float:
 
 # ── pure card builder ──
 
-def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | None = None) -> dict | None:
+def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | None = None,
+               majority_active: dict | None = None) -> dict | None:
     """rounds newest-first (from read_rounds); in_flight = state['in_flight']
-    ([{hash, name, ...}]). Returns the card dict or None when no round exists."""
+    ([{hash, name, ...}]).
+
+    majority_active: {HASH_UPPER: bool} — LEDGER TRUTH from the majority walker
+    (amendment_majority_history active flag = removed_iso is None). This is the
+    ONLY input that decides the per-row Holding vs Countdown-restarted headline.
+    The vote count NEVER touches the headline; it only drives the amber/green/
+    red count-line state. Absent/unknown hash -> None -> template shows no
+    ledger headline (count line still renders).
+
+    Returns the card dict or None when no round exists."""
+    majority_active = {(k or "").upper(): v for k, v in (majority_active or {}).items()}
     if not rounds:
         return None
     now = now or dt.datetime.now(dt.timezone.utc)
@@ -162,6 +173,11 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             any_reset = True
         else:
             status = "short"
+        # Ledger-truth headline (Charlie 2026-09-27): active majority on the
+        # Amendments object -> "Holding"; a run that was removed at a flag
+        # ledger -> "Countdown restarted". None = hash not tracked by the
+        # majority walker -> template omits the headline. Never vote-derived.
+        ledger_holding = majority_active.get(h)  # True / False / None
         rows.append({
             "hash": h, "name": a.get("name") or h[:8],
             "yes_round": yr, "yes_carried": yc, "passes": passes,
@@ -169,6 +185,7 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "count_state": count_state, "not_heard": not_heard,
             "needed_full": needed_full, "best_possible": best_possible,
             "short_by": max(0, needed_full - yc),
+            "ledger_holding": ledger_holding,
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
     return {
@@ -197,9 +214,16 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     }
 
 
-def load_for_page(state: dict, now: dt.datetime | None = None) -> dict | None:
-    """Route entry point. Gated + best-effort: returns None unless enabled,
-    past NOT_BEFORE, and the read succeeds."""
+def load_for_page(state: dict, now: dt.datetime | None = None,
+                  majority_active: dict | None = None) -> dict | None:
+    """Route entry point. Gated + best-effort: returns None unless enabled
+    and the read succeeds.
+
+    majority_active: {HASH_UPPER: bool} LEDGER TRUTH (active = removed_iso is
+    None) from amendment_majority_history, passed by the route. It alone drives
+    the per-amendment Holding/Countdown-restarted headline — never the vote
+    count. When the route can't supply it, the headline is simply omitted.
+    """
     if not is_enabled(now):
         return None
     try:
@@ -211,4 +235,5 @@ def load_for_page(state: dict, now: dt.datetime | None = None) -> dict | None:
                 rounds = read_rounds(cur)
     except Exception:  # noqa: BLE001 — render-killer rule: never 500 the page
         return None
-    return build_card(rounds, state.get("in_flight") or [], now)
+    return build_card(rounds, state.get("in_flight") or [], now,
+                      majority_active=majority_active)
