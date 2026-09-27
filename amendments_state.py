@@ -166,6 +166,15 @@ KNOWN_UNRECOGNIZED_HASHES = {
         "source_label": "rippled PR #7128 (merged 2026-05-13)",
         "source_url": "https://github.com/XRPLF/rippled/pull/7128",
     },
+    # Named 2026-09-26: introduced in rippled 3.4.1 (newer than any published
+    # tag/branch when our node's feature list was built, hence unrecognized).
+    # Identified from the XRPScan amendments API and independently confirmed
+    # by computing SHA-512Half("fixBatchV1_2") == this exact hash.
+    "14A2B45E48A4A124D1BBA657AC7B0DC3D5EA8C256C89E8F0D8142D32960A7944": {
+        "name": "fixBatchV1_2",
+        "source_label": "XRPScan amendments API · SHA-512Half(\"fixBatchV1_2\") match",
+        "source_url": "https://api.xrpscan.com/api/v1/amendments",
+    },
 }
 
 _cache_lock = threading.Lock()

@@ -118,6 +118,32 @@
       margin-bottom: 4px;
     }
 
+    /* Roll-call count — right-hand space inside each countdown box
+       (Charlie 2026-09-26 20:12 ET layout decision). Stacks under the
+       main column on narrow viewports. */
+    .countdown-grid { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+    .countdown-main { flex: 1 1 260px; min-width: 0; }
+    .countdown-rollcall {
+      flex: 1 1 200px; min-width: 190px;
+      border-left: 1px solid var(--border);
+      padding-left: 18px;
+    }
+    .countdown-rollcall .rc-headline {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em;
+      text-transform: uppercase; color: var(--cyan); margin-bottom: 4px;
+    }
+    .countdown-rollcall .rc-count {
+      font-size: 1.1rem; font-weight: 600; color: var(--text);
+    }
+    .countdown-rollcall .rc-need { font-size: 0.84rem; margin: 2px 0 6px; }
+    .countdown-rollcall .rc-state { font-size: 0.86rem; line-height: 1.4; color: var(--text); }
+    .countdown-rollcall .rc-state.rc-amber { color: var(--amber); font-weight: 600; }
+    .countdown-rollcall .rc-meta { font-size: 0.78rem; margin-top: 6px; }
+    .countdown-rollcall details.rc-details { margin-top: 8px; }
+    .countdown-rollcall details.rc-details summary {
+      cursor: pointer; font-size: 0.78rem; color: var(--dim);
+    }
+
     /* In-flight amendment cards */
     .amend-list { display: grid; gap: 10px; margin: 12px 0 0; }
     details.amend {
@@ -308,8 +334,18 @@
       {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes — 29 of the 35 on the current list, since rippled requires strictly more than its 80 percent threshold of 28. If the majority holds for 14 consecutive days, the amendment activates at the close of the first ledger after that window.') }}
     </p>
     {% for m in state.majorities %}
+      {# Roll-call join (Charlie 2026-09-26 20:12 ET): the count lives in the
+         right-hand space of THIS box, matched by amendment hash. Headline
+         Holding/Countdown-restarted is LEDGER TRUTH from the majority walker
+         (amendment_majority_history) — more than one history epoch for this
+         hash means it was lost and regained at least once, so the current
+         active run is a restart, not the original reach. Never the vote count. #}
+      {% set mh_epochs = (majority_history | selectattr('hash', 'equalto', m.hash) | list) if majority_history else [] %}
+      {% set rc_row = ((roll_call.rows | selectattr('hash', 'equalto', m.hash) | list | first)) if roll_call and roll_call.rows else none %}
       <div class="countdown">
         <span class="tag">{{ _('at majority · tracking 14-day window') }}</span>
+        <div class="countdown-grid">
+        <div class="countdown-main">
         <div class="name">
           {% if m.recognized and m.name %}
             {{ m.name }}
@@ -333,6 +369,37 @@
         <div class="when">
           {{ _('projected activation') }} ·
           {{ _('majority reached at fetch') }} {{ m.majority_reached_iso }}
+        </div>
+        </div>
+
+        {% if rc_row %}
+          <div class="countdown-rollcall" data-roll-call-box data-roll-call-hash="{{ m.hash }}">
+            <div class="rc-headline">{{ _('Countdown restarted') if mh_epochs|length > 1 else _('Holding') }}</div>
+            <div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.unl_full }} {{ _('validators voted yes') }}</div>
+            <div class="rc-need dim">{{ _('Needs') }} {{ roll_call.needed_full }} {{ _('to keep its countdown') }}</div>
+            <div class="rc-state{{ ' rc-amber' if rc_row.count_state == 'too_close' else '' }}">
+              {% if rc_row.count_state == 'too_close' %}
+                {{ _('Too close to call from our node') }} — {{ rc_row.not_heard }} {{ _('validator') if rc_row.not_heard == 1 else _('validators') }} {{ _('we haven\'t heard from could still decide it.') }}
+              {% elif rc_row.count_state == 'passing' %}
+                {{ _('Already over the bar even without every validator counted.') }}
+              {% else %}
+                {{ _('Even if every unheard validator voted yes, it would still fall short.') }}
+              {% endif %}
+            </div>
+            <div class="rc-meta dim">
+              {{ _('Last roll call') }} {{ roll_call.observed_et }}{% if roll_call.next_eta_min is not none %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% endif %}
+            </div>
+            <details class="rc-details">
+              <summary>{{ _('Technical details') }}</summary>
+              <div class="dim mono" style="font-size: 0.78rem; margin-top: 6px; line-height: 1.6;">
+                {{ _('Heard') }} {{ roll_call.seen }}/{{ roll_call.unl_size }} {{ _('trusted validators') }} ·
+                {{ _('best possible') }} {{ rc_row.best_possible }}
+                <br>{{ _('Voting ledger') }} {{ "{:,}".format(roll_call.voting_ledger) }} ({{ _('flag ledger') }} {{ "{:,}".format(roll_call.flag_ledger) }})
+                <br>{{ _('Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>
+              </div>
+            </details>
+          </div>
+        {% endif %}
         </div>
 
         {% if not m.recognized %}

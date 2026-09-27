@@ -22,13 +22,15 @@ def _round(vl, iso, tallies, seen=34, unl=35, trusted=34, thr=27, needed=28):
 IN_FLIGHT = [{"hash": PD, "name": "PermissionDelegationV1_1"}, {"hash": OTHER, "name": "Other"}]
 
 
-def test_gate_requires_flag_and_not_before():
+def test_gate_requires_flag_only():
+    # Not-before gate removed 2026-09-27 (one full day of recording elapsed).
+    # The env flag alone now gates the card; time no longer matters.
     after = dt.datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
     before = dt.datetime(2026, 9, 26, 15, 0, tzinfo=UTC)
-    assert C.is_enabled(after, {}) is False                          # flag off
-    assert C.is_enabled(before, {"ROLL_CALL_CARD_ENABLED": "1"}) is False  # too early
+    assert C.is_enabled(after, {}) is False                                 # flag off
+    assert C.is_enabled(before, {"ROLL_CALL_CARD_ENABLED": "1"}) is True    # no time gate now
     assert C.is_enabled(after, {"ROLL_CALL_CARD_ENABLED": "1"}) is True
-    assert C.NOT_BEFORE_UTC == dt.datetime(2026, 9, 27, 11, 44, 53, tzinfo=UTC)
+    assert not hasattr(C, "NOT_BEFORE_UTC")
 
 
 def test_card_counts_both_denominators_and_times():
@@ -50,10 +52,29 @@ def test_card_counts_both_denominators_and_times():
     assert card["next_eta_min"] == 12
     assert card["source"].startswith("own-node")
     pd = next(r for r in card["rows"] if r["hash"] == PD)
-    assert pd["status"] == "passing" and pd["yes_carried"] == 29 and pd["short_by"] == 0
+    assert pd["status"] == "passing" and pd["yes_carried"] == 29
+    # Full-UNL bar: 35 -> threshold 28, needs 29. PD at 29 heard = passing for sure.
+    assert card["unl_full"] == 35 and card["needed_full"] == 29 and card["not_heard"] == 1
+    assert pd["count_state"] == "passing" and pd["short_by"] == 0
     other = next(r for r in card["rows"] if r["hash"] == OTHER)
-    assert other["status"] == "short" and other["short_by"] == 12
+    # OTHER at 16 heard, not_heard=1 -> best_possible 17 < 29 -> short for sure.
+    assert other["status"] == "short" and other["count_state"] == "short"
     assert card["any_reset"] is False
+
+
+def test_too_close_when_unheard_votes_could_decide():
+    # PD at exactly 28 heard, 1 validator not heard, full-UNL needs 29.
+    # 28 < 29 (not passing) but 28+1 = 29 >= 29 -> the unheard vote could
+    # decide it -> amber "too close to call", never green or red.
+    now = dt.datetime(2026, 9, 26, 13, 45, 0, tzinfo=UTC)
+    rounds = [
+        _round(107249407, "2026-09-26T13:40:13Z", {PD: (28, 28, True)}),
+        _round(107249151, "2026-09-26T13:23:31Z", {PD: (28, 28, True)}),
+    ]
+    card = C.build_card(rounds, [IN_FLIGHT[0]], now)
+    pd = card["rows"][0]
+    assert card["needed_full"] == 29 and card["not_heard"] == 1
+    assert pd["count_state"] == "too_close" and pd["best_possible"] == 29
 
 
 def test_reset_state_when_previous_round_passed():
@@ -64,7 +85,7 @@ def test_reset_state_when_previous_round_passed():
     ]
     card = C.build_card(rounds, [IN_FLIGHT[0]], now)
     pd = card["rows"][0]
-    assert pd["status"] == "reset" and pd["prev_passes"] is True and pd["short_by"] == 1
+    assert pd["status"] == "reset" and pd["prev_passes"] is True
     assert card["any_reset"] is True
 
 
@@ -85,4 +106,5 @@ def test_amendment_missing_from_tallies_reads_zero_short():
     now = dt.datetime(2026, 9, 26, 13, 45, tzinfo=UTC)
     rounds = [_round(107249407, "2026-09-26T13:40:13Z", {})]
     card = C.build_card(rounds, IN_FLIGHT, now)
-    assert all(r["status"] == "short" and r["yes_carried"] == 0 and r["short_by"] == 28 for r in card["rows"])
+    # 0 heard yes, not_heard=1, needs 29 -> best_possible 1 < 29 -> short for sure.
+    assert all(r["status"] == "short" and r["yes_carried"] == 0 and r["count_state"] == "short" for r in card["rows"])

@@ -13,12 +13,13 @@ Source: our own node's `validations` stream, recorded on the Lenovo by
 RPC is consulted here: the "next roll call" estimate is derived from the
 recorder's own observed round times (256 ledgers per round).
 
-Gates (both must pass for the card to render):
+Gate (must pass for the card to render):
   ROLL_CALL_CARD_ENABLED=1        env flag (default OFF — a timer never
                                   publishes; Charlie flips it on Render)
-  NOT_BEFORE_UTC                  hard-coded 24 h after the first recorded
-                                  round (decision 3: one full day of
-                                  recording before the card reads it)
+
+  (The hard 24 h NOT_BEFORE gate was removed 2026-09-27 — one full day of
+  recording has elapsed since the first round 2026-09-26 11:44:53Z, so the
+  env flag alone now gates the card.)
 
 The read is best-effort: any DB error → None → the page renders without
 the card (render-killer rule). The existing per-amendment
@@ -32,7 +33,6 @@ import os
 from zoneinfo import ZoneInfo
 
 ROUND_LEDGERS = 256
-NOT_BEFORE_UTC = dt.datetime(2026, 9, 27, 11, 44, 53, tzinfo=dt.timezone.utc)
 # A round every ~256 × 3.9 s ≈ 16.6 min. Two missed rounds = recorder stale.
 STALE_AFTER_S = 2 * ROUND_LEDGERS * 4.0  # 2048 s
 FALLBACK_SECONDS_PER_LEDGER = 3.9
@@ -42,10 +42,7 @@ _ET = ZoneInfo("America/New_York")
 
 def is_enabled(now: dt.datetime | None = None, env: dict | None = None) -> bool:
     e = os.environ if env is None else env
-    if str(e.get("ROLL_CALL_CARD_ENABLED", "")).strip().lower() not in ("1", "true", "yes", "on"):
-        return False
-    now = now or dt.datetime.now(dt.timezone.utc)
-    return now >= NOT_BEFORE_UTC
+    return str(e.get("ROLL_CALL_CARD_ENABLED", "")).strip().lower() in ("1", "true", "yes", "on")
 
 
 # ── DB read (cursor in, plain dicts out) ──
@@ -129,12 +126,35 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     eta_s = None
     if observed is not None:
         eta_s = (observed + dt.timedelta(seconds=ROUND_LEDGERS * spl) - now).total_seconds()
+    # Denominator + threshold on the FULL published UNL, not just what our
+    # node heard (Charlie ruling 2026-09-26). rippled's rule on 35: threshold
+    # = 35*80//100 = 28, a majority needs 29 (strictly > threshold). The count
+    # we can VERIFY first-hand is only from the validators we heard; the rest
+    # are unheard and their votes are unknown to us.
+    unl_full = latest["unl_size"] or latest["trusted_available"]
+    thr_full = max(1, (unl_full * 80) // 100)
+    needed_full = thr_full if unl_full == 1 else thr_full + 1
+    not_heard = max(0, unl_full - latest["seen"])
     rows = []
     any_reset = False
     for a in in_flight or []:
         h = (a.get("hash") or "").upper()
         yr, yc, passes = latest["tallies"].get(h, (0, 0, False))
         prev_passes = prev["tallies"].get(h, (0, 0, False))[2] if prev else None
+        # Count-line certainty against the full-UNL bar (needed_full):
+        #  - heard yes already >= needed  -> passing for sure
+        #  - even if EVERY unheard validator voted yes, still < needed -> short for sure
+        #  - otherwise the unheard votes could decide it -> amber, too close to call
+        best_possible = yc + not_heard
+        if yc >= needed_full:
+            count_state = "passing"
+        elif best_possible < needed_full:
+            count_state = "short"
+        else:
+            count_state = "too_close"
+        # Legacy on-wire status (passing/reset/short vs our-heard threshold) is
+        # kept for the reset detector, but the DISPLAYED count state uses the
+        # full-UNL certainty band above.
         if passes:
             status = "passing"
         elif prev_passes:
@@ -146,7 +166,9 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "hash": h, "name": a.get("name") or h[:8],
             "yes_round": yr, "yes_carried": yc, "passes": passes,
             "prev_passes": prev_passes, "status": status,
-            "short_by": max(0, latest["needed"] - yc),
+            "count_state": count_state, "not_heard": not_heard,
+            "needed_full": needed_full, "best_possible": best_possible,
+            "short_by": max(0, needed_full - yc),
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
     return {
@@ -159,6 +181,9 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         "seen": latest["seen"], "unl_size": latest["unl_size"],
         "trusted_available": latest["trusted_available"],
         "threshold": latest["threshold"], "needed": latest["needed"],
+        # Full-UNL denominator + rippled's rule on it (Charlie 2026-09-26):
+        "unl_full": unl_full, "threshold_full": thr_full,
+        "needed_full": needed_full, "not_heard": not_heard,
         "unl_sequence": latest.get("unl_sequence"),
         "next_voting_ledger": next_vl,
         "next_eta_min": (max(0, round(eta_s / 60)) if eta_s is not None else None),
