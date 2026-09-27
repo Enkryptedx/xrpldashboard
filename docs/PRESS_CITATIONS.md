@@ -163,6 +163,21 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   named-source citation. Recorded as link only per the mention key, with #12
   annotated as a link-citation source of the validator count.
 
+### Pending verification pass (run 2026-09-27, source: amendment_tally_reconstructions)
+All three then-pending sourced attributions now reconcile against our archived
+tallies — promoted to **Verified y**:
+- **#10 WordUpNews Oct-5** & **#15 CoinDesk Sep-23** (both: PermissionDelegationV1_1,
+  29/35, Sept-21 countdown start) — `amendment_tally_reconstructions`
+  `as_of_date='2026-09-21'` holds **29 votes / unl_threshold 28**
+  (source `vhs_current_at_date_2026-09-21`). Exact match to "29 of the network's
+  35" + the Sept-21 countdown. Same row that verifies #1 Yahoo. → **y**.
+- **#16 WordUpNews Sep-27** (BatchV1_1, 30/35, Sept-25) — `as_of_date='2026-09-25'`
+  holds a **30 votes / unl_threshold 28** row (source
+  `vhs_current_at_date_2026-09-25`; the same date also carries a 32-vote and a
+  29-vote amendment — the 30 is the Batch figure the article cites). Exact match
+  to "30 of 35 ... on Sept. 25". → **y** (DRAFT tag can drop once served, but the
+  figure is verified).
+
 ### Reclassification pass (2026-09-27, Charlie's rule)
 **Rule:** "...according to the [linked] dashboard" is a **sourced attribution**
 (the linked page is the named source of the figure), NOT link-only. Applied:
@@ -171,7 +186,13 @@ Amendment-cited key: which upgrade the article is about — **Batch v1.1** /
   could go live on Oct. 5 at 11:18 UTC ... **according to the live amendment
   dashboard**." Verify pending (Sep-21 29/35, same tally already y for #1).
 - **#16 WordUpNews (Sep-27)** — → **sourced attribution**: "...30 of 35 ... on
-  Sept. 25, **according to the XRPL amendment dashboard**." Verify pending.
+  Sept. 25, **according to the XRPL amendment dashboard**." Verified **y**
+  (Sep-25 30/28 in tally table).
+- **#10 WordUpNews (Oct-5, Sep-20)** — → **sourced attribution** [added
+  2026-09-27]: "**According to the live XRP Ledger amendment [dashboard]
+  (xrpldashboard.com/amendments)**, the countdown began on Sept. 21 and could
+  put PermissionDelegationV1_1 into effect on Oct. 5 at 11:18 UTC..." Verified
+  **y** (Sep-21 29/28 in tally table).
 - **#1 Yahoo (Sep-24)** — already recorded as sourced attribution (link-as-name),
   verified y. Unchanged.
 - **#8 AllAboutXRP (Aug-28)** — → sourced attribution (named 5×, source [7] of
