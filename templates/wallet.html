@@ -1271,7 +1271,7 @@
           <div class="cp-wallet-flag" data-cp-wallet-flag aria-live="polite"
                data-real-span-days="{{ data.tx_actual_span_days if data.tx_actual_span_days is not none else 0 }}">
             <span class="cp-wallet-flag-bang">!</span>
-            <span class="cp-wallet-flag-text">{{ _('All current counterparties are first-seen within the last 7 days of a ≥7-day window from our node.') }}</span>
+            <span class="cp-wallet-flag-text">{{ _('Every counterparty here first appeared in the last 7 days.') }}</span>
           </div>
           <div class="cp-svg-wrap">
             <svg class="cp-svg" viewBox="0 0 540 340" data-cp role="img" aria-label="{{ _('Counterparty exposure network') }}">
@@ -2005,7 +2005,7 @@
         {% elif page_sourcing == 'public-no-tunnel-configured' %}
           {{ _('Sourcing: live XRPL RPC via public infrastructure.') }}
         {% else %}
-          {{ _('Sourcing: live XRPL RPC via the sovereign tunnel.') }}
+          {{ _('Sourcing: live XRPL RPC via our own rippled node (public node as labeled fallback).') }}
         {% endif %}
       {% endif %}
       <br><br>

@@ -898,8 +898,7 @@
     <h1>{{ _('Token activity') }}{{ explainer(
       "page",
       _("What this page tracks"),
-      _("Which XRP-Ledger tokens are getting traded right now. Each 'trade' is a single transaction that moves a token between two wallets. We rank by number of trades, not by dollar amount — so a popular token with lots of small trades can rank higher than a sleepy one with a single whale-sized move."),
-      source="counts pulled from <code>volumes.db</code>"
+      _("Which XRP-Ledger tokens are getting traded right now. Each 'trade' is a single transaction that moves a token between two wallets. We rank by number of trades, not by dollar amount — so a popular token with lots of small trades can rank higher than a sleepy one with a single whale-sized move.")
     ) }}</h1>
     <p class="lede">
       {{ _('Top XRPL tokens by recent on-ledger trade count. Counts every token Payment plus every AMM deposit/withdraw.') }}
@@ -1322,7 +1321,7 @@
   <div class="live-stream-bar" data-live-stream-bar>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
+      <span class="lsb-label">{{ _('connecting to') }} {{ live_stream_wss_primary_label }}{{ _('…') }}</span>
     </span>
     <span class="lsb-meta">
       <span class="lsb-counter" data-lsb-counter>0</span>
@@ -1463,7 +1462,7 @@
       <code>TOKEN_NAMES.md</code> {{ _('in the repo.') }}
     </p>
     <p>
-      <strong>{{ _('XRP price per token') }}</strong> {{ _('is now derived from AMM pool reserves for tokens with at least 2,500 XRP of XRP-paired liquidity. Tokens below the floor render') }} <code>—</code> {{ _('rather than a thin-pool fiction. Per-trade XRP volume requires capturing trade amounts in the stream handler and is queued as a separate change.') }}
+      <strong>{{ _('XRP price per token') }}</strong> {{ _('is now derived from AMM pool reserves for tokens with at least 2,500 XRP of XRP-paired liquidity. Tokens below the floor render a dash') }} <code>—</code> {{ _('rather than a thin-pool fiction. Per-trade XRP volume requires capturing trade amounts in the stream handler and is queued as a separate change.') }}
     </p>
   </div>
 

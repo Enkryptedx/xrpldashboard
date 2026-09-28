@@ -255,7 +255,7 @@
 
   <h1>{{ _('XRPL amendments, live') }}</h1>
   <p class="lede">
-    {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
+    {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after more than 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
   </p>
 
   {# "Cite this day" — dated, signed permalink (build 2026-09-26). Points at
@@ -382,7 +382,7 @@
           {{ m.activation_eta_iso }}
         </div>
         <div class="conditional" style="color: var(--muted); font-size: 0.82rem; margin: -2px 0 6px; font-style: italic;">
-          {{ _('if the 80 percent majority holds for the full 14-day window') }}
+          {{ _('if the more-than-80-percent majority holds for the full 14-day window') }}
         </div>
         <div class="when">
           {{ _('projected activation') }} ·

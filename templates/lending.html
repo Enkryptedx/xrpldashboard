@@ -410,7 +410,7 @@
           {% if lending_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif lending_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-lending', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-lending', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the more-than-80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ lending_a.status }}</span>
           {% endif %}
@@ -428,7 +428,7 @@
           {% if vault_a.status == 'activated' %}
             <span class="status-pill activated"><span class="blip"></span>{{ _('activated') }}</span>
           {% elif vault_a.status == 'voting' %}
-            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-vault', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the 80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
+            <span class="status-pill voting"><span class="blip"></span>{{ _('voting') }}</span>{{ explainer('voting-vault', _('What does "voting" mean?'), _('At least one validator has this amendment enabled, but it hasn\'t crossed the more-than-80%% threshold for 2 weeks. Once it does, it auto-activates network-wide — no human deploys it.')) }}
           {% else %}
             <span class="status-pill unknown">{{ vault_a.status }}</span>
           {% endif %}
@@ -442,8 +442,8 @@
     </div>
 
     <div class="scope-note">
-      {{ _('Both amendments must activate before native lending goes live. The public node exposes whether the network supports each amendment, but per-validator vote tallies are admin-only — for the live vote count check') }}
-      <a href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener noreferrer">{{ _('xrplf.org/amendment-tracker') }} ↗</a>.
+      {{ _('Both amendments must activate before native lending goes live. Live vote counts for each are on our') }}
+      <a href="/amendments">{{ _('/amendments page') }}</a>.
     </div>
   </div>
 
@@ -650,7 +650,7 @@
   <footer>
     {% set src = page_sourcing %}
     {% if src == 'sovereign' %}
-      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via the sovereign tunnel.') }}
+      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via our own rippled node (public node as labeled fallback).') }}
     {% elif src == 'fallback-public-rpc' %}
       {{ _('Data: live') }} <code>feature</code> {{ _('RPC via public XRPL infrastructure — sovereign node temporarily unavailable.') }}
     {% else %}

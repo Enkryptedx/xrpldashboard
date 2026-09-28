@@ -1709,6 +1709,12 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "pct_locked": 0.0, "owner_count": 0, "trustline_count": 0,
             "tx_count_30d": 0, "active_days_30d": 0,
             "lookback_days": lookback_days,
+            # Audit #58 (2026-09-28): the error path was missing the
+            # 2026-09-21 span/fetch-cap fields wallet.html unconditionally
+            # reads, so any not-found/unreachable address crashed the page
+            # with UndefinedError instead of rendering the error state.
+            "tx_fetch_cap": 0, "tx_fetch_capped": False,
+            "tx_actual_span_days": None, "tx_actual_span_label": None,
             "last_seen": "—", "top_counterparty_label": "—",
             "top_counterparty_addr": None,
             "pulse": [0] * lookback_days, "nodes": [], "tx_sample_size": 0,

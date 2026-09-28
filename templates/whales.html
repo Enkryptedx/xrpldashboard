@@ -499,7 +499,7 @@
       {{ _('a long-running process subscribes to every validated XRPL transaction and records two things — XRP transfers above the floor (set by the size pill), and any transaction that touches an address on our public watchlist.') }}
     </p>
     <p>
-      {{ _('The size pills above filter large XRP transfers by magnitude — whales (≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen the lens. Tagged and watchlisted activity always shows regardless of size, because the who makes them signal.') }}
+      {{ _('The size pills above filter large XRP transfers by magnitude — whales (≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen the lens. Tagged and watchlisted activity is held to the same size cutoff as everything else — only new-trustline events bypass it, because the who makes those the signal.') }}
     </p>
     <p>
       {{ _('The watchlist combines') }} {{ named_accounts_count }} {{ _("hand-curated first-party entries (sourced from disclosures like Ripple's xrp-ledger.toml) with a broader reference layer drawn from public lists (XRPSCAN well-known names, derived AMM pool and MPT issuer labels). Curated labels take priority; reference labels fill the rest. Each label is shown with its source so you can tell which is which.") }}

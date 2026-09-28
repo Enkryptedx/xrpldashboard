@@ -578,10 +578,10 @@
   <div class="live-stream-bar" data-pools-lsb>
     <span class="lsb-pill" data-lsb-pill>
       <span class="lsb-dot"></span>
-      <span class="lsb-label">{{ _('connecting to xrplcluster.com…') }}</span>
+      <span class="lsb-label">{{ _('connecting to') }} {{ live_stream_wss_primary_label }}{{ _('…') }}</span>
     </span>
     <span class="lsb-meta">
-      {{ _('Subscribed to') }} {{ top10|length }} {{ _('AMM accounts on the public XRPL WebSocket') }}
+      {{ _('Subscribed to') }} {{ top10|length }} {{ _('AMM accounts on our own-node WebSocket relay') }}
     </span>
   </div>
   {% set max_share = top10[0].share_of_top10 or 1 %}
@@ -749,7 +749,7 @@
     <details>
       <summary>{{ _('Data sources') }}</summary>
       <p>
-        {{ _('Pool index + TVL snapshot are walker-written cached rows: the') }} <code>rank_amms</code> {{ _('walker on our Mac queries') }} <code>amm_info</code> {{ _('against our own rippled node over LAN (a public rippled is the labeled fallback, disclosed above when used) and refreshes the') }} <code>amm_ranked.json</code> {{ _('artifact ~daily (auto-reset once the artifact ages past 20h). Live events stream from') }} <code>wss://xrplcluster.com</code> {{ _('in your browser — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only.') }}
+        {{ _('Pool index + TVL snapshot are walker-written cached rows: the') }} <code>rank_amms</code> {{ _('walker on our Mac queries') }} <code>amm_info</code> {{ _('against our own rippled node over LAN (a public rippled is the labeled fallback, disclosed above when used) and refreshes the') }} <code>amm_ranked.json</code> {{ _('artifact ~daily (auto-reset once the artifact ages past 20h). Live events stream in your browser from our own-node WebSocket relay') }} <code>wss://wss.xrpldashboard.com</code> {{ _('(') }}<code>wss://xrplcluster.com</code>{{ _(' is the labeled fallback) — comets fire on validated') }} <code>tesSUCCESS</code> {{ _('transactions only.') }}
       </p>
     </details>
   </div>
