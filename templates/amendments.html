@@ -106,6 +106,7 @@
       margin: 10px 0 4px;
     }
     .countdown .when { color: var(--muted); font-size: 0.88rem; }
+    .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
     .countdown .truth-note {
       background: rgba(0,0,0,0.18); border-left: 3px solid var(--amber);
       padding: 10px 14px; margin: 14px 0 0;
@@ -387,6 +388,8 @@
           {{ _('projected activation') }} ·
           {{ _('majority reached at fetch') }} {{ m.majority_reached_iso }}
         </div>
+        {# Charlie 2026-09-27: plain-language explainer, one link per countdown box. #}
+        <div class="how-link"><a href="/amendments/how-it-works" data-how-it-works>{{ _('How the roll call works') }} →</a></div>
         </div>
 
         {% if roll_call %}

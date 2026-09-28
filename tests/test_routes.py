@@ -51,6 +51,7 @@ TRUST_CRITICAL_PAGES = [
     "/rlusd",
     "/rwa",
     "/amendments",
+    "/amendments/how-it-works",
     "/regulation",
     "/sidechain",
     "/learn",

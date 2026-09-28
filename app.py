@@ -6425,6 +6425,19 @@ def _amendments_permalink_payload(date_str):
     return base, 200
 
 
+@app.route("/amendments/how-it-works")
+def amendments_how_it_works():
+    """Plain-language explainer linked from each countdown box on
+    /amendments (Charlie 2026-09-27): the 29-of-35 rule, the every-256-
+    ledger roll call, the 14-day window, and why Batch reset on Sep 25.
+    Static copy (Charlie's words, verbatim) — no DB read, cannot 500 on
+    data. Registered before the <date> route; Werkzeug prefers the static
+    segment regardless, but keep the order explicit."""
+    resp = make_response(render_template("amendments_how_it_works.html"), 200)
+    resp.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"
+    return resp
+
+
 @app.route("/amendments/<date>")
 def amendments_permalink(date):
     """Dated, signed record of the amendment tallies: a press citation of
