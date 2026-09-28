@@ -2214,7 +2214,14 @@ def _recent_whale_events(limit=3):
 
 def _whales_snapshot_label():
     """Friendly date of the latest event in events.db.
-    Used to label snapshot-mode panels honestly. Returns None on missing/empty."""
+    Used to label snapshot-mode panels honestly. Returns None on missing/empty.
+
+    Audit #16 (2026-09-27): _recent_whale_events prefers Postgres (live
+    feed, each row carries its own age). The sqlite date is only honest
+    when the sqlite snapshot is actually what rendered, so return None
+    whenever Postgres is available."""
+    if db.pg_available():
+        return None
     if not os.path.exists(EVENTS_DB_PATH):
         return None
     try:
@@ -2779,13 +2786,20 @@ def index():
         import new_accounts_walker as _naw
         new_accounts = db.read_new_accounts_summary_safe()
         new_accounts_tracking_since = _naw.TRACKING_SINCE
+        # Audit #19 (2026-09-27): a "last 7 days" chip over fewer than 7
+        # days of data overstates the window. Until 7 full days exist,
+        # the chip says "since <tracking date>" instead.
+        _since_dt = datetime.strptime(_naw.TRACKING_SINCE, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        new_accounts_7d_window_full = (datetime.now(timezone.utc) - _since_dt).days >= 7
     except Exception:  # noqa: BLE001
         new_accounts, new_accounts_tracking_since = None, None
+        new_accounts_7d_window_full = True
 
     return render_template(
         "index.html",
         new_accounts=new_accounts,
         new_accounts_tracking_since=new_accounts_tracking_since,
+        new_accounts_7d_window_full=new_accounts_7d_window_full,
         timestamp_str=timestamp_str,
         timestamp_iso=timestamp_iso,
         cached_age=cached_age,
@@ -6393,6 +6407,22 @@ def _amendments_permalink_payload(date_str):
     verify = _verify_snapshot(date_str, "", "")
     block = ap.amendments_block_from_envelope(envelope)
     names = ap.hash_to_name_map(block)
+    # Audit #14 (2026-09-27): the leaf's block only names amendments the
+    # signing node knew that day, so newer hashes in the roll-call table
+    # rendered as bare hex. Fill names from the majority walker + the live
+    # feature list; the leaf itself is untouched.
+    try:
+        for _mh in (_load_amendment_majority_history() or []):
+            _h, _n = (_mh.get("hash") or "").upper(), _mh.get("amendment_name") or _mh.get("name")
+            if _h and _n:
+                names.setdefault(_h, _n)
+        _live = fetch_amendments_state_cached() or {}
+        for _a in (_live.get("in_flight") or []) + (_live.get("enabled") or []):
+            _h, _n = (_a.get("hash") or "").upper(), _a.get("name")
+            if _h and _n:
+                names.setdefault(_h, _n)
+    except Exception:  # noqa: BLE001 — names are cosmetic; never 500
+        pass
     base.update({
         "leaf": {
             "leaf_hash": envelope.get("leaf_hash"),
@@ -6515,7 +6545,7 @@ def _load_amendment_majority_history():
                        vote_count_at_first, unl_threshold,
                        first_seen_ledger, first_seen_close_time,
                        removed_seen_ledger, removed_close_time,
-                       correction_note
+                       correction_note, majority_close_time
                   FROM amendment_majority_history
                  ORDER BY amendment_name NULLS LAST,
                           majority_close_time DESC
@@ -6543,6 +6573,16 @@ def _load_amendment_majority_history():
                     "removed_seen_ledger": r[10],
                     "removed_close_iso": _xrpl_close_to_iso_or_none(r[11]),
                     "correction_note": r[12],
+                    # Audit #1 (2026-09-27): first_seen_ledger is the flag
+                    # ledger where the window began ONLY when it sits within
+                    # one flag interval (256 ledgers, ~15-17 min) of the
+                    # Majority.CloseTime. Rows the walker first observed
+                    # days later (it started 2026-09-20) are labeled as a
+                    # walker observation, not a flag ledger.
+                    "first_seen_is_flag": (
+                        r[9] is not None and r[13] is not None
+                        and abs(int(r[9]) - int(r[13])) <= 3600
+                    ),
                 })
         # Charlie 2026-09-27: attach a one-line description + citable source
         # for any row whose amendment we can only name from an off-ledger

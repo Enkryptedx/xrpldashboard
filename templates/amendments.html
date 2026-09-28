@@ -278,7 +278,7 @@
       {{ _('The 3.3.0 release bundles six amendments aimed at institutional Multi-Purpose-Token tokenization:') }}
       <code>BatchV1_1</code>, <code>ConfidentialTransfer</code>, <code>DynamicMPT</code>,
       <code>PermissionDelegationV1_1</code>, <code>Sponsor</code>, {{ _('and') }} <code>fixCleanup3_3_0</code>.
-      {{ _('Each still has to hold an 80 percent validator majority for 14 consecutive days before activation.') }}
+      {{ _('fixCleanup3_3_0 is already enabled on mainnet; the other five still have to hold more than 80 percent of trusted validators for 14 consecutive days before activation.') }}
     </p>
     <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
       {{ _('All six are recognised by our node (rippled 3.4.1) from the') }}
@@ -612,7 +612,10 @@
           <details class="maj-detail" style="margin-top: 4px;">
             <summary style="font-size: 0.8rem; color: var(--muted); cursor: pointer;">{{ _('Ledger detail') }}</summary>
             <div class="mono" style="font-size: 0.8rem; color: var(--muted); margin-top: 4px; line-height: 1.5;">
-              {{ _('Majority reached') }} {{ mh.majority_close_iso }} (UTC){% if mh.first_seen_ledger %} · {{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}<br>
+              {# Audit #1 (2026-09-27): first_seen_ledger is the walker's FIRST OBSERVATION, not the flag
+                 ledger where the majority formed. When the walker saw it later than the reach time
+                 (it started 2026-09-20), say so instead of calling it the flag ledger. #}
+              {{ _('Majority reached') }} {{ mh.majority_close_iso }} (UTC){% if mh.first_seen_ledger %} · {% if mh.first_seen_close_iso and not mh.first_seen_is_flag %}{{ _('first seen by our walker at ledger') }} {{ mh.first_seen_ledger }}, {{ mh.first_seen_close_iso }}{% else %}{{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}{% endif %}<br>
               {% if mh.removed_iso %}{{ _('Majority lost') }} {{ mh.removed_iso }} (UTC){% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {{ mh.activation_eta_iso }} (UTC)<br>{% endif %}
               {% if mh.vote_count_at_first and mh.unl_threshold %}
               {# Source label (Charlie 2026-09-27, CORRECTED AGAIN): the ledger's
@@ -677,7 +680,7 @@
 
   <h2>{{ _('In-flight amendments') }}</h2>
   <p class="dim" style="font-size: 0.92rem;">
-    {{ _('Currently supported by the responding XRPL node but not yet enabled. Validators may or may not be voting yes — the public RPC doesn\'t expose per-validator tallies. Plain-language summaries below are hand-edited from primary sources; click each one to read.') }}
+    {{ _('Currently supported by our node but not yet enabled. The vote count on each row is the XRPL Foundation\'s validator history (fetched time shown per row); our own roll call is above. Plain-language summaries below are hand-edited from primary sources; click each one to read.') }}
   </p>
 
   {# Plain-English summaries. Each entry: short_kind (feature|fix), summary,
@@ -692,7 +695,7 @@
     },
     "BatchV1_1": {
       "kind": "feature",
-      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Its majority window and projected activation date are shown live below from the ledger's Majorities entry — the countdown restarts from the ledger if validator support ever dips and re-forms."),
+      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Its majority window and projected activation date are shown live below from the ledger's Majorities entry — the countdown restarts from the ledger if validator support ever dips and re-forms."),
       "source_label": "XLS-56 Batch (XRPL-Standards) · xrpl.org · Known Amendments",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
     },
@@ -936,7 +939,7 @@
     {% else %}
       {{ _('Data served via public') }} <code>s1.ripple.com:51234</code> {{ _('(sovereign-node fallback — see banner above) plus the canonical Amendments ledger object.') }}
     {% endif %}
-    {{ _('Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Per-validator vote tallies are not exposed by the') }} <code>feature</code> {{ _('RPC; for those, see') }}
+    {{ _('Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Vote counts come from our own node\'s roll call (countdown boxes and the roll-call table) and from XRPL Foundation validator history (in-flight list); the') }} <code>feature</code> {{ _('RPC itself carries no tallies. Amendment descriptions:') }}
     <a href="https://xrpl.org/known-amendments.html" rel="nofollow noopener" target="_blank">xrpl.org/known-amendments</a>.
     {% if state.fetched_at_iso %}
       <br>{{ _('Fetched') }} <span class="mono">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
@@ -945,7 +948,7 @@
   {% endif %}
 
   <div class="footer">
-    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRP Ledger Foundation, or any exchange. Amendment status reflects the public XRPL feature RPC at fetch time; the canonical record is the ledger itself.') }}
+    {{ _('xrpldashboard is independent and not affiliated with Ripple Labs, the XRP Ledger Foundation, or any exchange. Amendment status reflects our own node\'s feature RPC at fetch time (public XRPL nodes are a labeled fallback); the canonical record is the ledger itself.') }}
     <br><br>
     <a href="/about">{{ _('about') }}</a> ·
     <a href="/methodology">{{ _('methodology') }}</a> ·

@@ -1002,7 +1002,7 @@
           <span class="v">{{ "{:,}".format(new_accounts.count_24h) }}</span>
         </span>
         <span class="xrp-chip" style="cursor:default">
-          <span>{{ _('last 7 days') }}</span>
+          <span>{% if new_accounts_7d_window_full %}{{ _('last 7 days') }}{% else %}{{ _('since') }} {{ new_accounts_tracking_since }}{% endif %}</span>
           <span class="v">{{ "{:,}".format(new_accounts.count_7d) }}</span>
         </span>
         {% if new_accounts.highest_day %}
@@ -1086,7 +1086,7 @@
                 <div class="primary"><span class="amt">{{ e.amount_display }}</span>{% if e.row_type_pill %}<span class="row-pill row-pill-{{ e.row_type_pill }}">{% if e.row_type_pill == 'whale' %}{{ _('whale') }}{% else %}{{ _('watchlist') }}{% endif %}</span>{% endif %}</div>
                 <div class="secondary">
                   {{ e.from_label or e.from_addr_short }}{% if e.from_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.from_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.from_attested_domain }}">✓</span>{% endif %}
-                  → {{ e.to_label or e.to_addr_short }}{% if e.to_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.to_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.to_attested_domain }}">✓</span>{% endif %}
+                  → {{ e.to_label or e.to_addr_short or '—' }}{% if e.to_attested_domain %}<span class="attest-tick" title="{{ _('domain-attested:') }} {{ e.to_attested_domain }}" aria-label="{{ _('domain-attested:') }} {{ e.to_attested_domain }}">✓</span>{% endif %}
                 </div>
               </div>
               <div class="right">{{ e.age }} {{ _('ago') }}</div>
@@ -1152,7 +1152,7 @@
         <li><strong>{{ _('Lending') }}</strong> — {{ _('XLS-66 broker/vault/loan tracking (pre-activation)') }}</li>
         <li><strong>{{ _('Amendments') }}</strong> — {{ _('voting status, activation tracking, governance signals') }}</li>
         <li><strong>UNL</strong> — {{ _('validator list diffs across both publishers (Ripple + XRPL Foundation)') }}</li>
-        <li><strong>{{ _('Whales') }}</strong> — {{ _('payments over %(threshold)s XRP', threshold="{:,}".format(whale_xrp_threshold)) }}</li>
+        <li><strong>{{ _('Whales') }}</strong> — {{ _('payments of %(threshold)s XRP or more', threshold="{:,}".format(whale_xrp_threshold)) }}</li>
         <li><strong>{{ _('Escrow & cold storage') }}</strong> — {{ _('Ripple monthly-release accounts') }}</li>
       </ul>
     </section>
@@ -1162,7 +1162,7 @@
         {{ _('New here?') }} <a href="/learn">{{ _('Read a plain-language explainer of the XRP Ledger') }}</a> — {{ _('what it is, who runs it, and how to verify everything yourself.') }}
       </div>
       <div style="margin-top: 0.6em;">
-        {{ _('xrpldashboard — public-good analytics for the XRP Ledger. Free for retail users, forever. The pool, whale, and token detail pages stream live via WebSocket from a public XRPL node, with worker-backed historical context; the homepage panels above are snapshot previews that refresh every 30 seconds. See') }} <a href="/methodology">{{ _('methodology') }}</a> {{ _('for the per-surface freshness table.') }}
+        {{ _('xrpldashboard — public-good analytics for the XRP Ledger. Free for retail users, forever. The pool, whale, and token detail pages stream live via WebSocket from our own-node relay (public XRPL nodes are a labeled fallback), with worker-backed historical context; the homepage panels above are snapshot previews that refresh every 30 seconds. See') }} <a href="/methodology">{{ _('methodology') }}</a> {{ _('for the per-surface freshness table.') }}
       </div>
       <div style="margin-top: 0.6em;">
         <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}

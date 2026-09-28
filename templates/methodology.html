@@ -115,7 +115,7 @@
   </div>
 
   <p style="color: var(--muted); font-size: 0.875rem; margin-top: 0;">
-    {{ _('Page last revised 2026-08-09. Versioned in git alongside the code that ships these features.') }}
+    {{ _('Page last revised 2026-09-27. Versioned in git alongside the code that ships these features.') }}
   </p>
 
   <h2>{{ _('What\'s actually live, per surface') }}</h2>
@@ -141,7 +141,7 @@
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
         <!-- mirrors network_pulse.PULSE_CACHE_TTL_SECONDS=60 -->
         <td>{{ _('60 sec') }}</td>
-        <td><code>server_info</code> {{ _('on public XRPL node') }}</td>
+        <td><code>server_info</code> {{ _('on our own rippled node; public XRPL node as labeled fallback') }}</td>
       </tr>
       <tr>
         <td class="route">{{ _('Ledger heartbeat chip') }}<br>{{ _('(every page header)') }}</td>
@@ -243,13 +243,13 @@
 
   <h3>{{ _('XRP Ledger nodes') }}</h3>
   <p>
-    {{ _('All on-chain data is read from public XRPL nodes — peers in the consensus network. A node can\'t lie about ledger contents without the rest of the network rejecting it.') }}
+    {{ _('On-chain data is read from our own rippled node first; public XRPL nodes are a labeled fallback. Every node is a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
     <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Serves the ledger stream and the server-filtered named feeds the whales, tokens, pools, and wallet pages subscribe to.') }}</li>
     <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Browser fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move logs into') }} <code>walker_node_fallback</code>.</li>
     <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Not in the browser stream path. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
-    <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Used by the network pulse, ledger-tip, and RLUSD-issuer endpoints.') }}</li>
+    <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Labeled fallback for the network pulse, ledger-tip, amendments, and RLUSD-issuer reads when our own node is unreachable (own node first since 2026-09-06).') }}</li>
   </ul>
 
   <h3>{{ _('Ethereum nodes') }}</h3>
@@ -353,7 +353,7 @@
       {% endif %}
     </p>
     <p>
-      {{ _('Schema version:') }} <code>4</code> ({{ _('current since 2026-08-30; v3 shipped 2026-06-24 → 2026-08-29; v2 2026-05-30 → 2026-06-23; v1 2026-05-09 → 2026-05-29. Prior anchors remain verifiable at their era\'s schema — leaf hashes never change.') }})
+      {{ _('Schema version:') }} <code>5</code> ({{ _('current since 2026-09-22; v4 2026-08-30 → 2026-09-21; v3 2026-06-24 → 2026-08-29; v2 2026-05-30 → 2026-06-23; v1 2026-05-09 → 2026-05-29. Prior anchors remain verifiable at their era\'s schema — leaf hashes never change.') }})
       {{ _('Signing domain:') }} <code>xrpldashboard.com/signed_snapshot/v1</code>.
       {{ _('Curve:') }} <code>Ed25519</code>.
       {{ _('Browse the public snapshot index at') }} <a href="/snapshots/">/snapshots/</a>.
@@ -459,7 +459,7 @@
   </p>
   <p>
     <strong>{{ _('Where the badge renders:') }}</strong>
-    {{ _('Currently on') }} <code>/mpt/issuer/&lt;wallet&gt;</code> {{ _('pages for verified MPT issuers. Will extend to') }} <code>/tokens</code>, <code>/whales</code>, {{ _('and homepage label surfaces as more issuers publish') }} <code>xrp-ledger.toml</code> {{ _('attestations.') }}
+    {{ _('On') }} <code>/tokens</code>, <code>/whales</code>, <code>/mpt/issuer/&lt;wallet&gt;</code> {{ _('and the homepage token and whale cards, for every issuer whose') }} <code>xrp-ledger.toml</code> {{ _('attestation verifies.') }}
   </p>
 
   <h2 id="rwa-attribution">{{ _('RWA attribution') }}</h2>
@@ -666,7 +666,7 @@
 
   <h3 id="amendments">{{ _('Amendments (get_amendments_status)') }}</h3>
   <p>
-    {{ _('Source:') }} <code>s1.ripple.com:51234</code> {{ _('via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
+    {{ _('Source:') }} {{ _('our own rippled node (') }}<code>s1.ripple.com:51234</code> {{ _('as labeled fallback) via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
   </p>
   <p>
     <strong>{{ _('Amendment vote tallies — honest limit.') }}</strong>
@@ -851,8 +851,8 @@ pub.verify(bytes.fromhex(sig_ed25519), message)</code></pre>
     {{ _('Free for humans and identified agents at reasonable volume. Transparent, no silent throttling. Declared shape:') }}
   </p>
   <ul>
-    <li><strong>{{ _('Anonymous:') }}</strong> {{ _('60 requests per minute per IP.') }}</li>
-    <li><strong>{{ _('Identified AI crawlers') }}</strong> ({{ _('by user agent — GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and others on Cloudflare\'s verified-bot list') }}): {{ _('300 requests per minute.') }}</li>
+    <li><strong>{{ _('Anonymous (API / agent tier):') }}</strong> {{ _('60 requests per hour per IP. Browser HTML pages have a separate limit of 60 requests per minute per IP.') }}</li>
+    <li><strong>{{ _('Identified AI crawlers') }}</strong> ({{ _('by user agent — GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and others on Cloudflare\'s verified-bot list') }}): {{ _('300 requests per hour.') }}</li>
     <li><strong>{{ _('MCP session') }}</strong> ({{ _('long-lived tool connection') }}): {{ _('600 tool calls per hour per session.') }}</li>
     <li><strong>{{ _('Signed-snapshot verification:') }}</strong> {{ _('unlimited — stateless and cryptographic-only.') }}</li>
     <li><strong>{{ _('Backoff:') }}</strong> {{ _('HTTP 429 with a') }} <code>Retry-After</code> {{ _('header.') }}</li>

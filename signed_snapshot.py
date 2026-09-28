@@ -1272,8 +1272,16 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
     # Responding-node source label. amendments_state stamps `sourced_from`
     # (own-node vs public-RPC) if the module tracks it; fall back to
     # XRPL_NODE env introspection.
-    responding_source = "lenovo_tunnel"
+    # Audit #13 (2026-09-27): the label used to default to "lenovo_tunnel"
+    # even when the fetch actually went to public s1 (Mac walker, no
+    # tunnel). Read the fetcher's real `sourcing` flag; never assume.
+    responding_source = "unknown"
     if isinstance(state, dict):
+        _sourcing = state.get("sourcing")
+        if _sourcing == "sovereign":
+            responding_source = "own_node"
+        elif _sourcing:
+            responding_source = str(_sourcing)
         responding_source = state.get("responding_node_source") or state.get(
             "sourced_from"
         ) or responding_source
@@ -1329,9 +1337,14 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
         name = a.get("name")
         if not name:
             continue
+        # Audit #13: `superseded` = OBSOLETE in the node's feature list,
+        # NOT enabled (NonFungibleTokensV1, fixNFTokenDirV1, …). The leaf
+        # previously signed them as enabled:true, which the permalink then
+        # rendered as "Enabled yes". Record what the node says.
         per_amendment[name] = {
             "hash": a.get("hash"),
-            "enabled": True,
+            "enabled": False,
+            "obsolete": True,
             "network_votes": None,
         }
     for a in unrecognized_enabled:

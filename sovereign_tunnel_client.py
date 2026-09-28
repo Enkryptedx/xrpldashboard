@@ -40,6 +40,18 @@ TUNNEL_NODE = (os.environ.get("XRPL_TUNNEL_NODE") or "").strip() or None
 _CF_CLIENT_ID = (os.environ.get("CF_ACCESS_CLIENT_ID") or "").strip() or None
 _CF_CLIENT_SECRET = (os.environ.get("CF_ACCESS_CLIENT_SECRET") or "").strip() or None
 TUNNEL_CONFIGURED = bool(TUNNEL_NODE and _CF_CLIENT_ID and _CF_CLIENT_SECRET)
+# Audit #13 (2026-09-27): Mac-side walkers (signed_snapshot, amendments_state
+# run from launchd) have no tunnel vars but DO sit on the LAN with our own
+# rippled (XRPL_LOCAL_NODE). Before this, SovereignFetcher went straight to
+# public s1 there while the leaf was labeled "lenovo_tunnel" — so the signed
+# amendments_block missed every amendment s1's older binary didn't know
+# (fixBatchV1_2, fixCleanup3_4_0, LendingProtocolV1_1). When the tunnel is
+# NOT configured but XRPL_LOCAL_NODE is explicitly set, the LAN node is the
+# sovereign endpoint (same retry-then-cascade, no CF headers). Render sets
+# neither var, so the tunnel path is unchanged.
+_LOCAL_NODE = (os.environ.get("XRPL_LOCAL_NODE") or "").strip() or None
+LOCAL_CONFIGURED = bool(not TUNNEL_CONFIGURED and _LOCAL_NODE)
+SOVEREIGN_NODE = TUNNEL_NODE if TUNNEL_CONFIGURED else _LOCAL_NODE
 
 # Retry knobs — same shape as xrpl_client.py's local retry: 3 attempts
 # with 100/200ms jittered backoff. Absorbs transient CF edge / tunnel
@@ -119,6 +131,9 @@ class SovereignFetcher:
                 "CF-Access-Client-Secret": _CF_CLIENT_SECRET,
                 "Content-Type": "application/json",
             }
+        elif LOCAL_CONFIGURED:
+            self.sourcing = SOURCING_SOVEREIGN
+            self._tunnel_headers = {"Content-Type": "application/json"}
         else:
             self.sourcing = SOURCING_NO_TUNNEL
             self._tunnel_headers = None
@@ -128,7 +143,7 @@ class SovereignFetcher:
         """Best-guess of which URL last served this fetcher — for display
         only. The authoritative signal is .sourcing."""
         if self.sourcing == SOURCING_SOVEREIGN:
-            return TUNNEL_NODE or self.public_url
+            return SOVEREIGN_NODE or self.public_url
         return self.public_url
 
     def _try_tunnel(self, payload):
@@ -138,8 +153,8 @@ class SovereignFetcher:
         last_reason = None
         for attempt in range(1, TUNNEL_RETRY_ATTEMPTS + 1):
             try:
-                r = _client_for(TUNNEL_NODE).post(
-                    TUNNEL_NODE, json=payload, headers=self._tunnel_headers,
+                r = _client_for(SOVEREIGN_NODE).post(
+                    SOVEREIGN_NODE, json=payload, headers=self._tunnel_headers,
                 )
                 if r.status_code == 200:
                     return (r.json() or {}).get("result") or {}, None
