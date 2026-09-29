@@ -185,7 +185,7 @@ def _xrpl_close_to_iso(close_time):
         return None
 
 
-def fetch_amendments_state():
+def fetch_amendments_state(fetcher=None):
     """Return a fresh combined state dict. No caching here; see the
     `_cached` wrapper for memoization.
 
@@ -193,12 +193,21 @@ def fetch_amendments_state():
     after the first sticks (correct per-page semantic — worst case
     wins for sourcing disclosure). Return dict gains `sourcing` for
     downstream banner rendering.
+
+    2026-09-29 test seam (Charlie-approved plan A): `fetcher` is an
+    optional injection point for tests/fixtures ONLY. Prod always calls
+    with no argument, so the real SovereignFetcher is constructed exactly
+    as before — zero behavior change. A caller may pass a duck-typed
+    object exposing `.call(method, params)` and a `.sourcing` attribute
+    to render an offline/activation-day fixture without touching the
+    network, a shared cache, or the database.
     """
-    from sovereign_tunnel_client import SovereignFetcher
-    fetcher = SovereignFetcher(
-        public_url=xrpl_client.PUBLIC_NODES[0],
-        walker_name="amendments_state",
-    )
+    if fetcher is None:
+        from sovereign_tunnel_client import SovereignFetcher
+        fetcher = SovereignFetcher(
+            public_url=xrpl_client.PUBLIC_NODES[0],
+            walker_name="amendments_state",
+        )
     feat_result = _post("feature", {}, fetcher=fetcher)
     ledger_result = _post(
         "ledger_entry",
