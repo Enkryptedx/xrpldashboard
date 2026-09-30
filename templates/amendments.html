@@ -176,6 +176,11 @@
       .rc-table { font-size: 0.82rem; }
       .rc-table th, .rc-table td { padding: 4px 4px; }
     }
+    @media (max-width: 380px) {
+      .rc-table { font-size: 0.74rem; }
+      .rc-table th, .rc-table td { padding: 3px 3px; }
+      .rc-table .num-h { font-size: 0.68rem; line-height: 1.15; }
+    }
     .countdown-rollcall details.rc-details { margin-top: 8px; }
     .countdown-rollcall details.rc-details summary {
       cursor: pointer; font-size: 0.78rem; color: var(--dim);
@@ -336,10 +341,10 @@
     "ConfidentialTransfer": {
       "kind": "feature",
       "plain": _("Adds privacy to transfers of Multi-Purpose Tokens."),
-      "explain": _("Multi-Purpose Tokens (MPTs) are a token type on the XRP Ledger. Under XLS-0096, individual balances and transfer amounts are encrypted and are not revealed to validators or outside observers, while the token's total supply stays publicly checkable. Issuer controls are kept: freeze and an issuer clawback that burns the clawed-back funds still work on confidential balances, and an optional auditor key allows selective disclosure. The issuer account itself cannot hold a confidential balance."),
+      "explain": _("Multi-Purpose Tokens (MPTs) are a token type on the XRP Ledger. With this amendment, transaction amounts are encrypted, and account balances are encrypted and only visible to the holder, the issuer, and any configured auditors; validators and network observers see only encrypted ciphertexts and cryptographic proofs, never the underlying amounts. The ledger does not publicly reveal which accounts hold how much of the confidential supply, but issuers and regulators can still verify total supply. Confidential transfers work only for direct payments between accounts, not with the DEX, escrows or checks. Issuers keep their compliance controls, including a clawback of a holder's entire confidential balance."),
       "summary": _("Provides institutional-grade privacy for Multi-Purpose Tokens (MPTs) using EC-ElGamal encryption and zero-knowledge proofs. Individual balances and transfer amounts stay shielded from the public ledger while designated parties (issuers, auditors, or authorized entities) can verify total supply and meet regulatory obligations. Targets tokenized-RWA and stablecoin issuers whose compliance requirements are incompatible with fully-public balances."),
-      "source_label": "XLS-96 Confidential Transfers (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-transfers"
+      "source_label": "xrpl.org · Confidential Transfers (docs)",
+      "source_url": "https://xrpl.org/docs/concepts/tokens/fungible-tokens/confidential-transfers"
     },
     "Sponsor": {
       "kind": "feature",
@@ -360,10 +365,10 @@
     "DynamicMPT": {
       "kind": "feature",
       "plain": _("Lets issuers change certain token properties after issuance, or lock them for good."),
-      "explain": _("Per XLS-94, an issuer can update a Multi-Purpose Token's metadata and transfer fee after creation, and can switch on (one-way) issuance capabilities such as can-lock, require-auth, can-escrow, can-trade, can-transfer, can-clawback and can-hold-confidential-balance. Any of these can instead be made permanently unchangeable, at creation or later, by setting the matching bit in a new ImmutableFlags field; once set, that bit can never be cleared."),
+      "explain": _("Per xrpl.org, this amendment makes specific MPT properties mutable by default: the on-chain metadata, the transfer fee, and the ability to enable MPT issuance flags (capabilities such as trading or issuer clawback). Enabling an issuance flag is one-way: once enabled, no later transaction can disable it. Issuers can make any of these properties permanently immutable, at creation or later, by declaring it in an ImmutableFlags field, which is additive and can never be cleared. Other data set at issuance, such as asset scale and maximum amount, is always fixed."),
       "summary": _("Lets MPT (Multi-Purpose Token) issuers modify designated reference fields after issuance. Today the base MPT spec (XLS-33) fixes metadata, transfer fees, asset scale, and capability flags at issuance — only the lock flag is mutable post-mint via MPTokenIssuanceSet — which limits product flexibility for tokenized RWAs that need to update reference data, transfer fees, or URI metadata over time."),
-      "source_label": "XLS-94 Dynamic MPT (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0094-dynamic-MPT"
+      "source_label": "xrpl.org · Mutable MPTs (docs)",
+      "source_url": "https://xrpl.org/docs/concepts/tokens/fungible-tokens/mutable-mpts"
     },
     "InvariantsV1_1": {
       "kind": "fix",
