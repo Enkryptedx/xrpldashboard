@@ -650,7 +650,7 @@
   <footer>
     {% set src = page_sourcing %}
     {% if src == 'sovereign' %}
-      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via our own rippled node (public node as labeled fallback).') }}
+      {{ _('Data: live') }} <code>feature</code> {{ _('RPC via our own xrpld node (public node as labeled fallback).') }}
     {% elif src == 'fallback-public-rpc' %}
       {{ _('Data: live') }} <code>feature</code> {{ _('RPC via public XRPL infrastructure — sovereign node temporarily unavailable.') }}
     {% else %}

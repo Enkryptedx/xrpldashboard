@@ -281,7 +281,7 @@
       {{ _('fixCleanup3_3_0 is already enabled on mainnet; the other five still have to hold more than 80 percent of trusted validators for 14 consecutive days before activation.') }}
     </p>
     <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
-      {{ _('All six are recognised by our node (rippled 3.4.1) from the') }}
+      {{ _('All six are recognised by our node (xrpld 3.4.1) from the') }}
       <code>feature</code> {{ _('RPC and are tracked below in the in-flight list with their live trusted-validator vote counts. No manual edit here — the page follows the wire.') }}
     </p>
     <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
@@ -373,7 +373,7 @@
             {# Charlie ruling 2026-09-25: no "Unrecognized amendment" label —
                show the short-form hash + the "present but unnamed" framing so
                the block reads as a fact about our node, not a mystery. #}
-            {{ m.hash[:8] }}… <span class="dim" style="font-size: 0.78rem; font-weight: 400;">{{ _('present but unnamed in our node’s feature list (rippled 3.3.0-rc1)') }}</span>
+            {{ m.hash[:8] }}… <span class="dim" style="font-size: 0.78rem; font-weight: 400;">{{ _('present but unnamed in our node’s feature list (xrpld 3.3.0-rc1)') }}</span>
           {% endif %}
         </div>
         <div class="hash">{{ m.hash }}</div>
@@ -566,7 +566,7 @@
         <div class="name" style="font-weight: 600;">
           {# (a) Charlie ruling 2026-09-25: unrecognized hash shows the hash +
              "present but unnamed in our node's feature list (rippled <ver>)". #}
-          {{ mh.name or (mh.hash[:8] ~ '… — ' ~ _('present but unnamed in our node’s feature list (rippled 3.3.0-rc1)')) }}
+          {{ mh.name or (mh.hash[:8] ~ '… — ' ~ _('present but unnamed in our node’s feature list (xrpld 3.3.0-rc1)')) }}
           {% if mh.active %}
             <span class="tag">{{ _('active majority') }}</span>
           {% else %}
@@ -926,7 +926,7 @@
       <span class="icon" aria-hidden="true" style="font-weight:700;color:var(--amber,#c90);">!</span>
       <div class="body">
         <div class="headline" style="font-weight:600;">{{ _('Live data via public XRPL infrastructure') }}</div>
-        <div class="detail" style="font-size:0.88rem;color:var(--muted);">{{ _('Our sovereign rippled node was unavailable for this fetch — amendment data on this page was served through a public rippled server. Refreshes retry the sovereign path.') }}</div>
+        <div class="detail" style="font-size:0.88rem;color:var(--muted);">{{ _('Our sovereign xrpld node was unavailable for this fetch — amendment data on this page was served through a public rippled server. Refreshes retry the sovereign path.') }}</div>
       </div>
     </div>
   {% endif %}
@@ -935,7 +935,7 @@
     {# Dynamic sourcing disclosure — names the ACTUAL source of this render,
        never a hardcoded endpoint (Charlie 2026-09-25). #}
     {% if page_sourcing == 'sovereign' %}
-      {{ _('Data sourced from our own sovereign') }} <code>rippled</code> {{ _('node via the') }} <code>feature</code> {{ _('RPC and the canonical Amendments ledger object; public') }} <code>s1.ripple.com:51234</code> {{ _('is labeled fallback only.') }}
+      {{ _('Data sourced from our own sovereign') }} <code>xrpld</code> {{ _('node via the') }} <code>feature</code> {{ _('RPC and the canonical Amendments ledger object; public') }} <code>s1.ripple.com:51234</code> {{ _('is labeled fallback only.') }}
     {% else %}
       {{ _('Data served via public') }} <code>s1.ripple.com:51234</code> {{ _('(sovereign-node fallback — see banner above) plus the canonical Amendments ledger object.') }}
     {% endif %}

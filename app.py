@@ -608,7 +608,7 @@ app.config["API_SPEC_OPTIONS"] = {
                 "through 2026-09 — server publicly reachable (streamable "
                 "HTTP, MCP protocol 2025-06-18, 19 read-only tools, no "
                 "auth, 600 tool calls/hour/session enforced). Backed by "
-                "our own rippled node. Listed in the Anthropic MCP "
+                "our own xrpld node. Listed in the Anthropic MCP "
                 "Registry (server id com.xrpldashboard/xrpldashboard-mcp, "
                 "DNS-verified namespace, listed 2026-08-05) and Smithery "
                 "(listed 2026-08-05). See mcp_server.py + mcp_tools_*.py "
@@ -10284,7 +10284,7 @@ def security_txt():
 # agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
-> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own rippled node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own rippled node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). Browser-side live streams on `/tokens`, `/whales`, `/pools`, and `/wallet` connect to our own-node WSS relay at `wss://wss.xrpldashboard.com` (Lenovo → cloudflared tunnel → `ws://127.0.0.1:6011` → local rippled ledger stream). Live-feed sovereignty flipped 2026-09-22. `wss://xrplcluster.com` remains as a fallback only; any browser-side fallback event pings `/api/walker-node-fallback` and logs into the same `walker_node_fallback` table the server-side walkers use. (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own xrpld node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own xrpld node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). Browser-side live streams on `/tokens`, `/whales`, `/pools`, and `/wallet` connect to our own-node WSS relay at `wss://wss.xrpldashboard.com` (Lenovo → cloudflared tunnel → `ws://127.0.0.1:6011` → local rippled ledger stream). Live-feed sovereignty flipped 2026-09-22. `wss://xrplcluster.com` remains as a fallback only; any browser-side fallback event pings `/api/walker-node-fallback` and logs into the same `walker_node_fallback` table the server-side walkers use. (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
 Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
 
@@ -10296,7 +10296,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - [/rwa]({SITE_URL}/rwa): real-world-asset tokens on XRPL with issuer attestation.
 - [/tokens]({SITE_URL}/tokens): verified XRPL token supply — full token registry with domain-attested labels and on-ledger activity.
 - [/mpts]({SITE_URL}/mpts): MPT (Multi-Purpose Token) registry and issuer roll-ups.
-- [/nfts]({SITE_URL}/nfts): XLS-20 NFT activity on XRPL — mints, burns, offers, and sales, with per-source labels (live: own rippled; historical backfill: Ripple's public Clio archive, disclosed and free-tier only under SELLABLE_REQUIRES_SOVEREIGN_SOURCE).
+- [/nfts]({SITE_URL}/nfts): XLS-20 NFT activity on XRPL — mints, burns, offers, and sales, with per-source labels (live: own node; historical backfill: Ripple's public Clio archive, disclosed and free-tier only under SELLABLE_REQUIRES_SOVEREIGN_SOURCE).
 - [/pools]({SITE_URL}/pools): AMM pools ranked by TVL and volume.
 - [/amendments]({SITE_URL}/amendments): current XRPL amendment status — enabled, voting, and vetoed amendments with validator support tallies.
 - [/amendments/YYYY-MM-DD]({SITE_URL}/amendments/2026-09-25): dated, signed record of that day's amendment tallies (the leaf's amendments_block, since 2026-09-24) with leaf hash, chain root, Ed25519 signature and verifier verdict; majority events and roll-call counts for the day shown but labeled not inside the leaf. Machine twin at `/amendments/YYYY-MM-DD.json`. Cite this instead of the live page.
@@ -10334,7 +10334,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Agent identification, rate limits, and preferred crawl behavior: [{SITE_URL}/.well-known/agents.json]({SITE_URL}/.well-known/agents.json).
 - OpenAPI spec (machine-readable index of the LIVE free surface + envelope schema + MCP tool inventory): [{SITE_URL}/openapi.json]({SITE_URL}/openapi.json). Swagger UI: [{SITE_URL}/docs]({SITE_URL}/docs).
 - Freshness contract for this file and the agent-tier surfaces (llms.txt, agents.json, openapi.json, /methodology#for-ai-agents): last verified {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}. Bumped whenever the agent-tier surface changes.
-- MCP server (public beta, no end date set): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
+- MCP server (public beta, no end date set): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own xrpld node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
 - Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Accepts GET with `?q=<subject>` for one-shot triage and POST with `Content-Type: application/json` `{{"q": "<subject or full pasted message>"}}` for longer messages that extract multiple subjects. Signature envelope: v0.9 per-verdict Ed25519 signing is LIVE as of 2026-09-22 — every response carries `proof.check_v09_signature` with `sig_status`, `canonical_hash_sha256`, `sig_ed25519`, `domain_separator = "xrpldashboard/receipt/v1"`, `signed_at_utc`, and `signer` fingerprint. Verify recipe matches the verified-tokens manifest: canonical_hash over sorted-keys-no-whitespace JSON of the `data` object; Ed25519 over `domain_separator + 0x00 + bytes.fromhex(canonical_hash)` against the receipt pubkey at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03). Per-capability `source_label` + `checked_at_utc` fields are still present for field-level provenance.
@@ -10371,7 +10371,7 @@ _AGENTS_JSON = {
     "name": "xrpldashboard",
     "description": (
         "Public read-only data for the XRP Ledger. Ledger-state data is read "
-        "from our own rippled node first (LAN for walkers, CF-Access tunnel "
+        "from our own xrpld node first (LAN for walkers, CF-Access tunnel "
         "for the web app); public XRPL RPC (s1/s2/xrplcluster) is a labeled "
         "fallback that flips the response's sourcing field and the page's "
         "disclosure banner when used. Public Ethereum RPC for the RLUSD "
@@ -10385,18 +10385,18 @@ _AGENTS_JSON = {
     # is data labeling, machine-readable here as on every human page).
     "data_sourcing": {
         "rule": (
-            "own rippled node first; public XRPL servers are a labeled "
+            "own xrpld node first; public XRPL servers are a labeled "
             "fallback; any surface that used one says so"
         ),
         "classes": {
             "own-node": (
-                "walkers on our infrastructure read our own rippled node over "
+                "walkers on our infrastructure read our own xrpld node over "
                 "LAN and write the rows the site serves (anchored signed-snapshot "
                 "metrics, /pools, /cold-storage, /escrow-supply, /credentials, "
                 "/sidechain, /nfts live path, /whales stream)"
             ),
             "sovereign-tunnel": (
-                "the web app reads our own rippled node through the CF-Access "
+                "the web app reads our own xrpld node through the CF-Access "
                 "tunnel rpc.xrpldashboard.com (/check, /wallet, /lending, "
                 "/amendments, /tokens, /mpts cache lookups, nav liveness chip)"
             ),
@@ -10512,7 +10512,7 @@ _AGENTS_JSON = {
         "spec_url": f"{SITE_URL}/methodology#for-ai-agents",
         "note": (
             "Envelope is normative for both the MCP server (public at "
-            "https://mcp.xrpldashboard.com/mcp, backed by our own rippled "
+            "https://mcp.xrpldashboard.com/mcp, backed by our own xrpld "
             "node on the Lenovo box) and the /check.json HTTP surface "
             f"({SITE_URL}/check.json). Since 2026-09-22, every /check.json "
             "response carries the full v0.9 proof envelope including "
@@ -10581,7 +10581,7 @@ _AGENTS_JSON = {
             "predicate": "billed == (response.proof.sourcing == 'sovereign')",
             "explanation": (
                 "A call is billed ONLY when the response is served from our "
-                "own sovereign infrastructure (own rippled node + CF-Access "
+                "own sovereign infrastructure (own xrpld node + CF-Access "
                 "tunnel). Any fallback to public XRPL RPC (s1/s2/xrplcluster) "
                 "sets billed=false + billing_reason='sourcing_not_sovereign' "
                 "in the receipt envelope and does not consume a paid unit. "
@@ -10831,7 +10831,7 @@ _AGENTS_JSON = {
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta, no end date set, running against our own rippled node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Since 2026-08-07, each daily chain_root is additionally anchored on the XRP Ledger from account rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ (first anchor tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8, ledger 106140698); cadence is weekly, manual today. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
+        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta, no end date set, running against our own xrpld node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Since 2026-08-07, each daily chain_root is additionally anchored on the XRP Ledger from account rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ (first anchor tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8, ledger 106140698); cadence is weekly, manual today. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
         "discovery_layer_ready": True,
         "mcp_ready": True,
         "mcp_stability": "public_beta_through_2026-09",

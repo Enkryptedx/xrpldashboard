@@ -90,7 +90,7 @@
   <div class="callout beta">
     <p style="margin: 0;">
       <strong>{{ _('Public beta through 2026-09.') }}</strong>
-      {{ _('Running on our own rippled full-history node from a Lenovo box in Indiana, exposed via a Cloudflare Tunnel. Session-scoped rate limit') }}
+      {{ _('Running on our own xrpld full-history node from a Lenovo box in Indiana, exposed via a Cloudflare Tunnel. Session-scoped rate limit') }}
       <strong>600 tool calls / hour / session</strong>{{ _(', enforced live — over-cap requests get HTTP 429 with a') }}
       <code>Retry-After</code> {{ _('hint. No throttle-then-degrade, no silent drops.') }}
     </p>
@@ -144,7 +144,7 @@
     <div class="body">"{{ _('Using the xrpldashboard MCP server, get the current XRPL ledger stats. Show me the validated ledger index, close time, and build version.') }}"</div>
     <div class="why">
       → {{ _('Calls') }} <code>get_ledger_stats</code>.
-      {{ _('Live rippled result, freshness ≤ 5min. Source =') }} <code>local_rippled</code>{{ _(' in the proof envelope.') }}
+      {{ _('Live xrpld result, freshness ≤ 5min. Source =') }} <code>local_rippled</code>{{ _(' in the proof envelope.') }}
     </div>
   </div>
 

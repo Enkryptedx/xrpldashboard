@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('NFT activity on XRPL') }} · xrpldashboard</title>
   {% set meta_title = "NFT activity on XRPL · xrpldashboard" %}
-  {% set meta_description = "XLS-20 NFT activity across the XRP Ledger — mints, burns, offers, and sales. Every source labeled: forward-walker data from our own rippled node, historical backfill from Ripple's public Clio archive. Free forever." %}
+  {% set meta_description = "XLS-20 NFT activity across the XRP Ledger — mints, burns, offers, and sales. Every source labeled: forward-walker data from our own xrpld node, historical backfill from Ripple's public Clio archive. Free forever." %}
   {% include "_head_meta.html" %}
 
   <style>
@@ -267,7 +267,7 @@
     <div class="section-head" style="margin-bottom: 0.4em;">
       <h2>{{ _('Activity by transaction type') }}</h2>
       <span class="meta">
-        <span class="src-pill own-node">{{ _('live: own rippled') }}</span>
+        <span class="src-pill own-node">{{ _('live: own node') }}</span>
       </span>
     </div>
     <p style="color: var(--muted); font-size: var(--fs-xs); margin-bottom: 0.6em;">
@@ -335,7 +335,7 @@
       <tbody>
         <tr>
           <td>{{ _('Live NFT activity (forward-walker)') }}</td>
-          <td class="dim">{{ _('our own rippled node first · standard') }} <code>Ledger</code> {{ _('RPC · 5-min cadence · a public rippled is the labeled fallback, disclosed above when a pass used it') }}</td>
+          <td class="dim">{{ _('our own xrpld node first · standard') }} <code>Ledger</code> {{ _('RPC · 5-min cadence · a public rippled is the labeled fallback, disclosed above when a pass used it') }}</td>
           <td><span class="src-pill own-node">own-node</span></td>
         </tr>
         <tr>
@@ -352,7 +352,7 @@
       <strong>{{ _('Under our sovereign-source doctrine:') }}</strong>
       {{ _('the historical backfill was read through a third-party pipe. Under the ') }}
       <code>SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code>
-      {{ _(' rule (see') }} <a href="/methodology#nft-data-sources">/methodology#nft-data-sources</a>{{ _('), historical NFT data therefore stays free forever, honestly labeled, until we re-derive it from our own full-history rippled node.') }}
+      {{ _(' rule (see') }} <a href="/methodology#nft-data-sources">/methodology#nft-data-sources</a>{{ _('), historical NFT data therefore stays free forever, honestly labeled, until we re-derive it from our own full-history xrpld node.') }}
     </div>
   </div>
 
@@ -405,7 +405,7 @@
 
   <footer>
     {{ _('Data:') }}
-    <code style="color: var(--cyan);">nft_activity_walker</code>{{ _(' — forward-walker via own rippled, historical backfill via') }}
+    <code style="color: var(--cyan);">nft_activity_walker</code>{{ _(' — forward-walker via own node, historical backfill via') }}
     <code style="color: var(--cyan);">s2-clio.ripple.com</code>{{ _('. Every source labeled at point of display per the') }}
     <code style="color: var(--cyan);">SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code> {{ _('doctrine — see') }}
     <a href="/methodology#nft-data-sources">/methodology#nft-data-sources</a>{{ _(' and the corresponding') }}

@@ -141,7 +141,7 @@
         <td><span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span></td>
         <!-- mirrors network_pulse.PULSE_CACHE_TTL_SECONDS=60 -->
         <td>{{ _('60 sec') }}</td>
-        <td><code>server_info</code> {{ _('on our own rippled node; public XRPL node as labeled fallback') }}</td>
+        <td><code>server_info</code> {{ _('on our own xrpld node; public XRPL node as labeled fallback') }}</td>
       </tr>
       <tr>
         <td class="route">{{ _('Ledger heartbeat chip') }}<br>{{ _('(every page header)') }}</td>
@@ -236,19 +236,19 @@
   </table>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
-    {{ _('Five surfaces use browser-side WebSocket push (Live). The whales, tokens, pools, and wallet streams subscribe to our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo rippled → cloudflared tunnel → subscribe-only, server-filtered named feeds') }}). {{ _('The public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move is logged in') }} <code>walker_node_fallback</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
+    {{ _('Five surfaces use browser-side WebSocket push (Live). The whales, tokens, pools, and wallet streams subscribe to our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo xrpld → cloudflared tunnel → subscribe-only, server-filtered named feeds') }}). {{ _('The public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move is logged in') }} <code>walker_node_fallback</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}
   </p>
 
   <h2>{{ _('Data sources') }}</h2>
 
   <h3>{{ _('XRP Ledger nodes') }}</h3>
   <p>
-    {{ _('On-chain data is read from our own rippled node first; public XRPL nodes are a labeled fallback. Every node is a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it.') }}
+    {{ _('On-chain data is read from our own xrpld (formerly rippled) node first; public XRPL nodes are a labeled fallback. Every node is a peer in the consensus network — it can\'t lie about ledger contents without the rest of the network rejecting it.') }}
   </p>
   <ul>
-    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo rippled → cloudflared tunnel → subscribe-only fan-out). Serves the ledger stream and the server-filtered named feeds the whales, tokens, pools, and wallet pages subscribe to.') }}</li>
+    <li><strong><code>wss://wss.xrpldashboard.com</code></strong> — {{ _('Own-node WSS relay (Lenovo xrpld → cloudflared tunnel → subscribe-only fan-out). Serves the ledger stream and the server-filtered named feeds the whales, tokens, pools, and wallet pages subscribe to.') }}</li>
     <li><strong><code>wss://xrplcluster.com</code></strong> — {{ _('Community-operated full-history cluster run by the XRP Ledger Foundation. Browser fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move logs into') }} <code>walker_node_fallback</code>.</li>
-    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Not in the browser stream path. (The server-side streaming worker moved off s2 to our own rippled node on the LAN in 2026-09.)') }}</li>
+    <li><strong><code>wss://s2.ripple.com</code></strong> — {{ _('Ripple-operated full-history node. Not in the browser stream path. (The server-side streaming worker moved off s2 to our own xrpld node on the LAN in 2026-09.)') }}</li>
     <li><strong><code>s1.ripple.com:51234</code></strong> — {{ _('Ripple-operated general-purpose JSON-RPC node. Labeled fallback for the network pulse, ledger-tip, amendments, and RLUSD-issuer reads when our own node is unreachable (own node first since 2026-09-06).') }}</li>
   </ul>
 
@@ -262,7 +262,7 @@
   <p>
     <strong>{{ _('Disclosure.') }}</strong> {{ _('Ripple\'s documentation explicitly states their public servers are') }} <em>{{ _('not intended for sustained business use') }}</em>. {{ _('Browser-side live streams run against our own-node relay') }} <code>wss://wss.xrpldashboard.com</code>, {{ _('with the community-operated cluster') }}
     <a href="https://xrplcluster.com/" target="_blank" rel="noopener noreferrer">
-    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation) as the logged fallback. Our own') }} <code>rippled</code> {{ _('node on the LAN carries the forward-walker, MCP tool envelope reads, the relay, and — since 2026-09 — the continuous XRPL streaming worker (all classified') }} <code>own-node</code> {{ _('in the source-tier table below). Server-side reads from Render still fall through public XRPL RPC where the tunnel path is not wired; each such page discloses its source.') }}
+    <code>wss://xrplcluster.com</code></a> {{ _('(run by the XRP Ledger Foundation) as the logged fallback. Our own') }} <code>xrpld</code> {{ _('node on the LAN carries the forward-walker, MCP tool envelope reads, the relay, and — since 2026-09 — the continuous XRPL streaming worker (all classified') }} <code>own-node</code> {{ _('in the source-tier table below). Server-side reads from Render still fall through public XRPL RPC where the tunnel path is not wired; each such page discloses its source.') }}
   </p>
 
   <h3>{{ _('Database') }}</h3>
@@ -408,15 +408,15 @@
   </p>
   <p>
     <strong id="anchored-metric-set">{{ _('Anchored metric set (v1 — 7 metrics, effective 2026-09-04).') }}</strong>
-    {{ _('Every metric committed to the signed-snapshot chain must originate from our own rippled node on the LAN or from artifacts derived from it. The daily leaf currently commits these seven:') }}
+    {{ _('Every metric committed to the signed-snapshot chain must originate from our own xrpld node on the LAN or from artifacts derived from it. The daily leaf currently commits these seven:') }}
   </p>
   <ol>
-    <li><code>xrpl_validated_ledger_index</code> — {{ _('validated ledger index read directly from LAN rippled') }}</li>
-    <li><code>amm_pools_count</code> — {{ _('active AMM pool count from') }} <code>amm_ranked.json</code> ({{ _('ranker walker queries LAN rippled') }})</li>
+    <li><code>xrpl_validated_ledger_index</code> — {{ _('validated ledger index read directly from LAN xrpld') }}</li>
+    <li><code>amm_pools_count</code> — {{ _('active AMM pool count from') }} <code>amm_ranked.json</code> ({{ _('ranker walker queries LAN xrpld') }})</li>
     <li><code>amm_pools_total_tvl_usd</code> — {{ _('sum of TVL over the ranked AMM set (same source as above)') }}</li>
-    <li><code>mpt_total_count</code> — {{ _('MPT issuance count from') }} <code>mpt_snapshot.json</code> ({{ _('snapshot walker uses LAN rippled, with public cascade as a last-resort fallback logged in') }} <code>walker_node_fallback</code>)</li>
-    <li><code>named_accounts_count</code> — {{ _('watchlist size from') }} <code>named_accounts.json</code> ({{ _('curated file; auto-verification walker uses LAN rippled') }})</li>
-    <li><code>rlusd_xrpl_supply</code> — {{ _('RLUSD circulating on XRPL, via LAN rippled') }} <code>gateway_balances</code></li>
+    <li><code>mpt_total_count</code> — {{ _('MPT issuance count from') }} <code>mpt_snapshot.json</code> ({{ _('snapshot walker uses LAN xrpld, with public cascade as a last-resort fallback logged in') }} <code>walker_node_fallback</code>)</li>
+    <li><code>named_accounts_count</code> — {{ _('watchlist size from') }} <code>named_accounts.json</code> ({{ _('curated file; auto-verification walker uses LAN xrpld') }})</li>
+    <li><code>rlusd_xrpl_supply</code> — {{ _('RLUSD circulating on XRPL, via LAN xrpld') }} <code>gateway_balances</code></li>
     <li><code>rwa_total_aum_usd</code> — {{ _('RWA total from LAN-derived') }} <code>amm_ranked.json</code> {{ _('cross-referenced against curated') }} <code>rwa_pool_attribution</code></li>
   </ol>
   <p>
@@ -596,7 +596,7 @@
     <!-- "cached 10 minutes" mirrors network_state.CACHE_TTL=600 -->
     <li><strong>{{ _('Reserve values.') }}</strong> {{ _('The base + per-object reserve shown on each wallet page is pulled live from') }}
       <code>server_info</code> {{ _('(validated_ledger), cached 10 minutes. Reserves only change via on-chain amendment, so the cache is safe; the literal numbers in the calculation will reflect the network\'s current parameters automatically.') }}</li>
-    <li><strong>{{ _('Event-derived metrics undercount before 2026-09-05 (fixed 2026-09-05 13:47 UTC).') }}</strong> {{ _('The transaction-stream subscriber that feeds our events database was being kicked by our own rippled node with "Server:NFO Policy error: client is too slow" every ~9 seconds today (peak ~400 kicks/hour; 22h-average ~95 kicks/hour). Cause: rippled\'s outbound WebSocket send-queue capacity on the loopback stream port was left at the default (100 messages) instead of the 500-message value carried over from the Mac deployment. Each kick lost up to 100 buffered messages plus everything that arrived during the ~0.5-1 second reconnect gap. Fix: set') }} <code>send_queue_limit = 500</code> {{ _('on the') }} <code>[port_ws_public]</code> {{ _('stanza and restart. Verified: xrpl_stream\'s observed rate went from ~19.5 tx/s (pre-fix mean over 12 samples) to 34.2 tx/s (first post-fix heartbeat) — the delta matches a ~35%% undercount within a plausible 12-43%% range depending on load conditions during the pre-fix window. Kick rate collapsed from ~6.7/minute to ~0.1/minute (99.8%% reduction) in the first 10 minutes post-fix.') }}
+    <li><strong>{{ _('Event-derived metrics undercount before 2026-09-05 (fixed 2026-09-05 13:47 UTC).') }}</strong> {{ _('The transaction-stream subscriber that feeds our events database was being kicked by our own xrpld node with "Server:NFO Policy error: client is too slow" every ~9 seconds today (peak ~400 kicks/hour; 22h-average ~95 kicks/hour). Cause: xrpld\'s outbound WebSocket send-queue capacity on the loopback stream port was left at the default (100 messages) instead of the 500-message value carried over from the Mac deployment. Each kick lost up to 100 buffered messages plus everything that arrived during the ~0.5-1 second reconnect gap. Fix: set') }} <code>send_queue_limit = 500</code> {{ _('on the') }} <code>[port_ws_public]</code> {{ _('stanza and restart. Verified: xrpl_stream\'s observed rate went from ~19.5 tx/s (pre-fix mean over 12 samples) to 34.2 tx/s (first post-fix heartbeat) — the delta matches a ~35%% undercount within a plausible 12-43%% range depending on load conditions during the pre-fix window. Kick rate collapsed from ~6.7/minute to ~0.1/minute (99.8%% reduction) in the first 10 minutes post-fix.') }}
       <br>
       <strong>{{ _('Which surfaces were affected:') }}</strong> {{ _('event-derived counters on') }} <code>/whales</code> ({{ _('the') }} <code>whale_events_seen</code> {{ _('counter, recent whale rows), on') }} <code>/tokens</code> ({{ _('the') }} <code>token_events_seen</code> {{ _('counter, new-token detections, per-token first-trade timing), and any panel that reads from the events database. State-derived surfaces are') }} <strong>{{ _('not affected:') }}</strong> <code>/cold-storage</code>, <code>/escrow-supply</code>, <code>/pools</code>, <code>/amendments</code>, <code>/rlusd</code>, {{ _('the anchored metrics in the daily signed snapshot, and') }} <code>/analytics</code> {{ _('all read from own-node RPC snapshots or unrelated data sources, none of which touched the affected stream.') }}
       <br>
@@ -666,7 +666,7 @@
 
   <h3 id="amendments">{{ _('Amendments (get_amendments_status)') }}</h3>
   <p>
-    {{ _('Source:') }} {{ _('our own rippled node (') }}<code>s1.ripple.com:51234</code> {{ _('as labeled fallback) via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
+    {{ _('Source:') }} {{ _('our own xrpld node (') }}<code>s1.ripple.com:51234</code> {{ _('as labeled fallback) via the') }} <code>feature</code> {{ _('RPC + the canonical Amendments ledger object. Amendment definitions the responding node doesn\'t recognize are named via off-ledger sources in') }} <code>amendments_state.KNOWN_UNRECOGNIZED_HASHES</code> ({{ _('each entry cites a verifiable rippled PR or spec URL — see the') }} <a href="/amendments">/amendments</a> {{ _('page for the human surface, including a truth-first note whenever the node lags a network-enabled amendment')}}). {{ _('Freshness contract:') }} <code>≤ 5min</code> ({{ _('per') }} <code>amendments_state.CACHE_TTL</code>). {{ _('cross_check_status = agree when the enabled-count from the') }} <code>feature</code> {{ _('RPC and the Amendments ledger object are within tolerance; disagree otherwise.') }}
   </p>
   <p>
     <strong>{{ _('Amendment vote tallies — honest limit.') }}</strong>
@@ -765,7 +765,7 @@
 
   <h3>{{ _('Proof-annotation contract') }}</h3>
   <p>
-    {{ _('Every JSON payload from the MCP server carries a receipts block. The MCP server is public at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta, no end date set), streamable-http transport, protocol version 2025-06-18, no auth. Backed by our own rippled node on the Lenovo box. The read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
+    {{ _('Every JSON payload from the MCP server carries a receipts block. The MCP server is public at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta, no end date set), streamable-http transport, protocol version 2025-06-18, no auth. Backed by our own xrpld node on the Lenovo box. The read-only HTTP API will carry the same block when it ships. Agents verify our numbers locally — against ledger truth, against the signed-snapshot chain, against') }}
     <code>CLAIMS.yaml</code> — {{ _('without a support ticket. Envelope shape:') }}
   </p>
   <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; color: var(--text); font-size: 0.85rem;"><code>{
@@ -776,7 +776,7 @@
   "snapshot_signature":  "ed25519:...@chain#N"           // where the datum is snapshot-derived
 }</code></pre>
   <p>
-    {{ _('The read-only OpenAPI spec is live at') }} <a href="/openapi.json"><code>/openapi.json</code></a> ({{ _('Swagger UI at') }} <a href="/docs"><code>/docs</code></a>) — {{ _('the ProofAnnotationEnvelope schema above is machine-readable at') }} <code>#/components/schemas/ProofAnnotationEnvelope</code>, {{ _('and the 15-tool MCP inventory is at') }} <code>info.x-mcp-tools</code>. {{ _('The MCP server is public and live at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta, no end date set; the server runs as a systemd daemon on the Lenovo box, same host as our rippled node, exposed via Cloudflare Tunnel). Per-tool freshness contracts are declared inside each tool response envelope') }} (<code>freshness_contract</code> {{ _('field:') }} <code>≤ 5min</code> / <code>≤ 30min</code> / <code>daily</code> / <code>finalized_only</code>) {{ _('and mirror the on-page freshness chips agents see for the same data. See the') }}
+    {{ _('The read-only OpenAPI spec is live at') }} <a href="/openapi.json"><code>/openapi.json</code></a> ({{ _('Swagger UI at') }} <a href="/docs"><code>/docs</code></a>) — {{ _('the ProofAnnotationEnvelope schema above is machine-readable at') }} <code>#/components/schemas/ProofAnnotationEnvelope</code>, {{ _('and the 15-tool MCP inventory is at') }} <code>info.x-mcp-tools</code>. {{ _('The MCP server is public and live at') }} <a href="https://mcp.xrpldashboard.com/mcp"><code>https://mcp.xrpldashboard.com/mcp</code></a> {{ _('(public beta, no end date set; the server runs as a systemd daemon on the Lenovo box, same host as our xrpld node, exposed via Cloudflare Tunnel). Per-tool freshness contracts are declared inside each tool response envelope') }} (<code>freshness_contract</code> {{ _('field:') }} <code>≤ 5min</code> / <code>≤ 30min</code> / <code>daily</code> / <code>finalized_only</code>) {{ _('and mirror the on-page freshness chips agents see for the same data. See the') }}
     <a href="https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/AGENT_TIER_DESIGN.md" target="_blank" rel="noopener noreferrer">{{ _('design doc on GitHub') }}</a> {{ _('for the full build sequence.') }}
   </p>
 
@@ -786,17 +786,17 @@
   </p>
   <ul>
     <li>
-      <strong>{{ _('Live forward-walker activity') }}</strong> — {{ _('read from our own rippled node via the standard') }} <code>Ledger</code> {{ _('RPC (') }}<code>transactions=True, expand=True</code>{{ _('), 5-minute cadence, 200-ledger batches, head-safety margin of 3. Only') }} <code>tesSUCCESS</code> {{ _('transactions are counted. This tier is classified') }} <strong style="color: var(--green);">own-node</strong>.
+      <strong>{{ _('Live forward-walker activity') }}</strong> — {{ _('read from our own xrpld node via the standard') }} <code>Ledger</code> {{ _('RPC (') }}<code>transactions=True, expand=True</code>{{ _('), 5-minute cadence, 200-ledger batches, head-safety margin of 3. Only') }} <code>tesSUCCESS</code> {{ _('transactions are counted. This tier is classified') }} <strong style="color: var(--green);">own-node</strong>.
     </li>
     <li>
-      <strong>{{ _('Historical backfill (2026-04-01 → head)') }}</strong> — {{ _('read from Ripple\'s public Clio archive at') }} <code>s2-clio.ripple.com</code> {{ _('because full history was required and our own rippled node does not carry it. This tier is classified') }} <strong style="color: var(--amber);">third-party</strong>.
+      <strong>{{ _('Historical backfill (2026-04-01 → head)') }}</strong> — {{ _('read from Ripple\'s public Clio archive at') }} <code>s2-clio.ripple.com</code> {{ _('because full history was required and our own xrpld node does not carry it. This tier is classified') }} <strong style="color: var(--amber);">third-party</strong>.
     </li>
   </ul>
   <p>
     {{ _('The 2026-08-10 gap audit of the historical range produced ~95.6%% coverage of a 2,958,523-ledger range (2026-04-01 → head): 2,194,433 ledgers were observed with NFT activity (4,955,611 events), ~635,090 contained no NFT transactions (legitimately empty of NFT tx), and ~129,000 are residual holes — public-Clio 503 responses the walker persisted past during backfill. The 95.6%% denominator is the full range; empty-by-consensus ledgers count as covered, residual holes count as missed. This is disclosed on') }} <a href="/nfts">/nfts</a> {{ _('rather than surfaced as false-complete.') }}
   </p>
   <p>
-    {{ _('Under our sovereign-source doctrine —') }} <code>SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code> {{ _('— any endpoint whose underlying data was read through a third-party pipe stays free forever, honestly labeled, until it can be re-derived from our own infrastructure. NFT historical backfill therefore sits permanently in the free tier until (and unless) we buy a full-history rippled node and re-derive the range from it. The doctrine is fully documented in') }} <code>docs/X402_RAILS_DARK_SCOPING.md</code> {{ _('§ 2 Paid-candidate filter.') }}
+    {{ _('Under our sovereign-source doctrine —') }} <code>SELLABLE_REQUIRES_SOVEREIGN_SOURCE</code> {{ _('— any endpoint whose underlying data was read through a third-party pipe stays free forever, honestly labeled, until it can be re-derived from our own infrastructure. NFT historical backfill therefore sits permanently in the free tier until (and unless) we buy a full-history xrpld node and re-derive the range from it. The doctrine is fully documented in') }} <code>docs/X402_RAILS_DARK_SCOPING.md</code> {{ _('§ 2 Paid-candidate filter.') }}
   </p>
 
   <h3>{{ _('Signed-snapshot verification') }}</h3>
