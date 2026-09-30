@@ -299,6 +299,20 @@ def fetch_amendments_state(fetcher=None):
         "ledger_index": ledger_result.get("ledger_index")
             or feat_result.get("ledger_index"),
         "enabled_count": len(enabled_hashes),
+        # 2026-09-29 activation-day fix (worktree): surface the recognized-
+        # enabled list ({hash,name}) so signed_snapshot._assemble_amendments_
+        # block can record an amendment that ACTIVATED (left Majorities, now
+        # in the ledger enabled set). Purely additive: every consumer reads
+        # via .get("recognized_enabled", []), so an old cache entry without
+        # the key is safe. DISTINCT key name so no existing consumer picks it
+        # up: the MCP get_amendment_status tool already reads state.get(
+        # "enabled") (today always empty because the key was absent) and
+        # serializes it — adding "enabled" would change that public response.
+        # "recognized_enabled" is read ONLY by signed_snapshot.
+        # _assemble_amendments_block. No public surface reads it, so no
+        # response shape changes. (Wiring the MCP tool to it is a separate,
+        # reviewed edit.)
+        "recognized_enabled": enabled,
         "unrecognized_enabled": unrecognized_enabled,
         "unrecognized_enabled_count": len(unrecognized_enabled),
         "in_flight": in_flight,

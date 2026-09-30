@@ -1,0 +1,23 @@
+{
+ "source": "s2.ripple.com tx+ledger; index via data.xrpl.org",
+ "name": "fixCleanup3_3_0",
+ "ledger_index": 106911489,
+ "close_time": 842441340,
+ "close_time_iso": "2026-09-11T11:29:00Z",
+ "tx": {
+  "Account": "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+  "Amendment": "3298D47E1F3A8A24FECAA30F699B8FE1DD234E072834BA099AD8180FFCE0FEC4",
+  "Fee": "0",
+  "LedgerSequence": 106911489,
+  "Sequence": 0,
+  "SigningPubKey": "",
+  "TransactionType": "EnableAmendment",
+  "hash": "5749CFD26F6D2C4BE73E14543615F75717EA1D09A2B5865E5EAAE534EFBA0FD0",
+  "ctid": "C65F570100300000",
+  "validated": true,
+  "date": 842441340,
+  "ledger_index": 106911489,
+  "inLedger": 106911489,
+  "status": "success"
+ }
+}

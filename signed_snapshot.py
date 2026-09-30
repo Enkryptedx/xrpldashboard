@@ -1358,13 +1358,260 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
             "unrecognized": True,
         }
 
-    return {
+    # 2026-09-29 activation-day fix (Charlie-approved): when a RECOGNIZED
+    # amendment activates it leaves `in_flight` and lands in the ledger's
+    # enabled set, but is NOT in `unrecognized_enabled` (it has a known
+    # name). The old block therefore dropped it silently — the tamper-
+    # evident leaf lost the very activation it should capture. Fix: add a
+    # per_amendment entry for each recognized-enabled amendment that we
+    # were ALREADY TRACKING (present in the previous leaf's per_amendment
+    # OR in amendment_majority_history), and NOT for all ~95 enabled.
+    #
+    # "Activated" is decided HERE at render time: hash is in the enabled
+    # list. We stamp `first_seen_enabled_ledger` + its close time from the
+    # amendment_majority_history flag-ledger anchor (never poll wall-clock),
+    # and label it "first seen enabled" (not "enabled at"). Existing rows
+    # are never rewritten. No DB write (jj_ro is read-only).
+    # tracked_prev: names in the previous (earlier-dated) leaf's per_amendment.
+    # prev_entries: their full prior entries, so we CARRY FORWARD the
+    # observed_enabled_in_leaf date (never re-derive it) and can drop after 30d.
+    tracked_prev, prev_entries, prev_leaf_date = _load_previous_leaf_enabled_entries(now_utc)
+    # tracked_maj: hash_upper -> {majority_reached_ledger, majority_reached_iso}
+    # from amendment_majority_history. This is the MAJORITY-gained flag ledger,
+    # NOT an enable observation — labeled as such, never as "enabled at".
+    tracked_maj = {}
+    try:
+        import app as _app
+        for _mh in (_app._load_amendment_majority_history() or []):
+            _h = (_mh.get("hash") or "").upper()
+            if _h and _h not in tracked_maj:
+                tracked_maj[_h] = {
+                    "majority_reached_ledger": _mh.get("first_seen_ledger"),
+                    "majority_reached_iso": _mh.get("first_seen_close_iso"),
+                    "activation_eta_iso": _mh.get("activation_eta_iso"),
+                }
+    except Exception:  # noqa: BLE001 — best-effort; missing history = null majority anchor
+        tracked_maj = {}
+
+    today_date = now_utc.strftime("%Y-%m-%d")
+    enabled_recognized = state.get("recognized_enabled") or []
+    for e in enabled_recognized:
+        name = e.get("name")
+        h = e.get("hash")
+        if not name or name in per_amendment:
+            continue
+        hu = (h or "").upper()
+        # Eligibility: only amendments we were TRACKING (in an earlier leaf's
+        # per_amendment OR in the majority history) that are NOW enabled.
+        # Long-enabled watchlist items (e.g. fixNFTokenDirV1) are neither, so
+        # they never generate an enabled entry.
+        was_tracked = (name in tracked_prev) or (hu in tracked_maj)
+        if not was_tracked:
+            continue
+        prev = prev_entries.get(name) or {}
+        # CARRY FORWARD the first-listed date from the prior leaf; else this is
+        # the first leaf to list it enabled -> self-anchor to today. Read from
+        # the local chain only, never the network.
+        observed_date = prev.get("observed_enabled_in_leaf", {}).get("date") or today_date
+        observed_unix = prev.get("observed_enabled_in_leaf", {}).get("as_of_unix") or now_ts
+        # 30-day retention: once it has been observed-enabled >30d, stop
+        # emitting the entry (it is settled history, not news).
+        try:
+            age_days = (now_utc.date() - dt.date.fromisoformat(observed_date)).days
+        except Exception:  # noqa: BLE001
+            age_days = 0
+        if age_days > 30:
+            continue
+        maj = tracked_maj.get(hu, {})
+        # EnableAmendment pseudo-transaction lookup — bounded, null on any
+        # doubt. Never delays or blocks signing.
+        enable_idx, enable_iso = _lookup_enable_amendment(hu, eta_iso=maj.get("activation_eta_iso"))
+        per_amendment[name] = {
+            "hash": h,
+            "enabled": True,
+            "network_votes": None,
+            # "observed in leaf", NEVER "activated": the first signed leaf that
+            # listed this amendment enabled (self-anchored on first sight,
+            # carried forward thereafter).
+            "observed_enabled_in_leaf": {"date": observed_date, "as_of_unix": observed_unix},
+            # on-ledger EnableAmendment pseudo-txn anchor, or null if not
+            # readable quickly / ambiguous. Never guessed.
+            "enable_ledger_index": enable_idx,
+            "enable_close_iso": enable_iso,
+            # the MAJORITY-gained flag ledger (distinct from enable), or null.
+            "majority_reached_ledger": maj.get("majority_reached_ledger"),
+            "majority_reached_iso": maj.get("majority_reached_iso"),
+        }
+
+    # Non-blocking finding (§3): a tracked amendment that was in the PREVIOUS
+    # leaf's per_amendment but is now absent AND not marked enabled/superseded
+    # here is a possible silent drop. Record a warning; NEVER block signing.
+    block_warnings = []
+    for prev_name in tracked_prev:
+        if prev_name not in per_amendment:
+            block_warnings.append(
+                f"tracked amendment '{prev_name}' from previous leaf is absent "
+                f"from this block and not marked enabled/superseded"
+            )
+
+    result = {
         "as_of_unix": now_ts,
         "responding_node_source": responding_source,
         "unl_source": "vl.ripple.com",
         "threshold_display": threshold_display or "28/35",
         "per_amendment": per_amendment,
     }
+    if block_warnings:
+        result["warnings"] = block_warnings
+    return result
+
+
+def _load_previous_leaf_enabled_entries(now_utc, snapshots_dir=None):
+    """Read-only carry-forward source. Returns (names, entries, prev_date):
+      names   — set of per_amendment names in the most recent EARLIER-DATED
+                signed leaf (a same-date re-sign can't become its own first).
+      entries — {name: prior per_amendment entry} so observed_enabled_in_leaf
+                is CARRIED FORWARD, never re-derived.
+      prev_date — that leaf's date.
+    chain.json leaves hold only {date, leaf_hash, ledger_index}; the metrics
+    live in the per-date file signed_snapshots/<date>.json, so we take the
+    newest earlier date from the chain and open that file. Local disk only,
+    never the network. Skipped days (e.g. Sep 16-18) simply mean the last
+    earlier-dated leaf is used. Best-effort: any error returns empties so a
+    missing chain never blocks signing."""
+    try:
+        today = now_utc.strftime("%Y-%m-%d")
+        sdir = snapshots_dir or SNAPSHOTS_DIR
+        chain = load_chain()
+        dates = sorted({(lf.get("date") or "") for lf in (chain.get("leaves") or [])
+                        if (lf.get("date") or "") < today}, reverse=True)
+        for ldate in dates:
+            path = os.path.join(sdir, f"{ldate}.json")
+            if not os.path.exists(path):
+                continue
+            with open(path) as f:
+                payload = json.load(f)
+            for m in (payload.get("metrics") or []):
+                if m.get("name") == "amendments_block":
+                    pa = (m.get("value") or {}).get("per_amendment") or {}
+                    return set(pa.keys()), pa, ldate
+            return set(), {}, ldate
+    except Exception:  # noqa: BLE001
+        pass
+    return set(), {}, None
+
+
+def _parse_enable_amendment(ledger_dict, hash_upper):
+    """Pure parser (no I/O): given a `ledger` result dict with expanded
+    transactions, return (ledger_index, close_iso) of the EnableAmendment
+    pseudo-transaction that ENABLES hash_upper, else (None, None).
+
+    Facts from a real capture (fixCleanup3_3_0, tx 5749CFD2..., 2026-09-11):
+      * the enable pseudo-tx sits in the ledger right AFTER the flag ledger
+        (106911489 = 106911488 + 1), Account = ACCOUNT_ZERO, Fee "0",
+        Sequence 0, SigningPubKey "", and NO Flags field.
+      * EnableAmendment pseudo-txs ALSO appear with Flags tfGotMajority
+        (0x00010000) / tfLostMajority (0x00020000) at majority transitions.
+        Those are NOT enables. We require Flags absent or 0.
+    Any malformed input -> (None, None); never raises."""
+    try:
+        if not isinstance(ledger_dict, dict) or not hash_upper:
+            return None, None
+        led = ledger_dict.get("ledger") or ledger_dict
+        txs = led.get("transactions") or []
+        for tx in txs:
+            if not isinstance(tx, dict):
+                continue
+            t = tx.get("tx_json") or tx
+            if not isinstance(t, dict):
+                continue
+            if t.get("TransactionType") != "EnableAmendment":
+                continue
+            if str(t.get("Amendment") or "").upper() != hash_upper:
+                continue
+            flags = t.get("Flags") or 0
+            if flags & 0x00010000 or flags & 0x00020000:
+                continue  # majority gained/lost pseudo-tx, not an enable
+            idx = led.get("ledger_index") or t.get("ledger_index") or t.get("LedgerSequence")
+            close = led.get("close_time")
+            idx = int(idx) if idx is not None else None
+            return idx, _xrpl_close_to_iso_safe(close)
+    except Exception:  # noqa: BLE001
+        pass
+    return None, None
+
+
+def _lookup_enable_amendment(hash_upper, eta_iso=None, timeout_s: float = 3.0, client=None):
+    """Best-effort on-ledger anchor for an amendment's ENABLE event.
+    Returns (ledger_index, close_iso) or (None, None) on ANY timeout / error /
+    ambiguity. Never guesses; never delays signing past timeout_s.
+
+    Strategy: the enable lands at flag_ledger+1 for the first flag ledger at or
+    after the activation ETA. From the validated ledger's index + close time we
+    estimate that flag ledger and probe a small window (flag-2 .. flag+6,
+    step 256, ledger = flag+1). Without eta we probe back from the validated
+    ledger. Own node only (shallow history: recent ledgers reachable)."""
+    if not hash_upper:
+        return None, None
+    try:
+        import concurrent.futures as _cf
+        if client is None:
+            node = os.environ.get("XRPL_LOCAL_NODE") or os.environ.get("XRPL_NODE")
+            if not node:
+                return None, None
+            client = JsonRpcClient(node)
+
+        def _req(**kw):
+            resp = client.request(Ledger(**kw))
+            return resp.result if hasattr(resp, "result") else resp
+
+        def _probe():
+            r = _req(ledger_index="validated")
+            led = r.get("ledger") or {}
+            vidx = int(led.get("ledger_index") or r.get("ledger_index"))
+            vclose = int(led.get("close_time"))
+            cands = []
+            if eta_iso:
+                eta_unix = int(dt.datetime.strptime(eta_iso, "%Y-%m-%dT%H:%M:%SZ")
+                               .replace(tzinfo=dt.timezone.utc).timestamp())
+                eta_close = eta_unix - 946684800
+                est = vidx - int((vclose - eta_close) / 3.7)
+                flag = est - (est % 256)
+                cands = [flag + 256 * k for k in range(-2, 7)]
+            else:
+                flag = vidx - (vidx % 256)
+                cands = [flag - 256 * k for k in range(0, 12)]
+            for f in cands:
+                if f <= 0 or f + 1 > vidx:
+                    continue
+                try:
+                    rr = _req(ledger_index=f + 1, transactions=True, expand=True)
+                except Exception:  # noqa: BLE001
+                    continue
+                idx, iso = _parse_enable_amendment(rr, hash_upper)
+                if idx is not None:
+                    return idx, iso
+            return None, None
+
+        ex = _cf.ThreadPoolExecutor(max_workers=1)
+        fut = ex.submit(_probe)
+        try:
+            return fut.result(timeout=timeout_s)
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
+    except Exception:  # noqa: BLE001 — any doubt -> null
+        return None, None
+
+
+def _xrpl_close_to_iso_safe(close_time):
+    """XRPL close-time seconds -> ISO Z, or None. Local, no import cycle."""
+    if close_time is None:
+        return None
+    try:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                             time.gmtime(int(close_time) + 946684800))
+    except (TypeError, ValueError):
+        return None
 
 
 def build_snapshot(date_str: str, now_utc: dt.datetime | None = None) -> dict:
