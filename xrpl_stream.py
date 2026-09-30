@@ -684,6 +684,7 @@ def pulse_handler(msg, _state):
 _AMM_ACCOUNT_SET = None
 _AMM_ACCOUNT_SET_LAST_RELOAD = 0.0
 _AMM_ACCOUNT_SET_RELOAD_INTERVAL_S = 60
+_AMM_ACCOUNT_SET_SNAPSHOT_TS = None
 _AMM_POOL_INSERTS_SINCE_PRUNE = 0
 AMM_POOL_CAP_ROWS = 5000
 AMM_POOL_PRUNE_EVERY = 250
@@ -694,17 +695,23 @@ def _load_amm_account_set():
     worker (where amm_ranked.json is gitignored and absent) still sees the
     Mac ranker's snapshot. Falls back to the local file when PG is empty or
     unavailable."""
-    global _AMM_ACCOUNT_SET, _AMM_ACCOUNT_SET_LAST_RELOAD
+    global _AMM_ACCOUNT_SET, _AMM_ACCOUNT_SET_LAST_RELOAD, _AMM_ACCOUNT_SET_SNAPSHOT_TS
     accounts = set()
     if pgbridge.pg_available():
         try:
-            rows = pgbridge.read_amm_ranked_pools()
-            accounts = {
-                r.get("amm_account") for r in rows if r.get("amm_account")
-            }
+            # Cheap freshness probe first: one row (MAX(snapshot_ts)). The
+            # ranker rewrites the table hourly, so 59 of every 60 reloads
+            # can stop here. Neon egress finding 2026-09-30.
+            snap = pgbridge.read_amm_snapshot_ts()
+            if (snap is not None and _AMM_ACCOUNT_SET is not None
+                    and snap == _AMM_ACCOUNT_SET_SNAPSHOT_TS):
+                _AMM_ACCOUNT_SET_LAST_RELOAD = time.time()
+                return
+            accounts, snap = pgbridge.read_amm_account_set()
             if accounts:
+                _AMM_ACCOUNT_SET_SNAPSHOT_TS = snap
                 log(f"amm_pool_event_handler: tracking {len(accounts)} "
-                    f"AMM accounts (postgres)")
+                    f"AMM accounts (postgres, snapshot_ts={snap})")
         except Exception as e:
             log(f"amm_pool_event_handler: pg load failed ({e}); "
                 f"falling back to file")
