@@ -107,6 +107,16 @@
     }
     .countdown .when { color: var(--muted); font-size: 0.88rem; }
     .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
+    /* "What does this do?" — plain one-liner always visible; details on tap. */
+    .plain { color: var(--muted); font-size: 0.92rem; margin: 2px 0 6px; overflow-wrap: anywhere; }
+    details.whatdoes { margin: 4px 0 8px; }
+    details.whatdoes > summary { cursor: pointer; color: var(--cyan); font-size: 0.88rem; list-style: none; }
+    details.whatdoes > summary::-webkit-details-marker { display: none; }
+    details.whatdoes > summary::before { content: "▸ "; }
+    details.whatdoes[open] > summary::before { content: "▾ "; }
+    details.whatdoes .explain { margin: 6px 0 0; font-size: 0.92rem; line-height: 1.5; overflow-wrap: anywhere; }
+    details.whatdoes .explain .src { display: block; margin-top: 4px; font-size: 0.82rem; color: var(--muted); }
+    .amend-list summary .plain { display: block; font-weight: 400; }
     .countdown .truth-note {
       background: rgba(0,0,0,0.18); border-left: 3px solid var(--amber);
       padding: 10px 14px; margin: 14px 0 0;
@@ -306,6 +316,162 @@
     </p>
   </div>
 
+  {# amendment summaries dict — defined up here because the countdown boxes read it before the list does. #}
+  {% set summaries = {
+    "Batch": {
+      "kind": "feature",
+      "summary": _("Allows multiple transactions to be bundled into one atomic group. Either every transaction in the batch succeeds, or none of them do — no partial state. Designed for multi-leg AMM routing, coordinated payouts, and workflows where 'most succeeded' is worse than 'all rolled back'. Superseded by BatchV1_1, which fixes a critical bug discovered in the original implementation."),
+      "source_label": "XLS-56 Batch (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
+    },
+    "BatchV1_1": {
+      "kind": "feature",
+      "plain": _("Lets several transactions be bundled and sent together."),
+      "explain": _("Adds the Batch transaction, which lets an account submit up to 8 inner transactions, enabling patterns such as atomic swaps. It fixes and replaces the original Batch amendment, which was disabled in v3.1.1 after a critical bug was found; that first version never activated."),
+      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Its majority window and projected activation date are shown live below from the ledger's Majorities entry — the countdown restarts from the ledger if validator support ever dips and re-forms."),
+      "source_label": "XLS-56 Batch (XRPL-Standards) · xrpl.org · Known Amendments",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
+    },
+    "ConfidentialTransfer": {
+      "kind": "feature",
+      "plain": _("Adds privacy to transfers of Multi-Purpose Tokens."),
+      "explain": _("Multi-Purpose Tokens (MPTs) are a token type on the XRP Ledger. Under XLS-0096, individual balances and transfer amounts are encrypted and are not revealed to validators or outside observers, while the token's total supply stays publicly checkable. Issuer controls are kept: freeze and an issuer clawback that burns the clawed-back funds still work on confidential balances, and an optional auditor key allows selective disclosure. The issuer account itself cannot hold a confidential balance."),
+      "summary": _("Provides institutional-grade privacy for Multi-Purpose Tokens (MPTs) using EC-ElGamal encryption and zero-knowledge proofs. Individual balances and transfer amounts stay shielded from the public ledger while designated parties (issuers, auditors, or authorized entities) can verify total supply and meet regulatory obligations. Targets tokenized-RWA and stablecoin issuers whose compliance requirements are incompatible with fully-public balances."),
+      "source_label": "XLS-96 Confidential Transfers (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-transfers"
+    },
+    "Sponsor": {
+      "kind": "feature",
+      "plain": _("Lets one account pay another account's fees and reserve."),
+      "explain": _("Under XLS-68, a sponsor can cover the transaction fees and the reserve (the XRP an account must hold) for another account, either by co-signing each transaction or by pre-funding a sponsorship, while the sponsored account keeps full control of its keys. A reserve-accounting bug found in Devnet testing (reported 2026-08-07) let a sponsor end a sponsorship without checking the owner could cover the reserve; the fix, in xrpld 3.4.0, means a sponsor can no longer end reserve sponsorship unilaterally. No funds were at risk: the amendment had not activated anywhere."),
+      "summary": _("Lets one account subsidize the transaction fees and reserve requirements of another account. Sponsors can co-sign transactions or pre-fund sponsorships, covering fees and reserves while sponsees retain full control of their accounts and keys. Removes the onboarding-friction wall where a new user must acquire XRP for the base reserve before receiving any other asset — the sponsor covers it, the user keeps custody."),
+      "source_label": "XLS-68 Sponsored Fees and Reserves (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves"
+    },
+    "CryptoConditionsSuite": {
+      "kind": "feature",
+      "summary": _("Was intended to extend escrow's crypto-condition support beyond PREIMAGE-SHA-256 to include the other families defined in the IETF draft (PREFIX-SHA-256, THRESHOLD, RSA-SHA-256, ED25519-SHA-256). Implementation was never completed; rippled upstream has retired this amendment, though the public RPC still surfaces its hash."),
+      "source_label": "draft-thomas-crypto-conditions (IETF)",
+      "source_url": "https://datatracker.ietf.org/doc/html/draft-thomas-crypto-conditions"
+    },
+    "DynamicMPT": {
+      "kind": "feature",
+      "plain": _("Lets issuers change certain token properties after issuance, or lock them for good."),
+      "explain": _("Per XLS-94, an issuer can update a Multi-Purpose Token's metadata and transfer fee after creation, and can switch on (one-way) issuance capabilities such as can-lock, require-auth, can-escrow, can-trade, can-transfer, can-clawback and can-hold-confidential-balance. Any of these can instead be made permanently unchangeable, at creation or later, by setting the matching bit in a new ImmutableFlags field; once set, that bit can never be cleared."),
+      "summary": _("Lets MPT (Multi-Purpose Token) issuers modify designated reference fields after issuance. Today the base MPT spec (XLS-33) fixes metadata, transfer fees, asset scale, and capability flags at issuance — only the lock flag is mutable post-mint via MPTokenIssuanceSet — which limits product flexibility for tokenized RWAs that need to update reference data, transfer fees, or URI metadata over time."),
+      "source_label": "XLS-94 Dynamic MPT (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0094-dynamic-MPT"
+    },
+    "InvariantsV1_1": {
+      "kind": "fix",
+      "summary": _("Adds new transaction-level invariants the consensus engine checks before committing a transaction — starting with a check that ledger entries owned by an account are deleted when the account itself is removed. A defensive amendment; no user-visible feature, but tightens the integrity floor."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "LendingProtocol": {
+      "kind": "feature",
+      "plain": _("Fixed-term loans funded from a vault."),
+      "explain": _("Together with SingleAssetVault it provides the basis for on-chain lending; both must be live for the lending stack to work."),
+      "summary": _("Enables on-chain fixed-term loans drawn from pooled funds held in a SingleAssetVault. Pairs with SingleAssetVault — both amendments must be live for the lending stack to function. xrpldashboard's /lending page is pre-built for activation day."),
+      "source_label": "XLS-66 Lending Protocol (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0066-lending-protocol"
+    },
+    "MPTokensV2": {
+      "kind": "feature",
+      "summary": _("Extends XRPL's decentralized exchange to trade Multi-Purpose Tokens as a native asset class — MPTs can be paired with XRP, IOUs, or other MPTs across the existing DEX transaction set. Builds on XLS-33 MPTokensV1 (already enabled on mainnet) and unlocks price discovery for the tokenized-RWA cohort that lives entirely inside the MPT format today."),
+      "source_label": "XLS-82 MPT DEX Integration (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0082-mpt-dex-integration"
+    },
+    "NonFungibleTokensV1": {
+      "kind": "superseded",
+      "summary": _("Original NFToken specification — introduced native NFT support on the XRP Ledger via five new transaction types and two new ledger object types. Superseded by NonFungibleTokensV1_1, which bundles this base spec together with the fixNFTokenDirV1 and fixNFTokenNegOffer cleanup amendments. V1_1 is enabled on mainnet, so native NFT functionality is live; this base amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "PermissionDelegation": {
+      "kind": "feature",
+      "summary": _("Lets one wallet delegate signing authority for specific transaction types to another wallet without sharing the master key — approve-by-type instead of approve-by-key. Disabled in rippled v2.6.1 after a bug surfaced; fixDelegateV1_1 (also in this list) is the companion patch and the pair is expected to re-enable together."),
+      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
+    },
+    "PermissionDelegationV1_1": {
+      "kind": "feature",
+      "plain": _("Lets an account give another account limited permissions."),
+      "explain": _("Allows accounts to delegate some permissions to other accounts without sharing the keys that control their funds. It replaces the original PermissionDelegation amendment, fixing a critical bug discovered in the original implementation."),
+      "summary": _("Re-shipped version of PermissionDelegation with the v2.6.1 bug fixed — accounts can delegate specified transaction-type permissions to another account without sharing signing keys. Shipped in rippled v3.3.0 alongside the base amendment, superseding the original."),
+      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
+    },
+    "SingleAssetVault": {
+      "kind": "feature",
+      "plain": _("Lets many depositors pool one asset in a shared vault."),
+      "explain": _("Together with LendingProtocol it provides the basis for on-chain lending; both must be live for the lending stack to work."),
+      "summary": _("A single-asset vault primitive. Depositors contribute one asset (XRP, IOU, or MPT) and receive vault shares as a Multi-Purpose Token; withdrawals redeem shares back to the underlying asset. The deposit layer the XLS-66 Lending Protocol sits on."),
+      "source_label": "XLS-65 Single Asset Vault (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0065-single-asset-vault"
+    },
+    "XChainBridge": {
+      "kind": "feature",
+      "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
+      "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
+      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
+    },
+    "fixBatchInnerSigs": {
+      "kind": "fix",
+      "summary": _("Companion patch for the original Batch amendment: fixes an issue where inner transactions inside a Batch were flagged as having valid signatures, which should not happen — inner transactions ride the outer Batch signature and carry none of their own. Disabled in rippled v3.1.1 after a Batch bug surfaced; the fix is now bundled into BatchV1_1, which is the version shipping in rippled v3.3.0."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixDelegateV1_1": {
+      "kind": "fix",
+      "summary": _("Companion patch for the bug that caused PermissionDelegation to be disabled in rippled v2.6.1. Designed to activate alongside a re-enabled PermissionDelegation so the network ships the feature and its fix as a coherent pair."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixNFTokenDirV1": {
+      "kind": "superseded",
+      "summary": _("Cleanup amendment for an off-by-one error in NFTokenPage assignment introduced by NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixNFTokenNegOffer": {
+      "kind": "superseded",
+      "summary": _("Cleanup amendment that prevents NFTs from being traded for a negative amount of currency, closing a validation hole in NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
+      "source_label": "xrpl.org · Known Amendments (Obsolete)",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    },
+    "fixBatchV1_2": {
+      "kind": "fix",
+      "plain": _("A fix for Batch, released in an emergency update."),
+      "explain": _("The release notes say it makes the network reject Batch inner transactions that use the wrong \"wrapper.\" It arrived in xrpld 3.4.1, an emergency release for security-sensitive issues; servers on 3.4.1 vote yes by default. If it activates on 2026-10-09 as expected, servers not on 3.4.1 will be amendment-blocked and unable to stay in sync. Details have not been published; the release says source code and a retrospective will follow."),
+      "summary": _("Introduced in xrpld 3.4.1, an emergency release published 2026-09-25 to fix security-sensitive issues. Default vote Yes. Changelog: 'Reject Batch inner txs with the wrong wrapper.' Expected to become enabled 2026-10-09 if it keeps supermajority support; servers not on 3.4.1 will then be amendment-blocked. Source code not yet published; a retrospective is promised."),
+      "source_label": "xrpl.org · xrpld 3.4.1 release notes (2026-09-25)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.1"
+    },
+    "fixCleanup3_4_0": {
+      "kind": "fix",
+      "plain": _("A set of small fixes, not a new feature."),
+      "explain": _("Gathers amendment-gated fixes from the 3.4.0 release for tokens, the AMM, the permissioned exchange, NFTs, vaults, lending and escrow. For example: an issuer's block on incoming trust lines now also applies to offers, so it can no longer be bypassed by making an offer; an AMM clawback no longer burns a holder's pool tokens while recovering zero when integer MPT rounding floors the amount; and finishing or cancelling an escrow that returns tokens no longer fails when the owner is right at the reserve boundary."),
+      "summary": _("Bundles amendment-gated fixes shipped in xrpld 3.4.0 (2026-09-16), including: DisallowIncomingTrustline now applies to OfferCreate; the Permissioned-DEX invariant ignores deleted domain offers; two AMMClawback fixes (MPT rounding, owner-reserve bypass); rejects tfMPTUnauthorize on a locked MPToken; enforces the MPT balance/transfer invariants; NFT-offer and permissioned-domain checks; escrow reserve recycling; distinct signing prefixes for counterparty/sponsor signatures; vault precision fixes. The same release retires fixAMMOverflowOffer."),
+      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
+    },
+    "LendingProtocolV1_1": {
+      "kind": "feature",
+      "plain": _("An add-on to the lending amendments."),
+      "explain": _("Adds \"closed-ended\" vaults with three phases (subscription, investment, redemption) that decide when assets can be deposited, when loans can be originated, and when assets can be redeemed. Also adds cash-basis accounting: interest counts as income only when payments are actually made. Once enabled, new loan brokers can only be created against closed-ended vaults."),
+      "summary": _("Extends LendingProtocol and SingleAssetVault (xrpld 3.4.0) with closed-ended vaults — a three-phase lifecycle (subscription, investment, redemption) that decides when assets can be deposited, when loans can be originated, and when assets can be redeemed — and cash-basis accounting, under which interest is recognized as income only when payments are actually made. Once enabled, new loan brokers can only be created against closed-ended vaults."),
+      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
+    },
+    "fixXChainRewardRounding": {
+      "kind": "fix",
+      "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
+      "source_label": "xrpl.org · Known Amendments",
+      "source_url": "https://xrpl.org/resources/known-amendments"
+    }
+  } %}
+
   {% if not state or not state.ok %}
     <div class="countdown" style="border-color: rgba(251,113,133,0.32); background: linear-gradient(180deg, rgba(251,113,133,0.06), var(--card));">
       <div class="tag" style="color: var(--rose); border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.08);">{{ _('upstream offline') }}</div>
@@ -372,7 +538,7 @@
       {% set mh_active = (mh_epochs | selectattr('active') | list | length) > 0 %}
       {% set is_holding = mh_active if mh_epochs else true %}
       {% set rc_row = ((roll_call.rows | selectattr('hash', 'equalto', m.hash) | list | first)) if roll_call and roll_call.rows else none %}
-      <div class="countdown">
+      <div class="countdown" id="{{ m.name if m.name else m.hash[:8] }}">
         <span class="tag">{{ _('at majority · tracking 14-day window') }}</span>
         <div class="countdown-grid">
         <div class="countdown-main">
@@ -389,6 +555,18 @@
           {% endif %}
         </div>
         <div class="hash">{{ m.hash }}</div>
+        {% set cmeta = summaries.get(m.name) if m.name else none %}
+        {% if cmeta and cmeta.plain %}
+          <div class="plain">{{ cmeta.plain }}</div>
+          {% if cmeta.explain %}
+          <details class="whatdoes">
+            <summary>{{ _('What does this do?') }}</summary>
+            <p class="explain">{{ cmeta.explain }}
+              <span class="src">{{ _('Source') }}: <a href="{{ cmeta.source_url }}" rel="nofollow noopener" target="_blank">{{ cmeta.source_label }}</a></span>
+            </p>
+          </details>
+          {% endif %}
+        {% endif %}
 
         <div class="timer" data-activation-iso="{{ m.activation_eta_iso }}">
           {{ m.activation_eta_iso }}
@@ -704,145 +882,11 @@
   {# Plain-English summaries. Each entry: short_kind (feature|fix), summary,
      source_label, source_url. Edit copy here, not in a database — these
      are editorial commitments tied to the amendment's documented spec. #}
-  {% set summaries = {
-    "Batch": {
-      "kind": "feature",
-      "summary": _("Allows multiple transactions to be bundled into one atomic group. Either every transaction in the batch succeeds, or none of them do — no partial state. Designed for multi-leg AMM routing, coordinated payouts, and workflows where 'most succeeded' is worse than 'all rolled back'. Superseded by BatchV1_1, which fixes a critical bug discovered in the original implementation."),
-      "source_label": "XLS-56 Batch (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
-    },
-    "BatchV1_1": {
-      "kind": "feature",
-      "summary": _("Re-shipped Batch amendment: allows multiple transactions to be bundled into one atomic group (either every leg succeeds or none commit). Replaces the original Batch, fixing a critical bug discovered in the initial implementation — inner transactions inside a Batch were being flagged as having valid signatures when they should carry none of their own (they ride the outer Batch signature). Ships in rippled v3.3.0 with the fixBatchInnerSigs patch bundled in. Its majority window and projected activation date are shown live below from the ledger's Majorities entry — the countdown restarts from the ledger if validator support ever dips and re-forms."),
-      "source_label": "XLS-56 Batch (XRPL-Standards) · xrpl.org · Known Amendments",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0056-batch"
-    },
-    "ConfidentialTransfer": {
-      "kind": "feature",
-      "summary": _("Provides institutional-grade privacy for Multi-Purpose Tokens (MPTs) using EC-ElGamal encryption and zero-knowledge proofs. Individual balances and transfer amounts stay shielded from the public ledger while designated parties (issuers, auditors, or authorized entities) can verify total supply and meet regulatory obligations. Targets tokenized-RWA and stablecoin issuers whose compliance requirements are incompatible with fully-public balances."),
-      "source_label": "XLS-96 Confidential Transfers (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-transfers"
-    },
-    "Sponsor": {
-      "kind": "feature",
-      "summary": _("Lets one account subsidize the transaction fees and reserve requirements of another account. Sponsors can co-sign transactions or pre-fund sponsorships, covering fees and reserves while sponsees retain full control of their accounts and keys. Removes the onboarding-friction wall where a new user must acquire XRP for the base reserve before receiving any other asset — the sponsor covers it, the user keeps custody."),
-      "source_label": "XLS-68 Sponsored Fees and Reserves (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0068-sponsored-fees-and-reserves"
-    },
-    "CryptoConditionsSuite": {
-      "kind": "feature",
-      "summary": _("Was intended to extend escrow's crypto-condition support beyond PREIMAGE-SHA-256 to include the other families defined in the IETF draft (PREFIX-SHA-256, THRESHOLD, RSA-SHA-256, ED25519-SHA-256). Implementation was never completed; rippled upstream has retired this amendment, though the public RPC still surfaces its hash."),
-      "source_label": "draft-thomas-crypto-conditions (IETF)",
-      "source_url": "https://datatracker.ietf.org/doc/html/draft-thomas-crypto-conditions"
-    },
-    "DynamicMPT": {
-      "kind": "feature",
-      "summary": _("Lets MPT (Multi-Purpose Token) issuers modify designated reference fields after issuance. Today the base MPT spec (XLS-33) fixes metadata, transfer fees, asset scale, and capability flags at issuance — only the lock flag is mutable post-mint via MPTokenIssuanceSet — which limits product flexibility for tokenized RWAs that need to update reference data, transfer fees, or URI metadata over time."),
-      "source_label": "XLS-94 Dynamic MPT (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0094-dynamic-MPT"
-    },
-    "InvariantsV1_1": {
-      "kind": "fix",
-      "summary": _("Adds new transaction-level invariants the consensus engine checks before committing a transaction — starting with a check that ledger entries owned by an account are deleted when the account itself is removed. A defensive amendment; no user-visible feature, but tightens the integrity floor."),
-      "source_label": "xrpl.org · Known Amendments",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "LendingProtocol": {
-      "kind": "feature",
-      "summary": _("Enables on-chain fixed-term loans drawn from pooled funds held in a SingleAssetVault. Pairs with SingleAssetVault — both amendments must be live for the lending stack to function. xrpldashboard's /lending page is pre-built for activation day."),
-      "source_label": "XLS-66 Lending Protocol (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0066-lending-protocol"
-    },
-    "MPTokensV2": {
-      "kind": "feature",
-      "summary": _("Extends XRPL's decentralized exchange to trade Multi-Purpose Tokens as a native asset class — MPTs can be paired with XRP, IOUs, or other MPTs across the existing DEX transaction set. Builds on XLS-33 MPTokensV1 (already enabled on mainnet) and unlocks price discovery for the tokenized-RWA cohort that lives entirely inside the MPT format today."),
-      "source_label": "XLS-82 MPT DEX Integration (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0082-mpt-dex-integration"
-    },
-    "NonFungibleTokensV1": {
-      "kind": "superseded",
-      "summary": _("Original NFToken specification — introduced native NFT support on the XRP Ledger via five new transaction types and two new ledger object types. Superseded by NonFungibleTokensV1_1, which bundles this base spec together with the fixNFTokenDirV1 and fixNFTokenNegOffer cleanup amendments. V1_1 is enabled on mainnet, so native NFT functionality is live; this base amendment remains in the node's feature list for historical completeness."),
-      "source_label": "xrpl.org · Known Amendments (Obsolete)",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "PermissionDelegation": {
-      "kind": "feature",
-      "summary": _("Lets one wallet delegate signing authority for specific transaction types to another wallet without sharing the master key — approve-by-type instead of approve-by-key. Disabled in rippled v2.6.1 after a bug surfaced; fixDelegateV1_1 (also in this list) is the companion patch and the pair is expected to re-enable together."),
-      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
-    },
-    "PermissionDelegationV1_1": {
-      "kind": "feature",
-      "summary": _("Re-shipped version of PermissionDelegation with the v2.6.1 bug fixed — accounts can delegate specified transaction-type permissions to another account without sharing signing keys. Shipped in rippled v3.3.0 alongside the base amendment, superseding the original."),
-      "source_label": "XLS-75 Permission Delegation (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0075-permission-delegation"
-    },
-    "SingleAssetVault": {
-      "kind": "feature",
-      "summary": _("A single-asset vault primitive. Depositors contribute one asset (XRP, IOU, or MPT) and receive vault shares as a Multi-Purpose Token; withdrawals redeem shares back to the underlying asset. The deposit layer the XLS-66 Lending Protocol sits on."),
-      "source_label": "XLS-65 Single Asset Vault (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0065-single-asset-vault"
-    },
-    "XChainBridge": {
-      "kind": "feature",
-      "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
-      "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
-      "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
-    },
-    "fixBatchInnerSigs": {
-      "kind": "fix",
-      "summary": _("Companion patch for the original Batch amendment: fixes an issue where inner transactions inside a Batch were flagged as having valid signatures, which should not happen — inner transactions ride the outer Batch signature and carry none of their own. Disabled in rippled v3.1.1 after a Batch bug surfaced; the fix is now bundled into BatchV1_1, which is the version shipping in rippled v3.3.0."),
-      "source_label": "xrpl.org · Known Amendments",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "fixDelegateV1_1": {
-      "kind": "fix",
-      "summary": _("Companion patch for the bug that caused PermissionDelegation to be disabled in rippled v2.6.1. Designed to activate alongside a re-enabled PermissionDelegation so the network ships the feature and its fix as a coherent pair."),
-      "source_label": "xrpl.org · Known Amendments",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "fixNFTokenDirV1": {
-      "kind": "superseded",
-      "summary": _("Cleanup amendment for an off-by-one error in NFTokenPage assignment introduced by NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
-      "source_label": "xrpl.org · Known Amendments (Obsolete)",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "fixNFTokenNegOffer": {
-      "kind": "superseded",
-      "summary": _("Cleanup amendment that prevents NFTs from being traded for a negative amount of currency, closing a validation hole in NonFungibleTokensV1. Superseded by NonFungibleTokensV1_1, which bundles this fix into the enabled NFT stack. The standalone amendment remains in the node's feature list for historical completeness."),
-      "source_label": "xrpl.org · Known Amendments (Obsolete)",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    },
-    "fixBatchV1_2": {
-      "kind": "fix",
-      "summary": _("Introduced in xrpld 3.4.1, an emergency release published 2026-09-25 to fix security-sensitive issues. Default vote Yes. Changelog: 'Reject Batch inner txs with the wrong wrapper.' Expected to become enabled 2026-10-09 if it keeps supermajority support; servers not on 3.4.1 will then be amendment-blocked. Source code not yet published; a retrospective is promised."),
-      "source_label": "xrpl.org · xrpld 3.4.1 release notes (2026-09-25)",
-      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.1"
-    },
-    "fixCleanup3_4_0": {
-      "kind": "fix",
-      "summary": _("Bundles amendment-gated fixes shipped in xrpld 3.4.0 (2026-09-16), including: DisallowIncomingTrustline now applies to OfferCreate; the Permissioned-DEX invariant ignores deleted domain offers; two AMMClawback fixes (MPT rounding, owner-reserve bypass); rejects tfMPTUnauthorize on a locked MPToken; enforces the MPT balance/transfer invariants; NFT-offer and permissioned-domain checks; escrow reserve recycling; distinct signing prefixes for counterparty/sponsor signatures; vault precision fixes. The same release retires fixAMMOverflowOffer."),
-      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
-      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
-    },
-    "LendingProtocolV1_1": {
-      "kind": "feature",
-      "summary": _("Extends LendingProtocol and SingleAssetVault (xrpld 3.4.0) with closed-ended vaults — a three-phase lifecycle (subscription, investment, redemption) that decides when assets can be deposited, when loans can be originated, and when assets can be redeemed — and cash-basis accounting, under which interest is recognized as income only when payments are actually made. Once enabled, new loan brokers can only be created against closed-ended vaults."),
-      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
-      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
-    },
-    "fixXChainRewardRounding": {
-      "kind": "fix",
-      "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
-      "source_label": "xrpl.org · Known Amendments",
-      "source_url": "https://xrpl.org/resources/known-amendments"
-    }
-  } %}
-
   <div class="amend-list">
     {% for amend in state.in_flight %}
       {% set meta = summaries.get(amend.name) %}
-      <details class="amend">
+      {% set in_countdown = (state.majorities | selectattr('hash', 'equalto', amend.hash) | list | length) > 0 %}
+      <details class="amend"{% if not in_countdown %} id="{{ amend.name }}"{% endif %}>
         <summary>
           <span class="name">{{ amend.name }}</span>
           {% if meta %}
@@ -850,9 +894,11 @@
           {% else %}
             <span class="kind fix">{{ _('uncatalogued') }}</span>
           {% endif %}
+          {% if meta and meta.plain %}<span class="plain">{{ meta.plain }} <span class="dim">· {{ _('What does this do?') }}</span></span>{% endif %}
         </summary>
         <div class="body">
           {% if meta %}
+            {% if meta.explain %}<p class="explain">{{ meta.explain }}</p>{% endif %}
             <p>{{ meta.summary }}</p>
             <p class="meta">
               {{ _('Source') }}:
