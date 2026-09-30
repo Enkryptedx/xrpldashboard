@@ -169,6 +169,7 @@
     .rc-table th, .rc-table td { padding: 4px 6px; vertical-align: top; }
     .rc-table tbody tr { border-top: 1px solid var(--border); }
     .rc-table .num { white-space: nowrap; text-align: right; }
+    .rc-table .num-h { text-align: right; }
     .rc-table .state { white-space: nowrap; }
     .rc-table .name { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
     @media (max-width: 480px) {
@@ -701,8 +702,8 @@
           <thead>
             <tr style="text-align: left;">
               <th>{{ _('Amendment') }}</th>
-              <th class="num">{{ _('Yes this round') }}</th>
-              <th class="num">{{ _('Yes incl. 24h carry') }}</th>
+              <th class="num-h">{{ _('Yes this round') }}</th>
+              <th class="num-h">{{ _('Yes incl. 24h carry') }}</th>
               <th>{{ _('State') }}</th>
             </tr>
           </thead>
