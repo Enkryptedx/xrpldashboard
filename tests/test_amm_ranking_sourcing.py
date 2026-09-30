@@ -194,13 +194,15 @@ def test_wallet_explainer_lookup_reads_cached_rows_not_live_rpc():
     saved_post = xc._post_rpc
     xc._post_rpc = lambda url, req: rpc_calls.append(url)
     try:
-        db.read_amm_ranked_pools = lambda: [
+        # Accept the optional columns= projection (Neon egress C+D,
+        # 2026-09-30); the source is still the walker-written table.
+        db.read_amm_ranked_pools = lambda columns=None: [
             {"amm_account": "rA", "pair": "XRP/RLUSD"},
             {"amm_account": None, "pair": "XRP/JUNK"},
             {"amm_account": "rB", "pair": "XRP/USD"},
         ]
         out = we._build_amm_lookup()
-        db.read_amm_ranked_pools = lambda: (_ for _ in ()).throw(RuntimeError("pg down"))
+        db.read_amm_ranked_pools = lambda columns=None: (_ for _ in ()).throw(RuntimeError("pg down"))
         empty = we._build_amm_lookup()
     finally:
         db.read_amm_ranked_pools = saved
