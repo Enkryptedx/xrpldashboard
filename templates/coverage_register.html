@@ -106,6 +106,9 @@
       </div>
     {% endif %}
 
+    <p class="dim" style="margin: 6px 0 10px; font-size: 0.86rem;">
+      {{ _('Vocabulary as of') }} {{ state.definitions.fetched_at|unix_utc }} · xrpld {{ state.definitions.build_version or '—' }} · {{ _('refreshed every 6 h by the ledger_definitions walker on our node') }}
+    </p>
     {# ─── Declared known gaps: none. The TokenEscrow gap block (2026-07 → 2026-09-29)
        was removed once the node ran xrpld 3.4.1: TokenEscrow is an amendment, and
        token escrows are ordinary `Escrow` ledger entries, which the vocabulary carries. #}

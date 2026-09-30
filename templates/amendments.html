@@ -351,6 +351,8 @@
     },
     "CryptoConditionsSuite": {
       "kind": "feature",
+      "plain": _("Was intended to add support for several types of crypto-conditions for use in EscrowCreate and EscrowFinish; the amendment ID refers to incomplete code which does almost nothing."),
+      "explain": _("Not enabled; 0 of 35 vote yes in our node's roll call; xrpl.org lists it as obsolete."),
       "summary": _("Was intended to extend escrow's crypto-condition support beyond PREIMAGE-SHA-256 to include the other families defined in the IETF draft (PREFIX-SHA-256, THRESHOLD, RSA-SHA-256, ED25519-SHA-256). Implementation was never completed; rippled upstream has retired this amendment, though the public RPC still surfaces its hash."),
       "source_label": "draft-thomas-crypto-conditions (IETF)",
       "source_url": "https://datatracker.ietf.org/doc/html/draft-thomas-crypto-conditions"
@@ -413,6 +415,8 @@
     },
     "XChainBridge": {
       "kind": "feature",
+      "plain": _("Adds cross-chain bridges, enabling the transfer of digital assets between networks (for example, between Mainnet and a sidechain)."),
+      "explain": _("Not enabled. Our node's roll call: 6 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
       "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
       "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
@@ -467,6 +471,8 @@
     },
     "fixXChainRewardRounding": {
       "kind": "fix",
+      "plain": _("Ensures that reward shares for cross-chain transactions are always rounded down."),
+      "explain": _("Not enabled. Our node's roll call: 12 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
       "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
       "source_label": "xrpl.org · Known Amendments",
       "source_url": "https://xrpl.org/resources/known-amendments"
