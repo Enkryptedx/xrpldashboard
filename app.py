@@ -604,8 +604,8 @@ app.config["API_SPEC_OPTIONS"] = {
             "tool_count": len(AGENT_TIER_MCP_INVENTORY_ENRICHED),
             "tools": AGENT_TIER_MCP_INVENTORY_ENRICHED,
             "status": (
-                "Public-beta live at https://mcp.xrpldashboard.com/mcp "
-                "through 2026-09 — server publicly reachable (streamable "
+                "Public beta, no end date set, at https://mcp.xrpldashboard.com/mcp "
+                "— server publicly reachable (streamable "
                 "HTTP, MCP protocol 2025-06-18, 19 read-only tools, no "
                 "auth, 600 tool calls/hour/session enforced). Backed by "
                 "our own xrpld node. Listed in the Anthropic MCP "
