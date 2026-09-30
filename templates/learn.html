@@ -241,7 +241,7 @@
   <h2 id="who-writes">{{ _('Who actually writes to it?') }}</h2>
   <p>
     {% trans -%}
-    There is no central company in charge of the notebook. Instead, a network of independent computers around the world — called <em>validators</em> — propose what the next page should say. They are run by universities, exchanges, banks, the XRP Ledger Foundation, and ordinary technically-inclined people in different countries. At any given moment, around 215 validator servers publish proposals on the network (per <a href="https://xrpscan.com/validators">xrpscan.com/validators</a>), but consensus is built on a smaller, trusted set — currently around 35 validators on the default <em>unique node list</em> maintained by the XRP Ledger Foundation. Any operator can publish their own trusted set if they don't want to use the default.
+    There is no central company in charge of the notebook. Instead, a network of independent computers around the world — called <em>validators</em> — propose what the next page should say. They are run by universities, exchanges, banks, the XRP Ledger Foundation, and ordinary technically-inclined people in different countries. At any given moment, around 200 validator servers publish proposals on the network (194 seen in the last hour per <a href="https://xrpscan.com/validators">xrpscan.com/validators</a>, checked 2026-09-29; live count on <a href="/network">/network</a>), but consensus is built on a smaller, trusted set — currently around 35 validators on the default <em>unique node list</em> maintained by the XRP Ledger Foundation. Any operator can publish their own trusted set if they don't want to use the default.
     {%- endtrans %}
   </p>
   <p>
@@ -313,7 +313,7 @@
     <li>
       <strong>{{ _('Lending (in progress).') }}</strong>
       {% trans -%}
-      The native lending amendment (XLS-66d) is in development. See <a href="/amendments">/amendments</a> for current status. Once it activates, it will let token holders lend and borrow against ledger-resident assets without leaving the network.
+      Native lending is in flight: three amendments (LendingProtocol, LendingProtocolV1_1, SingleAssetVault) are among the 13 currently in validator voting — 10 gathering votes and 3 in their activation countdown. See <a href="/amendments">/amendments</a> for the live count and status. Once it activates, it will let token holders lend and borrow against ledger-resident assets without leaving the network.
       {%- endtrans %}
     </li>
   </ul>

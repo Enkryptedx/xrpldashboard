@@ -378,7 +378,7 @@
         {% if activated %}
           {{ _('Native lending is live on the XRP Ledger. Deposit XRP into a vault, a loan broker lends it against collateral, you earn yield. Below: every active broker — their TVL, depositor count, outstanding loans, and default count, live from the ledger.') }}
         {% else %}
-          {{ _('Native lending is coming to the XRP Ledger via two amendments currently in validator voting. No smart contracts — the protocol itself will let you deposit XRP into a vault, have a "loan broker" lend it out against collateral, and earn yield. This page is built and ready; the broker table will switch to live data the moment the amendments activate.') }}
+          {{ _('Native lending is coming to the XRP Ledger via three amendments currently in validator voting: LendingProtocol, SingleAssetVault, and LendingProtocolV1_1 (added in xrpld 3.4.0 with closed-ended vaults and cash-basis accounting; once it is enabled, new loan brokers can only be created against closed-ended vaults). No smart contracts — the protocol itself will let you deposit XRP into a vault, have a "loan broker" lend it out against collateral, and earn yield. This page is built and ready; the broker table will switch to live data the moment the amendments activate.') }}
         {% endif %}
       </div>
     </div>
@@ -622,7 +622,7 @@
             <span>{{ _('Depositors') }}</span>
           </div>
           <div class="e-ghost">
-            {{ _('Waiting for LendingProtocol + SingleAssetVault activation') }}
+            {{ _('Waiting for LendingProtocol + SingleAssetVault + LendingProtocolV1_1 activation') }}
           </div>
         </div>
       </div>
@@ -656,7 +656,7 @@
     {% else %}
       {{ _('Data: live') }} <code>feature</code> {{ _('RPC.') }}
     {% endif %}
-    {{ _('Page goes live with broker data the day the LendingProtocol + SingleAssetVault amendments activate.') }}
+    {{ _('Page goes live with broker data the day the LendingProtocol + SingleAssetVault + LendingProtocolV1_1 amendments activate.') }}
     {{ _('Verify against') }}
     <a href="https://xrplf.org/amendment-tracker/" target="_blank" rel="noopener">xrplf.org/amendment-tracker</a>
     {{ _('or any public') }} <code>feature</code> {{ _('RPC.') }}

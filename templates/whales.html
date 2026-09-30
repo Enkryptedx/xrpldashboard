@@ -369,7 +369,7 @@
     <span class="pill-label">{{ _('size') }}{{ explainer(
       "tier",
       _("What 'size' tiers mean"),
-      _("Choose how big a transfer has to be to count. 1M XRP is the classic 'whale' size — rare and almost always worth knowing about. 100K is a good default for catching coordinated activity. 50K shows everything we track, useful on quiet days. Recognized-wallet moves are held to the same size cutoff (token amounts get priced into XRP first); only new-trustline events bypass it."),
+      _("Choose how big a transfer has to be to count. A whale is 100,000 XRP or more — a good default for catching coordinated activity. 1M XRP is a blue whale — rare and almost always worth knowing about. 50K shows everything we track, useful on quiet days. Recognized-wallet moves are held to the same size cutoff (token amounts get priced into XRP first); only new-trustline events bypass it."),
     ) }}</span>
     <a class="pill {% if tier == '1m' %}active{% endif %}"
        href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('blue whale') }} · ≥1M XRP</a>
@@ -499,7 +499,7 @@
       {{ _('a long-running process subscribes to every validated XRPL transaction and records two things — XRP transfers above the floor (set by the size pill), and any transaction that touches an address on our public watchlist.') }}
     </p>
     <p>
-      {{ _('The size pills above filter large XRP transfers by magnitude — whales (≥1M XRP) is the strict definition; large (≥100K) and all (≥50K) widen the lens. Tagged and watchlisted activity is held to the same size cutoff as everything else — only new-trustline events bypass it, because the who makes those the signal.') }}
+      {{ _('The size pills above filter large XRP transfers by magnitude — whale (≥100K XRP) is the definition used across the site; blue whale (≥1M) narrows to the rare ones; all (≥50K) widens the lens. Tagged and watchlisted activity is held to the same size cutoff as everything else — only new-trustline events bypass it, because the who makes those the signal.') }}
     </p>
     <p>
       {{ _('The watchlist combines') }} {{ named_accounts_count }} {{ _("hand-curated first-party entries (sourced from disclosures like Ripple's xrp-ledger.toml) with a broader reference layer drawn from public lists (XRPSCAN well-known names, derived AMM pool and MPT issuer labels). Curated labels take priority; reference labels fill the rest. Each label is shown with its source so you can tell which is which.") }}

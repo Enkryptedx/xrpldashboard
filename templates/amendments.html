@@ -795,6 +795,24 @@
       "source_label": "xrpl.org · Known Amendments (Obsolete)",
       "source_url": "https://xrpl.org/resources/known-amendments"
     },
+    "fixBatchV1_2": {
+      "kind": "fix",
+      "summary": _("Introduced in xrpld 3.4.1, an emergency release published 2026-09-25 to fix security-sensitive issues. Default vote Yes. Changelog: 'Reject Batch inner txs with the wrong wrapper.' Expected to become enabled 2026-10-09 if it keeps supermajority support; servers not on 3.4.1 will then be amendment-blocked. Source code not yet published; a retrospective is promised."),
+      "source_label": "xrpl.org · xrpld 3.4.1 release notes (2026-09-25)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.1"
+    },
+    "fixCleanup3_4_0": {
+      "kind": "fix",
+      "summary": _("Bundles amendment-gated fixes shipped in xrpld 3.4.0 (2026-09-16), including: DisallowIncomingTrustline now applies to OfferCreate; the Permissioned-DEX invariant ignores deleted domain offers; two AMMClawback fixes (MPT rounding, owner-reserve bypass); rejects tfMPTUnauthorize on a locked MPToken; enforces the MPT balance/transfer invariants; NFT-offer and permissioned-domain checks; escrow reserve recycling; distinct signing prefixes for counterparty/sponsor signatures; vault precision fixes. The same release retires fixAMMOverflowOffer."),
+      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
+    },
+    "LendingProtocolV1_1": {
+      "kind": "feature",
+      "summary": _("Extends LendingProtocol and SingleAssetVault (xrpld 3.4.0) with closed-ended vaults — a three-phase lifecycle (subscription, investment, redemption) that decides when assets can be deposited, when loans can be originated, and when assets can be redeemed — and cash-basis accounting, under which interest is recognized as income only when payments are actually made. Once enabled, new loan brokers can only be created against closed-ended vaults."),
+      "source_label": "xrpl.org · xrpld 3.4.0 release notes (2026-09-16)",
+      "source_url": "https://xrpl.org/blog/2026/xrpld-3.4.0"
+    },
     "fixXChainRewardRounding": {
       "kind": "fix",
       "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
