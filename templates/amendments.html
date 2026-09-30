@@ -153,6 +153,18 @@
     .countdown-rollcall .rc-state { font-size: 0.86rem; line-height: 1.4; color: var(--text); }
     .countdown-rollcall .rc-state.rc-amber { color: var(--amber); font-weight: 600; }
     .countdown-rollcall .rc-meta { font-size: 0.78rem; margin-top: 6px; }
+    /* Roll-call table inside the voting-ledger card: never paint past the card. */
+    .rc-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-width: 0; }
+    .rc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .rc-table th, .rc-table td { padding: 4px 6px; vertical-align: top; }
+    .rc-table tbody tr { border-top: 1px solid var(--border); }
+    .rc-table .num { white-space: nowrap; text-align: right; }
+    .rc-table .state { white-space: nowrap; }
+    .rc-table .name { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
+    @media (max-width: 480px) {
+      .rc-table { font-size: 0.82rem; }
+      .rc-table th, .rc-table td { padding: 4px 4px; }
+    }
     .countdown-rollcall details.rc-details { margin-top: 8px; }
     .countdown-rollcall details.rc-details summary {
       cursor: pointer; font-size: 0.78rem; color: var(--dim);
@@ -489,7 +501,7 @@
         {{ _('Heard') }} <strong>{{ roll_call.seen }} {{ _('of') }} {{ roll_call.unl_size }}</strong> {{ _('validators on the current UNL') }}
         · {{ _('threshold') }} {{ roll_call.threshold }}
         · {{ _('a majority needs') }} <strong>{{ roll_call.needed }}</strong>
-        <span class="dim">({{ _('rippled takes 80 percent of the') }} {{ roll_call.trusted_available }} {{ _('trusted validators it could hear and requires strictly more than that') }})</span>
+        <span class="dim">({{ _('xrpld takes 80 percent of the') }} {{ roll_call.trusted_available }} {{ _('trusted validators it could hear and requires strictly more than that') }})</span>
       </p>
       {% if roll_call.stale %}
         <p style="margin: 0 0 8px; color: #ef4444;">
@@ -502,22 +514,27 @@
         </p>
       {% endif %}
       {% if roll_call.rows %}
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+        {# 2026-09-29 phone fix (Playwright-measured): at 360/390px the table's
+           intrinsic width (359px) exceeded the card's content box (340/370px),
+           painting 30-60px past the border. Scroll wrapper + nowrap numerics
+           + breakable names. Text unchanged. #}
+        <div class="rc-table-wrap">
+        <table class="rc-table">
           <thead>
             <tr style="text-align: left;">
-              <th style="padding: 4px 6px;">{{ _('Amendment') }}</th>
-              <th style="padding: 4px 6px;">{{ _('Yes this round') }}</th>
-              <th style="padding: 4px 6px;">{{ _('Yes incl. 24h carry') }}</th>
-              <th style="padding: 4px 6px;">{{ _('State') }}</th>
+              <th>{{ _('Amendment') }}</th>
+              <th class="num">{{ _('Yes this round') }}</th>
+              <th class="num">{{ _('Yes incl. 24h carry') }}</th>
+              <th>{{ _('State') }}</th>
             </tr>
           </thead>
           <tbody>
             {% for r in roll_call.rows %}
-              <tr data-roll-call-row="{{ r.status }}" style="border-top: 1px solid var(--border);">
-                <td style="padding: 4px 6px;">{{ r.name }}</td>
-                <td class="mono" style="padding: 4px 6px;">{{ r.yes_round }}</td>
-                <td class="mono" style="padding: 4px 6px;">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
-                <td style="padding: 4px 6px;">
+              <tr data-roll-call-row="{{ r.status }}">
+                <td class="name">{{ r.name }}</td>
+                <td class="mono num">{{ r.yes_round }}</td>
+                <td class="mono num">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
+                <td class="state">
                   {% if r.status == 'passing' %}
                     <span style="color: var(--green, #22c55e);">{{ _('majority') }}</span>
                   {% elif r.status == 'reset' %}
@@ -530,10 +547,11 @@
             {% endfor %}
           </tbody>
         </table>
+        </div>
       {% endif %}
       <p class="dim" style="margin: 8px 0 0; font-size: 0.82rem;">
         {{ _('Counts only. Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>.
-        {{ _('A yes vote carries forward for 24 hours after a validator last sent it, matching how rippled tallies.') }}
+        {{ _('A yes vote carries forward for 24 hours after a validator last sent it, matching how xrpld tallies.') }}
       </p>
     </div>
   {% endif %}
