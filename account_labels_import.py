@@ -89,7 +89,7 @@ def import_derived_amm():
     Will not overwrite a curated label — server-side WHERE clause inside
     db.bulk_upsert_derived_labels enforces that. Bulk path because per-row
     UPSERTs against Neon for 20k+ accounts took 15+ min in testing."""
-    pools = db.read_amm_ranked_pools()
+    pools = db.read_amm_ranked_pools(columns=("amm_account",))
     if not pools:
         print("[labels] derived:amm: no pools in PG; skipped.", flush=True)
         return 0

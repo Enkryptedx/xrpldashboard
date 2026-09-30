@@ -43,7 +43,7 @@ def record_once():
               flush=True)
         return (0, 0)
 
-    pools = db.read_amm_ranked_pools()
+    pools = db.read_amm_ranked_pools(columns=("amm_account", "pair", "amount_a", "amount_b", "tvl_usd"))
     if not pools:
         print("[amm_tvl_recorder] amm_ranked_pools empty — rank_amms.py "
               "hasn't run yet or PG hiccup. Skipping.", flush=True)

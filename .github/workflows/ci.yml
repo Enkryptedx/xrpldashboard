@@ -29,7 +29,7 @@ on:
 
 jobs:
   trust-critical-render:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
       - name: Trust-critical render tests (no DB)
         env:
           DATABASE_URL: ""
-        run: pytest tests/test_routes.py -k "trust_critical or amendment" tests/test_amendments_no_uncatalogued_in_flight.py -q
+        run: pytest tests/test_routes.py -k "trust_critical or amendment" tests/test_amendments_no_uncatalogued_in_flight.py tests/test_amm_ranked_pools_projection.py -q
       # Sovereignty sourcing locks (GAP-1 / GAP-2, 2026-09-25). Hermetic:
       # every RPC + the walker_node_fallback writer is patched, no DB, no
       # network. A red here means a raw public read crept back into a

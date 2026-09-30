@@ -320,7 +320,7 @@ def _build_amm_lookup():
     """
     try:
         import db
-        rows = db.read_amm_ranked_pools() or []
+        rows = db.read_amm_ranked_pools(columns=("amm_account", "pair")) or []
     except Exception:
         return {}
     out = {}

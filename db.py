@@ -3564,39 +3564,68 @@ def read_recent_unl_snapshots(source, limit=30):
         return []
 
 
-def read_amm_ranked_pools():
+_AMM_RANKED_POOL_COLUMNS = (
+    "amm_account", "pair", "fee_pct", "fee_raw", "amount_a", "amount_b",
+    "asset_a", "asset_b", "tvl_usd", "tvl_status", "kind",
+)
+
+
+def read_amm_account_set():
+    """Return (set_of_amm_account, snapshot_ts) — the narrowest possible read
+    of amm_ranked_pools for callers that only need to know WHICH accounts are
+    AMMs (xrpl_stream's watched-AMM set, account_labels_import). One 35-byte
+    column instead of twelve; ~1 MB on the wire instead of ~4 MB.
+    Neon egress finding 2026-09-30: the stream reloaded the full table every
+    60 s ≈ 5.8 GB/day. Returns (set(), None) when PG is unavailable."""
+    if not pg_available():
+        return set(), None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MAX(snapshot_ts) FROM amm_ranked_pools")
+                row = cur.fetchone()
+                snap = int(row[0]) if row and row[0] is not None else None
+                cur.execute("SELECT amm_account FROM amm_ranked_pools "
+                            "WHERE amm_account IS NOT NULL")
+                return {r[0] for r in cur.fetchall()}, snap
+    except Exception:
+        return set(), None
+
+
+def read_amm_ranked_pools(columns=None):
     """Return the ranked-pools snapshot as a list of dicts in the same shape
     as amm_ranked.json — so app.py and templates don't care whether the
     source was the file or Postgres. Returns [] when PG is unavailable or
-    the table is empty (caller falls back to the file)."""
+    the table is empty (caller falls back to the file).
+
+    columns: optional iterable of column names to project (subset of
+    _AMM_RANKED_POOL_COLUMNS). Default = all columns, identical shape to
+    before. "_snapshot_ts" is always included. Unknown names raise
+    ValueError (never interpolated unchecked)."""
     if not pg_available():
         return []
+    if columns is None:
+        cols = list(_AMM_RANKED_POOL_COLUMNS)
+    else:
+        cols = [c for c in _AMM_RANKED_POOL_COLUMNS if c in set(columns)]
+        unknown = set(columns) - set(_AMM_RANKED_POOL_COLUMNS)
+        if unknown:
+            raise ValueError(f"read_amm_ranked_pools: unknown columns {sorted(unknown)}")
+        if not cols:
+            raise ValueError("read_amm_ranked_pools: no valid columns")
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT amm_account, pair, fee_pct, fee_raw, "
-                    "       amount_a, amount_b, asset_a, asset_b, "
-                    "       tvl_usd, tvl_status, kind, snapshot_ts "
+                    "SELECT " + ", ".join(cols) + ", snapshot_ts "
                     "FROM amm_ranked_pools"
                 )
-                return [
-                    {
-                        "amm_account": r[0],
-                        "pair": r[1],
-                        "fee_pct": r[2],
-                        "fee_raw": r[3],
-                        "amount_a": r[4],
-                        "amount_b": r[5],
-                        "asset_a": r[6],
-                        "asset_b": r[7],
-                        "tvl_usd": r[8],
-                        "tvl_status": r[9],
-                        "kind": r[10],
-                        "_snapshot_ts": r[11],
-                    }
-                    for r in cur.fetchall()
-                ]
+                out = []
+                for r in cur.fetchall():
+                    d = dict(zip(cols, r))
+                    d["_snapshot_ts"] = r[len(cols)]
+                    out.append(d)
+                return out
     except Exception:
         return []
 
