@@ -38,6 +38,11 @@ Run modes:
   python3 signed_snapshot.py --print-pubkey      # show pubkey + DNS TXT draft
   python3 signed_snapshot.py                     # build + sign today's snapshot
   python3 signed_snapshot.py --dry-run           # build + sign, write nothing
+
+TESTING RULE (Charlie, 2026-09-29): NEVER sign a test/pretend/fixture leaf with the
+production key or passphrase. Use a throwaway Ed25519 keypair (--generate-keys into a
+temp dir, or cryptography.Ed25519PrivateKey.generate()) and point the verifier at that
+public key. Production signatures come only from the scheduled 21:00 ET launchd run.
   python3 signed_snapshot.py --verify YYYY-MM-DD # verify a stored snapshot file
 """
 
