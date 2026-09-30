@@ -20,7 +20,7 @@ Every entry below is exactly four lines: **definition** (what it means in one se
 ## `stablecoin_gateway`
 - **Definition:** USD/EUR IOU from a named XRPL gateway (Bitstamp, GateHub, historical exchanges); custody-backed but not regulated-entity-issued.
 - **Rule:** Issuer Domain resolves to a known-gateway registry entry (curator-maintained) AND ticker is a 3-char fiat code.
-- **Evidence:** L3 (curator gateway registry, TBD file).
+- **Evidence:** L3 (curator-maintained gateway registry; file not yet published).
 - **Boundaries:** ≠ `stablecoin_regulated` (no regulator accountability). ≠ `wrapped_bridge` (not wrapping an off-chain token).
 
 ## `native_utility_chain`

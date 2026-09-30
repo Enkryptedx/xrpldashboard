@@ -127,6 +127,12 @@ def signed_rows(block: dict | None) -> list[dict]:
             "votes_threshold": (nv or {}).get("threshold") if nv else None,
             "votes_as_of_iso": (nv or {}).get("as_of_iso") if nv else None,
             "votes_source_url": (nv or {}).get("source_url") if nv else None,
+            # activation-day fields (2026-09-29): present only on an entry the
+            # signer recorded as enabled after tracking it in flight.
+            "observed_enabled_in_leaf": ((a or {}).get("observed_enabled_in_leaf") or {}).get("date"),
+            "enable_ledger_index": (a or {}).get("enable_ledger_index"),
+            "enable_close_iso": (a or {}).get("enable_close_iso"),
+            "majority_reached_ledger": (a or {}).get("majority_reached_ledger"),
         })
     rows.sort(key=lambda r: (r["name"] or "").lower())
     return rows

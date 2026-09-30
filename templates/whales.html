@@ -372,9 +372,9 @@
       _("Choose how big a transfer has to be to count. 1M XRP is the classic 'whale' size — rare and almost always worth knowing about. 100K is a good default for catching coordinated activity. 50K shows everything we track, useful on quiet days. Recognized-wallet moves are held to the same size cutoff (token amounts get priced into XRP first); only new-trustline events bypass it."),
     ) }}</span>
     <a class="pill {% if tier == '1m' %}active{% endif %}"
-       href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('whales') }} · ≥1M XRP</a>
+       href="/whales?tier=1m{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('blue whale') }} · ≥1M XRP</a>
     <a class="pill {% if tier == '100k' %}active{% endif %}"
-       href="/whales?tier=100k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('large') }} · ≥100K XRP</a>
+       href="/whales?tier=100k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('whale') }} · ≥100K XRP</a>
     <a class="pill {% if tier == '50k' %}active{% endif %}"
        href="/whales?tier=50k{% if filter_type %}&amp;type={{ filter_type }}{% endif %}">{{ _('all') }} · ≥50K XRP</a>
   </div>

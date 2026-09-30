@@ -123,7 +123,7 @@
         {% for r in p.signed_rows %}
           <tr>
             <td>{{ r.name }}</td>
-            <td>{{ 'yes' if r.enabled else 'no' }}</td>
+            <td>{{ 'yes' if r.enabled else 'no' }}{% if r.observed_enabled_in_leaf %} <span class="dim" style="font-size:0.8em">· observed in leaf {{ r.observed_enabled_in_leaf }}{% if r.enable_ledger_index %} · enable ledger {{ r.enable_ledger_index }}{% endif %}</span>{% endif %}</td>
             <td class="num">{% if r.votes_count is none %}—{% else %}{{ r.votes_count }}{% endif %}</td>
             <td class="num">{% if r.votes_validations is none %}—{% else %}{{ r.votes_validations }}{% endif %}</td>
             <td class="num">{% if r.votes_threshold is none %}—{% else %}{{ r.votes_threshold }}{% endif %}</td>
