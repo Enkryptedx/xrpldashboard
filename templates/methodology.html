@@ -412,12 +412,12 @@
   </p>
   <ol>
     <li><code>xrpl_validated_ledger_index</code> — {{ _('validated ledger index read directly from LAN xrpld') }}</li>
-    <li><code>amm_pools_count</code> — {{ _('active AMM pool count from') }} <code>amm_ranked.json</code> ({{ _('ranker walker queries LAN xrpld') }})</li>
+    <li><code>amm_pools_count</code> — {{ _('active AMM pool count from') }} <code>amm_ranked_finished.json</code> ({{ _('ranker walker queries LAN xrpld') }})</li>
     <li><code>amm_pools_total_tvl_usd</code> — {{ _('sum of TVL over the ranked AMM set (same source as above)') }}</li>
     <li><code>mpt_total_count</code> — {{ _('MPT issuance count from') }} <code>mpt_snapshot.json</code> ({{ _('snapshot walker uses LAN xrpld, with public cascade as a last-resort fallback logged in') }} <code>walker_node_fallback</code>)</li>
     <li><code>named_accounts_count</code> — {{ _('watchlist size from') }} <code>named_accounts.json</code> ({{ _('curated file; auto-verification walker uses LAN xrpld') }})</li>
     <li><code>rlusd_xrpl_supply</code> — {{ _('RLUSD circulating on XRPL, via LAN xrpld') }} <code>gateway_balances</code></li>
-    <li><code>rwa_total_aum_usd</code> — {{ _('RWA total from LAN-derived') }} <code>amm_ranked.json</code> {{ _('cross-referenced against curated') }} <code>rwa_pool_attribution</code></li>
+    <li><code>rwa_total_aum_usd</code> — {{ _('RWA total from LAN-derived') }} <code>amm_ranked_finished.json</code> {{ _('cross-referenced against curated') }} <code>rwa_pool_attribution</code></li>
   </ol>
   <p>
     <strong>{{ _('What is intentionally NOT anchored — and why.') }}</strong>
