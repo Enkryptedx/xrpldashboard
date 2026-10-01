@@ -64,6 +64,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 INDEX_PATH   = os.path.join(HERE, "amm_index.json")
 INCREMENTAL_PATH = os.path.join(HERE, "amm_index_incremental.json")
 RANKED_PATH  = os.path.join(HERE, "amm_ranked.json")
+# Written ONLY when a full pass completes (never mid-pass). This is the
+# one file the signer may trust for a guaranteed-complete snapshot; the
+# live-filling RANKED_PATH above stays as-is for /pools, xrpl_stream,
+# daily_snapshot, token_prices — none of those need completeness, only
+# the signed leaf does (Charlie 2026-10-01, AMM leaf undercount bug).
+RANKED_FINISHED_PATH = os.path.join(HERE, "amm_ranked_finished.json")
 STATE_PATH   = os.path.join(HERE, "amm_rank_state.json")
 LOG_PATH     = os.path.join(HERE, "amm_rank.log")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
@@ -558,6 +564,13 @@ def main():
     state["finished_at"] = datetime.now(timezone.utc).isoformat()
     save_json(RANKED_PATH, ranked)
     save_json(STATE_PATH, state)
+    # Finished-copy promotion (Charlie 2026-10-01, AMM leaf undercount bug):
+    # this full pass just completed, so `ranked` is the first guaranteed-
+    # complete snapshot since the last one. Promote it atomically — same
+    # tmp+os.replace pattern as save_json — to a path only a finished pass
+    # ever touches. RANKED_PATH keeps live-filling for /pools etc.
+    save_json(RANKED_FINISHED_PATH, ranked)
+    log(f"finished copy promoted: {len(ranked)} pools -> {os.path.basename(RANKED_FINISHED_PATH)}")
     _mirror_to_postgres(ranked, state, indexed_count=len(index))
     log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']} "
         f"· sourcing={_run_sourcing()}"

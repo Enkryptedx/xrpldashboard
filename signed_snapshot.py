@@ -140,6 +140,10 @@ PRIVKEY_ENC_PATH = os.path.join(SECRETS_DIR, "snapshot_ed25519_enc.pem")
 # Sources for canonical metrics. Kept narrow on v1 — anything we can't
 # verify from a public artefact today gets added in a future schema_version.
 AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
+# Only a completed rank_amms.py pass ever writes this path (atomically).
+# The signer must never read AMM_RANKED_PATH directly — it live-fills
+# during an in-progress pass. (Charlie 2026-10-01, AMM leaf undercount bug.)
+AMM_RANKED_FINISHED_PATH = os.path.join(HERE, "amm_ranked_finished.json")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 CLAIMS_YAML_PATH = os.path.join(HERE, "CLAIMS.yaml")
 APP_PY_PATH = os.path.join(HERE, "app.py")
@@ -859,16 +863,23 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
     else:
         errors.append("xrpl_validated_ledger_index_unavailable")
 
-    # AMM pools (from the daily-ranked file produced by rank_amms.py)
+    # AMM pools (from the FINISHED-pass file produced by rank_amms.py).
+    # amm_ranked.json live-fills during an in-progress pass (2026-10-01:
+    # a ~2.5h nightly crawl straddles the 01:00 UTC leaf every night) so
+    # it is NEVER safe for the signer to read. amm_ranked_finished.json is
+    # written exactly once per completed pass, atomically (tmp+os.replace,
+    # same as amm_ranked.json), and nothing else writes it. Fail closed:
+    # missing/unreadable -> skip both AMM metrics for this leaf rather than
+    # risk a partial read. (Charlie 2026-10-01, AMM leaf undercount bug.)
     try:
-        with open(AMM_RANKED_PATH) as f:
+        with open(AMM_RANKED_FINISHED_PATH) as f:
             ranked = json.load(f) or []
         valid = [p for p in ranked if isinstance(p, dict)]
         metrics.append({
             "name": "amm_pools_count",
             "value": len(valid),
             "unit": "pools",
-            "source": "amm_ranked.json",
+            "source": "amm_ranked_finished.json",
         })
         total_tvl = 0.0
         for p in valid:
@@ -879,7 +890,7 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
             "name": "amm_pools_total_tvl_usd",
             "value": round(total_tvl, 2),
             "unit": "usd",
-            "source": "amm_ranked.json (sum of tvl_usd)",
+            "source": "amm_ranked_finished.json (sum of tvl_usd)",
         })
     except (OSError, json.JSONDecodeError) as e:
         errors.append(f"amm_pools: {type(e).__name__}")
@@ -974,7 +985,7 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
                 rwa_pool_addresses = {row[0] for row in cur.fetchall()}
             if rwa_pool_addresses:
                 try:
-                    with open(AMM_RANKED_PATH) as f:
+                    with open(AMM_RANKED_FINISHED_PATH) as f:
                         ranked_all = json.load(f) or []
                     rwa_tvl = sum(
                         float(p.get("tvl_usd") or 0)
@@ -990,7 +1001,7 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
                         "name": "rwa_total_aum_usd",
                         "value": round(rwa_tvl, 2),
                         "unit": "usd",
-                        "source": "amm_ranked.json (rwa_pool_attribution cross-ref)",
+                        "source": "amm_ranked_finished.json (rwa_pool_attribution cross-ref)",
                         "deprecated": "Legacy name kept for chain continuity. "
                                       "Same value as rwa_amm_attributed_tvl_usd. "
                                       "Prefer the honest name in downstream code.",
@@ -1005,7 +1016,7 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
                         "name": "rwa_amm_attributed_tvl_usd",
                         "value": round(rwa_tvl, 2),
                         "unit": "usd",
-                        "source": "amm_ranked.json (rwa_pool_attribution cross-ref)",
+                        "source": "amm_ranked_finished.json (rwa_pool_attribution cross-ref)",
                     })
                 except (OSError, json.JSONDecodeError) as e:
                     errors.append(f"rwa_aum: {type(e).__name__}")
