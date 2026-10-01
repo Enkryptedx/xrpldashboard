@@ -195,6 +195,27 @@ def _metric_by_name(envelope: dict, name: str) -> Optional[Any]:
     return None
 
 
+def _metric_source_by_name(envelope: dict, name: str) -> Optional[str]:
+    """Return the raw `source` string of a named metric, or None if absent."""
+    if not envelope:
+        return None
+    for m in envelope.get("metrics", []) or []:
+        if m.get("name") == name:
+            return m.get("source")
+    return None
+
+
+def _source_base(source: Optional[str]) -> Optional[str]:
+    """Strip a trailing parenthetical qualifier off a metric `source`
+    string, e.g. 'amm_ranked.json (sum of tvl_usd)' -> 'amm_ranked.json'.
+    Two sources with the same base are the same extraction pipeline; a
+    differing base means the method that produced the number changed
+    between the two readings being compared."""
+    if not source:
+        return None
+    return source.split(" (", 1)[0].strip()
+
+
 def _load_envelope_for_date(cur, date: dt.date) -> Optional[dict]:
     """Read one signed_snapshot envelope from PG for the given date, or None."""
     cur.execute(
@@ -379,6 +400,27 @@ def _scalar_delta_line(name: str, label: str, prove_url: str,
         "before": before, "after": after,
         "prove_url": prove_url, "source": "signed_snapshot",
         "metric_name": name, "metric_type": metric_type, "label": label,
+    }
+
+
+def _source_change_line(name: str, label: str, prove_url: str,
+                        before_source: str, after_source: str) -> dict:
+    """Plain source-changed notice (Charlie ruling 2026-10-01), emitted
+    instead of a normal scalar delta line when the metric's extraction
+    pipeline (envelope `source` field, base stripped of any parenthetical
+    qualifier) differs between the two days being compared. `metric_type`
+    is deliberately NOT 'usd'/'count' so build_strip can't slot it as a
+    scalar delta and misrepresent a methodology change as a real move;
+    it IS flagged as an anomaly (see _is_anomaly) so it still gets a strip
+    slot instead of silently vanishing into quiet-day fill."""
+    return {
+        "category": _category_for_metric(name),
+        "line": (f"{label}: data source changed ({before_source} → "
+                 f"{after_source}) — today's day-over-day comparison is not "
+                 f"reliable and is withheld. See /methodology."),
+        "before_source": before_source, "after_source": after_source,
+        "prove_url": prove_url, "source": "signed_snapshot",
+        "metric_name": name, "metric_type": "source_change", "label": label,
     }
 
 
@@ -624,6 +666,23 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     for name, label, prove, mtype in _SCALAR_METRICS:
         b = _metric_by_name(yesterday, name) if yesterday else None
         a = _metric_by_name(today, name)
+        # 2026-10-01 fix (Charlie): a scalar metric's own extraction
+        # pipeline is named by its `source` string in the envelope (e.g.
+        # 'amm_ranked.json' vs 'amm_ranked_finished.json'). The 2026-09-11
+        # duplicate-suppression only catches a byte-identical scalar — it
+        # does NOT catch a baseline that is numerically distinct but wrong
+        # (a leaf that caught a resumable walker pass mid-run records a
+        # true-at-that-instant but badly incomplete value). If the source
+        # base changed between the two days being compared, the normal
+        # delta line would report a fabricated jump (or drop) that is
+        # really just a measurement-method change. Suppress the delta and
+        # emit one plain source-changed notice instead.
+        b_src_base = _source_base(_metric_source_by_name(yesterday, name)) if yesterday else None
+        a_src_base = _source_base(_metric_source_by_name(today, name))
+        if (yesterday is not None and b is not None and a is not None
+                and b_src_base and a_src_base and b_src_base != a_src_base):
+            changes.append(_source_change_line(name, label, prove, b_src_base, a_src_base))
+            continue
         line = _scalar_delta_line(name, label, prove, b, a, metric_type=mtype)
         if line:
             changes.append(line)
@@ -714,6 +773,8 @@ def _is_anomaly(c: dict) -> bool:
     cat = c.get("category")
     if line.startswith("⚠"):        # chain discontinuity, key rotation
         return True
+    if c.get("metric_type") == "source_change":  # 2026-10-01: methodology
+        return True                                # change, not a real move
     if cat == "unl":
         return True
     if cat == "registry" and "taxonomy" in line.lower():
