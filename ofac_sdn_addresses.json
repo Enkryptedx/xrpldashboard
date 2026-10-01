@@ -900,7 +900,7 @@
       "sdn_uid": "57034"
     },
     "0xb6f5ec1a0a9cd1526536d3f0426c429529471f40": {
-      "chain": "ETH",
+      "chain": "USDC",
       "entity_name": "Sang Man KIM",
       "programs": [
         "DPRK4"
@@ -5196,6 +5196,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "22985"
     },
+    "TBEmt7kPSwAv6NJTYKNdBVW524bUfPwJpJ": {
+      "chain": "TRX",
+      "entity_name": "Anthony Wuiliam HERNANDEZ GUERRERO",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58262"
+    },
     "TBEqQGTxXRWXXeqe7ZwmSB6hc5MMMMMMMM": {
       "chain": "TRX",
       "entity_name": "XINBI GUARANTEE",
@@ -5472,6 +5482,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "TCUmMCHQEbFFdGvfdg2LeS64QfzUKP2AgW": {
+      "chain": "TRX",
+      "entity_name": "Eric Gabriel CARDENAS ARZOLA",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58257"
+    },
     "TCXihiScsAodR942Xq45df9qQAdr5nhkjQ": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -5481,6 +5501,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TCifMAMwst3oEJx8GaNfqZw75dkFUa8vjG": {
+      "chain": "TRX",
+      "entity_name": "Carlos Javier MARTINEZ ARMENTA",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58254"
     },
     "TCk1g37N3x6PDda63waydNQwqTUzFNpsrR": {
       "chain": "TRX",
@@ -5714,6 +5744,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TDxZ1XTZCmqkJJW2eJT362z6omRchJyGBX": {
+      "chain": "TRX",
+      "entity_name": "Oscar Leonardo MARTINEZ PIRONA",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58260"
     },
     "TE3mCcPULjPUE7ykX7RArDPAhyahoy3d2j": {
       "chain": "USDT",
@@ -6292,6 +6332,16 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "THwbVuBBb26abe5TrAsYUpYz9mhWnBppdz": {
+      "chain": "TRX",
+      "entity_name": "Jose Dario GALEANO BAZURTO",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58256"
+    },
     "TJ6NznpBV5uUpp5uZGDub9zD1999999999": {
       "chain": "TRX",
       "entity_name": "XINBI GUARANTEE",
@@ -6359,6 +6409,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "4632"
+    },
+    "TJjRAn9kLiyh8h6gjBjaYjkfDkskgZfyW9": {
+      "chain": "TRX",
+      "entity_name": "Anibal Alexander CANELON AGUIRRE",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58161"
     },
     "TJkBr9TZ1xBeJoF7RNWqyEMbYqVJ6fXXHR": {
       "chain": "TRX",
@@ -7827,6 +7887,16 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "58361"
+    },
+    "TWJmTGhquvdp1jhBmgeGxBBwefteGZUQYW": {
+      "chain": "TRX",
+      "entity_name": "Alejandro MEJIA CASTILLO",
+      "programs": [
+        "SDGT",
+        "TCO"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58255"
     },
     "TWPma8xH48AEN93x2krdukV9e1j6sPsBeS": {
       "chain": "TRX",
@@ -9719,8 +9789,8 @@
       "sdn_uid": "29585"
     }
   },
-  "count": 1043,
-  "fetched_at_utc": "2026-09-30 01:33 UTC",
-  "publication_date": "2026-09-29",
+  "count": 1050,
+  "fetched_at_utc": "2026-10-01 01:33 UTC",
+  "publication_date": "2026-09-30",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
