@@ -144,6 +144,11 @@ AMM_RANKED_PATH = os.path.join(HERE, "amm_ranked.json")
 # The signer must never read AMM_RANKED_PATH directly — it live-fills
 # during an in-progress pass. (Charlie 2026-10-01, AMM leaf undercount bug.)
 AMM_RANKED_FINISHED_PATH = os.path.join(HERE, "amm_ranked_finished.json")
+# Sidecar written ONLY alongside a promoted finished copy, holding THAT
+# pass's finished_at. Never read amm_rank_state.json for as_of — its
+# finished_at is blank for the ~2.5h/night a pass is running, which is
+# exactly when the leaf signs (Charlie 2026-10-01 ruling).
+AMM_RANKED_FINISHED_META_PATH = os.path.join(HERE, "amm_ranked_finished_meta.json")
 NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 CLAIMS_YAML_PATH = os.path.join(HERE, "CLAIMS.yaml")
 APP_PY_PATH = os.path.join(HERE, "app.py")
@@ -875,11 +880,25 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
         with open(AMM_RANKED_FINISHED_PATH) as f:
             ranked = json.load(f) or []
         valid = [p for p in ranked if isinstance(p, dict)]
+        # Additive only: records WHEN the underlying pass completed, not
+        # a new metric name, so EXPECTED_METRIC_KEYS_SCHEMA_5 (name-set
+        # check) and verify_envelope (hashes whatever is present) are both
+        # unaffected. Sidecar ONLY — never amm_rank_state.json. Missing/
+        # unreadable sidecar -> as_of stays null and it's logged; the
+        # count/TVL metrics below are still emitted (sidecar failure does
+        # not gate the metric itself, only its as_of annotation).
+        _amm_as_of = None
+        try:
+            with open(AMM_RANKED_FINISHED_META_PATH) as sf:
+                _amm_as_of = (json.load(sf) or {}).get("finished_at")
+        except (OSError, json.JSONDecodeError) as e:
+            errors.append(f"amm_pools_as_of: {type(e).__name__}")
         metrics.append({
             "name": "amm_pools_count",
             "value": len(valid),
             "unit": "pools",
             "source": "amm_ranked_finished.json",
+            "as_of": _amm_as_of,
         })
         total_tvl = 0.0
         for p in valid:
@@ -891,6 +910,7 @@ def collect_metrics(now_utc: dt.datetime | None = None) -> tuple[list[dict], lis
             "value": round(total_tvl, 2),
             "unit": "usd",
             "source": "amm_ranked_finished.json (sum of tvl_usd)",
+            "as_of": _amm_as_of,
         })
     except (OSError, json.JSONDecodeError) as e:
         errors.append(f"amm_pools: {type(e).__name__}")

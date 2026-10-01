@@ -70,6 +70,12 @@ RANKED_PATH  = os.path.join(HERE, "amm_ranked.json")
 # daily_snapshot, token_prices — none of those need completeness, only
 # the signed leaf does (Charlie 2026-10-01, AMM leaf undercount bug).
 RANKED_FINISHED_PATH = os.path.join(HERE, "amm_ranked_finished.json")
+# Sidecar: holds ONLY this pass's finished_at, written atomically in the
+# same breath as the finished copy. The signer reads this — never
+# amm_rank_state.json, whose finished_at is blank for the ~2.5h/night a
+# pass is running, which is exactly when the leaf signs (Charlie
+# 2026-10-01 ruling: never fall back to the state file for as_of).
+RANKED_FINISHED_META_PATH = os.path.join(HERE, "amm_ranked_finished_meta.json")
 STATE_PATH   = os.path.join(HERE, "amm_rank_state.json")
 LOG_PATH     = os.path.join(HERE, "amm_rank.log")
 TOKEN_NAMES_PATH = os.path.join(HERE, "token_names.json")
@@ -570,7 +576,9 @@ def main():
     # tmp+os.replace pattern as save_json — to a path only a finished pass
     # ever touches. RANKED_PATH keeps live-filling for /pools etc.
     save_json(RANKED_FINISHED_PATH, ranked)
-    log(f"finished copy promoted: {len(ranked)} pools -> {os.path.basename(RANKED_FINISHED_PATH)}")
+    save_json(RANKED_FINISHED_META_PATH, {"finished_at": state["finished_at"]})
+    log(f"finished copy promoted: {len(ranked)} pools -> {os.path.basename(RANKED_FINISHED_PATH)} "
+        f"(as_of {state['finished_at']})")
     _mirror_to_postgres(ranked, state, indexed_count=len(index))
     log(f"done: ranked={len(ranked)} · errors={state['errors']} skipped={state['skipped']} "
         f"· sourcing={_run_sourcing()}"
