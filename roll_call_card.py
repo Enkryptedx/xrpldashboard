@@ -36,8 +36,16 @@ ROUND_LEDGERS = 256
 # A round every ~256 × 3.9 s ≈ 16.6 min. Two missed rounds = recorder stale.
 STALE_AFTER_S = 2 * ROUND_LEDGERS * 4.0  # 2048 s
 FALLBACK_SECONDS_PER_LEDGER = 3.9
+# Flag-ledger math (Charlie 2026-10-02): the node closes a ledger about every
+# 3.86 s, so a 256-ledger flag interval is ~16.5 min. The counter uses the LIVE
+# validated ledger (passed in by the route from network_pulse), never the
+# recorder's stale voting_ledger.
+SECONDS_PER_LEDGER_NOMINAL = 3.86
+LEDGERS_PER_FLAG = 256
 SOURCE_LABEL = "own-node validations stream (Lenovo rippled → roll-call recorder)"
-_ET = ZoneInfo("America/New_York")
+# The node is in Indianapolis, Indiana. Use the named IANA zone so the EDT->EST
+# fall-back on 2026-11-01 is handled by the tz database, never a fixed offset.
+_ET = ZoneInfo("America/Indiana/Indianapolis")
 
 
 def is_enabled(now: dt.datetime | None = None, env: dict | None = None) -> bool:
@@ -111,8 +119,42 @@ def seconds_per_ledger(rounds: list[dict]) -> float:
 
 # ── pure card builder ──
 
+def flag_ledger_counter(current_validated_ledger: int,
+                        now: dt.datetime | None = None,
+                        seconds_per_ledger: float = SECONDS_PER_LEDGER_NOMINAL) -> dict | None:
+    """Next flag ledger from the LIVE validated ledger (not a stale snapshot).
+
+    next_flag = ((current // 256) + 1) * 256
+
+    Returns ledgers remaining, minutes remaining at ~3.86 s/ledger, the next
+    flag index, and the projected next-flag time as a tz-aware UTC datetime
+    (the template/filter converts it Eastern-first). None on a bad input.
+    """
+    try:
+        current = int(current_validated_ledger)
+    except (TypeError, ValueError):
+        return None
+    if current <= 0:
+        return None
+    now = now or dt.datetime.now(dt.timezone.utc)
+    next_flag = ((current // LEDGERS_PER_FLAG) + 1) * LEDGERS_PER_FLAG
+    ledgers_remaining = next_flag - current
+    seconds_remaining = ledgers_remaining * seconds_per_ledger
+    next_flag_utc = now + dt.timedelta(seconds=seconds_remaining)
+    return {
+        "current_ledger": current,
+        "next_flag_ledger": next_flag,
+        "ledgers_remaining": ledgers_remaining,
+        "minutes_remaining": round(seconds_remaining / 60, 1),
+        "seconds_per_ledger": seconds_per_ledger,
+        "next_flag_utc": next_flag_utc,
+        "next_flag_iso": next_flag_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
 def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | None = None,
-               majority_active: dict | None = None) -> dict | None:
+               majority_active: dict | None = None,
+               current_validated_ledger: int | None = None) -> dict | None:
     """rounds newest-first (from read_rounds); in_flight = state['in_flight']
     ([{hash, name, ...}]).
 
@@ -201,8 +243,14 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "ledger_holding": ledger_holding,
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
+    # Flag-ledger counter from the LIVE validated ledger supplied by the route
+    # (network_pulse). Never derived from latest["voting_ledger"] (the stale
+    # recorder snapshot). None when the route couldn't supply a live ledger.
+    flag_counter = flag_ledger_counter(current_validated_ledger, now) \
+        if current_validated_ledger else None
     return {
         "voting_ledger": latest["voting_ledger"],
+        "flag_counter": flag_counter,
         "flag_ledger": latest["flag_ledger"],
         "observed_utc": observed.strftime("%Y-%m-%d %H:%M:%S UTC") if observed else None,
         "observed_et": observed.astimezone(_ET).strftime("%-I:%M:%S %p ET") if observed else None,
@@ -228,7 +276,8 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
 
 
 def load_for_page(state: dict, now: dt.datetime | None = None,
-                  majority_active: dict | None = None) -> dict | None:
+                  majority_active: dict | None = None,
+                  current_validated_ledger: int | None = None) -> dict | None:
     """Route entry point. Gated + best-effort: returns None unless enabled
     and the read succeeds.
 
@@ -249,4 +298,5 @@ def load_for_page(state: dict, now: dt.datetime | None = None,
     except Exception:  # noqa: BLE001 — render-killer rule: never 500 the page
         return None
     return build_card(rounds, state.get("in_flight") or [], now,
-                      majority_active=majority_active)
+                      majority_active=majority_active,
+                      current_validated_ledger=current_validated_ledger)

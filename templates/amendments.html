@@ -286,6 +286,61 @@
     {{ _('Every change to how the XRP Ledger works ships as an amendment — a code change that activates only after more than 80 percent of trusted validators have voted yes for 14 consecutive days. This page shows what they\'re voting on right now, what each change actually does, and when the next one is projected to go live.') }}
   </p>
 
+  {# ITEM 1 (Charlie 2026-10-02): "The rule, word for word" — VERBATIM quotes
+     from xrpl.org, each with its section heading + source URL. DO NOT reword
+     any quote. The quote TEXT is emitted as a literal (NOT wrapped in _()):
+     these are exact source quotes that must never be translated or reworded,
+     and a literal also avoids the Babel gettext '%'-format collision the 80%
+     quotes would otherwise trigger. Section headings stay translatable.
+     Under each quote is an empty, clearly-marked slot for Charlie's own
+     plain-English line (he writes the public prose, not JJ). #}
+  <section class="rule-word-for-word" aria-label="The rule, word for word" style="margin: 8px 0 28px;">
+    <h2>{{ _('The rule, word for word') }}</h2>
+    {% set _amd_url = 'https://xrpl.org/docs/concepts/networks-and-servers/amendments' %}
+
+    <blockquote>
+      “Amendments must maintain two weeks of support from more than 80% of trusted validators to be enabled.”
+      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-a: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “If support drops below 80%, the amendment is temporarily rejected, and the two week period restarts.”
+      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-b: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “Every 256th ledger is called a flag ledger.”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-c: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-d: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-e: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.”
+      <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-f: your plain-English line here. -->
+    </blockquote>
+
+    <blockquote>
+      “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.”
+      <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      <!-- CHARLIE-PLACEHOLDER item1-g: your plain-English line here. -->
+    </blockquote>
+  </section>
+
   {# "Cite this day" — dated, signed permalink (build 2026-09-26). Points at
      the newest signed leaf carrying an amendments_block; when today's leaf
      has not landed yet it says so and links yesterday's. Hidden if the
@@ -533,8 +588,34 @@
 
   {% if state.majorities %}
     <h2>{{ _('In countdown') }}</h2>
+    {# ITEM 6 (Charlie 2026-10-02): the validator numbers are NO LONGER
+       hardcoded "29 of the 35". N = the live trusted-validator count from the
+       roll-call card (roll_call.unl_full); needed = floor(0.8*N)+1; the 80%
+       threshold rippled computes is floor(0.8*N). When the roll-call card is
+       not present (card disabled / DB unavailable), we fall back to the
+       count of validators the amendments state itself knows, and if even that
+       is absent we omit the specific numbers rather than invent them. #}
+    {% set _N = (roll_call.unl_full if roll_call and roll_call.unl_full else None) %}
+    {% set _thr = ((_N * 80) // 100) if _N else None %}
+    {% set _needed = (_thr + 1) if _thr is not none else None %}
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes — 29 of the 35 on the current list, since rippled requires strictly more than its 80 percent threshold of 28. If the majority holds for 14 consecutive days, the amendment activates at the close of the first ledger after that window.') }}
+      {% if _N and _needed %}
+        {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes —') }}
+        {{ _needed }} {{ _('of the') }} {{ _N }}
+        {{ _('on the current list, since rippled requires strictly more than its 80 percent threshold of') }} {{ _thr }}.
+      {% else %}
+        {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes, since rippled requires strictly more than its 80 percent threshold of the current trusted-validator list.') }}
+      {% endif %}
+      {# ITEM 8 (Charlie 2026-10-02): PLACEHOLDER — Charlie writes the public
+         "when it activates" wording. Facts only, do not reword into prose:
+         votes are counted at flag ledgers (every 256 ledgers, ~16.5 min);
+         an EnableAmendment pseudo-transaction appears at flag+1; the
+         amendment is active at flag+2; the 14-day clock restarts if support
+         drops below the 80 percent threshold. #}
+      <!-- CHARLIE-PLACEHOLDER item8-activation-wording: write the public
+           "no earlier than" sentence here. FACTS: counted at flag ledgers
+           (every 256 ledgers ~16.5 min); EnableAmendment at flag+1; active at
+           flag+2; 14-day clock restarts if support drops. -->
     </p>
     {% for m in state.majorities %}
       {# Roll-call join (Charlie 2026-09-26 20:12 ET): the count lives in the
@@ -580,15 +661,21 @@
           {% endif %}
         {% endif %}
 
+        {# ITEM 2 (Charlie 2026-10-02): render the projected activation time
+           Eastern-first ON THE SERVER via datetime_to_et_first, so crawlers
+           and no-JS readers see the real local time. The <time datetime>
+           keeps the exact UTC ISO value per the TIME RULE; the browser script
+           below (data-activation-iso) stays only as an optional extra. #}
         <div class="timer" data-activation-iso="{{ m.activation_eta_iso }}">
-          {{ m.activation_eta_iso }}
+          <time datetime="{{ m.activation_eta_iso }}">{{ m.activation_eta_iso | datetime_to_et_first }}</time>
         </div>
         <div class="conditional" style="color: var(--muted); font-size: 0.82rem; margin: -2px 0 6px; font-style: italic;">
           {{ _('if the more-than-80-percent majority holds for the full 14-day window') }}
         </div>
         <div class="when">
           {{ _('projected activation') }} ·
-          {{ _('majority reached at fetch') }} {{ m.majority_reached_iso }}
+          {{ _('majority reached at fetch') }}
+          <time datetime="{{ m.majority_reached_iso }}">{{ m.majority_reached_iso | datetime_to_et_first }}</time>
         </div>
         {# Charlie 2026-09-27: plain-language explainer, one link per countdown box. #}
         <div class="how-link"><a href="/amendments/how-it-works" data-how-it-works>{{ _('How the roll call works') }} →</a></div>

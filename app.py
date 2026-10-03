@@ -13,7 +13,8 @@ import sqlite3
 import threading
 import time
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, abort, g, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
@@ -300,6 +301,58 @@ def _unix_utc(ts):
 
 
 app.jinja_env.filters["unix_utc"] = _unix_utc
+
+
+# The node is physically in Indianapolis, Indiana. We render every wall-clock
+# time in that zone (NOT a fixed -4/-5 offset): the IANA tz database knows that
+# America/Indiana/Indianapolis is EDT (UTC-4) through 2026-11-01 02:00 local,
+# then falls back to EST (UTC-5). Using the named zone means the DST transition
+# is handled by the tz data, never by us.
+_NODE_TZ = ZoneInfo("America/Indiana/Indianapolis")
+
+
+def datetime_to_et_first(value):
+    """Jinja filter: render an instant Eastern-first with UTC in parentheses,
+    converted ON THE SERVER so crawlers and no-JS readers see the real local
+    time. Example output: ``Wed 11:30 AM ET (15:30 UTC)``; a sub-hour example
+    ``Oct 7, 9:25 PM ET (01:25 UTC)``.
+
+    Accepts a tz-aware datetime, a naive datetime (assumed UTC), or an ISO-8601
+    string (``...Z`` or ``+00:00``). The abbreviation (EDT->"ET") comes from
+    the America/Indiana/Indianapolis zone at that instant, so a date after the
+    Nov 1 2026 fall-back is correctly EST. None / Undefined / unparseable ->
+    empty string (render-killer rule: never crash a page on a bad timestamp).
+    'ET' is intentionally shown instead of EDT/EST so the public label stays
+    stable across the DST switch; the underlying conversion is still DST-correct.
+    """
+    if value is None:
+        return ""
+    dt = value
+    if isinstance(dt, str):
+        s = dt.strip()
+        if not s:
+            return ""
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return ""
+    if not isinstance(dt, datetime):
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    et = dt.astimezone(_NODE_TZ)
+    utc = dt.astimezone(timezone.utc)
+    # %-I / %-M are platform-glibc-ish; macOS + Linux both accept %-I. Fall back
+    # to a manual strip so this never raises on an exotic libc.
+    try:
+        et_str = et.strftime("%a %b %-d, %-I:%M %p ET")
+    except ValueError:
+        et_str = et.strftime("%a %b %d, %I:%M %p ET").replace(" 0", " ")
+    utc_str = utc.strftime("%H:%M UTC")
+    return f"{et_str} ({utc_str})"
+
+
+app.jinja_env.filters["datetime_to_et_first"] = datetime_to_et_first
 
 
 def _entity_encode(text):
@@ -6317,7 +6370,22 @@ def amendments():
                 majority_active[_h] = bool(_mh.get("active"))
             elif _mh.get("active"):
                 majority_active[_h] = True
-        roll_call = roll_call_card.load_for_page(state, majority_active=majority_active)
+        # ITEM 4 (Charlie 2026-10-02): feed the roll-call card the LIVE
+        # validated ledger from network_pulse (sovereign-first) so its
+        # flag-ledger counter is computed from the current tip, never the
+        # recorder's stale voting_ledger. Best-effort: a pulse hiccup -> None
+        # -> the counter simply doesn't render (render-killer rule).
+        _live_ledger = None
+        try:
+            _pulse = fetch_pulse_cached()
+            if _pulse and not _pulse.get("error"):
+                _live_ledger = _pulse.get("ledger_index")
+        except Exception:  # noqa: BLE001
+            _live_ledger = None
+        roll_call = roll_call_card.load_for_page(
+            state, majority_active=majority_active,
+            current_validated_ledger=_live_ledger,
+        )
     except Exception:  # noqa: BLE001
         roll_call = None
     # "Cite this day" (permalinks build 2026-09-26): newest SIGNED date

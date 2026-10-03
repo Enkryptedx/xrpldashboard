@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How the roll call works · XRPL amendments · xrpldashboard</title>
   {% set meta_title = "How the XRPL amendment roll call works · xrpldashboard" %}
-  {% set meta_description = "How an XRPL amendment vote works — 29 of 35 trusted validators, a roll call every 256 ledgers, 14 straight days — and why Batch reset on Sep 25, 2026." %}
+  {% set meta_description = "How an XRPL amendment vote works — more than 80% of the trusted validators, a roll call every 256 ledgers, 14 straight days — and why Batch reset on Sep 25, 2026." %}
   {% include "_head_meta.html" %}
   <style>
     :root {
@@ -53,7 +53,7 @@
 
   <div class="card" id="how-the-vote-works">
     <h2>How the vote works</h2>
-    <p>An amendment needs more than 80% of the 35 trusted validators — that's 29 — voting yes. Votes are counted at a roll call every 256 ledgers, about every 15 minutes. If it holds 29 or more at every roll call for 14 straight days, it switches on. If a single roll call counts 28 or fewer, the countdown resets to zero, and a new 14 days starts the next time a roll call reaches 29.</p>
+    <p>An amendment needs more than 80% of the trusted validators voting yes. On a trusted-validator list of N, rippled's threshold is floor(0.8 &times; N), and a majority needs strictly more than that &mdash; floor(0.8 &times; N) + 1 yes votes. Votes are counted at a roll call every 256 ledgers, about every 16.5 minutes. If it holds a majority at every roll call for 14 straight days, it switches on. If a single roll call drops to the 80% threshold or below, the countdown resets to zero, and a new 14 days starts the next time it regains the majority.</p>
     <div class="sources">
       <span class="lbl">Source</span>
       <a href="https://xrpl.org/docs/concepts/networks-and-servers/amendments" rel="nofollow noopener" target="_blank">xrpl.org · Amendments</a> — the voting rule.
