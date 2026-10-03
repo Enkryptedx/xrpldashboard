@@ -11497,12 +11497,28 @@ def changes_by_date_json(date):
     return resp
 
 
-@app.route("/changes.xml")
-@limiter.limit(agent_tier_limit_rate)
-def changes_atom_feed():
-    """Atom/RSS feed of the last 30 days of /changes envelopes. One
-    entry per date, with the full list of change lines in the summary
-    so a feed reader can render the daily changelog without a click."""
+# In-process cache for /changes.xml (Charlie 2026-10-03). The feed does up to
+# 31 serial round-trips to remote Neon Postgres (one dates query + one envelope
+# read per date), which made the live feed take ~14s on every hit because the
+# HTTP Cache-Control header is bypassed at the edge (Cloudflare marks it
+# DYNAMIC). The changes envelopes only change once a day when changes_walker
+# fires, so a 15-minute in-process cache of the finished body is safe. Same
+# cache + rebuild-lock shape as _WHALES_CACHE_* elsewhere in this file.
+#   - Never caches a failure: a raised build only logs; the last good body (if
+#     any) is served, otherwise the error propagates to normal handling.
+#   - Single-flight: a rebuild holds _CHANGES_XML_REBUILD_LOCK so concurrent
+#     requests don't all trigger the slow rebuild; waiters re-check the cache.
+_CHANGES_XML_TTL_S = 15 * 60
+_CHANGES_XML_CACHE_LOCK = threading.Lock()      # guards the cache dict
+_CHANGES_XML_REBUILD_LOCK = threading.Lock()    # single-flight rebuild
+_changes_xml_cache = {"body": None, "built_at": 0.0}
+
+
+def _build_changes_atom_body():
+    """Build the /changes.xml body string exactly as the route did before the
+    cache, including disclosed corrections (via _load_changes_envelope). Pure
+    function of the DB state; raises on DB failure so the caller can decide not
+    to cache it."""
     dates = _list_changes_dates(limit=30)
     entries = []
     for d in dates:
@@ -11534,7 +11550,7 @@ def changes_atom_feed():
         )
     latest_updated = (dates[0] + "T00:00:00Z") if dates else \
         datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    body = (
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<feed xmlns="http://www.w3.org/2005/Atom">\n'
         f'  <title>xrpldashboard — What&#39;s new</title>\n'
@@ -11547,6 +11563,52 @@ def changes_atom_feed():
         + "\n".join(entries)
         + "\n</feed>\n"
     )
+
+
+def _changes_atom_body_cached(now=None):
+    """Return the feed body from the 15-minute in-process cache, rebuilding when
+    stale. Never caches a failure: if a rebuild raises, serve the last good body
+    when one exists, else re-raise. Single-flight via _CHANGES_XML_REBUILD_LOCK
+    so two concurrent requests don't both run the slow rebuild."""
+    _now = now if now is not None else time.monotonic()
+    with _CHANGES_XML_CACHE_LOCK:
+        body = _changes_xml_cache["body"]
+        fresh = body is not None and (_now - _changes_xml_cache["built_at"]) < _CHANGES_XML_TTL_S
+    if fresh:
+        return body
+    # Stale or empty: one rebuilder at a time; others wait then re-check.
+    with _CHANGES_XML_REBUILD_LOCK:
+        with _CHANGES_XML_CACHE_LOCK:
+            body = _changes_xml_cache["body"]
+            fresh = body is not None and (_now - _changes_xml_cache["built_at"]) < _CHANGES_XML_TTL_S
+        if fresh:
+            return body  # another thread rebuilt it while we waited
+        try:
+            new_body = _build_changes_atom_body()
+        except Exception:
+            app.logger.exception("changes.xml rebuild failed")
+            with _CHANGES_XML_CACHE_LOCK:
+                stale = _changes_xml_cache["body"]
+            if stale is not None:
+                return stale          # serve last good copy; do NOT cache failure
+            raise                     # no good copy -> normal error behavior
+        with _CHANGES_XML_CACHE_LOCK:
+            _changes_xml_cache["body"] = new_body
+            _changes_xml_cache["built_at"] = _now
+        return new_body
+
+
+@app.route("/changes.xml")
+@limiter.limit(agent_tier_limit_rate)
+def changes_atom_feed():
+    """Atom/RSS feed of the last 30 days of /changes envelopes. One
+    entry per date, with the full list of change lines in the summary
+    so a feed reader can render the daily changelog without a click.
+
+    Body is cached in-process for 15 minutes (see _changes_atom_body_cached):
+    the envelopes change once a day, and the ~14s cost was the 30 serial remote
+    PG round-trips on every hit. The HTTP Cache-Control below is unchanged."""
+    body = _changes_atom_body_cached()
     resp = Response(body, mimetype="application/atom+xml")
     resp.headers["Cache-Control"] = "public, max-age=1800, s-maxage=1800"
     return resp
