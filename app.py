@@ -348,7 +348,18 @@ def datetime_to_et_first(value):
         et_str = et.strftime("%a %b %-d, %-I:%M %p ET")
     except ValueError:
         et_str = et.strftime("%a %b %d, %I:%M %p ET").replace(" 0", " ")
-    utc_str = utc.strftime("%H:%M UTC")
+    # ITEM E (Charlie 2026-10-02): when the UTC calendar date differs from the
+    # Eastern calendar date (e.g. a late-evening ET time that is already the
+    # next day in UTC), show the UTC date too so the parenthetical is
+    # unambiguous: "Wed Oct 7, 9:25 PM ET (Oct 8, 01:25 UTC)". Same-date times
+    # keep the shorter "(01:25 UTC)" form.
+    if et.date() != utc.date():
+        try:
+            utc_str = utc.strftime("%b %-d, %H:%M UTC")
+        except ValueError:
+            utc_str = utc.strftime("%b %d, %H:%M UTC").replace(" 0", " ")
+    else:
+        utc_str = utc.strftime("%H:%M UTC")
     return f"{et_str} ({utc_str})"
 
 
@@ -6388,6 +6399,17 @@ def amendments():
         )
     except Exception:  # noqa: BLE001
         roll_call = None
+    # ITEM A (Charlie 2026-10-02): the flag-ledger counter must show even when
+    # the roll-call card is None (Postgres down / card disabled). Compute it
+    # standalone from the live pulse ledger and pass it to the template as its
+    # own variable, independent of roll_call. Best-effort: None -> block hides.
+    flag_counter = None
+    try:
+        import roll_call_card as _rcc
+        if _live_ledger:
+            flag_counter = _rcc.flag_ledger_counter(_live_ledger)
+    except Exception:  # noqa: BLE001
+        flag_counter = None
     # "Cite this day" (permalinks build 2026-09-26): newest SIGNED date
     # with an amendments_block, its leaf-hash prefix, and whether today's
     # leaf has landed yet. Best-effort — None hides the line.
@@ -6398,6 +6420,7 @@ def amendments():
         majority_history=majority_history,
         page_sourcing=page_sourcing,
         roll_call=roll_call,
+        flag_counter=flag_counter,
         cite=cite,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))

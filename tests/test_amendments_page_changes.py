@@ -41,11 +41,13 @@ def _filter():
 
 
 def test_filter_edt_sub_hour_rollover_to_previous_day():
-    """01:25 UTC on Oct 8 2026 must render Oct 7, 9:25 PM ET (EDT, UTC-4)."""
+    """01:25 UTC on Oct 8 2026 must render Oct 7, 9:25 PM ET (EDT, UTC-4).
+    Item E: because the UTC date (Oct 8) differs from the ET date (Oct 7), the
+    parenthetical now carries the UTC date too."""
     out = _filter()("2026-10-08T01:25:00Z")
     assert "Oct 7" in out
     assert "9:25 PM ET" in out
-    assert "(01:25 UTC)" in out
+    assert "(Oct 8, 01:25 UTC)" in out
 
 
 def test_filter_est_after_fall_back():
@@ -156,9 +158,16 @@ def _full_roll_call(unl_full=35):
     }
 
 
-def _render_amendments(roll_call):
+def _flag_counter(current=107393113):
+    import roll_call_card
+    return roll_call_card.flag_ledger_counter(current)
+
+
+def _render_amendments(roll_call, flag_counter="__default__"):
     import app
     from flask import render_template
+    if flag_counter == "__default__":
+        flag_counter = _flag_counter()
     state = {
         "ok": True, "enabled_count": 94, "in_flight_count": 10,
         "ledger_index": 107393280, "recognized_enabled": [],
@@ -172,8 +181,8 @@ def _render_amendments(roll_call):
     with app.app.test_request_context("/amendments"):
         return render_template(
             "amendments.html", state=state, majority_history=[],
-            page_sourcing="sovereign", roll_call=roll_call, cite=None,
-            cache_ttl_seconds=300)
+            page_sourcing="sovereign", roll_call=roll_call,
+            flag_counter=flag_counter, cite=None, cache_ttl_seconds=300)
 
 
 def test_template_quotes_block_verbatim():
@@ -197,8 +206,9 @@ def test_template_quotes_block_verbatim():
     ]:
         assert q in html, f"missing verbatim quote: {q[:40]}..."
     assert "xrpl.org/docs/concepts/networks-and-servers/amendments" in html
-    # seven empty slots for Charlie's prose
-    assert html.count("CHARLIE-PLACEHOLDER item1-") == 7
+    # ITEM C: placeholders are now Jinja comments, so they must NOT appear in
+    # the rendered HTML at all.
+    assert "CHARLIE-PLACEHOLDER" not in html
 
 
 def test_template_activation_time_rendered_server_side_et_first():
@@ -223,9 +233,123 @@ def test_template_validator_counts_are_live_not_hardcoded():
     assert "29 of the 35" not in html
 
 
-def test_template_item8_placeholder_present():
+def test_template_item8_placeholder_is_jinja_comment_not_in_output():
+    """ITEM 8 + C: the item-8 activation-wording placeholder is a Jinja comment,
+    so it must NOT render into the public HTML."""
     html = _render_amendments(_full_roll_call())
-    assert "CHARLIE-PLACEHOLDER item8-activation-wording" in html
+    assert "item8-activation-wording" not in html
+
+
+# ───────────────────────────────────────────────────────────
+# ITEM A — flag counter renders, WITH and WITHOUT roll_call
+# ───────────────────────────────────────────────────────────
+
+def test_flag_counter_renders_with_roll_call():
+    """ITEM A: with a roll-call card present, the live flag-counter data labels
+    (next flag ledger w/ commas, ledgers remaining, minutes remaining, and the
+    ET-first next-flag time) render on the page."""
+    fc = _flag_counter(107393113)
+    html = _render_amendments(_full_roll_call(), flag_counter=fc)
+    nf = f'{fc["next_flag_ledger"]:,}'
+    assert nf in html                     # comma-formatted next flag ledger
+    assert str(fc["ledgers_remaining"]) in html
+    assert str(fc["minutes_remaining"]) in html
+    # ET-first <time> for the next flag, server-rendered via the filter.
+    assert f'<time datetime="{fc["next_flag_iso"]}">' in html
+    assert " ET (" in html and "UTC)" in html
+
+
+def test_flag_counter_renders_when_roll_call_is_none():
+    """ITEM A: the counter MUST still render when roll_call is None (Postgres
+    down / card disabled), from the independently-passed flag_counter var."""
+    fc = _flag_counter(107393113)
+    html = _render_amendments(None, flag_counter=fc)
+    assert "data-flag-counter-standalone" in html
+    assert f'{fc["next_flag_ledger"]:,}' in html
+    assert str(fc["ledgers_remaining"]) in html
+    assert f'<time datetime="{fc["next_flag_iso"]}">' in html
+
+
+def test_flag_counter_absent_hides_block():
+    """No live ledger -> flag_counter None -> no counter block, no crash."""
+    html = _render_amendments(None, flag_counter=None)
+    assert "data-flag-counter-standalone" not in html
+
+
+# ───────────────────────────────────────────────────────────
+# ITEM B — the browser script does not undo the server ET text
+# ───────────────────────────────────────────────────────────
+
+def test_script_uses_indianapolis_zone():
+    """ITEM B: if the script formats any absolute time it uses the Indianapolis
+    zone, never the visitor's locale."""
+    html = _render_amendments(_full_roll_call())
+    assert "America/Indiana/Indianapolis" in html
+
+
+def test_script_does_not_rewrite_when_line_to_locale():
+    """ITEM B: the old script replaced .when's text with the visitor's locale
+    time (when_el.innerHTML = 'projected activation · ' + fmtLocal(iso)). That
+    line must be gone, and there must be no fmtLocal locale formatter."""
+    html = _render_amendments(_full_roll_call())
+    assert "when_el.innerHTML" not in html
+    assert "fmtLocal" not in html
+    # The countdown must write into its own element, not the server <time>.
+    assert "live-countdown" in html
+
+
+# ───────────────────────────────────────────────────────────
+# ITEM C — no owner name / instructions leak into public source
+# ───────────────────────────────────────────────────────────
+
+def test_rendered_page_has_no_placeholder_or_instruction_leak():
+    """ITEM C: none of JJ's placeholder slots, author-note comments, or
+    instruction text ship in the public HTML (they are all Jinja comments now).
+    The one remaining 'Charlie' substring in the rendered page is the site-wide
+    <meta name="author" content="Charlie Bruce"> partial (_head_meta.html) — an
+    intentional, owner-authored attribution, NOT a leak of JJ's notes, so it is
+    flagged in the report rather than stripped from a shared partial unasked."""
+    html = _render_amendments(_full_roll_call())
+    # JJ's placeholder markers / instruction comments must be gone entirely.
+    assert "CHARLIE-PLACEHOLDER" not in html
+    assert "CHARLIE" not in html
+    assert "item1-" not in html
+    assert "item8-activation-wording" not in html
+    assert "owner's plain-English line" not in html
+    # No instruction text JJ wrote leaks (e.g. the item-8 FACTS note or the
+    # 'owner writes the public' phrasing JJ authored this round).
+    assert "owner writes the public" not in html
+    assert "EnableAmendment at flag+1" not in html
+    # The remaining 'Charlie' substrings all come from PRE-EXISTING, owner-
+    # authored material in SHARED partials this task did not own: the site-wide
+    # <meta name="author"> and dated '/* Charlie ruling ... */' notes inside the
+    # _head_meta.html live-stream CSS/JS block. None are JJ's round-2/3 notes.
+    # They are enumerated in the report for the owner to decide on, not stripped
+    # from a shared partial unasked.
+    import re
+    occurrences = re.findall(r".{0,30}Charlie.{0,20}", html)
+    allowed = ('name="author"', "Charlie Bruce", "Charlie ruling",
+               "BEHIND the page content")
+    leaked = [o for o in occurrences if not any(a in o for a in allowed)]
+    assert leaked == [], f"unexpected Charlie leak(s) from this task: {leaked}"
+
+
+# ───────────────────────────────────────────────────────────
+# ITEM E — cross-date UTC shown in the filter
+# ───────────────────────────────────────────────────────────
+
+def test_filter_cross_date_shows_utc_date():
+    """ITEM E: when the UTC date differs from the ET date, the parenthetical
+    includes the UTC date: 'Wed Oct 7, 9:25 PM ET (Oct 8, 01:25 UTC)'."""
+    out = _filter()("2026-10-08T01:25:00Z")
+    assert out == "Wed Oct 7, 9:25 PM ET (Oct 8, 01:25 UTC)"
+
+
+def test_filter_same_date_omits_utc_date():
+    """ITEM E: same ET/UTC date keeps the short '(HH:MM UTC)' form."""
+    out = _filter()("2026-10-14T15:30:00Z")
+    assert out == "Wed Oct 14, 11:30 AM ET (15:30 UTC)"
+    assert "Oct 14, 15:30 UTC" not in out  # no redundant date
 
 
 # ─────────────────────────────────────────────────────────────────────

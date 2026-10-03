@@ -53,7 +53,11 @@
 
   <div class="card" id="how-the-vote-works">
     <h2>How the vote works</h2>
-    <p>An amendment needs more than 80% of the trusted validators voting yes. On a trusted-validator list of N, rippled's threshold is floor(0.8 &times; N), and a majority needs strictly more than that &mdash; floor(0.8 &times; N) + 1 yes votes. Votes are counted at a roll call every 256 ledgers, about every 16.5 minutes. If it holds a majority at every roll call for 14 straight days, it switches on. If a single roll call drops to the 80% threshold or below, the countdown resets to zero, and a new 14 days starts the next time it regains the majority.</p>
+    {# how-it-works paragraph: OWNER writes the public explanation here. The
+       prior hardcoded "29 of 35" sentence and a proposed replacement are both
+       in the round-3 report for the owner to choose; neither ships until the
+       owner fills this slot. Empty visible slot below is intentional. #}
+    <p id="how-the-vote-works-slot"></p>
     <div class="sources">
       <span class="lbl">Source</span>
       <a href="https://xrpl.org/docs/concepts/networks-and-servers/amendments" rel="nofollow noopener" target="_blank">xrpl.org · Amendments</a> — the voting rule.

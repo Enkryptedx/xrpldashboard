@@ -130,8 +130,8 @@
     }
 
     /* Roll-call count — right-hand space inside each countdown box
-       (Charlie 2026-09-26 20:12 ET layout decision). Stacks under the
-       main column on narrow viewports. */
+       (layout decision 2026-09-26). Stacks under the main column on narrow
+       viewports. */
     .countdown-grid { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
     .countdown-main { flex: 1 1 260px; min-width: 0; }
     .countdown-rollcall {
@@ -139,9 +139,9 @@
       border-left: 1px solid var(--border);
       padding-left: 18px;
     }
-    /* Phone (Charlie 2026-09-27): once the grid wraps and the roll-call box
-       stacks UNDER the main column, a left border + left indent is wrong —
-       it reads as a stray vertical line. Flip to a full-width top divider. */
+    /* Phone (2026-09-27): once the grid wraps and the roll-call box stacks
+       UNDER the main column, a left border + left indent is wrong — it reads
+       as a stray vertical line. Flip to a full-width top divider. */
     @media (max-width: 560px) {
       .countdown-grid { gap: 0; }
       .countdown-rollcall {
@@ -301,43 +301,43 @@
     <blockquote>
       “Amendments must maintain two weeks of support from more than 80% of trusted validators to be enabled.”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-a: your plain-English line here. -->
+      {# item1-a: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “If support drops below 80%, the amendment is temporarily rejected, and the two week period restarts.”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-b: your plain-English line here. -->
+      {# item1-b: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “Every 256th ledger is called a flag ledger.”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-c: your plain-English line here. -->
+      {# item1-c: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-d: your plain-English line here. -->
+      {# item1-d: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-e: your plain-English line here. -->
+      {# item1-e: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.”
       <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-f: your plain-English line here. -->
+      {# item1-f: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
       “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.”
       <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      <!-- CHARLIE-PLACEHOLDER item1-g: your plain-English line here. -->
+      {# item1-g: owner's plain-English line goes here. #}
     </blockquote>
   </section>
 
@@ -612,10 +612,10 @@
          an EnableAmendment pseudo-transaction appears at flag+1; the
          amendment is active at flag+2; the 14-day clock restarts if support
          drops below the 80 percent threshold. #}
-      <!-- CHARLIE-PLACEHOLDER item8-activation-wording: write the public
-           "no earlier than" sentence here. FACTS: counted at flag ledgers
-           (every 256 ledgers ~16.5 min); EnableAmendment at flag+1; active at
-           flag+2; 14-day clock restarts if support drops. -->
+      {# item8-activation-wording: owner writes the public "no earlier than"
+         sentence here. FACTS: counted at flag ledgers (every 256 ledgers
+         ~16.5 min); EnableAmendment at flag+1; active at flag+2; 14-day clock
+         restarts if support drops. #}
     </p>
     {% for m in state.majorities %}
       {# Roll-call join (Charlie 2026-09-26 20:12 ET): the count lives in the
@@ -790,6 +790,19 @@
           {{ _('Next roll call at voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.next_voting_ledger) }}</span>{% if roll_call.next_eta_min is not none %}, {{ _('in about') }} {{ roll_call.next_eta_min }} {{ _('minutes') }}{% endif %}.
         </p>
       {% endif %}
+      {# ITEM A (Charlie 2026-10-02): live flag-ledger counter, data labels only
+         (no explanatory prose), next to the next-roll-call line. The time is
+         converted server-side via datetime_to_et_first with <time datetime>
+         keeping UTC. flag_counter is passed by the route independently of the
+         card, so this also renders in the roll_call-None block below. #}
+      {% if flag_counter %}
+        <p class="dim flag-counter" style="margin: 0 0 8px;">
+          {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
+          · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
+          · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
+          · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first }}</time>
+        </p>
+      {% endif %}
       {% if roll_call.rows %}
         {# 2026-09-29 phone fix (Playwright-measured): at 360/390px the table's
            intrinsic width (359px) exceeded the card's content box (340/370px),
@@ -829,6 +842,18 @@
       <p class="dim" style="margin: 8px 0 0; font-size: 0.82rem;">
         {{ _('Counts only. Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>.
         {{ _('A yes vote carries forward for 24 hours after a validator last sent it, matching how xrpld tallies.') }}
+      </p>
+    </div>
+  {% elif flag_counter %}
+    {# ITEM A (Charlie 2026-10-02): the roll-call card is unavailable (Postgres
+       down / card disabled), but the live flag-ledger counter still shows
+       from the pulse ledger the route passed in. Data labels only. #}
+    <div class="recent-callout" data-flag-counter-standalone>
+      <p class="dim flag-counter" style="margin: 0;">
+        {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
+        · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
+        · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
+        · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first }}</time>
       </p>
     </div>
   {% endif %}
@@ -1140,32 +1165,63 @@
 </div>
 
 <script>
-  // Browser-side: convert the projected activation ISO timestamp to the
-  // visitor's locale, and (if it's in the future) show a live countdown
-  // ticking under it. Server emits canonical UTC; we never reformat on
-  // the server side, so a visitor in any timezone sees the same source.
+  // ITEM B (2026-10-02): the live countdown must NOT erase the
+  // server-rendered Eastern-first text. The server already wrote the real
+  // Eastern time with UTC in parentheses inside <time> (DST-correct, visible
+  // to crawlers and no-JS readers). This script ONLY appends a ticking
+  // d/h/m/s countdown in its OWN element; it never overwrites the <time>
+  // text and never rewrites the .when line to the visitor's locale. If it
+  // ever formats an absolute time, it uses timeZone
+  // 'America/Indiana/Indianapolis' and shows UTC in parentheses — never the
+  // visitor's own locale.
   (function () {
+    var NODE_TZ = 'America/Indiana/Indianapolis';
     var timers = document.querySelectorAll('.countdown .timer[data-activation-iso]');
     if (!timers.length) return;
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
-    function fmtLocal(iso) {
+    // Absolute-time formatter (only used for the "past" note): Indianapolis
+    // zone, UTC in parentheses. Never the visitor's locale.
+    function fmtNodeTz(iso) {
       var d = new Date(iso);
       if (isNaN(d.getTime())) return iso;
+      var etStr, utcStr;
       try {
-        return new Intl.DateTimeFormat(undefined, {
-          dateStyle: 'long', timeStyle: 'short'
-        }).format(d);
-      } catch (e) {
-        return d.toLocaleString();
+        etStr = new Intl.DateTimeFormat('en-US', {
+          timeZone: NODE_TZ, weekday: 'short', month: 'short', day: 'numeric',
+          hour: 'numeric', minute: '2-digit'
+        }).format(d) + ' ET';
+      } catch (e) { etStr = d.toISOString(); }
+      try {
+        utcStr = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(d) + ' UTC';
+      } catch (e2) { utcStr = ''; }
+      return etStr + (utcStr ? ' (' + utcStr + ')' : '');
+    }
+    // Find (or lazily create) the dedicated countdown element so the
+    // server-rendered <time> text in .timer is never touched.
+    function countdownEl(timerEl) {
+      var box = timerEl.parentElement;
+      var cd = box.querySelector('.live-countdown');
+      if (!cd) {
+        cd = document.createElement('div');
+        cd.className = 'live-countdown';
+        cd.style.fontVariantNumeric = 'tabular-nums';
+        cd.style.opacity = '0.85';
+        cd.style.fontSize = '0.85rem';
+        cd.style.marginTop = '2px';
+        timerEl.insertAdjacentElement('afterend', cd);
       }
+      return cd;
     }
     function tickOne(el, iso) {
       var when = new Date(iso).getTime();
-      var now = Date.now();
-      var diff = when - now;
       if (isNaN(when)) return;
+      var cd = countdownEl(el);
+      var diff = when - Date.now();
       if (diff <= 0) {
-        el.textContent = fmtLocal(iso) + ' — past, awaiting next-ledger activation';
+        // Do NOT overwrite the server <time>; annotate in our own element.
+        cd.textContent = 'past · awaiting next-ledger activation · ' + fmtNodeTz(iso);
         return;
       }
       var sec = Math.floor(diff / 1000);
@@ -1177,12 +1233,8 @@
       parts.push(pad(hrs) + 'h');
       parts.push(pad(mins) + 'm');
       parts.push(pad(sec) + 's');
-      el.textContent = parts.join(' ');
-      var when_el = el.parentElement.querySelector('.when');
-      if (when_el && !when_el.dataset.expanded) {
-        when_el.innerHTML = 'projected activation · ' + fmtLocal(iso);
-        when_el.dataset.expanded = '1';
-      }
+      cd.textContent = parts.join(' ') + ' remaining';
+      // .when is left exactly as the server rendered it — never rewritten.
     }
     function tickAll() {
       timers.forEach(function (el) {
