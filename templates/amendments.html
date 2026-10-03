@@ -368,15 +368,31 @@
       {% set step_quote = {
            1: none, 2: quote_flag_ledger, 3: quote_flag_plus_1,
            4: quote_flag_plus_2, 5: quote_permanent, 6: quote_blocked } %}
+      {# PART E filled 2026-10-02: step titles + short lines, plain English,
+         facts-only. Written in words (no percent sign inside _()); no validator
+         counts; defines terms once. #}
+      {% set step_title = {
+           1: _('Support holds for two weeks'),
+           2: _('Wait for the next flag ledger'),
+           3: _('The network records the change'),
+           4: _('The amendment turns on'),
+           5: _('It becomes permanent'),
+           6: _('Old servers fall behind') } %}
+      {% set step_note = {
+           1: _('More than 80 percent of trusted validators must vote yes and keep voting yes for 14 straight days. If support drops, the 14 days start over.'),
+           2: _('Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The amendment turns on at the first flag ledger after the 14 days are up, not the moment they end.'),
+           3: _('One flag ledger later, the network adds a system entry called EnableAmendment. No person sends it.'),
+           4: _('One flag ledger after that, the amendment is active. Its rules apply from that ledger onward.'),
+           5: _('Once it is on, it stays on. Only a new amendment can remove it.'),
+           6: _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades.') } %}
       <ol class="timeline-steps">
         {% for n in [1, 2, 3, 4, 5, 6] %}
         {% set st = step_status[n] %}
         <li class="timeline-step timeline-{{ st }}" data-step="{{ n }}" data-status="{{ st }}">
           <span class="timeline-badge" aria-label="{{ st }}">{{ st | upper }}</span>
           <div class="timeline-body">
-            {# OWNER title slot (empty on purpose; JJ writes no step titles). #}
-            <div class="timeline-title" data-step-title="{{ n }}"></div>
-            {# item-timeline-title-{{ n }}: owner writes this step's title. #}
+            {# item-timeline-title-{{ n }} filled 2026-10-02 #}
+            <div class="timeline-title" data-step-title="{{ n }}">{{ step_title[n] }}</div>
             {# Live data line (data labels + numbers only). #}
             <div class="timeline-data dim">
               {% if n == 1 %}
@@ -396,9 +412,8 @@
             {% if step_quote[n] %}
             <blockquote class="timeline-quote">“{{ step_quote[n] }}” <cite>— <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite></blockquote>
             {% endif %}
-            {# OWNER short-line slot (empty on purpose). #}
-            <div class="timeline-note" data-step-note="{{ n }}"></div>
-            {# item-timeline-note-{{ n }}: owner writes this step's short line. #}
+            {# item-timeline-note-{{ n }} filled 2026-10-02 #}
+            <div class="timeline-note" data-step-note="{{ n }}">{{ step_note[n] }}</div>
           </div>
         </li>
         {% endfor %}
@@ -413,43 +428,50 @@
     <blockquote>
       “{{ quote_80pct_14d }}”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-a: owner's plain-English line goes here. #}
+      {# item1-a filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('Trusted validators are the servers each node has chosen to trust. For a change to turn on, more than 80 percent of them must vote yes, and that support must hold for two full weeks.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_drop_restart }}”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-b: owner's plain-English line goes here. #}
+      {# item1-b filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('If support ever falls to 80 percent or less, the two-week clock resets. The count must climb back above 80 percent and hold for a fresh two weeks.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_flag_ledger }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-c: owner's plain-English line goes here. #}
+      {# item1-c filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('A flag ledger is a checkpoint. Every 256th ledger is a flag ledger, which comes around about every 16.5 minutes. Votes are counted only at these checkpoints.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_flag_plus_1 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-d: owner's plain-English line goes here. #}
+      {# item1-d filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('One flag ledger after the vote passes, the network itself adds a system entry called EnableAmendment. No person sends it.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_flag_plus_2 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-e: owner's plain-English line goes here. #}
+      {# item1-e filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('Two flag ledgers after the vote passes, the amendment is active. Its rules apply from that ledger onward.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_permanent }}”
       <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-f: owner's plain-English line goes here. #}
+      {# item1-f filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('Once an amendment is on, it stays on. Only a new amendment can remove it.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_blocked }}”
       <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-g: owner's plain-English line goes here. #}
+      {# item1-g filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked, which means it stops keeping up with the network until it upgrades.') }}</p>
     </blockquote>
   </section>
 
@@ -718,15 +740,11 @@
       {% else %}
         {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes, since rippled requires strictly more than its 80 percent threshold of the current trusted-validator list.') }}
       {% endif %}
-      {# ITEM 8 (Charlie 2026-10-02): PLACEHOLDER — Charlie writes the public
-         "when it activates" wording. Facts only, do not reword into prose:
-         votes are counted at flag ledgers (every 256 ledgers, ~16.5 min);
-         an EnableAmendment pseudo-transaction appears at flag+1; the
-         amendment is active at flag+2; the 14-day clock restarts if support
-         drops below the 80 percent threshold. #}
-      {# item8-activation-wording: owner writes the public "no earlier than"
-         sentence here. FACTS: counted at flag ledgers (every 256 ledgers
-         ~16.5 min); EnableAmendment at flag+1; active at flag+2; 14-day clock
+      {# item8-activation-wording filled 2026-10-02 (owner-approved fill pass).
+         Facts only; written in words, no percent sign inside _(). #}
+      {{ _('An amendment turns on at the first flag ledger after the 14 days are up, not the moment they end. Votes are counted only at flag ledgers, which come about every 16.5 minutes. One flag ledger later the network records the change, and one after that the amendment is active. If support ever drops to 80 percent or less of trusted validators, the 14-day clock starts over.') }}
+      {# superseded placeholder note (kept for history): counted at flag ledgers
+         (every 256 ledgers ~16.5 min); EnableAmendment at flag+1; active at flag+2; 14-day clock
          restarts if support drops. #}
     </p>
     {% for m in state.majorities %}

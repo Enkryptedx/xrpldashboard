@@ -421,7 +421,8 @@ def test_timeline_case_just_reached():
     assert c["steps"] == {1: "now", 2: "waiting", 3: "waiting", 4: "waiting", 5: "waiting", 6: "waiting"}
     assert c["days_elapsed"] == 0
     assert c["ledgers_remaining"] == 167
-    assert c["flag_plus_1"] == 107393281 and c["flag_plus_2"] == 107393282
+    # PART A: at 0 days the enabling flag is days away and unknown -> no numbers.
+    assert c["flag_plus_1"] is None and c["flag_plus_2"] is None
 
 
 def test_timeline_case_13_days_in():
@@ -467,8 +468,10 @@ def test_timeline_renders_in_template_countdown_and_finished():
     verified quotes; the owner title/note slots do NOT render any placeholder."""
     import app
     from flask import render_template
-    tl_count = _tl(majority_reached_iso=_iso_ago(13, 0),
-                   activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    # PART A: use a 14-done (clock complete, not enabled) countdown case so the
+    # flag+1/flag+2 ledger numbers are legitimately present to assert on.
+    tl_count = _tl(majority_reached_iso=_iso_ago(14, 1),
+                   activation_eta_iso=_iso_ago(0, 1), enabled=False)
     tl_enabled = _tl(majority_reached_iso=None, activation_eta_iso=None, enabled=True)
     state = {
         "ok": True, "enabled_count": 94, "in_flight_count": 10,
@@ -489,10 +492,11 @@ def test_timeline_renders_in_template_countdown_and_finished():
             timeline_by_hash=tbh, cite=None, cache_ttl_seconds=300)
     # Two timelines: the countdown one and the finished one.
     assert html.count("data-activation-timeline") == 2
-    # Finished state => six DONE badges; countdown (13 days in) => 1 NOW, 5 WAITING.
-    assert html.count(">DONE<") == 6
+    # Finished state => six DONE badges; countdown (14 done, waiting) => step1
+    # DONE + step2 NOW + steps 3-6 WAITING = 1 extra DONE, 1 NOW, 4 WAITING.
+    assert html.count(">DONE<") == 7
     assert html.count(">NOW<") == 1
-    assert html.count(">WAITING<") == 5
+    assert html.count(">WAITING<") == 4
     # Reused verified quotes appear in the timeline (steps 2 and 6).
     assert "Every 256th ledger is called a flag ledger." in html
     assert "no longer understand the rules of the network." in html
@@ -567,3 +571,168 @@ def test_no_owner_name_on_amendments_and_contact_pages():
         with app.app.test_request_context("/"):
             h = render_template(tpl)
         assert "Charlie" not in h and "Bruce" not in h, f"name leaked in {tpl}"
+
+
+# ───────────────────────────────────────────────────────────
+# ROUND 5 PART A — flag+1/flag+2 ledger numbers ONLY when step 1 is done and
+#                 the amendment is not yet enabled; None in every other state.
+# ───────────────────────────────────────────────────────────
+
+def test_partA_flag_numbers_absent_at_0_days():
+    c = _tl(majority_reached_iso=_iso_ago(0, 0), activation_eta_iso="2026-10-16T20:00:00Z", enabled=False)
+    assert c["flag_plus_1"] is None and c["flag_plus_2"] is None
+
+
+def test_partA_flag_numbers_absent_at_13_days():
+    c = _tl(majority_reached_iso=_iso_ago(13, 0), activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    assert c["flag_plus_1"] is None and c["flag_plus_2"] is None
+
+
+def test_partA_flag_numbers_present_when_14_done_not_enabled():
+    c = _tl(majority_reached_iso=_iso_ago(14, 1), activation_eta_iso=_iso_ago(0, 1), enabled=False)
+    assert c["flag_plus_1"] == 107393281 and c["flag_plus_2"] == 107393282
+
+
+def test_partA_flag_numbers_absent_when_enabled():
+    c = _tl(majority_reached_iso="2026-09-01T00:00:00Z", activation_eta_iso="2026-09-15T00:00:00Z", enabled=True)
+    assert c["flag_plus_1"] is None and c["flag_plus_2"] is None
+
+
+def test_partA_flag_numbers_absent_when_restarted():
+    c = _tl(majority_reached_iso=_iso_ago(1, 8), activation_eta_iso="2026-10-15T12:00:00Z",
+            enabled=False, restarted_iso=_iso_ago(1, 8))
+    assert c["flag_plus_1"] is None and c["flag_plus_2"] is None
+
+
+def _render_case(**kw):
+    """Render /amendments for one timeline case; return (html, timeline)."""
+    import app
+    from flask import render_template
+    kw.setdefault("now", _NOW)
+    kw.setdefault("flag_counter", _FC)
+    tl = app._activation_timeline_ctx(**kw)
+    state = {
+        "ok": True, "enabled_count": 94, "in_flight_count": 1,
+        "ledger_index": 107393280, "recognized_enabled": [],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": [{
+            "hash": "ABC", "name": "X", "recognized": True,
+            "majority_reached_iso": kw["majority_reached_iso"],
+            "activation_eta_iso": kw["activation_eta_iso"]}],
+        "network_votes_source": {}, "in_development": [],
+    }
+    with app.app.test_request_context("/amendments"):
+        html = render_template(
+            "amendments.html", state=state, majority_history=[],
+            page_sourcing="sovereign", roll_call=None, flag_counter=_FC,
+            timeline_by_hash={"ABC": tl}, cite=None, cache_ttl_seconds=300)
+    return html, tl
+
+
+def _timeline_block(html):
+    import re
+    m = re.search(r"data-activation-timeline.*?</ol>", html, re.S)
+    return m.group(0) if m else ""
+
+
+def test_partA_rendered_ledger_numbers_gated_per_state():
+    """Part A end-to-end: the rendered timeline shows the flag+1/flag+2 ledger
+    numbers ONLY in the 14-done / flag+1 window."""
+    import re
+    def shown(html):
+        b = _timeline_block(html)
+        return ("107,393,281" in b) or ("107,393,282" in b)
+    h0, _ = _render_case(majority_reached_iso=_iso_ago(0, 0), activation_eta_iso="2026-10-16T20:00:00Z", enabled=False)
+    h13, _ = _render_case(majority_reached_iso=_iso_ago(13, 0), activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    h14, _ = _render_case(majority_reached_iso=_iso_ago(14, 1), activation_eta_iso=_iso_ago(0, 1), enabled=False)
+    hen, _ = _render_case(majority_reached_iso="2026-09-01T00:00:00Z", activation_eta_iso="2026-09-15T00:00:00Z", enabled=True)
+    hre, _ = _render_case(majority_reached_iso=_iso_ago(1, 8), activation_eta_iso="2026-10-15T12:00:00Z", enabled=False, restarted_iso=_iso_ago(1, 8))
+    assert shown(h0) is False
+    assert shown(h13) is False
+    assert shown(h14) is True
+    assert shown(hen) is False
+    assert shown(hre) is False
+
+
+# ───────────────────────────────────────────────────────────
+# ROUND 5 PART E — every slot is filled; no counts; no percent sign in new
+#                 translated strings; no owner name.
+# ───────────────────────────────────────────────────────────
+
+def test_partE_all_slots_filled_in_timeline_and_quotes():
+    import re
+    html, _ = _render_case(majority_reached_iso=_iso_ago(13, 0),
+                           activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    # No empty owner slots remain.
+    assert not re.search(r'class="timeline-title"[^>]*></div>', html)
+    assert not re.search(r'class="timeline-note"[^>]*></div>', html)
+    # Seven plain-English lines under the quotes.
+    assert html.count('class="quote-plain"') == 7
+    # No leftover placeholder instruction text.
+    for marker in ("owner writes", "owner's plain-English line",
+                   "CHARLIE-PLACEHOLDER", "item8-activation-wording: owner"):
+        assert marker not in html, marker
+    # Defines the three terms somewhere on the page.
+    assert "Trusted validators are the servers" in html
+    assert "A flag ledger is a checkpoint" in html
+    assert "becomes amendment blocked" in html
+
+
+def test_partE_how_it_works_paragraph_filled():
+    import app
+    from flask import render_template
+    with app.app.test_request_context("/amendments/how-it-works"):
+        h = render_template("amendments_how_it_works.html")
+    assert '<p id="how-the-vote-works-slot"></p>' not in h  # not empty
+    assert "Trusted validators are the servers" in h
+    assert "becomes amendment blocked" in h
+
+
+def test_partE_no_validator_count_in_new_text():
+    """No hardcoded validator counts (29/35/28) in the filled slots. We assert
+    the specific count tokens do not appear as standalone numbers in the new
+    plain-English blocks (the live needed-of-N sentence uses variables, which
+    only render when a roll_call is present — absent here)."""
+    import re
+    html, _ = _render_case(majority_reached_iso=_iso_ago(13, 0),
+                           activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    # Pull the quote-plain lines + timeline notes + item8 sentence region.
+    plains = re.findall(r'class="quote-plain">(.*?)</p>', html, re.S)
+    notes = re.findall(r'class="timeline-note"[^>]*>(.*?)</div>', html, re.S)
+    for chunk in plains + notes:
+        for bad in ("29", "35", "28"):
+            assert bad not in chunk, f"hardcoded count {bad} in: {chunk[:60]}"
+        # must use the words '80 percent', never the % sign
+        assert "%" not in chunk
+
+
+def test_partE_no_percent_sign_inside_new_translated_strings():
+    """The Babel gettext %-bug: no literal '%' may sit inside the _() strings we
+    added. We scan the template source for _('...') spans and assert none of
+    the plain-English additions carry a bare percent sign (they say 'percent').
+    """
+    import os
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for rel in ("templates/amendments.html",
+                "templates/amendments_how_it_works.html"):
+        src = open(os.path.join(here, rel), encoding="utf-8").read()
+        # Every _('...') string must not contain a bare % unless it is 'percent'.
+        import re
+        for m in re.finditer(r"_\('((?:[^'\\]|\\.)*)'\)", src):
+            s = m.group(1)
+            if "%" in s:
+                # allowed only if there is literally no standalone percent sign
+                # (there should be none at all in our strings)
+                assert "percent" in s and "%" not in s.replace("percent", ""), \
+                    f"percent sign inside _() string: {s[:60]}"
+
+
+def test_partE_filled_pages_have_no_owner_name():
+    html, _ = _render_case(majority_reached_iso=_iso_ago(13, 0),
+                           activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    assert "Charlie" not in html and "Bruce" not in html
+    import app
+    from flask import render_template
+    with app.app.test_request_context("/amendments/how-it-works"):
+        h = render_template("amendments_how_it_works.html")
+    assert "Charlie" not in h and "Bruce" not in h

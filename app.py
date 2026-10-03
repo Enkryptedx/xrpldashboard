@@ -6392,9 +6392,19 @@ def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
     else:
         step2_status = "waiting"
 
-    # Steps 3 (flag+1) and 4 (flag+2): ledger numbers off the next flag ledger.
-    flag_plus_1 = (next_flag_ledger + 1) if next_flag_ledger else None
-    flag_plus_2 = (next_flag_ledger + 2) if next_flag_ledger else None
+    # Steps 3 (flag+1) and 4 (flag+2): ledger numbers off the NEXT flag ledger.
+    # PART A fix (2026-10-02): these numbers are only truthful once the 14-day
+    # clock is DONE and we are now waiting on the very next flag ledger to
+    # enable. At 0 or 13 days the real enabling flag is days away (unknown), and
+    # for an already-enabled amendment the next flag ledger is a FUTURE ledger
+    # that has nothing to do with the past enabling event. So only expose the
+    # numbers in the "clock done, not yet enabled" window; None everywhere else.
+    clock_done_pre = (reached is not None and (now - reached) >= fourteen_days)
+    if enabled:
+        clock_done_pre = True  # step 1 is done once enabled
+    show_flag_numbers = bool(clock_done_pre and not enabled and next_flag_ledger)
+    flag_plus_1 = (next_flag_ledger + 1) if show_flag_numbers else None
+    flag_plus_2 = (next_flag_ledger + 2) if show_flag_numbers else None
     step3_status = "done" if enabled else "waiting"
     step4_status = "done" if enabled else "waiting"
     # Step 5 (permanent) and 6 (unupgraded servers become amendment-blocked):
