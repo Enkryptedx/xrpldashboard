@@ -809,7 +809,7 @@
             {% endif %}
           </div>
           <div class="status-stats">
-            <div class="k">{{ _('Ledger') }}</div><div class="v">{{ "{:,}".format(pulse.ledger_index) }}</div>
+            <div class="k">{{ _('Ledger') }}</div><div class="v">{% if pulse.ledger_index is not none %}{{ "{:,}".format(pulse.ledger_index) }}{% else %}—{% endif %}</div>
             <div class="k">{{ _('Avg close') }}</div>
             <div class="v">{% if pulse.avg_close_seconds %}{{ "%.2f"|format(pulse.avg_close_seconds) }}s{% else %}—{% endif %}</div>
             <div class="k">{{ _('Quorum') }}{{ explainer(
