@@ -286,7 +286,7 @@
       color: var(--muted);
     }
     /* OFAC-sanctioned address on a whale row — cross-cuts tier per
-       Charlie's rule; renders red regardless of address_tier band. */
+       owner rule; renders red regardless of address_tier band. */
     .addr.ofac-sanctioned {
       border: 1px solid rgba(220,38,38,0.55) !important;
       background: rgba(220,38,38,0.08);
@@ -947,14 +947,14 @@
 
     function connect() {
       if (closed) return;
-      // Same stopgap pattern as /pools (commit 2f3e9a6, Charlie ruling
+      // Same stopgap pattern as /pools (commit 2f3e9a6, owner ruling
       // 2026-09-23 18:52 ET): backoff only resets after proof-of-live
       // (subscribe response OR first transaction frame); after
       // CONSECUTIVE_FAIL_TO_FALLBACK dead sockets, flip to xrplcluster
       // for the rest of the tab. Root cause identical: relay whitelist
       // rejects streams:['transactions'] with close 1008 subscribe_only
       // (proven via /tmp/pools_relay_isolate.py H1/H2/H3/H4). Marked
-      // STOPGAP — will revert once Charlie's go on the Lenovo relay
+      // STOPGAP — will revert once the owner's go on the Lenovo relay
       // change lands and named-feed subs (Option B) go live.
       var _wsPrimaryLabel = (typeof window.LIVE_STREAM_WSS_PRIMARY_LABEL === 'string'
                              && window.LIVE_STREAM_WSS_PRIMARY_LABEL.trim())

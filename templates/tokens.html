@@ -323,7 +323,7 @@
       color: #cbd5e1;
     }
     /* Part C 2026-09-10: `labeled` bucket. We labeled it, citing a
-       source; the issuer hasn't proven control (Charlie's copy). */
+       source; the issuer hasn't proven control (owner copy). */
     .v5-tier--labeled {
       background: rgba(59,130,246,0.10);
       border: 1px solid rgba(59,130,246,0.30);
@@ -1586,7 +1586,7 @@
       }
       laneReadoutEl.textContent = parts.join('  ·  ') + '  ·  (' + laneCountsTotal + ' total)';
     }
-    // Live-verification probe — Charlie wants the first-10-minute lane
+    // Live-verification probe — owner ruling: the first-10-minute lane
     // distribution. `window.__tokenLaneCounts()` returns the running tally
     // any headless/console check can read without scraping the DOM.
     window.__tokenLaneCounts = function () {
@@ -1636,7 +1636,7 @@
       var note = entry.note || 'not canonical';
       return name + ' (' + hint + ' — ' + note + ')';
     }
-    // Taxonomy v1 (2026-09-06 Charlie ruling). 13 category slots + 2
+    // Taxonomy v1 (2026-09-06 owner ruling). 13 category slots + 2
     // mechanical flags (ticker_collision, non_standard_code) — flags
     // overlay any category, category values are exclusive. Lane visual
     // stays 5-slot for now; category-family map folds specific v1
@@ -1701,7 +1701,7 @@
 
     // ── Verification-tier LANES ─────────────────────────────────────────
     // Lane index encodes the STRENGTH OF ATTESTATION, not the category.
-    // Display order left→right matches Charlie's spec:
+    // Display order left→right matches the owner spec:
     //   verified · self-described · bare · warning · LP(toggle).
     // tierOf() ALWAYS returns a valid lane 0..4 — no undefined, no
     // fallthrough. The terminal default is BARE.
@@ -1752,7 +1752,7 @@
     //   3. ticker collision (non-canonical issuer) → WARNING
     //   4. non-standard hex we can't identify     → WARNING
     //   5. self-described attestation             → SELF
-    //   6. labeled attestation                    → SELF (Charlie 2026-09-23
+    //   6. labeled attestation                    → SELF (owner ruling 2026-09-23
     //      17:15 ET: labeled is "information without proof", same class as
     //      self-described visually; unknown stays terminal-default BARE)
     //   7. everything else (terminal default)     → BARE
@@ -1864,7 +1864,7 @@
       return null;
     }
 
-    // Coin growth rule (Charlie 2026-09-23 17:38 ET): every coin follows
+    // Coin growth rule (owner ruling 2026-09-23): every coin follows
     // ONE rule — small at the top, growing as it falls, finishing at the
     // size the largest coins reached under the old amount-driven sizing.
     // Trade amount no longer sets base radius — it shows as an outer
@@ -1930,7 +1930,7 @@
         } else {
           sym = applyTickerCollision(decodeCurrency(leg.currency), leg.issuer);
         }
-        // Coin face — Charlie's Sept 11 rule (extended 2026-09-23 to
+        // Coin face — owner Sept 11 rule (extended 2026-09-23 to
         // ALL lanes): emblem if we have one; else decoded ticker
         // letters (3-char codes or any 40-hex that decodes to readable
         // ASCII); else '?' only for codes that truly can't be read.
@@ -1955,7 +1955,7 @@
                        && !isNonStandardCode(leg.currency);
         if (readable) {
           var tickerRaw = sym || decodedTicker;
-          // Charlie ruling 2026-09-23 17:38 ET: up to 5 letters (RLUSD,
+          // owner ruling 2026-09-23: up to 5 letters (RLUSD,
           // not RLUS). drawCoin font-mul has a 5-char row so the letters
           // still fit inside the bevel ring at the bottom-lane size.
           coinGlyph = tickerRaw.length > 5 ? tickerRaw.slice(0, 5) : tickerRaw;
@@ -2006,7 +2006,7 @@
           born: performance.now(),
           lastX: 0, lastY: 0, lastR: 0,
         });
-        // Telemetry for the Sept 11 rule (Charlie 2026-09-23 17:29 ET):
+        // Telemetry for the Sept 11 rule (owner ruling 2026-09-23):
         // count what the coin actually rendered so we can grade the
         // emblem/letters/? mix from the browser side. window-level
         // counter so the /tokens?debug=coin-glyph probe (added later)
@@ -2142,7 +2142,7 @@
       ctx.arc(-r * 0.32, -r * 0.38, r * 0.50, 0, Math.PI * 2);
       ctx.fill();
 
-      // Amount-weight outer ring (Charlie 2026-09-23 17:38 ET): thicker
+      // Amount-weight outer ring (owner ruling 2026-09-23): thicker
       // white-cyan ring around the coin scales with the trade's log-
       // amount. amountWeight ∈ [0,1]. At 0 the ring is invisible; at 1
       // it approaches AMOUNT_RING_MAX_W pixels wide at bottom-lane size.
@@ -2160,7 +2160,7 @@
         ctx.restore();
       }
       // Emblem OR embossed glyph. Emblem takes precedence when the
-      // caller supplied a loaded Image (Charlie's Sept 11 rule
+      // caller supplied a loaded Image (owner Sept 11 rule
       // extended to all lanes on 2026-09-23: emblem → letters → '?').
       // The image is drawn inside the bevel ring at r*0.78, centered,
       // with the same alpha the coin body uses so the fade-in/out
@@ -2331,7 +2331,7 @@
     function connect() {
       if (closed) return;
       // Prefer our node when configured, fall back to public cluster
-      // on connect failure. Charlie ruling 2026-09-21 (item 1).
+      // on connect failure. owner ruling 2026-09-21 (item 1).
       var streamPrimary = {{ live_stream_wss_primary | tojson }};
       var streamFallback = {{ live_stream_wss_fallback | tojson }};
       var streamPrimaryLabel = {{ live_stream_wss_primary_label | tojson }};
@@ -2400,7 +2400,7 @@
       ws.onerror = function () {};
       ws.onclose = function (evt) {
         if (closed) return;
-        // Charlie ruling 2026-09-21 (item 1): after 2 consecutive
+        // owner ruling 2026-09-21 (item 1): after 2 consecutive
         // failures on the primary (our node), fall back to xrplcluster
         // for the rest of the tab. Ping /api/walker-node-fallback so
         // the same telemetry table logs a browser-side fallback

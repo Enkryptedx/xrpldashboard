@@ -485,7 +485,7 @@
     </summary>
     <div class="card-detail">
       <h4>{{ _('What this is') }}</h4>
-      <p>{{ _('Workers run on a Mac in Charlie\'s office. Prod (Render) is a separate machine in the US — it has none of the Mac\'s files. The mirror is the bridge: every time the Mac finishes a ranking pass or captures a new event, it writes the result to a shared Neon Postgres so prod can read the same data.') }}</p>
+      <p>{{ _('Workers run on a Mac in the operator\'s office. Prod (Render) is a separate machine in the US — it has none of the Mac\'s files. The mirror is the bridge: every time the Mac finishes a ranking pass or captures a new event, it writes the result to a shared Neon Postgres so prod can read the same data.') }}</p>
       <h4>{{ _('How we know') }}</h4>
       <p>{{ _('Each successful mirror write also stamps a heartbeat row. The age of that row is the freshness signal: under') }} {{ mirror.threshold }} {{ _('and the bridge is working, over and prod is reading stale data until the next write lands.') }}</p>
     </div>

@@ -88,7 +88,7 @@
   <ul>
     <li><strong>{{ _('HMAC-signed admin tokens.') }}</strong> {{ _('Admin routes accept only requests signed with a server-side secret. There is no public admin login form, no password-reset endpoint, and no session cookie that can be replayed.') }}</li>
     <li><strong>{{ _('Per-IP rate limits.') }}</strong> {{ _('Every public endpoint that returns data has an explicit rate limit, keyed by Cloudflare\'s authoritative client IP. No global default — limits are written per-route so health checks and HTML pages stay unthrottled.') }}</li>
-    <li><strong>{{ _('No write surface from the public web.') }}</strong> {{ _('The Flask app reads from Postgres; only the workers running on Charlie\'s Mac (or the standby Render worker) can write. A leaked DB credential on the Flask side cannot mutate state.') }}</li>
+    <li><strong>{{ _('No write surface from the public web.') }}</strong> {{ _('The Flask app reads from Postgres; only the workers running on the operator\'s Mac (or the standby Render worker) can write. A leaked DB credential on the Flask side cannot mutate state.') }}</li>
   </ul>
 
   <h2>{{ _('Data classification') }}</h2>
@@ -131,7 +131,7 @@
       <li><strong>{{ _('Third-party penetration test.') }}</strong> {{ _('No formal pentest report yet. Surface is small (read-only Flask, no auth, no write endpoints from the public web) but "small" is not the same as "audited".') }}</li>
       <li><strong>{{ _('Bug-bounty program.') }}</strong> {{ _('No paid bounty. Coordinated disclosure via the contact address above is the current path; we credit researchers who want it.') }}</li>
       <li><strong>SSO / SAML.</strong> {{ _('No user accounts means no SSO surface today. If a paid tier ships with per-user logins, SSO will be a launch requirement, not an upsell.') }}</li>
-      <li><strong>{{ _('Formal incident-response runbook.') }}</strong> {{ _('Workers self-recycle on common faults and a heartbeat alarm chain pages Charlie on stalls. A written, tested runbook is in draft and will be linked here once the first real incident is reviewed.') }}</li>
+      <li><strong>{{ _('Formal incident-response runbook.') }}</strong> {{ _('Workers self-recycle on common faults and a heartbeat alarm chain pages the operator on stalls. A written, tested runbook is in draft and will be linked here once the first real incident is reviewed.') }}</li>
     </ul>
   </div>
 

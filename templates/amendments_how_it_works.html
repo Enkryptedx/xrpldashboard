@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How the roll call works · XRPL amendments · xrpldashboard</title>
   {% set meta_title = "How the XRPL amendment roll call works · xrpldashboard" %}
-  {% set meta_description = "How an XRPL amendment vote works — 29 of 35 trusted validators, a roll call every 256 ledgers, 14 straight days — and why Batch reset on Sep 25, 2026." %}
+  {% set meta_description = "How an XRPL amendment vote works — more than 80% of the trusted validators, a roll call every 256 ledgers, 14 straight days — and why Batch reset on Sep 25, 2026." %}
   {% include "_head_meta.html" %}
   <style>
     :root {
@@ -53,7 +53,10 @@
 
   <div class="card" id="how-the-vote-works">
     <h2>How the vote works</h2>
-    <p>An amendment needs more than 80% of the 35 trusted validators — that's 29 — voting yes. Votes are counted at a roll call every 256 ledgers, about every 15 minutes. If it holds 29 or more at every roll call for 14 straight days, it switches on. If a single roll call counts 28 or fewer, the countdown resets to zero, and a new 14 days starts the next time a roll call reaches 29.</p>
+    {# how-it-works paragraph filled 2026-10-02 (owner-approved fill pass).
+       Plain English, facts-only, no validator counts, no percent sign inside
+       _(). Defines trusted validators / flag ledger / amendment blocked. #}
+    <p id="how-the-vote-works-slot">{{ _('Trusted validators are the servers each node has chosen to trust. For a change to turn on, more than 80 percent of them must vote yes. "More than" is strict: exactly 80 percent is not enough. That support must hold for 14 straight days. If it ever drops, the 14 days start over. Votes are counted only at a flag ledger, which is every 256th ledger, about every 16.5 minutes. The process starts at the first flag ledger after the 14 days are up, not the moment they end. In the next ledger after that flag ledger, about 4 seconds later, the network adds a system entry called EnableAmendment, which no person sends. In the ledger after that, about 4 seconds later again, the amendment is active, and its rules apply from that ledger onward. Once it is on, it stays on, and only a new amendment can remove it. A server that has not upgraded no longer understands the new rules and becomes amendment blocked, meaning it stops keeping up with the network until it upgrades.') }}</p>
     <div class="sources">
       <span class="lbl">Source</span>
       <a href="https://xrpl.org/docs/concepts/networks-and-servers/amendments" rel="nofollow noopener" target="_blank">xrpl.org · Amendments</a> — the voting rule.

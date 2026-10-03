@@ -7,7 +7,6 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
 
 <meta name="description" content="{{ meta_description }}">
-<meta name="author" content="Charlie Bruce">
 <meta name="creator" content="xrpldashboard">
 <link rel="canonical" href="{{ site_url }}{{ request.path }}">
 <link rel="me" href="https://github.com/Enkryptedx">
@@ -32,7 +31,7 @@
    Not `defer` on purpose: body-level inline scripts that subscribe must see
    window.LiveStream defined at parse time, and the file is tiny + cached.
 
-   Charlie ruling 2026-09-22 Tue PM: when LIVE_STREAM_WSS_PRIMARY points
+   owner ruling 2026-09-22: when LIVE_STREAM_WSS_PRIMARY points
    at our own-node relay (different from the fallback), inject the URL
    pair + labels so live_stream.js can prepend the primary, watchdog
    the first ledger for ~10s, fail open to the fallback with an amber

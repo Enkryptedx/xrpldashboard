@@ -192,15 +192,26 @@ def tool_get_amendment_status() -> dict:
     if not state or not state.get("ok"):
         raise RuntimeError("amendments_state fetch failed")
 
-    enabled = state.get("enabled") or []
+    # BUGFIX 2026-10-02: this tool previously read state.get("enabled"), a key
+    # amendments_state.fetch_amendments_state never emits (it stores the
+    # recognized-enabled list under "recognized_enabled"). The absent key fell
+    # through to [], so get_amendment_status + /api/amendments/status reported
+    # enabled_count=0 while /amendments showed 94. Read the real key. The
+    # canonical on-chain total is state["enabled_count"] (len of the Amendments
+    # ledger object's enabled set); recognized+unrecognized should reconcile to
+    # it, so we surface that canonical figure as enabled_count.
+    enabled = state.get("recognized_enabled") or []
     unrecognized_enabled = state.get("unrecognized_enabled") or []
+    canonical_enabled_count = state.get("enabled_count")
     in_flight = state.get("in_flight") or []
     superseded = state.get("superseded") or []
 
     cross_check = "agree" if not unrecognized_enabled else "disagree"
 
     data = {
-        "enabled_count": len(enabled) + len(unrecognized_enabled),
+        "enabled_count": canonical_enabled_count
+            if canonical_enabled_count is not None
+            else len(enabled) + len(unrecognized_enabled),
         "recognized_enabled_count": len(enabled),
         "unrecognized_enabled_count": len(unrecognized_enabled),
         "in_flight_count": len(in_flight),

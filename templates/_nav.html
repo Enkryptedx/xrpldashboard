@@ -5,7 +5,7 @@
    Active-page highlighting derives from request.path. #}
 {% include "_alive.html" %}
 <style>
-  /* Charlie ruling 2026-09-22 Tue PM (post-6d91177): _alive.html sets
+  /* owner ruling 2026-09-22 (post-6d91177): _alive.html sets
      `body > * { position: relative; z-index: 1 }` on every direct body
      child. Templates vary in DOM order — some open `<body>` then
      include _nav.html (making `.top` a body child), others open
@@ -52,7 +52,7 @@
   .nav .lang-switch .menu {
     position: absolute; top: calc(100% + 6px); right: 0;
     min-width: 160px; padding: 6px 0;
-    /* Charlie ruling 2026-09-22 Tue PM: same fix as the primary
+    /* owner ruling 2026-09-22: same fix as the primary
        nav-groups dropdown — solid background + very high z-index
        so a page-level stacking context (observatory .wrap, any
        filter/transform) can't leave the dropdown transparent or

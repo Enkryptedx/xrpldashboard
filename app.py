@@ -13,7 +13,8 @@ import sqlite3
 import threading
 import time
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, abort, g, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
 from flask_limiter import Limiter
@@ -300,6 +301,69 @@ def _unix_utc(ts):
 
 
 app.jinja_env.filters["unix_utc"] = _unix_utc
+
+
+# The node is physically in Indianapolis, Indiana. We render every wall-clock
+# time in that zone (NOT a fixed -4/-5 offset): the IANA tz database knows that
+# America/Indiana/Indianapolis is EDT (UTC-4) through 2026-11-01 02:00 local,
+# then falls back to EST (UTC-5). Using the named zone means the DST transition
+# is handled by the tz data, never by us.
+_NODE_TZ = ZoneInfo("America/Indiana/Indianapolis")
+
+
+def datetime_to_et_first(value):
+    """Jinja filter: render an instant Eastern-first with UTC in parentheses,
+    converted ON THE SERVER so crawlers and no-JS readers see the real local
+    time. Example output: ``Wed 11:30 AM ET (15:30 UTC)``; a sub-hour example
+    ``Oct 7, 9:25 PM ET (01:25 UTC)``.
+
+    Accepts a tz-aware datetime, a naive datetime (assumed UTC), or an ISO-8601
+    string (``...Z`` or ``+00:00``). The abbreviation (EDT->"ET") comes from
+    the America/Indiana/Indianapolis zone at that instant, so a date after the
+    Nov 1 2026 fall-back is correctly EST. None / Undefined / unparseable ->
+    empty string (render-killer rule: never crash a page on a bad timestamp).
+    'ET' is intentionally shown instead of EDT/EST so the public label stays
+    stable across the DST switch; the underlying conversion is still DST-correct.
+    """
+    if value is None:
+        return ""
+    dt = value
+    if isinstance(dt, str):
+        s = dt.strip()
+        if not s:
+            return ""
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return ""
+    if not isinstance(dt, datetime):
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    et = dt.astimezone(_NODE_TZ)
+    utc = dt.astimezone(timezone.utc)
+    # %-I / %-M are platform-glibc-ish; macOS + Linux both accept %-I. Fall back
+    # to a manual strip so this never raises on an exotic libc.
+    try:
+        et_str = et.strftime("%a %b %-d, %-I:%M %p ET")
+    except ValueError:
+        et_str = et.strftime("%a %b %d, %I:%M %p ET").replace(" 0", " ")
+    # ITEM E (Charlie 2026-10-02): when the UTC calendar date differs from the
+    # Eastern calendar date (e.g. a late-evening ET time that is already the
+    # next day in UTC), show the UTC date too so the parenthetical is
+    # unambiguous: "Wed Oct 7, 9:25 PM ET (Oct 8, 01:25 UTC)". Same-date times
+    # keep the shorter "(01:25 UTC)" form.
+    if et.date() != utc.date():
+        try:
+            utc_str = utc.strftime("%b %-d, %H:%M UTC")
+        except ValueError:
+            utc_str = utc.strftime("%b %d, %H:%M UTC").replace(" 0", " ")
+    else:
+        utc_str = utc.strftime("%H:%M UTC")
+    return f"{et_str} ({utc_str})"
+
+
+app.jinja_env.filters["datetime_to_et_first"] = datetime_to_et_first
 
 
 def _entity_encode(text):
@@ -6268,6 +6332,105 @@ def learn():
     )
 
 
+def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
+                             flag_counter, enabled, restarted_iso=None,
+                             now=None):
+    """PART 3 (2026-10-02): compute the 6-step 'what happens when an amendment
+    activates' timeline statuses from LIVE data. Facts only; every status is
+    DONE / NOW / WAITING, derived, never hand-set.
+
+    Inputs (all optional / best-effort):
+      majority_reached_iso : ISO when the 14-day majority clock started
+                             (or restarted). Drives step 1.
+      activation_eta_iso   : ISO 14 days after majority_reached (step 1 ETA).
+      flag_counter         : dict from roll_call_card.flag_ledger_counter
+                             (step 2 ledgers remaining; steps 3/4 ledger nums).
+      enabled              : True once the amendment is in the live enabled set
+                             (steps 4-6 DONE).
+      restarted_iso        : ISO of the most recent countdown restart, if the
+                             14-day clock restarted (uses existing restart
+                             handling; we do NOT invent a new rule).
+
+    Returns a dict the template renders; None if we lack the minimum inputs.
+    """
+    now = now or datetime.now(timezone.utc)
+
+    def _parse(iso):
+        if not iso:
+            return None
+        try:
+            return datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    reached = _parse(majority_reached_iso)
+    # Step 1: 14-day majority clock. days/hours elapsed of 14.
+    days_elapsed = hours_elapsed = None
+    step1_status = "waiting"
+    fourteen_days = timedelta(days=14)
+    if reached is not None:
+        elapsed = now - reached
+        if elapsed.total_seconds() < 0:
+            elapsed = timedelta(0)
+        days_elapsed = elapsed.days
+        hours_elapsed = int(elapsed.total_seconds() // 3600) - days_elapsed * 24
+        step1_status = "done" if elapsed >= fourteen_days else "now"
+    if enabled:
+        step1_status = "done"
+
+    # Step 2: waiting for the next flag ledger (every 256 ledgers).
+    ledgers_remaining = None
+    next_flag_ledger = None
+    if flag_counter:
+        ledgers_remaining = flag_counter.get("ledgers_remaining")
+        next_flag_ledger = flag_counter.get("next_flag_ledger")
+    clock_done = (step1_status == "done")
+    if enabled:
+        step2_status = "done"
+    elif clock_done:
+        step2_status = "now"
+    else:
+        step2_status = "waiting"
+
+    # Steps 3 (flag+1) and 4 (flag+2): ledger numbers off the NEXT flag ledger.
+    # PART A fix (2026-10-02): these numbers are only truthful once the 14-day
+    # clock is DONE and we are now waiting on the very next flag ledger to
+    # enable. At 0 or 13 days the real enabling flag is days away (unknown), and
+    # for an already-enabled amendment the next flag ledger is a FUTURE ledger
+    # that has nothing to do with the past enabling event. So only expose the
+    # numbers in the "clock done, not yet enabled" window; None everywhere else.
+    clock_done_pre = (reached is not None and (now - reached) >= fourteen_days)
+    if enabled:
+        clock_done_pre = True  # step 1 is done once enabled
+    show_flag_numbers = bool(clock_done_pre and not enabled and next_flag_ledger)
+    flag_plus_1 = (next_flag_ledger + 1) if show_flag_numbers else None
+    flag_plus_2 = (next_flag_ledger + 2) if show_flag_numbers else None
+    step3_status = "done" if enabled else "waiting"
+    step4_status = "done" if enabled else "waiting"
+    # Step 5 (permanent) and 6 (unupgraded servers become amendment-blocked):
+    # both are consequences that hold once the amendment is enabled.
+    step5_status = "done" if enabled else "waiting"
+    step6_status = "done" if enabled else "waiting"
+
+    return {
+        "enabled": bool(enabled),
+        "restarted": bool(restarted_iso),
+        "restarted_iso": restarted_iso,
+        "majority_reached_iso": majority_reached_iso,
+        "activation_eta_iso": activation_eta_iso,
+        "days_elapsed": days_elapsed,
+        "hours_elapsed": hours_elapsed,
+        "ledgers_remaining": ledgers_remaining,
+        "next_flag_ledger": next_flag_ledger,
+        "flag_plus_1": flag_plus_1,
+        "flag_plus_2": flag_plus_2,
+        "steps": {
+            1: step1_status, 2: step2_status, 3: step3_status,
+            4: step4_status, 5: step5_status, 6: step6_status,
+        },
+    }
+
+
 @app.route("/amendments")
 def amendments():
     """Live in-flight amendment tracker. Reads the public `feature` RPC
@@ -6317,19 +6480,90 @@ def amendments():
                 majority_active[_h] = bool(_mh.get("active"))
             elif _mh.get("active"):
                 majority_active[_h] = True
-        roll_call = roll_call_card.load_for_page(state, majority_active=majority_active)
+        # ITEM 4 (Charlie 2026-10-02): feed the roll-call card the LIVE
+        # validated ledger from network_pulse (sovereign-first) so its
+        # flag-ledger counter is computed from the current tip, never the
+        # recorder's stale voting_ledger. Best-effort: a pulse hiccup -> None
+        # -> the counter simply doesn't render (render-killer rule).
+        _live_ledger = None
+        try:
+            _pulse = fetch_pulse_cached()
+            if _pulse and not _pulse.get("error"):
+                _live_ledger = _pulse.get("ledger_index")
+        except Exception:  # noqa: BLE001
+            _live_ledger = None
+        roll_call = roll_call_card.load_for_page(
+            state, majority_active=majority_active,
+            current_validated_ledger=_live_ledger,
+        )
     except Exception:  # noqa: BLE001
         roll_call = None
+    # ITEM A (Charlie 2026-10-02): the flag-ledger counter must show even when
+    # the roll-call card is None (Postgres down / card disabled). Compute it
+    # standalone from the live pulse ledger and pass it to the template as its
+    # own variable, independent of roll_call. Best-effort: None -> block hides.
+    flag_counter = None
+    try:
+        import roll_call_card as _rcc
+        if _live_ledger:
+            flag_counter = _rcc.flag_ledger_counter(_live_ledger)
+    except Exception:  # noqa: BLE001
+        flag_counter = None
     # "Cite this day" (permalinks build 2026-09-26): newest SIGNED date
     # with an amendments_block, its leaf-hash prefix, and whether today's
     # leaf has landed yet. Best-effort — None hides the line.
     cite = _amendments_cite_this_day()
+    # PART 3 (2026-10-02): per-amendment activation-timeline context, keyed by
+    # hash. Statuses are computed from LIVE data by _activation_timeline_ctx:
+    # the majority-reached time + 14-day clock (step 1), the live flag counter
+    # (step 2), next_flag_ledger+1/+2 (steps 3/4), and the live enabled set
+    # (steps 4-6 done). A restart uses the existing majority_history restart
+    # handling (restarted_iso); we do not invent a new rule.
+    enabled_hashes_upper = {
+        (e.get("hash") or "").upper()
+        for e in (state.get("recognized_enabled") or [])
+    }
+    # newest restart per hash from majority_history (removed then regained):
+    restart_iso_by_hash = {}
+    for _mh in (majority_history or []):
+        _h = (_mh.get("hash") or "").upper()
+        if _h and _h not in restart_iso_by_hash and _mh.get("removed_iso"):
+            # a removed epoch means the clock restarted at the next regain;
+            # majority_close_iso of the active epoch is the restart anchor.
+            restart_iso_by_hash[_h] = _mh.get("majority_close_iso")
+    timeline_by_hash = {}
+    try:
+        for _m in (state.get("majorities") or []):
+            _h = (_m.get("hash") or "").upper()
+            if not _h:
+                continue
+            timeline_by_hash[_h] = _activation_timeline_ctx(
+                majority_reached_iso=_m.get("majority_reached_iso"),
+                activation_eta_iso=_m.get("activation_eta_iso"),
+                flag_counter=flag_counter,
+                enabled=(_h in enabled_hashes_upper),
+                restarted_iso=restart_iso_by_hash.get(_h),
+            )
+        # Finished-state example for the "Recently enabled" block: one timeline
+        # with all six steps DONE, shown when any recognized-enabled amendment
+        # exists. Uses the live flag counter for the ledger-number labels.
+        if enabled_hashes_upper:
+            timeline_by_hash["__enabled_example__"] = _activation_timeline_ctx(
+                majority_reached_iso=None,
+                activation_eta_iso=None,
+                flag_counter=flag_counter,
+                enabled=True,
+            )
+    except Exception:  # noqa: BLE001 — render-killer rule
+        timeline_by_hash = {}
     resp = make_response(render_template(
         "amendments.html",
         state=state,
         majority_history=majority_history,
         page_sourcing=page_sourcing,
         roll_call=roll_call,
+        flag_counter=flag_counter,
+        timeline_by_hash=timeline_by_hash,
         cite=cite,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
