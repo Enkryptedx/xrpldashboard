@@ -100,38 +100,63 @@
       font-family: var(--mono); font-size: 0.78rem;
       color: var(--muted); word-break: break-all;
     }
-    /* owner ruling 2026-10-03 (CHANGE 1): the live countdown is the LARGEST
-       text in the box. clamp() keeps it ~2.4-3rem on desktop and scales it
-       down so it stays on ONE line at a 360px phone with no overflow / no
-       horizontal scroll. Tabular numerals so digits do not jiggle each second.
-       Palette vars give good contrast in dark and light mode. */
+    /* owner ruling 2026-10-03 (size fix, desktop): the live countdown is the
+       LARGEST text in the box, on ONE line, tabular numerals. The size must
+       track the BOX width, not the viewport — on desktop the three boxes sit
+       side by side (each far narrower than the screen), so a viewport-based
+       vw/clamp sized the digits for the whole screen and overflowed the box.
+       Fix: make .countdown-main a query container and size the digits in cqw
+       (1% of the box's inline size). The FALLBACK below (plain viewport clamp,
+       but capped at the phone end so it never blows up on desktop) applies in
+       browsers without container-query support. Phone widths are unchanged:
+       at a 360px phone the single box fills the viewport, so cqw ≈ vw and the
+       rendered size matches the prior phone look. */
+    .countdown-main { container-type: inline-size; container-name: cdbox; }
     .countdown .live-countdown {
       font-family: var(--mono); font-variant-numeric: tabular-nums;
       font-weight: 700; letter-spacing: -0.02em; color: var(--text);
-      font-size: clamp(1.7rem, 7.2vw, 3rem);
+      /* Fallback for no container-query support: viewport-based but capped so
+         a wide desktop never oversizes it. Floor (1.55rem) stays ABOVE the date
+         line (1.45rem) so the countdown is always the biggest text in the box.
+         Overridden just below where @container is supported. */
+      font-size: clamp(1.55rem, 6.4vw, 1.9rem);
       line-height: 1.1; margin: 10px 0 2px;
       white-space: nowrap; overflow: hidden; text-overflow: clip;
       max-width: 100%;
+    }
+    @supports (container-type: inline-size) {
+      .countdown .live-countdown {
+        /* cqw tracks the BOX inline size (not the viewport). Floor 1.55rem keeps
+           the countdown bigger than the 1.45rem date line even in the narrowest
+           box; cap 2.0rem stops it oversizing in a wide desktop box. Measured
+           no-clip 360–1920px, both the current value and the 3-digit-days worst
+           case, with the countdown > the date at every width. */
+        font-size: clamp(1.55rem, 7.0cqw, 2.0rem);
+      }
     }
     .countdown .live-countdown.is-past {
       font-size: clamp(1rem, 4.2vw, 1.3rem); font-weight: 600;
       white-space: normal; color: var(--muted);
     }
-    /* The projected date now sits UNDER the countdown, at its prior size or
-       slightly smaller. */
+    /* owner ruling 2026-10-03 (follow-up): the projected date sits UNDER the
+       countdown and must be CLEARLY smaller than it so the countdown stands out
+       (previously 1.45rem read almost as big as the digits). 1.05rem is roughly
+       half the desktop countdown size and ~28% below it in the narrowest box —
+       still readable, not tiny. The countdown size is unchanged. */
     .countdown .timer {
       font-family: var(--mono); font-variant-numeric: tabular-nums;
-      font-size: 1.45rem; color: var(--text); letter-spacing: -0.01em;
-      margin: 2px 0 4px;
+      font-size: 1.05rem; color: var(--text); letter-spacing: -0.01em;
+      line-height: 1.35; margin: 2px 0 4px;
     }
     .countdown .when { color: var(--muted); font-size: 0.88rem; }
-    /* owner ruling 2026-10-03 (CHANGE 2): the UTC parenthetical that follows an
-       Eastern time stays together as ONE unit on a narrow phone (it may drop to
-       the next line but is never cut off or split), and is rendered slightly
-       lighter + smaller than the Eastern time via the existing muted palette
-       var. Page-wide (not only inside .countdown) so every ET-first time on
-       /amendments gets it. */
-    .utc-paren { white-space: nowrap; color: var(--muted); font-size: 0.92em; }
+    /* owner ruling 2026-10-03 (CHANGE 2 + follow-up): the UTC parenthetical
+       that follows an Eastern time STAYS ON THE SAME LINE as the ET time when it
+       fits. When the box is too narrow it drops to the next line, but always as
+       ONE neat whole '(09:00 UTC)' — never split in the middle (white-space:
+       nowrap on this span only; the surrounding line is allowed to wrap at the
+       space before it). Rendered smaller + muted so it reads as secondary to the
+       Eastern time. Page-wide so every ET-first time on /amendments gets it. */
+    .utc-paren { white-space: nowrap; color: var(--muted); font-size: 0.82em; }
     .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
 
     /* PART 3 (2026-10-02): activation timeline. No-JS-safe pure-CSS list,
