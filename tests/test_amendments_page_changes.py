@@ -736,3 +736,60 @@ def test_partE_filled_pages_have_no_owner_name():
     with app.app.test_request_context("/amendments/how-it-works"):
         h = render_template("amendments_how_it_works.html")
     assert "Charlie" not in h and "Bruce" not in h
+
+
+# ───────────────────────────────────────────────────────────
+# ROUND 6 — flag ledger +1/+2 = next ledger / ledger after (not 256/512 later).
+# ───────────────────────────────────────────────────────────
+
+def _all_round6_pages():
+    """Render every page that carries the +1/+2 wording: /amendments (a
+    countdown case) and /amendments/how-it-works. Returns a list of HTML."""
+    import app
+    from flask import render_template
+    htmls = []
+    # /amendments with one countdown amendment so the timeline + quotes render.
+    tl = _tl(majority_reached_iso=_iso_ago(14, 1), activation_eta_iso=_iso_ago(0, 1), enabled=False)
+    state = {
+        "ok": True, "enabled_count": 94, "in_flight_count": 1,
+        "ledger_index": 107393280, "recognized_enabled": [],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": [{
+            "hash": "ABC", "name": "X", "recognized": True,
+            "majority_reached_iso": _iso_ago(14, 1),
+            "activation_eta_iso": _iso_ago(0, 1)}],
+        "network_votes_source": {}, "in_development": [],
+    }
+    with app.app.test_request_context("/amendments"):
+        htmls.append(render_template(
+            "amendments.html", state=state, majority_history=[],
+            page_sourcing="sovereign", roll_call=None, flag_counter=_FC,
+            timeline_by_hash={"ABC": tl}, cite=None, cache_ttl_seconds=300))
+    with app.app.test_request_context("/amendments/how-it-works"):
+        htmls.append(render_template("amendments_how_it_works.html"))
+    return htmls
+
+
+def test_round6_no_misleading_flag_ledger_phrasing():
+    """No rendered page may say the change happens one/two flag ledgers later
+    (which would read as 256/512 ledgers = 17-33 minutes)."""
+    bad = ("flag ledger later", "flag ledger after that",
+           "flag ledgers after", "one flag ledger", "two flag ledgers")
+    for html in _all_round6_pages():
+        low = html.lower()
+        for phrase in bad:
+            assert phrase not in low, f"misleading phrase still present: {phrase!r}"
+
+
+def test_round6_step3_step4_say_next_ledger():
+    """The step 3 and step 4 lines must describe the NEXT ledger / the ledger
+    after that (the correct ~4-second cadence)."""
+    import re
+    html = _all_round6_pages()[0]
+    block = _timeline_block(html)
+    # step 3 line
+    assert "next ledger after the flag ledger" in block
+    # step 4 line
+    assert "the ledger after that" in block
+    # the ~4-second cadence is stated
+    assert "about 4 seconds" in block

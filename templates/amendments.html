@@ -380,9 +380,9 @@
            6: _('Old servers fall behind') } %}
       {% set step_note = {
            1: _('More than 80 percent of trusted validators must vote yes and keep voting yes for 14 straight days. If support drops, the 14 days start over.'),
-           2: _('Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The amendment turns on at the first flag ledger after the 14 days are up, not the moment they end.'),
-           3: _('One flag ledger later, the network adds a system entry called EnableAmendment. No person sends it.'),
-           4: _('One flag ledger after that, the amendment is active. Its rules apply from that ledger onward.'),
+           2: _('Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The process starts at the first flag ledger after the 14 days are up, not the moment they end. The amendment goes active two ledgers after that flag ledger.'),
+           3: _('In the next ledger after the flag ledger, about 4 seconds later, the network adds a system entry called EnableAmendment. No person sends it.'),
+           4: _('In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.'),
            5: _('Once it is on, it stays on. Only a new amendment can remove it.'),
            6: _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades.') } %}
       <ol class="timeline-steps">
@@ -450,14 +450,14 @@
       “{{ quote_flag_plus_1 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-d filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('One flag ledger after the vote passes, the network itself adds a system entry called EnableAmendment. No person sends it.') }}</p>
+      <p class="quote-plain">{{ _('In the next ledger after the flag ledger, about 4 seconds later, the network itself adds a system entry called EnableAmendment. No person sends it.') }}</p>
     </blockquote>
 
     <blockquote>
       “{{ quote_flag_plus_2 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-e filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('Two flag ledgers after the vote passes, the amendment is active. Its rules apply from that ledger onward.') }}</p>
+      <p class="quote-plain">{{ _('In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.') }}</p>
     </blockquote>
 
     <blockquote>
@@ -742,7 +742,7 @@
       {% endif %}
       {# item8-activation-wording filled 2026-10-02 (owner-approved fill pass).
          Facts only; written in words, no percent sign inside _(). #}
-      {{ _('An amendment turns on at the first flag ledger after the 14 days are up, not the moment they end. Votes are counted only at flag ledgers, which come about every 16.5 minutes. One flag ledger later the network records the change, and one after that the amendment is active. If support ever drops to 80 percent or less of trusted validators, the 14-day clock starts over.') }}
+      {{ _('The process starts at the first flag ledger after the 14 days are up, not the moment they end. Votes are counted only at flag ledgers, which come about every 16.5 minutes. In the next ledger after that flag ledger, about 4 seconds later, the network records the change, and in the ledger after that the amendment is active. If support ever drops to 80 percent or less of trusted validators, the 14-day clock starts over.') }}
       {# superseded placeholder note (kept for history): counted at flag ledgers
          (every 256 ledgers ~16.5 min); EnableAmendment at flag+1; active at flag+2; 14-day clock
          restarts if support drops. #}
