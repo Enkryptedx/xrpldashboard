@@ -152,7 +152,10 @@ def _full_roll_call(unl_full=35):
         "next_voting_ledger": 107393256, "next_eta_min": 10,
         "next_overdue": False, "seconds_per_ledger": 3.86, "any_reset": False,
         "stale": False, "observed_utc": "2026-10-02 20:00:00 UTC",
-        "observed_et": "4:00:00 PM ET", "age_min": 2, "rounds_recorded": 50,
+        "observed_et": "4:00:00 PM ET",
+        # ROUND 7 (2026-10-03): the real build_card now emits observed_iso so the
+        # page can run the last-roll-call time through datetime_to_et_first_html.
+        "observed_iso": "2026-10-02T20:00:00Z", "age_min": 2, "rounds_recorded": 50,
         "first_round_iso": "2026-09-26T11:44:53Z", "unl_sequence": 1,
         "source": "own-node", "flag_counter": None,
     }
@@ -215,8 +218,12 @@ def test_template_activation_time_rendered_server_side_et_first():
     """ITEM 2: the activation + majority-reached times are converted on the
     SERVER (ET first, UTC in parens) with <time datetime> keeping UTC."""
     html = _render_amendments(_full_roll_call())
-    assert '<time datetime="2026-10-28T15:30:00Z">Wed Oct 28, 11:30 AM ET (15:30 UTC)</time>' in html
-    assert '<time datetime="2026-10-14T15:30:00Z">Wed Oct 14, 11:30 AM ET (15:30 UTC)</time>' in html
+    # ROUND 7 (2026-10-03): the UTC parenthetical is now wrapped in a nowrap
+    # <span class="utc-paren"> (CHANGE 2), so the <time> body carries the span.
+    assert ('<time datetime="2026-10-28T15:30:00Z">Wed Oct 28, 11:30 AM ET '
+            '<span class="utc-paren">(15:30 UTC)</span></time>') in html
+    assert ('<time datetime="2026-10-14T15:30:00Z">Wed Oct 14, 11:30 AM ET '
+            '<span class="utc-paren">(15:30 UTC)</span></time>') in html
     # The raw ISO must NOT be the only thing shown anymore.
     assert ">2026-10-28T15:30:00Z<" not in html
 
@@ -256,7 +263,8 @@ def test_flag_counter_renders_with_roll_call():
     assert str(fc["minutes_remaining"]) in html
     # ET-first <time> for the next flag, server-rendered via the filter.
     assert f'<time datetime="{fc["next_flag_iso"]}">' in html
-    assert " ET (" in html and "UTC)" in html
+    # ROUND 7: UTC part now in a nowrap span.
+    assert " ET " in html and '<span class="utc-paren">(' in html and "UTC)</span>" in html
 
 
 def test_flag_counter_renders_when_roll_call_is_none():
@@ -793,3 +801,191 @@ def test_round6_step3_step4_say_next_ledger():
     assert "the ledger after that" in block
     # the ~4-second cadence is stated
     assert "about 4 seconds" in block
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ROUND 7 (owner ruling 2026-10-03): countdown-first layout + ET-first
+# time format with the UTC parenthetical kept together (nowrap).
+#   CHANGE 1 — in each countdown box: live d/h/m/s countdown FIRST (biggest,
+#              server-rendered real value), then the projected date, then the
+#              unchanged "if the more-than-80-percent..." line.
+#   CHANGE 2 — every visible time on /amendments reads Eastern-first with UTC
+#              in parentheses; no raw ISO string in visible text; the UTC part
+#              carries white-space:nowrap.
+# ═══════════════════════════════════════════════════════════════════════
+
+import re as _re7
+
+
+def _countdown_filter():
+    import app
+    assert "countdown_to" in app.app.jinja_env.filters
+    return app.app.jinja_env.filters["countdown_to"]
+
+
+# ── CHANGE 1: the countdown_to server-render filter ──
+
+def test_countdown_to_server_renders_dhms():
+    """countdown_to produces a real d/h/m/s initial value in the script's exact
+    format ('Nd NNh NNm NNs', days omitted when zero, others 2-digit)."""
+    f = _countdown_filter()
+    now = dt.datetime(2026, 10, 3, 13, 0, 0, tzinfo=dt.timezone.utc)
+    # 5d 9h 12m 00s ahead
+    target = now + dt.timedelta(days=5, hours=9, minutes=12)
+    assert f(target.strftime("%Y-%m-%dT%H:%M:%SZ"), now=now) == "5d 09h 12m 00s"
+    # under a day -> no leading 'Nd'
+    target2 = now + dt.timedelta(hours=2, minutes=3, seconds=4)
+    assert f(target2.strftime("%Y-%m-%dT%H:%M:%SZ"), now=now) == "02h 03m 04s"
+
+
+def test_countdown_to_past_and_bad_input():
+    """Past instant -> 'past' (consistent with the script's past state); bad /
+    missing input -> empty string (never crashes a page)."""
+    f = _countdown_filter()
+    now = dt.datetime(2026, 10, 3, 13, 0, 0, tzinfo=dt.timezone.utc)
+    assert f("2026-10-01T00:00:00Z", now=now) == "past"
+    assert f(None) == ""
+    assert f("not-a-date") == ""
+    assert f("") == ""
+
+
+def _countdown_box(html):
+    """Return the main-column slice of the first countdown box (from the
+    primary live-countdown div to the start of the roll-call sub-box)."""
+    start = html.find("data-countdown-primary")
+    assert start != -1, "no server-rendered primary countdown found"
+    end = html.find("countdown-rollcall", start)
+    return html[start:end if end != -1 else start + 4000]
+
+
+def test_change1_countdown_before_date_before_sentence():
+    """CHANGE 1: in the box the live countdown comes BEFORE the projected date,
+    and the date BEFORE the unchanged 'if the more-than-80-percent...' line."""
+    html = _render_amendments(_full_roll_call())
+    i_cd = html.find("data-countdown-primary")
+    i_date = html.find('class="timer"', i_cd)
+    i_sentence = html.find(
+        "if the more-than-80-percent majority holds for the full 14-day window",
+        i_date)
+    assert i_cd != -1 and i_date != -1 and i_sentence != -1
+    assert i_cd < i_date < i_sentence, (i_cd, i_date, i_sentence)
+
+
+def test_change1_countdown_server_rendered_real_value():
+    """CHANGE 1: the primary countdown is server-rendered with a REAL d/h/m/s
+    value (not empty, not a JS placeholder) so no-JS readers and crawlers see
+    a countdown. activation_eta is 2026-10-28, well in the future."""
+    html = _render_amendments(_full_roll_call())
+    m = _re7.search(
+        r'<div class="live-countdown"[^>]*data-countdown-primary>([^<]*)</div>',
+        html)
+    assert m, "primary live-countdown div missing"
+    val = m.group(1).strip()
+    assert _re7.match(r'^\d+d \d{2}h \d{2}m \d{2}s$', val), f"bad server value: {val!r}"
+
+
+def test_change1_sentence_unchanged_word_for_word():
+    """CHANGE 1: the conditional sentence is unchanged, word for word."""
+    html = _render_amendments(_full_roll_call())
+    assert ("if the more-than-80-percent majority holds for the full 14-day "
+            "window") in html
+
+
+def test_change1_countdown_is_largest_text_css():
+    """CHANGE 1: the countdown is the largest text in the box via a clamp()
+    rule topping out ~2.4-3rem, with tabular numerals, on one line (nowrap).
+    The projected date (.timer) is smaller than the countdown's max."""
+    html = _render_amendments(_full_roll_call())
+    assert ".countdown .live-countdown" in html
+    assert "clamp(" in html and "3rem" in html
+    assert "tabular-nums" in html
+    assert "white-space: nowrap" in html  # keeps the countdown on one line
+
+
+def test_change1_script_drives_server_element_not_rebuild():
+    """CHANGE 1/B: the script ticks the SERVER-rendered .live-countdown element
+    (selects .live-countdown[data-activation-iso]); it no longer lazily creates
+    its own element from .timer, and still never rewrites .when to the locale."""
+    html = _render_amendments(_full_roll_call())
+    assert ".countdown .live-countdown[data-activation-iso]" in html
+    assert "when_el.innerHTML" not in html
+    assert "fmtLocal" not in html
+
+
+# ── CHANGE 2: ET-first time format everywhere, no raw ISO, nowrap UTC ──
+
+def test_change2_cross_date_renders_et_first_with_utc_date():
+    """CHANGE 2: 01:25 UTC Oct 8 2026 renders 'Wed Oct 7, 9:25 PM ET (Oct 8,
+    01:25 UTC)'."""
+    assert _filter()("2026-10-08T01:25:01Z") == \
+        "Wed Oct 7, 9:25 PM ET (Oct 8, 01:25 UTC)"
+
+
+def test_change2_same_date_renders_et_first_short():
+    """CHANGE 2: 14:12 UTC Oct 9 2026 renders 'Fri Oct 9, 10:12 AM ET
+    (14:12 UTC)'."""
+    assert _filter()("2026-10-09T14:12:00Z") == \
+        "Fri Oct 9, 10:12 AM ET (14:12 UTC)"
+
+
+def test_change2_offset_correct_after_fall_back():
+    """CHANGE 2: a date after the Nov 1 2026 EST fall-back uses UTC-5. 06:00
+    UTC on Nov 2 is 1:00 AM ET (EST), not 2:00 AM (EDT)."""
+    assert _filter()("2026-11-02T06:00:00Z") == \
+        "Mon Nov 2, 1:00 AM ET (06:00 UTC)"
+
+
+def test_change2_html_filter_wraps_utc_in_nowrap_span():
+    """CHANGE 2: the HTML variant wraps the UTC parenthetical in a nowrap span
+    so it stays together on a narrow phone, lighter/smaller than the ET time."""
+    import app
+    out = str(app.datetime_to_et_first_html("2026-10-09T14:12:00Z"))
+    assert out == ('Fri Oct 9, 10:12 AM ET '
+                   '<span class="utc-paren">(14:12 UTC)</span>')
+    # cross-date form keeps the whole parenthetical inside the one span
+    out2 = str(app.datetime_to_et_first_html("2026-10-08T01:25:01Z"))
+    assert ('<span class="utc-paren">(Oct 8, 01:25 UTC)</span>') in out2
+    assert app.datetime_to_et_first_html("") == ""
+
+
+def test_change2_utc_paren_has_nowrap_css():
+    """CHANGE 2: the .utc-paren rule carries white-space:nowrap and uses the
+    muted palette var (slightly lighter + smaller)."""
+    html = _render_amendments(_full_roll_call())
+    assert _re7.search(r'\.utc-paren\s*\{[^}]*white-space:\s*nowrap', html)
+    assert _re7.search(r'\.utc-paren\s*\{[^}]*var\(--muted\)', html)
+
+
+def test_change2_no_raw_iso_in_visible_amendments_text():
+    """CHANGE 2: /amendments shows NO raw ISO string like 2026-10-08T21:25:01Z
+    in visible text. ISO is allowed only inside datetime="" / data-*-iso=""
+    machine attributes and the ld+json <script> schema block."""
+    html = _render_amendments(_full_roll_call())
+    vis = _re7.sub(r'<script type="application/ld\+json">.*?</script>', '',
+                   html, flags=_re7.S)
+    vis = _re7.sub(r'datetime="[^"]*"', '', vis)
+    vis = _re7.sub(r'data-[a-z0-9-]*iso="[^"]*"', '', vis)
+    vis = _re7.sub(r'data-activation-iso="[^"]*"', '', vis)
+    leaked = _re7.findall(r'>[^<]*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z[^<]*<', vis)
+    assert leaked == [], f"raw ISO leaked into visible text: {leaked[:5]}"
+
+
+def test_change2_no_24h_eastern_last_roll_call():
+    """CHANGE 2: the roll-call 'last roll call' time is ET-first (12-hour, ET
+    label, UTC in parens), not the old bare '4:00:00 PM ET' / 24h form."""
+    html = _render_amendments(_full_roll_call())
+    # observed_iso 2026-10-02T20:00:00Z -> Fri Oct 2, 4:00 PM ET (20:00 UTC),
+    # with the UTC part in the nowrap span (CHANGE 2).
+    assert ('Fri Oct 2, 4:00 PM ET '
+            '<span class="utc-paren">(20:00 UTC)</span>') in html
+    assert "4:00:00 PM ET" not in html  # old bare form gone
+
+
+def test_change2_how_it_works_has_no_time_strings():
+    """CHANGE 2: /amendments/how-it-works is static explainer copy with no ISO
+    strings and no 24-hour Eastern times to convert (confirms the audit)."""
+    import app
+    from flask import render_template
+    with app.app.test_request_context("/amendments/how-it-works"):
+        html = render_template("amendments_how_it_works.html")
+    assert not _re7.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', html)

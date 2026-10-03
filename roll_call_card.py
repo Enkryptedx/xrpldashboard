@@ -254,6 +254,12 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         "flag_ledger": latest["flag_ledger"],
         "observed_utc": observed.strftime("%Y-%m-%d %H:%M:%S UTC") if observed else None,
         "observed_et": observed.astimezone(_ET).strftime("%-I:%M:%S %p ET") if observed else None,
+        # owner ruling: a UTC ISO instant the page runs through the single
+        # datetime_to_et_first filter so the roll-call "last roll call" time
+        # reads Eastern-first with UTC in parentheses, same as every other
+        # time on /amendments, instead of the bare 24h-less "4:00:00 PM ET"
+        # string or the raw UTC string. One source of truth for the format.
+        "observed_iso": observed.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if observed else None,
         "age_min": round(age_s / 60) if age_s is not None else None,
         "stale": bool(age_s is not None and age_s > STALE_AFTER_S),
         "seen": latest["seen"], "unl_size": latest["unl_size"],
