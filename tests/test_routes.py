@@ -711,3 +711,29 @@ def test_no_page_describes_completed_event_as_upcoming(client, path):
         f"FORWARD_LOOKING_ABOUT_COMPLETED blocklist in tests/test_routes.py "
         f"for the maintained list."
     )
+
+
+def test_homepage_200_when_cached_ledger_index_is_none(client, monkeypatch):
+    """Render-killer guard (Charlie 2026-10-03): the homepage network-status
+    card formats pulse.ledger_index with "{:,}".format(...). If the pulse cache
+    briefly holds a dict with ledger_index=None (node answered but the validated
+    ledger seq was missing), that call raised TypeError and the homepage served
+    a 500. The fix shows a plain '—' instead. This test forces that exact state
+    and asserts the homepage still returns 200 — it FAILS on main (500) and
+    PASSES on the guard branch.
+    """
+    import app as app_module
+
+    def _pulse_none_ledger(*a, **k):
+        # A pulse that is present and error-free (so the card renders) but whose
+        # ledger index is None — the precise cache state that crashed /.
+        return {
+            "error": None, "ledger_index": None, "status": "operating_normally",
+            "avg_close_seconds": 3.5, "validation_quorum": 28, "load_factor": 1,
+            "status_text": "", "sourcing": "sovereign",
+        }
+
+    monkeypatch.setattr(app_module, "fetch_pulse_cached", _pulse_none_ledger)
+    r = client.get("/")
+    assert r.status_code == 200, f"/ returned {r.status_code} with None ledger_index"
+    assert b"Network status" in r.data
