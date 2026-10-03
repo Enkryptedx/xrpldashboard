@@ -100,12 +100,38 @@
       font-family: var(--mono); font-size: 0.78rem;
       color: var(--muted); word-break: break-all;
     }
+    /* owner ruling 2026-10-03 (CHANGE 1): the live countdown is the LARGEST
+       text in the box. clamp() keeps it ~2.4-3rem on desktop and scales it
+       down so it stays on ONE line at a 360px phone with no overflow / no
+       horizontal scroll. Tabular numerals so digits do not jiggle each second.
+       Palette vars give good contrast in dark and light mode. */
+    .countdown .live-countdown {
+      font-family: var(--mono); font-variant-numeric: tabular-nums;
+      font-weight: 700; letter-spacing: -0.02em; color: var(--text);
+      font-size: clamp(1.7rem, 7.2vw, 3rem);
+      line-height: 1.1; margin: 10px 0 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: clip;
+      max-width: 100%;
+    }
+    .countdown .live-countdown.is-past {
+      font-size: clamp(1rem, 4.2vw, 1.3rem); font-weight: 600;
+      white-space: normal; color: var(--muted);
+    }
+    /* The projected date now sits UNDER the countdown, at its prior size or
+       slightly smaller. */
     .countdown .timer {
       font-family: var(--mono); font-variant-numeric: tabular-nums;
-      font-size: 1.6rem; color: var(--text); letter-spacing: -0.01em;
-      margin: 10px 0 4px;
+      font-size: 1.45rem; color: var(--text); letter-spacing: -0.01em;
+      margin: 2px 0 4px;
     }
     .countdown .when { color: var(--muted); font-size: 0.88rem; }
+    /* owner ruling 2026-10-03 (CHANGE 2): the UTC parenthetical that follows an
+       Eastern time stays together as ONE unit on a narrow phone (it may drop to
+       the next line but is never cut off or split), and is rendered slightly
+       lighter + smaller than the Eastern time via the existing muted palette
+       var. Page-wide (not only inside .countdown) so every ET-first time on
+       /amendments gets it. */
+    .utc-paren { white-space: nowrap; color: var(--muted); font-size: 0.92em; }
     .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
 
     /* PART 3 (2026-10-02): activation timeline. No-JS-safe pure-CSS list,
@@ -397,10 +423,10 @@
             <div class="timeline-data dim">
               {% if n == 1 %}
                 {% if tl.restarted %}
-                  {{ _('Countdown restarted') }}{% if tl.restarted_iso %} · <time datetime="{{ tl.restarted_iso }}">{{ tl.restarted_iso | datetime_to_et_first }}</time>{% endif %} ·
+                  {{ _('Countdown restarted') }}{% if tl.restarted_iso %} · <time datetime="{{ tl.restarted_iso }}">{{ tl.restarted_iso | datetime_to_et_first_html }}</time>{% endif %} ·
                 {% endif %}
                 {% if tl.days_elapsed is not none %}{{ tl.days_elapsed }} {{ _('days') }} {{ tl.hours_elapsed }} {{ _('hours') }} {{ _('of 14') }}{% endif %}
-                {% if tl.activation_eta_iso %} · {{ _('activates') }} <time datetime="{{ tl.activation_eta_iso }}">{{ tl.activation_eta_iso | datetime_to_et_first }}</time>{% endif %}
+                {% if tl.activation_eta_iso %} · {{ _('activates') }} <time datetime="{{ tl.activation_eta_iso }}">{{ tl.activation_eta_iso | datetime_to_et_first_html }}</time>{% endif %}
               {% elif n == 2 %}
                 {% if tl.ledgers_remaining is not none %}{{ "{:,}".format(tl.ledgers_remaining) }} {{ _('ledgers remaining') }}{% endif %}{% if tl.next_flag_ledger %} · {{ _('next flag ledger') }} <span class="mono">{{ "{:,}".format(tl.next_flag_ledger) }}</span>{% endif %}
               {% elif n == 3 %}
@@ -791,13 +817,26 @@
           {% endif %}
         {% endif %}
 
-        {# ITEM 2 (Charlie 2026-10-02): render the projected activation time
-           Eastern-first ON THE SERVER via datetime_to_et_first, so crawlers
-           and no-JS readers see the real local time. The <time datetime>
-           keeps the exact UTC ISO value per the TIME RULE; the browser script
-           below (data-activation-iso) stays only as an optional extra. #}
+        {# owner ruling 2026-10-03 (CHANGE 1): inside each countdown box the
+           order top-to-bottom is (1) the live d/h/m/s countdown, BIGGER than
+           anything else in the box; (2) the projected activation date; (3) the
+           unchanged 'if the more-than-80-percent...' line. Everything else (the
+           'projected activation · majority reached at fetch' line, the how-it-
+           works link, the timeline, the roll-call sub-box) stays below, in its
+           prior order.
+
+           NO-JS / crawlers: the countdown is rendered ON THE SERVER with a real
+           initial value (countdown_to filter -> e.g. '5d 09h 12m 00s'). The
+           script below takes over THIS SAME element (.live-countdown), ticks it
+           every second, corrects a stale server value on load, and never erases
+           the server date text in .timer. data-activation-iso drives both. #}
+        <div class="live-countdown" data-activation-iso="{{ m.activation_eta_iso }}" data-countdown-primary>{{ m.activation_eta_iso | countdown_to }}</div>
+        {# ITEM 2 (Charlie 2026-10-02): projected activation date/time, rendered
+           Eastern-first ON THE SERVER via datetime_to_et_first so crawlers and
+           no-JS readers see the real local time. <time datetime> keeps the
+           exact UTC ISO value per the TIME RULE. Now sits UNDER the countdown. #}
         <div class="timer" data-activation-iso="{{ m.activation_eta_iso }}">
-          <time datetime="{{ m.activation_eta_iso }}">{{ m.activation_eta_iso | datetime_to_et_first }}</time>
+          <time datetime="{{ m.activation_eta_iso }}">{{ m.activation_eta_iso | datetime_to_et_first_html }}</time>
         </div>
         <div class="conditional" style="color: var(--muted); font-size: 0.82rem; margin: -2px 0 6px; font-style: italic;">
           {{ _('if the more-than-80-percent majority holds for the full 14-day window') }}
@@ -805,7 +844,7 @@
         <div class="when">
           {{ _('projected activation') }} ·
           {{ _('majority reached at fetch') }}
-          <time datetime="{{ m.majority_reached_iso }}">{{ m.majority_reached_iso | datetime_to_et_first }}</time>
+          <time datetime="{{ m.majority_reached_iso }}">{{ m.majority_reached_iso | datetime_to_et_first_html }}</time>
         </div>
         {# Charlie 2026-09-27: plain-language explainer, one link per countdown box. #}
         <div class="how-link"><a href="/amendments/how-it-works" data-how-it-works>{{ _('How the roll call works') }} →</a></div>
@@ -842,7 +881,10 @@
             <div class="rc-need dim">{{ _('Not in our node\'s roll call — present in the ledger\'s Majorities but not recognized by our node, so it carries no vote tally here.') }}</div>
             {% endif %}
             <div class="rc-meta dim">
-              {{ _('Last roll call') }} {{ roll_call.observed_et }}{% if roll_call.next_eta_min is not none %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% endif %}
+              {# owner ruling: route the last-roll-call instant through the single
+                 datetime_to_et_first filter so it reads Eastern-first with UTC
+                 in parentheses, same as every other time on this page. #}
+              {{ _('Last roll call') }} {% if roll_call.observed_iso %}<time datetime="{{ roll_call.observed_iso }}">{{ roll_call.observed_iso | datetime_to_et_first_html }}</time>{% else %}{{ roll_call.observed_et }}{% endif %}{% if roll_call.next_eta_min is not none %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% endif %}
             </div>
             <details class="rc-details">
               <summary>{{ _('Technical details') }}</summary>
@@ -850,7 +892,7 @@
                 {% if rc_row %}{{ _('Heard') }} {{ roll_call.seen }}/{{ roll_call.unl_size }} {{ _('trusted validators') }} ·
                 {{ _('best possible') }} {{ rc_row.best_possible }}<br>{% endif %}{{ _('Headline source: on-ledger Amendments Majorities (majority walker), not the vote count.') }}
                 <br>{{ _('Voting ledger') }} {{ "{:,}".format(roll_call.voting_ledger) }} ({{ _('flag ledger') }} {{ "{:,}".format(roll_call.flag_ledger) }})
-                <br>{{ _('Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>
+                <br>{{ _('Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} {% if roll_call.first_round_iso %}<time datetime="{{ roll_call.first_round_iso }}">{{ roll_call.first_round_iso | datetime_to_et_first_html }}</time>{% endif %}
               </div>
             </details>
           </div>
@@ -905,7 +947,7 @@
       <p style="margin: 0 0 6px;">
         <strong>{{ _('Voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.voting_ledger) }}</span></strong>
         ({{ _('flag ledger') }} <span class="mono">{{ "{:,}".format(roll_call.flag_ledger) }}</span>)
-        · {{ roll_call.observed_et }} · <span class="dim">{{ roll_call.observed_utc }}</span>
+        · {% if roll_call.observed_iso %}<time datetime="{{ roll_call.observed_iso }}">{{ roll_call.observed_iso | datetime_to_et_first_html }}</time>{% else %}{{ roll_call.observed_et }} · <span class="dim">{{ roll_call.observed_utc }}</span>{% endif %}
       </p>
       <p style="margin: 0 0 6px;">
         {{ _('Heard') }} <strong>{{ roll_call.seen }} {{ _('of') }} {{ roll_call.unl_size }}</strong> {{ _('validators on the current UNL') }}
@@ -933,7 +975,7 @@
           {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
           · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
           · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
-          · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first }}</time>
+          · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first_html }}</time>
         </p>
       {% endif %}
       {% if roll_call.rows %}
@@ -973,7 +1015,7 @@
         </div>
       {% endif %}
       <p class="dim" style="margin: 8px 0 0; font-size: 0.82rem;">
-        {{ _('Counts only. Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} <span class="mono">{{ roll_call.first_round_iso }}</span>.
+        {{ _('Counts only. Source:') }} {{ roll_call.source }} · {{ roll_call.rounds_recorded }} {{ _('rounds recorded since') }} {% if roll_call.first_round_iso %}<time datetime="{{ roll_call.first_round_iso }}">{{ roll_call.first_round_iso | datetime_to_et_first_html }}</time>{% endif %}.
         {{ _('A yes vote carries forward for 24 hours after a validator last sent it, matching how xrpld tallies.') }}
       </p>
     </div>
@@ -986,7 +1028,7 @@
         {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
         · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
         · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
-        · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first }}</time>
+        · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first_html }}</time>
       </p>
     </div>
   {% endif %}
@@ -1031,11 +1073,14 @@
            data-*-iso attrs (kept below); the inline plain text is the readable
            default for no-JS / crawlers. #}
         <div class="maj-history-timeline" style="font-size: 0.9rem; color: var(--text); margin-top: 3px;">
-          {# Plain sentence. The client localizer overwrites the data-iso spans
-             with 'Mon D, h:MM AM/PM ET'; the ISO here is the readable fallback. #}
+          {# owner ruling: render these instants Eastern-first with UTC in
+             parentheses ON THE SERVER via the single datetime_to_et_first
+             filter (no client localizer exists, so the server text is what a
+             visitor actually sees). data-iso keeps the raw UTC instant as a
+             machine attribute, like a <time datetime>. #}
           {% if mh.removed_iso %}
             <span class="maj-plain">
-              <strong>{{ _('Lost') }}</strong> <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ mh.removed_iso }}</span>:
+              <strong>{{ _('Lost') }}</strong> <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ mh.removed_iso | datetime_to_et_first_html }}</span>:
               {{ _('support dropped below') }} {{ mh.unl_threshold + 1 }}
               {# Charlie 2026-09-27: 'for one roll call' is only true when the
                  majority re-formed almost immediately (Batch, same-day). When
@@ -1044,15 +1089,15 @@
                  how long it was down instead — never claim 'one roll call'
                  for a multi-hour gap (PD: lost Sep 23, regained Sep 24). #}
               {% if mh.regained_iso %}
-                — {{ _('countdown restarted; majority regained') }} <span class="maj-regained" data-iso="{{ mh.regained_iso }}">{{ mh.regained_iso }}</span>.
+                — {{ _('countdown restarted; majority regained') }} <span class="maj-regained" data-iso="{{ mh.regained_iso }}">{{ mh.regained_iso | datetime_to_et_first_html }}</span>.
               {% else %}
                 {{ _('for one roll call — countdown restarted.') }}
               {% endif %}
             </span>
           {% else %}
             <span class="maj-plain">
-              <strong>{{ _('Majority reached') }}</strong> <span class="maj-gained" data-iso="{{ mh.majority_close_iso }}">{{ mh.majority_close_iso }}</span>
-              — {{ _('now projected') }} <span class="maj-activation" data-iso="{{ mh.activation_eta_iso }}">{{ mh.activation_eta_iso }}</span>.
+              <strong>{{ _('Majority reached') }}</strong> <span class="maj-gained" data-iso="{{ mh.majority_close_iso }}">{{ mh.majority_close_iso | datetime_to_et_first_html }}</span>
+              — {{ _('now projected') }} <span class="maj-activation" data-iso="{{ mh.activation_eta_iso }}">{{ mh.activation_eta_iso | datetime_to_et_first_html }}</span>.
             </span>
           {% endif %}
           {% if mh.desc %}
@@ -1061,15 +1106,21 @@
               {% if mh.source_label %}<span style="opacity:0.8;"> — {{ _('source:') }} {% if mh.source_url %}<a href="{{ mh.source_url }}" rel="nofollow noopener" target="_blank">{{ mh.source_label }}</a>{% else %}{{ mh.source_label }}{% endif %}</span>{% endif %}
             </div>
           {% endif %}
-          {# Technical detail, collapsed: ledger index + UTC + source-labeled vote count. #}
+          {# Technical detail, collapsed: ledger index + time + source-labeled vote count.
+             owner ruling: the three majority instants render Eastern-first with
+             UTC in parentheses via datetime_to_et_first (no bare ISO left in
+             visible text). The ledger CLOSE times (first_seen_close_iso /
+             removed_close_iso) stay as their raw close-time strings here because
+             they are ledger-audit values paired with a ledger index — flagged
+             to the owner in the report rather than reformatted unasked. #}
           <details class="maj-detail" style="margin-top: 4px;">
             <summary style="font-size: 0.8rem; color: var(--muted); cursor: pointer;">{{ _('Ledger detail') }}</summary>
             <div class="mono" style="font-size: 0.8rem; color: var(--muted); margin-top: 4px; line-height: 1.5;">
               {# Audit #1 (2026-09-27): first_seen_ledger is the walker's FIRST OBSERVATION, not the flag
                  ledger where the majority formed. When the walker saw it later than the reach time
                  (it started 2026-09-20), say so instead of calling it the flag ledger. #}
-              {{ _('Majority reached') }} {{ mh.majority_close_iso }} (UTC){% if mh.first_seen_ledger %} · {% if mh.first_seen_close_iso and not mh.first_seen_is_flag %}{{ _('first seen by our walker at ledger') }} {{ mh.first_seen_ledger }}, {{ mh.first_seen_close_iso }}{% else %}{{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}{% endif %}<br>
-              {% if mh.removed_iso %}{{ _('Majority lost') }} {{ mh.removed_iso }} (UTC){% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {{ mh.activation_eta_iso }} (UTC)<br>{% endif %}
+              {{ _('Majority reached') }} {% if mh.majority_close_iso %}<time datetime="{{ mh.majority_close_iso }}">{{ mh.majority_close_iso | datetime_to_et_first_html }}</time>{% endif %}{% if mh.first_seen_ledger %} · {% if mh.first_seen_close_iso and not mh.first_seen_is_flag %}{{ _('first seen by our walker at ledger') }} {{ mh.first_seen_ledger }}, {{ mh.first_seen_close_iso }}{% else %}{{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}{% endif %}<br>
+              {% if mh.removed_iso %}{{ _('Majority lost') }} <time datetime="{{ mh.removed_iso }}">{{ mh.removed_iso | datetime_to_et_first_html }}</time>{% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {% if mh.activation_eta_iso %}<time datetime="{{ mh.activation_eta_iso }}">{{ mh.activation_eta_iso | datetime_to_et_first_html }}</time>{% endif %}<br>{% endif %}
               {% if mh.vote_count_at_first and mh.unl_threshold %}
               {# Source label (Charlie 2026-09-27, CORRECTED AGAIN): the ledger's
                  Majorities entry holds ONLY Amendment + CloseTime — no vote count.
@@ -1185,7 +1236,7 @@
               <br>
               <span class="dim" style="font-size: 0.85rem;">
                 {{ _('Source: XRPL Foundation validator history · fetched') }}
-                <span class="mono">{{ nv.as_of_iso }}</span>
+                {% if nv.as_of_iso %}<time datetime="{{ nv.as_of_iso }}">{{ nv.as_of_iso | datetime_to_et_first_html }}</time>{% else %}<span class="mono">{{ nv.as_of_iso }}</span>{% endif %}
                 {% if is_stale and state.network_votes_source.stale_age_seconds %}
                   · {{ _('last successful fetch') }}
                   {{ (state.network_votes_source.stale_age_seconds // 60) }} {{ _('min ago') }}
@@ -1291,7 +1342,7 @@
     {{ _('Cached for up to') }} {{ (cache_ttl_seconds / 60)|int }} {{ _('minutes; the timestamp shown is the validated ledger from the last fetch. Vote counts come from our own node\'s roll call (countdown boxes and the roll-call table) and from XRPL Foundation validator history (in-flight list); the') }} <code>feature</code> {{ _('RPC itself carries no tallies. Amendment descriptions:') }}
     <a href="https://xrpl.org/known-amendments.html" rel="nofollow noopener" target="_blank">xrpl.org/known-amendments</a>.
     {% if state.fetched_at_iso %}
-      <br>{{ _('Fetched') }} <span class="mono">{{ state.fetched_at_iso }}</span>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
+      <br>{{ _('Fetched') }} <time datetime="{{ state.fetched_at_iso }}">{{ state.fetched_at_iso | datetime_to_et_first_html }}</time>{% if state.cached_age_seconds is defined and state.cached_age_seconds %} · {{ _('cached') }} {{ state.cached_age_seconds }}s{% endif %}.
     {% endif %}
   </p>
   {% endif %}
@@ -1308,22 +1359,23 @@
 </div>
 
 <script>
-  // ITEM B (2026-10-02): the live countdown must NOT erase the
-  // server-rendered Eastern-first text. The server already wrote the real
-  // Eastern time with UTC in parentheses inside <time> (DST-correct, visible
-  // to crawlers and no-JS readers). This script ONLY appends a ticking
-  // d/h/m/s countdown in its OWN element; it never overwrites the <time>
-  // text and never rewrites the .when line to the visitor's locale. If it
-  // ever formats an absolute time, it uses timeZone
-  // 'America/Indiana/Indianapolis' and shows UTC in parentheses — never the
-  // visitor's own locale.
+  // owner ruling 2026-10-03 (CHANGE 1): the live d/h/m/s countdown is the
+  // PRIMARY, biggest element at the TOP of each box, server-rendered first so
+  // no-JS readers and crawlers see a real countdown (countdown_to filter). This
+  // script TAKES OVER that same .live-countdown element, ticks it every second,
+  // and corrects a stale server value on load. It never erases the server date
+  // in .timer and never rewrites the .when line to the visitor's locale. Any
+  // absolute time it prints uses timeZone 'America/Indiana/Indianapolis', the
+  // 12-hour clock with an ET label, and UTC in parentheses — never the
+  // visitor's own locale. (Supersedes the 2026-10-02 ITEM B appender.)
   (function () {
     var NODE_TZ = 'America/Indiana/Indianapolis';
-    var timers = document.querySelectorAll('.countdown .timer[data-activation-iso]');
+    // Drive the server-rendered primary countdown element directly.
+    var timers = document.querySelectorAll('.countdown .live-countdown[data-activation-iso]');
     if (!timers.length) return;
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
     // Absolute-time formatter (only used for the "past" note): Indianapolis
-    // zone, UTC in parentheses. Never the visitor's locale.
+    // zone, 12-hour + ET, UTC in parentheses. Never the visitor's locale.
     function fmtNodeTz(iso) {
       var d = new Date(iso);
       if (isNaN(d.getTime())) return iso;
@@ -1331,7 +1383,7 @@
       try {
         etStr = new Intl.DateTimeFormat('en-US', {
           timeZone: NODE_TZ, weekday: 'short', month: 'short', day: 'numeric',
-          hour: 'numeric', minute: '2-digit'
+          hour: 'numeric', minute: '2-digit', hour12: true
         }).format(d) + ' ET';
       } catch (e) { etStr = d.toISOString(); }
       try {
@@ -1341,32 +1393,17 @@
       } catch (e2) { utcStr = ''; }
       return etStr + (utcStr ? ' (' + utcStr + ')' : '');
     }
-    // Find (or lazily create) the dedicated countdown element so the
-    // server-rendered <time> text in .timer is never touched.
-    function countdownEl(timerEl) {
-      var box = timerEl.parentElement;
-      var cd = box.querySelector('.live-countdown');
-      if (!cd) {
-        cd = document.createElement('div');
-        cd.className = 'live-countdown';
-        cd.style.fontVariantNumeric = 'tabular-nums';
-        cd.style.opacity = '0.85';
-        cd.style.fontSize = '0.85rem';
-        cd.style.marginTop = '2px';
-        timerEl.insertAdjacentElement('afterend', cd);
-      }
-      return cd;
-    }
-    function tickOne(el, iso) {
+    function tickOne(cd, iso) {
       var when = new Date(iso).getTime();
       if (isNaN(when)) return;
-      var cd = countdownEl(el);
       var diff = when - Date.now();
       if (diff <= 0) {
-        // Do NOT overwrite the server <time>; annotate in our own element.
+        // Past: annotate in THIS element; never touch the server <time> date.
+        cd.classList.add('is-past');
         cd.textContent = 'past · awaiting next-ledger activation · ' + fmtNodeTz(iso);
         return;
       }
+      cd.classList.remove('is-past');
       var sec = Math.floor(diff / 1000);
       var days = Math.floor(sec / 86400); sec -= days * 86400;
       var hrs  = Math.floor(sec / 3600);  sec -= hrs * 3600;
@@ -1376,13 +1413,14 @@
       parts.push(pad(hrs) + 'h');
       parts.push(pad(mins) + 'm');
       parts.push(pad(sec) + 's');
-      cd.textContent = parts.join(' ') + ' remaining';
-      // .when is left exactly as the server rendered it — never rewritten.
+      // Matches the server format exactly (countdown_to); corrects a stale
+      // server value on first tick. The .timer date + .when line are untouched.
+      cd.textContent = parts.join(' ');
     }
     function tickAll() {
-      timers.forEach(function (el) {
-        var iso = el.dataset.activationIso;
-        if (iso) tickOne(el, iso);
+      timers.forEach(function (cd) {
+        var iso = cd.dataset.activationIso;
+        if (iso) tickOne(cd, iso);
       });
     }
     tickAll();

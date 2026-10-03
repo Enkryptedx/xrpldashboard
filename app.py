@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, abort, g, jsonify, make_response, redirect, render_template, request, send_from_directory, url_for
+from markupsafe import Markup, escape
 from flask_limiter import Limiter
 from flask_smorest import Api
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -364,6 +365,81 @@ def datetime_to_et_first(value):
 
 
 app.jinja_env.filters["datetime_to_et_first"] = datetime_to_et_first
+
+
+def datetime_to_et_first_html(value):
+    """HTML variant of datetime_to_et_first (owner ruling 2026-10-03, CHANGE 2).
+    Same Eastern-first text, but the UTC parenthetical is wrapped in
+    ``<span class="utc-paren">(...)</span>`` so the page can (a) keep the whole
+    parenthesis together on a narrow phone via ``white-space: nowrap`` — it may
+    drop to the next line but never gets cut off or split — and (b) render the
+    UTC part slightly lighter/smaller than the Eastern time. Returns Markup so
+    the span is not escaped; the Eastern text itself is still escaped. Empty
+    string stays empty (and safe).
+    """
+    plain = datetime_to_et_first(value)
+    if not plain:
+        return Markup("")
+    # Split on the first ' (' so only the trailing UTC parenthetical is wrapped.
+    idx = plain.rfind(" (")
+    if idx == -1 or not plain.endswith(")"):
+        return Markup(escape(plain))
+    et_part = plain[:idx]
+    paren = plain[idx + 1:]  # includes the leading '(' and trailing ')'
+    return Markup(
+        f'{escape(et_part)} <span class="utc-paren">{escape(paren)}</span>'
+    )
+
+
+app.jinja_env.filters["datetime_to_et_first_html"] = datetime_to_et_first_html
+
+
+def countdown_to(value, now=None):
+    """Jinja filter: server-render the initial d/h/m/s countdown to an instant
+    so people with JavaScript off, and crawlers, see a real countdown in the
+    right place (owner ruling 2026-10-03). The browser script takes over the
+    same element and ticks it every second, correcting a stale server value.
+
+    Output matches the script's live format exactly, e.g. ``5d 09h 12m 00s``
+    (days only shown when > 0; hours/minutes/seconds always two digits). When
+    the instant is already in the past, returns ``past`` so the script's
+    'past, awaiting next-ledger activation' state is consistent. Bad / missing
+    input -> empty string (never crash a page on a bad timestamp).
+    """
+    if value is None:
+        return ""
+    dt = value
+    if isinstance(dt, str):
+        s = dt.strip()
+        if not s:
+            return ""
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return ""
+    if not isinstance(dt, datetime):
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    _now = now or datetime.now(timezone.utc)
+    if _now.tzinfo is None:
+        _now = _now.replace(tzinfo=timezone.utc)
+    diff = int((dt - _now).total_seconds())
+    if diff <= 0:
+        return "past"
+    days, rem = divmod(diff, 86400)
+    hrs, rem = divmod(rem, 3600)
+    mins, secs = divmod(rem, 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    parts.append(f"{hrs:02d}h")
+    parts.append(f"{mins:02d}m")
+    parts.append(f"{secs:02d}s")
+    return " ".join(parts)
+
+
+app.jinja_env.filters["countdown_to"] = countdown_to
 
 
 def _entity_encode(text):
