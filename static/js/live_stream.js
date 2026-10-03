@@ -12,7 +12,7 @@
  * for every connected tab on the Render free tier. This is cheaper and
  * lower-latency for the panels that just need "did a ledger just close."
  *
- * Own-node primary (Charlie ruling 2026-09-22 Tue PM): when the template
+ * Own-node primary (owner ruling 2026-09-22): when the template
  * injects window.LIVE_STREAM_WSS_PRIMARY (differs from fallback), that
  * URL is prepended to the connect list. A ~10s watchdog kicks in when
  * we connect to the primary; if no ledgerClosed arrives in that window,
@@ -46,7 +46,7 @@
 
   // Watchdog for primary: if the socket opens on the primary but no
   // ledgerClosed arrives by this deadline, treat as failed and step to
-  // the next URL. Bumped 2026-09-23 17:15 ET (Charlie ruling) from 10s
+  // the next URL. Bumped 2026-09-23 (owner ruling) from 10s
   // to 15s — the 10s window was too tight for cold Cloudflare-tunnel
   // handshakes, tripping ~24 false-positive fallback events / 24h.
   var PRIMARY_LEDGER_WATCHDOG_MS = 15000;
@@ -74,7 +74,7 @@
   var fallbackPinged = false;
   var bannerEl = null;
 
-  // Three-state banner sequence (Charlie ruling 2026-09-23 17:15 ET):
+  // Three-state banner sequence (owner ruling 2026-09-23):
   //   'connecting'  → "Connecting to our own node…"
   //   'fallback'    → "Our node is still connecting — showing the public feed until it does"
   //   'hidden'      → banner removed (primary is live)

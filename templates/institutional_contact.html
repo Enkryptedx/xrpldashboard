@@ -105,13 +105,13 @@
 
   {% if submitted %}
     <h1>{{ _('Message received') }}</h1>
-    <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to Charlie') }}</div>
-    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} <a href="{{ 'mailto:contact@xrpldashboard.com' | entity_encode }}">{{ 'contact@xrpldashboard.com' | entity_encode }}</a> {{ _('directly.') }}</p>
+    <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to the operator') }}</div>
+    <p>{{ _('Every message is read personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} <a href="{{ 'mailto:contact@xrpldashboard.com' | entity_encode }}">{{ 'contact@xrpldashboard.com' | entity_encode }}</a> {{ _('directly.') }}</p>
     <p><a href="/institutional">← {{ _('back to institutional') }}</a></p>
   {% else %}
     <h1>{{ _('Reach the institutional team') }}</h1>
     <p class="lede">
-      {{ _('Launch-partner inquiries, API access, compliance review. Charlie reads every message personally.') }}
+      {{ _('Launch-partner inquiries, API access, compliance review. Every message is read personally.') }}
     </p>
 
     <div class="card">
@@ -171,7 +171,7 @@
     </div>
 
     <p class="fallback">
-      {{ _('Your message is saved to xrpldashboard\'s database and Charlie is emailed a copy. No third-party form processor, no marketing pixel.') }}
+      {{ _('Your message is saved to xrpldashboard\'s database and the operator is emailed a copy. No third-party form processor, no marketing pixel.') }}
     </p>
   {% endif %}
 

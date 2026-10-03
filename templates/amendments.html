@@ -107,6 +107,44 @@
     }
     .countdown .when { color: var(--muted); font-size: 0.88rem; }
     .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
+
+    /* PART 3 (2026-10-02): activation timeline. No-JS-safe pure-CSS list,
+       mobile-first. Uses the page palette vars so dark/light handling is
+       inherited. */
+    .activation-timeline { margin: 14px 0 4px; }
+    .activation-timeline .timeline-steps {
+      list-style: none; margin: 0; padding: 0;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .activation-timeline .timeline-step {
+      display: flex; gap: 10px; align-items: flex-start;
+      border-left: 2px solid var(--border); padding: 2px 0 2px 12px;
+    }
+    .activation-timeline .timeline-badge {
+      flex: 0 0 auto; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 4px; margin-top: 1px;
+      border: 1px solid var(--border); color: var(--muted);
+      min-width: 62px; text-align: center;
+    }
+    .activation-timeline .timeline-done   .timeline-badge { color: #22c55e; border-color: rgba(34,197,94,0.5); }
+    .activation-timeline .timeline-now     .timeline-badge { color: var(--amber); border-color: rgba(251,191,36,0.6); }
+    .activation-timeline .timeline-done   { border-left-color: rgba(34,197,94,0.4); }
+    .activation-timeline .timeline-now     { border-left-color: rgba(251,191,36,0.5); }
+    .activation-timeline .timeline-body { min-width: 0; flex: 1 1 auto; }
+    .activation-timeline .timeline-title:empty { display: none; }
+    .activation-timeline .timeline-note:empty { display: none; }
+    .activation-timeline .timeline-data { font-size: 0.82rem; margin: 1px 0; }
+    .activation-timeline .timeline-quote {
+      margin: 4px 0 2px; padding: 4px 0 4px 10px;
+      border-left: 2px solid var(--border);
+      font-size: 0.8rem; color: var(--muted); font-style: italic;
+    }
+    .activation-timeline .timeline-quote cite { font-style: normal; }
+    @media (max-width: 560px) {
+      .activation-timeline .timeline-step { gap: 8px; padding-left: 9px; }
+      .activation-timeline .timeline-badge { min-width: 54px; font-size: 0.64rem; }
+    }
     /* "What does this do?" — plain one-liner always visible; details on tap. */
     .plain { color: var(--muted); font-size: 0.92rem; margin: 2px 0 6px; overflow-wrap: anywhere; }
     details.whatdoes { margin: 4px 0 8px; }
@@ -294,48 +332,122 @@
      quotes would otherwise trigger. Section headings stay translatable.
      Under each quote is an empty, clearly-marked slot for Charlie's own
      plain-English line (he writes the public prose, not JJ). #}
+  {# Quote strings defined ONCE here as Jinja vars so the "word for word" block
+     below AND the Part 3 activation timeline reuse the exact same verbatim
+     text and cannot drift. DO NOT reword. #}
+  {% set _amd_url = 'https://xrpl.org/docs/concepts/networks-and-servers/amendments' %}
+  {% set quote_80pct_14d = 'Amendments must maintain two weeks of support from more than 80% of trusted validators to be enabled.' %}
+  {% set quote_drop_restart = 'If support drops below 80%, the amendment is temporarily rejected, and the two week period restarts.' %}
+  {% set quote_flag_ledger = 'Every 256th ledger is called a flag ledger.' %}
+  {% set quote_flag_plus_1 = 'Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened' %}
+  {% set quote_flag_plus_2 = 'Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.' %}
+  {% set quote_permanent = 'If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.' %}
+  {% set quote_blocked = 'When an amendment is enabled, servers running earlier versions of xrpld without the amendment\'s source code no longer understand the rules of the network.' %}
+
+  {# PART 3 (2026-10-02): the "What happens when an amendment activates"
+     timeline macro. Rendered once per amendment in countdown AND in a finished
+     state for recently-enabled amendments. Each step carries:
+       - a data-label status badge: DONE / NOW / WAITING (derived from LIVE
+         data in app._activation_timeline_ctx; JJ may write these words + the
+         ledger numbers, they are data labels)
+       - a live data line (days/hours of 14, ledgers remaining, ledger numbers)
+         all server-rendered; times go through datetime_to_et_first
+       - the verified xrpl.org quote where one exists (steps 2-6), reusing the
+         SAME quote_* vars as the word-for-word block so they cannot drift
+       - an EMPTY visible title slot + an EMPTY visible short-line slot for the
+         OWNER to fill, each paired with a Jinja-comment placeholder. JJ writes
+         NO titles and NO explanations.
+     No-JS safe (pure server render); mobile-friendly; matches existing styling
+     (uses the amendments palette vars + .timeline-* classes defined in <style>). #}
+  {% macro activation_timeline(tl) %}
+    {% if tl %}
+    <div class="activation-timeline" data-activation-timeline data-enabled="{{ 'true' if tl.enabled else 'false' }}" data-restarted="{{ 'true' if tl.restarted else 'false' }}">
+      {% set step_status = {
+           1: tl.steps[1], 2: tl.steps[2], 3: tl.steps[3],
+           4: tl.steps[4], 5: tl.steps[5], 6: tl.steps[6] } %}
+      {% set step_quote = {
+           1: none, 2: quote_flag_ledger, 3: quote_flag_plus_1,
+           4: quote_flag_plus_2, 5: quote_permanent, 6: quote_blocked } %}
+      <ol class="timeline-steps">
+        {% for n in [1, 2, 3, 4, 5, 6] %}
+        {% set st = step_status[n] %}
+        <li class="timeline-step timeline-{{ st }}" data-step="{{ n }}" data-status="{{ st }}">
+          <span class="timeline-badge" aria-label="{{ st }}">{{ st | upper }}</span>
+          <div class="timeline-body">
+            {# OWNER title slot (empty on purpose; JJ writes no step titles). #}
+            <div class="timeline-title" data-step-title="{{ n }}"></div>
+            {# item-timeline-title-{{ n }}: owner writes this step's title. #}
+            {# Live data line (data labels + numbers only). #}
+            <div class="timeline-data dim">
+              {% if n == 1 %}
+                {% if tl.restarted %}
+                  {{ _('Countdown restarted') }}{% if tl.restarted_iso %} · <time datetime="{{ tl.restarted_iso }}">{{ tl.restarted_iso | datetime_to_et_first }}</time>{% endif %} ·
+                {% endif %}
+                {% if tl.days_elapsed is not none %}{{ tl.days_elapsed }} {{ _('days') }} {{ tl.hours_elapsed }} {{ _('hours') }} {{ _('of 14') }}{% endif %}
+                {% if tl.activation_eta_iso %} · {{ _('activates') }} <time datetime="{{ tl.activation_eta_iso }}">{{ tl.activation_eta_iso | datetime_to_et_first }}</time>{% endif %}
+              {% elif n == 2 %}
+                {% if tl.ledgers_remaining is not none %}{{ "{:,}".format(tl.ledgers_remaining) }} {{ _('ledgers remaining') }}{% endif %}{% if tl.next_flag_ledger %} · {{ _('next flag ledger') }} <span class="mono">{{ "{:,}".format(tl.next_flag_ledger) }}</span>{% endif %}
+              {% elif n == 3 %}
+                {% if tl.flag_plus_1 %}{{ _('flag ledger') }} <span class="mono">{{ "{:,}".format(tl.flag_plus_1) }}</span>{% endif %}
+              {% elif n == 4 %}
+                {% if tl.flag_plus_2 %}{{ _('flag ledger') }} <span class="mono">{{ "{:,}".format(tl.flag_plus_2) }}</span>{% endif %}
+              {% endif %}
+            </div>
+            {% if step_quote[n] %}
+            <blockquote class="timeline-quote">“{{ step_quote[n] }}” <cite>— <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite></blockquote>
+            {% endif %}
+            {# OWNER short-line slot (empty on purpose). #}
+            <div class="timeline-note" data-step-note="{{ n }}"></div>
+            {# item-timeline-note-{{ n }}: owner writes this step's short line. #}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+  {% endmacro %}
+
   <section class="rule-word-for-word" aria-label="The rule, word for word" style="margin: 8px 0 28px;">
     <h2>{{ _('The rule, word for word') }}</h2>
-    {% set _amd_url = 'https://xrpl.org/docs/concepts/networks-and-servers/amendments' %}
 
     <blockquote>
-      “Amendments must maintain two weeks of support from more than 80% of trusted validators to be enabled.”
+      “{{ quote_80pct_14d }}”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-a: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “If support drops below 80%, the amendment is temporarily rejected, and the two week period restarts.”
+      “{{ quote_drop_restart }}”
       <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-b: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “Every 256th ledger is called a flag ledger.”
+      “{{ quote_flag_ledger }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-c: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened”
+      “{{ quote_flag_plus_1 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-d: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.”
+      “{{ quote_flag_plus_2 }}”
       <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-e: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.”
+      “{{ quote_permanent }}”
       <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-f: owner's plain-English line goes here. #}
     </blockquote>
 
     <blockquote>
-      “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.”
+      “{{ quote_blocked }}”
       <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
       {# item1-g: owner's plain-English line goes here. #}
     </blockquote>
@@ -679,6 +791,9 @@
         </div>
         {# Charlie 2026-09-27: plain-language explainer, one link per countdown box. #}
         <div class="how-link"><a href="/amendments/how-it-works" data-how-it-works>{{ _('How the roll call works') }} →</a></div>
+        {# PART 3 (2026-10-02): activation timeline for THIS amendment in
+           countdown, statuses computed live by the route. #}
+        {{ activation_timeline(timeline_by_hash.get(m.hash) if timeline_by_hash else none) }}
         </div>
 
         {% if roll_call %}
@@ -1121,6 +1236,16 @@
       <strong>{{ _('XLS-47 PriceOracle') }}</strong> {{ _('is also live — lets oracle providers publish signed price feeds as native ledger objects. DIA is currently the one production provider publishing to mainnet.') }}
       <a href="/price-data">{{ _('Live price feed decoder') }} → /price-data</a>
     </p>
+    {# PART 3 (2026-10-02): the same activation timeline in a FINISHED state,
+       shown once for the recently-enabled set (all six steps DONE). The route
+       passes timeline_by_hash['__enabled_example__'] with enabled=True when
+       any recognized-enabled amendment exists; absent -> block simply omits. #}
+    {% set _enabled_tl = timeline_by_hash.get('__enabled_example__') if timeline_by_hash else none %}
+    {% if _enabled_tl %}
+      <div class="timeline-finished" style="margin-top: 14px;">
+        {{ activation_timeline(_enabled_tl) }}
+      </div>
+    {% endif %}
   </div>
 
   {# Sovereign-fallback disclosure banner (Charlie 2026-09-25 own-node switch).

@@ -393,3 +393,177 @@ def test_status_tool_reads_recognized_enabled_key(monkeypatch):
     assert data["recognized_enabled_count"] == 94
     assert len(data["enabled"]) == 94
     assert data["in_flight_count"] == 1
+
+
+# ───────────────────────────────────────────────────────────
+# PART 3 — activation timeline: the real app._activation_timeline_ctx
+#          computes DONE/NOW/WAITING + ledger numbers from live data, and the
+#          real template renders the macro. Six cases.
+# ───────────────────────────────────────────────────────────
+
+_NOW = dt.datetime(2026, 10, 2, 20, 0, tzinfo=dt.timezone.utc)
+_FC = {"ledgers_remaining": 167, "next_flag_ledger": 107393280}
+
+
+def _tl(**kw):
+    import app
+    kw.setdefault("now", _NOW)
+    kw.setdefault("flag_counter", _FC)
+    return app._activation_timeline_ctx(**kw)
+
+
+def _iso_ago(days=0, hours=0):
+    return (_NOW - dt.timedelta(days=days, hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_timeline_case_just_reached():
+    c = _tl(majority_reached_iso=_iso_ago(0, 0), activation_eta_iso="2026-10-16T20:00:00Z", enabled=False)
+    assert c["steps"] == {1: "now", 2: "waiting", 3: "waiting", 4: "waiting", 5: "waiting", 6: "waiting"}
+    assert c["days_elapsed"] == 0
+    assert c["ledgers_remaining"] == 167
+    assert c["flag_plus_1"] == 107393281 and c["flag_plus_2"] == 107393282
+
+
+def test_timeline_case_13_days_in():
+    c = _tl(majority_reached_iso=_iso_ago(13, 0), activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    assert c["steps"][1] == "now" and c["steps"][2] == "waiting"
+    assert c["days_elapsed"] == 13
+
+
+def test_timeline_case_14_done_waiting_for_flag():
+    c = _tl(majority_reached_iso=_iso_ago(14, 1), activation_eta_iso=_iso_ago(0, 1), enabled=False)
+    assert c["steps"][1] == "done"   # 14-day clock complete
+    assert c["steps"][2] == "now"    # now waiting for the flag ledger
+    assert c["steps"][3] == "waiting" and c["steps"][4] == "waiting"
+    assert c["days_elapsed"] == 14
+
+
+def test_timeline_case_flag_plus_1_passed_not_enabled():
+    # Represented the same as 14-done-and-waiting until the enabled set flips;
+    # the ledger numbers for flag+1/flag+2 are exposed as data labels.
+    c = _tl(majority_reached_iso=_iso_ago(14, 2), activation_eta_iso=_iso_ago(0, 2), enabled=False)
+    assert c["steps"][1] == "done" and c["steps"][2] == "now"
+    assert c["flag_plus_1"] == 107393281
+    assert c["flag_plus_2"] == 107393282
+
+
+def test_timeline_case_enabled_all_done():
+    c = _tl(majority_reached_iso="2026-09-01T00:00:00Z", activation_eta_iso="2026-09-15T00:00:00Z", enabled=True)
+    assert c["steps"] == {1: "done", 2: "done", 3: "done", 4: "done", 5: "done", 6: "done"}
+    assert c["enabled"] is True
+
+
+def test_timeline_case_restarted():
+    c = _tl(majority_reached_iso=_iso_ago(1, 8), activation_eta_iso="2026-10-15T12:00:00Z",
+            enabled=False, restarted_iso=_iso_ago(1, 8))
+    assert c["restarted"] is True
+    assert c["steps"][1] == "now"   # clock running again after the restart
+    assert c["days_elapsed"] == 1
+
+
+def test_timeline_renders_in_template_countdown_and_finished():
+    """The real template renders the macro for a countdown amendment AND a
+    finished (enabled) state, with DONE/NOW/WAITING badges and the reused
+    verified quotes; the owner title/note slots do NOT render any placeholder."""
+    import app
+    from flask import render_template
+    tl_count = _tl(majority_reached_iso=_iso_ago(13, 0),
+                   activation_eta_iso="2026-10-17T20:00:00Z", enabled=False)
+    tl_enabled = _tl(majority_reached_iso=None, activation_eta_iso=None, enabled=True)
+    state = {
+        "ok": True, "enabled_count": 94, "in_flight_count": 10,
+        "ledger_index": 107393280,
+        "recognized_enabled": [{"hash": "EN1", "name": "Done1"}],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": [{
+            "hash": "ABC", "name": "BatchV1_1", "recognized": True,
+            "majority_reached_iso": _iso_ago(13, 0),
+            "activation_eta_iso": "2026-10-17T20:00:00Z",
+        }], "network_votes_source": {}, "in_development": [],
+    }
+    tbh = {"ABC": tl_count, "__enabled_example__": tl_enabled}
+    with app.app.test_request_context("/amendments"):
+        html = render_template(
+            "amendments.html", state=state, majority_history=[],
+            page_sourcing="sovereign", roll_call=None, flag_counter=_FC,
+            timeline_by_hash=tbh, cite=None, cache_ttl_seconds=300)
+    # Two timelines: the countdown one and the finished one.
+    assert html.count("data-activation-timeline") == 2
+    # Finished state => six DONE badges; countdown (13 days in) => 1 NOW, 5 WAITING.
+    assert html.count(">DONE<") == 6
+    assert html.count(">NOW<") == 1
+    assert html.count(">WAITING<") == 5
+    # Reused verified quotes appear in the timeline (steps 2 and 6).
+    assert "Every 256th ledger is called a flag ledger." in html
+    assert "no longer understand the rules of the network." in html
+    # Ledger numbers as data labels.
+    assert "107,393,281" in html and "107,393,282" in html
+    # Owner slots are empty; no placeholder marker leaks.
+    assert "item-timeline-title-" not in html
+    assert "item-timeline-note-" not in html
+    # No-JS safe: the timeline is pure server HTML (no <script> needed to show).
+    assert "<ol class=\"timeline-steps\">" in html
+
+
+def test_timeline_quotes_do_not_drift_from_word_for_word_block():
+    """The timeline reuses the SAME quote_* Jinja vars as the word-for-word
+    block, so each step quote must appear with the identical verbatim text."""
+    import app
+    from flask import render_template
+    tl = _tl(majority_reached_iso=_iso_ago(1, 0), activation_eta_iso="2026-10-16T20:00:00Z", enabled=False)
+    state = {
+        "ok": True, "enabled_count": 1, "in_flight_count": 0,
+        "ledger_index": 107393280, "recognized_enabled": [],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": [{
+            "hash": "ABC", "name": "X", "recognized": True,
+            "majority_reached_iso": _iso_ago(1, 0),
+            "activation_eta_iso": "2026-10-16T20:00:00Z"}],
+        "network_votes_source": {}, "in_development": [],
+    }
+    with app.app.test_request_context("/amendments"):
+        html = render_template(
+            "amendments.html", state=state, majority_history=[],
+            page_sourcing="sovereign", roll_call=None, flag_counter=_FC,
+            timeline_by_hash={"ABC": tl}, cite=None, cache_ttl_seconds=300)
+    # Each of these verified strings appears at least twice: once in the
+    # word-for-word block and once in the timeline (proving no drift).
+    for q in ["Every 256th ledger is called a flag ledger.",
+              "Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction",
+              "no longer understand the rules of the network."]:
+        assert html.count(q) >= 2, (q, html.count(q))
+
+
+# ───────────────────────────────────────────────────────────
+# PART 1 — the owner's name does not render on public pages (except about + the
+#          terms.html operator line). Renders the REAL templates via routes.
+# ───────────────────────────────────────────────────────────
+
+def test_no_owner_name_on_amendments_and_contact_pages():
+    """PART 1: the owner's name must not render on /amendments, contact,
+    institutional, institutional_contact, security, or health. (about.html and
+    the terms.html operator line are the allowed exceptions and are not
+    rendered here.)"""
+    import app
+    from flask import render_template
+    # /amendments full render (no DB).
+    state = {
+        "ok": True, "enabled_count": 94, "in_flight_count": 0,
+        "ledger_index": 107393280, "recognized_enabled": [],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": [],
+        "network_votes_source": {}, "in_development": [],
+    }
+    with app.app.test_request_context("/amendments"):
+        amd = render_template(
+            "amendments.html", state=state, majority_history=[],
+            page_sourcing="sovereign", roll_call=None, flag_counter=_FC,
+            timeline_by_hash={}, cite=None, cache_ttl_seconds=300)
+    for name in ("Charlie", "Bruce"):
+        assert name not in amd, f"{name} leaked into /amendments"
+    # The static-content contact-style pages that only needed a name swap.
+    for tpl in ("institutional.html", "institutional_contact.html",
+                "security.html"):
+        with app.app.test_request_context("/"):
+            h = render_template(tpl)
+        assert "Charlie" not in h and "Bruce" not in h, f"name leaked in {tpl}"

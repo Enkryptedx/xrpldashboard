@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('Contact') }} · xrpldashboard</title>
   {% set meta_title = "Contact · xrpldashboard" %}
-  {% set meta_description = "Reach xrpldashboard — bug reports, data corrections, attestations, feedback. Charlie reads every message." %}
+  {% set meta_description = "Reach xrpldashboard — bug reports, data corrections, attestations, feedback. Every message is read." %}
   {% include "_head_meta.html" %}
 
   {% if turnstile_enabled %}
@@ -110,14 +110,14 @@
 
   {% if submitted %}
     <h1>{{ _('Message received') }}</h1>
-    <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to Charlie') }}</div>
-    <p>{{ _('Charlie reads every message personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} {{ 'contact@xrpldashboard.com' | entity_encode }} {{ _('directly.') }}</p>
+    <div class="ok-pill"><span class="dot"></span>{{ _('Saved to xrpldashboard and forwarded to the operator') }}</div>
+    <p>{{ _('Every message is read personally. Reply time is usually within a day. If you don\'t hear back within two business days, email') }} {{ 'contact@xrpldashboard.com' | entity_encode }} {{ _('directly.') }}</p>
     <p><a href="/">← {{ _('back to dashboard') }}</a></p>
   {% else %}
     <div class="purpose-pill">{{ purpose_label }}</div>
     <h1>{{ _('Get in touch') }}</h1>
     <p class="lede">
-      {{ _('Bug reports, data corrections, attestations, feedback — pick a purpose or edit the dropdown. Charlie reads every message personally.') }}
+      {{ _('Bug reports, data corrections, attestations, feedback — pick a purpose or edit the dropdown. Every message is read personally.') }}
     </p>
 
     <div class="card">
@@ -168,14 +168,14 @@
         <div class="submit-row">
           <button type="submit" class="submit"{% if not turnstile_enabled %} disabled{% endif %}>{{ _('Send message') }}</button>
           <span class="fallback">
-            {{ _('Charlie personally reads every message.') }}
+            {{ _('Every message is read personally.') }}
           </span>
         </div>
       </form>
     </div>
 
     <p class="fallback">
-      {{ _('Your message is saved to xrpldashboard\'s database and Charlie is emailed a copy. No third-party form processor, no marketing pixel.') }}
+      {{ _('Your message is saved to xrpldashboard\'s database and the operator is emailed a copy. No third-party form processor, no marketing pixel.') }}
     </p>
   {% endif %}
 

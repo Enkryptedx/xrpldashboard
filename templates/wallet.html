@@ -218,7 +218,7 @@
                                   color: #ddd6fe; }
     .identity-badge-whale .whale-glyph { font-size: 0.95em; color: #a855f7;
                                          transform: translateY(-0.5px); }
-    /* blackhole / zero-key badge (Charlie ruling 2026-09-21): amber
+    /* blackhole / zero-key badge (owner ruling 2026-09-21): amber
        so a user notices it, but not red — the account isn't broken,
        it's just supply-frozen. */
     .identity-badge-blackhole { color: #fbbf24;
@@ -229,7 +229,7 @@
     .identity-badge-blackhole:hover { border-color: rgba(245,158,11,0.85);
                                       color: #fcd34d; }
     /* address-tier pill next to the identity name — same shape as
-       /whales row badges. Charlie ruling 2026-09-21 Mon PM. */
+       /whales row badges. owner ruling 2026-09-21. */
     .identity-tier-pill { display: inline-flex; align-items: center;
                           padding: 2px 8px; border-radius: 3px;
                           font-family: var(--sys); font-size: 10px;
@@ -258,7 +258,7 @@
                             margin-left: 0.4em;
                             letter-spacing: -0.01em; }
     /* Third-party domain claim — deliberately understated, no green tick.
-       Charlie ruling 2026-09-21: our ✓ means our own two-way proof; a
+       owner ruling 2026-09-21: our ✓ means our own two-way proof; a
        third-party's "verified" flag is NOT that. */
     .identity-claimed-domain { font-size: 10.5px;
                                color: var(--text-3);
@@ -733,7 +733,7 @@
     .cp-stat-top-detail.is-open { display: block; }
 
     /* spendable vs reserved (replaces the % locked gauge which read
-       0.00% for every high-balance wallet; Charlie ruling 2026-09-21) */
+       0.00% for every high-balance wallet; owner ruling 2026-09-21) */
     .gauge-card { display: flex; flex-direction: column;
                   min-height: 220px; }
     .spendable-block { padding: 0.4em 0 0.6em; }
@@ -1413,7 +1413,7 @@
 
         {% if not data.is_amm %}
           {# ---- Slim Wallet Pulse strip (paired with network graph) ----
-             Charlie ruling 2026-09-21 Mon PM: labels must reflect the
+             owner ruling 2026-09-21: labels must reflect the
              real span, not the requested lookback. For busy accounts
              we hit the fetch cap (MAX_TX_PAGES × TX_PAGE_LIMIT tx
              envelopes) within a fraction of the 30-day window, so
@@ -2155,7 +2155,7 @@
        // wallet-level banner instead. Need >=2 nodes for the swap to be
        // meaningful (1-of-1 isn't a "wallet woke up" pattern).
        //
-       // Charlie ruling 2026-09-21 Mon PM: the banner MUST NOT fire when
+       // owner ruling 2026-09-21: the banner MUST NOT fire when
        // our tx-fetch window is shorter than 7 days — every counterparty
        // will look "first-seen within 7d" on a 0.5-day view. Read the
        // real span from data-real-span-days and require >= 7d before

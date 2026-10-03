@@ -6332,6 +6332,95 @@ def learn():
     )
 
 
+def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
+                             flag_counter, enabled, restarted_iso=None,
+                             now=None):
+    """PART 3 (2026-10-02): compute the 6-step 'what happens when an amendment
+    activates' timeline statuses from LIVE data. Facts only; every status is
+    DONE / NOW / WAITING, derived, never hand-set.
+
+    Inputs (all optional / best-effort):
+      majority_reached_iso : ISO when the 14-day majority clock started
+                             (or restarted). Drives step 1.
+      activation_eta_iso   : ISO 14 days after majority_reached (step 1 ETA).
+      flag_counter         : dict from roll_call_card.flag_ledger_counter
+                             (step 2 ledgers remaining; steps 3/4 ledger nums).
+      enabled              : True once the amendment is in the live enabled set
+                             (steps 4-6 DONE).
+      restarted_iso        : ISO of the most recent countdown restart, if the
+                             14-day clock restarted (uses existing restart
+                             handling; we do NOT invent a new rule).
+
+    Returns a dict the template renders; None if we lack the minimum inputs.
+    """
+    now = now or datetime.now(timezone.utc)
+
+    def _parse(iso):
+        if not iso:
+            return None
+        try:
+            return datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    reached = _parse(majority_reached_iso)
+    # Step 1: 14-day majority clock. days/hours elapsed of 14.
+    days_elapsed = hours_elapsed = None
+    step1_status = "waiting"
+    fourteen_days = timedelta(days=14)
+    if reached is not None:
+        elapsed = now - reached
+        if elapsed.total_seconds() < 0:
+            elapsed = timedelta(0)
+        days_elapsed = elapsed.days
+        hours_elapsed = int(elapsed.total_seconds() // 3600) - days_elapsed * 24
+        step1_status = "done" if elapsed >= fourteen_days else "now"
+    if enabled:
+        step1_status = "done"
+
+    # Step 2: waiting for the next flag ledger (every 256 ledgers).
+    ledgers_remaining = None
+    next_flag_ledger = None
+    if flag_counter:
+        ledgers_remaining = flag_counter.get("ledgers_remaining")
+        next_flag_ledger = flag_counter.get("next_flag_ledger")
+    clock_done = (step1_status == "done")
+    if enabled:
+        step2_status = "done"
+    elif clock_done:
+        step2_status = "now"
+    else:
+        step2_status = "waiting"
+
+    # Steps 3 (flag+1) and 4 (flag+2): ledger numbers off the next flag ledger.
+    flag_plus_1 = (next_flag_ledger + 1) if next_flag_ledger else None
+    flag_plus_2 = (next_flag_ledger + 2) if next_flag_ledger else None
+    step3_status = "done" if enabled else "waiting"
+    step4_status = "done" if enabled else "waiting"
+    # Step 5 (permanent) and 6 (unupgraded servers become amendment-blocked):
+    # both are consequences that hold once the amendment is enabled.
+    step5_status = "done" if enabled else "waiting"
+    step6_status = "done" if enabled else "waiting"
+
+    return {
+        "enabled": bool(enabled),
+        "restarted": bool(restarted_iso),
+        "restarted_iso": restarted_iso,
+        "majority_reached_iso": majority_reached_iso,
+        "activation_eta_iso": activation_eta_iso,
+        "days_elapsed": days_elapsed,
+        "hours_elapsed": hours_elapsed,
+        "ledgers_remaining": ledgers_remaining,
+        "next_flag_ledger": next_flag_ledger,
+        "flag_plus_1": flag_plus_1,
+        "flag_plus_2": flag_plus_2,
+        "steps": {
+            1: step1_status, 2: step2_status, 3: step3_status,
+            4: step4_status, 5: step5_status, 6: step6_status,
+        },
+    }
+
+
 @app.route("/amendments")
 def amendments():
     """Live in-flight amendment tracker. Reads the public `feature` RPC
@@ -6414,6 +6503,49 @@ def amendments():
     # with an amendments_block, its leaf-hash prefix, and whether today's
     # leaf has landed yet. Best-effort — None hides the line.
     cite = _amendments_cite_this_day()
+    # PART 3 (2026-10-02): per-amendment activation-timeline context, keyed by
+    # hash. Statuses are computed from LIVE data by _activation_timeline_ctx:
+    # the majority-reached time + 14-day clock (step 1), the live flag counter
+    # (step 2), next_flag_ledger+1/+2 (steps 3/4), and the live enabled set
+    # (steps 4-6 done). A restart uses the existing majority_history restart
+    # handling (restarted_iso); we do not invent a new rule.
+    enabled_hashes_upper = {
+        (e.get("hash") or "").upper()
+        for e in (state.get("recognized_enabled") or [])
+    }
+    # newest restart per hash from majority_history (removed then regained):
+    restart_iso_by_hash = {}
+    for _mh in (majority_history or []):
+        _h = (_mh.get("hash") or "").upper()
+        if _h and _h not in restart_iso_by_hash and _mh.get("removed_iso"):
+            # a removed epoch means the clock restarted at the next regain;
+            # majority_close_iso of the active epoch is the restart anchor.
+            restart_iso_by_hash[_h] = _mh.get("majority_close_iso")
+    timeline_by_hash = {}
+    try:
+        for _m in (state.get("majorities") or []):
+            _h = (_m.get("hash") or "").upper()
+            if not _h:
+                continue
+            timeline_by_hash[_h] = _activation_timeline_ctx(
+                majority_reached_iso=_m.get("majority_reached_iso"),
+                activation_eta_iso=_m.get("activation_eta_iso"),
+                flag_counter=flag_counter,
+                enabled=(_h in enabled_hashes_upper),
+                restarted_iso=restart_iso_by_hash.get(_h),
+            )
+        # Finished-state example for the "Recently enabled" block: one timeline
+        # with all six steps DONE, shown when any recognized-enabled amendment
+        # exists. Uses the live flag counter for the ledger-number labels.
+        if enabled_hashes_upper:
+            timeline_by_hash["__enabled_example__"] = _activation_timeline_ctx(
+                majority_reached_iso=None,
+                activation_eta_iso=None,
+                flag_counter=flag_counter,
+                enabled=True,
+            )
+    except Exception:  # noqa: BLE001 — render-killer rule
+        timeline_by_hash = {}
     resp = make_response(render_template(
         "amendments.html",
         state=state,
@@ -6421,6 +6553,7 @@ def amendments():
         page_sourcing=page_sourcing,
         roll_call=roll_call,
         flag_counter=flag_counter,
+        timeline_by_hash=timeline_by_hash,
         cite=cite,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
