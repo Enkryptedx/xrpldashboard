@@ -1,0 +1,162 @@
+[
+  {
+    "chain_root": "34be89f4c274f1438709c416367517df455f53da7d16f00511951db740f5186d",
+    "close_time_utc": "2026-09-25 20:13:11 UTC (16:13 ET)",
+    "date": "2026-09-25",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/3CA7C4E34274C5C742FF0DA924B6DC3EC6C6FC0BC7983494A53C72BFF5130619",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/3CA7C4E34274C5C742FF0DA924B6DC3EC6C6FC0BC7983494A53C72BFF5130619",
+      "xrpscan": "https://xrpscan.com/tx/3CA7C4E34274C5C742FF0DA924B6DC3EC6C6FC0BC7983494A53C72BFF5130619"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 107233208,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-09-25|34be89f4c274f1438709c416367517df455f53da7d16f00511951db740f5186d",
+    "number": 8,
+    "result": "tesSUCCESS",
+    "sequence": 106138938,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "3CA7C4E34274C5C742FF0DA924B6DC3EC6C6FC0BC7983494A53C72BFF5130619",
+    "type": "A"
+  },
+  {
+    "chain_root": "b202095ae84d2456e29444f92736b38fb93eee18b8380f449c796b3e3d2e93ab",
+    "close_time_utc": "2026-09-19 20:13:51 UTC",
+    "date": "2026-09-19",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C",
+      "xrpscan": "https://xrpscan.com/tx/A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 107098884,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-09-19|b202095ae84d2456e29444f92736b38fb93eee18b8380f449c796b3e3d2e93ab",
+    "number": 7,
+    "result": "tesSUCCESS",
+    "sequence": 106138937,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "A59DE2FAFD517EEFC4C2B85381773A108C2E75FA50290460326F172A76702A5C",
+    "type": "A"
+  },
+  {
+    "chain_root": "cd0545a4685cdf8a7cab2f3507aef7bc043ba7f28e79ff85f6b4044a88c47c75",
+    "close_time_utc": "2026-09-11 22:54:10 UTC",
+    "date": "2026-09-11",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/54C2D7569598277DF39F9EB8B2137AE8546971A57C3894E9628753E9E89BB6C7",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/54C2D7569598277DF39F9EB8B2137AE8546971A57C3894E9628753E9E89BB6C7",
+      "xrpscan": "https://xrpscan.com/tx/54C2D7569598277DF39F9EB8B2137AE8546971A57C3894E9628753E9E89BB6C7"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106922141,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-09-11|cd0545a4685cdf8a7cab2f3507aef7bc043ba7f28e79ff85f6b4044a88c47c75",
+    "number": 6,
+    "result": "tesSUCCESS",
+    "sequence": 106138936,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "54C2D7569598277DF39F9EB8B2137AE8546971A57C3894E9628753E9E89BB6C7",
+    "type": "A"
+  },
+  {
+    "chain_root": "8e259732deab4050bab0c2af4a6e184949627670c3109fccbe049007d162abbb",
+    "close_time_utc": "2026-09-04 21:17:30 UTC",
+    "date": "2026-09-04",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/BB72E91012DA3B05C060FAD64DD405DC09A8BAB3EC1A079AFD82367D65A3B44B",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/BB72E91012DA3B05C060FAD64DD405DC09A8BAB3EC1A079AFD82367D65A3B44B",
+      "xrpscan": "https://xrpscan.com/tx/BB72E91012DA3B05C060FAD64DD405DC09A8BAB3EC1A079AFD82367D65A3B44B"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106764148,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-09-04|8e259732deab4050bab0c2af4a6e184949627670c3109fccbe049007d162abbb",
+    "number": 5,
+    "result": "tesSUCCESS",
+    "sequence": 106138935,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "BB72E91012DA3B05C060FAD64DD405DC09A8BAB3EC1A079AFD82367D65A3B44B",
+    "type": "A"
+  },
+  {
+    "chain_root": "8548493f82cfb208515c00601570e82f9f796b3239680c1448ac49484fe194dc",
+    "close_time_utc": "2026-08-28 20:18:10 UTC",
+    "date": "2026-08-28",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/CC5F770EB2C6CAF798EB83ACCE67909A00EE8ED2CB66B0BA665CA96C860794FA",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/CC5F770EB2C6CAF798EB83ACCE67909A00EE8ED2CB66B0BA665CA96C860794FA",
+      "xrpscan": "https://xrpscan.com/tx/CC5F770EB2C6CAF798EB83ACCE67909A00EE8ED2CB66B0BA665CA96C860794FA"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106607271,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-08-28|8548493f82cfb208515c00601570e82f9f796b3239680c1448ac49484fe194dc",
+    "number": 4,
+    "result": "tesSUCCESS",
+    "sequence": 106138934,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "CC5F770EB2C6CAF798EB83ACCE67909A00EE8ED2CB66B0BA665CA96C860794FA",
+    "type": "A"
+  },
+  {
+    "chain_root": "14a8e28420c37dadd952a57d3487034bd29b6522af1765253019ba5c17e0016f",
+    "close_time_utc": "2026-08-21 19:50:01 UTC",
+    "date": "2026-08-21",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45",
+      "xrpscan": "https://xrpscan.com/tx/35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45"
+    },
+    "fee_drops": 12,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106451826,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-08-21|14a8e28420c37dadd952a57d3487034bd29b6522af1765253019ba5c17e0016f",
+    "number": 3,
+    "result": "tesSUCCESS",
+    "sequence": 106138933,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "35E101A926867A96965BFA7705EA1045792BAC44F2EEEACA928D21892BAF5C45",
+    "type": "A"
+  },
+  {
+    "chain_root": "c92c377855cbaebbbaa0d034546f3c36975c86a2c03b84a9b881afc1271e7237",
+    "close_time_utc": "2026-08-14 15:14:20 UTC",
+    "date": "2026-08-14",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/73951F479EDE071067FEA423FD2E67D8268470C8A3530B91AEA9826B469DC003",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/73951F479EDE071067FEA423FD2E67D8268470C8A3530B91AEA9826B469DC003",
+      "xrpscan": "https://xrpscan.com/tx/73951F479EDE071067FEA423FD2E67D8268470C8A3530B91AEA9826B469DC003"
+    },
+    "fee_drops": null,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106290824,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-08-14|c92c377855cbaebbbaa0d034546f3c36975c86a2c03b84a9b881afc1271e7237",
+    "number": 2,
+    "result": "tesSUCCESS",
+    "sequence": null,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "73951F479EDE071067FEA423FD2E67D8268470C8A3530B91AEA9826B469DC003",
+    "type": "A"
+  },
+  {
+    "chain_root": "c73d65ae5927243b86ee9ddbfd02b967451dc75a6b4678a5a05dadc9dbfdf86a",
+    "close_time_utc": "2026-08-07 21:49:32 UTC",
+    "date": "2026-08-07",
+    "explorer_urls": {
+      "bithomp": "https://bithomp.com/explorer/01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8",
+      "xrpl_org": "https://livenet.xrpl.org/transactions/01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8",
+      "xrpscan": "https://xrpscan.com/tx/01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8"
+    },
+    "fee_drops": null,
+    "from": "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ",
+    "ledger_index": 106140698,
+    "memo_data_decoded": "xrpldashboard/anchor/v1|2026-08-07|c73d65ae5927243b86ee9ddbfd02b967451dc75a6b4678a5a05dadc9dbfdf86a",
+    "number": 1,
+    "result": null,
+    "sequence": null,
+    "to": "rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd",
+    "tx_hash": "01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8",
+    "type": "A"
+  }
+]
