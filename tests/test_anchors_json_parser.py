@@ -94,25 +94,26 @@ def test_b_missing_divider_still_yields_every_anchor(monkeypatch, tmp_path):
         f"missing-divider file dropped an anchor: got {nums}, expected [1,2,3]")
 
 
-def test_c_anchors_1_to_8_match_live_byte_for_byte():
-    """(c) The JSON entries for anchors #1..#8 must be identical to what the
-    live site currently serves (the fix must not change existing output). If
-    the live site is unreachable, skip rather than fail CI."""
-    import urllib.request
-    url = "https://xrpldashboard.com/.well-known/anchors.json"
-    try:
-        with urllib.request.urlopen(url, timeout=20) as resp:
-            live = json.loads(resp.read())
-    except Exception as e:  # noqa: BLE001 — network-dependent; don't fail CI
-        pytest.skip(f"live site unreachable: {e}")
-    live_anchors = {a["number"]: a for a in (live.get("anchors") or live)}
+def test_c_anchors_1_to_8_match_expected_fixture():
+    """(c) The JSON entries for anchors #1..#8 must be identical to a committed
+    golden fixture (tests/fixtures/anchors_1_8_expected.json) captured from the
+    live site at the pre-#9 state. This proves the parser rewrite did NOT change
+    existing output, with NO network dependence — it never skips and can never
+    fail CI because the live site is unreachable or mid-deploy. If anchors
+    #1..#8 ever legitimately change, regenerate the fixture in the same commit."""
+    fixture_path = os.path.join(HERE, "tests", "fixtures",
+                                "anchors_1_8_expected.json")
+    with open(fixture_path, encoding="utf-8") as f:
+        expected = json.load(f)
+    expected_by_num = {a["number"]: a for a in expected}
+    assert set(expected_by_num) == set(range(1, 9)), (
+        f"fixture must hold exactly anchors 1..8, got {sorted(expected_by_num)}")
     local_anchors = {a["number"]: a for a in _get_anchors()}
-    # Compare only the per-anchor entries for 1..8 (the ones live has today),
-    # field-by-field, excluding nothing — the fix must preserve them exactly.
+    # Field-by-field, excluding nothing — the fix must preserve each entry
+    # byte-for-byte against the captured pre-#9 live output.
     for n in range(1, 9):
-        assert n in live_anchors, f"live missing anchor #{n}"
-        assert n in local_anchors, f"local missing anchor #{n}"
-        assert local_anchors[n] == live_anchors[n], (
-            f"anchor #{n} entry differs from live:\n"
-            f"  live={json.dumps(live_anchors[n], sort_keys=True)}\n"
+        assert n in local_anchors, f"local build missing anchor #{n}"
+        assert local_anchors[n] == expected_by_num[n], (
+            f"anchor #{n} entry differs from the golden fixture:\n"
+            f"  expected={json.dumps(expected_by_num[n], sort_keys=True)}\n"
             f"  local={json.dumps(local_anchors[n], sort_keys=True)}")
