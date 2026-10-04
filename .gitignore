@@ -184,3 +184,7 @@ static/coin_emblems/
 GeoLite2-City.mmdb
 GeoLite2-City.mmdb.part
 GeoLite2-City.mmdb.lock
+
+# Local report / screenshot output — never part of the signed state (pre-anchor hygiene 2026-10-03)
+analytics_reports/
+nav_screenshots_archive/
