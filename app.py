@@ -6599,14 +6599,35 @@ def amendments():
         (e.get("hash") or "").upper()
         for e in (state.get("recognized_enabled") or [])
     }
-    # newest restart per hash from majority_history (removed then regained):
+    # Restart anchor per hash from majority_history (Charlie fix 2026-10-04).
+    # A hash "restarted" only if it has BOTH an earlier removed epoch AND a
+    # current active epoch (removed_iso is None). The restart date is the
+    # ACTIVE epoch's majority_close_iso (the ledger CloseTime the 14-day clock
+    # now runs from) — NEVER the removed row's own close time. Rules:
+    #   - only one epoch (no removed row) -> no restart line (unchanged).
+    #   - >=1 removed epoch + an active epoch -> use the ACTIVE epoch's close.
+    #   - >=1 removed epoch but NO active epoch (support currently lost) ->
+    #     show no restart date (don't point at a stale old epoch).
+    # Earlier bug: took the first row carrying removed_iso, i.e. the REMOVED
+    # epoch's close (e.g. PermissionDelegationV1_1 Sep 21), contradicting the
+    # live Sep 24 majority the countdown/activation correctly run from.
     restart_iso_by_hash = {}
+    _active_close_by_hash = {}
+    _has_removed_epoch = set()
     for _mh in (majority_history or []):
         _h = (_mh.get("hash") or "").upper()
-        if _h and _h not in restart_iso_by_hash and _mh.get("removed_iso"):
-            # a removed epoch means the clock restarted at the next regain;
-            # majority_close_iso of the active epoch is the restart anchor.
-            restart_iso_by_hash[_h] = _mh.get("majority_close_iso")
+        if not _h:
+            continue
+        if _mh.get("removed_iso"):
+            _has_removed_epoch.add(_h)
+        elif _h not in _active_close_by_hash:
+            # active epoch (removed_iso is None); rows are newest-first, so the
+            # first active row is the current one.
+            _active_close_by_hash[_h] = _mh.get("majority_close_iso")
+    for _h in _has_removed_epoch:
+        _active_close = _active_close_by_hash.get(_h)
+        if _active_close:  # only mark restarted when a current active epoch exists
+            restart_iso_by_hash[_h] = _active_close
     timeline_by_hash = {}
     try:
         for _m in (state.get("majorities") or []):

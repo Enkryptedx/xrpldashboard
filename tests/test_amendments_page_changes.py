@@ -989,3 +989,191 @@ def test_change2_how_it_works_has_no_time_strings():
     with app.app.test_request_context("/amendments/how-it-works"):
         html = render_template("amendments_how_it_works.html")
     assert not _re7.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', html)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# RESTART DATE FIX (Charlie 2026-10-04): the "Countdown restarted · <date>"
+# line must anchor to the CURRENT ACTIVE epoch's majority_close_iso, never a
+# removed/superseded earlier epoch's close. Earlier bug took the first row
+# carrying removed_iso (the REMOVED epoch, e.g. PermissionDelegationV1_1
+# Sep 21) which contradicted the live Sep 24 majority the countdown/activation
+# correctly run from. These tests exercise the real render path end-to-end.
+# ═══════════════════════════════════════════════════════════════════════
+
+import re as _re_restart
+
+
+def _render_real_route(monkeypatch, majorities, majority_history,
+                       enabled_hashes=None):
+    """Drive the REAL /amendments route so app.py's own restart_iso_by_hash
+    builder runs (this is what makes the fail-on-main proof genuine). We
+    monkeypatch only the two data sources the route reads: the amendments
+    state (Majorities) and the majority-history loader. Everything else —
+    restart_iso_by_hash, timeline_by_hash, the template render — is the real
+    production code path."""
+    import app
+    state = {
+        "ok": True, "enabled_count": 94, "in_flight_count": 10,
+        "ledger_index": 107393280,
+        "recognized_enabled": [{"hash": h} for h in (enabled_hashes or [])],
+        "unrecognized_enabled": [], "unrecognized_enabled_count": 0,
+        "in_flight": [], "superseded": [], "majorities": majorities,
+        "network_votes_source": {}, "in_development": [],
+        "sourcing": "sovereign", "cached_age_seconds": 0.0,
+    }
+    monkeypatch.setattr(app, "fetch_amendments_state_cached",
+                        lambda *a, **k: dict(state))
+    monkeypatch.setattr(app, "_load_amendment_majority_history",
+                        lambda *a, **k: list(majority_history))
+    app.app.config["TESTING"] = True
+    with app.app.test_client() as c:
+        r = c.get("/amendments")
+    assert r.status_code == 200, f"/amendments returned {r.status_code}"
+    return r.data.decode("utf-8")
+
+
+def _restart_line_iso(html):
+    """Return the datetime= value on the 'Countdown restarted' <time>, or None
+    if no restart line is rendered."""
+    m = _re_restart.search(
+        r'Countdown restarted[^<]*<time datetime="([^"]+)"', html)
+    return m.group(1) if m else None
+
+
+def _restart_build(majority_history):
+    """Pure mirror of the FIXED builder — used only for the non-render
+    value-assert cases (c/d/e). (a) and (b) use the real route above so they
+    truly fail on main."""
+    restart, active, removed = {}, {}, set()
+    for mh in (majority_history or []):
+        h = (mh.get("hash") or "").upper()
+        if not h:
+            continue
+        if mh.get("removed_iso"):
+            removed.add(h)
+        elif h not in active:
+            active[h] = mh.get("majority_close_iso")
+    for h in removed:
+        if active.get(h):
+            restart[h] = active[h]
+    return restart
+
+
+# History fixtures (newest-first per hash, matching the route's ORDER BY DESC).
+def _mh_row(**kw):
+    """A majority_history row with the template-required fields defaulted, so a
+    crafted fixture renders the full history block without an UndefinedError."""
+    base = {
+        "active": kw.get("removed_iso") is None,
+        "activation_eta_iso": None, "first_seen_iso": None,
+        "vote_count_at_first": None, "unl_threshold": 28,
+        "first_seen_ledger": None, "first_seen_close_iso": None,
+        "removed_seen_ledger": None, "removed_close_iso": None,
+        "first_seen_is_flag": False, "correction_note": None,
+    }
+    base.update(kw)
+    base["active"] = base.get("removed_iso") is None
+    return base
+
+
+_PD_HISTORY = [
+    _mh_row(hash="0F48FF56", name="PermissionDelegationV1_1",
+            majority_close_iso="2026-09-24T21:25:01Z", removed_iso=None,
+            activation_eta_iso="2026-10-08T21:25:01Z"),
+    _mh_row(hash="0F48FF56", name="PermissionDelegationV1_1",
+            majority_close_iso="2026-09-21T11:18:40Z",
+            removed_iso="2026-09-23T12:47:20Z",
+            activation_eta_iso="2026-10-05T11:18:40Z"),
+]
+_BATCH_HISTORY = [
+    _mh_row(hash="9F287AED", name="BatchV1_1",
+            majority_close_iso="2026-09-25T14:46:02Z", removed_iso=None,
+            activation_eta_iso="2026-10-09T14:46:02Z"),
+    _mh_row(hash="9F287AED", name="BatchV1_1",
+            majority_close_iso="2026-09-15T14:06:41Z",
+            removed_iso="2026-09-25T14:46:02Z",
+            activation_eta_iso="2026-09-29T14:06:41Z"),
+]
+
+
+def test_restart_a_permissiondelegation_uses_active_epoch_sep24(monkeypatch):
+    """(a) PD: removed Sep21->Sep23, active from Sep24 21:25 -> the rendered
+    'Countdown restarted' line binds to Sep 24, NOT the removed epoch's Sep 21.
+    Drives the REAL route, so this FAILS on main (restart line reads Sep 21)
+    and PASSES on the branch (Sep 24)."""
+    html = _render_real_route(
+        monkeypatch,
+        majorities=[{"hash": "0F48FF56", "name": "PermissionDelegationV1_1",
+                     "recognized": True,
+                     "majority_reached_iso": "2026-09-24T21:25:01Z",
+                     "activation_eta_iso": "2026-10-08T21:25:01Z"}],
+        majority_history=_PD_HISTORY)
+    assert "Countdown restarted" in html
+    restart_iso = _restart_line_iso(html)
+    assert restart_iso == "2026-09-24T21:25:01Z", (
+        f"restart line anchored to {restart_iso!r}; expected the ACTIVE epoch "
+        f"Sep 24 (2026-09-24T21:25:01Z), not the removed epoch Sep 21")
+    assert restart_iso != "2026-09-21T11:18:40Z"
+
+
+def test_restart_b_batch_uses_active_epoch_sep25(monkeypatch):
+    """(b) BatchV1_1: removed Sep15 epoch, active from Sep25 14:46 -> the
+    rendered restart line binds to Sep 25, NOT the removed Sep 15. Drives the
+    REAL route; FAILS on main (Sep 15), PASSES on branch (Sep 25)."""
+    html = _render_real_route(
+        monkeypatch,
+        majorities=[{"hash": "9F287AED", "name": "BatchV1_1",
+                     "recognized": True,
+                     "majority_reached_iso": "2026-09-25T14:46:02Z",
+                     "activation_eta_iso": "2026-10-09T14:46:02Z"}],
+        majority_history=_BATCH_HISTORY)
+    assert "Countdown restarted" in html
+    restart_iso = _restart_line_iso(html)
+    assert restart_iso == "2026-09-25T14:46:02Z", (
+        f"restart line anchored to {restart_iso!r}; expected the ACTIVE epoch "
+        f"Sep 25 (2026-09-25T14:46:02Z), not the removed epoch Sep 15")
+    assert restart_iso != "2026-09-15T14:06:41Z"
+
+
+def test_restart_c_single_epoch_no_restart_line(monkeypatch):
+    """(c) A single-epoch hash (no removed row) gets NO restart entry, and the
+    real route renders no 'Countdown restarted' line."""
+    hist = [_mh_row(hash="14A2B45E", name="fixBatchV1_2",
+                    majority_close_iso="2026-09-25T14:12:51Z", removed_iso=None,
+                    activation_eta_iso="2026-10-09T14:12:51Z")]
+    assert "14A2B45E" not in _restart_build(hist)
+    html = _render_real_route(
+        monkeypatch,
+        majorities=[{"hash": "14A2B45E", "name": "fixBatchV1_2",
+                     "recognized": True,
+                     "majority_reached_iso": "2026-09-25T14:12:51Z",
+                     "activation_eta_iso": "2026-10-09T14:12:51Z"}],
+        majority_history=hist)
+    assert "Countdown restarted" not in html
+
+
+def test_restart_d_multiple_removed_epochs_use_active():
+    """(d) Two removed epochs + one active -> still the ACTIVE epoch's close."""
+    hist = [
+        {"hash": "ABCDEF01", "majority_close_iso": "2026-09-24T21:25:01Z",
+         "removed_iso": None},
+        {"hash": "ABCDEF01", "majority_close_iso": "2026-09-21T11:18:40Z",
+         "removed_iso": "2026-09-23T12:47:20Z"},
+        {"hash": "ABCDEF01", "majority_close_iso": "2026-09-10T08:00:00Z",
+         "removed_iso": "2026-09-12T09:00:00Z"},
+    ]
+    r = _restart_build(hist)
+    assert r["ABCDEF01"] == "2026-09-24T21:25:01Z"
+
+
+def test_restart_e_no_active_epoch_shows_no_restart_date():
+    """(e) Removed epoch(s) but NO active epoch (support currently lost) ->
+    no restart date (don't point at a stale old epoch)."""
+    hist = [
+        {"hash": "DEAD0001", "majority_close_iso": "2026-09-21T11:18:40Z",
+         "removed_iso": "2026-09-23T12:47:20Z"},
+        {"hash": "DEAD0001", "majority_close_iso": "2026-09-10T08:00:00Z",
+         "removed_iso": "2026-09-12T09:00:00Z"},
+    ]
+    r = _restart_build(hist)
+    assert "DEAD0001" not in r
