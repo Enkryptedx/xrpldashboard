@@ -8021,5 +8021,198 @@
     "category": "rwa",
     "name": "Big Tire",
     "issuer_name": "SC.PO"
+  },
+  "0663EACAC1E295FCE4BA9E9ECD5EC0E84C5089AEE6B00E65:rJgwiVNzEEgtXngyi4bhSVkVLhWWu7UqfS": {
+    "currency_hex": "0663EACAC1E295FCE4BA9E9ECD5EC0E84C5089AEE6B00E65",
+    "currency_display": "HTMMTG",
+    "issuer": "rJgwiVNzEEgtXngyi4bhSVkVLhWWu7UqfS",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "MortgageOS mortgage note (digital twin)",
+    "desc": "Digital twin of one 30-year fixed-rate residential mortgage note: the holder's right to the fixed P&I cash flow. Servicing and borrower data stay off-ledger.",
+    "issuer_name": "HighTechMortgage"
+  },
+  "062B591F88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B591F88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "FNPL forward contract: 1000kg ma\u00edz, FWD-2026-006",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)"
+  },
+  "0659A9A8C191FF213D318195FDA5F4C99102CFF469EBC10E:rJeWKscBVsDQJEEV6EGuNkM9mZG2D7YPr8": {
+    "currency_hex": "0659A9A8C191FF213D318195FDA5F4C99102CFF469EBC10E",
+    "currency_display": "EMPT01",
+    "issuer": "rJeWKscBVsDQJEEV6EGuNkM9mZG2D7YPr8",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "EMPT01",
+    "issuer_name": "Emissor MPT PROD"
+  },
+  "05FC5E70D3D74E31D901BBC29F79AAA07911B0274AFA9CE9:rLKfWwLeimLe69mrTr3MygNavDxL8tjuUX": {
+    "currency_hex": "05FC5E70D3D74E31D901BBC29F79AAA07911B0274AFA9CE9",
+    "currency_display": "AG2204",
+    "issuer": "rLKfWwLeimLe69mrTr3MygNavDxL8tjuUX",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Releaf - Nigeria - New biochar production unit",
+    "issuer_name": "Agrify"
+  },
+  "0664CB9FBC3725839EE8DA56F1030A6254AFC152CC9DEBA1:rJwUa5MnZRf5SjvrJVxNebJYiP4nR5LY2F": {
+    "currency_hex": "0664CB9FBC3725839EE8DA56F1030A6254AFC152CC9DEBA1",
+    "currency_display": "JLF",
+    "issuer": "rJwUa5MnZRf5SjvrJVxNebJYiP4nR5LY2F",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "JELLYFISH",
+    "desc": "JELLYFISH is a community meme token on the XRPL Ledger. 1B supply, forever."
+  },
+  "0660BFE402C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFE402C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "AI Computer",
+    "issuer_name": "SC.PO"
+  },
+  "0660BFE202C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFE202C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Truck Tire",
+    "issuer_name": "SC.PO"
+  },
+  "0660BFD702C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFD702C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Fund Button Update",
+    "issuer_name": "SC.PO"
+  },
+  "060B0AE49FE7F2B50E46A1E9127A580EB575FA6850C683F7:rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV": {
+    "currency_hex": "060B0AE49FE7F2B50E46A1E9127A580EB575FA6850C683F7",
+    "currency_display": "BOTC",
+    "issuer": "rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "BOTC",
+    "desc": "CiteFleet utility token for platform-funded customer operations. Total supply: 40 billion BOTC; 2 billion operating allocation and 38 billion escrow reserve. Customers receive 2,000 BOTC for normal operations; each customer button event returns 0.005 BOTC to the issuer for burning; refill to 2,000 BOTC when confirmed balance reaches 500 or less. Advanced services are paid separately in XRP. No ownership, revenue share, investment return, or monetary value.",
+    "issuer_name": "XRPTokenizer"
+  },
+  "5553444200000000000000000000000000000000:rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc": {
+    "currency_hex": "5553444200000000000000000000000000000000",
+    "currency_display": "5553444200000000000000000000000000000000",
+    "issuer": "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc",
+    "source": "toml",
+    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
+  },
+  "4242524C00000000000000000000000000000000:rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt": {
+    "currency_hex": "4242524C00000000000000000000000000000000",
+    "currency_display": "4242524C00000000000000000000000000000000",
+    "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt",
+    "source": "toml",
+    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
+  },
+  "033CD374C77160C0239D3945A465915B84793008:rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ": {
+    "currency_hex": "033CD374C77160C0239D3945A465915B84793008",
+    "currency_display": "LP: 4242524C00000000000000000000000000000000/RLUSD",
+    "issuer": "rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "4242524C00000000000000000000000000000000",
+        "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt"
+      },
+      {
+        "currency": "524C555344000000000000000000000000000000",
+        "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03A1FB2B723027367809BC36FDF90C3AC106641B:rLBv7oP7yPUXnpeoPmxmhZTicUt7EgPhux": {
+    "currency_hex": "03A1FB2B723027367809BC36FDF90C3AC106641B",
+    "currency_display": "LP: 4242524C00000000000000000000000000000000/BITx",
+    "issuer": "rLBv7oP7yPUXnpeoPmxmhZTicUt7EgPhux",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "4242524C00000000000000000000000000000000",
+        "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt"
+      },
+      {
+        "currency": "4249547800000000000000000000000000000000",
+        "issuer": "rBitcoiNXev8VoVxV7pwoQx1sSfonVP9i3"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "03DDD1582919FCCBA59A0BB176F678B05B7E59F2:rss7pdEY3ctyqDAADhQZiLE6pBRtcgdhtT": {
+    "currency_hex": "03DDD1582919FCCBA59A0BB176F678B05B7E59F2",
+    "currency_display": "LP: XRP/5553444200000000000000000000000000000000",
+    "issuer": "rss7pdEY3ctyqDAADhQZiLE6pBRtcgdhtT",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "5553444200000000000000000000000000000000",
+        "issuer": "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0337FC9CF8DD3AB35874B2B89FE40F4DC42B8774:rB4QBE9doWrSknXnk7mMq5C1yEVrxdEJNf": {
+    "currency_hex": "0337FC9CF8DD3AB35874B2B89FE40F4DC42B8774",
+    "currency_display": "LP: XRP/4242524C00000000000000000000000000000000",
+    "issuer": "rB4QBE9doWrSknXnk7mMq5C1yEVrxdEJNf",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "XRP",
+        "issuer": null
+      },
+      {
+        "currency": "4242524C00000000000000000000000000000000",
+        "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "0379E4A2AC61811BB968FC155AA0DCE8BFA901E9:rsLtzjh8pQb7vjhJ4unHwVUeS7FMnB85Wo": {
+    "currency_hex": "0379E4A2AC61811BB968FC155AA0DCE8BFA901E9",
+    "currency_display": "LP: PLX/5553444200000000000000000000000000000000",
+    "issuer": "rsLtzjh8pQb7vjhJ4unHwVUeS7FMnB85Wo",
+    "source": "lp_derived",
+    "verified_via": "lp_derived",
+    "category": "lp_token",
+    "asset_pair": [
+      {
+        "currency": "PLX",
+        "issuer": "rGLEgQdktoN4Be5thhk6seg1HifGPBxY5Q"
+      },
+      {
+        "currency": "5553444200000000000000000000000000000000",
+        "issuer": "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc"
+      }
+    ],
+    "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
   }
 }
