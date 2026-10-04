@@ -7768,12 +7768,25 @@ def well_known_anchors_json():
         history_path = os.path.join(HERE, "docs", "anchor_history.md")
         with open(history_path, "r", encoding="utf-8") as f:
             history_md = f.read()
-        # Parse each "## Anchor #N — YYYY-MM-DD" section
-        sections = re.split(r"\n---\n", history_md)
-        for section in sections:
-            m = re.search(r"## Anchor #(\d+) — (\d{4}-\d{2}-\d{2})", section)
-            if not m:
-                continue
+        # Parse by the anchor HEADERS themselves, not by the `---` dividers
+        # (Charlie fix 2026-10-04). Previously the file was split on
+        # `\n---\n` and each chunk yielded at most one anchor via the first
+        # `## Anchor #N` match — so a MISSING divider between two anchors
+        # merged them into one chunk and silently DROPPED the second (this is
+        # exactly how #9 vanished from the surface when its section landed
+        # without a leading `---`). Splitting on the headers instead means one
+        # section per header regardless of dividers: an anchor can never be
+        # hidden by a formatting slip. The per-section field extraction below
+        # is unchanged, so existing anchors' JSON entries stay byte-identical.
+        header_re = re.compile(r"^## Anchor #(\d+) — (\d{4}-\d{2}-\d{2})",
+                               re.MULTILINE)
+        headers = list(header_re.finditer(history_md))
+        sections = []
+        for idx, hm in enumerate(headers):
+            start = hm.start()
+            end = headers[idx + 1].start() if idx + 1 < len(headers) else len(history_md)
+            sections.append((hm, history_md[start:end]))
+        for m, section in sections:
             entry = {"number": int(m.group(1)), "date": m.group(2)}
             def _grab(field_re):
                 mm = re.search(field_re, section)
@@ -7803,6 +7816,19 @@ def well_known_anchors_json():
                     "xrpl_org": f"https://livenet.xrpl.org/transactions/{entry['tx_hash']}",
                 }
             payload_anchors.append(entry)
+        # Belt-and-suspenders (Charlie fix 2026-10-04): every `## Anchor #N`
+        # header in the file must have produced exactly one parsed entry. If
+        # the counts ever diverge (a header the loop somehow skipped), fail
+        # LOUDLY rather than serve a surface that silently omits an anchor —
+        # the daily public-route canary GETs this route and will flag the 500.
+        header_count = len(headers)
+        if len(payload_anchors) != header_count:
+            parsed_nums = sorted(a["number"] for a in payload_anchors)
+            raise ValueError(
+                f"anchor parse mismatch: {header_count} '## Anchor #N' headers "
+                f"in anchor_history.md but {len(payload_anchors)} parsed "
+                f"(parsed numbers: {parsed_nums}). Refusing to serve a surface "
+                f"that would hide an anchor.")
     except Exception as e:
         abort(500, description=f"anchors.json build failed: {type(e).__name__}: {e}")
 
