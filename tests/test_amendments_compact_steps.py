@@ -471,6 +471,291 @@ def test_item5_adds_only_day_and_hour_strings():
 
 
 # --------------------------------------------------------------------------
+# PIECE A (Charlie 2026-10-04): one short timing line inside steps 2-6.
+#
+# Meaning: that step finishes within about 17 minutes after the 14 days end.
+# Derived in app._activation_timeline_ctx as activation_eta_iso + 17 min and
+# exposed as steps_complete_eta_iso. Wording approved by Charlie: "by about".
+# Step 1 and every existing word are untouched.
+# --------------------------------------------------------------------------
+
+_ETA_ISO = "2026-10-08T21:25:01Z"
+_ETA_PLUS_17 = "2026-10-08T21:42:01Z"
+
+
+def test_steps_complete_eta_is_activation_plus_17_minutes():
+    """The shared anchor is exactly the 14-day end + 17 minutes."""
+    import app
+
+    tl = app._activation_timeline_ctx(
+        majority_reached_iso="2026-09-24T21:25:01Z",
+        activation_eta_iso=_ETA_ISO,
+        flag_counter=_FLAG_COUNTER,
+        enabled=False,
+        now=_NOW,
+    )
+    assert tl["activation_eta_iso"] == _ETA_ISO
+    assert tl["steps_complete_eta_iso"] == _ETA_PLUS_17, (
+        "steps_complete_eta_iso must be activation_eta_iso + 17 minutes; "
+        f"got {tl['steps_complete_eta_iso']!r}"
+    )
+
+
+def test_steps_complete_eta_is_none_without_activation_eta():
+    """No activation ETA (e.g. the finished example) -> line self-hides."""
+    import app
+
+    tl = app._activation_timeline_ctx(
+        majority_reached_iso=None, activation_eta_iso=None,
+        flag_counter=_FLAG_COUNTER, enabled=True, now=_NOW,
+    )
+    assert tl["steps_complete_eta_iso"] is None
+
+
+def _eta_lines(page):
+    """The data-step-eta timing lines per countdown card, keyed by step."""
+    out = []
+    for card in _countdown_cards(page):
+        found = {}
+        for n, body in re.findall(
+            r'<div class="timeline-data dim" data-step-eta="(\d)">(.*?)</div>',
+            card, re.S,
+        ):
+            found[int(n)] = _visible_text(body)
+        out.append(found)
+    return out
+
+
+def test_timing_line_appears_on_steps_2_to_6_only():
+    """Steps 2-6 carry the line; step 1 must not."""
+    page = _render_with_timeline({"steps_complete_eta_iso": _ETA_PLUS_17})
+    lines = _eta_lines(page)
+    assert len(lines) == len(_MAJORITIES)
+    for found in lines:
+        assert sorted(found) == [2, 3, 4, 5, 6], (
+            "the timing line must render on steps 2-6 and nowhere else; "
+            f"found it on steps {sorted(found)}"
+        )
+
+
+def test_timing_line_wording_and_eastern_first():
+    """Reads 'by about', Eastern first, UTC in parentheses."""
+    page = _render_with_timeline({"steps_complete_eta_iso": _ETA_PLUS_17})
+    for found in _eta_lines(page):
+        for n, txt in found.items():
+            assert txt.startswith("by about"), (
+                f"step {n}: timing line must start with 'by about'; got {txt!r}"
+            )
+            assert "ET" in txt and "UTC" in txt, (
+                f"step {n}: need both ET and UTC; got {txt!r}"
+            )
+            # Eastern first: the ET reading precedes the parenthesised UTC
+            assert txt.index(" ET") < txt.index("("), (
+                f"step {n}: Eastern must come first, UTC in parentheses; "
+                f"got {txt!r}"
+            )
+            assert "UTC)" in txt, (
+                f"step {n}: UTC must be inside the parentheses; got {txt!r}"
+            )
+
+
+def test_timing_line_hidden_when_no_eta():
+    """Without steps_complete_eta_iso nothing renders — no empty divs."""
+    page = _render_with_timeline({})
+    for found in _eta_lines(page):
+        assert found == {}, f"timing line rendered with no ETA: {found}"
+    assert "data-step-eta" not in page
+
+
+def test_timing_line_absent_from_finished_stepper():
+    """The Recently-enabled stepper has no activation ETA, so no line."""
+    block = _finished_block(_render_enabled_example())
+    assert "data-step-eta" not in block, (
+        "the finished stepper must not carry the timing line"
+    )
+
+
+def test_timing_line_leaves_step1_and_existing_wording_alone():
+    """Step 1's line is untouched and 'by about' is the only text added."""
+    page = _render_with_timeline({"steps_complete_eta_iso": _ETA_PLUS_17})
+
+    # step 1 still carries its own elapsed line, with no timing line added
+    for txt in _step1_text(page):
+        assert "of 14" in txt, f"step 1's elapsed line changed: {txt!r}"
+        assert "by about" not in txt, (
+            f"the timing line must not be added to step 1: {txt!r}"
+        )
+
+    # strip the timing lines back out: the card text must then match a render
+    # with no timing line at all, proving nothing else moved or changed
+    stripped = re.sub(
+        r'<div class="timeline-data dim" data-step-eta="\d">.*?</div>',
+        "", page, flags=re.S,
+    )
+    baseline = _render_with_timeline({})
+    for a, b in zip(_countdown_cards(stripped), _countdown_cards(baseline)):
+        for sa, sb in zip(_step_blocks(a), _step_blocks(b)):
+            assert _visible_text(sa) == _visible_text(sb), (
+                "removing the timing line must restore the previous text "
+                "exactly — something else changed"
+            )
+
+
+# --------------------------------------------------------------------------
+# Charlie's item 3 (2026-10-04): prove the card HEADLINE activation time
+# equals step 1's "activates" time, THROUGH THE REAL ROUTE.
+#
+# The headline reads m.activation_eta_iso (from state.majorities) while step 1
+# reads tl.activation_eta_iso (from the timeline context). They are only equal
+# because the route wires one from the other; nothing tested that until now,
+# so an independent recompute of the timeline ETA could silently drift them.
+#
+# Hermetic: the route's data sources are patched, so this exercises the real
+# view function and real template with no DB and no network.
+# --------------------------------------------------------------------------
+
+_ROUTE_MAJORITIES = [
+    {"name": "AlphaAmendment", "hash": "A" * 64, "recognized": True,
+     "majority_reached_iso": "2026-09-24T21:25:01Z",
+     "activation_eta_iso": "2026-10-08T21:25:01Z"},
+    {"name": "BetaAmendment", "hash": "B" * 64, "recognized": True,
+     "majority_reached_iso": "2026-09-25T14:12:51Z",
+     "activation_eta_iso": "2026-10-09T14:12:51Z"},
+    {"name": "GammaAmendment", "hash": "C" * 64, "recognized": True,
+     "majority_reached_iso": "2026-09-25T14:46:02Z",
+     "activation_eta_iso": "2026-10-09T14:46:02Z"},
+]
+
+
+def _route_page(monkeypatch):
+    """GET /amendments through the real route with patched data sources.
+
+    raising=True on every target on purpose: if one of these is renamed, the
+    patch must FAIL LOUDLY rather than silently let the route reach the live
+    node/DB, which would make this test non-hermetic and flaky in CI.
+
+    roll_call_card is patched on the MODULE, not on `app` — the route does a
+    function-local `import roll_call_card`, so `app.roll_call_card` does not
+    exist (verified 2026-10-04).
+    """
+    import app
+    import roll_call_card
+
+    state = dict(_state(), majorities=_ROUTE_MAJORITIES)
+    monkeypatch.setattr(app, "fetch_amendments_state_cached",
+                        lambda *a, **k: state)
+    monkeypatch.setattr(app, "_load_amendment_majority_history",
+                        lambda *a, **k: [])
+    monkeypatch.setattr(app, "fetch_pulse_cached", lambda *a, **k: None)
+    monkeypatch.setattr(app, "_amendments_cite_this_day", lambda *a, **k: None)
+    monkeypatch.setattr(roll_call_card, "load_for_page", lambda *a, **k: None)
+
+    app.app.config["TESTING"] = True
+    resp = app.app.test_client().get("/amendments")
+    assert resp.status_code == 200, (
+        f"/amendments returned {resp.status_code} through the real route"
+    )
+    return resp.data.decode()
+
+
+def test_headline_activation_equals_step1_activation_via_route(monkeypatch):
+    """Per card: headline ISO == step 1 'activates' ISO == the source field."""
+    page = _route_page(monkeypatch)
+
+    cards = _countdown_cards(page)
+    assert len(cards) == len(_ROUTE_MAJORITIES), (
+        f"expected {len(_ROUTE_MAJORITIES)} countdown cards, got {len(cards)}"
+    )
+
+    for m, card in zip(_ROUTE_MAJORITIES, cards):
+        name = m["name"]
+        head = re.search(
+            r'<div class="timer"[^>]*>\s*<time datetime="([^"]+)"', card
+        )
+        assert head, f"{name}: no headline activation <time> found"
+
+        steps = _step_blocks(card)
+        assert len(steps) == 6, f"{name}: expected 6 steps, got {len(steps)}"
+        act = re.search(r'activates\s*<time datetime="([^"]+)"', steps[0])
+        assert act, f"{name}: step 1 has no 'activates' <time>"
+
+        assert head.group(1) == act.group(1), (
+            f"{name}: headline and step 1 activation times DIFFER.\n"
+            f"  headline: {head.group(1)}\n"
+            f"  step 1  : {act.group(1)}"
+        )
+        # and both must be the field the route was given, not a recompute
+        assert head.group(1) == m["activation_eta_iso"], (
+            f"{name}: rendered activation {head.group(1)} does not match the "
+            f"source activation_eta_iso {m['activation_eta_iso']}"
+        )
+
+
+def test_headline_and_step1_display_text_match_via_route(monkeypatch):
+    """The human-readable strings match too, not just the ISO attributes."""
+    page = _route_page(monkeypatch)
+
+    for m, card in zip(_ROUTE_MAJORITIES, _countdown_cards(page)):
+        name = m["name"]
+        head = re.search(
+            r'<div class="timer"[^>]*>\s*<time datetime="[^"]+">(.*?)</time>',
+            card, re.S,
+        )
+        steps = _step_blocks(card)
+        act = re.search(
+            r'activates\s*<time datetime="[^"]+">(.*?)</time>', steps[0], re.S
+        )
+        assert head and act, f"{name}: missing headline or step 1 time text"
+
+        head_txt = _visible_text(head.group(1))
+        act_txt = _visible_text(act.group(1))
+        assert head_txt == act_txt, (
+            f"{name}: headline and step 1 display text DIFFER.\n"
+            f"  headline: {head_txt!r}\n  step 1  : {act_txt!r}"
+        )
+        # Eastern first, UTC in parentheses
+        assert " ET" in head_txt and "UTC)" in head_txt, (
+            f"{name}: expected Eastern-first with UTC in parens; {head_txt!r}"
+        )
+        assert head_txt.index(" ET") < head_txt.index("("), (
+            f"{name}: Eastern must come first; {head_txt!r}"
+        )
+
+
+def test_route_timing_line_derives_from_the_same_activation(monkeypatch):
+    """Through the route, each card's timing line is its own ETA + 17 min."""
+    from datetime import datetime, timedelta, timezone as _tz
+
+    page = _route_page(monkeypatch)
+
+    for m, card in zip(_ROUTE_MAJORITIES, _countdown_cards(page)):
+        name = m["name"]
+        # NOTE: the approved wording "by about " sits between the div's `>`
+        # and the <time> tag, so this must span text, not just whitespace.
+        # An earlier `\s*` here matched nothing and looked like a missing
+        # timing line when the route was in fact rendering it correctly.
+        etas = set(
+            re.findall(
+                r'data-step-eta="\d">[^<]*<time datetime="([^"]+)"', card
+            )
+        )
+        assert etas, f"{name}: no timing line rendered through the route"
+        assert len(etas) == 1, (
+            f"{name}: steps 2-6 must share ONE timing value; got {etas}"
+        )
+
+        src = datetime.fromisoformat(
+            m["activation_eta_iso"].replace("Z", "+00:00")
+        )
+        want = (src.astimezone(_tz.utc) + timedelta(minutes=17)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        assert etas.pop() == want, (
+            f"{name}: timing line must be activation + 17 min ({want})"
+        )
+
+
+# --------------------------------------------------------------------------
 # (c) only the NOW step is open by default
 # --------------------------------------------------------------------------
 

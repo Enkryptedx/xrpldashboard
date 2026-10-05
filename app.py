@@ -6499,8 +6499,29 @@ def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
     step5_status = "done" if enabled else "waiting"
     step6_status = "done" if enabled else "waiting"
 
+    # PIECE A (Charlie 2026-10-04): one timing anchor shared by steps 2-6.
+    # Once the 14-day clock ends (activation_eta_iso), the first flag ledger
+    # lands up to ~16.5 min later; the change is recorded one ledger after it
+    # (~4s), and the amendment turns on one ledger after that (~4s). Steps 5
+    # and 6 take effect at that same instant. So every one of steps 2-6 is
+    # finished within ~17 minutes of the clock ending. The spread between
+    # those steps is seconds, invisible at minute granularity, so they share
+    # ONE value rather than five near-identical ones.
+    #
+    # None when activation_eta_iso is absent (notably the finished/enabled
+    # example, which passes none), so the line self-hides there with no extra
+    # gate. The headline's own "projected activation" is deliberately left
+    # untouched; this is a derived display value only.
+    steps_complete_eta_iso = None
+    _activation_dt = _parse(activation_eta_iso)
+    if _activation_dt is not None:
+        steps_complete_eta_iso = (
+            _activation_dt.astimezone(timezone.utc) + timedelta(minutes=17)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     return {
         "enabled": bool(enabled),
+        "steps_complete_eta_iso": steps_complete_eta_iso,
         "restarted": bool(restarted_iso),
         "restarted_iso": restarted_iso,
         "majority_reached_iso": majority_reached_iso,

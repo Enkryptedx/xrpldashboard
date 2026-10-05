@@ -557,6 +557,17 @@
                 {% if tl.flag_plus_2 %}{{ _('flag ledger') }} <span class="mono">{{ "{:,}".format(tl.flag_plus_2) }}</span>{% endif %}
               {% endif %}
             </div>
+            {# PIECE A (Charlie 2026-10-04): one short timing line for steps 2-6.
+               Every one of them finishes within ~17 min of the 14-day clock
+               ending: the flag ledger lands up to ~16.5 min later, +1 ledger
+               (~4s) records the change, +1 more (~4s) turns it on, and steps
+               5/6 take effect at that same instant. Server-rendered
+               Eastern-first with UTC in parentheses, like every other time on
+               this page. Step 1 is untouched, and so is every existing word.
+               Self-hides when steps_complete_eta_iso is absent. #}
+            {% if n >= 2 and tl.steps_complete_eta_iso %}
+            <div class="timeline-data dim" data-step-eta="{{ n }}">{{ _('by about') }} <time datetime="{{ tl.steps_complete_eta_iso }}">{{ tl.steps_complete_eta_iso | datetime_to_et_first_html }}</time></div>
+            {% endif %}
             {% if step_quote[n] %}
             <blockquote class="timeline-quote">“{{ step_quote[n] }}” <cite>— <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite></blockquote>
             {% endif %}
