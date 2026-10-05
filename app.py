@@ -6481,6 +6481,17 @@ def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
     show_flag_numbers = bool(clock_done_pre and not enabled and next_flag_ledger)
     flag_plus_1 = (next_flag_ledger + 1) if show_flag_numbers else None
     flag_plus_2 = (next_flag_ledger + 2) if show_flag_numbers else None
+    # ITEM 2 (Charlie 2026-10-04): gate step 2's numbers EXACTLY like steps
+    # 3/4 above. flag_ledger_counter() returns the next flag ledger off the
+    # CURRENT validated ledger — minutes away — which is NOT the flag ledger
+    # that activates THIS amendment (that is the first flag ledger after its
+    # own 14 days end, days away). Outside the "clock done, not yet enabled"
+    # window those numbers are not true for this amendment, so we stop
+    # exposing them; the template's existing guards then render nothing.
+    # flag_ledger_counter() itself is NOT changed.
+    if not show_flag_numbers:
+        ledgers_remaining = None
+        next_flag_ledger = None
     step3_status = "done" if enabled else "waiting"
     step4_status = "done" if enabled else "waiting"
     # Step 5 (permanent) and 6 (unupgraded servers become amendment-blocked):

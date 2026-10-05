@@ -196,6 +196,80 @@
       .activation-timeline .timeline-step { gap: 8px; padding-left: 9px; }
       .activation-timeline .timeline-badge { min-width: 54px; font-size: 0.64rem; }
     }
+    /* COMPACT STEPPER (2026-10-04): the six steps become ONE WRAPPING ROW of
+       compact <details> stops instead of a tall stacked list. Each stop shows
+       its existing badge + existing step title as the <summary>; opening it
+       reveals that step's same full body underneath. No-JS safe (native
+       <details>). The row WRAPS, never scrolls sideways, so there is no
+       horizontal scroll at phone widths. No step wording is changed. */
+    .activation-timeline .timeline-steps-compact {
+      flex-direction: row; flex-wrap: wrap; gap: 6px; align-items: flex-start;
+    }
+    .activation-timeline .timeline-steps-compact .timeline-step {
+      flex: 1 1 auto; min-width: 0; max-width: 100%;
+      padding: 0; border-left: none; display: block;
+    }
+    /* An opened stop takes the full row so its text is comfortable to read. */
+    .activation-timeline .timeline-steps-compact .timeline-step:has(.timeline-stop[open]) {
+      flex-basis: 100%; width: 100%;
+    }
+    .activation-timeline .timeline-steps-compact .timeline-stop {
+      border: 1px solid var(--border); border-radius: 6px;
+      background: rgba(255,255,255,0.015);
+    }
+    .activation-timeline .timeline-summary {
+      cursor: pointer; list-style: none; display: flex; align-items: center;
+      gap: 7px; padding: 6px 9px; min-width: 0;
+    }
+    .activation-timeline .timeline-summary::-webkit-details-marker { display: none; }
+    /* Disclosure affordance: a pure-CSS chevron (no text, so no new wording).
+       Needed because display:flex on <summary> suppresses the native marker. */
+    .activation-timeline .timeline-summary::after {
+      content: ''; flex: 0 0 auto; margin-left: auto;
+      width: 6px; height: 6px;
+      border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted);
+      transform: rotate(45deg); transition: transform 0.15s ease;
+    }
+    .activation-timeline .timeline-stop[open] > .timeline-summary::after {
+      transform: rotate(-135deg);
+    }
+    .activation-timeline .timeline-steps-compact .timeline-title {
+      font-size: 0.82rem; line-height: 1.25; min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .activation-timeline .timeline-steps-compact .timeline-now .timeline-stop {
+      border-color: rgba(251,191,36,0.5);
+    }
+    .activation-timeline .timeline-steps-compact .timeline-done .timeline-stop {
+      border-color: rgba(34,197,94,0.4);
+    }
+    .activation-timeline .timeline-steps-compact .timeline-body {
+      padding: 0 11px 10px; margin-top: -2px;
+    }
+    /* ITEM 3 (2026-10-04): in the finished/enabled stepper, "It becomes
+       permanent" carries a green check + label. The check mark is PURE CSS —
+       a rotated corner built from two borders on ::before — so it needs no
+       icon font, no image and no extra markup. Same green as the DONE badge. */
+    .activation-timeline .timeline-official {
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+      color: #22c55e; border: 1px solid rgba(34,197,94,0.5);
+      background: rgba(34,197,94,0.08);
+    }
+    .activation-timeline .timeline-official::before {
+      content: ''; flex: 0 0 auto;
+      width: 4px; height: 8px; margin-top: -2px;
+      border-right: 2px solid #22c55e;
+      border-bottom: 2px solid #22c55e;
+      transform: rotate(45deg);
+    }
+    /* Phone: one stop per row, so nothing can be squeezed or clipped. */
+    @media (max-width: 560px) {
+      .activation-timeline .timeline-steps-compact .timeline-step { flex-basis: 100%; }
+      .activation-timeline .timeline-steps-compact .timeline-summary { padding: 7px 9px; }
+    }
     /* "What does this do?" — plain one-liner always visible; details on tap. */
     .plain { color: var(--muted); font-size: 0.92rem; margin: 2px 0 6px; overflow-wrap: anywhere; }
     details.whatdoes { margin: 4px 0 8px; }
@@ -436,21 +510,44 @@
            4: _('In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.'),
            5: _('Once it is on, it stays on. Only a new amendment can remove it.'),
            6: _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades.') } %}
-      <ol class="timeline-steps">
+      {# COMPACT STEPPER (2026-10-04): the SAME six steps, SAME statuses
+         (DONE/NOW/WAITING), SAME titles, quotes, notes and live data —
+         restructured from a tall stacked <li> list into one compact wrapping
+         row of six <details> stops. Each step's EXISTING title is its
+         <summary>; clicking or tapping a stop opens that step's full existing
+         text underneath. No-JS safe (native <details>). Only the step whose
+         status is NOW is open by default. No word of the existing step text is
+         changed, reordered or removed. #}
+      {# ITEM 3 (2026-10-04): which stop is open by default. Normally the NOW
+         step. In the finished/enabled render NO step is NOW (all six are
+         DONE), which left every stop collapsed — the bug this fixes. In that
+         state open step 5, "It becomes permanent". Countdown cards always have
+         a NOW step, so their behaviour is unchanged. #}
+      {% set _has_now = ((step_status.values() | select('equalto', 'now') | list) | length) > 0 %}
+      {% set _open_n = 5 if (tl.enabled and not _has_now) else 0 %}
+      <ol class="timeline-steps timeline-steps-compact">
         {% for n in [1, 2, 3, 4, 5, 6] %}
         {% set st = step_status[n] %}
         <li class="timeline-step timeline-{{ st }}" data-step="{{ n }}" data-status="{{ st }}">
-          <span class="timeline-badge" aria-label="{{ st }}">{{ st | upper }}</span>
-          <div class="timeline-body">
+          <details class="timeline-stop"{% if st == 'now' or n == _open_n %} open{% endif %}>
+          <summary class="timeline-summary">
+            <span class="timeline-badge" aria-label="{{ st }}">{{ st | upper }}</span>
             {# item-timeline-title-{{ n }} filled 2026-10-02 #}
-            <div class="timeline-title" data-step-title="{{ n }}">{{ step_title[n] }}</div>
+            <span class="timeline-title" data-step-title="{{ n }}">{{ step_title[n] }}</span>
+            {# Green check + OFFICIAL, finished/enabled state only. One new word. #}
+            {% if tl.enabled and n == 5 %}<span class="timeline-official" data-step-official>{{ _('OFFICIAL') }}</span>{% endif %}
+          </summary>
+          <div class="timeline-body">
             {# Live data line (data labels + numbers only). #}
             <div class="timeline-data dim">
               {% if n == 1 %}
                 {% if tl.restarted %}
                   {{ _('Countdown restarted') }}{% if tl.restarted_iso %} · <time datetime="{{ tl.restarted_iso }}">{{ tl.restarted_iso | datetime_to_et_first_html }}</time>{% endif %} ·
                 {% endif %}
-                {% if tl.days_elapsed is not none %}{{ tl.days_elapsed }} {{ _('days') }} {{ tl.hours_elapsed }} {{ _('hours') }} {{ _('of 14') }}{% endif %}
+                {# ITEM 5 (2026-10-04): singular at a count of 1, so the line
+                   reads "10 days 1 hour of 14", never "1 hours". Two new
+                   strings only: 'day' and 'hour'. #}
+                {% if tl.days_elapsed is not none %}{{ tl.days_elapsed }} {{ _('day') if tl.days_elapsed == 1 else _('days') }} {{ tl.hours_elapsed }} {{ _('hour') if tl.hours_elapsed == 1 else _('hours') }} {{ _('of 14') }}{% endif %}
                 {% if tl.activation_eta_iso %} · {{ _('activates') }} <time datetime="{{ tl.activation_eta_iso }}">{{ tl.activation_eta_iso | datetime_to_et_first_html }}</time>{% endif %}
               {% elif n == 2 %}
                 {% if tl.ledgers_remaining is not none %}{{ "{:,}".format(tl.ledgers_remaining) }} {{ _('ledgers remaining') }}{% endif %}{% if tl.next_flag_ledger %} · {{ _('next flag ledger') }} <span class="mono">{{ "{:,}".format(tl.next_flag_ledger) }}</span>{% endif %}
@@ -466,6 +563,7 @@
             {# item-timeline-note-{{ n }} filled 2026-10-02 #}
             <div class="timeline-note" data-step-note="{{ n }}">{{ step_note[n] }}</div>
           </div>
+          </details>
         </li>
         {% endfor %}
       </ol>
