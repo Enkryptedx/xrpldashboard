@@ -237,6 +237,22 @@ def _style_css(page):
     )
 
 
+# ITEM 5 (Charlie-approved 2026-10-04): the ONLY sanctioned wording change on
+# this branch is the singular at a count of 1 — "1 hours" -> "1 hour" and
+# "1 days" -> "1 day". The word-for-word guard below must keep catching every
+# OTHER difference, so it normalizes just these two back to plural before
+# comparing. Applied to BOTH sides: origin/main only ever emits the plural, so
+# it is a no-op there and merely reverses the approved fix on the working tree.
+# Anything else that differs by a single word still fails the guard.
+_ITEM5_SANCTIONED = ((r"\b1 hour(?!s)", "1 hours"), (r"\b1 day(?!s)", "1 days"))
+
+
+def _normalize_item5(text):
+    for pattern, plural in _ITEM5_SANCTIONED:
+        text = re.sub(pattern, plural, text)
+    return text
+
+
 # --------------------------------------------------------------------------
 # (a) all six steps still render, for each countdown amendment
 # --------------------------------------------------------------------------
@@ -321,8 +337,8 @@ def test_step_wording_identical_to_origin_main():
         )
 
         for idx, (sb, sa) in enumerate(zip(steps_before, steps_after), 1):
-            tb = _visible_text(sb)
-            ta = _visible_text(sa)
+            tb = _normalize_item5(_visible_text(sb))
+            ta = _normalize_item5(_visible_text(sa))
             assert ta == tb, (
                 f"{name}: step {idx} WORDING CHANGED.\n"
                 f"  origin/main: {tb!r}\n"
@@ -333,9 +349,125 @@ def test_step_wording_identical_to_origin_main():
     # must still be somewhere in the new render
     for cb, ca in zip(cards_before, cards_after):
         for sb in _step_blocks(cb):
-            assert _visible_text(sb) in _visible_text(ca), (
-                "a step's text is missing from the new card render"
-            )
+            assert _normalize_item5(_visible_text(sb)) in _normalize_item5(
+                _visible_text(ca)
+            ), "a step's text is missing from the new card render"
+
+
+def test_item5_is_the_only_wording_difference_from_origin_main():
+    """Without the Item 5 allowance, the ONLY diff is the singular fix.
+
+    Guards the normalization itself: if a future change sneaks in another
+    wording difference, the raw (un-normalized) comparison will differ in
+    some way the sanctioned singular substitutions cannot explain.
+    """
+    before = _render_origin_main()
+    if before is None:
+        pytest.skip("origin/main not available (run `git fetch origin`)")
+    after = _render()
+
+    raw_diffs = []
+    for name, cb, ca in zip(
+        _NAMES, _countdown_cards(before), _countdown_cards(after)
+    ):
+        for idx, (sb, sa) in enumerate(
+            zip(_step_blocks(cb), _step_blocks(ca)), 1
+        ):
+            tb = _visible_text(sb)
+            ta = _visible_text(sa)
+            if tb != ta:
+                raw_diffs.append((name, idx, tb, ta))
+
+    # every raw difference must be explained purely by the singular fix
+    for name, idx, tb, ta in raw_diffs:
+        assert _normalize_item5(ta) == _normalize_item5(tb), (
+            f"{name}: step {idx} differs from origin/main in a way the Item 5 "
+            f"singular fix does not explain.\n  origin/main: {tb!r}\n"
+            f"  working tree: {ta!r}"
+        )
+        assert "1 hours" in tb or "1 days" in tb, (
+            f"{name}: step {idx} changed but origin/main had no '1 hours'/"
+            f"'1 days' to fix: {tb!r}"
+        )
+
+
+# --------------------------------------------------------------------------
+# ITEM 5 (Charlie 2026-10-04): singular at a count of 1 on step 1's elapsed
+# line. "10 days 1 hours of 14" must read "10 days 1 hour of 14".
+# Two new strings only: "day" and "hour".
+# --------------------------------------------------------------------------
+
+def _step1_text(page):
+    """Visible text of step 1's live-data line, per countdown card."""
+    out = []
+    for card in _countdown_cards(page):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, "expected 6 steps per card"
+        data = re.search(
+            r'<div class="timeline-data dim">(.*?)</div>', steps[0], re.S
+        )
+        out.append(_visible_text(data.group(1)) if data else "")
+    return out
+
+
+@pytest.mark.parametrize(
+    "days,hours,expected",
+    [
+        (1, 1, "1 day 1 hour of 14"),
+        (10, 1, "10 days 1 hour of 14"),
+        (1, 5, "1 day 5 hours of 14"),
+        (2, 1, "2 days 1 hour of 14"),
+        (0, 0, "0 days 0 hours of 14"),
+        (13, 23, "13 days 23 hours of 14"),
+    ],
+)
+def test_step1_day_hour_pluralization(days, hours, expected):
+    """Singular only at exactly 1; plural at 0 and at everything above 1."""
+    page = _render_with_timeline(
+        {"days_elapsed": days, "hours_elapsed": hours}
+    )
+    for txt in _step1_text(page):
+        assert expected in txt, (
+            f"days={days} hours={hours}: expected {expected!r} in step 1's "
+            f"line, got {txt!r}"
+        )
+
+
+def test_no_one_hours_or_one_days_anywhere():
+    """The reported bug strings must not survive for any count of 1."""
+    page = _render_with_timeline(
+        {"days_elapsed": 1, "hours_elapsed": 1}
+    )
+    for txt in _step1_text(page):
+        assert "1 hours" not in txt, f"'1 hours' still rendered: {txt!r}"
+        assert "1 days" not in txt, f"'1 days' still rendered: {txt!r}"
+
+
+def test_item5_adds_only_day_and_hour_strings():
+    """Step 1's line gains no vocabulary beyond 'day' and 'hour'.
+
+    Compares the word set of the singular render against the plural render:
+    the only difference may be day/days and hour/hours.
+    """
+    singular = _step1_text(
+        _render_with_timeline({"days_elapsed": 1, "hours_elapsed": 1})
+    )[0]
+    plural = _step1_text(
+        _render_with_timeline({"days_elapsed": 3, "hours_elapsed": 4})
+    )[0]
+
+    def _words(text):
+        return {w for w in re.findall(r"[A-Za-z]+", text)}
+
+    added = _words(singular) - _words(plural)
+    removed = _words(plural) - _words(singular)
+    assert added == {"day", "hour"}, (
+        f"the singular render must add exactly 'day' and 'hour'; added {added}"
+    )
+    assert removed == {"days", "hours"}, (
+        f"the singular render must drop exactly 'days' and 'hours'; "
+        f"removed {removed}"
+    )
 
 
 # --------------------------------------------------------------------------
