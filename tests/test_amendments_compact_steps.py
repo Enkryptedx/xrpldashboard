@@ -598,3 +598,213 @@ def test_render_step2_shows_numbers_once_clock_done():
         )
         assert "ledgers remaining" in txt
         assert "next flag ledger" in txt
+
+
+# --------------------------------------------------------------------------
+# ITEM 3 (Charlie 2026-10-04): the Recently-enabled (finished) stepper.
+#
+# In that render all six steps are DONE and none is NOW, so the
+# "only the NOW step is open" rule from bcddb5d left EVERY stop collapsed.
+# Fix: open step 5, "It becomes permanent", and mark it with a green
+# check-mark badge labelled OFFICIAL (pure CSS check, no icon font/image).
+# --------------------------------------------------------------------------
+
+_PERMANENT_TITLE = "It becomes permanent"
+
+
+def _render_enabled_example():
+    """Render the page including timeline_by_hash['__enabled_example__'].
+
+    Shaped exactly like the route's finished-state call: enabled=True,
+    no majority/activation ISO, all six steps DONE, none NOW.
+    """
+    import app
+
+    enabled_tl = app._activation_timeline_ctx(
+        majority_reached_iso=None,
+        activation_eta_iso=None,
+        flag_counter=_FLAG_COUNTER,
+        enabled=True,
+        now=_NOW,
+    )
+    # guard the premise of this item: the finished state really has no NOW
+    assert all(v == "done" for v in enabled_tl["steps"].values()), (
+        f"finished example should be all DONE, got {enabled_tl['steps']}"
+    )
+
+    tbh = _timeline_by_hash()
+    tbh["__enabled_example__"] = enabled_tl
+    with app.app.test_request_context("/amendments"):
+        return app.render_template(
+            "amendments.html",
+            state=_state(),
+            roll_call=_roll_call(),
+            timeline_by_hash=tbh,
+            **_CTX,
+        )
+
+
+def _finished_block(page):
+    """The Recently-enabled timeline markup (it is the last one on the page)."""
+    idx = page.find('class="timeline-finished"')
+    assert idx != -1, "the Recently-enabled finished timeline did not render"
+    return page[idx:]
+
+
+def test_enabled_stepper_opens_exactly_the_permanent_step():
+    """Exactly one stop open in the finished stepper: 'It becomes permanent'."""
+    block = _finished_block(_render_enabled_example())
+
+    steps = _step_blocks(block)
+    assert len(steps) == 6, (
+        f"finished stepper should have 6 steps, got {len(steps)}"
+    )
+
+    open_steps = []
+    for idx, step in enumerate(steps, 1):
+        stop = re.search(r"<details[^>]*>", step)
+        assert stop, f"finished step {idx} has no <details> stop"
+        if " open" in stop.group(0):
+            open_steps.append(idx)
+
+    assert len(open_steps) == 1, (
+        "the finished stepper must have EXACTLY one stop open by default "
+        f"(bcddb5d left all six collapsed); open stops: {open_steps}"
+    )
+
+    opened = steps[open_steps[0] - 1]
+    summary = re.search(r"(?s)<summary.*?</summary>", opened)
+    assert summary, "the opened stop has no <summary>"
+    assert _PERMANENT_TITLE in summary.group(0), (
+        f"the opened stop must be {_PERMANENT_TITLE!r}; opened step "
+        f"{open_steps[0]} instead: {_visible_text(summary.group(0))!r}"
+    )
+
+
+def test_enabled_stepper_has_official_badge_on_permanent_step():
+    """The OFFICIAL badge is present, and only on 'It becomes permanent'."""
+    block = _finished_block(_render_enabled_example())
+    steps = _step_blocks(block)
+    assert len(steps) == 6
+
+    badged = [
+        idx for idx, step in enumerate(steps, 1)
+        if "data-step-official" in step
+    ]
+    assert badged == [5], (
+        f"the OFFICIAL badge must sit on step 5 only; found on {badged}"
+    )
+
+    step5 = steps[4]
+    assert _PERMANENT_TITLE in step5, "step 5 is not the permanent step"
+    assert "OFFICIAL" in _visible_text(step5), (
+        "the OFFICIAL label did not render on the permanent step"
+    )
+    assert 'class="timeline-official"' in step5, (
+        "the badge must carry the .timeline-official class it is styled by"
+    )
+
+    # the badge lives in the SUMMARY (the always-visible compact row)
+    summary = re.search(r"(?s)<summary.*?</summary>", step5)
+    assert summary and "data-step-official" in summary.group(0), (
+        "the OFFICIAL badge must be in the always-visible <summary> row"
+    )
+
+
+def _countdown_cards_before_finished(page):
+    """Countdown cards, truncated before the Recently-enabled block.
+
+    _countdown_cards() splits on the card opener, so its LAST chunk runs to
+    end-of-page and would swallow the finished stepper that renders further
+    down. Every countdown card appears before it, so cutting there first
+    keeps each chunk to real countdown markup.
+    """
+    idx = page.find('class="timeline-finished"')
+    assert idx != -1, "expected the finished block in this render"
+    return _countdown_cards(page[:idx])
+
+
+def test_official_badge_absent_from_countdown_cards():
+    """OFFICIAL is a finished-state marker only — never on a countdown card."""
+    page = _render_enabled_example()
+    cards = _countdown_cards_before_finished(page)
+    assert len(cards) == len(_MAJORITIES), (
+        f"expected {len(_MAJORITIES)} countdown cards, got {len(cards)}"
+    )
+    for card, name in zip(cards, _NAMES):
+        assert len(_step_blocks(card)) == 6, (
+            f"{name}: card slice should hold exactly its own 6 steps"
+        )
+        assert "data-step-official" not in card, (
+            f"{name}: OFFICIAL badge must not appear while in countdown"
+        )
+        assert "OFFICIAL" not in _visible_text(card), (
+            f"{name}: the word OFFICIAL leaked into a countdown card"
+        )
+
+
+def test_official_check_mark_is_pure_css():
+    """The check mark is drawn in CSS — no icon font, no image, no emoji."""
+    css = _style_css(_render_enabled_example())
+
+    badge = re.search(
+        r"\.activation-timeline \.timeline-official\s*\{([^}]*)\}", css
+    )
+    assert badge, "missing .timeline-official rule"
+
+    mark = re.search(
+        r"\.activation-timeline \.timeline-official::before\s*\{([^}]*)\}", css
+    )
+    assert mark, "missing .timeline-official::before (the pure-CSS check mark)"
+    body = mark.group(1)
+
+    # a rotated two-border corner = a check mark, with no glyph content
+    assert re.search(r"content:\s*''", body), (
+        "the check mark must use empty content, not a text/emoji glyph"
+    )
+    assert "transform" in body and "rotate" in body, (
+        "the check mark must be a rotated border corner"
+    )
+    assert "border-right" in body and "border-bottom" in body, (
+        "the check mark must be built from two borders"
+    )
+    assert "url(" not in body, "the check mark must not load an image"
+    assert "font-family" not in body, "the check mark must not need an icon font"
+
+    # the badge reads green, matching the existing DONE badge colour
+    assert "#22c55e" in badge.group(1), (
+        "the OFFICIAL badge must use the existing DONE green"
+    )
+    assert "#22c55e" in body, "the check mark itself must be green"
+
+
+def test_enabled_stepper_wording_unchanged():
+    """OFFICIAL is the only text added; the six step titles are untouched."""
+    block = _finished_block(_render_enabled_example())
+    steps = _step_blocks(block)
+
+    expected_titles = [
+        "Support holds for two weeks",
+        "Wait for the next flag ledger",
+        "The network records the change",
+        "The amendment turns on",
+        "It becomes permanent",
+        "Old servers fall behind",
+    ]
+    for idx, (step, title) in enumerate(zip(steps, expected_titles), 1):
+        summary = re.search(r"(?s)<summary.*?</summary>", step)
+        assert summary, f"finished step {idx} has no <summary>"
+        assert title in summary.group(0), (
+            f"finished step {idx} lost its existing title {title!r}"
+        )
+
+    # strip the badge back out and the visible text must match the stepper
+    # with no badge at all — i.e. OFFICIAL is the ONLY word added
+    step5 = steps[4]
+    without_badge = re.sub(
+        r'<span class="timeline-official"[^>]*>.*?</span>', "", step5, flags=re.S
+    )
+    assert "OFFICIAL" not in _visible_text(without_badge), (
+        "OFFICIAL must come only from the badge span"
+    )
+    assert _PERMANENT_TITLE in _visible_text(without_badge)

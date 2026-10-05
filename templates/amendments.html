@@ -247,6 +247,24 @@
     .activation-timeline .timeline-steps-compact .timeline-body {
       padding: 0 11px 10px; margin-top: -2px;
     }
+    /* ITEM 3 (2026-10-04): in the finished/enabled stepper, "It becomes
+       permanent" carries a green check + label. The check mark is PURE CSS —
+       a rotated corner built from two borders on ::before — so it needs no
+       icon font, no image and no extra markup. Same green as the DONE badge. */
+    .activation-timeline .timeline-official {
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+      color: #22c55e; border: 1px solid rgba(34,197,94,0.5);
+      background: rgba(34,197,94,0.08);
+    }
+    .activation-timeline .timeline-official::before {
+      content: ''; flex: 0 0 auto;
+      width: 4px; height: 8px; margin-top: -2px;
+      border-right: 2px solid #22c55e;
+      border-bottom: 2px solid #22c55e;
+      transform: rotate(45deg);
+    }
     /* Phone: one stop per row, so nothing can be squeezed or clipped. */
     @media (max-width: 560px) {
       .activation-timeline .timeline-steps-compact .timeline-step { flex-basis: 100%; }
@@ -500,15 +518,24 @@
          text underneath. No-JS safe (native <details>). Only the step whose
          status is NOW is open by default. No word of the existing step text is
          changed, reordered or removed. #}
+      {# ITEM 3 (2026-10-04): which stop is open by default. Normally the NOW
+         step. In the finished/enabled render NO step is NOW (all six are
+         DONE), which left every stop collapsed — the bug this fixes. In that
+         state open step 5, "It becomes permanent". Countdown cards always have
+         a NOW step, so their behaviour is unchanged. #}
+      {% set _has_now = ((step_status.values() | select('equalto', 'now') | list) | length) > 0 %}
+      {% set _open_n = 5 if (tl.enabled and not _has_now) else 0 %}
       <ol class="timeline-steps timeline-steps-compact">
         {% for n in [1, 2, 3, 4, 5, 6] %}
         {% set st = step_status[n] %}
         <li class="timeline-step timeline-{{ st }}" data-step="{{ n }}" data-status="{{ st }}">
-          <details class="timeline-stop"{% if st == 'now' %} open{% endif %}>
+          <details class="timeline-stop"{% if st == 'now' or n == _open_n %} open{% endif %}>
           <summary class="timeline-summary">
             <span class="timeline-badge" aria-label="{{ st }}">{{ st | upper }}</span>
             {# item-timeline-title-{{ n }} filled 2026-10-02 #}
             <span class="timeline-title" data-step-title="{{ n }}">{{ step_title[n] }}</span>
+            {# Green check + OFFICIAL, finished/enabled state only. One new word. #}
+            {% if tl.enabled and n == 5 %}<span class="timeline-official" data-step-official>{{ _('OFFICIAL') }}</span>{% endif %}
           </summary>
           <div class="timeline-body">
             {# Live data line (data labels + numbers only). #}
