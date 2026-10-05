@@ -59,6 +59,18 @@
       background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px;
       font-family: var(--mono); font-size: 0.85em; color: var(--amber);
     }
+    /* Phone overflow fix (2026-10-05). Edition bodies carry 64-char ledger
+       object / transaction hashes in <code> and full archive URLs as links.
+       Neither contains a space or hyphen, so the browser has no break
+       opportunity and the token sets the page's min-content width: measured
+       document.scrollWidth 565 against a 390px viewport, which clipped the
+       right-hand end of both hashes and the Wayback URL and forced sideways
+       scrolling. `overflow-wrap: anywhere` breaks ONLY when a token cannot
+       otherwise fit, so ordinary prose and short links wrap exactly as
+       before. Scoped to .content (the rendered edition body) and declared
+       inside this template's own <style>, so no other page is touched. */
+    .content code, .content a { overflow-wrap: anywhere; }
+    .content p, .content li { overflow-wrap: anywhere; min-width: 0; }
     .content em { color: var(--muted); }
     .content hr {
       border: none; border-top: 1px solid var(--border); margin: 32px 0;
