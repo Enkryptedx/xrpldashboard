@@ -213,16 +213,32 @@
     .badge.trustset   { background: rgba(168,85,247,0.15); color: #c084fc; }
     .event-link { font-family: var(--mono); font-size: 0.75rem; color: var(--dim); }
 
-    .event-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    /* 2026-10-05: each party (label chip + address) is ONE vertical unit, so
+       a chip can only read as belonging to the address it sits on. The chip
+       stacks directly above its own address and is left-aligned to it;
+       `align-items: flex-end` puts both address lines (always the last row of
+       their unit) on a shared baseline with the arrow, so an unlabeled side
+       simply shows no chip without knocking the row out of alignment.
+       Previously the chip was inline BEFORE the address, which put the
+       receiver's chip immediately after the arrow and made it read as the
+       sender's when the sender had no label. */
+    .event-flow { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
                   margin: 6px 0; }
     .addr { font-family: var(--mono); font-size: 0.82rem; color: var(--muted);
-            text-decoration: none; }
+            text-decoration: none; display: inline-flex; flex-direction: column;
+            align-items: flex-start; gap: 2px; }
     a.addr:hover { color: var(--cyan); }
+    /* Rows inside one party unit. .addr-chip holds the label (+ its
+       provenance pill); .addr-id holds the address, OFAC flag and tier pill. */
+    .addr .addr-chip, .addr .addr-id { display: inline-flex; align-items: center;
+                                       flex-wrap: wrap; }
     .addr .label { display: inline-block; background: rgba(34,211,238,0.1);
                    color: var(--cyan); padding: 1px 7px; border-radius: 4px;
-                   margin-right: 6px; font-family: var(--sys); font-size: 0.75rem;
+                   font-family: var(--sys); font-size: 0.75rem;
                    font-weight: 600; }
-    .arrow { color: var(--dim); }
+    /* Extra breathing room on BOTH sides of the arrow (10px flow gap + 8px
+       here = 18px) so no chip can read as touching the arrow. */
+    .arrow { color: var(--dim); margin: 0 8px; }
     .amount { font-family: var(--mono); font-size: 0.95rem; color: var(--text);
               font-weight: 600; margin-top: 2px; }
 
@@ -432,10 +448,10 @@
       <div class="event-flow">
         {% if e.from_addr %}
           <a class="addr{% if e.from_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.from_addr }}"{% if e.from_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
-            {% if e.from_label %}<span class="label">{{ e.from_label }}</span>{% if e.from_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.from_label_source %} · {{ _('source:') }} {{ e.from_label_source }}{% endif %}</span>{% endif %}{% endif %}
-            {{ e.from_addr_short }}
+            {% if e.from_label %}<span class="addr-chip"><span class="label">{{ e.from_label }}</span>{% if e.from_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.from_label_source %} · {{ _('source:') }} {{ e.from_label_source }}{% endif %}</span>{% endif %}</span>{% endif %}
+            <span class="addr-id">{{ e.from_addr_short }}
             {% if e.from_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
-            {% if e.from_address_tier and e.from_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.from_address_tier }}" title="{{ e.from_address_tier_display }} — {{ _('sender address tier (higher of curator standing and best-token-tier)') }}">{{ e.from_address_tier_display }}</span>{% endif %}
+            {% if e.from_address_tier and e.from_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.from_address_tier }}" title="{{ e.from_address_tier_display }} — {{ _('sender address tier (higher of curator standing and best-token-tier)') }}">{{ e.from_address_tier_display }}</span>{% endif %}</span>
           </a>
         {% else %}
           <span class="addr">—</span>
@@ -443,10 +459,10 @@
         <span class="arrow">→</span>
         {% if e.to_addr %}
           <a class="addr{% if e.to_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.to_addr }}"{% if e.to_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
-            {% if e.to_label %}<span class="label">{{ e.to_label }}</span>{% if e.to_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.to_label_source %} · {{ _('source:') }} {{ e.to_label_source }}{% endif %}</span>{% endif %}{% endif %}
-            {{ e.to_addr_short }}
+            {% if e.to_label %}<span class="addr-chip"><span class="label">{{ e.to_label }}</span>{% if e.to_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.to_label_source %} · {{ _('source:') }} {{ e.to_label_source }}{% endif %}</span>{% endif %}</span>{% endif %}
+            <span class="addr-id">{{ e.to_addr_short }}
             {% if e.to_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
-            {% if e.to_address_tier and e.to_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.to_address_tier }}" title="{{ e.to_address_tier_display }} — {{ _('receiver address tier (higher of curator standing and best-token-tier)') }}">{{ e.to_address_tier_display }}</span>{% endif %}
+            {% if e.to_address_tier and e.to_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.to_address_tier }}" title="{{ e.to_address_tier_display }} — {{ _('receiver address tier (higher of curator standing and best-token-tier)') }}">{{ e.to_address_tier_display }}</span>{% endif %}</span>
           </a>
         {% else %}
           <span class="addr">—</span>
