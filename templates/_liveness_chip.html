@@ -39,6 +39,60 @@
   @media (prefers-reduced-motion: reduce) {
     .liveness-chip .dot { animation: none; }
   }
+
+  /* Data-source dot (2026-10-05, Charlie: "banner to dot").
+     Replaces the floating amber banner live_stream.js used to pin
+     bottom-left on every page. Shown ONLY while the public-feed fallback is
+     actually active; hidden otherwise. Tapping or hovering reveals the same
+     sentence the banner carried — the text is supplied by live_stream.js
+     (getSourceMessage), never duplicated here, so the two cannot drift.
+
+     Deliberately NOT inside .liveness-chip: that chip is display:none below
+     720px, and the banner it replaces was visible on phones. Nesting the dot
+     would have silently dropped this signal for every mobile reader. */
+  .live-source { display: inline-flex; align-items: center; position: relative;
+                 margin-left: 0.4em; }
+  .live-source[hidden] { display: none; }
+  .live-source-dot { -webkit-appearance: none; appearance: none;
+                     width: 9px; height: 9px; padding: 0; border-radius: 999px;
+                     border: none; cursor: pointer; flex: 0 0 auto;
+                     background: #f59e0b;
+                     box-shadow: 0 0 0 0 rgba(245,158,11,0.5);
+                     animation: liveSourceDot 2s ease-in-out infinite; }
+  .live-source-dot:focus-visible { outline: 2px solid #f59e0b;
+                                   outline-offset: 2px; }
+  @keyframes liveSourceDot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0); opacity: 0.85; }
+    50%     { box-shadow: 0 0 0 5px rgba(245,158,11,0); opacity: 1; }
+  }
+  /* Two separate traps here, both found by measuring rather than assuming:
+
+     1. Absolutely positioned inside a 9px-wide inline-flex container,
+        shrink-to-fit sized the bubble against ~9px of available width and
+        collapsed it into a tall narrow sliver. width:max-content sizes it to
+        its text instead.
+     2. The dot's x position in the bar is NOT stable across widths (measured
+        x~530/1440 on desktop but the wrapper lands far left on a phone), so
+        a fixed left OR right anchor is off-screen at one width or the other:
+        left:0 gave 357..645 on a 390px screen, right:0 gave -253..35.
+
+     So the bubble is position:fixed and placed by JS, clamped into the
+     viewport. That is correct wherever the dot ends up, at any width. */
+  .live-source-msg { position: fixed; top: 0; left: 0;
+                     z-index: 2147483000; display: none;
+                     width: max-content;
+                     max-width: min(18rem, calc(100vw - 24px));
+                     padding: 7px 10px; border-radius: 6px;
+                     background: #ffb020; color: #1a1400;
+                     font: 12px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+                     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                     white-space: normal; text-align: left; }
+  .live-source:hover .live-source-msg,
+  .live-source:focus-within .live-source-msg,
+  .live-source[data-open] .live-source-msg { display: block; }
+  @media (prefers-reduced-motion: reduce) {
+    .live-source-dot { animation: none; }
+  }
 </style>
 
 {% if liveness and liveness.ledger_index %}
@@ -107,3 +161,85 @@
 })();
 </script>
 {% endif %}
+
+{# Data-source dot. Rendered OUTSIDE the {% if liveness %} guard above so it
+   still works on a page whose liveness context is missing, and starts hidden:
+   only live_stream.js can reveal it, and only once the fallback is genuinely
+   active. On a page that never loads live_stream.js (window.LiveStream
+   undefined) it therefore stays hidden forever — which is exactly "only on
+   pages that use the live stream". No wording lives here. #}
+<span class="live-source" data-live-source hidden>
+  <button type="button" class="live-source-dot" data-live-source-dot
+          aria-expanded="false"></button>
+  <span class="live-source-msg" role="status" data-live-source-msg></span>
+</span>
+<script>
+(function () {
+  var wrap = document.querySelector('[data-live-source]');
+  if (!wrap) return;
+  var dot = wrap.querySelector('[data-live-source-dot]');
+  var msg = wrap.querySelector('[data-live-source-msg]');
+  if (!dot || !msg) return;
+
+  // The sentence is whatever live_stream.js hands us — this file never
+  // hardcodes a copy, so there is no second place for the wording to drift.
+  function apply(state, text) {
+    if (state === 'fallback') {
+      msg.textContent = text;
+      dot.setAttribute('aria-label', text);
+      dot.setAttribute('title', text);
+      wrap.hidden = false;
+    } else {
+      wrap.hidden = true;
+      wrap.removeAttribute('data-open');
+      dot.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  // The bubble is position:fixed, so it must be placed against the dot's
+  // live rect and clamped into the viewport — see the CSS note: the dot sits
+  // at a different x at different widths, so no static anchor is safe.
+  // CSS has already applied :hover/:focus-within/[data-open] by the time
+  // these handlers run, so offsetWidth is the real laid-out width.
+  function place() {
+    var r = dot.getBoundingClientRect();
+    var w = msg.offsetWidth;
+    var max = (window.innerWidth || 0) - w - 8;
+    var want = r.left + (r.width / 2) - (w / 2);
+    if (want > max) want = max;
+    if (want < 8) want = 8;
+    msg.style.top = (r.bottom + 7) + 'px';
+    msg.style.left = want + 'px';
+  }
+  wrap.addEventListener('mouseenter', place);
+  wrap.addEventListener('focusin', place);
+  window.addEventListener('resize', function () {
+    if (!wrap.hidden) place();
+  });
+
+  // Tap support: hover/focus is handled in CSS, but a touch device needs an
+  // explicit toggle to reveal the sentence.
+  dot.addEventListener('click', function (e) {
+    e.preventDefault();
+    var open = wrap.hasAttribute('data-open');
+    if (open) {
+      wrap.removeAttribute('data-open');
+      dot.setAttribute('aria-expanded', 'false');
+    } else {
+      wrap.setAttribute('data-open', '');
+      dot.setAttribute('aria-expanded', 'true');
+      place();
+    }
+  });
+  document.addEventListener('click', function (e) {
+    if (!wrap.contains(e.target)) {
+      wrap.removeAttribute('data-open');
+      dot.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  if (window.LiveStream && window.LiveStream.onSourceState) {
+    window.LiveStream.onSourceState(apply);
+  }
+})();
+</script>

@@ -72,16 +72,29 @@
   var primaryWatchdogTimer = null;
   var primaryRetryTimer = null;
   var fallbackPinged = false;
-  var bannerEl = null;
 
-  // Three-state banner sequence (owner ruling 2026-09-23):
+  // Three-state source sequence (owner ruling 2026-09-23; the floating
+  // banner this used to paint was removed 2026-10-05 — see setSourceState):
   //   'connecting'  → "Connecting to our own node…"
   //   'fallback'    → "Our node is still connecting — showing the public feed until it does"
-  //   'hidden'      → banner removed (primary is live)
+  //   'hidden'      → primary is live, nothing to report
   // Never lead with the fallback. Start in 'connecting' the moment the
   // page loads (if PRIMARY_URL is configured); flip to 'fallback' only
   // if the watchdog trips AND we've actually landed on a non-primary URL.
-  var bannerState = 'hidden';
+  var sourceState = 'hidden';
+  var sourceListeners = [];
+
+  // The sentences live HERE and nowhere else. The liveness chip's dot reads
+  // them back through getSourceMessage()/onSourceState(), so there is exactly
+  // one copy of each string and no template can drift from it.
+  var CONNECTING_MESSAGE = 'Connecting to our own node…';
+  var FALLBACK_MESSAGE = 'Our node is still connecting — showing the public feed until it does';
+
+  function sourceMessage(state) {
+    if (state === 'connecting') return CONNECTING_MESSAGE;
+    if (state === 'fallback') return FALLBACK_MESSAGE;
+    return '';
+  }
 
   function currentUrl() {
     return WS_URLS[urlIdx % WS_URLS.length];
@@ -105,57 +118,27 @@
     }
   }
 
-  var BANNER_STYLE = [
-    'position:fixed', 'left:12px', 'bottom:12px', 'z-index:2147483000',
-    'padding:8px 12px', 'border-radius:6px',
-    'background:#ffb020', 'color:#1a1400',
-    'font:12px/1.4 system-ui,-apple-system,Segoe UI,sans-serif',
-    'box-shadow:0 2px 8px rgba(0,0,0,0.15)',
-    'max-width:320px', 'cursor:default'
-  ].join(';');
-
-  function setBanner(state) {
-    if (typeof document === 'undefined') return;
-    if (state === bannerState) return;
-    bannerState = state;
-    if (state === 'hidden') {
-      if (bannerEl && bannerEl.parentNode) {
-        bannerEl.parentNode.removeChild(bannerEl);
-      }
-      bannerEl = null;
-      return;
-    }
-    var text = state === 'connecting'
-      ? 'Connecting to our own node…'
-      : 'Our node is still connecting — showing the public feed until it does';
-    var dataAttr = state === 'connecting'
-      ? 'connecting'
-      : 'fallback';
-    if (!bannerEl) {
-      var el = document.createElement('div');
-      el.setAttribute('role', 'status');
-      el.setAttribute('data-live-stream-banner', dataAttr);
-      el.style.cssText = BANNER_STYLE;
-      el.textContent = text;
-      if (document.body) {
-        document.body.appendChild(el);
-        bannerEl = el;
-      } else {
-        document.addEventListener('DOMContentLoaded', function () {
-          if (bannerState !== 'hidden' && !bannerEl && document.body) {
-            document.body.appendChild(el);
-            bannerEl = el;
-          }
-        });
-      }
-    } else {
-      bannerEl.setAttribute('data-live-stream-banner', dataAttr);
-      bannerEl.textContent = text;
+  // 2026-10-05 (Charlie): the floating amber banner is GONE. It was a
+  // position:fixed div pinned bottom-left on EVERY page that loads this
+  // script, painted over whatever happened to be underneath it (it landed
+  // on top of an /amendments countdown card during screenshot capture).
+  // The same sentence now rides on the liveness chip's dot in the top bar,
+  // which subscribes through onSourceState(). This function creates no DOM
+  // at all any more — it is pure state plus a notification.
+  function setSourceState(state) {
+    if (state === sourceState) return;
+    sourceState = state;
+    var msg = sourceMessage(state);
+    for (var i = 0; i < sourceListeners.length; i++) {
+      try { sourceListeners[i](state, msg); } catch (e) {}
     }
   }
 
+  // Old internal name kept so every existing call site below works unchanged.
+  function setBanner(state) { setSourceState(state); }
+
   // Preserve the old API name for any legacy caller — routes through the
-  // new state machine so we never fire the fallback banner spuriously.
+  // new state machine so we never fire the fallback state spuriously.
   function hideFallbackBanner() { setBanner('hidden'); }
 
   function pingFallbackTelemetry(reason) {
@@ -242,7 +225,7 @@
     // First-connect UX: if PRIMARY_URL is configured and we're aiming at
     // it, immediately show the "Connecting to our own node…" state so the
     // reader sees the primary intent, not a jarring "fallback" banner.
-    if (PRIMARY_URL && url === PRIMARY_URL && bannerState === 'hidden'
+    if (PRIMARY_URL && url === PRIMARY_URL && sourceState === 'hidden'
         && !lastLedger) {
       setBanner('connecting');
     }
@@ -374,6 +357,22 @@
         if (i >= 0) statusListeners.splice(i, 1);
       };
     },
+    /* Subscribe to data-source state ('hidden' | 'connecting' | 'fallback').
+     * The callback receives (state, message) and fires once synchronously
+     * with the current state, so a late subscriber (the liveness chip's dot,
+     * which is parsed after this script) still paints correctly. The message
+     * is this file's own constant — callers must not hardcode their own copy. */
+    onSourceState: function (cb) {
+      if (typeof cb !== 'function') return function () {};
+      sourceListeners.push(cb);
+      try { cb(sourceState, sourceMessage(sourceState)); } catch (e) {}
+      return function () {
+        var i = sourceListeners.indexOf(cb);
+        if (i >= 0) sourceListeners.splice(i, 1);
+      };
+    },
+    getSourceState: function () { return sourceState; },
+    getSourceMessage: function () { return sourceMessage(sourceState); },
     isConnected: function () { return connected; },
     getCurrentUrl: function () { return currentUrl(); },
     isOnPrimary: function () { return isOnPrimary(); },
