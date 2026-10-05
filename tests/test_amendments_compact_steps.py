@@ -37,6 +37,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -421,3 +422,179 @@ def test_no_invalid_color_functions_in_css():
     assert "overflow-x" not in compact.group(1), (
         "the compact stepper row must not introduce horizontal scrolling"
     )
+
+
+# --------------------------------------------------------------------------
+# ITEM 2 (Charlie 2026-10-04): step 2's ledger numbers must be gated exactly
+# like steps 3/4 by show_flag_numbers — visible ONLY once the 14-day clock is
+# done and the amendment is not yet enabled.
+#
+# Why: roll_call_card.flag_ledger_counter() reports the next flag ledger off
+# the CURRENT validated ledger (minutes away). That is not the flag ledger
+# that activates THIS amendment, which is the first flag ledger after its own
+# 14 days end — days away. Showing it mid-countdown made a days-away
+# activation look imminent.
+# --------------------------------------------------------------------------
+
+_NOW = datetime(2026, 10, 4, 21, 0, 0, tzinfo=timezone.utc)
+_FLAG_COUNTER = {"ledgers_remaining": 41, "next_flag_ledger": 107_437_056}
+
+
+def _tl(days_ago, enabled=False):
+    """Real _activation_timeline_ctx with a live flag counter attached.
+
+    days_ago = how long ago the 14-day majority clock started, so 10 -> clock
+    still running, 15 -> clock done.
+    """
+    import app
+
+    reached = _NOW - timedelta(days=days_ago)
+    return app._activation_timeline_ctx(
+        majority_reached_iso=reached.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        activation_eta_iso=(reached + timedelta(days=14)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
+        flag_counter=_FLAG_COUNTER,
+        enabled=enabled,
+        now=_NOW,
+    )
+
+
+def test_step2_numbers_hidden_while_clock_not_done():
+    """Clock still running (10 of 14 days) -> no step-2 ledger numbers."""
+    tl = _tl(days_ago=10)
+
+    assert tl["steps"][1] == "now", "step 1 should still be the NOW step"
+    assert tl["steps"][2] == "waiting", "step 2 status must be unchanged"
+
+    assert tl["ledgers_remaining"] is None, (
+        "step 2 must not expose 'ledgers remaining' while the 14-day clock "
+        f"is still running; got {tl['ledgers_remaining']!r}"
+    )
+    assert tl["next_flag_ledger"] is None, (
+        "step 2 must not expose 'next flag ledger' while the 14-day clock "
+        f"is still running; got {tl['next_flag_ledger']!r}"
+    )
+    # gated on the SAME condition as steps 3/4, which were already correct
+    assert tl["flag_plus_1"] is None and tl["flag_plus_2"] is None
+
+
+def test_step2_numbers_shown_once_clock_done():
+    """Clock done (15 days) and not yet enabled -> numbers appear."""
+    tl = _tl(days_ago=15)
+
+    assert tl["steps"][1] == "done", "step 1 should be DONE after 14 days"
+    assert tl["steps"][2] == "now", "step 2 should be the NOW step"
+
+    assert tl["ledgers_remaining"] == _FLAG_COUNTER["ledgers_remaining"], (
+        "step 2 must show 'ledgers remaining' once the clock is done"
+    )
+    assert tl["next_flag_ledger"] == _FLAG_COUNTER["next_flag_ledger"], (
+        "step 2 must show 'next flag ledger' once the clock is done"
+    )
+    # steps 3/4 light up on the same condition
+    assert tl["flag_plus_1"] == _FLAG_COUNTER["next_flag_ledger"] + 1
+    assert tl["flag_plus_2"] == _FLAG_COUNTER["next_flag_ledger"] + 2
+
+
+def test_step2_numbers_hidden_once_enabled():
+    """Already enabled -> the next flag ledger is a future, unrelated one."""
+    tl = _tl(days_ago=30, enabled=True)
+    assert tl["ledgers_remaining"] is None
+    assert tl["next_flag_ledger"] is None
+
+
+def test_step2_gate_is_identical_to_steps_3_and_4():
+    """The step-2 numbers appear in exactly the same window as steps 3/4."""
+    for days_ago, enabled in (
+        (0, False), (10, False), (13, False),
+        (15, False), (30, False),
+        (15, True), (30, True),
+    ):
+        tl = _tl(days_ago=days_ago, enabled=enabled)
+        step2_shown = tl["ledgers_remaining"] is not None
+        step34_shown = tl["flag_plus_1"] is not None
+        assert step2_shown == step34_shown, (
+            f"days_ago={days_ago} enabled={enabled}: step 2 shown="
+            f"{step2_shown} but steps 3/4 shown={step34_shown} — step 2 must "
+            "be gated on the same show_flag_numbers window"
+        )
+
+
+def _render_with_timeline(tl_overrides):
+    """Render the page with every countdown card carrying tl_overrides."""
+    import app
+
+    base = {
+        "enabled": False,
+        "restarted": False,
+        "restarted_iso": None,
+        "days_elapsed": 10,
+        "hours_elapsed": 2,
+        "ledgers_remaining": None,
+        "next_flag_ledger": None,
+        "flag_plus_1": None,
+        "flag_plus_2": None,
+        "steps": {
+            1: "now", 2: "waiting", 3: "waiting",
+            4: "waiting", 5: "waiting", 6: "waiting",
+        },
+    }
+    base.update(tl_overrides)
+    tbh = {
+        m["hash"]: dict(base, activation_eta_iso=m["activation_eta_iso"])
+        for m in _MAJORITIES
+    }
+    with app.app.test_request_context("/amendments"):
+        return app.render_template(
+            "amendments.html",
+            state=_state(),
+            roll_call=_roll_call(),
+            timeline_by_hash=tbh,
+            **_CTX,
+        )
+
+
+def _step2_text(page):
+    """Visible text of step 2's live-data line, per countdown card."""
+    out = []
+    for card in _countdown_cards(page):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, "expected 6 steps per card"
+        data = re.search(
+            r'<div class="timeline-data dim">(.*?)</div>', steps[1], re.S
+        )
+        out.append(_visible_text(data.group(1)) if data else "")
+    return out
+
+
+def test_render_step2_shows_no_numbers_while_clock_not_done():
+    """Gated context -> step 2's data line renders empty, no digits at all."""
+    page = _render_with_timeline(
+        {"ledgers_remaining": None, "next_flag_ledger": None}
+    )
+    for txt in _step2_text(page):
+        assert not re.search(r"\d", txt), (
+            f"step 2 rendered a ledger number while gated off: {txt!r}"
+        )
+        assert "ledgers remaining" not in txt
+        assert "next flag ledger" not in txt
+
+
+def test_render_step2_shows_numbers_once_clock_done():
+    """Ungated context -> the existing labels and numbers render as before."""
+    page = _render_with_timeline({
+        "ledgers_remaining": 41,
+        "next_flag_ledger": 107_437_056,
+        "steps": {
+            1: "done", 2: "now", 3: "waiting",
+            4: "waiting", 5: "waiting", 6: "waiting",
+        },
+    })
+    for txt in _step2_text(page):
+        assert "41" in txt, f"step 2 lost 'ledgers remaining' count: {txt!r}"
+        assert "107,437,056" in txt, (
+            f"step 2 lost the next flag ledger number: {txt!r}"
+        )
+        assert "ledgers remaining" in txt
+        assert "next flag ledger" in txt
