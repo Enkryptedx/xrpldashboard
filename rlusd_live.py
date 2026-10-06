@@ -284,11 +284,33 @@ def fetch_eth() -> dict:
         today = datetime.datetime.now(datetime.timezone.utc).date()
         prev_day = today - datetime.timedelta(days=1)
 
-        # Rolling 24h — one boundary call + one tokentx paginate.
+        # Rolling 24h — one boundary call + one tokentx paginate, now behind
+        # the same verification gate as the XRPL side (Charlie 2026-10-06).
+        # The gate needs the recent dated eth_supply rows; without them it
+        # withholds rather than publish an unverified pair. A None return is
+        # NOT an error — it means "could not verify", so mints/burns stay None
+        # and the footer renders '—'.
+        _recent_eth_supplies: list = []
         try:
-            r_m, r_b = _rle.aggregate_rolling_24h(now_unix)
-            out["mints_24h"] = r_m
-            out["burns_24h"] = r_b
+            import db as _db
+            _recent_eth_supplies = [
+                r["eth_supply"]
+                for r in (_db.read_rlusd_supply_history(days=3) or [])
+                if r.get("eth_supply") is not None
+            ]
+        except Exception as e:
+            prev = out["error"]
+            msg = f"eth_rolling_24h_band: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+
+        try:
+            _rolling = _rle.aggregate_rolling_24h(
+                now_unix,
+                recent_supplies=_recent_eth_supplies,
+                supply_now=out.get("supply"),
+            )
+            if _rolling is not None:
+                out["mints_24h"], out["burns_24h"] = _rolling
         except Exception as e:
             prev = out["error"]
             msg = f"eth_rolling_24h: {type(e).__name__}: {e}"
@@ -465,8 +487,28 @@ def fetch_xrpl() -> dict:
         today = datetime.datetime.now(datetime.timezone.utc).date()
         prev_day = today - datetime.timedelta(days=1)
 
+        # Rolling-24h verification gate (Charlie 2026-10-06). The rolling
+        # figure is only published when it can be checked against the recent
+        # dated rows from rlusd_supply_history — see the gate notes in
+        # rlusd_xrpl_option_a. Without those rows the module withholds the
+        # number (returns None) rather than publish an unverified one, which
+        # is the whole point: a wrong +$61.6M shipped silently on 2026-10-06.
+        _recent_supplies: list = []
         try:
-            out["net_change_24h"] = _rxo.aggregate_rolling_24h(now_unix)
+            import db as _db
+            _recent_supplies = [
+                r["xrpl_supply"]
+                for r in (_db.read_rlusd_supply_history(days=3) or [])
+                if r.get("xrpl_supply") is not None
+            ]
+        except Exception as e:
+            prev = out["error"]
+            msg = f"xrpl_rolling_24h_band: {type(e).__name__}: {e}"
+            out["error"] = f"{prev} | {msg}" if prev else msg
+
+        try:
+            out["net_change_24h"] = _rxo.aggregate_rolling_24h(
+                now_unix, recent_supplies=_recent_supplies)
         except Exception as e:
             prev = out["error"]
             msg = f"xrpl_rolling_24h: {type(e).__name__}: {e}"

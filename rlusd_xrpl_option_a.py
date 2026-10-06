@@ -46,9 +46,10 @@ from __future__ import annotations
 import json
 import os
 import ssl
+import sys
 import time
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Sequence
 
 from urllib import request as urlrequest
 from urllib.error import URLError
@@ -86,6 +87,44 @@ XRPL_SECONDS_PER_LEDGER = 3.9
 # ledger with close_time <= target UTC boundary can drift up to ~4s
 # before that boundary. Well inside daily-aggregate semantics.
 BOUNDARY_DRIFT_TOLERANCE_S = 5
+
+# --- Rolling-24h verification gate (Charlie 2026-10-06) ---------------------
+#
+# Incident: /rlusd published a two-chain "net supply change · 24h" of
+# +$66.59M, of which +$61,601,457.58 came from this module's rolling-24h
+# figure. Working it backwards, supply now (1,219,375,211.58) minus that net
+# implies a start-side reading of 1,157,773,754 — a value that appears nowhere
+# in the recent dated history (Oct 2-6 all sit in 1.219-1.227B). The dated
+# calendar row for the same period says -1,418,542.42, which reconciles
+# exactly. So the rolling figure was wrong, not merely differently-windowed.
+#
+# Root cause is in find_boundary_ledger (see its own note): a bad draw can
+# return a ledger far outside the intended window, and because XRPL_RPC
+# defaults to a public FULL-HISTORY node, gateway_balances at that old ledger
+# returns a real-but-ancient obligation total instead of erroring. The wrong
+# number therefore looks plausible and ships silently.
+#
+# Two independent gates below. Either failing returns None, never a guess —
+# the same "render '—' rather than synthesize" doctrine this module adopted
+# after the 2026-07-17 false-flat incident.
+
+# Gate 1: each boundary ledger's close_time must land near its target.
+# find_boundary_ledger returns the last ledger with close_time <= target, so
+# the expected gap is 0-4s (one ~3.9s ledger interval) below target, and the
+# function's own early-exit tolerance is BOUNDARY_DRIFT_TOLERANCE_S = 5s.
+# 900s leaves ~230 ledger-intervals of slack for validation stalls, consensus
+# backlog, or a node serving a slightly lagging validated ledger, while still
+# being ~3 orders of magnitude tighter than the observed fault (weeks off).
+ROLLING_CLOSE_TOLERANCE_S = 900
+
+# Gate 2: the start-side supply reading must sit inside the band of recent
+# dated rows, widened by this margin. The largest single-day XRPL supply move
+# in recent dated history is -8,526,987 on 1,227,175,754 = 0.69%, so 2% gives
+# ~2.9x headroom over the largest real daily move. 2% is deliberate: a 5%
+# margin would NOT have caught this incident (1,219,375,211.58 x 0.95 =
+# 1,158,406,450, and the bad implied start was 1,157,773,754 — only ~$0.6M
+# under a 5% floor). 2% rejects it by ~$37M.
+ROLLING_IMPLIED_SUPPLY_MARGIN = 0.02
 
 HTTP_TIMEOUT = 15.0
 USER_AGENT = "xrpldashboard/1.0 (+https://xrpldashboard.com)"
@@ -302,6 +341,19 @@ def snapshot_diff(start_ledger: int, end_ledger: int) -> float:
 
 # --- Aggregators -------------------------------------------------------------
 
+def _gate_reject(reason: str, detail: str = "") -> None:
+    """Record why a rolling-24h figure was withheld.
+
+    Deliberately loud on stderr rather than silent: the incident this gate
+    exists for was a WRONG NUMBER shipping quietly, so a suppressed figure
+    must leave a trace the walker log can be read for. Never raises — the
+    caller's contract is to return None.
+    """
+    msg = f"[rlusd_xrpl_option_a] rolling_24h withheld: {reason}"
+    if detail:
+        msg += f" ({detail})"
+    print(msg, file=sys.stderr, flush=True)
+
 def aggregate_calendar_day(day: date) -> float:
     """Net supply change (signed float RLUSD) for UTC calendar day `day`.
 
@@ -320,13 +372,83 @@ def aggregate_calendar_day(day: date) -> float:
     return snapshot_diff(start_ledger, end_ledger)
 
 
-def aggregate_rolling_24h(now_unix: int | None = None) -> float:
-    """Net supply change (signed float RLUSD) across trailing 24h ending
-    at `now_unix` (defaults to time.time())."""
+def aggregate_rolling_24h(
+    now_unix: int | None = None,
+    recent_supplies: Sequence[float] | None = None,
+) -> float | None:
+    """Net supply change (signed float RLUSD) across trailing 24h ending at
+    `now_unix` (defaults to time.time()), or **None when unverifiable**.
+
+    `recent_supplies` is the last few dated `xrpl_supply` values (most-recent
+    first is fine; order is not used), supplied by the caller from
+    `rlusd_supply_history`. It is REQUIRED: without it Gate 2 cannot run, and
+    an unverified figure is not published. See the gate notes at the top of
+    this module for why both gates exist.
+
+    Returns None — never a partial or best-effort number — when:
+      * either boundary ledger's close_time is more than
+        ROLLING_CLOSE_TOLERANCE_S from its target;
+      * a boundary ledger's close_time can't be read at all;
+      * the ledgers come back out of order;
+      * `recent_supplies` is missing/empty (can't verify);
+      * the start-side supply sits outside the recent dated band widened by
+        ROLLING_IMPLIED_SUPPLY_MARGIN.
+    """
     now = int(now_unix if now_unix is not None else time.time())
-    start_ledger = find_boundary_ledger(now - 86_400)
+    target_start = now - 86_400
+
+    start_ledger = find_boundary_ledger(target_start)
     end_ledger = find_boundary_ledger(now)
-    return snapshot_diff(start_ledger, end_ledger)
+
+    if end_ledger < start_ledger:
+        _gate_reject("ledgers out of order",
+                     f"start={start_ledger} end={end_ledger}")
+        return None
+
+    # --- Gate 1: boundary close times must land near their targets ---------
+    for which, ledger_idx, target in (
+        ("start", start_ledger, target_start),
+        ("end", end_ledger, now),
+    ):
+        close = _ledger_close_time(ledger_idx)
+        if close is None:
+            _gate_reject(f"{which} ledger close_time unreadable",
+                         f"ledger={ledger_idx}")
+            return None
+        drift = abs(close - target)
+        if drift > ROLLING_CLOSE_TOLERANCE_S:
+            _gate_reject(
+                f"{which} ledger close_time off target",
+                f"ledger={ledger_idx} close={close} target={target} "
+                f"drift={drift}s > {ROLLING_CLOSE_TOLERANCE_S}s",
+            )
+            return None
+
+    start_supply = _obligations_at(start_ledger)
+    end_supply = _obligations_at(end_ledger)
+    net = end_supply - start_supply
+
+    # --- Gate 2: start-side supply must be plausible -----------------------
+    # `end_supply - net` is identically `start_supply`; stated that way
+    # because the check is really "is the start-side READING believable",
+    # which is exactly what a bad boundary draw corrupts.
+    implied_start = end_supply - net
+    band = [float(s) for s in (recent_supplies or []) if s is not None]
+    if not band:
+        _gate_reject("no recent dated supply rows to verify against",
+                     f"implied_start={implied_start}")
+        return None
+    lo = min(band) * (1.0 - ROLLING_IMPLIED_SUPPLY_MARGIN)
+    hi = max(band) * (1.0 + ROLLING_IMPLIED_SUPPLY_MARGIN)
+    if not (lo <= implied_start <= hi):
+        _gate_reject(
+            "implied start supply outside recent dated band",
+            f"implied_start={implied_start:.2f} band=[{lo:.2f},{hi:.2f}] "
+            f"margin={ROLLING_IMPLIED_SUPPLY_MARGIN:.0%} net={net:.2f}",
+        )
+        return None
+
+    return net
 
 
 def current_supply() -> float:
