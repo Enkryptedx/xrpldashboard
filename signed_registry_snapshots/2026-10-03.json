@@ -1,0 +1,23 @@
+{
+  "canonical_hash_hex": "c852bb27a9579bd0e5af0fbaaa1db7a9b2b14a87317a8c2772e39a1d34c1f163",
+  "envelope_built_at_utc": "2026-10-03T02:15:03.229286Z",
+  "history_merkle_root_hex": "330d17e1d01c0875093b1a52e2b299f354376d394022e77450752e38690d5f14",
+  "history_row_order": "ORDER BY id ASC",
+  "merkle_scheme": "RFC-6962-with-Bitcoin-style-odd-duplication",
+  "row_counts": {
+    "issuer_facts": 10663,
+    "token_category_current": 387,
+    "token_category_history": 570,
+    "token_facts": 16742
+  },
+  "schema_version": 1,
+  "signature": {
+    "domain_separator": "xrpldashboard/receipt/v1",
+    "signature_ed25519_hex": "384783c2d71312d916d5ac981e9cf18b695d81833e5fdd1afeff9bdbc283039702cdba7988d68ae55a237b83b1a1b5adfecd4e968e367a7947e8ab512ddb430a",
+    "signed_at_utc": "2026-10-03T02:15:03.672830Z",
+    "signing_key_fingerprint": "A4:0F:B1:0A:9D:33:64:03"
+  },
+  "signing_domain": "xrpldashboard/registry/v1",
+  "snapshot_date_utc": "2026-10-03",
+  "taxonomy_version": "1.0.0"
+}

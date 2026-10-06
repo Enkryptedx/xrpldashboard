@@ -335,6 +335,29 @@ def line_memory(cur, ts_s: int, ts_e: int) -> str:
         return f"7. Memory: (import/query failed — {type(e).__name__})"
 
 
+def line_lenovo_disk() -> str:
+    """Line 8 (Charlie ruling 2026-09-29, post logrotate-debug fix): Lenovo
+    root disk % and /var/log/rippled total, via ssh. SSH-unreachable ->
+    'unavailable', never fails the report."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes",
+             "rippled-node",
+             "df -h / | tail -1 && du -sh /var/log/rippled 2>/dev/null"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if out.returncode != 0 or not out.stdout.strip():
+            return "8. Lenovo disk: (ssh unreachable — unavailable)"
+        lines = out.stdout.strip().splitlines()
+        df_line = lines[0].split()
+        pct = df_line[4] if len(df_line) > 4 else "?"
+        rippled_size = lines[1].split()[0] if len(lines) > 1 else "?"
+        return f"8. Lenovo disk: {pct} used · /var/log/rippled = {rippled_size}"
+    except Exception as e:  # noqa: BLE001
+        return f"8. Lenovo disk: (check failed — {type(e).__name__})"
+
+
 def main() -> int:
     ts_s, ts_e, ymd = _yesterday_utc_window()
     import datetime as dt
@@ -349,6 +372,7 @@ def main() -> int:
                 line_chain_health(cur, ts_s, ts_e),
                 line_5xx_summary(cur, y),
                 line_memory(cur, ts_s, ts_e),
+                line_lenovo_disk(),
             ])
     print(f"# Standing-orders daily report — window {ymd} UTC (full day)")
     print(report)
