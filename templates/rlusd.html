@@ -248,6 +248,18 @@
       font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
       letter-spacing: 0.08em; font-weight: 600;
     }
+    /* Second label line naming the chain and the window (2026-10-06).
+       The figure above it is a rolling trailing-24h number ending at the
+       moment of the read; the homepage "What's new" item is a different
+       window on a different chain. Muted so it reads as a qualifier, not a
+       heading, and allowed to wrap at phone width. */
+    .press-footer .label .scope,
+    .chain-card .breakdown .item .l .scope {
+      display: block; margin-top: 3px;
+      font-size: 0.62rem; opacity: 0.72;
+      text-transform: none; letter-spacing: 0.01em; font-weight: 400;
+      overflow-wrap: anywhere;
+    }
     .press-footer .value {
       font-family: var(--mono); font-size: 1.1rem; color: var(--text);
       margin-top: 3px;
@@ -608,13 +620,13 @@
       {{ explainer(
         'rlusd-activity',
         'What do these numbers mean?',
-        'These cells show the last 24 hours on a rolling window ending right now — the number rolls forward continuously as new blocks land, not at midnight UTC. The dated history rows below use a different, complementary semantic: each row is one UTC calendar day. Same underlying source (Etherscan on the Ethereum side, the XRPL directly on the other) — different clock. Correction (2026-07-17, ETH side fixed 2026-07-18, XRPL side fixed 2026-07-19): the mint/burn detection here was previously reporting $0 due to bugs. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0; that path is now retired in favor of Etherscan V2 tokentx (same source the contract link above resolves to). On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path — replaced by gateway_balances snapshot-diff at UTC-day-boundary ledgers, which measures the issued obligation total directly. XRPL is shown as a single "net supply change" (mints minus redemptions) rather than separate mints/burns because the ledger proves the net directly; separate components would require a full transaction enumeration that we don\'t ship. The live supply totals on the orbs above were unaffected throughout — those come from totalSupply() on Ethereum and gateway_balances on XRPL.'
+        'These cells show the last 24 hours on a rolling window ending right now — the number rolls forward continuously as new blocks land, not at midnight UTC. Same underlying source (Etherscan on the Ethereum side, the XRPL directly on the other) — different clock. Correction (2026-07-17, ETH side fixed 2026-07-18, XRPL side fixed 2026-07-19): the mint/burn detection here was previously reporting $0 due to bugs. On Ethereum, public RPC providers tightened their eth_getLogs block-range limits below our chunk size and the walker silently swallowed the errors as $0; that path is now retired in favor of Etherscan V2 tokentx (same source the contract link above resolves to). On XRPL, our Payment-only sweep against the RLUSD issuer missed the actual supply-change path — replaced by gateway_balances snapshot-diff at UTC-day-boundary ledgers, which measures the issued obligation total directly. XRPL is shown as a single "net supply change" (mints minus redemptions) rather than separate mints/burns because the ledger proves the net directly; separate components would require a full transaction enumeration that we don\'t ship. The live supply totals on the orbs above were unaffected throughout — those come from totalSupply() on Ethereum and gateway_balances on XRPL.'
       ) }}
     </div>
 
     <div class="press-footer">
       <div class="cell">
-        <div class="label">Net supply change · 24h</div>
+        <div class="label">Net supply change · 24h<span class="scope">both chains · rolling last 24 hours, ending now</span></div>
         <div class="value {% if net_24h is not none %}{{ 'mint' if net_24h >= 0 else 'burn' }}{% endif %}" id="net24h">{{ fmt_signed(net_24h) }}</div>
       </div>
       <div class="cell">
@@ -633,8 +645,8 @@
       <div class="supply" id="ethSupplyBig">{{ fmt_usd(eth_supply) }}</div>
       <div class="supply-label">RLUSD circulating on Ethereum {{ cite('xrpl.rlusd.eth_supply', 'red') }}</div>
       <div class="breakdown">
-        <div class="item"><div class="l">Mints · 24h</div><div class="v" id="ethMints">{{ fmt_usd(eth_mints) }}</div></div>
-        <div class="item"><div class="l">Burns · 24h</div><div class="v" id="ethBurns">{{ fmt_usd(eth_burns) }}</div></div>
+        <div class="item"><div class="l">Mints · 24h<span class="scope">Ethereum · rolling last 24 hours, ending now</span></div><div class="v" id="ethMints">{{ fmt_usd(eth_mints) }}</div></div>
+        <div class="item"><div class="l">Burns · 24h<span class="scope">Ethereum · rolling last 24 hours, ending now</span></div><div class="v" id="ethBurns">{{ fmt_usd(eth_burns) }}</div></div>
       </div>
       <div class="source">
         Contract
@@ -656,7 +668,7 @@
       <div class="supply-label">RLUSD circulating on the XRPL {{ cite('xrpl.rlusd.xrpl_supply', 'yellow') }}</div>
       <div class="breakdown">
         <div class="item wide" title="Mints minus redemptions — we show the net because it's what the ledger proves directly. Computed from gateway_balances at UTC-day-boundary ledgers.">
-          <div class="l">Net supply change · 24h</div>
+          <div class="l">Net supply change · 24h<span class="scope">XRPL · rolling last 24 hours, ending now</span></div>
           <div class="v {% if xrpl_net is not none %}{{ 'mint' if xrpl_net >= 0 else 'burn' }}{% endif %}" id="xrplNet">{{ fmt_signed(xrpl_net) }}{{ cite('xrpl.rlusd.xrpl_net_change_24h', 'yellow') }}</div>
         </div>
       </div>

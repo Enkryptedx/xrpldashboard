@@ -38,6 +38,7 @@ The disclosure line names what is NOT covered so a reader knows the ceiling.
 from __future__ import annotations
 
 import datetime as dt
+from zoneinfo import ZoneInfo
 import json
 import os
 import sys
@@ -141,7 +142,11 @@ _MEANING = {
 # Short display name per metric_name — used as the lead word in the
 # strip headline. "RWA AUM grew by $50K" not "rwa_total_aum_usd..."
 _SHORT_LABEL = {
-    "rlusd_xrpl_supply":       "RLUSD supply",
+    # Chain-scoped on purpose: this metric is the XRPL issuer obligation
+    # total only. "RLUSD supply" alone read as cross-chain and invited the
+    # comparison with /rlusd's two-chain rolling cell, which measures a
+    # different thing over a different window.
+    "rlusd_xrpl_supply":       "RLUSD XRPL supply",
     "amm_pools_total_tvl_usd": "AMM TVL",
     "amm_pools_count":         "AMM pools",
     "rwa_total_aum_usd":       "RWA AMM liquidity",
@@ -354,18 +359,62 @@ def _plain_english_scalar_line(metric_name: str, before: float, after: float,
     return lead
 
 
-def _detail_line(before: float, after: float, metric_type: str) -> str:
+_ET = ZoneInfo("America/New_York")
+
+# Which chain a metric actually covers, where the short label alone doesn't
+# say. Appended to the detail line so an XRPL-only figure can't be mistaken
+# for a cross-chain one.
+_CHAIN_SCOPE = {
+    "rlusd_xrpl_supply": "XRPL only",
+}
+
+
+def _fmt_instant(unix_ts: Any) -> Optional[str]:
+    """"9:00 PM ET Oct 4 (01:00 UTC Oct 5)" — Eastern first, UTC in parens.
+
+    Why this exists: a signed leaf is taken at 21:00 ET, which is 01:00 UTC
+    the NEXT day, so the leaf's own date is its WRITE date and sits one
+    calendar day ahead of the evening whose value it carries. Naming the
+    instants rather than the leaf dates is the only way to state the window
+    without implying the wrong day.
+    """
+    if not unix_ts:
+        return None
+    utc = dt.datetime.fromtimestamp(int(unix_ts), dt.timezone.utc)
+    et = utc.astimezone(_ET)
+    return (f"{et.strftime('%-I:%M %p')} ET {et.strftime('%b')} {et.day} "
+            f"({utc.strftime('%H:%M')} UTC {utc.strftime('%b')} {utc.day})")
+
+
+def _detail_line(before: float, after: float, metric_type: str,
+                 before_taken: Any = None, after_taken: Any = None,
+                 metric_name: Optional[str] = None) -> str:
     """Exact before → after — never removed per Charlie's rule, just
     demoted from the headline. Homepage strip omits this; /changes
-    page shows it below each headline."""
-    if metric_type == "usd":
-        return f"was ${_fmt_num(before)}, now ${_fmt_num(after)}"
-    return f"was {_fmt_num(before)}, now {_fmt_num(after)}"
+    page shows it below each headline.
+
+    When both snapshot instants are known the line names them, because the
+    leaf dates alone mislead — see _fmt_instant.
+    """
+    unit = "$" if metric_type == "usd" else ""
+    b_at = _fmt_instant(before_taken)
+    a_at = _fmt_instant(after_taken)
+    if b_at and a_at:
+        line = (f"was {unit}{_fmt_num(before)} at {b_at}, "
+                f"now {unit}{_fmt_num(after)} at {a_at}")
+    else:
+        line = f"was {unit}{_fmt_num(before)}, now {unit}{_fmt_num(after)}"
+    scope = _CHAIN_SCOPE.get(metric_name or "")
+    if scope:
+        line += f" \u2014 {scope}"
+    return line
 
 
 def _scalar_delta_line(name: str, label: str, prove_url: str,
                        before: Any, after: Any,
-                       metric_type: str = "count") -> Optional[dict]:
+                       metric_type: str = "count",
+                       before_taken: Any = None,
+                       after_taken: Any = None) -> Optional[dict]:
     """Return a change dict for a scalar metric delta, or None if unchanged."""
     if before is None or after is None:
         if before != after:
@@ -389,7 +438,8 @@ def _scalar_delta_line(name: str, label: str, prove_url: str,
         return {
             "category": _category_for_metric(name),
             "line": _plain_english_scalar_line(name, before, after, metric_type),
-            "detail": _detail_line(before, after, metric_type),
+            "detail": _detail_line(before, after, metric_type,
+                                   before_taken, after_taken, name),
             "before": before, "after": after, "delta": delta,
             "prove_url": prove_url, "source": "signed_snapshot",
             "metric_name": name, "metric_type": metric_type, "label": label,
@@ -683,7 +733,10 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
                 and b_src_base and a_src_base and b_src_base != a_src_base):
             changes.append(_source_change_line(name, label, prove, b_src_base, a_src_base))
             continue
-        line = _scalar_delta_line(name, label, prove, b, a, metric_type=mtype)
+        line = _scalar_delta_line(
+            name, label, prove, b, a, metric_type=mtype,
+            before_taken=(yesterday or {}).get("snapshot_taken_unix"),
+            after_taken=(today or {}).get("snapshot_taken_unix"))
         if line:
             changes.append(line)
 
@@ -932,6 +985,11 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
             "metric_name": c.get("metric_name"),
             "metric_type": c.get("metric_type"),
             "delta_pct": _pct_signed(c),
+            # Same source the strip header already uses. An earlier draft
+            # read snapshot_taken_unix here, which is a SIGNED-LEAF field —
+            # build_strip receives the CHANGES envelope, which carries
+            # generated_at_utc instead, so that key was silently always null.
+            "as_of_utc": envelope.get("generated_at_utc"),
         })
     # Tier 3: quiet-day fill — below-floor categories first. Charlie
     # ruling 2026-09-08: "RWA: no material change today (+$9, below the
