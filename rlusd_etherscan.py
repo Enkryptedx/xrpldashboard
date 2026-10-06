@@ -40,7 +40,7 @@ import sys
 import time
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Sequence
+from typing import Any
 
 import httpx
 
@@ -208,18 +208,23 @@ def aggregate_calendar_day(day: date) -> tuple[float, float]:
 
 # --- Rolling-24h verification gate (Charlie 2026-10-06) ---------------------
 #
-# Ported from the XRPL side (rlusd_xrpl_option_a) after that gate was built.
-# The XRPL incident was a boundary resolver silently returning a ledger weeks
-# off target, so gateway_balances read a real-but-ancient supply and published
-# +$61.6M. This module had the SAME unguarded shape: block_number_at_or_before
-# resolves a boundary via one Etherscan call with no verification that the
-# block it names actually sits near the requested instant, and nothing then
-# cross-checks the resulting mints/burns against the dated eth_supply rows.
-# A wrong block range therefore yields wrong-but-plausible numbers.
+# Ported from the XRPL side (rlusd_xrpl_option_a). The boundary check is
+# worth having on its own merit: block_number_at_or_before resolves a boundary
+# via one Etherscan call with no verification that the block it names actually
+# sits near the requested instant, so confirming the timestamp costs one call
+# and rules out a silently wrong window.
 #
-# Same two gates, same constants, same "return no value, never a guess"
-# contract, and the same loud stderr trace so a withheld figure is visible in
-# the walker log rather than just being an empty cell.
+# NOTE ON HISTORY: this was originally ported alongside a second, dated-band
+# gate, justified by an XRPL incident believed to be "a boundary resolver
+# returning a ledger weeks off target". That diagnosis was WRONG. Measured on
+# 2026-10-06, find_boundary_ledger resolved to within 0-4s of target with zero
+# failed probes; the supposedly impossible figure was real, caused by a
+# genuine +62,000,000 mid-afternoon mint. The dated-band gate was removed from
+# both chains. Only the timestamp gate below survives.
+#
+# One gate, the same "return no value, never a guess" contract, and the same
+# loud stderr trace so a withheld figure is visible in the walker log rather
+# than just being an empty cell.
 
 # ETH blocks are ~12s apart (vs ~3.9s XRPL ledgers), so 900s is ~75 blocks of
 # slack — ample for reorg lag, a slow Etherscan index, or the `now - 15s`
@@ -229,12 +234,14 @@ def aggregate_calendar_day(day: date) -> tuple[float, float]:
 # two chains is how drift starts.
 ROLLING_CLOSE_TOLERANCE_S = 900
 
-# Band margin for the implied start supply, against the last 3 dated
-# eth_supply rows. Kept identical to the XRPL side for the same reason. ETH
-# RLUSD supply moves at a similar daily scale (recent dated rows sit in
-# 1.274-1.281B with day-over-day moves well under 1%), so 2% leaves real
-# headroom while still rejecting a bad block draw decisively.
-ROLLING_IMPLIED_SUPPLY_MARGIN = 0.02
+# A second gate once lived here: the implied start supply had to sit inside
+# the band of the last 3 dated eth_supply rows. It was REMOVED on 2026-10-06
+# along with its XRPL twin. The XRPL version rejected a correct
+# +$57,881,457.58 on the day a real +62M mint landed mid-afternoon, because a
+# rolling window STARTS MID-DAY while the dated rows are end-of-day snapshots.
+# The same reasoning applies on this chain: a large legitimate mid-day mint or
+# burn moves the true start supply outside any band built from end-of-day
+# rows, so the check fires hardest exactly when the figure matters most.
 
 
 def _gate_reject(reason: str, detail: str = "") -> None:
@@ -264,8 +271,6 @@ def block_timestamp(block_number: int) -> int | None:
 
 def aggregate_rolling_24h(
     now_unix: int | None = None,
-    recent_supplies: Sequence[float] | None = None,
-    supply_now: float | None = None,
 ) -> tuple[float, float] | None:
     """(mints_usd, burns_usd) for RLUSD across the trailing 24h ending at
     `now_unix` (defaults to time.time()), or **None when unverifiable**.
@@ -276,20 +281,14 @@ def aggregate_rolling_24h(
     rather than a sliding `now`, and its output is reconciled by the history
     writer).
 
-    `recent_supplies` is the last few dated `eth_supply` values, supplied by
-    the caller from rlusd_supply_history. It is REQUIRED — without it Gate 2
-    cannot run and an unverified figure is not published.
-
-    `supply_now` lets the caller pass the ETH supply it already fetched,
-    avoiding a redundant tokensupply call; falls back to current_supply().
-
     Returns None — never a partial or best-effort pair — when:
       * either boundary block's timestamp is more than
         ROLLING_CLOSE_TOLERANCE_S from its target, or can't be read;
-      * the blocks come back out of order;
-      * `recent_supplies` is missing/empty, or the current supply is unknown;
-      * the implied start supply sits outside the recent dated band widened
-        by ROLLING_IMPLIED_SUPPLY_MARGIN.
+      * the blocks come back out of order.
+
+    There is deliberately NO plausibility check against the dated
+    rlusd_supply_history rows — see the note by ROLLING_CLOSE_TOLERANCE_S.
+    A large legitimate mid-day mint or burn must be published, not withheld.
     """
     now = int(now_unix if now_unix is not None else time.time())
     target_start = now - 86_400
@@ -302,7 +301,7 @@ def aggregate_rolling_24h(
                      f"start={start_block} end={end_block}")
         return None
 
-    # --- Gate 1: boundary block timestamps must land near their targets ----
+    # --- Gate: boundary block timestamps must land near their targets ------
     # start_block is deliberately the block AFTER the boundary (exclusive
     # start), so its timestamp sits just above target_start; abs() covers it.
     for which, block_idx, target in (
@@ -324,36 +323,7 @@ def aggregate_rolling_24h(
             return None
 
     txs = _fetch_transfers(start_block, end_block)
-    mints, burns = _sum_mints_burns(txs)
-    net = mints - burns
-
-    # --- Gate 2: implied start supply must be plausible --------------------
-    band = [float(s) for s in (recent_supplies or []) if s is not None]
-    if not band:
-        _gate_reject("no recent dated eth_supply rows to verify against",
-                     f"net={net:.2f}")
-        return None
-
-    if supply_now is None:
-        try:
-            supply_now = current_supply()
-        except Exception as e:  # noqa: BLE001
-            _gate_reject("current ETH supply unknown",
-                         f"{type(e).__name__}: {e}")
-            return None
-
-    implied_start = float(supply_now) - net
-    lo = min(band) * (1.0 - ROLLING_IMPLIED_SUPPLY_MARGIN)
-    hi = max(band) * (1.0 + ROLLING_IMPLIED_SUPPLY_MARGIN)
-    if not (lo <= implied_start <= hi):
-        _gate_reject(
-            "implied start supply outside recent dated band",
-            f"implied_start={implied_start:.2f} band=[{lo:.2f},{hi:.2f}] "
-            f"margin={ROLLING_IMPLIED_SUPPLY_MARGIN:.0%} net={net:.2f}",
-        )
-        return None
-
-    return mints, burns
+    return _sum_mints_burns(txs)
 
 
 def current_supply() -> float:
