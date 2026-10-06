@@ -60,3 +60,14 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_relay_feed_filters.py tests/test_live_stream_relay.py tests/test_live_stream_relay_feeds.py tests/test_wss_relay_canary_feeds.py -q
+      # RLUSD rolling-24h verification gates (2026-10-06). Hermetic: the XRPL
+      # JSON-RPC and Etherscan surfaces are both stubbed, no DB, no network.
+      # Motivating incident: /rlusd published a two-chain "net supply change
+      # · 24h" of +$66,594,743, of which +$61.6M came from a boundary ledger
+      # resolved weeks off target. A red here means an unverified supply-change
+      # figure can reach the page again. These files were previously run only
+      # by hand — no CI job referenced them.
+      - name: RLUSD rolling-24h gate tests (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_rlusd_rolling_gate.py tests/test_rlusd_eth_rolling_gate.py -q
