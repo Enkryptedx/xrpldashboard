@@ -1,15 +1,26 @@
-"""Rolling-24h verification gate for the XRPL RLUSD net-supply figure.
+"""Boundary gate for the XRPL RLUSD rolling-24h net-supply figure.
 
-Incident (2026-10-06): /rlusd published a two-chain "net supply change · 24h"
-of +$66.59M, of which +$61,601,457.58 came from aggregate_rolling_24h. Supply
-now (1,219,375,211.58) minus that net implies a start-side reading of
-1,157,773,754 — absent from the recent dated history (Oct 2-6 all sit in
-1.219-1.227B). The dated calendar row for the same period says -1,418,542.42,
-which reconciles exactly. So the rolling figure was wrong, not merely
-differently-windowed.
+HISTORY, because it matters for reading these tests:
 
-These tests lock the two gates that now withhold such a figure. Hermetic: the
-RPC surface is stubbed, no network, no DB.
+A second gate once lived here. It required the implied start supply to sit
+inside the band of the last 3 dated rlusd_supply_history rows, widened 2%.
+It was REMOVED on 2026-10-06 because it rejected a CORRECT figure.
+
+Measured directly against s2.ripple.com, the endpoint production uses:
+
+    find_boundary_ledger(now-86400)       -> drift  -4s  (13 probes, 0 fails)
+    find_boundary_ledger(15:03 UTC Oct 5) -> drift  +0s
+    supply @ 107451884 (15:03 UTC Oct 5)  = 1,158,793,754.00
+    supply @ 107460174 (23:58 UTC Oct 5)  = 1,220,793,754.00  (== dated row)
+    supply now         (15:03 UTC Oct 6)  = 1,216,675,211.58
+
+RLUSD genuinely minted +62,000,000 on XRPL during the afternoon of Oct 5. A
+rolling window STARTS MID-DAY; the dated rows are end-of-day snapshots taken
+after the mint landed. So a true intraday start legitimately sits far below
+that band, and +57,881,457.58 was correct to the cent.
+
+What remains is the close-time gate, which verifies the boundary ledgers
+actually resolved near their targets. Hermetic: RPC stubbed, no network, no DB.
 """
 
 import os
@@ -22,12 +33,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import rlusd_xrpl_option_a as m  # noqa: E402
 
-# The real numbers from the incident.
-SUPPLY_NOW = 1_219_375_211.58
-SUPPLY_PREV = 1_220_793_754.00
-SUPPLY_OLDER = 1_227_175_754.00
-BAD_IMPLIED_START = 1_157_773_754.00   # what +61.6M implies
-REAL_BAND = [SUPPLY_NOW, SUPPLY_PREV, SUPPLY_OLDER]
+# Real measured figures from 2026-10-06.
+SUPPLY_NOW = 1_216_675_211.58
+SUPPLY_START_REAL = 1_158_793_754.00      # actual on-ledger value 24h earlier
+TRUE_NET = 57_881_457.58                  # the figure the old gate suppressed
 
 NOW = 1_760_000_000
 
@@ -41,84 +50,66 @@ def _stub(monkeypatch, *, start_ledger, end_ledger, closes, obligations):
     monkeypatch.setattr(m, "_obligations_at", lambda idx: obligations[idx])
 
 
+# --------------------------------------------------------- the regression
+
+def test_real_mint_day_figure_is_published_not_withheld(monkeypatch):
+    """THE regression. 2026-10-06, the day a real +62M mint landed mid-day.
+
+    The removed dated-band gate withheld this. It must now be published.
+    """
+    start, end = 107_451_884, 107_475_997
+    _stub(monkeypatch, start_ledger=start, end_ledger=end,
+          closes={start: NOW - 86_400, end: NOW - 2},
+          obligations={start: SUPPLY_START_REAL, end: SUPPLY_NOW})
+
+    out = m.aggregate_rolling_24h(NOW)
+    assert out is not None, (
+        "a true +$57.88M on a real mint day must be PUBLISHED, not withheld")
+    assert out == pytest.approx(TRUE_NET, abs=0.01)
+
+
+def test_no_dated_band_check_remains():
+    """The band gate and its margin must be gone, not merely bypassed."""
+    assert not hasattr(m, "ROLLING_IMPLIED_SUPPLY_MARGIN"), (
+        "the dated-band margin constant must be removed")
+    import inspect
+    params = inspect.signature(m.aggregate_rolling_24h).parameters
+    assert "recent_supplies" not in params, (
+        "the dated-rows parameter must be gone from the signature")
+    src = inspect.getsource(m.aggregate_rolling_24h)
+    assert "band" not in src.lower(), "no band logic may remain in the function"
+
+
+# ------------------------------------------------- the gate that remains
+
 def test_bad_start_ledger_weeks_back_yields_no_value(monkeypatch, capsys):
-    """Gate 1: a start ledger from weeks back must withhold the figure."""
+    """A start ledger whose close time is weeks off target is withheld."""
     start, end = 90_000_000, 99_999_999
-    weeks_off = NOW - 86_400 - 3_000_000          # ~5 weeks before target
+    weeks_off = NOW - 86_400 - 3_000_000
     _stub(monkeypatch, start_ledger=start, end_ledger=end,
           closes={start: weeks_off, end: NOW - 2},
-          obligations={start: BAD_IMPLIED_START, end: SUPPLY_NOW})
+          obligations={start: SUPPLY_START_REAL, end: SUPPLY_NOW})
 
-    out = m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND)
-    assert out is None, f"expected None for a weeks-old start ledger, got {out}"
+    assert m.aggregate_rolling_24h(NOW) is None
     err = capsys.readouterr().err
-    assert "withheld" in err and "off target" in err, (
-        f"suppression must leave a trace on stderr; got: {err!r}")
+    assert "withheld" in err and "off target" in err
 
 
 def test_normal_case_still_returns_the_net(monkeypatch):
-    """A well-formed window must still publish, unchanged."""
     start, end = 99_000_000, 99_022_000
     _stub(monkeypatch, start_ledger=start, end_ledger=end,
           closes={start: NOW - 86_400 - 2, end: NOW - 1},
-          obligations={start: SUPPLY_PREV, end: SUPPLY_NOW})
-
-    out = m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND)
-    assert out == pytest.approx(SUPPLY_NOW - SUPPLY_PREV, abs=0.01)
-    assert out == pytest.approx(-1_418_542.42, abs=0.01), (
-        "should match the dated calendar row for the same period")
-
-
-def test_the_real_incident_value_is_rejected(monkeypatch, capsys):
-    """Gate 2: +61.6M implies a start supply outside the dated band."""
-    start, end = 99_000_000, 99_022_000
-    # Close times are FINE here — only the supply reading is implausible,
-    # so this proves Gate 2 catches what Gate 1 cannot.
-    _stub(monkeypatch, start_ledger=start, end_ledger=end,
-          closes={start: NOW - 86_400 - 2, end: NOW - 1},
-          obligations={start: BAD_IMPLIED_START, end: SUPPLY_NOW})
-
-    out = m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND)
-    assert out is None, (
-        f"+{SUPPLY_NOW - BAD_IMPLIED_START:,.2f} must be withheld, got {out}")
-    err = capsys.readouterr().err
-    assert "outside recent dated band" in err
-
-
-def test_two_percent_margin_rejects_what_five_percent_would_admit():
-    """The margin choice is load-bearing, so lock it.
-
-    1,219,375,211.58 x 0.95 = 1,158,406,450 — the bad implied start
-    (1,157,773,754) sits only ~$0.6M below a 5% floor, so 5% would have let
-    this incident through. 2% rejects it by ~$37M.
-    """
-    lo_2pct = min(REAL_BAND) * (1 - 0.02)
-    lo_5pct = min(REAL_BAND) * (1 - 0.05)
-    assert BAD_IMPLIED_START < lo_2pct, "2% must reject the incident value"
-    assert BAD_IMPLIED_START > lo_5pct - 1_000_000, (
-        "5% would have been within ~$1M of admitting it — keep the margin tight")
-    assert m.ROLLING_IMPLIED_SUPPLY_MARGIN == 0.02
-
-
-def test_missing_dated_rows_withholds_rather_than_guesses(monkeypatch, capsys):
-    """No band to verify against => no published figure. Never guess."""
-    start, end = 99_000_000, 99_022_000
-    _stub(monkeypatch, start_ledger=start, end_ledger=end,
-          closes={start: NOW - 86_400 - 2, end: NOW - 1},
-          obligations={start: SUPPLY_PREV, end: SUPPLY_NOW})
-
-    for band in (None, []):
-        out = m.aggregate_rolling_24h(NOW, recent_supplies=band)
-        assert out is None, f"band={band!r} must withhold, got {out}"
-    assert "no recent dated supply rows" in capsys.readouterr().err
+          obligations={start: 1_220_793_754.00, end: SUPPLY_NOW})
+    out = m.aggregate_rolling_24h(NOW)
+    assert out == pytest.approx(SUPPLY_NOW - 1_220_793_754.00, abs=0.01)
 
 
 def test_unreadable_close_time_withholds(monkeypatch):
     start, end = 99_000_000, 99_022_000
     _stub(monkeypatch, start_ledger=start, end_ledger=end,
           closes={start: None, end: NOW - 1},
-          obligations={start: SUPPLY_PREV, end: SUPPLY_NOW})
-    assert m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND) is None
+          obligations={start: SUPPLY_START_REAL, end: SUPPLY_NOW})
+    assert m.aggregate_rolling_24h(NOW) is None
 
 
 def test_ledgers_out_of_order_withholds(monkeypatch):
@@ -126,16 +117,20 @@ def test_ledgers_out_of_order_withholds(monkeypatch):
                         lambda t: 99_999_999 if t < NOW - 1 else 99_000_000)
     monkeypatch.setattr(m, "_ledger_close_time", lambda idx: NOW)
     monkeypatch.setattr(m, "_obligations_at", lambda idx: SUPPLY_NOW)
-    assert m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND) is None
+    assert m.aggregate_rolling_24h(NOW) is None
 
 
 def test_end_ledger_far_from_now_withholds(monkeypatch):
-    """A stale end ledger is as disqualifying as a stale start ledger."""
     start, end = 99_000_000, 99_022_000
     _stub(monkeypatch, start_ledger=start, end_ledger=end,
           closes={start: NOW - 86_400 - 2, end: NOW - 50_000},
-          obligations={start: SUPPLY_PREV, end: SUPPLY_NOW})
-    assert m.aggregate_rolling_24h(NOW, recent_supplies=REAL_BAND) is None
+          obligations={start: SUPPLY_START_REAL, end: SUPPLY_NOW})
+    assert m.aggregate_rolling_24h(NOW) is None
+
+
+def test_tolerance_is_a_loose_outer_bound():
+    """900s is ~230 ledger intervals; measured drift in practice was 0-4s."""
+    assert m.ROLLING_CLOSE_TOLERANCE_S == 900
 
 
 # ---------------------------------------------------------------- rendering
@@ -151,28 +146,22 @@ def _template():
 
 
 def test_total_requires_both_legs_never_a_partial_sum():
-    """SSR: the two-chain total must be None unless BOTH legs are present."""
     src = _template()
     mm = re.search(r"\{%\s*set\s+net_24h\s*=\s*(.+?)%\}", src, re.S)
     assert mm, "net_24h assignment not found in templates/rlusd.html"
     expr = " ".join(mm.group(1).split())
-    assert "eth_net is not none" in expr and "xrpl_net is not none" in expr, (
-        f"total must guard on BOTH legs; got: {expr}")
-    assert "else None" in expr, f"total must fall to None, not 0; got: {expr}"
+    assert "eth_net is not none" in expr and "xrpl_net is not none" in expr
+    assert "else None" in expr
 
 
 def test_js_total_is_null_safe():
-    """Live poller: the total must use the null-propagating helper."""
     src = _template()
-    assert re.search(r"const\s+net\s*=\s*sumOrNull\(", src), (
-        "JS total must be computed with sumOrNull so one missing leg nulls it")
+    assert re.search(r"const\s+net\s*=\s*sumOrNull\(", src)
     mm = re.search(r"function sumOrNull\(a, b\) \{(.+?)\}", src, re.S)
-    assert mm and "return null" in mm.group(1), (
-        "sumOrNull must return null when either side is null")
+    assert mm and "return null" in mm.group(1)
 
 
 def test_missing_values_render_as_dash():
-    """fmt_usd/fmt_signed must render an em dash for None, never $0."""
     src = _template()
     for macro in ("fmt_usd", "fmt_signed"):
         mm = re.search(
@@ -180,5 +169,4 @@ def test_missing_values_render_as_dash():
             src, re.S)
         assert mm, f"{macro} macro not found"
         body = mm.group(1)
-        assert "is none" in body and "—" in body, (
-            f"{macro} must render an em dash for a missing value; got: {body[:160]}")
+        assert "is none" in body and "—" in body
