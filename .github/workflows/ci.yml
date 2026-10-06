@@ -82,3 +82,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_thisweek_long_token_wrap.py -q
+      # RLUSD label scope (2026-10-06). Separate from the gate step above:
+      # that one guards the NUMBERS, this one guards what the numbers CLAIM
+      # to measure. Two true RLUSD figures read as contradictory because
+      # neither said its chain or its window — the homepage item is XRPL-only
+      # between two 21:00 ET signed leaves, the /rlusd cells are both chains
+      # on a rolling window ending now. A red here means a figure has lost
+      # its scope label again. Hermetic: template read from disk, no DB,
+      # no network.
+      - name: RLUSD label scope tests (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_rlusd_label_scope.py -q
