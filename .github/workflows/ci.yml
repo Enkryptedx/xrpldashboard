@@ -71,3 +71,14 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_rlusd_rolling_gate.py tests/test_rlusd_eth_rolling_gate.py -q
+      # /thisweek edition-page wrap locks (added with b56f566, registered
+      # 2026-10-06). Kept as its own step rather than folded into the RLUSD
+      # one: unrelated surface, and a red here should name the /thisweek page
+      # directly instead of pointing at an RLUSD gate. Hermetic — reads the
+      # template from disk, no DB, no network. Guards against long hashes and
+      # archive URLs overflowing the viewport on a phone, and against the wrap
+      # rule leaking off .content onto every other page.
+      - name: /thisweek wrap tests (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_thisweek_long_token_wrap.py -q
