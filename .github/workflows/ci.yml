@@ -94,3 +94,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_rlusd_label_scope.py -q
+      # /changes.xml query budget (2026-10-07). The feed used to do 1 + 30 = 31
+      # SERIAL reads, each on its own short-lived connection (db.pg_connect
+      # does not pool). From Render to Neon that was ~15s per cold build and it
+      # raced the route canary's 15.0s timeout -- network_ReadTimeout at
+      # 06:06:30 ET. This step pins TWO things: the build stays within a
+      # 2-query budget, and its bytes still match the per-date rendering
+      # including the disclosed-corrections overlay. A red here means either
+      # the fanout came back or the feed drifted from the /changes pages.
+      - name: /changes.xml query budget + byte-identity (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_changes_xml_batch.py -q
