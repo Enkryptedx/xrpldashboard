@@ -11444,13 +11444,14 @@ def _load_disclosed_corrections_for(date_iso: str) -> list:
     return [e for e in entries if isinstance(e, dict)]
 
 
-def _load_changes_envelope(date_iso: str):
-    """Read the envelope for `date_iso` from PG, or None if not written.
-    Overlays any hand-curated disclosed corrections for that date (see
-    disclosed_corrections.json). If PG has no envelope for the date but
-    corrections exist, returns a corrections-only envelope so the
-    disclosure still renders. Otherwise returns None."""
-    envelope = db.read_changes_envelope(date_iso)
+def _overlay_disclosed_corrections(date_iso: str, envelope):
+    """Overlay hand-curated disclosed corrections onto a RAW PG envelope.
+
+    Extracted 2026-10-07 from _load_changes_envelope so the per-date path and
+    the batched /changes.xml path share ONE implementation. If these two ever
+    drifted, the feed would silently stop matching the per-date pages -- which
+    is precisely the bug tests/test_changes_xml_batch.py pins against.
+    """
     corrections = _load_disclosed_corrections_for(date_iso)
     if not corrections:
         return envelope
@@ -11465,6 +11466,16 @@ def _load_changes_envelope(date_iso: str):
     envelope = dict(envelope)
     envelope["changes"] = list(corrections) + list(envelope.get("changes") or [])
     return envelope
+
+
+def _load_changes_envelope(date_iso: str):
+    """Read the envelope for `date_iso` from PG, or None if not written.
+    Overlays any hand-curated disclosed corrections for that date (see
+    disclosed_corrections.json). If PG has no envelope for the date but
+    corrections exist, returns a corrections-only envelope so the
+    disclosure still renders. Otherwise returns None."""
+    return _overlay_disclosed_corrections(
+        date_iso, db.read_changes_envelope(date_iso))
 
 
 def _list_changes_dates(limit=90):
@@ -11590,7 +11601,7 @@ def changes_by_date_json(date):
 _CHANGES_XML_TTL_S = 15 * 60
 _CHANGES_XML_CACHE_LOCK = threading.Lock()      # guards the cache dict
 _CHANGES_XML_REBUILD_LOCK = threading.Lock()    # single-flight rebuild
-_changes_xml_cache = {"body": None, "built_at": 0.0}
+_changes_xml_cache = {"body": None, "built_at": 0.0, "refreshing": False}
 
 
 def _build_changes_atom_body():
@@ -11598,10 +11609,18 @@ def _build_changes_atom_body():
     cache, including disclosed corrections (via _load_changes_envelope). Pure
     function of the DB state; raises on DB failure so the caller can decide not
     to cache it."""
-    dates = _list_changes_dates(limit=30)
+    # ONE batched round-trip (Charlie 2026-10-07). This used to be
+    # _list_changes_dates() + _load_changes_envelope() per date = 1 + 30 = 31
+    # SERIAL queries against remote Neon, ~450ms of latency each, so a cold
+    # build took ~15s and raced the route canary's 15.0s timeout. The
+    # corrections overlay stays in Python (it reads a local JSON file, not PG)
+    # via the same _overlay_disclosed_corrections the per-date path uses, so
+    # the body is byte-identical.
+    pairs = db.read_changes_envelopes_batch(limit=30)
+    dates = [d for d, _ in pairs]
     entries = []
-    for d in dates:
-        env = _load_changes_envelope(d)
+    for d, raw_env in pairs:
+        env = _overlay_disclosed_corrections(d, raw_env)
         if not env:
             continue
         change_lines = env.get("changes") or []
@@ -11644,18 +11663,15 @@ def _build_changes_atom_body():
     )
 
 
-def _changes_atom_body_cached(now=None):
-    """Return the feed body from the 15-minute in-process cache, rebuilding when
-    stale. Never caches a failure: if a rebuild raises, serve the last good body
-    when one exists, else re-raise. Single-flight via _CHANGES_XML_REBUILD_LOCK
-    so two concurrent requests don't both run the slow rebuild."""
+def _changes_xml_rebuild_blocking(now=None):
+    """Rebuild under the single-flight lock and store the result.
+
+    Never caches a failure: on a raised build, serve the last good body when
+    one exists, else re-raise so normal error handling applies. Re-checks
+    freshness after acquiring the lock so a thread that queued behind a
+    rebuild returns that rebuild's result instead of doing the work twice.
+    """
     _now = now if now is not None else time.monotonic()
-    with _CHANGES_XML_CACHE_LOCK:
-        body = _changes_xml_cache["body"]
-        fresh = body is not None and (_now - _changes_xml_cache["built_at"]) < _CHANGES_XML_TTL_S
-    if fresh:
-        return body
-    # Stale or empty: one rebuilder at a time; others wait then re-check.
     with _CHANGES_XML_REBUILD_LOCK:
         with _CHANGES_XML_CACHE_LOCK:
             body = _changes_xml_cache["body"]
@@ -11673,8 +11689,61 @@ def _changes_atom_body_cached(now=None):
             raise                     # no good copy -> normal error behavior
         with _CHANGES_XML_CACHE_LOCK:
             _changes_xml_cache["body"] = new_body
-            _changes_xml_cache["built_at"] = _now
+            _changes_xml_cache["built_at"] = time.monotonic()
         return new_body
+
+
+def _start_changes_xml_refresh():
+    """Kick a background rebuild unless one is already in flight.
+
+    The `refreshing` flag is the single-flight guard for the ASYNC path, the
+    same way _CHANGES_XML_REBUILD_LOCK guards the sync path -- without it a
+    burst of requests arriving on a stale cache would each spawn a thread.
+    Daemon thread so it can never hold up interpreter shutdown.
+    """
+    with _CHANGES_XML_CACHE_LOCK:
+        if _changes_xml_cache["refreshing"]:
+            return
+        _changes_xml_cache["refreshing"] = True
+
+    def _worker():
+        try:
+            _changes_xml_rebuild_blocking()
+        except Exception:
+            app.logger.exception("changes.xml background refresh failed")
+        finally:
+            with _CHANGES_XML_CACHE_LOCK:
+                _changes_xml_cache["refreshing"] = False
+
+    threading.Thread(target=_worker, name="changes-xml-refresh",
+                     daemon=True).start()
+
+
+def _changes_atom_body_cached(now=None, block=False):
+    """Return the feed body from the 15-minute in-process cache.
+
+    Stale-while-revalidate (Charlie 2026-10-07): a stale-but-present body is
+    served IMMEDIATELY and the rebuild happens on a background thread, so no
+    request ever pays the build cost. Previously every request that landed on
+    an expired cache blocked on ~31 serial Neon round-trips (~15s) and raced
+    the route canary's 15.0s timeout.
+
+    Only a cold process with nothing cached at all builds synchronously --
+    there is no stale copy to serve, and an empty feed would be a lie. With
+    the batched query that path is well under a second.
+
+    `block=True` forces the synchronous path (used by tests).
+    """
+    _now = now if now is not None else time.monotonic()
+    with _CHANGES_XML_CACHE_LOCK:
+        body = _changes_xml_cache["body"]
+        fresh = body is not None and (_now - _changes_xml_cache["built_at"]) < _CHANGES_XML_TTL_S
+    if fresh:
+        return body
+    if body is not None and not block:
+        _start_changes_xml_refresh()
+        return body               # stale-while-revalidate: never block a request
+    return _changes_xml_rebuild_blocking(_now)
 
 
 @app.route("/changes.xml")

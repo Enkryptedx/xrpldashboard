@@ -4182,6 +4182,44 @@ def read_changes_envelope(snapshot_date):
         return None
 
 
+def read_changes_envelopes_batch(limit=30):
+    """Return [(iso_date, envelope_dict), ...] newest-first in ONE round-trip.
+
+    Why this exists (Charlie 2026-10-07): /changes.xml used to call
+    read_changes_envelope_dates() once and then read_changes_envelope() per
+    date -- 1 + 30 = 31 SERIAL round-trips to remote Neon. Each is ~450ms of
+    pure latency from Render, so a cold build took ~15s and raced the route
+    canary's 15.0s timeout (network_ReadTimeout, 2026-10-07 06:06 ET). Same
+    rows, same order, one query.
+
+    Returns [] when PG is unavailable -- same contract as the two functions
+    it replaces, so a DB outage still degrades to an empty feed rather than
+    an exception.
+    """
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, envelope FROM changes_envelopes "
+                    "ORDER BY snapshot_date DESC LIMIT %s",
+                    (limit,),
+                )
+                out = []
+                for row in cur.fetchall():
+                    d, env = row[0], row[1]
+                    if isinstance(env, str):
+                        try:
+                            env = json.loads(env)
+                        except Exception:
+                            env = None
+                    out.append((d.isoformat(), env))
+                return out
+    except Exception:
+        return []
+
+
 def read_changes_envelope_dates(limit=90):
     """Return sorted (newest-first) list of snapshot_date ISO strings
     with envelopes available. Empty list when PG is unavailable."""
