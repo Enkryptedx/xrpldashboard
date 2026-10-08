@@ -158,6 +158,25 @@
        Eastern time. Page-wide so every ET-first time on /amendments gets it. */
     .utc-paren { white-space: nowrap; color: var(--muted); font-size: 0.82em; }
     .countdown .how-link { margin-top: 8px; font-size: 0.9rem; }
+    /* Charlie 2026-10-07: "The rule, word for word" lives in one compact
+       collapsed box below the countdown. Closed by default; tap to expand. */
+    details.rule-box {
+      margin: 18px 0 28px; border: 1px solid var(--line, rgba(160,180,210,0.22));
+      border-radius: 12px; background: var(--card);
+    }
+    details.rule-box > summary {
+      list-style: none; cursor: pointer; padding: 12px 16px;
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    }
+    details.rule-box > summary::-webkit-details-marker { display: none; }
+    details.rule-box > summary::before {
+      content: '\25B8'; color: var(--cyan); font-size: 0.95em; margin-right: 2px;
+    }
+    details.rule-box[open] > summary::before { content: '\25BE'; }
+    details.rule-box > summary .rule-box-title { font-weight: 600; font-size: 1.05rem; }
+    details.rule-box > summary .rule-box-hint { color: var(--muted); font-size: 0.88rem; }
+    details.rule-box[open] > summary .rule-box-hint { display: none; }
+    details.rule-box .rule-box-body { padding: 0 16px 8px; }
 
     /* PART 3 (2026-10-02): activation timeline. No-JS-safe pure-CSS list,
        mobile-first. Uses the page palette vars so dark/light handling is
@@ -582,58 +601,6 @@
     {% endif %}
   {% endmacro %}
 
-  <section class="rule-word-for-word" aria-label="The rule, word for word" style="margin: 8px 0 28px;">
-    <h2>{{ _('The rule, word for word') }}</h2>
-
-    <blockquote>
-      “{{ quote_80pct_14d }}”
-      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-a filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('Trusted validators are the servers each node has chosen to trust. For a change to turn on, more than 80 percent of them must vote yes, and that support must hold for two full weeks.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_drop_restart }}”
-      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-b filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('If support ever falls to 80 percent or less, the two-week clock resets. The count must climb back above 80 percent and hold for a fresh two weeks.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_flag_ledger }}”
-      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-c filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('A flag ledger is a checkpoint. Every 256th ledger is a flag ledger, which comes around about every 16.5 minutes. Votes are counted only at these checkpoints.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_flag_plus_1 }}”
-      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-d filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('In the next ledger after the flag ledger, about 4 seconds later, the network itself adds a system entry called EnableAmendment. No person sends it.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_flag_plus_2 }}”
-      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-e filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_permanent }}”
-      <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-f filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('Once an amendment is on, it stays on. Only a new amendment can remove it.') }}</p>
-    </blockquote>
-
-    <blockquote>
-      “{{ quote_blocked }}”
-      <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
-      {# item1-g filled 2026-10-02 #}
-      <p class="quote-plain">{{ _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked, which means it stops keeping up with the network until it upgrades.') }}</p>
-    </blockquote>
-  </section>
 
   {# "Cite this day" — dated, signed permalink (build 2026-09-26). Points at
      the newest signed leaf carrying an amendments_block; when today's leaf
@@ -648,28 +615,6 @@
     {% if not cite.today_signed %}· {{ _("today's leaf signs at 01:00 UTC (21:00 ET the evening before)") }}{% endif %}
   </p>
   {% endif %}
-
-  <div id="rippled-3-3-0" class="recent-callout" style="border-color: rgba(34,211,238,0.24); background: linear-gradient(180deg, rgba(34,211,238,0.04), var(--card));">
-    <div class="label" style="color: var(--cyan);">{{ _('rippled 3.3.0 amendment set · six new amendments · our node runs 3.4.1') }}</div>
-    <p style="margin: 6px 0 0;">
-      {{ _('The 3.3.0 release bundles six amendments aimed at institutional Multi-Purpose-Token tokenization:') }}
-      <code>BatchV1_1</code>, <code>ConfidentialTransfer</code>, <code>DynamicMPT</code>,
-      <code>PermissionDelegationV1_1</code>, <code>Sponsor</code>, {{ _('and') }} <code>fixCleanup3_3_0</code>.
-      {{ _('fixCleanup3_3_0 is already enabled on mainnet; the other five still have to hold more than 80 percent of trusted validators for 14 consecutive days before activation.') }}
-    </p>
-    <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
-      {{ _('All six are recognised by our node (xrpld 3.4.1) from the') }}
-      <code>feature</code> {{ _('RPC and are tracked below in the in-flight list with their live trusted-validator vote counts. No manual edit here — the page follows the wire.') }}
-    </p>
-    <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
-      {{ _('Release notes:') }}
-      <a href="https://xrpl.org/blog/2026/xrpld-3.3.0" rel="nofollow noopener" target="_blank">xrpl.org · rippled 3.3.0</a>.
-      {{ _('Third-party market context — CoinDesk (2026-08-07) reports RWA.xyz aggregates ~$1.38B in tokenized real-world assets on XRPL, largest cohorts RLUSD (~$845.7M) and Ondo (~$212.6M). Aggregator estimates drift daily; these figures are cited, not measured by xrpldashboard:') }}
-      <a href="https://www.coindesk.com/tech/2026/08/07/new-xrp-ledger-amendments-target-usd530-million-in-tokenized-wall-street-assets" rel="nofollow noopener" target="_blank">{{ _('CoinDesk 2026-08-07') }}</a>.
-      {{ _('For the issuer side — which institutional wallets have closed a two-way TOML attestation loop on XRPL today — see') }}
-      <a href="/rwa">/rwa</a>.
-    </p>
-  </div>
 
   {# amendment summaries dict — defined up here because the countdown boxes read it before the list does. #}
   {% set summaries = {
@@ -1052,6 +997,91 @@
     <h2>{{ _('In countdown') }}</h2>
     <p class="dim">{{ _('Nothing in the 14-day activation window right now. The Amendments ledger object shows no current Majority entries.') }}</p>
   {% endif %}
+
+  {# Charlie 2026-10-07: 3.3.0 callout moved below the countdown too. #}
+  <div id="rippled-3-3-0" class="recent-callout" style="border-color: rgba(34,211,238,0.24); background: linear-gradient(180deg, rgba(34,211,238,0.04), var(--card));">
+    <div class="label" style="color: var(--cyan);">{{ _('rippled 3.3.0 amendment set · six new amendments · our node runs 3.4.1') }}</div>
+    <p style="margin: 6px 0 0;">
+      {{ _('The 3.3.0 release bundles six amendments aimed at institutional Multi-Purpose-Token tokenization:') }}
+      <code>BatchV1_1</code>, <code>ConfidentialTransfer</code>, <code>DynamicMPT</code>,
+      <code>PermissionDelegationV1_1</code>, <code>Sponsor</code>, {{ _('and') }} <code>fixCleanup3_3_0</code>.
+      {{ _('fixCleanup3_3_0 is already enabled on mainnet; the other five still have to hold more than 80 percent of trusted validators for 14 consecutive days before activation.') }}
+    </p>
+    <p style="margin: 10px 0 0; color: var(--muted); font-size: 0.92rem;">
+      {{ _('All six are recognised by our node (xrpld 3.4.1) from the') }}
+      <code>feature</code> {{ _('RPC and are tracked below in the in-flight list with their live trusted-validator vote counts. No manual edit here — the page follows the wire.') }}
+    </p>
+    <p style="margin: 12px 0 0; font-size: 0.86rem; color: var(--dim);">
+      {{ _('Release notes:') }}
+      <a href="https://xrpl.org/blog/2026/xrpld-3.3.0" rel="nofollow noopener" target="_blank">xrpl.org · rippled 3.3.0</a>.
+      {{ _('Third-party market context — CoinDesk (2026-08-07) reports RWA.xyz aggregates ~$1.38B in tokenized real-world assets on XRPL, largest cohorts RLUSD (~$845.7M) and Ondo (~$212.6M). Aggregator estimates drift daily; these figures are cited, not measured by xrpldashboard:') }}
+      <a href="https://www.coindesk.com/tech/2026/08/07/new-xrp-ledger-amendments-target-usd530-million-in-tokenized-wall-street-assets" rel="nofollow noopener" target="_blank">{{ _('CoinDesk 2026-08-07') }}</a>.
+      {{ _('For the issuer side — which institutional wallets have closed a two-way TOML attestation loop on XRPL today — see') }}
+      <a href="/rwa">/rwa</a>.
+    </p>
+  </div>
+
+  {# Charlie 2026-10-07: the rule block moved BELOW the countdown and
+     collapsed by default so the live countdown is reachable without
+     scrolling past seven quotes. Contents (all 7 verbatim quotes + xrpl.org
+     links + plain lines) are unchanged — only the wrapper moved. #}
+  <details class="rule-box" id="the-rule">
+    <summary>
+      <span class="rule-box-title">{{ _('The rule, word for word') }}</span>
+      <span class="rule-box-hint">{{ _('7 quotes from xrpl.org · tap to read') }}</span>
+    </summary>
+    <div class="rule-box-body">
+
+    <blockquote>
+      “{{ quote_80pct_14d }}”
+      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-a filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('Trusted validators are the servers each node has chosen to trust. For a change to turn on, more than 80 percent of them must vote yes, and that support must hold for two full weeks.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_drop_restart }}”
+      <cite>{{ _('Amendment Voting') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-b filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('If support ever falls to 80 percent or less, the two-week clock resets. The count must climb back above 80 percent and hold for a fresh two weeks.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_flag_ledger }}”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-c filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('A flag ledger is a checkpoint. Every 256th ledger is a flag ledger, which comes around about every 16.5 minutes. Votes are counted only at these checkpoints.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_flag_plus_1 }}”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-d filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('In the next ledger after the flag ledger, about 4 seconds later, the network itself adds a system entry called EnableAmendment. No person sends it.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_flag_plus_2 }}”
+      <cite>{{ _('Amendment Process') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-e filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_permanent }}”
+      <cite>{{ _('Amendments') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-f filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('Once an amendment is on, it stays on. Only a new amendment can remove it.') }}</p>
+    </blockquote>
+
+    <blockquote>
+      “{{ quote_blocked }}”
+      <cite>{{ _('Amendment Blocked Servers') }} — <a href="{{ _amd_url }}" rel="nofollow noopener" target="_blank">xrpl.org</a></cite>
+      {# item1-g filled 2026-10-02 #}
+      <p class="quote-plain">{{ _('A server that has not upgraded no longer understands the new rules. It becomes amendment blocked, which means it stops keeping up with the network until it upgrades.') }}</p>
+    </blockquote>
+    </div>
+  </details>
 
   {# ── Majority history timeline (Charlie 2026-09-25) ──────────────────
      Records gained / lost / regained transitions per amendment, sourced
