@@ -1164,7 +1164,9 @@
                 <td class="mono num">{{ r.yes_round }}</td>
                 <td class="mono num">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
                 <td class="state">
-                  {% if r.status == 'passing' %}
+                  {% if r.enabled %}
+                    <span style="color: var(--green, #22c55e); font-weight: 600;">{{ _('enabled') }}</span>
+                  {% elif r.status == 'passing' %}
                     <span style="color: var(--green, #22c55e);">{{ _('majority') }}</span>
                   {% elif r.status == 'reset' %}
                     <strong style="color: #ef4444;">{{ _('RESET — lost its majority this round') }}</strong>
