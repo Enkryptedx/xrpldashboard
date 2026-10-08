@@ -1612,6 +1612,26 @@ def api_walker_node_fallback():
     return ("", 204)
 
 
+@ttl_cache(seconds=60)
+def _token_icon_lookup_cached():
+    """2026-10-08: the icon lookup below is a context_processor, so it ran a
+    Neon round-trip on EVERY render_template site-wide. token_icon is
+    walker-written and changes rarely; 60 s TTL per process."""
+    lookup = {}
+    if db.pg_available():
+        try:
+            with db.pg_connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT currency_hex, issuer, stored_path "
+                    "FROM token_icon WHERE fetch_status = 'ok'"
+                )
+                for cx, issuer, stored_path in cur.fetchall():
+                    lookup[f"{cx}::{issuer}"] = "/static/" + stored_path
+        except Exception:
+            lookup = {}
+    return lookup
+
+
 @app.context_processor
 def inject_token_icon_lookup():
     """Token-icon emblem lookup for /tokens (canvas coin faces) and
@@ -1628,19 +1648,7 @@ def inject_token_icon_lookup():
     Empty on Postgres-unreachable envs — the JS side treats an empty
     lookup as 'no emblems available' and falls straight through to
     letters, which is the correct honest-partial behavior."""
-    lookup = {}
-    if db.pg_available():
-        try:
-            with db.pg_connect() as conn, conn.cursor() as cur:
-                cur.execute(
-                    "SELECT currency_hex, issuer, stored_path "
-                    "FROM token_icon WHERE fetch_status = 'ok'"
-                )
-                for cx, issuer, stored_path in cur.fetchall():
-                    lookup[f"{cx}::{issuer}"] = "/static/" + stored_path
-        except Exception:
-            lookup = {}
-    return {"token_icon_lookup": lookup}
+    return {"token_icon_lookup": _token_icon_lookup_cached()}
 
 
 @app.context_processor
@@ -4167,6 +4175,136 @@ def whales():
     return _whales_body
 
 
+# ---------------------------------------------------------------------------
+# /tokens data layer (Charlie 2026-10-08, "tokens-speed").
+# Before: every /tokens hit ran 7 serial Neon round-trips (two token_volume
+# aggregates, bucket stats, prices map, inferred-category map (~7k rows),
+# tier map, warnings feed) with no cache — ~3.5 s locally, 7-9 s from
+# Render. The data is hourly-bucketed stream counts, so a 60 s TTL is
+# invisible to readers (same cadence /mpts and the homepage already use).
+# On a cache miss the independent reads run concurrently so a cold load
+# pays roughly one round-trip, not seven. Each thread opens its own
+# connection (db.pg_connect is per-call, not pooled), same as a request.
+# ---------------------------------------------------------------------------
+_TOKENS_CACHE_TTL = 60
+
+
+def _tokens_parallel(jobs):
+    """Run {name: zero-arg callable} concurrently; a failing job yields
+    None (callers keep their existing fail-open branches)."""
+    from concurrent.futures import ThreadPoolExecutor
+    out = {}
+    with ThreadPoolExecutor(max_workers=len(jobs) or 1) as ex:
+        futs = {name: ex.submit(fn) for name, fn in jobs.items()}
+        for name, fut in futs.items():
+            try:
+                out[name] = fut.result()
+            except Exception as e:  # noqa: BLE001
+                app.logger.warning("tokens_parallel %s failed: %s", name, e)
+                out[name] = None
+    return out
+
+
+_tokens_shared_lock = threading.Lock()
+_tokens_shared_state = {"value": None, "at": 0.0, "refreshing": False}
+
+
+def _tokens_shared_data():
+    """Range-independent reads for /tokens, one entry per process.
+
+    Stale-while-revalidate: a hit inside the TTL is served from memory;
+    a hit past the TTL is still served from memory while ONE background
+    thread refreshes it, so the ~2-3 s Neon fan-out (the 30-day hero
+    aggregate alone is a 360k-row index scan) is never on a reader's
+    request path. Only the first request after process start pays it,
+    and _tokens_prewarm() below moves even that off the first visitor.
+    """
+    st = _tokens_shared_state
+    now = time.time()
+    if st["value"] is not None:
+        if now - st["at"] > _TOKENS_CACHE_TTL and not st["refreshing"]:
+            with _tokens_shared_lock:
+                if not st["refreshing"]:
+                    st["refreshing"] = True
+                    _tokens_shared_done.clear()
+                    threading.Thread(target=_tokens_shared_refresh, daemon=True,
+                                     name="tokens-shared-refresh").start()
+        return st["value"]
+    # Empty cache: if a fill is already in flight (prewarm or a sibling
+    # request) wait for it instead of running the fan-out twice.
+    with _tokens_shared_lock:
+        if not st["refreshing"]:
+            st["refreshing"] = True
+            _tokens_shared_done.clear()
+            return _tokens_shared_refresh()
+    _tokens_shared_done.wait(timeout=15)
+    return st["value"] if st["value"] is not None else _tokens_shared_fetch()
+
+
+_tokens_shared_done = threading.Event()
+
+
+def _tokens_shared_refresh():
+    try:
+        value = _tokens_shared_fetch()
+        st = _tokens_shared_state
+        st["value"], st["at"] = value, time.time()
+        return value
+    finally:
+        _tokens_shared_state["refreshing"] = False
+        _tokens_shared_done.set()
+
+
+def _tokens_prewarm():
+    """Fill the /tokens cache in the background at process start so the
+    first visitor after a deploy gets a warm page too."""
+    try:
+        _tokens_shared_data()
+        _tokens_rows_for_range("24h", 24)
+    except Exception as e:  # noqa: BLE001
+        app.logger.warning("tokens prewarm failed: %s", e)
+
+
+def _tokens_shared_fetch():
+    if not db.pg_available():
+        return {"bucket_stats": None, "price_map": {}, "tier": None,
+                "inferred_map": {}, "hero_rows_30d": None, "warnings_rows": None,
+                "max_bucket": None, "tier_counts": None}
+    got = _tokens_parallel({
+        "bucket_stats": db.read_token_volume_bucket_stats,
+        "price_map": db.read_token_prices_map,
+        "tier": shared_tier_verifier.resolve_all_map,
+        "inferred_map": db.read_token_category_inferred_map,
+        "hero_rows_30d": lambda: db.read_token_volume_aggregates(hours_back=24 * 30, limit=1500),
+        "warnings_rows": lambda: db.read_token_warnings_recent(hours_back=3, limit=15),
+        "max_bucket": db.read_max_token_bucket,
+        "tier_counts": shared_tier_verifier.live_tier_counts,
+    })
+    if got["price_map"] is None:
+        got["price_map"] = {}
+    if got["inferred_map"] is None:
+        got["inferred_map"] = {}
+    return got
+
+
+@ttl_cache(seconds=_TOKENS_CACHE_TTL)
+def _tokens_rows_for_range(range_key, hours_back):
+    """The ranked list for one range chip. None on PG failure (caller falls
+    back to volumes.db exactly as before)."""
+    if not db.pg_available():
+        return None
+    try:
+        if range_key == "warnings":
+            return db.read_token_warning_aggregates(hours_back=24, limit=50)
+        return db.read_token_volume_aggregates(hours_back=hours_back, limit=50)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+if os.environ.get("TOKENS_PREWARM", "1") == "1" and db.pg_available():
+    threading.Thread(target=_tokens_prewarm, daemon=True, name="tokens-prewarm").start()
+
+
 @app.route("/tokens")
 def tokens():
     """Token activity ranked by recent on-ledger trade count.
@@ -4194,21 +4332,17 @@ def tokens():
     total_buckets = 0
 
     # Prefer Postgres (worker dual-writes); fall back to local volumes.db.
+    # 2026-10-08: reads come from the 60 s TTL layer above (_tokens_shared_data
+    # + _tokens_rows_for_range) instead of 7 serial round-trips per hit.
+    shared = _tokens_shared_data()
     if db.pg_available():
-        try:
-            if range_key == "warnings":
-                rows = db.read_token_warning_aggregates(
-                    hours_back=24, limit=50
-                )
-            else:
-                rows = db.read_token_volume_aggregates(
-                    hours_back=hours_back, limit=50
-                )
-            stats = db.read_token_volume_bucket_stats()
+        rows = _tokens_rows_for_range(range_key, hours_back)
+        stats = shared.get("bucket_stats")
+        if rows is not None and stats is not None:
             earliest_bucket, latest_bucket, total_buckets = (
                 stats[0], stats[1], stats[2]
             )
-        except Exception:
+        elif rows is not None:
             rows = None
             earliest_bucket = latest_bucket = None
             total_buckets = 0
@@ -4255,12 +4389,15 @@ def tokens():
     # (`verified` / `self-described` / `labeled` / `bare` / `unknown`) per
     # Charlie's 09-10 vocab ruling — downstream checks below compare against
     # the lowercase-hyphen constants.
-    tier_lookup, _tier_lookup_source = shared_tier_verifier.resolve_all_map()
+    if shared.get("tier") is not None:
+        tier_lookup, _tier_lookup_source = shared["tier"]
+    else:
+        tier_lookup, _tier_lookup_source = shared_tier_verifier.resolve_all_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
     # on each row. Absent rows render "—" in the template; per token_prices.py,
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
     # not a placeholder to backfill.
-    price_map = db.read_token_prices_map() if db.pg_available() else {}
+    price_map = shared.get("price_map") or {} if db.pg_available() else {}
     from token_naming import resolve_display as _tk_resolve
     enriched = []
     for cur, iss, trades, hours_active in rows:
@@ -4363,11 +4500,9 @@ def tokens():
     # A separate wide-limit pull is needed because the range-selector
     # pull caps at 50 rows and misses long-tail Zone A share.
     hero_enriched = enriched
-    if db.pg_available():
+    if db.pg_available() and shared.get("hero_rows_30d") is not None:
         try:
-            hero_rows_30d = db.read_token_volume_aggregates(
-                hours_back=24 * 30, limit=1500
-            )
+            hero_rows_30d = shared["hero_rows_30d"]
             hero_enriched = []
             for cur, iss, trades, hours_active in hero_rows_30d:
                 meta = tokens_meta.get((cur, iss)) or {}
@@ -4495,7 +4630,8 @@ def tokens():
     # snapshot said VERIFIED=1 while the registry actually had ~87. Hero
     # snapshot remains the fallback (DB out) and still supplies total_pairs.
     _live_tier_counts, _live_tier_counts_source = (
-        shared_tier_verifier.live_tier_counts()
+        shared["tier_counts"] if shared.get("tier_counts") is not None
+        else shared_tier_verifier.live_tier_counts()
     )
     tier_counts = _live_tier_counts
     # 2026-09-10 Charlie ruling: canonical 5-tier vocab is lowercase-hyphen
@@ -4603,7 +4739,7 @@ def tokens():
         }
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
-    inferred_map = db.read_token_category_inferred_map()
+    inferred_map = shared.get("inferred_map") or {}
     for (cur, iss), inf in inferred_map.items():
         key = f"{cur}|{iss}"
         if key in label_lookup:
@@ -4659,9 +4795,9 @@ def tokens():
     # canary surface. Empty list on any DB error so the panel is simply
     # absent rather than the page failing.
     warnings_feed = []
-    if db.pg_available():
+    if db.pg_available() and shared.get("warnings_rows") is not None:
         try:
-            _wf_rows = db.read_token_warnings_recent(hours_back=3, limit=15)
+            _wf_rows = shared["warnings_rows"]
             _now_hour = int(time.time() // 3600)
             for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
                 meta = tokens_meta.get((cur, iss)) or {}
@@ -4714,7 +4850,9 @@ def tokens():
         hex_size=HEX_S,
         label_lookup_json=label_lookup_json,
         ticker_canonical_json=ticker_canonical_json,
-        data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
+        data_age_label=_format_age_seconds(
+            max(0, int(time.time()) - shared["max_bucket"] * 3600)
+            if shared.get("max_bucket") is not None else _volumes_db_age_seconds()),
     )
 
 
