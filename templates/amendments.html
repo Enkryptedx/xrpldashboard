@@ -1122,11 +1122,11 @@
       {% if roll_call.stale %}
         <p style="margin: 0 0 8px; color: #ef4444;">
           <strong>{{ _('Recorder stale:') }}</strong>
-          {{ _('last round observed') }} {{ roll_call.age_min }} {{ _('minutes ago; rounds normally arrive every 17 minutes or so. The Foundation-sourced vote strips further down stay as the labeled fallback.') }}
+          {{ _('last round observed') }} {% if roll_call.age_min is not none and roll_call.age_min < 1 %}{{ _('less than a minute ago') }}{% else %}{{ ngettext('%(n)d minute ago', '%(n)d minutes ago', roll_call.age_min, n=roll_call.age_min) }}{% endif %}; {{ _('rounds normally arrive every 17 minutes or so. The Foundation-sourced vote strips further down stay as the labeled fallback.') }}
         </p>
       {% else %}
         <p class="dim" style="margin: 0 0 8px;">
-          {{ _('Next roll call at voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.next_voting_ledger) }}</span>{% if roll_call.next_eta_min is not none %}, {{ _('in about') }} {{ roll_call.next_eta_min }} {{ _('minutes') }}{% endif %}.
+          {{ _('Next roll call at voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.next_voting_ledger) }}</span>{% if roll_call.next_eta_min is not none %}, {% if roll_call.next_eta_min < 1 %}{{ _('in less than a minute') }}{% else %}{{ ngettext('in about %(n)d minute', 'in about %(n)d minutes', roll_call.next_eta_min, n=roll_call.next_eta_min) }}{% endif %}{% endif %}.
         </p>
       {% endif %}
       {# ITEM A (Charlie 2026-10-02): live flag-ledger counter, data labels only
@@ -1138,7 +1138,7 @@
         <p class="dim flag-counter" style="margin: 0 0 8px;">
           {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
           · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
-          · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
+          · {% if flag_counter.minutes_remaining is defined and flag_counter.minutes_remaining is not none and flag_counter.minutes_remaining < 1 %}{{ _('less than a minute remaining') }}{% else %}{{ ngettext('%(n)s minute remaining', '%(n)s minutes remaining', (1 if flag_counter.minutes_remaining == 1 else 2), n=('<span class="mono">' ~ flag_counter.minutes_remaining ~ '</span>') | safe) | safe }}{% endif %}
           · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first_html }}</time>
         </p>
       {% endif %}
@@ -1191,7 +1191,7 @@
       <p class="dim flag-counter" style="margin: 0;">
         {{ _('Next flag ledger') }} <span class="mono">{{ "{:,}".format(flag_counter.next_flag_ledger) }}</span>
         · {{ _('ledgers remaining') }} <span class="mono">{{ "{:,}".format(flag_counter.ledgers_remaining) }}</span>
-        · {{ _('minutes remaining') }} <span class="mono">{{ flag_counter.minutes_remaining }}</span>
+        · {% if flag_counter.minutes_remaining is defined and flag_counter.minutes_remaining is not none and flag_counter.minutes_remaining < 1 %}{{ _('less than a minute remaining') }}{% else %}{{ ngettext('%(n)s minute remaining', '%(n)s minutes remaining', (1 if flag_counter.minutes_remaining == 1 else 2), n=('<span class="mono">' ~ flag_counter.minutes_remaining ~ '</span>') | safe) | safe }}{% endif %}
         · {{ _('next flag') }} <time datetime="{{ flag_counter.next_flag_iso }}">{{ flag_counter.next_flag_iso | datetime_to_et_first_html }}</time>
       </p>
     </div>
