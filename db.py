@@ -2888,6 +2888,14 @@ def upsert_walker_scope_declaration(walker_name, declared_scope,
         return False
 
 
+# 2026-10-08 (Charlie, audit): /coverage linked "AccountRoot" to /wallet,
+# which has no index route (only /wallet/<address>) and 404s. The seed now
+# points at /check (address lookup); this read-side remap fixes rows seeded before that so the
+# live page is right on deploy without a DB write. Re-running
+# seed_coverage_labels.py makes the remap a no-op.
+_COVERAGE_LINK_REMAP = {"/wallet": "/check"}
+
+
 def read_coverage_labels():
     """Return {(kind, name): dict} of curated display labels."""
     if not pg_available():
@@ -2904,7 +2912,7 @@ def read_coverage_labels():
                     "name": row[1],
                     "label": row[2],
                     "short_desc": row[3],
-                    "linked_page": row[4],
+                    "linked_page": _COVERAGE_LINK_REMAP.get(row[4], row[4]),
                     "updated_at": int(row[5]),
                 }
                 for row in cur.fetchall()

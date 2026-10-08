@@ -401,6 +401,7 @@
                   <span class="name">{{ name }}</span>
                 {% endif %}
                 {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
+                {% if r.name_as_issued %}<span class="dim" style="font-size: 0.78rem;" title="{{ _('On-chain metadata name:') }} {{ r.name_as_issued }}">{{ _('name trimmed') }}</span>{% endif %}
               </td>
               <td><span class="status-pill {{ status }}">{{ _(status) }}</span></td>
               <td class="hide-sm"><span class="class-pill {{ r.classification }}">{{ r.classification }}</span></td>

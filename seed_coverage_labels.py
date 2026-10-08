@@ -91,7 +91,7 @@ ENTRY_LABELS = [
     ("AccountRoot", "Account",
      "Root object for every XRPL account — carries balance, sequence, "
      "flags, and settings.",
-     "/wallet"),
+     "/check"),  # 2026-10-08: /wallet has no index route; /check = paste an address
     ("RippleState", "Trust Line State",
      "The on-ledger state of a trust line (balance, limits, quality). "
      "One RippleState per (account, counterparty, currency) triple.",

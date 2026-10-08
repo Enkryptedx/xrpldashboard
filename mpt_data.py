@@ -168,6 +168,36 @@ _UTILITY_TOKENS = {"utility", "gov", "governance", "lp", "reward",
                    "loyalty", "points", "access", "membership"}
 
 
+_JS_UNDEFINED_TAILS = (" - undefined", " – undefined", " — undefined", " undefined")
+
+
+def strip_js_undefined(value):
+    """Display-name hygiene (Charlie 2026-10-08, audit finding).
+
+    Some issuers build MPTokenMetadata with a JS template that leaks the
+    literal word `undefined` — e.g. the on-chain name of issuance
+    056762A9…C83D (issuer rnRbux…p9RM) is exactly "Precious MPT - undefined"
+    (verified at ledger 107,515,071). The on-chain string is kept untouched
+    in the snapshot; this trims a trailing " - undefined" / " undefined"
+    artifact for DISPLAY only and tells the caller it did so, so the page can
+    label the row honestly. Returns (display_value, trimmed: bool). A value
+    that is nothing but the artifact becomes None (-> "(unnamed)").
+    Same rule account_labels_import.py has applied to derived labels since
+    the 2026-08-30 audit."""
+    if value is None:
+        return None, False
+    s = str(value).strip()
+    if not s:
+        return None, False
+    for tail in _JS_UNDEFINED_TAILS:
+        if s.lower().endswith(tail):
+            trimmed = s[: -len(tail)].strip()
+            return (trimmed or None), True
+    if s.lower() == "undefined":
+        return None, True
+    return s, False
+
+
 def _meta_field(metadata, *keys):
     """Read the first non-empty value across a list of candidate keys.
     XLS-89 has both verbose (asset_class) and abbreviated (ac) forms in

@@ -140,3 +140,10 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_minute_plural.py -q
+      # Audit quick fixes (2026-10-08): /mpts JS-"undefined" display trim,
+      # /changes + /coverage broken links, phone table scroll boxes on five
+      # pages. Hermetic: fake PG, no network.
+      - name: audit quick fixes 2026-10-08 (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_audit_quick_fixes_2026_10_08.py -q
