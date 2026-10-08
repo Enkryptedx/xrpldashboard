@@ -74,6 +74,8 @@ from collections import OrderedDict
 _amm_reserves_cache: "OrderedDict[str, tuple[float, dict | None]]" = OrderedDict()
 _amm_reserves_lock = threading.Lock()
 AMM_RESERVES_TTL = int(os.environ.get("TOKEN_AMM_RESERVES_TTL", "300"))
+# Hard per-call timeout for amm_info from the /token web path (2026-10-08).
+AMM_INFO_WEB_TIMEOUT_S = float(os.environ.get("TOKEN_AMM_INFO_TIMEOUT_S", "5"))
 AMM_RESERVES_MAX_ENTRIES = int(
     os.environ.get("TOKEN_AMM_RESERVES_MAX_ENTRIES", "2000")
 )
@@ -162,9 +164,15 @@ def _amm_reserves_cached(amm_account):
         # Lenovo rippled directly. Public fallback preserved for the
         # local-dev / tunnel-degraded case.
         from sovereign_tunnel_client import SovereignFetcher
+        # 2026-10-08: this runs on a web request thread. Bound it hard —
+        # 5 s per call, one tunnel try before the public fallback — so a
+        # slow/dead node can cost a /token render at most ~10 s, not 80 s.
+        # Fail-open stays: None -> "reserves unavailable" in the template.
         fetcher = SovereignFetcher(
             public_url="https://s1.ripple.com:51234",
             walker_name="token_page_amm_reserves",
+            timeout=AMM_INFO_WEB_TIMEOUT_S,
+            max_attempts=1,
         )
         result = fetcher.call("amm_info", {"amm_account": amm_account}) or {}
         amm = result.get("amm") or {}

@@ -9486,12 +9486,49 @@ def _resolve_display_label_to_hex(label, issuer):
     return None
 
 
+# ---------------------------------------------------------------------------
+# /token/<cur>/<iss> concurrency guard (Charlie 2026-10-08).
+# A crawler walking the RLUSD-impostor issuer long tail at 40+/min — every
+# hit a cache miss costing ~5 Neon reads + live amm_info — pinned all 24
+# gunicorn threads at 14:49 ET and Render's /healthz probe failed (same
+# shape as the 08:26 incident). This caps in-flight /token renders PER
+# WORKER PROCESS at TOKEN_RENDER_MAX_CONCURRENT (default 3 of 8 threads).
+# The check is a non-blocking semaphore acquire: when full we answer 503 +
+# Retry-After immediately — no queueing, nothing held across I/O, so the
+# other 5 threads stay free for /healthz and the rest of the site.
+# ---------------------------------------------------------------------------
+TOKEN_RENDER_MAX_CONCURRENT = int(os.environ.get("TOKEN_RENDER_MAX_CONCURRENT", "3"))
+TOKEN_RENDER_RETRY_AFTER_S = int(os.environ.get("TOKEN_RENDER_RETRY_AFTER_S", "5"))
+_token_render_slots = threading.BoundedSemaphore(TOKEN_RENDER_MAX_CONCURRENT)
+_token_render_rejects = {"n": 0}
+
+
+def _token_render_busy_response():
+    _token_render_rejects["n"] += 1
+    resp = make_response(
+        "Busy: too many token pages rendering right now. Retry in a few seconds.", 503)
+    resp.headers["Content-Type"] = "text/plain; charset=utf-8"
+    resp.headers["Retry-After"] = str(TOKEN_RENDER_RETRY_AFTER_S)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @app.route("/token/<currency>/<issuer>")
 @limiter.limit("60 per minute")
 def token_detail(currency, issuer):
     """Token detail view — drilldown from /tokens. Shows trade activity
     over time, AMM pools that hold this token, and links out to other
     explorers. Read-only artifacts only — no live RPC."""
+    # Non-blocking: either we get a slot now or we 503 now. Never wait.
+    if not _token_render_slots.acquire(blocking=False):
+        return _token_render_busy_response()
+    try:
+        return _token_detail_render(currency, issuer)
+    finally:
+        _token_render_slots.release()
+
+
+def _token_detail_render(currency, issuer):
     currency = (currency or "").strip()
     issuer = (issuer or "").strip()
 

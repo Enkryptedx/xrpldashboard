@@ -147,3 +147,10 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_audit_quick_fixes_2026_10_08.py -q
+      # /token route guard (2026-10-08 incident 14:49 ET): per-worker
+      # non-blocking concurrency cap -> immediate 503 + Retry-After; amm_info
+      # from the web path bounded to 5 s / 1 tunnel try. Hermetic.
+      - name: /token route guard (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_token_route_guard.py -q

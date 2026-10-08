@@ -120,10 +120,20 @@ class SovereignFetcher:
     """
 
     def __init__(self, public_url: str, walker_name: str = "unknown",
-                 fallback_sink=None):
+                 fallback_sink=None, timeout: float | None = None,
+                 max_attempts: int | None = None):
+        """`timeout` (seconds, per HTTP call) and `max_attempts` (tunnel
+        tries before cascading) default to the module constants (20 s, 3)
+        that walkers rely on. Request-path callers — a web page rendering
+        on a gunicorn thread — should pass a small bound: with the
+        defaults one dead tunnel costs 3x20 s + 20 s public = 80 s per
+        call, which is how /token/<cur>/<iss> renders pinned every worker
+        thread on 2026-10-08 (Render /healthz failures 08:26 + 14:49 ET)."""
         self.public_url = public_url
         self.walker_name = walker_name
         self._fallback_sink = fallback_sink
+        self.timeout = timeout
+        self.max_attempts = max_attempts or TUNNEL_RETRY_ATTEMPTS
         if TUNNEL_CONFIGURED:
             self.sourcing = SOURCING_SOVEREIGN
             self._tunnel_headers = {
@@ -151,10 +161,11 @@ class SovereignFetcher:
         Returns (result_dict, None) on success, (None, reason) on total
         failure."""
         last_reason = None
-        for attempt in range(1, TUNNEL_RETRY_ATTEMPTS + 1):
+        for attempt in range(1, self.max_attempts + 1):
             try:
                 r = _client_for(SOVEREIGN_NODE).post(
                     SOVEREIGN_NODE, json=payload, headers=self._tunnel_headers,
+                    **self._timeout_kw(),
                 )
                 if r.status_code == 200:
                     return (r.json() or {}).get("result") or {}, None
@@ -163,15 +174,21 @@ class SovereignFetcher:
                 last_reason = f"tunnel_http_{r.status_code}"
             except Exception as e:
                 last_reason = f"tunnel_unreachable:{type(e).__name__}"
-            if attempt < TUNNEL_RETRY_ATTEMPTS:
+            if attempt < self.max_attempts:
                 time.sleep(_tunnel_backoff_seconds(attempt + 1))
         return None, last_reason
+
+    def _timeout_kw(self) -> dict:
+        # httpx accepts a per-request timeout override; None keeps the
+        # client default (REQUEST_TIMEOUT_SECONDS).
+        return {"timeout": self.timeout} if self.timeout is not None else {}
 
     def _try_public(self, payload):
         """Single attempt to public_url. Returns result dict on success,
         None on transport failure."""
         try:
-            r = _client_for(self.public_url).post(self.public_url, json=payload)
+            r = _client_for(self.public_url).post(self.public_url, json=payload,
+                                                  **self._timeout_kw())
             return (r.json() or {}).get("result") or {}
         except Exception:
             return None
