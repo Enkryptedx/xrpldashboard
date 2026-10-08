@@ -6578,9 +6578,16 @@ def amendments():
         # This alone drives the headline; the vote count never does (Charlie
         # 2026-09-27 bug fix). A regained amendment is active -> Holding.
         majority_active = {}
+        _enabled_hashes_hist = set()
         for _mh in (majority_history or []):
             _h = (_mh.get("hash") or "").upper()
             if not _h:
+                continue
+            # 2026-10-07: an ENABLED epoch is neither "Holding" nor
+            # "Countdown restarted". Drop the hash from the headline map so
+            # the roll-call card gets None and omits the headline.
+            if _mh.get("enabled"):
+                _enabled_hashes_hist.add(_h)
                 continue
             # majority_history is newest-first per amendment; the first row we
             # see for a hash is its current epoch. active True wins for the hash.
@@ -6588,6 +6595,8 @@ def amendments():
                 majority_active[_h] = bool(_mh.get("active"))
             elif _mh.get("active"):
                 majority_active[_h] = True
+        for _h in _enabled_hashes_hist:
+            majority_active.pop(_h, None)
         # ITEM 4 (Charlie 2026-10-02): feed the roll-call card the LIVE
         # validated ledger from network_pulse (sovereign-first) so its
         # flag-ledger counter is computed from the current tip, never the
@@ -6652,6 +6661,8 @@ def amendments():
             continue
         if _mh.get("removed_iso"):
             _has_removed_epoch.add(_h)
+        elif _mh.get("enabled"):
+            continue  # 2026-10-07: a completed (enabled) epoch is not a live clock
         elif _h not in _active_close_by_hash:
             # active epoch (removed_iso is None); rows are newest-first, so the
             # first active row is the current one.
@@ -6908,7 +6919,8 @@ def _load_amendment_majority_history():
                        vote_count_at_first, unl_threshold,
                        first_seen_ledger, first_seen_close_time,
                        removed_seen_ledger, removed_close_time,
-                       correction_note, majority_close_time
+                       correction_note, majority_close_time,
+                       enabled_seen_ledger, enabled_close_time, enabled_iso
                   FROM amendment_majority_history
                  ORDER BY amendment_name NULLS LAST,
                           majority_close_time DESC
@@ -6922,7 +6934,15 @@ def _load_amendment_majority_history():
                     "activation_eta_iso": r[3],
                     "first_seen_iso": r[4],
                     "removed_iso": r[5],
-                    "active": r[5] is None,
+                    # 2026-10-07: a window ends one of two ways. removed_* =
+                    # support dropped (LOST). enabled_* = the 14 days
+                    # completed and the amendment turned ON. "active" means
+                    # neither has happened yet.
+                    "active": r[5] is None and r[14] is None,
+                    "enabled": r[14] is not None,
+                    "enabled_seen_ledger": r[14],
+                    "enabled_close_iso": _xrpl_close_to_iso_or_none(r[15]),
+                    "enabled_iso": r[16],
                     "vote_count_at_first": r[6],
                     "unl_threshold": r[7],
                     # Charlie ruling 2026-09-25: every gained/lost/regained row

@@ -106,3 +106,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_changes_xml_batch.py -q
+      # Amendment ENABLED vs LOST (2026-10-07). The majority walker used to
+      # stamp removed_* for ANY hash that left the ledger's Majorities array,
+      # so an amendment that completed its 14-day window and turned ON would
+      # have been shown on /amendments as "majority lost — superseded" on the
+      # day it went live (PermissionDelegationV1_1, Thu Oct 8 21:25 UTC). This
+      # step pins: Amendments-array membership -> enabled_*; in neither array
+      # -> removed_*; two activations on different flag ledgers keep their own
+      # ledger + close time; the history row and dated permalink render the
+      # enabled state ET-first and never say "lost". Hermetic: RPC + DB faked.
+      - name: Amendment majority walker enabled-vs-lost (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendment_majority_walker_enabled.py -q

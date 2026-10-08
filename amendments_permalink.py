@@ -197,6 +197,19 @@ def majority_events_for_day(rows: list[dict], date_str: str) -> list[dict]:
                 "unl_threshold": r.get("unl_threshold"),
                 "correction_note": r.get("correction_note"),
             })
+        # 2026-10-07: the third transition. The walker stamps enabled_* when
+        # the hash left Majorities AND is in the ledger's Amendments array.
+        if _utc_day_of(r.get("enabled_close_iso") or r.get("enabled_iso")) == date_str:
+            events.append({
+                "kind": "enabled",
+                "name": r.get("name"), "hash": r.get("hash"),
+                "ledger": r.get("enabled_seen_ledger"),
+                "close_iso": r.get("enabled_close_iso") or r.get("enabled_iso"),
+                "activation_eta_iso": None,
+                "vote_count_at_first": None,
+                "unl_threshold": r.get("unl_threshold"),
+                "correction_note": r.get("correction_note"),
+            })
     events.sort(key=lambda e: (e.get("close_iso") or "", e.get("name") or ""))
     return events
 
