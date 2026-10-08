@@ -131,3 +131,12 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_changes_amendment_enabled.py -q
+      # /amendments minute/minutes wording (2026-10-07). The roll-call card
+      # printed "in about 1 minutes" / "0 minutes ago" / "minutes remaining
+      # 1.0". Pins the approved forms through the real template + ngettext:
+      # 1 -> "in about 1 minute" / "1 minute ago"; 0 -> "in less than a
+      # minute" / "less than a minute ago"; 2+ unchanged. No DB, no network.
+      - name: /amendments minute/minutes plural wording (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_minute_plural.py -q
