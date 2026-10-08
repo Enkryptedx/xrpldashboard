@@ -147,3 +147,12 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_audit_quick_fixes_2026_10_08.py -q
+      # /tokens data layer (2026-10-08): 60 s stale-while-revalidate cache,
+      # concurrent cold fill, cached icon context_processor. Pins: warm hits
+      # make zero DB calls; stale value served during refresh; PG-down still
+      # fails open. Hermetic fakes, no network.
+      - name: /tokens cache + concurrency (no DB, no network)
+        env:
+          DATABASE_URL: ""
+          TOKENS_PREWARM: "0"
+        run: pytest tests/test_tokens_speed_cache.py -q
