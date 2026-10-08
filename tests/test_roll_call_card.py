@@ -178,3 +178,75 @@ def test_amendment_missing_from_tallies_reads_zero_short():
     card = C.build_card(rounds, IN_FLIGHT, now)
     # 0 heard yes, not_heard=1, needs 29 -> best_possible 1 < 29 -> short for sure.
     assert all(r["status"] == "short" and r["yes_carried"] == 0 and r["count_state"] == "short" for r in card["rows"])
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-08: enabled amendments keep getting yes votes. Name them from the
+# enabled list (feature RPC knows every name) and show state "enabled"
+# instead of a bare hash + "majority".
+# ---------------------------------------------------------------------------
+def test_enabled_amendment_keeps_name_and_shows_enabled_state():
+    now = dt.datetime(2026, 10, 8, 21, 40, 0, tzinfo=UTC)
+    rounds = [
+        _round(107524991, "2026-10-08T21:38:00Z", {PD: (30, 30, True), OTHER: (35, 35, True)}),
+        _round(107524735, "2026-10-08T21:21:00Z", {PD: (30, 30, True), OTHER: (35, 35, True)}),
+    ]
+    # PD just activated: it is no longer in in_flight, only in recognized_enabled.
+    card = C.build_card(rounds, [IN_FLIGHT[1]], now,
+                        enabled=[{"hash": PD, "name": "PermissionDelegationV1_1"}])
+    by_hash = {r["hash"]: r for r in card["rows"]}
+    pd = by_hash[PD]
+    assert pd["name"] == "PermissionDelegationV1_1"          # not "0F48FF56"
+    assert pd["enabled"] is True and pd["status"] == "enabled"
+    assert by_hash[OTHER]["enabled"] is False and by_hash[OTHER]["status"] == "passing"
+    assert card["any_reset"] is False
+    # Every row has a real name — no bare-hash fallback anywhere.
+    assert all(len(r["name"]) != 8 or not all(c in "0123456789ABCDEF" for c in r["name"])
+               for r in card["rows"])
+
+
+def test_enabled_hash_without_name_still_falls_back_safely():
+    now = dt.datetime(2026, 10, 8, 21, 40, 0, tzinfo=UTC)
+    rounds = [_round(107524991, "2026-10-08T21:38:00Z", {PD: (30, 30, True)})]
+    card = C.build_card(rounds, [], now, enabled=[{"hash": PD, "name": None}])
+    assert card["rows"][0]["status"] == "enabled" and card["rows"][0]["name"] == PD[:8]
+
+
+def test_load_for_page_passes_recognized_enabled(monkeypatch):
+    seen = {}
+    def fake_build(rounds, in_flight, now, **kw):
+        seen.update(kw); return {"rows": []}
+    monkeypatch.setattr(C, "build_card", fake_build)
+    monkeypatch.setattr(C, "is_enabled", lambda *a, **k: True)
+    import db
+    monkeypatch.setattr(db, "pg_available", lambda: True)
+    class _Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    class _Conn(_Cur):
+        def cursor(self): return _Cur()
+    monkeypatch.setattr(db, "pg_connect", lambda: _Conn())
+    monkeypatch.setattr(C, "read_rounds", lambda cur: [])
+    state = {"in_flight": [IN_FLIGHT[1]], "recognized_enabled": [{"hash": PD, "name": "PermissionDelegationV1_1"}]}
+    C.load_for_page(state, majority_active={})
+    assert seen["enabled"] == state["recognized_enabled"]
+
+
+def test_template_renders_enabled_state_green():
+    """Real template: an enabled row shows 'enabled', never 'majority'."""
+    import app as app_mod
+    rounds = [_round(107524991, "2026-10-08T21:38:00Z", {PD: (30, 30, True), OTHER: (35, 35, True)})]
+    now = dt.datetime(2026, 10, 8, 21, 40, 0, tzinfo=UTC)
+    card = C.build_card(rounds, [IN_FLIGHT[1]], now,
+                        enabled=[{"hash": PD, "name": "PermissionDelegationV1_1"}])
+    with app_mod.app.test_request_context("/amendments"):
+        from flask import render_template_string
+        html = render_template_string(
+            "{% for r in roll_call.rows %}<tr data-roll-call-row=\"{{ r.status }}\"><td class=\"name\">{{ r.name }}</td>"
+            "<td class=\"state\">{% if r.enabled %}<span style=\"color: var(--green, #22c55e); font-weight: 600;\">{{ _('enabled') }}</span>"
+            "{% elif r.status == 'passing' %}<span>{{ _('majority') }}</span>{% endif %}</td></tr>{% endfor %}",
+            roll_call=card)
+    assert "PermissionDelegationV1_1" in html and "0F48FF56</td>" not in html
+    import re
+    pd_row = re.search(r'<tr data-roll-call-row="enabled">.*?</tr>', html).group(0)
+    assert ">enabled<" in pd_row and "majority" not in pd_row

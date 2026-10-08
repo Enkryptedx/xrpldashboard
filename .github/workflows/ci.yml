@@ -154,3 +154,9 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_token_route_guard.py -q
+      # Roll-call table (2026-10-08): enabled amendments keep their name and
+      # show state "enabled" — no bare hash / stale "majority". Hermetic.
+      - name: roll-call enabled-amendment name + state (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_roll_call_card.py tests/test_amendments_rollcall_enabled_name.py -q

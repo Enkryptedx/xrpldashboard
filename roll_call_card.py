@@ -154,7 +154,8 @@ def flag_ledger_counter(current_validated_ledger: int,
 
 def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | None = None,
                majority_active: dict | None = None,
-               current_validated_ledger: int | None = None) -> dict | None:
+               current_validated_ledger: int | None = None,
+               enabled: list[dict] | None = None) -> dict | None:
     """rounds newest-first (from read_rounds); in_flight = state['in_flight']
     ([{hash, name, ...}]).
 
@@ -196,9 +197,24 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     # in_flight only supplies the display name when we have one.
     name_by_hash = {(a.get("hash") or "").upper(): a.get("name")
                     for a in (in_flight or []) if a.get("hash")}
+    # 2026-10-08 (Charlie): validators keep voting yes for an amendment AFTER
+    # it is enabled, so its hash stays in the tally. The name lookup used to
+    # know only in_flight; the moment PermissionDelegationV1_1 activated
+    # (17:29 ET) its row degraded to the bare hash "0F48FF56" and still said
+    # "majority". Names for enabled amendments come from state's
+    # recognized_enabled (the feature RPC knows every name); such rows are
+    # flagged enabled so the template shows "enabled" instead of a vote state.
+    enabled_by_hash = {(a.get("hash") or "").upper(): a.get("name")
+                       for a in (enabled or []) if a.get("hash")}
+    for _h, _n in enabled_by_hash.items():
+        name_by_hash.setdefault(_h, _n)
     tally_hashes = list(latest["tallies"].keys())
     # Union preserves in_flight order first, then any tally-only hashes.
-    ordered_hashes = [h for h in ({**name_by_hash}.keys())]
+    # in_flight first (page order), then enabled-but-still-voted, then tally-only.
+    ordered_hashes = [(a.get("hash") or "").upper() for a in (in_flight or []) if a.get("hash")]
+    for h in enabled_by_hash:
+        if h in latest["tallies"] and h not in ordered_hashes:
+            ordered_hashes.append(h)
     for h in tally_hashes:
         if h not in ordered_hashes:
             ordered_hashes.append(h)
@@ -221,7 +237,10 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         # Legacy on-wire status (passing/reset/short vs our-heard threshold) is
         # kept for the reset detector, but the DISPLAYED count state uses the
         # full-UNL certainty band above.
-        if passes:
+        is_enabled_amendment = h in enabled_by_hash
+        if is_enabled_amendment:
+            status = "enabled"   # on-ledger fact; a vote state is meaningless now
+        elif passes:
             status = "passing"
         elif prev_passes:
             status = "reset"
@@ -235,6 +254,7 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         ledger_holding = majority_active.get(h)  # True / False / None
         rows.append({
             "hash": h, "name": name_by_hash.get(h) or h[:8],
+            "enabled": is_enabled_amendment,
             "yes_round": yr, "yes_carried": yc, "passes": passes,
             "prev_passes": prev_passes, "status": status,
             "count_state": count_state, "not_heard": not_heard,
@@ -305,4 +325,5 @@ def load_for_page(state: dict, now: dt.datetime | None = None,
         return None
     return build_card(rounds, state.get("in_flight") or [], now,
                       majority_active=majority_active,
-                      current_validated_ledger=current_validated_ledger)
+                      current_validated_ledger=current_validated_ledger,
+                      enabled=state.get("recognized_enabled") or [])
