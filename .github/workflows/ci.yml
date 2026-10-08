@@ -119,3 +119,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendment_majority_walker_enabled.py -q
+      # /changes amendment activations (2026-10-07). The builder used to
+      # hard-code `amendments` as a no-change category, so an activation day
+      # read "No change: … amendments". Now an amendment_majority_history row
+      # with enabled_iso inside the day's leaf-to-leaf window emits one item
+      # (name, ET-first time, ledger, /amendments/<date> proof) and takes a
+      # strip slot as an anomaly. Pins: one-in-window shows, outside-window
+      # doesn't, two-in-window both show in ledger order (the Friday case),
+      # none keeps "no change", loader failure is soft. Hermetic: fake PG.
+      - name: /changes amendment activations (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_changes_amendment_enabled.py -q
