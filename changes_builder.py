@@ -52,7 +52,7 @@ DISCLOSURE = (
     "Coverage: on-chain state changes captured by our own walkers, plus our "
     "signing/anchor events. NOT covered by this feed: off-chain events (Ripple "
     "corporate news, exchange listings), XRP price movements, amendment votes "
-    "not yet reflected in our amendments_state snapshot, whale movements "
+    "and majority gains or losses (only activations are listed), whale movements "
     "(daily whale line pending — v2), and any external attestations. "
     "Homepage strip floors (per Charlie ruling 2026-09-08): USD metrics "
     "qualify if |Δ| ≥ max($10,000, 0.1% × prior value); count metrics if "
@@ -672,6 +672,109 @@ def _unl_delta(before: Optional[dict], after: Optional[dict],
     return lines
 
 
+# ---------------------------------------------------------------------------
+# Amendment activations (Charlie 2026-10-07)
+#
+# Source: amendment_majority_history.enabled_* — stamped by
+# scripts/amendment_majority_walker.py the first time our own node shows an
+# amendment's hash in the ledger's Amendments array (i.e. the 14-day majority
+# window completed and the amendment turned on). An activation is the
+# strongest "real, provable transition" this feed has: one row, one ledger,
+# one timestamp, verifiable on /amendments/<date>. Emit one item per
+# activation whose enabled instant falls inside the day's leaf-to-leaf
+# window; emit nothing otherwise (the category then reads "No change").
+# ---------------------------------------------------------------------------
+
+def _load_enabled_amendments(cur) -> list[dict]:
+    """Every history row that carries an enabled_* stamp. Best-effort: any
+    error (older schema, cursor without fetchall) returns [] so the feed
+    never fails to build because of this emitter."""
+    try:
+        cur.execute(
+            "SELECT amendment_name, amendment_hash, enabled_iso, "
+            "enabled_seen_ledger, majority_close_iso "
+            "FROM amendment_majority_history "
+            "WHERE enabled_iso IS NOT NULL "
+            "ORDER BY enabled_iso ASC, amendment_name ASC",
+            (),
+        )
+        rows = cur.fetchall() or []
+    except Exception:  # noqa: BLE001 — render-killer rule
+        return []
+    out = []
+    for r in rows:
+        try:
+            out.append({
+                "name": r[0], "hash": r[1], "enabled_iso": r[2],
+                "enabled_seen_ledger": r[3], "majority_close_iso": r[4],
+            })
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def _iso_to_unix(iso: Any) -> Optional[int]:
+    if not iso:
+        return None
+    try:
+        d = dt.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=dt.timezone.utc)
+        return int(d.timestamp())
+    except ValueError:
+        return None
+
+
+def _amendment_enabled_deltas(rows: list[dict], before_taken: Any,
+                              after_taken: Any) -> list[dict]:
+    """Pure. One item per amendment whose enabled instant satisfies
+    before_taken < enabled <= after_taken (unix seconds; the previous distinct
+    leaf and today's leaf). With no previous leaf the window is the 24h
+    ending at today's leaf. No today leaf -> nothing (can't place a window).
+    Sorted by enabled time, so two activations on one day (the Friday
+    case) appear in ledger order."""
+    if not after_taken:
+        return []
+    end = int(after_taken)
+    start = int(before_taken) if before_taken else end - 86400
+    items: list[dict] = []
+    for r in sorted(rows or [], key=lambda x: (_iso_to_unix(x.get("enabled_iso")) or 0,
+                                               x.get("name") or "")):
+        when = _iso_to_unix(r.get("enabled_iso"))
+        if when is None or not (start < when <= end):
+            continue
+        name = r.get("name") or (str(r.get("hash") or "")[:8] + "…")
+        ledger = r.get("enabled_seen_ledger")
+        ledger_txt = f"{int(ledger):,}" if ledger else "unknown"
+        when_txt = _fmt_instant(when)
+        utc_day = dt.datetime.fromtimestamp(when, dt.timezone.utc).date().isoformat()
+        reached_unix = _iso_to_unix(r.get("majority_close_iso"))
+        detail = (f"Majority reached {_fmt_instant(reached_unix)}; the 14-day window "
+                  f"completed and the amendment is live on mainnet."
+                  if reached_unix else
+                  "The 14-day majority window completed and the amendment is live on "
+                  "mainnet.")
+        items.append({
+            "category": "amendments",
+            "line": (f"Amendment enabled: {name} is live on mainnet — recorded by our "
+                     f"node at ledger {ledger_txt}, {when_txt}."),
+            "detail": detail,
+            "before": "majority (14-day window)",
+            "after": "enabled",
+            "amendment_name": r.get("name"),
+            "amendment_hash": r.get("hash"),
+            "enabled_iso": r.get("enabled_iso"),
+            "enabled_seen_ledger": ledger,
+            "majority_close_iso": r.get("majority_close_iso"),
+            # metric_type outside usd/count so build_strip never ranks it as a
+            # scalar delta; _is_anomaly() slots it on the strip by category.
+            "metric_type": "amendment_enabled",
+            "prove_url": f"/amendments/{utc_day}",
+            "source": "amendment_majority_history",
+        })
+    return items
+
+
 def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     """Build a /changes envelope for `date` by diffing today's snapshot
     against yesterday's. Fails soft when yesterday's snapshot is missing —
@@ -692,6 +795,10 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
                 yesterday, prev_date, skipped_dup_dates = None, date - dt.timedelta(days=1), []
             today_unl = _load_unl_snapshot_for_date(cur, date)
             yesterday_unl = _load_unl_snapshot_for_date(cur, prev_date) if prev_date else None
+            # 2026-10-07 (Charlie): amendments that turned ON inside this
+            # window. Read here, inside the same connection; filtered in
+            # Python by _amendment_enabled_deltas below.
+            enabled_rows = _load_enabled_amendments(cur) if today else []
 
     changes: list[dict] = []
     categories_no_change: list[str] = []
@@ -752,8 +859,20 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     if not any(c["category"] == "unl" for c in changes):
         categories_no_change.append("unl")
 
+    # Amendment activations (Charlie 2026-10-07): an amendment whose
+    # enabled_iso falls inside this day's leaf-to-leaf window (previous
+    # distinct leaf's snapshot_taken_unix < enabled <= today's) is a real,
+    # provable transition recorded by the majority walker from our own
+    # node. Otherwise the category stays "no change".
+    changes.extend(_amendment_enabled_deltas(
+        enabled_rows,
+        (yesterday or {}).get("snapshot_taken_unix") if yesterday else None,
+        (today or {}).get("snapshot_taken_unix")))
+    if not any(c["category"] == "amendments" for c in changes):
+        categories_no_change.append("amendments")
+
     # v2 slots — explicitly flag what we don't cover yet
-    for missing in ("amendments", "whales", "curator_decisions"):
+    for missing in ("whales", "curator_decisions"):
         if missing not in categories_no_change:
             categories_no_change.append(missing)
 
@@ -821,7 +940,7 @@ def write_changes_file(date: dt.date, envelope: dict) -> str:
 def _is_anomaly(c: dict) -> bool:
     """Anomaly = something worth flagging vs the daily heartbeat.
     Charlie ruling 2026-09-08: chain discontinuity, signing-key rotation,
-    amendment status change (v2), UNL churn, taxonomy bump."""
+    amendment status change, UNL churn, taxonomy bump."""
     line = c.get("line", "") or ""
     cat = c.get("category")
     if line.startswith("⚠"):        # chain discontinuity, key rotation
@@ -832,7 +951,7 @@ def _is_anomaly(c: dict) -> bool:
         return True
     if cat == "registry" and "taxonomy" in line.lower():
         return True
-    # v2 slot — amendments status changes will emit category='amendments'
+    # amendment activation (2026-10-07): emitted by _amendment_enabled_deltas
     if cat == "amendments":
         return True
     return False
