@@ -95,6 +95,18 @@
        under a page section that created a stacking context. */
     isolation: isolate;
   }
+  /* Charlie 2026-10-07: an OPEN group must sit above every sibling in the
+     nav row — in particular the language switcher (`.lang-switch`, a later
+     sibling that is also `isolation: isolate`). Two isolated siblings with
+     no z-index paint in DOM order, so when the nav wraps to two rows
+     (1366px on pages with the ledger chip) "English ▾" was painted over
+     the first menu item ("check", "about") and stole its clicks. The
+     menu's z-index:9999 is scoped INSIDE the group's own stacking context
+     and cannot help; the group itself needs the higher z-index. Only the
+     open group is lifted, so a closed group never covers the language
+     menu when THAT one is open. The language button is not moved or
+     restyled. */
+  .nav-groups details.group[open] { z-index: 10; }
   .nav-groups details.group .menu {
     position: absolute; top: calc(100% + 6px); left: 0;
     min-width: 200px; padding: 6px 0;
