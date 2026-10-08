@@ -207,7 +207,10 @@
                  margin-top: 6px; }
     .family-no-liquidity { padding: 0.4em 0; }
     .stat-note { font-size: 0.85rem; color: var(--muted); font-style: italic; }
-  </style>
+      /* Charlie 2026-10-08 (phone audit): wide tables scroll inside their own
+       box instead of widening the whole page. */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+</style>
   {% include "_vibes_head.html" %}
 </head>
 <body>
@@ -367,6 +370,7 @@
       can provide TOML domain attestation, <a href="/click/contact?purpose=rwa-attestation">contact us</a>.
       {%- endtrans %}
     </p>
+    <div class="table-scroll">
     <table class="exclude-table">
       <tbody>
         {% for item in exclude_list %}
@@ -389,6 +393,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
   <p class="footer-note">

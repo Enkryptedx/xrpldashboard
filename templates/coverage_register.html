@@ -67,7 +67,10 @@
     .foot { margin-top: 40px; color: var(--dim); font-size: 0.75rem; text-align: center; }
     .field-list { font-family: var(--mono); color: var(--muted); font-size: 0.78rem;
                   word-break: break-word; }
-  </style>
+      /* Charlie 2026-10-08 (phone audit): wide tables scroll inside their own
+       box instead of widening the whole page. */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -146,6 +149,7 @@
     {# {% if unavailable_reason %} guard higher up in this file so       #}
     {# it survives a walker outage — see Grok red-team #1 lesson.        #}
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -199,6 +203,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     {# ─── LedgerEntryType three-way diff ──────────────────────────── #}
@@ -206,6 +211,7 @@
       <span class="count">— {{ state.seen_entry|length }} seen / {{ state.definitions.defined_entry_count }} defined ({{ state.defined_but_unseen_entry|length }} awaiting first sighting)</span>
     </h2>
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -278,6 +284,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     {# ─── TransactionType three-way diff ─────────────────────────── #}
@@ -285,6 +292,7 @@
       <span class="count">— {{ state.seen_tx|length }} seen / {{ state.definitions.defined_tx_count }} defined ({{ state.defined_but_unseen_tx|length }} awaiting first sighting)</span>
     </h2>
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -340,6 +348,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     <div class="foot">

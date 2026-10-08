@@ -45,7 +45,10 @@
     .kv { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; font-size: 0.92rem; }
     .kv div:nth-child(odd) { color: var(--muted); }
     @media (max-width: 640px) { .kv { grid-template-columns: 1fr; } .kv div:nth-child(odd) { margin-top: 6px; } }
-  </style>
+      /* Charlie 2026-10-08 (phone audit): wide tables scroll inside their own
+       box instead of widening the whole page. */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -117,6 +120,7 @@
         {% if p.block_sources.responding_node_source %}Responding node: <span class="mono">{{ p.block_sources.responding_node_source }}</span>.{% endif %}
       </p>
       <div class="card" style="padding:6px 8px; overflow-x:auto">
+      <div class="table-scroll">
       <table data-signed-tallies>
         <thead><tr><th>Amendment</th><th>Enabled</th><th style="text-align:right">Yes</th><th style="text-align:right">Heard</th><th style="text-align:right">Threshold</th><th>Hash</th></tr></thead>
         <tbody>
@@ -133,6 +137,7 @@
         </tbody>
       </table>
       </div>
+      </div>
     {% else %}
       <div class="card"><p class="muted" style="margin:0">
         This leaf predates the amendments block: signed amendment tallies begin {{ p.amendments_block_since }}.
@@ -144,6 +149,7 @@
     <p class="muted" style="margin:0 0 8px">Ledger-sourced by amendment_majority_walker at flag ledgers; not inside this day's signed leaf.</p>
     <div class="card" data-majority-events>
       {% if p.majority_events_utc_day %}
+      <div class="table-scroll">
       <table>
         <thead><tr><th>Event</th><th>Amendment</th><th>Flag ledger</th><th>Close time</th><th>Detail</th></tr></thead>
         <tbody>
@@ -163,6 +169,7 @@
         {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
       <p class="muted" style="margin:0">No majority gained, lost, or enabled on this day.</p>
       {% endif %}
@@ -179,6 +186,7 @@
           · heard {{ rc.heard_min }}{% if rc.heard_max != rc.heard_min %}–{{ rc.heard_max }}{% endif %} of {{ rc.unl_size }}
           · threshold {{ rc.threshold }}, needed {{ rc.needed }} <span class="dim">(denominator: {{ rc.trusted_available }} trusted validators heard in the last round)</span>
         </p>
+        <div class="table-scroll">
         <table>
           <thead><tr><th>Amendment</th><th style="text-align:right">Yes, last round</th><th style="text-align:right">Yes incl. 24h carry</th><th>State</th></tr></thead>
           <tbody>
@@ -192,6 +200,7 @@
           {% endfor %}
           </tbody>
         </table>
+        </div>
       {% else %}
       <p class="muted" style="margin:0">No roll-call rounds recorded on this day (recording began 2026-09-26).</p>
       {% endif %}

@@ -82,7 +82,13 @@
       70%  { box-shadow: 0 0 0 6px rgba(74,222,128,0); }
       100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
     }
-  </style>
+      /* Charlie 2026-10-08 (phone audit): wide tables scroll inside their own
+       box instead of widening the whole page. */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+    /* long inline <code> identifiers (hashes, URLs) were the other
+       phone-width culprit here; let them wrap. */
+    @media (max-width: 780px) { code { overflow-wrap: anywhere; } pre { max-width: 100%; overflow-x: auto; } }
+</style>
   {% include "_vibes_head.html" %}
 </head>
 <body>
@@ -125,6 +131,8 @@
     <span class="pill pill-cache"><span class="pill-dot"></span>{{ _('Cached') }}</span>
     {{ _('means we re-query the XRP Ledger on a fixed cadence and serve the most recent answer to all visitors during the cache window.') }}
   </p>
+
+  <div class="table-scroll">
 
   <table class="freshness">
     <thead>
@@ -234,6 +242,7 @@
       </tr>
     </tbody>
   </table>
+  </div>
 
   <p style="color: var(--muted); font-size: 0.9rem;">
     {{ _('Five surfaces use browser-side WebSocket push (Live). The whales, tokens, pools, and wallet streams subscribe to our own-node relay at') }} <code>wss://wss.xrpldashboard.com</code> ({{ _('Lenovo xrpld → cloudflared tunnel → subscribe-only, server-filtered named feeds') }}). {{ _('The public') }} <code>wss://xrplcluster.com</code> {{ _('is fallback only: a page moves to it after repeated relay connections fail to prove live, and every such move is logged in') }} <code>walker_node_fallback</code>. {{ _('The remaining cached surfaces are derived from RPC calls or background snapshot workers — either there\'s no streaming equivalent, or the data changes on a cadence where a short TTL is the honest framing.') }}

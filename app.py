@@ -47,7 +47,7 @@ from credentials_state import get_credentials_state
 from lending_amendment import fetch_lending_status_cached
 from lending_data import CACHE_TTL as LENDING_CACHE_TTL
 from lending_data import fetch_lending_data_cached, load_lending_snapshot
-from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot
+from mpt_data import fetch_mpt_data_cached, load_mpt_snapshot, strip_js_undefined
 from token_data import fetch_token_data_cached
 from wallet_data import fetch_wallet_data_cached
 from mcp_server import SERVER_VERSION as MCP_SERVER_VERSION
@@ -9755,6 +9755,22 @@ def _enrich_mpt_rows(data):
             lbl = labels.get(copy.get("issuer"))
             if lbl and lbl.get("name"):
                 copy["issuer_name"] = lbl["name"]
+        # 2026-10-08 (Charlie, audit): trim a JS-template `undefined` artifact
+        # from the DISPLAY name/ticker/issuer label. The raw on-chain value is
+        # preserved in name_as_issued so the row can say so.
+        for key in ("name", "ticker", "issuer_name"):
+            cleaned, trimmed = strip_js_undefined(copy.get(key))
+            if trimmed:
+                copy[key + "_as_issued"] = copy.get(key)
+                copy[key] = cleaned
+        # A stale derived label like "MPT Issuer (Precious MPT - undefined)"
+        # may still sit in account_labels; clean the inner artifact too.
+        if copy.get("issuer_name") and "undefined" in str(copy["issuer_name"]).lower():
+            import re as _re
+            fixed = _re.sub(r"\s*[-\u2013\u2014]?\s*undefined(?=[)\s]|$)", "", str(copy["issuer_name"]), flags=_re.I).strip()
+            if fixed != copy["issuer_name"]:
+                copy["issuer_name_as_issued"] = copy["issuer_name"]
+                copy["issuer_name"] = fixed or None
         status_count[copy["status"]] += 1
         enriched.append(copy)
 
@@ -10080,6 +10096,12 @@ def mpt_issuer(address):
     header_label = None
     if pg_label and pg_label.get("name"):
         header_label = pg_label["name"]
+        # 2026-10-08 (audit): a stale derived label can still carry the
+        # issuer's JS "undefined" artifact — trim it for display here too.
+        if "undefined" in header_label.lower():
+            import re as _re
+            header_label = _re.sub(r"\s*[-\u2013\u2014]?\s*undefined(?=[)\s]|$)", "",
+                                   header_label, flags=_re.I).strip() or None
     else:
         for r in rows:
             if r.get("issuer_name"):
