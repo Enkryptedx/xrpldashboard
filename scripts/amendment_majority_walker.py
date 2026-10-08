@@ -17,8 +17,17 @@ table):
      a continuous majority window and CHANGES on reset — so a new
      CloseTime for the same amendment is a NEW row = a recorded reset.
   3. For any amendment_hash that has an OPEN row (removed_seen_ledger IS
-     NULL) whose majority_close_time is NOT in the current Majorities set,
-     stamp removed_* — the majority was lost.
+     NULL and enabled_seen_ledger IS NULL) whose majority_close_time is
+     NOT in the current Majorities set, look at WHY it left:
+       - hash now in the ledger's `Amendments` (enabled) array → the
+         14-day window completed and the amendment turned ON. Stamp
+         enabled_* (ledger + close time). This is the normal, expected
+         end of a majority window — NOT a loss.
+       - hash in neither Majorities nor Amendments → support dropped and
+         the majority was lost. Stamp removed_*.
+     (Charlie fix 2026-10-07: before this, every departure was stamped
+     removed_*, so an amendment that ACTIVATED would have been shown on
+     /amendments as "majority lost — superseded" on the day it went live.)
   4. activation_eta = majority_close_time + 14 days (1,209,600 s), the
      same window rippled uses and amendments_state.py already applies.
 
@@ -94,7 +103,11 @@ def _post(method, params):
 
 
 def read_state(ledger_index="validated"):
-    """Return (ledger_idx, ledger_close_time, {hash: (name, close_time)})."""
+    """Return (ledger_idx, ledger_close_time, src,
+               {hash: (name, close_time)}, enabled_hashes).
+
+    enabled_hashes is the ledger's `Amendments` array (every amendment
+    enabled on-chain as of this ledger), uppercased, as a set."""
     feat, _ = _post("feature", {})
     features = feat.get("features") or {}
     names = {
@@ -117,7 +130,33 @@ def read_state(ledger_index="validated"):
         if not h:
             continue
         majorities[h] = (names.get(h), m.get("CloseTime"))
-    return lidx, lclose, src, majorities
+    enabled_hashes = {str(h).upper() for h in (node.get("Amendments") or []) if h}
+    return lidx, lclose, src, majorities, enabled_hashes
+
+
+def classify_departures(open_rows, present_keys, enabled_hashes):
+    """Pure: split OPEN history rows that are no longer in Majorities into
+    (enabled, lost).
+
+    open_rows     : iterable of (amendment_hash, majority_close_time)
+    present_keys  : set of (amendment_hash, majority_close_time) currently
+                    in the ledger's Majorities
+    enabled_hashes: set of amendment hashes currently in the ledger's
+                    Amendments (enabled) array
+
+    A row still present is neither. A departed row whose hash is enabled
+    on-chain is `enabled`; a departed row whose hash is in neither array is
+    `lost`. Hash comparison is case-insensitive."""
+    enabled_upper = {str(h).upper() for h in (enabled_hashes or set())}
+    enabled, lost = [], []
+    for h, ct in open_rows:
+        if (h, ct) in present_keys:
+            continue
+        if str(h).upper() in enabled_upper:
+            enabled.append((h, ct))
+        else:
+            lost.append((h, ct))
+    return enabled, lost
 
 
 def _vote_at(cur, amendment_hash):
@@ -141,10 +180,11 @@ def _vote_at(cur, amendment_hash):
 
 
 def run(ledger_index="validated", dry_run=False):
-    lidx, lclose, src, majorities = read_state(ledger_index)
+    lidx, lclose, src, majorities, enabled_hashes = read_state(ledger_index)
     now_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"[majority_walker] ledger={lidx} close={_iso(lclose)} "
-          f"src={src} majorities={len(majorities)} dry_run={dry_run}")
+          f"src={src} majorities={len(majorities)} "
+          f"enabled_on_ledger={len(enabled_hashes)} dry_run={dry_run}")
 
     upserts = []
     for h, (name, close_time) in majorities.items():
@@ -160,6 +200,7 @@ def run(ledger_index="validated", dry_run=False):
 
     wrote = 0
     removed = 0
+    enabled = 0
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
             # 1) upsert present majorities
@@ -197,19 +238,39 @@ def run(ledger_index="validated", dry_run=False):
                 )
                 wrote += 1
 
-            # 2) stamp removals: open rows whose (hash, close_time) is no
-            #    longer present in the current Majorities set.
+            # 2) close out open rows whose (hash, close_time) is no longer in
+            #    Majorities. ENABLED (hash now in Amendments) vs LOST (in
+            #    neither) — see classify_departures.
             present_keys = {(h, ct) for h, (_, ct) in majorities.items()}
             cur.execute(
                 """
                 SELECT amendment_hash, majority_close_time
                   FROM amendment_majority_history
                  WHERE removed_seen_ledger IS NULL
+                   AND enabled_seen_ledger IS NULL
                 """
             )
-            for h, ct in cur.fetchall():
-                if (h, ct) in present_keys:
-                    continue
+            went_enabled, went_lost = classify_departures(
+                cur.fetchall(), present_keys, enabled_hashes)
+            for h, ct in went_enabled:
+                cur.execute(
+                    """
+                    UPDATE amendment_majority_history
+                       SET enabled_seen_ledger = %s,
+                           enabled_close_time  = %s,
+                           enabled_iso         = %s,
+                           updated_at_iso      = %s
+                     WHERE amendment_hash = %s
+                       AND majority_close_time = %s
+                       AND removed_seen_ledger IS NULL
+                       AND enabled_seen_ledger IS NULL
+                    """,
+                    (lidx, lclose, _iso(lclose), now_iso, h, ct),
+                )
+                enabled += 1
+                print(f"  ENABLED stamped: {h[:12]} close_time={_iso(ct)} "
+                      f"enabled on-ledger as of ledger {lidx} ({_iso(lclose)})")
+            for h, ct in went_lost:
                 cur.execute(
                     """
                     UPDATE amendment_majority_history
@@ -220,6 +281,7 @@ def run(ledger_index="validated", dry_run=False):
                      WHERE amendment_hash = %s
                        AND majority_close_time = %s
                        AND removed_seen_ledger IS NULL
+                       AND enabled_seen_ledger IS NULL
                     """,
                     (lidx, lclose, _iso(lclose), now_iso, h, ct),
                 )
@@ -228,9 +290,10 @@ def run(ledger_index="validated", dry_run=False):
                       f"gone as of ledger {lidx} ({_iso(lclose)})")
         conn.commit()
 
-    print(f"[majority_walker] wrote/updated={wrote} removed_stamped={removed}")
+    print(f"[majority_walker] wrote/updated={wrote} "
+          f"enabled_stamped={enabled} removed_stamped={removed}")
     return {"ledger": lidx, "present": len(majorities),
-            "wrote": wrote, "removed": removed}
+            "wrote": wrote, "enabled": enabled, "removed": removed}
 
 
 def main():

@@ -156,6 +156,7 @@
             <td class="dim">
               {% if e.vote_count_at_first is not none %}{{ e.vote_count_at_first }} yes at first sight, threshold {{ e.unl_threshold }}.{% endif %}
               {% if e.activation_eta_iso %} Activation if held: {{ e.activation_eta_iso }}.{% endif %}
+              {% if e.kind == 'enabled' %} Window completed; amendment live on mainnet. Ledger shown is where our node first saw it in the Amendments array.{% endif %}
               {% if e.correction_note %} {{ e.correction_note }}{% endif %}
             </td>
           </tr>
@@ -163,7 +164,7 @@
         </tbody>
       </table>
       {% else %}
-      <p class="muted" style="margin:0">No majority gained or lost on this day.</p>
+      <p class="muted" style="margin:0">No majority gained, lost, or enabled on this day.</p>
       {% endif %}
     </div>
 

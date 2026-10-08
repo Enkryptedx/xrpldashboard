@@ -1191,12 +1191,19 @@
            {% if mh.active %}data-activation-iso="{{ mh.activation_eta_iso }}"{% endif %}
            data-first-seen-iso="{{ mh.first_seen_iso }}"
            {% if mh.removed_iso %}data-removed-iso="{{ mh.removed_iso }}"{% endif %}
-           style="border-left: 3px solid {{ 'var(--cyan)' if mh.active else 'var(--muted)' }}; padding: 6px 0 6px 10px; margin: 8px 0;">
+           {% if mh.enabled %}data-enabled-iso="{{ mh.enabled_iso }}"{% endif %}
+           style="border-left: 3px solid {{ 'var(--cyan)' if mh.active else ('#22c55e' if mh.enabled else 'var(--muted)') }}; padding: 6px 0 6px 10px; margin: 8px 0;">
         <div class="name" style="font-weight: 600;">
           {# (a) Charlie ruling 2026-09-25: unrecognized hash shows the hash +
              "present but unnamed in our node's feature list (rippled <ver>)". #}
           {{ mh.name or (mh.hash[:8] ~ '… — ' ~ _('present but unnamed in our node’s feature list (xrpld 3.3.0-rc1)')) }}
-          {% if mh.active %}
+          {# 2026-10-07: three terminal states, not two. enabled_* is set by the
+             walker when the hash left Majorities AND appeared in the ledger's
+             Amendments array — the 14-day window COMPLETED and the amendment
+             turned on. That is never a loss. #}
+          {% if mh.enabled %}
+            <span class="tag" style="color: #22c55e; border-color: rgba(34,197,94,0.5);">{{ _('enabled on ledger') }}</span>
+          {% elif mh.active %}
             <span class="tag">{{ _('active majority') }}</span>
           {% else %}
             <span class="tag" style="opacity: 0.7;">{{ _('majority lost — superseded') }}</span>
@@ -1212,7 +1219,12 @@
              filter (no client localizer exists, so the server text is what a
              visitor actually sees). data-iso keeps the raw UTC instant as a
              machine attribute, like a <time datetime>. #}
-          {% if mh.removed_iso %}
+          {% if mh.enabled %}
+            <span class="maj-plain">
+              <strong>{{ _('Enabled') }}</strong> <span class="maj-enabled" data-iso="{{ mh.enabled_iso }}">{{ mh.enabled_iso | datetime_to_et_first_html }}</span>:
+              {{ _('the 14-day window completed and the amendment is live on mainnet') }}{% if mh.enabled_seen_ledger %} — {{ _('recorded enabled by our node at ledger') }} {{ "{:,}".format(mh.enabled_seen_ledger) }}{% endif %}.
+            </span>
+          {% elif mh.removed_iso %}
             <span class="maj-plain">
               <strong>{{ _('Lost') }}</strong> <span class="maj-removed" data-iso="{{ mh.removed_iso }}">{{ mh.removed_iso | datetime_to_et_first_html }}</span>:
               {{ _('support dropped below') }} {{ mh.unl_threshold + 1 }}
@@ -1254,7 +1266,7 @@
                  ledger where the majority formed. When the walker saw it later than the reach time
                  (it started 2026-09-20), say so instead of calling it the flag ledger. #}
               {{ _('Majority reached') }} {% if mh.majority_close_iso %}<time datetime="{{ mh.majority_close_iso }}">{{ mh.majority_close_iso | datetime_to_et_first_html }}</time>{% endif %}{% if mh.first_seen_ledger %} · {% if mh.first_seen_close_iso and not mh.first_seen_is_flag %}{{ _('first seen by our walker at ledger') }} {{ mh.first_seen_ledger }}, {{ mh.first_seen_close_iso }}{% else %}{{ _('flag ledger') }} {{ mh.first_seen_ledger }}{% if mh.first_seen_close_iso %}, {{ _('close') }} {{ mh.first_seen_close_iso }}{% endif %}{% endif %}{% endif %}<br>
-              {% if mh.removed_iso %}{{ _('Majority lost') }} <time datetime="{{ mh.removed_iso }}">{{ mh.removed_iso | datetime_to_et_first_html }}</time>{% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {% if mh.activation_eta_iso %}<time datetime="{{ mh.activation_eta_iso }}">{{ mh.activation_eta_iso | datetime_to_et_first_html }}</time>{% endif %}<br>{% endif %}
+              {% if mh.enabled %}{{ _('Enabled') }} <time datetime="{{ mh.enabled_iso }}">{{ mh.enabled_iso | datetime_to_et_first_html }}</time>{% if mh.enabled_seen_ledger %} · {{ _('first seen in the Amendments array at ledger') }} {{ mh.enabled_seen_ledger }}{% if mh.enabled_close_iso %}, {{ _('close') }} {{ mh.enabled_close_iso }}{% endif %}{% endif %}<br>{% elif mh.removed_iso %}{{ _('Majority lost') }} <time datetime="{{ mh.removed_iso }}">{{ mh.removed_iso | datetime_to_et_first_html }}</time>{% if mh.removed_seen_ledger %} · {{ _('flag ledger') }} {{ mh.removed_seen_ledger }}{% if mh.removed_close_iso %}, {{ _('close') }} {{ mh.removed_close_iso }}{% endif %}{% endif %}<br>{% else %}{{ _('Projected activation') }} {% if mh.activation_eta_iso %}<time datetime="{{ mh.activation_eta_iso }}">{{ mh.activation_eta_iso | datetime_to_et_first_html }}</time>{% endif %}<br>{% endif %}
               {% if mh.vote_count_at_first and mh.unl_threshold %}
               {# Source label (Charlie 2026-09-27, CORRECTED AGAIN): the ledger's
                  Majorities entry holds ONLY Amendment + CloseTime — no vote count.

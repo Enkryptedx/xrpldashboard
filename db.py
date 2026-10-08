@@ -683,12 +683,19 @@ CREATE TABLE IF NOT EXISTS amendment_majority_history (
     removed_seen_ledger    BIGINT,            -- first flag ledger where it was GONE (NULL = still present)
     removed_close_time     BIGINT,
     removed_iso            TEXT,
+    enabled_seen_ledger    BIGINT,            -- first ledger where the hash was seen in Amendments (enabled) — window COMPLETED, not lost
+    enabled_close_time     BIGINT,
+    enabled_iso            TEXT,
     vote_count_at_first    SMALLINT,          -- UNL votes when first observed (from tally reconstructions, best-effort)
     unl_threshold          SMALLINT,
     source                 TEXT   NOT NULL DEFAULT 'own_node_flag_ledger',
     updated_at_iso         TEXT   NOT NULL,
     PRIMARY KEY (amendment_hash, majority_close_time)
 );
+-- 2026-10-07: enabled_* columns (see migrations/2026_10_07_amendment_majority_history_enabled.sql).
+ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_seen_ledger BIGINT;
+ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_close_time  BIGINT;
+ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_iso         TEXT;
 CREATE INDEX IF NOT EXISTS amendment_majority_history_name_idx
     ON amendment_majority_history (amendment_name, majority_close_time DESC);
 CREATE INDEX IF NOT EXISTS amendment_majority_history_active_idx
