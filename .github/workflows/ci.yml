@@ -160,3 +160,10 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_roll_call_card.py tests/test_amendments_rollcall_enabled_name.py -q
+      # amendments vote/state caches (2026-10-08): upstream fetch runs
+      # OUTSIDE the lock; last good data served while one background
+      # refresh runs; failures never cached. Hermetic (patched httpx).
+      - name: amendments caches non-blocking (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_network_votes_nonblocking.py tests/test_amendments_network_votes.py -q
