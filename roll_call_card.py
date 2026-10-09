@@ -260,6 +260,14 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "count_state": count_state, "not_heard": not_heard,
             "needed_full": needed_full, "best_possible": best_possible,
             "short_by": max(0, needed_full - yc),
+            # Margin against the full-UNL bar, BY OUR NODE'S COUNT only
+            # (branch amendments-wording-2026-10-09). Positive = votes to
+            # spare; 0 = exactly at the bar (one defection loses it);
+            # negative = short by that many. The ledger's own Majorities
+            # decision is the final word on the page, not this number —
+            # verified 2026-10-09: fixCleanup3_4_0 took its majority on 28
+            # yes while our count of 35 heard said it needed 29.
+            "spare_votes": yc - needed_full,
             "ledger_holding": ledger_holding,
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
