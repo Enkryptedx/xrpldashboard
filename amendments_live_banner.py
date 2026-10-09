@@ -90,3 +90,26 @@ def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS):
     for e in out:
         e.pop("_when", None)
     return out
+
+
+def live_fingerprint(state, live_list):
+    """A short, stable string that changes exactly when the page's live
+     content should change: the on-ledger enabled count, the set of hashes
+     currently in the Majorities array, and the recently-enabled set.
+
+    The /amendments page embeds its own fingerprint; the 30s poll compares
+    the endpoint's fingerprint against it and reloads only on a mismatch.
+    Sorted so an upstream reordering of the same data never triggers a
+    spurious reload.
+    """
+    state = state or {}
+    count = state.get("enabled_count")
+    majorities = sorted(
+        (m.get("hash") or "").upper()
+        for m in (state.get("majorities") or [])
+    )
+    live = sorted(
+        "{}@{}".format((e.get("hash") or "").upper(), e.get("enabled_iso") or "")
+        for e in (live_list or [])
+    )
+    return "{}|{}|{}".format(count, ",".join(majorities), ",".join(live))

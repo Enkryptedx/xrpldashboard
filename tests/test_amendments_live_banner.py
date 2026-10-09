@@ -7,7 +7,11 @@ tests never touch the production DATABASE_URL).
 """
 import datetime as dt
 
-from amendments_live_banner import WINDOW_HOURS, recently_enabled
+from amendments_live_banner import (
+    WINDOW_HOURS,
+    live_fingerprint,
+    recently_enabled,
+)
 
 NOW = dt.datetime(2026, 10, 9, 10, 30, 0, tzinfo=dt.timezone.utc)
 
@@ -132,3 +136,59 @@ def test_missing_ledger_or_tx_still_listed():
 
 def test_none_input_is_safe():
     assert recently_enabled(None, now=NOW) == []
+
+
+# ── live_fingerprint: drives the 30s poll's reload decision ──
+
+def _state(enabled_count=95, majority_hashes=()):
+    return {
+        "enabled_count": enabled_count,
+        "majorities": [{"hash": h} for h in majority_hashes],
+    }
+
+
+def test_fingerprint_changes_when_enabled_count_changes():
+    a = live_fingerprint(_state(95, ["AAA"]), [])
+    b = live_fingerprint(_state(96, ["AAA"]), [])
+    assert a != b
+
+
+def test_fingerprint_changes_when_majorities_list_changes():
+    a = live_fingerprint(_state(95, ["AAA", "BBB"]), [])
+    b = live_fingerprint(_state(95, ["AAA"]), [])
+    assert a != b
+
+
+def test_fingerprint_changes_when_an_amendment_goes_live():
+    """The activation case: hash leaves Majorities and appears in the live
+    list. Both halves move, so the fingerprint must differ."""
+    before = live_fingerprint(_state(94, ["PD"]), [])
+    after = live_fingerprint(
+        _state(95, []),
+        [{"hash": "PD", "enabled_iso": "2026-10-08T21:29:50Z"}],
+    )
+    assert before != after
+
+
+def test_fingerprint_stable_across_reordering():
+    """An upstream reordering of identical data must NOT trigger a reload."""
+    a = live_fingerprint(_state(95, ["AAA", "BBB"]), [])
+    b = live_fingerprint(_state(95, ["BBB", "AAA"]), [])
+    assert a == b
+
+
+def test_fingerprint_stable_when_nothing_changes():
+    live = [{"hash": "PD", "enabled_iso": "2026-10-08T21:29:50Z"}]
+    assert live_fingerprint(_state(95, ["AAA"]), live) == \
+        live_fingerprint(_state(95, ["AAA"]), live)
+
+
+def test_fingerprint_case_insensitive_on_hashes():
+    a = live_fingerprint(_state(95, ["abc"]), [])
+    b = live_fingerprint(_state(95, ["ABC"]), [])
+    assert a == b
+
+
+def test_fingerprint_safe_on_empty_and_none():
+    assert live_fingerprint(None, None)
+    assert live_fingerprint({}, []) == "None||"
