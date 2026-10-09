@@ -174,3 +174,18 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendment_majority_walker_true_enable.py tests/test_amendment_majority_walker_enabled.py -q
+      # /amendments "Just went LIVE" box (2026-10-09). Motivating incident:
+      # PermissionDelegationV1_1 activated 2026-10-08 5:29:50 PM ET and its
+      # countdown card VANISHED, because cards are driven by the ledger's
+      # Majorities array and an activation removes the hash from it. Pins:
+      # a 48h-window activation renders with name + green LIVE tag +
+      # ET-first time + true enable ledger + EnableAmendment tx link; an old
+      # activation and a non-enabled row do not; the box hides when empty but
+      # the 30s poll still runs; the page and the poll endpoint agree on the
+      # fingerprint (a mismatch would reload forever); the poll endpoint is
+      # edge-cached and never 500s; a helper failure never 500s /amendments.
+      # Hermetic: fake state + fake history, no DB, no network.
+      - name: /amendments just-went-LIVE box + 30s poll (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_live_banner.py tests/test_amendments_live_banner_render.py -q
