@@ -129,3 +129,122 @@ def test_pending_entries_never_reach_the_archive():
 def test_empty_and_none_safe():
     assert recently_enabled_archive([], now=NOW) == []
     assert recently_enabled_archive(None, now=NOW) == []
+
+
+# ── rendered page: REAL route + REAL templates, fakes only ──
+
+import os  # noqa: E402
+import sys  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import app as app_mod  # noqa: E402
+
+# gettext output is not HTML-escaped here, so the apostrophe stays literal.
+PARAGRAPH = "The XRP Ledger's institutional stack"
+
+
+def _state():
+    return {
+        "ok": True, "enabled_count": 95, "in_flight_count": 12,
+        "ledger_index": 107536999,
+        "recognized_enabled": [], "unrecognized_enabled": [],
+        "unrecognized_enabled_count": 0, "in_flight": [],
+        "superseded": [], "superseded_count": 0, "majorities": [],
+        "network_votes_source": {}, "in_development": [],
+        "in_development_count": 0, "sourcing": "sovereign",
+        "cached_age_seconds": 0.0, "fetched_at_iso": "2026-10-09T12:00:00Z",
+    }
+
+
+def _render(monkeypatch, history):
+    monkeypatch.setattr(app_mod, "fetch_amendments_state_cached",
+                        lambda *a, **k: _state())
+    monkeypatch.setattr(app_mod, "_load_amendment_majority_history",
+                        lambda *a, **k: list(history))
+    import roll_call_card as C
+    monkeypatch.setattr(C, "is_enabled", lambda *a, **k: False)
+    app_mod.app.config["TESTING"] = True
+    with app_mod.app.test_client() as c:
+        r = c.get("/amendments")
+    assert r.status_code == 200
+    return r.data.decode()
+
+
+def _list_block(html):
+    """The generated list only. Ends where the hand-written callout that
+    follows it begins — don't anchor on a literal "</div>\\n</div>",
+    whitespace makes that brittle and silently yields an empty slice."""
+    i = html.find("data-recently-enabled")
+    assert i != -1, "recently-enabled list not rendered"
+    j = html.find("recent-callout", i)
+    return html[html.rfind("<", 0, i):j if j != -1 else len(html)]
+
+
+def test_list_renders_name_time_ledger_and_tx(monkeypatch):
+    rows = [_row(PD_HASH, "PermissionDelegationV1_1", "2026-09-29T21:29:50Z",
+                 ledger=107524865, tx=PD_TX)]
+    html = _render(monkeypatch, rows)
+    block = _list_block(html)
+    assert "PermissionDelegationV1_1" in block
+    assert "107,524,865" in block
+    assert "livenet.xrpl.org/transactions/" + PD_TX in block
+    assert "EnableAmendment" in block
+    # ET first, UTC in parens, via the page's shared filter.
+    assert "PM ET" in block and "UTC)" in block
+
+
+def test_list_is_newest_first_on_the_page(monkeypatch):
+    rows = [
+        _row("AAAA", "OlderOne", _ago(days=20)),
+        _row("BBBB", "NewerOne", _ago(days=4)),
+    ]
+    block = _list_block(_render(monkeypatch, rows))
+    assert block.find("NewerOne") < block.find("OlderOne")
+
+
+def test_hand_written_paragraph_is_kept_below_the_list(monkeypatch):
+    rows = [_row("AAAA", "SomeAmendment", _ago(days=4))]
+    html = _render(monkeypatch, rows)
+    assert PARAGRAPH in html
+    assert "Live Credentials tracker" in html
+    assert "XLS-47 PriceOracle" in html
+    # paragraph sits BELOW the generated list
+    assert html.find("data-recently-enabled") < html.find(PARAGRAPH)
+
+
+def test_paragraph_survives_when_the_list_is_empty(monkeypatch):
+    html = _render(monkeypatch, [])
+    assert "data-recently-enabled" not in html
+    assert PARAGRAPH in html
+    assert "Recently enabled" in html
+
+
+def test_generic_done_steps_example_is_gone(monkeypatch):
+    rows = [_row("AAAA", "SomeAmendment", _ago(days=4))]
+    html = _render(monkeypatch, rows)
+    assert "__enabled_example__" not in html
+    assert "timeline-finished" not in html
+
+
+def test_banner_item_is_not_duplicated_into_the_list(monkeypatch):
+    """PD enabled 14h ago belongs to the 48h banner only."""
+    rows = [
+        _row(PD_HASH, "PermissionDelegationV1_1", _ago(hours=14),
+             ledger=107524865, tx=PD_TX),
+        _row("BBBB", "FiveDaysAgo", _ago(days=5)),
+    ]
+    html = _render(monkeypatch, rows)
+    assert "Just went LIVE" in html
+    block = _list_block(html)
+    assert "FiveDaysAgo" in block
+    assert "PermissionDelegationV1_1" not in block
+
+
+def test_page_still_renders_when_the_archive_helper_fails(monkeypatch):
+    import amendments_live_banner as B
+    monkeypatch.setattr(B, "recently_enabled_archive",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    html = _render(monkeypatch, [_row("AAAA", "SomeAmendment", _ago(days=4))])
+    assert "Recently enabled" in html
+    assert "data-recently-enabled" not in html

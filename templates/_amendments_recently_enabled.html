@@ -1,0 +1,57 @@
+{# _amendments_recently_enabled.html — the dated "Recently enabled" list
+   (branch amendments-recently-enabled-2026-10-09).
+
+   Replaces a hand-written specimen: this section used to show only a
+   static paragraph plus one generic all-steps-DONE timeline belonging to
+   no amendment. It now lists the amendments that ACTUALLY went live, from
+   amendment_majority_history (LEDGER TRUTH recorded by the majority
+   walker), newest first, over the last 30 days.
+
+   An activation spends its first 48h in the "Just went LIVE" box at the
+   top of the page and then moves down into this list; the route excludes
+   the banner's hashes, so it is never in both at once.
+
+   Context required: recent_enabled — list of {name, hash, enabled_iso,
+   enabled_seen_ledger, enabled_tx_hash} from
+   amendments_live_banner.recently_enabled_archive().
+
+   Times render through the page's shared datetime_to_et_first_html filter
+   (ET first, UTC in parens). Nothing is formatted here. The block hides
+   entirely when the list is empty, leaving the hand-written paragraph
+   below it untouched. #}
+{% if recent_enabled %}
+<style>
+  .recent-enabled-list { margin: 0 0 14px; }
+  .recent-enabled-item {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .recent-enabled-item:last-child { border-bottom: 0; }
+  .recent-enabled-name { font-weight: 650; overflow-wrap: anywhere; }
+  .recent-enabled-when { font-size: 0.9rem; }
+  .recent-enabled-meta {
+    font-size: 0.82rem; color: var(--dim); overflow-wrap: anywhere;
+  }
+  @media (max-width: 480px) {
+    .recent-enabled-item { display: block; }
+    .recent-enabled-when, .recent-enabled-meta { margin-top: 2px; }
+  }
+</style>
+<div class="recent-enabled-list" data-recently-enabled>
+  {% for a in recent_enabled %}
+    <div class="recent-enabled-item" data-recently-enabled-item data-amendment-hash="{{ a.hash }}">
+      <span class="recent-enabled-name">{{ a.name or (a.hash[:8] ~ '…') }}</span>
+      {% if a.enabled_iso %}
+        <span class="recent-enabled-when"><time datetime="{{ a.enabled_iso }}">{{ a.enabled_iso | datetime_to_et_first_html }}</time></span>
+      {% endif %}
+      {% if a.enabled_seen_ledger or a.enabled_tx_hash %}
+        <span class="recent-enabled-meta">
+          {%- if a.enabled_seen_ledger %}{{ _('ledger') }} <span class="mono">{{ "{:,}".format(a.enabled_seen_ledger) }}</span>{% endif -%}
+          {%- if a.enabled_seen_ledger and a.enabled_tx_hash %} · {% endif -%}
+          {%- if a.enabled_tx_hash %}<a href="https://livenet.xrpl.org/transactions/{{ a.enabled_tx_hash }}" rel="noopener" target="_blank" class="mono">{{ _('EnableAmendment') }} {{ a.enabled_tx_hash[:8] }}…</a>{% endif -%}
+        </span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}

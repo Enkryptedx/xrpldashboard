@@ -1464,6 +1464,7 @@
   {% endif %}
 
   <h2>{{ _('Recently enabled') }}</h2>
+  {% include "_amendments_recently_enabled.html" %}
   <div class="recent-callout">
     <div class="label">{{ _('live on mainnet now') }}</div>
     <p style="margin: 4px 0 0;">
@@ -1475,16 +1476,6 @@
       <strong>{{ _('XLS-47 PriceOracle') }}</strong> {{ _('is also live — lets oracle providers publish signed price feeds as native ledger objects. DIA is currently the one production provider publishing to mainnet.') }}
       <a href="/price-data">{{ _('Live price feed decoder') }} → /price-data</a>
     </p>
-    {# PART 3 (2026-10-02): the same activation timeline in a FINISHED state,
-       shown once for the recently-enabled set (all six steps DONE). The route
-       passes timeline_by_hash['__enabled_example__'] with enabled=True when
-       any recognized-enabled amendment exists; absent -> block simply omits. #}
-    {% set _enabled_tl = timeline_by_hash.get('__enabled_example__') if timeline_by_hash else none %}
-    {% if _enabled_tl %}
-      <div class="timeline-finished" style="margin-top: 14px;">
-        {{ activation_timeline(_enabled_tl) }}
-      </div>
-    {% endif %}
   </div>
 
   {# Sovereign-fallback disclosure banner (Charlie 2026-09-25 own-node switch).
