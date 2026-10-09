@@ -6696,6 +6696,19 @@ def amendments():
             )
     except Exception:  # noqa: BLE001 — render-killer rule
         timeline_by_hash = {}
+    # "Just went LIVE" banner (branch amendments-live-banner-2026-10-09).
+    # Motivating incident: PermissionDelegationV1_1 activated 2026-10-08
+    # 5:29:50 PM ET and its countdown card VANISHED, because cards are
+    # driven by the ledger's Majorities array alone. This box is driven by
+    # amendment_majority_history instead, so an activation stays visible
+    # (green, with its true enable ledger + tx) for 48h. Best-effort:
+    # any failure -> empty list -> the box hides (render-killer rule).
+    try:
+        import amendments_live_banner
+        live_banner = amendments_live_banner.recently_enabled(majority_history)
+        live_fingerprint = amendments_live_banner.live_fingerprint(state, live_banner)
+    except Exception:  # noqa: BLE001 — render-killer rule
+        live_banner, live_fingerprint = [], ""
     resp = make_response(render_template(
         "amendments.html",
         state=state,
@@ -6705,12 +6718,47 @@ def amendments():
         flag_counter=flag_counter,
         timeline_by_hash=timeline_by_hash,
         cite=cite,
+        live_banner=live_banner,
+        live_fingerprint=live_fingerprint,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached
     # refreshes every AMENDMENTS_CACHE_TTL (default 300s), so re-hitting the
     # origin at 60s just returned the same cached state 5× per real refresh.
     resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    return resp
+
+
+@app.route("/api/amendments/live.json")
+def amendments_live_json():
+    """Tiny change-detection payload for the /amendments 30s poll
+    (branch amendments-live-banner-2026-10-09).
+
+    Deliberately NOT /amendments.json: that one runs the signer-path
+    _assemble_amendments_block (fail-loud on a stale cache) and sits
+    behind the agent-tier rate limiter, so browser polling would 429 real
+    visitors. This reads the SAME memoized state the page render already
+    uses (fetch_amendments_state_cached, 300s TTL), so a poll adds no node
+    load, plus the one cheap majority-history read. Edge-cached 30s so
+    repeat polls mostly never reach the origin.
+
+    Path is under /api/ to avoid colliding with the /amendments/<date>.json
+    permalink converter route.
+    """
+    try:
+        import amendments_live_banner
+        state = fetch_amendments_state_cached()
+        live = amendments_live_banner.recently_enabled(
+            _load_amendment_majority_history())
+        payload = {
+            "ok": True,
+            "enabled_count": (state or {}).get("enabled_count"),
+            "fingerprint": amendments_live_banner.live_fingerprint(state, live),
+        }
+    except Exception:  # noqa: BLE001 — a poll must never 500
+        payload = {"ok": False, "enabled_count": None, "fingerprint": ""}
+    resp = make_response(jsonify(payload))
+    resp.headers["Cache-Control"] = "public, max-age=30, s-maxage=30"
     return resp
 
 
