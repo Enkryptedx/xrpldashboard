@@ -1,0 +1,171 @@
+{# _amendments_live_banner.html — the "Just went LIVE" box at the top of
+   /amendments, plus the 30s change-detection poll.
+
+   Branch amendments-live-banner-2026-10-09. Motivating incident: when
+   PermissionDelegationV1_1 activated on 2026-10-08 at 5:29:50 PM ET
+   (21:29:50 UTC, ledger 107,524,865) its countdown card simply VANISHED —
+   the page's cards are driven by the ledger's Majorities array, and an
+   activation removes the hash from it. Anyone watching the countdown saw
+   the card disappear instead of go green.
+
+   This box is driven by amendment_majority_history instead (the majority
+   walker's own LEDGER TRUTH rows), so an activation stays visible, green,
+   for 48h — with the true EnableAmendment ledger, close time and tx hash
+   recorded by the true-enable-time fix (PR #33).
+
+   Context required (set by the /amendments route):
+     live_banner      list of {name, hash, enabled_iso, enabled_seen_ledger,
+                      enabled_tx_hash}, newest first — from
+                      amendments_live_banner.recently_enabled()
+     live_fingerprint short string that changes when the page's live content
+                      should change — from amendments_live_banner.live_fingerprint()
+
+   Every time renders through the SAME datetime_to_et_first_html filter the
+   rest of the page uses (ET first, UTC in parens). No time is formatted here.
+   The box hides entirely when live_banner is empty. #}
+
+{% if live_banner %}
+<style>
+  .live-banner {
+    border: 1px solid rgba(34,197,94,0.45); border-radius: 12px;
+    background: linear-gradient(180deg, rgba(34,197,94,0.10), rgba(34,197,94,0.03) 60%, var(--card));
+    padding: 14px 16px; margin: 0 0 22px;
+  }
+  .live-banner-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .live-banner-title {
+    font-size: 1.02rem; font-weight: 700; letter-spacing: 0.01em;
+  }
+  .live-banner-tag {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #22c55e;
+    border: 1px solid rgba(34,197,94,0.55); background: rgba(34,197,94,0.12);
+    border-radius: 999px; padding: 3px 9px; white-space: nowrap;
+  }
+  .live-banner-item { padding: 10px 0; border-top: 1px solid rgba(34,197,94,0.18); }
+  .live-banner-item:first-of-type { border-top: 0; padding-top: 2px; }
+  .live-banner-name {
+    font-size: 1.06rem; font-weight: 650; overflow-wrap: anywhere;
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  }
+  .live-banner-when { margin-top: 4px; font-size: 0.92rem; }
+  .live-banner-meta {
+    margin-top: 3px; font-size: 0.84rem; color: var(--dim);
+    overflow-wrap: anywhere;
+  }
+  .live-banner-foot {
+    margin: 8px 0 0; font-size: 0.8rem; color: var(--dim);
+  }
+  @media (max-width: 480px) {
+    .live-banner { padding: 12px 12px; }
+    .live-banner-name { font-size: 1rem; }
+  }
+</style>
+<div class="live-banner" data-live-banner data-live-fingerprint="{{ live_fingerprint }}">
+  <div class="live-banner-head">
+    <span class="live-banner-title">{{ _('Just went LIVE') }}</span>
+    <span class="dim" style="font-size: 0.84rem;">{{ _('enabled on mainnet in the last 48 hours') }}</span>
+  </div>
+  {% for a in live_banner %}
+    <div class="live-banner-item" data-live-banner-item data-amendment-hash="{{ a.hash }}">
+      <div class="live-banner-name">
+        <span>{{ a.name or (a.hash[:8] ~ '…') }}</span>
+        <span class="live-banner-tag">{{ _('LIVE') }}</span>
+      </div>
+      {% if a.pending %}
+        {# The ledger already reports it enabled, but the majority walker
+           (~15 min cadence) has not stamped the exact EnableAmendment
+           time/ledger/tx yet. Announce the activation immediately rather
+           than leave the box empty for the window people are watching;
+           the details fill in on the next tick and the 30s poll reloads
+           the page when they do. Never show a guessed time. #}
+        <div class="live-banner-when dim" data-live-banner-pending>{{ _('exact time being recorded…') }}</div>
+      {% else %}
+      {% if a.enabled_iso %}
+        <div class="live-banner-when">
+          <time datetime="{{ a.enabled_iso }}">{{ a.enabled_iso | datetime_to_et_first_html }}</time>
+        </div>
+      {% endif %}
+      {% if a.enabled_seen_ledger or a.enabled_tx_hash %}
+        <div class="live-banner-meta">
+          {% if a.enabled_seen_ledger %}{{ _('ledger') }} <span class="mono">{{ "{:,}".format(a.enabled_seen_ledger) }}</span>{% endif %}
+          {%- if a.enabled_seen_ledger and a.enabled_tx_hash %} · {% endif -%}
+          {% if a.enabled_tx_hash %}<a href="https://livenet.xrpl.org/transactions/{{ a.enabled_tx_hash }}" rel="noopener" target="_blank" class="mono">{{ _('EnableAmendment') }} {{ a.enabled_tx_hash[:8] }}…</a>{% endif %}
+        </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  {% endfor %}
+  <p class="live-banner-foot">
+    {{ _('Recorded by our own node at the EnableAmendment pseudo-transaction. Times are Eastern first, UTC in parentheses.') }}
+  </p>
+</div>
+<script>
+  // 30s change-detection poll (amendments-live-banner-2026-10-09).
+  // Polls ONE tiny endpoint — /api/amendments/live.json — which reads the
+  // same memoized amendments state the page render already used (300s TTL)
+  // and is edge-cached for 30s, so this adds no node load and almost never
+  // reaches the origin. NOT /amendments.json: that runs the signer-path
+  // block assembly and is rate-limited, so polling it would 429 visitors.
+  //
+  // It compares only a fingerprint (enabled count + majorities set +
+  // recently-enabled set). On a mismatch the page reloads once, so a
+  // viewer watching a countdown sees it turn green without touching
+  // anything. No other polling, no DOM patching, no reload loop.
+  (function () {
+    var box = document.querySelector('[data-live-fingerprint]');
+    var mine = box ? box.getAttribute('data-live-fingerprint') : null;
+    if (mine === null) {
+      var holder = document.querySelector('[data-live-fingerprint-only]');
+      mine = holder ? holder.getAttribute('data-live-fingerprint-only') : null;
+    }
+    if (mine === null) return;
+    var stop = false, reloaded = false;
+    function check() {
+      if (stop || reloaded || document.hidden) return;
+      fetch('/api/amendments/live.json', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || j.ok !== true || typeof j.fingerprint !== 'string') return;
+          if (j.fingerprint && j.fingerprint !== mine) {
+            reloaded = true;
+            location.reload();
+          }
+        })
+        .catch(function () { /* transient: try again next tick */ });
+    }
+    setInterval(check, 30000);
+    window.addEventListener('pagehide', function () { stop = true; });
+  })();
+</script>
+{% else %}
+{# No activation in the window: the box hides, but the poll must still run so
+   a viewer sitting on the page when an amendment activates still sees it. #}
+<span data-live-fingerprint-only="{{ live_fingerprint }}" hidden></span>
+<script>
+  (function () {
+    var holder = document.querySelector('[data-live-fingerprint-only]');
+    if (!holder) return;
+    var mine = holder.getAttribute('data-live-fingerprint-only');
+    if (mine === null) return;
+    var stop = false, reloaded = false;
+    function check() {
+      if (stop || reloaded || document.hidden) return;
+      fetch('/api/amendments/live.json', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || j.ok !== true || typeof j.fingerprint !== 'string') return;
+          if (j.fingerprint && j.fingerprint !== mine) {
+            reloaded = true;
+            location.reload();
+          }
+        })
+        .catch(function () { /* transient: try again next tick */ });
+    }
+    setInterval(check, 30000);
+    window.addEventListener('pagehide', function () { stop = true; });
+  })();
+</script>
+{% endif %}
