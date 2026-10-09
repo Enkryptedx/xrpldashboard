@@ -167,3 +167,10 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_network_votes_nonblocking.py tests/test_amendments_network_votes.py -q
+      # Majority walker (2026-10-08): record the TRUE enable point — the
+      # EnableAmendment pseudo-tx ledger/time/hash — and backfill observed
+      # rows; page shows it with a tx link. Hermetic (fake RPC + DB).
+      - name: majority walker true enable point (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendment_majority_walker_true_enable.py tests/test_amendment_majority_walker_enabled.py -q

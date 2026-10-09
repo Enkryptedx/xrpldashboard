@@ -6920,7 +6920,8 @@ def _load_amendment_majority_history():
                        first_seen_ledger, first_seen_close_time,
                        removed_seen_ledger, removed_close_time,
                        correction_note, majority_close_time,
-                       enabled_seen_ledger, enabled_close_time, enabled_iso
+                       enabled_seen_ledger, enabled_close_time, enabled_iso,
+                       enabled_tx_hash
                   FROM amendment_majority_history
                  ORDER BY amendment_name NULLS LAST,
                           majority_close_time DESC
@@ -6943,6 +6944,9 @@ def _load_amendment_majority_history():
                     "enabled_seen_ledger": r[14],
                     "enabled_close_iso": _xrpl_close_to_iso_or_none(r[15]),
                     "enabled_iso": r[16],
+                    # 2026-10-08: set => enabled_* are the true EnableAmendment
+                    # point; NULL => first ledger our walker observed it in.
+                    "enabled_tx_hash": r[17] if len(r) > 17 else None,
                     "vote_count_at_first": r[6],
                     "unl_threshold": r[7],
                     # Charlie ruling 2026-09-25: every gained/lost/regained row

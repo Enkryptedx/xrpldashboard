@@ -155,7 +155,7 @@ def test_a_hash_moves_to_amendments_is_recorded_enabled_not_lost(monkeypatch):
     assert res["enabled"] == 1 and res["removed"] == 0
     en = _updates(cur, "enabled_seen_ledger")
     assert len(en) == 1
-    lidx, lclose, liso, _now, h, ct = en[0]
+    lidx, lclose, liso, _tx, _now, h, ct = en[0]  # 2026-10-08: + enabled_tx_hash
     assert (h, ct) == (PD, PD_CT)
     assert lidx == 107_523_650 and lclose == 844_809_321
     assert liso == W._iso(844_809_321)
@@ -218,9 +218,12 @@ def test_c_two_amendments_enable_on_different_flag_ledgers(monkeypatch):
     cur1, _ = _install_db(monkeypatch, open_rows=[(FIXB, FIXB_CT), (BATCH, BATCH_CT)])
     r1 = W.run()
     assert r1 == {"ledger": 107_539_200, "present": 1, "wrote": 1,
-                  "enabled": 1, "removed": 0}
+                  "enabled": 1, "removed": 0, "backfilled": 0}
     en1 = _updates(cur1, "enabled_seen_ledger")
-    assert [(p[4], p[5], p[0], p[1]) for p in en1] == \
+    # 2026-10-08: params gained enabled_tx_hash at index 3; hash/ct moved to 5/6.
+    # The fake RPC serves no transactions, so the walker falls back to the
+    # observed ledger — exactly the pre-change values.
+    assert [(p[5], p[6], p[0], p[1]) for p in en1] == \
         [(FIXB, FIXB_CT, 107_539_200, 844_870_200)]
 
     # Run 2 — ~34 min later, next-but-one flag ledger: Batch enabled too.
@@ -231,9 +234,9 @@ def test_c_two_amendments_enable_on_different_flag_ledgers(monkeypatch):
     cur2, _ = _install_db(monkeypatch, open_rows=[(BATCH, BATCH_CT)])
     r2 = W.run()
     assert r2 == {"ledger": 107_539_712, "present": 0, "wrote": 0,
-                  "enabled": 1, "removed": 0}
+                  "enabled": 1, "removed": 0, "backfilled": 0}
     en2 = _updates(cur2, "enabled_seen_ledger")
-    assert [(p[4], p[5], p[0], p[1]) for p in en2] == \
+    assert [(p[5], p[6], p[0], p[1]) for p in en2] == \
         [(BATCH, BATCH_CT, 107_539_712, 844_872_240)]
 
     # Different ledgers, different close times — never shared.
