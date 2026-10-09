@@ -243,49 +243,106 @@ def fetch_network_vote_tallies_cached() -> dict:
     if not _enabled():
         return _envelope_disabled()
 
+    # 2026-10-08 (Charlie): the fetch used to run INSIDE _lock, so when the
+    # 300 s TTL lapsed every concurrent /amendments request queued behind
+    # one 10 s upstream round-trip (14.6 s page at 14:54 ET with no other
+    # load). Now the lock only guards the cache dict; the HTTP call runs
+    # outside it, in a background thread when we have last-good data to
+    # serve meanwhile (stale-while-revalidate), or synchronously — still
+    # outside the lock — only on a cold cache with nothing to show.
+    # A failed fetch never overwrites last_success_*: failures are never
+    # cached, they only flip the served status to "stale".
     with _lock:
         now_mono = _now_monotonic()
         last_success_ts = _cache["last_success_ts"]
+        data = _cache["last_success_data"]
+        iso = _cache["last_success_iso"]
         age = now_mono - last_success_ts if last_success_ts else float("inf")
 
         # Fresh cache — return without a network call.
-        if age < CACHE_TTL and _cache["last_success_data"] is not None:
-            return _envelope_ok(
-                _cache["last_success_data"],
-                _cache["last_success_iso"],
-            )
+        if data is not None and age < CACHE_TTL:
+            return _envelope_ok(data, iso)
 
-        # TTL expired (or first call). Attempt refetch.
+        if data is not None:
+            # TTL lapsed but we have something to show. Kick ONE background
+            # refresh and answer immediately from the last good fetch.
+            if not _refresh["in_flight"]:
+                _refresh["in_flight"] = True
+                _refresh["done"].clear()
+                t = threading.Thread(target=_refresh_worker, daemon=True,
+                                     name="network-votes-refresh")
+                _refresh["thread"] = t
+                t.start()
+            stale_age = int(age)
+            if stale_age > STALE_CEILING_SECONDS:
+                # Too old to present as live data, even while refreshing.
+                return _envelope_unavailable()
+            if _cache["last_attempt_ts"] > last_success_ts:
+                # At least one refresh has failed since this data was
+                # fetched: be honest about its age.
+                return _envelope_stale(data, iso, stale_age)
+            return _envelope_ok(data, iso)
+
+        # Cold cache: nothing to serve. One thread fetches (outside the
+        # lock); concurrent cold callers wait for that result instead of
+        # each hitting upstream.
+        if _refresh["in_flight"]:
+            waiter = True
+        else:
+            _refresh["in_flight"] = True
+            _refresh["done"].clear()
+            waiter = False
+
+    if waiter:
+        _refresh["done"].wait(timeout=HTTP_TIMEOUT + 1)
+    else:
+        _refresh_worker()
+
+    with _lock:
+        data = _cache["last_success_data"]
+        if data is None:
+            return _envelope_unavailable()
+        return _envelope_ok(data, _cache["last_success_iso"])
+
+
+_refresh = {"in_flight": False, "done": threading.Event(), "thread": None}
+
+
+def _refresh_worker() -> None:
+    """One upstream round-trip, NOT under _lock. Writes the cache only on
+    success; on failure records the attempt time so readers can report
+    'stale'. Always clears in_flight and signals waiters."""
+    try:
         fresh = _fetch_once()
-        _cache["last_attempt_ts"] = now_mono
+        with _lock:
+            now_mono = _now_monotonic()
+            _cache["last_attempt_ts"] = now_mono
+            if fresh is not None:
+                _cache["last_success_ts"] = now_mono
+                _cache["last_success_data"] = fresh
+                _cache["last_success_iso"] = _now_iso()
+    finally:
+        with _lock:
+            _refresh["in_flight"] = False
+        _refresh["done"].set()
 
-        if fresh is not None:
-            iso = _now_iso()
-            _cache["last_success_ts"] = now_mono
-            _cache["last_success_data"] = fresh
-            _cache["last_success_iso"] = iso
-            return _envelope_ok(fresh, iso)
 
-        # Refetch failed. Serve prior success if still inside stale ceiling.
-        if _cache["last_success_data"] is None:
-            return _envelope_unavailable()
-
-        stale_age = int(now_mono - last_success_ts)
-        if stale_age > STALE_CEILING_SECONDS:
-            return _envelope_unavailable()
-
-        return _envelope_stale(
-            _cache["last_success_data"],
-            _cache["last_success_iso"],
-            stale_age,
-        )
+def _join_refresh_for_tests(timeout: float = 5.0) -> None:
+    """Test-only: wait for an in-flight background refresh."""
+    t = _refresh.get("thread")
+    if t is not None and t.is_alive():
+        t.join(timeout)
 
 
 def _reset_cache_for_tests() -> None:
     """Test-only: reset module-level cache so tests are order-independent.
     Not part of the public contract."""
+    _join_refresh_for_tests()
     with _lock:
         _cache["last_success_ts"] = 0.0
         _cache["last_success_data"] = None
         _cache["last_success_iso"] = None
         _cache["last_attempt_ts"] = 0.0
+        _refresh["in_flight"] = False
+        _refresh["thread"] = None
+        _refresh["done"].set()

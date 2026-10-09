@@ -212,13 +212,22 @@ def test_fetch_failure_with_prior_returns_stale():
     assert first["status"] == "ok"
 
     # Advance monotonic clock past TTL, then fail.
+    # 2026-10-08: the refetch now runs in the background, outside the lock.
+    # The call that notices the lapsed TTL serves the last good data
+    # immediately (status "ok" — no failure has happened yet); once the
+    # background attempt fails, the NEXT call reports "stale".
     later = time.monotonic() + anv.CACHE_TTL + 1
     with patch("amendments_network_votes._now_monotonic", return_value=later), \
          patch(
              "amendments_network_votes.httpx.get",
              side_effect=Exception("upstream 500"),
          ):
+        served = anv.fetch_network_vote_tallies_cached()
+        assert served["status"] == "ok"
+        assert served["data"] == first["data"]
+        anv._join_refresh_for_tests()
         env = anv.fetch_network_vote_tallies_cached()
+        anv._join_refresh_for_tests()
 
     assert env["status"] == "stale"
     assert env["data"] == first["data"]

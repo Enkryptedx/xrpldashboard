@@ -30,6 +30,13 @@ import xrpl_client
 
 XRPL_NODE = os.environ.get("XRPL_NODE", "https://s1.ripple.com:51234")
 CACHE_TTL = int(os.environ.get("AMENDMENTS_CACHE_TTL", "300"))
+# Hard ceiling on how old a last-good state may be and still be served while
+# a background refresh runs (stale-while-revalidate). Past this the cache is
+# treated as cold: callers wait for one coalesced synchronous rebuild rather
+# than being handed data older than the cap. 15 min — amendments activate on
+# a 14-day timer measured in flag ledgers, so a page that lies by more than
+# that around an activation is worse than a slow page.
+STALE_MAX_SECONDS = int(os.environ.get("AMENDMENTS_STALE_MAX_SECONDS", "900"))
 
 # Canonical ledger index for the Amendments singleton ledger object.
 # This is a fixed, documented index — same on every XRPL network.
@@ -334,18 +341,99 @@ def fetch_amendments_state(fetcher=None):
     }
 
 
-def fetch_amendments_state_cached(ttl=None):
+_refresh = {"in_flight": False, "done": threading.Event(), "thread": None}
+
+
+def fetch_amendments_state_cached(ttl=None, stale_max=None):
+    """Memoized fetch_amendments_state().
+
+    2026-10-08 (Charlie): the refresh used to run INSIDE _cache_lock, so
+    when the TTL lapsed every concurrent /amendments request queued behind
+    one full rebuild (node RPCs + the data.xrpl.org vote fetch, up to 10 s
+    each). Now the lock only guards the cache dict. With a prior good
+    state, ONE background thread refreshes while readers are answered at
+    once from the last good state (stale-while-revalidate). Only a cold
+    cache — nothing to show — fetches synchronously, still outside the
+    lock, coalesced so concurrent cold callers wait for one fetch. A
+    failed refresh never overwrites the last good state.
+
+    Staleness cap (same day): last-good is only served while its age is
+    below `stale_max` (AMENDMENTS_STALE_MAX_SECONDS, default 900). Older
+    than that is treated exactly like a cold cache — synchronous coalesced
+    rebuild — and data past the cap is never handed out, even if the
+    rebuild fails. The vote tallies inside the state keep their own 6 h
+    ceiling + "stale" label in amendments_network_votes; untouched here.
+    """
     ttl = ttl if ttl is not None else CACHE_TTL
+    stale_max = stale_max if stale_max is not None else STALE_MAX_SECONDS
     now = time.time()
     with _cache_lock:
-        if _cache["data"] is not None and (now - _cache["fetched_at"]) < ttl:
-            data = dict(_cache["data"])
-            data["cached_age_seconds"] = round(now - _cache["fetched_at"], 1)
-            return data
+        data = _cache["data"]
+        age = now - _cache["fetched_at"]
+        if data is not None and age < ttl:
+            out = dict(data)
+            out["cached_age_seconds"] = round(age, 1)
+            return out
+        if data is not None and age < stale_max:
+            if not _refresh["in_flight"]:
+                _refresh["in_flight"] = True
+                _refresh["done"].clear()
+                t = threading.Thread(target=_refresh_worker, daemon=True,
+                                     name="amendments-state-refresh")
+                _refresh["thread"] = t
+                t.start()
+            out = dict(data)
+            out["cached_age_seconds"] = round(age, 1)
+            return out
+        # Cold cache — or last-good older than the cap, which is treated the
+        # same: nothing we are willing to serve, so rebuild synchronously.
+        # If a background refresh is already running we join it instead of
+        # starting a second fetch.
+        if _refresh["in_flight"]:
+            waiter = True
+        else:
+            _refresh["in_flight"] = True
+            _refresh["done"].clear()
+            waiter = False
+
+    if waiter:
+        _refresh["done"].wait(timeout=60)
+        with _cache_lock:
+            data = _cache["data"]
+            age = time.time() - _cache["fetched_at"]
+            # Only hand back what the fetch we waited on produced (or a
+            # still-in-cap state); never resurrect data past the cap.
+            if data is not None and age < stale_max:
+                out = dict(data)
+                out["cached_age_seconds"] = round(age, 1)
+                return out
+        # The fetch we waited on failed: report that, don't retry in a loop.
+        return {"ok": False, "sourcing": "unavailable", "cached_age_seconds": 0.0}
+
+    fresh = _refresh_worker()
+    result = dict(fresh)
+    result["cached_age_seconds"] = 0.0
+    return result
+
+
+def _refresh_worker() -> dict:
+    """One fetch_amendments_state() call, NOT under _cache_lock. Writes the
+    cache only when the result is ok. Always clears in_flight."""
+    fresh = {"ok": False, "sourcing": "unavailable"}
+    try:
         fresh = fetch_amendments_state()
         if fresh.get("ok"):
-            _cache["fetched_at"] = now
-            _cache["data"] = fresh
-        result = dict(fresh)
-        result["cached_age_seconds"] = 0.0
-        return result
+            with _cache_lock:
+                _cache["fetched_at"] = time.time()
+                _cache["data"] = fresh
+    finally:
+        with _cache_lock:
+            _refresh["in_flight"] = False
+        _refresh["done"].set()
+    return fresh
+
+
+def _join_refresh_for_tests(timeout: float = 10.0) -> None:
+    t = _refresh.get("thread")
+    if t is not None and t.is_alive():
+        t.join(timeout)
