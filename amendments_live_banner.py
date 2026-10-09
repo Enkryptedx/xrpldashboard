@@ -23,6 +23,11 @@ from __future__ import annotations
 import datetime as dt
 
 WINDOW_HOURS = 48
+# "Recently enabled" archive window (branch
+# amendments-recently-enabled-2026-10-09). The 48h box above it is the
+# "Just went LIVE" banner; once an activation ages past that it moves
+# down into this list, which looks back 30 days.
+ARCHIVE_WINDOW_HOURS = 24 * 30
 
 
 def _parse_iso_utc(iso):
@@ -157,6 +162,29 @@ def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS,
         for mh in (majority_history or []) if mh.get("enabled")
     }
     return _pending_entries(state, majority_history, all_enabled_hashes) + out
+
+
+def recently_enabled_archive(majority_history, exclude_hashes=(), now=None,
+                             window_hours=ARCHIVE_WINDOW_HOURS):
+    """Enabled amendments for the "Recently enabled" list: same LEDGER
+    TRUTH rows as the 48h banner but over a 30-day window, newest first,
+    minus any hash the banner is already showing.
+
+    `exclude_hashes` is what keeps an activation from appearing twice on
+    the page: for its first 48h it lives in "Just went LIVE", then it
+    ages into this list (Charlie 2026-10-08: "After 48h at the top, an
+    amendment moves into this list").
+
+    Pending (ledger-enabled, walker hasn't stamped it) entries never reach
+    here — `state` is deliberately not passed through, so an amendment
+    with no recorded time cannot appear in a dated archive list.
+    """
+    ex = {(h or "").upper() for h in (exclude_hashes or ()) if h}
+    return [
+        e for e in recently_enabled(majority_history, now=now,
+                                    window_hours=window_hours)
+        if (e.get("hash") or "").upper() not in ex
+    ]
 
 
 def live_fingerprint(state, live_list):

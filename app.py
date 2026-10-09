@@ -6684,16 +6684,11 @@ def amendments():
                 enabled=(_h in enabled_hashes_upper),
                 restarted_iso=restart_iso_by_hash.get(_h),
             )
-        # Finished-state example for the "Recently enabled" block: one timeline
-        # with all six steps DONE, shown when any recognized-enabled amendment
-        # exists. Uses the live flag counter for the ledger-number labels.
-        if enabled_hashes_upper:
-            timeline_by_hash["__enabled_example__"] = _activation_timeline_ctx(
-                majority_reached_iso=None,
-                activation_eta_iso=None,
-                flag_counter=flag_counter,
-                enabled=True,
-            )
+        # The generic all-six-steps-DONE example that used to sit in the
+        # "Recently enabled" block was removed 2026-10-09: that section is
+        # now a real, dated list of the amendments that actually went live
+        # (branch amendments-recently-enabled-2026-10-09), so a specimen
+        # timeline belonging to no amendment has nothing to illustrate.
     except Exception:  # noqa: BLE001 — render-killer rule
         timeline_by_hash = {}
     # "Just went LIVE" banner (branch amendments-live-banner-2026-10-09).
@@ -6708,8 +6703,15 @@ def amendments():
         live_banner = amendments_live_banner.recently_enabled(
             majority_history, state=state)
         live_fingerprint = amendments_live_banner.live_fingerprint(state, live_banner)
+        # "Recently enabled" (branch amendments-recently-enabled-2026-10-09):
+        # the same LEDGER TRUTH rows over 30 days, minus whatever the 48h
+        # banner above is already showing, so one activation is never
+        # listed twice on the page.
+        recent_enabled = amendments_live_banner.recently_enabled_archive(
+            majority_history,
+            exclude_hashes=[e.get("hash") for e in live_banner])
     except Exception:  # noqa: BLE001 — render-killer rule
-        live_banner, live_fingerprint = [], ""
+        live_banner, live_fingerprint, recent_enabled = [], "", []
     resp = make_response(render_template(
         "amendments.html",
         state=state,
@@ -6721,6 +6723,7 @@ def amendments():
         cite=cite,
         live_banner=live_banner,
         live_fingerprint=live_fingerprint,
+        recent_enabled=recent_enabled,
         cache_ttl_seconds=amendments_state.CACHE_TTL,
     ))
     # Align browser + edge cache with backend TTL: fetch_amendments_state_cached

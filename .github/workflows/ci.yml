@@ -202,3 +202,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_wording_2026_10_09.py tests/test_roll_call_card.py -q
+      # /amendments "Recently enabled" is now a dated, data-driven list
+      # (2026-10-09) instead of a static paragraph plus one generic
+      # all-steps-DONE specimen timeline. Pins: 30-day window; newest
+      # first; name + true enable time + ledger + EnableAmendment tx; the
+      # 48h banner's hashes are excluded so one activation is never listed
+      # twice; the 48h->list handover; undated and pending rows never
+      # reach a dated list; the hand-written paragraph survives (incl.
+      # when the list is empty); the DONE-steps example is gone; a helper
+      # failure never 500s the page. Hermetic: fake history, no DB.
+      - name: /amendments recently-enabled list (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_recently_enabled.py tests/test_amendments_live_banner.py -q
