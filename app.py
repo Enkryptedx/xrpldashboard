@@ -6705,7 +6705,8 @@ def amendments():
     # any failure -> empty list -> the box hides (render-killer rule).
     try:
         import amendments_live_banner
-        live_banner = amendments_live_banner.recently_enabled(majority_history)
+        live_banner = amendments_live_banner.recently_enabled(
+            majority_history, state=state)
         live_fingerprint = amendments_live_banner.live_fingerprint(state, live_banner)
     except Exception:  # noqa: BLE001 — render-killer rule
         live_banner, live_fingerprint = [], ""
@@ -6749,7 +6750,7 @@ def amendments_live_json():
         import amendments_live_banner
         state = fetch_amendments_state_cached()
         live = amendments_live_banner.recently_enabled(
-            _load_amendment_majority_history())
+            _load_amendment_majority_history(), state=state)
         payload = {
             "ok": True,
             "enabled_count": (state or {}).get("enabled_count"),

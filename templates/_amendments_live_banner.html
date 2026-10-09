@@ -74,6 +74,15 @@
         <span>{{ a.name or (a.hash[:8] ~ '…') }}</span>
         <span class="live-banner-tag">{{ _('LIVE') }}</span>
       </div>
+      {% if a.pending %}
+        {# The ledger already reports it enabled, but the majority walker
+           (~15 min cadence) has not stamped the exact EnableAmendment
+           time/ledger/tx yet. Announce the activation immediately rather
+           than leave the box empty for the window people are watching;
+           the details fill in on the next tick and the 30s poll reloads
+           the page when they do. Never show a guessed time. #}
+        <div class="live-banner-when dim" data-live-banner-pending>{{ _('exact time being recorded…') }}</div>
+      {% else %}
       {% if a.enabled_iso %}
         <div class="live-banner-when">
           <time datetime="{{ a.enabled_iso }}">{{ a.enabled_iso | datetime_to_et_first_html }}</time>
@@ -85,6 +94,7 @@
           {%- if a.enabled_seen_ledger and a.enabled_tx_hash %} · {% endif -%}
           {% if a.enabled_tx_hash %}<a href="https://livenet.xrpl.org/transactions/{{ a.enabled_tx_hash }}" rel="noopener" target="_blank" class="mono">{{ _('EnableAmendment') }} {{ a.enabled_tx_hash[:8] }}…</a>{% endif %}
         </div>
+      {% endif %}
       {% endif %}
     </div>
   {% endfor %}

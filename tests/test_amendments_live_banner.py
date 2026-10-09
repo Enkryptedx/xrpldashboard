@@ -192,3 +192,112 @@ def test_fingerprint_case_insensitive_on_hashes():
 def test_fingerprint_safe_on_empty_and_none():
     assert live_fingerprint(None, None)
     assert live_fingerprint({}, []) == "None||"
+
+
+# ── pending: ledger says enabled, walker hasn't stamped it yet ──
+# The majority walker ticks every ~15 min, so there is a gap between an
+# activation and enabled_iso landing in the DB — exactly the window people
+# are watching. Announce immediately, fill details in on the next tick.
+
+def _open_row(hash_, name):
+    """A tracked countdown row: no enabled stamp, not removed."""
+    return _row(hash_, name, enabled=False, enabled_iso=None)
+
+
+def test_enabled_on_ledger_with_open_row_is_pending_live_now():
+    state = {
+        "recognized_enabled": [{"hash": "PD", "name": "PermissionDelegationV1_1"}],
+        "majorities": [],
+    }
+    out = recently_enabled([_open_row("PD", "PermissionDelegationV1_1")],
+                           now=NOW, state=state)
+    assert len(out) == 1
+    e = out[0]
+    assert e["pending"] is True
+    assert e["name"] == "PermissionDelegationV1_1"
+    # No guessed time/ledger/tx — the template shows the recording label.
+    assert e["enabled_iso"] is None
+    assert e["enabled_seen_ledger"] is None
+    assert e["enabled_tx_hash"] is None
+
+
+def test_enabled_on_ledger_while_still_in_majorities_is_pending():
+    """Brief overlap: the hash is reported enabled but still sitting in
+    the Majorities array."""
+    state = {
+        "recognized_enabled": [{"hash": "FB", "name": "fixBatchV1_2"}],
+        "majorities": [{"hash": "FB", "name": "fixBatchV1_2"}],
+    }
+    out = recently_enabled([], now=NOW, state=state)
+    assert len(out) == 1 and out[0]["pending"] is True
+    assert out[0]["name"] == "fixBatchV1_2"
+
+
+def test_long_enabled_amendments_do_not_flood_the_box():
+    """recognized_enabled lists ALL ~95 enabled amendments. Without an
+    open row or a Majorities entry, none of them are 'just went live'."""
+    state = {
+        "recognized_enabled": [{"hash": "OLD%d" % i, "name": "Old%d" % i}
+                               for i in range(95)],
+        "majorities": [],
+    }
+    assert recently_enabled([], now=NOW, state=state) == []
+
+
+def test_already_stamped_hash_is_never_also_pending():
+    """Once the walker stamps it, the real row wins — no duplicate row."""
+    state = {
+        "recognized_enabled": [{"hash": PD_HASH, "name": "PermissionDelegationV1_1"}],
+        "majorities": [],
+    }
+    rows = [_pd_row(), _open_row(PD_HASH, "PermissionDelegationV1_1")]
+    out = recently_enabled(rows, now=NOW, state=state)
+    assert len(out) == 1
+    assert out[0]["pending"] is False
+    assert out[0]["enabled_seen_ledger"] == 107524865
+
+
+def test_stamped_hash_outside_window_still_not_pending():
+    """An old activation must not reappear as 'pending' just because it
+    is in the live enabled set."""
+    state = {
+        "recognized_enabled": [{"hash": "AAAA", "name": "Ancient"}],
+        "majorities": [{"hash": "AAAA", "name": "Ancient"}],
+    }
+    rows = [_row("AAAA", "Ancient", enabled_iso="2026-01-01T00:00:00Z")]
+    assert recently_enabled(rows, now=NOW, state=state) == []
+
+
+def test_pending_sorts_above_stamped():
+    """A just-activated amendment is the freshest event on the page."""
+    state = {
+        "recognized_enabled": [{"hash": "NEW", "name": "JustNow"},
+                               {"hash": PD_HASH, "name": "PermissionDelegationV1_1"}],
+        "majorities": [{"hash": "NEW", "name": "JustNow"}],
+    }
+    out = recently_enabled([_pd_row()], now=NOW, state=state)
+    assert [e["pending"] for e in out] == [True, False]
+    assert out[0]["name"] == "JustNow"
+
+
+def test_state_omitted_keeps_old_behaviour():
+    """Callers that pass no state (and the DB-down path) are unchanged."""
+    out = recently_enabled([_pd_row()], now=NOW)
+    assert len(out) == 1 and out[0]["pending"] is False
+
+
+def test_fingerprint_changes_when_pending_details_arrive():
+    """The second reload: pending -> stamped must change the fingerprint,
+    or the page would never pick up the real time/ledger/tx."""
+    state = {"enabled_count": 95, "majorities": []}
+    pending = [{"hash": PD_HASH, "enabled_iso": None, "pending": True}]
+    stamped = [{"hash": PD_HASH, "enabled_iso": "2026-10-08T21:29:50Z",
+                "pending": False}]
+    assert live_fingerprint(state, pending) != live_fingerprint(state, stamped)
+
+
+def test_fingerprint_stable_while_still_pending():
+    """No reload loop while waiting for the walker."""
+    state = {"enabled_count": 95, "majorities": []}
+    pending = [{"hash": PD_HASH, "enabled_iso": None, "pending": True}]
+    assert live_fingerprint(state, pending) == live_fingerprint(state, list(pending))

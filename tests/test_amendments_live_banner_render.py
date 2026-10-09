@@ -104,9 +104,9 @@ def test_pd_shows_with_name_live_tag_time_ledger_and_tx(monkeypatch):
     real = B.recently_enabled
     monkeypatch.setattr(
         B, "recently_enabled",
-        lambda h, now=None, window_hours=B.WINDOW_HOURS: real(
+        lambda h, now=None, window_hours=B.WINDOW_HOURS, state=None: real(
             h, now=dt.datetime(2026, 10, 9, 10, 30, tzinfo=dt.timezone.utc),
-            window_hours=window_hours))
+            window_hours=window_hours, state=state))
     r = _get(monkeypatch, [_pd_enabled_row()])
     assert r.status_code == 200
     html = r.data.decode()
@@ -202,6 +202,48 @@ def test_fingerprint_matches_between_page_and_endpoint(monkeypatch):
     assert m
     poll = _get(monkeypatch, history, path="/api/amendments/live.json")
     assert poll.get_json()["fingerprint"] == m.group(1)
+
+
+def test_pending_shows_recording_label_not_a_guessed_time(monkeypatch):
+    """Ledger reports PD enabled but the walker has not stamped it yet
+    (open history row, no enabled_iso). The box must announce it
+    immediately with the recording label and NO time/ledger/tx."""
+    open_row = {
+        "name": "PermissionDelegationV1_1", "hash": PD,
+        "majority_close_iso": "2026-09-24T21:25:01Z",
+        "activation_eta_iso": "2026-10-08T21:25:01Z",
+        "first_seen_iso": "2026-09-24T21:25:01Z", "removed_iso": None,
+        "active": True, "enabled": False,
+        "enabled_seen_ledger": None, "enabled_close_iso": None,
+        "enabled_iso": None, "enabled_tx_hash": None,
+        "vote_count_at_first": 30, "unl_threshold": 28,
+    }
+    r = _get(monkeypatch, [open_row])
+    assert r.status_code == 200
+    html = r.data.decode()
+    assert "Just went LIVE" in html
+    items = _items(html)
+    assert "PermissionDelegationV1_1" in items
+    assert "exact time being recorded" in items
+    # No fabricated details while waiting for the walker.
+    assert "107,524,865" not in items
+    assert "livenet.xrpl.org" not in items
+    assert "PM ET" not in items
+
+
+def test_pending_then_stamped_changes_the_fingerprint(monkeypatch):
+    """The second reload: once the walker stamps the real details the
+    page's fingerprint must differ, or the open page never picks them
+    up."""
+    open_row = dict(_pd_enabled_row())
+    open_row.update(enabled=False, active=True, enabled_iso=None,
+                    enabled_close_iso=None, enabled_seen_ledger=None,
+                    enabled_tx_hash=None)
+    pending = _get(monkeypatch, [open_row])
+    stamped = _get(monkeypatch, [_pd_enabled_row()])
+    fp = lambda resp: re.search(  # noqa: E731
+        r'data-live-fingerprint(?:-only)?="([^"]*)"', resp.data.decode()).group(1)
+    assert fp(pending) != fp(stamped)
 
 
 def test_page_still_renders_when_banner_helper_fails(monkeypatch):

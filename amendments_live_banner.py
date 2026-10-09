@@ -39,7 +39,65 @@ def _parse_iso_utc(iso):
     return d.astimezone(dt.timezone.utc)
 
 
-def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS):
+def _pending_entries(state, majority_history, already_enabled_hashes):
+    """Amendments the LIVE ledger already reports enabled, but which the
+    majority walker has not stamped yet (it ticks every ~15 min, so there
+    is a gap between activation and `enabled_iso` landing in the DB).
+
+    Without this the box would stay empty for up to 15 minutes after an
+    activation — exactly the window people are watching. We announce it
+    immediately and let the exact time/ledger/tx fill in on the next tick.
+
+    Narrow on purpose: `recognized_enabled` lists ALL ~95 enabled
+    amendments, so the qualifier is that the walker has an OPEN row for
+    the hash (tracked, not yet stamped) or it is still sitting in the
+    ledger's Majorities array. A hash that already has ANY enabled row is
+    never pending — its real details exist.
+    """
+    state = state or {}
+    enabled_now = {
+        (e.get("hash") or "").upper()
+        for e in (state.get("recognized_enabled") or [])
+        if e.get("hash")
+    }
+    if not enabled_now:
+        return []
+    open_rows, names = {}, {}
+    for mh in (majority_history or []):
+        h = (mh.get("hash") or "").upper()
+        if not h:
+            continue
+        if mh.get("name"):
+            names.setdefault(h, mh.get("name"))
+        if not mh.get("enabled") and not mh.get("removed_iso"):
+            open_rows[h] = True
+    in_majorities = {
+        (m.get("hash") or "").upper()
+        for m in (state.get("majorities") or [])
+        if m.get("hash")
+    }
+    for e in (state.get("recognized_enabled") or []):
+        h = (e.get("hash") or "").upper()
+        if h and e.get("name"):
+            names.setdefault(h, e.get("name"))
+
+    out = []
+    for h in sorted(enabled_now & (set(open_rows) | in_majorities)):
+        if h in already_enabled_hashes:
+            continue
+        out.append({
+            "name": names.get(h),
+            "hash": h,
+            "enabled_iso": None,
+            "enabled_seen_ledger": None,
+            "enabled_tx_hash": None,
+            "pending": True,
+        })
+    return out
+
+
+def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS,
+                     state=None):
     """Amendments enabled within `window_hours` of `now`, newest first.
 
     Returns a list of dicts: {name, hash, enabled_iso, enabled_seen_ledger,
@@ -80,6 +138,7 @@ def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS):
             "enabled_iso": iso,
             "enabled_seen_ledger": mh.get("enabled_seen_ledger"),
             "enabled_tx_hash": mh.get("enabled_tx_hash"),
+            "pending": False,
             "_when": when,
         }
         prior = best_by_hash.get(key)
@@ -89,7 +148,15 @@ def recently_enabled(majority_history, now=None, window_hours=WINDOW_HOURS):
     out = sorted(best_by_hash.values(), key=lambda e: e["_when"], reverse=True)
     for e in out:
         e.pop("_when", None)
-    return out
+    # Just-activated but not yet stamped by the walker: announce now,
+    # details fill in on the next tick. These are the freshest events on
+    # the page, so they sort above the stamped ones. A hash with ANY
+    # enabled row (in or out of the window) is excluded inside the helper.
+    all_enabled_hashes = {
+        (mh.get("hash") or "").upper()
+        for mh in (majority_history or []) if mh.get("enabled")
+    }
+    return _pending_entries(state, majority_history, all_enabled_hashes) + out
 
 
 def live_fingerprint(state, live_list):
@@ -108,8 +175,14 @@ def live_fingerprint(state, live_list):
         (m.get("hash") or "").upper()
         for m in (state.get("majorities") or [])
     )
+    # A pending entry is marked distinctly, so when the walker stamps the
+    # real time/ledger/tx the fingerprint changes again and the open page
+    # reloads a second time to pick the details up.
     live = sorted(
-        "{}@{}".format((e.get("hash") or "").upper(), e.get("enabled_iso") or "")
+        "{}@{}".format(
+            (e.get("hash") or "").upper(),
+            "pending" if e.get("pending") else (e.get("enabled_iso") or ""),
+        )
         for e in (live_list or [])
     )
     return "{}|{}|{}".format(count, ",".join(majorities), ",".join(live))
