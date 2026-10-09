@@ -924,7 +924,7 @@
         </div>
         <div class="when">
           {{ _('projected activation') }} ·
-          {{ _('majority reached at fetch') }}
+          {{ _('majority reached') }}
           <time datetime="{{ m.majority_reached_iso }}">{{ m.majority_reached_iso | datetime_to_et_first_html }}</time>
         </div>
         {# Charlie 2026-09-27: plain-language explainer, one link per countdown box. #}
@@ -945,17 +945,7 @@
             {# Headline = LEDGER TRUTH (is_holding), never the vote count. #}
             <div class="rc-headline">{{ _('Holding') if is_holding else _('Countdown restarted') }}</div>
             {% if rc_row %}
-            <div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.unl_full }} {{ _('validators voted yes') }}</div>
-            <div class="rc-need dim">{{ _('Needs') }} {{ roll_call.needed_full }} {{ _('to keep its countdown') }}</div>
-            <div class="rc-state{{ ' rc-amber' if rc_row.count_state == 'too_close' else '' }}">
-              {% if rc_row.count_state == 'too_close' %}
-                {{ _('Too close to call from our node') }} — {{ rc_row.not_heard }} {{ _('validator') if rc_row.not_heard == 1 else _('validators') }} {{ _('we haven\'t heard from could still decide it.') }}
-              {% elif rc_row.count_state == 'passing' %}
-                {{ _('Already over the bar even without every validator counted.') }}
-              {% else %}
-                {{ _('Even if every unheard validator voted yes, it would still fall short.') }}
-              {% endif %}
-            </div>
+            {% include "_amendments_rollcall_verdict.html" %}
             {% else %}
             {# Majorities entry our node doesn't recognize: no tally, so no count.
                Never fabricate one. #}

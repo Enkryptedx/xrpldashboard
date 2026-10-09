@@ -1,0 +1,40 @@
+{# _amendments_rollcall_verdict.html — the vote-count verdict inside one
+   countdown card's roll-call sub-box (branch amendments-wording-2026-10-09).
+
+   Included WITH context from the state.majorities loop in amendments.html,
+   so it only ever renders for an amendment that IS in the ledger's
+   Majorities array. Needs in scope: rc_row, roll_call.
+
+   Why the attribution matters (verified 2026-10-09): fixCleanup3_4_0 took
+   its majority on 28 yes while our node heard all 35 validators and this
+   page computed "needs 29" from the published UNL size. rippled's own
+   denominator was 34. Our count and the ledger's decision CAN disagree, so
+   the count is labelled as ours and the ledger gets the last word. #}
+<style>
+  .countdown-rollcall .rc-basis { color: var(--dim); font-style: italic; }
+  .countdown-rollcall .rc-spare { font-weight: 600; }
+  .countdown-rollcall .rc-spare.rc-at-risk { color: var(--amber); }
+  .countdown-rollcall .rc-ledger-final {
+    margin-top: 6px; padding-top: 6px;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem; color: var(--muted);
+  }
+  .countdown-rollcall .rc-ledger-final strong { color: var(--text); }
+</style>
+<div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.unl_full }} {{ _('validators voted yes') }}</div>
+<div class="rc-need dim">{{ _('Needs') }} {{ roll_call.needed_full }} {{ _('to keep its countdown') }} — <span class="rc-basis">{{ _('by our node\'s count') }}</span></div>
+<div class="rc-state">
+  {% if rc_row.spare_votes > 0 %}
+    <span class="rc-spare" data-spare="{{ rc_row.spare_votes }}">{{ ngettext('%(n)d vote to spare', '%(n)d votes to spare', rc_row.spare_votes, n=rc_row.spare_votes) }}</span>
+  {% elif rc_row.spare_votes == 0 %}
+    <span class="rc-spare rc-at-risk" data-spare="0">{{ _('at risk: no votes to spare') }}</span>
+  {% else %}
+    <span class="rc-spare rc-at-risk" data-spare="{{ rc_row.spare_votes }}">{{ ngettext('at risk: needs %(n)d more', 'at risk: needs %(n)d more', -rc_row.spare_votes, n=-rc_row.spare_votes) }}</span>
+  {% endif %}
+</div>
+{# The final word: the on-ledger Majorities array, not our tally. This
+   block renders only from the state.majorities loop, so presence here IS
+   the ledger's decision. #}
+<div class="rc-ledger-final" data-ledger-verdict="in-majorities">
+  {{ _('The ledger decides, not our count:') }} <strong>{{ _('in Majorities') }}</strong> — {{ _('the countdown is running.') }}
+</div>
