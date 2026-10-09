@@ -134,6 +134,54 @@ def read_state(ledger_index="validated"):
     return lidx, lclose, src, majorities, enabled_hashes
 
 
+# 2026-10-08 (Charlie): record the TRUE enable point, not "first ledger our
+# 15-minute walker happened to see it". rippled enables an amendment with an
+# EnableAmendment pseudo-transaction (no tfGotMajority/tfLostMajority flag)
+# in the ledger right after a flag ledger. For PermissionDelegationV1_1 that
+# was ledger 107,524,865 at 21:29:50Z; the walker had stamped 107,524,984 /
+# 21:37:31Z — 8 minutes and 119 ledgers late. We now walk back over flag
+# ledgers from the ledger we observed it in and find that pseudo-tx.
+MAX_FLAG_LEDGERS_BACK = int(os.environ.get("MAJORITY_WALKER_ENABLE_SCAN", "96"))  # 96 x ~15 min = 24 h
+TF_GOT_MAJORITY = 0x00010000
+TF_LOST_MAJORITY = 0x00020000
+
+
+def find_enable_amendment_tx(amendment_hash, observed_ledger, max_back=None):
+    """Return {"ledger": int, "close_time": int, "tx_hash": str} for the
+    EnableAmendment pseudo-tx that enabled `amendment_hash`, scanning the
+    ledger after each flag ledger backwards from `observed_ledger`. None if
+    not found within max_back flag ledgers or on any RPC failure (caller
+    then keeps the observed values — never blocks the stamp)."""
+    max_back = MAX_FLAG_LEDGERS_BACK if max_back is None else max_back
+    h = str(amendment_hash).upper()
+    try:
+        observed_ledger = int(observed_ledger)
+    except (TypeError, ValueError):
+        return None
+    flag = observed_ledger - (observed_ledger % 256)
+    for _ in range(max_back):
+        cand = flag + 1
+        if cand > observed_ledger:
+            flag -= 256
+            continue
+        try:
+            lr, _src = _post("ledger", {"ledger_index": cand,
+                                        "transactions": True, "expand": True})
+        except Exception:  # noqa: BLE001
+            return None
+        ledger = lr.get("ledger") or {}
+        for tx in ledger.get("transactions") or []:
+            t = tx.get("tx_json", tx) if isinstance(tx, dict) else {}
+            if (t.get("TransactionType") == "EnableAmendment"
+                    and str(t.get("Amendment", "")).upper() == h
+                    and not (int(t.get("Flags") or 0) & (TF_GOT_MAJORITY | TF_LOST_MAJORITY))):
+                tx_hash = tx.get("hash") or t.get("hash")
+                return {"ledger": cand, "close_time": ledger.get("close_time"),
+                        "tx_hash": tx_hash}
+        flag -= 256
+    return None
+
+
 def classify_departures(open_rows, present_keys, enabled_hashes):
     """Pure: split OPEN history rows that are no longer in Majorities into
     (enabled, lost).
@@ -201,8 +249,15 @@ def run(ledger_index="validated", dry_run=False):
     wrote = 0
     removed = 0
     enabled = 0
+    backfilled = 0
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
+            # 0) additive, idempotent schema step so this walker never fails
+            #    on a DB that has not had migrations/2026_10_08_* applied.
+            cur.execute(
+                "ALTER TABLE amendment_majority_history "
+                "ADD COLUMN IF NOT EXISTS enabled_tx_hash TEXT"
+            )
             # 1) upsert present majorities
             for h, name, close_time, act_close in upserts:
                 vc, thr = _vote_at(cur, h)
@@ -253,23 +308,65 @@ def run(ledger_index="validated", dry_run=False):
             went_enabled, went_lost = classify_departures(
                 cur.fetchall(), present_keys, enabled_hashes)
             for h, ct in went_enabled:
+                exact = find_enable_amendment_tx(h, lidx)
+                e_ledger, e_close, e_tx = (
+                    (exact["ledger"], exact["close_time"], exact["tx_hash"])
+                    if exact else (lidx, lclose, None))
                 cur.execute(
                     """
                     UPDATE amendment_majority_history
                        SET enabled_seen_ledger = %s,
                            enabled_close_time  = %s,
                            enabled_iso         = %s,
+                           enabled_tx_hash     = %s,
                            updated_at_iso      = %s
                      WHERE amendment_hash = %s
                        AND majority_close_time = %s
                        AND removed_seen_ledger IS NULL
                        AND enabled_seen_ledger IS NULL
                     """,
-                    (lidx, lclose, _iso(lclose), now_iso, h, ct),
+                    (e_ledger, e_close, _iso(e_close), e_tx, now_iso, h, ct),
                 )
                 enabled += 1
                 print(f"  ENABLED stamped: {h[:12]} close_time={_iso(ct)} "
-                      f"enabled on-ledger as of ledger {lidx} ({_iso(lclose)})")
+                      f"enabled at ledger {e_ledger} ({_iso(e_close)}) "
+                      f"tx={e_tx or 'not found; observed ledger used'}")
+            # 3) backfill: rows stamped enabled before this walker knew how to
+            #    find the EnableAmendment pseudo-tx carry the OBSERVED ledger.
+            #    Resolve them to the true enable point (bounded, best-effort).
+            cur.execute(
+                """
+                SELECT amendment_hash, majority_close_time, enabled_seen_ledger
+                  FROM amendment_majority_history
+                 WHERE enabled_seen_ledger IS NOT NULL
+                   AND enabled_tx_hash IS NULL
+                 ORDER BY enabled_seen_ledger DESC
+                 LIMIT 5
+                """
+            )
+            for h, ct, seen in cur.fetchall() or []:
+                exact = find_enable_amendment_tx(h, seen)
+                if not exact:
+                    continue
+                cur.execute(
+                    """
+                    UPDATE amendment_majority_history
+                       SET enabled_seen_ledger = %s,
+                           enabled_close_time  = %s,
+                           enabled_iso         = %s,
+                           enabled_tx_hash     = %s,
+                           updated_at_iso      = %s
+                     WHERE amendment_hash = %s
+                       AND majority_close_time = %s
+                       AND enabled_tx_hash IS NULL
+                    """,
+                    (exact["ledger"], exact["close_time"], _iso(exact["close_time"]),
+                     exact["tx_hash"], now_iso, h, ct),
+                )
+                backfilled += 1
+                print(f"  ENABLED corrected: {h[:12]} observed ledger {seen} -> "
+                      f"true enable ledger {exact['ledger']} ({_iso(exact['close_time'])}) "
+                      f"tx={exact['tx_hash']}")
             for h, ct in went_lost:
                 cur.execute(
                     """
@@ -291,9 +388,11 @@ def run(ledger_index="validated", dry_run=False):
         conn.commit()
 
     print(f"[majority_walker] wrote/updated={wrote} "
-          f"enabled_stamped={enabled} removed_stamped={removed}")
+          f"enabled_stamped={enabled} enabled_corrected={backfilled} "
+          f"removed_stamped={removed}")
     return {"ledger": lidx, "present": len(majorities),
-            "wrote": wrote, "enabled": enabled, "removed": removed}
+            "wrote": wrote, "enabled": enabled, "removed": removed,
+            "backfilled": backfilled}
 
 
 def main():

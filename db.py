@@ -696,6 +696,9 @@ CREATE TABLE IF NOT EXISTS amendment_majority_history (
 ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_seen_ledger BIGINT;
 ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_close_time  BIGINT;
 ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_iso         TEXT;
+-- 2026-10-08: EnableAmendment pseudo-tx hash; when present, enabled_* are the TRUE enable
+-- ledger/time (not the first ledger our walker observed). See migrations/2026_10_08_*.
+ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_tx_hash     TEXT;
 CREATE INDEX IF NOT EXISTS amendment_majority_history_name_idx
     ON amendment_majority_history (amendment_name, majority_close_time DESC);
 CREATE INDEX IF NOT EXISTS amendment_majority_history_active_idx
