@@ -189,3 +189,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_live_banner.py tests/test_amendments_live_banner_render.py -q
+      # /amendments approved wording (2026-10-09). Motivating fact:
+      # fixCleanup3_4_0 took its majority on 28 yes while our node heard all
+      # 35 validators and the page computed "needs 29" from the published
+      # UNL size — our count and the ledger's decision can disagree. Pins:
+      # the needs-line is attributed "by our node's count"; the ledger's
+      # Majorities decision renders as the final word; spare-votes wording
+      # above / at / below the bar (incl. the 1-vote singular); the three
+      # retired sentences stay gone; "majority reached" drops "at fetch".
+      # Hermetic: fake rounds + fake PG, no DB, no network.
+      - name: /amendments wording + spare votes (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_wording_2026_10_09.py tests/test_roll_call_card.py -q
