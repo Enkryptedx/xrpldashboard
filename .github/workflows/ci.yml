@@ -229,3 +229,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_is_bot_canary_distinct.py -q
+      # db._bot_filter_sql's tier-4 fallback carried the identical undeduped
+      # session subqueries as the canary arm fixed above. Dormant (tier 1,
+      # _is_bot_column_ready=True, serves prod), so the 716M plan was never
+      # live — but a flag flip would hand it to the site. Pins: both tier-4
+      # arms deduped; SQL byte-identical to the pre-fix fixture once the two
+      # SELECT DISTINCT tokens are reduced, across human/bot x cohort-on/off;
+      # params unchanged incl. the scanner ts bound (clock frozen); the
+      # scanner arm's PRE-EXISTING COUNT(DISTINCT ...) untouched (tier 4 had
+      # 1 DISTINCT before, 3 after); tiers 1-3 and the lite filter unchanged;
+      # session arms stay unbounded in time. Hermetic: no DB, no network.
+      - name: bot filter tier-4 fallback dedupe (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_bot_filter_tier4_distinct.py -q
