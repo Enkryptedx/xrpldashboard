@@ -6661,6 +6661,81 @@ def set_classification_meta(updates):
         _log_err("set_classification_meta_failed", e)
 
 
+#: Ceiling on rows per INSERT/DELETE batch in _sync_key_table.
+#: A single-statement INSERT VALUES is bounded by the Postgres wire
+#: protocol's int16 parameter count (65535); at 2 params/tuple that caps one
+#: statement at 32767 tuples. Exceeding it raised an OperationalError that
+#: _log_err swallowed, so the entire refresh silently no-opped — incident
+#: 2026-09-05: 33091 tuples, writer walker_health stayed green, the canary
+#: only flagged a +22 delta 3h later. 10000 keeps 3x headroom. Under
+#: diff-sync the batches are normally single digits, so this is a ceiling
+#: that should no longer be approached — but it stays, because the failure
+#: mode it guards is silent.
+_SYNC_CHUNK = 10000
+
+
+def _sync_key_table(cur, table, cols, desired):
+    """Make `table` hold exactly `desired`, writing ONLY the difference.
+
+    `cols` is the (col_a, col_b) pair forming the table's full primary key;
+    `desired` is a set of 2-tuples. Returns (added, removed) counts.
+
+    Replaces the previous DELETE-everything + INSERT-everything rebuild,
+    which rewrote every row every cycle regardless of whether anything
+    changed. Measured on prod 2026-10-10: page_view_bot_hashes held 79,901
+    rows and exactly 6 of them changed per cycle (0.008% — 6 added, 0
+    removed). At the writer's 5-minute cadence (288 cycles/day) the rebuild
+    burned ~46.0M row-writes/day to apply ~1,700 real ones.
+    pg_stat_statements showed ~360M inserts / ~355M deletes, consistent with
+    ~15.5 days at that rate. It also kept autovacuum clearing ~80k dead
+    tuples every 5 minutes and left the table at 47 MB for ~80k rows of two
+    short text columns (~10x bloat).
+
+    Properties preserved from the rebuild, all load-bearing:
+
+    * **Caller's transaction.** This function is NOT atomic on its own; it
+      relies on the caller holding one transaction so readers never see a
+      half-synced table. Same guarantee the DELETE+INSERT pair had.
+    * **No TRUNCATE.** TRUNCATE takes AccessExclusive, which queues behind
+      any concurrent reader and then dies at statement_timeout; the
+      analytics render reads these tables. INSERT/DELETE take RowExclusive
+      and coexist with concurrent SELECTs.
+    * **Sole-writer invariant.** Only scripts/is_bot_writer.py drives the
+      refresh; app.py stopped after the cross-host contention deadlock storm
+      in docs/WALKER_WOUNDS_2026-08-22.md.
+    * **ON CONFLICT DO NOTHING** makes the insert arm idempotent, so a
+      retried or overlapping cycle cannot raise on the primary key.
+
+    `table` and `cols` are interpolated into SQL. They are internal
+    constants from this module's own call sites, never caller or request
+    input; `desired` is the only parameterised data.
+    """
+    col_a, col_b = cols
+    cur.execute(f"SELECT {col_a}, {col_b} FROM {table}")
+    current = {(r[0], r[1]) for r in cur.fetchall()}
+    to_add = sorted(desired - current)
+    to_del = sorted(current - desired)
+
+    for i in range(0, len(to_add), _SYNC_CHUNK):
+        chunk = to_add[i:i + _SYNC_CHUNK]
+        ph = ",".join(["(%s,%s)"] * len(chunk))
+        cur.execute(
+            f"INSERT INTO {table} ({col_a}, {col_b}) VALUES {ph} "
+            f"ON CONFLICT ({col_a}, {col_b}) DO NOTHING",
+            [v for row in chunk for v in row],
+        )
+
+    for i in range(0, len(to_del), _SYNC_CHUNK):
+        chunk = to_del[i:i + _SYNC_CHUNK]
+        ph = ",".join(["(%s,%s)"] * len(chunk))
+        cur.execute(
+            f"DELETE FROM {table} WHERE ({col_a}, {col_b}) IN ({ph})",
+            [v for row in chunk for v in row],
+        )
+
+    return len(to_add), len(to_del)
+
+
 def refresh_bot_hash_tables():
     """Materialise bot classification data into two small Postgres tables so
     every analytics() render can filter against an indexed join instead of
@@ -6704,10 +6779,11 @@ def refresh_bot_hash_tables():
                     "  PRIMARY KEY (hash_type, hash)"
                     ")"
                 )
-                cur.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_pvbh_lookup "
-                    "ON page_view_bot_hashes (hash_type, hash)"
-                )
+                # No secondary index here on purpose: the PRIMARY KEY
+                # (hash_type, hash) btree already serves every lookup this
+                # table gets. idx_pvbh_lookup duplicated that key exactly,
+                # so it doubled index write amplification for zero read
+                # benefit. Dropped 2026-10-10 — do not re-add.
                 cur.execute(
                     "CREATE TABLE IF NOT EXISTS page_view_scanner_combos ("
                     "  path TEXT NOT NULL,"
@@ -6778,47 +6854,23 @@ def refresh_bot_hash_tables():
                 scanner_combos_full = cur.fetchall()
                 scanner_combos = [(p, u) for p, u, h, d in scanner_combos_full]
 
-                # Atomic refresh: truncate + reinsert in one transaction.
-                # Chunked: single-statement INSERT VALUES is bounded by
-                # Postgres wire-protocol int16 param count (65535). At
-                # 2 params/tuple, one INSERT can hold at most 32767 tuples.
-                # Once combined visitor+ip_day tuples cross that, the whole
-                # refresh silently no-ops (see incident 2026-09-05: 33091
-                # tuples → OperationalError swallowed by _log_err, writer
-                # walker_health stayed green, canary flagged +22 delta 3h
-                # later). Chunk of 10000 gives 3x headroom + future growth.
-                _INSERT_CHUNK = 10000
-                # DELETE (RowExclusive lock) not TRUNCATE (AccessExclusive).
-                # Analytics render reads page_view_bot_hashes; TRUNCATE blocks
-                # behind any concurrent reader and cancels at statement_timeout.
-                # DELETE is compatible with concurrent SELECTs; MVCC atomicity
-                # of the DELETE+INSERT transaction still hides the empty state
-                # from readers. Same rule at page_view_scanner_combos below.
-                cur.execute("DELETE FROM page_view_bot_hashes")
-                all_hash_rows = (
-                    [("visitor", h) for h in visitor_hashes]
-                    + [("ip_day", h) for h in ip_day_hashes]
+                # Diff-based sync, still inside this one transaction, so
+                # readers never observe a partially-synced table. Replaces a
+                # DELETE-everything + INSERT-everything rebuild — see
+                # _sync_key_table for the measured churn that motivated it.
+                _sync_key_table(
+                    cur,
+                    "page_view_bot_hashes",
+                    ("hash_type", "hash"),
+                    {("visitor", h) for h in visitor_hashes}
+                    | {("ip_day", h) for h in ip_day_hashes},
                 )
-                for i in range(0, len(all_hash_rows), _INSERT_CHUNK):
-                    chunk = all_hash_rows[i:i + _INSERT_CHUNK]
-                    ph = ",".join(["(%s,%s)"] * len(chunk))
-                    flat = [v for row in chunk for v in row]
-                    cur.execute(
-                        f"INSERT INTO page_view_bot_hashes (hash_type, hash) "
-                        f"VALUES {ph}",
-                        flat,
-                    )
-
-                cur.execute("DELETE FROM page_view_scanner_combos")
-                for i in range(0, len(scanner_combos), _INSERT_CHUNK):
-                    chunk = scanner_combos[i:i + _INSERT_CHUNK]
-                    ph = ",".join(["(%s,%s)"] * len(chunk))
-                    flat = [v for row in chunk for v in row]
-                    cur.execute(
-                        f"INSERT INTO page_view_scanner_combos (path, user_agent) "
-                        f"VALUES {ph}",
-                        flat,
-                    )
+                _sync_key_table(
+                    cur,
+                    "page_view_scanner_combos",
+                    ("path", "user_agent"),
+                    set(scanner_combos),
+                )
 
                 # Auto-ratchet into page_view_scanner_combos_confirmed.
                 # Detection is transient; conviction is permanent. Any combo
