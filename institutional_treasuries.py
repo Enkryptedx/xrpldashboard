@@ -370,6 +370,15 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
             "explorer_url": EXPLORER_URL.format(address=addr),
         })
     tot, readable = total_xrp(rows)
+    # Shorten counterparties here, not in the template: a bare `truncate`
+    # yields "rStranger12…", which is NOT the first6…last4 form the
+    # address-display rule requires, and an address too short to shorten
+    # must come back unchanged rather than padded into something that
+    # looks truncated.
+    moves = build_moves(raw_moves, labels)
+    for m in moves:
+        m["counterparty_short"] = (short_address(m["counterparty"])
+                                   if m.get("counterparty") else None)
     groups = [
         {"key": g, "label": GROUP_LABELS[g], "source_url": GROUP_SOURCE_URLS[g],
          "rows": [r for r in rows if r["group"] == g]}
@@ -387,7 +396,7 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
         "live_line": live_line(tot, len(WALLETS)),
         "partial_read": readable != len(WALLETS),
         "as_of": (snapshot or {}).get("date"),
-        "moves": build_moves(raw_moves, labels),
+        "moves": moves,
         "history": list(history or []),
         "correction_contact": CORRECTION_CONTACT,
     }

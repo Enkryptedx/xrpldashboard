@@ -46,6 +46,29 @@
             font-variant-numeric: tabular-nums; }
   .ev-bal--unread { color: var(--dim); font-style: italic;
                     font-family: var(--sys); font-size: 0.8rem; }
+
+  .ev-moves { margin: 0; padding: 0; list-style: none; }
+  .ev-move { padding: 7px 0; border-top: 1px solid var(--border);
+             font-size: 0.86rem; }
+  .ev-move-top { display: flex; align-items: baseline; gap: 8px;
+                 flex-wrap: wrap; }
+  .ev-dir { font-family: var(--mono); font-size: 0.74rem; padding: 1px 6px;
+            border-radius: 4px; border: 1px solid var(--border);
+            color: var(--muted); }
+  .ev-amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .ev-cp { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .ev-move-when { color: var(--dim); font-size: 0.78rem; margin-top: 2px; }
+  .ev-move-when .utc-paren { white-space: nowrap; font-size: 0.95em;
+                            color: var(--dim); }
+  .ev-hist { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0;
+             list-style: none; }
+  .ev-hist li { background: rgba(34,211,238,0.04);
+                border: 1px solid var(--border); border-radius: 6px;
+                padding: 6px 9px; font-size: 0.78rem; }
+  .ev-hist-d { color: var(--muted); }
+  .ev-hist-v { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .ev-foot { color: var(--dim); font-size: 0.8rem; margin: 16px 0 0;
+             padding-top: 12px; border-top: 1px solid var(--border); }
 </style>
 
 <div class="ev-card">
@@ -124,4 +147,60 @@
   </div>
   {% endif %}
   {% endfor %}
+
+  {# ── Recent moves. Rows come from build_moves, so a counterparty is
+       NAMED only when it is one of our own first-party labelled accounts;
+       otherwise the bare address is shown. Times go through the shared
+       datetime_to_et_first_html filter, so this card reads Eastern-first
+       exactly like every other timestamp on the site. #}
+  {% if evernorth.moves %}
+  <div class="ev-h">{{ _('Recent moves') }}</div>
+  <ul class="ev-moves">
+    {% for m in evernorth.moves %}
+    <li class="ev-move">
+      <div class="ev-move-top">
+        <span class="ev-dir">{{ _('out') if m.direction == 'out' else _('in') }}</span>
+        {% if m.amount_xrp is not none %}
+        <span class="ev-amt">{{ "{:,.2f}".format(m.amount_xrp) }} XRP</span>
+        {% endif %}
+        {% if m.counterparty_named %}
+        <span class="ev-cp">{{ m.counterparty_name }}</span>
+        {% elif m.counterparty_short %}
+        <a class="ev-cp" href="https://xrpscan.com/account/{{ m.counterparty }}" target="_blank" rel="noopener noreferrer">{{ m.counterparty_short }}</a>
+        {% else %}
+        <span class="ev-cp">{{ _('between these wallets') }}</span>
+        {% endif %}
+        {% if m.hash %}
+        <a class="ev-cp" href="https://xrpscan.com/tx/{{ m.hash }}" target="_blank" rel="noopener noreferrer">{{ _('tx') }}</a>
+        {% endif %}
+      </div>
+      <div class="ev-move-when">{{ m.iso|datetime_to_et_first_html }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {# ── Daily total history, straight from the snapshot reader. One point
+       per Eastern calendar day (the writer upserts on snapshot_date, so a
+       retry cannot put two points on one day). #}
+  {% if evernorth.history %}
+  <div class="ev-h">{{ _('Daily total') }}</div>
+  <ul class="ev-hist">
+    {% for h in evernorth.history %}
+    <li>
+      <span class="ev-hist-d">{{ h.date }}</span>
+      {% if h.total_xrp is not none %}
+      <span class="ev-hist-v">{{ "{:,.0f}".format(h.total_xrp) }}</span>
+      {% else %}
+      <span class="ev-hist-v">&mdash;</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <p class="ev-foot">
+    {{ _('The wallet addresses on this card are attributed by third parties, not by Evernorth and not by any SEC filing. The filing figures above are quoted from the filings themselves and each links to its source.') }}
+    {{ evernorth.correction_contact }}
+  </p>
 </div>

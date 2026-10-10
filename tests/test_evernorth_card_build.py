@@ -192,6 +192,25 @@ def test_moves_pass_through_build_moves_newest_first():
     assert card["moves"][0]["counterparty_name"] is None
 
 
+def test_counterparty_is_shortened_first6_last4_not_tail_truncated():
+    """A template `truncate` would give 'rStranger12…' — the wrong form."""
+    raw = [{"hash": "H", "iso": "2026-10-10T10:00:00Z", "amount_xrp": 1.0,
+            "direction": "out",
+            "counterparty": "rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk"}]
+    m = T.build_card(None, raw_moves=raw)["moves"][0]
+    assert m["counterparty_short"] == "rsT3yY\u2026uQRk"
+    assert m["counterparty_short"].endswith("uQRk"), "must keep the tail"
+    # The full address stays available for the explorer link only.
+    assert m["counterparty"] == "rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk"
+
+
+def test_internal_move_has_no_counterparty_short():
+    raw = [{"hash": "H", "iso": "2026-10-10T10:00:00Z", "amount_xrp": 1.0,
+            "direction": "out", "counterparty": None}]
+    m = T.build_card(None, raw_moves=raw)["moves"][0]
+    assert m["counterparty_short"] is None
+
+
 def test_card_carries_a_correction_contact():
     card = T.build_card(None)
     assert "@" in card["correction_contact"]
