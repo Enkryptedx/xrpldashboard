@@ -268,6 +268,13 @@ CREATE TABLE IF NOT EXISTS amm_ranked_pools (
 ALTER TABLE amm_ranked_pools ADD COLUMN IF NOT EXISTS lp_token_value NUMERIC;
 CREATE INDEX IF NOT EXISTS amm_ranked_pools_tvl_idx
     ON amm_ranked_pools (tvl_usd DESC NULLS LAST);
+-- amm_account is the natural key: one row per AMM pool per snapshot.
+-- Required by the ON CONFLICT upsert in replace_amm_ranked_pools, which
+-- replaced a DELETE-everything + insert-every-row rebuild (2026-10-09).
+-- Verified safe before adding: 30,365 rows / 30,365 distinct accounts /
+-- 0 NULLs / 0 duplicates in the live table.
+CREATE UNIQUE INDEX IF NOT EXISTS amm_ranked_pools_account_uidx
+    ON amm_ranked_pools (amm_account);
 
 CREATE TABLE IF NOT EXISTS page_views (
     id            BIGSERIAL PRIMARY KEY,
@@ -3377,25 +3384,63 @@ def read_heartbeat_prefix(prefix):
         return None
 
 
+# One VALUES group for the amm_ranked_pools upsert. Must stay in step with
+# the column list and the two ::jsonb casts in replace_amm_ranked_pools.
+_AMM_ROW_PLACEHOLDER = (
+    "(%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s)"
+)
+# Rows per INSERT statement. 30k pools => ~31 statements instead of 30k.
+_AMM_UPSERT_CHUNK = 1000
+
+
 def replace_amm_ranked_pools(rows):
-    """Atomically swap the entire amm_ranked_pools table for `rows`.
+    """Upsert `rows` into amm_ranked_pools, then drop whatever vanished.
 
-    Mirrors the file-level snapshot semantics of amm_ranked.json: rank_amms.py
-    rewrites the whole file at each SAVE_EVERY checkpoint, so we do the same
-    here. Wrapped in a transaction so /pools readers never observe an empty
-    table mid-swap (Postgres READ COMMITTED keeps them on the prior snapshot
-    until COMMIT). Silent no-op when PG isn't configured.
+    Replaces an earlier DELETE-everything + insert-every-row rebuild
+    (2026-10-09). That pattern cost 2.047 BILLION inserts and 2.047 billion
+    deletes against a 30k-row table, and `cur.executemany` issued one
+    statement per row — 152,523,005 INSERT executions in pg_stat_statements,
+    plus the dead tuples and WAL from rewriting every row every cycle.
 
-    `rows` is the in-memory ranked list (list of dicts in the same shape as
-    amm_ranked.json entries). Empty input is treated as "skip" rather than
-    "wipe" — it's almost always a bug to push 0 pools to prod.
+    Same observable result as before:
+      * every pool in `rows` is present with the new `snapshot_ts`;
+      * any pool NOT in `rows` is gone;
+      * readers filtering on MAX(snapshot_ts) see exactly the new set;
+      * the whole thing is one transaction, so /pools readers stay on the
+        prior snapshot until COMMIT and never observe a partial table.
+
+    Differences that are deliberate:
+      * `id` is no longer reassigned on every cycle — an unchanged pool
+        keeps its row and its id. Nothing reads `id`.
+      * a row with no `amm_account` is skipped, not inserted. ON CONFLICT
+        matches on amm_account and SQL NULL never equals itself, so such a
+        row would duplicate on every run forever. The live table has 0 of
+        them; the count is returned so a regression is visible.
+
+    `rows` is the in-memory ranked list (same shape as amm_ranked.json).
+    Empty input is treated as "skip" rather than "wipe" — it's almost always
+    a bug to push 0 pools to prod.
     """
     if not rows:
-        return
+        return None
     conn = _get_writer_conn()
     if conn is None:
         raise WriterConnUnavailable("replace_amm_ranked_pools: _get_writer_conn returned None")
     snapshot_ts = int(time.time())
+    # Dedupe on the natural key, last occurrence wins: two VALUES groups with
+    # the same amm_account in one statement would raise "ON CONFLICT DO UPDATE
+    # command cannot affect row a second time".
+    by_account = {}
+    skipped_no_account = 0
+    for _r in rows:
+        _acct = _r.get("amm_account")
+        if not _acct:
+            skipped_no_account += 1
+            continue
+        by_account[_acct] = _r
+    if not by_account:
+        return {"upserted": 0, "deleted": 0,
+                "skipped_no_account": skipped_no_account}
     payload = [
         (
             r.get("amm_account"),
@@ -3412,24 +3457,43 @@ def replace_amm_ranked_pools(rows):
             r.get("lp_token_value"),
             snapshot_ts,
         )
-        for r in rows
+        for r in by_account.values()
     ]
+    deleted = 0
     try:
         with conn.transaction():
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM amm_ranked_pools")
-                cur.executemany(
-                    "INSERT INTO amm_ranked_pools "
-                    "(amm_account, pair, fee_pct, fee_raw, amount_a, amount_b, "
-                    " asset_a, asset_b, tvl_usd, tvl_status, kind, "
-                    " lp_token_value, snapshot_ts) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, "
-                    " %s, %s, %s, %s, %s)",
-                    payload,
+                for _i in range(0, len(payload), _AMM_UPSERT_CHUNK):
+                    chunk = payload[_i:_i + _AMM_UPSERT_CHUNK]
+                    cur.execute(
+                        "INSERT INTO amm_ranked_pools "
+                        "(amm_account, pair, fee_pct, fee_raw, amount_a, amount_b, "
+                        " asset_a, asset_b, tvl_usd, tvl_status, kind, "
+                        " lp_token_value, snapshot_ts) VALUES "
+                        + ",".join([_AMM_ROW_PLACEHOLDER] * len(chunk))
+                        + " ON CONFLICT (amm_account) DO UPDATE SET "
+                        " pair = EXCLUDED.pair, fee_pct = EXCLUDED.fee_pct, "
+                        " fee_raw = EXCLUDED.fee_raw, amount_a = EXCLUDED.amount_a, "
+                        " amount_b = EXCLUDED.amount_b, asset_a = EXCLUDED.asset_a, "
+                        " asset_b = EXCLUDED.asset_b, tvl_usd = EXCLUDED.tvl_usd, "
+                        " tvl_status = EXCLUDED.tvl_status, kind = EXCLUDED.kind, "
+                        " lp_token_value = EXCLUDED.lp_token_value, "
+                        " snapshot_ts = EXCLUDED.snapshot_ts",
+                        [v for _row in chunk for v in _row],
+                    )
+                # Pools that disappeared from the ranked list still carry an
+                # older snapshot_ts; removing them is what makes this
+                # equivalent to the old full rebuild.
+                cur.execute(
+                    "DELETE FROM amm_ranked_pools WHERE snapshot_ts < %s",
+                    (snapshot_ts,),
                 )
+                deleted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
     except Exception as e:
         _drop_writer_conn()
         _log_err_and_raise("replace_amm_ranked_pools_failed", e)
+    return {"upserted": len(payload), "deleted": deleted,
+            "skipped_no_account": skipped_no_account}
 
 
 def write_token_prices(rows):
