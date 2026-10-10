@@ -32,11 +32,10 @@ through the real Flask Jinja env (custom filters + includes included).
 from __future__ import annotations
 
 import html as _html
+import json
 import os
 import re
-import subprocess
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -177,40 +176,6 @@ def _render(template_name="amendments.html"):
         )
 
 
-def _render_origin_main():
-    """Render origin/main's amendments.html with the SAME injected context.
-
-    origin/main's copy is dropped into a temp dir that is searched FIRST, so
-    its {% include %} partials and the custom Jinja filters still resolve from
-    the real app. Returns None (skip) when origin/main is not fetched.
-    """
-    import jinja2
-
-    import app
-
-    try:
-        blob = subprocess.run(
-            ["git", "show", "origin/main:templates/amendments.html"],
-            cwd=REPO, capture_output=True, check=True, text=True,
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-    original_loader = app.app.jinja_loader
-    with tempfile.TemporaryDirectory() as td:
-        with open(os.path.join(td, "amendments.html"), "w", encoding="utf-8") as fh:
-            fh.write(blob)
-        app.app.jinja_loader = jinja2.ChoiceLoader(
-            [jinja2.FileSystemLoader(td), original_loader]
-        )
-        try:
-            app.app.jinja_env.cache = None
-            return _render("amendments.html")
-        finally:
-            app.app.jinja_loader = original_loader
-            app.app.jinja_env.cache = None
-
-
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
@@ -323,44 +288,175 @@ def test_six_compact_stops_per_countdown_card():
 
 
 # --------------------------------------------------------------------------
-# (b) step wording identical to origin/main, word for word
+# (b) step wording pinned to a COMMITTED golden baseline, word for word
+#
+# These two tests used to shell out to
+#     git show origin/main:templates/amendments.html
+# and pytest.skip() when that failed. ci.yml sets no fetch-depth, so
+# actions/checkout@v4 hands the runner a depth-1 clone with NO origin/main ref
+# at all -> both tests SKIPPED SILENTLY in CI while the job stayed green. They
+# were the only guard on the step wording, so the wording was effectively
+# unguarded on every push.
+#
+# A committed fixture means they always run: no network, no git history, any
+# clone, any depth. There is no pytest.skip() left anywhere in this file.
 # --------------------------------------------------------------------------
 
-def test_step_wording_identical_to_origin_main():
-    before = _render_origin_main()
-    if before is None:
-        pytest.skip("origin/main not available (run `git fetch origin`)")
-    after = _render()
+GOLDEN_PATH = os.path.join(
+    REPO, "tests", "fixtures", "amendments_step_wording.json"
+)
 
-    cards_before = _countdown_cards(before)
-    cards_after = _countdown_cards(after)
-    assert len(cards_before) == len(cards_after) == len(_MAJORITIES)
+_GOLDEN_REFRESH_CMD = (
+    "UPDATE_STEP_WORDING_GOLDEN=1 pytest "
+    "tests/test_amendments_compact_steps.py -k wording -q"
+)
 
-    for name, cb, ca in zip(_NAMES, cards_before, cards_after):
-        steps_before = _step_blocks(cb)
-        steps_after = _step_blocks(ca)
-        assert len(steps_before) == 6, f"{name}: origin/main had no 6 steps"
-        assert len(steps_after) == len(steps_before), (
-            f"{name}: step count changed "
-            f"{len(steps_before)} -> {len(steps_after)}"
+_GOLDEN_META = {
+    "_what": (
+        "Golden baseline of the /amendments compact-stepper step wording, as "
+        "rendered under the fixed test context in "
+        "tests/test_amendments_compact_steps.py. Visible text only: tags and "
+        "entities stripped, whitespace collapsed."
+    ),
+    "_why": (
+        "The two tests that consume this file used to shell out to `git show "
+        "origin/main:templates/amendments.html` and pytest.skip() when that "
+        "failed. ci.yml sets no fetch-depth, so actions/checkout@v4 gives a "
+        "depth-1 clone with no origin/main ref - both tests SKIPPED SILENTLY "
+        "on the runner while the job looked green, leaving the step wording "
+        "unguarded on every push. Committing the baseline means they always "
+        "run."
+    ),
+    "_how_to_refresh": [
+        "ONLY refresh when a wording change is intentional and approved.",
+        "A failure here is the guard doing its job. Refreshing to silence a",
+        "diff you did not intend defeats the entire point of the file.",
+        "",
+        "1. Make the approved wording change in templates/amendments.html.",
+        "2. Regenerate from the working-tree render:",
+        f"     {_GOLDEN_REFRESH_CMD}",
+        "   (inside the usual hermetic env:",
+        '     env -i PATH="$PWD/.civ/bin:/usr/bin:/bin" HOME="$PWD" \\',
+        "       DATABASE_URL=\"\" bash -c 'cd \"$PWD\" && <command above>' )",
+        "3. Re-run WITHOUT the env var; both wording tests must pass.",
+        "4. git diff this file, read every changed string, and commit it in",
+        "   the SAME commit as the template change so the pair is reviewable.",
+        "",
+        "Do not hand-edit the strings below - regenerate, so the baseline",
+        "always reflects a real render rather than someone's expectation.",
+        "",
+        "NOTE on the _item5 test: the Item 5 singular fix ('1 hours' ->",
+        "'1 hour') is ALREADY merged into main, so the baseline already holds",
+        "the singular and there is no raw diff left for that test to explain.",
+        "Its loop is therefore empty by design now; it keeps working because",
+        "its second half pins the singular wording positively instead.",
+    ],
+}
+
+
+def _golden_cards(page):
+    """[{name, steps: [6 visible-text strings]}] for each countdown card."""
+    cards = _countdown_cards(page)
+    assert len(cards) == len(_MAJORITIES), (
+        f"expected {len(_MAJORITIES)} countdown cards, got {len(cards)}"
+    )
+    out = []
+    for name, card in zip(_NAMES, cards):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, f"{name}: expected 6 steps, got {len(steps)}"
+        out.append({"name": name, "steps": [_visible_text(s) for s in steps]})
+    return out
+
+
+def _maybe_refresh_golden(page):
+    """Opt-in maintenance mode. Never silent - you must set the env var."""
+    if os.environ.get("UPDATE_STEP_WORDING_GOLDEN") != "1":
+        return
+    doc = dict(_GOLDEN_META)
+    doc["_captured_from"] = "working-tree render at refresh time"
+    doc["cards"] = _golden_cards(page)
+    os.makedirs(os.path.dirname(GOLDEN_PATH), exist_ok=True)
+    with open(GOLDEN_PATH, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    print(f"\nREFRESHED golden baseline -> {GOLDEN_PATH}")
+
+
+def _load_golden():
+    """The committed baseline. HARD FAILS - there is deliberately no skip.
+
+    Every failure mode here raises instead of skipping, because a skip is how
+    this guard went silent in CI in the first place.
+    """
+    if not os.path.exists(GOLDEN_PATH):
+        raise AssertionError(
+            f"missing golden baseline: {GOLDEN_PATH}\n"
+            "It is committed on purpose so these tests cannot skip in CI.\n"
+            f"If the wording change is intentional: {_GOLDEN_REFRESH_CMD}"
         )
+    with open(GOLDEN_PATH, encoding="utf-8") as fh:
+        try:
+            doc = json.load(fh)
+        except json.JSONDecodeError as exc:
+            raise AssertionError(
+                f"golden baseline is not valid JSON ({GOLDEN_PATH}): {exc}"
+            ) from exc
 
-        for idx, (sb, sa) in enumerate(zip(steps_before, steps_after), 1):
-            tb = _normalize_item5(_visible_text(sb))
-            ta = _normalize_item5(_visible_text(sa))
+    cards = doc.get("cards")
+    assert isinstance(cards, list) and cards, (
+        f"golden baseline has no 'cards' list: {GOLDEN_PATH}"
+    )
+    assert len(cards) == len(_MAJORITIES), (
+        f"golden baseline holds {len(cards)} cards, expected "
+        f"{len(_MAJORITIES)}: {GOLDEN_PATH}"
+    )
+    for card in cards:
+        steps = card.get("steps")
+        assert isinstance(steps, list) and len(steps) == 6, (
+            f"golden card {card.get('name')!r} must hold 6 steps"
+        )
+        # an empty/blank baseline would make both tests pass on nothing
+        assert all(isinstance(s, str) and s.strip() for s in steps), (
+            f"golden card {card.get('name')!r} has a BLANK step string; a "
+            "vacuous baseline would make these tests pass on nothing"
+        )
+    return cards
+
+
+def test_step_wording_identical_to_origin_main():
+    """Step wording must match the committed baseline, word for word.
+
+    Re-pointed 2026-10-10 off `git show origin/main` onto
+    tests/fixtures/amendments_step_wording.json - see the section comment
+    above for why the old form skipped silently in CI. The baseline was
+    captured from a render that is byte-identical to origin/main @ 45c5489.
+    """
+    after = _render()
+    _maybe_refresh_golden(after)
+
+    golden = _load_golden()
+    actual = _golden_cards(after)
+
+    assert [c["name"] for c in actual] == [c["name"] for c in golden], (
+        "countdown card order changed: "
+        f"{[c['name'] for c in golden]} -> {[c['name'] for c in actual]}"
+    )
+
+    for exp, got in zip(golden, actual):
+        name = exp["name"]
+        assert len(got["steps"]) == len(exp["steps"]) == 6, (
+            f"{name}: step count changed "
+            f"{len(exp['steps'])} -> {len(got['steps'])}"
+        )
+        for idx, (sb, sa) in enumerate(zip(exp["steps"], got["steps"]), 1):
+            tb = _normalize_item5(sb)
+            ta = _normalize_item5(sa)
             assert ta == tb, (
                 f"{name}: step {idx} WORDING CHANGED.\n"
-                f"  origin/main: {tb!r}\n"
-                f"  working tree: {ta!r}"
+                f"  baseline:     {tb!r}\n"
+                f"  working tree: {ta!r}\n"
+                f"If intentional, refresh: {_GOLDEN_REFRESH_CMD}"
             )
-
-    # and nothing was dropped page-wide: every word of the old step text
-    # must still be somewhere in the new render
-    for cb, ca in zip(cards_before, cards_after):
-        for sb in _step_blocks(cb):
-            assert _normalize_item5(_visible_text(sb)) in _normalize_item5(
-                _visible_text(ca)
-            ), "a step's text is missing from the new card render"
 
 
 def test_item5_is_the_only_wording_difference_from_origin_main():
@@ -370,34 +466,47 @@ def test_item5_is_the_only_wording_difference_from_origin_main():
     wording difference, the raw (un-normalized) comparison will differ in
     some way the sanctioned singular substitutions cannot explain.
     """
-    before = _render_origin_main()
-    if before is None:
-        pytest.skip("origin/main not available (run `git fetch origin`)")
     after = _render()
+    _maybe_refresh_golden(after)
+
+    golden = _load_golden()
+    actual = _golden_cards(after)
 
     raw_diffs = []
-    for name, cb, ca in zip(
-        _NAMES, _countdown_cards(before), _countdown_cards(after)
-    ):
-        for idx, (sb, sa) in enumerate(
-            zip(_step_blocks(cb), _step_blocks(ca)), 1
-        ):
-            tb = _visible_text(sb)
-            ta = _visible_text(sa)
-            if tb != ta:
-                raw_diffs.append((name, idx, tb, ta))
+    for exp, got in zip(golden, actual):
+        for idx, (sb, sa) in enumerate(zip(exp["steps"], got["steps"]), 1):
+            if sb != sa:
+                raw_diffs.append((exp["name"], idx, sb, sa))
 
     # every raw difference must be explained purely by the singular fix
     for name, idx, tb, ta in raw_diffs:
         assert _normalize_item5(ta) == _normalize_item5(tb), (
-            f"{name}: step {idx} differs from origin/main in a way the Item 5 "
-            f"singular fix does not explain.\n  origin/main: {tb!r}\n"
+            f"{name}: step {idx} differs from the baseline in a way the Item 5 "
+            f"singular fix does not explain.\n  baseline:     {tb!r}\n"
             f"  working tree: {ta!r}"
         )
         assert "1 hours" in tb or "1 days" in tb, (
-            f"{name}: step {idx} changed but origin/main had no '1 hours'/"
+            f"{name}: step {idx} changed but the baseline had no '1 hours'/"
             f"'1 days' to fix: {tb!r}"
         )
+
+    # ---- NON-VACUITY HALF (added 2026-10-10) ----------------------------
+    # The Item 5 singular fix is already merged into main, so the baseline
+    # holds the singular too and raw_diffs is now EMPTY - the loop above
+    # inspects nothing and would pass on anything. That is the same
+    # empty-loop trap test_official_check_mark_is_pure_css was sitting in.
+    # So pin the Item 5 wording positively: it must be LIVE, not merely
+    # undisputed. The fixture renders days_elapsed=10, hours_elapsed=1.
+    step1 = " | ".join(_step1_text(after))
+    assert re.search(r"\b1 hour\b", step1), (
+        f"Item 5's singular '1 hour' is not in step 1 any more: {step1!r}"
+    )
+    assert not re.search(r"\b1 hours\b", step1), (
+        f"Item 5 REGRESSED - step 1 reads the plural '1 hours': {step1!r}"
+    )
+    assert not re.search(r"\b1 days\b", step1), (
+        f"Item 5 REGRESSED - step 1 reads the plural '1 days': {step1!r}"
+    )
 
 
 # --------------------------------------------------------------------------
