@@ -1,0 +1,218 @@
+"""Public companies holding XRP — treasury card data (branch
+institutional-treasuries-2026-10-09).
+
+Feeds the "Public companies holding XRP" section on /institutional.
+Evernorth Holdings Inc. is the first entry.
+
+TWO STRICTLY SEPARATED TIERS, because they have different evidentiary
+weight and must never be blended in the UI:
+
+  TIER_FILING    — a fact stated in an SEC filing, with the filing URL.
+  TIER_ATTRIBUTED— a wallet address attributed to the company by a third
+                   party (XRPScan curation, xrp-insights.com), NOT named
+                   in any filing.
+
+Verified read-only on 2026-10-09 against the three filings Evernorth made
+that day (8-K 0001193125-26-419146, 424B3 0001193125-26-419096, 8-A12B
+0001193125-26-418582): an XRPL-address regex found ZERO addresses in all
+three, and none of the watched addresses appear anywhere in them. The
+filings DO name the custodian (BitGo Bank & Trust, N.A.). So every wallet
+below is TIER_ATTRIBUTED — nothing on this page may claim a filing
+confirms an address until a filing actually names one.
+
+Node load: balances come from `fetch_treasury_snapshot()`, memoized for
+SNAPSHOT_TTL seconds. One `account_info` per wallet per TTL window, never
+per page render. Any failure degrades to balance=None and the card renders
+the filing facts alone (render-killer rule).
+"""
+from __future__ import annotations
+
+import datetime as dt
+import threading
+
+TIER_FILING = "filing"
+TIER_ATTRIBUTED = "attributed"
+
+# Public-facing source labels. Exact strings the owner approved.
+TIER_LABELS = {
+    TIER_FILING: "confirmed by Evernorth filing",
+    TIER_ATTRIBUTED: "attributed by XRPScan / xrp-insights — not confirmed by Evernorth",
+}
+
+SNAPSHOT_TTL = 900  # 15 min
+
+SEC_8K = ("https://www.sec.gov/Archives/edgar/data/2092592/"
+          "000119312526419146/d24481d8k.htm")
+SEC_424B3 = ("https://www.sec.gov/Archives/edgar/data/2092592/"
+             "000119312526419096/d824062d424b3.htm")
+
+# ── Tier 1: facts from the filings, each with its own citation ──
+# Figures are quoted, not computed. No estimates, no projections.
+EVERNORTH = {
+    "company": "Evernorth Holdings Inc.",
+    "cik": "0002092592",
+    "facts": [
+        {"label": "Business combination closed",
+         "value": "October 9, 2026",
+         "detail": "Closing Date per the 8-K Introductory Note.",
+         "source": "8-K", "url": SEC_8K},
+        {"label": "Listing",
+         "value": "Nasdaq — XRPN (Class A), XRPNW (warrants)",
+         "detail": "Securities registered pursuant to Section 12(b).",
+         "source": "8-K", "url": SEC_8K},
+        {"label": "Expected XRP holdings at closing",
+         "value": "at least 473,276,430 XRP",
+         "detail": "Stated as Pubco's initial XRP holdings at Closing.",
+         "source": "424B3", "url": SEC_424B3},
+        {"label": "Signing XRP price",
+         "value": "$2.36609",
+         "detail": "Defined term in the 8-K private-placement section.",
+         "source": "8-K", "url": SEC_8K},
+        {"label": "Closing XRP price",
+         "value": "$1.43069",
+         "detail": "Three-day average of the CME CF XRP-Dollar Reference "
+                   "Rate (New York Variant) at 4:00 p.m. New York time on "
+                   "each of the three days before the Closing Date.",
+         "source": "8-K", "url": SEC_8K},
+        {"label": "Shareholder redemptions",
+         "value": "approximately $195.39 million",
+         "detail": "At a redemption price of approximately $10.58 per share.",
+         "source": "8-K", "url": SEC_8K},
+        {"label": "Ripple contribution",
+         "value": "126,791,458 XRP",
+         "detail": "Contributed under the Contribution Agreement in a "
+                   "private placement.",
+         "source": "424B3", "url": SEC_424B3},
+        {"label": "Custodian",
+         "value": "BitGo Bank & Trust, National Association",
+         "detail": "Named as primary custodian and a \u201cqualified "
+                   "custodian\u201d for purposes of Rule 206(4)-2 under the "
+                   "Investment Advisers Act of 1940. The filings name the "
+                   "custodian but do not publish any wallet address.",
+         "source": "424B3", "url": SEC_424B3},
+    ],
+}
+
+# ── Tier 2: addresses attributed by third parties, NOT by any filing ──
+WALLETS = [
+    ("rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk", "Evernorth 1"),
+    ("rKXXrAgpkHQN8m4HxAQCYmDCPPUByc9mVq", "Evernorth 2"),
+    ("rKhjV48GdbgxAAfSvusqGNktGwAxnzzXpv", "Custody A"),
+    ("rGJBNGkDeRPNvNJCi57Ht1ncdht9SuctLe", "Custody B"),
+    ("rJX1qoSGYmx5NWJEpsBGKvxmYpGR7mDtop", "Custody C"),
+    ("rJuyHPDFpfeVhxfxZboTf7BYu1ptGus1v3", "Custody D"),
+    ("rUgQciCPP1AiwQ9f5zstYu9RzVfsKQRGc2", "Custody E"),
+    ("rPhQdyEaz4kcSoYKTAQhvkvdYxWKKw2vSC", "Custody F"),
+    ("rGy4zJtGfGtF7dtjZmBraQTcfZSQgwqpaa", "Custody G"),
+    ("rfiEXPM2ZgdvH6stURRF2t5Tk3SmRX7EDR", "Custody H"),
+    ("r3tTJV8rppEqixa4LDxCvMtYAbWgFFyA6Y", "Custody I"),
+    ("rBZWJZpVDSDFBFmRpcuXJ8ePqX7wE4BeYa", "Custody J"),
+    ("rNtaHck1h268GQpfrQQ5AW68CEF2q919WU", "Staging"),
+]
+
+# The filing's stated minimum, for the side-by-side comparison.
+FILING_MIN_XRP = 473276430
+
+_lock = threading.Lock()
+_cache = {"at": None, "data": None}
+
+
+def _fmt_xrp(drops):
+    """drops -> XRP float. None stays None (never guess a balance)."""
+    if drops is None:
+        return None
+    try:
+        return int(drops) / 1_000_000
+    except (TypeError, ValueError):
+        return None
+
+
+def build_rows(balances, last_moved=None):
+    """Pure: assemble the wallet rows. `balances` maps address -> drops (or
+    None when unreadable); `last_moved` maps address -> ISO string or None.
+
+    Every row carries TIER_ATTRIBUTED, because no filing names an address.
+    """
+    last_moved = last_moved or {}
+    rows = []
+    for addr, label in WALLETS:
+        rows.append({
+            "address": addr,
+            "label": label,
+            "balance_xrp": _fmt_xrp((balances or {}).get(addr)),
+            "last_moved_iso": last_moved.get(addr),
+            "tier": TIER_ATTRIBUTED,
+            "tier_label": TIER_LABELS[TIER_ATTRIBUTED],
+        })
+    return rows
+
+
+def total_xrp(rows):
+    """Sum of readable balances. Returns (total, readable_count). A row we
+    could not read is excluded rather than counted as zero."""
+    vals = [r["balance_xrp"] for r in rows if r.get("balance_xrp") is not None]
+    return (sum(vals) if vals else None), len(vals)
+
+
+def filing_delta(total):
+    """total - FILING_MIN_XRP, or None. The filing says "at least", so a
+    positive delta is consistent with it, not a contradiction.
+
+    Rounded to 6 dp: XRP has exactly 6 decimal places (1 drop), so anything
+    beyond that is float noise, not ledger precision.
+    """
+    if total is None:
+        return None
+    return round(total - FILING_MIN_XRP, 6)
+
+
+def cache_state(now=None):
+    """(age_seconds, is_fresh) for the memoized snapshot."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    at = _cache.get("at")
+    if at is None:
+        return None, False
+    age = (now - at).total_seconds()
+    return age, age < SNAPSHOT_TTL
+
+
+def fetch_treasury_snapshot(reader=None, now=None, force=False):
+    """Memoized snapshot. `reader(addresses)` must return
+    (balances, last_moved) and is injected in tests so nothing touches a
+    node or a DB. Best-effort: on failure returns rows with balance=None.
+    """
+    now = now or dt.datetime.now(dt.timezone.utc)
+    with _lock:
+        age, fresh = cache_state(now)
+        if fresh and not force and _cache.get("data") is not None:
+            return _cache["data"]
+    balances, last_moved = {}, {}
+    if reader is not None:
+        try:
+            balances, last_moved = reader([a for a, _ in WALLETS])
+        except Exception:  # noqa: BLE001 — card degrades, page never 500s
+            balances, last_moved = {}, {}
+    rows = build_rows(balances, last_moved)
+    tot, readable = total_xrp(rows)
+    data = {
+        "company": EVERNORTH["company"],
+        "facts": EVERNORTH["facts"],
+        "rows": rows,
+        "total_xrp": tot,
+        "readable_count": readable,
+        "wallet_count": len(WALLETS),
+        "filing_min_xrp": FILING_MIN_XRP,
+        "filing_delta": filing_delta(tot),
+        "fetched_at_iso": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    with _lock:
+        _cache["at"] = now
+        _cache["data"] = data
+    return data
+
+
+def reset_cache():
+    """Test helper."""
+    with _lock:
+        _cache["at"] = None
+        _cache["data"] = None
