@@ -29,6 +29,23 @@
                  line-height: 1.3; word-break: break-word; }
   .ev-fact-det { color: var(--dim); font-size: 0.76rem; margin-top: 5px; }
   .ev-cite { font-size: 0.76rem; margin-top: 5px; }
+
+  .ev-live { font-family: var(--mono); font-size: 0.95rem;
+             font-variant-numeric: tabular-nums; margin: 0;
+             line-height: 1.5; }
+  .ev-asof { color: var(--dim); font-size: 0.78rem; margin: 6px 0 0; }
+  .ev-group { margin-top: 14px; }
+  .ev-group-h { color: var(--muted); font-size: 0.8rem; margin-bottom: 6px;
+                line-height: 1.45; }
+  .ev-wallets { margin: 0; padding: 0; list-style: none; }
+  .ev-wallet { display: flex; align-items: baseline; justify-content: space-between;
+               gap: 10px; flex-wrap: wrap; padding: 6px 0;
+               border-top: 1px solid var(--border); }
+  .ev-addr { font-family: var(--mono); font-size: 0.86rem; }
+  .ev-bal { font-family: var(--mono); font-size: 0.86rem; color: var(--muted);
+            font-variant-numeric: tabular-nums; }
+  .ev-bal--unread { color: var(--dim); font-style: italic;
+                    font-family: var(--sys); font-size: 0.8rem; }
 </style>
 
 <div class="ev-card">
@@ -52,4 +69,59 @@
     </li>
     {% endfor %}
   </ul>
+
+  {# ── Tier 2: wallets attributed by a third party, named in NO filing.
+       The live line is pre-assembled in Python (institutional_treasuries
+       .live_line) because it is the owner's verbatim sentence and a
+       dynamic number inside _() would be %-in-gettext, a render-killer
+       here. It is omitted entirely when nothing was readable rather than
+       publishing a total that silently excludes wallets. #}
+  <div class="ev-h">{{ _('What the wallets hold') }}</div>
+
+  {% if evernorth.live_line %}
+  <p class="ev-live">{{ evernorth.live_line }}</p>
+  {% else %}
+  <p class="ev-asof">
+    {{ _('No wallet balance could be read for the latest snapshot, so no total is shown here. The filing figures above are unaffected.') }}
+  </p>
+  {% endif %}
+
+  {% if evernorth.as_of %}
+  <p class="ev-asof">
+    {{ _('Balances as of the') }} {{ evernorth.as_of }} {{ _('daily snapshot, read from our own node.') }}
+    {% if evernorth.partial_read %}
+    {{ _('Read') }} {{ evernorth.readable_count }}/{{ evernorth.wallet_count }} {{ _('wallets; an unreadable wallet is left out of the total rather than counted as zero.') }}
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {# Each group's heading links to the source that makes THAT group's
+     claim. Never merge the groups: it would launder the 11 inferred
+     addresses into the 2 an explorer actually labelled. #}
+  {% for g in evernorth.groups %}
+  {% if g.rows %}
+  <div class="ev-group">
+    <div class="ev-group-h">
+      {{ g.rows|length }}
+      {{ _('wallet') if g.rows|length == 1 else _('wallets') }} &mdash;
+      <a href="{{ g.source_url }}" target="_blank" rel="noopener noreferrer">{{ g.label }}</a>
+    </div>
+    <ul class="ev-wallets">
+      {% for w in g.rows %}
+      <li class="ev-wallet">
+        {# Short address only. The full address is reachable solely through
+           the explorer link, and the third party's own names for these
+           wallets are never rendered. #}
+        <a class="ev-addr" href="{{ w.explorer_url }}" target="_blank" rel="noopener noreferrer">{{ w.short }}</a>
+        {% if w.balance_xrp is not none %}
+        <span class="ev-bal">{{ "{:,.0f}".format(w.balance_xrp) }} XRP</span>
+        {% else %}
+        <span class="ev-bal ev-bal--unread">{{ _('not readable') }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% endfor %}
 </div>
