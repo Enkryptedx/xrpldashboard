@@ -7026,14 +7026,31 @@ def _bot_filter_sql(kind, precomputed=None):
     # Two separate IN subqueries, one per session key. Each only links rows
     # whose key is NOT NULL on both sides — so NULL ip_day_hash rows (the
     # entire pre-rollout history) can't collapse into one mega-session.
+    #
+    # SELECT DISTINCT is semantics-free here — `x IN (subquery)` tests
+    # membership, so duplicate rows in the subquery cannot change which
+    # outer rows match — but it is load-bearing for the planner. Undeduped,
+    # Postgres materialises every matching hash ROW (~150k visitor / ~134k
+    # ip_day at 2026-10-10) and rescans that list per outer row. The
+    # identical pattern in scripts/is_bot_canary.py drove a trailing-7d
+    # count to a 716,462,641 plan cost and blew the 25s statement_timeout
+    # on 2026-10-09 (BetterStack incident); deduping dropped the same plan
+    # to 484,683 (~1,477x). This tier-4 twin is currently DORMANT — tier 1
+    # (_is_bot_column_ready, hardcoded True) serves prod — so the cost was
+    # never observed on a live page, but any flip of that flag would hand
+    # the site the 716M plan. Fixed here pre-emptively.
+    #
+    # Do NOT add a ts bound to these subqueries instead: the unbounded
+    # window is deliberate — a visitor seen botting at ANY time taints the
+    # session (see the clause-(b) contract in this function's docstring).
     session_pred = (
         f"(visitor_hash IS NOT NULL AND visitor_hash IN ("
-        f"  SELECT visitor_hash FROM page_views "
+        f"  SELECT DISTINCT visitor_hash FROM page_views "
         f"  WHERE visitor_hash IS NOT NULL AND {row_pred}"
         f"))"
         f" OR "
         f"(ip_day_hash IS NOT NULL AND ip_day_hash IN ("
-        f"  SELECT ip_day_hash FROM page_views "
+        f"  SELECT DISTINCT ip_day_hash FROM page_views "
         f"  WHERE ip_day_hash IS NOT NULL AND {row_pred}"
         f"))"
     )
