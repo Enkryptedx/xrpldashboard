@@ -3861,6 +3861,47 @@ def read_mpt_snapshot():
         return None
 
 
+_EVERNORTH_SNAPSHOT_DDL = """
+CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot (
+    snapshot_date  DATE PRIMARY KEY,
+    taken_at       BIGINT NOT NULL,
+    total_xrp      NUMERIC NOT NULL,
+    readable_count INTEGER NOT NULL,
+    wallet_count   INTEGER NOT NULL,
+    balances       JSONB NOT NULL
+);
+"""
+
+
+def ensure_evernorth_daily_snapshot_table():
+    """Create the table if it is missing. Called by the nightly job at the
+    top of every tick.
+
+    This exists because declaring the table in SCHEMA_DDL is NOT enough:
+    `init_schema()` is a manual one-off (only backfill_amm_pools.py calls
+    it) and nothing runs it at app boot, so the table was absent from the
+    live database and the writer's best-effort `except` would have logged
+    and swallowed every insert — a silently missing row rather than a
+    visible failure. Same reasoning as the walker-owned
+    `ALTER ... ADD COLUMN IF NOT EXISTS` pattern: the job that owns the
+    table guarantees its own shape, so no owner-run migration step is
+    needed.
+
+    Idempotent and best-effort: returns True when the table is present
+    afterwards, False when PG is unavailable or the DDL failed.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_EVERNORTH_SNAPSHOT_DDL)
+        return True
+    except Exception as e:  # noqa: BLE001 — job must still try to write
+        _log_err("ensure_evernorth_daily_snapshot_table_failed", e)
+        return False
+
+
 def write_evernorth_daily_snapshot(snapshot_date, taken_at, total_xrp,
                                    readable_count, wallet_count, balances):
     """Upsert one calendar day's Evernorth treasury reading.

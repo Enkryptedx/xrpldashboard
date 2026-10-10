@@ -118,6 +118,37 @@ def test_write_failure_never_propagates(monkeypatch):
     assert db.write_evernorth_daily_snapshot("2026-10-10", 1, 2.0, 1, 1, {}) is None
 
 
+# ── table guarantee ──────────────────────────────────────────────────────
+def test_ensure_table_issues_create_if_not_exists(monkeypatch):
+    """The job owns its own table.
+
+    Declaring it in SCHEMA_DDL is NOT enough: init_schema() is a manual
+    one-off that nothing runs at boot. Verified 2026-10-10 against
+    production - the table did not exist, so every insert would have been
+    swallowed by the writer's best-effort except: a silently missing row
+    instead of a visible failure.
+    """
+    conn = FakeConn()
+    monkeypatch.setattr(db, "_get_writer_conn", lambda: conn)
+    assert db.ensure_evernorth_daily_snapshot_table() is True
+    assert "CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot" in conn.cur.sql
+    # PRIMARY KEY on the date is what makes a retry idempotent.
+    assert "snapshot_date DATE PRIMARY KEY" in conn.cur.sql
+
+
+def test_ensure_table_false_without_pg(monkeypatch):
+    monkeypatch.setattr(db, "_get_writer_conn", lambda: None)
+    assert db.ensure_evernorth_daily_snapshot_table() is False
+
+
+def test_ensure_table_never_raises(monkeypatch):
+    """A DDL failure must not kill the job before it tries to write."""
+    monkeypatch.setattr(db, "_get_writer_conn",
+                        lambda: FakeConn(raises=RuntimeError("no perms")))
+    monkeypatch.setattr(db, "_log_err", lambda *a, **k: None)
+    assert db.ensure_evernorth_daily_snapshot_table() is False
+
+
 # ── reader ───────────────────────────────────────────────────────────────
 import datetime as _dt  # noqa: E402
 

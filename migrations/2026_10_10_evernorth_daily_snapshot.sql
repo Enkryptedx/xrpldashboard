@@ -11,8 +11,16 @@
 -- 0 - counting an unreadable balance as zero would understate the total
 -- and look like an outflow that never happened.
 --
--- Applied automatically by db.init_schema() (same statement lives in
--- SCHEMA_DDL), so no owner-run step is required.
+-- Applied by the nightly job itself: scripts/evernorth_daily_snapshot.py
+-- calls db.ensure_evernorth_daily_snapshot_table() at the top of every
+-- tick, so no owner-run step is required.
+--
+-- Do NOT rely on SCHEMA_DDL alone for this. The same statement lives
+-- there, but init_schema() is a manual one-off (only backfill_amm_pools.py
+-- calls it) and nothing runs it at app boot. Verified 2026-10-10 against
+-- production: the table did not exist, so every insert would have been
+-- swallowed by the writer's best-effort except - a silently missing row
+-- rather than a visible failure.
 
 CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot (
     snapshot_date  DATE PRIMARY KEY,

@@ -87,7 +87,8 @@ EVERNORTH = {
          "source": "8-K", "url": SEC_8K},
         {"label": "Expected XRP holdings at closing",
          "value": "at least 473,276,430 XRP",
-         "detail": "Stated as Pubco's initial XRP holdings at Closing.",
+         "detail": "Stated as the company's initial XRP holdings at "
+                   "closing.",
          "source": "424B3", "url": SEC_424B3},
         {"label": "Signing XRP price",
          "value": "$2.36609",
@@ -343,7 +344,7 @@ def fetch_treasury_snapshot(reader=None, now=None, force=False):
 #: attribution must say where a correction goes, in our own voice.
 CORRECTION_CONTACT = (
     "Spotted something wrong? Tell us and we will correct it: "
-    "corrections@xrpldashboard.com"
+    "contact@xrpldashboard.com"
 )
 
 

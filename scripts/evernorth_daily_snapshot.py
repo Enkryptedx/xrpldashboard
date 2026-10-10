@@ -94,6 +94,19 @@ def run(reader=None, now=None):
         "balances": balances,
     }
 
+    # The job owns its own table. SCHEMA_DDL alone is not enough:
+    # init_schema() is a manual one-off that nothing runs at boot, so the
+    # table was absent in production and every insert would have been
+    # swallowed by the writer's best-effort except - a silently missing
+    # row rather than a visible failure.
+    try:
+        if db.ensure_evernorth_daily_snapshot_table():
+            log.info("evernorth_daily_snapshot table present")
+        else:
+            log.warning("could not ensure table; write may be a no-op")
+    except Exception as e:  # noqa: BLE001
+        log.error("ensure table failed: %s", e)
+
     try:
         db.write_evernorth_daily_snapshot(
             snapshot_date, payload["taken_at"], payload["total_xrp"],
