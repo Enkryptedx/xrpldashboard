@@ -243,3 +243,19 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_bot_filter_tier4_distinct.py -q
+      # refresh_bot_hash_tables() used to DELETE every row of
+      # page_view_bot_hashes and re-INSERT the lot every 5 min. Measured
+      # 2026-10-10: 79,901 rows held, 6 changed per cycle (0.008%) =>
+      # ~46.0M row-writes/day to apply ~1,700, matching the ~360M/~355M
+      # pg_stat_statements counters over ~15.5 days. Now diff-synced. Pins:
+      # final contents == desired for adds/removes/mixed/no-change/populate/
+      # drain (the old rebuild's postcondition WAS `desired`, so that is the
+      # equivalence check); a no-change cycle emits ZERO writes; write volume
+      # tracks the delta not the table size; never TRUNCATE nor a bare
+      # DELETE; ON CONFLICT DO NOTHING so a retried cycle is idempotent;
+      # batches stay under the int16 param ceiling that silently no-opped
+      # the refresh on 2026-09-05. Hermetic: fake cursor models the table.
+      - name: bot-hash tables diff-based upsert (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_bot_hashes_upsert.py -q
