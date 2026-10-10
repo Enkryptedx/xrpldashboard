@@ -75,12 +75,24 @@ def _legacy_bot_pred():
         "COALESCE(user_agent, '') ILIKE %s" for _ in db.BOT_UA_PATTERNS
     )
     row_pred = f"(({path_likes}) OR ({ua_likes}))"
+    # DISTINCT is semantics-free for `x IN (subquery)` — IN tests membership,
+    # so duplicate rows in the subquery cannot change which outer rows match.
+    # It is a pure planner hint, and it is load-bearing: without it Postgres
+    # materialises every matching hash ROW (~150k visitor / ~134k ip_day at
+    # 2026-10-10) and rescans that list per outer row, so the trailing-7d
+    # count's plan cost was 716M and the statement hit the 25s
+    # statement_timeout in db.rpc_loop_safe_pg_connect() on 2026-10-09 (two
+    # consecutive FAILs, BetterStack incident; last green 2026-10-08).
+    # Deduping first collapses the same plan to ~485k cost (~1,477x) while
+    # returning identical rows. Do NOT add a ts bound here instead: the
+    # unbounded window is deliberate — a visitor seen botting at ANY time
+    # taints the session, and that is the invariant this arm exists to check.
     session_pred = (
         f"(visitor_hash IS NOT NULL AND visitor_hash IN ("
-        f"  SELECT visitor_hash FROM page_views "
+        f"  SELECT DISTINCT visitor_hash FROM page_views "
         f"  WHERE visitor_hash IS NOT NULL AND {row_pred}"
         f")) OR (ip_day_hash IS NOT NULL AND ip_day_hash IN ("
-        f"  SELECT ip_day_hash FROM page_views "
+        f"  SELECT DISTINCT ip_day_hash FROM page_views "
         f"  WHERE ip_day_hash IS NOT NULL AND {row_pred}"
         f"))"
     )

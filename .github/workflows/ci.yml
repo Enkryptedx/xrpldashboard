@@ -215,3 +215,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_recently_enabled.py tests/test_amendments_live_banner.py -q
+      # is_bot_canary's authoritative arm links sessions with two IN
+      # subqueries over all of page_views. Undeduped, Postgres materialised
+      # ~285k hash rows and rescanned them per outer row (plan cost 716M),
+      # blowing the 25s statement_timeout on 2026-10-09 and opening a
+      # BetterStack incident. DISTINCT drops it to 485k cost. Pins: both
+      # arms deduped; the SQL is byte-identical to the pre-fix fixture once
+      # the two DISTINCT tokens are removed (so the comparison arm's
+      # semantics are provably unchanged); params unchanged; all four
+      # classifier arms survive; the session arms stay unbounded in time
+      # (the rejected alternative fix). Hermetic: fake conn, no DB.
+      - name: is_bot_canary session-arm dedupe (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_is_bot_canary_distinct.py -q
