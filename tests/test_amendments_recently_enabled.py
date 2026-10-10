@@ -171,6 +171,39 @@ def _render(monkeypatch, history):
     return r.data.decode()
 
 
+def _freeze(monkeypatch):
+    """Pin BOTH banner windows to the module's NOW.
+
+    _ago() is anchored to NOW, but _render() drives the REAL route, which
+    calls these helpers with the real wall clock. So a row written as
+    "14h ago" is really a FIXED instant, and once real time drifts past
+    NOW + 48h the banner silently stops showing it and the assertions
+    fail - on a branch that never touched the banner.
+
+    That is not hypothetical: PD at _ago(hours=14) is 2026-10-08T22:00:00Z,
+    whose 48h window closed at 2026-10-10T22:00:00Z. CI ran at 22:00:35Z
+    and went red 35 seconds past the boundary, while the same chain had
+    passed locally minutes earlier.
+
+    NOT folded into _render(): test_page_still_renders_when_the_archive
+    _helper_fails patches recently_enabled_archive to RAISE, and a blanket
+    patch here would replace that fake and gut the render-killer test.
+    """
+    import amendments_live_banner as B
+    real_banner = B.recently_enabled
+    real_archive = B.recently_enabled_archive
+    monkeypatch.setattr(
+        B, "recently_enabled",
+        lambda h, now=None, window_hours=B.WINDOW_HOURS, state=None:
+            real_banner(h, now=NOW, window_hours=window_hours, state=state))
+    monkeypatch.setattr(
+        B, "recently_enabled_archive",
+        lambda h, exclude_hashes=(), now=None,
+        window_hours=B.ARCHIVE_WINDOW_HOURS:
+            real_archive(h, exclude_hashes=exclude_hashes, now=NOW,
+                         window_hours=window_hours))
+
+
 def _list_block(html):
     """The generated list only. Ends where the hand-written callout that
     follows it begins — don't anchor on a literal "</div>\\n</div>",
@@ -182,6 +215,7 @@ def _list_block(html):
 
 
 def test_list_renders_name_time_ledger_and_tx(monkeypatch):
+    _freeze(monkeypatch)
     rows = [_row(PD_HASH, "PermissionDelegationV1_1", "2026-09-29T21:29:50Z",
                  ledger=107524865, tx=PD_TX)]
     html = _render(monkeypatch, rows)
@@ -195,6 +229,7 @@ def test_list_renders_name_time_ledger_and_tx(monkeypatch):
 
 
 def test_list_is_newest_first_on_the_page(monkeypatch):
+    _freeze(monkeypatch)
     rows = [
         _row("AAAA", "OlderOne", _ago(days=20)),
         _row("BBBB", "NewerOne", _ago(days=4)),
@@ -204,6 +239,7 @@ def test_list_is_newest_first_on_the_page(monkeypatch):
 
 
 def test_hand_written_paragraph_is_kept_below_the_list(monkeypatch):
+    _freeze(monkeypatch)
     rows = [_row("AAAA", "SomeAmendment", _ago(days=4))]
     html = _render(monkeypatch, rows)
     assert PARAGRAPH in html
@@ -221,6 +257,7 @@ def test_paragraph_survives_when_the_list_is_empty(monkeypatch):
 
 
 def test_generic_done_steps_example_is_gone(monkeypatch):
+    _freeze(monkeypatch)
     rows = [_row("AAAA", "SomeAmendment", _ago(days=4))]
     html = _render(monkeypatch, rows)
     assert "__enabled_example__" not in html
@@ -229,6 +266,7 @@ def test_generic_done_steps_example_is_gone(monkeypatch):
 
 def test_banner_item_is_not_duplicated_into_the_list(monkeypatch):
     """PD enabled 14h ago belongs to the 48h banner only."""
+    _freeze(monkeypatch)
     rows = [
         _row(PD_HASH, "PermissionDelegationV1_1", _ago(hours=14),
              ledger=107524865, tx=PD_TX),
