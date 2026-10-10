@@ -76,6 +76,7 @@ except ImportError:
 from i18n import init_i18n
 from flask_babel import gettext as babel_gettext
 import db
+import institutional_treasuries
 import og_image
 import price_oracle
 import shared_tier_verifier  # Part C 2026-09-10: live registry tier resolver
@@ -3702,6 +3703,19 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
     from_label_tier, from_label_source = _label_provenance(from_addr)
     to_label_tier, to_label_source = _label_provenance(to_addr)
 
+    # Third-party attributed wallets (owner ruling 2026-10-10). These are
+    # attributed by an explorer's curation or a research site's
+    # reconciliation — neither our curation nor the subject's own
+    # attestation — and named in NO filing. So the third party's NAMES are
+    # never published: the row keeps its bare short address and carries the
+    # group's attribution string, which is the whole evidentiary claim.
+    # Same table the /institutional card reads, so the two surfaces cannot
+    # drift apart.
+    from_attribution, from_attribution_url = \
+        institutional_treasuries.attribution_for(from_addr)
+    to_attribution, to_attribution_url = \
+        institutional_treasuries.attribution_for(to_addr)
+
     # 2026-09-10 Part C item 3 (TOKEN axis): tier of the transferred
     # token, if this event has a token (bare XRP transfers have None).
     # tier_lookup contains canonical + ASCII-alias keys per
@@ -3744,12 +3758,16 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         "from_label": from_label,
         "from_label_tier": from_label_tier,
         "from_label_source": from_label_source,
+        "from_attribution": from_attribution,
+        "from_attribution_url": from_attribution_url,
         "from_attested_domain": _attested_domain(from_addr),
         "to_addr": to_addr,
         "to_addr_short": _short_addr(to_addr),
         "to_label": to_label,
         "to_label_tier": to_label_tier,
         "to_label_source": to_label_source,
+        "to_attribution": to_attribution,
+        "to_attribution_url": to_attribution_url,
         "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
         "row_type_pill": row_type_pill,
@@ -8153,6 +8171,43 @@ def institutional():
         "institutional.html",
         snapshot_meta=_historical_snapshot_meta(),
         days_collecting=days_collecting,
+        evernorth=_evernorth_card(),
+    )
+
+
+def _evernorth_card():
+    """Context for the "Public companies holding XRP" card.
+
+    Postgres only — no node call sits on this request. The nightly
+    evernorth_daily_snapshot job owns the node read; 13 account_info calls
+    on a page render is the cold path that made /tokens time out on Render
+    (PR #28) while rendering perfectly locally.
+
+    Best-effort by design: ANY failure here degrades to the filing facts
+    alone rather than 500ing /institutional, because the filing half of
+    this card does not depend on our own pipeline being up.
+    """
+    snapshot, moves, history = None, [], []
+    try:
+        snapshot = db.read_evernorth_latest_snapshot()
+        moves = db.read_evernorth_moves(
+            [a for a, _ in institutional_treasuries.WALLETS],
+            limit=institutional_treasuries.MOVES_LIMIT,
+        )
+        history = db.read_evernorth_daily_totals(limit=30)
+    except Exception:  # noqa: BLE001 — render-killer rule
+        pass
+    # Counterparties are named ONLY from our own curated labels. An
+    # unlabelled address stays bare: a label that reads like a fact is
+    # worse than no label.
+    try:
+        named = _load_named_accounts_dict() or {}
+        labels = {a: (v or {}).get("name") for a, v in named.items()
+                  if isinstance(v, dict) and (v or {}).get("name")}
+    except Exception:  # noqa: BLE001
+        labels = {}
+    return institutional_treasuries.build_card(
+        snapshot=snapshot, raw_moves=moves, history=history, labels=labels,
     )
 
 

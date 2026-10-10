@@ -259,3 +259,94 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_bot_hashes_upsert.py -q
+      # /institutional Evernorth card data module. Pins: filing facts each
+      # carry a citation; the attributed-wallet tier is never presented as
+      # filing-confirmed; an unreadable balance is excluded, never counted
+      # as zero; and build_moves names a counterparty ONLY when it is a
+      # first-party labelled account — an unlabelled address stays bare,
+      # because a label that reads like a fact is worse than no label.
+      # Hermetic: fake readers and plain dicts, no DB, no network.
+      - name: institutional treasuries card data (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_institutional_treasuries.py -q
+      # Evernorth daily treasury snapshot: Postgres writer + reader. Pins the
+      # UPSERT on snapshot_date (a retry must overwrite, not add a second
+      # point to the card's history line), json.dumps + ::jsonb as this
+      # module's house pattern (psycopg's Json adapter is NOT imported in
+      # db.py, so using it would NameError at runtime - ast.parse cannot
+      # catch that), an unreadable wallet stored as null and never 0, and
+      # both sides degrading (silent no-op write, [] read) instead of
+      # raising. Hermetic: fake connections, no DB, no network.
+      - name: evernorth daily snapshot store (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_daily_snapshot.py -q
+      # The 21:30 ET snapshot job. The load-bearing pin is the date key:
+      # 21:30 ET is ALREADY the next UTC day, so keying the row on UTC would
+      # file every reading under tomorrow and the card's history would sit a
+      # day ahead of its heading - a bug only visible between 20:00 ET and
+      # midnight. Also pins unreadable-wallet -> null (never 0, which would
+      # read as an outflow that never happened) and that a Postgres failure
+      # still leaves the local JSON copy. Hermetic: fake reader, temp file.
+      - name: evernorth snapshot job (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_snapshot_job.py -q
+      # The card's two read paths. These exist so /institutional renders from
+      # Postgres ALONE - the nightly job is the only thing that may touch the
+      # node, because a route that renders fine locally can still hang only
+      # on Render (PR #28, /tokens). Pins: newest-row ordering in the query
+      # rather than in the caller; jsonb balances usable as dict OR text;
+      # unreadable wallet stays null, never 0; the moves query is XRP-only
+      # (a token amount in amount_drops is not drops, and dividing it by 1e6
+      # would print a number the ledger never stated); direction is relative
+      # to OUR wallets and an internal wallet-to-wallet move carries no
+      # counterparty. Hermetic: fake connections, no DB, no network.
+      - name: evernorth card readers (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_card_readers.py -q
+      # Card assembly. The load-bearing pins are evidentiary, not cosmetic:
+      # the live line is the owner's sentence VERBATIM (built in Python, not
+      # in a gettext string - a dynamic number inside _() is %-in-gettext,
+      # a known render-killer here); no row may carry the xrp-insights
+      # naming convention, which on a public card would read as a
+      # first-party fact about Evernorth's custody structure that no filing
+      # supports; the two attribution groups keep their approved headings
+      # and stay SEPARATE, so 11 inferred addresses are never laundered
+      # into the 2 an explorer actually labelled; and the strongest tier
+      # string stays unreachable from a row. Hermetic: plain dicts.
+      - name: evernorth card assembly (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_card_build.py -q
+      # The rendered /institutional page, driven through the real route.
+      # Distinct risk from the pure-assembly step above: a template can
+      # reach for a field that does not exist, a later edit can print a
+      # third-party wallet name, or the card can take the whole page down
+      # when Postgres is unavailable. Pins the section's position, every
+      # filing figure + its sec.gov citation link, the verbatim live line
+      # and both verbatim group headings, that no full address appears as
+      # visible text (only in href values), and that the page still
+      # returns 200 with the filing facts when the data layer raises.
+      # DB readers are stubbed with raising=True so a rename fails loudly
+      # instead of silently reaching the live database.
+      - name: institutional evernorth card render (no DB)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_institutional_evernorth_render.py -q
+      # /whales side of the same ruling. Attribution is NOT a name: the row
+      # keeps its bare short address and carries the GROUP's string, which
+      # is the whole evidentiary claim. Pins both approved strings verbatim
+      # and IDENTICAL to the card's (one table, two surfaces - they must
+      # not drift), that the third party's names reach no field of a row,
+      # that an unrelated address gets no attribution, and that the chip
+      # stays inside its own <a class="addr"> above its own address - a
+      # chip that escapes its anchor reads as the wrong side of the arrow
+      # (the positional bug fixed in PR #15). Hermetic: fake rows, injected
+      # render context, no DB and no node.
+      - name: whales attributed wallets (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_whales_attributed_wallets.py -q

@@ -318,6 +318,21 @@ CREATE INDEX IF NOT EXISTS page_views_status_5xx_idx
 -- Render Flask reads. Render has no local snapshot file so PG is the
 -- only source there; without this, /mpts on prod blocks ~10min walking
 -- the ledger on every cold request.
+-- One row per calendar day (ET) of the Evernorth treasury total, written
+-- after the 21:00 ET signed snapshot. PRIMARY KEY on the date makes a
+-- re-run idempotent: a retry overwrites that day rather than appending a
+-- second row and doubling the history line on the card.
+-- balances holds the 13 per-wallet readings so a later correction can be
+-- audited against what was actually read, not just the total.
+CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot (
+    snapshot_date  DATE PRIMARY KEY,
+    taken_at       BIGINT NOT NULL,
+    total_xrp      NUMERIC NOT NULL,
+    readable_count INTEGER NOT NULL,
+    wallet_count   INTEGER NOT NULL,
+    balances       JSONB NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS mpt_snapshot (
     id         INTEGER PRIMARY KEY,
     payload    JSONB NOT NULL,
@@ -3844,6 +3859,209 @@ def read_mpt_snapshot():
                 return payload
     except Exception:
         return None
+
+
+_EVERNORTH_SNAPSHOT_DDL = """
+CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot (
+    snapshot_date  DATE PRIMARY KEY,
+    taken_at       BIGINT NOT NULL,
+    total_xrp      NUMERIC NOT NULL,
+    readable_count INTEGER NOT NULL,
+    wallet_count   INTEGER NOT NULL,
+    balances       JSONB NOT NULL
+);
+"""
+
+
+def ensure_evernorth_daily_snapshot_table():
+    """Create the table if it is missing. Called by the nightly job at the
+    top of every tick.
+
+    This exists because declaring the table in SCHEMA_DDL is NOT enough:
+    `init_schema()` is a manual one-off (only backfill_amm_pools.py calls
+    it) and nothing runs it at app boot, so the table was absent from the
+    live database and the writer's best-effort `except` would have logged
+    and swallowed every insert — a silently missing row rather than a
+    visible failure. Same reasoning as the walker-owned
+    `ALTER ... ADD COLUMN IF NOT EXISTS` pattern: the job that owns the
+    table guarantees its own shape, so no owner-run migration step is
+    needed.
+
+    Idempotent and best-effort: returns True when the table is present
+    afterwards, False when PG is unavailable or the DDL failed.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_EVERNORTH_SNAPSHOT_DDL)
+        return True
+    except Exception as e:  # noqa: BLE001 — job must still try to write
+        _log_err("ensure_evernorth_daily_snapshot_table_failed", e)
+        return False
+
+
+def write_evernorth_daily_snapshot(snapshot_date, taken_at, total_xrp,
+                                   readable_count, wallet_count, balances):
+    """Upsert one calendar day's Evernorth treasury reading.
+
+    UPSERT on snapshot_date, so a retry or a second run on the same day
+    overwrites rather than appending — otherwise the card's history line
+    would show two points for one day. Silent no-op when PG isn't
+    configured, matching every other writer here.
+
+    `balances` is the per-wallet dict (address -> XRP or None). It is
+    stored alongside the total so a later correction can be audited
+    against what was actually read, not just the aggregate.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO evernorth_daily_snapshot "
+                "  (snapshot_date, taken_at, total_xrp, readable_count,"
+                "   wallet_count, balances) "
+                "VALUES (%s, %s, %s, %s, %s, %s::jsonb) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "  taken_at = EXCLUDED.taken_at, "
+                "  total_xrp = EXCLUDED.total_xrp, "
+                "  readable_count = EXCLUDED.readable_count, "
+                "  wallet_count = EXCLUDED.wallet_count, "
+                "  balances = EXCLUDED.balances",
+                # json.dumps + ::jsonb is this module's house pattern (see
+                # write_mpt_snapshot); psycopg's Json adapter is not imported
+                # here and adding an import for one call site would diverge.
+                [snapshot_date, int(taken_at), total_xrp,
+                 int(readable_count), int(wallet_count),
+                 json.dumps(balances or {}, default=str)],
+            )
+    except Exception as e:  # noqa: BLE001 — a missed day must not break the walker
+        _log_err("write_evernorth_daily_snapshot_failed", e)
+
+
+def read_evernorth_daily_totals(limit=30):
+    """Newest-first daily totals for the card's history line.
+
+    Returns [] (never None) on PG unavailable or error, so the card can
+    simply omit the history rather than 500.
+    """
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, total_xrp, readable_count, "
+                    "       wallet_count, taken_at "
+                    "  FROM evernorth_daily_snapshot "
+                    " ORDER BY snapshot_date DESC LIMIT %s",
+                    [int(limit)],
+                )
+                return [
+                    {
+                        "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                        "total_xrp": float(t) if t is not None else None,
+                        "readable_count": rc,
+                        "wallet_count": wc,
+                        "taken_at": ta,
+                    }
+                    for d, t, rc, wc, ta in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def read_evernorth_latest_snapshot():
+    """The most recent Evernorth daily row, or None.
+
+    The /institutional card reads its balances from HERE rather than from
+    the node, so a page render never waits on 13 account_info calls. The
+    nightly job is the only thing that touches the node (cold-path rule:
+    a route that renders fine locally can still hang only on Render).
+
+    `balances` comes back as the stored dict (address -> XRP or None); an
+    unreadable wallet stays None so the card can exclude it instead of
+    counting it as zero.
+    """
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, taken_at, total_xrp, "
+                    "       readable_count, wallet_count, balances "
+                    "  FROM evernorth_daily_snapshot "
+                    " ORDER BY snapshot_date DESC LIMIT 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                d, ta, t, rc, wc, bal = row
+                if isinstance(bal, str):
+                    bal = json.loads(bal)
+                return {
+                    "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                    "taken_at": ta,
+                    "total_xrp": float(t) if t is not None else None,
+                    "readable_count": rc,
+                    "wallet_count": wc,
+                    "balances": bal or {},
+                }
+    except Exception:
+        return None
+
+
+def read_evernorth_moves(addresses, limit=10):
+    """Recent XRP moves touching any of `addresses`, newest first.
+
+    Reads the `events` table the relay already fills, so this costs one
+    indexed query instead of 13 account_tx calls on the request path.
+
+    XRP-denominated rows only (`currency IS NULL`): a token amount in
+    `amount_drops` is not a drops value, and pricing one here would put a
+    number on the card that the ledger never stated. Returns [] (never
+    None) so the card omits the block rather than 500ing.
+    """
+    addrs = [a for a in (addresses or []) if a]
+    if not addrs or not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT tx_hash, ts, from_addr, to_addr, amount_drops "
+                    "  FROM events "
+                    " WHERE currency IS NULL AND amount_drops > 0 "
+                    "   AND (from_addr = ANY(%s) OR to_addr = ANY(%s)) "
+                    " ORDER BY ts DESC LIMIT %s",
+                    [addrs, addrs, int(limit)],
+                )
+                owned = set(addrs)
+                out = []
+                for tx, ts, frm, to, drops in cur.fetchall():
+                    is_out = frm in owned
+                    # An internal wallet-to-wallet move has no external
+                    # counterparty; show it as such rather than naming our
+                    # own other wallet as the other side.
+                    internal = frm in owned and to in owned
+                    out.append({
+                        "hash": tx,
+                        "iso": datetime.datetime.fromtimestamp(
+                            int(ts), tz=datetime.timezone.utc,
+                        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "amount_xrp": (int(drops) / 1_000_000
+                                       if drops is not None else None),
+                        "direction": "out" if is_out else "in",
+                        "counterparty": None if internal else (to if is_out else frm),
+                        "internal": internal,
+                    })
+                return out
+    except Exception:
+        return []
 
 
 def read_rwa_families():

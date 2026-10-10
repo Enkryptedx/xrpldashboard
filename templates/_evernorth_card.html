@@ -1,0 +1,206 @@
+{# ── Evernorth treasury card ──────────────────────────────────────────────
+   Included once from institutional.html, under "Public companies holding
+   XRP". Context: `evernorth` from app._evernorth_card().
+
+   TWO TIERS, NEVER BLENDED:
+     * Filing facts  — stated in an SEC filing, each with its own link.
+     * Wallet groups — addresses attributed by a THIRD PARTY, named in no
+                       filing. Short addresses only; the group heading
+                       carries the attribution (owner ruling 2026-10-10).
+
+   Every block is guarded: with no snapshot the filing facts still render.
+   The filing half of this card must not depend on our pipeline being up. #}
+<style>
+  .ev-card { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .ev-co { font-weight: 600; font-size: 1.02rem; margin: 0 0 2px; }
+  .ev-sub { color: var(--muted); font-size: 0.82rem; margin: 0 0 14px; }
+  .ev-h { font-size: 0.82rem; color: var(--muted); font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.04em;
+          margin: 18px 0 8px; }
+  .ev-facts { display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+              gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ev-fact { background: rgba(34,211,238,0.04); border: 1px solid var(--border);
+             border-radius: 8px; padding: 11px 13px; }
+  .ev-fact-lbl { color: var(--muted); font-size: 0.76rem; }
+  .ev-fact-val { font-family: var(--mono); font-size: 1rem;
+                 font-variant-numeric: tabular-nums; margin-top: 3px;
+                 line-height: 1.3; word-break: break-word; }
+  .ev-fact-det { color: var(--dim); font-size: 0.76rem; margin-top: 5px; }
+  .ev-cite { font-size: 0.76rem; margin-top: 5px; }
+
+  .ev-live { font-family: var(--mono); font-size: 0.95rem;
+             font-variant-numeric: tabular-nums; margin: 0;
+             line-height: 1.5; }
+  .ev-asof { color: var(--dim); font-size: 0.78rem; margin: 6px 0 0; }
+  .ev-group { margin-top: 14px; }
+  .ev-group-h { color: var(--muted); font-size: 0.8rem; margin-bottom: 6px;
+                line-height: 1.45; }
+  .ev-wallets { margin: 0; padding: 0; list-style: none; }
+  .ev-wallet { display: flex; align-items: baseline; justify-content: space-between;
+               gap: 10px; flex-wrap: wrap; padding: 6px 0;
+               border-top: 1px solid var(--border); }
+  .ev-addr { font-family: var(--mono); font-size: 0.86rem; }
+  .ev-bal { font-family: var(--mono); font-size: 0.86rem; color: var(--muted);
+            font-variant-numeric: tabular-nums; }
+  .ev-bal--unread { color: var(--dim); font-style: italic;
+                    font-family: var(--sys); font-size: 0.8rem; }
+
+  .ev-moves { margin: 0; padding: 0; list-style: none; }
+  .ev-move { padding: 7px 0; border-top: 1px solid var(--border);
+             font-size: 0.86rem; }
+  .ev-move-top { display: flex; align-items: baseline; gap: 8px;
+                 flex-wrap: wrap; }
+  .ev-dir { font-family: var(--mono); font-size: 0.74rem; padding: 1px 6px;
+            border-radius: 4px; border: 1px solid var(--border);
+            color: var(--muted); }
+  .ev-amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .ev-cp { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .ev-move-when { color: var(--dim); font-size: 0.78rem; margin-top: 2px; }
+  .ev-move-when .utc-paren { white-space: nowrap; font-size: 0.95em;
+                            color: var(--dim); }
+  .ev-hist { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0;
+             list-style: none; }
+  .ev-hist li { background: rgba(34,211,238,0.04);
+                border: 1px solid var(--border); border-radius: 6px;
+                padding: 6px 9px; font-size: 0.78rem; }
+  .ev-hist-d { color: var(--muted); }
+  .ev-hist-v { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .ev-foot { color: var(--dim); font-size: 0.8rem; margin: 16px 0 0;
+             padding-top: 12px; border-top: 1px solid var(--border); }
+</style>
+
+<div class="ev-card">
+  <p class="ev-co">{{ evernorth.company }}</p>
+  <p class="ev-sub">
+    {{ _('Nasdaq') }}: XRPN · {{ _('SEC CIK') }} 0002092592
+  </p>
+
+  {# ── Tier 1: filing facts. Each value links to the filing that states
+       it — never to a summary, an aggregator, or a press write-up. #}
+  <div class="ev-h">{{ _('From the SEC filings') }}</div>
+  <ul class="ev-facts">
+    {% for f in evernorth.facts %}
+    <li class="ev-fact">
+      <div class="ev-fact-lbl">{{ _(f.label) }}</div>
+      <div class="ev-fact-val">{{ f.value }}</div>
+      {% if f.detail %}<div class="ev-fact-det">{{ _(f.detail) }}</div>{% endif %}
+      <div class="ev-cite">
+        <a href="{{ f.url }}" target="_blank" rel="noopener noreferrer">{{ _('Source:') }} {{ f.source }}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {# ── Tier 2: wallets attributed by a third party, named in NO filing.
+       The live line is pre-assembled in Python (institutional_treasuries
+       .live_line) because it is the owner's verbatim sentence and a
+       dynamic number inside _() would be %-in-gettext, a render-killer
+       here. It is omitted entirely when nothing was readable rather than
+       publishing a total that silently excludes wallets. #}
+  <div class="ev-h">{{ _('What the wallets hold') }}</div>
+
+  {% if evernorth.live_line %}
+  <p class="ev-live">{{ evernorth.live_line }}</p>
+  {% else %}
+  <p class="ev-asof">
+    {{ _('No wallet balance could be read for the latest snapshot, so no total is shown here. The filing figures above are unaffected.') }}
+  </p>
+  {% endif %}
+
+  {% if evernorth.as_of %}
+  <p class="ev-asof">
+    {{ _('Balances as of the') }} {{ evernorth.as_of }} {{ _('daily snapshot, read from our own node.') }}
+    {% if evernorth.partial_read %}
+    {{ _('Read') }} {{ evernorth.readable_count }}/{{ evernorth.wallet_count }} {{ _('wallets; an unreadable wallet is left out of the total rather than counted as zero.') }}
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {# Each group's heading links to the source that makes THAT group's
+     claim. Never merge the groups: it would launder the 11 inferred
+     addresses into the 2 an explorer actually labelled. #}
+  {% for g in evernorth.groups %}
+  {% if g.rows %}
+  <div class="ev-group">
+    <div class="ev-group-h">
+      {{ g.rows|length }}
+      {{ _('wallet') if g.rows|length == 1 else _('wallets') }} &mdash;
+      <a href="{{ g.source_url }}" target="_blank" rel="noopener noreferrer">{{ g.label }}</a>
+    </div>
+    <ul class="ev-wallets">
+      {% for w in g.rows %}
+      <li class="ev-wallet">
+        {# Short address only. The full address is reachable solely through
+           the explorer link, and the third party's own names for these
+           wallets are never rendered. #}
+        <a class="ev-addr" href="{{ w.explorer_url }}" target="_blank" rel="noopener noreferrer">{{ w.short }}</a>
+        {% if w.balance_xrp is not none %}
+        <span class="ev-bal">{{ "{:,.0f}".format(w.balance_xrp) }} XRP</span>
+        {% else %}
+        <span class="ev-bal ev-bal--unread">{{ _('not readable') }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  {# ── Recent moves. Rows come from build_moves, so a counterparty is
+       NAMED only when it is one of our own first-party labelled accounts;
+       otherwise the bare address is shown. Times go through the shared
+       datetime_to_et_first_html filter, so this card reads Eastern-first
+       exactly like every other timestamp on the site. #}
+  {% if evernorth.moves %}
+  <div class="ev-h">{{ _('Recent moves') }}</div>
+  <ul class="ev-moves">
+    {% for m in evernorth.moves %}
+    <li class="ev-move">
+      <div class="ev-move-top">
+        <span class="ev-dir">{{ _('out') if m.direction == 'out' else _('in') }}</span>
+        {% if m.amount_xrp is not none %}
+        <span class="ev-amt">{{ "{:,.2f}".format(m.amount_xrp) }} XRP</span>
+        {% endif %}
+        {% if m.counterparty_named %}
+        <span class="ev-cp">{{ m.counterparty_name }}</span>
+        {% elif m.counterparty_short %}
+        <a class="ev-cp" href="https://xrpscan.com/account/{{ m.counterparty }}" target="_blank" rel="noopener noreferrer">{{ m.counterparty_short }}</a>
+        {% else %}
+        <span class="ev-cp">{{ _('between these wallets') }}</span>
+        {% endif %}
+        {% if m.hash %}
+        <a class="ev-cp" href="https://xrpscan.com/tx/{{ m.hash }}" target="_blank" rel="noopener noreferrer">{{ _('tx') }}</a>
+        {% endif %}
+      </div>
+      <div class="ev-move-when">{{ m.iso|datetime_to_et_first_html }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {# ── Daily total history, straight from the snapshot reader. One point
+       per Eastern calendar day (the writer upserts on snapshot_date, so a
+       retry cannot put two points on one day). #}
+  {% if evernorth.history %}
+  <div class="ev-h">{{ _('Daily total') }}</div>
+  <ul class="ev-hist">
+    {% for h in evernorth.history %}
+    <li>
+      <span class="ev-hist-d">{{ h.date }}</span>
+      {% if h.total_xrp is not none %}
+      <span class="ev-hist-v">{{ "{:,.0f}".format(h.total_xrp) }}</span>
+      {% else %}
+      <span class="ev-hist-v">&mdash;</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <p class="ev-foot">
+    {{ _('The wallet addresses on this card are attributed by third parties, not by Evernorth and not by any SEC filing. The filing figures above are quoted from the filings themselves and each links to its source.') }}
+    {{ evernorth.correction_contact }}
+  </p>
+</div>
