@@ -5,11 +5,25 @@
    so it only ever renders for an amendment that IS in the ledger's
    Majorities array. Needs in scope: rc_row, roll_call.
 
-   Why the attribution matters (verified 2026-10-09): fixCleanup3_4_0 took
-   its majority on 28 yes while our node heard all 35 validators and this
-   page computed "needs 29" from the published UNL size. rippled's own
-   denominator was 34. Our count and the ledger's decision CAN disagree, so
-   the count is labelled as ours and the ledger gets the last word. #}
+   Why the attribution matters (verified 2026-10-09, re-checked against our
+   own recorded roll call 2026-10-10): on 2026-10-09 at 5:34 AM ET
+   fixCleanup3_4_0 gained its majority on 28 yes while our node heard all
+   35 and our bar said 29 - our count and the ledger can disagree, so the
+   page must not present our number as the ledger's verdict. Round
+   107536127, observed 09:34:33Z: validations_seen 35, votes_needed 29,
+   yes_carried 28, passes_rippled FALSE, while amendment_majority_history
+   recorded majority_close 09:34:30Z. rippled's own denominator must have
+   been 34 or lower for 28 to clear it.
+
+   NOTE this case is NOT evidence for the heard bar - we heard all 35, so
+   the heard bar was also 29. It is why the count is labelled as ours and
+   the ledger gets the last word.
+
+   Every number printed here uses the HEARD bar (Charlie 2026-10-10), the
+   same one the roll-call headline and table print. Until 2026-10-10 this
+   partial printed needed_full / unl_full while spare_votes moved to the
+   heard bar, so at 34 heard it read "Needs 29 to keep its countdown"
+   directly above "2 votes to spare" - 2 only makes sense against 28. #}
 <style>
   .countdown-rollcall .rc-basis { color: var(--dim); font-style: italic; }
   .countdown-rollcall .rc-spare { font-weight: 600; }
@@ -21,8 +35,8 @@
   }
   .countdown-rollcall .rc-ledger-final strong { color: var(--text); }
 </style>
-<div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.unl_full }} {{ _('validators voted yes') }}</div>
-<div class="rc-need dim">{{ _('Needs') }} {{ roll_call.needed_full }} {{ _('to keep its countdown') }} — <span class="rc-basis">{{ _('by our node\'s count') }}</span></div>
+<div class="rc-count mono">{{ rc_row.yes_carried }} {{ _('of') }} {{ roll_call.seen }} {{ _('validators voted yes') }}</div>
+<div class="rc-need dim">{{ _('Needs') }} {{ rc_row.needed }} {{ _('of') }} {{ roll_call.seen }} {{ _('to keep its countdown') }} — <span class="rc-basis">{{ _('by our node\'s count') }}</span></div>
 <div class="rc-state">
   {% if rc_row.spare_votes > 0 %}
     <span class="rc-spare" data-spare="{{ rc_row.spare_votes }}">{{ ngettext('%(n)d vote to spare', '%(n)d votes to spare', rc_row.spare_votes, n=rc_row.spare_votes) }}</span>

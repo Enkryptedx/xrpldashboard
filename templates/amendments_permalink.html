@@ -116,7 +116,7 @@
       <p class="muted" style="margin:0 0 8px">
         Snapshot of the amendments_block metric as signed
         {% if p.block_as_of_iso %}(block assembled {{ p.block_as_of_iso }}{% if et_label(p.block_as_of_iso) %} · {{ et_label(p.block_as_of_iso) }}{% endif %}){% endif %}.
-        Network votes: count of UNL validators voting yes / validators heard / threshold (rippled's 80 percent figure; a majority needs more than it — 29 of 35).
+        Network votes: count of UNL validators voting yes / validators heard / the number needed (rippled requires strictly more than 80 percent of the validators heard — needs 29 of 35).
         {% if p.block_sources.responding_node_source %}Responding node: <span class="mono">{{ p.block_sources.responding_node_source }}</span>.{% endif %}
       </p>
       <div class="card" style="padding:6px 8px; overflow-x:auto">

@@ -14,7 +14,38 @@ import sys
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 
+import datetime as dt  # noqa: E402
 import app as app_mod  # noqa: E402
+import amendments_live_banner as _LB  # noqa: E402
+
+#: The banner only renders amendments enabled within _LB.WINDOW_HOURS (48)
+#: of NOW. _pd_enabled_row() pins a FIXED enable instant, so without a
+#: frozen clock these tests pass until real time drifts past the window and
+#: then fail forever after. That is exactly what happened: the fixture's
+#: 2026-10-08T21:29:50Z + 48h expired at 2026-10-10T21:29:50Z (5:29:50 PM
+#: ET) and CI went red on the next push, on a branch that had not touched
+#: the banner. Identical failures reproduced on main at af2191a, so this is
+#: a time bomb in the test, not a regression in the code.
+#:
+#: Freeze to the same instant the sibling test already used, so every test
+#: that renders an enabled row evaluates the window deterministically.
+FROZEN_NOW = dt.datetime(2026, 10, 9, 10, 30, tzinfo=dt.timezone.utc)
+_REAL_RECENTLY_ENABLED = _LB.recently_enabled
+
+
+def _freeze(monkeypatch, when=FROZEN_NOW):
+    """Pin the banner's 48h window to a fixed instant.
+
+    NOT folded into _get(): test_page_still_renders_when_banner_helper_fails
+    deliberately patches recently_enabled to RAISE, and a blanket patch
+    inside _get would silently replace that fake and gut the render-killer
+    test. Opt in per test instead.
+    """
+    monkeypatch.setattr(
+        _LB, "recently_enabled",
+        lambda h, now=None, window_hours=_LB.WINDOW_HOURS, state=None:
+            _REAL_RECENTLY_ENABLED(h, now=when, window_hours=window_hours,
+                                   state=state))
 
 PD = "0F48FF561C709540328F31F1C97FD512ACC8B4E42138A161CB0E21ECA292540B"
 PD_TX = "478284066BA0B83CC35CA1174F667F43D9577782F221440AFCC5541788F25A77"
@@ -145,6 +176,7 @@ def test_old_activation_not_in_box(monkeypatch):
 
 
 def test_page_embeds_fingerprint_and_polls_every_30s(monkeypatch):
+    _freeze(monkeypatch)
     r = _get(monkeypatch, [_pd_enabled_row()])
     html = r.data.decode()
     assert re.search(r'data-live-fingerprint="[^"]+"', html)
@@ -160,6 +192,7 @@ def test_no_bare_hash_shown_when_name_present(monkeypatch):
     Machine-readable attributes (data-amendment-hash, the container's
     data-live-fingerprint) legitimately carry hashes — same pattern the
     existing countdown cards use — so assert on rendered text only."""
+    _freeze(monkeypatch)
     r = _get(monkeypatch, [_pd_enabled_row()])
     visible = re.sub(r"<[^>]+>", " ", _items(r.data.decode()))
     assert "PermissionDelegationV1_1" in visible
@@ -196,6 +229,7 @@ def test_poll_endpoint_never_500s_on_a_bad_read(monkeypatch):
 def test_fingerprint_matches_between_page_and_endpoint(monkeypatch):
     """The reload decision compares these two; if they disagree for the
     same data the page would reload forever."""
+    _freeze(monkeypatch)
     history = [_pd_enabled_row()]
     page = _get(monkeypatch, history)
     m = re.search(r'data-live-fingerprint="([^"]+)"', page.data.decode())

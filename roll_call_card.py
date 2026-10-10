@@ -48,6 +48,36 @@ SOURCE_LABEL = "own-node validations stream (Lenovo rippled → roll-call record
 _ET = ZoneInfo("America/Indiana/Indianapolis")
 
 
+def votes_needed(heard):
+    """Yes votes a majority needs out of `heard` validators, or None.
+
+    rippled's AmendmentSet computes ``threshold = max(1, trusted * 80 / 100)``
+    with INTEGER division and requires yes votes **strictly greater** than it.
+    So the number a reader needs is ``threshold + 1``:
+
+        35 heard -> threshold 28 -> needs 29
+        34 heard -> threshold 27 -> needs 28
+        33 heard -> threshold 26 -> needs 27
+
+    Integer arithmetic on purpose. ``0.8 * 35`` is ``28.000000000000004`` in
+    binary floating point, so a float path would make the 35 case depend on
+    rounding luck.
+
+    `heard` is the validators we actually HEARD, not the full published UNL
+    (Charlie 2026-10-10, superseding the 2026-09-26 full-UNL ruling): saying
+    "needs 29 of 35" when only 34 were heard overstates the bar, because
+    rippled thresholds on the trusted validators whose votes it has.
+
+    A one-validator list is the degenerate case: threshold is clamped to 1
+    and one yes vote is both the threshold and enough, so `needed` stays 1
+    rather than becoming an unreachable 2.
+    """
+    if not heard or heard < 1:
+        return None
+    threshold = max(1, (heard * 80) // 100)
+    return threshold if heard == 1 else threshold + 1
+
+
 def is_enabled(now: dt.datetime | None = None, env: dict | None = None) -> bool:
     e = os.environ if env is None else env
     return str(e.get("ROLL_CALL_CARD_ENABLED", "")).strip().lower() in ("1", "true", "yes", "on")
@@ -189,6 +219,13 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     thr_full = max(1, (unl_full * 80) // 100)
     needed_full = thr_full if unl_full == 1 else thr_full + 1
     not_heard = max(0, unl_full - latest["seen"])
+    # Public "needs N of M" is computed on the validators we actually HEARD
+    # (Charlie 2026-10-10), which supersedes the 2026-09-26 ruling that
+    # pinned the denominator to the full published UNL. Quoting "needs 29
+    # of 35" while only 34 were heard overstates the bar: rippled's
+    # AmendmentSet thresholds on the trusted validators whose votes it has,
+    # so 34 heard really needs 28.
+    needed_heard = votes_needed(latest["seen"])
     # Build a row for EVERY hash the recorder tallied this round, keyed by
     # hash — not just the in_flight list (Charlie 2026-09-27). An amendment our
     # node recognizes on a newer binary (e.g. fixBatchV1_2 on rippled 3.4.1)
@@ -223,10 +260,36 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     for h in ordered_hashes:
         yr, yc, passes = latest["tallies"].get(h, (0, 0, False))
         prev_passes = prev["tallies"].get(h, (0, 0, False))[2] if prev else None
-        # Count-line certainty against the full-UNL bar (needed_full):
-        #  - heard yes already >= needed  -> passing for sure
-        #  - even if EVERY unheard validator voted yes, still < needed -> short for sure
+        # TWO BARS, on purpose - they answer different questions.
+        #
+        # `bar` is what the page PRINTS: the heard-based number, identical
+        # to the headline's (Charlie 2026-10-10). The table used to print
+        # the recorder's stored full-UNL `needed` instead, so at 34 heard
+        # it read "34 / 29" under a headline saying "needs 28 of 34".
+        #
+        # `needed_full` stays the bar for the CERTAINTY BAND, and that is
+        # not an oversight. The band's whole job is to warn that validators
+        # we have not heard could still decide the outcome. At 34 heard
+        # with 28 yes the amendment clears the bar among those heard - but
+        # if the 35th is heard next round the bar itself rises to 29 and 28
+        # no longer passes. Scoring the band on the heard bar would paint
+        # that green and throw the warning away.
+        #
+        # Evidence (verified against our own recorded roll call, not from
+        # memory): on 2026-10-09 at 5:34 AM ET fixCleanup3_4_0 gained its
+        # majority on 28 yes while our node heard all 35 and our bar said
+        # 29 - our count and the ledger can disagree, so the page must not
+        # present our number as the ledger's verdict. Round 107536127,
+        # observed 2026-10-09T09:34:33Z: validations_seen 35, votes_needed
+        # 29, yes_carried 28, passes_rippled FALSE - while
+        # amendment_majority_history recorded majority_close 09:34:30Z.
+        # Note this case does NOT argue for the heard bar: we heard all 35,
+        # so the heard bar was also 29. It argues for keeping the band
+        # conservative and letting the ledger have the last word.
+        #  - heard yes already >= needed_full -> passing for sure
+        #  - even if EVERY unheard validator voted yes, still < needed_full -> short for sure
         #  - otherwise the unheard votes could decide it -> amber, too close to call
+        bar = needed_heard if needed_heard else needed_full
         best_possible = yc + not_heard
         if yc >= needed_full:
             count_state = "passing"
@@ -259,15 +322,23 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "prev_passes": prev_passes, "status": status,
             "count_state": count_state, "not_heard": not_heard,
             "needed_full": needed_full, "best_possible": best_possible,
-            "short_by": max(0, needed_full - yc),
-            # Margin against the full-UNL bar, BY OUR NODE'S COUNT only
-            # (branch amendments-wording-2026-10-09). Positive = votes to
-            # spare; 0 = exactly at the bar (one defection loses it);
+            # EVERYTHING THE PAGE PRINTS uses the same heard-based bar:
+            # the table cell, "N votes to spare" and "short by N". They were
+            # split across two bars until 2026-10-10, which made the card
+            # contradict itself below full attendance - at 34 heard the
+            # headline said "needs 28 of 34" while the wording line said
+            # "short by 1" against 29. The printed bar and the margin have
+            # to be the same number or the reader is given two answers.
+            "needed": bar,
+            "short_by": max(0, bar - yc),
+            # Margin against that same printed bar, BY OUR NODE'S COUNT
+            # only (branch amendments-wording-2026-10-09). Positive = votes
+            # to spare; 0 = exactly at the bar (one defection loses it);
             # negative = short by that many. The ledger's own Majorities
-            # decision is the final word on the page, not this number —
-            # verified 2026-10-09: fixCleanup3_4_0 took its majority on 28
-            # yes while our count of 35 heard said it needed 29.
-            "spare_votes": yc - needed_full,
+            # decision is still the final word on the page, not this
+            # number - see the certainty-band note above for the
+            # fixCleanup3_4_0 case where the two disagreed outright.
+            "spare_votes": yc - bar,
             "ledger_holding": ledger_holding,
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
@@ -296,6 +367,8 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         # Full-UNL denominator + rippled's rule on it (Charlie 2026-09-26):
         "unl_full": unl_full, "threshold_full": thr_full,
         "needed_full": needed_full, "not_heard": not_heard,
+        # What the page prints: "needs {needed_heard} of {seen}".
+        "needed_heard": needed_heard,
         "unl_sequence": latest.get("unl_sequence"),
         "next_voting_ledger": next_vl,
         "next_eta_min": (max(0, round(eta_s / 60)) if eta_s is not None else None),

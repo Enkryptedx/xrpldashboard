@@ -5,6 +5,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import pytest  # noqa: E402
 import roll_call_card as C  # noqa: E402
 
 UTC = dt.timezone.utc
@@ -250,3 +251,121 @@ def test_template_renders_enabled_state_green():
     import re
     pd_row = re.search(r'<tr data-roll-call-row="enabled">.*?</tr>', html).group(0)
     assert ">enabled<" in pd_row and "majority" not in pd_row
+
+
+# ── "needs N of M" math (Charlie 2026-10-10) ────────────────────────────
+# The public line no longer prints rippled's bare threshold number. It was
+# the figure a reader was most likely to mistake for the number of votes
+# NEEDED, and Crinance did exactly that in print ("above its displayed
+# 28-vote threshold"). The page now prints only "needs N of M", and M is
+# the validators we HEARD — superseding the 2026-09-26 full-UNL ruling,
+# because "needs 29 of 35" while only 34 were heard overstates the bar.
+def test_votes_needed_35_heard_is_29():
+    assert C.votes_needed(35) == 29
+
+
+def test_votes_needed_34_heard_is_28():
+    assert C.votes_needed(34) == 28
+
+
+def test_votes_needed_33_heard_is_27():
+    assert C.votes_needed(33) == 27
+
+
+def test_votes_needed_is_strictly_more_than_the_80_percent_threshold():
+    """rippled requires yes votes STRICTLY greater than max(1, m*80//100)."""
+    for m in range(2, 60):
+        threshold = max(1, (m * 80) // 100)
+        assert C.votes_needed(m) == threshold + 1
+        assert C.votes_needed(m) > threshold
+
+
+def test_votes_needed_uses_integer_math_not_floats():
+    """0.8*35 is 28.000000000000004 in binary float.
+
+    A float path would make the headline 35-validator case depend on
+    rounding luck, so the 35 -> 29 answer must not come from floats.
+    """
+    assert (35 * 80) // 100 == 28
+    assert C.votes_needed(35) == 29
+    # The float route would still land on 29 here, but only by accident;
+    # pin the integer identity itself so nobody "simplifies" it.
+    assert int(0.8 * 35) == 28
+
+
+def test_votes_needed_single_validator_is_reachable():
+    """A 1-validator list must not need an impossible 2 votes."""
+    assert C.votes_needed(1) == 1
+
+
+def test_votes_needed_none_when_nothing_heard():
+    """No invented number when we heard nobody."""
+    assert C.votes_needed(0) is None
+    assert C.votes_needed(None) is None
+    assert C.votes_needed(-3) is None
+
+
+# ── headline N and table N must be the SAME number ─────────────────────
+def _card_at(seen, unl=35, now=None):
+    now = now or dt.datetime(2026, 10, 10, 20, 25, tzinfo=dt.timezone.utc)
+    thr = max(1, (unl * 80) // 100)
+    rnd = {"voting_ledger": 107500000, "flag_ledger": 107500001,
+           "observed_iso": "2026-10-10T20:25:00Z", "unl_size": unl,
+           "seen": seen, "trusted_available": seen,
+           # The RECORDER's stored numbers stay full-UNL on purpose: this is
+           # exactly the mismatch the bug came from, so the fixture keeps it.
+           "threshold": thr, "needed": thr + 1,
+           "unl_sequence": 85, "tallies": {PD: (29, seen, True)},
+           "rounds_recorded": 8, "first_round_iso": "2026-09-26T11:44:53Z"}
+    return C.build_card([rnd], [IN_FLIGHT[0]], now)
+
+
+@pytest.mark.parametrize("seen,expected", [(35, 29), (34, 28), (33, 27)])
+def test_headline_and_table_use_the_same_needed(seen, expected):
+    """Regression: the table read the recorder's stored full-UNL `needed`
+    while the headline read the heard-based one, so at 34 heard the card
+    showed "34 / 29" under "needs 28 of 34" — two different bars at once.
+    """
+    card = _card_at(seen)
+    assert card["needed_heard"] == expected
+    assert card["rows"], "fixture must produce at least one row"
+    for row in card["rows"]:
+        assert row["needed"] == card["needed_heard"], (
+            f"table bar {row['needed']} != headline bar {card['needed_heard']}"
+        )
+
+
+@pytest.mark.parametrize("seen", [35, 34, 33])
+def test_every_printed_number_uses_the_same_heard_bar(seen):
+    """Headline, table cell and the spare/short wording are ONE number.
+
+    They were split across two bars until 2026-10-10, which made the card
+    contradict itself below full attendance: at 34 heard the headline said
+    "needs 28 of 34" while the wording line said "short by 1" against 29.
+    The printed bar and the margin have to agree or the reader is handed
+    two different answers on one card.
+    """
+    card = _card_at(seen)
+    for row in card["rows"]:
+        assert row["needed"] == card["needed_heard"]
+        assert row["short_by"] == max(0, card["needed_heard"] - row["yes_carried"])
+        assert row["spare_votes"] == row["yes_carried"] - card["needed_heard"]
+
+
+@pytest.mark.parametrize("seen", [35, 34, 33])
+def test_certainty_band_stays_conservative_about_unheard_validators(seen):
+    """The green/amber/red band scores against needed_full on purpose.
+
+    At 34 heard with 28 yes the amendment clears the heard bar — but if the
+    35th validator is heard next round the bar itself rises to 29 and 28 no
+    longer passes. Scoring the band on the heard bar would paint that green
+    and throw the warning away.
+    """
+    card = _card_at(seen)
+    for row in card["rows"]:
+        if row["yes_carried"] >= card["needed_full"]:
+            assert row["count_state"] == "passing"
+        elif row["yes_carried"] + card["not_heard"] < card["needed_full"]:
+            assert row["count_state"] == "short"
+        else:
+            assert row["count_state"] == "too_close"

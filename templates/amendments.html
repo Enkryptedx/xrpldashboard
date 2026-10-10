@@ -715,7 +715,7 @@
     "XChainBridge": {
       "kind": "feature",
       "plain": _("Adds cross-chain bridges, enabling the transfer of digital assets between networks (for example, between Mainnet and a sidechain)."),
-      "explain": _("Not enabled. Our node's roll call: 6 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
+      "explain": _("Not enabled. Our node's roll call: 6 of 35 trusted validators vote yes; needs 29 of 35. Source: xrpl.org Known Amendments."),
       "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
       "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
@@ -771,7 +771,7 @@
     "fixXChainRewardRounding": {
       "kind": "fix",
       "plain": _("Ensures that reward shares for cross-chain transactions are always rounded down."),
-      "explain": _("Not enabled. Our node's roll call: 12 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
+      "explain": _("Not enabled. Our node's roll call: 12 of 35 trusted validators vote yes; needs 29 of 35. Source: xrpl.org Known Amendments."),
       "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
       "source_label": "xrpl.org · Known Amendments",
       "source_url": "https://xrpl.org/resources/known-amendments"
@@ -843,7 +843,7 @@
       {% if _N and _needed %}
         {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes —') }}
         {{ _needed }} {{ _('of the') }} {{ _N }}
-        {{ _('on the current list, since rippled requires strictly more than its 80 percent threshold of') }} {{ _thr }}.
+        {{ _('on the current list, since rippled requires strictly more than 80 percent of them.') }}
       {% else %}
         {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes, since rippled requires strictly more than its 80 percent threshold of the current trusted-validator list.') }}
       {% endif %}
@@ -1107,9 +1107,14 @@
       </p>
       <p style="margin: 0 0 6px;">
         {{ _('Heard') }} <strong>{{ roll_call.seen }} {{ _('of') }} {{ roll_call.unl_size }}</strong> {{ _('validators on the current UNL') }}
-        · {{ _('threshold') }} {{ roll_call.threshold }}
-        · {{ _('a majority needs') }} <strong>{{ roll_call.needed }}</strong>
-        <span class="dim">({{ _('xrpld takes 80 percent of the') }} {{ roll_call.trusted_available }} {{ _('trusted validators it could hear and requires strictly more than that') }})</span>
+        {# Charlie 2026-10-10: the bare "threshold 28" was dropped from this
+           line. It was the number a reader was most likely to mistake for
+           the number of votes NEEDED - Crinance did exactly that in print
+           ("above its displayed 28-vote threshold"). The page now states
+           only the actionable number, always as "needs N of M", and M is
+           the validators we HEARD, not the full published UNL. #}
+        {% if roll_call.needed_heard %}· {{ _('needs') }} <strong>{{ roll_call.needed_heard }} {{ _('of') }} {{ roll_call.seen }}</strong>{% endif %}
+        <span class="dim">({{ _('xrpld takes 80 percent of the validators it heard and requires strictly more than that') }})</span>
       </p>
       {% if roll_call.stale %}
         <p style="margin: 0 0 8px; color: #ef4444;">
@@ -1154,7 +1159,12 @@
               <tr data-roll-call-row="{{ r.status }}">
                 <td class="name">{{ r.name }}</td>
                 <td class="mono num">{{ r.yes_round }}</td>
-                <td class="mono num">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
+                {# r.needed is the SAME bar the headline prints (roll_call
+                   .needed_heard). It used to read roll_call.needed - the
+                   recorder's stored full-UNL number - so at 34 heard this
+                   cell said "34 / 29" under a headline saying "needs 28 of
+                   34": two different bars on one card. #}
+                <td class="mono num">{{ r.yes_carried }} / {{ r.needed }}</td>
                 <td class="state">
                   {% if r.enabled %}
                     <span style="color: var(--green, #22c55e); font-weight: 600;">{{ _('enabled') }}</span>
@@ -1197,7 +1207,7 @@
        a 14-day countdown restarts if support drops below threshold, so a
        date cited elsewhere may differ from the live projection. #}
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support drops to the 80 percent threshold or below (28 of 35 or fewer), the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
+      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support drops to 80 percent of the validators heard or below, the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
     </p>
     {# Correction note (JJ, source-disclosure microcopy per Charlie ruling
        2026-09-25 19:16 ET). Dated; stays on the page. #}
