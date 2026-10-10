@@ -1,0 +1,55 @@
+{# ── Evernorth treasury card ──────────────────────────────────────────────
+   Included once from institutional.html, under "Public companies holding
+   XRP". Context: `evernorth` from app._evernorth_card().
+
+   TWO TIERS, NEVER BLENDED:
+     * Filing facts  — stated in an SEC filing, each with its own link.
+     * Wallet groups — addresses attributed by a THIRD PARTY, named in no
+                       filing. Short addresses only; the group heading
+                       carries the attribution (owner ruling 2026-10-10).
+
+   Every block is guarded: with no snapshot the filing facts still render.
+   The filing half of this card must not depend on our pipeline being up. #}
+<style>
+  .ev-card { background: var(--card); border: 1px solid var(--border);
+             border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .ev-co { font-weight: 600; font-size: 1.02rem; margin: 0 0 2px; }
+  .ev-sub { color: var(--muted); font-size: 0.82rem; margin: 0 0 14px; }
+  .ev-h { font-size: 0.82rem; color: var(--muted); font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.04em;
+          margin: 18px 0 8px; }
+  .ev-facts { display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+              gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ev-fact { background: rgba(34,211,238,0.04); border: 1px solid var(--border);
+             border-radius: 8px; padding: 11px 13px; }
+  .ev-fact-lbl { color: var(--muted); font-size: 0.76rem; }
+  .ev-fact-val { font-family: var(--mono); font-size: 1rem;
+                 font-variant-numeric: tabular-nums; margin-top: 3px;
+                 line-height: 1.3; word-break: break-word; }
+  .ev-fact-det { color: var(--dim); font-size: 0.76rem; margin-top: 5px; }
+  .ev-cite { font-size: 0.76rem; margin-top: 5px; }
+</style>
+
+<div class="ev-card">
+  <p class="ev-co">{{ evernorth.company }}</p>
+  <p class="ev-sub">
+    {{ _('Nasdaq') }}: XRPN · {{ _('SEC CIK') }} 0002092592
+  </p>
+
+  {# ── Tier 1: filing facts. Each value links to the filing that states
+       it — never to a summary, an aggregator, or a press write-up. #}
+  <div class="ev-h">{{ _('From the SEC filings') }}</div>
+  <ul class="ev-facts">
+    {% for f in evernorth.facts %}
+    <li class="ev-fact">
+      <div class="ev-fact-lbl">{{ _(f.label) }}</div>
+      <div class="ev-fact-val">{{ f.value }}</div>
+      {% if f.detail %}<div class="ev-fact-det">{{ _(f.detail) }}</div>{% endif %}
+      <div class="ev-cite">
+        <a href="{{ f.url }}" target="_blank" rel="noopener noreferrer">{{ _('Source:') }} {{ f.source }}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
