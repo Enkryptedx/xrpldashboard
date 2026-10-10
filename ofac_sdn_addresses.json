@@ -900,7 +900,7 @@
       "sdn_uid": "57034"
     },
     "0xb6f5ec1a0a9cd1526536d3f0426c429529471f40": {
-      "chain": "ETH",
+      "chain": "USDC",
       "entity_name": "Sang Man KIM",
       "programs": [
         "DPRK4"
@@ -9790,7 +9790,7 @@
     }
   },
   "count": 1050,
-  "fetched_at_utc": "2026-10-09 01:34 UTC",
-  "publication_date": "2026-10-08",
+  "fetched_at_utc": "2026-10-10 01:34 UTC",
+  "publication_date": "2026-10-09",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
