@@ -260,10 +260,24 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     for h in ordered_hashes:
         yr, yc, passes = latest["tallies"].get(h, (0, 0, False))
         prev_passes = prev["tallies"].get(h, (0, 0, False))[2] if prev else None
-        # Count-line certainty against the full-UNL bar (needed_full):
-        #  - heard yes already >= needed  -> passing for sure
-        #  - even if EVERY unheard validator voted yes, still < needed -> short for sure
+        # TWO BARS, on purpose - they answer different questions.
+        #
+        # `bar` is what the page PRINTS: the heard-based number, identical
+        # to the headline's (Charlie 2026-10-10). The table used to print
+        # the recorder's stored full-UNL `needed` instead, so at 34 heard
+        # it read "34 / 29" under a headline saying "needs 28 of 34".
+        #
+        # `needed_full` stays the bar for the CERTAINTY BAND, and that is
+        # not an oversight. The band's whole job is to warn that validators
+        # we have not heard could still decide the outcome. At 34 heard
+        # with 28 yes the amendment clears the bar among those heard - but
+        # if the 35th is heard next round the bar itself rises to 29 and 28
+        # no longer passes. Scoring the band on the heard bar would paint
+        # that green and throw the warning away.
+        #  - heard yes already >= needed_full -> passing for sure
+        #  - even if EVERY unheard validator voted yes, still < needed_full -> short for sure
         #  - otherwise the unheard votes could decide it -> amber, too close to call
+        bar = needed_heard if needed_heard else needed_full
         best_possible = yc + not_heard
         if yc >= needed_full:
             count_state = "passing"
@@ -296,6 +310,14 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "prev_passes": prev_passes, "status": status,
             "count_state": count_state, "not_heard": not_heard,
             "needed_full": needed_full, "best_possible": best_possible,
+            # `needed` is the bar the TABLE PRINTS, and it is deliberately
+            # the heard-based one so it equals the headline's number.
+            # `short_by` / `spare_votes` below stay on needed_full: they are
+            # calibrated against the real 2026-10-09 fixCleanup3_4_0 case
+            # (tests/test_amendments_wording_2026_10_09.py) and moving them
+            # here would have silently rewritten eight expectations that
+            # pin a published wording decision. Flagged for the owner.
+            "needed": bar,
             "short_by": max(0, needed_full - yc),
             # Margin against the full-UNL bar, BY OUR NODE'S COUNT only
             # (branch amendments-wording-2026-10-09). Positive = votes to

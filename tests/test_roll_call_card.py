@@ -5,6 +5,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import pytest  # noqa: E402
 import roll_call_card as C  # noqa: E402
 
 UTC = dt.timezone.utc
@@ -302,3 +303,69 @@ def test_votes_needed_none_when_nothing_heard():
     assert C.votes_needed(0) is None
     assert C.votes_needed(None) is None
     assert C.votes_needed(-3) is None
+
+
+# ── headline N and table N must be the SAME number ─────────────────────
+def _card_at(seen, unl=35, now=None):
+    now = now or dt.datetime(2026, 10, 10, 20, 25, tzinfo=dt.timezone.utc)
+    thr = max(1, (unl * 80) // 100)
+    rnd = {"voting_ledger": 107500000, "flag_ledger": 107500001,
+           "observed_iso": "2026-10-10T20:25:00Z", "unl_size": unl,
+           "seen": seen, "trusted_available": seen,
+           # The RECORDER's stored numbers stay full-UNL on purpose: this is
+           # exactly the mismatch the bug came from, so the fixture keeps it.
+           "threshold": thr, "needed": thr + 1,
+           "unl_sequence": 85, "tallies": {PD: (29, seen, True)},
+           "rounds_recorded": 8, "first_round_iso": "2026-09-26T11:44:53Z"}
+    return C.build_card([rnd], [IN_FLIGHT[0]], now)
+
+
+@pytest.mark.parametrize("seen,expected", [(35, 29), (34, 28), (33, 27)])
+def test_headline_and_table_use_the_same_needed(seen, expected):
+    """Regression: the table read the recorder's stored full-UNL `needed`
+    while the headline read the heard-based one, so at 34 heard the card
+    showed "34 / 29" under "needs 28 of 34" — two different bars at once.
+    """
+    card = _card_at(seen)
+    assert card["needed_heard"] == expected
+    assert card["rows"], "fixture must produce at least one row"
+    for row in card["rows"]:
+        assert row["needed"] == card["needed_heard"], (
+            f"table bar {row['needed']} != headline bar {card['needed_heard']}"
+        )
+
+
+@pytest.mark.parametrize("seen", [35, 34, 33])
+def test_margin_fields_stay_on_the_conservative_full_unl_bar(seen):
+    """The PRINTED bar and the MARGIN bar are deliberately different.
+
+    `needed` is what the table prints and must equal the headline. But
+    `short_by` / `spare_votes` keep measuring against needed_full, and that
+    is not an oversight: the "N votes to spare" / "at risk" wording is
+    calibrated against the real 2026-10-09 fixCleanup3_4_0 case in
+    tests/test_amendments_wording_2026_10_09.py. Moving them to the heard
+    bar silently shifts eight published-wording expectations by one.
+    """
+    card = _card_at(seen)
+    for row in card["rows"]:
+        assert row["short_by"] == max(0, card["needed_full"] - row["yes_carried"])
+        assert row["spare_votes"] == row["yes_carried"] - card["needed_full"]
+
+
+@pytest.mark.parametrize("seen", [35, 34, 33])
+def test_certainty_band_stays_conservative_about_unheard_validators(seen):
+    """The green/amber/red band scores against needed_full on purpose.
+
+    At 34 heard with 28 yes the amendment clears the heard bar — but if the
+    35th validator is heard next round the bar itself rises to 29 and 28 no
+    longer passes. Scoring the band on the heard bar would paint that green
+    and throw the warning away.
+    """
+    card = _card_at(seen)
+    for row in card["rows"]:
+        if row["yes_carried"] >= card["needed_full"]:
+            assert row["count_state"] == "passing"
+        elif row["yes_carried"] + card["not_heard"] < card["needed_full"]:
+            assert row["count_state"] == "short"
+        else:
+            assert row["count_state"] == "too_close"

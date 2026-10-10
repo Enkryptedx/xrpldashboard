@@ -715,7 +715,7 @@
     "XChainBridge": {
       "kind": "feature",
       "plain": _("Adds cross-chain bridges, enabling the transfer of digital assets between networks (for example, between Mainnet and a sidechain)."),
-      "explain": _("Not enabled. Our node's roll call: 6 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
+      "explain": _("Not enabled. Our node's roll call: 6 of 35 trusted validators vote yes; needs 29 of 35. Source: xrpl.org Known Amendments."),
       "summary": _("Native cross-chain bridge primitive. Enables trust-minimized asset transfer between XRPL mainnet and sidechains — including the EVM-compatible sidechain announced by Ripple in 2023 — via a designated set of bridge witnesses."),
       "source_label": "XLS-38 Cross-Chain Bridge (XRPL-Standards)",
       "source_url": "https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0038-cross-chain-bridge"
@@ -771,7 +771,7 @@
     "fixXChainRewardRounding": {
       "kind": "fix",
       "plain": _("Ensures that reward shares for cross-chain transactions are always rounded down."),
-      "explain": _("Not enabled. Our node's roll call: 12 of 35 trusted validators vote yes; a majority needs 29. Source: xrpl.org Known Amendments."),
+      "explain": _("Not enabled. Our node's roll call: 12 of 35 trusted validators vote yes; needs 29 of 35. Source: xrpl.org Known Amendments."),
       "summary": _("Ensures cross-chain transaction reward shares consistently round downward, preventing small dust losses from accumulating across many transfers. Shipped in rippled v2.2.0; the amendment has since been retired in rippled's develop branch, though the public RPC still surfaces its hash."),
       "source_label": "xrpl.org · Known Amendments",
       "source_url": "https://xrpl.org/resources/known-amendments"
@@ -1159,7 +1159,12 @@
               <tr data-roll-call-row="{{ r.status }}">
                 <td class="name">{{ r.name }}</td>
                 <td class="mono num">{{ r.yes_round }}</td>
-                <td class="mono num">{{ r.yes_carried }} / {{ roll_call.needed }}</td>
+                {# r.needed is the SAME bar the headline prints (roll_call
+                   .needed_heard). It used to read roll_call.needed - the
+                   recorder's stored full-UNL number - so at 34 heard this
+                   cell said "34 / 29" under a headline saying "needs 28 of
+                   34": two different bars on one card. #}
+                <td class="mono num">{{ r.yes_carried }} / {{ r.needed }}</td>
                 <td class="state">
                   {% if r.enabled %}
                     <span style="color: var(--green, #22c55e); font-weight: 600;">{{ _('enabled') }}</span>
