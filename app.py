@@ -3703,6 +3703,19 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
     from_label_tier, from_label_source = _label_provenance(from_addr)
     to_label_tier, to_label_source = _label_provenance(to_addr)
 
+    # Third-party attributed wallets (owner ruling 2026-10-10). These are
+    # attributed by an explorer's curation or a research site's
+    # reconciliation — neither our curation nor the subject's own
+    # attestation — and named in NO filing. So the third party's NAMES are
+    # never published: the row keeps its bare short address and carries the
+    # group's attribution string, which is the whole evidentiary claim.
+    # Same table the /institutional card reads, so the two surfaces cannot
+    # drift apart.
+    from_attribution, from_attribution_url = \
+        institutional_treasuries.attribution_for(from_addr)
+    to_attribution, to_attribution_url = \
+        institutional_treasuries.attribution_for(to_addr)
+
     # 2026-09-10 Part C item 3 (TOKEN axis): tier of the transferred
     # token, if this event has a token (bare XRP transfers have None).
     # tier_lookup contains canonical + ASCII-alias keys per
@@ -3745,12 +3758,16 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         "from_label": from_label,
         "from_label_tier": from_label_tier,
         "from_label_source": from_label_source,
+        "from_attribution": from_attribution,
+        "from_attribution_url": from_attribution_url,
         "from_attested_domain": _attested_domain(from_addr),
         "to_addr": to_addr,
         "to_addr_short": _short_addr(to_addr),
         "to_label": to_label,
         "to_label_tier": to_label_tier,
         "to_label_source": to_label_source,
+        "to_attribution": to_attribution,
+        "to_attribution_url": to_attribution_url,
         "to_attested_domain": _attested_domain(to_addr),
         "amount_display": amount_display,
         "row_type_pill": row_type_pill,

@@ -171,6 +171,29 @@ def short_address(addr, head=6, tail=4):
     return f"{addr[:head]}\u2026{addr[-tail:]}"
 
 
+#: address -> attribution group, built once. Used by /whales as well as the
+#: card, so both surfaces answer from ONE table and cannot drift apart.
+ATTRIBUTION_BY_ADDRESS = {
+    addr: (GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED)
+    for addr, _name in WALLETS
+}
+
+
+def attribution_for(address):
+    """(group_label, group_source_url) for an attributed wallet, else
+    (None, None).
+
+    Deliberately returns the GROUP string and never a name: the third
+    party's naming convention is not published on any surface (owner
+    ruling 2026-10-10). A caller that wants to label a row gets the
+    evidentiary claim and the source that makes it, or nothing.
+    """
+    group = ATTRIBUTION_BY_ADDRESS.get(address)
+    if group is None:
+        return None, None
+    return GROUP_LABELS[group], GROUP_SOURCE_URLS[group]
+
+
 def _fmt_xrp(drops):
     """drops -> XRP float. None stays None (never guess a balance)."""
     if drops is None:

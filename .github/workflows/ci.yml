@@ -336,3 +336,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_institutional_evernorth_render.py -q
+      # /whales side of the same ruling. Attribution is NOT a name: the row
+      # keeps its bare short address and carries the GROUP's string, which
+      # is the whole evidentiary claim. Pins both approved strings verbatim
+      # and IDENTICAL to the card's (one table, two surfaces - they must
+      # not drift), that the third party's names reach no field of a row,
+      # that an unrelated address gets no attribution, and that the chip
+      # stays inside its own <a class="addr"> above its own address - a
+      # chip that escapes its anchor reads as the wrong side of the arrow
+      # (the positional bug fixed in PR #15). Hermetic: fake rows, injected
+      # render context, no DB and no node.
+      - name: whales attributed wallets (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_whales_attributed_wallets.py -q

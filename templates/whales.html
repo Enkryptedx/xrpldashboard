@@ -296,6 +296,25 @@
       border: 1px solid rgba(59,130,246,0.30);
       color: #93c5fd;
     }
+    /* Third-party attributed wallet (owner ruling 2026-10-10). Carries the
+       GROUP's attribution string, never the third party's name for the
+       wallet — the name would read as a first-party fact no filing
+       supports. Text wraps: these strings are a full clause, not a word,
+       and truncating them would drop the "not confirmed by" half, which is
+       the part that keeps the claim honest. */
+    .v5-tier--attributed {
+      background: rgba(234,179,8,0.10);
+      border: 1px solid rgba(234,179,8,0.30);
+      color: #fde68a;
+      white-space: normal; text-align: left; max-width: 34ch;
+      line-height: 1.35; align-items: flex-start;
+      /* .v5-tier carries margin-left: 4px for a pill that follows a label.
+         This chip is the FIRST thing in its column, so that 4px would
+         offset it from the address it describes - and chip ownership is
+         proven by chip.left - address.left == 0, not by eye (PR #15). */
+      margin-left: 0;
+    }
+    .v5-tier--attributed:hover { text-decoration: underline; }
     .v5-tier--bare {
       background: transparent;
       border: 1px dashed rgba(255,255,255,0.14);
@@ -449,6 +468,7 @@
         {% if e.from_addr %}
           <a class="addr{% if e.from_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.from_addr }}"{% if e.from_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
             {% if e.from_label %}<span class="addr-chip"><span class="label">{{ e.from_label }}</span>{% if e.from_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.from_label_source %} · {{ _('source:') }} {{ e.from_label_source }}{% endif %}</span>{% endif %}</span>{% endif %}
+            {% if e.from_attribution %}<span class="addr-chip"><span class="v5-tier v5-tier--attributed" title="{{ _('Attributed by a third party, not by the company and not by any SEC filing.') }}">{{ e.from_attribution }}</span></span>{% endif %}
             <span class="addr-id">{{ e.from_addr_short }}
             {% if e.from_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
             {% if e.from_address_tier and e.from_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.from_address_tier }}" title="{{ e.from_address_tier_display }} — {{ _('sender address tier (higher of curator standing and best-token-tier)') }}">{{ e.from_address_tier_display }}</span>{% endif %}</span>
@@ -460,6 +480,7 @@
         {% if e.to_addr %}
           <a class="addr{% if e.to_ofac_sanctioned %} ofac-sanctioned{% endif %}" href="/wallet/{{ e.to_addr }}"{% if e.to_ofac_sanctioned %} title="{{ _('OFAC-sanctioned address (SDN list); cross-cuts tier') }}"{% endif %}>
             {% if e.to_label %}<span class="addr-chip"><span class="label">{{ e.to_label }}</span>{% if e.to_label_tier == 'self-described' %}<span class="v5-tier v5-tier--self-described" title="{{ _('Self-described: the account owner published this label (unproven by us).') }}">{{ _('self-described') }}{% if e.to_label_source %} · {{ _('source:') }} {{ e.to_label_source }}{% endif %}</span>{% endif %}</span>{% endif %}
+            {% if e.to_attribution %}<span class="addr-chip"><span class="v5-tier v5-tier--attributed" title="{{ _('Attributed by a third party, not by the company and not by any SEC filing.') }}">{{ e.to_attribution }}</span></span>{% endif %}
             <span class="addr-id">{{ e.to_addr_short }}
             {% if e.to_ofac_sanctioned %}<span class="ofac-flag" aria-label="{{ _('OFAC SDN') }}">🚨 SDN</span>{% endif %}
             {% if e.to_address_tier and e.to_address_tier != 'bare' %}<span class="v5-tier v5-tier--{{ e.to_address_tier }}" title="{{ e.to_address_tier_display }} — {{ _('receiver address tier (higher of curator standing and best-token-tier)') }}">{{ e.to_address_tier_display }}</span>{% endif %}</span>
