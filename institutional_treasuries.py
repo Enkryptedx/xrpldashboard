@@ -33,6 +33,31 @@ import threading
 TIER_FILING = "filing"
 TIER_ATTRIBUTED = "attributed"
 
+# Attribution groups within TIER_ATTRIBUTED. The two groups have different
+# evidence behind them and must never be merged into one claim.
+GROUP_XRPSCAN = "xrpscan"
+GROUP_INFERRED = "inferred"
+
+# Exact strings the owner approved 2026-10-10. Do not reword without asking.
+GROUP_LABELS = {
+    GROUP_XRPSCAN: "labeled Evernorth by XRPScan — not confirmed by Evernorth",
+    GROUP_INFERRED: (
+        "inferred by xrp-insights from amounts matching the filing "
+        "— not confirmed by Evernorth"
+    ),
+}
+
+# Each group label links to the source that makes the claim.
+GROUP_SOURCE_URLS = {
+    GROUP_XRPSCAN: "https://xrpscan.com",
+    GROUP_INFERRED: "https://xrp-insights.com/xrp-radar/evernorth",
+}
+
+#: Per-wallet explorer link. The card shows a shortened address; the full
+#: address is only ever reachable through this link, never truncated silently
+#: in a way that could be mistaken for the real thing.
+EXPLORER_URL = "https://xrpscan.com/account/{address}"
+
 # Public-facing source labels. Exact strings the owner approved.
 TIER_LABELS = {
     TIER_FILING: "confirmed by Evernorth filing",
@@ -110,6 +135,15 @@ WALLETS = [
     ("rNtaHck1h268GQpfrQQ5AW68CEF2q919WU", "Staging"),
 ]
 
+#: The two addresses XRPScan itself labels "Evernorth" (domain evernorth.xyz,
+#: XRPScan curation; no on-ledger Domain field, no TOML). Everything else in
+#: WALLETS was inferred by xrp-insights from amounts matching the filing.
+#: These two have a named third-party labeller; the other eleven do not.
+XRPSCAN_LABELLED = frozenset({
+    "rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk",
+    "rKXXrAgpkHQN8m4HxAQCYmDCPPUByc9mVq",
+})
+
 # The filing's stated minimum, for the side-by-side comparison.
 FILING_MIN_XRP = 473276430
 
@@ -118,6 +152,19 @@ MOVES_LIMIT = 10
 
 _lock = threading.Lock()
 _cache = {"at": None, "data": None}
+
+
+def short_address(addr, head=6, tail=4):
+    """first6…last4 for display. The full address is never shown inline — it
+    is reachable only via the explorer link — so the ellipsis must always be
+    present on a shortened value. An address too short to shorten is returned
+    unchanged rather than padded into something that looks truncated.
+    """
+    if not addr:
+        return ""
+    if len(addr) <= head + tail + 1:
+        return addr
+    return f"{addr[:head]}\u2026{addr[-tail:]}"
 
 
 def _fmt_xrp(drops):
@@ -138,14 +185,25 @@ def build_rows(balances, last_moved=None):
     """
     last_moved = last_moved or {}
     rows = []
-    for addr, label in WALLETS:
+    for addr, _internal_name in WALLETS:
+        group = GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED
         rows.append({
             "address": addr,
-            "label": label,
+            "short": short_address(addr),
+            # NO display name. The xrp-insights names (Custody A-J, Staging)
+            # are a third party's naming convention; rendered on a public
+            # card "Custody A" reads as a first-party fact about Evernorth's
+            # custody structure that no filing supports. Owner ruling
+            # 2026-10-10: short addresses only, group heading carries the
+            # source. Names stay in WALLETS for matching, never for display.
             "balance_xrp": _fmt_xrp((balances or {}).get(addr)),
             "last_moved_iso": last_moved.get(addr),
             "tier": TIER_ATTRIBUTED,
             "tier_label": TIER_LABELS[TIER_ATTRIBUTED],
+            "group": group,
+            "group_label": GROUP_LABELS[group],
+            "group_source_url": GROUP_SOURCE_URLS[group],
+            "explorer_url": EXPLORER_URL.format(address=addr),
         })
     return rows
 

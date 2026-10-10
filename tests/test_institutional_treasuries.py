@@ -246,3 +246,50 @@ def test_build_moves_handles_missing_counterparty_and_empty_input():
     assert rows[0]["counterparty_named"] is False
     assert T.build_moves([]) == []
     assert T.build_moves(None) == []
+
+
+# ── option (b): short addresses, no third-party names rendered ───────────
+# Owner ruling 2026-10-10: the xrp-insights names (Custody A-J, Staging) are
+# a third party's convention. "Custody A" on a public card reads as a
+# first-party fact about Evernorth that no filing supports, so no row may
+# carry a display name. The group heading carries the source instead.
+def test_rows_split_into_two_attribution_groups():
+    rows = T.build_rows({})
+    counts = {}
+    for r in rows:
+        counts[r["group"]] = counts.get(r["group"], 0) + 1
+    assert counts == {T.GROUP_XRPSCAN: 2, T.GROUP_INFERRED: 11}
+
+
+def test_no_row_renders_a_third_party_name():
+    banned = {"custody", "staging", "evernorth 1", "evernorth 2"}
+    for r in T.build_rows({}):
+        blob = " ".join(str(v).lower() for k, v in r.items()
+                        if k not in ("group_label", "tier_label"))
+        assert not any(b in blob for b in banned), r
+
+
+def test_group_labels_are_the_approved_strings():
+    assert T.GROUP_LABELS[T.GROUP_XRPSCAN] == (
+        "labeled Evernorth by XRPScan — not confirmed by Evernorth")
+    assert T.GROUP_LABELS[T.GROUP_INFERRED] == (
+        "inferred by xrp-insights from amounts matching the filing "
+        "— not confirmed by Evernorth")
+
+
+def test_filing_confirmed_label_exists_but_is_never_used_by_a_row():
+    assert T.TIER_LABELS[T.TIER_FILING] == "confirmed by Evernorth filing"
+    assert all(r["tier"] != T.TIER_FILING for r in T.build_rows({}))
+
+
+def test_short_address_is_head6_ellipsis_tail4():
+    a = "rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk"
+    assert T.short_address(a) == "rsT3yY\u2026uQRk"
+    assert T.short_address("") == ""
+    assert T.short_address("rShort") == "rShort"
+
+
+def test_every_row_links_the_full_address():
+    for r in T.build_rows({}):
+        assert r["address"] in r["explorer_url"]
+        assert r["short"] != r["address"]
