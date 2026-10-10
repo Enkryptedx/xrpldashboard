@@ -117,6 +117,15 @@ def _roll_call():
                 "count_state": "passing",
                 "not_heard": 2,
                 "best_possible": 31,
+                # Required by _amendments_rollcall_verdict.html (e31d3ee,
+                # 2026-10-09), which landed AFTER this file (2026-10-04).
+                # Jinja RAISES on `Undefined > 0`, so a missing spare_votes in
+                # `{% if rc_row.spare_votes > 0 %}` killed the ENTIRE
+                # /amendments render -- every test here read as "nothing
+                # rendered". Pinned by tests/test_rollcall_verdict_contract.py.
+                "needed": 29,
+                "spare_votes": 0,
+                "short_by": 0,
             }
             for m in _MAJORITIES
         ],
