@@ -843,7 +843,7 @@
       {% if _N and _needed %}
         {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes —') }}
         {{ _needed }} {{ _('of the') }} {{ _N }}
-        {{ _('on the current list, since rippled requires strictly more than its 80 percent threshold of') }} {{ _thr }}.
+        {{ _('on the current list, since rippled requires strictly more than 80 percent of them.') }}
       {% else %}
         {{ _('Amendments with a validator majority: more than 80 percent of trusted validators voting yes, since rippled requires strictly more than its 80 percent threshold of the current trusted-validator list.') }}
       {% endif %}
@@ -1107,9 +1107,14 @@
       </p>
       <p style="margin: 0 0 6px;">
         {{ _('Heard') }} <strong>{{ roll_call.seen }} {{ _('of') }} {{ roll_call.unl_size }}</strong> {{ _('validators on the current UNL') }}
-        · {{ _('threshold') }} {{ roll_call.threshold }}
-        · {{ _('a majority needs') }} <strong>{{ roll_call.needed }}</strong>
-        <span class="dim">({{ _('xrpld takes 80 percent of the') }} {{ roll_call.trusted_available }} {{ _('trusted validators it could hear and requires strictly more than that') }})</span>
+        {# Charlie 2026-10-10: the bare "threshold 28" was dropped from this
+           line. It was the number a reader was most likely to mistake for
+           the number of votes NEEDED - Crinance did exactly that in print
+           ("above its displayed 28-vote threshold"). The page now states
+           only the actionable number, always as "needs N of M", and M is
+           the validators we HEARD, not the full published UNL. #}
+        {% if roll_call.needed_heard %}· {{ _('needs') }} <strong>{{ roll_call.needed_heard }} {{ _('of') }} {{ roll_call.seen }}</strong>{% endif %}
+        <span class="dim">({{ _('xrpld takes 80 percent of the validators it heard and requires strictly more than that') }})</span>
       </p>
       {% if roll_call.stale %}
         <p style="margin: 0 0 8px; color: #ef4444;">
@@ -1197,7 +1202,7 @@
        a 14-day countdown restarts if support drops below threshold, so a
        date cited elsewhere may differ from the live projection. #}
     <p class="dim" style="font-size: 0.92rem;">
-      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support drops to the 80 percent threshold or below (28 of 35 or fewer), the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
+      {{ _('Each amendment\'s majority window, as recorded from the ledger. If validator support drops to 80 percent of the validators heard or below, the majority is removed and the 14-day countdown restarts from the next time it is regained — which moves the projected activation date.') }}
     </p>
     {# Correction note (JJ, source-disclosure microcopy per Charlie ruling
        2026-09-25 19:16 ET). Dated; stays on the page. #}

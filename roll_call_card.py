@@ -48,6 +48,36 @@ SOURCE_LABEL = "own-node validations stream (Lenovo rippled → roll-call record
 _ET = ZoneInfo("America/Indiana/Indianapolis")
 
 
+def votes_needed(heard):
+    """Yes votes a majority needs out of `heard` validators, or None.
+
+    rippled's AmendmentSet computes ``threshold = max(1, trusted * 80 / 100)``
+    with INTEGER division and requires yes votes **strictly greater** than it.
+    So the number a reader needs is ``threshold + 1``:
+
+        35 heard -> threshold 28 -> needs 29
+        34 heard -> threshold 27 -> needs 28
+        33 heard -> threshold 26 -> needs 27
+
+    Integer arithmetic on purpose. ``0.8 * 35`` is ``28.000000000000004`` in
+    binary floating point, so a float path would make the 35 case depend on
+    rounding luck.
+
+    `heard` is the validators we actually HEARD, not the full published UNL
+    (Charlie 2026-10-10, superseding the 2026-09-26 full-UNL ruling): saying
+    "needs 29 of 35" when only 34 were heard overstates the bar, because
+    rippled thresholds on the trusted validators whose votes it has.
+
+    A one-validator list is the degenerate case: threshold is clamped to 1
+    and one yes vote is both the threshold and enough, so `needed` stays 1
+    rather than becoming an unreachable 2.
+    """
+    if not heard or heard < 1:
+        return None
+    threshold = max(1, (heard * 80) // 100)
+    return threshold if heard == 1 else threshold + 1
+
+
 def is_enabled(now: dt.datetime | None = None, env: dict | None = None) -> bool:
     e = os.environ if env is None else env
     return str(e.get("ROLL_CALL_CARD_ENABLED", "")).strip().lower() in ("1", "true", "yes", "on")
@@ -189,6 +219,13 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
     thr_full = max(1, (unl_full * 80) // 100)
     needed_full = thr_full if unl_full == 1 else thr_full + 1
     not_heard = max(0, unl_full - latest["seen"])
+    # Public "needs N of M" is computed on the validators we actually HEARD
+    # (Charlie 2026-10-10), which supersedes the 2026-09-26 ruling that
+    # pinned the denominator to the full published UNL. Quoting "needs 29
+    # of 35" while only 34 were heard overstates the bar: rippled's
+    # AmendmentSet thresholds on the trusted validators whose votes it has,
+    # so 34 heard really needs 28.
+    needed_heard = votes_needed(latest["seen"])
     # Build a row for EVERY hash the recorder tallied this round, keyed by
     # hash — not just the in_flight list (Charlie 2026-09-27). An amendment our
     # node recognizes on a newer binary (e.g. fixBatchV1_2 on rippled 3.4.1)
@@ -296,6 +333,8 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         # Full-UNL denominator + rippled's rule on it (Charlie 2026-09-26):
         "unl_full": unl_full, "threshold_full": thr_full,
         "needed_full": needed_full, "not_heard": not_heard,
+        # What the page prints: "needs {needed_heard} of {seen}".
+        "needed_heard": needed_heard,
         "unl_sequence": latest.get("unl_sequence"),
         "next_voting_ledger": next_vl,
         "next_eta_min": (max(0, round(eta_s / 60)) if eta_s is not None else None),

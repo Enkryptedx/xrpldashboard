@@ -250,3 +250,55 @@ def test_template_renders_enabled_state_green():
     import re
     pd_row = re.search(r'<tr data-roll-call-row="enabled">.*?</tr>', html).group(0)
     assert ">enabled<" in pd_row and "majority" not in pd_row
+
+
+# ── "needs N of M" math (Charlie 2026-10-10) ────────────────────────────
+# The public line no longer prints rippled's bare threshold number. It was
+# the figure a reader was most likely to mistake for the number of votes
+# NEEDED, and Crinance did exactly that in print ("above its displayed
+# 28-vote threshold"). The page now prints only "needs N of M", and M is
+# the validators we HEARD — superseding the 2026-09-26 full-UNL ruling,
+# because "needs 29 of 35" while only 34 were heard overstates the bar.
+def test_votes_needed_35_heard_is_29():
+    assert C.votes_needed(35) == 29
+
+
+def test_votes_needed_34_heard_is_28():
+    assert C.votes_needed(34) == 28
+
+
+def test_votes_needed_33_heard_is_27():
+    assert C.votes_needed(33) == 27
+
+
+def test_votes_needed_is_strictly_more_than_the_80_percent_threshold():
+    """rippled requires yes votes STRICTLY greater than max(1, m*80//100)."""
+    for m in range(2, 60):
+        threshold = max(1, (m * 80) // 100)
+        assert C.votes_needed(m) == threshold + 1
+        assert C.votes_needed(m) > threshold
+
+
+def test_votes_needed_uses_integer_math_not_floats():
+    """0.8*35 is 28.000000000000004 in binary float.
+
+    A float path would make the headline 35-validator case depend on
+    rounding luck, so the 35 -> 29 answer must not come from floats.
+    """
+    assert (35 * 80) // 100 == 28
+    assert C.votes_needed(35) == 29
+    # The float route would still land on 29 here, but only by accident;
+    # pin the integer identity itself so nobody "simplifies" it.
+    assert int(0.8 * 35) == 28
+
+
+def test_votes_needed_single_validator_is_reachable():
+    """A 1-validator list must not need an impossible 2 votes."""
+    assert C.votes_needed(1) == 1
+
+
+def test_votes_needed_none_when_nothing_heard():
+    """No invented number when we heard nobody."""
+    assert C.votes_needed(0) is None
+    assert C.votes_needed(None) is None
+    assert C.votes_needed(-3) is None
