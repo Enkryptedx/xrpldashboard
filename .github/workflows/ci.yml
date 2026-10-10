@@ -321,3 +321,18 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_evernorth_card_build.py -q
+      # The rendered /institutional page, driven through the real route.
+      # Distinct risk from the pure-assembly step above: a template can
+      # reach for a field that does not exist, a later edit can print a
+      # third-party wallet name, or the card can take the whole page down
+      # when Postgres is unavailable. Pins the section's position, every
+      # filing figure + its sec.gov citation link, the verbatim live line
+      # and both verbatim group headings, that no full address appears as
+      # visible text (only in href values), and that the page still
+      # returns 200 with the filing facts when the data layer raises.
+      # DB readers are stubbed with raising=True so a rename fails loudly
+      # instead of silently reaching the live database.
+      - name: institutional evernorth card render (no DB)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_institutional_evernorth_render.py -q

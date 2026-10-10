@@ -151,6 +151,20 @@
     <span class="inst-source">{{ _('Source:') }} <a href="https://ripple.com/ripple-press/ripple-prime-secures-usd200-million-debt-facility-from-neuberger-specialty-finance-to-expand-capacity/" target="_blank" rel="noopener noreferrer">{{ _('Ripple press release, 2026-05-11') }}</a></span>
   </p>
 
+  <h2>{{ _('Public companies holding XRP') }}</h2>
+  {# ───────────────────────────────────────────────────────────────────────
+     PLACEHOLDER — CHARLIE'S INTRO TEXT GOES HERE.
+     Replace this whole comment block with the intro paragraph(s) for the
+     section, in the usual {{ _('…') }} gettext form, e.g.:
+
+       <p>{{ _('Your intro sentence here.') }}</p>
+
+     Leave the include below in place — it renders the Evernorth card.
+     Nothing else on the page depends on this placeholder, so the section
+     renders correctly (heading + card) until the copy is written.
+     ─────────────────────────────────────────────────────────────────── #}
+  {% if evernorth %}{% include "_evernorth_card.html" %}{% endif %}
+
   <h2>{{ _('Regulated rails are advancing in Europe') }}</h2>
   <p>
     {{ _('On 2026-06-23, Luxembourg\'s Commission de Surveillance du Secteur Financier (CSSF) issued Ripple a "Green Light Letter" — preliminary MiCA CASP approval, subject to final conditions. Once finalised, the license would enable Ripple to scale regulated cryptoasset and stablecoin payment services — collect, exchange, pay out — across all 30 countries of the European Economic Area. This follows Ripple\'s EMI license and Cryptoasset Registration from the UK Financial Conduct Authority in January 2026. The release does not include a finalisation or go-live date, and the approval is not yet a full MiCA license.') }}
