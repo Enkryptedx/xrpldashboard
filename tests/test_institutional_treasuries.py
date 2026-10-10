@@ -193,3 +193,56 @@ def test_snapshot_shape_with_real_world_numbers():
     assert snap["total_xrp"] == 87_884_697.0
     assert snap["filing_min_xrp"] == 473_276_430
     assert snap["fetched_at_iso"] == "2026-10-09T20:00:00Z"
+
+
+# ── build_moves: recent-moves rows ───────────────────────────────────────
+# Fakes only: plain dicts shaped like the reader's third return value.
+# The counterparty rule is the one worth guarding — a name that reads like
+# a fact is worse than no name, so an unlabelled address must stay bare.
+_LABELS = {"rKnownExchange1111111111111111111": "Bitstamp"}
+
+
+def _mv(h, iso, amt, direction="out", cp=None):
+    return {"hash": h, "iso": iso, "amount_xrp": amt,
+            "direction": direction, "counterparty": cp}
+
+
+def test_build_moves_orders_newest_first():
+    rows = T.build_moves([
+        _mv("A", "2026-10-08T10:00:00Z", 1),
+        _mv("C", "2026-10-09T10:00:00Z", 3),
+        _mv("B", "2026-10-07T10:00:00Z", 2),
+    ])
+    assert [r["hash"] for r in rows] == ["C", "A", "B"]
+
+
+def test_build_moves_applies_limit():
+    raw = [_mv(str(i), f"2026-10-{i:02d}T00:00:00Z", i) for i in range(1, 15)]
+    assert len(T.build_moves(raw, limit=10)) == 10
+    assert len(T.build_moves(raw, limit=3)) == 3
+
+
+def test_build_moves_names_only_known_labelled_counterparty():
+    rows = T.build_moves(
+        [_mv("A", "2026-10-09T10:00:00Z", 1, cp="rKnownExchange1111111111111111111")],
+        known_labels=_LABELS,
+    )
+    assert rows[0]["counterparty_name"] == "Bitstamp"
+    assert rows[0]["counterparty_named"] is True
+
+
+def test_build_moves_leaves_unlabelled_counterparty_bare():
+    addr = "rUnknownAddressZZZZZZZZZZZZZZZZZZZ"
+    rows = T.build_moves([_mv("A", "2026-10-09T10:00:00Z", 1, cp=addr)],
+                         known_labels=_LABELS)
+    assert rows[0]["counterparty"] == addr
+    assert rows[0]["counterparty_name"] is None
+    assert rows[0]["counterparty_named"] is False
+
+
+def test_build_moves_handles_missing_counterparty_and_empty_input():
+    rows = T.build_moves([_mv("A", "2026-10-09T10:00:00Z", 1, cp=None)])
+    assert rows[0]["counterparty"] is None
+    assert rows[0]["counterparty_named"] is False
+    assert T.build_moves([]) == []
+    assert T.build_moves(None) == []

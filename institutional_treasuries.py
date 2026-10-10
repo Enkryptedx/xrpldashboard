@@ -113,6 +113,9 @@ WALLETS = [
 # The filing's stated minimum, for the side-by-side comparison.
 FILING_MIN_XRP = 473276430
 
+# Most recent moves shown on the card.
+MOVES_LIMIT = 10
+
 _lock = threading.Lock()
 _cache = {"at": None, "data": None}
 
@@ -145,6 +148,39 @@ def build_rows(balances, last_moved=None):
             "tier_label": TIER_LABELS[TIER_ATTRIBUTED],
         })
     return rows
+
+
+def build_moves(raw_moves, known_labels=None, limit=MOVES_LIMIT):
+    """Pure: assemble the "recent moves" rows, newest first.
+
+    `raw_moves` items need: hash, iso (UTC ISO-8601), amount_xrp,
+    direction ('out'/'in'), counterparty (address or None).
+
+    Counterparty naming rule (owner 2026-10-09): a counterparty is NAMED
+    only when it is a first-party labelled account in `known_labels`.
+    Otherwise the address is shown bare, with name=None — we never invent
+    an exchange or entity name from an unlabelled address, because a label
+    that reads like a fact is worse than no label.
+
+    Times are passed through as ISO for the template's shared ET-first
+    filter; this module never formats a time.
+    """
+    known_labels = known_labels or {}
+    out = []
+    for m in (raw_moves or []):
+        cp = m.get("counterparty")
+        name = known_labels.get(cp) if cp else None
+        out.append({
+            "hash": m.get("hash"),
+            "iso": m.get("iso"),
+            "amount_xrp": m.get("amount_xrp"),
+            "direction": m.get("direction"),
+            "counterparty": cp,
+            "counterparty_name": name,
+            "counterparty_named": name is not None,
+        })
+    out.sort(key=lambda r: (r["iso"] or ""), reverse=True)
+    return out[:limit]
 
 
 def total_xrp(rows):
@@ -186,12 +222,18 @@ def fetch_treasury_snapshot(reader=None, now=None, force=False):
         age, fresh = cache_state(now)
         if fresh and not force and _cache.get("data") is not None:
             return _cache["data"]
-    balances, last_moved = {}, {}
+    balances, last_moved, raw_moves, labels = {}, {}, [], {}
     if reader is not None:
         try:
-            balances, last_moved = reader([a for a, _ in WALLETS])
+            got = reader([a for a, _ in WALLETS])
+            # Backward compatible: (balances, last_moved) or
+            # (balances, last_moved, moves) or (.., .., moves, labels)
+            balances = got[0] or {}
+            last_moved = got[1] or {} if len(got) > 1 else {}
+            raw_moves = got[2] or [] if len(got) > 2 else []
+            labels = got[3] or {} if len(got) > 3 else {}
         except Exception:  # noqa: BLE001 — card degrades, page never 500s
-            balances, last_moved = {}, {}
+            balances, last_moved, raw_moves, labels = {}, {}, [], {}
     rows = build_rows(balances, last_moved)
     tot, readable = total_xrp(rows)
     data = {
@@ -203,6 +245,7 @@ def fetch_treasury_snapshot(reader=None, now=None, force=False):
         "wallet_count": len(WALLETS),
         "filing_min_xrp": FILING_MIN_XRP,
         "filing_delta": filing_delta(tot),
+        "moves": build_moves(raw_moves, labels),
         "fetched_at_iso": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     with _lock:
