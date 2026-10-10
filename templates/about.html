@@ -270,7 +270,12 @@
       <code>TOKEN_NAMES.md</code> {{ _('in the repo.') }}</li>
     <li><strong>{{ _('Contribute a named account:') }}</strong> {{ _('see') }}
       <code>KNOWN_ACCOUNTS.md</code> {{ _('in the repo.') }}</li>
-    <li><strong>{{ _('Found a bug or want a feature?') }}</strong> {{ _('Open a GitHub issue or send an email.') }}</li>
+    {# The words here are unchanged - only the two phrases are now links.
+       Split into gettext fragments rather than interpolating into one
+       string: a placeholder inside _() is %-in-gettext, a render-killer in
+       these templates. Tag-stripped, this still reads exactly
+       "Open a GitHub issue or send an email." #}
+    <li><strong>{{ _('Found a bug or want a feature?') }}</strong> {{ _('Open a') }} <a href="https://github.com/Enkryptedx/xrpldashboard/issues" target="_blank" rel="noopener noreferrer">{{ _('GitHub issue') }}</a> {{ _('or') }} <a href="/click/contact?purpose=general">{{ _('send an email') }}</a>.</li>
   </ul>
 
   <div class="footer">

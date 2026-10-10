@@ -285,6 +285,45 @@ def test_about_links_to_institutional(client):
     assert 'href="/institutional"' in body
 
 
+def test_trust_critical_about_get_involved_links(client):
+    """/about "Get involved": the bug/feature line must stay WORD-FOR-WORD
+    what it was while both of its phrases are real links, and the TikTok
+    entry must be present.
+
+    Named `trust_critical` deliberately: the CI step runs
+    `-k "trust_critical or amendment"`, so a test named anything else in
+    this file is collected and then DESELECTED — it would pass by hand once
+    and never run again (verified 2026-10-10: the sibling
+    test_about_links_to_institutional collects 0 under that filter).
+
+    The words are the load-bearing part. The line was previously a single
+    gettext string; linking the phrases required splitting it into
+    fragments, and the risk of that edit is silently changing the sentence
+    (a stray space, a dropped "a"). So assert the tag-stripped text, not
+    just the presence of hrefs.
+    """
+    import re
+    body = client.get("/about").data.decode()
+
+    ul = re.search(r"<h2>\s*Get involved\s*</h2>\s*(<ul>.*?</ul>)", body, re.S)
+    assert ul, "Get involved list not found"
+    items = [
+        re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", li)).strip()
+        for li in re.findall(r"<li>(.*?)</li>", ul.group(1), re.S)
+    ]
+
+    assert ("Found a bug or want a feature? "
+            "Open a GitHub issue or send an email.") in items
+
+    # Both phrases are now links, to the targets that actually exist.
+    assert 'href="https://github.com/Enkryptedx/xrpldashboard/issues"' in body
+    assert 'href="/click/contact?purpose=general"' in body
+
+    # TikTok sits with the other socials, shown as the handle.
+    assert "TikTok: @xrpldashboard" in items
+    assert 'href="https://www.tiktok.com/@xrpldashboard"' in body
+
+
 # Two prior invariants deleted 2026-08-30 — both tested design decisions
 # Charlie later reversed in his own commits:
 #   * test_institutional_has_mailto_with_prefilled_subject — asserted an
