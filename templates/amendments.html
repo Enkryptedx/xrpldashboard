@@ -955,7 +955,7 @@
               {# owner ruling: route the last-roll-call instant through the single
                  datetime_to_et_first filter so it reads Eastern-first with UTC
                  in parentheses, same as every other time on this page. #}
-              {{ _('Last roll call') }} {% if roll_call.observed_iso %}<time datetime="{{ roll_call.observed_iso }}">{{ roll_call.observed_iso | datetime_to_et_first_html }}</time>{% else %}{{ roll_call.observed_et }}{% endif %}{% if roll_call.next_eta_min is not none %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% endif %}
+              {{ _('Last roll call') }} {% if roll_call.observed_iso %}<time datetime="{{ roll_call.observed_iso }}">{{ roll_call.observed_iso | datetime_to_et_first_html }}</time>{% else %}{{ roll_call.observed_et }}{% endif %}{% if roll_call.next_eta_min is not none and not roll_call.stale %} · {{ _('next in about') }} {{ roll_call.next_eta_min }} {{ _('min') }}{% elif roll_call.stale %} · {{ _('next roll call overdue') }}{% endif %}
             </div>
             <details class="rc-details">
               <summary>{{ _('Technical details') }}</summary>
@@ -1123,6 +1123,11 @@
         </p>
       {% else %}
         <p class="dim" style="margin: 0 0 8px;">
+          {# No stale guard needed here: this whole paragraph is the
+             {% else %} of {% if roll_call.stale %} above, so it only ever
+             renders when the recorder is fresh. The red "Recorder stale:"
+             line replaces it outright. Verified by render 2026-10-10 -
+             adding a stale branch here produced unreachable dead code. #}
           {{ _('Next roll call at voting ledger') }} <span class="mono">{{ "{:,}".format(roll_call.next_voting_ledger) }}</span>{% if roll_call.next_eta_min is not none %}, {% if roll_call.next_eta_min < 1 %}{{ _('in less than a minute') }}{% else %}{{ ngettext('in about %(n)d minute', 'in about %(n)d minutes', roll_call.next_eta_min, n=roll_call.next_eta_min) }}{% endif %}{% endif %}.
         </p>
       {% endif %}
