@@ -282,3 +282,14 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_evernorth_daily_snapshot.py -q
+      # The 21:30 ET snapshot job. The load-bearing pin is the date key:
+      # 21:30 ET is ALREADY the next UTC day, so keying the row on UTC would
+      # file every reading under tomorrow and the card's history would sit a
+      # day ahead of its heading - a bug only visible between 20:00 ET and
+      # midnight. Also pins unreadable-wallet -> null (never 0, which would
+      # read as an outflow that never happened) and that a Postgres failure
+      # still leaves the local JSON copy. Hermetic: fake reader, temp file.
+      - name: evernorth snapshot job (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_snapshot_job.py -q
