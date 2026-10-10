@@ -293,3 +293,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_evernorth_snapshot_job.py -q
+      # The card's two read paths. These exist so /institutional renders from
+      # Postgres ALONE - the nightly job is the only thing that may touch the
+      # node, because a route that renders fine locally can still hang only
+      # on Render (PR #28, /tokens). Pins: newest-row ordering in the query
+      # rather than in the caller; jsonb balances usable as dict OR text;
+      # unreadable wallet stays null, never 0; the moves query is XRP-only
+      # (a token amount in amount_drops is not drops, and dividing it by 1e6
+      # would print a number the ledger never stated); direction is relative
+      # to OUR wallets and an internal wallet-to-wallet move carries no
+      # counterparty. Hermetic: fake connections, no DB, no network.
+      - name: evernorth card readers (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_card_readers.py -q
