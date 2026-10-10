@@ -259,3 +259,14 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_bot_hashes_upsert.py -q
+      # /institutional Evernorth card data module. Pins: filing facts each
+      # carry a citation; the attributed-wallet tier is never presented as
+      # filing-confirmed; an unreadable balance is excluded, never counted
+      # as zero; and build_moves names a counterparty ONLY when it is a
+      # first-party labelled account — an unlabelled address stays bare,
+      # because a label that reads like a fact is worse than no label.
+      # Hermetic: fake readers and plain dicts, no DB, no network.
+      - name: institutional treasuries card data (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_institutional_treasuries.py -q
