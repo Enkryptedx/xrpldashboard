@@ -95,9 +95,13 @@ EVERNORTH = {
          "source": "8-K", "url": SEC_8K},
         {"label": "Closing XRP price",
          "value": "$1.43069",
-         "detail": "Three-day average of the CME CF XRP-Dollar Reference "
-                   "Rate (New York Variant) at 4:00 p.m. New York time on "
-                   "each of the three days before the Closing Date.",
+         # Re-checked against the 8-K 2026-10-10: the filing says
+         # "arithmetic average", not "three-day average" (the earlier
+         # wording described the window correctly but not the method).
+         "detail": "Arithmetic average of the CME CF XRP-Dollar Reference "
+                   "Rate \u2014 New York Variant benchmark at 4:00 p.m. New "
+                   "York City time on each of the three days immediately "
+                   "preceding the Closing Date.",
          "source": "8-K", "url": SEC_8K},
         {"label": "Shareholder redemptions",
          "value": "approximately $195.39 million",
@@ -310,6 +314,83 @@ def fetch_treasury_snapshot(reader=None, now=None, force=False):
         _cache["at"] = now
         _cache["data"] = data
     return data
+
+
+#: The correction contact line. A public card carrying third-party
+#: attribution must say where a correction goes, in our own voice.
+CORRECTION_CONTACT = (
+    "Spotted something wrong? Tell us and we will correct it: "
+    "corrections@xrpldashboard.com"
+)
+
+
+def live_line(total, wallet_count=None):
+    """The side-by-side sentence, assembled here rather than in the template.
+
+    Built in Python on purpose: the owner specified this sentence verbatim,
+    and a dynamic number inside a gettext string means ``%``-in-gettext,
+    which is a known render-killer in these templates. Assembling it here
+    lets a test pin the exact sentence.
+
+    Returns None when no balance was readable — better to omit the line than
+    to publish a total that excludes wallets without saying so.
+    """
+    if total is None:
+        return None
+    n = len(WALLETS) if wallet_count is None else wallet_count
+    return (f"These {n} wallets total {total:,.0f} XRP; "
+            f"the filing says at least {FILING_MIN_XRP:,} XRP at closing.")
+
+
+def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
+    """Pure: the whole card context from already-read Postgres rows.
+
+    `snapshot` is a ``read_evernorth_latest_snapshot()`` dict whose balances
+    are **XRP** (that is what the nightly job stored), so they are used
+    as-is — never re-derived through drops, which would round-trip a value
+    that is already exact to the drop.
+
+    Every argument may be missing: with no snapshot the card still renders
+    the filing facts alone (render-killer rule — the filing half of this
+    card never depends on our own pipeline being up).
+    """
+    balances = (snapshot or {}).get("balances") or {}
+    rows = []
+    for addr, _internal_name in WALLETS:
+        group = GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED
+        rows.append({
+            "address": addr,
+            "short": short_address(addr),
+            # No display name — owner ruling 2026-10-10. See build_rows.
+            "balance_xrp": balances.get(addr),
+            "tier": TIER_ATTRIBUTED,
+            "group": group,
+            "group_label": GROUP_LABELS[group],
+            "group_source_url": GROUP_SOURCE_URLS[group],
+            "explorer_url": EXPLORER_URL.format(address=addr),
+        })
+    tot, readable = total_xrp(rows)
+    groups = [
+        {"key": g, "label": GROUP_LABELS[g], "source_url": GROUP_SOURCE_URLS[g],
+         "rows": [r for r in rows if r["group"] == g]}
+        for g in (GROUP_XRPSCAN, GROUP_INFERRED)
+    ]
+    return {
+        "company": EVERNORTH["company"],
+        "facts": EVERNORTH["facts"],
+        "groups": groups,
+        "wallet_count": len(WALLETS),
+        "total_xrp": tot,
+        "readable_count": readable,
+        "filing_min_xrp": FILING_MIN_XRP,
+        "filing_delta": filing_delta(tot),
+        "live_line": live_line(tot, len(WALLETS)),
+        "partial_read": readable != len(WALLETS),
+        "as_of": (snapshot or {}).get("date"),
+        "moves": build_moves(raw_moves, labels),
+        "history": list(history or []),
+        "correction_contact": CORRECTION_CONTACT,
+    }
 
 
 def reset_cache():

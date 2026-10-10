@@ -307,3 +307,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_evernorth_card_readers.py -q
+      # Card assembly. The load-bearing pins are evidentiary, not cosmetic:
+      # the live line is the owner's sentence VERBATIM (built in Python, not
+      # in a gettext string - a dynamic number inside _() is %-in-gettext,
+      # a known render-killer here); no row may carry the xrp-insights
+      # naming convention, which on a public card would read as a
+      # first-party fact about Evernorth's custody structure that no filing
+      # supports; the two attribution groups keep their approved headings
+      # and stay SEPARATE, so 11 inferred addresses are never laundered
+      # into the 2 an explorer actually labelled; and the strongest tier
+      # string stays unreachable from a row. Hermetic: plain dicts.
+      - name: evernorth card assembly (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_card_build.py -q
