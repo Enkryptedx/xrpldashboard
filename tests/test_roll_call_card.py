@@ -336,20 +336,20 @@ def test_headline_and_table_use_the_same_needed(seen, expected):
 
 
 @pytest.mark.parametrize("seen", [35, 34, 33])
-def test_margin_fields_stay_on_the_conservative_full_unl_bar(seen):
-    """The PRINTED bar and the MARGIN bar are deliberately different.
+def test_every_printed_number_uses_the_same_heard_bar(seen):
+    """Headline, table cell and the spare/short wording are ONE number.
 
-    `needed` is what the table prints and must equal the headline. But
-    `short_by` / `spare_votes` keep measuring against needed_full, and that
-    is not an oversight: the "N votes to spare" / "at risk" wording is
-    calibrated against the real 2026-10-09 fixCleanup3_4_0 case in
-    tests/test_amendments_wording_2026_10_09.py. Moving them to the heard
-    bar silently shifts eight published-wording expectations by one.
+    They were split across two bars until 2026-10-10, which made the card
+    contradict itself below full attendance: at 34 heard the headline said
+    "needs 28 of 34" while the wording line said "short by 1" against 29.
+    The printed bar and the margin have to agree or the reader is handed
+    two different answers on one card.
     """
     card = _card_at(seen)
     for row in card["rows"]:
-        assert row["short_by"] == max(0, card["needed_full"] - row["yes_carried"])
-        assert row["spare_votes"] == row["yes_carried"] - card["needed_full"]
+        assert row["needed"] == card["needed_heard"]
+        assert row["short_by"] == max(0, card["needed_heard"] - row["yes_carried"])
+        assert row["spare_votes"] == row["yes_carried"] - card["needed_heard"]
 
 
 @pytest.mark.parametrize("seen", [35, 34, 33])

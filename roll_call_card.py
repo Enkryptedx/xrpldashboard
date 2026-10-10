@@ -274,6 +274,18 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
         # if the 35th is heard next round the bar itself rises to 29 and 28
         # no longer passes. Scoring the band on the heard bar would paint
         # that green and throw the warning away.
+        #
+        # Evidence (verified against our own recorded roll call, not from
+        # memory): on 2026-10-09 at 5:34 AM ET fixCleanup3_4_0 gained its
+        # majority on 28 yes while our node heard all 35 and our bar said
+        # 29 - our count and the ledger can disagree, so the page must not
+        # present our number as the ledger's verdict. Round 107536127,
+        # observed 2026-10-09T09:34:33Z: validations_seen 35, votes_needed
+        # 29, yes_carried 28, passes_rippled FALSE - while
+        # amendment_majority_history recorded majority_close 09:34:30Z.
+        # Note this case does NOT argue for the heard bar: we heard all 35,
+        # so the heard bar was also 29. It argues for keeping the band
+        # conservative and letting the ledger have the last word.
         #  - heard yes already >= needed_full -> passing for sure
         #  - even if EVERY unheard validator voted yes, still < needed_full -> short for sure
         #  - otherwise the unheard votes could decide it -> amber, too close to call
@@ -310,23 +322,23 @@ def build_card(rounds: list[dict], in_flight: list[dict], now: dt.datetime | Non
             "prev_passes": prev_passes, "status": status,
             "count_state": count_state, "not_heard": not_heard,
             "needed_full": needed_full, "best_possible": best_possible,
-            # `needed` is the bar the TABLE PRINTS, and it is deliberately
-            # the heard-based one so it equals the headline's number.
-            # `short_by` / `spare_votes` below stay on needed_full: they are
-            # calibrated against the real 2026-10-09 fixCleanup3_4_0 case
-            # (tests/test_amendments_wording_2026_10_09.py) and moving them
-            # here would have silently rewritten eight expectations that
-            # pin a published wording decision. Flagged for the owner.
+            # EVERYTHING THE PAGE PRINTS uses the same heard-based bar:
+            # the table cell, "N votes to spare" and "short by N". They were
+            # split across two bars until 2026-10-10, which made the card
+            # contradict itself below full attendance - at 34 heard the
+            # headline said "needs 28 of 34" while the wording line said
+            # "short by 1" against 29. The printed bar and the margin have
+            # to be the same number or the reader is given two answers.
             "needed": bar,
-            "short_by": max(0, needed_full - yc),
-            # Margin against the full-UNL bar, BY OUR NODE'S COUNT only
-            # (branch amendments-wording-2026-10-09). Positive = votes to
-            # spare; 0 = exactly at the bar (one defection loses it);
+            "short_by": max(0, bar - yc),
+            # Margin against that same printed bar, BY OUR NODE'S COUNT
+            # only (branch amendments-wording-2026-10-09). Positive = votes
+            # to spare; 0 = exactly at the bar (one defection loses it);
             # negative = short by that many. The ledger's own Majorities
-            # decision is the final word on the page, not this number —
-            # verified 2026-10-09: fixCleanup3_4_0 took its majority on 28
-            # yes while our count of 35 heard said it needed 29.
-            "spare_votes": yc - needed_full,
+            # decision is still the final word on the page, not this
+            # number - see the certainty-band note above for the
+            # fixCleanup3_4_0 case where the two disagreed outright.
+            "spare_votes": yc - bar,
             "ledger_holding": ledger_holding,
         })
     rows.sort(key=lambda r: (-r["yes_carried"], r["name"].lower()))
