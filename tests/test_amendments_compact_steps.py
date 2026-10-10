@@ -577,11 +577,17 @@ def test_timing_line_hidden_when_no_eta():
 
 
 def test_timing_line_absent_from_finished_stepper():
-    """The Recently-enabled stepper has no activation ETA, so no line."""
-    block = _finished_block(_render_enabled_example())
-    assert "data-step-eta" not in block, (
-        "the finished stepper must not carry the timing line"
-    )
+    """An enabled amendment has nothing left to time, so no timing line.
+
+    Re-pointed 2026-10-10 from _finished_block(_render_enabled_example()) to
+    the real enabled render; the old vehicle was a no-op (see _render_enabled).
+    The CLAIM is unchanged and still live - it is now checked on all three
+    cards instead of one synthetic block.
+    """
+    for name, card in zip(_NAMES, _countdown_cards(_render_enabled())):
+        assert "data-step-eta" not in card, (
+            f"{name}: the enabled stepper must not carry the timing line"
+        )
 
 
 def test_timing_line_leaves_step1_and_existing_wording_alone():
@@ -1027,133 +1033,144 @@ def test_render_step2_shows_numbers_once_clock_done():
 
 
 # --------------------------------------------------------------------------
-# ITEM 3 (Charlie 2026-10-04): the Recently-enabled (finished) stepper.
+# ITEM 3 (Charlie 2026-10-04): the ENABLED (finished) stepper.
 #
 # In that render all six steps are DONE and none is NOW, so the
 # "only the NOW step is open" rule from bcddb5d left EVERY stop collapsed.
 # Fix: open step 5, "It becomes permanent", and mark it with a green
 # check-mark badge labelled OFFICIAL (pure CSS check, no icon font/image).
+#
+# RE-POINTED 2026-10-10. These tests used to reach the enabled state through
+# a synthetic timeline_by_hash['__enabled_example__'] demo block. 56c6025
+# deleted that block, so the injection became a no-op and all four tests here
+# failed looking exactly as if the FEATURE had been deleted. It had not: the
+# enabled branch is live at amendments.html:546 (_open_n) and :557 (the badge),
+# and is reached normally by flipping tl.enabled. They now render that.
 # --------------------------------------------------------------------------
 
 _PERMANENT_TITLE = "It becomes permanent"
 
 
-def _render_enabled_example():
-    """Render the page including timeline_by_hash['__enabled_example__'].
+def _render_enabled(**tl_overrides):
+    """Render with every countdown card in the ENABLED (finished) state.
 
-    Shaped exactly like the route's finished-state call: enabled=True,
-    no majority/activation ISO, all six steps DONE, none NOW.
+    Reaches the real enabled branch through the NORMAL timeline_by_hash path,
+    so this is the markup a recently-enabled amendment actually gets:
+      amendments.html:557  {% if tl.enabled and n == 5 %} -> OFFICIAL badge
+      amendments.html:546  _open_n = 5 if (tl.enabled and not _has_now)
+
+    Replaces _render_enabled_example(), which injected a synthetic
+    timeline_by_hash['__enabled_example__']. 56c6025 deleted the generic
+    DONE-steps block that was the ONLY consumer of that key, so the injection
+    silently became a NO-OP - it rendered the same thing a plain _render()
+    does, with zero OFFICIAL badges and no timeline-finished anchor. The tests
+    below therefore failed for the wrong reason and read as "this feature was
+    deleted" when only the demo vehicle had been. The feature is live.
     """
-    import app
-
-    enabled_tl = app._activation_timeline_ctx(
-        majority_reached_iso=None,
-        activation_eta_iso=None,
-        flag_counter=_FLAG_COUNTER,
-        enabled=True,
-        now=_NOW,
-    )
-    # guard the premise of this item: the finished state really has no NOW
-    assert all(v == "done" for v in enabled_tl["steps"].values()), (
-        f"finished example should be all DONE, got {enabled_tl['steps']}"
+    steps = {n: "done" for n in (1, 2, 3, 4, 5, 6)}
+    page = _render_with_timeline(
+        {"enabled": True, "steps": steps, **tl_overrides}
     )
 
-    tbh = _timeline_by_hash()
-    tbh["__enabled_example__"] = enabled_tl
-    with app.app.test_request_context("/amendments"):
-        return app.render_template(
-            "amendments.html",
-            state=_state(),
-            roll_call=_roll_call(),
-            timeline_by_hash=tbh,
-            **_CTX,
-        )
-
-
-def _finished_block(page):
-    """The Recently-enabled timeline markup (it is the last one on the page)."""
-    idx = page.find('class="timeline-finished"')
-    assert idx != -1, "the Recently-enabled finished timeline did not render"
-    return page[idx:]
+    # Guard the premise. Without these two asserts a future template change
+    # could quietly stop rendering the enabled branch and every test below
+    # would pass VACUOUSLY on markup that is not there - exactly the trap
+    # test_official_check_mark_is_pure_css was already sitting in.
+    assert 'data-status="now"' not in page, (
+        "the enabled state must have no NOW step"
+    )
+    badges = page.count('class="timeline-official"')
+    assert badges == len(_MAJORITIES), (
+        f"the enabled branch did not render: expected {len(_MAJORITIES)} "
+        f"OFFICIAL badges (one per card), got {badges}"
+    )
+    return page
 
 
 def test_enabled_stepper_opens_exactly_the_permanent_step():
-    """Exactly one stop open in the finished stepper: 'It becomes permanent'."""
-    block = _finished_block(_render_enabled_example())
+    """Exactly one stop open in the enabled stepper: 'It becomes permanent'.
 
-    steps = _step_blocks(block)
-    assert len(steps) == 6, (
-        f"finished stepper should have 6 steps, got {len(steps)}"
-    )
+    Guards amendments.html:546, which is LIVE:
+        {% set _open_n = 5 if (tl.enabled and not _has_now) else 0 %}
+    Re-pointed 2026-10-10 onto the real enabled render (see _render_enabled).
+    """
+    for name, card in zip(_NAMES, _countdown_cards(_render_enabled())):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, (
+            f"{name}: enabled stepper should have 6 steps, got {len(steps)}"
+        )
 
-    open_steps = []
-    for idx, step in enumerate(steps, 1):
-        stop = re.search(r"<details[^>]*>", step)
-        assert stop, f"finished step {idx} has no <details> stop"
-        if " open" in stop.group(0):
-            open_steps.append(idx)
+        open_steps = []
+        for idx, step in enumerate(steps, 1):
+            stop = re.search(r"<details[^>]*>", step)
+            assert stop, f"{name}: enabled step {idx} has no <details> stop"
+            if " open" in stop.group(0):
+                open_steps.append(idx)
 
-    assert len(open_steps) == 1, (
-        "the finished stepper must have EXACTLY one stop open by default "
-        f"(bcddb5d left all six collapsed); open stops: {open_steps}"
-    )
+        assert len(open_steps) == 1, (
+            f"{name}: the enabled stepper must have EXACTLY one stop open by "
+            f"default (bcddb5d left all six collapsed); open: {open_steps}"
+        )
 
-    opened = steps[open_steps[0] - 1]
-    summary = re.search(r"(?s)<summary.*?</summary>", opened)
-    assert summary, "the opened stop has no <summary>"
-    assert _PERMANENT_TITLE in summary.group(0), (
-        f"the opened stop must be {_PERMANENT_TITLE!r}; opened step "
-        f"{open_steps[0]} instead: {_visible_text(summary.group(0))!r}"
-    )
+        opened = steps[open_steps[0] - 1]
+        summary = re.search(r"(?s)<summary.*?</summary>", opened)
+        assert summary, f"{name}: the opened stop has no <summary>"
+        assert _PERMANENT_TITLE in summary.group(0), (
+            f"{name}: the opened stop must be {_PERMANENT_TITLE!r}; opened "
+            f"step {open_steps[0]}: {_visible_text(summary.group(0))!r}"
+        )
 
 
 def test_enabled_stepper_has_official_badge_on_permanent_step():
-    """The OFFICIAL badge is present, and only on 'It becomes permanent'."""
-    block = _finished_block(_render_enabled_example())
-    steps = _step_blocks(block)
-    assert len(steps) == 6
+    """The OFFICIAL badge is present, and only on 'It becomes permanent'.
 
-    badged = [
-        idx for idx, step in enumerate(steps, 1)
-        if "data-step-official" in step
-    ]
-    assert badged == [5], (
-        f"the OFFICIAL badge must sit on step 5 only; found on {badged}"
-    )
-
-    step5 = steps[4]
-    assert _PERMANENT_TITLE in step5, "step 5 is not the permanent step"
-    assert "OFFICIAL" in _visible_text(step5), (
-        "the OFFICIAL label did not render on the permanent step"
-    )
-    assert 'class="timeline-official"' in step5, (
-        "the badge must carry the .timeline-official class it is styled by"
-    )
-
-    # the badge lives in the SUMMARY (the always-visible compact row)
-    summary = re.search(r"(?s)<summary.*?</summary>", step5)
-    assert summary and "data-step-official" in summary.group(0), (
-        "the OFFICIAL badge must be in the always-visible <summary> row"
-    )
-
-
-def _countdown_cards_before_finished(page):
-    """Countdown cards, truncated before the Recently-enabled block.
-
-    _countdown_cards() splits on the card opener, so its LAST chunk runs to
-    end-of-page and would swallow the finished stepper that renders further
-    down. Every countdown card appears before it, so cutting there first
-    keeps each chunk to real countdown markup.
+    Guards amendments.html:557, which is LIVE:
+        {% if tl.enabled and n == 5 %}<span class="timeline-official" ...>
+    Re-pointed 2026-10-10 onto the real enabled render (see _render_enabled).
     """
-    idx = page.find('class="timeline-finished"')
-    assert idx != -1, "expected the finished block in this render"
-    return _countdown_cards(page[:idx])
+    for name, card in zip(_NAMES, _countdown_cards(_render_enabled())):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, f"{name}: expected 6 steps, got {len(steps)}"
+
+        badged = [
+            idx for idx, step in enumerate(steps, 1)
+            if "data-step-official" in step
+        ]
+        assert badged == [5], (
+            f"{name}: the OFFICIAL badge must sit on step 5 only; "
+            f"found on {badged}"
+        )
+
+        step5 = steps[4]
+        assert _PERMANENT_TITLE in step5, f"{name}: step 5 is not permanent"
+        assert "OFFICIAL" in _visible_text(step5), (
+            f"{name}: the OFFICIAL label did not render on the permanent step"
+        )
+        assert 'class="timeline-official"' in step5, (
+            f"{name}: the badge must carry the .timeline-official class it is "
+            "styled by"
+        )
+
+        # the badge lives in the SUMMARY (the always-visible compact row)
+        summary = re.search(r"(?s)<summary.*?</summary>", step5)
+        assert summary and "data-step-official" in summary.group(0), (
+            f"{name}: the OFFICIAL badge must be in the always-visible "
+            "<summary> row"
+        )
 
 
 def test_official_badge_absent_from_countdown_cards():
-    """OFFICIAL is a finished-state marker only — never on a countdown card."""
-    page = _render_enabled_example()
-    cards = _countdown_cards_before_finished(page)
+    """OFFICIAL is an enabled-state marker only — never while in countdown.
+
+    Re-pointed 2026-10-10. The old version rendered the synthetic
+    __enabled_example__ page and truncated it before the `timeline-finished`
+    anchor; both are gone, so it now asserts the live countdown render
+    (enabled=False) carries no badge. The negative is guarded against passing
+    vacuously: _render_enabled() proves the SAME template does emit the badge
+    once tl.enabled flips, so a zero here means "correctly absent", not
+    "never renders".
+    """
+    cards = _countdown_cards(_render())
     assert len(cards) == len(_MAJORITIES), (
         f"expected {len(_MAJORITIES)} countdown cards, got {len(cards)}"
     )
@@ -1170,8 +1187,27 @@ def test_official_badge_absent_from_countdown_cards():
 
 
 def test_official_check_mark_is_pure_css():
-    """The check mark is drawn in CSS — no icon font, no image, no emoji."""
-    css = _style_css(_render_enabled_example())
+    """The check mark is drawn in CSS — no icon font, no image, no emoji.
+
+    Re-pointed AND strengthened 2026-10-10. This test was PASSING VACUOUSLY:
+    it only ever read the static <style> block, which every render emits
+    regardless of state, so it asserted the rule was well-formed while never
+    checking that a single element uses the class. It would have kept passing
+    with the badge markup deleted outright. The badge-count assertion below is
+    the missing half - the styled class must actually be applied to real
+    markup, once per card, or the "pure CSS check mark" styles nothing.
+    """
+    page = _render_enabled()
+
+    # the styled class must really be USED in markup, not merely defined
+    body = re.sub(r"(?is)<style[^>]*>.*?</style>", " ", page)
+    used = len(re.findall(r'class="timeline-official"', body))
+    assert used == len(_MAJORITIES), (
+        "the .timeline-official class must be applied to real markup once per "
+        f"card (expected {len(_MAJORITIES)}), found {used}"
+    )
+
+    css = _style_css(page)
 
     badge = re.search(
         r"\.activation-timeline \.timeline-official\s*\{([^}]*)\}", css
@@ -1205,10 +1241,12 @@ def test_official_check_mark_is_pure_css():
 
 
 def test_enabled_stepper_wording_unchanged():
-    """OFFICIAL is the only text added; the six step titles are untouched."""
-    block = _finished_block(_render_enabled_example())
-    steps = _step_blocks(block)
+    """OFFICIAL is the only text added; the six step titles are untouched.
 
+    Re-pointed 2026-10-10 onto the real enabled render (see _render_enabled).
+    The six step_title[n] strings are live template content, so this is real
+    wording coverage, not a guard on the deleted demo block.
+    """
     expected_titles = [
         "Support holds for two weeks",
         "Wait for the next flag ledger",
@@ -1217,20 +1255,25 @@ def test_enabled_stepper_wording_unchanged():
         "It becomes permanent",
         "Old servers fall behind",
     ]
-    for idx, (step, title) in enumerate(zip(steps, expected_titles), 1):
-        summary = re.search(r"(?s)<summary.*?</summary>", step)
-        assert summary, f"finished step {idx} has no <summary>"
-        assert title in summary.group(0), (
-            f"finished step {idx} lost its existing title {title!r}"
-        )
+    for name, card in zip(_NAMES, _countdown_cards(_render_enabled())):
+        steps = _step_blocks(card)
+        assert len(steps) == 6, f"{name}: expected 6 steps, got {len(steps)}"
 
-    # strip the badge back out and the visible text must match the stepper
-    # with no badge at all — i.e. OFFICIAL is the ONLY word added
-    step5 = steps[4]
-    without_badge = re.sub(
-        r'<span class="timeline-official"[^>]*>.*?</span>', "", step5, flags=re.S
-    )
-    assert "OFFICIAL" not in _visible_text(without_badge), (
-        "OFFICIAL must come only from the badge span"
-    )
-    assert _PERMANENT_TITLE in _visible_text(without_badge)
+        for idx, (step, title) in enumerate(zip(steps, expected_titles), 1):
+            summary = re.search(r"(?s)<summary.*?</summary>", step)
+            assert summary, f"{name}: enabled step {idx} has no <summary>"
+            assert title in summary.group(0), (
+                f"{name}: enabled step {idx} lost its title {title!r}"
+            )
+
+        # strip the badge back out and the visible text must match the stepper
+        # with no badge at all — i.e. OFFICIAL is the ONLY word added
+        step5 = steps[4]
+        without_badge = re.sub(
+            r'<span class="timeline-official"[^>]*>.*?</span>', "",
+            step5, flags=re.S,
+        )
+        assert "OFFICIAL" not in _visible_text(without_badge), (
+            f"{name}: OFFICIAL must come only from the badge span"
+        )
+        assert _PERMANENT_TITLE in _visible_text(without_badge)
