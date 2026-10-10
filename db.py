@@ -318,6 +318,21 @@ CREATE INDEX IF NOT EXISTS page_views_status_5xx_idx
 -- Render Flask reads. Render has no local snapshot file so PG is the
 -- only source there; without this, /mpts on prod blocks ~10min walking
 -- the ledger on every cold request.
+-- One row per calendar day (ET) of the Evernorth treasury total, written
+-- after the 21:00 ET signed snapshot. PRIMARY KEY on the date makes a
+-- re-run idempotent: a retry overwrites that day rather than appending a
+-- second row and doubling the history line on the card.
+-- balances holds the 13 per-wallet readings so a later correction can be
+-- audited against what was actually read, not just the total.
+CREATE TABLE IF NOT EXISTS evernorth_daily_snapshot (
+    snapshot_date  DATE PRIMARY KEY,
+    taken_at       BIGINT NOT NULL,
+    total_xrp      NUMERIC NOT NULL,
+    readable_count INTEGER NOT NULL,
+    wallet_count   INTEGER NOT NULL,
+    balances       JSONB NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS mpt_snapshot (
     id         INTEGER PRIMARY KEY,
     payload    JSONB NOT NULL,
@@ -3844,6 +3859,78 @@ def read_mpt_snapshot():
                 return payload
     except Exception:
         return None
+
+
+def write_evernorth_daily_snapshot(snapshot_date, taken_at, total_xrp,
+                                   readable_count, wallet_count, balances):
+    """Upsert one calendar day's Evernorth treasury reading.
+
+    UPSERT on snapshot_date, so a retry or a second run on the same day
+    overwrites rather than appending — otherwise the card's history line
+    would show two points for one day. Silent no-op when PG isn't
+    configured, matching every other writer here.
+
+    `balances` is the per-wallet dict (address -> XRP or None). It is
+    stored alongside the total so a later correction can be audited
+    against what was actually read, not just the aggregate.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO evernorth_daily_snapshot "
+                "  (snapshot_date, taken_at, total_xrp, readable_count,"
+                "   wallet_count, balances) "
+                "VALUES (%s, %s, %s, %s, %s, %s::jsonb) "
+                "ON CONFLICT (snapshot_date) DO UPDATE SET "
+                "  taken_at = EXCLUDED.taken_at, "
+                "  total_xrp = EXCLUDED.total_xrp, "
+                "  readable_count = EXCLUDED.readable_count, "
+                "  wallet_count = EXCLUDED.wallet_count, "
+                "  balances = EXCLUDED.balances",
+                # json.dumps + ::jsonb is this module's house pattern (see
+                # write_mpt_snapshot); psycopg's Json adapter is not imported
+                # here and adding an import for one call site would diverge.
+                [snapshot_date, int(taken_at), total_xrp,
+                 int(readable_count), int(wallet_count),
+                 json.dumps(balances or {}, default=str)],
+            )
+    except Exception as e:  # noqa: BLE001 — a missed day must not break the walker
+        _log_err("write_evernorth_daily_snapshot_failed", e)
+
+
+def read_evernorth_daily_totals(limit=30):
+    """Newest-first daily totals for the card's history line.
+
+    Returns [] (never None) on PG unavailable or error, so the card can
+    simply omit the history rather than 500.
+    """
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT snapshot_date, total_xrp, readable_count, "
+                    "       wallet_count, taken_at "
+                    "  FROM evernorth_daily_snapshot "
+                    " ORDER BY snapshot_date DESC LIMIT %s",
+                    [int(limit)],
+                )
+                return [
+                    {
+                        "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                        "total_xrp": float(t) if t is not None else None,
+                        "readable_count": rc,
+                        "wallet_count": wc,
+                        "taken_at": ta,
+                    }
+                    for d, t, rc, wc, ta in cur.fetchall()
+                ]
+    except Exception:
+        return []
 
 
 def read_rwa_families():

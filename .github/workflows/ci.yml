@@ -270,3 +270,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_institutional_treasuries.py -q
+      # Evernorth daily treasury snapshot: Postgres writer + reader. Pins the
+      # UPSERT on snapshot_date (a retry must overwrite, not add a second
+      # point to the card's history line), json.dumps + ::jsonb as this
+      # module's house pattern (psycopg's Json adapter is NOT imported in
+      # db.py, so using it would NameError at runtime - ast.parse cannot
+      # catch that), an unreadable wallet stored as null and never 0, and
+      # both sides degrading (silent no-op write, [] read) instead of
+      # raising. Hermetic: fake connections, no DB, no network.
+      - name: evernorth daily snapshot store (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_evernorth_daily_snapshot.py -q
