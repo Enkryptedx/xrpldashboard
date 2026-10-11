@@ -6557,6 +6557,40 @@ def _activation_timeline_ctx(majority_reached_iso, activation_eta_iso,
     }
 
 
+# ── swallowed-failure logging (Charlie 2026-10-10) ────────────────────────
+# The render-killer guards below deliberately swallow failures so /amendments
+# never 500s. Until now they logged NOTHING, so a vanished roll-call card left
+# no trace at all: on 2026-10-10 a stale monkeypatch signature raised TypeError
+# inside one of these guards and the card simply disappeared, costing a full
+# bisect to find. One warning makes that a single log line instead.
+#
+# Rate limited to once per 10 minutes per (site, exception type): a persistent
+# failure cannot flood the log, while a NEW failure mode still surfaces on its
+# first occurrence rather than waiting out someone else's cooldown.
+_SILENT_GUARD_LOG_INTERVAL_S = 600
+_silent_guard_last_logged: dict[str, float] = {}
+
+
+def _log_silent_guard(where, exc):
+    """Warn once per interval per (site, error type). Returns True if logged.
+
+    monotonic() on purpose - a wall-clock jump must not unmute or mute this.
+    Never raises: a logging problem must not break the guard it reports on.
+    """
+    try:
+        key = f"{where}:{type(exc).__name__}"
+        now = time.monotonic()
+        last = _silent_guard_last_logged.get(key)
+        if last is not None and (now - last) < _SILENT_GUARD_LOG_INTERVAL_S:
+            return False
+        _silent_guard_last_logged[key] = now
+        app.logger.warning("%s unavailable (swallowed): %s: %s",
+                           where, type(exc).__name__, exc)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @app.route("/amendments")
 def amendments():
     """Live in-flight amendment tracker. Reads the public `feature` RPC
@@ -6625,13 +6659,15 @@ def amendments():
             _pulse = fetch_pulse_cached()
             if _pulse and not _pulse.get("error"):
                 _live_ledger = _pulse.get("ledger_index")
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            _log_silent_guard("network_pulse (flag counter)", e)
             _live_ledger = None
         roll_call = roll_call_card.load_for_page(
             state, majority_active=majority_active,
             current_validated_ledger=_live_ledger,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _log_silent_guard("roll_call_card", e)
         roll_call = None
     # ITEM A (Charlie 2026-10-02): the flag-ledger counter must show even when
     # the roll-call card is None (Postgres down / card disabled). Compute it

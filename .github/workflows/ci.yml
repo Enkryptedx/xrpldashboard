@@ -350,3 +350,67 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_whales_attributed_wallets.py -q
+      # /amendments compact stepper (2026-10-04, repaired 2026-10-10).
+      # Motivating fact: this file was RED and nobody knew, because it was
+      # never registered here - an unnamed test file simply never runs.
+      # Two stacked causes. (1) _amendments_rollcall_verdict.html (e31d3ee)
+      # landed AFTER this file and reads rc_row.spare_votes; Jinja RAISES on
+      # `Undefined > 0`, so one missing fixture key killed the ENTIRE
+      # /amendments render and all 25 failures read as "nothing rendered".
+      # (2) 56c6025 deleted the synthetic __enabled_example__ demo block, so
+      # the helper that injected it became a silent NO-OP and four tests
+      # failed looking exactly as if the OFFICIAL badge had been deleted. It
+      # had not: tl.enabled is live at amendments.html:546/:557, so those
+      # tests were RE-POINTED onto the real enabled render, not deleted.
+      # Pins: six compact stops per card; step wording word-for-word against
+      # a COMMITTED golden fixture (no `git show origin/main`, which skipped
+      # silently on this runner's depth-1 checkout); the Item 5 singular;
+      # step-2 gating; the OFFICIAL badge on step 5 only and never during
+      # countdown; the pure-CSS check mark, now also asserted to be APPLIED
+      # to real markup rather than merely defined in <style>.
+      # Hermetic: injected context + committed fixture, no DB, no network,
+      # and no git history (it must pass on a depth-1 clone).
+      - name: /amendments compact stepper + step wording (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_compact_steps.py -q
+      # Roll-call card route (repaired 2026-10-10). Motivating fact: this
+      # test's load_for_page fake had gone stale - current_validated_ledger
+      # was added to the real function, the route started passing it, the
+      # fake raised TypeError, and the route's `except Exception: roll_call =
+      # None` SWALLOWED it. So the card silently vanished and the test said
+      # "the card did not render" instead of "your fake is stale", costing a
+      # full diagnosis pass. The fake now binds the REAL signature inside
+      # *args/**kwargs, so a newly added parameter can never break it
+      # silently again. Pins the exact kwargs the route passes.
+      # Hermetic: monkeypatched loader, no DB, no network.
+      - name: roll-call card route + call shape (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_roll_call_card_route.py -q
+      # Verdict-partial contract (new 2026-10-10). The fixture drift above
+      # was only findable by hand, so this PARSES
+      # _amendments_rollcall_verdict.html for every rc_row.* / roll_call.*
+      # key it reads and asserts real build_card() supplies each one.
+      # Deliberately not a hardcoded list of names - a hardcoded list drifts
+      # exactly the way the fixtures did. Includes a guard-the-guard test so
+      # an empty parse cannot pass vacuously.
+      # Hermetic: template parse + real builder, no DB, no network.
+      - name: roll-call verdict partial contract (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_rollcall_verdict_contract.py -q
+      # Swallowed-failure logging (new 2026-10-10). The two render-killer
+      # guards on /amendments deliberately swallow failures so the page never
+      # 500s, but they logged NOTHING - a vanished roll-call card left no
+      # trace at all, which is what made the stale-fake bug above cost hours
+      # instead of one log line. Pins: both guard sites warn; rate limited to
+      # once per 10 min per (site, exception type) so a persistent failure
+      # cannot flood the log while a NEW failure mode still surfaces on its
+      # first occurrence; monotonic() so a wall-clock jump cannot mute it;
+      # and the logger never raises inside the guard it reports on.
+      # Hermetic: fake logger + injected clock, no DB, no network.
+      - name: swallowed render-killer logging (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_silent_guard_logging.py -q

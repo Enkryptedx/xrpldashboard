@@ -1,0 +1,64 @@
+{
+  "_what": "Golden baseline of the /amendments compact-stepper step wording, as rendered under the fixed test context in tests/test_amendments_compact_steps.py. Visible text only: tags and entities stripped, whitespace collapsed.",
+  "_why": "The two tests that consume this file used to shell out to `git show origin/main:templates/amendments.html` and pytest.skip() when that failed. ci.yml sets no fetch-depth, so actions/checkout@v4 gives a depth-1 clone with no origin/main ref - both tests SKIPPED SILENTLY on the runner while the job looked green, leaving the step wording unguarded on every push. Committing the baseline means they always run.",
+  "_how_to_refresh": [
+    "ONLY refresh when a wording change is intentional and approved.",
+    "A failure here is the guard doing its job. Refreshing to silence a",
+    "diff you did not intend defeats the entire point of the file.",
+    "",
+    "1. Make the approved wording change in templates/amendments.html.",
+    "2. Regenerate from the working-tree render:",
+    "     UPDATE_STEP_WORDING_GOLDEN=1 pytest tests/test_amendments_compact_steps.py -k wording -q",
+    "   (inside the usual hermetic env:",
+    "     env -i PATH=\"$PWD/.civ/bin:/usr/bin:/bin\" HOME=\"$PWD\" \\",
+    "       DATABASE_URL=\"\" bash -c 'cd \"$PWD\" && <command above>' )",
+    "3. Re-run WITHOUT the env var; both wording tests must pass.",
+    "4. git diff this file, read every changed string, and commit it in",
+    "   the SAME commit as the template change so the pair is reviewable.",
+    "",
+    "Do not hand-edit the strings below - regenerate, so the baseline",
+    "always reflects a real render rather than someone's expectation.",
+    "",
+    "NOTE on the _item5 test: the Item 5 singular fix ('1 hours' ->",
+    "'1 hour') is ALREADY merged into main, so the baseline already holds",
+    "the singular and there is no raw diff left for that test to explain.",
+    "Its loop is therefore empty by design now; it keeps working because",
+    "its second half pins the singular wording positively instead."
+  ],
+  "_captured_from": "working-tree render at refresh time",
+  "cards": [
+    {
+      "name": "PermissionDelegationV1_1",
+      "steps": [
+        "NOW Support holds for two weeks 10 days 1 hour of 14 · activates Thu Oct 8, 5:25 PM ET (21:25 UTC) More than 80 percent of trusted validators must vote yes and keep voting yes for 14 straight days. If support drops, the 14 days start over.",
+        "WAITING Wait for the next flag ledger 41 ledgers remaining · next flag ledger 107,437,056 “Every 256th ledger is called a flag ledger.” — xrpl.org Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The process starts at the first flag ledger after the 14 days are up, not the moment they end. The amendment goes active two ledgers after that flag ledger.",
+        "WAITING The network records the change flag ledger 107,437,057 “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened” — xrpl.org In the next ledger after the flag ledger, about 4 seconds later, the network adds a system entry called EnableAmendment. No person sends it.",
+        "WAITING The amendment turns on flag ledger 107,437,058 “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.” — xrpl.org In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.",
+        "WAITING It becomes permanent “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.” — xrpl.org Once it is on, it stays on. Only a new amendment can remove it.",
+        "WAITING Old servers fall behind “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.” — xrpl.org A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades."
+      ]
+    },
+    {
+      "name": "fixBatchV1_2",
+      "steps": [
+        "NOW Support holds for two weeks 10 days 1 hour of 14 · activates Fri Oct 9, 11:00 AM ET (15:00 UTC) More than 80 percent of trusted validators must vote yes and keep voting yes for 14 straight days. If support drops, the 14 days start over.",
+        "WAITING Wait for the next flag ledger 41 ledgers remaining · next flag ledger 107,437,056 “Every 256th ledger is called a flag ledger.” — xrpl.org Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The process starts at the first flag ledger after the 14 days are up, not the moment they end. The amendment goes active two ledgers after that flag ledger.",
+        "WAITING The network records the change flag ledger 107,437,057 “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened” — xrpl.org In the next ledger after the flag ledger, about 4 seconds later, the network adds a system entry called EnableAmendment. No person sends it.",
+        "WAITING The amendment turns on flag ledger 107,437,058 “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.” — xrpl.org In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.",
+        "WAITING It becomes permanent “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.” — xrpl.org Once it is on, it stays on. Only a new amendment can remove it.",
+        "WAITING Old servers fall behind “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.” — xrpl.org A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades."
+      ]
+    },
+    {
+      "name": "BatchV1_1",
+      "steps": [
+        "NOW Support holds for two weeks 10 days 1 hour of 14 · activates Sat Oct 10, 8:00 AM ET (12:00 UTC) More than 80 percent of trusted validators must vote yes and keep voting yes for 14 straight days. If support drops, the 14 days start over.",
+        "WAITING Wait for the next flag ledger 41 ledgers remaining · next flag ledger 107,437,056 “Every 256th ledger is called a flag ledger.” — xrpl.org Votes are counted only at a flag ledger, which comes about every 16.5 minutes. The process starts at the first flag ledger after the 14 days are up, not the moment they end. The amendment goes active two ledgers after that flag ledger.",
+        "WAITING The network records the change flag ledger 107,437,057 “Flag Ledger +1: Servers insert an EnableAmendment pseudo-transaction and flag based on what they think happened” — xrpl.org In the next ledger after the flag ledger, about 4 seconds later, the network adds a system entry called EnableAmendment. No person sends it.",
+        "WAITING The amendment turns on flag ledger 107,437,058 “Flag Ledger +2: Enabled amendments apply to transactions on this ledger onwards.” — xrpl.org In the ledger after that, about 4 seconds later again, the amendment is active. Its rules apply from that ledger onward.",
+        "WAITING It becomes permanent “If an amendment receives more than 80% support for two weeks, the amendment passes and the change applies permanently to all subsequent ledger versions.” — xrpl.org Once it is on, it stays on. Only a new amendment can remove it.",
+        "WAITING Old servers fall behind “When an amendment is enabled, servers running earlier versions of xrpld without the amendment's source code no longer understand the rules of the network.” — xrpl.org A server that has not upgraded no longer understands the new rules. It becomes amendment blocked and stops keeping up until it upgrades."
+      ]
+    }
+  ]
+}
