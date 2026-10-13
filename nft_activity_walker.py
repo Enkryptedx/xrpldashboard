@@ -44,6 +44,7 @@ See: memory/feedback_nft_churn_intra_collection_only.md
 
 import argparse
 import nft_type_rollup  # pure merge for nft_activity_type_rollup (2026-09-26)
+import nft_summary_telemetry  # per-stage timings + wait sampling (2026-10-13)
 import datetime
 import logging
 import sys
@@ -576,12 +577,22 @@ def run_summary():
     counts_all = {}
     top_issuers = []
 
+    # 2026-10-13: per-stage telemetry. Three statement_timeouts (17:49,
+    # 17:59, 18:09 ET) could not be reproduced afterwards -- every stage
+    # timed clean, totalling 2.45s against a 25s ceiling. See
+    # nft_summary_telemetry for the four hypotheses tested and rejected.
+    # Rather than guess a fifth time, make the next slow cycle name its own
+    # stage, its wait classes, and what else was running in Postgres.
+    tele = nft_summary_telemetry.begin_run()
+
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
             # All-time aggregates come from the incremental rollup (Charlie
             # 2026-09-26): fold in only rows past the watermark, never the
             # whole table. A missing/unseeded rollup fails LOUD — the seed
             # is a one-time manual full scan (see nft_type_rollup.py).
+            tele.attach_sampler(cur)
+            tele.timer.stage("rollup_read")
             state = db.read_nft_activity_type_rollup(cur)
             if state is None or int(state["through_id"]) <= 0:
                 raise RuntimeError(
@@ -589,6 +600,7 @@ def run_summary():
                     "seed (full_scan_nft_type_state with statement_timeout=0) "
                     "before --mode summary"
                 )
+            tele.timer.stage("delta_read_merge_write")
             delta = db.read_nft_type_delta(cur, state["through_id"])
             state = nft_type_rollup.advance(state, delta)
             db.write_nft_activity_type_rollup(cur, state)
@@ -607,6 +619,7 @@ def run_summary():
             # `(%s)::interval` — INTERVAL wants a literal, not a bound param;
             # casting the bound value is the shape that parses. Same idiom as
             # the old inline /nfts query this replaces.
+            tele.timer.stage("windows_24h_7d")
             for label, interval in (("24h", "24 hours"), ("7d", "7 days")):
                 cur.execute(
                     "SELECT tx_type, COUNT(*) FROM nft_activity "
@@ -620,6 +633,7 @@ def run_summary():
                 else:
                     counts_7d = bucket
 
+            tele.timer.stage("top_issuers")
             cur.execute(
                 "SELECT issuer, COUNT(*) AS events FROM nft_activity "
                 "WHERE issuer IS NOT NULL "
@@ -641,12 +655,18 @@ def run_summary():
         top_issuers=top_issuers,
     )
 
+    # Closes the final stage, stops the sampler, and returns the one-line
+    # per-stage breakdown. Logged on EVERY run, not just failures, so the
+    # healthy baseline is on record to compare a slow cycle against.
+    _tele = nft_summary_telemetry.end_run()
+
     return True, (
         f"total_events={total_events} "
         f"types_all={len(counts_all)} types_24h={len(counts_24h)} "
         f"top_issuers={len(top_issuers)} "
         f"range={range_start_date}..{range_end_date} "
-        f"rollup_through_id={state['through_id']} rollup_added={rollup_added}"
+        f"rollup_through_id={state['through_id']} rollup_added={rollup_added} "
+        f"{_tele}"
     )
 
 
@@ -760,6 +780,18 @@ def main():
     except Exception as exc:
         message = f"exception: {type(exc).__name__}: {exc}"
         logger.exception("mode=%s failed", args.mode)
+        # 2026-10-13: on failure, record WHICH stage died, how long each
+        # stage took, the wait-class split, and what else was running in
+        # Postgres at that moment. The 17:49-18:09 timeouts left none of
+        # that behind, which is why four hypotheses had to be tested and
+        # rejected after the fact. Wrapped: telemetry must never mask the
+        # real exception.
+        try:
+            _report = nft_summary_telemetry.failure_report()
+            logger.error("mode=%s telemetry: %s", args.mode, _report)
+            message = f"{message} | {_report}"
+        except Exception as _terr:
+            logger.error("telemetry report failed: %s", _terr)
     finally:
         db.write_walker_health_end(
             walker_health_name,
