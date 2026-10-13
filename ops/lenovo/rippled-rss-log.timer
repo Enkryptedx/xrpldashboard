@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly rippled RSS sample
+
+[Timer]
+OnCalendar=hourly
+# Persistent=true is CORRECT here: a missed sample should be taken at boot.
+# (Contrast the restart timer, where Persistent MUST be false.)
+Persistent=true
+AccuracySec=1min
+Unit=rippled-rss-log.service
+
+[Install]
+WantedBy=timers.target

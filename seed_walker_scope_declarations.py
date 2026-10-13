@@ -214,8 +214,20 @@ SCOPES = [
     ),
     (
         "nft_activity_backfill",
-        "backward-walk bounded by 2026-04-01 cutoff (ledger 103252853)",
-        "Walks backward from the forward-cursor's seed ledger toward "
+        "PAUSED (intentional) — backward-walk bounded by 2026-04-01 "
+        "cutoff (ledger 103252853)",
+        "PAUSED 2026-10-12 (intentional, see pending NFT fix). Its launchd "
+        "job is unloaded, so it cannot refresh walker_health and was "
+        "paging the canary on a walker that is not scheduled to run. "
+        "cadence_seconds is NULLed in walker_health so "
+        "compute_walker_staleness() treats it as never-STALE (db.py:2985, "
+        "the documented path for event-triggered / manual / paused "
+        "walkers). The row is deliberately KEPT so /coverage still lists "
+        "it as paused rather than silently dropping it. Restore by "
+        "reloading the launchd job — the walker re-declares "
+        "cadence_seconds=900 on its next write_walker_health_start(). "
+        "Scope when running: walks backward from the forward-cursor's "
+        "seed ledger toward "
         "ledger 103252853 (2026-04-01 00:00:00 UTC, binary-searched via "
         "s2-clio.ripple.com on 2026-07-04). NFT activity BEFORE this "
         "cutoff is permanently absent — /nfts 'all-time' claims must be "
