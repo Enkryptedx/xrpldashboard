@@ -1,0 +1,19 @@
+[Unit]
+Description=Weekly rippled restart timer (Sunday 03:00 America/New_York)
+
+[Timer]
+# Local-zone form keeps this at 03:00 ET year-round. The host clock reports
+# UTC, so the plain "Sun 07:00 UTC" form would silently drift to 02:00 ET
+# when EST starts on 2026-11-01. Requires systemd >= 240 for the timezone
+# suffix -- VERIFY with `systemctl --version` before installing, and fall
+# back to `OnCalendar=Sun 07:00:00 UTC` (accepting the DST drift) if older.
+OnCalendar=Sun 03:00:00 America/New_York
+# Persistent MUST stay false: a missed window must NOT trigger a surprise
+# restart at next boot.
+Persistent=false
+# Avoid colliding with the 22:00 ET pg_backup and the 01:00 ET canary.
+RandomizedDelaySec=0
+Unit=rippled-weekly-restart.service
+
+[Install]
+WantedBy=timers.target

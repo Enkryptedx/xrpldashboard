@@ -223,6 +223,30 @@ def run():
         window_end = now - IN_FLIGHT_SECS  # exclude in-flight rows
 
         with db.rpc_loop_safe_pg_connect() as conn:
+            # 2026-10-13 (Charlie): raise the statement ceiling for THIS
+            # canary's connection ONLY. db.rpc_loop_safe_pg_connect() applies
+            # `SET statement_timeout = '25s'` post-connect and is shared by
+            # every RPC-loop walker, so widening it there would quietly lift
+            # the cap for all of them. Re-SET on this connection instead:
+            # the setting is session-scoped, so it dies with the conn.
+            #
+            # History: the 2026-10-09 FAILs were this same 25s cap at a
+            # 716,462,641 plan cost. 7d83d1d (2026-10-10 09:31) fixed that
+            # with the DISTINCT dedupe (~1,477x cheaper) and the 10-10 10:17
+            # run went green. It has failed every run since (10-11, 10-12,
+            # 10-13), so the DEDUPED plan has itself outgrown 25s as
+            # page_views kept growing — a second, later regression, not the
+            # Oct 9 one. The unbounded session window is deliberate (a
+            # visitor seen botting at ANY time taints the session), so the
+            # fix cannot be a ts bound; give the statement room instead.
+            #
+            # 180s is safe: this canary runs daily (cadence 86400s), holds no
+            # locks (pure COUNT reads), and is the only consumer of this
+            # connection. A query that cannot finish in 180s is a real
+            # regression worth failing on.
+            with conn.cursor() as _cur:
+                _cur.execute("SET statement_timeout = '180s'")
+
             # ── Window 1: trailing 7 days ──────────────────────────────────
             # This is the primary liveness check. Any drift in recent data
             # shows up here within one day of the drift occurring.

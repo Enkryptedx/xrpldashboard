@@ -1,0 +1,22 @@
+# Hourly RSS/swap sample for rippled (xrpld-main).
+#
+# WHY: as of 2026-10-13 sar shows RAM flat (%memused 51.3-52.7%, no trend)
+# while swap climbs monotonically 9/9 days: 2.11 GB -> 3.39 GB, ~+142 MB/day,
+# leaving ~33 days of headroom. sar does not retain per-process RSS, so
+# "slow leak" and "node_size=huge cache that simply does not fit" are
+# indistinguishable from what we currently keep. This closes that gap.
+#
+# READ IT ACROSS A RESTART BOUNDARY:
+#   RSS climbs, drops at restart, climbs again at the same rate -> leak
+#   RSS rises then PLATEAUS below the restart point -> cache fill, sizing
+#
+# Body deliberately lives in /usr/local/bin/rippled-rss-sample.sh, not inline:
+# an inline ExecStart was rejected by systemd because `%` is the specifier
+# prefix (see the script header for the exact error).
+[Unit]
+Description=Sample rippled (xrpld-main) RSS + swap to /var/log/rippled-rss.log
+Documentation=https://github.com/Enkryptedx/xrpldashboard
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rippled-rss-sample.sh

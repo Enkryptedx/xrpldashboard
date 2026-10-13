@@ -36,8 +36,23 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 WALKER_NAME = "supply_escrow_walker"
-CADENCE_SECONDS = int(os.environ.get("SUPPLY_ESCROW_CADENCE_SECONDS", "900"))
-ENUM_HARD_CAP_SECONDS = int(os.environ.get("SUPPLY_ESCROW_HARD_CAP_SECONDS", "1200"))
+# 2026-10-13 (Charlie): cadence 900 -> 3600, cap 1200 -> 2700, changed TOGETHER.
+# The old pair was incoherent: cadence (900s) was SHORTER than the hard cap
+# (1200s), so any run that hit the cap overran its own interval and launchd
+# relaunched it the instant it exited. Result on 2026-10-12/13 was 44
+# consecutive capped failures with zero idle time, continuously hammering our
+# own rippled node. The cap must always be LESS than the cadence so a
+# worst-case run still leaves a gap.
+#
+# Why 2700: the last successful walk did 78,215 pages in 860s (90.9 pages/s,
+# matching the 2026-09-24 design note). Throughput has since fallen to ~37
+# pages/s (44,512 pages before the 1200s cap), so the same walk now needs
+# ~2,100s. 2700 clears that with ~30% headroom; 3600 cadence keeps >= 900s
+# idle even in the worst case. If the node returns to ~91 pages/s the walk is
+# back to ~860s and the extra ceiling simply goes unused.
+# Both remain env-overridable; keep plist StartInterval == CADENCE_SECONDS.
+CADENCE_SECONDS = int(os.environ.get("SUPPLY_ESCROW_CADENCE_SECONDS", "3600"))
+ENUM_HARD_CAP_SECONDS = int(os.environ.get("SUPPLY_ESCROW_HARD_CAP_SECONDS", "2700"))
 LEDGER_DATA_PAGE_LIMIT = 400
 XRP_DROPS_PER_XRP = 1_000_000
 

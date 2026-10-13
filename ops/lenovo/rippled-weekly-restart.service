@@ -1,0 +1,14 @@
+# Weekly rippled restart to reset the observed swap creep (~142 MB/day).
+# MITIGATION, not a fix. NOT INSTALLED YET - logger first, so the restart
+# does not destroy the baseline needed to tell leak from cache growth.
+[Unit]
+Description=Weekly restart of rippled (swap-creep mitigation)
+Documentation=https://github.com/Enkryptedx/xrpldashboard
+Before=shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+# Labelled pre-restart sample gives the log a clean pre/post pair.
+ExecStartPre=/usr/local/bin/rippled-rss-sample.sh PRE_RESTART
+ExecStart=/bin/systemctl --no-block restart rippled
