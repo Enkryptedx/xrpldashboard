@@ -1,0 +1,94 @@
+-- nft_activity: index close_time, and a warning about ANALYZE on this table.
+--
+-- Applied live 2026-10-13 18:46 ET (built in 4.8s, 128 MB, indisvalid=true).
+-- This file RECORDS that change so a rebuilt database reaches the same state;
+-- it is idempotent and safe to re-run.
+--
+-- ---------------------------------------------------------------------------
+-- WHY
+-- ---------------------------------------------------------------------------
+-- nft_activity_walker --mode summary runs three windowed aggregates every
+-- 300s, all filtering on close_time alone:
+--
+--   A  SELECT tx_type, COUNT(*) ... WHERE close_time >= NOW() - '24 hours'
+--   B  SELECT tx_type, COUNT(*) ... WHERE close_time >= NOW() - '7 days'
+--   C  SELECT issuer,  COUNT(*) ... WHERE issuer IS NOT NULL
+--                                     AND close_time >= NOW() - '7 days'
+--
+-- Before this index the table had NO index leading on close_time:
+--
+--   nft_activity_type_time_idx        btree (tx_type, close_time)
+--   nft_activity_collection_time_idx  btree (issuer, taxon, close_time)
+--   nft_activity_nftoken_idx          btree (nftoken_id)
+--   nft_activity_pkey                 btree (id)
+--   nft_activity_tx_hash_key          btree (tx_hash)
+--
+-- so close_time predicates could only be served by traversing
+-- type_time_idx with close_time as a NON-leading column.
+--
+-- ---------------------------------------------------------------------------
+-- !! DO NOT RUN `ANALYZE nft_activity` AS A STANDALONE FIX !!
+-- ---------------------------------------------------------------------------
+-- Measured on 2026-10-13, each value an EXPLAIN (ANALYZE, BUFFERS) wall time:
+--
+--                   PRE-ANALYZE   POST-ANALYZE   POST-INDEX
+--   24h tx_type        0.76s         0.87s         0.07s   <- uses new index
+--   7d  tx_type        1.09s        11.90s         1.19s
+--   7d  top_issuers    1.04s         2.08s         1.19s
+--   -------------------------------------------------------
+--   TOTAL              2.90s        14.84s         2.45s   (25s timeout)
+--
+-- ANALYZE made this table 5x SLOWER. Pre-ANALYZE the row estimate for a 7-day
+-- window was 744 (true value ~166,000), and that underestimate accidentally
+-- kept the planner on an Index Only Scan over type_time_idx -- reading a
+-- 378 MB index and never touching the heap. With honest statistics the
+-- planner correctly judged ~2% of the table was wanted and switched to
+-- Parallel Seq Scan, which reads the ENTIRE 2.3 GB heap:
+--
+--   Buffers: shared hit=16 read=294,431 dirtied=59,060 written=58,968
+--
+-- shared_buffers is 294,408 kB (287 MB) against a 2,300 MB heap, so nothing
+-- stays cached: hit=16 of 294,431. Each run pulls ~4.6 GB from Neon network
+-- storage, and the hint-bit dirtying forces ~471 MB of writeback. The same
+-- query measured 1.19s and 9.96s on consecutive runs -- an 8x swing with no
+-- plan change. That I/O variance, not query cost, is the leading explanation
+-- for the intermittent statement_timeouts at 17:49 / 17:59 / 18:09 ET.
+--
+-- If you must refresh statistics here, build the covering indexes BELOW in
+-- the same change, or the 7d queries will regress to full-heap scans again.
+--
+-- ---------------------------------------------------------------------------
+-- WHAT THIS FIXES, AND WHAT IT DOES NOT
+-- ---------------------------------------------------------------------------
+-- Fixes query A: 0.76s -> 0.07s, a real range seek.
+-- Does NOT fix B or C: they also need tx_type / issuer, so an index-only path
+-- is impossible from close_time alone and the heap fetch keeps the planner on
+-- a seq scan. Recommended follow-up, NOT applied (needs its own review -- it
+-- adds ~2 x 150-400 MB and slows every INSERT into a hot walker table):
+--
+--   CREATE INDEX CONCURRENTLY nft_activity_close_time_tx_type_idx
+--       ON nft_activity (close_time, tx_type);
+--   CREATE INDEX CONCURRENTLY nft_activity_close_time_issuer_idx
+--       ON nft_activity (close_time, issuer) WHERE issuer IS NOT NULL;
+--
+-- Per-stage telemetry was added alongside this (nft_summary_telemetry.py) so
+-- the next slow cycle names its own stage and wait classes instead of being
+-- reconstructed after the fact.
+--
+-- ---------------------------------------------------------------------------
+-- OPERATIONAL NOTES
+-- ---------------------------------------------------------------------------
+--   * CONCURRENTLY cannot run inside a transaction block. psql runs each
+--     statement in its own implicit transaction, so this file is fine as-is,
+--     but a wrapper that opens BEGIN will fail -- and db.pg_connect() has
+--     autocommit=False, so it CANNOT be used to apply this.
+--   * CONCURRENTLY does not take a write lock; the walker keeps running.
+--   * On failure CONCURRENTLY leaves an INVALID index behind. Verify:
+--       SELECT indisvalid FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+--        WHERE c.relname='nft_activity_close_time_idx';
+--     If false: DROP INDEX nft_activity_close_time_idx; and re-run.
+--   * Observed build cost: 4.8s / 128 MB on 8,786,795 rows. Only the 2.3 GB
+--     heap is scanned -- the table's other 28 GB is TOAST and irrelevant here.
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS nft_activity_close_time_idx
+    ON nft_activity (close_time);
