@@ -454,3 +454,27 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_daemon_log_capper.py -q
+      # Escrow seed walk, stage 1 of the incremental redesign (new 2026-10-14).
+      # supply_escrow_walker recomputed XRP escrow supply by enumerating the
+      # whole ledger state tree hourly. Cost scales with total state size, not
+      # escrow count - 123 escrow objects per 500 pages against a ~78,215-page
+      # walk, so ~99.75% of traversal is discarded. Throughput fell 90.9 ->
+      # 23.7 pages/s while state grew only +0.4%, the walk stopped finishing
+      # inside its hard cap, and the walker was paused.
+      # Pins the owner-required seed properties: the pin is PROVABLE and fails
+      # closed (unparseable/empty complete_ledgers reads as NOT retained, so a
+      # blended two-ledger set is never trusted); the off-peak gate mirrors
+      # census_watcher and treats an unknown server_state as not-good; only
+      # LedgerEntryType == "Escrow" counts, with TokenEscrow and dict (IOU)
+      # Amounts REJECTED rather than coerced into drops; rows carry
+      # escrow_index so a page-aligned resume re-read is an idempotent UPSERT.
+      # Also pins the db API contract by AST-scanning every `db.X` the module
+      # calls - both of today's bugs were that shape (write_walker_health_finish
+      # shipped; psycopg Json caught pre-ship) - that db.py's DDL and its
+      # migration declare the same tables, and that httpx is silenced at import
+      # scope (the rlusd_refresher 80 MB lesson).
+      # Hermetic: pure functions + fakes, no DB, no network, main() never run.
+      - name: escrow seed walk stage 1 (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_seed_walk.py -q

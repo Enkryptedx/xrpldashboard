@@ -3902,6 +3902,246 @@ def ensure_evernorth_daily_snapshot_table():
         return False
 
 
+# ── Escrow incremental tracking, stage 1 ────────────────────────────────
+# See docs/ESCROW_INCREMENTAL_DESIGN_2026-10-14.md. Kept byte-aligned with
+# migrations/2026_10_14_escrow_set_and_seed_progress.sql; a test asserts both
+# declare the same tables, because a DDL that drifts from its migration is a
+# table whose shape depends on which path created it.
+_ESCROW_SET_DDL = """
+CREATE TABLE IF NOT EXISTS escrow_set (
+    escrow_index    TEXT PRIMARY KEY,
+    owner           TEXT    NOT NULL,
+    destination     TEXT,
+    amount_drops    NUMERIC NOT NULL,
+    sequence_num    BIGINT,
+    condition       TEXT,
+    finish_after    BIGINT,
+    cancel_after    BIGINT,
+    destination_tag BIGINT,
+    source_tag      BIGINT,
+    pinned_ledger   BIGINT  NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS escrow_set_pinned_ledger_idx
+    ON escrow_set (pinned_ledger);
+CREATE INDEX IF NOT EXISTS escrow_set_destination_idx
+    ON escrow_set (destination);
+CREATE TABLE IF NOT EXISTS escrow_seed_progress (
+    seed_id        BIGSERIAL PRIMARY KEY,
+    pinned_ledger  BIGINT      NOT NULL,
+    marker         JSONB,
+    pages_done     INTEGER     NOT NULL DEFAULT 0,
+    objects_seen   INTEGER     NOT NULL DEFAULT 0,
+    status         TEXT        NOT NULL DEFAULT 'running',
+    message        TEXT,
+    started_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at   TIMESTAMPTZ,
+    CONSTRAINT escrow_seed_progress_status_chk
+        CHECK (status IN ('running', 'completed', 'abandoned'))
+);
+CREATE INDEX IF NOT EXISTS escrow_seed_progress_status_idx
+    ON escrow_seed_progress (status, seed_id DESC);
+"""
+
+ESCROW_SEED_STATUSES = ("running", "completed", "abandoned")
+
+
+def ensure_escrow_set_tables():
+    """Create the escrow seed tables if missing. Called by the seed job
+    before it starts walking.
+
+    Same reasoning as ensure_evernorth_daily_snapshot_table: declaring the
+    tables in SCHEMA_DDL is NOT enough, because init_schema() is a manual
+    one-off that nothing runs at app boot. On 2026-10-10 that gap left
+    evernorth_daily_snapshot absent from production while every insert was
+    swallowed by a best-effort except. The job that owns the table
+    guarantees its own shape, so no owner-run migration step is needed.
+
+    Idempotent and best-effort: True when the tables are present afterwards,
+    False when PG is unavailable or the DDL failed.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_ESCROW_SET_DDL)
+        return True
+    except Exception as e:  # noqa: BLE001 — job must still try to write
+        _log_err("ensure_escrow_set_tables_failed", e)
+        return False
+
+
+def escrow_seed_start(pinned_ledger):
+    """Open a seed attempt against a PINNED ledger index; return its seed_id.
+
+    pinned_ledger is mandatory and is never 'validated'. A walk that lets the
+    ledger advance underneath it produces a blend of several ledger states,
+    which reconciles against nothing (design doc, "Seed").
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO escrow_seed_progress (pinned_ledger) "
+                "VALUES (%s) RETURNING seed_id",
+                (int(pinned_ledger),),
+            )
+            return cur.fetchone()[0]
+    except Exception as e:  # noqa: BLE001
+        _log_err("escrow_seed_start_failed", e)
+        return None
+
+
+def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen):
+    """Persist the resume point after a page.
+
+    This is what lets the seed run with NO hard cap: the cap is exactly what
+    was truncating walks mid-flight, so instead of bounding the walk we make
+    it restartable. marker=None means the walk is exhausted.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE escrow_seed_progress SET marker=%s::jsonb, "
+                "pages_done=%s, objects_seen=%s, updated_at=now() "
+                "WHERE seed_id=%s",
+                # json.dumps + ::jsonb is this module's house pattern (see
+                # write_evernorth_daily_snapshot / write_mpt_snapshot);
+                # psycopg's Json adapter is NOT imported here and adding an
+                # import for one call site would diverge.
+                (json.dumps(marker, default=str) if marker is not None
+                 else None,
+                 int(pages_done), int(objects_seen), int(seed_id)),
+            )
+        return True
+    except Exception as e:  # noqa: BLE001
+        _log_err("escrow_seed_checkpoint_failed", e)
+        return False
+
+
+def escrow_seed_finish(seed_id, status, message=None):
+    """Close a seed attempt as 'completed' or 'abandoned'.
+
+    'abandoned' is the correct outcome when the pinned ledger falls out of the
+    node's retained history: a set stitched across two pinned ledgers is the
+    blended-state bug, so it is never patched — a new attempt starts instead.
+    """
+    if status not in ESCROW_SEED_STATUSES:
+        raise ValueError(f"invalid seed status: {status!r}")
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE escrow_seed_progress SET status=%s, message=%s, "
+                "updated_at=now(), completed_at=now() WHERE seed_id=%s",
+                (status, message, int(seed_id)),
+            )
+        return True
+    except Exception as e:  # noqa: BLE001
+        _log_err("escrow_seed_finish_failed", e)
+        return False
+
+
+def escrow_seed_resumable():
+    """Return the newest still-'running' seed attempt, or None.
+
+    Shape: (seed_id, pinned_ledger, marker, pages_done, objects_seen).
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT seed_id, pinned_ledger, marker, pages_done, "
+                "objects_seen FROM escrow_seed_progress "
+                "WHERE status='running' ORDER BY seed_id DESC LIMIT 1"
+            )
+            return cur.fetchone()
+    except Exception as e:  # noqa: BLE001
+        _log_err("escrow_seed_resumable_failed", e)
+        return None
+
+
+def upsert_escrow_objects(rows, pinned_ledger):
+    """UPSERT escrow objects from one seed page. Returns rows written.
+
+    UPSERT on escrow_index so a resumed walk that re-reads a page it already
+    checkpointed is idempotent rather than a primary-key error — the resume
+    boundary is a page, so overlap is expected, not exceptional.
+    """
+    if not rows:
+        return 0
+    conn = _get_writer_conn()
+    if conn is None:
+        return 0
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO escrow_set (escrow_index, owner, destination, "
+                "amount_drops, sequence_num, condition, finish_after, "
+                "cancel_after, destination_tag, source_tag, pinned_ledger, "
+                "updated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now()) "
+                "ON CONFLICT (escrow_index) DO UPDATE SET "
+                "owner=EXCLUDED.owner, destination=EXCLUDED.destination, "
+                "amount_drops=EXCLUDED.amount_drops, "
+                "sequence_num=EXCLUDED.sequence_num, "
+                "condition=EXCLUDED.condition, "
+                "finish_after=EXCLUDED.finish_after, "
+                "cancel_after=EXCLUDED.cancel_after, "
+                "destination_tag=EXCLUDED.destination_tag, "
+                "source_tag=EXCLUDED.source_tag, "
+                "pinned_ledger=EXCLUDED.pinned_ledger, updated_at=now()",
+                [(r["escrow_index"], r["owner"], r.get("destination"),
+                  r["amount_drops"], r.get("sequence_num"),
+                  r.get("condition"), r.get("finish_after"),
+                  r.get("cancel_after"), r.get("destination_tag"),
+                  r.get("source_tag"), int(pinned_ledger)) for r in rows],
+            )
+        return len(rows)
+    except Exception as e:  # noqa: BLE001
+        _log_err("upsert_escrow_objects_failed", e)
+        return 0
+
+
+def escrow_set_totals(pinned_ledger=None):
+    """Return (object_count, total_drops) for the seeded escrow set.
+
+    Scoped to one pinned_ledger when given. Stage 3 compares this against a
+    full walk; a mismatch is an alarm, never a silent correction.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return (0, 0)
+    try:
+        with conn.cursor() as cur:
+            if pinned_ledger is None:
+                cur.execute(
+                    "SELECT count(*), COALESCE(sum(amount_drops),0) "
+                    "FROM escrow_set"
+                )
+            else:
+                cur.execute(
+                    "SELECT count(*), COALESCE(sum(amount_drops),0) "
+                    "FROM escrow_set WHERE pinned_ledger=%s",
+                    (int(pinned_ledger),),
+                )
+            row = cur.fetchone()
+            return (int(row[0]), int(row[1]))
+    except Exception as e:  # noqa: BLE001
+        _log_err("escrow_set_totals_failed", e)
+        return (0, 0)
+
+
 def write_evernorth_daily_snapshot(snapshot_date, taken_at, total_xrp,
                                    readable_count, wallet_count, balances):
     """Upsert one calendar day's Evernorth treasury reading.
