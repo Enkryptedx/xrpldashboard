@@ -2683,6 +2683,24 @@ def _build_xrp_distribution(ranked_full):
     amm_stale = amm_age is not None and amm_age > _XRP_AMM_STALE_AFTER
     wallets_stale = escrow_stale or amm_stale
 
+    # 2026-10-14: absolute as-of stamp for the escrow figure.
+    # supply_escrow_walker is being paused pending the incremental redesign
+    # (its full hourly state-tree walk fell from 90.9 to 23.7 pages/s and
+    # stopped finishing inside its hard cap). A purely RELATIVE age degrades
+    # into meaninglessness once refresh stops -- "6h ago" quietly becomes
+    # "73h ago" and then just a number counting up. An absolute instant stays
+    # honest no matter how long the pause lasts.
+    # Derived from the age we already have: sb_escrow carries only
+    # age_seconds, and plumbing a new field through
+    # supply_block.read_supply_block() would be a much larger change for the
+    # same result.
+    escrow_as_of_utc = (
+        datetime.fromtimestamp(time.time() - escrow_age, timezone.utc)
+        .strftime("%Y-%m-%d %H:%M UTC")
+        if escrow_age is not None
+        else None
+    )
+
     return {
         "total_xrp": total_xrp,
         "escrowed_xrp": escrowed_xrp,
@@ -2704,6 +2722,7 @@ def _build_xrp_distribution(ranked_full):
         "total_is_fallback": total_is_fallback,
         "burned_since_genesis_xrp": burned_since_genesis_xrp,
         "escrow_stale": escrow_stale,
+        "escrow_as_of_utc": escrow_as_of_utc,
         "amm_stale": amm_stale,
         "wallets_stale": wallets_stale,
         "server_time": int(time.time()),
