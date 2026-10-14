@@ -302,6 +302,21 @@ ALTER TABLE page_views ADD COLUMN IF NOT EXISTS ip_day_hash TEXT;
 -- written before this column landed (backfill from Render logs is
 -- possible if a future incident spans the boundary, but not routine).
 ALTER TABLE page_views ADD COLUMN IF NOT EXISTS status SMALLINT;
+-- is_poll: TRUE when the request was an auto-refresh / JS poll rather than
+-- a top-level navigation. Added 2026-10-14. templates/index.html refreshes
+-- its live panels with fetch(pathname + '?_=' + Date.now()) every ~30s, and
+-- because `path = request.path` drops the query string each one landed as a
+-- plain `/` pageview. Measured at the time: 45,593 of 80,078 all-time
+-- "human" pageviews (56.9%) were self-same-path refetches; `/` alone was
+-- 39,510 pv from 1,462 visitors, and one open tab produced 4,111 pageviews
+-- in 17.8 hours. UNIQUE VISITOR COUNTS WERE NEVER AFFECTED.
+-- A POLL IS NOT A BOT. This column never implies is_bot and must never feed
+-- a bot or crawler rule -- see poll_detection.py's HARD RULE. Readers that
+-- count PAGEVIEWS add `AND is_poll IS NOT TRUE`; readers that count
+-- VISITORS must NOT filter on it, or an engaged reader disappears.
+-- NULL (not FALSE) on navigations and on every row written before this
+-- column landed, matching how is_bot is stored. No history rewrite.
+ALTER TABLE page_views ADD COLUMN IF NOT EXISTS is_poll BOOLEAN;
 CREATE INDEX IF NOT EXISTS page_views_ts_idx ON page_views (ts DESC);
 CREATE INDEX IF NOT EXISTS page_views_path_ts_idx
     ON page_views (path, ts DESC);
@@ -2320,6 +2335,44 @@ def ensure_turnstile_verified_column():
             for s in stmts:
                 cur.execute(s)
         conn.commit()
+
+
+def ensure_page_views_is_poll_column():
+    """Idempotent boot-time migration: add `page_views.is_poll BOOLEAN`.
+
+    Same pattern and reasoning as ensure_turnstile_verified_column: declaring
+    the column in SCHEMA_DDL alone is NOT enough, because init_schema() is a
+    manual one-off that nothing runs at app boot -- the gap that left
+    evernorth_daily_snapshot absent from production on 2026-10-10 while every
+    insert was silently swallowed. `ADD COLUMN IF NOT EXISTS` on a nullable
+    BOOLEAN with no default is metadata-only, so this is safe against a large
+    page_views on Neon -- no table rewrite.
+
+    Deliberately NULLABLE with no default: pre-existing rows stay NULL rather
+    than being retroactively labelled, because we are explicitly NOT
+    rewriting history (Charlie, 2026-10-14). Readers test `is_poll IS NOT
+    TRUE` for pageview counts and must NOT filter it for visitor counts.
+
+    A POLL IS NOT A BOT -- this column must never feed a bot or crawler
+    rule. See poll_detection.py's HARD RULE.
+
+    Returns True when the column is present afterwards, False when PG is
+    unavailable or the DDL failed. Fail-open: boot must not die on this.
+    """
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "ALTER TABLE page_views "
+                    "ADD COLUMN IF NOT EXISTS is_poll BOOLEAN"
+                )
+            conn.commit()
+        return True
+    except Exception as e:  # noqa: BLE001 - boot must not fail on this
+        _log_err("ensure_page_views_is_poll_column_failed", e)
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -7637,7 +7690,7 @@ def _bot_filter_sql_lite(kind):
 def log_page_view(path, visitor_hash=None, referrer=None,
                   user_agent=None, country=None, utm_source=None,
                   ip_day_hash=None, region_code=None, status=None,
-                  is_bot=None):
+                  is_bot=None, is_poll=None):
     """Insert one page-view row. Best-effort: never raises. Uses the
     cached writer connection (same pattern as worker writes) so we don't
     eat connection-setup latency on every request.
@@ -7658,11 +7711,12 @@ def log_page_view(path, visitor_hash=None, referrer=None,
             cur.execute(
                 "INSERT INTO page_views "
                 "(ts, path, visitor_hash, referrer, user_agent, country, "
-                " utm_source, ip_day_hash, region_code, status, is_bot) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                " utm_source, ip_day_hash, region_code, status, is_bot, "
+                " is_poll) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (int(time.time()), path, visitor_hash,
                  referrer, user_agent, country, utm_source, ip_day_hash,
-                 region_code, status, is_bot),
+                 region_code, status, is_bot, is_poll),
             )
     except Exception as e:
         _log_err("log_page_view_failed", e)

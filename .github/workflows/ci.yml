@@ -478,3 +478,28 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_seed_walk.py -q
+      # Poll / auto-refresh must be TAGGED, never treated as a bot (new
+      # 2026-10-14). index.html refetches its own path every ~30s via
+      # fetch(); the ingest logs every GET, `/` is not skip-listed, and
+      # `path = request.path` drops the query string - so each refresh landed
+      # as a plain `/` pageview. Measured: 45,593 of 80,078 all-time "human"
+      # pageviews (56.9%) were self-same-path refetches; one open tab produced
+      # 4,111 pageviews in 17.8 hours and looked exactly like a crawler flood.
+      # Unique visitor counts were never affected.
+      # Pins all four fixes: the nullable no-default is_poll column plus its
+      # boot migration (history untouched), the Sec-Fetch-Dest gate WITH the
+      # absent-header fallback that keeps counting older clients, the explicit
+      # ?_live=1 marker (only the exact value "1"), and the wall-clock
+      # MIN_REFRESH_MS clamp derived from REFRESH_AT.
+      # Plus THE HARD RULE: an open tab at 0/1/120/4111 polls never sets
+      # is_bot, still counts as exactly one human visitor and exactly one
+      # pageview; poll_detection references no bot concept and
+      # public_analytics_filters references no poll concept; and an AST check
+      # proves is_bot at the ingest call site is derived from the self-probe
+      # predicate alone, never from the poll flag.
+      # Hermetic: pure functions + source/AST inspection, no DB, no network,
+      # and `app` is never imported (importing it makes live RPC calls).
+      - name: poll not pageview + hard rule (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_poll_detection.py -q

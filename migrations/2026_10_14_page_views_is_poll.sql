@@ -1,0 +1,52 @@
+-- page_views.is_poll — tag auto-refresh / JS-poll requests so they stop
+-- being counted as pageviews (2026-10-14).
+--
+-- WHAT WAS WRONG
+-- templates/index.html refreshes its live panels with
+--   fetch(window.location.pathname + '?_=' + Date.now())
+-- every ~30s while the tab is visible. The ingest (app._log_page_view) is an
+-- @after_request hook that logs EVERY GET; `/` is not skip-listed; and
+-- nothing in it distinguished a fetch() from a navigation. Because
+-- `path = request.path` drops the query string, every refresh landed as a
+-- plain `/` pageview.
+--
+-- MEASURED 2026-10-14 (read-only, jj_ro):
+--   45,593 of 80,078 all-time "human" pageviews = 56.9% were
+--   self-same-path refetches.
+--   `/` alone: 39,510 pv from 1,462 visitors.
+--   `/analytics`: 1,506 pv from 59 visitors. `/amendments`: only 350.
+--   One Korean visitor produced 4,111 pageviews in 17.8 hours from a single
+--   open tab — a hit every ~15.6s, which had looked exactly like a crawler
+--   flood and nearly got that reader classified as a bot.
+--   UNIQUE VISITOR COUNTS WERE NEVER AFFECTED — only pageviews inflated.
+--
+-- The identical bug was already known and fixed for `/analytics/live`, which
+-- is skip-listed with the comment "fires every 15s from the /analytics JS
+-- interval; must not appear in page_views or it inflates RIGHT NOW counts".
+-- The homepage refresh reintroduced it by re-fetching `/` itself.
+--
+-- A POLL IS NOT A BOT (hard rule, Charlie 2026-10-14). This column never
+-- implies is_bot, never reduces a visitor's human status, and must never
+-- feed a bot or crawler rule. A tab open 17 hours is a highly engaged
+-- reader. See poll_detection.py and tests/test_poll_detection.py.
+--
+-- READER CONTRACT
+--   PAGEVIEW counts:  ... AND is_poll IS NOT TRUE
+--   VISITOR counts:   do NOT filter on is_poll, or an engaged reader
+--                     vanishes from the unique-visitor total.
+--
+-- NULLABLE with no DEFAULT on purpose: every row written before this column
+-- landed stays NULL, because we are explicitly NOT rewriting history. The
+-- historical pageview series keeps its published values and carries a dated
+-- note instead. `ADD COLUMN IF NOT EXISTS` on a nullable BOOLEAN with no
+-- default is metadata-only on PG 11+, so this is safe against a large
+-- page_views on Neon — no table rewrite.
+--
+-- Applied automatically at app boot by db.ensure_page_views_is_poll_column(),
+-- called from app.py alongside the other targeted migrations, so no
+-- owner-run step is required. Declared in db.py SCHEMA_DDL as well, but do
+-- NOT rely on that alone: init_schema() is a manual one-off that nothing
+-- runs at boot — the gap that left evernorth_daily_snapshot absent from
+-- production on 2026-10-10 while every insert was silently swallowed.
+
+ALTER TABLE page_views ADD COLUMN IF NOT EXISTS is_poll BOOLEAN;
