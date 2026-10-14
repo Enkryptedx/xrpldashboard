@@ -414,3 +414,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_silent_guard_logging.py -q
+      # Paused-walker declaration durability (new 2026-10-14).
+      # supply_escrow_walker was paused and its "paused, intentional" note was
+      # written STRAIGHT TO THE DB - it had never been in the seeder at all.
+      # That is not just undocumented: seed_walker_scope_declarations.main()
+      # computes `stale = existing - valid_names` from SCOPES and DELETEs every
+      # DB row not listed there, so the next seeder run would have purged the
+      # hand-written row and silently reverted the walker to UNDECLARED on
+      # /coverage. Pins: the entry exists, it is inside the same valid_names set
+      # the purge arm spares, it declares itself PAUSED/intentional, the note
+      # keeps WHY (the 90.9 -> 23.7 pages/s degradation) plus the disclosure and
+      # restore path, honest_partial is True, names are unique, and every entry
+      # is a well-formed 4-tuple so main() cannot blow up mid-run AFTER purging.
+      # Includes a guard-the-guard test so an emptied SCOPES cannot pass
+      # vacuously.
+      # Hermetic: inspects SCOPES in memory, main() never called, no DB.
+      - name: paused walker scope declaration (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_walker_scope_declarations_paused.py -q

@@ -190,6 +190,30 @@ SCOPES = [
         True,
     ),
     (
+        "supply_escrow_walker",
+        "PAUSED (intentional) — full escrow object enumeration on own "
+        "node, pending incremental stream-tracking redesign",
+        "PAUSED 2026-10-14 (intentional, see escrow redesign). Its launchd "
+        "job is booted out, so it cannot refresh walker_health and would "
+        "otherwise page the canary on a walker that is not scheduled to "
+        "run. cadence_seconds is NULLed in walker_health so "
+        "compute_walker_staleness() treats it as never-STALE (db.py:2985, "
+        "the documented path for event-triggered / manual / paused "
+        "walkers). The row is deliberately KEPT so /coverage still lists "
+        "it as paused rather than silently dropping it. WHY PAUSED: the "
+        "full ledger_data(type=escrow) state-tree enumeration degraded "
+        "from 90.9 to 23.7 pages/s and stopped finishing inside its hard "
+        "cap, so passes were being cut off mid-walk. Pending replacement "
+        "is an incremental EscrowCreate/EscrowFinish/EscrowCancel stream "
+        "tracker rather than a full re-enumeration every cycle. The "
+        "homepage escrow figure is stamped 'as of <UTC>' + 'refresh "
+        "paused' in amber while this is paused (commit f6dd8f6), so the "
+        "frozen number is disclosed, not presented as current. Restore by "
+        "reloading the launchd job — the walker re-declares "
+        "cadence_seconds on its next write_walker_health_start().",
+        True,
+    ),
+    (
         "oracle_walker",
         "category='oracle' rows in named_accounts.json (v1 = DIA only)",
         "AccountObjects(type='oracle') for the curated cohort tagged "
