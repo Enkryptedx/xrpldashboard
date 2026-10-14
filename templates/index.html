@@ -865,7 +865,14 @@
     <section class="xrp-constellation" aria-label="{{ _('XRP supply distribution') }}">
       <div class="xrp-constell-head">
         <h2>{{ _('XRP supply distribution') }}</h2>
-        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share from our own node · totals updated every ~60s, escrow every ~15 min') }}</div>
+        {# 2026-10-14: dropped the "escrow every ~15 min" claim. It was wrong
+           twice over: the walker's cadence had already moved to 3600s, and it
+           is now PAUSED pending the incremental redesign. Stating a refresh
+           interval for a walker that is switched off is the one thing this
+           subtitle must not do -- the escrow figure is a trust surface, and
+           the point of stamping it is that the stamp not lie. The as-of
+           instant now carries the freshness claim instead of a cadence. #}
+        <div class="xc-sub">{{ _('100B design supply · escrow + AMM share from our own node · totals updated every ~60s · escrow refresh paused — see as-of stamp below') }}</div>
       </div>
       <div class="xrp-constell-svg-wrap">
         <svg class="xrp-constell-svg" viewBox="0 0 520 320" role="img"
@@ -944,14 +951,30 @@
           {% elif xd.total_age_seconds is not none %}
           <span style="color: rgba(255,255,255,0.5);">{{ _('cached') }} · {{ (xd.total_age_seconds // 3600)|int }}h {{ _('ago') }}</span><br>
           {% endif %}
-          {# ESCROW side (slow walker, 15-min cadence) — its own ledger stamp #}
+          {# ESCROW side — a point-in-time snapshot, NOT a live figure.
+             supply_escrow_walker is paused pending the incremental redesign:
+             its full hourly state-tree walk fell from 90.9 to 23.7 pages/s
+             and stopped finishing inside its hard cap.
+
+             Until 2026-10-14, app.py computed escrow_stale and passed it here
+             (app.py:2706) and NO template ever read it -- so a 6h-old figure
+             rendered pixel-identical to a 30s-old one. That is now wired up:
+             amber + a warning glyph + an explicit "refresh paused" suffix.
+
+             The absolute as-of instant is preferred over the relative age
+             because a relative age degrades once refresh stops: "6h ago"
+             silently becomes "73h ago" and then just a number ticking up. The
+             relative age is kept as the fallback for when no absolute stamp
+             is available. #}
           {% if xd.escrow_ledger_index and xd.escrow_age_seconds is not none %}
-          <span style="color: rgba(255,255,255,0.55);">{{ _('escrow') }}:
+          <span style="color: {% if xd.escrow_stale %}rgba(255,193,7,0.92){% else %}rgba(255,255,255,0.55){% endif %};">
+            {% if xd.escrow_stale %}⚠ {% endif %}{{ _('escrow') }}:
             {{ _('ledger') }} #{{ "{:,}".format(xd.escrow_ledger_index) }} ·
+            {% if xd.escrow_as_of_utc %}{{ _('as of') }} {{ xd.escrow_as_of_utc }}{% else %}
             {% if xd.escrow_age_seconds < 120 %}{{ xd.escrow_age_seconds|int }}s
             {% elif xd.escrow_age_seconds < 3600 %}{{ (xd.escrow_age_seconds // 60)|int }}m
-            {% else %}{{ (xd.escrow_age_seconds // 3600)|int }}h{% endif %}
-            {{ _('ago') }}</span>
+            {% else %}{{ (xd.escrow_age_seconds // 3600)|int }}h{% endif %} {{ _('ago') }}{% endif %}
+            {% if xd.escrow_stale %} · {{ _('refresh paused') }}{% endif %}</span>
           {% endif %}
         {% endif %}
       </div>
