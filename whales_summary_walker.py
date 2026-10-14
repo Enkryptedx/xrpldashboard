@@ -34,6 +34,7 @@ ever miss with an empty summary row is the "warming up" state).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import time
@@ -42,6 +43,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import db  # noqa: E402
+
+# 2026-10-14 (Charlie): httpx logs EVERY request at INFO. This walker's
+# err.log reached 514 MB with ~65,466 httpx records in the last 20 MB sampled,
+# and nothing rotating it. Note this file configures NO logging of its own --
+# the rich-formatted output (the "_client.py:NNN" suffix, and lines wrapped
+# across two physical rows, which is why a naive line count over-reports) is a
+# side effect of `import app` inside run() at module scope far below. Setting
+# the LEVEL here is still correct and order-independent: a logger's level
+# filters records before any handler sees them, so it holds whichever handler
+# app installs, and app.py sets no httpx level to override it (verified).
+# `import logging` was added above for this -- the file had none.
+# WARNING keeps real transport failures (timeouts, 5xx, resets) visible --
+# only routine 200s are suppressed.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 WALKER_NAME = "whales_summary_walker"

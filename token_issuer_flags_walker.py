@@ -56,6 +56,18 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# 2026-10-14 (Charlie): httpx logs EVERY request at INFO. This walker's
+# err.log reached 1.4 GB with 172,379 httpx lines against 39 real ones in the
+# last 20 MB sampled -- a 4,420:1 noise ratio, and nothing rotating it. The
+# lines carry no row count, ledger or elapsed, so they add no diagnostic
+# value; the walker's own "PASS: wrote N rows ... elapsed=Ns" line is the
+# signal. Same fix already applied to supply_escrow_walker (7.2 GB) and
+# rlusd_refresher_walker.
+# WARNING keeps real transport failures (timeouts, 5xx, resets) visible --
+# only routine 200s are suppressed.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 WALKER_NAME = "token_issuer_flags_walker"
 WALKER_CADENCE_SECONDS = 1800  # 30 min
 

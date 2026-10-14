@@ -26,6 +26,17 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    # 2026-10-14 (Charlie): httpx logs EVERY request at INFO. This walker's
+    # err.log reached 754 MB with 203,608 httpx lines against 320 real ones in
+    # the last 20 MB sampled -- a 636:1 noise ratio, nothing rotating it. The
+    # lines carry no scanned/total_tx count, so the walker's own "recent --
+    # scanned=N total_tx=N" line is the only signal in there. Set AFTER
+    # basicConfig deliberately: basicConfig only attaches root handlers, it
+    # does not reset per-logger levels, so order is safe either way, but
+    # keeping it adjacent means a future reader sees both together.
+    # WARNING keeps real transport failures (timeouts, 5xx, resets) visible.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     db.write_walker_health_start("credentials_walker", cadence_seconds=WALKER_CADENCE_SECONDS)
     ok = False
     message = None
