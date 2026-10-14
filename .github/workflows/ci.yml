@@ -433,3 +433,24 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_walker_scope_declarations_paused.py -q
+      # Daemon log capper (new 2026-10-14). newsyslog rotates launchd_logs by
+      # RENAME, which is right for the ~163 periodic walkers (launchd reopens
+      # the path each spawn) and WRONG for a continuously-running job, whose
+      # descriptor launchd opened once: after a rename it keeps writing into
+      # the renamed inode while the live path stays empty forever. Proven with
+      # a controlled test - a writer holding `exec 3>> file` emitted 8 lines
+      # across a rename and all 8 landed in the renamed inode. mac_tunnel and
+      # sig_service now have explicit 2 GB newsyslog entries so they are
+      # skipped; this guard restores their ceiling by truncating IN PLACE, which
+      # keeps the inode and so keeps the held descriptor alive. Pins: inode
+      # preserved; a real concurrent O_APPEND writer still lands bytes after the
+      # cap; under-cap files untouched byte-for-byte; absent is not an error (a
+      # retired daemon must not page); the retained tail starts on a line
+      # boundary; newest content survives. Includes a guard-the-guard test that
+      # reproduces the rename bug and asserts the inode check CATCHES it, so
+      # test 1 cannot be vacuous.
+      # Hermetic: tmp_path only, no DB, no network, main() never called.
+      - name: daemon log capper in-place truncation (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_daemon_log_capper.py -q
