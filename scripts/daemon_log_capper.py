@@ -161,6 +161,28 @@ def run(log_dir: str = LOG_DIR, targets=TARGETS,
     return results
 
 
+# Every db attribute this module calls. Checked up front so a renamed or
+# mistyped helper fails LOUDLY on the first run instead of being swallowed
+# into a warning. 2026-10-14: the original version called a function that
+# does not exist (`write_walker_health_finish`; the real API is
+# `write_walker_health_end`, 85 call sites elsewhere). Because the call sat
+# inside `except Exception -> log.warning`, the capper reported rc=0 and
+# capped correctly while its walker_health row stayed pinned at
+# last_run_message='run_in_progress', last_run_ok=False, last_success_at=NULL
+# -- so a declared cadence of 3600s would have aged into a FALSE stale page
+# on a walker that was working. A guard that hides its own breakage is the
+# exact failure class this file exists to prevent.
+REQUIRED_DB_FUNCS = (
+    "write_walker_health_start",
+    "write_walker_health_end",
+)
+
+
+def missing_db_funcs(db_module, required=REQUIRED_DB_FUNCS) -> list:
+    """Return the names in `required` that `db_module` does not provide."""
+    return [name for name in required if not hasattr(db_module, name)]
+
+
 def main() -> int:
     try:
         import db
@@ -168,6 +190,14 @@ def main() -> int:
         db = None
 
     if db is not None:
+        missing = missing_db_funcs(db)
+        if missing:
+            # Programming error, not a transient DB blip. Say so and fail.
+            log.error(
+                "db API contract broken - missing %s; refusing to run with "
+                "unreportable health", ", ".join(missing),
+            )
+            return 1
         try:
             db.write_walker_health_start(
                 WALKER_NAME, cadence_seconds=WALKER_CADENCE_SECONDS
@@ -189,10 +219,21 @@ def main() -> int:
 
     ok = not failed
     if db is not None:
+        capped = [r for r in results if r["action"] == "capped"]
+        if failed:
+            message = "; ".join(
+                f"{r['file']}: {r.get('error', 'error')}" for r in failed
+            )
+        elif capped:
+            message = "capped " + ", ".join(
+                f"{r['file']} -{r['reclaimed']}B" for r in capped
+            )
+        else:
+            message = "all targets under cap"
         try:
-            db.write_walker_health_finish(WALKER_NAME, ok=ok)
+            db.write_walker_health_end(WALKER_NAME, ok=ok, message=message)
         except Exception as exc:
-            log.warning("walker_health finish write failed: %s", exc)
+            log.warning("walker_health end write failed: %s", exc)
     return 0 if ok else 1
 
 
