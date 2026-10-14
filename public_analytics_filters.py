@@ -96,6 +96,25 @@ KNOWN_BOT_UA_FRAGMENTS = (
     "crawler",
     "/bot",
     "compatible; bot",
+    # Non-browser UAs that were being counted as HUMAN (added 2026-10-14).
+    # Both are bot-shaped: a bare name/version with no "Mozilla/" prefix,
+    # one path each, and no referrer chain.
+    "private-asset-ops",      # third-party scraper of /amendments; 99 hits,
+                              # 27 distinct visitor hashes, KR only, all 200,
+                              # Oct 8-12. Confirmed NOT ours: zero matches in
+                              # the repo (tracked + code), the private infra
+                              # tree, the workspace, and no launchd job -- run
+                              # against a control that finds 8 files for
+                              # "public-route-canary". 27 hashes from one
+                              # country is not our shape; our own tooling
+                              # reports from US-IN or localhost.
+    "loadtest",               # our own load testing; 4 visitor hashes, ~139
+                              # hits, all on /amendments, Oct 8, no country.
+                              # NOTE: matched case-insensitively as a
+                              # SUBSTRING, so a hypothetical "DownloadTester"
+                              # UA would also match. Judged acceptable -- no
+                              # such UA has ever appeared -- but prefer a
+                              # longer fragment if one ever does.
 )
 
 
