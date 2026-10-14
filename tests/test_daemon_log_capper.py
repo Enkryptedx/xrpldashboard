@@ -223,3 +223,81 @@ def test_cap_is_below_newsyslog_threshold(capper):
     """A mis-ordered conf change must not let a daemon log reach 50 MB."""
     assert capper.CAP_BYTES < 50 * 1024 * 1024
     assert capper.KEEP_BYTES < capper.CAP_BYTES
+
+
+# ── 10. db API contract (added 2026-10-14 after a live miss) ─────────────
+# The first version called `db.write_walker_health_finish`, which does not
+# exist -- the real API is `write_walker_health_end` (85 call sites). The bad
+# call sat inside `except Exception -> log.warning`, so the capper returned
+# rc=0 and capped correctly while its walker_health row stayed pinned at
+# last_run_message='run_in_progress' / last_run_ok=False /
+# last_success_at=NULL, which a declared 3600s cadence would have aged into a
+# FALSE stale page. None of the 12 original tests caught it because they
+# deliberately never call main(), so the ONLY untested path was the buggy one.
+# These tests close that gap at the layer where it actually broke.
+def test_every_db_attribute_called_actually_exists(capper):
+    """AST-scan the module for `db.X` and assert the real db provides each X.
+
+    Written generically on purpose: a hardcoded list of names would drift
+    exactly the way the original typo did.
+    """
+    import ast
+
+    if REPO_ROOT not in sys.path:
+        sys.path.insert(0, REPO_ROOT)
+    import db as real_db
+
+    with open(MODULE_PATH) as fh:
+        tree = ast.parse(fh.read())
+
+    called = {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "db"
+    }
+    assert called, "no db.* references found - the scan broke, not the code"
+
+    missing = sorted(n for n in called if not hasattr(real_db, n))
+    assert not missing, f"module calls db functions that do not exist: {missing}"
+
+
+def test_required_db_funcs_covers_what_the_module_calls(capper):
+    """The up-front contract list must not silently omit a real call."""
+    import ast
+
+    with open(MODULE_PATH) as fh:
+        tree = ast.parse(fh.read())
+    called = {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "db"
+    }
+    assert called <= set(capper.REQUIRED_DB_FUNCS), (
+        "db calls not covered by REQUIRED_DB_FUNCS: "
+        f"{sorted(called - set(capper.REQUIRED_DB_FUNCS))}"
+    )
+
+
+def test_missing_db_funcs_detects_absence(capper):
+    class Stub:
+        def write_walker_health_start(self):  # pragma: no cover
+            pass
+
+    missing = capper.missing_db_funcs(Stub())
+    assert "write_walker_health_end" in missing
+    assert "write_walker_health_start" not in missing
+
+
+def test_missing_db_funcs_empty_when_satisfied(capper):
+    class Stub:
+        def write_walker_health_start(self):  # pragma: no cover
+            pass
+
+        def write_walker_health_end(self):  # pragma: no cover
+            pass
+
+    assert capper.missing_db_funcs(Stub()) == []
