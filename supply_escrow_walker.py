@@ -35,6 +35,18 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# 2026-10-14 (Charlie): httpx logs EVERY request at INFO. At ~64,000 pages per
+# run and several runs a day, that grew supply_escrow_walker.err.log to 7.2 GB
+# with nothing rotating it -- large enough that greps over it were timing out.
+# Those lines carried no page number, no elapsed and no rate, so they were
+# pure volume: reconstructing the 2026-10-13/14 runs still needed the final
+# traceback line. The sparse progress lines in _enumerate_escrows() below
+# replace them, ~13 lines per run instead of ~64,000.
+# WARNING keeps real transport failures (timeouts, 5xx, connection resets)
+# visible -- only the routine 200s are suppressed.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 WALKER_NAME = "supply_escrow_walker"
 # 2026-10-13 (Charlie): cadence 900 -> 3600, cap 1200 -> 2700, changed TOGETHER.
 # The old pair was incoherent: cadence (900s) was SHORTER than the hard cap
@@ -54,6 +66,17 @@ WALKER_NAME = "supply_escrow_walker"
 CADENCE_SECONDS = int(os.environ.get("SUPPLY_ESCROW_CADENCE_SECONDS", "3600"))
 ENUM_HARD_CAP_SECONDS = int(os.environ.get("SUPPLY_ESCROW_HARD_CAP_SECONDS", "2700"))
 LEDGER_DATA_PAGE_LIMIT = 400
+
+# 2026-10-14 (Charlie): emit a progress line every N pages so a run IN FLIGHT
+# can be read. Before this the only page number anywhere was in the final
+# abort, so a running walk was opaque -- "pages done so far" was unanswerable
+# without inventing a number from HTTP log line counts (which also counted
+# non-enumeration RPCs). At ~400 entries/page and ~24 pages/s, 5,000 pages is
+# roughly every 3.5 minutes: frequent enough to watch, sparse enough that the
+# log stays small.
+PROGRESS_EVERY_PAGES = int(
+    os.environ.get("SUPPLY_ESCROW_PROGRESS_EVERY_PAGES", "5000")
+)
 XRP_DROPS_PER_XRP = 1_000_000
 
 
@@ -113,13 +136,40 @@ def _enumerate_escrows(client) -> tuple[list[dict], int, float]:
                 escrows.append(e)
         marker = r.get("marker")
         page += 1
+
+        # Progress line: timestamped by basicConfig's %(asctime)s, so a run in
+        # flight is readable with `tail` alone. Carries the rate and the time
+        # left against the cap, which is the question actually being asked
+        # mid-run: will this one finish or abort?
+        if PROGRESS_EVERY_PAGES > 0 and page % PROGRESS_EVERY_PAGES == 0:
+            _el = time.time() - t0
+            log.info(
+                "escrow enum progress: page=%d escrows=%d elapsed=%.0fs "
+                "rate=%.1f pages/s cap=%ds cap_remaining=%.0fs",
+                page,
+                len(escrows),
+                _el,
+                (page / _el) if _el > 0 else 0.0,
+                ENUM_HARD_CAP_SECONDS,
+                max(0.0, ENUM_HARD_CAP_SECONDS - _el),
+            )
+
         if not marker:
             break
         if time.time() - t0 > ENUM_HARD_CAP_SECONDS:
-            raise RuntimeError(
+            _el = time.time() - t0
+            _msg = (
                 f"escrow enumeration exceeded {ENUM_HARD_CAP_SECONDS}s hard cap "
-                f"at page {page}; aborting."
+                f"at page {page} after {_el:.0f}s "
+                f"({(page / _el) if _el > 0 else 0.0:.1f} pages/s, "
+                f"{len(escrows)} escrows found); aborting."
             )
+            # Log it as well as raising. A bare RuntimeError lands in a Python
+            # traceback with NO timestamp and no rate, which is exactly why
+            # reconstructing the 2026-10-13/14 runs needed repeated greps over
+            # a 7.2 GB file and still yielded nothing when filtered by date.
+            log.error(_msg)
+            raise RuntimeError(_msg)
     return escrows, page, time.time() - t0
 
 
