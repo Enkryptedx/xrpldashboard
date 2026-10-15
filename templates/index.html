@@ -1242,11 +1242,21 @@
       var t0 = Date.now();
       var refreshing = false;
       var REFRESH_AT = 30; // seconds; matches server cache TTLs
+      // Minimum wall-clock gap between refreshes (2026-10-14 fix).
+      // `age` is the SERVER's cache age, reset from the fetched page's own
+      // age-ticker. A page served with age already near REFRESH_AT would
+      // therefore re-fire within a second or two, over and over: one open
+      // tab measured 4,111 requests in 17.8 hours, a hit every ~15.6s
+      // instead of every 30s. This clamp is on OUR clock, so a stale or
+      // high server age can no longer drive the loop faster than intended.
+      var MIN_REFRESH_MS = REFRESH_AT * 1000;
+      var lastRefreshAt = Date.now();
 
       setInterval(function () {
         var age = start + Math.floor((Date.now() - t0) / 1000);
         ageEl.textContent = age;
         if (age >= REFRESH_AT && !refreshing &&
+            (Date.now() - lastRefreshAt) >= MIN_REFRESH_MS &&
             document.visibilityState === 'visible') {
           refreshLivePanels();
         }
@@ -1254,7 +1264,13 @@
 
       function refreshLivePanels() {
         refreshing = true;
-        fetch(window.location.pathname + '?_=' + Date.now(), {
+        lastRefreshAt = Date.now();
+        // `_live=1` marks this as an auto-refresh so the ingest tags it
+        // is_poll instead of counting it as a pageview. Belt-and-braces
+        // alongside the server-side Sec-Fetch-Dest check, so the fix does
+        // not depend solely on a browser header. A poll is NOT a bot:
+        // this never affects is_bot or the visitor's human status.
+        fetch(window.location.pathname + '?_=' + Date.now() + '&_live=1', {
           headers: { 'Accept': 'text/html' },
           credentials: 'same-origin',
         })

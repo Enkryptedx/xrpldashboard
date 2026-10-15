@@ -31,6 +31,10 @@ from amm_scan_pools import (
     fmt_num,
 )
 from public_analytics_filters import is_self_probe as _is_self_probe
+# Poll/auto-refresh detection. Deliberately a SEPARATE module from
+# public_analytics_filters: a poll is NOT a bot, and the two must never
+# share a code path. See poll_detection.py's HARD RULE.
+import poll_detection as _poll
 from network_pulse import fetch_pulse_cached
 from tx_type_mix import fetch_tx_type_mix, WINDOWS as TX_MIX_WINDOWS, DEFAULT_WINDOW as TX_MIX_DEFAULT_WINDOW
 from xrp_price import fetch_xrp_price_cached
@@ -268,6 +272,21 @@ try:
 except Exception as _e:
     app.logger.warning(
         "SMTP_DIAG token_icon_table ERR exc=%s: %s",
+        type(_e).__name__, str(_e)[:200],
+    )
+
+# Boot-time targeted migration (2026-10-14): add page_views.is_poll BOOLEAN
+# so auto-refresh/JS-poll requests can be tagged instead of counted as
+# pageviews. Nullable, no default -> metadata-only, no table rewrite, and
+# pre-existing rows stay NULL because we are NOT rewriting history.
+# Same fail-open shape as the migrations above: the app must boot even if
+# this DDL fails, and the log line is the paper trail.
+try:
+    db.ensure_page_views_is_poll_column()
+    app.logger.warning("SMTP_DIAG page_views_is_poll ok")
+except Exception as _e:
+    app.logger.warning(
+        "SMTP_DIAG page_views_is_poll ERR exc=%s: %s",
         type(_e).__name__, str(_e)[:200],
     )
 
@@ -2166,6 +2185,24 @@ def _log_page_view(response):
         # the is_bot_writer re-stamps by the same lists. Real readers get
         # None and the writer classifies them later, exactly as before.
         _self_probe = _is_self_probe(ua, path)
+        # Poll / auto-refresh tagging (2026-10-14). The homepage refetches
+        # its own path every ~30s via fetch(); `path = request.path` drops
+        # the query string, so each refresh used to land as an ordinary
+        # pageview. 45,593 of 80,078 all-time "human" pageviews (56.9%)
+        # were these. Detected from our own ?_live=1 marker first, then
+        # Sec-Fetch-Dest (a navigation sends "document", fetch() sends
+        # "empty"); an ABSENT header falls back to counting it, so older
+        # clients and bots are unaffected.
+        #
+        # HARD RULE (Charlie 2026-10-14): this is tagged is_poll ONLY. It
+        # never sets is_bot, never reduces the visitor's human status, and
+        # never feeds a bot or crawler rule. An open tab is an engaged
+        # reader, not a scraper. is_bot below is computed from _self_probe
+        # alone, exactly as before.
+        _poll_flag = _poll.is_poll_request(
+            sec_fetch_dest=request.headers.get("Sec-Fetch-Dest"),
+            live_marker=request.args.get(_poll.POLL_QUERY_MARKER),
+        )
         db.log_page_view(
             path=path[:300],
             visitor_hash=_visitor_hash(ip, ua),
@@ -2177,6 +2214,7 @@ def _log_page_view(response):
             ip_day_hash=_ip_day_hash(ip),
             status=int(response.status_code) if response is not None else None,
             is_bot=True if _self_probe else None,
+            is_poll=_poll_flag,
         )
     except Exception:
         # Logging must never break a page render.
