@@ -608,3 +608,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_canary_label_probe_retry.py -q
+
+      # Follow-up: tier_agree probes get the same retry. They carried the
+      # identical gap (direct httpx.get, three hardcoded "attempt": 1) but
+      # had not blipped yet in the retained log. One difference from the
+      # label fix: for tier probes a non-200 IS a finding, and probe_one
+      # re-probes a bad status as well as a network error, so
+      # _get_with_retry gained an optional ok_statuses. Backward compatible
+      # by construction -- callers passing none return on the first
+      # response, asserted so the merged label behaviour cannot regress.
+      # Hermetic: injected getter/sleeper, no HTTP, no DB, no network.
+      - name: canary tier probe retry (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_canary_tier_probe_retry.py -q

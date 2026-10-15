@@ -217,7 +217,8 @@ def probe_one(path: str, min_bytes: int, must_contain: str | None,
 
 
 def _get_with_retry(url: str, ua_suffix: str, attempts: int = RETRY_ATTEMPTS,
-                    sleep_s: float = RETRY_SLEEP_S, getter=None, sleeper=None):
+                    sleep_s: float = RETRY_SLEEP_S, getter=None, sleeper=None,
+                    ok_statuses: set[int] | None = None):
     """GET with the SAME retry policy probe_one uses. Never raises.
 
     Returns (response_or_None, error_name_or_None, attempt_used).
@@ -246,6 +247,7 @@ def _get_with_retry(url: str, ua_suffix: str, attempts: int = RETRY_ATTEMPTS,
     sleeper = time.sleep if sleeper is None else sleeper
     attempts = max(1, int(attempts))
     err = None
+    last_resp = None
     attempt = 0
     for attempt in range(1, attempts + 1):
         try:
@@ -254,12 +256,21 @@ def _get_with_retry(url: str, ua_suffix: str, attempts: int = RETRY_ATTEMPTS,
                 headers={"User-Agent": f"public-route-canary/{ua_suffix}"},
                 follow_redirects=True,
             )
-            return resp, None, attempt
+            if ok_statuses is None or resp.status_code in ok_statuses:
+                return resp, None, attempt
+            # Retryable BAD STATUS. probe_one re-probes a non-acceptable
+            # status as well as a network error, because a transient 502/503
+            # (Render instance recycling mid-run) is the same class of blip
+            # as a stall. Callers that pass no ok_statuses keep the original
+            # behaviour exactly: any response returns immediately.
+            last_resp, err = resp, None
         except Exception as e:  # noqa: BLE001 - reported as a reason, not raised
-            err = type(e).__name__
-            if attempt < attempts:
-                sleeper(sleep_s)
-    return None, err, attempt
+            err, last_resp = type(e).__name__, None
+        if attempt < attempts:
+            sleeper(sleep_s)
+    # On a persistent bad status this returns the RESPONSE with err=None, so
+    # the caller still reports http_<status> rather than a network reason.
+    return last_resp, err, attempt
 
 
 def _dynamic_warnings_probes() -> list[tuple]:
@@ -318,7 +329,6 @@ def _tier_agreement_probes() -> list[dict]:
     Returns findings-shaped dicts appended to run_walker's failures
     list on mismatch. Not a route probe — a semantic check.
     """
-    import httpx
     try:
         import json as _json
         pairs = [
@@ -334,38 +344,50 @@ def _tier_agreement_probes() -> list[dict]:
         ]
         findings = []
         for label, cur, iss in pairs:
+            # Retried like a route probe: network errors AND a non-200 both
+            # get a second attempt, so one blip cannot manufacture a finding.
+            r, net_err, attempt_used = _get_with_retry(
+                f"{BASE_URL}/check.json?q={cur}.{iss}", "tier-agree",
+                ok_statuses={200})
+            if net_err is not None or r is None:
+                findings.append({
+                    "path": f"tier_agree:{label}",
+                    "reason": f"probe_error_{net_err}",
+                    "ok": False, "status": None, "body_bytes": 0,
+                    "attempt": attempt_used,
+                    "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+                continue
+            if r.status_code != 200:
+                findings.append({
+                    "path": f"tier_agree:{label}",
+                    "reason": f"check.json http_{r.status_code}",
+                    "ok": False, "status": r.status_code, "body_bytes": 0,
+                    "attempt": attempt_used,
+                    "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+                continue
             try:
-                r = httpx.get(
-                    f"{BASE_URL}/check.json?q={cur}.{iss}",
-                    timeout=TIMEOUT_S,
-                    headers={"User-Agent": "public-route-canary/tier-agree"},
-                    follow_redirects=True,
-                )
-                if r.status_code != 200:
-                    findings.append({
-                        "path": f"tier_agree:{label}",
-                        "reason": f"check.json http_{r.status_code}",
-                        "ok": False, "status": r.status_code, "body_bytes": 0,
-                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-                    })
-                    continue
                 check_data = r.json().get("data", {})
                 check_tier = check_data.get("tier")
                 check_canonical = check_data.get("tier_canonical")
-                # Assert the same value on both fields (post-2026-09-12 fix)
-                if check_tier != check_canonical and check_canonical is not None:
-                    findings.append({
-                        "path": f"tier_agree:{label}",
-                        "reason": f"tier({check_tier})!=tier_canonical({check_canonical})",
-                        "ok": False, "status": 200, "body_bytes": len(r.content),
-                        "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-                    })
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - malformed body, not a stall
                 findings.append({
                     "path": f"tier_agree:{label}",
                     "reason": f"probe_error_{type(e).__name__}",
-                    "ok": False, "status": None, "body_bytes": 0,
-                    "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "ok": False, "status": r.status_code, "body_bytes": 0,
+                    "attempt": attempt_used,
+                    "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                })
+                continue
+            # Assert the same value on both fields (post-2026-09-12 fix)
+            if check_tier != check_canonical and check_canonical is not None:
+                findings.append({
+                    "path": f"tier_agree:{label}",
+                    "reason": f"tier({check_tier})!=tier_canonical({check_canonical})",
+                    "ok": False, "status": 200, "body_bytes": len(r.content),
+                    "attempt": attempt_used,
+                    "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
                 })
         return findings
     except Exception as e:
