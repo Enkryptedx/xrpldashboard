@@ -503,3 +503,18 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_poll_detection.py -q
+
+      # Paused-walker alarm hardening (2026-10-15). supply_escrow_walker was
+      # paused mid-run: cadence NULL silenced walker_stale, nothing closed the
+      # in-flight row, and its frozen consecutive_failures=3 kept paging the
+      # FAILING check. Locks all three halves: FAILING skips the paused
+      # convention, pause_walker closes the row as "paused" without
+      # manufacturing a success or a failure, and the new walker_stuck check
+      # deliberately does NOT filter on cadence so the narrowed FAILING query
+      # cannot become a blind spot.
+      # Hermetic: pure predicates + fake cursors, no DB, no network, `app`
+      # never imported.
+      - name: paused walker alarm hardening (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_walker_pause_hardening.py -q

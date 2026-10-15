@@ -15,9 +15,19 @@ Checks:
   1. walker_stale        — walker_health row age > max(cadence*3, 24h)
                            AND age < 30d (skip fossil rows).
   2. walker_failing      — walker_health.consecutive_failures >= 3.
-  3. snapshot_missed     — most recent signed_snapshots.snapshot_date
+                           Skips cadence_seconds IS NULL — that is the
+                           PAUSED convention, and a paused walker must
+                           not page as FAILING. walker_stuck below is
+                           what covers a paused walker that is wedged.
+  3. walker_stuck        — last_run_message='run_in_progress' and
+                           last_run_completed IS NULL for longer than
+                           max(cadence*3, 6h), age < 30d. Deliberately
+                           ignores cadence_seconds: a PAUSED walker has
+                           it NULL, which made a wedged paused walker
+                           invisible to every check before 2026-10-15.
+  4. snapshot_missed     — most recent signed_snapshots.snapshot_date
                            is not today or yesterday (26h window).
-  4. sovereignty_loss    — Class A walker has ≥12 `unreachable:*` or
+  5. sovereignty_loss    — Class A walker has ≥12 `unreachable:*` or
                            `local_*` walker_node_fallback events in the
                            trailing 6h AND the earliest event in the
                            trailing 24h is ≥12h old (proves sustained,
@@ -26,7 +36,7 @@ Checks:
                            walkers (check_page/token_page/unknown) are
                            the Render→Lenovo hairpin baseline — always
                            suppressed by allowlist, not blocklist.
-  5. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
+  6. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
 
 Dedup / suppression rules (see `reconcile`):
   - NEW alert (unseen id)                       → page immediately.
@@ -95,6 +105,52 @@ def _stale_threshold_for(cadence_s: int) -> int:
         return cadence_s * WEEKLY_STALE_MULTIPLIER + WEEKLY_STALE_GRACE_S
     return max(cadence_s * STALE_CADENCE_MULTIPLIER, STALE_FLOOR_SECONDS)
 CONSECUTIVE_FAILURE_THRESHOLD = 3
+
+# ── stuck (wedged in-flight) check ──────────────────────────────────
+# write_walker_health_start stamps last_run_message='run_in_progress'
+# with last_run_completed=NULL; write_walker_health_end closes it. A row
+# that never closed means the process died between the two WITHOUT
+# running its own error path (SIGKILL, power loss, a reap) — wedged, not
+# merely stale. walker_stale cannot see it: that check keys off
+# last_success_at and requires cadence_seconds IS NOT NULL, and a PAUSED
+# walker has cadence NULL by convention (see the pause note in db.py
+# pause_walker). supply_escrow_walker sat wedged 17.5h on 2026-10-14/15
+# with consecutive_failures=3 and nothing legitimately watching it.
+# Floor is 6h: the longest legitimate in-flight run observed is the
+# escrow seed walk at ~2.5h (itself cadence NULL), and all five walkers
+# in flight at 2026-10-15 08:10Z were under 10 minutes old.
+STUCK_FLOOR_SECONDS = 6 * 3600
+STUCK_MAX_AGE_SECONDS = 30 * 86400          # skip fossils, as stale does
+RUN_IN_PROGRESS_SENTINEL = "run_in_progress"
+
+
+def _stuck_threshold_for(cadence_s: int | None) -> int:
+    """How long an in-flight row may stay open before it is WEDGED.
+
+    cadence None (paused, or never declared) gets the bare floor: there
+    is no cadence to scale from, and "paused" is precisely the case this
+    check exists to cover.
+    """
+    if cadence_s is None:
+        return STUCK_FLOOR_SECONDS
+    return max(int(cadence_s) * STALE_CADENCE_MULTIPLIER,
+               STUCK_FLOOR_SECONDS)
+
+
+def _is_stuck_row(last_run_completed, last_run_message, cadence_s,
+                  age_s) -> bool:
+    """Pure predicate for one walker_health row, kept out of the SQL so
+    the decision is testable without a database."""
+    if last_run_completed is not None:
+        return False
+    if (last_run_message or "").strip() != RUN_IN_PROGRESS_SENTINEL:
+        return False
+    if age_s is None:
+        return False
+    return (age_s > _stuck_threshold_for(cadence_s)
+            and age_s < STUCK_MAX_AGE_SECONDS)
+
+
 SNAPSHOT_MAX_AGE_HOURS = 26
 DEFAULT_REMINDER_INTERVAL_SEC = 6 * 3600     # re-page throttle floor
 # Once a specific (walker, reason) condition has paged, its "still-active"
@@ -321,7 +377,19 @@ def _walker_message_muted(walker: str, msg: str | None,
 def check_walker_failing() -> list[dict]:
     """Alert when a walker has 3+ consecutive failures — real streak,
     not a race-window flicker. WALKER_MESSAGE_MUTES filter skips alerts
-    whose last_run_message contains an acknowledged substring."""
+    whose last_run_message contains an acknowledged substring.
+
+    cadence_seconds IS NULL is the project's PAUSED convention (it is
+    what makes walker_stale skip a row). Before 2026-10-15 this query
+    ignored it, so a deliberately paused walker kept paging as FAILING
+    on a failure streak frozen at the moment it was paused —
+    supply_escrow_walker, paused with consecutive_failures=3. A paused
+    walker is not failing; it is not running. Pausing now also closes
+    the in-flight row (db.pause_walker), and a paused walker that is
+    genuinely wedged is caught by check_walker_stuck, which ignores
+    cadence on purpose — so this filter narrows noise without creating
+    a blind spot.
+    """
     alerts = []
     today = dt.date.today()
     with _pg_connect() as conn:
@@ -331,6 +399,7 @@ def check_walker_failing() -> list[dict]:
                        last_failure_at, last_run_message
                   FROM walker_health
                  WHERE consecutive_failures >= %s
+                   AND cadence_seconds IS NOT NULL
             """, (CONSECUTIVE_FAILURE_THRESHOLD,))
             for name, fails, last_fail, msg in cur.fetchall():
                 if _walker_message_muted(name, msg, today=today):
@@ -341,6 +410,40 @@ def check_walker_failing() -> list[dict]:
                     "consecutive_failures": int(fails),
                     "last_failure_at": last_fail.isoformat() if last_fail else None,
                     "last_message": (msg or "")[:200],
+                })
+    return alerts
+
+
+def check_walker_stuck(now_utc: dt.datetime) -> list[dict]:
+    """Alert when a walker stamped run_in_progress and never closed it.
+
+    Ignores cadence_seconds being NULL on purpose — see the
+    STUCK_FLOOR_SECONDS note. Fossil rows (>30d) are skipped the way
+    walker_stale skips them, so a decommissioned walker frozen mid-run
+    does not page forever.
+    """
+    alerts = []
+    with _pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT walker_name, cadence_seconds, last_run_completed,
+                       last_run_message,
+                       EXTRACT(EPOCH FROM (now() - last_run_started))::bigint
+                         AS age_s
+                  FROM walker_health
+                 WHERE last_run_completed IS NULL
+                   AND last_run_started IS NOT NULL
+            """)
+            for name, cadence, completed, msg, age_s in cur.fetchall():
+                if not _is_stuck_row(completed, msg, cadence, age_s):
+                    continue
+                alerts.append({
+                    "id": f"walker_stuck:{name}",
+                    "walker": name,
+                    "age_s": int(age_s),
+                    "threshold_s": _stuck_threshold_for(cadence),
+                    "cadence_s": (int(cadence) if cadence is not None
+                                  else None),
                 })
     return alerts
 
@@ -582,6 +685,17 @@ def format_alert(alert: dict) -> str:
             f"🟥 <b>FAILING walker</b>: <code>{alert['walker']}</code> — "
             f"{alert['consecutive_failures']} consecutive failures{tail}"
         )
+    if kind == "walker_stuck":
+        if alert.get("cadence_s") is None:
+            tail = " (cadence NULL — paused or never declared)"
+        else:
+            tail = f" (cadence {_human_age(alert['cadence_s'])})"
+        return (
+            f"🟥 <b>STUCK walker</b>: <code>{alert['walker']}</code> — "
+            f"run_in_progress for {_human_age(alert['age_s'])} with no "
+            f"completion, threshold {_human_age(alert['threshold_s'])}"
+            f"{tail}"
+        )
     if kind == "walker_findings":
         msg = alert.get("last_message") or ""
         tail = f"\nlast msg: <code>{msg}</code>" if msg else ""
@@ -730,6 +844,7 @@ def gather_alerts(now_utc: dt.datetime) -> list[dict]:
     for fn, kwargs in (
         (check_walker_stale, {"now_utc": now_utc}),
         (check_walker_failing, {}),
+        (check_walker_stuck, {"now_utc": now_utc}),
         (check_walker_findings, {}),
         (check_snapshot_missed, {"now_utc": now_utc}),
         (check_sovereignty_loss, {"now_utc": now_utc}),

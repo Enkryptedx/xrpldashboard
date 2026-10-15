@@ -4573,6 +4573,116 @@ def write_walker_health_start(walker_name, cadence_seconds=None):
     _writer_execute_with_retry(f"write_walker_health_start[{walker_name}]", _do)
 
 
+def pause_walker(walker_name, reason=None):
+    """Pause a walker: drop its cadence AND close any in-flight row.
+
+    Pausing is expressed as `cadence_seconds = NULL` (the house
+    convention — l1_pager's walker_stale skips rows without a cadence,
+    so a paused walker stops being reported as overdue while staying
+    listed in /walker_health).
+
+    The bug this fixes (found 2026-10-15): dropping the cadence was the
+    ONLY thing pausing did, so if the walker was paused while a run was
+    in flight, its row kept `last_run_message='run_in_progress'` and
+    `last_run_completed IS NULL` FOREVER. `supply_escrow_walker` sat
+    that way for 17.5h — and because the row also carried
+    `consecutive_failures=3`, it satisfied walker_failing's threshold
+    while being deliberately paused. So the pause simultaneously
+    produced a false FAILING page and an un-closable in-flight row.
+
+    Closing the row as "paused" is therefore part of pausing, not a
+    separate cleanup step.
+
+    Deliberately NOT done here:
+      - `last_run_ok` is left alone. A paused run neither succeeded nor
+        failed; forcing ok=true would assert a success that never
+        happened, and `last_success_at` would then lie to walker_stale.
+      - `consecutive_failures` / `last_failure_at` are left alone. The
+        failure history is real and the next successful run zeroes it.
+        Resetting here would erase evidence of why it was paused.
+      - `last_run_completed` uses COALESCE, so an already-closed row
+        keeps its true completion time instead of being restamped.
+
+    Returns True on success, False when PG isn't configured or the
+    walker has no row. Never raises — pausing must not be able to take
+    down the caller.
+    """
+    stamp = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    message = (f"paused {stamp}: {reason}" if reason
+               else f"paused {stamp}")
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE walker_health "
+                "   SET cadence_seconds = NULL, "
+                "       last_run_completed = COALESCE(last_run_completed, now()), "
+                "       last_run_message = %s "
+                " WHERE walker_name = %s",
+                (message, walker_name),
+            )
+            return cur.rowcount > 0
+    except Exception as e:  # noqa: BLE001
+        _log_err("pause_walker_failed", e)
+        return False
+
+
+def pause_walker(walker_name, reason=None, today=None):
+    """Pause a walker: NULL its cadence AND close any in-flight row.
+
+    Pausing is expressed as cadence_seconds = NULL. That is what makes
+    l1_pager's walker_stale skip the row (and, from 2026-10-15,
+    walker_failing too), and the scope-declaration seeder deliberately
+    cannot do it — see xrpl-dashboard-walker.
+
+    The half that was missing until 2026-10-15: a walker paused while a
+    run was IN FLIGHT kept last_run_message='run_in_progress' with
+    last_run_completed IS NULL forever, because nothing ever called
+    write_walker_health_end. supply_escrow_walker sat that way for 17.5h
+    (paused 2026-10-14 14:39Z) looking identical to a walker wedged
+    mid-run. So pausing now CLOSES the row, stamping the reason.
+
+    Why not route this through write_walker_health_end(ok=...):
+      - ok=True would assert a run succeeded that did not — and would
+        stamp last_success_at=now(), making a paused walker look freshly
+        healthy forever, which is worse than the bug being fixed.
+      - ok=False would increment consecutive_failures and stamp
+        last_failure_at, manufacturing a failure out of an operator
+        action (and that function raises on a blank message by design).
+    Paused is a third state: not success, not failure. last_run_ok is
+    left exactly as it was, consecutive_failures and last_failure_at are
+    untouched (honest history — the next successful run zeroes them),
+    and the MESSAGE carries the truth. COALESCE means an already-closed
+    row keeps its original completion time rather than being back-dated
+    to the pause.
+
+    Returns True on success, False when PG is unavailable or the walker
+    has no row — never raises, so a pause cannot take down a caller.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    today = today or datetime.date.today()
+    note = f"paused {today.isoformat()}"
+    if reason:
+        note = f"{note}: {reason}"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE walker_health SET cadence_seconds = NULL, "
+                "  last_run_completed = COALESCE(last_run_completed, now()), "
+                "  last_run_message = %s "
+                " WHERE walker_name = %s",
+                (note, walker_name),
+            )
+            return cur.rowcount > 0
+    except Exception as e:  # noqa: BLE001
+        _log_err("pause_walker_failed", e)
+        return False
+
+
 def write_walker_health_end(walker_name, ok, message=None, findings_count=None):
     """Update walker_health with the run outcome. On ok=True: stamps
     last_success_at=now() and zeroes consecutive_failures. On ok=False:
