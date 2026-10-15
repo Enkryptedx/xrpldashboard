@@ -4032,6 +4032,22 @@ CREATE TABLE IF NOT EXISTS escrow_seed_progress (
 );
 CREATE INDEX IF NOT EXISTS escrow_seed_progress_status_idx
     ON escrow_seed_progress (status, seed_id DESC);
+
+-- Stage 2 (2026-10-15): the rejection tally lives WITH the attempt.
+-- Additive and nullable; mirrored in
+-- migrations/2026_10_15_escrow_seed_progress_rejections.sql.
+-- WHY durable rather than stdout-only: on 2026-10-15 the 00:30 attempt was
+-- SIGKILLed by its 7200s cap after 59,148 pages. Its tally lived only in the
+-- dead process's in-memory Counter and escrow_set stores ACCEPTED rows only,
+-- so recovering the number cost a full read-only re-walk of the same pinned
+-- ledger. Checkpointing the tally alongside the marker makes that
+-- unrecoverable-by-construction case impossible.
+ALTER TABLE escrow_seed_progress
+    ADD COLUMN IF NOT EXISTS rejections JSONB;
+ALTER TABLE escrow_seed_progress
+    ADD COLUMN IF NOT EXISTS rejections_total INTEGER;
+ALTER TABLE escrow_seed_progress
+    ADD COLUMN IF NOT EXISTS entry_types JSONB;
 """
 
 ESCROW_SEED_STATUSES = ("running", "completed", "abandoned")
@@ -4050,15 +4066,29 @@ def ensure_escrow_set_tables():
 
     Idempotent and best-effort: True when the tables are present afterwards,
     False when PG is unavailable or the DDL failed.
+
+    The blob now carries additive ALTERs (the stage-2 rejection columns), so
+    `SET lock_timeout` runs FIRST — before the ALTER, not after. ADD COLUMN
+    takes ACCESS EXCLUSIVE, which conflicts with the ACCESS SHARE pg_dump
+    holds for the whole nightly backup (22:00 ET), and Postgres's lock queue
+    is FIFO: the ALTER would not merely wait, every reader arriving after it
+    would queue BEHIND it. Giving up after 3s turns a potential site-wide
+    stall into "deferred, retries next tick", and IF NOT EXISTS makes the
+    retry free. Lock timeout is logged as its OWN category so "deferred"
+    never hides a genuinely broken ALTER.
     """
     conn = _get_writer_conn()
     if conn is None:
         return False
     try:
         with conn.cursor() as cur:
+            cur.execute("SET lock_timeout = '3s'")
             cur.execute(_ESCROW_SET_DDL)
         return True
     except Exception as e:  # noqa: BLE001 — job must still try to write
+        if _is_lock_timeout(e):
+            _log_err("ensure_escrow_set_tables_lock_timeout", e)
+            return False
         _log_err("ensure_escrow_set_tables_failed", e)
         return False
 
@@ -4086,12 +4116,24 @@ def escrow_seed_start(pinned_ledger):
         return None
 
 
-def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen):
+def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen,
+                          rejections=None, entry_types=None):
     """Persist the resume point after a page.
 
     This is what lets the seed run with NO hard cap: the cap is exactly what
     was truncating walks mid-flight, so instead of bounding the walk we make
     it restartable. marker=None means the walk is exhausted.
+
+    The tally travels WITH the marker (2026-10-15). It is not an
+    end-of-run-only write, because the 00:30 attempt that night was killed
+    mid-walk and its in-memory Counter died with it — and `escrow_set` holds
+    accepted rows only, so nothing on disk could answer "how many were
+    rejected". Checkpointing it means a reaped attempt resumes its counters
+    instead of restarting them, and the final number covers the WHOLE walk
+    rather than only the resumed slice.
+
+    rejections/entry_types None leaves the stored values untouched, so a
+    caller that does not track them cannot blank them.
     """
     conn = _get_writer_conn()
     if conn is None:
@@ -4100,7 +4142,10 @@ def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen):
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE escrow_seed_progress SET marker=%s::jsonb, "
-                "pages_done=%s, objects_seen=%s, updated_at=now() "
+                "pages_done=%s, objects_seen=%s, updated_at=now(), "
+                "rejections=COALESCE(%s::jsonb, rejections), "
+                "rejections_total=COALESCE(%s, rejections_total), "
+                "entry_types=COALESCE(%s::jsonb, entry_types) "
                 "WHERE seed_id=%s",
                 # json.dumps + ::jsonb is this module's house pattern (see
                 # write_evernorth_daily_snapshot / write_mpt_snapshot);
@@ -4108,7 +4153,14 @@ def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen):
                 # import for one call site would diverge.
                 (json.dumps(marker, default=str) if marker is not None
                  else None,
-                 int(pages_done), int(objects_seen), int(seed_id)),
+                 int(pages_done), int(objects_seen),
+                 json.dumps(dict(rejections), default=str)
+                 if rejections is not None else None,
+                 sum(dict(rejections).values())
+                 if rejections is not None else None,
+                 json.dumps(dict(entry_types), default=str)
+                 if entry_types is not None else None,
+                 int(seed_id)),
             )
         return True
     except Exception as e:  # noqa: BLE001
@@ -4116,12 +4168,17 @@ def escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen):
         return False
 
 
-def escrow_seed_finish(seed_id, status, message=None):
+def escrow_seed_finish(seed_id, status, message=None, rejections=None,
+                       entry_types=None):
     """Close a seed attempt as 'completed' or 'abandoned'.
 
     'abandoned' is the correct outcome when the pinned ledger falls out of the
     node's retained history: a set stitched across two pinned ledgers is the
     blended-state bug, so it is never patched — a new attempt starts instead.
+
+    The final tally is stamped here too, so the closed row is self-contained:
+    a reader does not have to join against a log to learn what the walk threw
+    away. None leaves the checkpointed values in place.
     """
     if status not in ESCROW_SEED_STATUSES:
         raise ValueError(f"invalid seed status: {status!r}")
@@ -4132,8 +4189,19 @@ def escrow_seed_finish(seed_id, status, message=None):
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE escrow_seed_progress SET status=%s, message=%s, "
-                "updated_at=now(), completed_at=now() WHERE seed_id=%s",
-                (status, message, int(seed_id)),
+                "updated_at=now(), completed_at=now(), "
+                "rejections=COALESCE(%s::jsonb, rejections), "
+                "rejections_total=COALESCE(%s, rejections_total), "
+                "entry_types=COALESCE(%s::jsonb, entry_types) "
+                "WHERE seed_id=%s",
+                (status, message,
+                 json.dumps(dict(rejections), default=str)
+                 if rejections is not None else None,
+                 sum(dict(rejections).values())
+                 if rejections is not None else None,
+                 json.dumps(dict(entry_types), default=str)
+                 if entry_types is not None else None,
+                 int(seed_id)),
             )
         return True
     except Exception as e:  # noqa: BLE001
@@ -4144,7 +4212,14 @@ def escrow_seed_finish(seed_id, status, message=None):
 def escrow_seed_resumable():
     """Return the newest still-'running' seed attempt, or None.
 
-    Shape: (seed_id, pinned_ledger, marker, pages_done, objects_seen).
+    Shape: (seed_id, pinned_ledger, marker, pages_done, objects_seen,
+            rejections, entry_types).
+
+    The two tally columns are returned so a resumed walk SEEDS its counters
+    from what the killed attempt already counted, instead of reporting only
+    the resumed slice. That asymmetry is exactly what made the 2026-10-15
+    report unanswerable: the resumed run's 261 rejections covered its own
+    19,110 pages, while the first 59,148 pages' 675 were simply gone.
     """
     conn = _get_writer_conn()
     if conn is None:
@@ -4153,7 +4228,8 @@ def escrow_seed_resumable():
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT seed_id, pinned_ledger, marker, pages_done, "
-                "objects_seen FROM escrow_seed_progress "
+                "objects_seen, rejections, entry_types "
+                "FROM escrow_seed_progress "
                 "WHERE status='running' ORDER BY seed_id DESC LIMIT 1"
             )
             return cur.fetchone()
