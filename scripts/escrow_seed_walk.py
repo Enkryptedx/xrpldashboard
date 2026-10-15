@@ -274,6 +274,34 @@ def format_tally(tally) -> str:
     return f"rejected {total} ({detail})"
 
 
+def format_walk_progress(pages_done, pages_this_run, elapsed_seconds) -> str:
+    """Pages and throughput, keeping CUMULATIVE and THIS-RUN distinct.
+
+    `pages_done` is cumulative across every attempt on this seed — it is
+    restored from the checkpoint on resume. `elapsed_seconds` covers only the
+    CURRENT invocation. Dividing one by the other is the bug this function
+    exists to prevent.
+
+    Measured 2026-10-15: the resumed run reported "36.7 pages/s" by dividing
+    78,258 cumulative pages by its own 2,133s, when it had actually walked
+    19,110 pages in that time — 9.0 pages/s. That 4x overstatement is not a
+    cosmetic log defect: it made a walk running ~5x below the previously
+    measured 44.1 pages/s look *better* than healthy, and it was the figure
+    that made a 2h cap appear generous when a cold walk at the true rate
+    needs ~2h32m. A throughput number that cannot be wrong in the
+    reassuring direction is the point.
+
+    A fresh walk emits the short form, because "19110 pages total, 19110
+    this run" is noise. elapsed <= 0 yields 0.0 rather than dividing.
+    """
+    rate = (pages_this_run / elapsed_seconds) if elapsed_seconds > 0 else 0.0
+    if pages_this_run == pages_done:
+        return (f"{pages_done} pages, {elapsed_seconds:.0f}s, "
+                f"{rate:.1f} pages/s")
+    return (f"{pages_done} pages total, {pages_this_run} this run, "
+            f"{elapsed_seconds:.0f}s, {rate:.1f} pages/s")
+
+
 def wait_for_off_peak(client, server_info_request,
                       wait_seconds=LOAD_WAIT_SECONDS,
                       poll_seconds=LOAD_POLL_SECONDS, sleep=time.sleep):
@@ -360,6 +388,10 @@ def main() -> int:
         tally, entry_types = Counter(), Counter()
         log.info("starting seed %s pinned at ledger %s", seed_id, pinned)
 
+    # Baseline for throughput: pages_done may already be non-zero (restored
+    # from a checkpoint), while t0 starts now. Only the delta between them
+    # happened during THIS invocation. See format_walk_progress.
+    pages_at_start = pages_done
     t0 = time.time()
     try:
         while True:
@@ -410,11 +442,12 @@ def main() -> int:
         return 1
 
     count, total_drops = db.escrow_set_totals(pinned)
+    progress = format_walk_progress(
+        pages_done, pages_done - pages_at_start, elapsed
+    )
     msg = (
         f"seeded {count} escrow objects, {total_drops} drops at pinned "
-        f"ledger {pinned} ({pages_done} pages, {elapsed:.0f}s, "
-        f"{pages_done / elapsed if elapsed else 0:.1f} pages/s, "
-        f"{format_tally(tally)})"
+        f"ledger {pinned} ({progress}, {format_tally(tally)})"
     )
     log.info(msg)
     db.escrow_seed_finish(seed_id, "completed", msg, rejections=tally,

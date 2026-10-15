@@ -492,6 +492,19 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_seed_rejection_tally.py -q
+
+      # Stage 2b: the throughput number cannot overstate itself. pages_done is
+      # cumulative across attempts (restored from the checkpoint on resume)
+      # while elapsed covers only this invocation; dividing one by the other
+      # reported 36.7 pages/s on 2026-10-15 when the real rate was 9.0. That
+      # error ran in the one direction that matters -- it made a ~5x degraded
+      # walk look better than its healthy baseline, and made a 2h cap look
+      # generous when a cold walk needs ~2h32m.
+      # Hermetic: pure function, no DB, no network.
+      - name: escrow seed rate math stage 2b (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_seed_rate_math.py -q
       # Poll / auto-refresh must be TAGGED, never treated as a bot (new
       # 2026-10-14). index.html refetches its own path every ~30s via
       # fetch(); the ingest logs every GET, `/` is not skip-listed, and
