@@ -505,6 +505,20 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_seed_rate_math.py -q
+
+      # Stage 2c: checkpoint cadence 1 -> 50. Measured 2026-10-15, a Neon
+      # round-trip is 27.4 ms against a 16.4 ms local ledger_data RPC, so
+      # per-page checkpointing cost 1.7x MORE than the call its comment
+      # excused it against -- ~36 min of a 78,258-page walk spent waiting on
+      # Postgres. Pins the three properties that make 50 safe rather than
+      # merely cheaper: the final page always checkpoints, a replayed window
+      # is idempotent, and marker+tally share one UPDATE so they rewind in
+      # lockstep.
+      # Hermetic: pure predicate + fake cursors, no DB, no network.
+      - name: escrow seed checkpoint cadence stage 2c (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_seed_checkpoint_cadence.py -q
       # Poll / auto-refresh must be TAGGED, never treated as a bot (new
       # 2026-10-14). index.html refetches its own path every ~30s via
       # fetch(); the ingest logs every GET, `/` is not skip-listed, and
