@@ -44,6 +44,19 @@ import httpx
 BASE_URL = os.environ.get("PUBLIC_CANARY_BASE", "https://xrpldashboard.com").rstrip("/")
 TIMEOUT_S = 15.0
 
+# Retry policy for the agreement probes, set to MATCH probe_one's values.
+# probe_one has used 2 attempts with a 1s pause since the
+# /nfts /analytics /tokens slow-first-request finding; the agreement probes
+# had no retry at all until 2026-10-15.
+#
+# probe_one still spells its own policy inline (`for attempt in (1, 2)` and
+# time.sleep(1.0)) because rewiring its several attempt-stamped return paths
+# carries more risk than this fix is worth. The two are therefore kept equal
+# by a TEST that reads probe_one's source and asserts it matches these
+# constants — drift gets caught in CI rather than being made impossible.
+RETRY_ATTEMPTS = 2
+RETRY_SLEEP_S = 1.0
+
 # Route → (path, minimum_body_bytes, must_contain_substring_or_none,
 #         [optional] set of acceptable HTTP statuses — defaults to {200})
 # Minimum body sizes are lower bounds — templates always render at least
@@ -203,6 +216,52 @@ def probe_one(path: str, min_bytes: int, must_contain: str | None,
     }
 
 
+def _get_with_retry(url: str, ua_suffix: str, attempts: int = RETRY_ATTEMPTS,
+                    sleep_s: float = RETRY_SLEEP_S, getter=None, sleeper=None):
+    """GET with the SAME retry policy probe_one uses. Never raises.
+
+    Returns (response_or_None, error_name_or_None, attempt_used).
+
+    WHY THIS EXISTS. probe_one retries once because a heavy route can exceed
+    TIMEOUT_S under load, and a single transient stall must not page. The
+    agreement probes called httpx.get directly with NO retry and hardcoded
+    "attempt": 1, so one blip became a finding.
+
+    Measured 2026-10-08..15: ten canary failures, and every single one was an
+    agreement probe -- 6x ReadTimeout and 1x ConnectError in the retained
+    log, never a plain route probe. They target /wallet/<addr>, the slowest
+    route (live RPC per address), which is exactly where a blip is most
+    likely. The failures were always isolated, so consecutive_failures never
+    reached l1_pager's walker_failing threshold of 3; check_walker_findings
+    paged on findings_count > 0 instead. Net effect: ~1 spurious page per
+    day for eight days, from a canary that was working as written.
+
+    Note the catch is bare `Exception`, unlike _probe_once's narrow httpx
+    tuple. That is deliberate and preserves the agreement probes' existing
+    behaviour -- a ConnectError is an httpx.NetworkError subclass, but these
+    probes also parse bodies, and narrowing here would turn a caught error
+    into an uncaught one.
+    """
+    getter = httpx.get if getter is None else getter
+    sleeper = time.sleep if sleeper is None else sleeper
+    attempts = max(1, int(attempts))
+    err = None
+    attempt = 0
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = getter(
+                url, timeout=TIMEOUT_S,
+                headers={"User-Agent": f"public-route-canary/{ua_suffix}"},
+                follow_redirects=True,
+            )
+            return resp, None, attempt
+        except Exception as e:  # noqa: BLE001 - reported as a reason, not raised
+            err = type(e).__name__
+            if attempt < attempts:
+                sleeper(sleep_s)
+    return None, err, attempt
+
+
 def _dynamic_warnings_probes() -> list[tuple]:
     """Query current warnings-feed + /tokens?range=warnings token set,
     return route tuples for probe_one to hit each `/token/<cur>/<iss>`.
@@ -335,7 +394,7 @@ def _address_label_agreement_probes() -> list[dict]:
     the wallet may not have transacted at whale scale recently; we
     only check /whales when the wallet's address turns up.
     """
-    import httpx, re
+    import re
     try:
         addresses = [
             ("Binance_1_pg", "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", "Binance"),
@@ -346,42 +405,40 @@ def _address_label_agreement_probes() -> list[dict]:
         findings = []
         for label, addr, expected_name in addresses:
             surfaces = {}
-            # /wallet — grep for identity-name
-            try:
-                r = httpx.get(
-                    f"{BASE_URL}/wallet/{addr}", timeout=TIMEOUT_S,
-                    headers={"User-Agent": "public-route-canary/label-agree"},
-                    follow_redirects=True,
-                )
-                if r.status_code == 200:
-                    m = re.search(r'<span class="identity-name">([^<]+)</span>', r.text)
-                    if m:
-                        surfaces["wallet"] = m.group(1).strip()
-                    # AMM branch uses amm_pair; grep the pool label from
-                    # source-note when present
-                    m = re.search(r'source:\s*([a-z_:]+)', r.text)
-                    if m:
-                        surfaces["wallet_source"] = m.group(1).strip()
-            except Exception as e:
+            # /wallet — grep for identity-name. Retried like a route probe:
+            # this is the fetch that produced every observed canary failure.
+            r, net_err, attempt_used = _get_with_retry(
+                f"{BASE_URL}/wallet/{addr}", "label-agree")
+            if net_err is not None:
                 findings.append({
                     "path": f"label_agree:{label}:wallet",
-                    "reason": f"probe_error_{type(e).__name__}",
+                    "reason": f"probe_error_{net_err}",
                     "ok": False, "status": None, "body_bytes": 0,
-                    "attempt": 1, "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "attempt": attempt_used,
+                    "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
                 })
                 continue
-            # /check.json
-            try:
-                r = httpx.get(
-                    f"{BASE_URL}/check.json?q={addr}", timeout=TIMEOUT_S,
-                    headers={"User-Agent": "public-route-canary/label-agree"},
-                    follow_redirects=True,
-                )
-                if r.status_code == 200:
-                    d = r.json().get("data", {}) or {}
+            if r.status_code == 200:
+                m = re.search(r'<span class="identity-name">([^<]+)</span>', r.text)
+                if m:
+                    surfaces["wallet"] = m.group(1).strip()
+                # AMM branch uses amm_pair; grep the pool label from
+                # source-note when present
+                m = re.search(r'source:\s*([a-z_:]+)', r.text)
+                if m:
+                    surfaces["wallet_source"] = m.group(1).strip()
+            # /check.json — same retry. A network failure here stays
+            # SWALLOWED, as before: check_name is collected but never
+            # asserted on, so a miss cannot manufacture a finding. The retry
+            # is still worth having so the collection is less lossy.
+            rc, rc_err, _rc_attempt = _get_with_retry(
+                f"{BASE_URL}/check.json?q={addr}", "label-agree")
+            if rc_err is None and rc.status_code == 200:
+                try:
+                    d = rc.json().get("data", {}) or {}
                     surfaces["check_name"] = d.get("name") or d.get("known_name")
-            except Exception:
-                pass
+                except Exception:
+                    pass
             # Agreement check: /wallet + /check should agree on the name
             # when expected_name is set (skip the AMM case where the
             # identity-name is the pair not the pool label).

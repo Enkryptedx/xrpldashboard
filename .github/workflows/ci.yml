@@ -592,3 +592,19 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_l1_pager_deploy_stale.py -q
+
+      # Agreement probes get probe_one's retry. Measured 2026-10-08..15: ten
+      # canary failures in eight days, EVERY one an agreement probe (6x
+      # ReadTimeout, 1x ConnectError), never a plain route probe -- they call
+      # /wallet/<addr>, the slowest route, and had no retry while route
+      # probes retry once. Isolated failures never reached l1_pager's
+      # walker_failing threshold of 3, so check_walker_findings paged ~daily
+      # from a canary behaving exactly as written.
+      # Includes a drift guard: probe_one still spells its policy inline, so
+      # a test reads its source and asserts it matches RETRY_ATTEMPTS /
+      # RETRY_SLEEP_S.
+      # Hermetic: injected getter/sleeper, no HTTP, no DB, no network.
+      - name: canary label probe retry (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_canary_label_probe_retry.py -q
