@@ -55,11 +55,40 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WALKER_NAME = "escrow_seed_walk"
 LEDGER_DATA_PAGE_LIMIT = 400
 
-# Checkpoint every page by default. Cheap relative to an RPC round trip, and
-# the whole point is that an interrupted walk loses at most one page.
-CHECKPOINT_EVERY_PAGES = int(
-    os.environ.get("ESCROW_SEED_CHECKPOINT_EVERY", "1")
-)
+# Checkpoint every 50 pages.
+#
+# This said "every page" and called it "cheap relative to an RPC round trip".
+# That was measured on 2026-10-15 and is false, by about 1.7x in the wrong
+# direction:
+#
+#   Neon round-trip (persistent conn)   27.4 ms median  (min 23.5, max 417.3)
+#   local ledger_data RPC                16.4 ms
+#
+# So the checkpoint cost MORE than the call it was being excused against.
+# Over a full 78,258-page walk that is 78,258 x 27.4 ms = ~2,144 s -- about
+# 36 minutes, ~23% of the whole walk, spent waiting on Postgres rather than
+# reading the ledger. At 50 it is ~1,566 writes, about 43 s.
+#
+# Why 50 is safe rather than merely cheaper. The cost of a lost checkpoint is
+# bounded by re-walking at most 49 pages, which is a few seconds at any rate
+# we have observed (8.6 pages/s degraded, ~50 warm). It cannot corrupt
+# anything: resumability is page-aligned and escrow_set UPSERTs on
+# escrow_index, so re-reading an already-written page is idempotent rather
+# than a primary-key error -- overlap at the resume boundary is expected, not
+# exceptional (stage-1 property, tests/test_escrow_seed_walk.py §4). The
+# marker and the rejection tally are written in ONE statement, so they rewind
+# together and a replayed page cannot double-count. And `or not marker` in the
+# loop means the FINAL page always checkpoints, so a completed walk is never
+# left short of its own total.
+#
+# Only a hard kill (SIGKILL, power loss) can lose a window at all: the
+# exception path checkpoints before it returns.
+#
+# max(1, ...) because `pages_done % 0` would raise ZeroDivisionError inside
+# the walk loop -- a mis-set env var should not be able to kill the walker.
+CHECKPOINT_EVERY_PAGES = max(1, int(
+    os.environ.get("ESCROW_SEED_CHECKPOINT_EVERY", "50")
+))
 # Off-peak gate. census_watcher uses load_factor <= 5.0 with server_state in
 # {full, proposing}; match it rather than inventing a second standard.
 MAX_LOAD_FACTOR = float(os.environ.get("ESCROW_SEED_MAX_LOAD_FACTOR", "5.0"))
@@ -274,6 +303,19 @@ def format_tally(tally) -> str:
     return f"rejected {total} ({detail})"
 
 
+def should_checkpoint(pages_done, marker, every=None) -> bool:
+    """True when the walk should persist its resume point after this page.
+
+    The `not marker` half is the load-bearing one: the FINAL page always
+    checkpoints regardless of cadence, so a completed walk can never report
+    fewer pages than it actually walked. Raising the cadence from 1 to 50 is
+    only safe because of this — otherwise a walk whose page count was not a
+    multiple of the cadence would close with a stale total.
+    """
+    every = CHECKPOINT_EVERY_PAGES if every is None else max(1, int(every))
+    return pages_done % every == 0 or not marker
+
+
 def format_walk_progress(pages_done, pages_this_run, elapsed_seconds) -> str:
     """Pages and throughput, keeping CUMULATIVE and THIS-RUN distinct.
 
@@ -407,7 +449,7 @@ def main() -> int:
             objects_seen += len(rows)
             marker = result.get("marker")
 
-            if pages_done % CHECKPOINT_EVERY_PAGES == 0 or not marker:
+            if should_checkpoint(pages_done, marker):
                 db.escrow_seed_checkpoint(
                     seed_id, marker, pages_done, objects_seen,
                     rejections=tally, entry_types=entry_types,
