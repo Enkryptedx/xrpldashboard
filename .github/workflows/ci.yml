@@ -478,6 +478,20 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_seed_walk.py -q
+
+      # Stage 2a: the rejection tally is COUNTED, attributed to a reason, and
+      # DURABLE. Stage 1 proved the right entries are rejected; this proves
+      # they are counted and that the count survives a kill. The 00:30 ET
+      # attempt on 2026-10-15 was SIGKILLed after 59,148 pages and its
+      # in-process tally died with it -- escrow_set stores accepted rows only,
+      # so recovering the number (675, all iou_amount) cost a full re-walk.
+      # Also locks ONE source of truth for accept/reject, after the stopgap
+      # wrapper's mirrored classifier had already drifted from the mapper.
+      # Hermetic: pure functions + fake cursors, no DB, no network.
+      - name: escrow seed rejection tally stage 2a (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_seed_rejection_tally.py -q
       # Poll / auto-refresh must be TAGGED, never treated as a bot (new
       # 2026-10-14). index.html refetches its own path every ~30s via
       # fetch(); the ingest logs every GET, `/` is not skip-listed, and

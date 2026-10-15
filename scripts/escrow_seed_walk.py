@@ -48,6 +48,7 @@ import os
 import re
 import sys
 import time
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -156,6 +157,70 @@ def node_is_off_peak(info, max_load_factor=MAX_LOAD_FACTOR) -> bool:
     return load <= max_load_factor
 
 
+# Canonical rejection reasons. `other_type:` is a PREFIX — the concrete
+# LedgerEntryType is appended so an unexpected entry type names itself
+# instead of hiding in a catch-all bucket.
+REJECTION_REASONS = (
+    "not_a_dict",
+    "token_escrow",
+    "other_type",
+    "iou_amount",
+    "unparseable_amount",
+    "missing_index_or_owner",
+)
+
+
+def map_state_entry(entry):
+    """Return (row, None) when an entry maps, (None, reason) when it does not.
+
+    SINGLE SOURCE OF TRUTH for both the mapping and the rejection reason.
+    The 2026-10-14 stopgap wrapper carried its own `classify_rejection` that
+    MIRRORED these rules, and the two had already drifted: the wrapper tested
+    missing-index before unparseable-amount while the mapper does the
+    opposite, so an Escrow with both faults was labelled differently by the
+    counter than by the code that actually rejected it. Deriving the reason
+    from the same branches that make the decision is why that class of bug
+    cannot come back.
+    """
+    if not isinstance(entry, dict):
+        return None, "not_a_dict"
+    etype = entry.get("LedgerEntryType")
+    if etype == "TokenEscrow":
+        # A DIFFERENT ledger entry type (404 counted in the 2026-07-12
+        # census). Surfaced separately from other_type because it is THE
+        # confusable one — folding it into XRP escrow supply is the exact
+        # error this redesign exists to prevent. In practice
+        # ledger_data(type="escrow") filters server-side so this branch is
+        # not expected to fire; it stays because "not expected" is not
+        # "cannot".
+        return None, "token_escrow"
+    if etype != "Escrow":
+        return None, f"other_type:{etype}"
+    amount = entry.get("Amount")
+    if isinstance(amount, dict):
+        return None, "iou_amount"
+    try:
+        drops = int(amount)
+    except (TypeError, ValueError):
+        return None, "unparseable_amount"
+    index = entry.get("index") or entry.get("LedgerIndex")
+    owner = entry.get("Account")
+    if not index or not owner:
+        return None, "missing_index_or_owner"
+    return {
+        "escrow_index": index,
+        "owner": owner,
+        "destination": entry.get("Destination"),
+        "amount_drops": drops,
+        "sequence_num": entry.get("Sequence"),
+        "condition": entry.get("Condition"),
+        "finish_after": entry.get("FinishAfter"),
+        "cancel_after": entry.get("CancelAfter"),
+        "destination_tag": entry.get("DestinationTag"),
+        "source_tag": entry.get("SourceTag"),
+    }, None
+
+
 def escrow_row_from_state_entry(entry) -> dict:
     """Map one `ledger_data` state entry to an escrow_set row.
 
@@ -168,44 +233,45 @@ def escrow_row_from_state_entry(entry) -> dict:
     means a token escrow and is rejected rather than coerced -- silently
     treating an IOU amount as drops would corrupt the supply figure, which is
     the exact class of error this redesign exists to avoid.
+
+    Thin wrapper over map_state_entry, which is the single source of truth
+    for both the mapping and the rejection reason. Kept because this is the
+    documented public shape and the stage-1 tests assert against it.
     """
-    if not isinstance(entry, dict):
-        return None
-    if entry.get("LedgerEntryType") != "Escrow":
-        return None
-    amount = entry.get("Amount")
-    if isinstance(amount, dict):
-        return None
-    try:
-        drops = int(amount)
-    except (TypeError, ValueError):
-        return None
-    index = entry.get("index") or entry.get("LedgerIndex")
-    owner = entry.get("Account")
-    if not index or not owner:
-        return None
-    return {
-        "escrow_index": index,
-        "owner": owner,
-        "destination": entry.get("Destination"),
-        "amount_drops": drops,
-        "sequence_num": entry.get("Sequence"),
-        "condition": entry.get("Condition"),
-        "finish_after": entry.get("FinishAfter"),
-        "cancel_after": entry.get("CancelAfter"),
-        "destination_tag": entry.get("DestinationTag"),
-        "source_tag": entry.get("SourceTag"),
-    }
+    row, _reason = map_state_entry(entry)
+    return row
 
 
-def rows_from_page(state) -> list:
-    """Map a page's `state` list to escrow_set rows, dropping non-Escrow."""
+def rows_from_page(state, tally=None, entry_types=None) -> list:
+    """Map a page's `state` list to escrow_set rows, dropping non-Escrow.
+
+    `tally` and `entry_types` are optional Counters incremented in place:
+    rejections by reason, and a histogram of every LedgerEntryType seen.
+    Counting happens HERE, where entries are mapped, so a rejection cannot
+    be dropped without being counted.
+    """
     rows = []
     for entry in state or []:
-        row = escrow_row_from_state_entry(entry)
+        if entry_types is not None:
+            if isinstance(entry, dict):
+                entry_types[entry.get("LedgerEntryType") or "<none>"] += 1
+            else:
+                entry_types["<non_dict>"] += 1
+        row, reason = map_state_entry(entry)
         if row is not None:
             rows.append(row)
+        elif tally is not None:
+            tally[reason] += 1
     return rows
+
+
+def format_tally(tally) -> str:
+    """Compact, deterministic one-line rendering for the health message."""
+    total = sum(tally.values())
+    if not total:
+        return "rejected 0"
+    detail = ", ".join(f"{k}={v}" for k, v in sorted(tally.items()))
+    return f"rejected {total} ({detail})"
 
 
 def wait_for_off_peak(client, server_info_request,
@@ -257,9 +323,11 @@ def main() -> int:
     complete = info.get("complete_ledgers")
 
     # Resume an in-flight attempt, or pin a fresh ledger.
+    tally, entry_types = Counter(), Counter()
     resumable = db.escrow_seed_resumable()
     if resumable:
-        seed_id, pinned, marker, pages_done, objects_seen = resumable
+        (seed_id, pinned, marker, pages_done, objects_seen,
+         stored_rejections, stored_entry_types) = resumable
         if not ledger_in_retained_history(complete, pinned):
             msg = (
                 f"pinned ledger {pinned} no longer in retained history "
@@ -269,9 +337,19 @@ def main() -> int:
             db.escrow_seed_finish(seed_id, "abandoned", msg)
             resumable = None
         else:
+            # Seed the counters from what the interrupted attempt already
+            # counted, so the final tally describes the WHOLE walk rather
+            # than only this slice. Without this the 2026-10-15 report could
+            # only account for 19,110 of 78,258 pages — its 261 rejections
+            # covered the resumed portion while the first 59,148 pages' 675
+            # were simply gone, and recovering them cost a full re-walk.
+            tally.update(stored_rejections or {})
+            entry_types.update(stored_entry_types or {})
             log.info(
-                "resuming seed %s at pinned ledger %s (%s pages, %s objects)",
+                "resuming seed %s at pinned ledger %s (%s pages, %s objects, "
+                "%s carried forward)",
                 seed_id, pinned, pages_done, objects_seen,
+                format_tally(tally),
             )
 
     if not resumable:
@@ -279,6 +357,7 @@ def main() -> int:
         pinned = pinned.get("ledger_index") or pinned["ledger"]["ledger_index"]
         seed_id = db.escrow_seed_start(pinned)
         marker, pages_done, objects_seen = None, 0, 0
+        tally, entry_types = Counter(), Counter()
         log.info("starting seed %s pinned at ledger %s", seed_id, pinned)
 
     t0 = time.time()
@@ -289,7 +368,7 @@ def main() -> int:
             if marker:
                 kw["marker"] = marker
             result = client.request(LedgerData(**kw)).result
-            rows = rows_from_page(result.get("state"))
+            rows = rows_from_page(result.get("state"), tally, entry_types)
             if rows:
                 db.upsert_escrow_objects(rows, pinned)
             pages_done += 1
@@ -298,16 +377,19 @@ def main() -> int:
 
             if pages_done % CHECKPOINT_EVERY_PAGES == 0 or not marker:
                 db.escrow_seed_checkpoint(
-                    seed_id, marker, pages_done, objects_seen
+                    seed_id, marker, pages_done, objects_seen,
+                    rejections=tally, entry_types=entry_types,
                 )
             if not marker:
                 break
     except Exception as exc:  # noqa: BLE001 - checkpoint survives; report it
-        db.escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen)
+        db.escrow_seed_checkpoint(seed_id, marker, pages_done, objects_seen,
+                                  rejections=tally, entry_types=entry_types)
         log.error("seed interrupted at page %s: %s", pages_done, exc)
         db.write_walker_health_end(
             WALKER_NAME, ok=False,
-            message=f"interrupted at page {pages_done}: {exc}",
+            message=(f"interrupted at page {pages_done}: {exc} "
+                     f"[{format_tally(tally)}]"),
         )
         return 1
 
@@ -322,7 +404,8 @@ def main() -> int:
             f"walk; set may be blended - abandoning"
         )
         log.warning(msg)
-        db.escrow_seed_finish(seed_id, "abandoned", msg)
+        db.escrow_seed_finish(seed_id, "abandoned", msg, rejections=tally,
+                              entry_types=entry_types)
         db.write_walker_health_end(WALKER_NAME, ok=False, message=msg)
         return 1
 
@@ -330,10 +413,12 @@ def main() -> int:
     msg = (
         f"seeded {count} escrow objects, {total_drops} drops at pinned "
         f"ledger {pinned} ({pages_done} pages, {elapsed:.0f}s, "
-        f"{pages_done / elapsed if elapsed else 0:.1f} pages/s)"
+        f"{pages_done / elapsed if elapsed else 0:.1f} pages/s, "
+        f"{format_tally(tally)})"
     )
     log.info(msg)
-    db.escrow_seed_finish(seed_id, "completed", msg)
+    db.escrow_seed_finish(seed_id, "completed", msg, rejections=tally,
+                          entry_types=entry_types)
     db.write_walker_health_end(WALKER_NAME, ok=True, message=msg)
     return 0
 
