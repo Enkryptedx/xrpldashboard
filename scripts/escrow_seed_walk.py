@@ -43,6 +43,7 @@ which is plausibly part of what degraded the node -- a feedback loop. So the
 seed yields on node load instead, the way census_watcher gates its census:
 proceed only while load_factor is low and server_state is full/proposing.
 """
+import atexit
 import logging
 import os
 import re
@@ -89,6 +90,21 @@ LEDGER_DATA_PAGE_LIMIT = 400
 CHECKPOINT_EVERY_PAGES = max(1, int(
     os.environ.get("ESCROW_SEED_CHECKPOINT_EVERY", "50")
 ))
+
+# Mutual exclusion. mkdir is atomic on APFS and is the house pattern
+# (run_supply_escrow_walker.sh does the same); see acquire_lock for why the
+# pid is recorded and why a stale lock is stolen rather than respected.
+LOCK_DIR = os.environ.get("ESCROW_SEED_LOCK_DIR",
+                          "/tmp/escrow_seed_walk.lock")
+
+# Progress output. Page-based OR time-based, whichever fires first --
+# see should_log_progress for why the time half is the one that matters.
+PROGRESS_EVERY_PAGES = int(
+    os.environ.get("ESCROW_SEED_PROGRESS_EVERY_PAGES", "2000")
+)
+PROGRESS_EVERY_SECONDS = float(
+    os.environ.get("ESCROW_SEED_PROGRESS_EVERY_SECONDS", "120")
+)
 # Off-peak gate. census_watcher uses load_factor <= 5.0 with server_state in
 # {full, proposing}; match it rather than inventing a second standard.
 MAX_LOAD_FACTOR = float(os.environ.get("ESCROW_SEED_MAX_LOAD_FACTOR", "5.0"))
@@ -303,6 +319,133 @@ def format_tally(tally) -> str:
     return f"rejected {total} ({detail})"
 
 
+def _pid_alive(pid) -> bool:
+    """True when a process with this pid currently exists."""
+    try:
+        os.kill(int(pid), 0)
+    except (ProcessLookupError, ValueError, TypeError):
+        return False
+    except PermissionError:
+        return True          # exists, owned by another user
+    return True
+
+
+def read_lock_pid(lock_dir=None):
+    """The pid recorded in a held lock, or None if absent/unreadable."""
+    lock_dir = LOCK_DIR if lock_dir is None else lock_dir
+    try:
+        with open(os.path.join(lock_dir, "pid")) as fh:
+            return int(fh.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def acquire_lock(lock_dir=None, pid=None, pid_alive=_pid_alive) -> bool:
+    """mkdir-based mutual exclusion. True when this process holds the lock.
+
+    WHY A LOCK AT ALL. On 2026-10-15 the 00:30 attempt was SIGKILLed by its
+    7200s cap at ~06:30:22Z and the 02:30 retry began at 06:30:30Z — an
+    8-second gap. Nothing prevented them from overlapping. Two walks against
+    the same seed row both write the same `marker` column, so the resume
+    point would ping-pong between two positions and neither walk's page
+    count would mean anything.
+
+    WHY STALE HANDLING IS MANDATORY, not a nicety. The failure mode this
+    lock exists to survive is a KILL, and a killed process cannot remove its
+    own lock directory. A plain mkdir lock would therefore be held forever by
+    a dead pid after precisely the event it was added for — turning a
+    recoverable interruption into a walker that never runs again. So the pid
+    is recorded inside the lock, and a lock whose pid is gone is stolen with
+    a loud warning rather than respected.
+
+    mkdir is atomic on APFS, which is why it is the house pattern here
+    (run_supply_escrow_walker.sh uses the same trick; BSD flock/shlock
+    semantics on macOS are unreliable).
+
+    RESIDUAL RACE, stated rather than hidden: two processes that both find a
+    stale lock in the same instant can both steal it. The window is
+    microseconds against a job that runs nightly, and the damage is bounded
+    anyway — escrow_set UPSERTs on escrow_index, and marker+tally share one
+    UPDATE so they cannot desynchronise. Serialising the steal would need a
+    second lock, which has the same problem one level down.
+    """
+    lock_dir = LOCK_DIR if lock_dir is None else lock_dir
+    pid = os.getpid() if pid is None else pid
+    try:
+        os.mkdir(lock_dir)
+    except FileExistsError:
+        holder = read_lock_pid(lock_dir)
+        if holder == pid:
+            # Re-entry by the same process is not a steal; say so plainly so
+            # the log cannot be misread as a crash-recovery event.
+            log.debug("lock %s already held by this process", lock_dir)
+        elif holder is not None and pid_alive(holder):
+            log.warning(
+                "another seed walk holds %s (pid %s); no-op skip",
+                lock_dir, holder,
+            )
+            return False
+        else:
+            log.warning(
+                "stealing stale lock %s (recorded pid %s is gone — previous "
+                "run was killed before it could clean up)", lock_dir, holder,
+            )
+    except OSError as exc:
+        log.error("could not create lock %s: %s", lock_dir, exc)
+        return False
+    try:
+        with open(os.path.join(lock_dir, "pid"), "w") as fh:
+            fh.write(str(pid))
+    except OSError as exc:
+        # Holding a lock we cannot identify is worse than not holding one:
+        # the next run could never tell live from stale.
+        log.error("could not record pid in %s: %s", lock_dir, exc)
+        release_lock(lock_dir)
+        return False
+    return True
+
+
+def release_lock(lock_dir=None) -> None:
+    """Best-effort release. Never raises.
+
+    Best-effort is sufficient *because* staleness is handled on acquire: a
+    release missed by SIGKILL or SIGTERM leaves a lock the next run steals.
+    """
+    lock_dir = LOCK_DIR if lock_dir is None else lock_dir
+    try:
+        os.unlink(os.path.join(lock_dir, "pid"))
+    except OSError:
+        pass
+    try:
+        os.rmdir(lock_dir)
+    except OSError:
+        pass
+
+
+def should_log_progress(pages_since_last, seconds_since_last,
+                        every_pages=None, every_seconds=None) -> bool:
+    """True when the walk should emit a progress line. Either threshold fires.
+
+    The TIME threshold is the half that defuses
+    `--no-output-timeout-seconds`. A page threshold alone is a function of
+    throughput, so the slower the node gets the longer the walk stays silent
+    — and a walk slow enough to trip a no-output timer is exactly the walk
+    that most needs to prove it is alive. On 2026-10-15 the seed emitted ONE
+    line at 00:30:03 and nothing for the next two hours; both 7200s timers
+    were armed against that silence, and the walk was indistinguishable from
+    a hang to anything watching it.
+
+    A non-positive threshold disables that half rather than firing on every
+    page.
+    """
+    every_pages = PROGRESS_EVERY_PAGES if every_pages is None else every_pages
+    every_seconds = (PROGRESS_EVERY_SECONDS if every_seconds is None
+                     else every_seconds)
+    if every_pages > 0 and pages_since_last >= every_pages:
+        return True
+    return every_seconds > 0 and seconds_since_last >= every_seconds
+
+
 def should_checkpoint(pages_done, marker, every=None) -> bool:
     """True when the walk should persist its resume point after this page.
 
@@ -376,6 +519,20 @@ def main() -> int:
         )
         return 1
 
+    # Mutual exclusion BEFORE any walker_health write: a second instance must
+    # not stamp run_in_progress over the holder's row, and must not start
+    # paging the node alongside it. A skip is a clean no-op (return 0) rather
+    # than a failure, matching run_supply_escrow_walker.sh's "no-op skip" --
+    # an overlapping fire is the lock working, not an error worth paging.
+    #
+    # Release is registered with atexit, which covers normal return and
+    # unhandled exceptions. SIGKILL cannot run it and SIGTERM does not by
+    # default, so those leave a lock the NEXT run steals after finding its
+    # pid dead -- which is exactly the 2026-10-15 scenario.
+    if not acquire_lock():
+        return 0
+    atexit.register(release_lock)
+
     if not db.ensure_escrow_set_tables():
         log.error("could not ensure escrow tables; refusing to walk")
         return 1
@@ -435,6 +592,7 @@ def main() -> int:
     # happened during THIS invocation. See format_walk_progress.
     pages_at_start = pages_done
     t0 = time.time()
+    last_log_pages, last_log_time = pages_done, t0
     try:
         while True:
             kw = dict(ledger_index=pinned, type="escrow",
@@ -454,6 +612,20 @@ def main() -> int:
                     seed_id, marker, pages_done, objects_seen,
                     rejections=tally, entry_types=entry_types,
                 )
+
+            now = time.time()
+            if should_log_progress(pages_done - last_log_pages,
+                                   now - last_log_time):
+                log.info(
+                    "seed %s progress: %s, %s objects, %s",
+                    seed_id,
+                    format_walk_progress(pages_done,
+                                         pages_done - pages_at_start,
+                                         now - t0),
+                    objects_seen, format_tally(tally),
+                )
+                last_log_pages, last_log_time = pages_done, now
+
             if not marker:
                 break
     except Exception as exc:  # noqa: BLE001 - checkpoint survives; report it

@@ -519,6 +519,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_seed_checkpoint_cadence.py -q
+
+      # Stage 2d: overlap guard + liveness output, both from the 2026-10-15
+      # incident. The killed 00:30 attempt and the 02:30 retry overlapped by
+      # 8 seconds with nothing preventing it, and two walks share one marker
+      # column. A plain mkdir lock (the house pattern) would have been held
+      # forever by the dead pid after exactly the SIGKILL it guards against,
+      # so the pid is recorded and a stale lock is stolen loudly. The walk
+      # also emitted ONE line in two hours, which is what both 7200s timers
+      # were armed against -- the TIME-based progress threshold is the half
+      # that defuses --no-output-timeout-seconds, since a page threshold goes
+      # quieter the slower the node gets.
+      # Hermetic: temp dirs + injected pid-liveness, no DB, no network.
+      - name: escrow seed lock + progress stage 2d (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_seed_lock_progress.py -q
       # Poll / auto-refresh must be TAGGED, never treated as a bot (new
       # 2026-10-14). index.html refetches its own path every ~30s via
       # fetch(); the ingest logs every GET, `/` is not skip-listed, and
