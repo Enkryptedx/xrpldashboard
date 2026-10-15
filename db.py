@@ -77,6 +77,17 @@ def _is_schema_drift(exc):
     ))
 
 
+def _is_lock_timeout(exc):
+    """True when PG's `lock_timeout` fired (SQLSTATE 55P03).
+
+    Guarded the same way as _is_schema_drift so a missing psycopg can never
+    turn this into an AttributeError on the error path.
+    """
+    if psycopg is None:
+        return False
+    return isinstance(exc, psycopg.errors.LockNotAvailable)
+
+
 # Hostname/URL/user/IP redactor for exception messages logged via _log_err.
 # 2026-09-03 fix: writer_connect_failed errors in launchd_logs/ named the
 # Neon username and backend IPs verbatim ("password authentication failed
@@ -2364,6 +2375,27 @@ def ensure_page_views_is_poll_column():
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
+                # lock_timeout BEFORE the ALTER (Charlie, 2026-10-14 21:10).
+                # ADD COLUMN takes ACCESS EXCLUSIVE, which conflicts with the
+                # ACCESS SHARE that pg_dump holds for the whole 22:00 ET
+                # backup. Without a timeout this ALTER would WAIT for that
+                # lock -- and because PostgreSQL's lock queue is FIFO, every
+                # reader arriving after it queues BEHIND it. A metadata-only
+                # migration could therefore stall the entire site for the
+                # length of a dump, turning a harmless column add into an
+                # outage. The deploy that first runs this is as likely to
+                # land in the backup window as anywhere else.
+                #
+                # 3s: give up fast rather than queue. Plain SET (not SET
+                # LOCAL) so it applies regardless of autocommit mode; the
+                # connection closes immediately after, so nothing leaks to
+                # another session.
+                #
+                # On timeout we log and return False, and the next boot
+                # retries -- the column is not urgent, but blocking readers
+                # is unacceptable. `ADD COLUMN IF NOT EXISTS` makes every
+                # retry idempotent, so repeated attempts are free.
+                cur.execute("SET lock_timeout = '3s'")
                 cur.execute(
                     "ALTER TABLE page_views "
                     "ADD COLUMN IF NOT EXISTS is_poll BOOLEAN"
@@ -2371,7 +2403,12 @@ def ensure_page_views_is_poll_column():
             conn.commit()
         return True
     except Exception as e:  # noqa: BLE001 - boot must not fail on this
-        _log_err("ensure_page_views_is_poll_column_failed", e)
+        if _is_lock_timeout(e):
+            # Distinct category so this is legible in the logs as "deferred,
+            # will retry next boot" rather than a hard migration failure.
+            _log_err("ensure_page_views_is_poll_column_lock_timeout", e)
+        else:
+            _log_err("ensure_page_views_is_poll_column_failed", e)
         return False
 
 

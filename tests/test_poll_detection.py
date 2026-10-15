@@ -335,6 +335,143 @@ def test_filtering_polls_out_of_visitor_counts_would_be_wrong():
     assert _human_visitors(rows) == 1
 
 
+# ══ FIX 1b: the ALTER must never queue behind pg_dump ════════════════════
+# Charlie, 2026-10-14 21:10. ADD COLUMN takes ACCESS EXCLUSIVE, which
+# conflicts with the ACCESS SHARE pg_dump holds for the whole 22:00 ET
+# backup. PostgreSQL's lock queue is FIFO, so an ALTER waiting on that lock
+# makes every later reader queue BEHIND it — a metadata-only migration could
+# stall the site for the length of a dump. lock_timeout makes it give up.
+import db as _db  # noqa: E402 - imported late; db has no Flask/RPC side effects
+
+
+class _FakeCursor:
+    def __init__(self, raise_on=None, raise_exc=None):
+        self.statements = []
+        self._raise_on = raise_on
+        self._raise_exc = raise_exc
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        self.statements.append(sql)
+        if self._raise_on and self._raise_on in sql:
+            raise self._raise_exc
+
+
+class _FakeConn:
+    def __init__(self, cur):
+        self._cur = cur
+        self.committed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def cursor(self):
+        return self._cur
+
+    def commit(self):
+        self.committed = True
+
+
+@pytest.fixture
+def fake_pg(monkeypatch):
+    """Drive ensure_page_views_is_poll_column against a recording cursor."""
+    def _install(raise_on=None, raise_exc=None):
+        cur = _FakeCursor(raise_on=raise_on, raise_exc=raise_exc)
+        conn = _FakeConn(cur)
+        monkeypatch.setattr(_db, "pg_available", lambda: True)
+        monkeypatch.setattr(_db, "pg_connect", lambda: conn)
+        logged = []
+        monkeypatch.setattr(_db, "_log_err",
+                            lambda cat, exc: logged.append(cat))
+        return cur, conn, logged
+    return _install
+
+
+def test_lock_timeout_is_set_before_the_alter(fake_pg):
+    cur, conn, _ = fake_pg()
+    assert _db.ensure_page_views_is_poll_column() is True
+    assert conn.committed
+    joined = [s for s in cur.statements]
+    assert any("lock_timeout" in s for s in joined), "lock_timeout never set"
+    lock_i = next(i for i, s in enumerate(joined) if "lock_timeout" in s)
+    alter_i = next(i for i, s in enumerate(joined) if "ALTER TABLE" in s)
+    assert lock_i < alter_i, (
+        "lock_timeout must be SET before the ALTER, or the ALTER can still "
+        "queue behind pg_dump"
+    )
+
+
+def test_lock_timeout_value_is_three_seconds(fake_pg):
+    cur, _, _ = fake_pg()
+    _db.ensure_page_views_is_poll_column()
+    stmt = next(s for s in cur.statements if "lock_timeout" in s)
+    assert "'3s'" in stmt, f"expected a 3s lock_timeout, got: {stmt!r}"
+
+
+def test_lock_timeout_returns_false_and_logs_its_own_category(fake_pg):
+    """On timeout: no raise, no boot failure, and a DISTINCT log category so
+    it reads as 'deferred, retries next boot' rather than a hard failure."""
+    import psycopg
+    cur, conn, logged = fake_pg(
+        raise_on="ALTER TABLE",
+        raise_exc=psycopg.errors.LockNotAvailable("canceling statement due "
+                                                  "to lock timeout"),
+    )
+    assert _db.ensure_page_views_is_poll_column() is False
+    assert logged == ["ensure_page_views_is_poll_column_lock_timeout"], (
+        f"expected the lock-timeout category, got {logged}"
+    )
+    assert not conn.committed
+
+
+def test_other_errors_keep_the_generic_category(fake_pg):
+    """A lock timeout is deferred; anything else is a real failure. They must
+    not be conflated, or a genuine broken migration hides as 'retry later'."""
+    cur, _, logged = fake_pg(
+        raise_on="ALTER TABLE", raise_exc=RuntimeError("boom"),
+    )
+    assert _db.ensure_page_views_is_poll_column() is False
+    assert logged == ["ensure_page_views_is_poll_column_failed"]
+
+
+def test_retry_is_safe_because_the_alter_is_idempotent(fake_pg):
+    """Retry-next-boot is only sound if repeated attempts are free."""
+    cur, _, _ = fake_pg()
+    _db.ensure_page_views_is_poll_column()
+    alter = next(s for s in cur.statements if "ALTER TABLE" in s)
+    assert "IF NOT EXISTS" in alter
+
+
+def test_is_lock_timeout_is_guarded_against_missing_psycopg(monkeypatch):
+    """The error path must not raise AttributeError when psycopg is absent."""
+    monkeypatch.setattr(_db, "psycopg", None)
+    assert _db._is_lock_timeout(RuntimeError("x")) is False
+
+
+def test_is_lock_timeout_recognises_the_real_error():
+    import psycopg
+    assert _db._is_lock_timeout(
+        psycopg.errors.LockNotAvailable("lock timeout")) is True
+    assert _db._is_lock_timeout(RuntimeError("nope")) is False
+
+
+def test_retry_next_boot_is_documented():
+    src = _src(DB_PY)
+    fn = src[src.index("def ensure_page_views_is_poll_column"):][:3000]
+    assert "retry" in fn.lower(), (
+        "the retry-next-boot behaviour must be stated where it is implemented"
+    )
+    assert "pg_dump" in fn, "the reason for the timeout must be recorded"
+
+
 def test_hard_rule_is_documented_where_it_will_be_read():
     for path in (os.path.join(ROOT, "poll_detection.py"), MIGRATION):
         src = _src(path)
