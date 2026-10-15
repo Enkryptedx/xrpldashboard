@@ -36,7 +36,11 @@ Checks:
                            walkers (check_page/token_page/unknown) are
                            the Render→Lenovo hairpin baseline — always
                            suppressed by allowlist, not blocklist.
-  6. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
+  6. deploy_stale       — this checkout's HEAD differs from origin/main AND
+                           its HEAD commit is older than L1_DEPLOY_STALE_SEC
+                           (default 24h). Catches "merged but never pulled",
+                           which is invisible to every other check.
+  7. weekly_heartbeat    — Sunday 09:00-10:00 ET, once per week.
 
 Dedup / suppression rules (see `reconcile`):
   - NEW alert (unseen id)                       → page immediately.
@@ -152,6 +156,115 @@ def _is_stuck_row(last_run_completed, last_run_message, cadence_s,
 
 
 SNAPSHOT_MAX_AGE_HOURS = 26
+
+# ── deploy staleness ────────────────────────────────────────────────
+# 2026-10-15 wound: the walker-pause-hardening fix (84616f3) was merged,
+# pulled to the Mac, and deployed to Render — but THIS pager runs from a
+# separate clone on Lenovo that nobody pulled. It sat at 86c899c, dated
+# 2026-09-30, for 15 days and 191 commits, so it kept paging
+# walker_failing:supply_escrow_walker from pre-fix code while the fix was
+# "live" everywhere the owner looked. Nothing alarmed: plist_drift_canary
+# watches unit FILES, not the checkout's commit, and the pager cannot
+# notice that it is itself out of date.
+#
+# Measured by HEAD COMMIT AGE, not by commit count. Count would need the
+# incoming objects locally, i.e. a fetch; and "behind by N" pages on every
+# merge until someone deploys, which is noise when deploys are manual.
+# Commit age is stateless and self-calibrating: a same-day deploy lag
+# reads as hours and stays quiet, while 15 days cannot hide.
+#
+# `git ls-remote` rather than `git fetch`: it asks the remote for the ref
+# and writes NOTHING to the local repo. A monitor must not mutate the thing
+# it is monitoring, and a fetch inside a 20-minute timer would quietly
+# change the clone's object store forever.
+#
+# Network failure is a SKIP, matching plist_drift_canary's SSH convention
+# (a blip must not page). A LOCAL git failure is a finding: that is
+# misconfiguration, not weather.
+DEPLOY_REPO_DIR = Path(__file__).resolve().parent.parent
+DEPLOY_BRANCH = os.environ.get("L1_DEPLOY_BRANCH", "main").strip() or "main"
+DEPLOY_STALE_SECONDS = int(os.environ.get("L1_DEPLOY_STALE_SEC", 24 * 3600))
+DEPLOY_GIT_TIMEOUT_SEC = 25
+
+
+def _git_capture(args, repo_dir=None, timeout=DEPLOY_GIT_TIMEOUT_SEC,
+                 runner=None):
+    """Run a git command, returning (stdout_stripped, error_or_None).
+
+    Never raises: the pager must survive a broken git the way it survives
+    an unreachable node.
+    """
+    import subprocess
+    repo_dir = DEPLOY_REPO_DIR if repo_dir is None else repo_dir
+    runner = subprocess.run if runner is None else runner
+    try:
+        out = runner(["git", "-C", str(repo_dir)] + list(args),
+                     capture_output=True, text=True, timeout=timeout)
+    except Exception as e:                       # noqa: BLE001
+        return "", type(e).__name__
+    if getattr(out, "returncode", 1) != 0:
+        return "", f"rc{getattr(out, 'returncode', '?')}"
+    return (getattr(out, "stdout", "") or "").strip(), None
+
+
+def _is_deploy_stale(local_sha, remote_sha, head_age_s,
+                     threshold=None) -> bool:
+    """True when the checkout is behind AND has been for long enough.
+
+    Both conditions matter. Differing SHAs alone fires on every merge until
+    the deploy lands; age alone fires whenever no new commits exist. Only
+    together do they mean "someone forgot to deploy".
+    """
+    threshold = DEPLOY_STALE_SECONDS if threshold is None else threshold
+    if not local_sha or not remote_sha:
+        return False
+    if local_sha == remote_sha:
+        return False
+    return head_age_s is not None and head_age_s > threshold
+
+
+def check_deploy_stale(now_utc: dt.datetime) -> list[dict]:
+    """Alert when this checkout is behind origin and has been for a while."""
+    alerts: list[dict] = []
+
+    local_sha, err = _git_capture(["rev-parse", "HEAD"])
+    if err is not None:
+        # Local git broken / not a repo: misconfiguration, so page.
+        alerts.append({"id": "deploy_stale:local_git_unavailable",
+                       "repo": str(DEPLOY_REPO_DIR), "error": err})
+        return alerts
+
+    head_epoch, err = _git_capture(["log", "-1", "--format=%ct", "HEAD"])
+    if err is not None:
+        alerts.append({"id": "deploy_stale:local_git_unavailable",
+                       "repo": str(DEPLOY_REPO_DIR), "error": err})
+        return alerts
+
+    remote_out, err = _git_capture(
+        ["ls-remote", "origin", f"refs/heads/{DEPLOY_BRANCH}"])
+    if err is not None:
+        # Remote unreachable is weather, not a finding. Say so and move on.
+        print(f"[l1_pager] ls-remote unreachable ({err}); SKIP deploy_stale",
+              file=sys.stderr, flush=True)
+        return alerts
+
+    remote_sha = remote_out.split("\t")[0].strip() if remote_out else ""
+    try:
+        head_age_s = int(now_utc.timestamp() - int(head_epoch))
+    except (TypeError, ValueError):
+        head_age_s = None
+
+    if _is_deploy_stale(local_sha, remote_sha, head_age_s):
+        alerts.append({
+            "id": "deploy_stale:HEAD",
+            "repo": str(DEPLOY_REPO_DIR),
+            "branch": DEPLOY_BRANCH,
+            "local_sha": local_sha[:12],
+            "remote_sha": remote_sha[:12],
+            "head_age_s": head_age_s,
+            "threshold_s": DEPLOY_STALE_SECONDS,
+        })
+    return alerts
 DEFAULT_REMINDER_INTERVAL_SEC = 6 * 3600     # re-page throttle floor
 # Once a specific (walker, reason) condition has paged, its "still-active"
 # reminder does not re-page more often than this. Fingerprint changes,
@@ -722,6 +835,23 @@ def format_alert(alert: dict) -> str:
             f"Check Mac VPN routing / launchd Python interpreter / "
             f"192.168.40.95:5005 reachability from the walker's context."
         )
+    if kind == "deploy_stale":
+        if alert["id"].endswith("local_git_unavailable"):
+            return (
+                f"🟥 <b>DEPLOY check broken</b>: cannot read git in "
+                f"<code>{alert['repo']}</code> ({alert['error']}) — "
+                f"staleness is unprovable until this is fixed"
+            )
+        return (
+            f"🟥 <b>DEPLOY stale</b>: <code>{alert['repo']}</code> on "
+            f"{alert['branch']} is behind origin — local "
+            f"<code>{alert['local_sha']}</code> vs remote "
+            f"<code>{alert['remote_sha']}</code>, HEAD is "
+            f"{_human_age(alert['head_age_s'])} old "
+            f"(threshold {_human_age(alert['threshold_s'])}).\n"
+            f"This host runs code nobody pulled: git -C {alert['repo']} "
+            f"pull --ff-only origin {alert['branch']}"
+        )
     if kind == "snapshot_missed":
         if alert["id"].endswith("no_rows"):
             return "🟥 <b>SNAPSHOT missed</b>: signed_snapshots table is empty"
@@ -848,6 +978,7 @@ def gather_alerts(now_utc: dt.datetime) -> list[dict]:
         (check_walker_findings, {}),
         (check_snapshot_missed, {"now_utc": now_utc}),
         (check_sovereignty_loss, {"now_utc": now_utc}),
+        (check_deploy_stale, {"now_utc": now_utc}),
     ):
         try:
             alerts.extend(fn(**kwargs))
