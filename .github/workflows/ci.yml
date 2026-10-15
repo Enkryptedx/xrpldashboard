@@ -575,3 +575,20 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_walker_pause_hardening.py -q
+
+      # Deploy staleness: "merged but never pulled". On 2026-10-15 the
+      # pause-hardening fix was merged, pulled to the Mac and deployed to
+      # Render, but l1_pager runs from a SEPARATE clone on Lenovo that sat at
+      # 86c899c for 15 days / 191 commits -- so it kept paging from pre-fix
+      # code while the fix was "live" everywhere the owner looked. Nothing
+      # alarmed: plist_drift_canary watches unit FILES, not the checkout's
+      # commit, and a stale pager cannot notice its own staleness.
+      # Pins the load-bearing choices: age not commit-count (count needs a
+      # fetch, and "behind by N" pages on every merge), ls-remote never
+      # fetch (a monitor must not mutate what it monitors), both conditions
+      # required, and network-skip vs local-git-page.
+      # Hermetic: pure predicates + fake git runner, no git executed.
+      - name: l1 pager deploy staleness (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_l1_pager_deploy_stale.py -q
