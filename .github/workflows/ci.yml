@@ -622,3 +622,19 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_canary_tier_probe_retry.py -q
+
+      # Token trust tiers. _load_token_names_dict() used to suppress ONLY
+      # verified_via == "TODO_curation_pass"; an entry with NO verified_via
+      # fell through and rendered -- the opposite of the policy its own
+      # docstring quoted. 14 walked MPT entries had none, so a data-only
+      # commit would have published 5 Ripple-RLUSD lookalikes, 2 XRP
+      # lookalikes and 5 self-declared test tokens under curated-looking
+      # names. Root cause: `source` was doubling as a trust tier.
+      # Pins the scope guard too: the lookalike rule is gated on
+      # tier == self_described, because ungated string matching would fire
+      # on 92 legitimate lp_derived LP tokens (LP: XRP/SOLO, LP: RLUSD/mXRP).
+      # Hermetic: pure functions, no DB, no network, app never imported.
+      - name: token trust tiers + lookalike labels (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_token_label.py -q
