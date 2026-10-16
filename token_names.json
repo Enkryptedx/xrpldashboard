@@ -1947,7 +1947,7 @@
     "category": "unlabeled",
     "currency_display": "HVI Spike Te",
     "currency_hex": "060837B658DFB58EBE866100FEDB2013D123744243658B7D",
-    "desc": "Xaman opt-in spike 2026-08-17 \u2014 not a real ticket",
+    "desc": "Xaman opt-in spike 2026-08-17 — not a real ticket",
     "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
     "name": "HVI Spike Test Pass",
     "source": "mpt_metadata"
@@ -2272,7 +2272,7 @@
     "category": "native_utility_chain",
     "currency_display": "KEY",
     "currency_hex": "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
-    "desc": "The native utility and governance token of the Keystone Protocol \u2014 a decentralized lending and asset management platform built on XRPL.",
+    "desc": "The native utility and governance token of the Keystone Protocol — a decentralized lending and asset management platform built on XRPL.",
     "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
     "issuer_name": "Keystone Foundation",
     "name": "Keystone Protocol Token",
@@ -2302,7 +2302,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "06380D74A1C05DF0A17817E6BAC66283CDE86FAF894651ED",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
+    "desc": "Token de captação para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
     "issuer": "rEkGNmAo4R7KfA6wZre62LJXDUvmtgg66i",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 39abf54e",
@@ -2312,7 +2312,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "063AD99539A5242C0717E89F8EED25396B44673133938738",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
+    "desc": "Token de captação para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
     "issuer": "raEoM9iz5B61iqwDW7yvP7dj4DpbK5Nwy7",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 29d6f09d",
@@ -2322,7 +2322,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "063AD9F575D20B5318CEE1E1ED7891C54A983F23C47481C1",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
+    "desc": "Token de captação para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
     "issuer": "rBjyg2GWvXnGaxfWKLoyaTFqpFABD4MkTd",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 802f8aab",
@@ -2332,7 +2332,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B4E3FD4CDD965C736890406D541BC0B3C24132710BB",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
+    "desc": "Token de captação para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
     "issuer": "raFWVyTwpks1hd2rEbi85AtPPnJ3DuwrA9",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -2342,7 +2342,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B532C28B1B9B5305AB5316904C14A5BB2DA09B430FE",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
+    "desc": "Token de captação para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
     "issuer": "rnpV7v65kpk4RExbx9TMSGP1trhu9GXkLH",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -2352,7 +2352,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B585069F82556F862DD9D3248783323D1B7F841BEFD",
-    "desc": "Token de capta\u00e7\u00e3o para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
+    "desc": "Token de captação para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
     "issuer": "r3LUrDzpt7eaoVZi5arepjqhMycTxjkTQi",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -3200,7 +3200,7 @@
     "currency_display": "ONDO",
     "currency_hex": "4F4E444F00000000000000000000000000000000",
     "issuer": "",
-    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL \u2014 any wallet doing so is impersonating the brand.",
+    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand.",
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
   },
   "4F55534700000000000000000000000000000000:rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
@@ -3284,7 +3284,7 @@
     "currency_display": "SOIL",
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet \u2014 not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
+    "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet — not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
     "verified_via": null
   },
   "534F4C4F00000000000000000000000000000000:rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
@@ -7763,7 +7763,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 6",
-    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 6",
+    "desc": "Token de captação Liquidez OTC tBRL 6",
     "issuer_name": "Tokeniza"
   },
   "06361CB39DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7773,7 +7773,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 5",
-    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 5",
+    "desc": "Token de captação Liquidez OTC tBRL 5",
     "issuer_name": "Tokeniza"
   },
   "06361CB19DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7783,7 +7783,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 4",
-    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 4",
+    "desc": "Token de captação Liquidez OTC tBRL 4",
     "issuer_name": "Tokeniza"
   },
   "06361CB29DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7793,7 +7793,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "b.U Tech - EUA",
-    "desc": "Token de capta\u00e7\u00e3o b.U Tech - EUA ",
+    "desc": "Token de captação b.U Tech - EUA ",
     "issuer_name": "Tokeniza"
   },
   "0641C7E8F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7821,7 +7821,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Mira Mar Vile",
-    "desc": "Token de capta\u00e7\u00e3o Mira Mar Vile",
+    "desc": "Token de captação Mira Mar Vile",
     "issuer_name": "Tokeniza"
   },
   "06361CB79DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7830,8 +7830,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Click Antecipa - Deb\u00eantures 05",
-    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 05",
+    "name": "Click Antecipa - Debêntures 05",
+    "desc": "Token de captação Click Antecipa - Debêntures 05",
     "issuer_name": "Tokeniza"
   },
   "0660BFC902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
@@ -7860,7 +7860,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "On House",
-    "desc": "Token de capta\u00e7\u00e3o On House ",
+    "desc": "Token de captação On House ",
     "issuer_name": "Tokeniza"
   },
   "0641C7E6F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7878,8 +7878,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Click Antecipa - Deb\u00eantures 06",
-    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 06",
+    "name": "Click Antecipa - Debêntures 06",
+    "desc": "Token de captação Click Antecipa - Debêntures 06",
     "issuer_name": "Tokeniza"
   },
   "0641C7E1F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7897,8 +7897,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
-    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
+    "name": "Oferta de Recebível Tokenizado 9 - b.U Tech",
+    "desc": "Token de captação Oferta de Recebível Tokenizado 9 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CBB9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7907,8 +7907,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
-    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
+    "name": "Oferta de Recebível Tokenizado 10 - b.U Tech",
+    "desc": "Token de captação Oferta de Recebível Tokenizado 10 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CBA9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7917,8 +7917,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
-    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
+    "name": "Oferta de Recebível Tokenizado 11 - b.U Tech",
+    "desc": "Token de captação Oferta de Recebível Tokenizado 11 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CB49DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7928,7 +7928,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "On House",
-    "desc": "Token de capta\u00e7\u00e3o On House ",
+    "desc": "Token de captação On House ",
     "issuer_name": "Tokeniza"
   },
   "0641C7EAF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7947,7 +7947,7 @@
     "source": "toml",
     "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
     "name": "EVE Token",
-    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain \u2014 every hour, forever."
+    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever."
   },
   "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0:rQDCL2vZNVndsyCpdP6ChhsAsqsGoShDEP": {
     "currency_hex": "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0",
@@ -8039,7 +8039,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "FNPL forward contract: 1000kg ma\u00edz, FWD-2026-006",
+    "desc": "FNPL forward contract: 1000kg maíz, FWD-2026-006",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)"
   },
   "0659A9A8C191FF213D318195FDA5F4C99102CFF469EBC10E:rJeWKscBVsDQJEEV6EGuNkM9mZG2D7YPr8": {
@@ -8214,5 +8214,153 @@
       }
     ],
     "reference": "rippled src/libxrpl/protocol/AMMCore.cpp::ammLPTCurrency"
+  },
+  "06683FF67A0FF5BB61D1D2F3C69F1DBD6621671709B21871:rU3QZKKqsz2ayXjfefCYRn5PBSLkxcU5mZ": {
+    "currency_hex": "06683FF67A0FF5BB61D1D2F3C69F1DBD6621671709B21871",
+    "currency_display": "prRLUSD",
+    "issuer": "rU3QZKKqsz2ayXjfefCYRn5PBSLkxcU5mZ",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Test Private Vault Shares",
+    "issuer_name": "test",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "06684026AFE883115361F763841C7B6D6A444C93A68161E1:rHsf88bYWr7BB6SELBx9ksqRxesYHnQniN": {
+    "currency_hex": "06684026AFE883115361F763841C7B6D6A444C93A68161E1",
+    "currency_display": "pubXRP",
+    "issuer": "rHsf88bYWr7BB6SELBx9ksqRxesYHnQniN",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Test Public Vault Shares",
+    "issuer_name": "test",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "065338E88DE20557DC0487AA1E7577551497E2DD6BD3D0D7:rDADsE5sbvbDVJHGm8pW6tK6XPEJKKU7Vi": {
+    "currency_hex": "065338E88DE20557DC0487AA1E7577551497E2DD6BD3D0D7",
+    "currency_display": "HASH",
+    "issuer": "rDADsE5sbvbDVJHGm8pW6tK6XPEJKKU7Vi",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "HASHANGELES",
+    "desc": "HASH MIRA AD USARE LE TRANSAZIONI LEDGER PER CONTRIBUIRE ALL ECOSISTEMA DEX DEI FORNITORI ED E COSTRUITO PER DARE VALORE AL TOKEN ESSENDO LIMITATO E COLLEGABILE SU PIU SITI WEB3 SVILUPPA PROGRAMMA WEB3 COMMUNITY XA3TOKEN",
+    "issuer_name": "PROGETTO DEX",
+    "tier": "self_described"
+  },
+  "06683DD2AFEF6B43E98F535E3FFA1AF4A1B83DC5BB939B91:rHsGh6HsdaTeFktujYybrAnGGYL8R3E3Ri": {
+    "currency_hex": "06683DD2AFEF6B43E98F535E3FFA1AF4A1B83DC5BB939B91",
+    "currency_display": "nsRLUSD",
+    "issuer": "rHsGh6HsdaTeFktujYybrAnGGYL8R3E3Ri",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "SME Lending Shares",
+    "issuer_name": "Network",
+    "tier": "self_described"
+  },
+  "0649B3D6CA10011D695BFE3939CB59EDEB4E1EE73FC9F0B3:rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72": {
+    "currency_hex": "0649B3D6CA10011D695BFE3939CB59EDEB4E1EE73FC9F0B3",
+    "currency_display": "DDG",
+    "issuer": "rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "DozerDog",
+    "desc": "My Bubba Dog!",
+    "issuer_name": "rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72",
+    "tier": "self_described"
+  },
+  "0660BFEB02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFEB02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Mint, Recall, update PO test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0660BFE902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFE902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "W1g-2 gate PO",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "060B0AE59FE7F2B50E46A1E9127A580EB575FA6850C683F7:rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV": {
+    "currency_hex": "060B0AE59FE7F2B50E46A1E9127A580EB575FA6850C683F7",
+    "currency_display": "X40AM",
+    "issuer": "rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "X40AM Utility Token",
+    "desc": "Native utility token of XRPTokenizer.app for customer messaging and platform services.",
+    "issuer_name": "XRPTokenizer",
+    "tier": "self_described"
+  },
+  "06083C9758DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
+    "currency_hex": "06083C9758DFB58EBE866100FEDB2013D123744243658B7D",
+    "currency_display": "HVI3ESC",
+    "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Humanity vs Insanity",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+  },
+  "06683EDA524400191C587DE4ACE48E9632A90BAB74246A54:r3Vy17FUKj5hi1P3w1C5qJdZ3SHcmPqF1E": {
+    "currency_hex": "06683EDA524400191C587DE4ACE48E9632A90BAB74246A54",
+    "currency_display": "nrRLUSD",
+    "issuer": "r3Vy17FUKj5hi1P3w1C5qJdZ3SHcmPqF1E",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Real Estate Lending Shares",
+    "issuer_name": "Network",
+    "tier": "self_described"
+  },
+  "06683217C8B4CC998DC684466B3EE24E3030DEC2797803F5:rKJNjWvm7SfFMudKFFT3fx7pJQtRKCSxei": {
+    "currency_hex": "06683217C8B4CC998DC684466B3EE24E3030DEC2797803F5",
+    "currency_display": "NXRP",
+    "issuer": "rKJNjWvm7SfFMudKFFT3fx7pJQtRKCSxei",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Native XRP Yield Shares",
+    "issuer_name": "Network",
+    "tier": "self_described"
+  },
+  "06683CC28DBBCDE5ACE272B5830E19DBB7E454AACB8C9977:rDvREvHG6oPs4xHiaKK73SdQFS7p8RyyCP": {
+    "currency_hex": "06683CC28DBBCDE5ACE272B5830E19DBB7E454AACB8C9977",
+    "currency_display": "niRLUSD",
+    "issuer": "rDvREvHG6oPs4xHiaKK73SdQFS7p8RyyCP",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Institutional Lending Shares",
+    "issuer_name": "Network",
+    "tier": "self_described"
+  },
+  "06683B32BFC43C52B501BBACF1E46D66D0B79C00EC806430:rJ7y9LB7tUijrvUuZg2ga6ut28V9oZhdG7": {
+    "currency_hex": "06683B32BFC43C52B501BBACF1E46D66D0B79C00EC806430",
+    "currency_display": "ntRLUSD",
+    "issuer": "rJ7y9LB7tUijrvUuZg2ga6ut28V9oZhdG7",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Trade Finance Shares",
+    "issuer_name": "Network",
+    "tier": "self_described"
+  },
+  "0660BFEC02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
+    "currency_hex": "0660BFEC02C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F",
+    "currency_display": "SCPO",
+    "issuer": "rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "v 2 - [UPDATED] Mint, Recall, update PO test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
   }
 }

@@ -52,10 +52,58 @@ Each non-TODO entry has a `source` field naming the verification tier:
 
 | `source`           | Trust origin                                                                |
 |--------------------|------------------------------------------------------------------------------|
-| `mpt_metadata`     | XLS-89 on-ledger MPT name/ticker fields. Protocol-deterministic.            |
+| `mpt_metadata`     | XLS-89 on-ledger MPT name/ticker fields. **Provenance, NOT trust** — see below. |
 | `toml`             | Issuer's `xrp-ledger.toml` `[[CURRENCIES]]` block; on-chain `Domain` field. |
 | `domain_fallback`  | Issuer publishes a TOML with org name but no matching currency block.       |
 | `lp_derived`       | LP-token currency derived from a verified AMM asset pair (see below).       |
+
+### `tier` — trust, which is NOT the same as `source` (2026-10-16)
+
+`source` records **where a name came from**. `tier` records **how far we
+trust it**. Those are different questions, and conflating them in one field
+is what let 14 unverified MPT names reach the edge of publication.
+
+`source: mpt_metadata` is protocol-deterministic in the sense that *we read
+the ledger correctly*. It says nothing about whether the issuer's claim is
+true: anyone can mint an MPT and self-declare any ticker. Of 14 such entries
+walked on 2026-10-09, five imitated Ripple's RLUSD, two imitated XRP, and
+five were self-declared **test** tokens.
+
+| `tier`            | Meaning                                                                |
+|-------------------|------------------------------------------------------------------------|
+| `self_described`  | The issuer asserted this name on-ledger. Nobody else corroborates it. Never renders as verified. |
+| `domain_fallback` | A first-party domain names the ISSUER ADDRESS. Issuer-level only — a TOML `[[CURRENCIES]]` block cannot describe an MPT, so this never proves the ticker. |
+
+Rendered strings are produced by `token_label.py` (pure, unit-tested), not
+ad hoc at each surface:
+
+- `self_described` + imitates a curated ticker → `⚠ not <Asset> · self-described`
+- `self_described` otherwise → `self-described (unverified)`
+- `domain_fallback` → `issuer verified via <host>`
+
+**Suppression.** An explicit `suppressed: <reason>` keeps an entry out of
+every rendered surface. Self-declared test tokens get
+`suppressed: self_declared_test`. This is deliberately NOT
+`TODO_curation_pass`: that sentinel means "pending a source", whereas a test
+token is rejected, not pending.
+
+**The lookalike check is gated on `tier == self_described`.** Ungated string
+matching would fire on 92 legitimate `lp_derived` LP tokens (`LP: XRP/SOLO`,
+`LP: RLUSD/mXRP`, …). Trust tier decides eligibility, not the ticker alone.
+
+### Cited domains must be reciprocated (2026-10-16)
+
+An account's `Domain` field is a **one-way claim**. Before citing it, fetch
+that domain's own `xrp-ledger.toml` and confirm it names the issuer address.
+If it does not, the claim is ignored — never displayed.
+
+Found in the wild: a memecoin's AccountRoot claimed `bithomp.com`, while
+bithomp's own TOML lists two unrelated accounts. Displaying that would have
+implied a well-known explorer vouched for it.
+
+This applies to **`Domain`-field claims**. Tier 1 of the policy above is
+still "the issuer's own site, naming the address as theirs" — a TOML is one
+way to satisfy that, not the only one.
 
 ### `lp_derived` — LP-token labels
 

@@ -11,6 +11,7 @@ import os
 import secrets
 import sqlite3
 import threading
+import token_label
 import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
@@ -3514,19 +3515,37 @@ def _load_d1_hero_snapshot():
 
 @ttl_cache(seconds=60)
 def _load_token_names_dict():
-    """Build {(currency_hex, issuer): entry} for fast lookup. Entries
-    still tagged `TODO_curation_pass` are excluded from the live render
-    per TOKEN_NAMES.md policy ("never publish a name we can't back to a
-    first-party source"). They stay in token_names.json as curation
-    history — when a `verified_via` lands, the entry goes live with no
-    code change."""
+    """Build {(currency_hex, issuer): entry} for fast lookup.
+
+    Suppression and trust labelling are delegated to token_label, which is
+    pure and unit-tested. Entries tagged `TODO_curation_pass` are still
+    excluded (unchanged), and so are entries carrying an explicit
+    `suppressed` reason.
+
+    WHY THIS CHANGED (2026-10-16). This function previously excluded ONLY
+    `verified_via == "TODO_curation_pass"`. An entry with NO `verified_via`
+    field at all fell straight through and rendered — the opposite of the
+    policy the old docstring quoted. 14 freshly-walked MPT entries had no
+    `verified_via`, so committing them as data would have published 5
+    Ripple-RLUSD lookalikes, 2 XRP lookalikes and 5 self-declared test
+    tokens under curated-looking names.
+
+    Each surviving entry gets `_trust_label` attached: the exact string a
+    surface appends to the display name, or None for "render as before".
+    Computed once here rather than at every call site so no surface can forget
+    it. Untagged entries get None, which keeps the ~286 entries that have
+    no `tier` behaving exactly as they do today — this change is scoped to
+    the 14 reviewed entries.
+    """
     raw = _safe_load_json(TOKEN_NAMES_PATH) or {}
     out = {}
     for entry in raw.values():
         if not isinstance(entry, dict):
             continue
-        if entry.get("verified_via") == "TODO_curation_pass":
+        should_render, label = token_label.render_decision(entry)
+        if not should_render:
             continue
+        entry["_trust_label"] = label
         out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
     return out
 
