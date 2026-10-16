@@ -188,3 +188,8 @@ GeoLite2-City.mmdb.lock
 # Local report / screenshot output — never part of the signed state (pre-anchor hygiene 2026-10-03)
 analytics_reports/
 nav_screenshots_archive/
+
+# Daily Evernorth treasury snapshot — walker output, regenerated each run
+# (anchor #11 hygiene 2026-10-16: was untracked and blocking the gate-5
+# git-clean check; it is derived data, not a curated surface)
+evernorth_daily_snapshot.json
