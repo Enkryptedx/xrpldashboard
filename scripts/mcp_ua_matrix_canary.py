@@ -18,16 +18,28 @@ Why this exists:
     green. answer_plausibility monitor pages on stale/red.
 
 Design fence:
-  - This canary sends 16 HEAD requests to https://mcp.xrpldashboard.com/health
-    (unauthenticated, safe endpoint returning a small JSON body).
+  - This canary sends 16 GET requests to https://mcp.xrpldashboard.com/mcp
+    (unauthenticated; a bare GET is refused by design, which is the point).
   - Any UA that returns a body containing "Error 1010" OR "browser
     signature banned" OR HTTP status 403 with the CF error-page shape
     is a FAIL — that means the WAF skip rule leaked, reverted, or was
     re-scoped away from `http.host eq "mcp.xrpldashboard.com"`.
-  - Any UA that returns HTTP 200 with the /health JSON is a PASS.
-  - Any UA that returns a transport-level error (timeout, DNS, TLS)
-    is a SKIP for that UA — logged, not counted as FAIL. Network flap
-    should not page.
+  - A PASS requires HTTP 406 *and* the FastMCP JSON-RPC body marker
+    "Client must accept text/event-stream". Both, not either: the status
+    alone could come from an intermediary, and that body can only be
+    produced by FastMCP's streamable-http handler actually serving. So a
+    pass proves BOTH that the UA was not WAF-banned (the request reached
+    origin) and that MCP is alive.
+  - Anything else — 404, 502, a 200 without the marker — is
+    fail_unexpected. Until 2026-10-17 this canary probed /health, a path
+    that has never existed, and treated the resulting 404 as a pass
+    because the status was never compared. It would have stayed green with
+    the server completely dead.
+  - A transport-level error (timeout, DNS, TLS) is RETRIED once. If the
+    retry also fails it is fail_transport, not a skip: a persistent
+    timeout is a real outage. The retry is what keeps a single network
+    flap from paging — same retry-before-negative rule as
+    two_way_toml_verifier_walker.
 
 Runs daily via launchd.
 """
@@ -55,8 +67,18 @@ log = logging.getLogger(__name__)
 WALKER_NAME = "mcp_ua_matrix_canary"
 WALKER_CADENCE_SECONDS = 86400  # daily
 
-MCP_HEALTH_URL = "https://mcp.xrpldashboard.com/health"
+MCP_PROBE_URL = "https://mcp.xrpldashboard.com/mcp"
 REQUEST_TIMEOUT = 10
+
+# A bare GET to the streamable-http endpoint is refused with 406 plus a
+# FastMCP-specific JSON-RPC error body. Asserting both is what makes this a
+# liveness probe rather than a "something answered" probe.
+ALIVE_STATUS = 406
+ALIVE_BODY_MARKER = "Client must accept text/event-stream"
+
+# Retry a transport error once before calling it an outage, so a single
+# network flap does not page. Matches the retry-before-negative rule.
+TRANSPORT_RETRY_SLEEP_SECONDS = 1.0
 
 # The 16 client-class UAs from the 2026-08-26 QUADFECTA external matrix.
 # Two of these (Python-urllib, libwww-perl) were 1010-blocked pre-fix;
@@ -88,42 +110,70 @@ UA_MATRIX = [
 CF_1010_MARKERS = ("Error 1010", "browser signature banned", "1010 IssueID")
 
 
-def _probe_one(ua: str) -> dict:
-    """Return {'ua': ua, 'verdict': 'pass'|'fail_1010'|'skip_transport', 'detail': str}."""
+def _fetch_once(ua: str):
+    """One GET. Returns (status, body, transport_error_or_None). Never raises."""
     req = urllib.request.Request(
-        MCP_HEALTH_URL,
+        MCP_PROBE_URL,
         headers={"User-Agent": ua, "Accept": "application/json"},
         method="GET",
     )
     ctx = ssl.create_default_context(cafile=certifi.where())
     try:
         with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT, context=ctx) as resp:
-            status = resp.status
-            body = resp.read(4096).decode("utf-8", errors="replace")
+            return resp.status, resp.read(4096).decode("utf-8", errors="replace"), None
     except urllib.error.HTTPError as e:
-        # CF blocks come back as HTTP errors — read the body for 1010.
-        status = e.code
+        # Both the 406 we expect AND a CF 403 block arrive as HTTPError, so
+        # the body still has to be read here.
         try:
             body = e.read(4096).decode("utf-8", errors="replace")
         except Exception:
             body = ""
+        return e.code, body, None
     except (urllib.error.URLError, TimeoutError, ssl.SSLError, OSError) as e:
+        return None, "", f"{type(e).__name__}: {e}"
+
+
+def _probe_one(ua: str, fetcher=None, sleeper=None) -> dict:
+    """Return {'ua', 'verdict', 'detail'}.
+
+    verdict: 'pass' | 'fail_1010' | 'fail_unexpected' | 'fail_transport'
+    fetcher/sleeper are injectable so the matrix is testable without network.
+    """
+    fetcher = _fetch_once if fetcher is None else fetcher
+    sleeper = time.sleep if sleeper is None else sleeper
+
+    status, body, terr = fetcher(ua)
+    if terr is not None:
+        sleeper(TRANSPORT_RETRY_SLEEP_SECONDS)
+        status, body, terr = fetcher(ua)
+    if terr is not None:
         return {
             "ua": ua,
-            "verdict": "skip_transport",
-            "detail": f"transport error: {type(e).__name__}: {e}",
+            "verdict": "fail_transport",
+            "detail": f"transport error twice: {terr}",
         }
 
+    # 1010 first: a WAF ban is the thing this canary exists to catch, and it
+    # must not be masked by the status check below.
     if any(marker in body for marker in CF_1010_MARKERS):
         return {
             "ua": ua,
             "verdict": "fail_1010",
             "detail": f"status={status} body-signature=1010 (WAF skip rule leaked)",
         }
+
+    if status == ALIVE_STATUS and ALIVE_BODY_MARKER in body:
+        return {
+            "ua": ua,
+            "verdict": "pass",
+            "detail": f"status={status} fastmcp-alive",
+        }
+
     return {
         "ua": ua,
-        "verdict": "pass",
-        "detail": f"status={status}",
+        "verdict": "fail_unexpected",
+        "detail": (f"status={status} (expected {ALIVE_STATUS} + FastMCP "
+                   f"marker; got body[:80]={body[:80]!r})"),
     }
 
 
@@ -145,14 +195,20 @@ def run():
         results.append(result)
         time.sleep(0.25)  # gentle pacing, avoid tripping rate limits
 
-    fails = [r for r in results if r["verdict"] == "fail_1010"]
-    skips = [r for r in results if r["verdict"] == "skip_transport"]
+    fails_1010 = [r for r in results if r["verdict"] == "fail_1010"]
+    fails_unexp = [r for r in results if r["verdict"] == "fail_unexpected"]
+    fails_trans = [r for r in results if r["verdict"] == "fail_transport"]
+    fails = fails_1010 + fails_unexp + fails_trans
     passes = [r for r in results if r["verdict"] == "pass"]
 
+    # Every fail_* verdict counts. Previously only fail_1010 did, which is
+    # why a 404 from a nonexistent path read as a clean run.
     ok = len(fails) == 0
     summary = (
         f"probed {len(results)} UAs: "
-        f"pass={len(passes)} fail_1010={len(fails)} skip_transport={len(skips)}"
+        f"pass={len(passes)} fail_1010={len(fails_1010)} "
+        f"fail_unexpected={len(fails_unexp)} "
+        f"fail_transport={len(fails_trans)}"
     )
     if fails:
         blocked = ", ".join(f["ua"][:32] for f in fails)
