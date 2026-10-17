@@ -1,0 +1,19 @@
+[[METADATA]]
+modified = "2026-04-14"
+
+[[ACCOUNTS]]
+address = "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd"
+desc = "EVE Token Issuer"
+
+[[ACCOUNTS]]
+address = "rwdF3kk5SmXTnwutunQmdN4nfjo2REpKh3"
+desc = "EVE Token Distributor"
+
+[[CURRENCIES]]
+code = "EVE"
+issuer = "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd"
+name = "EVE Token"
+desc = "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever."
+icon = "https://evecoin.org/eve-logo-256.png"
+website = "https://evecoin.org"
+twitter = "https://x.com/evecoin_io"

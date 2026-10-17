@@ -1,0 +1,50 @@
+# XRP Ledger Configuration for TickTap
+# This file declares XRP Ledger-related configuration for the domain
+
+# Basic information
+[domain]
+name = "pay.aiic.nz"
+description = "TickTap - Multi-currency payment platform with XRP Ledger integration"
+
+# Currency information
+[currency]
+# XRP (native currency)
+[currency.xrp]
+code = "XRP"
+issuer = ""
+decimals = 6
+symbol = "XRP"
+
+# Custom tokens
+[currency.nzd]
+code = "NZD"
+issuer = "rsMrj3r4oNzcmaWqVGqPMSKx1BTE6v6NZD"
+decimals = 6
+symbol = "NZD"
+
+# Contact information
+[contact]
+email = "info@aiic.nz"
+website = "https://hello.aiic.nz"
+
+# Version information
+[version]
+toml_version = "1.0.0"
+
+[[ACCOUNTS]]
+address = "rsMrj3r4oNzcmaWqVGqPMSKx1BTE6v6NZD"  # nzd issuer
+
+[[ACCOUNTS]]
+address = "raiicX4wZJeSFAkuj9eiE6pPJV2eWn7eaL"  # hot
+
+[[CURRENCIES]]
+code    = "NZD"
+issuer  = "rsMrj3r4oNzcmaWqVGqPMSKx1BTE6v6NZD"
+network = "main"
+display_decimals = 2
+
+[[CURRENCIES]]
+code    = "WST"
+issuer  = "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST"
+network = "main"
+display_decimals = 2

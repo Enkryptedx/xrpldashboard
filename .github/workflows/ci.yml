@@ -752,3 +752,31 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_citation_tiers.py tests/test_curation_walker_9.py -q
+
+      # The fail-closed TOML matcher must read the tables the spec uses.
+      # It scanned ONLY [[ISSUERS]]/[[TOKENS]] and its docstring claimed
+      # those were the spec's tables. The spec has NO [[ISSUERS]] table --
+      # it uses [[ACCOUNTS]] for addresses and [[CURRENCIES]] to pair a code
+      # with an issuer. Of five real TOMLs captured as fixtures, FOUR
+      # publish neither scanned table, so this fail-closed verifier rejected
+      # 4 of 5 legitimate issuers.
+      #
+      # Its one pass was also a FALSE pass: weildx.com matched via the
+      # `entry_curr == ""` wildcard, which treats a block declaring NO code
+      # as a currency match. It returned a generic org block that says
+      # nothing about the token, and verify_submission then read `category`
+      # off that block instead of the token's own [[CURRENCIES]] entry.
+      #
+      # Latent, not remedial: registry_form_submissions does not exist (it
+      # is created lazily on first submission), so no row has ever been
+      # processed. The first genuine submitter would have been the first
+      # victim.
+      #
+      # Now scans ACCOUNTS/CURRENCIES/ISSUERS/TOKENS and returns a match
+      # LEVEL -- MATCH_CURRENCY (issuer AND code) vs MATCH_ISSUER (address
+      # only) -- so a codeless block can only ever be issuer-level.
+      # Hermetic: committed real-TOML fixtures, no network, no DB.
+      - name: toml ACCOUNTS/CURRENCIES matcher (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_toml_accounts_matcher.py tests/test_toml_retry_before_negative.py -q

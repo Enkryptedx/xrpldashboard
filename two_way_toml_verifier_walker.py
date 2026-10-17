@@ -160,25 +160,112 @@ def _fetch_toml_once(url: str) -> tuple[dict | None, str | None]:
     return parsed, None
 
 
-def _find_issuer_entry(toml: dict, currency_hex: str, issuer: str) -> dict | None:
-    """Look for an [[ISSUERS]] entry matching (currency, issuer). The
-    xrp-ledger.toml spec uses [[ISSUERS]] arrays with 'address' key.
-    Some registries use [[TOKENS]] with 'issuer' + 'currency'. Handle
-    both shapes."""
-    for arr_name in ("ISSUERS", "TOKENS"):
+# Match strength, strongest first. A currency-level match means the TOML
+# named this issuer AND this code; issuer-level means only the address.
+MATCH_CURRENCY = "currency"
+MATCH_ISSUER = "issuer"
+
+# Tables scanned, in priority order. ACCOUNTS and CURRENCIES are the real
+# xrp-ledger.toml spec tables; ISSUERS and TOKENS are non-spec shapes some
+# registries also emit (weildx.com publishes all four).
+_SCANNED_ARRAYS = ("ACCOUNTS", "CURRENCIES", "ISSUERS", "TOKENS")
+
+
+def _code_candidates(currency_hex: str) -> set[str]:
+    """Every string that legitimately denotes this currency code.
+
+    XRPL currency is either a <=3-char ASCII code or 40-char hex carrying an
+    embedded ASCII name, and a TOML may name either form -- XAGa's block
+    declares code '5841476100...' with ticker 'XAGa'. Accept both.
+    """
+    out: set[str] = set()
+    cur = (currency_hex or "").strip()
+    if not cur:
+        return out
+    out.add(cur.upper())
+    if len(cur) == 40:
+        try:
+            decoded = bytes.fromhex(cur).rstrip(b"\x00").decode("ascii").strip()
+        except (ValueError, UnicodeDecodeError):
+            decoded = ""
+        if decoded:
+            out.add(decoded.upper())
+    return out
+
+
+def _block_codes(block: dict) -> set[str]:
+    """Codes a TOML block declares. 'ticker' counts: the spec's [[CURRENCIES]]
+    examples pair it with 'code', and real TOMLs use it that way."""
+    return {(block.get(key) or "").strip().upper()
+            for key in ("code", "currency", "ticker")
+            if (block.get(key) or "").strip()}
+
+
+def _find_toml_match(toml: dict, currency_hex: str,
+                     issuer: str) -> tuple[dict | None, str | None]:
+    """Return (block, level) for the strongest match, or (None, None).
+
+    The previous implementation scanned ONLY [[ISSUERS]] and [[TOKENS]] and
+    claimed in its docstring that "the xrp-ledger.toml spec uses [[ISSUERS]]
+    arrays". The spec has no [[ISSUERS]] table at all -- it uses
+    [[ACCOUNTS]] for addresses and [[CURRENCIES]] to pair a code with an
+    issuer. Measured against five real TOMLs on 2026-10-17, four published
+    NEITHER scanned table:
+
+      evecoin.org    ACCOUNTS=2  CURRENCIES=1
+      hvi3.com       ACCOUNTS=5
+      pay.aiic.nz    ACCOUNTS=2  CURRENCIES=2
+      xrpturbo.com   ACCOUNTS=1  CURRENCIES=1
+      weildx.com     ACCOUNTS=40 CURRENCIES=40 ISSUERS=40 TOKENS=40
+
+    So this fail-closed verifier would have rejected 4 of 5 legitimate
+    issuers with `toml_missing_issuer_or_currency_entry`. Nobody was
+    actually turned away only because registry_form_submissions does not
+    exist yet -- it is created lazily on first submission, so the first
+    genuine submitter would have been the first victim.
+
+    The `entry_curr == ""` wildcard is also gone. It treated a block that
+    declares NO code as a currency match, so "this domain mentions the
+    address" was indistinguishable from "this domain names this token".
+    Those are now separate levels, and a codeless block can only ever
+    produce MATCH_ISSUER.
+    """
+    if not isinstance(toml, dict) or not issuer:
+        return None, None
+
+    candidates = _code_candidates(currency_hex)
+    issuer_only_block = None
+
+    for arr_name in _SCANNED_ARRAYS:
         arr = toml.get(arr_name) or []
         if not isinstance(arr, list):
             continue
-        for entry in arr:
-            if not isinstance(entry, dict):
+        for block in arr:
+            if not isinstance(block, dict):
                 continue
-            entry_addr = (entry.get("address") or entry.get("issuer") or "").strip()
-            entry_curr = (entry.get("currency") or "").strip().upper()
-            if entry_addr == issuer and (
-                entry_curr == currency_hex or entry_curr == ""
-            ):
-                return entry
-    return None
+            addr = (block.get("address") or block.get("issuer") or "").strip()
+            if not addr or addr != issuer:
+                continue
+            if candidates and (_block_codes(block) & candidates):
+                return block, MATCH_CURRENCY
+            # Keep scanning: a later table may name the code for this same
+            # address, and currency-level always outranks issuer-level.
+            if issuer_only_block is None:
+                issuer_only_block = block
+
+    if issuer_only_block is not None:
+        return issuer_only_block, MATCH_ISSUER
+    return None, None
+
+
+def _find_issuer_entry(toml: dict, currency_hex: str, issuer: str) -> dict | None:
+    """Back-compat shim returning just the matched block.
+
+    scripts/verify_rwa_families.py imports this and only tests truthiness,
+    so it keeps working and silently gains ACCOUNTS/CURRENCIES support.
+    """
+    block, _level = _find_toml_match(toml, currency_hex, issuer)
+    return block
 
 
 def _fetch_xrpl_domain(issuer: str) -> tuple[str | None, str | None]:
@@ -247,9 +334,15 @@ def verify_submission(row: dict) -> tuple[bool, str | None, int | None]:
     if err:
         return False, err, None
 
-    entry = _find_issuer_entry(toml, row["currency_hex"], row["issuer"])
+    entry, match_level = _find_toml_match(
+        toml, row["currency_hex"], row["issuer"])
     if entry is None:
-        return False, "toml_missing_issuer_or_currency_entry", None
+        # The address appears in no scanned table, so the domain does not
+        # vouch for this issuer at all. Distinct from "names the address but
+        # not the code", which is MATCH_ISSUER and still acceptable: the
+        # landing tier below is 'self-described' either way, so this gate is
+        # about whether the domain confirms the ISSUER, not the ticker.
+        return False, "toml_does_not_name_issuer", None
 
     toml_category = (
         entry.get("category")

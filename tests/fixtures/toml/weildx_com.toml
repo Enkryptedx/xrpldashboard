@@ -1,0 +1,1606 @@
+[METADATA]
+modified = 2026-08-05T00:00:00Z
+
+[ORGANIZATION]
+name = "WeildX"
+website = "https://weildx.com/"
+
+[[ACCOUNTS]]
+address = "r39KivuiizHEKe76spEk1vNALmhuTFMXhG"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wMETA on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wTSLA on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wNVDA on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wASML on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wMU on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAMZN on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wPLTR on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAMD on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wMSFT on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wSPCX on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAAPL on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wGOOG on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAVGO on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rNhzqK9v91dgttC9XjdcwHFZwHGGuJMqPC"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wBRKB on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLLY on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wJPM on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wNFLX on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wCOIN on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wBABA on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wTSMC on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wQCOM on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wINTC on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLRCX on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wMRVL on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wARM on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wGFS on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAMAT on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wNOVO on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rMtQUVGGY1jK4NZ5etpA4x6BNNVSSZKM7m"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLVMH on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "r9Tuq9FKRLm7fKNLKQjHtvbyf2cMVi4r85"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wRMS on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rJm3KxjFLgHb578GpPFZDJ4pfwwCoC2QDL"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wRACE on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLMT on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wRTX on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wNOC on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLHX on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rDsdvQfRZ7B6oP6ZiLmDr346epajyvKZqA"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wRHM on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rPHRF2CSrUyk5qbF5Ue7BDrH5eMQ2qvvvF"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wLDO on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wKTOS on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wAVAV on the XRP Ledger."
+
+[[ACCOUNTS]]
+address = "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7"
+network = "main"
+domain = "weildx.com"
+desc = "WeildX issuer account for wVISA on the XRP Ledger."
+
+[[CURRENCIES]]
+code = "774D455441000000000000000000000000000000"
+ticker = "wMETA"
+issuer = "r39KivuiizHEKe76spEk1vNALmhuTFMXhG"
+network = "main"
+display_decimals = 6
+name = "wMETA"
+desc = "wMETA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Meta Platforms, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wmeta.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7754534C41000000000000000000000000000000"
+ticker = "wTSLA"
+issuer = "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc"
+network = "main"
+display_decimals = 6
+name = "wTSLA"
+desc = "wTSLA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Tesla, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wtsla.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774E564441000000000000000000000000000000"
+ticker = "wNVDA"
+issuer = "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g"
+network = "main"
+display_decimals = 6
+name = "wNVDA"
+desc = "wNVDA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to NVIDIA Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wnvda.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7741534D4C000000000000000000000000000000"
+ticker = "wASML"
+issuer = "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt"
+network = "main"
+display_decimals = 6
+name = "wASML"
+desc = "wASML is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to ASML Holding N.V. listed stock."
+icon = "https://weildx.com/assets/tokens/wasml.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "wMU"
+ticker = "wMU"
+issuer = "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3"
+network = "main"
+display_decimals = 6
+name = "wMU"
+desc = "wMU is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Micron Technology, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wmu.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77414D5A4E000000000000000000000000000000"
+ticker = "wAMZN"
+issuer = "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61"
+network = "main"
+display_decimals = 6
+name = "wAMZN"
+desc = "wAMZN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Amazon.com, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wamzn.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77504C5452000000000000000000000000000000"
+ticker = "wPLTR"
+issuer = "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS"
+network = "main"
+display_decimals = 6
+name = "wPLTR"
+desc = "wPLTR is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Palantir Technologies Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wPLTR.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77414D4400000000000000000000000000000000"
+ticker = "wAMD"
+issuer = "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6"
+network = "main"
+display_decimals = 6
+name = "wAMD"
+desc = "wAMD is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Advanced Micro Devices, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAMD.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774D534654000000000000000000000000000000"
+ticker = "wMSFT"
+issuer = "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk"
+network = "main"
+display_decimals = 6
+name = "wMSFT"
+desc = "wMSFT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Microsoft Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wMSFT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7753504358000000000000000000000000000000"
+ticker = "wSPCX"
+issuer = "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ"
+network = "main"
+display_decimals = 6
+name = "wSPCX"
+desc = "wSPCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Space Exploration Technologies Corp. listed stock."
+icon = "https://weildx.com/assets/tokens/wSPCX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774141504C000000000000000000000000000000"
+ticker = "wAAPL"
+issuer = "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo"
+network = "main"
+display_decimals = 6
+name = "wAAPL"
+desc = "wAAPL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Apple Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAAPL.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77474F4F47000000000000000000000000000000"
+ticker = "wGOOG"
+issuer = "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg"
+network = "main"
+display_decimals = 6
+name = "wGOOG"
+desc = "wGOOG is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alphabet Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wGOOG.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774156474F000000000000000000000000000000"
+ticker = "wAVGO"
+issuer = "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD"
+network = "main"
+display_decimals = 6
+name = "wAVGO"
+desc = "wAVGO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Broadcom Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAVGO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7742524B42000000000000000000000000000000"
+ticker = "wBRKB"
+issuer = "rNhzqK9v91dgttC9XjdcwHFZwHGGuJMqPC"
+network = "main"
+display_decimals = 6
+name = "wBRKB"
+desc = "wBRKB is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Berkshire Hathaway Inc. Class B listed stock."
+icon = "https://weildx.com/assets/tokens/wBRKB.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C4C5900000000000000000000000000000000"
+ticker = "wLLY"
+issuer = "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv"
+network = "main"
+display_decimals = 6
+name = "wLLY"
+desc = "wLLY is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Eli Lilly and Company listed stock."
+icon = "https://weildx.com/assets/tokens/wLLY.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774A504D00000000000000000000000000000000"
+ticker = "wJPM"
+issuer = "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9"
+network = "main"
+display_decimals = 6
+name = "wJPM"
+desc = "wJPM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to JPMorgan Chase & Co. listed stock."
+icon = "https://weildx.com/assets/tokens/wJPM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774E464C58000000000000000000000000000000"
+ticker = "wNFLX"
+issuer = "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH"
+network = "main"
+display_decimals = 6
+name = "wNFLX"
+desc = "wNFLX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Netflix, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wNFLX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77434F494E000000000000000000000000000000"
+ticker = "wCOIN"
+issuer = "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT"
+network = "main"
+display_decimals = 6
+name = "wCOIN"
+desc = "wCOIN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Coinbase Global, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wCOIN.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7742414241000000000000000000000000000000"
+ticker = "wBABA"
+issuer = "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK"
+network = "main"
+display_decimals = 6
+name = "wBABA"
+desc = "wBABA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alibaba Group Holding Limited listed stock."
+icon = "https://weildx.com/assets/tokens/wBABA.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7754534D43000000000000000000000000000000"
+ticker = "wTSMC"
+issuer = "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH"
+network = "main"
+display_decimals = 6
+name = "wTSMC"
+desc = "wTSMC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Taiwan Semiconductor Manufacturing Company Limited listed stock."
+icon = "https://weildx.com/assets/tokens/wTSMC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7751434F4D000000000000000000000000000000"
+ticker = "wQCOM"
+issuer = "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF"
+network = "main"
+display_decimals = 6
+name = "wQCOM"
+desc = "wQCOM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Qualcomm Incorporated listed stock."
+icon = "https://weildx.com/assets/tokens/wQCOM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77494E5443000000000000000000000000000000"
+ticker = "wINTC"
+issuer = "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV"
+network = "main"
+display_decimals = 6
+name = "wINTC"
+desc = "wINTC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Intel Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wINTC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C524358000000000000000000000000000000"
+ticker = "wLRCX"
+issuer = "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T"
+network = "main"
+display_decimals = 6
+name = "wLRCX"
+desc = "wLRCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lam Research Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wLRCX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774D52564C000000000000000000000000000000"
+ticker = "wMRVL"
+issuer = "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP"
+network = "main"
+display_decimals = 6
+name = "wMRVL"
+desc = "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wMRVL.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7741524D00000000000000000000000000000000"
+ticker = "wARM"
+issuer = "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf"
+network = "main"
+display_decimals = 6
+name = "wARM"
+desc = "wARM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Arm Holdings plc listed stock."
+icon = "https://weildx.com/assets/tokens/wARM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7747465300000000000000000000000000000000"
+ticker = "wGFS"
+issuer = "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV"
+network = "main"
+display_decimals = 6
+name = "wGFS"
+desc = "wGFS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to GlobalFoundries Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wGFS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77414D4154000000000000000000000000000000"
+ticker = "wAMAT"
+issuer = "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie"
+network = "main"
+display_decimals = 6
+name = "wAMAT"
+desc = "wAMAT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Applied Materials, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAMAT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774E4F564F000000000000000000000000000000"
+ticker = "wNOVO"
+issuer = "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ"
+network = "main"
+display_decimals = 6
+name = "wNOVO"
+desc = "wNOVO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Novo Nordisk A/S listed stock."
+icon = "https://weildx.com/assets/tokens/wNOVO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C564D48000000000000000000000000000000"
+ticker = "wLVMH"
+issuer = "rMtQUVGGY1jK4NZ5etpA4x6BNNVSSZKM7m"
+network = "main"
+display_decimals = 6
+name = "wLVMH"
+desc = "wLVMH is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to LVMH Moet Hennessy Louis Vuitton SE listed stock."
+icon = "https://weildx.com/assets/tokens/wLVMH.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "77524D5300000000000000000000000000000000"
+ticker = "wRMS"
+issuer = "r9Tuq9FKRLm7fKNLKQjHtvbyf2cMVi4r85"
+network = "main"
+display_decimals = 6
+name = "wRMS"
+desc = "wRMS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Hermes International SCA listed stock."
+icon = "https://weildx.com/assets/tokens/wRMS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7752414345000000000000000000000000000000"
+ticker = "wRACE"
+issuer = "rJm3KxjFLgHb578GpPFZDJ4pfwwCoC2QDL"
+network = "main"
+display_decimals = 6
+name = "wRACE"
+desc = "wRACE is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Ferrari N.V. listed stock."
+icon = "https://weildx.com/assets/tokens/wRACE.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C4D5400000000000000000000000000000000"
+ticker = "wLMT"
+issuer = "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio"
+network = "main"
+display_decimals = 6
+name = "wLMT"
+desc = "wLMT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lockheed Martin Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wLMT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7752545800000000000000000000000000000000"
+ticker = "wRTX"
+issuer = "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK"
+network = "main"
+display_decimals = 6
+name = "wRTX"
+desc = "wRTX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to RTX Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wRTX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774E4F4300000000000000000000000000000000"
+ticker = "wNOC"
+issuer = "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT"
+network = "main"
+display_decimals = 6
+name = "wNOC"
+desc = "wNOC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Northrop Grumman Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wNOC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C485800000000000000000000000000000000"
+ticker = "wLHX"
+issuer = "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq"
+network = "main"
+display_decimals = 6
+name = "wLHX"
+desc = "wLHX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to L3Harris Technologies, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wLHX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7752484D00000000000000000000000000000000"
+ticker = "wRHM"
+issuer = "rDsdvQfRZ7B6oP6ZiLmDr346epajyvKZqA"
+network = "main"
+display_decimals = 6
+name = "wRHM"
+desc = "wRHM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Rheinmetall AG listed stock."
+icon = "https://weildx.com/assets/tokens/wRHM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774C444F00000000000000000000000000000000"
+ticker = "wLDO"
+issuer = "rPHRF2CSrUyk5qbF5Ue7BDrH5eMQ2qvvvF"
+network = "main"
+display_decimals = 6
+name = "wLDO"
+desc = "wLDO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Leonardo S.p.A. listed stock."
+icon = "https://weildx.com/assets/tokens/wLDO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "774B544F53000000000000000000000000000000"
+ticker = "wKTOS"
+issuer = "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx"
+network = "main"
+display_decimals = 6
+name = "wKTOS"
+desc = "wKTOS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Kratos Defense & Security Solutions, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wKTOS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7741564156000000000000000000000000000000"
+ticker = "wAVAV"
+issuer = "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z"
+network = "main"
+display_decimals = 6
+name = "wAVAV"
+desc = "wAVAV is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to AeroVironment, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAVAV.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[CURRENCIES]]
+code = "7756495341000000000000000000000000000000"
+ticker = "wVISA"
+issuer = "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7"
+network = "main"
+display_decimals = 6
+name = "wVISA"
+desc = "wVISA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Visa Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wVISA.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[ISSUERS]]
+address = "r39KivuiizHEKe76spEk1vNALmhuTFMXhG"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rNhzqK9v91dgttC9XjdcwHFZwHGGuJMqPC"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rMtQUVGGY1jK4NZ5etpA4x6BNNVSSZKM7m"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "r9Tuq9FKRLm7fKNLKQjHtvbyf2cMVi4r85"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rJm3KxjFLgHb578GpPFZDJ4pfwwCoC2QDL"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rDsdvQfRZ7B6oP6ZiLmDr346epajyvKZqA"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rPHRF2CSrUyk5qbF5Ue7BDrH5eMQ2qvvvF"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[ISSUERS]]
+address = "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7"
+name = "WeildX"
+domain = "weildx.com"
+website = "https://weildx.com/"
+desc = "WeildX issuer account for Synthetic Tokenized Exposure (STE) assets on the XRP Ledger."
+icon = "https://weildx.com/assets/weildx-icon.png"
+
+[[TOKENS]]
+issuer = "r39KivuiizHEKe76spEk1vNALmhuTFMXhG"
+currency = "774D455441000000000000000000000000000000"
+name = "wMETA"
+desc = "wMETA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Meta Platforms, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wmeta.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc"
+currency = "7754534C41000000000000000000000000000000"
+name = "wTSLA"
+desc = "wTSLA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Tesla, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wtsla.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g"
+currency = "774E564441000000000000000000000000000000"
+name = "wNVDA"
+desc = "wNVDA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to NVIDIA Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wnvda.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt"
+currency = "7741534D4C000000000000000000000000000000"
+name = "wASML"
+desc = "wASML is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to ASML Holding N.V. listed stock."
+icon = "https://weildx.com/assets/tokens/wasml.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3"
+currency = "wMU"
+name = "wMU"
+desc = "wMU is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Micron Technology, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wmu.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61"
+currency = "77414D5A4E000000000000000000000000000000"
+name = "wAMZN"
+desc = "wAMZN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Amazon.com, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wamzn.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS"
+currency = "77504C5452000000000000000000000000000000"
+name = "wPLTR"
+desc = "wPLTR is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Palantir Technologies Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wPLTR.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6"
+currency = "77414D4400000000000000000000000000000000"
+name = "wAMD"
+desc = "wAMD is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Advanced Micro Devices, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAMD.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk"
+currency = "774D534654000000000000000000000000000000"
+name = "wMSFT"
+desc = "wMSFT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Microsoft Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wMSFT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ"
+currency = "7753504358000000000000000000000000000000"
+name = "wSPCX"
+desc = "wSPCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Space Exploration Technologies Corp. listed stock."
+icon = "https://weildx.com/assets/tokens/wSPCX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo"
+currency = "774141504C000000000000000000000000000000"
+name = "wAAPL"
+desc = "wAAPL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Apple Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAAPL.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg"
+currency = "77474F4F47000000000000000000000000000000"
+name = "wGOOG"
+desc = "wGOOG is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alphabet Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wGOOG.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD"
+currency = "774156474F000000000000000000000000000000"
+name = "wAVGO"
+desc = "wAVGO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Broadcom Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAVGO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rNhzqK9v91dgttC9XjdcwHFZwHGGuJMqPC"
+currency = "7742524B42000000000000000000000000000000"
+name = "wBRKB"
+desc = "wBRKB is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Berkshire Hathaway Inc. Class B listed stock."
+icon = "https://weildx.com/assets/tokens/wBRKB.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv"
+currency = "774C4C5900000000000000000000000000000000"
+name = "wLLY"
+desc = "wLLY is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Eli Lilly and Company listed stock."
+icon = "https://weildx.com/assets/tokens/wLLY.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9"
+currency = "774A504D00000000000000000000000000000000"
+name = "wJPM"
+desc = "wJPM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to JPMorgan Chase & Co. listed stock."
+icon = "https://weildx.com/assets/tokens/wJPM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH"
+currency = "774E464C58000000000000000000000000000000"
+name = "wNFLX"
+desc = "wNFLX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Netflix, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wNFLX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT"
+currency = "77434F494E000000000000000000000000000000"
+name = "wCOIN"
+desc = "wCOIN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Coinbase Global, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wCOIN.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK"
+currency = "7742414241000000000000000000000000000000"
+name = "wBABA"
+desc = "wBABA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alibaba Group Holding Limited listed stock."
+icon = "https://weildx.com/assets/tokens/wBABA.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH"
+currency = "7754534D43000000000000000000000000000000"
+name = "wTSMC"
+desc = "wTSMC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Taiwan Semiconductor Manufacturing Company Limited listed stock."
+icon = "https://weildx.com/assets/tokens/wTSMC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF"
+currency = "7751434F4D000000000000000000000000000000"
+name = "wQCOM"
+desc = "wQCOM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Qualcomm Incorporated listed stock."
+icon = "https://weildx.com/assets/tokens/wQCOM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV"
+currency = "77494E5443000000000000000000000000000000"
+name = "wINTC"
+desc = "wINTC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Intel Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wINTC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T"
+currency = "774C524358000000000000000000000000000000"
+name = "wLRCX"
+desc = "wLRCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lam Research Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wLRCX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP"
+currency = "774D52564C000000000000000000000000000000"
+name = "wMRVL"
+desc = "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wMRVL.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf"
+currency = "7741524D00000000000000000000000000000000"
+name = "wARM"
+desc = "wARM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Arm Holdings plc listed stock."
+icon = "https://weildx.com/assets/tokens/wARM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV"
+currency = "7747465300000000000000000000000000000000"
+name = "wGFS"
+desc = "wGFS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to GlobalFoundries Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wGFS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie"
+currency = "77414D4154000000000000000000000000000000"
+name = "wAMAT"
+desc = "wAMAT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Applied Materials, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAMAT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ"
+currency = "774E4F564F000000000000000000000000000000"
+name = "wNOVO"
+desc = "wNOVO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Novo Nordisk A/S listed stock."
+icon = "https://weildx.com/assets/tokens/wNOVO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rMtQUVGGY1jK4NZ5etpA4x6BNNVSSZKM7m"
+currency = "774C564D48000000000000000000000000000000"
+name = "wLVMH"
+desc = "wLVMH is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to LVMH Moet Hennessy Louis Vuitton SE listed stock."
+icon = "https://weildx.com/assets/tokens/wLVMH.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "r9Tuq9FKRLm7fKNLKQjHtvbyf2cMVi4r85"
+currency = "77524D5300000000000000000000000000000000"
+name = "wRMS"
+desc = "wRMS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Hermes International SCA listed stock."
+icon = "https://weildx.com/assets/tokens/wRMS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rJm3KxjFLgHb578GpPFZDJ4pfwwCoC2QDL"
+currency = "7752414345000000000000000000000000000000"
+name = "wRACE"
+desc = "wRACE is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Ferrari N.V. listed stock."
+icon = "https://weildx.com/assets/tokens/wRACE.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio"
+currency = "774C4D5400000000000000000000000000000000"
+name = "wLMT"
+desc = "wLMT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lockheed Martin Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wLMT.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK"
+currency = "7752545800000000000000000000000000000000"
+name = "wRTX"
+desc = "wRTX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to RTX Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wRTX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT"
+currency = "774E4F4300000000000000000000000000000000"
+name = "wNOC"
+desc = "wNOC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Northrop Grumman Corporation listed stock."
+icon = "https://weildx.com/assets/tokens/wNOC.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq"
+currency = "774C485800000000000000000000000000000000"
+name = "wLHX"
+desc = "wLHX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to L3Harris Technologies, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wLHX.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rDsdvQfRZ7B6oP6ZiLmDr346epajyvKZqA"
+currency = "7752484D00000000000000000000000000000000"
+name = "wRHM"
+desc = "wRHM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Rheinmetall AG listed stock."
+icon = "https://weildx.com/assets/tokens/wRHM.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rPHRF2CSrUyk5qbF5Ue7BDrH5eMQ2qvvvF"
+currency = "774C444F00000000000000000000000000000000"
+name = "wLDO"
+desc = "wLDO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Leonardo S.p.A. listed stock."
+icon = "https://weildx.com/assets/tokens/wLDO.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx"
+currency = "774B544F53000000000000000000000000000000"
+name = "wKTOS"
+desc = "wKTOS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Kratos Defense & Security Solutions, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wKTOS.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z"
+currency = "7741564156000000000000000000000000000000"
+name = "wAVAV"
+desc = "wAVAV is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to AeroVironment, Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wAVAV.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
+
+[[TOKENS]]
+issuer = "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7"
+currency = "7756495341000000000000000000000000000000"
+name = "wVISA"
+desc = "wVISA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Visa Inc. listed stock."
+icon = "https://weildx.com/assets/tokens/wVISA.png"
+asset_class = "rwa"
+asset_subclass = "synthetic_stock"
+
+[[TOKENS.WEBLINKS]]
+url = "https://weildx.com/"
+type = "website"
+title = "Official Website"
