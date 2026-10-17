@@ -695,3 +695,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_toml_retry_before_negative.py -q
+
+      # mcp UA-matrix canary: prove MCP is ALIVE, not merely answering.
+      # It probed /health -- a path that has NEVER existed, no route for it in
+      # mcp_server.py -- and classified any response without a Cloudflare
+      # 1010 marker as a pass, because the status was captured into a detail
+      # string and never compared. So it reported green for its whole life
+      # against a 404, and would have stayed green with the server dead.
+      # Now probes /mcp and requires BOTH 406 AND the FastMCP JSON-RPC body
+      # marker: a status alone could come from an intermediary, while that
+      # body can only come from FastMCP's streamable-http handler serving.
+      # Transport errors retry once then FAIL rather than skip -- a
+      # persistent timeout is an outage, the retry stops a flap paging.
+      # WAF detection keeps priority: a 1010 ban fails even at 406, so the
+      # new status check cannot mask it.
+      # Hermetic: injected fetcher/sleeper, no network, no DB, no clock.
+      - name: mcp canary liveness probe (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mcp_canary_liveness.py tests/test_mcp_ua_matrix_canary.py -q
