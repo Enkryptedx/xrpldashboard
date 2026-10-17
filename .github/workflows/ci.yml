@@ -714,3 +714,41 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_mcp_canary_liveness.py tests/test_mcp_ua_matrix_canary.py -q
+
+      # Tier labels for the tokens whose cited TOML was audited 2026-10-17.
+      #
+      # LABELS ARE CAVEATS, NOT BADGES -- the opposite of the intuitive
+      # reading, and the thing to understand before touching any of it:
+      #   toml            -> bare, no qualifier        (issuer AND code named)
+      #   domain_fallback -> "issuer verified via X"   (address only)
+      #   self_described  -> "self-described (unverified)"
+      # More evidence means FEWER words. A qualifier is a warning that
+      # something is unproven, so domain_fallback's string is also a caveat:
+      # the address is theirs, but not necessarily this ticker. Precedent is
+      # pinned in test_curation_walker_9.py, whose TestXaga asserts "a
+      # toml-tier token needs no qualifier".
+      #
+      # WST/XRT/EVE held a tier below their evidence: each cited TOML names
+      # the code AND the issuer in [[CURRENCIES]], so all three move to
+      # `toml` and stop carrying qualifiers they had not earned.
+      #
+      # WST is the cautionary one. The first audit scanned [[ACCOUNTS]],
+      # [[ISSUERS]] and [[TOKENS]] -- never [[CURRENCIES]], which is where
+      # the spec actually pairs a code with an issuer. On that partial read
+      # it looked like an unreciprocated one-way claim. Its address IS
+      # genuinely absent from ACCOUNTS; the proof lives entirely in
+      # CURRENCIES. One table is never enough.
+      #
+      # HVI3ESC stays domain_fallback: hvi3.com has no [[CURRENCIES]] table,
+      # so only the address is confirmed and the caveat is honest.
+      #
+      # ONDO stays untouched -- a null-canonical brand-protection sentinel
+      # from 21878e8, not a token. Its empty issuer is the mechanism: key
+      # '<hex>:' registers the brand with an EMPTY allowlist so every XRPL
+      # ONDO issuer flags as spoofing. Contract pinned by tests.
+      #
+      # Hermetic: reads committed token_names.json, no network, no DB.
+      - name: citation tier labels + ONDO sentinel (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_citation_tiers.py tests/test_curation_walker_9.py -q
