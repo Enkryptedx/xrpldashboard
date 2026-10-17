@@ -179,12 +179,17 @@ class TestDriftGuard:
 # ── 6. suppression still holds end to end ───────────────────────────
 class TestSuppression:
     def test_suppressed_entries_never_render(self):
+        """The invariant is per-entry, not a census. The exact count lives in
+        tests/test_curation_walker_9.py, which owns the current roster -- a
+        count pinned in two files has to be bumped in two places on every
+        curation pass, and the second one gets forgotten."""
         raw = json.load(open(NAMES_JSON, encoding="utf-8"))
         sup = [v for v in raw.values()
                if isinstance(v, dict) and v.get("suppressed")]
-        assert len(sup) == 5, [v.get("currency_display") for v in sup]
+        assert sup, "expected at least the self-declared test tokens"
         for v in sup:
             assert tl.render_decision(v) == (False, None)
+            assert isinstance(v["suppressed"], str) and v["suppressed"]
 
     def test_the_nine_visible_labels_are_exact(self):
         """Owner-approved wording, verbatim."""
@@ -198,6 +203,10 @@ class TestSuppression:
             lab = tl.label_for(v)
             if lab:
                 got[v["currency_display"]] = lab
+        # EQUALITY on purpose: this set is the record of what the owner has
+        # approved for publication. A new entry appearing here without an
+        # approval should fail the build, so each curation pass updates this
+        # dict deliberately. CERT added 2026-10-17.
         assert got == {
             "nsRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "nrRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
@@ -208,4 +217,5 @@ class TestSuppression:
             "DDG": "self-described (unverified)",
             "X40AM": "self-described (unverified)",
             "HVI3ESC": "issuer verified via hvi3.com",
+            "CERT": "self-described (unverified)",
         }, got
