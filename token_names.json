@@ -4021,6 +4021,7 @@
     "currency_hex": "WST",
     "issuer": "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST",
     "source": "toml",
+    "tier": "toml",
     "verified_via": "https://pay.aiic.nz/.well-known/xrp-ledger.toml"
   },
   "XAH:rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv": {
@@ -4072,6 +4073,7 @@
     "issuer_name": "XRPTurbo",
     "name": "XRPTurbo Token",
     "source": "toml",
+    "tier": "toml",
     "verified_via": "https://xrpturbo.com/.well-known/xrp-ledger.toml"
   },
   "ZRP:rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe": {
@@ -7948,6 +7950,7 @@
     "currency_display": "EVE",
     "issuer": "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd",
     "source": "toml",
+    "tier": "toml",
     "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
     "name": "EVE Token",
     "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever."
