@@ -1,0 +1,30 @@
+[ORGANIZATION]
+name = "XRPTurbo"
+website = "https://xrpturbo.com/"
+logo = "https://xrpturbo.com/assets/logo-Bp2XXPPA.png"
+
+[[ACCOUNTS]]
+address = "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR"
+desc = "Issuer account"
+name = "XRPTurbo Issuer"
+
+[[PRINCIPALS]]
+name = "Admin"
+email = "contact@xrpturbo.com"
+
+[[CURRENCIES]]
+code = "XRT"
+issuer = "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR"
+display_decimals = 6
+total_supply = "100000000"
+network = "main"
+desc = "On XRPTurbo, users can stake our flagship XRT token, invest in new projects through our launchpad and manage AI Agents through a decentralized interface."
+name = "XRPTurbo Token"
+
+[CONTACT]
+email = "contact@xrpturbo.com"
+website = "https://docs.xrpturbo.com/contact"
+twitter = "xrpturbocom"
+telegram = "xrpturbocom"
+
+

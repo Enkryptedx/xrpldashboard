@@ -1,0 +1,38 @@
+# HVI - https://hvi3.com
+# XRPL domain verification. Accounts listed here are operated by HVI;
+# each one sets its Domain field back to hvi3.com.
+
+[METADATA]
+modified = 2026-10-17
+
+[[ACCOUNTS]]
+address = "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN"
+network = "main"
+desc = "HVI Platform treasury and credential issuer"
+
+[[ACCOUNTS]]
+address = "rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2"
+network = "main"
+desc = "HVI credential issuer - Adrian"
+
+[[ACCOUNTS]]
+address = "rD4hiXWMwpr3f51rQm7XDD2C37K9EhpyhH"
+network = "main"
+desc = "HVI credential issuer - HVI3 _ BOOKS"
+
+[[ACCOUNTS]]
+address = "rs1tEtvqUKBPGnBmxhfJcFjbYf9u5k2y1n"
+network = "main"
+desc = "HVI operations wallet"
+
+[[ACCOUNTS]]
+address = "r3kP6sdZcTjtfMvkvDTmNDdKpHwAEPTzFo"
+network = "main"
+desc = "HVI operations wallet"
+
+[[PRINCIPALS]]
+name = "HVI3"
+email = "mike@hvi3.com"
+website = "https://hvi3.com"
+twitter = "@MIKE76_HVI"
+image = "https://hvi3.com/icon-512.png"
