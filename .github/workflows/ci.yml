@@ -675,3 +675,23 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_curation_walker_9.py -q
+
+      # Retry-before-negative on the ONE fail-closed TOML fetcher.
+      # two_way_toml_verifier_walker writes two_way_toml_ok = FALSE plus the
+      # error reason into registry_form_submissions and counts the row
+      # REJECTED, so a transient blip PERSISTS a rejection against a
+      # legitimate issuer self-submission and nothing re-opens it. Found
+      # 2026-10-16: verifying XAGa, the first fetch of silver.assetiko.com
+      # returned URLError and the retry returned 200 naming the issuer 4x.
+      # Deliberately NOT wired into the other four fetchers -- they skip,
+      # return a neutral couldnt_check on a 2s request-path budget, or are
+      # documented fail-open under a ~1 fetch/sec rate limit. A test asserts
+      # that exclusion rationale stays in the source so nobody "finishes the
+      # job" and undoes those budgets.
+      # Only TRANSIENT failures retry: 404 / non-https / oversized / parse
+      # errors fail identically on a second attempt. 5xx retries, 4xx does not.
+      # Hermetic: injected fetcher and sleeper, no network, no DB, no clock.
+      - name: toml retry-before-negative (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_toml_retry_before_negative.py -q
