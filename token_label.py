@@ -44,6 +44,61 @@ DOMAIN_FALLBACK = "domain_fallback"
 
 LABEL_SELF_DESCRIBED = "self-described (unverified)"
 
+# An MPT's currency_hex is the 48-char MPTokenIssuanceID (4-byte sequence +
+# 20-byte issuer AccountID). Key length partitions token_names.json exactly:
+#   3-char  -> 38 classic tickers
+#   40-char -> 328 entries, including ALL 240 lp_derived LP tokens
+#   48-char -> 293 entries, all source=mpt_metadata
+# So scoping the automatic rule to 48 excludes every LP token STRUCTURALLY
+# rather than by trust tier. `LP: XRP/SOLO` and `LP: RLUSD/mXRP` cannot reach
+# the rule at all, which is a stronger guarantee than the tier gate it
+# replaces.
+MPT_HEX_LEN = 48
+
+# Entries held out of the automatic rule pending an owner decision. Written
+# in the DATA, not hardcoded here, so the exemption is auditable and expires
+# by deleting three lines. A test pins the count at 3 so a fourth cannot
+# quietly appear.
+REVIEW_MARKER = "lookalike_review"
+
+
+def is_mpt(entry: dict) -> bool:
+    """True when this entry is an MPT (48-char MPTokenIssuanceID)."""
+    if not isinstance(entry, dict):
+        return False
+    return len(entry.get("currency_hex") or "") == MPT_HEX_LEN
+
+
+def merge_qualifiers(trust_label: str | None,
+                     collision_note: str | None) -> str | None:
+    """Combine the two qualifier mechanisms into ONE "not X" phrase.
+
+    The ticker-collision guard (token_naming.resolve_display) and the trust
+    tier are deliberately separate: the guard keys on the DECODED currency
+    code, while MPT names live only in token_names.json. For an MPT the
+    decoded code is hex (`06683FF67A0F…`), never the human ticker, so the
+    guard structurally cannot fire for one — verified 2026-10-16, all five
+    sampled MPTs returned `collision: None`.
+
+    That means today the two can never both fire, and this function is
+    dormant. It exists for the case that WILL eventually arrive: a classic
+    (non-MPT) token with ticker `RLUSD` from a non-canonical issuer, tagged
+    self_described, would trip both paths and render two "not X" phrases.
+
+    Precedence: the collision guard owns the "not X" slot. It is the older,
+    curated mechanism with audited canonical-issuer data and the three-state
+    Circle-USDC wording; the trust tier contributes only its
+    "self-described" suffix.
+    """
+    if not collision_note:
+        return trust_label
+    if not trust_label:
+        return collision_note
+    if trust_label.startswith("\u26a0 not "):
+        # Both assert "not X" — keep the guard's phrase, append the tier once.
+        return f"{collision_note} \u00b7 self-described"
+    return f"{collision_note} \u00b7 {trust_label}"
+
 
 def is_suppressed(entry: dict) -> bool:
     """True when an entry must never reach a rendered surface."""
@@ -71,7 +126,16 @@ def lookalike_asset(entry: dict, assets: dict | None = None) -> str | None:
     assets = CURATED_ASSETS if assets is None else assets
     if not isinstance(entry, dict):
         return None
-    if entry.get("tier") != SELF_DESCRIBED:
+    if entry.get(REVIEW_MARKER):
+        # Explicitly held for an owner decision (XRP NFT / XRP+ / XRP3D:
+        # "XRP" there may describe the project rather than imitate the
+        # asset, which a substring rule cannot tell apart).
+        return None
+    # AUTOMATIC for every MPT, regardless of tier — new lookalikes are caught
+    # the moment a walker discovers them, with no hand-tagging. Non-MPT
+    # entries still require an explicit self_described tier, which preserves
+    # the 2026-10-16 PR-1 behaviour.
+    if not (is_mpt(entry) or entry.get("tier") == SELF_DESCRIBED):
         return None
     disp = (entry.get("currency_display") or "").upper()
     issuer = entry.get("issuer")
@@ -120,13 +184,36 @@ def label_for(entry: dict) -> str | None:
         # MPT (the spec predates MPTs), so this proves WHO issued it, never
         # that the ticker is right.
         return f"issuer verified via {host}" if host else LABEL_SELF_DESCRIBED
+
+    # AUTOMATIC lookalike warning, checked BEFORE the tier gate so a
+    # newly-walked MPT is caught with no hand-tagging. lookalike_asset()
+    # already scopes itself: automatic for 48-char MPT keys, tier-gated for
+    # classic tokens, and skipped entirely for review-marked entries.
+    #
+    # This ordering is the fix for a half-wired rule caught by
+    # test_label_is_appended: lookalike_asset() was made automatic while
+    # label_for() still gated on tier, so an UNTAGGED MPT lookalike produced
+    # no label at all. The nine hand-tagged entries masked it.
+    asset = lookalike_asset(entry)
+    if asset:
+        return (f"\u26a0 not {CURATED_ASSETS[asset]['label']} "
+                f"\u00b7 self-described")
+
     if tier == SELF_DESCRIBED:
-        asset = lookalike_asset(entry)
-        if asset:
-            return (f"\u26a0 not {CURATED_ASSETS[asset]['label']} "
-                    f"\u00b7 self-described")
         return LABEL_SELF_DESCRIBED
-    return None                  # untagged: unchanged behaviour
+    return None                  # untagged, not a lookalike: renders bare
+
+
+def display_labelled(entry: dict, collision_note: str | None = None) -> str:
+    """The ONE string every surface renders. Never a bare self-described name.
+
+    This is the chokepoint. `currency_display` stays pristine because
+    _resolve_display_label_to_hex matches on it to resolve shareable
+    /token/<ticker>/<issuer> URLs — mutating it would break those.
+    """
+    name = entry.get("currency_display") or ""
+    qualifier = merge_qualifiers(label_for(entry), collision_note)
+    return f"{name} \u00b7 {qualifier}" if qualifier else name
 
 
 def render_decision(entry: dict) -> tuple[bool, str | None]:

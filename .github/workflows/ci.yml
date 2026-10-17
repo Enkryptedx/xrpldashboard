@@ -638,3 +638,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_token_label.py -q
+
+      # display_labelled chokepoint + drift guard. PR 1 shipped a labelling
+      # system that labelled nothing: _trust_label was computed in
+      # _load_token_names_dict() and no view or template ever read it, so 9
+      # self-described MPT names -- including 5 Ripple-RLUSD lookalikes --
+      # would have rendered bare. Live check at the time: zero label hits on
+      # every surface.
+      # The invariant "a self-described name never renders without its label"
+      # cannot survive 8 hand-edited call sites, so it is enforced at one
+      # chokepoint plus a drift guard that fails if a 9th bare read appears.
+      # Also pins: the automatic MPT rule is scoped by 48-char key shape (so
+      # all 240 lp_derived LP tokens are excluded STRUCTURALLY, not by tier),
+      # the 3 review markers stay at exactly 3, and precedence yields ONE
+      # "not X" phrase when the collision guard and trust tier both fire.
+      # Hermetic: pure functions + source assertions, no DB, no network.
+      - name: display_labelled chokepoint + drift guard (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_display_labelled.py -q

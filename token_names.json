@@ -35,7 +35,8 @@
     "desc": "XRP - svg and glb",
     "issuer": "rhSTwqSK13zdRmzHMZZP8i7DnuG27pwX76",
     "name": "XRP NFT",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "lookalike_review": "pending_owner_decision_2026-10-16"
   },
   "030031C4FE98AE3726134F68E3D2F5515804EB4E:rB3bK9PnHueTTabMVHedKuBzG5RSFYAUEH": {
     "asset_pair": [
@@ -1988,7 +1989,8 @@
     "issuer": "rMyxiYL5vZ1TGohA4yjuTvZtgG6TCJQjyN",
     "issuer_name": "Contro",
     "name": "Contro XRP+",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "lookalike_review": "pending_owner_decision_2026-10-16"
   },
   "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91:rHCx2zWMN1r9yB78mtNX9bUUHCL5eMYHUR": {
     "category": "unlabeled",
@@ -2007,7 +2009,8 @@
     "issuer": "rL57AG6GH9osvmKGo82Y23QWsHGaiNoLAG",
     "issuer_name": "rL57AG6GH9osvmKGo82Y23QWsHGaiNoLAG",
     "name": "XRP Symbol",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "lookalike_review": "pending_owner_decision_2026-10-16"
   },
   "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753:rJyNbUbcvP19KYwMq2bPnvYQNwUY2ZQrWZ": {
     "category": "native_utility_chain",

@@ -2851,7 +2851,8 @@ def _top_tokens_recent(limit=5, hours_back=24 * 7):
     for cur, iss, trades in rows:
         meta = tokens_meta.get((cur, iss)) or {}
         if meta:
-            display = meta.get("currency_display") or cur
+            display = (meta.get("display_labelled")
+                           or meta.get("currency_display") or cur)
         else:
             decoded = _decode_currency_hex(cur)
             display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
@@ -3546,6 +3547,10 @@ def _load_token_names_dict():
         if not should_render:
             continue
         entry["_trust_label"] = label
+        # The ONE string every surface renders. currency_display stays
+        # pristine: _resolve_display_label_to_hex matches on it to resolve
+        # shareable /token/<ticker>/<issuer> URLs.
+        entry["display_labelled"] = token_label.display_labelled(entry)
         out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
     return out
 
@@ -3675,7 +3680,8 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         if _col.get("collision"):
             cur_disp = _col["display"]
         else:
-            cur_disp = (token or {}).get("currency_display") or (
+            cur_disp = (token or {}).get("display_labelled") or (
+                    token or {}).get("currency_display") or (
                 (cur[:6] + "…") if cur and len(cur) > 6 else cur
             ) or "?"
         amount_display = _format_token_amount(val, cur_disp)
@@ -3695,7 +3701,8 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
         if _col.get("collision"):
             cur_disp = _col["display"]
         else:
-            cur_disp = (token or {}).get("currency_display") or (
+            cur_disp = (token or {}).get("display_labelled") or (
+                    token or {}).get("currency_display") or (
                 (currency[:6] + "…") if currency and len(currency) > 6 else currency
             ) or "?"
         amount_display = f"trustline → {cur_disp}"
@@ -3720,7 +3727,8 @@ def _resolve_event(row, named_accounts, token_names, tier_lookup=None):
             iss = send_max.get("issuer")
             val = send_max.get("value")
             token = token_names.get((cur, iss))
-            cur_disp = (token or {}).get("currency_display") or (
+            cur_disp = (token or {}).get("display_labelled") or (
+                    token or {}).get("currency_display") or (
                 (cur[:6] + "…") if cur and len(cur) > 6 else cur
             ) or "?"
             amount_display = f"up to {_format_token_amount(val, cur_disp)} (Check)"
@@ -4360,7 +4368,8 @@ def tokens():
     for cur, iss, trades, hours_active in rows:
         meta = tokens_meta.get((cur, iss)) or {}
         if meta:
-            display = meta.get("currency_display") or cur
+            display = (meta.get("display_labelled")
+                           or meta.get("currency_display") or cur)
             category = meta.get("category")
             labeled = True
         else:
@@ -4466,7 +4475,8 @@ def tokens():
             for cur, iss, trades, hours_active in hero_rows_30d:
                 meta = tokens_meta.get((cur, iss)) or {}
                 if meta:
-                    display = meta.get("currency_display") or cur
+                    display = (meta.get("display_labelled")
+                           or meta.get("currency_display") or cur)
                     category = meta.get("category")
                     labeled = True
                 else:
@@ -4708,7 +4718,8 @@ def tokens():
         _tier_raw = tier_lookup.get(key)
         _inf_att = "verified" if _tier_raw == "verified" else "self-described"
         label_lookup[key] = {
-            "display": inf.get("currency_display") or cur,
+            "display": (inf.get("display_labelled")
+                              or inf.get("currency_display") or cur),
             "category": inf.get("category") or "other",
             "category_source": inf.get("source") or "toml",
             "attestation": _inf_att,
@@ -4760,7 +4771,8 @@ def tokens():
             for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
                 meta = tokens_meta.get((cur, iss)) or {}
                 if meta:
-                    display = meta.get("currency_display") or cur
+                    display = (meta.get("display_labelled")
+                           or meta.get("currency_display") or cur)
                 else:
                     decoded = _decode_currency_hex(cur)
                     display = decoded or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
