@@ -73,6 +73,7 @@ five were self-declared **test** tokens.
 |-------------------|------------------------------------------------------------------------|
 | `self_described`  | The issuer asserted this name on-ledger. Nobody else corroborates it. Never renders as verified. |
 | `domain_fallback` | A first-party domain names the ISSUER ADDRESS. Issuer-level only — a TOML `[[CURRENCIES]]` block cannot describe an MPT, so this never proves the ticker. |
+| `toml`            | Currency-level: the cited domain's TOML names **both** the issuer address and this currency code (an `[[ACCOUNTS]]`/`[[CURRENCIES]]` pair, or an `[[ISSUERS]]`/`[[TOKENS]]` block carrying both). The strongest non-curated tier. |
 
 Rendered strings are produced by `token_label.py` (pure, unit-tested), not
 ad hoc at each surface:
@@ -80,6 +81,21 @@ ad hoc at each surface:
 - `self_described` + imitates a curated ticker → `⚠ not <Asset> · self-described`
 - `self_described` otherwise → `self-described (unverified)`
 - `domain_fallback` → `issuer verified via <host>`
+- `toml` → **no qualifier at all**; renders bare
+
+**Labels are caveats, not badges.** This is the opposite of the intuitive
+reading and it catches people out, so it is worth stating flatly: more
+evidence means *fewer* words, not more. A qualifier is a warning that
+something is unproven. A fully verified token therefore renders clean,
+which is why `toml` adds nothing. Even `domain_fallback`'s string is a
+caveat rather than a boast — it means *we confirmed the address is theirs,
+but not that this ticker is the one they meant*.
+
+The contract is pinned by `tests/test_curation_walker_9.py`: `TestCert`
+(`self_described`) asserts the qualifier IS present, `TestXaga` (`toml`)
+asserts it is absent — *"a toml-tier token needs no qualifier"*. A 2026-10-17
+attempt to give `toml` a `verified via <host>` badge was reverted when that
+test caught it; adding one inverts the ladder.
 
 **Suppression.** An explicit `suppressed: <reason>` keeps an entry out of
 every rendered surface. Self-declared test tokens get
@@ -90,6 +106,42 @@ token is rejected, not pending.
 **The lookalike check is gated on `tier == self_described`.** Ungated string
 matching would fire on 92 legitimate `lp_derived` LP tokens (`LP: XRP/SOLO`,
 `LP: RLUSD/mXRP`, …). Trust tier decides eligibility, not the ticker alone.
+
+### `tier` is an audit trail, not a census (2026-10-17)
+
+**A missing `tier` does not mean "unverified". It means nobody has checked
+yet.** `tier` is recorded when an entry is individually audited and the
+evidence written down; absence is silence, not a verdict.
+
+So the distribution of `tier` values across `token_names.json` must **not**
+be read as a census of how much of the registry is trustworthy. It is a
+record of where someone has looked.
+
+The 2026-10-17 audit fetched all 56 cited TOML URLs covering 93 entries and
+classified each by what the cited domain actually confirms:
+
+| result | count |
+|--------|-------|
+| currency-level (issuer **and** code named) | 54 |
+| issuer-level (address only) | 1 |
+| not named | 1 — the ONDO sentinel, which has no issuer by design |
+| fetch failed (**not** a negative verdict) | 37 |
+
+Yet only 4 of those 54 carry `tier: toml`. The other 50 are *unaudited but
+fine*, not untrusted — and leaving them untagged is safe precisely because
+of the caveats-not-badges rule above: `tier: toml` and an absent `tier`
+**both render bare**, so the backlog produces no visible defect and no
+misleading claim. Tagging them would change metadata and not one pixel.
+
+Two consequences for contributors:
+
+- Do not "fill in" tiers in bulk to make the data look complete. Tag an
+  entry when you have actually fetched its citation and checked it.
+- Do not infer distrust from an absent tier. Check the citation yourself.
+
+The 37 fetch failures stay failures, never negatives — 21 were ephemeral
+`firstledger.net` 404s and 11 served HTML instead of TOML. See
+retry-before-negative below.
 
 ### Cited domains must be reciprocated (2026-10-16)
 
