@@ -657,3 +657,21 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_display_labelled.py -q
+
+      # Curation of 9 walker-discovered entries (2026-10-17). None contains a
+      # curated ticker, so the automatic lookalike rule stays silent on all 9
+      # -- meaning RENDERING is the default for a freshly-walked name, which
+      # is why each needed an explicit verdict.
+      # Pins: 7 SCPO suppressed (6 by their own "test" metadata, 1 -- "Refresh
+      # Timing 1" -- on issuer-cluster evidence, recorded as its own reason
+      # string because the name predicate misses it); CERT self-described;
+      # XAGa at tier toml because its [[CURRENCIES]] block pairs the exact
+      # code WITH the exact issuer (currency-level, not issuer-level), cited
+      # to the subdomain that reciprocates rather than the apex that does not.
+      # Hermetic on purpose: no network. A CI test fetching a third-party
+      # TOML would be flaky and would recreate the transient-URLError
+      # near-miss inside the suite.
+      - name: curation of walker-discovered entries (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_curation_walker_9.py -q

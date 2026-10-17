@@ -8365,5 +8365,104 @@
     "issuer_name": "SC.PO",
     "tier": "self_described",
     "suppressed": "self_declared_test"
+  },
+  "0668E9E6E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9E6E0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Updating OPEN PO test v3 (post accept)",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9F5E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9F5E0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "30 Day Test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9EEE0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9EEE0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "15 Day Test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9D5E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9D5E0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Ne Wallets PO Test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9E2E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9E2E0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Updating OPEN PO test v2",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9E0E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9E0E0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Updating OPEN PO test",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "self_declared_test"
+  },
+  "0668E9FCE0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
+    "currency_hex": "0668E9FCE0A0BE28F262B70B642B433C5241834FC60D9269",
+    "currency_display": "SCPO",
+    "issuer": "rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Refresh Timing 1",
+    "issuer_name": "SC.PO",
+    "tier": "self_described",
+    "suppressed": "issuer-cluster: same issuer/test pattern"
+  },
+  "066AE75B79EAAC53741F55155550B40213F220B1EFD0F357:rUfdtbnyDyuUxJhiX4KAEikC5DgVgKNZjM": {
+    "currency_hex": "066AE75B79EAAC53741F55155550B40213F220B1EFD0F357",
+    "currency_display": "CERT",
+    "issuer": "rUfdtbnyDyuUxJhiX4KAEikC5DgVgKNZjM",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "CERTCRYPT Capacity",
+    "desc": "Prepaid settlement capacity consumed on certificate issuance.",
+    "issuer_name": "CERTCRYPT",
+    "tier": "self_described"
+  },
+  "5841476100000000000000000000000000000000:rQJ1EbtepKKzx4sBCUtPjvSk8CfiAx2H8e": {
+    "currency_hex": "5841476100000000000000000000000000000000",
+    "currency_display": "5841476100000000000000000000000000000000",
+    "issuer": "rQJ1EbtepKKzx4sBCUtPjvSk8CfiAx2H8e",
+    "source": "toml",
+    "verified_via": "https://silver.assetiko.com/.well-known/xrp-ledger.toml",
+    "name": "Assetiko Silver",
+    "desc": "XAGa is Assetiko Silver, a tokenized silver product issued on the XRP Ledger. 1 XAGa represents one troy ounce of silver. It is designed to provide tokenized exposure to silver through physical silver reserves and a published 102.3% reserve coverage framework. XAGa may be digitally redeemable by eligible holders in supported settlement assets and physical delivery may be available on request for eligible redemptions in supported jurisdictions.",
+    "issuer_name": "Assetiko",
+    "tier": "toml"
   }
 }
