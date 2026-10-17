@@ -50,8 +50,87 @@ TOML_MAX_BYTES = 256 * 1024   # 256KB — larger tomls are suspicious
 # two-way verification path when run from the Mac venv.
 _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
+# ── retry-before-negative (2026-10-17) ──────────────────────────────────
+# This walker is the ONLY TOML fetcher in the repo that is fail-CLOSED: on
+# failure it writes `two_way_toml_ok = FALSE` plus the error reason to
+# registry_form_submissions and counts the row as REJECTED. So a single
+# transient blip does not merely skip a check — it PERSISTS a rejection
+# against a legitimate issuer self-submission, and nothing re-opens it.
+#
+# Found the hard way on 2026-10-16: verifying XAGa's issuer, the first
+# fetch of silver.assetiko.com returned URLError and the retry returned
+# 200 naming the issuer 4x. Had that been this walker rather than an ad-hoc
+# check, a real submission would have been rejected and recorded as such.
+#
+# WHY THE OTHER THREE TOML FETCHERS DELIBERATELY DO NOT USE THIS — do not
+# "finish the job" by wiring them up:
+#   * verify_toml_accounts.py       — fails OPEN. A failure logs
+#     "SKIP — {err}" and increments error_count; no verdict is written.
+#   * check_data.py _fetch_toml_fast — the USER-FACING paste-box request
+#     path. It already returns the neutral `couldnt_check`, never a
+#     negative, and _D3_HTTP_TIMEOUT was deliberately tightened to 2s on
+#     2026-08-27 so the box cannot hang. A retry would double worst-case
+#     latency to fix a verdict that is not at risk.
+#   * token_issuer_flags_walker.py  — documented fail-OPEN ("a
+#     missing/broken toml never breaks the AccountRoot capture") AND bound
+#     by the owner's 2026-09-06 A+B ruling: ~1 fetch/sec
+#     (TOML_FETCH_INTERVAL_SEC) and TOML_MAX_FETCHES_PER_CYCLE = 200.
+#     Retrying there would double outbound fetches against a documented
+#     rate limit to fix nothing.
+#
+# Only TRANSIENT failures are retried. A 404, a non-https URL, an
+# oversized body or a TOML parse error will fail identically on a second
+# attempt, so retrying them wastes a request against a third-party domain
+# and delays the verdict. HTTP 5xx IS retried; 4xx is not.
+RETRY_ATTEMPTS = 2
+RETRY_SLEEP_SECONDS = 1.0
 
-def _fetch_toml(url: str) -> tuple[dict | None, str | None]:
+_TRANSIENT_PREFIXES = (
+    "toml_url_error_",   # URLError: DNS, TLS handshake, connection reset
+    "toml_fetch_",       # unexpected exception, e.g. TimeoutError
+)
+
+
+def _is_transient(err_reason: str | None) -> bool:
+    """True when a second attempt could plausibly succeed."""
+    if not err_reason:
+        return False
+    if err_reason.startswith(_TRANSIENT_PREFIXES):
+        return True
+    # Server-side HTTP failures are worth one more try; client errors
+    # (404 no toml, 403 blocked) are deterministic.
+    if err_reason.startswith("toml_http_"):
+        code = err_reason[len("toml_http_"):]
+        return code.isdigit() and 500 <= int(code) <= 599
+    return False
+
+
+def fetch_toml_with_retry(url: str, attempts: int = RETRY_ATTEMPTS,
+                          sleep_seconds: float = RETRY_SLEEP_SECONDS,
+                          fetcher=None, sleeper=None):
+    """Fetch + parse a toml, retrying only transient failures.
+
+    Same contract as _fetch_toml_once: (parsed_dict, None) on success,
+    (None, error_reason) on failure. Never raises. fetcher/sleeper are
+    injectable so the retry is testable without network or wall-clock.
+    """
+    import time as _time
+    fetcher = _fetch_toml_once if fetcher is None else fetcher
+    sleeper = _time.sleep if sleeper is None else sleeper
+    attempts = max(1, int(attempts))
+    parsed, err = None, None
+    for attempt in range(1, attempts + 1):
+        parsed, err = fetcher(url)
+        if err is None:
+            return parsed, None
+        if attempt >= attempts or not _is_transient(err):
+            return None, err
+        sleeper(sleep_seconds)
+    return parsed, err
+
+
+
+def _fetch_toml_once(url: str) -> tuple[dict | None, str | None]:
     """Fetch + parse the toml. Returns (parsed_dict, None) on success,
     or (None, error_reason) on any failure. Never raises."""
     try:
@@ -164,7 +243,7 @@ def _domain_matches_toml_url(domain: str, toml_url: str) -> bool:
 def verify_submission(row: dict) -> tuple[bool, str | None, int | None]:
     """Run both directions of verification on one submission row.
     Returns (ok, error_reason, landed_history_id)."""
-    toml, err = _fetch_toml(row["toml_url"])
+    toml, err = fetch_toml_with_retry(row["toml_url"])
     if err:
         return False, err, None
 
