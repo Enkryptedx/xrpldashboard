@@ -15,7 +15,7 @@ psycopg[binary]==3.3.4
 Pillow==12.3.0
 cryptography==50.0.1
 publicsuffix2==2.20191221
-mcp==1.29.0
+mcp==1.30.0
 PyYAML==6.0.3
 geoip2==4.8.1
 markdown==3.10.3
