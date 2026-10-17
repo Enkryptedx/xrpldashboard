@@ -1776,7 +1776,12 @@
           {% for tok in data.tokens_issued[:10] %}
           <li class="issuance-item issuance-tier-{{ tok.verification_tier }}">
             <a class="issuance-link" href="{{ tok.detail_url }}">
-              <span class="issuance-symbol">{{ tok.currency_display }}</span>
+              {# display_labelled carries the trust qualifier when one applies
+                 (self-described / lookalike warning / issuer-verified); it
+                 falls back to the bare name for the ~268 unlabelled MPTs and
+                 every classic token. Never render currency_display directly
+                 here -- that is the matcher's field. #}
+              <span class="issuance-symbol">{{ tok.display_labelled or tok.currency_display }}</span>
               <span class="issuance-meta">
                 {% if tok.verification_tier == 1 %}
                   <span class="issuance-badge issuance-badge-verified"
