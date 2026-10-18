@@ -753,6 +753,28 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_citation_tiers.py tests/test_curation_walker_9.py -q
 
+      # enrich_token_names.py: read every key a TOML uses for a code, in
+      # every form. One root cause, three symptoms, verified against 5 real
+      # TOMLs (44 blocks):
+      #   _normalize_code      only len==3 normalised, so RLUSD never equalled
+      #                        its hex; and it .upper()'d BEFORE encoding,
+      #                        colliding case-sensitive XAGa with XAGA.
+      #   _find_currency_block read only `code`; `currency`-keyed blocks skipped.
+      #   _make_toml_entry     display = symbol or code, never `ticker` ->
+      #                        42 LIVE entries rendered a raw 40-char hex
+      #                        while the readable name sat in `ticker`.
+      # _insert() never overwrites, so the 42 were born corrupted and are
+      # repaired in the same PR (display := ASCII decoded from currency_hex,
+      # no invention). URL-safe: the /token route resolves hex directly and
+      # only consults the display->hex lookup for non-currency segments.
+      # The old implementations are kept verbatim in the test file so each
+      # regression is demonstrated, not asserted.
+      # Hermetic: committed fixtures + committed token_names.json.
+      - name: enrich currency/code/ticker + 42 hex displays (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_enrich_currency_code.py -q
+
       # The fail-closed TOML matcher must read the tables the spec uses.
       # It scanned ONLY [[ISSUERS]]/[[TOKENS]] and its docstring claimed
       # those were the spec's tables. The spec has NO [[ISSUERS]] table --

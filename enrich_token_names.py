@@ -143,18 +143,37 @@ def enrich_mpt(names: dict, dry_run: bool) -> int:
 
 # ─── Part B: IOU TOML enrichment ─────────────────────────────────────────────
 
-def _normalize_code(code: str) -> str:
-    """Return uppercase hex form of currency code for comparison.
+def _is_hex40(s: str) -> bool:
+    return len(s) == 40 and all(c in "0123456789abcdefABCDEF" for c in s)
 
-    XRPL currency codes are either 3-char ASCII (stored as-is, e.g. "USD")
-    or 40-char hex (non-standard tokens). TOML [[CURRENCIES]] code fields
-    follow the same convention. Normalise both sides to 40-char hex so the
-    match is unambiguous regardless of which form each file used."""
-    code = code.strip().upper()
-    if len(code) == 3:
-        # Pad to 40-char hex (per XRPL spec: 3 bytes + 17 zero bytes)
+
+def _normalize_code(code: str) -> str:
+    """Return a comparison key for a currency code: uppercase 40-char hex.
+
+    XRPL currency codes are either short ASCII (1-20 chars; 3 is the common
+    case, e.g. "USD") or 40-char hex carrying the ASCII bytes zero-padded.
+    TOML [[CURRENCIES]] blocks use either form -- XAGa's declares
+    code=5841476100... with ticker=XAGa. Both sides are normalised to the
+    same hex so a match is unambiguous regardless of form.
+
+    Two defects fixed 2026-10-18:
+      * Only len==3 was normalised. Any other ASCII length was returned
+        as-is, so RLUSD (5 chars) never equalled 524C555344... and a TOML
+        declaring the readable code could never match a stored hex.
+      * The ASCII was .upper()'d BEFORE encoding. XRPL codes are
+        case-SENSITIVE -- XAGa and XAGA are different currencies -- so that
+        corrupted the key. Only the resulting hex is case-folded now, which
+        is safe because hex is case-insensitive.
+    """
+    code = (code or "").strip()
+    if not code:
+        return ""
+    if _is_hex40(code):
+        return code.upper()
+    try:
         return code.encode("ascii").hex().upper().ljust(40, "0")
-    return code
+    except UnicodeEncodeError:
+        return code  # non-ASCII, non-hex: can only ever match itself
 
 
 def _find_currency_block(toml_data: dict, currency_hex: str, issuer: str) -> dict | None:
@@ -172,11 +191,15 @@ def _find_currency_block(toml_data: dict, currency_hex: str, issuer: str) -> dic
     for block in currencies:
         if not isinstance(block, dict):
             continue
-        code_raw  = str(block.get("code") or "").strip()
-        toml_iss  = str(block.get("issuer") or "").strip()
-        if not code_raw or toml_iss != issuer:
+        toml_iss = str(block.get("issuer") or "").strip()
+        if toml_iss != issuer:
             continue
-        if _normalize_code(code_raw) == our_code:
+        # A block may name the code under `code`, `currency` or `ticker`;
+        # real TOMLs use all three. Previously only `code` was read, so a
+        # block keyed `currency` was skipped outright.
+        if any(_normalize_code(str(block.get(k) or "")) == our_code
+               for k in ("code", "currency", "ticker")
+               if str(block.get(k) or "").strip()):
             return block
     return None
 
@@ -192,6 +215,40 @@ def _org_name(toml_data: dict) -> str:
     return (org.get("name") or "").strip()
 
 
+def _display_from_block(block: dict, currency_hex: str, name: str = "") -> str:
+    """The human-readable display name for a [[CURRENCIES]] block.
+
+    Preference order, and why:
+      1. `symbol`, then `ticker` -- the issuer's own readable label. `ticker`
+         was never read before: 39 of 40 weildx blocks and XAGa declare
+         code=<40-char hex> plus ticker=<readable name> with no symbol, so
+         `symbol or code` fell through to the raw hex and 42 live entries
+         rendered as unreadable 40-char strings.
+      2. a short ASCII `code`/`currency` as-is.
+      3. a 40-char hex `code`/`currency` decoded to its embedded ASCII,
+         via the same _decode_currency_label the rest of the file uses.
+      4. name[:12], then the first 8 hex chars -- the old fallbacks.
+    Never returns a bare 40-char hex when anything readable exists.
+    """
+    # Self-sufficient: fall back to the block's own `name` when the caller
+    # does not pass one, so direct callers get the same answer as
+    # _make_toml_entry does.
+    name = (name or str(block.get("name") or "")).strip()
+    for key in ("symbol", "ticker"):
+        v = str(block.get(key) or "").strip()
+        if v:
+            return v
+    code = str(block.get("code") or block.get("currency") or "").strip()
+    if code:
+        if _is_hex40(code):
+            dec = _decode_currency_label(code)
+            if dec and not dec.endswith("\u2026"):
+                return dec
+        else:
+            return code
+    return name[:12] or currency_hex[:8]
+
+
 def _make_toml_entry(
     currency_hex: str,
     issuer: str,
@@ -200,10 +257,9 @@ def _make_toml_entry(
     toml_url: str,
 ) -> dict:
     name    = (block.get("name") or "").strip()
-    symbol  = (block.get("symbol") or block.get("code") or "").strip()
     desc    = (block.get("desc") or block.get("description") or "").strip()
     org     = _org_name(toml_data)
-    display = symbol or name[:12] or currency_hex[:8]
+    display = _display_from_block(block, currency_hex, name)
 
     entry: dict = {
         "currency_hex":     currency_hex,
