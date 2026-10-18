@@ -3041,7 +3041,7 @@
   },
   "4145524F00000000000000000000000000000000:rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7": {
     "category": "unlabeled",
-    "currency_display": "4145524F00000000000000000000000000000000",
+    "currency_display": "AERO",
     "currency_hex": "4145524F00000000000000000000000000000000",
     "desc": "AeroNeura develops advanced engineering software, intelligent control systems, propulsion testing platforms, dynamometer automation solutions, calibration technologies, simulation environments, and AI enabled industrial engineering tools serving aerospace, automotive, defense, rail, marine, energy, and advanced mobility sectors. AERO is issued through a special purpose vehicle managed by Alter SPVs, which holds an investment interest in AeroNeura Ltd. The token is intended to provide blockchain based representation of the SPV's AeroNeura related holdings. AeroNeura Ltd remains the operating company and does not administer token issuance, transfers, investor onboarding, compliance, or secondary market activities. All matters relating to AERO must be directed to Alter SPVs.",
     "issuer": "rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7",
@@ -3107,7 +3107,7 @@
   },
   "43484F4C41000000000000000000000000000000:rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy": {
     "category": "unlabeled",
-    "currency_display": "43484F4C41000000000000000000000000000000",
+    "currency_display": "CHOLA",
     "currency_hex": "43484F4C41000000000000000000000000000000",
     "desc": "CHOLA represents tokenized participation units associated with ZYR Chola Mines SPV Ltd and its underlying 12% ownership interest in Chola Mining Limited. Issued on the XRP Ledger.",
     "issuer": "rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy",
@@ -3153,7 +3153,7 @@
   },
   "4752494400000000000000000000000000000000:rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL": {
     "category": "unlabeled",
-    "currency_display": "4752494400000000000000000000000000000000",
+    "currency_display": "GRID",
     "currency_hex": "4752494400000000000000000000000000000000",
     "desc": "GRID is an XRP Ledger issued digital token administered by Alter SPVs through a designated special purpose vehicle. GRID represents a blockchain based record linked to Alter SPVs' equity interest in WaferGrid Technologies Pte Ltd, a semiconductor test and measurement company focused on essential on wafer test technologies for engineers moving advanced devices from first silicon to profitable production.",
     "issuer": "rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL",
@@ -3237,7 +3237,7 @@
   },
   "5241564E00000000000000000000000000000000:rQ3JsJVg3m1mw4sKXtCbifgjremnPGSLBn": {
     "category": "unlabeled",
-    "currency_display": "5241564E00000000000000000000000000000000",
+    "currency_display": "RAVN",
     "currency_hex": "5241564E00000000000000000000000000000000",
     "desc": "RAVN is an XRP Ledger issued token representing a defined tokenized allocation linked to 1% of Ravn Robotics' equity. A total of 1,700,000 RAVN tokens were issued at a launch price of $1.00 per token, representing blockchain based participation in the Ravn Robotics equity allocation, subject to issuer terms, eligibility rules, transfer restrictions, and applicable laws.",
     "issuer": "rQ3JsJVg3m1mw4sKXtCbifgjremnPGSLBn",
@@ -3339,7 +3339,7 @@
   },
   "57414E475A595200000000000000000000000000:rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr": {
     "category": "unlabeled",
-    "currency_display": "57414E475A595200000000000000000000000000",
+    "currency_display": "WANGZYR",
     "currency_hex": "57414E475A595200000000000000000000000000",
     "desc": "WANGZYR represents units associated with ZYR Wang Copper SPV Ltd and its underlying 5% economic interest in Wang Copper Limited, Zambia. Rights and benefits, if any, are governed solely by applicable legal documentation and SPV agreements.",
     "issuer": "rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr",
@@ -3395,7 +3395,7 @@
   },
   "6169787270000000000000000000000000000000:rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu": {
     "category": "unlabeled",
-    "currency_display": "6169787270000000000000000000000000000000",
+    "currency_display": "aixrp",
     "currency_hex": "6169787270000000000000000000000000000000",
     "issuer": "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu",
     "source": "toml",
@@ -3452,7 +3452,7 @@
   },
   "774141504C000000000000000000000000000000:rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo": {
     "category": "unlabeled",
-    "currency_display": "774141504C000000000000000000000000000000",
+    "currency_display": "wAAPL",
     "currency_hex": "774141504C000000000000000000000000000000",
     "desc": "wAAPL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Apple Inc. listed stock.",
     "issuer": "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo",
@@ -3463,7 +3463,7 @@
   },
   "77414D4154000000000000000000000000000000:rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie": {
     "category": "unlabeled",
-    "currency_display": "77414D4154000000000000000000000000000000",
+    "currency_display": "wAMAT",
     "currency_hex": "77414D4154000000000000000000000000000000",
     "desc": "wAMAT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Applied Materials, Inc. listed stock.",
     "issuer": "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie",
@@ -3474,7 +3474,7 @@
   },
   "77414D4400000000000000000000000000000000:r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6": {
     "category": "unlabeled",
-    "currency_display": "77414D4400000000000000000000000000000000",
+    "currency_display": "wAMD",
     "currency_hex": "77414D4400000000000000000000000000000000",
     "desc": "wAMD is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Advanced Micro Devices, Inc. listed stock.",
     "issuer": "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6",
@@ -3485,7 +3485,7 @@
   },
   "77414D5A4E000000000000000000000000000000:rLpy3QeZohPjLodLsppK4P6REFVV6rCN61": {
     "category": "unlabeled",
-    "currency_display": "77414D5A4E000000000000000000000000000000",
+    "currency_display": "wAMZN",
     "currency_hex": "77414D5A4E000000000000000000000000000000",
     "desc": "wAMZN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Amazon.com, Inc. listed stock.",
     "issuer": "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61",
@@ -3496,7 +3496,7 @@
   },
   "7741524D00000000000000000000000000000000:rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf": {
     "category": "unlabeled",
-    "currency_display": "7741524D00000000000000000000000000000000",
+    "currency_display": "wARM",
     "currency_hex": "7741524D00000000000000000000000000000000",
     "desc": "wARM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Arm Holdings plc listed stock.",
     "issuer": "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf",
@@ -3507,7 +3507,7 @@
   },
   "7741534D4C000000000000000000000000000000:rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt": {
     "category": "unlabeled",
-    "currency_display": "7741534D4C000000000000000000000000000000",
+    "currency_display": "wASML",
     "currency_hex": "7741534D4C000000000000000000000000000000",
     "desc": "wASML is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to ASML Holding N.V. listed stock.",
     "issuer": "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt",
@@ -3518,7 +3518,7 @@
   },
   "7741564156000000000000000000000000000000:rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z": {
     "category": "unlabeled",
-    "currency_display": "7741564156000000000000000000000000000000",
+    "currency_display": "wAVAV",
     "currency_hex": "7741564156000000000000000000000000000000",
     "desc": "wAVAV is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to AeroVironment, Inc. listed stock.",
     "issuer": "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z",
@@ -3529,7 +3529,7 @@
   },
   "774156474F000000000000000000000000000000:rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD": {
     "category": "unlabeled",
-    "currency_display": "774156474F000000000000000000000000000000",
+    "currency_display": "wAVGO",
     "currency_hex": "774156474F000000000000000000000000000000",
     "desc": "wAVGO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Broadcom Inc. listed stock.",
     "issuer": "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD",
@@ -3540,7 +3540,7 @@
   },
   "7742414241000000000000000000000000000000:rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK": {
     "category": "unlabeled",
-    "currency_display": "7742414241000000000000000000000000000000",
+    "currency_display": "wBABA",
     "currency_hex": "7742414241000000000000000000000000000000",
     "desc": "wBABA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alibaba Group Holding Limited listed stock.",
     "issuer": "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK",
@@ -3551,7 +3551,7 @@
   },
   "77434F494E000000000000000000000000000000:rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT": {
     "category": "unlabeled",
-    "currency_display": "77434F494E000000000000000000000000000000",
+    "currency_display": "wCOIN",
     "currency_hex": "77434F494E000000000000000000000000000000",
     "desc": "wCOIN is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Coinbase Global, Inc. listed stock.",
     "issuer": "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT",
@@ -3562,7 +3562,7 @@
   },
   "7747465300000000000000000000000000000000:r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV": {
     "category": "unlabeled",
-    "currency_display": "7747465300000000000000000000000000000000",
+    "currency_display": "wGFS",
     "currency_hex": "7747465300000000000000000000000000000000",
     "desc": "wGFS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to GlobalFoundries Inc. listed stock.",
     "issuer": "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV",
@@ -3573,7 +3573,7 @@
   },
   "77474F4F47000000000000000000000000000000:r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg": {
     "category": "unlabeled",
-    "currency_display": "77474F4F47000000000000000000000000000000",
+    "currency_display": "wGOOG",
     "currency_hex": "77474F4F47000000000000000000000000000000",
     "desc": "wGOOG is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Alphabet Inc. listed stock.",
     "issuer": "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg",
@@ -3584,7 +3584,7 @@
   },
   "77494E5443000000000000000000000000000000:r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV": {
     "category": "unlabeled",
-    "currency_display": "77494E5443000000000000000000000000000000",
+    "currency_display": "wINTC",
     "currency_hex": "77494E5443000000000000000000000000000000",
     "desc": "wINTC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Intel Corporation listed stock.",
     "issuer": "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV",
@@ -3595,7 +3595,7 @@
   },
   "774A504D00000000000000000000000000000000:rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9": {
     "category": "unlabeled",
-    "currency_display": "774A504D00000000000000000000000000000000",
+    "currency_display": "wJPM",
     "currency_hex": "774A504D00000000000000000000000000000000",
     "desc": "wJPM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to JPMorgan Chase & Co. listed stock.",
     "issuer": "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9",
@@ -3606,7 +3606,7 @@
   },
   "774B544F53000000000000000000000000000000:rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx": {
     "category": "unlabeled",
-    "currency_display": "774B544F53000000000000000000000000000000",
+    "currency_display": "wKTOS",
     "currency_hex": "774B544F53000000000000000000000000000000",
     "desc": "wKTOS is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Kratos Defense & Security Solutions, Inc. listed stock.",
     "issuer": "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx",
@@ -3617,7 +3617,7 @@
   },
   "774C485800000000000000000000000000000000:rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq": {
     "category": "unlabeled",
-    "currency_display": "774C485800000000000000000000000000000000",
+    "currency_display": "wLHX",
     "currency_hex": "774C485800000000000000000000000000000000",
     "desc": "wLHX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to L3Harris Technologies, Inc. listed stock.",
     "issuer": "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq",
@@ -3628,7 +3628,7 @@
   },
   "774C4C5900000000000000000000000000000000:rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv": {
     "category": "unlabeled",
-    "currency_display": "774C4C5900000000000000000000000000000000",
+    "currency_display": "wLLY",
     "currency_hex": "774C4C5900000000000000000000000000000000",
     "desc": "wLLY is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Eli Lilly and Company listed stock.",
     "issuer": "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv",
@@ -3639,7 +3639,7 @@
   },
   "774C4D5400000000000000000000000000000000:ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio": {
     "category": "unlabeled",
-    "currency_display": "774C4D5400000000000000000000000000000000",
+    "currency_display": "wLMT",
     "currency_hex": "774C4D5400000000000000000000000000000000",
     "desc": "wLMT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lockheed Martin Corporation listed stock.",
     "issuer": "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio",
@@ -3650,7 +3650,7 @@
   },
   "774C524358000000000000000000000000000000:rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T": {
     "category": "unlabeled",
-    "currency_display": "774C524358000000000000000000000000000000",
+    "currency_display": "wLRCX",
     "currency_hex": "774C524358000000000000000000000000000000",
     "desc": "wLRCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Lam Research Corporation listed stock.",
     "issuer": "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T",
@@ -3661,7 +3661,7 @@
   },
   "774D455441000000000000000000000000000000:r39KivuiizHEKe76spEk1vNALmhuTFMXhG": {
     "category": "unlabeled",
-    "currency_display": "774D455441000000000000000000000000000000",
+    "currency_display": "wMETA",
     "currency_hex": "774D455441000000000000000000000000000000",
     "desc": "wMETA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Meta Platforms, Inc. listed stock.",
     "issuer": "r39KivuiizHEKe76spEk1vNALmhuTFMXhG",
@@ -3672,7 +3672,7 @@
   },
   "774D52564C000000000000000000000000000000:rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP": {
     "category": "unlabeled",
-    "currency_display": "774D52564C000000000000000000000000000000",
+    "currency_display": "wMRVL",
     "currency_hex": "774D52564C000000000000000000000000000000",
     "desc": "wMRVL is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Marvell Technology, Inc. listed stock.",
     "issuer": "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP",
@@ -3683,7 +3683,7 @@
   },
   "774D534654000000000000000000000000000000:rPpEtXCzThYmWyzARbD3snF53JuasuJgSk": {
     "category": "unlabeled",
-    "currency_display": "774D534654000000000000000000000000000000",
+    "currency_display": "wMSFT",
     "currency_hex": "774D534654000000000000000000000000000000",
     "desc": "wMSFT is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Microsoft Corporation listed stock.",
     "issuer": "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk",
@@ -3694,7 +3694,7 @@
   },
   "774E464C58000000000000000000000000000000:ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH": {
     "category": "unlabeled",
-    "currency_display": "774E464C58000000000000000000000000000000",
+    "currency_display": "wNFLX",
     "currency_hex": "774E464C58000000000000000000000000000000",
     "desc": "wNFLX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Netflix, Inc. listed stock.",
     "issuer": "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH",
@@ -3705,7 +3705,7 @@
   },
   "774E4F4300000000000000000000000000000000:rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT": {
     "category": "unlabeled",
-    "currency_display": "774E4F4300000000000000000000000000000000",
+    "currency_display": "wNOC",
     "currency_hex": "774E4F4300000000000000000000000000000000",
     "desc": "wNOC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Northrop Grumman Corporation listed stock.",
     "issuer": "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT",
@@ -3716,7 +3716,7 @@
   },
   "774E4F564F000000000000000000000000000000:rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ": {
     "category": "unlabeled",
-    "currency_display": "774E4F564F000000000000000000000000000000",
+    "currency_display": "wNOVO",
     "currency_hex": "774E4F564F000000000000000000000000000000",
     "desc": "wNOVO is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Novo Nordisk A/S listed stock.",
     "issuer": "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ",
@@ -3727,7 +3727,7 @@
   },
   "774E564441000000000000000000000000000000:raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g": {
     "category": "unlabeled",
-    "currency_display": "774E564441000000000000000000000000000000",
+    "currency_display": "wNVDA",
     "currency_hex": "774E564441000000000000000000000000000000",
     "desc": "wNVDA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to NVIDIA Corporation listed stock.",
     "issuer": "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g",
@@ -3738,7 +3738,7 @@
   },
   "77504C5452000000000000000000000000000000:rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS": {
     "category": "unlabeled",
-    "currency_display": "77504C5452000000000000000000000000000000",
+    "currency_display": "wPLTR",
     "currency_hex": "77504C5452000000000000000000000000000000",
     "desc": "wPLTR is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Palantir Technologies Inc. listed stock.",
     "issuer": "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS",
@@ -3749,7 +3749,7 @@
   },
   "7751434F4D000000000000000000000000000000:r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF": {
     "category": "unlabeled",
-    "currency_display": "7751434F4D000000000000000000000000000000",
+    "currency_display": "wQCOM",
     "currency_hex": "7751434F4D000000000000000000000000000000",
     "desc": "wQCOM is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Qualcomm Incorporated listed stock.",
     "issuer": "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF",
@@ -3760,7 +3760,7 @@
   },
   "7752545800000000000000000000000000000000:rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK": {
     "category": "unlabeled",
-    "currency_display": "7752545800000000000000000000000000000000",
+    "currency_display": "wRTX",
     "currency_hex": "7752545800000000000000000000000000000000",
     "desc": "wRTX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to RTX Corporation listed stock.",
     "issuer": "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK",
@@ -3771,7 +3771,7 @@
   },
   "7753504358000000000000000000000000000000:rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ": {
     "category": "unlabeled",
-    "currency_display": "7753504358000000000000000000000000000000",
+    "currency_display": "wSPCX",
     "currency_hex": "7753504358000000000000000000000000000000",
     "desc": "wSPCX is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Space Exploration Technologies Corp. listed stock.",
     "issuer": "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ",
@@ -3782,7 +3782,7 @@
   },
   "7754534C41000000000000000000000000000000:rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
     "category": "unlabeled",
-    "currency_display": "7754534C41000000000000000000000000000000",
+    "currency_display": "wTSLA",
     "currency_hex": "7754534C41000000000000000000000000000000",
     "desc": "wTSLA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Tesla, Inc. listed stock.",
     "issuer": "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc",
@@ -3793,7 +3793,7 @@
   },
   "7754534D43000000000000000000000000000000:rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH": {
     "category": "unlabeled",
-    "currency_display": "7754534D43000000000000000000000000000000",
+    "currency_display": "wTSMC",
     "currency_hex": "7754534D43000000000000000000000000000000",
     "desc": "wTSMC is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Taiwan Semiconductor Manufacturing Company Limited listed stock.",
     "issuer": "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH",
@@ -3804,7 +3804,7 @@
   },
   "7756495341000000000000000000000000000000:rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7": {
     "category": "unlabeled",
-    "currency_display": "7756495341000000000000000000000000000000",
+    "currency_display": "wVISA",
     "currency_hex": "7756495341000000000000000000000000000000",
     "desc": "wVISA is a WeildX Synthetic Tokenized Exposure (STE) asset on the XRP Ledger. It is designed to provide synthetic exposure linked to Visa Inc. listed stock.",
     "issuer": "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7",
@@ -8114,14 +8114,14 @@
   },
   "5553444200000000000000000000000000000000:rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc": {
     "currency_hex": "5553444200000000000000000000000000000000",
-    "currency_display": "5553444200000000000000000000000000000000",
+    "currency_display": "USDB",
     "issuer": "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc",
     "source": "toml",
     "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
   },
   "4242524C00000000000000000000000000000000:rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt": {
     "currency_hex": "4242524C00000000000000000000000000000000",
-    "currency_display": "4242524C00000000000000000000000000000000",
+    "currency_display": "BBRL",
     "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt",
     "source": "toml",
     "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
@@ -8459,7 +8459,7 @@
   },
   "5841476100000000000000000000000000000000:rQJ1EbtepKKzx4sBCUtPjvSk8CfiAx2H8e": {
     "currency_hex": "5841476100000000000000000000000000000000",
-    "currency_display": "5841476100000000000000000000000000000000",
+    "currency_display": "XAGa",
     "issuer": "rQJ1EbtepKKzx4sBCUtPjvSk8CfiAx2H8e",
     "source": "toml",
     "verified_via": "https://silver.assetiko.com/.well-known/xrp-ledger.toml",
