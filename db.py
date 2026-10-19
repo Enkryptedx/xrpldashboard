@@ -1221,6 +1221,24 @@ CREATE TABLE IF NOT EXISTS nft_activity_summary (
     computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- /tokens precomputed summary (2026-10-19); owner: scripts/tokens_summary_walker.py
+CREATE TABLE IF NOT EXISTS tokens_summary (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    aggregates_24h      JSONB,
+    aggregates_7d       JSONB,
+    aggregates_all      JSONB,
+    hero                JSONB,
+    bucket_stats        JSONB,
+    warnings_recent     JSONB,
+    tier_lookup         JSONB,
+    price_map           JSONB,
+    label_lookup_json   TEXT,
+    latest_bucket       BIGINT,
+    col_hashes          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    changed_at          TIMESTAMPTZ,
+    computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Incremental all-time aggregates for nft_activity (Charlie 2026-09-26):
 -- the summary walker folds in only rows with id > through_id each run, so
 -- the 7.77M-row COUNT(*)/GROUP BY tx_type is never recomputed (it was
@@ -9886,6 +9904,171 @@ def read_nft_activity_summary():
                 return dict(zip(cols, row))
     except Exception as e:
         _log_err("read_nft_activity_summary_failed", e)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# /tokens precomputed summary (2026-10-19). House pattern from /nfts: one
+# walker (scripts/tokens_summary_walker.py, launchd, 300 s) computes every
+# heavy, request-INDEPENDENT input of the /tokens route into a single row;
+# the route does one PK read and renders. Three states on the route:
+# ok (row age <= stale ceiling), stale (older: still served, labelled),
+# warming (no row / PG down: today's live path). Per-column content hashes
+# make the walker write only what changed -- an UPDATE rewrites the row
+# tuple but leaves UNCHANGED TOASTed columns in place, so the ~1.3 MB
+# label_lookup_json is not re-copied into Neon's history every 5 minutes
+# unless it actually differs. computed_at advances on EVERY tick regardless,
+# so staleness stays honest when content is simply unchanged.
+# ---------------------------------------------------------------------------
+_TOKENS_SUMMARY_DDL = """
+CREATE TABLE IF NOT EXISTS tokens_summary (
+    id                  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    aggregates_24h      JSONB,
+    aggregates_7d       JSONB,
+    aggregates_all      JSONB,
+    hero                JSONB,
+    bucket_stats        JSONB,
+    warnings_recent     JSONB,
+    tier_lookup         JSONB,
+    price_map           JSONB,
+    label_lookup_json   TEXT,
+    latest_bucket       BIGINT,
+    col_hashes          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    changed_at          TIMESTAMPTZ,
+    computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+TOKENS_SUMMARY_COLUMNS = (
+    "aggregates_24h", "aggregates_7d", "aggregates_all", "hero",
+    "bucket_stats", "warnings_recent", "tier_lookup", "price_map",
+    "label_lookup_json", "latest_bucket",
+)
+_TOKENS_SUMMARY_JSONB = {
+    "aggregates_24h", "aggregates_7d", "aggregates_all", "hero",
+    "bucket_stats", "warnings_recent", "tier_lookup", "price_map",
+}
+
+
+def ensure_tokens_summary_table():
+    """Idempotently create tokens_summary. Called at the top of every walker
+    tick (the walker is the single owner), so no out-of-band migration step
+    exists to forget. SET lock_timeout FIRST: CREATE TABLE takes a brief
+    ACCESS EXCLUSIVE on the catalog and Postgres's lock queue is FIFO, so a
+    DDL that waits behind pg_dump makes every later reader queue behind it.
+    Returns False (never raises) on any failure; IF NOT EXISTS makes the next
+    tick's retry free."""
+    if not pg_available():
+        return False
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SET lock_timeout = '3s'")
+                cur.execute(_TOKENS_SUMMARY_DDL)
+            conn.commit()
+        return True
+    except Exception as e:
+        if _is_lock_timeout(e):
+            _log_err("tokens_summary_ddl_lock_timeout", e)
+        else:
+            _log_err("tokens_summary_ddl", e)
+        return False
+
+
+def _tokens_summary_hash(col, value):
+    """Stable content hash per column. JSONB columns are hashed on their
+    canonical (sorted-key) JSON so dict ordering cannot fake a change."""
+    import hashlib
+    if value is None:
+        payload = b"\x00null"
+    elif col in _TOKENS_SUMMARY_JSONB:
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    else:
+        payload = str(value).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()[:16]
+
+
+def read_tokens_summary_hashes():
+    """{col: hash} for the current row, or {} when absent/unavailable."""
+    if not pg_available():
+        return {}
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT col_hashes FROM tokens_summary WHERE id = 1")
+                row = cur.fetchone()
+                return dict(row[0]) if row and row[0] else {}
+    except Exception as e:
+        _log_err("tokens_summary_read_hashes", e)
+        return {}
+
+
+def _tokens_summary_param(col, value):
+    return json.dumps(value, default=str) if col in _TOKENS_SUMMARY_JSONB else value
+
+
+def write_tokens_summary(values, prior_hashes=None):
+    """Write the single id=1 row, updating ONLY the columns whose content
+    hash differs from `prior_hashes`. computed_at is stamped now() on every
+    call; changed_at only when something changed. Returns the list of
+    column names written. Raises on failure so the walker records ok=False
+    (a silent summary-write failure would let /tokens serve a frozen row
+    while looking healthy)."""
+    prior = dict(prior_hashes or {})
+    new_hashes = {c: _tokens_summary_hash(c, values.get(c)) for c in TOKENS_SUMMARY_COLUMNS}
+    changed = [c for c in TOKENS_SUMMARY_COLUMNS if new_hashes[c] != prior.get(c)]
+
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM tokens_summary WHERE id = 1")
+            exists = cur.fetchone() is not None
+            if not exists:
+                changed = list(TOKENS_SUMMARY_COLUMNS)
+                cols = ["id"] + changed + ["col_hashes", "changed_at", "computed_at"]
+                ph = ["1"] + ["%s::jsonb" if c in _TOKENS_SUMMARY_JSONB else "%s" for c in changed] \
+                     + ["%s::jsonb", "now()", "now()"]
+                params = [_tokens_summary_param(c, values.get(c)) for c in changed] + [json.dumps(new_hashes)]
+                cur.execute(
+                    f"INSERT INTO tokens_summary ({', '.join(cols)}) VALUES ({', '.join(ph)})", params)
+            elif changed:
+                sets = [f"{c} = %s::jsonb" if c in _TOKENS_SUMMARY_JSONB else f"{c} = %s" for c in changed] \
+                       + ["col_hashes = %s::jsonb", "changed_at = now()", "computed_at = now()"]
+                params = [_tokens_summary_param(c, values.get(c)) for c in changed] + [json.dumps(new_hashes)]
+                cur.execute(f"UPDATE tokens_summary SET {', '.join(sets)} WHERE id = 1", params)
+            else:
+                # Nothing changed: touch the timestamp only. Still a row
+                # rewrite (MVCC), but the TOASTed label blob stays shared.
+                cur.execute("UPDATE tokens_summary SET computed_at = now() WHERE id = 1")
+        conn.commit()
+    return changed
+
+
+def read_tokens_summary(include_labels=False):
+    """The /tokens summary row as a dict (JSONB -> Python), or None when the
+    table is absent/empty or PG is unavailable. Never raises: a read failure
+    on this hot public route degrades to the warming state, never a 500.
+
+    include_labels=False skips the ~1.3 MB label_lookup_json TOAST column --
+    the page never needs it (only /tokens/labels.json does), and reading it
+    per request cost ~1 s from the Mac. The key is still present as None."""
+    if not pg_available():
+        return None
+    cols = [c for c in TOKENS_SUMMARY_COLUMNS if include_labels or c != "label_lookup_json"]
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT " + ", ".join(cols) +
+                    ", changed_at, computed_at FROM tokens_summary WHERE id = 1"
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                out = dict(zip(cols + ["changed_at", "computed_at"], row))
+                out.setdefault("label_lookup_json", None)
+                return out
+    except Exception as e:
+        _log_err("tokens_summary_read", e)
         return None
 
 

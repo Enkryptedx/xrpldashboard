@@ -117,10 +117,16 @@ def test_tokens_route_uses_only_cached_loaders():
                 "db.read_token_volume_bucket_stats(",
                 "db.read_token_warnings_recent("):
         assert raw not in body, f"/tokens still calls uncached {raw}"
+    # 2026-10-19 (summary walker): the inferred-label merge left the page
+    # for /tokens/labels.json, so _cached_token_category_inferred_map is no
+    # longer called by the route body -- it is called by the endpoint and
+    # the walker. The route may still call the others as warming fallbacks.
     for cached in ("_cached_tier_lookup_map(", "_cached_token_prices_map(",
-                   "_cached_token_category_inferred_map(", "_cached_token_volume_aggregates(",
+                   "_cached_token_volume_aggregates(",
                    "_cached_token_volume_bucket_stats(", "_cached_token_warnings_recent("):
         assert cached in body, f"/tokens does not call {cached}"
+    assert "_cached_token_category_inferred_map(" not in body, \
+        "the 1.3 MB inferred merge must not return to the page"
 
 
 def test_no_live_uncached_resolve_all_map_calls_remain():
