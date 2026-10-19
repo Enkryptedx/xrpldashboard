@@ -46,6 +46,11 @@ WRAPPERS = {
     "_cached_token_prices_map": ("db", "read_token_prices_map", ()),
     "_cached_token_category_inferred_map": ("db", "read_token_category_inferred_map", ()),
     "_cached_token_volume_aggregates": ("db", "read_token_volume_aggregates", (24, 50)),
+    # 2026-10-19 pm: the two remaining uncached DB calls, found by the
+    # Server-Timing sub-stages. rows.stats was the single largest cost
+    # (COUNT(DISTINCT hour_bucket) over 1.48M rows, ~780K heap fetches).
+    "_cached_token_volume_bucket_stats": ("db", "read_token_volume_bucket_stats", ()),
+    "_cached_token_warnings_recent": ("db", "read_token_warnings_recent", (3, 15)),
 }
 
 
@@ -62,6 +67,8 @@ def test_wrapper_hits_underlying_once_within_ttl(wrapper, monkeypatch):
     sentinel = {"k": "v"} if not args else [("CUR", "rISS", 1, 1)]
     if fn == "resolve_all_map":
         sentinel = ({"k": "v"}, "test")
+    if fn == "read_token_volume_bucket_stats":
+        sentinel = (1, 2, 3)
     monkeypatch.setattr(target, fn, lambda *a, **k: (calls.append((a, k)) or sentinel))
     # fresh cache per test: the decorator stores per-function; bust by
     # re-wrapping the underlying through the same decorator
@@ -106,10 +113,13 @@ def test_tokens_route_uses_only_cached_loaders():
     for raw in ("shared_tier_verifier.resolve_all_map(",
                 "db.read_token_prices_map(",
                 "db.read_token_category_inferred_map(",
-                "db.read_token_volume_aggregates("):
+                "db.read_token_volume_aggregates(",
+                "db.read_token_volume_bucket_stats(",
+                "db.read_token_warnings_recent("):
         assert raw not in body, f"/tokens still calls uncached {raw}"
     for cached in ("_cached_tier_lookup_map(", "_cached_token_prices_map(",
-                   "_cached_token_category_inferred_map(", "_cached_token_volume_aggregates("):
+                   "_cached_token_category_inferred_map(", "_cached_token_volume_aggregates(",
+                   "_cached_token_volume_bucket_stats(", "_cached_token_warnings_recent("):
         assert cached in body, f"/tokens does not call {cached}"
 
 
