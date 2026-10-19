@@ -97,12 +97,28 @@ class TestTokensServerTiming:
         assert r.status_code == 200
         st = r.headers.get("Server-Timing")
         assert st, "Server-Timing missing"
-        names = re.findall(r"(\w+);dur=(\d+)", st)
-        assert [n for n, _ in names] == ["rows", "maps", "enrich", "render", "total"]
+        names = [n for n, _ in re.findall(r"([\w.]+);dur=(\d+)", st)]
+        assert names[:5] == ["rows", "maps", "enrich", "render", "total"]
+        # sub-stages follow the five stage totals (added 2026-10-19 so the
+        # live site names the slow CALL, not just the slow stage)
+        subs = set(names[5:])
+        # Always present (this client stubs pg_available=False):
+        assert {"rows.files", "enrich.loop", "enrich.hero", "enrich.inferred", "enrich.tail"} <= subs, subs
+        # Postgres-only marks must NOT appear when Postgres is off -- a
+        # sub-stage that did not run must not report 0 and look cheap:
+        assert not ({"rows.agg", "rows.stats", "enrich.ticker", "enrich.warnings"} & subs), subs
+
+    def test_substages_sum_to_their_stage(self, client):
+        st = client.get("/tokens").headers["Server-Timing"]
+        d = {n: int(v) for n, v in re.findall(r"([\w.]+);dur=(\d+)", st)}
+        rows_sub = sum(v for k, v in d.items() if k.startswith("rows."))
+        enr_sub = sum(v for k, v in d.items() if k.startswith("enrich."))
+        assert abs(d["rows"] - rows_sub) <= 3, (d["rows"], rows_sub)
+        assert abs(d["enrich"] - enr_sub) <= 3, (d["enrich"], enr_sub)
 
     def test_total_is_sum_of_stages_within_rounding(self, client):
         st = client.get("/tokens").headers["Server-Timing"]
-        d = {n: int(v) for n, v in re.findall(r"(\w+);dur=(\d+)", st)}
+        d = {n: int(v) for n, v in re.findall(r"([\w.]+);dur=(\d+)", st)}
         assert abs(d["total"] - (d["rows"] + d["maps"] + d["enrich"] + d["render"])) <= 4
 
     def test_response_bytes_is_exact(self, client):
