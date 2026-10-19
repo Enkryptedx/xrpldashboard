@@ -209,10 +209,15 @@ def _reverify_warning(cur, ticker: str, issuer: str) -> tuple[str, str]:
 
 
 def _fetch_toml_helper(url: str):
-    """Local wrapper around two_way_toml_verifier_walker._fetch_toml so
-    the call site above doesn't repeat the import."""
-    from two_way_toml_verifier_walker import _fetch_toml
-    return _fetch_toml(url)
+    """Local wrapper around two_way_toml_verifier_walker.fetch_toml_with_retry
+    so the call site above doesn't repeat the import.
+
+    Was `_fetch_toml`, a private name renamed on 2026-10-17. Because this
+    import is lazy it only fails when the sampler reaches this path -- which,
+    on a weekly cadence, would have been ~2026-10-24. Caught by grep before
+    it fired; see tests/test_walker_imports.py."""
+    from two_way_toml_verifier_walker import fetch_toml_with_retry
+    return fetch_toml_with_retry(url)
 
 
 def _sample_warnings(conn, run_id: str, results: list) -> None:

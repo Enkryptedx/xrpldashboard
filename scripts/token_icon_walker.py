@@ -46,7 +46,12 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
 import db
-from two_way_toml_verifier_walker import _fetch_toml  # reuses TOML fetcher
+# Public, retrying fetcher -- NOT the private `_fetch_toml`, which was renamed
+# to `_fetch_toml_once` on 2026-10-17 and silently broke this walker for 47h
+# (hourly exit=1 at this import line, before the first health heartbeat, so
+# walker_health kept showing the last good run). Private names are not an
+# API; tests/test_walker_imports.py now forbids importing them from here.
+from two_way_toml_verifier_walker import fetch_toml_with_retry  # reuses TOML fetcher
 
 # Match two_way_toml_verifier_walker's SSL context (Charlie ruling
 # 2026-09-10 Part C): macOS Python 3.14 doesn't ship a system trust
@@ -276,7 +281,7 @@ def run_walker() -> dict:
             if toml_url in toml_cache:
                 toml, toml_err = toml_cache[toml_url]
             else:
-                toml, toml_err = _fetch_toml(toml_url)
+                toml, toml_err = fetch_toml_with_retry(toml_url)
                 toml_cache[toml_url] = (toml, toml_err)
                 if toml is not None:
                     stats["toml_fetched"] += 1
