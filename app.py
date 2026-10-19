@@ -181,6 +181,13 @@ def _is_valid_utm_value(v):
     return bool(_re.match(r"^[A-Za-z0-9._~-]+$", v))
 
 
+# Running build identity. Render sets RENDER_GIT_COMMIT on every deploy
+# (documented default env var). Exposed on /healthz and as X-Commit on every
+# response so an outside measurement can prove WHICH version answered,
+# instead of assuming a deploy has rolled. "unknown" off-Render.
+_GIT_COMMIT = (os.environ.get("RENDER_GIT_COMMIT") or "").strip()[:12] or "unknown"
+
+
 def ttl_cache(seconds=60):
     """Per-process TTL cache for hot helpers that re-fetch identical results
     within seconds. Sized to a single value per arg-tuple — fine for the
@@ -1812,6 +1819,9 @@ _PERMISSIONS_POLICY_VALUE = ", ".join([
 def apply_security_headers(response):
     """Browser-enforced security headers on every response.
 
+    Also stamps X-Commit (see _GIT_COMMIT) -- 12 chars, no secret, lets a
+    curl from outside prove the running build before timing it.
+
     - X-Content-Type-Options: nosniff
         Stops the browser MIME-sniffing a response away from its declared
         Content-Type. Closes a class of "this image is actually JS" attacks.
@@ -1921,6 +1931,7 @@ def apply_security_headers(response):
         "require-trusted-types-for 'script'; "
         "trusted-types default 'allow-duplicates'",
     )
+    response.headers["X-Commit"] = _GIT_COMMIT
     return response
 
 
@@ -4307,6 +4318,12 @@ def whales():
 def tokens():
     """Token activity ranked by recent on-ledger trade count.
 
+    Server-Timing: rows / maps / enrich / render / total (ms) and
+    X-Response-Bytes, so one curl from outside shows where Render spends
+    the request. Added 2026-10-19 after a cache PR cut Postgres connects
+    14->6-8 yet moved outside TTFB not at all: the profile had been taken
+    from the Mac, where connect latency dominates, not from Render.
+
     Source: volumes.db (xrpl_stream.py token_event_handler). Counts every
     Payment carrying a token amount + every AMMDeposit / AMMWithdraw,
     bucketed hourly. XRP-equivalent volume is a 0.0 placeholder until
@@ -4324,6 +4341,7 @@ def tokens():
         range_key = "24h"
     hours_back = valid_ranges[range_key]
 
+    _st = {"t0": time.perf_counter()}
     rows = None
     earliest_bucket = None
     latest_bucket = None
@@ -4391,12 +4409,14 @@ def tokens():
     # (`verified` / `self-described` / `labeled` / `bare` / `unknown`) per
     # Charlie's 09-10 vocab ruling — downstream checks below compare against
     # the lowercase-hyphen constants.
+    _st["rows"] = time.perf_counter()
     tier_lookup, _tier_lookup_source = _cached_tier_lookup_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
     # on each row. Absent rows render "—" in the template; per token_prices.py,
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
     # not a placeholder to backfill.
     price_map = _cached_token_prices_map() if db.pg_available() else {}
+    _st["maps"] = time.perf_counter()
     from token_naming import resolve_display as _tk_resolve
     enriched = []
     for cur, iss, trades, hours_active in rows:
@@ -4832,7 +4852,8 @@ def tokens():
         except Exception:
             warnings_feed = []
 
-    return render_template(
+    _st["enrich"] = time.perf_counter()
+    html = render_template(
         "tokens.html",
         tokens=enriched,
         warnings_feed=warnings_feed,
@@ -4855,6 +4876,16 @@ def tokens():
         ticker_canonical_json=ticker_canonical_json,
         data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
     )
+    _st["render"] = time.perf_counter()
+    resp = make_response(html)
+    _ms = lambda a, b: f"{(_st[b] - _st[a]) * 1000:.0f}"
+    resp.headers["Server-Timing"] = (
+        f"rows;dur={_ms('t0','rows')}, maps;dur={_ms('rows','maps')}, "
+        f"enrich;dur={_ms('maps','enrich')}, render;dur={_ms('enrich','render')}, "
+        f"total;dur={_ms('t0','render')}"
+    )
+    resp.headers["X-Response-Bytes"] = str(len(html.encode("utf-8")))
+    return resp
 
 
 # /nfts cache — 5-min TTL keeps ledger queries cheap under crawler traffic.
@@ -10939,9 +10970,9 @@ def healthz():
                    "file_age_s": g.get("file_age_s"), "last_error": g.get("last_error")}
         except Exception:  # noqa: BLE001
             geo = {"available": None}
-        return {"status": "ok", "db": "reachable", "geoip": geo}, 200
+        return {"status": "ok", "db": "reachable", "geoip": geo, "commit": _GIT_COMMIT}, 200
     except Exception as e:
-        return {"status": "unhealthy", "db": "unreachable", "error": str(e)[:120]}, 503
+        return {"status": "unhealthy", "db": "unreachable", "error": str(e)[:120], "commit": _GIT_COMMIT}, 503
 
 
 @app.route("/api/health")
