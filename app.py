@@ -4539,6 +4539,85 @@ def _cached_hero_30d():
                              _load_d1_hero_snapshot())
 
 
+# ── /tokens precomputed summary (2026-10-19) ────────────────────────────
+# House pattern from /nfts: scripts/tokens_summary_walker.py computes every
+# heavy, request-independent input of /tokens into one row every 300 s.
+# The route does a single PK read. Three states:
+#   ok       row age <= _TOKENS_SUMMARY_STALE_S : render from the row
+#   stale    older                               : STILL render from the row
+#            (last-known-good) and say so -- degrading to the live path under
+#            load would turn "walker behind" into "site slow"
+#   warming  no row / PG down                    : today's live path
+_TOKENS_SUMMARY_STALE_S = 1800   # 6 missed 300 s cadences, same as /nfts
+
+
+def _tokens_summary_state(include_labels=False):
+    """(summary_row_or_None, cache_state, age_seconds_or_None)."""
+    row = db.read_tokens_summary(include_labels=include_labels) if db.pg_available() else None
+    if not row or row.get("computed_at") is None:
+        return None, "warming", None
+    age = max(0.0, time.time() - row["computed_at"].timestamp())
+    return row, ("stale" if age > _TOKENS_SUMMARY_STALE_S else "ok"), age
+
+
+def _decode_pair_keys(d):
+    """JSONB cannot key on tuples; the walker stores 'cur|iss'. Reverse it."""
+    out = {}
+    for k, v in (d or {}).items():
+        cur, _, iss = k.partition("|")
+        out[(cur, iss)] = v
+    return out
+
+
+def _build_inferred_label_lookup(inferred_map, tier_lookup):
+    """PURE. The live-grid label entries for every toml-inferred category
+    pair. Lifted verbatim from the /tokens route on 2026-10-19 so the walker
+    and the /tokens/labels.json endpoint share one implementation.
+    Keys are 'cur|iss'; attestation is self-described unless the tier lookup
+    independently confirms a canonical-TOML verification."""
+    out = {}
+    for (cur, iss), inf in inferred_map.items():
+        key = f"{cur}|{iss}"
+        _tier_raw = tier_lookup.get(key)
+        out[key] = {
+            "display": (inf.get("display_labelled")
+                        or inf.get("currency_display") or cur),
+            "category": inf.get("category") or "other",
+            "category_source": inf.get("source") or "toml",
+            "attestation": "verified" if _tier_raw == "verified" else "self-described",
+        }
+    return out
+
+
+@app.route("/tokens/labels.json")
+def tokens_labels_json():
+    """The ~1.3 MB inferred-label lookup the live-trade canvas needs to name
+    any token that pulses. Until 2026-10-19 this was inlined into every
+    /tokens response (85% of a 1.5 MB page). Now it is served here with a
+    5-minute public Cache-Control so Cloudflare absorbs it, and an ETag so
+    revalidation costs nothing. The page inlines only the ~50 visible rows;
+    the canvas fetches this and merges, page entries winning on conflict
+    (curator wins) -- identical semantics to the old inline merge."""
+    summary, state, _age = _tokens_summary_state(include_labels=True)
+    body = summary.get("label_lookup_json") if summary else None
+    if not body:
+        # warming: build live from the same pure function the walker uses
+        tier_lookup, _ = _cached_tier_lookup_map()
+        body = json.dumps(_build_inferred_label_lookup(
+            _cached_token_category_inferred_map(), tier_lookup), separators=(",", ":"))
+    import hashlib
+    etag = '"' + hashlib.sha256(body.encode("utf-8")).hexdigest()[:20] + '"'
+    if request.headers.get("If-None-Match") == etag:
+        resp = make_response("", 304)
+    else:
+        resp = make_response(body)
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    resp.headers["ETag"] = etag
+    resp.headers["Cache-Control"] = "public, max-age=300, s-maxage=300"
+    resp.headers["X-Tokens-Summary-State"] = state
+    return resp
+
+
 @app.route("/tokens")
 def tokens():
     """Token activity ranked by recent on-ledger trade count.
@@ -4567,6 +4646,8 @@ def tokens():
     hours_back = valid_ranges[range_key]
 
     _st = {"t0": time.perf_counter()}
+    _summary, cache_state, _summary_age = _tokens_summary_state()
+    _rk_col = {"24h": "aggregates_24h", "7d": "aggregates_7d", "all": "aggregates_all"}.get(range_key)
     _sub = {}            # sub-stage name -> ms, emitted alongside the stage totals
     _last = [time.perf_counter()]
     def _mark(name):
@@ -4584,11 +4665,13 @@ def tokens():
                     hours_back=24, limit=50
                 )
             else:
-                rows = _cached_token_volume_aggregates(
-                    hours_back=hours_back, limit=50
-                )
+                rows = (_summary.get(_rk_col) if (_summary and _rk_col) else None)
+                if rows is None:
+                    rows = _cached_token_volume_aggregates(
+                        hours_back=hours_back, limit=50
+                    )
             _mark("rows.agg")
-            stats = _cached_token_volume_bucket_stats()
+            stats = tuple(_summary["bucket_stats"]) if (_summary and _summary.get("bucket_stats")) else _cached_token_volume_bucket_stats()
             _mark("rows.stats")
             earliest_bucket, latest_bucket, total_buckets = (
                 stats[0], stats[1], stats[2]
@@ -4642,12 +4725,18 @@ def tokens():
     # the lowercase-hyphen constants.
     _mark("rows.files")
     _st["rows"] = time.perf_counter()
-    tier_lookup, _tier_lookup_source = _cached_tier_lookup_map()
+    if _summary and _summary.get("tier_lookup") is not None:
+        tier_lookup, _tier_lookup_source = _summary["tier_lookup"], "summary"
+    else:
+        tier_lookup, _tier_lookup_source = _cached_tier_lookup_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
     # on each row. Absent rows render "—" in the template; per token_prices.py,
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
     # not a placeholder to backfill.
-    price_map = _cached_token_prices_map() if db.pg_available() else {}
+    if _summary and _summary.get("price_map") is not None:
+        price_map = _decode_pair_keys(_summary["price_map"])
+    else:
+        price_map = _cached_token_prices_map() if db.pg_available() else {}
     _st["maps"] = time.perf_counter()
     _last[0] = _st["maps"]
     from token_naming import resolve_display as _tk_resolve
@@ -4754,8 +4843,8 @@ def tokens():
     # pull caps at 50 rows and misses long-tail Zone A share.
     hero_enriched = enriched
     _mark("enrich.loop")
-    _hero = None
-    if db.pg_available():
+    _hero = _summary.get("hero") if _summary else None
+    if _hero is None and db.pg_available():
         try:
             _hero = _cached_hero_30d()
         except Exception:
@@ -4842,24 +4931,12 @@ def tokens():
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
     _mark("enrich.hex")
-    inferred_map = _cached_token_category_inferred_map()
+    # The toml-inferred labels (~7,300 pairs, ~1.3 MB as JSON) are no longer
+    # merged here. The page inlines only the visible rows above; the canvas
+    # fetches /tokens/labels.json (walker-built, Cloudflare-cacheable) and
+    # merges it client-side with page entries winning -- the same
+    # "curator wins on conflict" rule the old inline merge applied.
     _mark("enrich.inferred")
-    for (cur, iss), inf in inferred_map.items():
-        key = f"{cur}|{iss}"
-        if key in label_lookup:
-            continue  # curator wins
-        # Tier for the live-grid lane: a toml-published category is the
-        # issuer's own claim, so it is self-described unless the tier
-        # lookup independently confirms a canonical-TOML verification.
-        _tier_raw = tier_lookup.get(key)
-        _inf_att = "verified" if _tier_raw == "verified" else "self-described"
-        label_lookup[key] = {
-            "display": (inf.get("display_labelled")
-                              or inf.get("currency_display") or cur),
-            "category": inf.get("category") or "other",
-            "category_source": inf.get("source") or "toml",
-            "attestation": _inf_att,
-        }
     label_lookup_json = json.dumps(label_lookup, separators=(",", ":"))
 
     # NEW-1 hotfix 2026-09-06: ship a JS-friendly subset of
@@ -4903,7 +4980,7 @@ def tokens():
     if db.pg_available():
         try:
             _mark("enrich.ticker")
-            _wf_rows = _cached_token_warnings_recent(hours_back=3, limit=15)
+            _wf_rows = _summary["warnings_recent"] if (_summary and _summary.get("warnings_recent") is not None) else _cached_token_warnings_recent(hours_back=3, limit=15)
             _mark("enrich.warnings")
             _now_hour = int(time.time() // 3600)
             for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
@@ -4960,7 +5037,11 @@ def tokens():
         hex_size=HEX_S,
         label_lookup_json=label_lookup_json,
         ticker_canonical_json=ticker_canonical_json,
-        data_age_label=_format_age_seconds(_volumes_db_age_seconds()),
+        data_age_label=_format_age_seconds(
+            (max(0, int(time.time()) - int(_summary["latest_bucket"]) * 3600))
+            if (_summary and _summary.get("latest_bucket")) else _volumes_db_age_seconds()),
+        tokens_cache_state=cache_state,
+        tokens_summary_age_label=_format_age_seconds(_summary_age) if _summary_age is not None else None,
     )
     _st["render"] = time.perf_counter()
     resp = make_response(html)
@@ -4972,6 +5053,7 @@ def tokens():
         + "".join(f", {k};dur={v:.0f}" for k, v in _sub.items())
     )
     resp.headers["X-Response-Bytes"] = str(len(html.encode("utf-8")))
+    resp.headers["X-Tokens-Summary-State"] = cache_state
     return resp
 
 

@@ -815,6 +815,22 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_tokens_hero_cache.py -q
 
+      # /tokens precomputed summary (house pattern from /nfts). One walker
+      # row replaces 9 independent per-worker caches: live probes showed
+      # cold-worker TTFB 7-12 s because 3 dynos x 3 gunicorn workers each
+      # held a private ttl_cache. Pins: per-column hash gating (unchanged
+      # columns -- incl. the 1.3 MB label blob -- are NOT rewritten;
+      # computed_at always advances), lock_timeout before DDL, the three
+      # route states (ok / stale-still-served / warming-live-path), the page
+      # taking rows/stats/maps/hero/warnings from the row, the labels
+      # endpoint (public 5-min Cache-Control, ETag -> 304, live build when
+      # warming), the page inlining only visible rows, _jsonable
+      # normalisation, and the helper-name contract check.
+      - name: /tokens summary walker + row + labels endpoint (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_tokens_summary.py tests/test_tokens_route_caching.py -q
+
       # Build identity + /tokens stage timing. X-Commit on every response and
       # /healthz.commit (RENDER_GIT_COMMIT[:12] or "unknown") so an outside
       # measurement can prove which version answered. Server-Timing on

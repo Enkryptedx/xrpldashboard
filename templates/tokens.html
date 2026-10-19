@@ -918,6 +918,15 @@
       {{ _('Liquidity and volume figures reflect AMM activity only. Order-book DEX trading isn\'t included yet.') }}
     </p>
     {{ freshness_badge(data_age_label) }}
+    {% if tokens_cache_state == 'warming' %}
+    <div class="src-pill" style="margin-top: 0.8em; background: rgba(255,196,0,0.12); color: var(--amber, #e0a000); border: 1px solid rgba(255,196,0,0.35);">
+      {{ _('Summary warming up — this page was built live; the precomputed summary will take over within a few minutes.') }}
+    </div>
+    {% elif tokens_cache_state == 'stale' %}
+    <div class="src-pill" style="margin-top: 0.8em; background: rgba(255,196,0,0.12); color: var(--amber, #e0a000); border: 1px solid rgba(255,196,0,0.35);">
+      {{ _('Showing the last-known summary (refreshed %(age)s ago) — the summary walker is running behind.', age=tokens_summary_age_label) }}
+    </div>
+    {% endif %}
   </div>
 
   {# D1 v5 hero — walled Zone A (30d trade shares) + Zone B (LP TVL in
@@ -1605,6 +1614,22 @@
       try { LABELS = JSON.parse(labelsEl.textContent || '{}'); }
       catch (e) { LABELS = {}; }
     }
+    // 2026-10-19: the ~7,300 toml-inferred labels moved out of the page
+    // into /tokens/labels.json (walker-built, Cloudflare-cached 5 min).
+    // Merge them in; page entries win on conflict, exactly the old inline
+    // "curator wins" rule. LABELS is only read inside spawnPulse (WS
+    // events), never at first paint, so a late or failed fetch degrades to
+    // the bare lane for inferred pairs -- never an error.
+    try {
+      fetch('/tokens/labels.json', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (extra) {
+          for (var k in extra) {
+            if (Object.prototype.hasOwnProperty.call(extra, k) && !(k in LABELS)) LABELS[k] = extra[k];
+          }
+        })
+        .catch(function () {});
+    } catch (e) {}
     // NEW-1 hotfix 2026-09-06: ticker-canonical map mirror of
     // token_naming.py so the client applies the SAME collision guard
     // used server-side. Any decoded token name matching a known ticker
