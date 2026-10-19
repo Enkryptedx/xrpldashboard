@@ -790,6 +790,17 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_walker_imports.py -q
 
+      # /tokens: five read-mostly loaders wrapped in ttl_cache(60). Measured
+      # 2026-10-19: TTFB 6.8-8.9s from outside; the SQL was free (0.186 ms,
+      # index-only) -- the cost was pg_connect(), 0.3-2.8s each, 14 per
+      # request. Now 6-8 per request; warm in-process 20-28s -> ~4s. Pins
+      # that the route calls only the cached names and that each wrapper
+      # hits its loader once within the TTL. Hermetic: loaders monkeypatched.
+      - name: /tokens route caching (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_tokens_route_caching.py -q
+
       # The fail-closed TOML matcher must read the tables the spec uses.
       # It scanned ONLY [[ISSUERS]]/[[TOKENS]] and its docstring claimed
       # those were the spec's tables. The spec has NO [[ISSUERS]] table --
