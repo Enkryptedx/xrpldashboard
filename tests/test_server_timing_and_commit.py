@@ -103,7 +103,7 @@ class TestTokensServerTiming:
         # live site names the slow CALL, not just the slow stage)
         subs = set(names[5:])
         # Always present (this client stubs pg_available=False):
-        assert {"rows.files", "enrich.loop", "enrich.hero", "enrich.inferred", "enrich.tail"} <= subs, subs
+        assert {"rows.files", "enrich.loop", "enrich.hero", "enrich.hex", "enrich.inferred", "enrich.tail"} <= subs, subs
         # Postgres-only marks must NOT appear when Postgres is off -- a
         # sub-stage that did not run must not report 0 and look cheap:
         assert not ({"rows.agg", "rows.stats", "enrich.ticker", "enrich.warnings"} & subs), subs

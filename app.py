@@ -4335,6 +4335,210 @@ def whales():
     return _whales_body
 
 
+def _build_hero_enriched_30d(tokens_meta):
+    """The /tokens hero's 30-day source list: the 1,500-row aggregate shaped
+    into enriched-style dicts. Raises on fetch failure so the caller can
+    fall back exactly as the inline code did."""
+    hero_rows_30d = _cached_token_volume_aggregates(hours_back=24 * 30, limit=1500
+    )
+    hero_enriched = []
+    for cur, iss, trades, hours_active in hero_rows_30d:
+        meta = tokens_meta.get((cur, iss)) or {}
+        if meta:
+            display = (meta.get("display_labelled")
+                   or meta.get("currency_display") or cur)
+            category = meta.get("category")
+            labeled = True
+        else:
+            category = None
+            labeled = False
+        if iss == AXELAR_BRIDGE_ISSUER:
+            category = "wrapped_bridge"
+            labeled = True
+        if labeled and (category is None or category == "no_category"):
+            category = "unlabeled"
+        hero_enriched.append({
+            "display": display if meta else (
+                _decode_currency_hex(cur)
+                or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
+            ),
+            "category": category,
+            "labeled": labeled,
+            "trades": trades,
+        })
+    return hero_enriched
+
+
+def _compute_hero_30d(hero_enriched, hero_snapshot):
+    """PURE. Zone A category bars, the Unlabeled bar with the floor nested
+    inside it, Zone B LP, tier summary, RWA caption -- from a list of
+    enriched-shaped dicts. Lifted verbatim from the /tokens route on
+    2026-10-19 so the normal path can be cached and the error path can
+    reuse the same code with the request's own list."""
+    # D1 v5 hero — Zone A. 7 named-category bars. Order shown top-down.
+    # `other` = labeled tokens that don't fit a named bucket (see coerce
+    # step above); NOT the same as `Unlabeled` (which has no identity at
+    # all). Both are rendered but visually + linguistically separated.
+    cat_order = [
+        ("stablecoin",     "stablecoins",        "34,197,94"),   # green
+        ("native_utility", "utility",            "34,211,238"),  # cyan
+        ("memecoin",       "memecoins",          "236,72,153"),  # pink
+        ("wrapped_major",  "wrapped majors",     "245,158,11"),  # amber
+        ("bridge",         "bridge tokens",      "168,85,247"),  # violet
+        ("fiat",           "fiat tokens",        "16,185,129"),  # emerald
+        ("other",          "other named tokens", "148,163,184"), # slate
+    ]
+    cat_groups = {key: [] for key, _, _ in cat_order}
+    unlabeled_members = []
+    for t in hero_enriched:
+        if t["category"] in cat_groups:
+            cat_groups[t["category"]].append(t)
+        elif not t["labeled"]:
+            unlabeled_members.append(t)
+    # Total across everything visible (named + unlabeled) — this is the
+    # denominator for Zone A share_pct so bars sum to <=100% including
+    # the Unlabeled bar. Uses 30d aggregate to match Fable's v3 §3 table.
+    zone_a_total = sum(t["trades"] or 0 for t in hero_enriched) or 1
+
+    def _build_bar(key, label, rgb, members, tier_bar_note=None):
+        cat_total = sum(t["trades"] or 0 for t in members)
+        if cat_total == 0:
+            return None
+        members_sorted = sorted(
+            members, key=lambda t: t["trades"] or 0, reverse=True
+        )
+        top = members_sorted[:5]
+        rest_total = sum(t["trades"] or 0 for t in members_sorted[5:])
+        segments = [
+            {"label": t["display"], "trades": t["trades"] or 0,
+             "share_in_cat": round(((t["trades"] or 0) / cat_total) * 100, 1)}
+            for t in top
+        ]
+        if rest_total > 0:
+            segments.append({
+                "label": f"+{len(members_sorted) - 5} more"
+                         if len(members_sorted) > 5 else "other",
+                "trades": rest_total,
+                "share_in_cat": round((rest_total / cat_total) * 100, 1),
+            })
+        return {
+            "key": key,
+            "label": label,
+            "rgb": rgb,
+            "trades": cat_total,
+            "share_pct": round((cat_total / zone_a_total) * 100, 2),
+            "token_count": len(members),
+            "segments": segments,
+            "tier_note": tier_bar_note,
+        }
+
+    category_bars = []
+    for key, label, rgb in cat_order:
+        bar = _build_bar(key, label, rgb, cat_groups[key])
+        if bar:
+            category_bars.append(bar)
+
+    # Unlabeled bar — visually + textually distinct from "other named
+    # tokens". Different rgb (muted grey, no fill saturation) and its own
+    # explainer copy in the template. This is the tokens with NO identity;
+    # named-but-uncategorized ("other") is on the opposite side of the
+    # attestation story.
+    unlabeled_bar = _build_bar(
+        "unlabeled", "unlabeled",
+        "100,116,139",  # slate-500 dimmer than "other"
+        unlabeled_members,
+    )
+
+    # Zone B — spec-locked LP TVL bar. Sized in USD, not trades — mixed
+    # unit label is intentional (see Fable's Zone B constraint). Concen-
+    # tration hover is required (v5 §3a) because one pool holds 81% of
+    # the bar.
+    lp_zone_raw = hero_snapshot.get("lp_zone") or {}
+    zone_b_lp = {
+        "total_usd": lp_zone_raw.get("total_tvl_usd", 0),
+        "pool_count": lp_zone_raw.get("pool_count", 0),
+        "pools": lp_zone_raw.get("pools", []),
+        "top_pool_pair": None,
+        "top_pool_share_pct": None,
+    }
+    if zone_b_lp["pools"]:
+        top_pool = zone_b_lp["pools"][0]
+        zone_b_lp["top_pool_pair"] = top_pool.get("pair")
+        zone_b_lp["top_pool_share_pct"] = top_pool.get("share_pct")
+
+    # Attestation summary strip — spec-locked from v3 §4a via v5 hero
+    # snapshot. Displayed as three counts in the hero: verified pill
+    # (green), self-described pill (grey), bare (DOMAIN_ONLY + ANONYMOUS
+    # merged per Charlie's editorial: never label lower tiers as verified).
+    # 2026-09-10 Part C: counts now come from the LIVE registry
+    # (token_category_current) via shared_tier_verifier — the frozen July
+    # snapshot said VERIFIED=1 while the registry actually had ~87. Hero
+    # snapshot remains the fallback (DB out) and still supplies total_pairs.
+    _live_tier_counts, _live_tier_counts_source = (
+        shared_tier_verifier.live_tier_counts()
+    )
+    tier_counts = _live_tier_counts
+    # 2026-09-10 Charlie ruling: canonical 5-tier vocab is lowercase-hyphen
+    # (verified / self-described / labeled / bare / unknown). `mechanical`
+    # and `sanctioned` are row-level FLAGS on separate columns, not tier
+    # values. Hero pills: verified + self-described + labeled + bare;
+    # bare pill merges `bare` + `unknown` (unknown = lookup failure).
+    tier_summary = {
+        "verified": int(tier_counts.get("verified", 0)),
+        "self_described": int(tier_counts.get("self-described", 0)),
+        "labeled": int(tier_counts.get("labeled", 0)),
+        "bare": int(tier_counts.get("bare", 0))
+                + int(tier_counts.get("unknown", 0)),
+        "total_pairs": int(
+            (hero_snapshot.get("tiers") or {}).get("total_pairs", 0)
+        ),
+        "counts_source": _live_tier_counts_source,
+    }
+    rwa_caption = hero_snapshot.get("rwa_caption") or {"named_count": 0}
+    floor_pct = ((hero_snapshot.get("floor") or {}).get("pct")) or 20.5
+
+    # Floor-inside-the-bar (Gate 3 v2): the 20.5% floor is a subset story
+    # rendered INSIDE the Unlabeled bar, not as a separate caption. Two
+    # visitor-facing numbers (91.83% Unlabeled vs 20.5% floor) read as
+    # contradictory when placed side-by-side; nesting resolves it. The
+    # inner segment width represents floor_pct as a share of the Unlabeled
+    # bar itself, so the visual math is honest: floor is a subset of
+    # Unlabeled, not a competing total.
+    if unlabeled_bar and unlabeled_bar["share_pct"] > 0:
+        # Postgres SUM() returns Decimal; coerce so /(float) doesn't TypeError.
+        _bar_share = float(unlabeled_bar["share_pct"])
+        _floor = float(floor_pct)
+        unlabeled_bar["floor_seg_share_of_bar"] = round(
+            min(_floor / _bar_share * 100, 100), 2
+        )
+        unlabeled_bar["floor_pct"] = _floor
+    return {
+        "category_bars": category_bars,
+        "unlabeled_bar": unlabeled_bar,
+        "zone_b_lp": zone_b_lp,
+        "tier_summary": tier_summary,
+        "rwa_caption": rwa_caption,
+        "floor_pct": floor_pct,
+    }
+
+
+@ttl_cache(seconds=300)
+def _cached_hero_30d():
+    """The whole computed hero, cached 5 min per process.
+
+    Server-Timing sub-stage enrich.hero was the largest cost on /tokens in
+    the live BEFORE probes (531-1734 ms): ~530 ms of pure compute over the
+    1,500-row 30-day aggregate on every request, plus the aggregate refetch
+    on each cold worker. The hero is request-INDEPENDENT -- a fixed 30-day
+    window regardless of the range selector -- so the finished outputs can
+    be shared. Callers never mutate them (grep-verified; the only post-hero
+    mutation in the route is label_lookup, which is per-request and built
+    from `enriched`, not from these). 300 s because the data is hourly.
+    Raises on fetch failure; the route then recomputes from `enriched`."""
+    return _compute_hero_30d(_build_hero_enriched_30d(_load_token_names_dict()),
+                             _load_d1_hero_snapshot())
+
+
 @app.route("/tokens")
 def tokens():
     """Token activity ranked by recent on-ledger trade count.
@@ -4550,176 +4754,23 @@ def tokens():
     # pull caps at 50 rows and misses long-tail Zone A share.
     hero_enriched = enriched
     _mark("enrich.loop")
+    _hero = None
     if db.pg_available():
         try:
-            hero_rows_30d = _cached_token_volume_aggregates(hours_back=24 * 30, limit=1500
-            )
-            hero_enriched = []
-            for cur, iss, trades, hours_active in hero_rows_30d:
-                meta = tokens_meta.get((cur, iss)) or {}
-                if meta:
-                    display = (meta.get("display_labelled")
-                           or meta.get("currency_display") or cur)
-                    category = meta.get("category")
-                    labeled = True
-                else:
-                    category = None
-                    labeled = False
-                if iss == AXELAR_BRIDGE_ISSUER:
-                    category = "wrapped_bridge"
-                    labeled = True
-                if labeled and (category is None or category == "no_category"):
-                    category = "unlabeled"
-                hero_enriched.append({
-                    "display": display if meta else (
-                        _decode_currency_hex(cur)
-                        or (cur[:8] + "…" if cur and len(cur) > 8 else (cur or "?"))
-                    ),
-                    "category": category,
-                    "labeled": labeled,
-                    "trades": trades,
-                })
+            _hero = _cached_hero_30d()
         except Exception:
-            hero_enriched = enriched
-
-    # D1 v5 hero — Zone A. 7 named-category bars. Order shown top-down.
-    # `other` = labeled tokens that don't fit a named bucket (see coerce
-    # step above); NOT the same as `Unlabeled` (which has no identity at
-    # all). Both are rendered but visually + linguistically separated.
-    cat_order = [
-        ("stablecoin",     "stablecoins",        "34,197,94"),   # green
-        ("native_utility", "utility",            "34,211,238"),  # cyan
-        ("memecoin",       "memecoins",          "236,72,153"),  # pink
-        ("wrapped_major",  "wrapped majors",     "245,158,11"),  # amber
-        ("bridge",         "bridge tokens",      "168,85,247"),  # violet
-        ("fiat",           "fiat tokens",        "16,185,129"),  # emerald
-        ("other",          "other named tokens", "148,163,184"), # slate
-    ]
-    cat_groups = {key: [] for key, _, _ in cat_order}
-    unlabeled_members = []
-    for t in hero_enriched:
-        if t["category"] in cat_groups:
-            cat_groups[t["category"]].append(t)
-        elif not t["labeled"]:
-            unlabeled_members.append(t)
-    # Total across everything visible (named + unlabeled) — this is the
-    # denominator for Zone A share_pct so bars sum to <=100% including
-    # the Unlabeled bar. Uses 30d aggregate to match Fable's v3 §3 table.
-    zone_a_total = sum(t["trades"] or 0 for t in hero_enriched) or 1
-
-    def _build_bar(key, label, rgb, members, tier_bar_note=None):
-        cat_total = sum(t["trades"] or 0 for t in members)
-        if cat_total == 0:
-            return None
-        members_sorted = sorted(
-            members, key=lambda t: t["trades"] or 0, reverse=True
-        )
-        top = members_sorted[:5]
-        rest_total = sum(t["trades"] or 0 for t in members_sorted[5:])
-        segments = [
-            {"label": t["display"], "trades": t["trades"] or 0,
-             "share_in_cat": round(((t["trades"] or 0) / cat_total) * 100, 1)}
-            for t in top
-        ]
-        if rest_total > 0:
-            segments.append({
-                "label": f"+{len(members_sorted) - 5} more"
-                         if len(members_sorted) > 5 else "other",
-                "trades": rest_total,
-                "share_in_cat": round((rest_total / cat_total) * 100, 1),
-            })
-        return {
-            "key": key,
-            "label": label,
-            "rgb": rgb,
-            "trades": cat_total,
-            "share_pct": round((cat_total / zone_a_total) * 100, 2),
-            "token_count": len(members),
-            "segments": segments,
-            "tier_note": tier_bar_note,
-        }
-
-    category_bars = []
-    for key, label, rgb in cat_order:
-        bar = _build_bar(key, label, rgb, cat_groups[key])
-        if bar:
-            category_bars.append(bar)
-
-    # Unlabeled bar — visually + textually distinct from "other named
-    # tokens". Different rgb (muted grey, no fill saturation) and its own
-    # explainer copy in the template. This is the tokens with NO identity;
-    # named-but-uncategorized ("other") is on the opposite side of the
-    # attestation story.
-    unlabeled_bar = _build_bar(
-        "unlabeled", "unlabeled",
-        "100,116,139",  # slate-500 dimmer than "other"
-        unlabeled_members,
-    )
-
-    # Zone B — spec-locked LP TVL bar. Sized in USD, not trades — mixed
-    # unit label is intentional (see Fable's Zone B constraint). Concen-
-    # tration hover is required (v5 §3a) because one pool holds 81% of
-    # the bar.
-    lp_zone_raw = hero_snapshot.get("lp_zone") or {}
-    zone_b_lp = {
-        "total_usd": lp_zone_raw.get("total_tvl_usd", 0),
-        "pool_count": lp_zone_raw.get("pool_count", 0),
-        "pools": lp_zone_raw.get("pools", []),
-        "top_pool_pair": None,
-        "top_pool_share_pct": None,
-    }
-    if zone_b_lp["pools"]:
-        top_pool = zone_b_lp["pools"][0]
-        zone_b_lp["top_pool_pair"] = top_pool.get("pair")
-        zone_b_lp["top_pool_share_pct"] = top_pool.get("share_pct")
-
-    # Attestation summary strip — spec-locked from v3 §4a via v5 hero
-    # snapshot. Displayed as three counts in the hero: verified pill
-    # (green), self-described pill (grey), bare (DOMAIN_ONLY + ANONYMOUS
-    # merged per Charlie's editorial: never label lower tiers as verified).
-    # 2026-09-10 Part C: counts now come from the LIVE registry
-    # (token_category_current) via shared_tier_verifier — the frozen July
-    # snapshot said VERIFIED=1 while the registry actually had ~87. Hero
-    # snapshot remains the fallback (DB out) and still supplies total_pairs.
-    _live_tier_counts, _live_tier_counts_source = (
-        shared_tier_verifier.live_tier_counts()
-    )
-    tier_counts = _live_tier_counts
-    # 2026-09-10 Charlie ruling: canonical 5-tier vocab is lowercase-hyphen
-    # (verified / self-described / labeled / bare / unknown). `mechanical`
-    # and `sanctioned` are row-level FLAGS on separate columns, not tier
-    # values. Hero pills: verified + self-described + labeled + bare;
-    # bare pill merges `bare` + `unknown` (unknown = lookup failure).
-    tier_summary = {
-        "verified": int(tier_counts.get("verified", 0)),
-        "self_described": int(tier_counts.get("self-described", 0)),
-        "labeled": int(tier_counts.get("labeled", 0)),
-        "bare": int(tier_counts.get("bare", 0))
-                + int(tier_counts.get("unknown", 0)),
-        "total_pairs": int(
-            (hero_snapshot.get("tiers") or {}).get("total_pairs", 0)
-        ),
-        "counts_source": _live_tier_counts_source,
-    }
-    rwa_caption = hero_snapshot.get("rwa_caption") or {"named_count": 0}
-    floor_pct = ((hero_snapshot.get("floor") or {}).get("pct")) or 20.5
-
-    # Floor-inside-the-bar (Gate 3 v2): the 20.5% floor is a subset story
-    # rendered INSIDE the Unlabeled bar, not as a separate caption. Two
-    # visitor-facing numbers (91.83% Unlabeled vs 20.5% floor) read as
-    # contradictory when placed side-by-side; nesting resolves it. The
-    # inner segment width represents floor_pct as a share of the Unlabeled
-    # bar itself, so the visual math is honest: floor is a subset of
-    # Unlabeled, not a competing total.
-    if unlabeled_bar and unlabeled_bar["share_pct"] > 0:
-        # Postgres SUM() returns Decimal; coerce so /(float) doesn't TypeError.
-        _bar_share = float(unlabeled_bar["share_pct"])
-        _floor = float(floor_pct)
-        unlabeled_bar["floor_seg_share_of_bar"] = round(
-            min(_floor / _bar_share * 100, 100), 2
-        )
-        unlabeled_bar["floor_pct"] = _floor
-
+            _hero = None
+    if _hero is None:
+        # Original fallback: no Postgres, or the 30-day fetch failed --
+        # build the hero from the request's own top-50 list.
+        _hero = _compute_hero_30d(hero_enriched, hero_snapshot)
+    category_bars = _hero["category_bars"]
+    unlabeled_bar = _hero["unlabeled_bar"]
+    zone_b_lp = _hero["zone_b_lp"]
+    tier_summary = _hero["tier_summary"]
+    rwa_caption = _hero["rwa_caption"]
+    floor_pct = _hero["floor_pct"]
+    _mark("enrich.hero")
     # Honeycomb hero — top labeled tokens laid out as a pointy-top hex grid.
     # Each cell key (currency_raw|issuer) is matched against live WS trades
     # to pulse in real time. Pure CSS/SVG positioning, server-rendered so
@@ -4790,7 +4841,7 @@ def tokens():
         }
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
-    _mark("enrich.hero")
+    _mark("enrich.hex")
     inferred_map = _cached_token_category_inferred_map()
     _mark("enrich.inferred")
     for (cur, iss), inf in inferred_map.items():
