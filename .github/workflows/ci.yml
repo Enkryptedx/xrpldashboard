@@ -801,6 +801,20 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_tokens_route_caching.py -q
 
+      # /tokens hero lifted into _compute_hero_30d (pure) + _cached_hero_30d
+      # (ttl 300s). Live sub-stage enrich.hero was the largest cost
+      # (531-1734 ms/probe): ~530 ms compute over the 1,500-row 30-day
+      # aggregate on EVERY request plus a refetch per cold worker. The hero
+      # is request-independent (fixed 30-day window), so the finished
+      # outputs are shared. Equivalence to the old inline code was verified
+      # in-process against origin/main text on identical input; the
+      # error-path fallback (recompute from `enriched`) is preserved and
+      # tested. Hermetic: loaders stubbed.
+      - name: /tokens hero cache + pure compute (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_tokens_hero_cache.py -q
+
       # Build identity + /tokens stage timing. X-Commit on every response and
       # /healthz.commit (RENDER_GIT_COMMIT[:12] or "unknown") so an outside
       # measurement can prove which version answered. Server-Timing on
