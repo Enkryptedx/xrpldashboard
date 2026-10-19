@@ -221,6 +221,27 @@ def _cached_token_volume_aggregates(hours_back, limit):
 
 
 @ttl_cache(seconds=60)
+def _cached_token_volume_bucket_stats():
+    """db.read_token_volume_bucket_stats(), cached 60s.
+
+    Server-Timing sub-stage rows.stats was the single largest cost on
+    /tokens (1.4-4.0s on the Mac, the ENTIRE rows stage). EXPLAIN on Neon:
+    MIN/MAX are index endpoints and free; COUNT(DISTINCT hour_bucket) walks
+    all 1.48M index entries with ~780K heap fetches (stale visibility map)
+    -- 404 ms execution, 1.2s wall. It yields a number that changes once an
+    hour (3873 at the time) and feeds a freshness label. 60s is nothing."""
+    return db.read_token_volume_bucket_stats()
+
+
+@ttl_cache(seconds=60)
+def _cached_token_warnings_recent(hours_back, limit):
+    """db.read_token_warnings_recent(), cached 60s per (hours_back, limit).
+    Sub-stage enrich.warnings, ~370 ms, the only other uncached DB call on
+    the route. Hourly-bucketed data."""
+    return db.read_token_warnings_recent(hours_back=hours_back, limit=limit)
+
+
+@ttl_cache(seconds=60)
 def _cached_tier_lookup_map():
     """shared_tier_verifier.resolve_all_map(), cached 60s per process.
 
@@ -4363,7 +4384,7 @@ def tokens():
                     hours_back=hours_back, limit=50
                 )
             _mark("rows.agg")
-            stats = db.read_token_volume_bucket_stats()
+            stats = _cached_token_volume_bucket_stats()
             _mark("rows.stats")
             earliest_bucket, latest_bucket, total_buckets = (
                 stats[0], stats[1], stats[2]
@@ -4831,7 +4852,7 @@ def tokens():
     if db.pg_available():
         try:
             _mark("enrich.ticker")
-            _wf_rows = db.read_token_warnings_recent(hours_back=3, limit=15)
+            _wf_rows = _cached_token_warnings_recent(hours_back=3, limit=15)
             _mark("enrich.warnings")
             _now_hour = int(time.time() // 3600)
             for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
