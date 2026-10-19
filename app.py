@@ -4342,6 +4342,10 @@ def tokens():
     hours_back = valid_ranges[range_key]
 
     _st = {"t0": time.perf_counter()}
+    _sub = {}            # sub-stage name -> ms, emitted alongside the stage totals
+    _last = [time.perf_counter()]
+    def _mark(name):
+        now = time.perf_counter(); _sub[name] = _sub.get(name, 0.0) + (now - _last[0]) * 1000; _last[0] = now
     rows = None
     earliest_bucket = None
     latest_bucket = None
@@ -4358,7 +4362,9 @@ def tokens():
                 rows = _cached_token_volume_aggregates(
                     hours_back=hours_back, limit=50
                 )
+            _mark("rows.agg")
             stats = db.read_token_volume_bucket_stats()
+            _mark("rows.stats")
             earliest_bucket, latest_bucket, total_buckets = (
                 stats[0], stats[1], stats[2]
             )
@@ -4409,6 +4415,7 @@ def tokens():
     # (`verified` / `self-described` / `labeled` / `bare` / `unknown`) per
     # Charlie's 09-10 vocab ruling — downstream checks below compare against
     # the lowercase-hyphen constants.
+    _mark("rows.files")
     _st["rows"] = time.perf_counter()
     tier_lookup, _tier_lookup_source = _cached_tier_lookup_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
@@ -4417,6 +4424,7 @@ def tokens():
     # not a placeholder to backfill.
     price_map = _cached_token_prices_map() if db.pg_available() else {}
     _st["maps"] = time.perf_counter()
+    _last[0] = _st["maps"]
     from token_naming import resolve_display as _tk_resolve
     enriched = []
     for cur, iss, trades, hours_active in rows:
@@ -4520,6 +4528,7 @@ def tokens():
     # A separate wide-limit pull is needed because the range-selector
     # pull caps at 50 rows and misses long-tail Zone A share.
     hero_enriched = enriched
+    _mark("enrich.loop")
     if db.pg_available():
         try:
             hero_rows_30d = _cached_token_volume_aggregates(hours_back=24 * 30, limit=1500
@@ -4760,7 +4769,9 @@ def tokens():
         }
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
+    _mark("enrich.hero")
     inferred_map = _cached_token_category_inferred_map()
+    _mark("enrich.inferred")
     for (cur, iss), inf in inferred_map.items():
         key = f"{cur}|{iss}"
         if key in label_lookup:
@@ -4819,7 +4830,9 @@ def tokens():
     warnings_feed = []
     if db.pg_available():
         try:
+            _mark("enrich.ticker")
             _wf_rows = db.read_token_warnings_recent(hours_back=3, limit=15)
+            _mark("enrich.warnings")
             _now_hour = int(time.time() // 3600)
             for hour_bucket, cur, iss, trades, is_col, is_ns in _wf_rows:
                 meta = tokens_meta.get((cur, iss)) or {}
@@ -4852,6 +4865,7 @@ def tokens():
         except Exception:
             warnings_feed = []
 
+    _mark("enrich.tail")
     _st["enrich"] = time.perf_counter()
     html = render_template(
         "tokens.html",
@@ -4883,6 +4897,7 @@ def tokens():
         f"rows;dur={_ms('t0','rows')}, maps;dur={_ms('rows','maps')}, "
         f"enrich;dur={_ms('maps','enrich')}, render;dur={_ms('enrich','render')}, "
         f"total;dur={_ms('t0','render')}"
+        + "".join(f", {k};dur={v:.0f}" for k, v in _sub.items())
     )
     resp.headers["X-Response-Bytes"] = str(len(html.encode("utf-8")))
     return resp
