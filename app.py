@@ -205,6 +205,39 @@ def ttl_cache(seconds=60):
 
 
 @ttl_cache(seconds=60)
+def _cached_token_volume_aggregates(hours_back, limit):
+    """db.read_token_volume_aggregates(), cached 60s per (hours_back, limit).
+    Data is hourly-bucketed, so a 60s cache is invisible. Callers only
+    iterate the rows (grep-verified; the three `rows.append/sort` sites in
+    app.py belong to other routes)."""
+    return db.read_token_volume_aggregates(hours_back=hours_back, limit=limit)
+
+
+@ttl_cache(seconds=60)
+def _cached_tier_lookup_map():
+    """shared_tier_verifier.resolve_all_map(), cached 60s per process.
+
+    2026-10-19: /tokens opened 14 fresh Postgres connections per request --
+    pg_connect() is connect-per-call -- and 88% of a 6.5s TTFB was
+    connection setup for three slowly-changing maps refetched on every hit.
+    Callers never mutate the returned map (grep-verified), so sharing by
+    reference is safe. Returns the (map, source) tuple unchanged."""
+    return shared_tier_verifier.resolve_all_map()
+
+
+@ttl_cache(seconds=60)
+def _cached_token_prices_map():
+    """db.read_token_prices_map(), cached 60s. See _cached_tier_lookup_map."""
+    return db.read_token_prices_map()
+
+
+@ttl_cache(seconds=60)
+def _cached_token_category_inferred_map():
+    """db.read_token_category_inferred_map(), cached 60s. See above."""
+    return db.read_token_category_inferred_map()
+
+
+@ttl_cache(seconds=60)
 def _cached_db_mpt_snapshot():
     """60s cache wrapper around db.read_mpt_snapshot(). The snapshot is
     refreshed daily by the mpt_snapshot worker; rereading the multi-MB
@@ -2388,7 +2421,7 @@ def _recent_whale_events(limit=3):
             except Exception:
                 pass
     # 2026-09-10 Part C item 3: TOKEN axis tier lookup, one query per call.
-    _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
+    _tier_lookup, _ = _cached_tier_lookup_map()
     return [_resolve_event(r, named, tokens, tier_lookup=_tier_lookup) for r in rows]
 
 
@@ -2458,6 +2491,7 @@ def _events_db_age_seconds():
         return None
 
 
+@ttl_cache(seconds=60)
 def _volumes_db_age_seconds():
     """Seconds since the most recent hourly bucket in token_volume. Prefers
     Postgres; falls back to local volumes.db. None on missing/empty/error."""
@@ -4172,7 +4206,7 @@ def whales():
             # else: below tier, or unprovable -> drop.
         rows = filtered_rows
         # 2026-09-10 Part C item 3: TOKEN axis tier lookup, one query per render.
-        _tier_lookup, _ = shared_tier_verifier.resolve_all_map()
+        _tier_lookup, _ = _cached_tier_lookup_map()
         events = [_resolve_event(r, named, tokens, tier_lookup=_tier_lookup) for r in rows]
         # Radar blips: log-scale magnitudes from raw rows (amount_drops
         # at index 6) so 1M XRP ≈ 0.3 and 100M+ ≈ 1.0.
@@ -4303,7 +4337,7 @@ def tokens():
                     hours_back=24, limit=50
                 )
             else:
-                rows = db.read_token_volume_aggregates(
+                rows = _cached_token_volume_aggregates(
                     hours_back=hours_back, limit=50
                 )
             stats = db.read_token_volume_bucket_stats()
@@ -4357,12 +4391,12 @@ def tokens():
     # (`verified` / `self-described` / `labeled` / `bare` / `unknown`) per
     # Charlie's 09-10 vocab ruling — downstream checks below compare against
     # the lowercase-hyphen constants.
-    tier_lookup, _tier_lookup_source = shared_tier_verifier.resolve_all_map()
+    tier_lookup, _tier_lookup_source = _cached_tier_lookup_map()
     # Single read of the per-token XRP price snapshot — rendered as a sub-line
     # on each row. Absent rows render "—" in the template; per token_prices.py,
     # the absence IS the signal (no XRP pool above the 1,000-XRP dust floor),
     # not a placeholder to backfill.
-    price_map = db.read_token_prices_map() if db.pg_available() else {}
+    price_map = _cached_token_prices_map() if db.pg_available() else {}
     from token_naming import resolve_display as _tk_resolve
     enriched = []
     for cur, iss, trades, hours_active in rows:
@@ -4468,8 +4502,7 @@ def tokens():
     hero_enriched = enriched
     if db.pg_available():
         try:
-            hero_rows_30d = db.read_token_volume_aggregates(
-                hours_back=24 * 30, limit=1500
+            hero_rows_30d = _cached_token_volume_aggregates(hours_back=24 * 30, limit=1500
             )
             hero_enriched = []
             for cur, iss, trades, hours_active in hero_rows_30d:
@@ -4707,7 +4740,7 @@ def tokens():
         }
     # Merge inferred (toml-published) categories for pairs NOT already
     # covered by curator. Curator wins on conflict.
-    inferred_map = db.read_token_category_inferred_map()
+    inferred_map = _cached_token_category_inferred_map()
     for (cur, iss), inf in inferred_map.items():
         key = f"{cur}|{iss}"
         if key in label_lookup:
