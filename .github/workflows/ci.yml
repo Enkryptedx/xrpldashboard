@@ -775,6 +775,21 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_enrich_currency_code.py -q
 
+      # Every walker must IMPORT under a hermetic env, and nothing may import
+      # a private (_underscore) name from two_way_toml_verifier_walker.
+      # 2026-10-17: the retry PR renamed _fetch_toml -> _fetch_toml_once and
+      # token_icon_walker, which imported the private name, exited 1 at its
+      # import line on every hourly tick for 47h. Nothing paged: the walker
+      # writes its own walker_health row and never got far enough to write
+      # one, so health kept showing the last good run. claim_verify_sampler
+      # imported the same name lazily and would have broken ~10-24. Run
+      # against the unfixed tree this step fails 6; it would have blocked the
+      # merge. Hermetic: DATABASE_URL cleared; main() is never called.
+      - name: walker import smoke + no private TOML-verifier imports (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_walker_imports.py -q
+
       # The fail-closed TOML matcher must read the tables the spec uses.
       # It scanned ONLY [[ISSUERS]]/[[TOKENS]] and its docstring claimed
       # those were the spec's tables. The spec has NO [[ISSUERS]] table --
