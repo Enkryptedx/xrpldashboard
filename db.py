@@ -4459,6 +4459,13 @@ def read_evernorth_moves(addresses, limit=10):
     watched wallet sat in `events` the whole time. IS NULL is kept for
     forward-compatibility only. The reader test pins the predicate to the
     stream's actual literal, not to this prose.
+
+    `amount_drops >= 1000000` (1 XRP): the dust floor belongs in the query,
+    not only in build_moves, because LIMIT applies BEFORE any Python
+    filter. On 2026-10-20 six 1-drop rows from a dusting bot filled the
+    10-row window and a real 10 XRP move -- the 11th newest -- never
+    reached the card. build_moves keeps its own MOVES_MIN_XRP guard for
+    callers that feed it from elsewhere.
     """
     addrs = [a for a in (addresses or []) if a]
     if not addrs or not pg_available():
@@ -4469,7 +4476,7 @@ def read_evernorth_moves(addresses, limit=10):
                 cur.execute(
                     "SELECT tx_hash, ts, from_addr, to_addr, amount_drops "
                     "  FROM events "
-                    " WHERE (currency = 'XRP' OR currency IS NULL) AND amount_drops > 0 "
+                    " WHERE (currency = 'XRP' OR currency IS NULL) AND amount_drops >= 1000000 "
                     "   AND (from_addr = ANY(%s) OR to_addr = ANY(%s)) "
                     " ORDER BY ts DESC LIMIT %s",
                     [addrs, addrs, int(limit)],

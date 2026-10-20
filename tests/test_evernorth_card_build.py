@@ -214,3 +214,82 @@ def test_internal_move_has_no_counterparty_short():
 def test_card_carries_a_correction_contact():
     card = T.build_card(None)
     assert "@" in card["correction_contact"]
+
+
+# ── dust rule + the "XRP" label (2026-10-20) ─────────────────────────────
+def _raw(amount, cp="rStranger1111111111111111111111111", iso="2026-10-20T20:12:29Z", hash_="H"):
+    return {"hash": hash_, "iso": iso, "amount_xrp": amount, "direction": "in", "counterparty": cp}
+
+
+def test_moves_under_one_xrp_are_hidden():
+    """A dusting bot sent 1 drop to every Evernorth wallet (and 635K other
+    accounts). Those are not treasury moves and were filling the block."""
+    rows = [_raw(0.000001, hash_="DUST"), _raw(10.0, hash_="TEN"), _raw(0.5, hash_="HALF")]
+    out = T.build_moves(rows)
+    assert [m["hash"] for m in out] == ["TEN"]
+
+
+def test_exactly_one_xrp_is_shown():
+    assert [m["hash"] for m in T.build_moves([_raw(1.0, hash_="ONE")])] == ["ONE"]
+
+
+def test_none_amount_is_not_treated_as_dust():
+    """amount_xrp None (unreadable) must not be silently dropped as dust."""
+    assert len(T.build_moves([_raw(None, hash_="NA")])) == 1
+
+
+def test_card_discloses_hidden_dust_only_when_there_was_some():
+    card = T.build_card(snapshot=None, raw_moves=[_raw(0.000001), _raw(10.0)], history=[], labels={})
+    assert card["moves_hidden_dust"] is True
+    card = T.build_card(snapshot=None, raw_moves=[_raw(10.0)], history=[], labels={})
+    assert card["moves_hidden_dust"] is False
+
+
+def test_dust_filter_frees_a_row_for_a_real_move():
+    """Before: 7 dust rows + 4 real moves = the 10-row cap hid the 10 XRP
+    internal Evernorth transfer. After: all real moves fit."""
+    dust = [_raw(0.000001, hash_=f"D{i}", iso=f"2026-08-29T0{i}:00:00Z") for i in range(7)]
+    real = [_raw(a, hash_=h, iso=i) for a, h, i in (
+        (100000, "A", "2026-10-20T20:12:29Z"), (200000, "B", "2026-10-20T20:12:29Z"),
+        (200000, "C", "2026-10-20T20:12:29Z"), (10, "TEN", "2026-10-20T18:25:11Z"),
+        (200000, "E", "2026-10-03T03:34:02Z"))]
+    out = T.build_moves(dust + real, limit=10)
+    assert {m["hash"] for m in out} == {"A", "B", "C", "TEN", "E"}
+
+
+def test_counterparty_slot_is_address_or_curated_name_never_a_currency_word():
+    """Regression for the 'XRP' label: named_accounts.json carried
+    rHXgaJ... as name="XRP" -- a dusting bot's own TOML block named itself
+    after the currency and derive_name() took it verbatim. The card then
+    printed "XRP" in the counterparty slot. The entry is removed; this pins
+    that no curated label is a bare currency code."""
+    import json, pathlib
+    named = json.loads((pathlib.Path(__file__).resolve().parent.parent / "named_accounts.json").read_text())
+    assert "rHXgaJLpjDe4jsAiF8atNrRfS6eYrjPYPB" not in named
+    bad = {a: v.get("name") for a, v in named.items()
+           if isinstance(v, dict) and (v.get("name") or "").strip().upper() in {"XRP", "RLUSD", "USD", "BTC", "ETH"}}
+    assert bad == {}, bad
+
+
+def test_template_disclosure_string():
+    import pathlib
+    t = (pathlib.Path(__file__).resolve().parent.parent / "templates" / "_evernorth_card.html").read_text()
+    assert "{{ _('Moves under %(n)s XRP not shown.', n=evernorth.moves_floor_label) }}" in t
+
+
+def test_disclosed_floor_is_the_stream_threshold_not_the_dust_guard():
+    """The card may only promise what the events stream delivers. The
+    stream's default whale threshold is 50,000 XRP and the treasury wallets
+    are not in named_accounts.json, so nothing below that is recorded -- a
+    '1 XRP' disclosure would be false."""
+    import re, pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    src = (root / "xrpl_stream.py").read_text()
+    default = float(re.search(r'WHALE_XRP_THRESHOLD_XRP", "([\d.]+)"', src).group(1))
+    assert T.MOVES_FLOOR_XRP == int(default)
+    assert T.MOVES_FLOOR_LABEL == "50,000"
+    card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
+    assert card["moves_floor_label"] == "50,000"
+    named = __import__("json").loads((root / "named_accounts.json").read_text())
+    for a, _ in T.WALLETS:
+        assert a not in named, "if a treasury wallet joins named_accounts, revisit MOVES_FLOOR_XRP"
