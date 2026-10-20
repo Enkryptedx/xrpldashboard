@@ -208,12 +208,6 @@
     "verified_via": "https://mooreassetsmgmt.com/.well-known/xrp-ledger.toml",
     "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to mooreassetsmgmt.com, and https://mooreassetsmgmt.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
   },
-  "rHXgaJLpjDe4jsAiF8atNrRfS6eYrjPYPB": {
-    "name": "XRP",
-    "category": "other",
-    "verified_via": "https://www.xrp-escrows.com/.well-known/xrp-ledger.toml",
-    "_note": "Auto-verified via two-way ownership proof: on-chain `Domain` field decodes to xrp-escrows.com, and https://www.xrp-escrows.com/.well-known/xrp-ledger.toml lists this address in its [[ACCOUNTS]] section."
-  },
   "rHjUEuGTbiSc2KowsvATgfFQwP8rWGyMvK": {
     "name": "USDT",
     "category": "other",

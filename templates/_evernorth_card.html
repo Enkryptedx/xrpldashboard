@@ -15,6 +15,7 @@
              border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
   .ev-co { font-weight: 600; font-size: 1.02rem; margin: 0 0 2px; }
   .ev-sub { color: var(--muted); font-size: 0.82rem; margin: 0 0 14px; }
+  .ev-note { font-size: 0.78rem; color: var(--muted); margin: 6px 0 0; }
   .ev-h { font-size: 0.82rem; color: var(--muted); font-weight: 600;
           text-transform: uppercase; letter-spacing: 0.04em;
           margin: 18px 0 8px; }
@@ -178,6 +179,11 @@
     </li>
     {% endfor %}
   </ul>
+  {# The events stream captures an Evernorth payment only above the whale
+     threshold (xrpl_stream WHALE_XRP_THRESHOLD_XRP, 50,000 by default);
+     the treasury wallets are not in named_accounts.json, so smaller moves
+     are never recorded. Say the real floor, not a flattering one. #}
+  <div class="ev-note">{{ _('Moves under %(n)s XRP not shown.', n=evernorth.moves_floor_label) }}</div>
   {% endif %}
 
   {# ── Daily total history, straight from the snapshot reader. One point

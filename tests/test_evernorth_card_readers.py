@@ -167,7 +167,10 @@ def test_moves_query_matches_what_the_stream_writes(monkeypatch):
     # A token amount in amount_drops is not drops; pricing it here would
     # print a number the ledger never stated -- so never a bare IS NOT NULL.
     assert "IS NOT NULL" not in sql
-    assert "amount_drops > 0" in sql
+    # Dust floor in SQL, not only in Python: LIMIT runs before build_moves,
+    # so 1-drop rows would otherwise consume the window (2026-10-20).
+    assert "amount_drops >= 1000000" in sql
+    assert "amount_drops > 0" not in sql
     assert "ORDER BY ts DESC" in sql
     assert conn.cur.params == [OURS, OURS, 10]
 

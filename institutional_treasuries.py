@@ -236,8 +236,24 @@ def build_rows(balances, last_moved=None):
     return rows
 
 
+MOVES_MIN_XRP = 1.0
+# What the card can honestly promise. The events stream (xrpl_stream.py)
+# records an Evernorth payment only when it clears WHALE_XRP_THRESHOLD_XRP
+# (50,000 by default) -- the treasury wallets are NOT in named_accounts.json,
+# so the "tagged" path never fires for them. A 10 XRP internal transfer on
+# 2026-10-20 was therefore never captured at all. Disclose the real floor.
+MOVES_FLOOR_XRP = 50_000
+MOVES_FLOOR_LABEL = f"{MOVES_FLOOR_XRP:,}"
+
+
 def build_moves(raw_moves, known_labels=None, limit=MOVES_LIMIT):
     """Pure: assemble the "recent moves" rows, newest first.
+
+    Moves under MOVES_MIN_XRP are dropped (owner 2026-10-20) and the caller
+    is told via `moves_hidden_dust` so the card can disclose it. Why: a
+    dusting bot (1 drop to 635K accounts, incl. every Evernorth wallet) was
+    filling the block with "0.00 XRP" rows and pushing real moves off the
+    10-row cap. A 1-drop payment is not a treasury move.
 
     `raw_moves` items need: hash, iso (UTC ISO-8601), amount_xrp,
     direction ('out'/'in'), counterparty (address or None).
@@ -254,6 +270,9 @@ def build_moves(raw_moves, known_labels=None, limit=MOVES_LIMIT):
     known_labels = known_labels or {}
     out = []
     for m in (raw_moves or []):
+        amt = m.get("amount_xrp")
+        if amt is not None and amt < MOVES_MIN_XRP:
+            continue
         cp = m.get("counterparty")
         name = known_labels.get(cp) if cp else None
         out.append({
@@ -400,6 +419,10 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
     # must come back unchanged rather than padded into something that
     # looks truncated.
     moves = build_moves(raw_moves, labels)
+    moves_hidden_dust = any(
+        (m.get("amount_xrp") is not None and m.get("amount_xrp") < MOVES_MIN_XRP)
+        for m in (raw_moves or [])
+    )
     for m in moves:
         m["counterparty_short"] = (short_address(m["counterparty"])
                                    if m.get("counterparty") else None)
@@ -421,6 +444,8 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
         "partial_read": readable != len(WALLETS),
         "as_of": (snapshot or {}).get("date"),
         "moves": moves,
+        "moves_hidden_dust": moves_hidden_dust,
+        "moves_floor_label": MOVES_FLOOR_LABEL,
         "history": list(history or []),
         "correction_contact": CORRECTION_CONTACT,
     }
