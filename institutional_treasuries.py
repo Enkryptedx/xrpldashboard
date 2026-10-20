@@ -243,7 +243,16 @@ MOVES_MIN_XRP = 1.0
 # that it was 50,000 -- the whale threshold -- because the treasury
 # wallets were not in named_accounts.json and nothing smaller was ever
 # captured. The pinning test holds the stream and this constant together.
-MOVES_FLOOR_XRP = int(MOVES_MIN_XRP)
+# The watch is CODE on main; it only takes effect once the long-running
+# xrpl_stream process on the Lenovo is restarted (sudo, owner-only). Until
+# then the running process still has the 50,000 gate and the honest floor is
+# 50,000. Flip this to True in the same PR that records the restart; the
+# pinning test refuses a 1 XRP floor while it is False.
+STREAM_TREASURY_WATCH_RESTARTED = False
+STREAM_PRE_WATCH_FLOOR_XRP = 50_000   # xrpl_stream WHALE_XRP_THRESHOLD_XRP default
+MOVES_FLOOR_XRP = (
+    int(MOVES_MIN_XRP) if STREAM_TREASURY_WATCH_RESTARTED else STREAM_PRE_WATCH_FLOOR_XRP
+)
 MOVES_FLOOR_LABEL = f"{MOVES_FLOOR_XRP:,}"
 
 
