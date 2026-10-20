@@ -4445,10 +4445,20 @@ def read_evernorth_moves(addresses, limit=10):
     Reads the `events` table the relay already fills, so this costs one
     indexed query instead of 13 account_tx calls on the request path.
 
-    XRP-denominated rows only (`currency IS NULL`): a token amount in
-    `amount_drops` is not a drops value, and pricing one here would put a
-    number on the card that the ledger never stated. Returns [] (never
-    None) so the card omits the block rather than 500ing.
+    XRP-denominated rows only: a token amount in `amount_drops` is not a
+    drops value, and pricing one here would put a number on the card that
+    the ledger never stated. Returns [] (never None) so the card omits the
+    block rather than 500ing.
+
+    The XRP predicate is `currency = 'XRP' OR currency IS NULL`. From
+    2026-10-10 to 2026-10-20 it was `currency IS NULL` alone -- written to
+    this docstring's intent rather than to the stream's output. xrpl_stream
+    has stamped the literal 'XRP' on every XRP row since 2026-05-08 (1.19M
+    rows, zero NULLs), so the card's "Recent moves" never rendered once in
+    ten days, including 2026-10-20 when three 100k-200k XRP moves from a
+    watched wallet sat in `events` the whole time. IS NULL is kept for
+    forward-compatibility only. The reader test pins the predicate to the
+    stream's actual literal, not to this prose.
     """
     addrs = [a for a in (addresses or []) if a]
     if not addrs or not pg_available():
@@ -4459,7 +4469,7 @@ def read_evernorth_moves(addresses, limit=10):
                 cur.execute(
                     "SELECT tx_hash, ts, from_addr, to_addr, amount_drops "
                     "  FROM events "
-                    " WHERE currency IS NULL AND amount_drops > 0 "
+                    " WHERE (currency = 'XRP' OR currency IS NULL) AND amount_drops > 0 "
                     "   AND (from_addr = ANY(%s) OR to_addr = ANY(%s)) "
                     " ORDER BY ts DESC LIMIT %s",
                     [addrs, addrs, int(limit)],
