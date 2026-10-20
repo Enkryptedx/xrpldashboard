@@ -292,10 +292,25 @@ def test_disclosed_floor_is_what_the_stream_actually_captures():
     assert "from institutional_treasuries import WALLETS" in src, "stream must read the treasury list itself"
     assert re.search(r"from_addr in TREASURY_WATCH or to_addr in TREASURY_WATCH", src), "tagged branch must consult TREASURY_WATCH"
     assert "TREASURY_WATCH" in src.split("event_type = \"tagged\"")[0].rsplit("if event_type is None", 1)[1], "TREASURY_WATCH must gate the tagged branch, not a later one"
-    assert T.MOVES_FLOOR_XRP == int(T.MOVES_MIN_XRP) == 1
-    assert T.MOVES_FLOOR_LABEL == "1"
+    # The code is on main, but the promise is only true once the Lenovo
+    # process has been restarted. Owner away, return TBD (2026-10-20).
+    if T.STREAM_TREASURY_WATCH_RESTARTED:
+        assert T.MOVES_FLOOR_XRP == int(T.MOVES_MIN_XRP) == 1
+        assert T.MOVES_FLOOR_LABEL == "1"
+    else:
+        assert T.MOVES_FLOOR_XRP == T.STREAM_PRE_WATCH_FLOOR_XRP == 50_000
+        assert T.MOVES_FLOOR_LABEL == "50,000"
     card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
-    assert card["moves_floor_label"] == "1"
+    assert card["moves_floor_label"] == T.MOVES_FLOOR_LABEL
+
+
+def test_pre_watch_floor_matches_stream_default_threshold():
+    """50,000 is not a magic number: it is xrpl_stream's default
+    WHALE_XRP_THRESHOLD_XRP, read from source."""
+    import re, pathlib
+    src = (pathlib.Path(__file__).resolve().parent.parent / "xrpl_stream.py").read_text()
+    m = re.search(r'WHALE_XRP_THRESHOLD_XRP",\s*"(\d+)"', src)
+    assert m and int(m.group(1)) == T.STREAM_PRE_WATCH_FLOOR_XRP
 
 
 def test_stream_treasury_watch_is_the_wallet_list(monkeypatch):

@@ -179,9 +179,9 @@
     </li>
     {% endfor %}
   </ul>
-  {# xrpl_stream records every payment touching a treasury wallet
-     (TREASURY_WATCH), so the floor is the 1 XRP dust guard. Say the real
-     floor, not a flattering one -- MOVES_FLOOR_XRP is pinned to the stream. #}
+  {# Say the real floor, not a flattering one. MOVES_FLOOR_XRP is 50,000
+     until the Lenovo xrpl_stream process is restarted with TREASURY_WATCH
+     (STREAM_TREASURY_WATCH_RESTARTED), then the 1 XRP dust guard. #}
   <div class="ev-note">{{ _('Moves under %(n)s XRP not shown.', n=evernorth.moves_floor_label) }}</div>
   {% endif %}
 
