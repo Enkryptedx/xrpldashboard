@@ -277,19 +277,38 @@ def test_template_disclosure_string():
     assert "{{ _('Moves under %(n)s XRP not shown.', n=evernorth.moves_floor_label) }}" in t
 
 
-def test_disclosed_floor_is_the_stream_threshold_not_the_dust_guard():
-    """The card may only promise what the events stream delivers. The
-    stream's default whale threshold is 50,000 XRP and the treasury wallets
-    are not in named_accounts.json, so nothing below that is recorded -- a
-    '1 XRP' disclosure would be false."""
-    import re, pathlib
+def test_disclosed_floor_is_what_the_stream_actually_captures():
+    """The card may only promise what the events stream delivers.
+
+    2026-10-20 am: the stream recorded a treasury payment only above the
+    whale threshold (50,000 XRP), so the floor had to be 50,000.
+    2026-10-20 pm: xrpl_stream.TREASURY_WATCH records every payment touching
+    institutional_treasuries.WALLETS, so the floor is the 1 XRP dust guard.
+    This test holds the two sides together: if TREASURY_WATCH ever stops
+    covering WALLETS, the 1 XRP promise becomes false and this fails."""
+    import re, pathlib, importlib, os
     root = pathlib.Path(__file__).resolve().parent.parent
     src = (root / "xrpl_stream.py").read_text()
-    default = float(re.search(r'WHALE_XRP_THRESHOLD_XRP", "([\d.]+)"', src).group(1))
-    assert T.MOVES_FLOOR_XRP == int(default)
-    assert T.MOVES_FLOOR_LABEL == "50,000"
+    assert "from institutional_treasuries import WALLETS" in src, "stream must read the treasury list itself"
+    assert re.search(r"from_addr in TREASURY_WATCH or to_addr in TREASURY_WATCH", src), "tagged branch must consult TREASURY_WATCH"
+    assert "TREASURY_WATCH" in src.split("event_type = \"tagged\"")[0].rsplit("if event_type is None", 1)[1], "TREASURY_WATCH must gate the tagged branch, not a later one"
+    assert T.MOVES_FLOOR_XRP == int(T.MOVES_MIN_XRP) == 1
+    assert T.MOVES_FLOOR_LABEL == "1"
     card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
-    assert card["moves_floor_label"] == "50,000"
-    named = __import__("json").loads((root / "named_accounts.json").read_text())
-    for a, _ in T.WALLETS:
-        assert a not in named, "if a treasury wallet joins named_accounts, revisit MOVES_FLOOR_XRP"
+    assert card["moves_floor_label"] == "1"
+
+
+def test_stream_treasury_watch_is_the_wallet_list(monkeypatch):
+    """Import the stream's loader in isolation and check it returns exactly
+    WALLETS -- no hand-copied list that can drift."""
+    import importlib.util, pathlib, sys
+    root = pathlib.Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(root))
+    src = (root / "xrpl_stream.py").read_text()
+    # lift just the loader so the stream's side-effectful module body never runs
+    start = src.index("def _load_treasury_watch():"); end = src.index("TREASURY_WATCH = _load_treasury_watch()")
+    ns = {"sys": sys}
+    exec(src[start:end], ns)
+    got = ns["_load_treasury_watch"]()
+    assert got == frozenset(a for a, _ in T.WALLETS)
+    assert len(got) == 13

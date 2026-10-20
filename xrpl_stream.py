@@ -115,6 +115,26 @@ def _load_named_accounts():
 
 
 NAMED_ACCOUNTS = _load_named_accounts()
+
+
+def _load_treasury_watch():
+    """Addresses whose EVERY payment is recorded regardless of size, taken
+    from institutional_treasuries.WALLETS itself -- not by copying them into
+    named_accounts.json, which would also label them on /whales and the
+    homepage (owner 2026-10-20). Until this existed the /institutional card
+    could only show moves above WHALE_XRP_THRESHOLD_XRP: a 10 XRP internal
+    transfer between two treasury wallets on 2026-10-20 was never captured.
+    Import failure degrades to an empty set, never a crash: the stream must
+    keep running even if the treasury module is broken."""
+    try:
+        from institutional_treasuries import WALLETS
+        return frozenset(a for a, _label in WALLETS if a)
+    except Exception as e:  # noqa: BLE001
+        print(f"WARN treasury watch load failed: {e}", file=sys.stderr)
+        return frozenset()
+
+
+TREASURY_WATCH = _load_treasury_watch()
 _NAMED_ACCOUNTS_MTIME = (
     os.path.getmtime(NAMED_ACCOUNTS_PATH)
     if os.path.exists(NAMED_ACCOUNTS_PATH) else 0
@@ -240,6 +260,7 @@ def whale_handler(msg, state):
     Three event categories per WHALE_WATCH.md:
       'large_xfer' — XRP Payment ≥ WHALE_XRP_THRESHOLD_DROPS
       'tagged'    — any tx whose Account or Destination is in NAMED_ACCOUNTS
+                    or in TREASURY_WATCH (institutional_treasuries.WALLETS)
       'trustset'  — TrustSet from a watchlisted account (large-balance filter
                     deferred — needs an extra balance lookup per source)
     """
@@ -293,6 +314,7 @@ def whale_handler(msg, state):
 
     if event_type is None and (
         from_addr in NAMED_ACCOUNTS or to_addr in NAMED_ACCOUNTS
+        or from_addr in TREASURY_WATCH or to_addr in TREASURY_WATCH
     ):
         event_type = "tagged"
         if isinstance(payment_amount, str):
