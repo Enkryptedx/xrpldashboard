@@ -137,14 +137,36 @@ def test_latest_snapshot_none_on_error(monkeypatch):
 OURS = ["rOurA", "rOurB"]
 
 
-def test_moves_query_is_xrp_only_and_newest_first(monkeypatch):
+def _stream_xrp_currency_literal():
+    """What xrpl_stream.py ACTUALLY writes into events.currency for an XRP
+    payment -- read from its source, so this test cannot drift from the
+    writer the way the predicate did."""
+    import re, pathlib
+    src = (pathlib.Path(__file__).resolve().parent.parent / "xrpl_stream.py").read_text(encoding="utf-8")
+    vals = set(re.findall(r'currency\s*=\s*"([A-Z]{3})"', src))
+    assert vals == {"XRP"}, f"stream writes unexpected XRP literal(s): {vals}"
+    return "XRP"
+
+
+def test_moves_query_matches_what_the_stream_writes(monkeypatch):
+    """REGRESSION. 2026-10-10 -> 10-20 the predicate was `currency IS NULL`,
+    pinned by the OLD version of this test to the docstring's intent.
+    xrpl_stream.py has written the literal 'XRP' since 2026-05-08 (1.19M
+    rows, zero NULLs), so the query matched nothing and the card's "Recent
+    moves" never rendered -- including the day three 100k-200k XRP moves
+    from a watched wallet landed. The test passed the whole time because it
+    asserted the string the author meant, not the value the writer emits."""
     conn = FakeConn(rows=[])
     _pg(monkeypatch, conn)
     db.read_evernorth_moves(OURS, limit=10)
     sql = conn.cur.sql
+    lit = _stream_xrp_currency_literal()
+    assert f"currency = '{lit}'" in sql, "predicate must accept the stream's literal"
+    assert "currency IS NULL" in sql, "NULL kept for forward-compatibility"
+    assert "currency IS NULL AND" not in sql, "NULL must not be the ONLY accepted value (the 10-day bug)"
     # A token amount in amount_drops is not drops; pricing it here would
-    # print a number the ledger never stated.
-    assert "currency IS NULL" in sql
+    # print a number the ledger never stated -- so never a bare IS NOT NULL.
+    assert "IS NOT NULL" not in sql
     assert "amount_drops > 0" in sql
     assert "ORDER BY ts DESC" in sql
     assert conn.cur.params == [OURS, OURS, 10]
