@@ -831,6 +831,18 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_tokens_summary.py tests/test_tokens_route_caching.py -q
 
+      # xrpl_stream records EVERY payment touching institutional_treasuries
+      # .WALLETS (TREASURY_WATCH, read from the list itself -- never via
+      # named_accounts.json). A 10 XRP treasury transfer on 2026-10-20 was
+      # never captured because only >=50,000 XRP or named_accounts payments
+      # were. Drives the real whale_handler with real-shaped messages into a
+      # temp sqlite + stubbed pg bridge; asserts the written row. Also
+      # pins the /institutional card floor (1 XRP) to the stream's coverage.
+      - name: xrpl_stream treasury watch + card floor (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_stream_treasury_watch.py tests/test_evernorth_card_build.py -q
+
       # Build identity + /tokens stage timing. X-Commit on every response and
       # /healthz.commit (RENDER_GIT_COMMIT[:12] or "unknown") so an outside
       # measurement can prove which version answered. Server-Timing on

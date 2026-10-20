@@ -179,10 +179,9 @@
     </li>
     {% endfor %}
   </ul>
-  {# The events stream captures an Evernorth payment only above the whale
-     threshold (xrpl_stream WHALE_XRP_THRESHOLD_XRP, 50,000 by default);
-     the treasury wallets are not in named_accounts.json, so smaller moves
-     are never recorded. Say the real floor, not a flattering one. #}
+  {# xrpl_stream records every payment touching a treasury wallet
+     (TREASURY_WATCH), so the floor is the 1 XRP dust guard. Say the real
+     floor, not a flattering one -- MOVES_FLOOR_XRP is pinned to the stream. #}
   <div class="ev-note">{{ _('Moves under %(n)s XRP not shown.', n=evernorth.moves_floor_label) }}</div>
   {% endif %}
 

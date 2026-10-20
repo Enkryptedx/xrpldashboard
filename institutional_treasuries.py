@@ -237,12 +237,13 @@ def build_rows(balances, last_moved=None):
 
 
 MOVES_MIN_XRP = 1.0
-# What the card can honestly promise. The events stream (xrpl_stream.py)
-# records an Evernorth payment only when it clears WHALE_XRP_THRESHOLD_XRP
-# (50,000 by default) -- the treasury wallets are NOT in named_accounts.json,
-# so the "tagged" path never fires for them. A 10 XRP internal transfer on
-# 2026-10-20 was therefore never captured at all. Disclose the real floor.
-MOVES_FLOOR_XRP = 50_000
+# What the card can honestly promise. Since 2026-10-20 xrpl_stream.py
+# records EVERY payment touching a WALLETS address (TREASURY_WATCH, read
+# from this very list), so the only floor is the dust guard above. Before
+# that it was 50,000 -- the whale threshold -- because the treasury
+# wallets were not in named_accounts.json and nothing smaller was ever
+# captured. The pinning test holds the stream and this constant together.
+MOVES_FLOOR_XRP = int(MOVES_MIN_XRP)
 MOVES_FLOOR_LABEL = f"{MOVES_FLOOR_XRP:,}"
 
 
