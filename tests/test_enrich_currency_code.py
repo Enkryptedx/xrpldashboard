@@ -268,9 +268,20 @@ class TestDataRepair:
         with >1 hex must be identical before and after. 22 pre-existing MPT
         groups are tolerated; a 23rd would mean a repair created one."""
         import subprocess
-        before = json.loads(subprocess.run(
+        # CI runs branch builds from a shallow checkout where origin/main
+        # does not exist (actions/checkout@v4 fetch-depth 1 fetches only the
+        # PR head). `git show` then fails with empty stdout, and json.loads("")
+        # raised before the skip below could run -- every branch build failed
+        # on this test while main (where origin/main is the fetched ref) was
+        # green. 2026-10-22, run 39866424094. ci.yml now fetches origin/main
+        # right before this step so the comparison really runs on branches;
+        # this guard is the hermetic fallback for any checkout without it.
+        proc = subprocess.run(
             ["git", "show", "origin/main:token_names.json"],
-            capture_output=True, text=True, cwd=ROOT).stdout)
+            capture_output=True, text=True, cwd=ROOT)
+        if proc.returncode != 0 or not proc.stdout.strip():
+            pytest.skip("origin/main not available in this checkout")
+        before = json.loads(proc.stdout)
 
         def groups(tn):
             seen = {}
@@ -281,6 +292,4 @@ class TestDataRepair:
                     seen.setdefault(k, set()).add(v.get("currency_hex"))
             return {k for k, hs in seen.items() if len(hs) > 1}
 
-        if not before:
-            pytest.skip("origin/main not available in this checkout")
         assert groups(names) - groups(before) == set()

@@ -770,6 +770,13 @@ jobs:
       # The old implementations are kept verbatim in the test file so each
       # regression is demonstrated, not asserted.
       # Hermetic: committed fixtures + committed token_names.json.
+      # Branch builds are shallow (fetch-depth 1): origin/main is absent, and
+      # test_repair_introduced_no_new_display_collisions diffs token_names.json
+      # against it. Fetch just that ref so the comparison runs on PRs too
+      # (2026-10-22: every branch build failed here; main was green only
+      # because main IS the fetched ref). Single ref, depth 1 -- cheap.
+      - name: fetch origin/main for the token_names.json before/after diff
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
       - name: enrich currency/code/ticker + 42 hex displays (no DB, no network)
         env:
           DATABASE_URL: ""
