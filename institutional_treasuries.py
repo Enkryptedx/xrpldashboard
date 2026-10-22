@@ -246,9 +246,16 @@ MOVES_MIN_XRP = 1.0
 # The watch is CODE on main; it only takes effect once the long-running
 # xrpl_stream process on the Lenovo is restarted (sudo, owner-only). Until
 # then the running process still has the 50,000 gate and the honest floor is
-# 50,000. Flip this to True in the same PR that records the restart; the
-# pinning test refuses a 1 XRP floor while it is False.
-STREAM_TREASURY_WATCH_RESTARTED = False
+# 50,000. The pinning test refuses a 1 XRP floor while it is False.
+#
+# RESTARTED 2026-10-22 06:23:31 UTC -- not by the owner, by Ubuntu
+# unattended-upgrades (apt-daily-upgrade re-exec'd systemd after liblzma /
+# libnss3 / ca-certificates; xrpld-xrpl-stream came back as pid 981358 on
+# the 327633c checkout, which carries TREASURY_WATCH; 0 "treasury watch
+# load failed" WARNs in the journal). Owner confirmed the flip 2026-10-22
+# 18:04 ET. From this point every payment touching a treasury wallet is
+# recorded, so the dust guard is the only floor.
+STREAM_TREASURY_WATCH_RESTARTED = True
 STREAM_PRE_WATCH_FLOOR_XRP = 50_000   # xrpl_stream WHALE_XRP_THRESHOLD_XRP default
 MOVES_FLOOR_XRP = (
     int(MOVES_MIN_XRP) if STREAM_TREASURY_WATCH_RESTARTED else STREAM_PRE_WATCH_FLOOR_XRP
