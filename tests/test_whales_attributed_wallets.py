@@ -47,6 +47,9 @@ STRANGER = "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe"
 XRPSCAN_LABEL = "labeled Evernorth by XRPScan — not confirmed by Evernorth"
 INFERRED_LABEL = ("inferred by xrp-insights from amounts matching the filing "
                   "— not confirmed by Evernorth")
+BITGO_LABEL = ("received XRP directly from the wallets above; created by the "
+               "account XRPScan labels BitGo — not confirmed by Evernorth")
+BITGO_ADDR = "rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh"   # 7th of the 10, added 2026-10-22
 
 BANNED_NAMES = ["Custody A", "Custody B", "Custody C", "Custody D",
                 "Custody E", "Custody F", "Custody G", "Custody H",
@@ -94,6 +97,7 @@ def test_whales_uses_the_same_strings_as_the_card():
     whales_labels = {
         _resolve(_row(XRPSCAN_ADDR, STRANGER))["from_attribution"],
         _resolve(_row(INFERRED_ADDR, STRANGER))["from_attribution"],
+        _resolve(_row(BITGO_ADDR, STRANGER))["from_attribution"],
     }
     assert whales_labels == card_labels
 
@@ -136,11 +140,13 @@ def test_filing_confirmed_string_never_reachable():
         assert T.TIER_LABELS[T.TIER_FILING] not in blob
 
 
-def test_all_thirteen_wallets_are_attributed():
+def test_all_twentythree_wallets_are_attributed():
     for addr, _name in T.WALLETS:
         label, url = T.attribution_for(addr)
-        assert label in (XRPSCAN_LABEL, INFERRED_LABEL)
+        assert label in (XRPSCAN_LABEL, INFERRED_LABEL, BITGO_LABEL)
         assert url
+    # the ten BitGo-created wallets carry exactly the third string on /whales
+    assert sum(1 for a, _ in T.WALLETS if T.attribution_for(a)[0] == BITGO_LABEL) == 10
 
 
 # ── 5 + 6. rendered markup: chip ownership, short addresses ─────────────

@@ -72,8 +72,8 @@ def test_live_line_omitted_when_nothing_readable():
 
 def test_live_line_wallet_count_matches_the_published_list():
     card = T.build_card(_snapshot(_all_readable()))
-    assert card["wallet_count"] == 13
-    assert card["live_line"].startswith("These 13 wallets total ")
+    assert card["wallet_count"] == 23
+    assert card["live_line"].startswith("These 23 wallets total ")
 
 
 # ── 2. no third-party names anywhere in a row ───────────────────────────
@@ -89,7 +89,7 @@ def test_no_row_carries_a_third_party_name():
 def test_rows_show_shortened_addresses_with_an_ellipsis():
     card = T.build_card(_snapshot(_all_readable()))
     rows = [r for g in card["groups"] for r in g["rows"]]
-    assert len(rows) == 13
+    assert len(rows) == 23
     for row in rows:
         assert "\u2026" in row["short"], "a shortened address must keep its ellipsis"
         assert row["short"] != row["address"]
@@ -105,22 +105,29 @@ def test_group_headings_are_the_approved_strings_verbatim():
         "labeled Evernorth by XRPScan — not confirmed by Evernorth",
         "inferred by xrp-insights from amounts matching the filing "
         "— not confirmed by Evernorth",
+        # Owner-approved 2026-10-22 20:26 ET, verbatim. Must be LAST: it
+        # says "the wallets above".
+        "received XRP directly from the wallets above; created by the "
+        "account XRPScan labels BitGo — not confirmed by Evernorth",
     ]
 
 
-def test_groups_are_two_and_split_2_and_11():
+def test_groups_are_three_and_split_2_11_10():
     card = T.build_card(_snapshot(_all_readable()))
-    assert len(card["groups"]) == 2
+    assert len(card["groups"]) == 3
     counts = [len(g["rows"]) for g in card["groups"]]
-    assert counts == [2, 11], "2 explorer-labelled, 11 inferred"
+    assert counts == [2, 11, 10], "2 explorer-labelled, 11 inferred, 10 BitGo-created"
 
 
 def test_each_group_links_to_its_own_source():
     card = T.build_card(_snapshot(_all_readable()))
-    xrpscan, inferred = card["groups"]
+    xrpscan, inferred, bitgo = card["groups"]
     assert "xrpscan.com" in xrpscan["source_url"]
     assert "xrp-insights.com" in inferred["source_url"]
-    assert xrpscan["source_url"] != inferred["source_url"]
+    # the BitGo-created claim is about the CREATOR's label, so it links to
+    # the creator's own XRPScan page, not the XRPScan front page
+    assert bitgo["source_url"] == "https://xrpscan.com/account/" + T.BITGO_CREATOR
+    assert len({g["source_url"] for g in card["groups"]}) == 3
 
 
 # ── 4. the strongest tier is unreachable ────────────────────────────────
@@ -153,7 +160,7 @@ def test_unreadable_wallet_excluded_not_counted_as_zero():
 
 def test_full_read_is_not_flagged_partial():
     card = T.build_card(_snapshot(_all_readable()))
-    assert card["readable_count"] == 13
+    assert card["readable_count"] == 23
     assert card["partial_read"] is False
 
 
@@ -169,7 +176,7 @@ def test_no_snapshot_still_renders_the_filing_facts():
     assert card["total_xrp"] is None
     assert card["live_line"] is None
     assert card["as_of"] is None
-    assert len([r for g in card["groups"] for r in g["rows"]]) == 13
+    assert len([r for g in card["groups"] for r in g["rows"]]) == 23
 
 
 def test_moves_and_history_default_to_empty_lists():
@@ -326,4 +333,4 @@ def test_stream_treasury_watch_is_the_wallet_list(monkeypatch):
     exec(src[start:end], ns)
     got = ns["_load_treasury_watch"]()
     assert got == frozenset(a for a, _ in T.WALLETS)
-    assert len(got) == 13
+    assert len(got) == 23

@@ -1,0 +1,94 @@
+{
+ "verified_utc": "2026-10-23T00:30Z",
+ "creator": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+ "creator_xrpscan_label": "BitGo Initialization Wallet",
+ "wallets": {
+  "rK1BUXU1LD3JEkRLCqY9pKq4BEVKmDrzbf": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T02:02Z",
+   "direct_xrp_from": [
+    "rUgQciCPP1AiwQ9f5zstYu9RzVfsKQRGc2",
+    "rsT3yYMkuicxW1hYsy787mg5XHhkz2uQRk"
+   ]
+  },
+  "rBKrEjXChk7iWTx1cdr2EpBVoXRZ2Bunhj": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T01:11Z",
+   "direct_xrp_from": [
+    "r3tTJV8rppEqixa4LDxCvMtYAbWgFFyA6Y",
+    "rBZWJZpVDSDFBFmRpcuXJ8ePqX7wE4BeYa",
+    "rfiEXPM2ZgdvH6stURRF2t5Tk3SmRX7EDR"
+   ]
+  },
+  "rLyTyA4nQJMy7T2wgKrd33KeZdjcEMPc2w": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T02:02Z",
+   "direct_xrp_from": [
+    "rKhjV48GdbgxAAfSvusqGNktGwAxnzzXpv",
+    "rUgQciCPP1AiwQ9f5zstYu9RzVfsKQRGc2"
+   ]
+  },
+  "rJQ4sQVyoYT2SfRNJRXXfqU4rHS915UAjW": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T02:03Z",
+   "direct_xrp_from": [
+    "rGJBNGkDeRPNvNJCi57Ht1ncdht9SuctLe",
+    "rUgQciCPP1AiwQ9f5zstYu9RzVfsKQRGc2"
+   ]
+  },
+  "rwtokyDZhkRwcC6h7b58Bv11tPFEdtJ9EW": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T02:05Z",
+   "direct_xrp_from": [
+    "rJX1qoSGYmx5NWJEpsBGKvxmYpGR7mDtop"
+   ]
+  },
+  "rPjKkBTutrvvoboPUuaxSaeXNki5XvjDei": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-06T21:49Z",
+   "direct_xrp_from": [
+    "rKXXrAgpkHQN8m4HxAQCYmDCPPUByc9mVq",
+    "rUgQciCPP1AiwQ9f5zstYu9RzVfsKQRGc2"
+   ]
+  },
+  "rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-20T02:05Z",
+   "direct_xrp_from": [
+    "rJuyHPDFpfeVhxfxZboTf7BYu1ptGus1v3"
+   ]
+  },
+  "rLMYD4r2WMsReN42naTzDLc8MAmHAbjyw5": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-12T18:01Z",
+   "direct_xrp_from": [
+    "rGy4zJtGfGtF7dtjZmBraQTcfZSQgwqpaa"
+   ]
+  },
+  "rMNWpkSN7iJaxmsf61uGWn1qWCeZ6STmyw": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-12T18:38Z",
+   "direct_xrp_from": [
+    "rBZWJZpVDSDFBFmRpcuXJ8ePqX7wE4BeYa",
+    "rGy4zJtGfGtF7dtjZmBraQTcfZSQgwqpaa"
+   ]
+  },
+  "rHuRnnWDUB4UBy8Sf2XvJDMEC4rFgts1xi": {
+   "xrpscan_parent": "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
+   "initial_balance": 1.2225,
+   "inception": "2026-10-12T18:38Z",
+   "direct_xrp_from": [
+    "rGy4zJtGfGtF7dtjZmBraQTcfZSQgwqpaa"
+   ]
+  }
+ }
+}

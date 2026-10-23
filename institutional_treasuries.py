@@ -37,6 +37,7 @@ TIER_ATTRIBUTED = "attributed"
 # evidence behind them and must never be merged into one claim.
 GROUP_XRPSCAN = "xrpscan"
 GROUP_INFERRED = "inferred"
+GROUP_BITGO_CREATED = "bitgo_created"
 
 # Exact strings the owner approved 2026-10-10. Do not reword without asking.
 GROUP_LABELS = {
@@ -45,12 +46,28 @@ GROUP_LABELS = {
         "inferred by xrp-insights from amounts matching the filing "
         "— not confirmed by Evernorth"
     ),
+    # Owner-approved 2026-10-22 20:26 ET, verbatim. "the wallets above" is
+    # load-bearing: this group renders THIRD, under the two groups whose
+    # wallets funded these. Every address in BITGO_CREATED was verified on
+    # 2026-10-22 against BOTH halves of the claim before it was added:
+    # XRPScan `parent` == rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix (which XRPScan
+    # labels "BitGo Initialization Wallet"), and at least one tesSUCCESS
+    # XRP Payment received directly from an address in the two groups
+    # above, read from our own node. A wallet failing either half may not
+    # be listed under this label -- the label would be false for it.
+    GROUP_BITGO_CREATED: (
+        "received XRP directly from the wallets above; created by the "
+        "account XRPScan labels BitGo — not confirmed by Evernorth"
+    ),
 }
 
 # Each group label links to the source that makes the claim.
 GROUP_SOURCE_URLS = {
     GROUP_XRPSCAN: "https://xrpscan.com",
     GROUP_INFERRED: "https://xrp-insights.com/xrp-radar/evernorth",
+    # The claim is about the creator account's label, so the source is the
+    # creator's own XRPScan page, where that label is shown.
+    GROUP_BITGO_CREATED: "https://xrpscan.com/account/rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix",
 }
 
 #: Per-wallet explorer link. The card shows a shortened address; the full
@@ -138,7 +155,36 @@ WALLETS = [
     ("r3tTJV8rppEqixa4LDxCvMtYAbWgFFyA6Y", "Custody I"),
     ("rBZWJZpVDSDFBFmRpcuXJ8ePqX7wE4BeYa", "Custody J"),
     ("rNtaHck1h268GQpfrQQ5AW68CEF2q919WU", "Staging"),
+    # ── third group (owner decision 2026-10-22 20:26 ET) ──
+    # Ten wallets created by rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix (XRPScan:
+    # "BitGo Initialization Wallet", 1.2225 XRP seed each) that received
+    # XRP directly from the thirteen above. Seven received the 2026-10-22
+    # 18:08Z batch (~327M XRP incl. 42M that moved via Evernorth 2 on
+    # 10-21/22); three received 500k from Custody G on 2026-10-20. Internal
+    # names are for matching only, never displayed (same rule as above).
+    ("rK1BUXU1LD3JEkRLCqY9pKq4BEVKmDrzbf", "Receiver A"),
+    ("rBKrEjXChk7iWTx1cdr2EpBVoXRZ2Bunhj", "Receiver B"),
+    ("rLyTyA4nQJMy7T2wgKrd33KeZdjcEMPc2w", "Receiver C"),
+    ("rJQ4sQVyoYT2SfRNJRXXfqU4rHS915UAjW", "Receiver D"),
+    ("rwtokyDZhkRwcC6h7b58Bv11tPFEdtJ9EW", "Receiver E"),
+    ("rPjKkBTutrvvoboPUuaxSaeXNki5XvjDei", "Receiver F"),
+    ("rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh", "Receiver G"),
+    ("rLMYD4r2WMsReN42naTzDLc8MAmHAbjyw5", "Receiver H"),
+    ("rMNWpkSN7iJaxmsf61uGWn1qWCeZ6STmyw", "Receiver I"),
+    ("rHuRnnWDUB4UBy8Sf2XvJDMEC4rFgts1xi", "Receiver J"),
 ]
+
+#: The ten wallets in GROUP_BITGO_CREATED. Kept as an explicit set (not
+#: "everything after index 13") so adding a wallet to WALLETS can never
+#: silently land it under this label without the two checks above.
+BITGO_CREATED = frozenset({
+    "rK1BUXU1LD3JEkRLCqY9pKq4BEVKmDrzbf", "rBKrEjXChk7iWTx1cdr2EpBVoXRZ2Bunhj",
+    "rLyTyA4nQJMy7T2wgKrd33KeZdjcEMPc2w", "rJQ4sQVyoYT2SfRNJRXXfqU4rHS915UAjW",
+    "rwtokyDZhkRwcC6h7b58Bv11tPFEdtJ9EW", "rPjKkBTutrvvoboPUuaxSaeXNki5XvjDei",
+    "rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh", "rLMYD4r2WMsReN42naTzDLc8MAmHAbjyw5",
+    "rMNWpkSN7iJaxmsf61uGWn1qWCeZ6STmyw", "rHuRnnWDUB4UBy8Sf2XvJDMEC4rFgts1xi",
+})
+BITGO_CREATOR = "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix"
 
 #: The two addresses XRPScan itself labels "Evernorth" (domain evernorth.xyz,
 #: XRPScan curation; no on-ledger Domain field, no TOML). Everything else in
@@ -174,10 +220,15 @@ def short_address(addr, head=6, tail=4):
 
 #: address -> attribution group, built once. Used by /whales as well as the
 #: card, so both surfaces answer from ONE table and cannot drift apart.
-ATTRIBUTION_BY_ADDRESS = {
-    addr: (GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED)
-    for addr, _name in WALLETS
-}
+def _group_for(addr):
+    if addr in XRPSCAN_LABELLED:
+        return GROUP_XRPSCAN
+    if addr in BITGO_CREATED:
+        return GROUP_BITGO_CREATED
+    return GROUP_INFERRED
+
+
+ATTRIBUTION_BY_ADDRESS = {addr: _group_for(addr) for addr, _name in WALLETS}
 
 
 def attribution_for(address):
@@ -214,7 +265,7 @@ def build_rows(balances, last_moved=None):
     last_moved = last_moved or {}
     rows = []
     for addr, _internal_name in WALLETS:
-        group = GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED
+        group = _group_for(addr)
         rows.append({
             "address": addr,
             "short": short_address(addr),
@@ -417,7 +468,7 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
     balances = (snapshot or {}).get("balances") or {}
     rows = []
     for addr, _internal_name in WALLETS:
-        group = GROUP_XRPSCAN if addr in XRPSCAN_LABELLED else GROUP_INFERRED
+        group = _group_for(addr)
         rows.append({
             "address": addr,
             "short": short_address(addr),
@@ -446,7 +497,7 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
     groups = [
         {"key": g, "label": GROUP_LABELS[g], "source_url": GROUP_SOURCE_URLS[g],
          "rows": [r for r in rows if r["group"] == g]}
-        for g in (GROUP_XRPSCAN, GROUP_INFERRED)
+        for g in (GROUP_XRPSCAN, GROUP_INFERRED, GROUP_BITGO_CREATED)
     ]
     return {
         "company": EVERNORTH["company"],

@@ -65,7 +65,8 @@ def _rows(x):
 def test_treasury_watch_is_exactly_the_wallet_list(stream):
     import institutional_treasuries as T
     assert stream.TREASURY_WATCH == frozenset(a for a, _ in T.WALLETS)
-    assert len(stream.TREASURY_WATCH) == 13
+    assert len(stream.TREASURY_WATCH) == 23
+    assert "rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh" in stream.TREASURY_WATCH  # 10 BitGo-created added 2026-10-22
     assert CUSTODY_G in stream.TREASURY_WATCH and EVERNORTH_2 in stream.TREASURY_WATCH
 
 
