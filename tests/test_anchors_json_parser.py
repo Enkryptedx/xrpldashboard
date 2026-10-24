@@ -33,20 +33,56 @@ def _get_anchors():
     return d.get("anchors") or d
 
 
-def test_a_real_history_yields_1_through_9_in_order():
-    """(a) The REAL committed anchor_history.md must expose every anchor 1..9.
-    FAILS on main (#9 dropped by the divider-split parser); PASSES on branch.
+def _expected_anchor_numbers():
+    """Every `## Anchor #N` header in the committed file -- the ground truth
+    the parser must reproduce. Derived from the file itself so this test
+    can never go stale as anchors are added (it pinned 1..9 until #12,
+    failing silently on every anchor since #10 because it was not in CI)."""
+    import re, pathlib
+    md = (pathlib.Path(__file__).resolve().parent.parent / "docs" / "anchor_history.md").read_text()
+    return sorted(int(n) for n in re.findall(r"^## Anchor #(\d+)", md, flags=re.M))
 
-    The route emits anchors in document order (newest-first here), so we assert
-    the full SET 1..9 is present with no drop, and that the sequence is strictly
-    one-per-number (no duplicates, no gaps) — not a specific ascending order."""
+
+def test_a_real_history_yields_every_committed_anchor_exactly_once():
+    """(a) The REAL committed anchor_history.md must expose every anchor whose
+    header is in the file, exactly once, with no gaps from 1 to the newest.
+    A missing number means the parser dropped one (the #9 divider-slip bug,
+    2026-10-04); a count mismatch means a section merged into its neighbour."""
+    expected = _expected_anchor_numbers()
+    assert expected, "no '## Anchor #N' headers found in docs/anchor_history.md"
+    assert expected == list(range(1, expected[-1] + 1)), f"headers have a gap: {expected}"
     anchors = _get_anchors()
     nums = [a.get("number") for a in anchors]
-    assert sorted(nums) == list(range(1, 10)), (
-        f"expected anchors 1..9 (no drop, no dupe), got {nums}. A missing "
-        f"number here means the parser dropped one (the #9 divider-slip bug).")
+    assert sorted(nums) == expected, (
+        f"expected anchors {expected[0]}..{expected[-1]} (no drop, no dupe), got {sorted(nums)}. "
+        f"A missing number here means the parser dropped one.")
     assert len(nums) == len(set(nums)), f"duplicate anchor numbers: {nums}"
-    # #9 specifically present with its on-ledger identity.
+    # every parsed anchor carries its on-ledger identity
+    for a in anchors:
+        assert a.get("tx_hash") and len(a["tx_hash"]) == 64, a
+        assert a.get("ledger_index"), a
+
+
+# Anchors whose committed record has no `MemoData (decoded)` row, so the
+# feed cannot carry their chain_root. Found 2026-10-23 when this test was
+# generalised: #11 (2026-10-16) was recorded without that row. Listed here
+# explicitly so the gap is visible and the test fails the moment a NEW
+# anchor is recorded without the row; shrink the set when the row is added.
+_KNOWN_ANCHORS_WITHOUT_MEMO_ROW = {11}
+
+
+def test_a2_every_anchor_exposes_its_chain_root_except_known_gaps():
+    anchors = _get_anchors()
+    missing = sorted(a["number"] for a in anchors
+                     if not (a.get("chain_root") and len(a["chain_root"]) == 64))
+    assert set(missing) <= _KNOWN_ANCHORS_WITHOUT_MEMO_ROW, (
+        f"anchors.json has no chain_root for {missing}; only "
+        f"{sorted(_KNOWN_ANCHORS_WITHOUT_MEMO_ROW)} are known gaps. "
+        f"Add the `MemoData (decoded)` row to the record.")
+    # and the known gap is real, not stale -- remove it from the set once fixed
+    assert set(missing) == _KNOWN_ANCHORS_WITHOUT_MEMO_ROW, (
+        f"known-gap set is stale: feed now lacks chain_root for {missing}")
+    # #9 specifically: the anchor the divider bug dropped, pinned forever.
     a9 = next(a for a in anchors if a["number"] == 9)
     assert a9["tx_hash"] == "D5C515F164AC3E41337206CB4A0A35A3703962C870CAD003E097ED7F9BF8732E"
     assert a9["ledger_index"] == 107423070
