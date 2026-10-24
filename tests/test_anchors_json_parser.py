@@ -65,10 +65,12 @@ def test_a_real_history_yields_every_committed_anchor_exactly_once():
 
 # Anchors whose committed record has no `MemoData (decoded)` row, so the
 # feed cannot carry their chain_root. Found 2026-10-23 when this test was
-# generalised: #11 (2026-10-16) was recorded without that row. Listed here
-# explicitly so the gap is visible and the test fails the moment a NEW
-# anchor is recorded without the row; shrink the set when the row is added.
-_KNOWN_ANCHORS_WITHOUT_MEMO_ROW = {11}
+# generalised: #11 (2026-10-16) had been recorded without that row and the
+# public feed carried no chain_root for it for a week. The row was added the
+# same day (memo bytes re-verified on two full-history servers). The set is
+# kept, empty, so the test fails the moment a NEW anchor is recorded without
+# the row -- the feed must carry a root for every anchor.
+_KNOWN_ANCHORS_WITHOUT_MEMO_ROW = set()   # #11's row added 2026-10-23; every anchor now carries its root
 
 
 def test_a2_every_anchor_exposes_its_chain_root_except_known_gaps():
