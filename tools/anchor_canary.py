@@ -82,9 +82,10 @@ from urllib.error import HTTPError
 
 
 # ── constants + thresholds ───────────────────────────────────────────
-DEFAULT_FULL_HISTORY_NODES = (
-    "https://s2-clio.ripple.com:51234",
-)
+# 2026-10-24: the list lives in tools/anchor_nodes.py, shared with the
+# Friday reminder so the two readers can never disagree about the witness
+# again. Kept as a name here for any caller that imported it.
+from anchor_nodes import DEFAULT_FULL_HISTORY_NODES, full_history_nodes as _shared_full_history_nodes  # noqa: E402
 DEFAULT_SITE_URL = "https://xrpldashboard.onrender.com"
 DEFAULT_ANCHOR_ACCOUNT = "rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ"
 DEFAULT_FRESHNESS_HOURS = 8 * 24  # 8 days — weekly cadence + 1-day slack
@@ -329,11 +330,10 @@ _ACCOUNT_TX_ENDPOINT_ERRORS = frozenset({
 
 
 def full_history_nodes() -> list[str]:
-    """R1: env-configurable full-history node list, default s2-clio."""
-    override = os.environ.get("ANCHOR_CANARY_FULL_HISTORY_NODES", "").strip()
-    if override:
-        return [u.strip() for u in override.split(",") if u.strip()]
-    return list(DEFAULT_FULL_HISTORY_NODES)
+    """R1: env-configurable full-history node list. Shared with the Friday
+    reminder via tools/anchor_nodes.py (ANCHOR_FULL_HISTORY_NODES); the
+    canary's legacy ANCHOR_CANARY_FULL_HISTORY_NODES still works."""
+    return _shared_full_history_nodes("ANCHOR_CANARY_FULL_HISTORY_NODES")
 
 
 # XRPL epoch offset — ripple time is seconds since 2000-01-01 UTC.
