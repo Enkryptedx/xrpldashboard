@@ -710,6 +710,17 @@ jobs:
       # WAF detection keeps priority: a 1010 ban fails even at 406, so the
       # new status check cannot mask it.
       # Hermetic: injected fetcher/sleeper, no network, no DB, no clock.
+      # /.well-known/anchors.json is built by splitting docs/anchor_history.md
+      # on "\n---\n". A missing separator silently folds the newest anchor into
+      # the previous section (#9, 2026-10-04). This test derives the expected
+      # set from the file's own "## Anchor #N" headers, so it cannot go stale
+      # -- its predecessor pinned 1..9 and failed unnoticed from #10 to #12
+      # because it was never in this chain (added 2026-10-23).
+      - name: anchors.json parser yields every committed anchor (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_anchors_json_parser.py -q
+
       - name: mcp canary liveness probe (no DB, no network)
         env:
           DATABASE_URL: ""
