@@ -211,8 +211,15 @@ def line_signed_surfaces(cur, ts_s, ts_e) -> str:
         WHERE ts >= %s AND ts < %s AND path LIKE '/.well-known/registry/%%'
     """, (ts_s, ts_e))
     registry_hits = cur.fetchone()[0]
-    # Signed count: hard to know without parsing responses; approximate
-    # via sig-service audit log for the day.
+    # "Receipts signed" = every kind="check" receipt the sig service issued
+    # that day (its audit log carries no path). That is /check.json PLUS the
+    # four machine twins that reuse the same envelope -- /tokens.json,
+    # /whales.json, /pools.json, /amendments.json (_machine_envelope) -- so
+    # it is normally HIGHER than the /check.json call count. 2026-10-21:
+    # 1124 receipts vs 801 /check.json calls; the gap was 4 x 80 canary
+    # probes of the twins. Labelled accordingly (owner 2026-10-22); it was
+    # previously printed as "(signed:N)" right after the /check.json count,
+    # which read as a per-route figure it is not.
     signed = "?"
     try:
         import glob
@@ -225,7 +232,8 @@ def line_signed_surfaces(cur, ts_s, ts_e) -> str:
     except Exception:
         pass
     return (
-        f"4. Signed surfaces: /check.json {check_calls} calls (signed:{signed}), "
+        f"4. Signed surfaces: /check.json {check_calls} calls; "
+        f"check-kind receipts signed {signed} (all 5 signed JSON surfaces); "
         f"/thisweek {thisweek_hits} hits, /.well-known/registry {registry_hits}. "
         f"/check.json external (non-JJ, non-canary) calls: {check_external}."
     )
