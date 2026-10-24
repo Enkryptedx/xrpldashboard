@@ -186,6 +186,9 @@ BITGO_CREATED = frozenset({
 })
 BITGO_CREATOR = "rD4G6gtD2KwHqsRf7pcyA8r1neUzXT61ix"
 
+#: Groups whose rows get no attribution chip on /whales (owner 2026-10-23).
+WHALES_CHIP_SUPPRESSED = frozenset({GROUP_BITGO_CREATED})
+
 #: The two addresses XRPScan itself labels "Evernorth" (domain evernorth.xyz,
 #: XRPScan curation; no on-ledger Domain field, no TOML). Everything else in
 #: WALLETS was inferred by xrp-insights from amounts matching the filing.
@@ -242,6 +245,12 @@ def attribution_for(address):
     """
     group = ATTRIBUTION_BY_ADDRESS.get(address)
     if group is None:
+        return None, None
+    # Owner 2026-10-23 20:08 ET: the ten BitGo-created wallets are listed
+    # on the /institutional card but carry NO attribution chip on /whales
+    # for now. The card builds its groups from _group_for() directly, so
+    # this only affects callers that label individual rows (/whales).
+    if group in WHALES_CHIP_SUPPRESSED:
         return None, None
     return GROUP_LABELS[group], GROUP_SOURCE_URLS[group]
 
@@ -312,6 +321,15 @@ MOVES_FLOOR_XRP = (
     int(MOVES_MIN_XRP) if STREAM_TREASURY_WATCH_RESTARTED else STREAM_PRE_WATCH_FLOOR_XRP
 )
 MOVES_FLOOR_LABEL = f"{MOVES_FLOOR_XRP:,}"
+
+# Until the Lenovo xrpl_stream process is restarted (owner, sudo) it runs
+# the WALLETS list it loaded at 2026-10-22 06:23Z -- the 13 only. For the
+# ten added since, a move is recorded only when it clears the whale
+# threshold. Say so, for those ten only (owner 2026-10-23 20:08 ET); the
+# card-wide floor line above stays 1 XRP because it is true for the 13.
+BITGO_GROUP_PENDING_RESTART = True
+BITGO_GROUP_FLOOR_XRP = STREAM_PRE_WATCH_FLOOR_XRP if BITGO_GROUP_PENDING_RESTART else int(MOVES_MIN_XRP)
+BITGO_GROUP_FLOOR_LABEL = f"{BITGO_GROUP_FLOOR_XRP:,}"
 
 
 def build_moves(raw_moves, known_labels=None, limit=MOVES_LIMIT):
@@ -496,7 +514,11 @@ def build_card(snapshot=None, raw_moves=None, history=None, labels=None):
                                    if m.get("counterparty") else None)
     groups = [
         {"key": g, "label": GROUP_LABELS[g], "source_url": GROUP_SOURCE_URLS[g],
-         "rows": [r for r in rows if r["group"] == g]}
+         "rows": [r for r in rows if r["group"] == g],
+         # per-group floor note; only the BitGo-created group has one
+         "floor_label": (BITGO_GROUP_FLOOR_LABEL
+                         if g == GROUP_BITGO_CREATED and BITGO_GROUP_PENDING_RESTART
+                         else None)}
         for g in (GROUP_XRPSCAN, GROUP_INFERRED, GROUP_BITGO_CREATED)
     ]
     return {

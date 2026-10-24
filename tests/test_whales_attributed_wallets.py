@@ -97,9 +97,11 @@ def test_whales_uses_the_same_strings_as_the_card():
     whales_labels = {
         _resolve(_row(XRPSCAN_ADDR, STRANGER))["from_attribution"],
         _resolve(_row(INFERRED_ADDR, STRANGER))["from_attribution"],
-        _resolve(_row(BITGO_ADDR, STRANGER))["from_attribution"],
     }
-    assert whales_labels == card_labels
+    # the BitGo-created group is on the card but NOT chipped on /whales
+    # (owner 2026-10-23), so the card has one more label than /whales
+    assert whales_labels == card_labels - {BITGO_LABEL}
+    assert _resolve(_row(BITGO_ADDR, STRANGER))["from_attribution"] is None
 
 
 def test_each_group_carries_its_own_source_url():
@@ -140,13 +142,16 @@ def test_filing_confirmed_string_never_reachable():
         assert T.TIER_LABELS[T.TIER_FILING] not in blob
 
 
-def test_all_twentythree_wallets_are_attributed():
+def test_thirteen_original_wallets_are_attributed_ten_bitgo_are_not():
+    chipped = 0
     for addr, _name in T.WALLETS:
         label, url = T.attribution_for(addr)
-        assert label in (XRPSCAN_LABEL, INFERRED_LABEL, BITGO_LABEL)
-        assert url
-    # the ten BitGo-created wallets carry exactly the third string on /whales
-    assert sum(1 for a, _ in T.WALLETS if T.attribution_for(a)[0] == BITGO_LABEL) == 10
+        if addr in T.BITGO_CREATED:
+            assert (label, url) == (None, None), addr   # owner 2026-10-23: no chip for now
+        else:
+            assert label in (XRPSCAN_LABEL, INFERRED_LABEL) and url
+            chipped += 1
+    assert chipped == 13
 
 
 # ── 5 + 6. rendered markup: chip ownership, short addresses ─────────────

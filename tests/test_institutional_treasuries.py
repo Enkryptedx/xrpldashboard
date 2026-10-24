@@ -326,3 +326,28 @@ def test_every_row_links_the_full_address():
     for r in T.build_rows({}):
         assert r["address"] in r["explorer_url"]
         assert r["short"] != r["address"]
+
+
+def test_bitgo_group_rows_carry_no_whales_chip():
+    """Owner 2026-10-23: listed on the card, no attribution chip on /whales
+    until further notice. attribution_for() is the /whales path."""
+    for a in T.BITGO_CREATED:
+        assert T.attribution_for(a) == (None, None), a
+    # the 13 are unaffected
+    for a, _ in T.WALLETS:
+        if a not in T.BITGO_CREATED:
+            assert T.attribution_for(a)[0] is not None, a
+
+
+def test_bitgo_group_floor_note_only_while_restart_pending():
+    card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
+    by_key = {g["key"]: g for g in card["groups"]}
+    assert by_key[T.GROUP_XRPSCAN]["floor_label"] is None
+    assert by_key[T.GROUP_INFERRED]["floor_label"] is None
+    if T.BITGO_GROUP_PENDING_RESTART:
+        assert by_key[T.GROUP_BITGO_CREATED]["floor_label"] == "50,000"
+        assert T.BITGO_GROUP_FLOOR_XRP == T.STREAM_PRE_WATCH_FLOOR_XRP
+    else:
+        assert by_key[T.GROUP_BITGO_CREATED]["floor_label"] is None
+    # card-wide line is still the 1 XRP dust guard (true for the 13)
+    assert card["moves_floor_label"] == "1"

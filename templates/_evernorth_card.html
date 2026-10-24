@@ -145,6 +145,12 @@
       </li>
       {% endfor %}
     </ul>
+    {# Per-group floor note. Only the BitGo-created group carries one, and
+       only while the Lenovo stream still runs the 13-wallet list
+       (BITGO_GROUP_PENDING_RESTART). Owner-approved sentence 2026-10-23. #}
+    {% if g.floor_label %}
+    <div class="ev-note">{{ _('For these %(k)s wallets, moves under %(n)s XRP are not shown.', k=g.rows|length, n=g.floor_label) }}</div>
+    {% endif %}
   </div>
   {% endif %}
   {% endfor %}
