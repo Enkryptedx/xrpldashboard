@@ -122,10 +122,15 @@ def test_every_filing_fact_links_to_a_sec_document(monkeypatch, client):
 # ── 3. the verbatim live line ───────────────────────────────────────────
 def test_live_line_renders_verbatim(monkeypatch, client):
     _stub_full_read(monkeypatch)
+    # 23 wallets x PER_WALLET; the sentence template is what is pinned
+    # verbatim, the number follows the fixture (13 x 36,405,879 used to give
+    # 473,276,427; the third group added 2026-10-22 makes it 23 x).
     expected = (
-        "These 13 wallets total 473,276,427 XRP; "
+        f"These {len(T.WALLETS)} wallets total "
+        f"{PER_WALLET * len(T.WALLETS):,.0f} XRP; "
         "the filing says at least 473,276,430 XRP at closing."
     )
+    assert len(T.WALLETS) == 23
     assert expected in _visible_text(_html(client))
 
 
@@ -186,7 +191,7 @@ def test_page_survives_the_data_layer_failing(monkeypatch, client):
     assert "473,276,430" in html
     assert "Public companies holding XRP" in html
     # No total is invented from nothing.
-    assert "These 13 wallets total" not in _visible_text(html)
+    assert "These 23 wallets total" not in _visible_text(html)
 
 
 def test_no_snapshot_renders_facts_without_a_total(monkeypatch, client):
@@ -198,7 +203,7 @@ def test_no_snapshot_renders_facts_without_a_total(monkeypatch, client):
                         lambda limit=30: [], raising=True)
     text = _visible_text(_html(client))
     assert "$2.36609" in text
-    assert "These 13 wallets total" not in text
+    assert "These 23 wallets total" not in text
 
 
 def test_partial_read_is_disclosed(monkeypatch, client):
@@ -207,12 +212,12 @@ def test_partial_read_is_disclosed(monkeypatch, client):
     monkeypatch.setattr(
         db, "read_evernorth_latest_snapshot",
         lambda: {"date": "2026-10-10", "taken_at": 1, "total_xrp": None,
-                 "readable_count": 12, "wallet_count": 13,
+                 "readable_count": 22, "wallet_count": 23,
                  "balances": balances}, raising=True)
     monkeypatch.setattr(db, "read_evernorth_moves",
                         lambda addrs, limit=10: [], raising=True)
     monkeypatch.setattr(db, "read_evernorth_daily_totals",
                         lambda limit=30: [], raising=True)
     text = _visible_text(_html(client))
-    assert "12/13" in text
+    assert "22/23" in text
     assert "not readable" in text

@@ -47,6 +47,9 @@ STRANGER = "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe"
 XRPSCAN_LABEL = "labeled Evernorth by XRPScan — not confirmed by Evernorth"
 INFERRED_LABEL = ("inferred by xrp-insights from amounts matching the filing "
                   "— not confirmed by Evernorth")
+BITGO_LABEL = ("received XRP directly from the wallets above; created by the "
+               "account XRPScan labels BitGo — not confirmed by Evernorth")
+BITGO_ADDR = "rDFrBJGy2QMNphpknEWLjmrDsavmUewVrh"   # 7th of the 10, added 2026-10-22
 
 BANNED_NAMES = ["Custody A", "Custody B", "Custody C", "Custody D",
                 "Custody E", "Custody F", "Custody G", "Custody H",
@@ -95,7 +98,10 @@ def test_whales_uses_the_same_strings_as_the_card():
         _resolve(_row(XRPSCAN_ADDR, STRANGER))["from_attribution"],
         _resolve(_row(INFERRED_ADDR, STRANGER))["from_attribution"],
     }
-    assert whales_labels == card_labels
+    # the BitGo-created group is on the card but NOT chipped on /whales
+    # (owner 2026-10-23), so the card has one more label than /whales
+    assert whales_labels == card_labels - {BITGO_LABEL}
+    assert _resolve(_row(BITGO_ADDR, STRANGER))["from_attribution"] is None
 
 
 def test_each_group_carries_its_own_source_url():
@@ -136,11 +142,16 @@ def test_filing_confirmed_string_never_reachable():
         assert T.TIER_LABELS[T.TIER_FILING] not in blob
 
 
-def test_all_thirteen_wallets_are_attributed():
+def test_thirteen_original_wallets_are_attributed_ten_bitgo_are_not():
+    chipped = 0
     for addr, _name in T.WALLETS:
         label, url = T.attribution_for(addr)
-        assert label in (XRPSCAN_LABEL, INFERRED_LABEL)
-        assert url
+        if addr in T.BITGO_CREATED:
+            assert (label, url) == (None, None), addr   # owner 2026-10-23: no chip for now
+        else:
+            assert label in (XRPSCAN_LABEL, INFERRED_LABEL) and url
+            chipped += 1
+    assert chipped == 13
 
 
 # ── 5 + 6. rendered markup: chip ownership, short addresses ─────────────

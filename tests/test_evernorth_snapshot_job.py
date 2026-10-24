@@ -104,5 +104,5 @@ def test_local_copy_failure_does_not_raise(monkeypatch):
 
 def test_payload_covers_all_thirteen_wallets():
     out = S.run(reader=_reader(), now=LATE_ET)
-    assert out["wallet_count"] == len(T.WALLETS) == 13
-    assert len(out["balances"]) == 13
+    assert out["wallet_count"] == len(T.WALLETS) == 23
+    assert len(out["balances"]) == 23

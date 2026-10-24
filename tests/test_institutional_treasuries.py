@@ -42,7 +42,7 @@ def test_tier_labels_are_the_approved_strings():
 def test_every_wallet_row_is_attributed_not_filing_confirmed():
     """The 2026-10-09 filings contain no addresses, so nothing is confirmed."""
     rows = T.build_rows(_balances())
-    assert len(rows) == 13
+    assert len(rows) == 23
     assert {r["tier"] for r in rows} == {T.TIER_ATTRIBUTED}
     for r in rows:
         assert r["tier_label"] == T.TIER_LABELS[T.TIER_ATTRIBUTED]
@@ -68,8 +68,8 @@ def test_total_excludes_unreadable_rows():
     addr = T.WALLETS[0][0]
     rows = T.build_rows(_balances(**{addr: None}))
     total, readable = T.total_xrp(rows)
-    assert readable == 12
-    assert total == 12.0          # 12 readable x 1 XRP, missing one not zeroed
+    assert readable == 22
+    assert total == 22.0          # 22 readable x 1 XRP, missing one not zeroed
 
 
 def test_total_is_none_when_nothing_readable():
@@ -167,7 +167,7 @@ def test_reader_failure_degrades_and_never_raises():
     snap = T.fetch_treasury_snapshot(reader=boom, now=NOW)
     assert snap["total_xrp"] is None
     assert snap["readable_count"] == 0
-    assert len(snap["rows"]) == 13
+    assert len(snap["rows"]) == 23
     # filing facts still render when the node is unreachable
     assert len(snap["facts"]) == len(T.EVERNORTH["facts"])
 
@@ -175,7 +175,7 @@ def test_reader_failure_degrades_and_never_raises():
 def test_snapshot_without_reader_still_returns_facts():
     T.reset_cache()
     snap = T.fetch_treasury_snapshot(reader=None, now=NOW)
-    assert snap["wallet_count"] == 13
+    assert snap["wallet_count"] == 23
     assert snap["total_xrp"] is None
     assert snap["facts"]
 
@@ -258,7 +258,7 @@ def test_rows_split_into_two_attribution_groups():
     counts = {}
     for r in rows:
         counts[r["group"]] = counts.get(r["group"], 0) + 1
-    assert counts == {T.GROUP_XRPSCAN: 2, T.GROUP_INFERRED: 11}
+    assert counts == {T.GROUP_XRPSCAN: 2, T.GROUP_INFERRED: 11, T.GROUP_BITGO_CREATED: 10}
 
 
 def test_no_row_renders_a_third_party_name():
@@ -275,6 +275,39 @@ def test_group_labels_are_the_approved_strings():
     assert T.GROUP_LABELS[T.GROUP_INFERRED] == (
         "inferred by xrp-insights from amounts matching the filing "
         "— not confirmed by Evernorth")
+    # Owner-approved 2026-10-22 20:26 ET, verbatim.
+    assert T.GROUP_LABELS[T.GROUP_BITGO_CREATED] == (
+        "received XRP directly from the wallets above; created by the "
+        "account XRPScan labels BitGo — not confirmed by Evernorth")
+
+
+def test_bitgo_group_renders_third_so_the_wallets_above_means_the_funders():
+    """The label says 'the wallets above'. It is only true if the group is
+    rendered after the two groups that funded it."""
+    card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
+    assert [g["key"] for g in card["groups"]] == [
+        T.GROUP_XRPSCAN, T.GROUP_INFERRED, T.GROUP_BITGO_CREATED]
+
+
+def test_bitgo_group_membership_is_explicit_and_exactly_ten():
+    """BITGO_CREATED is an explicit set, never 'the tail of WALLETS': a wallet
+    may only carry this label after BOTH halves of the claim were verified
+    (XRPScan parent == BITGO_CREATOR, and a direct XRP receipt from one of
+    the 13). Fixture: tests/fixtures/evernorth_bitgo_created_2026-10-22.json
+    records that verification."""
+    import json, pathlib
+    fx = json.loads((pathlib.Path(__file__).parent / "fixtures" /
+                     "evernorth_bitgo_created_2026-10-22.json").read_text())
+    assert len(T.BITGO_CREATED) == 10
+    assert T.BITGO_CREATED == set(fx["wallets"])
+    assert fx["creator"] == T.BITGO_CREATOR
+    tracked13 = {a for a, _ in T.WALLETS if a not in T.BITGO_CREATED}
+    assert len(tracked13) == 13
+    for a, rec in fx["wallets"].items():
+        assert rec["xrpscan_parent"] == T.BITGO_CREATOR, a
+        assert rec["direct_xrp_from"] and set(rec["direct_xrp_from"]) <= tracked13, a
+    assert all(a in dict(T.WALLETS) for a in T.BITGO_CREATED)
+    assert T.GROUP_SOURCE_URLS[T.GROUP_BITGO_CREATED].endswith(T.BITGO_CREATOR)
 
 
 def test_filing_confirmed_label_exists_but_is_never_used_by_a_row():
@@ -293,3 +326,28 @@ def test_every_row_links_the_full_address():
     for r in T.build_rows({}):
         assert r["address"] in r["explorer_url"]
         assert r["short"] != r["address"]
+
+
+def test_bitgo_group_rows_carry_no_whales_chip():
+    """Owner 2026-10-23: listed on the card, no attribution chip on /whales
+    until further notice. attribution_for() is the /whales path."""
+    for a in T.BITGO_CREATED:
+        assert T.attribution_for(a) == (None, None), a
+    # the 13 are unaffected
+    for a, _ in T.WALLETS:
+        if a not in T.BITGO_CREATED:
+            assert T.attribution_for(a)[0] is not None, a
+
+
+def test_bitgo_group_floor_note_only_while_restart_pending():
+    card = T.build_card(snapshot=None, raw_moves=[], history=[], labels={})
+    by_key = {g["key"]: g for g in card["groups"]}
+    assert by_key[T.GROUP_XRPSCAN]["floor_label"] is None
+    assert by_key[T.GROUP_INFERRED]["floor_label"] is None
+    if T.BITGO_GROUP_PENDING_RESTART:
+        assert by_key[T.GROUP_BITGO_CREATED]["floor_label"] == "50,000"
+        assert T.BITGO_GROUP_FLOOR_XRP == T.STREAM_PRE_WATCH_FLOOR_XRP
+    else:
+        assert by_key[T.GROUP_BITGO_CREATED]["floor_label"] is None
+    # card-wide line is still the 1 XRP dust guard (true for the 13)
+    assert card["moves_floor_label"] == "1"
