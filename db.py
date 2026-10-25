@@ -33,6 +33,8 @@ context-managed connections, which is fine at our request volume.
 
 import datetime
 import os
+import sys
+import tempfile
 import json
 import re
 import threading
@@ -3835,6 +3837,62 @@ def read_amm_ranked_pools(columns=None):
         return []
 
 
+def read_amm_homepage_stats(top_n=5):
+    """C (2026-10-24, Neon egress): the four numbers the homepage AMM card
+    needs, computed in SQL, plus the top-N pools by TVL -- instead of pulling
+    all ~30,300 rows (12.8 MB) per render and aggregating in Python. The
+    homepage_summary_walker renders `/` 288x a day with ?nocache=1, so this
+    one read was 10.5 GB/day. Semantics match app.index() exactly:
+      pool_count        = all rows
+      total_tvl_usd     = sum(tvl_usd) where tvl_status in (exact, estimated)
+      priced_pool_count = count where tvl_status in (exact, estimated) and tvl_usd > 0
+      amm_xrp           = sum of the XRP side of every pool (asset_a or asset_b
+                          currency == 'XRP') -- for _build_xrp_distribution
+      top               = top_n rows with tvl_usd > 0 by tvl_usd desc, full
+                          amm_ranked.json shape (same as read_amm_ranked_pools)
+    Returns None when PG is unavailable or the table is empty."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*),"
+                    "       COALESCE(SUM(tvl_usd) FILTER (WHERE tvl_status IN ('exact','estimated')), 0),"
+                    "       COUNT(*) FILTER (WHERE tvl_status IN ('exact','estimated') AND tvl_usd > 0),"
+                    "       COALESCE(SUM(CASE WHEN asset_a->>'currency' = 'XRP' THEN amount_a"
+                    "                         WHEN asset_b->>'currency' = 'XRP' THEN amount_b"
+                    "                         ELSE 0 END), 0),"
+                    "       MAX(snapshot_ts)"
+                    "  FROM amm_ranked_pools"
+                )
+                n, tvl, priced, amm_xrp, snap = cur.fetchone()
+                if not n:
+                    return None
+                cols = list(_AMM_RANKED_POOL_COLUMNS)
+                cur.execute(
+                    "SELECT " + ", ".join(cols) + ", snapshot_ts FROM amm_ranked_pools "
+                    "WHERE tvl_usd > 0 ORDER BY tvl_usd DESC NULLS LAST LIMIT %s",
+                    (int(top_n),),
+                )
+                top = []
+                for r in cur.fetchall():
+                    d = dict(zip(cols, r))
+                    d["_snapshot_ts"] = r[-1]
+                    top.append(d)
+        return {
+            "pool_count": int(n),
+            "total_tvl_usd": float(tvl or 0),
+            "priced_pool_count": int(priced or 0),
+            "amm_xrp": float(amm_xrp or 0),
+            "snapshot_ts": int(snap) if snap is not None else None,
+            "top": top,
+        }
+    except Exception as e:
+        _log_err("read_amm_homepage_stats_failed", e)
+        return None
+
+
 def read_amm_index_entries():
     """Mirror of amm_index.json for the wallet/token detail layers.
 
@@ -3893,6 +3951,102 @@ def read_amm_index_entries():
             "LPTokenBalance": {"value": str(lp_token_value)},
         })
     return out
+
+
+# ── B (2026-10-24, Neon egress): snapshot_ts-gated, file-backed AMM index ──
+# read_amm_index_entries() returns ~30,300 rows x ~378 B = 11.4 MB. Until
+# today token_data.py and wallet_data.py both called it at MODULE IMPORT, so
+# every process that imported app paid 22.9 MB before doing anything -- the
+# three summary walkers (300 s cadence, `import app` + test_client) alone
+# made 864 such imports a day, and pg_stat_statements showed 1,498 calls/day
+# = 17.2 GB/day of Neon egress for a table the ranker rewrites once an HOUR.
+# This accessor asks for MAX(snapshot_ts) (1 row), and only re-reads the
+# table when that changes. The last read is kept in-process AND in a small
+# JSON file keyed by snapshot_ts, so a brand-new process (every walker run,
+# every gunicorn worker) also skips the 11.4 MB read when the snapshot is
+# unchanged. Falls back to a plain read on any cache error.
+AMM_INDEX_CACHE_PATH = os.environ.get(
+    "AMM_INDEX_CACHE_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache", "amm_index_cache.json"),
+)
+AMM_INDEX_CHECK_INTERVAL_S = int(os.environ.get("AMM_INDEX_CHECK_INTERVAL_S", "60"))
+_amm_index_mem = {"snap": None, "entries": None, "checked_mono": 0.0}
+
+
+def _amm_index_file_load(snap):
+    try:
+        with open(AMM_INDEX_CACHE_PATH, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        if d.get("snapshot_ts") == snap and isinstance(d.get("entries"), list):
+            return d["entries"]
+    except Exception:
+        pass
+    return None
+
+
+def _amm_index_file_store(snap, entries):
+    """Atomic publish: write to a temp file UNIQUE to this writer (pid +
+    random suffix, same directory), fsync, then os.replace() over the real
+    path. os.replace is atomic on POSIX, so a reader sees either the old
+    complete file or the new complete file, never a partial one. The unique
+    temp name matters: three gunicorn workers can all miss the cache on the
+    same snapshot change and store concurrently; a SHARED temp name would
+    let one writer truncate another's half-written file and publish it
+    (reproduced 2026-10-25 before this fix). Last complete writer wins;
+    every candidate carries the same snapshot_ts, so any winner is correct.
+    Any failure is logged and swallowed -- the cache is an optimisation,
+    the caller already holds the entries it just read."""
+    tmp = None
+    try:
+        os.makedirs(os.path.dirname(AMM_INDEX_CACHE_PATH), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(
+            prefix=".amm_index_cache.", suffix=".tmp",
+            dir=os.path.dirname(AMM_INDEX_CACHE_PATH))
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"snapshot_ts": snap, "entries": entries}, f, separators=(",", ":"))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, AMM_INDEX_CACHE_PATH)
+        tmp = None
+    except Exception as e:
+        _log_err("amm_index_cache_store_failed", e)
+    finally:
+        if tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
+def read_amm_index_entries_cached(force=False):
+    """Same result as read_amm_index_entries(), paid for once per snapshot.
+
+    Order: in-process copy (re-validated against MAX(snapshot_ts) at most
+    every AMM_INDEX_CHECK_INTERVAL_S) -> file cache keyed by snapshot_ts ->
+    full table read (then both caches are filled). Returns None exactly when
+    read_amm_index_entries() would (PG unavailable), so callers' file
+    fallback is unchanged."""
+    if not pg_available():
+        return None
+    m = _amm_index_mem
+    now = time.monotonic()
+    if (not force and m["entries"] is not None
+            and now - m["checked_mono"] < AMM_INDEX_CHECK_INTERVAL_S):
+        return m["entries"]
+    snap = read_amm_snapshot_ts()
+    m["checked_mono"] = now
+    if snap is None:
+        return m["entries"] if m["entries"] is not None else read_amm_index_entries()
+    if not force and m["entries"] is not None and m["snap"] == snap:
+        return m["entries"]
+    entries = None if force else _amm_index_file_load(snap)
+    if entries is None:
+        entries = read_amm_index_entries()
+        if entries is not None:
+            _amm_index_file_store(snap, entries)
+    if entries is not None:
+        m["snap"], m["entries"] = snap, entries
+    return entries
 
 
 def read_amm_snapshot_ts():
@@ -7561,55 +7715,75 @@ def refresh_bot_hash_tables():
                     ")"
                 )
 
-                # Visitor hashes from row_pred
-                cur.execute(
-                    f"SELECT DISTINCT visitor_hash FROM page_views "
-                    f"WHERE visitor_hash IS NOT NULL AND {row_pred}",
-                    row_params,
-                )
-                visitor_hashes = [r[0] for r in cur.fetchall()]
-
-                # v6 rule 2 — growth-path-cluster (approved 2026-09-06).
-                # Any visitor_hash that hit ≥5 DISTINCT growth paths in a
-                # single UTC day in the last 30 days is a scanner. Folded
-                # into the same visitor set so no new arm/table/trigger
-                # is needed — the existing visitor arm in _bot_filter_sql
-                # will flag every row from these hashes. The v6 bump
-                # backfills historical rows on the next writer cycle.
+                # D (2026-10-24, Neon egress): the desired hash set is built
+                # and diffed ENTIRELY in SQL. Until today this pulled every
+                # distinct visitor_hash (~56k) and ip_day_hash (~48k) to the
+                # client, then _sync_key_table pulled the whole existing table
+                # (~115k rows) to diff against -- ~9.3 MB per run, 288 runs a
+                # day = 2.35 GB/day of egress to apply ~6 real changes. Now
+                # the only bytes that leave Neon are two rowcounts. Same
+                # predicates, same growth-path rule, same diff semantics (add
+                # what's missing, delete what's gone), same single transaction.
                 growth_ts = int(time.time()) - GROWTH_PATH_LOOKBACK_DAYS * 86400
                 growth_path_likes = " OR ".join(
                     "path LIKE %s" for _ in GROWTH_PATH_PATTERNS
                 )
                 cur.execute(
-                    "SELECT visitor_hash "
-                    "  FROM page_views "
-                    " WHERE visitor_hash IS NOT NULL "
-                    "   AND ts > %s "
-                    f"   AND ({growth_path_likes}) "
-                    " GROUP BY visitor_hash, "
-                    "          date_trunc('day', to_timestamp(ts))::DATE "
-                    "HAVING COUNT(DISTINCT path) >= %s",
-                    [growth_ts]
-                    + list(GROWTH_PATH_PATTERNS)
-                    + [GROWTH_PATH_DISTINCT_THRESHOLD],
+                    "CREATE TEMP TABLE IF NOT EXISTS _desired_bot_hashes ("
+                    "  hash_type TEXT NOT NULL, hash TEXT NOT NULL,"
+                    "  PRIMARY KEY (hash_type, hash)) ON COMMIT DROP"
                 )
-                growth_hashes = {r[0] for r in cur.fetchall()}
-                if growth_hashes:
-                    # De-dup against visitor_hashes so we don't insert twice.
-                    already = set(visitor_hashes)
-                    visitor_hashes = list(already | growth_hashes)
-
-                # IP-day hashes from row_pred
+                cur.execute("DELETE FROM _desired_bot_hashes")
                 cur.execute(
-                    f"SELECT DISTINCT ip_day_hash FROM page_views "
-                    f"WHERE ip_day_hash IS NOT NULL AND {row_pred}",
+                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
+                    f"SELECT DISTINCT 'visitor', visitor_hash FROM page_views "
+                    f"WHERE visitor_hash IS NOT NULL AND {row_pred} "
+                    "ON CONFLICT DO NOTHING",
                     row_params,
                 )
-                ip_day_hashes = [r[0] for r in cur.fetchall()]
+                # v6 rule 2 -- growth-path-cluster (approved 2026-09-06). Any
+                # visitor_hash that hit >=5 DISTINCT growth paths in a single
+                # UTC day in the last 30 days is a scanner; folded into the
+                # visitor arm so no new table/trigger is needed.
+                cur.execute(
+                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
+                    "SELECT DISTINCT 'visitor', visitor_hash FROM ("
+                    "  SELECT visitor_hash FROM page_views "
+                    "   WHERE visitor_hash IS NOT NULL AND ts > %s "
+                    f"    AND ({growth_path_likes}) "
+                    "   GROUP BY visitor_hash, date_trunc('day', to_timestamp(ts))::DATE "
+                    "  HAVING COUNT(DISTINCT path) >= %s) g "
+                    "ON CONFLICT DO NOTHING",
+                    [growth_ts] + list(GROWTH_PATH_PATTERNS) + [GROWTH_PATH_DISTINCT_THRESHOLD],
+                )
+                cur.execute(
+                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
+                    f"SELECT DISTINCT 'ip_day', ip_day_hash FROM page_views "
+                    f"WHERE ip_day_hash IS NOT NULL AND {row_pred} "
+                    "ON CONFLICT DO NOTHING",
+                    row_params,
+                )
+                # Diff in place: additions, then removals. No TRUNCATE (would
+                # take AccessExclusive against the analytics readers).
+                cur.execute(
+                    "INSERT INTO page_view_bot_hashes (hash_type, hash) "
+                    "SELECT d.hash_type, d.hash FROM _desired_bot_hashes d "
+                    "WHERE NOT EXISTS (SELECT 1 FROM page_view_bot_hashes p "
+                    "                  WHERE p.hash_type = d.hash_type AND p.hash = d.hash) "
+                    "ON CONFLICT DO NOTHING"
+                )
+                bot_hashes_added = cur.rowcount
+                cur.execute(
+                    "DELETE FROM page_view_bot_hashes p "
+                    "WHERE NOT EXISTS (SELECT 1 FROM _desired_bot_hashes d "
+                    "                  WHERE d.hash_type = p.hash_type AND d.hash = p.hash)"
+                )
+                bot_hashes_removed = cur.rowcount
+                print(f"[db] bot_hashes_sync added={bot_hashes_added} removed={bot_hashes_removed}", file=sys.stderr)
 
-                # Scanner (path, ua) combos — capture hits + distinct_visitors
+                # Scanner (path, ua) combos -- capture hits + distinct_visitors
                 # so we can auto-ratchet into page_view_scanner_combos_confirmed
-                # with evidence fields (see block below).
+                # with evidence fields (see block below). Small result set.
                 cur.execute(
                     "SELECT path, user_agent, COUNT(*)::int AS hits, "
                     "       COUNT(DISTINCT visitor_hash)::int AS dv "
@@ -7623,17 +7797,6 @@ def refresh_bot_hash_tables():
                 scanner_combos_full = cur.fetchall()
                 scanner_combos = [(p, u) for p, u, h, d in scanner_combos_full]
 
-                # Diff-based sync, still inside this one transaction, so
-                # readers never observe a partially-synced table. Replaces a
-                # DELETE-everything + INSERT-everything rebuild — see
-                # _sync_key_table for the measured churn that motivated it.
-                _sync_key_table(
-                    cur,
-                    "page_view_bot_hashes",
-                    ("hash_type", "hash"),
-                    {("visitor", h) for h in visitor_hashes}
-                    | {("ip_day", h) for h in ip_day_hashes},
-                )
                 _sync_key_table(
                     cur,
                     "page_view_scanner_combos",

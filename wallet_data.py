@@ -254,15 +254,18 @@ _TOKEN_BY_KEY = {
 # gitignored, so on Render we read the amm_ranked_pools mirror. File
 # fallback only fires when DATABASE_URL is unset (dev / Mac path).
 def _load_amm_index():
-    entries = db.read_amm_index_entries()
+    # 2026-10-24 (Neon egress): snapshot_ts-gated + file-backed cache, no
+    # longer run at import. See db.read_amm_index_entries_cached.
+    entries = db.read_amm_index_entries_cached()
     if entries is not None:
         return entries
     return _load_json_safe(AMM_INDEX_PATH) or []
 
 
-_AMM_INDEX = _load_amm_index()
-_AMM_BY_ACCOUNT = {}
-_AMM_BY_PAIR = {}
+# Lazy lookup maps, rebuilt only when the cached entries object changes
+# (i.e. when the ranker's snapshot_ts moves). Access via _amm_by_account()
+# / _amm_by_pair(); never at import.
+_amm_maps = {"src": None, "by_account": {}, "by_pair": {}}
 
 
 def _pair_key(asset, asset2):
@@ -273,10 +276,24 @@ def _pair_key(asset, asset2):
     )
 
 
-for _entry in _AMM_INDEX:
-    if isinstance(_entry, dict) and _entry.get("Account"):
-        _AMM_BY_ACCOUNT[_entry["Account"]] = _entry
-        _AMM_BY_PAIR[_pair_key(_entry.get("Asset", {}), _entry.get("Asset2", {}))] = _entry["Account"]
+def _amm_maps_current():
+    entries = _load_amm_index()
+    if entries is not _amm_maps["src"]:
+        by_account, by_pair = {}, {}
+        for _entry in entries or []:
+            if isinstance(_entry, dict) and _entry.get("Account"):
+                by_account[_entry["Account"]] = _entry
+                by_pair[_pair_key(_entry.get("Asset", {}), _entry.get("Asset2", {}))] = _entry["Account"]
+        _amm_maps.update(src=entries, by_account=by_account, by_pair=by_pair)
+    return _amm_maps
+
+
+def _amm_by_account():
+    return _amm_maps_current()["by_account"]
+
+
+def _amm_by_pair():
+    return _amm_maps_current()["by_pair"]
 
 
 def _decode_currency_hex(hex_str):
@@ -322,8 +339,8 @@ def _classify_address(address):
             ntype = "exchange" if category != "issuer_known" else "issuer"
             return ntype, entry.get("name", address)
         return "peer", entry.get("name", address)
-    if address in _AMM_BY_ACCOUNT:
-        amm = _AMM_BY_ACCOUNT[address]
+    if address in _amm_by_account():
+        amm = _amm_by_account()[address]
         pair = _amm_pair_label(amm.get("Asset", {}), amm.get("Asset2", {}))
         return "amm", f"AMM · {pair}"
     return "peer", None
@@ -527,7 +544,7 @@ def _special_account_self_info(fetcher, account_data, address):
     is_vault = bool(account_data.get("VaultID"))
     amm_pair = None
     if is_amm:
-        cached = _AMM_BY_ACCOUNT.get(address)
+        cached = _amm_by_account().get(address)
         if cached:
             amm_pair = _amm_pair_label(cached.get("Asset", {}), cached.get("Asset2", {}))
         else:
@@ -753,7 +770,7 @@ def _build_holdings(lines):
         category = meta.get("category") if meta else None
 
         if is_lp:
-            amm = _AMM_BY_ACCOUNT.get(issuer)
+            amm = _amm_by_account().get(issuer)
             if amm:
                 pair = _amm_pair_label(amm.get("Asset", {}), amm.get("Asset2", {}))
                 display = f"LP · {pair}"
@@ -1145,7 +1162,7 @@ def _tx_counterparty(tx, owner_address):
     if tx_type in ("AMMDeposit", "AMMWithdraw", "AMMVote", "AMMBid"):
         a = inner.get("Asset", {}) or {}
         a2 = inner.get("Asset2", {}) or {}
-        acct = _AMM_BY_PAIR.get(_pair_key(a, a2))
+        acct = _amm_by_pair().get(_pair_key(a, a2))
         if acct:
             return (acct, "amm_op")
         return None

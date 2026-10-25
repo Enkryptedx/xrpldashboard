@@ -193,3 +193,4 @@ nav_screenshots_archive/
 # (anchor #11 hygiene 2026-10-16: was untracked and blocking the gate-5
 # git-clean check; it is derived data, not a curated surface)
 evernorth_daily_snapshot.json
+.cache/

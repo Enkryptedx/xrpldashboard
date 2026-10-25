@@ -2685,7 +2685,7 @@ _XRP_ESCROW_STALE_AFTER = 3600  # 60 min
 _XRP_AMM_STALE_AFTER = 7200     # 2 h (rank_amms cadence is 1h; stay 2× in lockstep with the plist)
 
 
-def _build_xrp_distribution(ranked_full):
+def _build_xrp_distribution(ranked_full, amm_xrp_total=None):
     """Build the XRP supply-distribution payload shared by the index
     render (constellation viz) and the /api/xrp-distribution endpoint.
 
@@ -2736,15 +2736,22 @@ def _build_xrp_distribution(ranked_full):
     amm_xrp = 0.0
     amm_snap_ts = None
     try:
-        _rows, meta = _ranked_amm_snapshot()
-        amm_snap_ts = meta.get("snapshot_ts") if isinstance(meta, dict) else None
-        for p in ranked_full or []:
-            a = p.get("asset_a") or {}
-            b = p.get("asset_b") or {}
-            if a.get("currency") == "XRP":
-                amm_xrp += float(p.get("amount_a") or 0)
-            elif b.get("currency") == "XRP":
-                amm_xrp += float(p.get("amount_b") or 0)
+        if amm_xrp_total is not None:
+            # 2026-10-24: the homepage passes the SQL-aggregated XRP side
+            # (db.read_amm_homepage_stats); only the 1-row snapshot_ts is
+            # read here. Previously this re-pulled the full ranked table.
+            amm_xrp = float(amm_xrp_total)
+            amm_snap_ts = db.read_amm_snapshot_ts()
+        else:
+            _rows, meta = _ranked_amm_snapshot()
+            amm_snap_ts = meta.get("snapshot_ts") if isinstance(meta, dict) else None
+            for p in ranked_full or []:
+                a = p.get("asset_a") or {}
+                b = p.get("asset_b") or {}
+                if a.get("currency") == "XRP":
+                    amm_xrp += float(p.get("amount_a") or 0)
+                elif b.get("currency") == "XRP":
+                    amm_xrp += float(p.get("amount_b") or 0)
     except Exception:
         pass
     amm_age = (time.time() - amm_snap_ts) if amm_snap_ts else None
@@ -3000,29 +3007,45 @@ def index():
     # Pull from the full ranked index so the homepage's headline AMM stat
     # and Top-pools card match what /pools shows. Without this the homepage
     # used the curated ~19-pool snapshot and visibly disagreed with /pools.
-    ranked_full, _ranked_meta = _ranked_amm_snapshot()
-    ranked_full = sorted(
-        ranked_full,
-        key=lambda r: (
-            0 if (r.get("tvl_usd") or 0) > 0 else 1,
-            -(r.get("tvl_usd") or 0),
-        ),
-    )
-    ranked_pool_count = len(ranked_full)
-    ranked_total_tvl_usd = sum(
-        (r.get("tvl_usd") or 0)
-        for r in ranked_full
-        if r.get("tvl_status") in ("exact", "estimated")
-    )
-    # Pools whose TVL we can actually price (XRP-side or stablecoin-side
-    # reference). The aggregate above silently excludes anything else, so
-    # the homepage must disclose the split to stay truth-first.
-    priced_pool_count = sum(
-        1 for r in ranked_full
-        if r.get("tvl_status") in ("exact", "estimated")
-        and (r.get("tvl_usd") or 0) > 0
-    )
-    ranked_top5 = [r for r in ranked_full if (r.get("tvl_usd") or 0) > 0][:5]
+    # 2026-10-24 (Neon egress): the four headline numbers + top-5 come from
+    # ONE SQL aggregate (db.read_amm_homepage_stats) instead of pulling all
+    # ~30,300 ranked rows (12.8 MB) into this process per render -- the
+    # homepage_summary_walker renders `/` 288x/day, 10.5 GB/day for a sum.
+    # Same definitions as before (see read_amm_homepage_stats docstring).
+    # Falls back to the full snapshot path when PG is unavailable or empty.
+    _hp = db.read_amm_homepage_stats(top_n=5) if db.pg_available() else None
+    if _hp:
+        ranked_pool_count = _hp["pool_count"]
+        ranked_total_tvl_usd = _hp["total_tvl_usd"]
+        priced_pool_count = _hp["priced_pool_count"]
+        ranked_top5 = _annotate_unverified_brands(_hp["top"])
+        _amm_xrp_total = _hp["amm_xrp"]
+        ranked_full = None  # not materialised; _build_xrp_distribution takes the sum
+    else:
+        ranked_full, _ranked_meta = _ranked_amm_snapshot()
+        ranked_full = sorted(
+            ranked_full,
+            key=lambda r: (
+                0 if (r.get("tvl_usd") or 0) > 0 else 1,
+                -(r.get("tvl_usd") or 0),
+            ),
+        )
+        ranked_pool_count = len(ranked_full)
+        ranked_total_tvl_usd = sum(
+            (r.get("tvl_usd") or 0)
+            for r in ranked_full
+            if r.get("tvl_status") in ("exact", "estimated")
+        )
+        # Pools whose TVL we can actually price (XRP-side or stablecoin-side
+        # reference). The aggregate above silently excludes anything else, so
+        # the homepage must disclose the split to stay truth-first.
+        priced_pool_count = sum(
+            1 for r in ranked_full
+            if r.get("tvl_status") in ("exact", "estimated")
+            and (r.get("tvl_usd") or 0) > 0
+        )
+        ranked_top5 = [r for r in ranked_full if (r.get("tvl_usd") or 0) > 0][:5]
+        _amm_xrp_total = None
 
     try:
         # 2026-09-03: switched from fetch_cold_storage_cached (live RPC to
@@ -3042,7 +3065,7 @@ def index():
     #   - wallets:   100B design supply − the two locked buckets above.
     # The design supply is a known constant; the live total drifts down
     # by ~0.02%/year via transaction-fee burns, well below display rounding.
-    xrp_distribution = _build_xrp_distribution(ranked_full)
+    xrp_distribution = _build_xrp_distribution(ranked_full, amm_xrp_total=_amm_xrp_total)
 
     # New-accounts block (docs/NEW_ACCOUNTS_BLOCK_DESIGN_2026-09-25.md):
     # counts from our own-node stream capture, FORWARD-ONLY since
