@@ -721,6 +721,14 @@ jobs:
       # re-pulled it every 60 s; is_bot_writer pulled ~230k hashes per run.
       # These pin the cached accessor, the SQL aggregate, the relay gate and
       # the server-side hash sync so the ~30 GB/day cannot quietly return.
+      # /pools.json is signed as "top 50 by TVL"; until 2026-10-25 it sliced
+      # an unordered read. Pins ORDER BY tvl_usd DESC NULLS LAST LIMIT 50 in
+      # SQL and that row #1 is the largest pool.
+      - name: /pools.json is the real top-50 by TVL (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_pools_json_ranked.py -q
+
       - name: Neon egress caches (AMM index / homepage aggregate / relay gate) (no DB, no network)
         env:
           DATABASE_URL: ""
