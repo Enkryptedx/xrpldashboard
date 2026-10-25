@@ -34,6 +34,7 @@ context-managed connections, which is fine at our request volume.
 import datetime
 import os
 import sys
+import tempfile
 import json
 import re
 import threading
@@ -3984,14 +3985,37 @@ def _amm_index_file_load(snap):
 
 
 def _amm_index_file_store(snap, entries):
+    """Atomic publish: write to a temp file UNIQUE to this writer (pid +
+    random suffix, same directory), fsync, then os.replace() over the real
+    path. os.replace is atomic on POSIX, so a reader sees either the old
+    complete file or the new complete file, never a partial one. The unique
+    temp name matters: three gunicorn workers can all miss the cache on the
+    same snapshot change and store concurrently; a SHARED temp name would
+    let one writer truncate another's half-written file and publish it
+    (reproduced 2026-10-25 before this fix). Last complete writer wins;
+    every candidate carries the same snapshot_ts, so any winner is correct.
+    Any failure is logged and swallowed -- the cache is an optimisation,
+    the caller already holds the entries it just read."""
+    tmp = None
     try:
         os.makedirs(os.path.dirname(AMM_INDEX_CACHE_PATH), exist_ok=True)
-        tmp = AMM_INDEX_CACHE_PATH + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
+        fd, tmp = tempfile.mkstemp(
+            prefix=".amm_index_cache.", suffix=".tmp",
+            dir=os.path.dirname(AMM_INDEX_CACHE_PATH))
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump({"snapshot_ts": snap, "entries": entries}, f, separators=(",", ":"))
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, AMM_INDEX_CACHE_PATH)
+        tmp = None
     except Exception as e:
         _log_err("amm_index_cache_store_failed", e)
+    finally:
+        if tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
 
 def read_amm_index_entries_cached(force=False):

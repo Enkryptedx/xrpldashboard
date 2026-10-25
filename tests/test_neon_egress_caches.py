@@ -121,3 +121,57 @@ def test_relay_reloads_pool_set_only_when_snapshot_changes(monkeypatch):
     assert r3["pool_accounts"] == r1["pool_accounts"]
     assert sum("SELECT amm_account" in q for q in log) == 1, "pool set re-pulled without a snapshot change"
     assert sum("MAX(snapshot_ts)" in q for q in log) == 3
+
+
+def test_amm_cache_file_corruption_falls_back_to_neon_and_self_heals(monkeypatch, tmp_path):
+    """A truncated, empty, wrong-shaped, binary, or stale-snapshot cache file
+    must never raise: the accessor falls back to the table read and rewrites
+    a valid file."""
+    import db
+    path = tmp_path / "amm.json"
+    monkeypatch.setattr(db, "AMM_INDEX_CACHE_PATH", str(path))
+    monkeypatch.setattr(db, "pg_available", lambda: True)
+    monkeypatch.setattr(db, "read_amm_snapshot_ts", lambda: 5)
+    calls = {"n": 0}
+    def full():
+        calls["n"] += 1; return [{"Account": "rX"}]
+    monkeypatch.setattr(db, "read_amm_index_entries", full)
+    for content in ('{"snapshot_ts": 5, "entries": [{"Acc', "", '{"snapshot_ts": 5, "entries": {"a":1}}',
+                    "\x00\xff\xfe", '{"snapshot_ts": 4, "entries": [{"Account":"OLD"}]}'):
+        path.write_text(content, errors="ignore")
+        db._amm_index_mem.update(snap=None, entries=None, checked_mono=0.0)
+        before = calls["n"]
+        assert db.read_amm_index_entries_cached() == [{"Account": "rX"}]
+        assert calls["n"] == before + 1, "did not fall back to the table read"
+        assert json.loads(path.read_text())["snapshot_ts"] == 5, "did not self-heal the file"
+
+
+def test_amm_cache_store_is_atomic_under_concurrent_writers(monkeypatch, tmp_path):
+    """Many writers, unique temp names, os.replace: a reader must never
+    observe a partial file, and no temp files may be left behind."""
+    import db, threading
+    path = tmp_path / "amm.json"
+    monkeypatch.setattr(db, "AMM_INDEX_CACHE_PATH", str(path))
+    bad = []
+    stop = threading.Event()
+    def reader():
+        while not stop.is_set():
+            try:
+                if path.exists():
+                    j = json.loads(path.read_text())
+                    assert j["snapshot_ts"] == 9 and isinstance(j["entries"], list) and len(j["entries"]) == 300
+            except FileNotFoundError:
+                pass
+            except Exception as e:  # noqa: BLE001
+                bad.append(repr(e))
+    def writer(i):
+        for _ in range(40):
+            db._amm_index_file_store(9, [{"Account": f"r{i}", "pad": "x" * 2000}] * 300)
+    rt = threading.Thread(target=reader); rt.start()
+    ws = [threading.Thread(target=writer, args=(i,)) for i in range(6)]
+    for w in ws: w.start()
+    for w in ws: w.join()
+    stop.set(); rt.join()
+    assert bad == [], bad[:3]
+    assert json.loads(path.read_text())["snapshot_ts"] == 9
+    assert [f for f in os.listdir(tmp_path) if f.endswith(".tmp")] == []
