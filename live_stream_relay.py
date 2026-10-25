@@ -614,15 +614,30 @@ def _make_ws_handler(state: RelayState):
 
 # ── feed reference data (§1g) ──
 
+# E (2026-10-24, Neon egress): the pool set is ~30,300 rows and the ranker
+# rewrites it once an HOUR, but this loop re-pulled it every 60 s -- 1,440
+# reads/day, ~1.5 GB/day. Keep the last set keyed by MAX(snapshot_ts) and
+# re-read only when that 1-row probe changes. top100 stays per-tick (100 rows).
+_pools_cache: dict = {"snap": None, "pools": set()}
+
+
 def load_refs_from_pg(database_url: str) -> dict:
     """Blocking. Same rows the pages render from:
       pool_accounts  SELECT amm_account FROM amm_ranked_pools   (/pools)
+                     -- re-read only when MAX(snapshot_ts) changes
       top100         token_volume, last 24h, top 100 by trade_count (/tokens)"""
     import psycopg
     with psycopg.connect(database_url, connect_timeout=10) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT amm_account FROM amm_ranked_pools WHERE amm_account IS NOT NULL")
-            pools = {r[0] for r in cur.fetchall()}
+            cur.execute("SELECT MAX(snapshot_ts) FROM amm_ranked_pools")
+            row = cur.fetchone()
+            snap = row[0] if row else None
+            if snap is not None and snap == _pools_cache["snap"] and _pools_cache["pools"]:
+                pools = _pools_cache["pools"]
+            else:
+                cur.execute("SELECT amm_account FROM amm_ranked_pools WHERE amm_account IS NOT NULL")
+                pools = {r[0] for r in cur.fetchall()}
+                _pools_cache["snap"], _pools_cache["pools"] = snap, pools
             cutoff = int(time.time() // 3600) - 24
             cur.execute(
                 "SELECT currency, issuer FROM token_volume WHERE hour_bucket >= %s "

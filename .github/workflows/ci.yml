@@ -716,6 +716,16 @@ jobs:
       # set from the file's own "## Anchor #N" headers, so it cannot go stale
       # -- its predecessor pinned 1..9 and failed unnoticed from #10 to #12
       # because it was never in this chain (added 2026-10-23).
+      # 2026-10-24 Neon egress: amm_ranked_pools (~30k rows) was read at
+      # `import app` by every process and on every homepage render; the relay
+      # re-pulled it every 60 s; is_bot_writer pulled ~230k hashes per run.
+      # These pin the cached accessor, the SQL aggregate, the relay gate and
+      # the server-side hash sync so the ~30 GB/day cannot quietly return.
+      - name: Neon egress caches (AMM index / homepage aggregate / relay gate) (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_neon_egress_caches.py tests/test_bot_hashes_upsert.py -q
+
       - name: anchors.json parser yields every committed anchor (no DB, no network)
         env:
           DATABASE_URL: ""

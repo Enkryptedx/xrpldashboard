@@ -108,15 +108,23 @@ _TOKEN_BY_KEY = {
 def _load_amm_index():
     """Postgres-first; falls back to amm_index.json only when DATABASE_URL
     is unset (dev / Mac path). On Render, a PG failure raises and the
-    module import fails — the service refuses to start rather than serve
-    a silently-empty pool list."""
-    entries = db.read_amm_index_entries()
+    caller fails loud rather than serve a silently-empty pool list.
+
+    2026-10-24 (Neon egress): no longer run at import. The ~30,300-row read
+    was paid by every process that imported app -- 1,498x/day, 17.2 GB/day
+    -- for a table that changes hourly. Now lazy (first use) and served
+    from db.read_amm_index_entries_cached(), which re-reads only when
+    MAX(snapshot_ts) moves and keeps a file copy so new processes skip the
+    read too."""
+    entries = db.read_amm_index_entries_cached()
     if entries is not None:
         return entries
     return _load_json_safe(AMM_INDEX_PATH) or []
 
 
-_AMM_INDEX = _load_amm_index()
+def _amm_index():
+    """Current AMM index (lazy; see _load_amm_index)."""
+    return _load_amm_index()
 
 
 def _short_addr(addr):
@@ -329,7 +337,7 @@ def _decode_currency_hex(hex_str):
 def _amm_pools_holding(currency, issuer):
     """Return list of AMM pools whose Asset or Asset2 matches this token."""
     out = []
-    for entry in _AMM_INDEX:
+    for entry in _amm_index():
         if not isinstance(entry, dict):
             continue
         a1 = entry.get("Asset") or {}

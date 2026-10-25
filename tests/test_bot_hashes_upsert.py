@@ -256,11 +256,24 @@ def test_select_reads_the_named_table_and_columns():
 
 
 def test_refresh_calls_sync_for_both_tables():
-    """Guards the wiring: the helper is useless if a call site still rebuilds."""
+    """Guards the wiring: the helper is useless if a call site still rebuilds.
+
+    2026-10-24 (Neon egress): page_view_bot_hashes is now synced ENTIRELY in
+    SQL (desired set in a TEMP table, anti-join INSERT, anti-join DELETE) so
+    no hash crosses the wire -- measured 229,697 rows/run -> 248. The
+    scanner-combos table (~124 rows) still uses _sync_key_table. What this
+    test guards is unchanged: no full-table DELETE/rebuild of either table."""
     import inspect
     src = inspect.getsource(db.refresh_bot_hash_tables)
-    assert src.count("_sync_key_table(") == 2
-    assert "DELETE FROM page_view_bot_hashes" not in src
+    assert src.count("_sync_key_table(") == 1          # scanner combos only
+    assert "_desired_bot_hashes" in src                 # server-side set sync
+    assert "SELECT DISTINCT visitor_hash FROM page_views" not in src.replace(
+        "SELECT DISTINCT 'visitor', visitor_hash FROM page_views", "")  # no client-side pull
+    assert "SELECT hash_type, hash FROM page_view_bot_hashes" not in src
+    # the only DELETE on bot_hashes is the anti-join (never a wholesale wipe)
+    import re
+    dels = re.findall(r"DELETE FROM page_view_bot_hashes[^\n]*", src)
+    assert dels and all("WHERE NOT EXISTS" in src[src.index(d):src.index(d)+200] for d in dels), dels
     assert "DELETE FROM page_view_scanner_combos" not in src
     assert "idx_pvbh_lookup" not in src.replace(
         "# table gets. idx_pvbh_lookup duplicated that key exactly,", ""
