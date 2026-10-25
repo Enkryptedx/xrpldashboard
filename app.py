@@ -9896,11 +9896,16 @@ def whales_json():
 @limiter.limit(agent_tier_limit_rate)
 def pools_json():
     """AMM pools ranked by TVL, machine-readable + signed. Payload
-    from amm_ranked_pools (own-node computation)."""
+    from amm_ranked_pools (own-node computation).
+
+    2026-10-25: ORDER BY tvl_usd DESC NULLS LAST LIMIT 50 in SQL. Until
+    today this sliced [:50] of an UNORDERED read, so the signed "top 50"
+    was an arbitrary heap-order 50 that did not contain the largest pool.
+    The SQL limit also drops the per-request read from ~30k rows to 50."""
     pools_out = []
     try:
-        ranked = db.read_amm_ranked_pools() or []
-        for p in ranked[:50]:
+        ranked = db.read_amm_ranked_pools(order_by_tvl=True, limit=50) or []
+        for p in ranked:
             pools_out.append({
                 "pair": p.get("pair"),
                 "amm_account": p.get("amm_account"),

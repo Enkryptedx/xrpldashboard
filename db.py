@@ -3799,7 +3799,7 @@ def read_amm_account_set():
         return set(), None
 
 
-def read_amm_ranked_pools(columns=None):
+def read_amm_ranked_pools(columns=None, order_by_tvl=False, limit=None):
     """Return the ranked-pools snapshot as a list of dicts in the same shape
     as amm_ranked.json — so app.py and templates don't care whether the
     source was the file or Postgres. Returns [] when PG is unavailable or
@@ -3808,9 +3808,21 @@ def read_amm_ranked_pools(columns=None):
     columns: optional iterable of column names to project (subset of
     _AMM_RANKED_POOL_COLUMNS). Default = all columns, identical shape to
     before. "_snapshot_ts" is always included. Unknown names raise
-    ValueError (never interpolated unchecked)."""
+    ValueError (never interpolated unchecked).
+
+    order_by_tvl / limit (2026-10-25): with NO ORDER BY the default call
+    returns heap order, which is whatever the last hourly rewrite left --
+    stable within a snapshot, arbitrary across them. /pools.json sliced
+    `[:50]` of that and published it, signed, as "ranked by TVL"; the top
+    pool ($7.78M) was not in it. order_by_tvl=True adds
+    ORDER BY tvl_usd DESC NULLS LAST; limit caps rows in SQL so the top-N
+    callers stop pulling all ~30k rows (12.8 MB) to keep 50."""
     if not pg_available():
         return []
+    if limit is not None:
+        limit = int(limit)
+        if limit <= 0:
+            raise ValueError("read_amm_ranked_pools: limit must be positive")
     if columns is None:
         cols = list(_AMM_RANKED_POOL_COLUMNS)
     else:
@@ -3823,10 +3835,15 @@ def read_amm_ranked_pools(columns=None):
     try:
         with pg_connect() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT " + ", ".join(cols) + ", snapshot_ts "
-                    "FROM amm_ranked_pools"
-                )
+                sql = ("SELECT " + ", ".join(cols) + ", snapshot_ts "
+                       "FROM amm_ranked_pools")
+                params = []
+                if order_by_tvl:
+                    sql += " ORDER BY tvl_usd DESC NULLS LAST"
+                if limit is not None:
+                    sql += " LIMIT %s"
+                    params.append(limit)
+                cur.execute(sql, params)
                 out = []
                 for r in cur.fetchall():
                     d = dict(zip(cols, r))
