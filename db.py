@@ -289,6 +289,40 @@ CREATE INDEX IF NOT EXISTS amm_ranked_pools_tvl_idx
 CREATE UNIQUE INDEX IF NOT EXISTS amm_ranked_pools_account_uidx
     ON amm_ranked_pools (amm_account);
 
+-- Write target for an IN-PROGRESS rank_amms pass (2026-10-26, Charlie
+-- ruling: the public table must only ever reflect a *complete* sweep).
+-- `LIKE amm_ranked_pools INCLUDING ALL` instead of a hand-duplicated column
+-- list (2026-10-26, Charlie review) so the two tables' columns, defaults,
+-- PRIMARY KEY, and indexes (tvl_usd DESC NULLS LAST; UNIQUE on amm_account)
+-- can never drift apart -- a hand-copied DDL block could silently diverge
+-- on the next edit to amm_ranked_pools and nobody would notice until the
+-- swap promoted a staging table missing an index. Verified live against
+-- Neon (CREATE TABLE ... LIKE ... INCLUDING ALL in a rolled-back
+-- transaction, 2026-10-26): reproduces the PRIMARY KEY (id) and the two
+-- indexes exactly, just under table-local names
+-- (amm_ranked_pools_staging_pkey / _tvl_usd_idx / _amm_account_idx instead
+-- of amm_ranked_pools_pkey / _tvl_idx / _account_uidx). That name
+-- difference is harmless and expected: ON CONFLICT (amm_account) matches
+-- an index by its COLUMN target, never by name, and nothing in this
+-- codebase references these index names literally. One real side effect:
+-- the `id` column's default stays `nextval('amm_ranked_pools_id_seq')` --
+-- LIKE does not fork a new sequence -- so both tables draw from one
+-- shared counter. Harmless: nothing reads `id` (see the comment on
+-- replace_amm_ranked_pools above) and ids only need to be unique within
+-- their own table's PRIMARY KEY, which they still are.
+--
+-- A rename-based swap also means index *names* don't travel with a
+-- table's role: after an odd number of swaps, the table currently named
+-- amm_ranked_pools carries index names stamped "..._staging_..." (and
+-- vice versa) until the next swap flips it back. Cosmetic only -- see
+-- the paragraph above for why nothing depends on the literal name -- but
+-- documented here so a future `pg_indexes` read doesn't mistake it for
+-- schema drift.
+--
+-- Never read directly by any route -- only rank_amms.py's in-progress
+-- mirror and the swap touch this table.
+CREATE TABLE IF NOT EXISTS amm_ranked_pools_staging (LIKE amm_ranked_pools INCLUDING ALL);
+
 CREATE TABLE IF NOT EXISTS page_views (
     id            BIGSERIAL PRIMARY KEY,
     ts            BIGINT NOT NULL,
@@ -3619,6 +3653,151 @@ def replace_amm_ranked_pools(rows):
         _log_err_and_raise("replace_amm_ranked_pools_failed", e)
     return {"upserted": len(payload), "deleted": deleted,
             "skipped_no_account": skipped_no_account}
+
+
+def replace_amm_ranked_pools_staging(rows):
+    """Same upsert/diff as `replace_amm_ranked_pools`, but against the
+    scratch `amm_ranked_pools_staging` table instead of the public
+    `amm_ranked_pools` table (2026-10-26, Charlie ruling).
+
+    This is the write target for every checkpoint *during* a rank_amms
+    pass. Nothing public reads this table, so an in-progress pass is free
+    to upsert/delete against it exactly like the old single-table code
+    did — the undercounting bug was never the upsert/delete logic itself,
+    it was running that logic against the table `/pools` reads from while
+    a pass was still only 30% done. `swap_amm_ranked_pools_staging()` is
+    the only thing that makes a staging write visible to readers, and it
+    only runs once a full pass has `finished_at` set.
+
+    Same signature/return shape as `replace_amm_ranked_pools` on purpose
+    so callers (and these tests) can share fixtures.
+    """
+    if not rows:
+        return None
+    conn = _get_writer_conn()
+    if conn is None:
+        raise WriterConnUnavailable(
+            "replace_amm_ranked_pools_staging: _get_writer_conn returned None")
+    snapshot_ts = int(time.time())
+    by_account = {}
+    skipped_no_account = 0
+    for _r in rows:
+        _acct = _r.get("amm_account")
+        if not _acct:
+            skipped_no_account += 1
+            continue
+        by_account[_acct] = _r
+    if not by_account:
+        return {"upserted": 0, "deleted": 0,
+                "skipped_no_account": skipped_no_account}
+    payload = [
+        (
+            r.get("amm_account"),
+            r.get("pair") or "?",
+            r.get("fee_pct"),
+            r.get("fee_raw"),
+            r.get("amount_a"),
+            r.get("amount_b"),
+            json.dumps(r.get("asset_a"), default=str) if r.get("asset_a") is not None else None,
+            json.dumps(r.get("asset_b"), default=str) if r.get("asset_b") is not None else None,
+            r.get("tvl_usd"),
+            r.get("tvl_status"),
+            r.get("kind"),
+            r.get("lp_token_value"),
+            snapshot_ts,
+        )
+        for r in by_account.values()
+    ]
+    deleted = 0
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                for _i in range(0, len(payload), _AMM_UPSERT_CHUNK):
+                    chunk = payload[_i:_i + _AMM_UPSERT_CHUNK]
+                    cur.execute(
+                        "INSERT INTO amm_ranked_pools_staging "
+                        "(amm_account, pair, fee_pct, fee_raw, amount_a, amount_b, "
+                        " asset_a, asset_b, tvl_usd, tvl_status, kind, "
+                        " lp_token_value, snapshot_ts) VALUES "
+                        + ",".join([_AMM_ROW_PLACEHOLDER] * len(chunk))
+                        + " ON CONFLICT (amm_account) DO UPDATE SET "
+                        " pair = EXCLUDED.pair, fee_pct = EXCLUDED.fee_pct, "
+                        " fee_raw = EXCLUDED.fee_raw, amount_a = EXCLUDED.amount_a, "
+                        " amount_b = EXCLUDED.amount_b, asset_a = EXCLUDED.asset_a, "
+                        " asset_b = EXCLUDED.asset_b, tvl_usd = EXCLUDED.tvl_usd, "
+                        " tvl_status = EXCLUDED.tvl_status, kind = EXCLUDED.kind, "
+                        " lp_token_value = EXCLUDED.lp_token_value, "
+                        " snapshot_ts = EXCLUDED.snapshot_ts",
+                        [v for _row in chunk for v in _row],
+                    )
+                cur.execute(
+                    "DELETE FROM amm_ranked_pools_staging WHERE snapshot_ts < %s",
+                    (snapshot_ts,),
+                )
+                deleted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+    except Exception as e:
+        _drop_writer_conn()
+        _log_err_and_raise("replace_amm_ranked_pools_staging_failed", e)
+    return {"upserted": len(payload), "deleted": deleted,
+            "skipped_no_account": skipped_no_account}
+
+
+def swap_amm_ranked_pools_staging():
+    """Atomically promote the staging table to be the public one.
+
+    Catalog-only rename, no data copy:
+        BEGIN;
+        ALTER TABLE amm_ranked_pools RENAME TO amm_ranked_pools_old;
+        ALTER TABLE amm_ranked_pools_staging RENAME TO amm_ranked_pools;
+        ALTER TABLE amm_ranked_pools_old RENAME TO amm_ranked_pools_staging;
+        COMMIT;
+
+    Why this is safe for live readers: a rename only updates the table's
+    row in pg_class, so the lock is near-instant regardless of table
+    size. Postgres MVCC means any reader whose transaction started before
+    the rename keeps seeing its original table under the old relfilenode
+    until that transaction ends; no reader ever observes a half-renamed
+    or empty table. After COMMIT, the table that used to be "staging"
+    (the previous pass's complete snapshot) becomes "staging" again --
+    i.e. a 3-way rotation, not a 2-way swap -- so the next pass's
+    checkpoint writes have something real to upsert against instead of
+    an empty table.
+
+    Call this ONLY when the caller knows `amm_ranked_pools_staging`
+    currently holds a *complete* ranked set (state["finished_at"] is
+    set). Calling it mid-pass would promote a partial sweep -- exactly
+    the bug this whole table split exists to avoid.
+
+    Runs ANALYZE on the newly-promoted `amm_ranked_pools` as the last
+    statement, still inside the same transaction (2026-10-26, Charlie
+    review). Renaming a table doesn't invalidate its planner statistics --
+    they're keyed to the table's OID, which a RENAME never changes -- but
+    the table that OID belonged to spent the last ~2.5h as the staging
+    write target for a pass that grew it checkpoint by checkpoint, so
+    whatever stats autovacuum last captured may reflect a much smaller
+    or very differently-shaped in-progress snapshot. ANALYZE (unlike
+    VACUUM) is legal inside a transaction block, so this piggybacks on
+    the same lock/commit as the renames rather than needing a second
+    round-trip.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        raise WriterConnUnavailable(
+            "swap_amm_ranked_pools_staging: _get_writer_conn returned None")
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute(
+                    "ALTER TABLE amm_ranked_pools RENAME TO amm_ranked_pools_old")
+                cur.execute(
+                    "ALTER TABLE amm_ranked_pools_staging RENAME TO amm_ranked_pools")
+                cur.execute(
+                    "ALTER TABLE amm_ranked_pools_old RENAME TO amm_ranked_pools_staging")
+                cur.execute("ANALYZE amm_ranked_pools")
+    except Exception as e:
+        _drop_writer_conn()
+        _log_err_and_raise("swap_amm_ranked_pools_staging_failed", e)
+    return True
 
 
 def write_token_prices(rows):
