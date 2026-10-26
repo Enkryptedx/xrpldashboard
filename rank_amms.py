@@ -28,6 +28,8 @@ Outputs (next to this script):
 
 from xrpl.models.requests import AMMInfo
 from datetime import datetime, timezone
+import errno
+import fcntl
 import json
 import os
 import sys
@@ -61,6 +63,20 @@ SAVE_EVERY = 100       # pools between full ranked-file writes
 LOG_EVERY = 25
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Concurrency lock (2026-10-26, Charlie ruling after a real incident): a
+# manually-started `rank_amms.py --reset` and launchd's own independently
+# -scheduled hourly tick ran concurrently against the same checkpoint
+# files and raced each other's tmp-file rename, crashing one of them
+# (FileNotFoundError on amm_ranked.json.tmp -> amm_ranked.json). launchd
+# itself never double-fires ITS OWN job while an instance it started is
+# still running -- the hole is that it has no way to know about a
+# process it didn't start. A flock-based lock file closes that hole
+# regardless of how the second invocation got started (manual, launchd,
+# anything). The live amm_ranked_pools table was never at risk either
+# way -- the staging-swap fix means only a complete pass's atomic rename
+# ever reaches it -- but the LOCAL checkpoint files (this lock protects
+# those) have no such protection.
+LOCK_PATH = os.path.join(HERE, "amm_rank.lock")
 INDEX_PATH   = os.path.join(HERE, "amm_index.json")
 INCREMENTAL_PATH = os.path.join(HERE, "amm_index_incremental.json")
 RANKED_PATH  = os.path.join(HERE, "amm_ranked.json")
@@ -461,7 +477,46 @@ def parse_args():
     return args
 
 
+def acquire_lock():
+    """Non-blocking exclusive flock on LOCK_PATH. Returns the open file
+    handle (keep it referenced for the lifetime of the process -- the
+    lock releases the instant the fd closes, including on process
+    death, so a crashed prior run never leaves a stale lock behind)
+    on success, or None if another instance already holds it.
+
+    2026-10-26: added after a manual `rank_amms.py --reset` and
+    launchd's own scheduled tick ran concurrently against the same
+    checkpoint files and raced each other's tmp-file rename. See the
+    LOCK_PATH comment above for the full incident."""
+    fh = open(LOCK_PATH, "a+")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as e:
+        if e.errno in (errno.EACCES, errno.EAGAIN):
+            fh.close()
+            return None
+        raise
+    fh.seek(0)
+    fh.truncate()
+    fh.write(f"{os.getpid()} {datetime.now(timezone.utc).isoformat()}\n")
+    fh.flush()
+    return fh
+
+
 def main():
+    lock_fh = acquire_lock()
+    if lock_fh is None:
+        holder = "?"
+        try:
+            with open(LOCK_PATH) as f:
+                holder = f.read().strip() or "?"
+        except OSError:
+            pass
+        log(f"another rank_amms.py instance already holds {LOCK_PATH} "
+            f"(holder: {holder}) -- exiting rather than racing its "
+            f"checkpoint writes")
+        return 0
+
     args = parse_args()
     if args["reset"]:
         for p in (RANKED_PATH, STATE_PATH):
