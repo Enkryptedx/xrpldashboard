@@ -391,6 +391,19 @@ def _mirror_to_postgres(ranked, state, indexed_count):
     """Push the current ranked snapshot + meta to Postgres so the prod
     Flask web (Render) sees the same data the Mac just wrote to disk.
 
+    2026-10-26 staging-swap fix: every call writes to the scratch
+    `amm_ranked_pools_staging` table, never straight to the public
+    `amm_ranked_pools` table. The public table only gets touched by
+    `swap_amm_ranked_pools_staging()`'s atomic rename, and only when
+    `state["finished_at"]` is set -- i.e. a full sweep just completed (or,
+    on the early-return "nothing new to do" path, already had completed).
+    Previously this upserted straight into `amm_ranked_pools` on every
+    checkpoint of a ~2.5h pass, and its own DELETE-stale-rows clause wiped
+    every pool not yet re-ranked THIS pass, so live `/pools` undercounted
+    (9,645 vs ~30,295) for most of every pass. Writing the same upsert
+    logic to staging instead has the identical mid-pass "incomplete" shape,
+    but nothing public reads staging, so it's invisible until the swap.
+
     Silent no-op when DATABASE_URL isn't set; never raises (prod outage on
     Neon must not block local ranking from making progress).
 
@@ -402,7 +415,9 @@ def _mirror_to_postgres(ranked, state, indexed_count):
     global _mirror_consec_failures
     threshold = int(os.environ.get("MIRROR_FAILURE_THRESHOLD", "10"))
     try:
-        db.replace_amm_ranked_pools(ranked)
+        db.replace_amm_ranked_pools_staging(ranked)
+        if state.get("finished_at"):
+            db.swap_amm_ranked_pools_staging()
         db.write_heartbeat(
             "amm_ranker",
             txns_seen=len(ranked),

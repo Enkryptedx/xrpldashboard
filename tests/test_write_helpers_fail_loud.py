@@ -53,6 +53,11 @@ def _run():
             "amm_account": "rT", "rank": 1, "amount_a": 1, "amount_b": 1,
             "asset_a": {"currency": "XRP"}, "asset_b": {"currency": "USD", "issuer": "rI"},
             "tvl_usd": 1, "tvl_status": "priced", "kind": "amm", "lp_token_value": 1.0}])),
+        ("replace_amm_ranked_pools_staging", lambda: db.replace_amm_ranked_pools_staging([{
+            "amm_account": "rT", "rank": 1, "amount_a": 1, "amount_b": 1,
+            "asset_a": {"currency": "XRP"}, "asset_b": {"currency": "USD", "issuer": "rI"},
+            "tvl_usd": 1, "tvl_status": "priced", "kind": "amm", "lp_token_value": 1.0}])),
+        ("swap_amm_ranked_pools_staging", lambda: db.swap_amm_ranked_pools_staging()),
         ("replace_escrows_snapshot", lambda: db.replace_escrows_snapshot([{
             "address": "rT", "owner": "rO", "sequence": 1, "destination": "rD",
             "amount_drops": 1000, "ledger_index": 1}], snap_ledger=1)),
