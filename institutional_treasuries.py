@@ -327,7 +327,7 @@ MOVES_FLOOR_LABEL = f"{MOVES_FLOOR_XRP:,}"
 # ten added since, a move is recorded only when it clears the whale
 # threshold. Say so, for those ten only (owner 2026-10-23 20:08 ET); the
 # card-wide floor line above stays 1 XRP because it is true for the 13.
-BITGO_GROUP_PENDING_RESTART = True
+BITGO_GROUP_PENDING_RESTART = False
 BITGO_GROUP_FLOOR_XRP = STREAM_PRE_WATCH_FLOOR_XRP if BITGO_GROUP_PENDING_RESTART else int(MOVES_MIN_XRP)
 BITGO_GROUP_FLOOR_LABEL = f"{BITGO_GROUP_FLOOR_XRP:,}"
 
