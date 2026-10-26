@@ -291,29 +291,37 @@ CREATE UNIQUE INDEX IF NOT EXISTS amm_ranked_pools_account_uidx
 
 -- Write target for an IN-PROGRESS rank_amms pass (2026-10-26, Charlie
 -- ruling: the public table must only ever reflect a *complete* sweep).
--- Same shape/constraint as amm_ranked_pools so swap_amm_ranked_pools_staging()
--- can RENAME the two into each other. Never read directly by any route --
--- only rank_amms.py's in-progress mirror and the swap touch this table.
-CREATE TABLE IF NOT EXISTS amm_ranked_pools_staging (
-    id             BIGSERIAL PRIMARY KEY,
-    amm_account    TEXT,
-    pair           TEXT NOT NULL,
-    fee_pct        DOUBLE PRECISION,
-    fee_raw        INTEGER,
-    amount_a       DOUBLE PRECISION,
-    amount_b       DOUBLE PRECISION,
-    asset_a        JSONB,
-    asset_b        JSONB,
-    tvl_usd        DOUBLE PRECISION,
-    tvl_status     TEXT,
-    kind           TEXT,
-    lp_token_value NUMERIC,
-    snapshot_ts    BIGINT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS amm_ranked_pools_staging_tvl_idx
-    ON amm_ranked_pools_staging (tvl_usd DESC NULLS LAST);
-CREATE UNIQUE INDEX IF NOT EXISTS amm_ranked_pools_staging_account_uidx
-    ON amm_ranked_pools_staging (amm_account);
+-- `LIKE amm_ranked_pools INCLUDING ALL` instead of a hand-duplicated column
+-- list (2026-10-26, Charlie review) so the two tables' columns, defaults,
+-- PRIMARY KEY, and indexes (tvl_usd DESC NULLS LAST; UNIQUE on amm_account)
+-- can never drift apart -- a hand-copied DDL block could silently diverge
+-- on the next edit to amm_ranked_pools and nobody would notice until the
+-- swap promoted a staging table missing an index. Verified live against
+-- Neon (CREATE TABLE ... LIKE ... INCLUDING ALL in a rolled-back
+-- transaction, 2026-10-26): reproduces the PRIMARY KEY (id) and the two
+-- indexes exactly, just under table-local names
+-- (amm_ranked_pools_staging_pkey / _tvl_usd_idx / _amm_account_idx instead
+-- of amm_ranked_pools_pkey / _tvl_idx / _account_uidx). That name
+-- difference is harmless and expected: ON CONFLICT (amm_account) matches
+-- an index by its COLUMN target, never by name, and nothing in this
+-- codebase references these index names literally. One real side effect:
+-- the `id` column's default stays `nextval('amm_ranked_pools_id_seq')` --
+-- LIKE does not fork a new sequence -- so both tables draw from one
+-- shared counter. Harmless: nothing reads `id` (see the comment on
+-- replace_amm_ranked_pools above) and ids only need to be unique within
+-- their own table's PRIMARY KEY, which they still are.
+--
+-- A rename-based swap also means index *names* don't travel with a
+-- table's role: after an odd number of swaps, the table currently named
+-- amm_ranked_pools carries index names stamped "..._staging_..." (and
+-- vice versa) until the next swap flips it back. Cosmetic only -- see
+-- the paragraph above for why nothing depends on the literal name -- but
+-- documented here so a future `pg_indexes` read doesn't mistake it for
+-- schema drift.
+--
+-- Never read directly by any route -- only rank_amms.py's in-progress
+-- mirror and the swap touch this table.
+CREATE TABLE IF NOT EXISTS amm_ranked_pools_staging (LIKE amm_ranked_pools INCLUDING ALL);
 
 CREATE TABLE IF NOT EXISTS page_views (
     id            BIGSERIAL PRIMARY KEY,
@@ -3759,6 +3767,18 @@ def swap_amm_ranked_pools_staging():
     currently holds a *complete* ranked set (state["finished_at"] is
     set). Calling it mid-pass would promote a partial sweep -- exactly
     the bug this whole table split exists to avoid.
+
+    Runs ANALYZE on the newly-promoted `amm_ranked_pools` as the last
+    statement, still inside the same transaction (2026-10-26, Charlie
+    review). Renaming a table doesn't invalidate its planner statistics --
+    they're keyed to the table's OID, which a RENAME never changes -- but
+    the table that OID belonged to spent the last ~2.5h as the staging
+    write target for a pass that grew it checkpoint by checkpoint, so
+    whatever stats autovacuum last captured may reflect a much smaller
+    or very differently-shaped in-progress snapshot. ANALYZE (unlike
+    VACUUM) is legal inside a transaction block, so this piggybacks on
+    the same lock/commit as the renames rather than needing a second
+    round-trip.
     """
     conn = _get_writer_conn()
     if conn is None:
@@ -3773,6 +3793,7 @@ def swap_amm_ranked_pools_staging():
                     "ALTER TABLE amm_ranked_pools_staging RENAME TO amm_ranked_pools")
                 cur.execute(
                     "ALTER TABLE amm_ranked_pools_old RENAME TO amm_ranked_pools_staging")
+                cur.execute("ANALYZE amm_ranked_pools")
     except Exception as e:
         _drop_writer_conn()
         _log_err_and_raise("swap_amm_ranked_pools_staging_failed", e)

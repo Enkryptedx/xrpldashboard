@@ -168,14 +168,15 @@ def test_staging_failure_drops_the_conn(monkeypatch):
 
 # ── the swap itself ──
 
-def test_swap_is_exactly_three_renames_in_order(sink):
+def test_swap_is_exactly_three_renames_then_analyze_in_order(sink):
     db.swap_amm_ranked_pools_staging()
     stmts = [s for s, _ in sink]
     assert stmts == [
         "ALTER TABLE amm_ranked_pools RENAME TO amm_ranked_pools_old",
         "ALTER TABLE amm_ranked_pools_staging RENAME TO amm_ranked_pools",
         "ALTER TABLE amm_ranked_pools_old RENAME TO amm_ranked_pools_staging",
-    ], "swap must be exactly these 3 renames, in this order"
+        "ANALYZE amm_ranked_pools",
+    ], "swap must be exactly these 3 renames + a trailing ANALYZE, in this order"
 
 
 def test_swap_runs_inside_one_transaction(monkeypatch, sink):
@@ -198,7 +199,8 @@ def test_swap_runs_inside_one_transaction(monkeypatch, sink):
 def test_swap_never_copies_or_touches_row_data(sink):
     db.swap_amm_ranked_pools_staging()
     for s, params in sink:
-        assert s.startswith("ALTER TABLE"), f"swap issued non-DDL statement: {s}"
+        assert s.startswith("ALTER TABLE") or s.startswith("ANALYZE"), \
+            f"swap issued a statement that isn't a rename or ANALYZE: {s}"
         assert params is None
 
 
@@ -229,5 +231,34 @@ def test_swap_failure_drops_the_conn(monkeypatch):
 def test_staging_schema_ddl_is_present():
     src = open(os.path.join(os.path.dirname(__file__), "..", "db.py"),
                encoding="utf-8").read()
-    assert "CREATE TABLE IF NOT EXISTS amm_ranked_pools_staging" in src
-    assert "CREATE UNIQUE INDEX IF NOT EXISTS amm_ranked_pools_staging_account_uidx" in src
+    # LIKE ... INCLUDING ALL (not a hand-duplicated column/index list) so
+    # the two tables' columns, PK, and indexes can never silently drift
+    # apart (Charlie review 2026-10-26; verified live against Neon in a
+    # rolled-back probe transaction before landing).
+    assert ("CREATE TABLE IF NOT EXISTS amm_ranked_pools_staging "
+            "(LIKE amm_ranked_pools INCLUDING ALL)") in src
+
+
+def test_swap_runs_analyze_on_the_newly_promoted_table(sink):
+    db.swap_amm_ranked_pools_staging()
+    stmts = [s for s, _ in sink]
+    assert "ANALYZE amm_ranked_pools" in stmts
+    assert stmts.index("ANALYZE amm_ranked_pools") == len(stmts) - 1, \
+        "ANALYZE must run last, after the table is fully promoted"
+
+
+def test_swap_analyze_is_inside_the_same_transaction(monkeypatch, sink):
+    entered = []
+
+    class _TrackedTxn(_FakeTxn):
+        def __enter__(self):
+            entered.append(1)
+            return self
+
+    class _TrackedConn(_FakeConn):
+        def transaction(self):
+            return _TrackedTxn()
+
+    monkeypatch.setattr(db, "_get_writer_conn", lambda: _TrackedConn(sink))
+    db.swap_amm_ranked_pools_staging()
+    assert entered == [1], "ANALYZE must share the renames' transaction, not a second round-trip"
