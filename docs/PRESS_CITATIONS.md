@@ -228,6 +228,107 @@ tallies — promoted to **Verified y**:
 
 ---
 
+## 2026-09-18 · TronWeekly · Yahya Raza Sherazi
+
+- **URL**: https://tronweekly.com/xrp-ledger-releases-version-3-4-0-with-lending
+- **Found via**: referrer traffic, 2 visits, Oct 19-25 window (found 2026-10-26)
+- **What was cited**: "The corresponding amendments used for lending in the
+  ledger did not reach the required level in the September 17 snapshot.
+  XRPL Foundation validator history [reported](https://xrpldashboard.com/amendments)
+  16 of 35 trusted validators approving SingleAssetVault."
+- **Classification**: `sourced attribution` — link-as-name; "XRPL Foundation
+  validator history [reported] 16 of 35..." credits the linked page as the
+  source of the 16/35 figure.
+- **Cited landing page**: /amendments
+
+### Verification (2026-10-26)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| SingleAssetVault at 16/35 on Sep 17 | **unverifiable** | Article dated 2026-09-18; `amendment_tally_reconstructions` starts 2026-09-21 — no first-party data exists for Sep 17/18. |
+
+---
+
+## 2026-10-09 · Blockvoz (es) · (no byline found)
+
+- **URL**: https://blockvoz.xyz/xrp-ledger-delegacion-permisos-bancos-stablecoins
+- **Found via**: referrer traffic, 1 visit, Oct 19-25 window (found 2026-10-26)
+- **What was cited**: "El dato fue reportado por CoinDesk el 9 de octubre.
+  La activación figura en el [panel de enmiendas del XRPL](https://xrpldashboard.com/amendments)."
+  (translation: "The data was reported by CoinDesk on October 9. The
+  activation appears in the XRPL amendments panel.")
+- **Classification**: `linked+quoted` — names/links us in body prose
+  directing readers to verify the activation, but the specific % figures
+  earlier in the article are attributed to CoinDesk, not to us.
+- **Cited landing page**: /amendments
+
+### Verification (2026-10-26)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| No specific figure attributed to us in the citing sentence | **unverifiable (nothing to check)** | The sentence credits us only as a place to view the activation, not as the source of a number. |
+
+---
+
+## 2026-10-04 · Cryptomaan (nl) #2 · Milan de Wit
+
+- **URL**: https://cryptomaan.nl/nieuws/xrp-ledger-batch-upgrade-2
+- **Found via**: referrer traffic, 23 visits, Oct 19-25 window (found 2026-10-26)
+- **Note**: Cryptomaan.nl is already cited above (2026-09-23, different
+  article/URL about PermissionDelegation). This is a SEPARATE article.
+- **What was cited**: "Wie het aftellen zelf wil volgen, kan terecht op het
+  [overzicht van amendments en validatorsteun](https://xrpldashboard.com/amendments)."
+  (translation: "Anyone who wants to follow the countdown themselves can
+  go to the overview of amendments and validator support.")
+- **Classification**: `linked+quoted` — body-text sentence describing and
+  linking the page (no brand name used, but a clear descriptive naming
+  sentence in the article body, not a sidebar/related-posts widget).
+- **Cited landing page**: /amendments
+
+### Verification (2026-10-26)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| No specific figure attributed to us in the citing sentence | **unverifiable (nothing to check)** | Pointer/referral sentence only, not a figure attribution. |
+
+---
+
+## 2026-10-13 · New Economy (JP) #616034 · (no byline found)
+
+- **URL**: https://www.neweconomy.jp/posts/616034
+- **Found via**: referrer traffic, 1 visit, Oct 19-25 window (found 2026-10-26)
+- **Note**: neweconomy.jp is already cited above (posts 610604, 611538,
+  2026-09-25/28). This is a SEPARATE, later article (post id 616034).
+- **What was cited**: "参考：[XRPL Dashboard](https://xrpldashboard.com/amendments)"
+  (translation: "Reference: XRPL Dashboard") — a Sources/references line
+  at the end of the article, naming us by brand name.
+- **Classification**: `sourced attribution` — explicit brand-name citation
+  in the article's own references block, matching the precedent already
+  established for this outlet's other cited articles.
+- **Cited landing page**: /amendments
+
+### Verification (2026-10-26)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| No specific figure attributed to us in the citing sentence | **unverifiable (nothing to check)** | Reference-list citation, not a figure attribution. |
+
+---
+
+## NOT added — reviewed and excluded (2026-10-26)
+
+- **intraday.my** — https://intraday.my/2026/dana-bitcoin-berundur-xrp-tunggu-perubahan-penting
+  (71 visits, Oct 19-25 window). The only `xrpldashboard.com/amendments`
+  href in the body is a bare anchor with no visible text
+  (`<a href="...amendments"><span>&nbsp;</span></a>`) immediately after a
+  sentence about the upcoming XRPL feature — no naming sentence, no
+  "according to" credit, no visible link text at all. Does not meet the
+  "real body citation" bar (not even `link only` in the strict sense —
+  there's no reader-visible citation, just an orphaned href). Logging here
+  rather than adding to the dated citation list above.
+
+---
+
 ## Archive index (private local copies + Wayback)
 
 Started 2026-09-27 (Charlie). Every article referenced above has a private
@@ -266,6 +367,10 @@ re-resolves and updates `_index.json`). Regenerate with
 | 2026-10-20 | New Economy (JP) · #18 | `2026-10-13_new-economy-jp-posts-616034` | 200 | PENDING (save 429 — retry pass queued) |
 | 2026-09-27 | WordUp News (upgrade delayed 10 days) | `2026-09-27_wordup-news-cryptocurrency-ripple-news-xrp-ledge` | 200 | PENDING |
 | 2026-09-25 | U.Today (Batch reset, quoting @Vet_X0) — source for /amendments/how-it-works | `2026-09-25_u-today-batch-reset-quoting-vet-x0-xrp-batch-upg` | 200 | web/20260927093235 |
+| 2026-10-26 | TronWeekly | `2026-10-26_tronweekly-xrp-ledger-releases-version-3-4-0-wit` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
+| 2026-10-26 | Blockvoz | `2026-10-26_blockvoz-xrp-ledger-delegacion-permisos-bancos-s` | 200 (via curl recovery) | web/20261009234139 |
+| 2026-10-26 | Cryptomaan (batch-upgrade-2) | `2026-10-26_cryptomaan-batch-upgrade-2-nieuws-xrp-ledger-bat` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
+| 2026-10-26 | New Economy (JP) #616034 | `2026-10-26_new-economy-jp-616034-posts-616034` | 200 (via curl recovery) | web/20261013082332 |
 
 Machine-readable index: `press_archive/_index.json`. Archiver:
 `press_archive/_archive_article.py` (stdlib-only fetch → HTML + readable text
