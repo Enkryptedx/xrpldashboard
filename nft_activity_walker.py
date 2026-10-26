@@ -237,8 +237,12 @@ def _fetch_ledger_txs(client, ledger_seq):
 def _nft_rows_from_ledger(ledger_seq, close_time_ripple, txs):
     """Filter a ledger's transactions to NFT tx types and shape them for
     insert_nft_activity_batch. Non-NFT transactions are skipped. Rows
-    with no NFTokenID still ingest — raw JSON preserved for later
-    re-derivation (Mint especially).
+    with no NFTokenID still ingest (Mint especially) using whatever
+    fields _extract_nftoken_id/_extract_sale_details could pull from the
+    tx. (Through 2026-10-25 the full tx was also carried as `raw` for
+    later re-derivation; dropped 2026-10-26 once extraction settled and
+    the archive + column drop landed — see
+    migrations/2026_10_26_drop_nft_activity_raw.sql.)
 
     Handles the API-v2 tx envelope: each transaction is
       {hash, ledger_hash, ledger_index, meta, tx_json, close_time_iso}
@@ -285,7 +289,6 @@ def _nft_rows_from_ledger(ledger_seq, close_time_ripple, txs):
             "currency":         currency,
             "currency_issuer":  currency_issuer,
             "is_broker":        is_broker,
-            "raw":              tx,
         })
     return rows
 

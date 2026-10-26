@@ -1146,9 +1146,16 @@ CREATE INDEX IF NOT EXISTS contact_bot_drops_ts_idx
 --
 -- Per-tx append log. One row per NFT tx we observe inside the window.
 -- Unique tx_hash makes ingest idempotent so re-runs (backfill overlap,
--- retry after node error) can't dupe rows. raw JSONB kept through v1
--- for re-derivation without re-fetching Clio; v2 disk optimization
--- decides whether to drop it once extraction is settled.
+-- retry after node error) can't dupe rows. `raw` JSONB (full tx, kept
+-- through v1 for re-derivation without re-fetching Clio) was dropped
+-- 2026-10-26 once extraction settled: verified first that nothing in the
+-- repo reads it (every SELECT/row-read against this table was grepped;
+-- the only reference anywhere was the INSERT that wrote it), archived
+-- the full pre-drop column to B2 first (nft_activity_archive, 9,716,760
+-- rows, sha256-verified batch-by-batch + rclone cryptcheck against the
+-- encrypted remote), THEN stopped writing it
+-- (migrations/2026_10_26_drop_nft_activity_raw.sql) before dropping the
+-- column. See that migration for the full before/after proof.
 CREATE TABLE IF NOT EXISTS nft_activity (
     id              BIGSERIAL PRIMARY KEY,
     ledger_index    BIGINT       NOT NULL,
@@ -1164,8 +1171,7 @@ CREATE TABLE IF NOT EXISTS nft_activity (
     price_drops     BIGINT,                  -- XRP-denominated sales
     currency        TEXT,                    -- 'XRP' or issued-currency code
     currency_issuer TEXT,                    -- null for XRP
-    is_broker       BOOLEAN,                 -- AcceptOffer w/ Broker present
-    raw             JSONB                    -- full tx for later re-derivation
+    is_broker       BOOLEAN                  -- AcceptOffer w/ Broker present
 );
 CREATE INDEX IF NOT EXISTS nft_activity_collection_time_idx
     ON nft_activity (issuer, taxon, close_time);
@@ -9896,9 +9902,17 @@ def insert_nft_activity_batch(rows):
     """Batched INSERT of nft_activity rows. Each row is a dict with keys:
     ledger_index, close_time (datetime | int-unix), tx_hash, tx_type,
     nftoken_id, issuer, taxon, buyer, seller, price_drops, currency,
-    currency_issuer, is_broker, raw (JSON-serializable). ON CONFLICT
-    (tx_hash) DO NOTHING so backfill/forward overlap and per-invocation
-    retries are safe. Returns count of rows actually inserted."""
+    currency_issuer, is_broker. ON CONFLICT (tx_hash) DO NOTHING so
+    backfill/forward overlap and per-invocation retries are safe. Returns
+    count of rows actually inserted.
+
+    `raw` (the full tx JSON) was dropped from the write path 2026-10-26 --
+    see the nft_activity DDL comment and
+    migrations/2026_10_26_drop_nft_activity_raw.sql. A caller that still
+    passes `raw` in its row dict (e.g. an un-updated fork of
+    nft_activity_walker.py) has it silently ignored here rather than
+    erroring, since the column may or may not exist yet depending on
+    migration order."""
     if not pg_available() or not rows:
         return 0
     inserted = 0
@@ -9918,10 +9932,9 @@ def insert_nft_activity_batch(rows):
                         "INSERT INTO nft_activity "
                         "  (ledger_index, close_time, tx_hash, tx_type, "
                         "   nftoken_id, issuer, taxon, buyer, seller, "
-                        "   price_drops, currency, currency_issuer, is_broker, "
-                        "   raw) "
+                        "   price_drops, currency, currency_issuer, is_broker) "
                         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                        "        %s, %s, %s, %s::jsonb) "
+                        "        %s, %s, %s) "
                         "ON CONFLICT (tx_hash) DO NOTHING",
                         (
                             r["ledger_index"],
@@ -9937,7 +9950,6 @@ def insert_nft_activity_batch(rows):
                             r.get("currency"),
                             r.get("currency_issuer"),
                             r.get("is_broker"),
-                            json.dumps(r.get("raw")) if r.get("raw") is not None else None,
                         ),
                     )
                     inserted += cur.rowcount
