@@ -106,6 +106,33 @@ _UA_MATCHERS = [
     ("meta-externalagent", "Meta-ExternalAgent"),
 ]
 
+# Paths no real crawler in _UA_RDNS_POLICY has any legitimate reason to
+# request. Added 2026-10-26 after the weekly traffic report surfaced 40
+# hits on /credentials carrying a UA that embeds a full desktop-Chrome
+# string PLUS "compatible; OAI-SearchBot/1.4" -- the exact "declared-bot
+# UA probing a secret/admin path" shape this module's docstring already
+# names as its motivating incident (GPTBot + /.env, 2026-09-22), just a
+# second UA class hitting it. Checked first, before any rDNS round-trip:
+# it's both cheaper (no network call) and a stronger signal than a PTR
+# mismatch -- no legitimate crawler operator has any reason to request
+# a credentials/secrets/admin path AT ALL, rDNS-valid or not.
+_SECRET_PROBE_PATH_FRAGMENTS = (
+    "/credentials", "/.env", "/.aws", "/wp-admin", "/wp-login",
+    "/.git", "/phpmyadmin", "/config.php", "/.ssh", "/admin",
+    "/.bak", "/shell", "/dashboard/admin", "/settings/credentials",
+)
+
+
+def is_secret_probe_path(path: str | None) -> bool:
+    """True when `path` (request.path, no query string) matches a
+    known secret/admin-probe fragment. Case-insensitive substring
+    match, same spirit as public_analytics_filters.is_self_probe_path
+    but for the OPPOSITE case: a path real crawlers never ask for."""
+    if not path:
+        return False
+    p = path.lower()
+    return any(frag in p for frag in _SECRET_PROBE_PATH_FRAGMENTS)
+
 
 def match_ua_claim(user_agent: str | None) -> str | None:
     """Return the canonical UA class (from _UA_RDNS_POLICY keys) if
@@ -253,7 +280,40 @@ def evaluate_request(user_agent: str | None, client_ip: str | None,
     Motivating incident (2026-09-21): 13 `GPTBot`-claiming requests
     probed for `.env` and secret-config paths. Real GPTBot only asks
     for `/llms.txt` and known routes. rDNS forgery-check catches
-    these before the request-path filter would have to."""
+    these before the request-path filter would have to.
+
+    2026-10-26: a second instance of the same shape (a declared-bot UA
+    hitting /credentials) is caught via `is_secret_probe_path` BEFORE
+    the rDNS round-trip -- cheaper, and a stronger signal than a PTR
+    mismatch, since no real crawler operator has any reason to request
+    a credentials/secrets/admin path at all."""
+    ua_class = match_ua_claim(user_agent)
+    if ua_class and is_secret_probe_path(path):
+        log.info(
+            "CRAWLER_FORGERY_SHADOW: ua_class=%s ip=%s verdict=secret_probe_path "
+            "ptr=- path=%s (enforce=%s)",
+            ua_class, client_ip, path, "1" if ENFORCE else "0-log-only",
+        )
+        try:
+            import hashlib as _hashlib
+            import db as _db
+            ip_hash = (
+                _hashlib.sha256((client_ip or "").encode()).hexdigest()[:32]
+                if client_ip else None
+            )
+            _db.write_crawler_forgery_shadow(
+                kind="crawler_forgery",
+                claimed_ua=(user_agent or "")[:300],
+                ip_hash=ip_hash,
+                path=path,
+                verdict=("enforced" if ENFORCE else "would_enforce"),
+                details={"ua_class": ua_class, "verdict": "secret_probe_path",
+                         "ptr": "", "expected_suffixes": []},
+            )
+        except Exception:
+            pass
+        return ENFORCE
+
     verdict, ptr = verify(user_agent, client_ip)
     if verdict in ("not_a_bot_claim", "trusted", "resolve_failed"):
         return False

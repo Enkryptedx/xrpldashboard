@@ -115,6 +115,17 @@ KNOWN_BOT_UA_FRAGMENTS = (
                               # UA would also match. Judged acceptable -- no
                               # such UA has ever appeared -- but prefer a
                               # longer fragment if one ever does.
+    # Added 2026-10-26 (Charlie, from the weekly traffic report's top-bot-
+    # names list). Both were ALREADY is_bot=TRUE on every row for the
+    # Oct 19-25 window (937 / 842 hits respectively) via the behavioral
+    # is_bot_writer classifier -- there was no human-count leak to fix.
+    # Adding the UA fragment here is for labeling/reporting consistency
+    # going forward: a bot-category breakdown that CASE-matches named UA
+    # fragments (not just is_bot=TRUE) can now name these instead of
+    # dumping them into an "unlisted/behavioral" bucket.
+    "TalarionSearchBot",      # research crawler, self-declares a contact
+                              # email in its UA string
+    "ibou-search",            # declared SEO/search crawler
 )
 
 
