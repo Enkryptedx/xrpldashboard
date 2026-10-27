@@ -23,8 +23,32 @@ signed leaf until Charlie flips a separate env gate after three clean cycles.
 Env-gate: RWA_NAV_TRANSPARENCY_ENABLED. Default off (skip; walker_health
 records 'disabled_by_env' and exits 0).
 
-Deps: `pypdf` (pip install pypdf). Optional at import time; walker
-records a clean walker_health message if missing.
+Deps: `pypdf`. Optional at import time; walker records a clean
+walker_health message if missing.
+
+BEFORE WIRING THIS WALKER UP — pypdf goes into requirements.txt at a
+patched version FIRST (Charlie ruling 2026-10-27). Do not `pip install
+pypdf` by hand.
+
+  Why: pypdf is the one genuinely untrusted-input decoder path we have.
+  `_extract_pdf_text` below feeds `pypdf.PdfReader` raw bytes fetched
+  from third-party hosts (docs.openeden.com, docs.ondo.finance), which
+  is exactly the surface the 2026 pypdf parsing CVEs name.
+
+  State as of 2026-10-27: this module is wired to NOTHING — no launchd
+  plist, no wrapper, no crontab entry, no CI/test reference, and no
+  other module imports it. The loaded `rwa_supply_nav_walker` job runs a
+  different script that never touches pypdf. Because nothing could reach
+  the decoder, pypdf 6.19.0 (11 open CVEs) was uninstalled from
+  ~/xrpl_test/venv rather than bumped: it was an orphan, present in no
+  requirements file, so a hand-installed bump would have silently drifted
+  back on the next venv rebuild.
+
+  So the order matters. Pin `pypdf>=6.21.2` (or the then-current patched
+  floor) in requirements.txt, let the venvs install it from there, and
+  only then wire up a launcher. Wiring first turns an unreachable
+  advisory into live exposure, and `pip_audit_walker`'s per-venv freeze
+  audit is what will catch it either way.
 """
 from __future__ import annotations
 

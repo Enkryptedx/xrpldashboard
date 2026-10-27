@@ -20,6 +20,15 @@ this closes:
 venv_py312 is deliberately NOT audited: it is the tooling venv that holds
 the pip-audit binary itself and runs none of our code.
 
+Orphan policy (Charlie ruling 2026-10-27): a flagged package that is in no
+requirements file and that nothing reachable imports gets UNINSTALLED, not
+hand-bumped — a hand-installed bump is venv-local state nothing reproduces,
+so it drifts back on the next venv rebuild. pypdf 6.19.0 and
+opentelemetry-api 1.44.0 were removed from ~/xrpl_test/venv on that basis.
+If scripts/rwa_nav_transparency_walker.py is ever wired up, pypdf goes into
+requirements.txt at a patched version FIRST; see that module's header for
+why its decoder is the one genuinely untrusted-input path we have.
+
 Two distinct signals — do not conflate (lesson filed 2026-08-29):
 
   ok=True + findings_count=0 → pip-audit ran clean, no vulns. Green.
