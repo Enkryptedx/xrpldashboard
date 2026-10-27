@@ -954,3 +954,28 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_ci_chain_runner_isolation.py -q
+
+      # One full-history witness list for both anchor readers.
+      # Until 2026-10-24 the canary and the Friday stamp reminder each
+      # carried their own node list and disagreed: the reminder stopped at
+      # the first node that answered, our own node has a ~54k-ledger
+      # window, so it answered with ZERO anchors and the Friday nudge said
+      # "hours since last anchor: unknown" while the canary, minutes later,
+      # reported #12 fine. Same account, same chain, two answers.
+      #
+      # tools/anchor_nodes.py is now the single source of the list and its
+      # env override. This step also gates tests/test_anchor_canary.py,
+      # which was previously NOT registered -- so the canary's own witness
+      # ladder shipped ungated until now.
+      #
+      # Locks: >=2 distinct https witnesses (one witness makes a single
+      # Clio outage a LOUD SKIP), the canary reads the shared list rather
+      # than an inline constant, ANCHOR_FULL_HISTORY_NODES wins while the
+      # legacy ANCHOR_CANARY_FULL_HISTORY_NODES still works, the import
+      # signature the Lenovo reminder calls keeps working, and no
+      # private/LAN address is ever baked into the shared list.
+      # Hermetic: imports + env only. No DB, no network.
+      - name: anchor shared full-history witness list (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_anchor_nodes_shared_witness.py tests/test_anchor_canary.py -q
