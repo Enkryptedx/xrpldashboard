@@ -3962,13 +3962,36 @@ _AMM_RANKED_POOL_COLUMNS = (
 )
 
 
+_amm_account_set_cache = {"snap": None, "accounts": None}
+
+
 def read_amm_account_set():
     """Return (set_of_amm_account, snapshot_ts) — the narrowest possible read
     of amm_ranked_pools for callers that only need to know WHICH accounts are
     AMMs (xrpl_stream's watched-AMM set, account_labels_import). One 35-byte
     column instead of twelve; ~1 MB on the wire instead of ~4 MB.
+
     Neon egress finding 2026-09-30: the stream reloaded the full table every
-    60 s ≈ 5.8 GB/day. Returns (set(), None) when PG is unavailable."""
+    60 s ≈ 5.8 GB/day. That fix narrowed the COLUMN set but not the
+    FREQUENCY -- xrpl_stream.py calls this on every tick with no cache, so
+    the full account list still re-pulled every ~54s even though
+    amm_ranked_pools only changes on an hourly rank_amms swap (2026-10-27
+    egress audit: 16,901 calls over 10.6 days = one every ~54s, confirmed
+    via pg_stat_statements).
+
+    2026-10-27 fix: probe MAX(snapshot_ts) (one row, cheap) first and only
+    re-pull the full account set when it changed, mirroring the pattern
+    already used by live_stream_relay.py's own _pools_cache and by
+    read_amm_index_entries_cached() below. Module-level cache is correct
+    here because callers (xrpl_stream.py) are long-running daemon
+    processes, not short-lived walker invocations that would start with
+    an empty cache every time anyway.
+
+    Returns (set(), None) when PG is unavailable. On any error, falls
+    back to a full uncached read rather than returning a stale set --
+    the whole point of this accessor is giving xrpl_stream a correct
+    watched-AMM set, so a cache-layer failure must never silently serve
+    outdated accounts."""
     if not pg_available():
         return set(), None
     try:
@@ -3977,9 +4000,15 @@ def read_amm_account_set():
                 cur.execute("SELECT MAX(snapshot_ts) FROM amm_ranked_pools")
                 row = cur.fetchone()
                 snap = int(row[0]) if row and row[0] is not None else None
+                c = _amm_account_set_cache
+                if (snap is not None and snap == c["snap"]
+                        and c["accounts"] is not None):
+                    return c["accounts"], snap
                 cur.execute("SELECT amm_account FROM amm_ranked_pools "
                             "WHERE amm_account IS NOT NULL")
-                return {r[0] for r in cur.fetchall()}, snap
+                accounts = {r[0] for r in cur.fetchall()}
+                c["snap"], c["accounts"] = snap, accounts
+                return accounts, snap
     except Exception:
         return set(), None
 

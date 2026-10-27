@@ -2625,7 +2625,10 @@ def _annotate_unverified_brands(rows):
     return rows
 
 
-@ttl_cache(seconds=60)
+_ranked_amm_snapshot_cache = {"snap": None, "result": None, "checked_mono": 0.0}
+_RANKED_AMM_SNAPSHOT_PROBE_INTERVAL_S = 60  # how often we pay for the cheap MAX(snapshot_ts) probe
+
+
 def _ranked_amm_snapshot():
     """Single source of truth for AMM ranking data on /pools and the
     homepage AMM card. Prefers Postgres (the Mac-hosted ranker dual-writes
@@ -2634,8 +2637,32 @@ def _ranked_amm_snapshot():
 
     Returns (rows, meta) where rows is a list of dicts in the shape of
     amm_ranked.json entries, and meta has keys: indexed_count,
-    started_at, finished_at, snapshot_ts, source ('postgres'|'file')."""
+    started_at, finished_at, snapshot_ts, source ('postgres'|'file').
+
+    2026-10-27 egress audit: this was a plain `@ttl_cache(seconds=60)`,
+    meaning every gunicorn worker re-pulled the full ~30k-row/12-column
+    amm_ranked_pools table every 60s regardless of whether the data had
+    changed -- rank_amms only swaps a new snapshot in roughly hourly, so
+    ~59 of every 60 refreshes were re-fetching byte-identical rows.
+    pg_stat_statements showed this call pattern at one call per ~2 min
+    aggregate across workers. Fix: probe MAX(snapshot_ts) (one row, cheap)
+    at most every _RANKED_AMM_SNAPSHOT_PROBE_INTERVAL_S seconds, and only
+    pay for the full db.read_amm_ranked_pools() read when that value
+    actually changed -- same snapshot-gated pattern as
+    db.read_amm_account_set() and db.read_amm_index_entries_cached()."""
+    c = _ranked_amm_snapshot_cache
+    now = time.monotonic()
+    if (c["result"] is not None
+            and now - c["checked_mono"] < _RANKED_AMM_SNAPSHOT_PROBE_INTERVAL_S):
+        return c["result"]
+    c["checked_mono"] = now
     if db.pg_available():
+        try:
+            snap = db.read_amm_snapshot_ts()
+        except Exception:
+            snap = None
+        if snap is not None and snap == c["snap"] and c["result"] is not None:
+            return c["result"]
         try:
             rows = db.read_amm_ranked_pools()
         except Exception:
@@ -2651,7 +2678,7 @@ def _ranked_amm_snapshot():
                 snap_ts = db.read_amm_snapshot_ts()
             except Exception:
                 snap_ts = None
-            return _annotate_unverified_brands(rows), {
+            result = (_annotate_unverified_brands(rows), {
                 "indexed_count": extra.get("indexed_count") or len(rows),
                 "started_at": extra.get("started_at"),
                 "finished_at": extra.get("finished_at"),
@@ -2662,7 +2689,12 @@ def _ranked_amm_snapshot():
                 # pre-GAP-5 heartbeats → treated as sovereign (banner
                 # fires only on a positive fallback signal).
                 "sourcing": extra.get("sourcing") or "sovereign",
-            }
+            })
+            # Must actually land in the cache, or every call re-probes AND
+            # re-reads -- this exact omission was caught by this branch's
+            # own test suite before landing (2026-10-27).
+            c["snap"], c["result"] = snap, result
+            return result
     rows = _safe_load_json(AMM_RANKED_PATH) or []
     index = _safe_load_json(AMM_INDEX_PATH) or []
     state = _safe_load_json(AMM_RANK_STATE_PATH) or {}
