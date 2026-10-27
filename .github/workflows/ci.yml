@@ -936,3 +936,21 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_pip_audit_walker_venv_freeze.py -q
+
+      # The local CI chain runner must never share an object store with the
+      # real repo. 2026-10-27: the old driver ran the chain inside a
+      # `git worktree add` linked worktree, which shares the parent's .git.
+      # The "fetch origin/main for the token_names.json before/after diff"
+      # step above runs `git fetch --depth=1`, so it wrote .git/shallow into
+      # ~/xrpl_test itself -- the repo became a 1-commit shallow clone,
+      # `git pull --ff-only` started refusing with "Not possible to
+      # fast-forward", and truncated parent pointers made origin/main look
+      # like a rewritten history. Recovery was `git fetch --unshallow`.
+      #
+      # Locks: the runner clones (own object store) and never worktrees, and
+      # it refuses outright to run anywhere sharing the repo's object store.
+      # Hermetic: AST checks plus throwaway local git repos; no DB, no network.
+      - name: CI chain runner object-store isolation (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_ci_chain_runner_isolation.py -q
