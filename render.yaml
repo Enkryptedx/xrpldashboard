@@ -26,7 +26,13 @@ services:
     # fetch_geoip_db.py: ONE GeoLite2 download per deploy at build time
     # (persists into the container; workers reuse it). Fail-open — never
     # fails the build. See geoip_state.py (2026-09-26 MaxMind limit incident).
-    buildCommand: pip install -r requirements.txt && python scripts/build_search_index.py && python scripts/fetch_geoip_db.py
+    # -c constraints.txt applies SECURITY FLOORS to transitive packages
+    # (PyJWT, Werkzeug, urllib3, aiohttp, certifi, setuptools). None of
+    # them are in requirements.txt, so `pip-audit -r requirements.txt`
+    # cannot see them; the constraints file is what stops pip resolving
+    # one of them back down to a vulnerable version. A constraint never
+    # ADDS a package -- it only bounds one something else pulls in.
+    buildCommand: pip install -r requirements.txt -c constraints.txt && python scripts/build_search_index.py && python scripts/fetch_geoip_db.py
 
     # Run: gunicorn binds to Render's $PORT.
     # 3 workers x 8 threads = 24 concurrent request slots.
