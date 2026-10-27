@@ -20,6 +20,7 @@ Top-N rather than all 9,500+ pools because:
   enough to mean something.
 """
 
+import json
 import os
 import sys
 import time
@@ -33,14 +34,55 @@ TOP_N = int(os.environ.get("AMM_TVL_TOP_N", "50"))
 # thresholds (green/yellow/red) without hardcoding multiples in the page.
 WALKER_CADENCE_SECONDS = 900
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+# 2026-10-27 egress audit: a fresh launchd invocation every 900s re-pulled
+# the full 6-column amm_ranked_pools projection (~30,290 rows) every time,
+# even though rank_amms.py only rewrites that table roughly hourly -- so
+# ~3 of every 4 reads were an identical re-fetch. Unlike app.py's in-
+# process caches (amm-reads-snapshot-cache-2026-10-27,
+# amm-reads-snapshot-cache-round2-2026-10-27), this walker is a FRESH
+# PROCESS each run, so the watermark has to survive on disk, not in a
+# module-level dict. One JSON file, same spirit as every other walker's
+# cursor/state file in this repo.
+STATE_PATH = os.path.join(HERE, "amm_tvl_recorder_state.json")
+
+
+def _load_last_snapshot_ts():
+    try:
+        with open(STATE_PATH) as f:
+            return json.load(f).get("last_snapshot_ts")
+    except (OSError, ValueError):
+        return None
+
+
+def _save_last_snapshot_ts(snap):
+    tmp = STATE_PATH + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"last_snapshot_ts": snap}, f)
+    os.replace(tmp, STATE_PATH)
+
 
 def record_once():
     """Snapshot the top-N pools by TVL into amm_tvl_history. Returns
     (snapshotted, written) — `snapshotted` is what we read from PG,
-    `written` is what survived the validity filter inside db.write_."""
+    `written` is what survived the validity filter inside db.write_.
+
+    Probes read_amm_snapshot_ts() (one row, cheap) first; when it matches
+    the watermark from the last run's successful write, skips the full
+    6-column pull entirely (and the write — there's nothing new to
+    record). A tick that finds nothing new is reported the same way as
+    an empty table: snapshotted=0, written=0, which main()'s existing
+    "clean no-op, not a failure" handling already covers correctly."""
     if not db.pg_available():
         print("[amm_tvl_recorder] DATABASE_URL unset; nothing to do.",
               flush=True)
+        return (0, 0)
+
+    snap = db.read_amm_snapshot_ts()
+    last_snap = _load_last_snapshot_ts()
+    if snap is not None and snap == last_snap:
+        print(f"[amm_tvl_recorder] snapshot_ts={snap} unchanged since last "
+              f"run — skipping the full read.", flush=True)
         return (0, 0)
 
     pools = db.read_amm_ranked_pools(columns=("amm_account", "pair", "amount_a", "amount_b", "tvl_usd"))
@@ -55,6 +97,8 @@ def record_once():
     top = pools[:TOP_N]
     ts = int(time.time())
     written = db.write_amm_tvl_snapshot(top, ts=ts)
+    if snap is not None:
+        _save_last_snapshot_ts(snap)
     return (len(top), written)
 
 
