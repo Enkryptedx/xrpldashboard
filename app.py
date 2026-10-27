@@ -259,10 +259,39 @@ def _cached_token_prices_map():
     return db.read_token_prices_map()
 
 
-@ttl_cache(seconds=60)
+_token_category_inferred_cache = {"watermark": None, "result": None, "checked_mono": 0.0}
+_TOKEN_CATEGORY_INFERRED_PROBE_INTERVAL_S = 60
+
+
 def _cached_token_category_inferred_map():
-    """db.read_token_category_inferred_map(), cached 60s. See above."""
-    return db.read_token_category_inferred_map()
+    """db.read_token_category_inferred_map(), snapshot-gated.
+
+    2026-10-27 egress audit: this was a plain @ttl_cache(seconds=60) --
+    the top row-puller in that day's pg_stat_statements pull (~8,000
+    rows/call, ~11 calls/hr), because every gunicorn worker re-pulled the
+    FULL token_category_inferred table every 60s on a timer regardless of
+    whether any row had actually changed. token_category_inferred has no
+    single snapshot_ts column the way amm_ranked_pools does, but every
+    row carries fetched_at, so MAX(fetched_at) (one row, cheap) serves the
+    same role: probe it at most once every
+    _TOKEN_CATEGORY_INFERRED_PROBE_INTERVAL_S seconds, and only pay for
+    the full map read when that value changed. Same pattern as
+    app.py's _ranked_amm_snapshot() (amm-reads-snapshot-cache-2026-10-27)."""
+    c = _token_category_inferred_cache
+    now = time.monotonic()
+    if (c["result"] is not None
+            and now - c["checked_mono"] < _TOKEN_CATEGORY_INFERRED_PROBE_INTERVAL_S):
+        return c["result"]
+    c["checked_mono"] = now
+    try:
+        watermark = db.read_token_category_inferred_watermark()
+    except Exception:
+        watermark = None
+    if watermark is not None and watermark == c["watermark"] and c["result"] is not None:
+        return c["result"]
+    result = db.read_token_category_inferred_map()
+    c["watermark"], c["result"] = watermark, result
+    return result
 
 
 @ttl_cache(seconds=60)

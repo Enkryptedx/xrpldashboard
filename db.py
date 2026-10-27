@@ -4280,6 +4280,25 @@ def read_amm_index_entries_cached(force=False):
     return entries
 
 
+def read_token_category_inferred_watermark():
+    """Return MAX(fetched_at) of token_category_inferred as a unix
+    timestamp (or None when empty/unavailable) -- a one-row, cheap probe
+    for gating the full read_token_category_inferred_map() pull. Mirrors
+    read_amm_snapshot_ts() below; see that docstring and
+    app.py's _cached_token_category_inferred_map() for why this exists
+    (2026-10-27 egress audit)."""
+    if not pg_available():
+        return None
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MAX(fetched_at) FROM token_category_inferred")
+                row = cur.fetchone()
+                return row[0] if row and row[0] is not None else None
+    except Exception:
+        return None
+
+
 def read_amm_snapshot_ts():
     """Return the snapshot_ts of the most-recent amm_ranked_pools write
     (all rows in a snapshot share the same ts), or None when empty/unavailable.
