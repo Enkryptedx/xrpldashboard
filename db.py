@@ -8088,6 +8088,9 @@ def refresh_bot_hash_tables():
         raise
 
 
+_bot_hash_sets_cache = {"watermark_ts": 0, "visitor_hashes": set(), "ip_day_hashes": set()}
+
+
 def compute_bot_hash_sets(conn):
     """Materialize the visitor_hash and ip_day_hash sets that _bot_filter_sql's
     session_pred IN-subqueries would otherwise re-evaluate on every call.
@@ -8100,6 +8103,22 @@ def compute_bot_hash_sets(conn):
     subquery Postgres hashes once per query (fast, and needs a fresh ts
     threshold each render); cohort is a tiny table.
 
+    2026-10-27 egress audit: a page_views DISTINCT scan over the full history
+    of matching rows (~56k visitor_hash / ~48k ip_day_hash) every single call
+    is exactly the cost this accessor exists to avoid for the DOWNSTREAM
+    queries, but it was paying that same cost itself on every call -- a
+    TTL-free full re-scan every time the (rare) caller runs it. Fix: a
+    module-level watermark cache, same spirit as db.read_amm_account_set()'s
+    snapshot-ts gate. The caller (app.py, a long-running process) keeps the
+    accumulated set across calls; each call only asks Postgres for rows newer
+    than the last call's high-water mark and UNIONs the new hashes in. A hash
+    that matched row_pred once stays tainted forever (same unbounded-window
+    invariant the legacy subquery form documents -- a visitor seen botting at
+    ANY time taints the session), so additive-only accumulation is correct,
+    not an approximation. First call after process start is necessarily a
+    full scan (watermark=0); every call after that is bounded by actual new
+    traffic volume instead of total history.
+
     Returns (visitor_hashes: frozenset, ip_day_hashes: frozenset).
     """
     path_likes = " OR ".join("path LIKE %s" for _ in BOT_PATH_PATTERNS)
@@ -8108,26 +8127,38 @@ def compute_bot_hash_sets(conn):
     )
     row_pred = f"(({path_likes}) OR ({ua_likes}))"
     params = list(BOT_PATH_PATTERNS) + list(BOT_UA_PATTERNS)
-    vh, ih = set(), set()
+    c = _bot_hash_sets_cache
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT MAX(ts) FROM page_views")
+            row = cur.fetchone()
+            max_ts = row[0] if row and row[0] is not None else c["watermark_ts"]
+
             cur.execute(
                 f"SELECT DISTINCT visitor_hash FROM page_views "
-                f"WHERE visitor_hash IS NOT NULL AND {row_pred}",
-                params,
+                f"WHERE visitor_hash IS NOT NULL AND ts > %s AND {row_pred}",
+                [c["watermark_ts"]] + params,
             )
             for (v,) in cur.fetchall():
-                vh.add(v)
+                c["visitor_hashes"].add(v)
+
             cur.execute(
                 f"SELECT DISTINCT ip_day_hash FROM page_views "
-                f"WHERE ip_day_hash IS NOT NULL AND {row_pred}",
-                params,
+                f"WHERE ip_day_hash IS NOT NULL AND ts > %s AND {row_pred}",
+                [c["watermark_ts"]] + params,
             )
             for (i,) in cur.fetchall():
-                ih.add(i)
+                c["ip_day_hashes"].add(i)
+
+            c["watermark_ts"] = max_ts
     except Exception:
+        # A failed incremental pull must not drop the accumulated set --
+        # return whatever we already have rather than resetting to empty,
+        # same reasoning as read_amm_account_set() never serving a stale
+        # cache being preferable to a crash, inverted: here a stale-but-
+        # non-empty cache beats an empty one on the bot-classification path.
         pass
-    return frozenset(vh), frozenset(ih)
+    return frozenset(c["visitor_hashes"]), frozenset(c["ip_day_hashes"])
 
 
 def _bot_filter_sql(kind, precomputed=None):
