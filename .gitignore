@@ -194,3 +194,10 @@ nav_screenshots_archive/
 # git-clean check; it is derived data, not a curated surface)
 evernorth_daily_snapshot.json
 .cache/
+
+# amm_tvl_recorder's on-disk snapshot_ts watermark. The walker is a fresh
+# process each tick, so the watermark that lets it skip an unchanged
+# snapshot has to survive on disk rather than in memory. Derived state,
+# rewritten every run -- never a curated surface, and it should not sit
+# untracked tripping the git-clean checks.
+amm_tvl_recorder_state.json

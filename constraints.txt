@@ -1,0 +1,56 @@
+# constraints.txt — security floors for TRANSITIVE dependencies.
+#
+# Applied by render.yaml's buildCommand (`pip install -r requirements.txt
+# -c constraints.txt`) so the live build and any local rebuild agree.
+#
+# Why this file exists (2026-10-27)
+# ---------------------------------
+# requirements.txt pins what we depend on DIRECTLY. None of the packages
+# below appear there — each is pulled in by something else — so
+# `pip-audit -r requirements.txt` structurally cannot see them, and for
+# months it reported "0 findings — 76 packages checked" while the three
+# venvs that run our code carried 47 findings across these six names.
+#
+# A constraints file is the right tool here precisely because it does NOT
+# add dependencies: a floor applies only if something else already pulls
+# the package in. Nothing here installs setuptools, for example.
+#
+# Floors are the advisory fix versions, not "latest". Raise a floor only
+# with an advisory to point at, so this file stays auditable.
+#
+# Exposure verdict at the time of writing: a fresh venv built from
+# requirements.txt on Render's pinned Python (3.12) already resolved ALL
+# of these to patched versions and audited completely clean. The 47
+# findings were stale local venv state, not live exposure. These floors
+# stop that resolution from silently regressing.
+
+# PyJWT — pulled in by `mcp` (the MCP SDK), never imported by our code.
+# 15 advisories at 2.13.0. Most are fixed in 2.14.0; PYSEC-2026-4141 and
+# PYSEC-2026-4183 need 2.15.0, so 2.15.0 is the floor.
+# NOTE: PYSEC-2026-4146 currently lists NO fix version — this floor does
+# not clear it, and no released PyJWT does. Tracked, not silenced.
+PyJWT>=2.15.0
+
+# Werkzeug — Flask's WSGI layer, so this is the one genuinely
+# internet-facing package in the set (gunicorn -> Flask -> Werkzeug on
+# Render). PYSEC-2026-4312 affects 3.1.8; fixed in 3.1.9.
+Werkzeug>=3.1.9
+
+# urllib3 — pulled in by `requests`. PYSEC-2026-4175/4176/4177 affect
+# 2.7.0; all three fixed in 2.8.0.
+urllib3>=2.8.0
+
+# aiohttp — pulled in by `geoip2`. We use geoip2.database (the local
+# MaxMind file reader), not geoip2.webservice (the aiohttp client), so
+# the vulnerable path is not one we call. 8 advisories at 3.14.3, all
+# fixed in 3.14.4.
+aiohttp>=3.14.4
+
+# certifi — the CA bundle, pulled in by httpcore/httpx/requests.
+# PYSEC-2026-4320 affects bundles through 2026.7.22; fixed 2026.10.18+.
+certifi>=2026.10.19
+
+# setuptools — build-time only, required by nothing at runtime and absent
+# from a fresh Render build. GHSA-xmj3-9gf7-h52w affects 83.0.0, fixed in
+# 84.1.0. Floor applies only where something installs it.
+setuptools>=84.1.0
