@@ -917,3 +917,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_toml_accounts_matcher.py tests/test_toml_retry_before_negative.py -q
+
+      # pip_audit_walker must audit the INSTALLED set of each code-running
+      # venv, not only requirements.txt. The pin-file-only audit reported
+      # "0 findings -- 76 packages checked" on 2026-10-27 while the Mac
+      # walker venv held pypdf 6.19.0 (11 CVEs) and opentelemetry-api
+      # 1.44.0 -- neither package appears in any requirements file, so the
+      # pin audit structurally cannot see them. It also reads the pins, so
+      # a merged bump that never reached a venv still looks green.
+      #
+      # Guards: venv_py312 is never audited (tooling venv, holds pip-audit
+      # itself); an unreachable REMOTE venv is reported but does not flip
+      # ok (weekly ssh flakiness must not page), while a local venv failure
+      # does; CVE substrings survive into the message so
+      # WALKER_MESSAGE_MUTES keeps working.
+      # Hermetic: every subprocess boundary stubbed, no DB, no network.
+      - name: pip_audit_walker venv freeze audit (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_pip_audit_walker_venv_freeze.py -q
