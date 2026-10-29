@@ -10,6 +10,7 @@ import math
 import os
 import secrets
 import sqlite3
+import sys
 import threading
 import token_label
 import time
@@ -1516,9 +1517,57 @@ def _analytics_warmer_loop():
         time.sleep(30)
 
 
-threading.Thread(
-    target=_analytics_warmer_loop, daemon=True, name="analytics-warmer"
-).start()
+# ── Web-tier gate for module-scope background daemons ──────────────────
+# Every daemon below this point is started at MODULE SCOPE, so it starts
+# on any `import app` -- not only on a gunicorn boot. That is correct for
+# the web tier and wrong everywhere else.
+#
+# Verified 2026-10-29: signed_snapshot.py does `import app as _app`, and
+# 16 launchd entrypoints reach app transitively through it, so every Mac
+# walker run inherited the web tier's daemons. The burst-cohort scanner's
+# own INFO line appears 28,520 times across four walker .err.log files
+# (homepage_summary 14,331 / wallet_summary 6,928 / whales_summary 5,614 /
+# tokens_summary 1,647), each stamped with this file as its source. In a
+# short-lived walker process the `time.sleep(86400)` at the end of the
+# scanner loop never executes at all, so nothing ever throttled it: the
+# 90-day scan_burst_cohorts ran roughly every 343s instead of once a day.
+#
+# Detection is positive-only -- gunicorn is present in sys.modules exactly
+# when gunicorn imported this module, which a walker never does. The two
+# env vars are escape hatches, not the primary mechanism, so a missing
+# env var cannot silently strip the web tier of its warmers:
+#   XRPLD_WEB_TIER=1      force ON  (a future non-gunicorn web runner)
+#   XRPLD_NO_BG_THREADS=1 force OFF (tests, one-off imports) -- wins
+_BACKGROUND_THREADS_STARTED = []
+
+
+def _is_web_tier():
+    """True only in the process that serves HTTP. See the note above."""
+    if os.environ.get("XRPLD_NO_BG_THREADS") == "1":
+        return False
+    if os.environ.get("XRPLD_WEB_TIER") == "1":
+        return True
+    return any(
+        m == "gunicorn" or m.startswith("gunicorn.") for m in sys.modules
+    )
+
+
+def _start_background_thread(target, name):
+    """Start one module-scope daemon, but only in the web tier.
+
+    Returns True if it started. Every module-scope thread in this file
+    MUST go through here -- tests/test_background_thread_gating.py walks
+    app.py's AST and fails if a bare module-level threading.Thread(...)
+    .start() is reintroduced.
+    """
+    if not _is_web_tier():
+        return False
+    threading.Thread(target=target, daemon=True, name=name).start()
+    _BACKGROUND_THREADS_STARTED.append(name)
+    return True
+
+
+_start_background_thread(_analytics_warmer_loop, "analytics-warmer")
 
 
 def _burst_cohort_scanner_loop():
@@ -1544,9 +1593,9 @@ def _burst_cohort_scanner_loop():
         time.sleep(86400)  # re-scan daily
 
 
-threading.Thread(
-    target=_burst_cohort_scanner_loop, daemon=True, name="burst-cohort-scanner"
-).start()
+_start_background_thread(
+    _burst_cohort_scanner_loop, "burst-cohort-scanner"
+)
 
 
 @app.context_processor

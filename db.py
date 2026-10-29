@@ -1536,10 +1536,20 @@ CREATE INDEX IF NOT EXISTS api_request_counters_bucket_idx
 --
 -- Hour bucket = unix_ts // 3600, the same convention as
 -- api_request_counters.hour_bucket above. Keeping the cache in Postgres
--- rather than in-process is the point: it is shared by all three gunicorn
--- workers and survives a worker recycle or a deploy, so neither can
--- trigger a recompute the way an in-process TTL does (the same reasoning
+-- rather than in-process is the point: it is shared by every process that
+-- imports this module, on any host, so none of them can trigger a
+-- recompute the way a per-process in-process TTL does (the same reasoning
 -- as nft_activity_summary's "durable row" note).
+--
+-- RATIONALE CORRECTION 2026-10-29: the commit that introduced this table
+-- attributed the call volume to "gunicorn worker recycle". That was wrong
+-- and is disproven -- Render logs showed 3 "Booting worker" lines and 0
+-- "WORKER TIMEOUT" in 24h. The real driver was that app.py started its
+-- background daemons at module scope while signed_snapshot.py does
+-- `import app as _app`, so all 16 launchd entrypoints that reach app
+-- transitively ran the web tier's daemons on every walker tick. Fixed by
+-- the web-tier gate in app.py (_is_web_tier/_start_background_thread).
+-- A durable cache is still the right shape here, for the reason above.
 CREATE TABLE IF NOT EXISTS analytics_rollup_cache (
     cache_key   TEXT    PRIMARY KEY,
     hour_bucket BIGINT  NOT NULL,
@@ -7396,14 +7406,24 @@ def scan_burst_cohorts(lookback_days=90, min_interval_seconds=3600):
         # Durable min-interval guard (2026-10-29).
         #
         # _burst_cohort_scanner_loop (app.py) sleeps 86400s between scans,
-        # but that timer lives in the gunicorn worker process -- so every
-        # worker recycle and every deploy re-ran the two heaviest
-        # statements in this function 15s after boot. Owner-side
-        # pg_stat_statements over the window opening 2026-10-27 03:12 ET
-        # counted 1,576 calls on the reclassified-rows COUNT(*) and 1,617
-        # on the daily_counts CTE, against a 24h loop that should have
-        # fired ~3 times in that span: the scan was being driven by
-        # process churn, not by its schedule.
+        # but that timer only ever elapses in a long-lived process. app.py
+        # started that daemon at MODULE SCOPE, and signed_snapshot.py does
+        # `import app as _app`, so all 16 launchd entrypoints reaching app
+        # transitively spawned the scanner on every walker tick: it slept
+        # 15s, ran the two heaviest statements in this function, and the
+        # process exited before the 86400s sleep was ever reached.
+        #
+        # Owner-side pg_stat_statements over the window opening 2026-10-27
+        # 03:12 ET counted 1,576 calls on the reclassified-rows COUNT(*)
+        # and 1,617 on the daily_counts CTE, against a 24h loop that should
+        # have fired ~3 times. Proof of the mechanism: this scan's own INFO
+        # line appears 28,520 times across four walker .err.log files,
+        # stamped with app.py as its source.
+        #
+        # NOT worker recycle -- that earlier diagnosis was wrong and is
+        # disproven (3 "Booting worker" lines, 0 "WORKER TIMEOUT" in 24h).
+        # The primary fix is the web-tier gate in app.py; this guard is
+        # defence in depth for any future importer.
         #
         # The guard lives in Postgres rather than in the process because
         # process state is exactly what failed. It returns the previous
@@ -7533,8 +7553,9 @@ def scan_burst_cohorts(lookback_days=90, min_interval_seconds=3600):
             "reclassified_rows": reclassified,
         }
 
-        # Stamp the guard so a worker recycle inside the next
-        # min_interval_seconds cannot re-run the scan above.
+        # Stamp the guard so any later import of app -- on any host, in
+        # any process -- cannot re-run the scan above inside the next
+        # min_interval_seconds.
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO analytics_rollup_cache "
