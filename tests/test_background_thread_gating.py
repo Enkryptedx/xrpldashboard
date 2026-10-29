@@ -19,8 +19,11 @@ No DB, no network assertions here.
 """
 
 import ast
+import logging
 import os
 import sys
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -98,6 +101,73 @@ def test_starter_returns_false_and_records_nothing_when_gated(monkeypatch):
     assert started is False
     assert app._BACKGROUND_THREADS_STARTED == before
     assert calls == []
+
+
+# ── the greppable boot lines ──────────────────────────────────────
+# Both branches must emit a distinct INFO token so "did this build start
+# the warmer / the scanner?" is answerable by grepping Render, instead of
+# being inferred from analytics_rollup_cache rows at the hour rollover.
+
+class _Capture(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.messages = []
+
+    def emit(self, record):
+        self.messages.append(record.getMessage())
+
+
+@pytest.fixture
+def app_logs():
+    """Capture app.logger records directly.
+
+    A handler attached to app.logger is used rather than caplog, so the
+    assertion does not depend on Flask's logger propagation settings.
+    """
+    handler = _Capture()
+    previous = app.app.logger.level
+    app.app.logger.addHandler(handler)
+    app.app.logger.setLevel(logging.INFO)
+    try:
+        yield handler.messages
+    finally:
+        app.app.logger.removeHandler(handler)
+        app.app.logger.setLevel(previous)
+
+
+def test_skip_emits_greppable_line(monkeypatch, app_logs):
+    monkeypatch.setenv("XRPLD_NO_BG_THREADS", "1")
+    app._start_background_thread(lambda: None, "probe-skip")
+    assert any(
+        m.startswith("background_thread_skipped: probe-skip")
+        for m in app_logs
+    ), f"no skip line emitted; got {app_logs}"
+
+
+def test_start_emits_greppable_line(monkeypatch, app_logs):
+    import threading
+    monkeypatch.delenv("XRPLD_NO_BG_THREADS", raising=False)
+    monkeypatch.setenv("XRPLD_WEB_TIER", "1")
+    done = threading.Event()
+    before = list(app._BACKGROUND_THREADS_STARTED)
+    try:
+        app._start_background_thread(done.set, "probe-start")
+        assert done.wait(timeout=5)
+    finally:
+        del app._BACKGROUND_THREADS_STARTED[len(before):]
+    assert "background_thread_started: probe-start" in app_logs, (
+        f"no start line emitted; got {app_logs}"
+    )
+
+
+def test_the_two_tokens_are_distinct_and_prefix_stable():
+    """Grepping one token must never match the other."""
+    src = open(APP_PATH, encoding="utf-8").read()
+    assert '"background_thread_started: %s"' in src
+    assert "background_thread_skipped: %s (not web tier)" in src
+    assert not "background_thread_started".startswith(
+        "background_thread_skipped"
+    )
 
 
 def test_starter_runs_and_records_when_web_tier(monkeypatch):

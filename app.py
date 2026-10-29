@@ -1559,11 +1559,24 @@ def _start_background_thread(target, name):
     MUST go through here -- tests/test_background_thread_gating.py walks
     app.py's AST and fails if a bare module-level threading.Thread(...)
     .start() is reintroduced.
+
+    Both branches log at INFO so the gate's decision is greppable on
+    every boot, in Render and in a walker's .err.log alike. Neither
+    daemon logged anything at startup before this, so "is the warmer
+    actually running on this build?" could only be inferred indirectly
+    (from analytics_rollup_cache rows appearing at the hour rollover).
+    Grep tokens, deliberately distinct and prefix-stable:
+        background_thread_started: <name>
+        background_thread_skipped: <name>
     """
     if not _is_web_tier():
+        app.logger.info(
+            "background_thread_skipped: %s (not web tier)", name
+        )
         return False
     threading.Thread(target=target, daemon=True, name=name).start()
     _BACKGROUND_THREADS_STARTED.append(name)
+    app.logger.info("background_thread_started: %s", name)
     return True
 
 
