@@ -5,6 +5,22 @@
 -- 03:12 ET): page_views analytics aggregates were the largest non-backup
 -- consumer of compute on the instance.
 --
+-- RATIONALE CORRECTION 2026-10-29 (header amended after this migration
+-- merged; the per-statement attributions below were and remain correct).
+-- The commit that shipped this file explained the scan_burst_cohorts call
+-- volume as "gunicorn worker recycle". That was wrong and is disproven:
+-- Render logs showed 3 "Booting worker" lines and 0 "WORKER TIMEOUT" in
+-- 24h. The real driver was that app.py started its background daemons at
+-- MODULE SCOPE while signed_snapshot.py does `import app as _app`, so all
+-- 16 launchd entrypoints that reach app transitively ran the web tier's
+-- daemons on every walker tick -- and in a short-lived walker process the
+-- scanner loop's trailing time.sleep(86400) never executes, so nothing
+-- throttled it. Proof: that scan's own INFO line appears 28,520 times
+-- across four walker .err.log files, stamped with app.py as its source.
+-- Primary fix: the web-tier gate in app.py (_is_web_tier /
+-- _start_background_thread). The hourly cache and the scan's durable
+-- min-interval guard remain correct and are defence in depth.
+--
 --   1,576 calls @ 3.9s   SELECT COUNT(*) FROM page_views p WHERE p.country
 --                        IS NOT NULL AND (country, path, day) IN (...)
 --                          -> db.scan_burst_cohorts  (reclassified receipts)

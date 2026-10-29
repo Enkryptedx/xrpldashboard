@@ -992,3 +992,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_analytics_rollup_cache.py -q
+
+      # Module-scope background daemons must start ONLY in the web tier
+      # (2026-10-29). app.py started two at import, and signed_snapshot
+      # does `import app as _app`, so all 16 launchd entrypoints reaching
+      # app transitively ran the web tier's daemons every walker tick --
+      # the burst-cohort scanner's own INFO line appears 28,520 times in
+      # four walker .err.logs. The AST guard here fails if a bare
+      # module-level threading.Thread(...).start() is reintroduced.
+      # Hermetic: imports + env + AST only. No DB, no network.
+      - name: web-tier gate on background threads (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_background_thread_gating.py -q
