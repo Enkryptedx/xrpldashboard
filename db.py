@@ -1518,6 +1518,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS api_request_counters_identity_hour_uniq
 CREATE INDEX IF NOT EXISTS api_request_counters_bucket_idx
     ON api_request_counters (hour_bucket);
 
+-- Hour-keyed rollup cache for the heavy /analytics aggregates (2026-10-29).
+-- Owner: db.cached_hourly(); readers are read_page_view_stats,
+-- read_country_count, read_cta_click_stats and the scan_burst_cohorts
+-- min-interval guard.
+--
+-- Why it exists: those aggregates are full-table COUNT(DISTINCT ...) scans
+-- over page_views carrying the shared UA allow-lists, 1.8-3.9s each. They
+-- were recomputed on every /analytics body rebuild, and the background
+-- warmer (_analytics_warmer_loop, app.py) rebuilds whenever the 60s
+-- in-process body cache lapses -- so they ran whether or not anyone was
+-- visiting. Owner-side pg_stat_statements over the window opening
+-- 2026-10-27 03:12 ET attributed 2,423 + 710 calls to read_country_count,
+-- 2,933 to the COUNT(*)/COUNT(DISTINCT visitor_hash) pair, and 1,576 +
+-- 1,617 to the two scan_burst_cohorts statements -- together the largest
+-- non-backup consumer on the instance.
+--
+-- Hour bucket = unix_ts // 3600, the same convention as
+-- api_request_counters.hour_bucket above. Keeping the cache in Postgres
+-- rather than in-process is the point: it is shared by all three gunicorn
+-- workers and survives a worker recycle or a deploy, so neither can
+-- trigger a recompute the way an in-process TTL does (the same reasoning
+-- as nft_activity_summary's "durable row" note).
+CREATE TABLE IF NOT EXISTS analytics_rollup_cache (
+    cache_key   TEXT    PRIMARY KEY,
+    hour_bucket BIGINT  NOT NULL,
+    payload     JSONB   NOT NULL,
+    computed_at BIGINT  NOT NULL,
+    compute_ms  INTEGER
+);
+CREATE INDEX IF NOT EXISTS analytics_rollup_cache_hour_idx
+    ON analytics_rollup_cache (hour_bucket);
+
 -- Cold-storage per-address balance cache. Mac walker (cold_storage_walker.py)
 -- fetches balances for every category=ripple address in named_accounts.json
 -- every 15 min via LAN rippled and upserts here. The /cold-storage route
@@ -7319,7 +7351,7 @@ _bot_hash_table_ready = False
 _is_bot_column_ready = True
 
 
-def scan_burst_cohorts(lookback_days=90):
+def scan_burst_cohorts(lookback_days=90, min_interval_seconds=3600):
     """Scan page_views history for burst-cohort days and upsert into
     burst_cohort_days. Idempotent: re-running updates multiplier/baseline
     in place, safe to call daily.
@@ -7333,6 +7365,10 @@ def scan_burst_cohorts(lookback_days=90):
     4. Upsert into burst_cohort_days.
 
     Sets _burst_cohort_table_ready = True on success.
+
+    `min_interval_seconds` (default 3600): if a scan already completed
+    less than this long ago, return that scan's receipts with
+    skipped=True instead of re-running. See the guard below for why.
 
     Returns dict: {"inserted": N, "total_cohort_days": M, "reclassified_rows": R}
     """
@@ -7356,6 +7392,39 @@ def scan_burst_cohorts(lookback_days=90):
                 )
             """)
         _burst_cohort_table_ready = True
+
+        # Durable min-interval guard (2026-10-29).
+        #
+        # _burst_cohort_scanner_loop (app.py) sleeps 86400s between scans,
+        # but that timer lives in the gunicorn worker process -- so every
+        # worker recycle and every deploy re-ran the two heaviest
+        # statements in this function 15s after boot. Owner-side
+        # pg_stat_statements over the window opening 2026-10-27 03:12 ET
+        # counted 1,576 calls on the reclassified-rows COUNT(*) and 1,617
+        # on the daily_counts CTE, against a 24h loop that should have
+        # fired ~3 times in that span: the scan was being driven by
+        # process churn, not by its schedule.
+        #
+        # The guard lives in Postgres rather than in the process because
+        # process state is exactly what failed. It returns the previous
+        # scan's receipts with skipped=True so the caller's INFO log still
+        # reports real numbers.
+        with conn.cursor() as cur:
+            _ensure_rollup_cache_table(cur)
+            cur.execute(
+                "SELECT payload, computed_at FROM analytics_rollup_cache "
+                "WHERE cache_key = %s",
+                ("burst_cohort_scan",),
+            )
+            guard_row = cur.fetchone()
+        conn.commit()
+        if guard_row and guard_row[1] is not None:
+            age = int(time.time()) - int(guard_row[1])
+            if age < int(min_interval_seconds):
+                prev = dict(guard_row[0] or {})
+                prev["skipped"] = True
+                prev["age_seconds"] = age
+                return prev
 
         cutoff_ts = int(time.time()) - lookback_days * 86400
 
@@ -7458,11 +7527,29 @@ def scan_burst_cohorts(lookback_days=90):
             """)
             reclassified = cur.fetchone()[0]
 
-        return {
+        result = {
             "inserted": inserted,
             "total_cohort_days": total,
             "reclassified_rows": reclassified,
         }
+
+        # Stamp the guard so a worker recycle inside the next
+        # min_interval_seconds cannot re-run the scan above.
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO analytics_rollup_cache "
+                "  (cache_key, hour_bucket, payload, computed_at) "
+                "VALUES (%s, %s, %s::jsonb, %s) "
+                "ON CONFLICT (cache_key) DO UPDATE SET "
+                "  hour_bucket = EXCLUDED.hour_bucket, "
+                "  payload     = EXCLUDED.payload, "
+                "  computed_at = EXCLUDED.computed_at",
+                ("burst_cohort_scan", _hour_bucket(),
+                 json.dumps(result), int(time.time())),
+            )
+        conn.commit()
+
+        return result
     except Exception as e:
         _log_err("scan_burst_cohorts", e)
         return {"error": str(e)}
@@ -8394,6 +8481,102 @@ def log_page_view(path, visitor_hash=None, referrer=None,
         _drop_writer_conn()
 
 
+# ── Hour-keyed rollup cache (analytics_rollup_cache) ──────────────────
+# See the analytics_rollup_cache DDL in SCHEMA_DDL for why this exists.
+# Shape deliberately mirrors api_request_counters' hour_bucket convention.
+_ROLLUP_CACHE_TABLE_READY = False
+
+
+def _hour_bucket(now=None):
+    """Clock-hour bucket: unix_ts // 3600. Same convention as
+    api_request_counters.hour_bucket."""
+    return int((time.time() if now is None else now) // 3600)
+
+
+def _ensure_rollup_cache_table(cur):
+    """Create analytics_rollup_cache on first use in this process.
+
+    init_schema() is a manual one-off (see its docstring), so defining the
+    table in SCHEMA_DDL alone would not create it on a fresh deploy — the
+    same reason scan_burst_cohorts creates burst_cohort_days inline.
+    """
+    global _ROLLUP_CACHE_TABLE_READY
+    if _ROLLUP_CACHE_TABLE_READY:
+        return
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS analytics_rollup_cache (
+            cache_key   TEXT    PRIMARY KEY,
+            hour_bucket BIGINT  NOT NULL,
+            payload     JSONB   NOT NULL,
+            computed_at BIGINT  NOT NULL,
+            compute_ms  INTEGER
+        )
+    """)
+    _ROLLUP_CACHE_TABLE_READY = True
+
+
+def cached_hourly(cache_key, compute, now=None):
+    """Return `compute()`'s value for the current clock hour, computing it
+    at most once per hour per key across the whole fleet.
+
+    Hot path is a single primary-key lookup on analytics_rollup_cache. On a
+    miss the value is computed once, stored, and returned.
+
+    Fail-open by construction: every error path falls back to calling
+    `compute()` directly, so a cache fault can only cost the old uncached
+    behaviour — it can never take a surface down. `compute` must itself be
+    total (these callers all return zeroed defaults on DB error).
+
+    The upsert carries `WHERE ... hour_bucket <= EXCLUDED.hour_bucket` so
+    two workers racing across an hour boundary cannot write an older hour's
+    value over a newer one.
+    """
+    if not pg_available():
+        return compute()
+    bucket = _hour_bucket(now)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                _ensure_rollup_cache_table(cur)
+                cur.execute(
+                    "SELECT payload FROM analytics_rollup_cache "
+                    "WHERE cache_key = %s AND hour_bucket = %s",
+                    (cache_key, bucket),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        if row and row[0] is not None:
+            return row[0]
+    except Exception:
+        return compute()
+    t0 = time.time()
+    value = compute()
+    compute_ms = int((time.time() - t0) * 1000)
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                _ensure_rollup_cache_table(cur)
+                cur.execute(
+                    "INSERT INTO analytics_rollup_cache "
+                    "  (cache_key, hour_bucket, payload, computed_at, "
+                    "   compute_ms) "
+                    "VALUES (%s, %s, %s::jsonb, %s, %s) "
+                    "ON CONFLICT (cache_key) DO UPDATE SET "
+                    "  hour_bucket = EXCLUDED.hour_bucket, "
+                    "  payload     = EXCLUDED.payload, "
+                    "  computed_at = EXCLUDED.computed_at, "
+                    "  compute_ms  = EXCLUDED.compute_ms "
+                    "WHERE analytics_rollup_cache.hour_bucket "
+                    "      <= EXCLUDED.hour_bucket",
+                    (cache_key, bucket, json.dumps(value),
+                     int(time.time()), compute_ms),
+                )
+            conn.commit()
+    except Exception:
+        pass
+    return value
+
+
 def read_page_view_stats(kind="human", precomputed_bots=None):
     """Return rollup counts at common windows for /admin/stats. Each value
     is a dict with `views` (raw row count) and `uniques` (distinct
@@ -8413,29 +8596,41 @@ def read_page_view_stats(kind="human", precomputed_bots=None):
     out["all_time"] = {"views": 0, "uniques": 0}
     if not pg_available():
         return out
-    now = int(time.time())
-    bot_frag, bot_params = _bot_filter_sql(kind, precomputed=precomputed_bots)
-    try:
-        with pg_connect() as conn:
-            with conn.cursor() as cur:
-                for key, sec in windows.items():
+
+    def _compute():
+        res = {k: {"views": 0, "uniques": 0} for k in windows}
+        res["all_time"] = {"views": 0, "uniques": 0}
+        now = int(time.time())
+        bot_frag, bot_params = _bot_filter_sql(
+            kind, precomputed=precomputed_bots
+        )
+        try:
+            with pg_connect() as conn:
+                with conn.cursor() as cur:
+                    for key, sec in windows.items():
+                        cur.execute(
+                            "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                            f"FROM page_views WHERE ts >= %s {bot_frag}",
+                            [now - sec, *bot_params],
+                        )
+                        v, u = cur.fetchone() or (0, 0)
+                        res[key] = {
+                            "views": int(v or 0), "uniques": int(u or 0)
+                        }
                     cur.execute(
                         "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
-                        f"FROM page_views WHERE ts >= %s {bot_frag}",
-                        [now - sec, *bot_params],
+                        f"FROM page_views WHERE 1=1 {bot_frag}",
+                        bot_params,
                     )
                     v, u = cur.fetchone() or (0, 0)
-                    out[key] = {"views": int(v or 0), "uniques": int(u or 0)}
-                cur.execute(
-                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
-                    f"FROM page_views WHERE 1=1 {bot_frag}",
-                    bot_params,
-                )
-                v, u = cur.fetchone() or (0, 0)
-                out["all_time"] = {"views": int(v or 0), "uniques": int(u or 0)}
-    except Exception:
-        pass
-    return out
+                    res["all_time"] = {
+                        "views": int(v or 0), "uniques": int(u or 0)
+                    }
+        except Exception:
+            pass
+        return res
+
+    return cached_hourly(f"page_view_stats:{kind}", _compute)
 
 
 def read_page_view_stats_live(kind="human"):
@@ -8695,6 +8890,23 @@ def read_country_count(window_seconds, kind="human", precomputed_bots=None):
     scripts/weekly_analytics.py agree on public numbers."""
     if not pg_available():
         return 0
+
+    def _compute():
+        return _read_country_count_uncached(
+            window_seconds, kind, precomputed_bots
+        )
+
+    win_key = "all" if window_seconds is None else int(window_seconds)
+    return cached_hourly(f"country_count:{kind}:{win_key}", _compute)
+
+
+def _read_country_count_uncached(window_seconds, kind="human",
+                                 precomputed_bots=None):
+    """The actual aggregate behind read_country_count. Split out so the
+    hour-keyed cache wraps it without changing a line of the SQL or the
+    allow-list layering below."""
+    if not pg_available():
+        return 0
     bot_frag, bot_params = _bot_filter_sql(kind, precomputed=precomputed_bots)
     if window_seconds is None:
         time_frag, time_params = "WHERE 1=1", []
@@ -8823,30 +9035,40 @@ def read_cta_click_stats(cta_id=None):
     out["all_time"] = {"clicks": 0, "uniques": 0}
     if not pg_available():
         return out
-    now = int(time.time())
-    cta_frag = "AND cta_id = %s" if cta_id else ""
-    cta_param = [cta_id] if cta_id else []
-    try:
-        with pg_connect() as conn:
-            with conn.cursor() as cur:
-                for key, sec in windows.items():
+
+    def _compute():
+        res = {k: {"clicks": 0, "uniques": 0} for k in windows}
+        res["all_time"] = {"clicks": 0, "uniques": 0}
+        now = int(time.time())
+        cta_frag = "AND cta_id = %s" if cta_id else ""
+        cta_param = [cta_id] if cta_id else []
+        try:
+            with pg_connect() as conn:
+                with conn.cursor() as cur:
+                    for key, sec in windows.items():
+                        cur.execute(
+                            "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
+                            f"FROM cta_clicks WHERE ts >= %s {cta_frag}",
+                            [now - sec, *cta_param],
+                        )
+                        v, u = cur.fetchone() or (0, 0)
+                        res[key] = {
+                            "clicks": int(v or 0), "uniques": int(u or 0)
+                        }
                     cur.execute(
                         "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
-                        f"FROM cta_clicks WHERE ts >= %s {cta_frag}",
-                        [now - sec, *cta_param],
+                        f"FROM cta_clicks WHERE 1=1 {cta_frag}",
+                        cta_param,
                     )
                     v, u = cur.fetchone() or (0, 0)
-                    out[key] = {"clicks": int(v or 0), "uniques": int(u or 0)}
-                cur.execute(
-                    "SELECT COUNT(*), COUNT(DISTINCT visitor_hash) "
-                    f"FROM cta_clicks WHERE 1=1 {cta_frag}",
-                    cta_param,
-                )
-                v, u = cur.fetchone() or (0, 0)
-                out["all_time"] = {"clicks": int(v or 0), "uniques": int(u or 0)}
-    except Exception:
-        pass
-    return out
+                    res["all_time"] = {
+                        "clicks": int(v or 0), "uniques": int(u or 0)
+                    }
+        except Exception:
+            pass
+        return res
+
+    return cached_hourly(f"cta_click_stats:{cta_id or 'all'}", _compute)
 
 
 # ─────────────────────────────────────────────────────────────────────

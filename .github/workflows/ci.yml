@@ -979,3 +979,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_anchor_nodes_shared_witness.py tests/test_anchor_canary.py -q
+
+      # Hour-keyed analytics rollup cache (2026-10-29). The heavy
+      # page_views aggregates behind /analytics were the largest
+      # non-backup consumer of Neon compute; they now recompute at most
+      # once per clock hour through analytics_rollup_cache, and the
+      # burst-cohort scan carries a durable guard so a gunicorn worker
+      # recycle cannot re-trigger it. Guards: once-per-hour, fail-open,
+      # and the aggregate SQL left unchanged.
+      # Hermetic: a fake cursor stands in for Postgres. No DB, no network.
+      - name: analytics hourly rollup cache (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_analytics_rollup_cache.py -q
