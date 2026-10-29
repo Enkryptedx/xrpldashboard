@@ -74,6 +74,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "39585"
     },
+    "0x12Ea80238C7d805D003ce793594e92d84A6f4E8d": {
+      "chain": "ETH",
+      "entity_name": "Ilya Aleksandrovich BOYKOV",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58886"
+    },
     "0x12de548F79a50D2bd05481C8515C1eF5183666a9": {
       "chain": "ETH",
       "entity_name": "OLD VECTOR LLC",
@@ -130,7 +139,7 @@
       "sdn_uid": "48432"
     },
     "0x19aa5fe80d33a56d56c78e82ea5e50e5d80b4dff": {
-      "chain": "ETH",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -214,7 +223,7 @@
       "sdn_uid": "57978"
     },
     "0x2f389ce8bd8ff92de3402ffce4691d17fc4f6535": {
-      "chain": "ETH",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -344,7 +353,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "BSC",
+      "chain": "ETH",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -527,6 +536,15 @@
       ],
       "sdn_type": "Individual",
       "sdn_uid": "42498"
+    },
+    "0x761edd5e4546229a0bd35ae99b4d3d01cf4a3510": {
+      "chain": "ETH",
+      "entity_name": "Vitold Viktorovich OBERTAS",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58889"
     },
     "0x76EA76CA4Eb727f18956aB93445a94c5280412B9": {
       "chain": "ETH",
@@ -720,7 +738,7 @@
       "sdn_uid": "43377"
     },
     "0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2": {
-      "chain": "ETH",
+      "chain": "USDT",
       "entity_name": "VALERIAN LABS, INC.",
       "programs": [
         "ILLICIT-DRUGS-EO14059"
@@ -786,6 +804,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "36025"
+    },
+    "0xE4C9a7F68B1EbA4508f54f07f7378847318dD1A3": {
+      "chain": "ETH",
+      "entity_name": "Ki Hyok KIM",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58887"
     },
     "0xE950DC316b836e4EeFb8308bf32Bf7C72a1358FF": {
       "chain": "ETH",
@@ -900,7 +927,7 @@
       "sdn_uid": "57034"
     },
     "0xb6f5ec1a0a9cd1526536d3f0426c429529471f40": {
-      "chain": "USDT",
+      "chain": "USDC",
       "entity_name": "Sang Man KIM",
       "programs": [
         "DPRK4"
@@ -1963,7 +1990,7 @@
       "sdn_uid": "39593"
     },
     "1CF46Rfbp97absrs7zb7dFfZS6qBXUm9EP": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2128,7 +2155,7 @@
       "sdn_uid": "39585"
     },
     "1Df883c96LVauVsx9FEgnsourD8DELwCUQ": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2645,7 +2672,7 @@
       "sdn_uid": "30520"
     },
     "1KUUJPkyDhamZXgpsyXqNGc3x1QPXtdhgz": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2790,7 +2817,7 @@
       "sdn_uid": "39593"
     },
     "1LrxsRd7zNuxPJcL5rttnoeJFy1y4AffYY": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -5492,6 +5519,15 @@
       "sdn_type": "Individual",
       "sdn_uid": "58257"
     },
+    "TCV4qdpTxoMyqkn7sSPeRrXmhH5JFxMvmT": {
+      "chain": "TRX",
+      "entity_name": "Vitold Viktorovich OBERTAS",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58889"
+    },
     "TCXihiScsAodR942Xq45df9qQAdr5nhkjQ": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -5986,6 +6022,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TFksjBcHPYqgAax2USheQuaT1ydRKyZRdg": {
+      "chain": "TRX",
+      "entity_name": "Vitold Viktorovich OBERTAS",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58889"
     },
     "TFqo5f16FJfSKesPxtGN4VN5HNZJebqMQX": {
       "chain": "TRX",
@@ -7073,6 +7118,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "TQCBdU4K92oxLAkzwexZpqVZJhmPbtLYMm": {
+      "chain": "TRX",
+      "entity_name": "Vitold Viktorovich OBERTAS",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58889"
+    },
     "TQKQ4ntejdYYJpuYkFz8oCSDoXW6RKRDdY": {
       "chain": "USDT",
       "entity_name": "CHEIL CREDIT BANK",
@@ -7081,6 +7135,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "22985"
+    },
+    "TQKoDq5aCrWAciiNtete5pDYVN38i4qFN1": {
+      "chain": "TRX",
+      "entity_name": "Ilya Aleksandrovich BOYKOV",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58886"
     },
     "TQVZEuLHacexyJX3nZStaPzxceS63C9bax": {
       "chain": "TRX",
@@ -8116,6 +8179,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "58361"
+    },
+    "TXmrnVgsqCMJncYHTXchuJ5z111BXSj4g3": {
+      "chain": "TRX",
+      "entity_name": "Ilya Aleksandrovich BOYKOV",
+      "programs": [
+        "DPRK2"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58886"
     },
     "TXoVNrqm11FFVKcF1vEND64gibVkr1HwAR": {
       "chain": "TRX",
@@ -9789,8 +9861,8 @@
       "sdn_uid": "29585"
     }
   },
-  "count": 1050,
-  "fetched_at_utc": "2026-10-28 01:38 UTC",
-  "publication_date": "2026-10-21",
+  "count": 1058,
+  "fetched_at_utc": "2026-10-29 01:38 UTC",
+  "publication_date": "2026-10-28",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
