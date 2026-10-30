@@ -201,3 +201,10 @@ evernorth_daily_snapshot.json
 # rewritten every run -- never a curated surface, and it should not sit
 # untracked tripping the git-clean checks.
 amm_tvl_recorder_state.json
+
+# rank_amms.py's flock file (PR #94, 2026-10-26: prevents concurrent
+# instances). Created and removed by the walker each run, so it shows up
+# untracked whenever a tick is mid-flight -- derived lock state, never a
+# curated surface, and it should not sit untracked tripping the pre-anchor
+# git-clean gate (anchor #13 hygiene, 2026-10-30).
+amm_rank.lock
