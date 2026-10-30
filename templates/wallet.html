@@ -1408,6 +1408,23 @@
           </div>
           {% endif %}
 
+          {# Every USD figure on this graph is a RENDER-TIME conversion:
+             price_oracle.value_amount_usd() takes an amount and no
+             timestamp, so a payment that settled days ago is priced at
+             today's anchor. Two renders minutes apart legitimately
+             disagreed -- the same 185,017,485.5 XRP transfer read $276.9M
+             on one page and $232.1M on another (2026-10-30). We cannot
+             price at the tx's own close time yet (no XRP/USD history is
+             persisted), so the figure states the rate it used and when
+             that rate was sampled, matching the nav price chip. #}
+          {% if data.usd_rate and data.nodes | length > 0 %}
+          <div style="color: var(--muted); font-size: var(--fs-xs); margin: 0.6em 0 0; line-height: 1.5;">
+            {{ _('Dollar figures on this graph are a render-time conversion at') }}
+            ${{ "%.4f"|format(data.usd_rate) }}/XRP{% if data.usd_rate_as_of_hhmm %}, {{ _('as of') }} {{ data.usd_rate_as_of_hhmm }} UTC{% endif %}
+            &mdash; {{ _('not the rate at the time of each transfer.') }}
+          </div>
+          {% endif %}
+
           <div class="cp-detail" data-cp-detail aria-live="polite"></div>
         {% endif %}
 
@@ -2343,6 +2360,16 @@
           statText = txCount + (txCount === 1 ? ' interaction' : ' interactions');
         }
         pctLabel.textContent = statText;
+        // A dollar amount here is a property of THIS RENDER, not of the
+        // transfer. Name the rate and its sample time on the figure
+        // itself, so the number cannot be read as historical.
+        if ((usdInTxt || usdOutTxt) && node.usdRate) {
+          pctLabel.setAttribute('title',
+            'Dollar figures are a render-time conversion at $'
+            + Number(node.usdRate).toFixed(4) + '/XRP'
+            + (node.usdAsOf ? ', as of ' + node.usdAsOf + ' UTC' : '')
+            + ' \u2014 not the rate at the time of each transfer.');
+        }
         node.labelEls = [nameLabel, pctLabel];
 
       });
@@ -2502,6 +2529,14 @@
         }
         var usdInLabel  = fmtUsd(d.usdIn);
         var usdOutLabel = fmtUsd(d.usdOut);
+        // Provenance tile: the Received/Sent dollars above are a
+        // render-time conversion, so the card states the anchor rate and
+        // when it was sampled (same pattern as the nav price chip).
+        var usdPricedAt = null;
+        if ((d.usdIn || d.usdOut) && d.usdRate) {
+          usdPricedAt = '$' + Number(d.usdRate).toFixed(4) + '/XRP'
+                      + (d.usdAsOf ? ' \u00b7 as of ' + d.usdAsOf + ' UTC' : '');
+        }
         var tokensInStr = (d.tokensIn || []).slice(0, 3)
             .map(function (t) { return t.amount.toLocaleString() + ' ' + t.sym; })
             .join(', ');
@@ -2513,6 +2548,7 @@
           ['30d txs',     d.txCount],
           ['Received',    usdInLabel],
           ['Sent',        usdOutLabel],
+          ['USD priced at', usdPricedAt],
           ['Got tokens',  tokensInStr],
           ['Sent tokens', tokensOutStr],
           ['First seen',  d.firstSeen],
