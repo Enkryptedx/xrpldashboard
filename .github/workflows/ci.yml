@@ -1019,3 +1019,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_paused_walkers.py -q
+
+      # The largest counterparty must not be ranked out of /wallet's graph
+      # (2026-10-30). sorted(key=-tx_count)[:8] was a TOTAL TIE on a wallet
+      # where every counterparty had tx_count=1, so the stable sort fell
+      # back to dict insertion order -- account_tx is newest-first, so the
+      # OLDEST counterparty was cut. Measured on rK21t6...: five 0.0-XRP
+      # counterparties made the cut while a 185,017,485.5 XRP inflow was
+      # dropped. Also locks the counterparty direction labels, which read
+      # "received" on a node that had SENT to the wallet.
+      # Hermetic: synthetic account_tx envelopes. No node, no DB, no network.
+      - name: wallet counterparty ranking + direction labels (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_wallet_counterparty_ranking.py -q
