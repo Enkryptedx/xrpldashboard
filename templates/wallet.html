@@ -2320,16 +2320,25 @@
         var usdOutTxt = fmtUsdShort(node.usdOut);
         var statText;
         var noun = (txCount === 1) ? ' payment' : ' payments';
+        // DIRECTION IS FROM THE COUNTERPARTY'S POINT OF VIEW, because this
+        // label renders on the counterparty's own node, not on the wallet
+        // being viewed. `direction === 'in'` means value flowed INTO the
+        // viewed wallet, i.e. this counterparty SENT it (wallet_data's
+        // _tx_counterparty tags that tx 'payment_in' and accumulates it in
+        // volume_in_*). Writing that as "received" on the counterparty's
+        // node inverted every label: the wallet that sent 185,017,485.5 XRP
+        // to rK21t6… read as having "received ~$X" (reported 2026-10-30).
+        // Name both ends explicitly so the arrow can never be read backwards.
         if (node.direction === 'in' && usdInTxt) {
-          statText = 'received ' + usdInTxt;
+          statText = 'sent ' + usdInTxt + ' to this wallet';
         } else if (node.direction === 'out' && usdOutTxt) {
-          statText = 'sent ' + usdOutTxt;
+          statText = 'received ' + usdOutTxt + ' from this wallet';
         } else if (node.direction === 'in') {
-          statText = 'received ' + txCount + noun;
+          statText = 'sent ' + txCount + noun + ' to this wallet';
         } else if (node.direction === 'out') {
-          statText = 'sent ' + txCount + noun;
+          statText = 'received ' + txCount + noun + ' from this wallet';
         } else if (usdInTxt || usdOutTxt) {
-          statText = (usdInTxt || '$0') + ' in · ' + (usdOutTxt || '$0') + ' out';
+          statText = 'sent ' + (usdInTxt || '$0') + ' · received ' + (usdOutTxt || '$0');
         } else {
           statText = txCount + (txCount === 1 ? ' interaction' : ' interactions');
         }

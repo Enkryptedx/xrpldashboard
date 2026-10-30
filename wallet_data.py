@@ -91,6 +91,9 @@ HIGH_RATE_MAX_TX_PAGES = 100
 WALLET_MEMORY_CEILING_MB = int(os.environ.get("WALLET_MEMORY_CEILING_MB", "350"))
 LOOKBACK_DAYS = 30
 TOP_N_COUNTERPARTIES = 8
+# Of the TOP_N slots, reserve this many for the highest-VALUE counterparties
+# that activity ranking alone would drop. See _rank_counterparties.
+VALUE_RESERVED_SLOTS = 3
 
 # Ripple Epoch: 2000-01-01 00:00 UTC. Ledger close times are seconds since
 # this epoch, not Unix epoch. Convert with: unix_ts = ledger_time + 946684800.
@@ -1300,8 +1303,86 @@ def _build_counterparty_graph(txs, owner_address, lookback_days):
                     bucket[(cur, iss)] += val
             except Exception:
                 pass
-    sorted_cps = sorted(by_addr.items(), key=lambda x: -x[1]["tx_count"])
-    return sorted_cps[:TOP_N_COUNTERPARTIES]
+    return _rank_counterparties(by_addr)
+
+
+def _counterparty_value(rec):
+    """(usd, drops) moved with this counterparty, both directions summed.
+
+    USD first because `value_amount_usd` prices BOTH XRP and token
+    payments, so it is the one scale that compares an XRP whale with a
+    token whale. Drops are the tiebreak for when the price oracle is
+    unavailable and every usd is 0.0 -- without it a large XRP mover
+    would tie at zero with dust and lose on an arbitrary tiebreak, which
+    is the exact failure this function exists to prevent.
+    """
+    usd = (rec.get("volume_in_usd") or 0.0) + (rec.get("volume_out_usd") or 0.0)
+    drops = (rec.get("volume_in_drops") or 0) + (rec.get("volume_out_drops") or 0)
+    return (usd, drops)
+
+
+def _rank_counterparties(by_addr, top_n=None, reserved=None):
+    """Pick which counterparties the graph shows, and in what order.
+
+    Two problems with the previous `sorted(key=-tx_count)[:TOP_N]`:
+
+    1. **Ties fell back to dict insertion order.** `account_tx` returns
+       newest-first, so on a wallet where every counterparty has the same
+       tx_count the OLDEST counterparty sorted last and was cut first --
+       and the oldest is typically the funding/origin payment, i.e. the
+       most significant one. Measured on rK21t6nGLy4MNDqhvy3pGwcLFy25qgfzMx
+       (2026-10-30): 10 counterparties, ALL at tx_count=1, so the order was
+       pure insertion order; five counterparties with 0.0 XRP of volume
+       made the cut while a 185,017,485.5 XRP inflow was dropped.
+    2. **Activity is not significance.** Even without a tie, a single
+       185M XRP payment loses to eight chatty dust counterparties.
+
+    Fix, deliberately additive so no existing page loses a counterparty it
+    shows today:
+
+    * Primary order stays tx_count DESC (busy wallets render unchanged),
+      but ties now break by value DESC then address ASC -- deterministic,
+      never insertion order.
+    * Up to `reserved` of the `top_n` slots are guaranteed to the
+      highest-value counterparties, so a high-value/low-count mover cannot
+      be ranked out by volume of chatter.
+    * A zero-value counterparty never consumes a reserved slot -- the
+      reservation is for significance, and 0.0 is not significant.
+    * Render order is the activity order, so reserving a slot changes WHO
+      is shown, not the visual ordering convention.
+    """
+    top_n = TOP_N_COUNTERPARTIES if top_n is None else top_n
+    reserved = VALUE_RESERVED_SLOTS if reserved is None else reserved
+    items = list(by_addr.items())
+
+    def _activity_key(kv):
+        usd, drops = _counterparty_value(kv[1])
+        return (-kv[1]["tx_count"], -usd, -drops, kv[0])
+
+    def _value_key(kv):
+        usd, drops = _counterparty_value(kv[1])
+        return (-usd, -drops, kv[0])
+
+    by_activity = sorted(items, key=_activity_key)
+    if len(by_activity) <= top_n:
+        return by_activity
+
+    chosen, seen = [], set()
+    for addr, rec in sorted(items, key=_value_key)[:max(0, reserved)]:
+        if _counterparty_value(rec) == (0.0, 0):
+            break  # nothing of value left to reserve for
+        chosen.append((addr, rec))
+        seen.add(addr)
+    for addr, rec in by_activity:
+        if len(chosen) >= top_n:
+            break
+        if addr in seen:
+            continue
+        chosen.append((addr, rec))
+        seen.add(addr)
+
+    rank = {a: i for i, (a, _) in enumerate(by_activity)}
+    return sorted(chosen, key=lambda kv: rank.get(kv[0], len(rank)))
 
 
 def _layout_nodes(counterparties, total_recent_txs):
