@@ -1240,6 +1240,45 @@ def _build_pulse(txs, lookback_days):
     return buckets
 
 
+def _usd_rate_provenance():
+    """The XRP/USD rate these USD figures were converted at, and when it
+    was sampled: {"rate", "fetched_at", "as_of_hhmm"}.
+
+    WHY THIS EXISTS. `price_oracle.value_amount_usd()` takes an amount and
+    nothing else -- there is no timestamp anywhere in the chain -- so a
+    payment that settled days ago is converted at whatever the anchor says
+    at RENDER time. Two renders minutes apart legitimately disagree: the
+    same 185,017,485.5 XRP transfer read $276.9M on one page and $232.1M
+    on another (reported 2026-10-30), i.e. $1.4966/XRP vs $1.2545/XRP.
+    Neither figure was wrong at the moment it was computed; what was wrong
+    is that the page let a reader believe a dollar figure was a property of
+    the transfer rather than of the render.
+
+    We cannot price at the transaction's own close time, because XRP/USD is
+    never persisted -- `token_prices` stores token->XRP history and
+    `oracles_snapshot` is replace-on-write, so no XRP/USD history exists to
+    look up. Until it does (see migrations/ for the proposed
+    xrp_usd_history), the honest move is to make every USD figure state the
+    rate it used and when that rate was sampled, exactly as the nav price
+    chip already does.
+
+    Read ONCE per render and passed down, so every figure on the page names
+    the same rate. Called immediately before the conversions run, which
+    primes price_oracle's ~60s cache -- so the rate reported here is the
+    one the conversions then read from that cache.
+    """
+    try:
+        from price_oracle import xrp_usd, xrp_usd_fetched_at
+        rate = xrp_usd()
+        fetched_at = xrp_usd_fetched_at()
+    except Exception:
+        return {"rate": None, "fetched_at": None, "as_of_hhmm": None}
+    as_of = None
+    if fetched_at:
+        as_of = time.strftime("%H:%M", time.gmtime(int(fetched_at)))
+    return {"rate": rate, "fetched_at": fetched_at, "as_of_hhmm": as_of}
+
+
 def _build_counterparty_graph(txs, owner_address, lookback_days):
     """Aggregate counterparties from txs within the lookback window.
     Returns top-N list of (address, agg_record) sorted by tx_count desc."""
@@ -1502,9 +1541,17 @@ def _rank_counterparties(by_addr, top_n=None, reserved=None):
     return sorted(chosen, key=lambda kv: rank.get(kv[0], len(rank)))
 
 
-def _layout_nodes(counterparties, total_recent_txs):
+def _layout_nodes(counterparties, total_recent_txs, usd_rate=None,
+                  usd_as_of=None):
     """Convert top counterparties → render-ready node dicts (matches the
-    shape that wallet.html's JS expects in its `nodes` array)."""
+    shape that wallet.html's JS expects in its `nodes` array).
+
+    `usd_rate` / `usd_as_of` are the XRP/USD anchor and its sample time
+    from _usd_rate_provenance(). They ride on every node that carries a
+    USD figure so the JS can label it without extra plumbing -- a dollar
+    amount on this page is a render-time conversion, and the label is what
+    stops a reader treating it as a property of the transfer.
+    """
     n = len(counterparties)
     if n == 0:
         return []
@@ -1550,6 +1597,13 @@ def _layout_nodes(counterparties, total_recent_txs):
             detail["usdIn"] = usd_in
         if usd_out > 0:
             detail["usdOut"] = usd_out
+        # Provenance travels WITH the figure, not just in the envelope, so
+        # the detail card cannot render a dollar amount without the rate
+        # that produced it.
+        if (usd_in > 0 or usd_out > 0) and usd_rate:
+            detail["usdRate"] = usd_rate
+            if usd_as_of:
+                detail["usdAsOf"] = usd_as_of
         # Per-token breakdown for the detail card — useful when most flow
         # was in stablecoins or specific tokens.
         token_lines_in = []
@@ -1605,6 +1659,9 @@ def _layout_nodes(counterparties, total_recent_txs):
             "direction": direction,
             "usdIn": usd_in if usd_in > 0 else None,
             "usdOut": usd_out if usd_out > 0 else None,
+            # Same rate on every node: one render, one anchor sample.
+            "usdRate": usd_rate if (usd_in > 0 or usd_out > 0) else None,
+            "usdAsOf": usd_as_of if (usd_in > 0 or usd_out > 0) else None,
         }
         if label_dx is not None:
             node["labelDx"] = label_dx
@@ -1933,6 +1990,7 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "last_seen": "—", "top_counterparty_label": "—",
             "top_counterparty_addr": None,
             "pulse": [0] * lookback_days, "nodes": [], "tx_sample_size": 0,
+            "usd_rate": None, "usd_rate_as_of_hhmm": None,
             "holdings": [], "holdings_lp": [],
             "amm_positions": [], "amm_total_xrp": 0.0,
             "amm_24h_fees_xrp": 0.0, "amm_blended_apr": 0.0,
@@ -2019,10 +2077,17 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
     # still get the full 5-page lookback for the 30-day pulse.
     txs = _fetch_account_tx(main, address, max_pages=1 if (is_amm or is_vault) else MAX_TX_PAGES)
     pulse = _build_pulse(txs, lookback_days)
+    # Sample the anchor BEFORE the conversions so the rate we label with is
+    # the one they read out of price_oracle's cache (see
+    # _usd_rate_provenance for why a label is needed at all).
+    usd_prov = _usd_rate_provenance()
     counterparties = _build_counterparty_graph(txs, address, lookback_days)
     total_recent_txs = sum(pulse)
     active_days = sum(1 for x in pulse if x > 0)
-    nodes = _layout_nodes(counterparties, total_recent_txs)
+    nodes = _layout_nodes(
+        counterparties, total_recent_txs,
+        usd_rate=usd_prov["rate"], usd_as_of=usd_prov["as_of_hhmm"],
+    )
 
     last_seen_unix = None
     if txs:
@@ -2194,6 +2259,11 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "top_counterparty_addr": top_addr_full,
         "pulse": pulse,
         "nodes": nodes,
+        # The anchor every USD figure on this render was converted at, and
+        # when it was sampled. Rendered as a caption under the graph so a
+        # dollar amount is never presented as a property of the transfer.
+        "usd_rate": usd_prov["rate"],
+        "usd_rate_as_of_hhmm": usd_prov["as_of_hhmm"],
         "tx_sample_size": len(txs),
         "holdings": holdings_token,
         "holdings_lp": holdings_lp,

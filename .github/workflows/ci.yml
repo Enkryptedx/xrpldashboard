@@ -1050,3 +1050,21 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_wallet_top_by_value_and_issuer_cards.py -q
+
+      # Every /wallet USD figure must name the rate it used and when that
+      # rate was sampled. price_oracle.value_amount_usd() takes an amount
+      # and NO timestamp, so a payment that settled days ago is converted
+      # at the render-time anchor: the same 185,017,485.5 XRP transfer read
+      # $276.9M on one page and $232.1M on another (2026-10-30), i.e.
+      # $1.4966/XRP vs $1.2545/XRP. Pricing at the tx's own close time is
+      # impossible today -- XRP/USD is never persisted (token_prices holds
+      # token->XRP; oracles_snapshot is replace-on-write) -- so the figure
+      # states its rate and sample time, matching the nav price chip.
+      # Also guards against a literal % inside a new _() string, a known
+      # /wallet render-killer.
+      # Hermetic: the oracle is monkeypatched, nodes built from literals.
+      # No node, no DB, no network.
+      - name: wallet USD figures carry rate + timestamp (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_wallet_usd_rate_provenance.py -q
