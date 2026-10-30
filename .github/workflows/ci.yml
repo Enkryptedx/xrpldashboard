@@ -1068,3 +1068,24 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_wallet_usd_rate_provenance.py -q
+
+      # xrp_usd_history: the XRP/USD anchor finally gets recorded.
+      # price_oracle.xrp_usd() was never persisted -- it lived in a ~60s
+      # in-memory cache and nowhere else, so nothing could answer "what was
+      # XRP worth when this payment closed?" and /wallet could only convert
+      # historical payments at the render-time rate (the same 185,017,485.5
+      # XRP transfer read $276.9M on one page and $232.1M on another,
+      # 2026-10-30). tokens_summary_walker writes one sample per 300s tick,
+      # append-only (ON CONFLICT DO NOTHING on the snapshot_ts PK).
+      # Locks: all three anchors stored, fail-closed rows KEPT with a NULL
+      # rate (never interpolated), a missing table skipping cleanly because
+      # the writer ships before the owner pastes the DDL, a real DB error
+      # still raising, the sample never failing the walker tick, --dry-run
+      # writing nothing, and a drift guard comparing the INSERT's column
+      # list against the migration's DDL.
+      # Hermetic: oracle monkeypatched, connection faked. No DB, no network,
+      # no DDL executed.
+      - name: xrp_usd_history writer + migration drift guard (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_xrp_usd_history_writer.py -q
