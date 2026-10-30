@@ -1005,3 +1005,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_background_thread_gating.py -q
+
+      # A deliberately paused walker must report as PAUSED, not FAILING
+      # (2026-10-29). The pause convention leaves last_run_ok=false and
+      # consecutive_failures on the row on purpose, so any reader keying
+      # off those two columns calls a tracked pause a fresh outage --
+      # the 8 PM summary did that for supply_escrow_walker for 15
+      # consecutive nights. paused_walkers.py is an EXPLICIT register,
+      # not a string match on last_run_message, and PAUSED is reachable
+      # only through it so a real failure can never be masked.
+      # Hermetic: pure classification. No DB, no network.
+      - name: paused walkers classify as paused (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_paused_walkers.py -q
