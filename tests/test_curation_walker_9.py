@@ -8,14 +8,46 @@ name, which is exactly why each one needs an explicit decision.
 
 Decisions pinned here:
 
-  7x SCPO (rM75v2Ssm6W7...) -> suppressed, never render.
-     Six declare "test" in their own on-ledger metadata. The seventh,
-     "Refresh Timing 1", does NOT -- the name predicate misses it. It is
-     suppressed on ISSUER-CLUSTER evidence instead: same issuer, same
-     SC.PO issuer_name, identical CanEscrow+CanClawback flags, empty
-     on-ledger metadata, and sequential issuance IDs 107538901-107538933
+  10x SCPO (rM75v2Ssm6W7...) -> suppressed, never render.
+     Six declare "test" in their own on-ledger metadata. The other four do
+     NOT -- the name predicate misses them -- and are suppressed on
+     ISSUER-CLUSTER evidence instead: same issuer, same SC.PO issuer_name,
+     identical CanEscrow+CanClawback flags, and sequential issuance IDs
      interleaved with the six. That reason is recorded as its own string so
      the judgement is auditable rather than hidden behind a substring match.
+
+     "Refresh Timing 1" (seq 107538940) was the first such case, curated
+     2026-10-17.
+
+     "Refresh Timing 2" (107538943), "Oil Sample" (107538948) and "Nails"
+     (107538951) joined it on 2026-10-30, under the same reason, after the
+     carve-out for anchor #13 surfaced them unsuppressed. The evidence the
+     owner approved them on, read from our own node and both full-history
+     witnesses:
+
+       - the issuer has NO Domain field, so no xrp-ledger.toml is
+         discoverable; it appears in no toml we track at either issuer or
+         currency level, and carries no XRPScan label (accountName null);
+       - the account was created 2026-10-09 and funded from Uphold --
+         21 days old at curation time, not an institutional issuer;
+       - all ten carry "i":"https://example.com/scpo.png", the RFC 2606
+         reserved placeholder domain, as their icon;
+       - all ten have MaximumAmount 1 -- a one-unit cap, not a fungible
+         instrument -- and an "ext" purchase-order blob whose buyer "b" is
+         the issuing account itself;
+       - all three have OutstandingAmount 0: zero supply, therefore zero
+         holders. "Refresh Timing 2" has a lone MPTokenAuthorize (an
+         opt-in, not a holding); the other two have nothing past their
+         MPTokenIssuanceCreate;
+       - the issuer has never placed a DEX order: zero OfferCreate /
+         OfferCancel / AMM* across its 121 transactions, and none of its
+         58 Payments touches these three issuance IDs. No trades exist.
+
+     Rendering is the DEFAULT for a freshly-walked name, so each of these
+     needed an explicit decision; the walker found them and nothing in code
+     re-applies an earlier cluster judgement to a later sibling. That gap is
+     deliberately NOT closed here -- it is a separate change under the
+     token-trust rules. This file only pins the decisions.
 
   CERT -> self_described. "CERTCRYPT Capacity", no issuer Domain,
      OutstandingAmount 0. No first-party source exists, so it renders with
@@ -82,9 +114,17 @@ def entries(raw, issuer=None, display=None):
 
 # ── the SCPO cluster ────────────────────────────────────────────────
 class TestScpoCluster:
-    def test_all_seven_are_suppressed(self, raw):
+    def test_all_ten_are_suppressed(self, raw):
+        """Every entry under this issuer is suppressed and never renders.
+
+        The count is pinned deliberately. A new sibling arriving from the
+        walker must FAIL here rather than quietly render -- that is exactly
+        how "Refresh Timing 2", "Oil Sample" and "Nails" were caught on
+        2026-10-30. If this count moves, the new entries need a curation
+        decision, not a re-baseline.
+        """
         got = entries(raw, issuer=SCPO_ISSUER)
-        assert len(got) == 7, [v.get("name") for v in got]
+        assert len(got) == 10, [v.get("name") for v in got]
         for v in got:
             assert v.get("suppressed"), v.get("name")
             assert tl.render_decision(v) == (False, None)
@@ -108,10 +148,19 @@ class TestScpoCluster:
         assert "test" not in blob, (
             "if the name now says 'test', use self_declared_test instead")
 
-    def test_cluster_reason_is_used_exactly_once(self, raw):
+    def test_cluster_reason_count_is_pinned(self, raw):
+        """The cluster reason must not become a catch-all.
+
+        It is an explicit human judgement, so its use is counted rather
+        than left open-ended: 1 from 2026-10-17 ("Refresh Timing 1") plus
+        the 3 approved 2026-10-30 ("Refresh Timing 2", "Oil Sample",
+        "Nails"). Raising this number requires the same evidence trail as
+        the header documents -- never a silent bump to make a red run go
+        green.
+        """
         n = sum(1 for v in raw.values() if isinstance(v, dict)
                 and v.get("suppressed") == CLUSTER_REASON)
-        assert n == 1
+        assert n == 4
 
 
 # ── CERT ────────────────────────────────────────────────────────────
@@ -162,10 +211,15 @@ class TestXaga:
 # ── file-level invariants ───────────────────────────────────────────
 class TestFileInvariants:
     def test_suppressed_total(self, raw):
-        """5 from the earlier curation pass + 7 SCPO."""
+        """5 from the earlier curation pass + 10 SCPO.
+
+        Was 12 (5 + 7) until 2026-10-30, when "Refresh Timing 2", "Oil
+        Sample" and "Nails" were suppressed on issuer-cluster evidence --
+        see this module's header for the evidence the owner approved.
+        """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 12
+        assert n == 15
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
