@@ -1321,6 +1321,123 @@ def _counterparty_value(rec):
     return (usd, drops)
 
 
+def _top_counterparty_by_value(counterparties):
+    """(index, value-share %) of the highest-VALUE counterparty shown.
+
+    The Wallet Pulse "top" line took `nodes[0]`, which is the ACTIVITY
+    ranking (tx_count DESC) and whose `pct` is a share of TX COUNT. On
+    rK21t6nGLy4MNDqhvy3pGwcLFy25qgfzMx every counterparty has tx_count=1,
+    so "top" named whichever dust address won the tiebreak while a
+    185,017,485.5 XRP inflow sat in the same graph. PR #108 stopped that
+    counterparty being ranked OUT of the graph; this names it in the
+    headline instead of a 1-tx dust address.
+
+    ONE scale is chosen for numerator and denominator together: USD when
+    the oracle priced anything in this graph (`value_amount_usd` prices
+    XRP and token payments alike), otherwise drops. Mixing them would
+    divide a token whale's USD by an XRP total and produce a percentage
+    of nothing.
+
+    The share is of the counterparties SHOWN in the graph -- the ranked
+    top-N -- because the un-ranked records are not in scope here. It is
+    therefore an upper bound on the share of all flow, which is why the
+    caller keeps it next to the counterparty's own name rather than
+    presenting it as a share of the wallet's whole history.
+
+    Returns None when there is no value anywhere in the graph, so the
+    caller can fall back to the existing activity-order behaviour instead
+    of inventing a 0% leader.
+    """
+    if not counterparties:
+        return None
+    usds, dropss = [], []
+    for _addr, rec in counterparties:
+        usd, drops = _counterparty_value(rec)
+        usds.append(usd)
+        dropss.append(drops)
+    scale = usds if sum(usds) > 0 else dropss
+    total = sum(scale)
+    if total <= 0:
+        return None
+    # Ties resolve to the earliest (most active) index, matching the
+    # deterministic ordering _rank_counterparties already established.
+    best = max(range(len(scale)), key=lambda i: (scale[i], -i))
+    return best, round(100 * scale[best] / total, 1)
+
+
+def _top_counterparty_label(nodes, counterparties):
+    """(label, full address) for the Wallet Pulse "top by value" stat.
+
+    Composed here rather than inline in fetch_wallet_data so the label a
+    reader actually sees is reachable from a hermetic test -- the caller
+    needs a live node fetch, this does not.
+
+    Picks the highest-VALUE counterparty and states its share of VALUE.
+    Falls back to the activity leader (`nodes[0]`, share of tx count)
+    only when the graph has no value at all, which is the pre-existing
+    behaviour for a wallet whose every counterparty moved 0.
+    """
+    if not nodes:
+        return "\u2014", None
+    top = nodes[0]
+    top_pct = top["pct"]
+    ranked = _top_counterparty_by_value(counterparties)
+    if ranked is not None and ranked[0] < len(nodes):
+        top = nodes[ranked[0]]
+        top_pct = ranked[1]
+    return f"{top['name']} \u00b7 {top_pct}%", (top.get("detail") or {}).get("addressFull")
+
+
+# Capability pills that only mean something for an ISSUER. Labels are the
+# exact `label` values _capability_signals emits (check_data.py) -- matched
+# by label on purpose, so this filter cannot silently start hiding a
+# differently-labelled pill that gets added later.
+_ISSUER_ONLY_CAPABILITY_LABELS = frozenset({
+    "Freeze capability",
+    "Clawback capability",
+    "Transfer fee",
+})
+
+
+def _filter_issuer_only_capabilities(capabilities, tokens_issued, trustline_count):
+    """Drop issuer-only capability pills for an account that issues nothing.
+
+    Freeze / Clawback / Transfer fee describe what an issuer can do to
+    holders of ITS token. On an account that has issued no token and holds
+    no trustline there is no such token and no such holder, so the pills
+    describe a power with nothing to apply it to -- and "This issuer
+    retains the ability to freeze trustlines" reads as a finding about a
+    plain wallet.
+
+    Scope is deliberately narrow:
+
+    * **/wallet only.** This is a call-site filter in wallet_data, NOT an
+      edit to `_capability_signals`. check_data.py owns that copy under
+      the Phase 3 Gate 1 approval, and /token and /check are issuer
+      surfaces where the pills are exactly the point -- they keep calling
+      `_capability_signals` directly and are unaffected.
+    * **No copy edits.** Every surviving pill's label/value/note is
+      returned byte-identical; this function only chooses which dicts
+      appear.
+    * **Both conditions, not either.** `tokens_issued` empty AND
+      `trustline_count == 0`. A trustline is enough to make the freeze
+      pill meaningful even with nothing issued, so one condition alone
+      would hide a relevant fact.
+
+    Everything else in the list (master key, RegularKey, multi-signature,
+    DepositAuth) is an account-security fact that applies to any wallet
+    and is never filtered.
+    """
+    if tokens_issued:
+        return capabilities
+    if (trustline_count or 0) != 0:
+        return capabilities
+    return [
+        c for c in capabilities
+        if c.get("label") not in _ISSUER_ONLY_CAPABILITY_LABELS
+    ]
+
+
 def _rank_counterparties(by_addr, top_n=None, reserved=None):
     """Pick which counterparties the graph shows, and in what order.
 
@@ -1968,12 +2085,11 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
     ):
         page_sourcing = worse_sourcing(page_sourcing, branch_sourcing)
 
-    top_label = "—"
-    top_addr_full = None
-    if nodes:
-        top = nodes[0]
-        top_label = f"{top['name']} · {top['pct']}%"
-        top_addr_full = (top.get("detail") or {}).get("addressFull")
+    # "top" is the highest-VALUE counterparty with its share of VALUE --
+    # not nodes[0], which is the busiest and whose pct is a share of tx
+    # count. See _top_counterparty_by_value. The name is whatever
+    # _layout_nodes already got from _classify_address; no second lookup.
+    top_label, top_addr_full = _top_counterparty_label(nodes, counterparties)
 
     # AMM-only: aggregate the recent flow direction so the pool widget
     # can bias its slosh to match what's actually happening on-chain.
@@ -2016,6 +2132,15 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
             "token_label": token_label,
             "swaps": swaps_xrp,
         }
+
+    # Hoisted out of the dict literal below so the capability filter can
+    # read tokens_issued -- _fetch_token_issuance still runs exactly once.
+    # This is the /wallet-only issuer-pill filter call site; check_data's
+    # _capability_signals is untouched, so /token and /check are unaffected.
+    tokens_issued = _fetch_token_issuance(address)
+    capabilities = _filter_issuer_only_capabilities(
+        _capability_signals(account_data), tokens_issued, trustline_count,
+    )
 
     return {
         "error": None,
@@ -2078,11 +2203,11 @@ def _fetch_wallet_data_impl(address, lookback_days, collector):
         "amm_blended_apr": amm_blended_apr,
         "pool_flow": pool_flow,
         "whale_flag": _fetch_whale_flag(address),
-        "tokens_issued": _fetch_token_issuance(address),
+        "tokens_issued": tokens_issued,
         "escrows": escrows,
         "offers": offers,
         "mpt_holdings": mpt_holdings,
-        "capabilities": _capability_signals(account_data),
+        "capabilities": capabilities,
         "sourcing": page_sourcing,
     }
 

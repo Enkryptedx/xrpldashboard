@@ -1033,3 +1033,20 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_wallet_counterparty_ranking.py -q
+
+      # /wallet's Wallet Pulse "top" stat was the BUSIEST counterparty with
+      # a share of TX COUNT, so rK21t6nGLy4MNDqhvy3pGwcLFy25qgfzMx read
+      # "top: Unknown account · 9.1%" (1 of 11 txs) while the same graph
+      # held a 185,017,485.5 XRP inflow. It is now the highest-VALUE
+      # counterparty with its share of VALUE (79.2% on that fixture).
+      # Also locks the /wallet-only issuer-pill filter: Freeze / Clawback /
+      # Transfer fee are hidden when an account issued nothing AND holds no
+      # trustline, filtered at the wallet_data call site so /token and
+      # /check -- which call check_data._capability_signals directly --
+      # still render the full list verbatim.
+      # Hermetic: synthetic account_tx envelopes + literal AccountRoot
+      # dicts. No node, no DB, no network.
+      - name: wallet top-by-value + issuer-only cards (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_wallet_top_by_value_and_issuer_cards.py -q
