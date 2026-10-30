@@ -3848,6 +3848,82 @@ def swap_amm_ranked_pools_staging():
     return True
 
 
+# Return values for write_xrp_usd_history_sample. Strings rather than a
+# bool because "the table is not there yet" is a NORMAL state between this
+# code deploying and the owner pasting the DDL, and it must be
+# distinguishable from both a successful write and a real failure.
+XRP_USD_HISTORY_WRITTEN = "written"
+XRP_USD_HISTORY_CONFLICT = "conflict"
+XRP_USD_HISTORY_NO_TABLE = "skipped_no_table"
+XRP_USD_HISTORY_NO_PG = "skipped_no_pg"
+
+
+def write_xrp_usd_history_sample(sample):
+    """Append one XRP/USD observation to xrp_usd_history.
+
+    `sample` is price_oracle.xrp_usd_sample()'s dict. Append-only:
+    ON CONFLICT DO NOTHING on the (snapshot_ts) PK, so re-observing the
+    same cached price -- or a manual re-run inside one tick -- can never
+    rewrite a past sample. Nothing in this module ever UPDATEs or DELETEs
+    a row here.
+
+    FAIL-CLOSED ROWS ARE KEPT ON PURPOSE. A sample with chosen_rate NULL
+    records that the oracle refused to serve at that moment, which is
+    itself the historical fact a later reader needs:
+      * chosen_rate NULL + check_failed TRUE  -> RLUSD resolved but
+        diverged from every sanity check by >PRICE_CHECK_MAX_ABS_PCT.
+      * chosen_rate NULL + check_failed FALSE -> RLUSD did not resolve.
+    Dropping these would leave an unexplained gap that a future reader
+    could mistake for "the walker was down", and would invite
+    interpolation across a window where we deliberately had no price.
+
+    Returns one of the XRP_USD_HISTORY_* constants. A missing table is
+    NOT an error: this writer ships before the DDL is applied, so until
+    the owner runs the migration every tick returns
+    XRP_USD_HISTORY_NO_TABLE and writes nothing. Any other DB failure is
+    logged and raised, exactly like the other writers here.
+    """
+    if not sample or sample.get("snapshot_ts") is None:
+        raise ValueError("write_xrp_usd_history_sample: sample needs snapshot_ts")
+    if not pg_available():
+        return XRP_USD_HISTORY_NO_PG
+    conn = _get_writer_conn()
+    if conn is None:
+        return XRP_USD_HISTORY_NO_PG
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO xrp_usd_history "
+                    "(snapshot_ts, chosen_rate, rlusd_rate, usd_gh_rate, "
+                    " usd_bitstamp_rate, check_failed, derivation_method) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT DO NOTHING",
+                    (
+                        int(sample["snapshot_ts"]),
+                        sample.get("chosen_rate"),
+                        sample.get("rlusd_rate"),
+                        sample.get("usd_gh_rate"),
+                        sample.get("usd_bitstamp_rate"),
+                        bool(sample.get("check_failed")),
+                        sample.get("derivation_method") or "unknown",
+                    ),
+                )
+                wrote = cur.rowcount
+        return XRP_USD_HISTORY_WRITTEN if wrote else XRP_USD_HISTORY_CONFLICT
+    except Exception as e:
+        # The table not existing yet is the expected pre-DDL state, so it
+        # is reported as a skip and never logged as a failure. The writer
+        # connection is dropped anyway: the aborted statement leaves the
+        # session in a state we would rather not reason about, and one
+        # reconnect every 300s for a transient window is free.
+        if _is_schema_drift(e):
+            _drop_writer_conn()
+            return XRP_USD_HISTORY_NO_TABLE
+        _drop_writer_conn()
+        _log_err_and_raise("write_xrp_usd_history_sample_failed", e)
+
+
 def write_token_prices(rows):
     """Append a new snapshot of token prices. PK is
     (currency, issuer, snapshot_ts) — every walker cycle adds one row per

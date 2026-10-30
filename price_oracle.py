@@ -297,6 +297,51 @@ def xrp_usd_fetched_at() -> Optional[int]:
     return _cache_get(("xrp_usd_fetched_at",))
 
 
+def xrp_usd_sample() -> dict:
+    """One coherent XRP/USD observation, shaped for the history writer.
+
+    Exists because the anchor is otherwise never persisted: it lives in a
+    ~60s in-memory cache and nowhere else, so there is no way to answer
+    "what was XRP worth when this payment closed?". /wallet can therefore
+    only label its dollar figures as render-time conversions (the same
+    185,017,485.5 XRP transfer read $276.9M on one page and $232.1M on
+    another, 2026-10-30).
+
+    `xrp_usd()` is called FIRST so the cache is populated, then every
+    other field is read out of that same cache entry -- one observation,
+    not four independent ones that could straddle a TTL boundary.
+
+    All three anchors are returned, not just the chosen rate, so a later
+    reader can see what the sanity checks said at that moment -- including
+    the case where RLUSD diverged from BOTH and we refused to serve.
+
+    `snapshot_ts` is the price's own sample time (`xrp_usd_fetched_at()`)
+    when we have one, so re-observing the SAME cached price is idempotent
+    under the writer's ON CONFLICT DO NOTHING. It falls back to now() for
+    the RLUSD-unavailable path, where no successful fetch time exists but
+    the failure itself is still worth recording.
+
+    A None `chosen_rate` is meaningful and must never be backfilled or
+    interpolated:
+      * chosen_rate None + check_failed True  -> RLUSD resolved but
+        diverged from every sanity check by >PRICE_CHECK_MAX_ABS_PCT.
+      * chosen_rate None + check_failed False -> RLUSD did not resolve
+        at all (fail-closed on the primary).
+    """
+    rate = xrp_usd()
+    sources = dict(xrp_usd_sources() or [])
+    fetched_at = xrp_usd_fetched_at()
+    return {
+        "snapshot_ts": int(fetched_at) if fetched_at else int(time.time()),
+        "chosen_rate": rate,
+        "rlusd_rate": sources.get("RLUSD"),
+        "usd_gh_rate": sources.get("USD.GH"),
+        "usd_bitstamp_rate": sources.get("USD.Bitstamp"),
+        "check_failed": bool(xrp_usd_check_failed()),
+        "derivation_method": "rlusd_amm_primary",
+    }
+
+
 def token_usd(currency: str, issuer: str) -> Optional[float]:
     """USD per 1 unit of token. Strategy:
       1. If token is XRP → return xrp_usd().
