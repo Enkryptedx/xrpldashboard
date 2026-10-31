@@ -162,6 +162,19 @@ def main() -> int:
           f"edge={edge_reason} edge_count={edge_count} @ "
           f"{dt.datetime.now(dt.timezone.utc).isoformat()}")
     _write_walker_health(ok, findings, edge_count)
+
+    # Ride-along: jj_ro read-only path canary (no new schedule -- see
+    # jj_ro_canary.py for why it piggybacks here rather than getting its
+    # own launchd job). It records its OWN walker_health row under
+    # 'jj_ro_canary' and must never affect this walker's exit status:
+    # the tunnel canary's verdict is about the tunnel, not the DB role.
+    try:
+        import jj_ro_canary
+        jj_ro_canary.run()
+    except Exception as e:  # noqa: BLE001
+        print(f"[mac_tunnel_canary] jj_ro ride-along failed: {type(e).__name__}",
+              file=sys.stderr, flush=True)
+
     return 0 if ok else 1
 
 
