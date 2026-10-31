@@ -1102,3 +1102,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_jj_ro_canary.py -q
+
+      # nft_activity (close_time, issuer) covering index, applied 2026-10-31.
+      # Guards the recorded DDL against drift: the index is only useful with
+      # close_time LEADING (reversed, it cannot serve the 7-day range
+      # predicate and the top_issuers stage returns to a parallel heap scan
+      # and the 25s statement_timeout). Also locks idempotency, since the
+      # migration is already applied in production.
+      # Hermetic: reads the committed .sql and walker source. No DB, no
+      # network, no credential.
+      - name: nft top_issuers covering index migration (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_nft_top_issuers_index_migration.py -q
