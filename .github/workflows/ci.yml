@@ -1089,3 +1089,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_xrp_usd_history_writer.py -q
+
+      # jj_ro read-only path canary. Locks the parsing contract with
+      # scripts/jj_query.sh: userinfo splits at the FIRST '@' and the host
+      # truncates at the FIRST '/', so a password containing '/' still
+      # yields the correct host. A URI parser gets that wrong and reports a
+      # bogus DNS failure -- which is exactly what cost two diagnostic
+      # rounds on 2026-10-30/31.
+      # Hermetic: connector injected, env file faked. No DB, no network,
+      # no credential.
+      - name: jj_ro read-only path canary (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_jj_ro_canary.py -q
