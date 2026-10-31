@@ -1,0 +1,96 @@
+-- 2026-10-31 — nft_activity (close_time, issuer): covering index for the
+-- nft_activity_summary `top_issuers` stage.
+--
+-- ALREADY APPLIED. Pasted by the owner in the Neon SQL Editor on
+-- 2026-10-31 at ~08:39 ET / 12:39 UTC. This file is the dated record of
+-- what was run, not a pending change. Verified immediately afterwards:
+--
+--     indisvalid = t, indisready = t, indislive = t
+--     index size 438 MB
+--     pg_get_indexdef -> btree (close_time, issuer)
+--     last_vacuum  = 2026-10-31 12:39:32 UTC
+--     last_analyze = 2026-10-31 12:39:34 UTC
+--
+-- NOT RUN BY ANY WALKER OR BY THE APP. Re-running it is a no-op thanks to
+-- IF NOT EXISTS, so it is safe to replay on another branch/environment.
+--
+-- WHY THIS INDEX EXISTS
+--
+-- nft_activity_walker --mode summary has a `top_issuers` stage that runs:
+--
+--     SELECT issuer, COUNT(*) AS events FROM nft_activity
+--     WHERE issuer IS NOT NULL
+--       AND close_time >= NOW() - INTERVAL '7 days'
+--     GROUP BY issuer ORDER BY events DESC LIMIT 10
+--
+-- The table is ~10.2M rows / 4457 MB. The 7-day window is ~568,763 rows
+-- across ~1,034 distinct issuers.
+--
+-- Before this index, no index covered that query:
+--   * nft_activity_close_time_idx (close_time) could range-scan the 568k
+--     matching rows, but `issuer` is not in it -- so every one of those
+--     rows needed a heap visit in a 4.5 GB table (random I/O).
+--   * nft_activity_collection_time_idx (issuer, taxon, close_time) leads
+--     with `issuer`, so it cannot serve a close_time range predicate.
+--
+-- Postgres compensated with a parallel heap scan. That worked while the
+-- Neon compute had spare vCPU, and stopped working when it did not: the
+-- failure telemetry showed the leader blocked on its own workers --
+--
+--     other_wait=23.8s  top_waits[IPC:MessageQueueReceive=23.0s ...]
+--
+-- -- against a walker-side statement_timeout of 25s (set in db.py, applied
+-- post-connect because the pooler rejects it in the startup packet).
+--
+-- TIMELINE (from the walker's per-run telemetry, which is logged on EVERY
+-- run, so this history is complete):
+--
+--   Oct 24-27  top_issuers avg 1.61-1.73s, max 5.9s   <- healthy baseline
+--   Oct 28     avg 4.61s, max 22.85s                  <- degradation starts
+--   Oct 29     avg 3.24s, max 22.50s
+--   Oct 30     avg 1.91s, max 23.16s
+--   Oct 31     avg 4.75s, max 25.28s                  <- hits the ceiling
+--
+-- First `top_issuers` timeout: 2026-10-28 08:18:12 ET. So the degradation
+-- PREDATES the 2 CU -> 1 CU compute reduction (2026-10-31 ~06:36 ET) by
+-- three days; the compute change did not cause it. What the change did was
+-- remove the headroom that had been absorbing it: before 06:36 the stage
+-- was mostly sub-second with occasional spikes, and from 06:47 onward every
+-- single run took 13-19s in windows_24h_7d and 33-44s total, timing out.
+-- Intermittent became continuous. Both halves of that matter -- fixing the
+-- compute alone would have restored the mask, not the query.
+--
+-- An index-only scan over (close_time, issuer) removes the heap access and
+-- the dependence on parallel workers entirely: the range is contiguous in
+-- the index and `issuer` is read from the index tuple. `issuer IS NOT NULL`
+-- is likewise satisfiable in-index.
+--
+-- NOT A FIX FOR THIS, deliberately:
+--   * Raising statement_timeout would hide a query running 15-25x slower
+--     than its own measured baseline.
+--   * LIMIT 10 is not a lever -- the aggregate must build all ~1,034 groups
+--     before it can order them, so the LIMIT only trims output.
+--
+-- FOLLOW-UP STILL OPEN (not done here): pre-aggregation. The walker already
+-- maintains a rollup (rollup_read=0.04s). A daily per-issuer counts table
+-- would reduce this stage to summing ~7k rows (1,034 issuers x 7 days)
+-- instead of scanning 568k, and would keep working as the table grows.
+--
+-- FRESH-DEPLOY PARITY GAP (reported, deliberately NOT changed here):
+-- db.py creates only three nft_activity indexes in its schema DDL --
+-- nft_activity_collection_time_idx, nft_activity_type_time_idx and
+-- nft_activity_nftoken_idx. Neither this new index NOR the pre-existing
+-- nft_activity_close_time_idx appears there, so a fresh environment built
+-- from db.py alone would lack both and would reproduce this timeout. Adding
+-- a 438 MB index to the startup DDL is not obviously safe (CREATE INDEX
+-- without CONCURRENTLY takes an ACCESS EXCLUSIVE lock and would block the
+-- table on first boot), which is exactly why it is raised here as a finding
+-- for a decision rather than silently appended.
+
+-- CONCURRENTLY cannot run inside a transaction block. Run as its own
+-- statement; do not wrap in BEGIN/COMMIT.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS nft_activity_close_time_issuer_idx
+    ON nft_activity (close_time, issuer);
+
+-- Refresh planner statistics so the new index is actually chosen.
+VACUUM (ANALYZE) nft_activity;
