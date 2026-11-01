@@ -329,6 +329,67 @@ tallies — promoted to **Verified y**:
 
 ---
 
+## 2026-09-01 · Agentic Tribune · (no byline)
+
+- **URL**: https://agentictribune.com/article/20260901-500-million-xrp-unlocked-on-sept-1-was-routine-ripple-escrow-release-trackers-show
+- **What was cited**: xrpldashboard "showed Ripple escrow accounts aligned
+  with a Sept. 1, 2026, monthly unlock schedule and listed a Ripple escrow
+  account with roughly 500 million XRP as liquid, or unlocked." The article
+  also states it could not find the Sept 1 `EscrowFinish` transaction hash.
+- **Cited landing page**: /cold-storage
+- **Fetch date claimed**: 2026-09-01 (hour unspecified)
+- **Found via**: one human deep-link referrer in the 2026-10-26..11-01
+  traffic window (1 visitor). Only article-shaped referrer in that window.
+- **Classification**: **AI-generated outlet** — machine-written aggregator,
+  no byline. Sourced attribution (names us in body as the source of the
+  escrow figures), not link-only. Treat as coverage for record-keeping, not
+  as an editorial endorsement.
+- **Verified**: **partial** — our numbers were right; two of the article's
+  own claims are wrong (below).
+
+### Verification (2026-11-01)
+
+Escrow facts read from the full-history witnesses (`s2-clio.ripple.com`
+genesis-to-tip, cross-checked against `xrplcluster.com`), because our own
+node's rolling window does not reach September.
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| Our page showed escrow accounts aligned with a Sept 1, 2026 monthly unlock | **confirmed** | The unlock is real and on-schedule: three `EscrowFinish` in ledger **106677549**, all at **2026-09-01 00:00:10 UTC (2026-08-31 20:00:10 EDT)**, submitter `rPw6JAdM9BGwH4y4LxJQBDybaGNhFLCspU`, totalling exactly **1,000,000,000 XRP** — `BBEE8110264337E2C469F36A3E1F5A0CC4C6F8E3C74EDDF281C78C83D6C7833D` (500,000,000 XRP, owner `r9NpyVfLfUG8hatuCCHKzosyDtKnBdsEN3` = Ripple Escrow #01), `77320AB230617FB014B48DF01BBEBD81AEBE8BB7756AF95B79933B700C45FC53` (400,000,000 XRP, owner `rMhkqz3DeU7GUUJKGZofusbrTwZe6bDyb1` = Ripple Escrow #20) and `42AFB95FA661CDAA064BCED694BACC8B72768C4692E032CC981A922D30EE260B` (100,000,000 XRP, same owner). Note the ET/UTC trap: a "Sept 1" monthly unlock lands at 00:00 UTC, i.e. the **evening of Aug 31 in ET**. |
+| "a Ripple escrow account with roughly 500 million XRP as liquid" | **partial — right number, wrong side of the release** | ~500M was the **pre-release** liquid balance, not what the page showed on Sept 1. At ledger 106677548 (immediately before): Escrow #01 liquid **500,000,208.05 XRP** with 1 escrow object holding 500,000,000; Escrow #20 liquid **500,000,207.23** with 2 objects holding 500,000,000. At 106677550 (immediately after) both read liquid **1,000,000,208.05** and **1,000,000,207.23** with **zero** escrow objects. So for all of Sept 1 ET our page showed ~**1.0 billion** liquid in each of two accounts, ~2.0B across the cohort — not ~500M. |
+| Our page mislabelled unlocked XRP as locked | **n (not what the page does)** | `cold_storage.html` renders the two quantities separately and always has: a `XRP locked` hero computed from `account_objects(type=escrow)`, and a distinct line `Liquid balance on these accounts: N XRP (unlocked but not yet swept)` from `account_info`. The footer states the data path explicitly. On Sept 1 the locked figure for #01/#20 was correctly **0** and the liquid figure correctly ~1.0B each. |
+| "could not find the Sept 1 EscrowFinish transaction hash" | **n — the transactions exist** | All three hashes above are `tesSUCCESS` and `validated=true` on two independent full-history witnesses. The 500M release the headline is built on is `BBEE8110264337E2C469F36A3E1F5A0CC4C6F8E3C74EDDF281C78C83D6C7833D`. |
+| The four Whale Alert hashes the article cites as evidence | **n — none are from Sept 1** | Every one resolves to an `EscrowFinish` from a **different month** of 2026: `9A4CF2EE8CE7033B6F23D26811ADB5991B1CF3D4900ECB45BAD66E674ED4CAB5` = 2026-01-01 00:00:10 UTC (ledger 101257406); `0148984927A70D088544C950259397D98909B7AC8A560186F70F5427FEB6EDA1` = 2026-03-01 00:00:21 UTC (102562368); `4CA43FBFDA69000CC1A1763A5C5504BFDB7C796FB13C16F3FB60EEC77F49A846` = 2026-04-01 00:00:10 UTC (103252856); `DC44AE742ADA1CB3B57A8AC2DBDFCAB7674644972D61881DCA9AB4C99F67AA0B` = 2026-06-01 00:00:11 UTC (104615299). The article's evidence base for the Sept 1 event is four earlier monthly unlocks. |
+| Re-escrow by Ripple the same day | **none found** | No `EscrowCreate` on 2026-09-01 UTC from Escrow #01, Escrow #20, or `riPpLEAafgiwoQB3gyVDghMTYGvcnzx47`. The full 1,000,000,000 XRP stayed liquid in the two escrow accounts that day. |
+
+### Our own record for 2026-09-01
+
+- `historical_account_snapshots` for `2026-09-01` holds Escrow #01 at
+  **1,000,000,208.05 XRP** and Escrow #20 at **1,000,000,207.23 XRP** —
+  byte-for-byte agreement with the witness read at ledger 106680605, the
+  validated ledger recorded in that day's signed snapshot.
+- `signed_snapshots/2026-09-01.json` carries 12 metrics and **no**
+  escrow/cold-storage metric, so the signed chain does not independently
+  attest the escrow figures for that date; the account history and the
+  witnesses do.
+- Sourcing caveat: `/cold-storage` only became DB-backed (walker +
+  `cold_storage_snapshot`) on **2026-09-03**. On Sept 1 the route still
+  fetched live via `account_info` / `account_objects` through
+  `xrpl_client`, so no stored copy of the rendered page exists.
+
+### Archive
+- **PENDING** — no Wayback snapshot of `/cold-storage` exists for the Sept 1
+  window (CDX query for 2026-08-20..09-10 returned zero captures), so the
+  page state is reconstructed from our account history plus the witnesses
+  rather than from an archived render. The article itself is not yet
+  archived to `press_archive/`; that step is outstanding.
+
+### Referrer trail
+- 1 human deep-link referrer from this article in 2026-10-26..11-01. First
+  and only appearance of `agentictribune.com` in `page_views`.
+
+---
+
 ## Archive index (private local copies + Wayback)
 
 Started 2026-09-27 (Charlie). Every article referenced above has a private
