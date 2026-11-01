@@ -378,11 +378,27 @@ node's rolling window does not reach September.
   `xrpl_client`, so no stored copy of the rendered page exists.
 
 ### Archive
-- **PENDING** — no Wayback snapshot of `/cold-storage` exists for the Sept 1
-  window (CDX query for 2026-08-20..09-10 returned zero captures), so the
-  page state is reconstructed from our account history plus the witnesses
-  rather than from an archived render. The article itself is not yet
-  archived to `press_archive/`; that step is outstanding.
+- Private copy: `press_archive/2026-09-01_agentic-tribune-article-20260901-500-million-xrp/`
+  — `page.html` (30,062 B) + `readable.txt` (4,282 B) + `meta.json`, HTTP
+  **200**, fetched 2026-11-01. Row appended to `_index.json`; folder
+  mirrored to DockVault. **Private record only — never republished; the
+  outlet was not contacted.**
+- Wayback: `web/20261101222122` (snapshot 2026-11-01 22:21:22 UTC). Save
+  Page Now returned HTTP 429 during the archive run — the documented
+  rate-limit — and `_wayback_retry.sh` resolved the snapshot afterwards.
+- **Our own page is still unarchived for that date**: no Wayback capture of
+  `/cold-storage` exists for the Sept 1 window (CDX for 2026-08-20..09-10
+  returned zero captures). The Sept 1 page state in the table above is
+  therefore reconstructed from `historical_account_snapshots` plus the
+  full-history witnesses, not from an archived render.
+- Verbatim us-mention, from the archived body: "Separately, xrpldashboard
+  showed Ripple escrow accounts aligned with a Sept. 1, 2026, monthly
+  unlock schedule and listed a Ripple escrow account with roughly 500
+  million XRP as liquid, or unlocked. Still, the sourced research did not
+  independently locate a public block-explorer page identifying the
+  specific Sept. 1 EscrowFinish transaction hash for this event."
+- No byline: the page carries no `ld+json` article block and no author
+  field — consistent with the AI-generated-outlet classification.
 
 ### Referrer trail
 - 1 human deep-link referrer from this article in 2026-10-26..11-01. First
@@ -404,6 +420,7 @@ re-resolves and updates `_index.json`). Regenerate with
 | Date | Outlet | Archive dir (under press_archive/) | HTTP | Wayback |
 |---|---|---|---|---|
 | 2026-08-28 | AllAboutXRP | `2026-08-28_allaboutxrp-news-xrpl-fixcleanup3-3-0-majority-a` | 200 | PENDING |
+| 2026-09-01 | Agentic Tribune (AI-generated) | `2026-09-01_agentic-tribune-article-20260901-500-million-xrp` | 200 | web/20261101222122 |
 | 2026-09-18 | CryptoSlate | `2026-09-18_cryptoslate-xrpls-new-lending-tool-could-lock-up` | 200 | web/20260920071642 |
 | 2026-09-18 | amznusa.com (aggregator) | `2026-09-18_amznusa-com-aggregator-xrpls-new-lending-tool-co` | 200 | PENDING |
 | 2026-09-19 | CoinDesk (Sep19) | `2026-09-19_coindesk-sep19-tech-2026-09-19-ripple-says-asset` | 200 | PENDING |
