@@ -1002,10 +1002,12 @@ CREATE INDEX IF NOT EXISTS crawler_forgery_shadow_kind_ts_idx
 --
 -- v1 scope: replace-on-write (the walker deletes every row and inserts
 -- fresh state each pass). Fine for ~102 rows and a current-state view.
--- If a "realized releases per month" chart is ever wanted, extend to
--- an append-with-history sibling table keyed by (owner, sequence,
--- observed_ledger_index) rather than reworking this one — door marked
--- in escrow_walker.py.
+-- Realized release history is NOT here and must not be added here: it
+-- lives in escrow_unlock_events (one row per EscrowFinish/EscrowCreate,
+-- PK tx_hash), written by scripts/escrow_unlock_walker.py. The 2026-10-14
+-- note that proposed an (owner, sequence, observed_ledger_index) sibling
+-- was superseded on 2026-11-01 — Escrow objects carry no Sequence field,
+-- as the PK comment below already explains.
 --
 -- amount_json holds the full XRPL Amount value: a string of drops for
 -- XRP escrows, a {currency, issuer, value} object for IOU escrows,
@@ -9914,9 +9916,10 @@ def replace_escrows_snapshot(rows, snapshot_ledger_index=None):
     PG-unavailable — walker treats False as a soft-fail and
     walker_health_end records it.
 
-    v1 = replace. If a future "realized releases per month" chart is
-    wanted, add a sibling escrows_history append table rather than
-    reworking this one (see SCHEMA_DDL note)."""
+    v1 = replace, and it stays that way. Realized release history lives in
+    escrow_unlock_events via record_escrow_unlock_events() — an append/UPSERT
+    surface keyed by tx_hash, written by scripts/escrow_unlock_walker.py.
+    Do not grow history semantics into this function (see SCHEMA_DDL note)."""
     if not pg_available():
         return False
     fetched_at = int(time.time())
@@ -10023,6 +10026,245 @@ def read_upcoming_escrow_releases(limit=50, now_ripple_seconds=None):
                 return [dict(zip(cols, r)) for r in cur.fetchall()]
     except Exception as e:
         _log_err("read_upcoming_escrow_releases_failed", e)
+        return []
+
+
+# ---------------------------------------------------------------------------
+# escrow_unlock_events — observed monthly escrow release history
+# ---------------------------------------------------------------------------
+#
+# Mirrors migrations/2026_11_01_escrow_unlock_events.sql statement-for-
+# statement. The full design rationale (why tx_hash is the PK, why the scope
+# is escrow OWNER and not submitter, why this table is exempt from the
+# stage-2 incremental policy, and the own-node-over-witness precedence rule)
+# lives in that migration's header comment and is not duplicated here.
+# tests/test_escrow_unlock_events_migration.py asserts the two stay identical,
+# so edit BOTH or neither.
+#
+# NOTE ON THE `%` IN THE SOURCE CHECK: the constraint contains
+# LIKE 'witness:%'. psycopg2 only does %-interpolation when execute() is
+# given a parameter sequence, and this blob is always executed with none, so
+# the literal passes through intact. Never pass params with this DDL.
+_ESCROW_UNLOCK_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS escrow_unlock_events (
+    tx_hash            TEXT PRIMARY KEY,
+    tx_type            TEXT        NOT NULL,
+    ledger_index       BIGINT      NOT NULL,
+    close_time         TIMESTAMPTZ NOT NULL,
+    unlock_month       TIMESTAMP
+        GENERATED ALWAYS AS (date_trunc('month', close_time AT TIME ZONE 'UTC'))
+        STORED,
+    denom              TEXT        NOT NULL,
+    amount_drops       BIGINT,
+    amount_json        JSONB       NOT NULL,
+    escrow_owner       TEXT        NOT NULL,
+    escrow_destination TEXT,
+    submitter          TEXT,
+    tx_result          TEXT        NOT NULL,
+    source             TEXT        NOT NULL,
+    observed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT escrow_unlock_events_tx_type_chk
+        CHECK (tx_type IN ('EscrowFinish', 'EscrowCreate')),
+    CONSTRAINT escrow_unlock_events_denom_chk
+        CHECK (denom IN ('XRP', 'IOU', 'MPT')),
+    CONSTRAINT escrow_unlock_events_source_chk
+        CHECK (source = 'own-node' OR source LIKE 'witness:%'),
+    CONSTRAINT escrow_unlock_events_amount_drops_chk
+        CHECK ((denom = 'XRP' AND amount_drops IS NOT NULL)
+               OR (denom <> 'XRP' AND amount_drops IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS escrow_unlock_events_unlock_month_idx
+    ON escrow_unlock_events (unlock_month DESC);
+
+CREATE INDEX IF NOT EXISTS escrow_unlock_events_owner_idx
+    ON escrow_unlock_events (escrow_owner);
+
+CREATE INDEX IF NOT EXISTS escrow_unlock_events_close_time_idx
+    ON escrow_unlock_events (close_time DESC);
+"""
+
+SOURCE_OWN_NODE = "own-node"
+
+
+def ensure_escrow_unlock_events_table():
+    """Create escrow_unlock_events + its indexes if missing.
+
+    Called by the owning job (scripts/escrow_unlock_walker.py) at tick start,
+    same contract as ensure_escrow_set_tables: the job that owns the table
+    guarantees its own shape, so no owner-run migration step is required.
+    Declaring it in SCHEMA_DDL alone is NOT enough — init_schema() is a
+    manual one-off that nothing runs at app boot, which is how
+    evernorth_daily_snapshot ended up absent from production on 2026-10-10
+    while every insert was swallowed by a best-effort except.
+
+    `SET lock_timeout` runs FIRST. There is no ALTER in this blob today, so
+    CREATE TABLE/INDEX IF NOT EXISTS is a cheap no-op once the table exists —
+    but the timeout is set anyway so that the day someone appends an additive
+    ALTER here it cannot queue ahead of every reader behind the ACCESS SHARE
+    that pg_dump holds for the whole nightly 22:00 ET backup. Lock timeout is
+    logged as its OWN category so "deferred, retries next tick" never hides a
+    genuinely broken statement.
+
+    Idempotent and best-effort: True when the table is present afterwards,
+    False when PG is unavailable or the DDL failed.
+    """
+    conn = _get_writer_conn()
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET lock_timeout = '3s'")
+            cur.execute(_ESCROW_UNLOCK_EVENTS_DDL)
+        return True
+    except Exception as e:  # noqa: BLE001 — job must still try to write
+        if _is_lock_timeout(e):
+            _log_err("ensure_escrow_unlock_events_table_lock_timeout", e)
+            return False
+        _log_err("ensure_escrow_unlock_events_table_failed", e)
+        return False
+
+
+def record_escrow_unlock_events(rows):
+    """UPSERT observed escrow lifecycle transactions. Returns rows written
+    (inserted + updated), or None on PG-unavailable / write error.
+
+    `rows` is a list of dicts with keys: tx_hash (PK), tx_type
+    ('EscrowFinish'|'EscrowCreate'), ledger_index (int), close_time
+    (timezone-aware datetime, UTC), denom ('XRP'|'IOU'|'MPT'), amount_drops
+    (int for XRP, None otherwise), amount_json (JSON-serializable),
+    escrow_owner, escrow_destination, submitter, tx_result, source
+    ('own-node' or 'witness:<host>').
+
+    SOURCE PRECEDENCE IS ENFORCED HERE, not by the caller. The daily walker
+    (own node, 3-day lookback) and the 12-month backfill (full-history
+    witnesses) overlap on the recent window and will see the same tx_hash.
+    The DO UPDATE ... WHERE clause upgrades a witness row to own-node and
+    never downgrades, so re-running the backfill at any time cannot overwrite
+    a sovereign read with a third-party one. The four cases:
+
+        stored witness  + incoming own-node → update (upgrade)
+        stored witness  + incoming witness  → update (refresh)
+        stored own-node + incoming own-node → update (refresh)
+        stored own-node + incoming witness  → SKIPPED
+
+    One transaction: a partial failure leaves the previous contents intact,
+    so a month is never left half-written.
+    """
+    if not rows:
+        return 0
+    if not pg_available():
+        return None
+    try:
+        written = 0
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                for r in rows:
+                    cur.execute(
+                        "INSERT INTO escrow_unlock_events "
+                        "  (tx_hash, tx_type, ledger_index, close_time, "
+                        "   denom, amount_drops, amount_json, escrow_owner, "
+                        "   escrow_destination, submitter, tx_result, source) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, "
+                        "        %s, %s, %s) "
+                        "ON CONFLICT (tx_hash) DO UPDATE SET "
+                        "  tx_type = EXCLUDED.tx_type, "
+                        "  ledger_index = EXCLUDED.ledger_index, "
+                        "  close_time = EXCLUDED.close_time, "
+                        "  denom = EXCLUDED.denom, "
+                        "  amount_drops = EXCLUDED.amount_drops, "
+                        "  amount_json = EXCLUDED.amount_json, "
+                        "  escrow_owner = EXCLUDED.escrow_owner, "
+                        "  escrow_destination = EXCLUDED.escrow_destination, "
+                        "  submitter = EXCLUDED.submitter, "
+                        "  tx_result = EXCLUDED.tx_result, "
+                        "  source = EXCLUDED.source, "
+                        "  observed_at = now() "
+                        " WHERE escrow_unlock_events.source <> %s "
+                        "    OR EXCLUDED.source = %s",
+                        (
+                            r["tx_hash"],
+                            r["tx_type"],
+                            int(r["ledger_index"]),
+                            r["close_time"],
+                            r["denom"],
+                            r.get("amount_drops"),
+                            json.dumps(r["amount_json"]),
+                            r["escrow_owner"],
+                            r.get("escrow_destination"),
+                            r.get("submitter"),
+                            r["tx_result"],
+                            r["source"],
+                            SOURCE_OWN_NODE,
+                            SOURCE_OWN_NODE,
+                        ),
+                    )
+                    written += cur.rowcount or 0
+            conn.commit()
+        return written
+    except Exception as e:
+        _log_err("record_escrow_unlock_events_failed", e)
+        return None
+
+
+def read_escrow_unlock_events(months=12):
+    """Return observed escrow lifecycle rows for the last `months` whole UTC
+    months, newest close_time first. Empty list when PG is unavailable or the
+    table is empty — the page renders "no data yet" rather than a zero.
+
+    Raw rows only: month grouping, the ET conversion and the net-released
+    arithmetic all happen in escrow_unlock_history.py as pure functions over
+    this output, so they are testable without a database.
+    """
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT tx_hash, tx_type, ledger_index, close_time, "
+                    "       unlock_month, denom, amount_drops, amount_json, "
+                    "       escrow_owner, escrow_destination, submitter, "
+                    "       tx_result, source, observed_at "
+                    "  FROM escrow_unlock_events "
+                    " WHERE unlock_month >= "
+                    "       date_trunc('month', (now() AT TIME ZONE 'UTC')) "
+                    "       - make_interval(months => %s) "
+                    " ORDER BY close_time DESC, tx_hash ASC",
+                    (int(months) - 1,),
+                )
+                cols = [d.name for d in cur.description]
+                return [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_escrow_unlock_events_failed", e)
+        return []
+
+
+def read_escrow_unlock_months_present(months=12):
+    """Return the set of UTC month-start dates that have at least one observed
+    row, within the last `months` whole months. The walker diffs this against
+    the months it expected to see and reports any hole as a FINDING — a month
+    missing from the history is visible rather than silently rendered as a
+    month with no releases.
+    """
+    if not pg_available():
+        return []
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT unlock_month "
+                    "  FROM escrow_unlock_events "
+                    " WHERE unlock_month >= "
+                    "       date_trunc('month', (now() AT TIME ZONE 'UTC')) "
+                    "       - make_interval(months => %s) "
+                    " ORDER BY unlock_month DESC",
+                    (int(months) - 1,),
+                )
+                return [r[0] for r in cur.fetchall()]
+    except Exception as e:
+        _log_err("read_escrow_unlock_months_present_failed", e)
         return []
 
 
