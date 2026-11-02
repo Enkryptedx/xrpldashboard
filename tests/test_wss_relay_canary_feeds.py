@@ -20,19 +20,21 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import live_stream_relay as R  # noqa: E402
 import wss_relay_canary as C  # noqa: E402
-from test_live_stream_relay_feeds import FakeUpstream, _free_port, _tx, AMM, OTHER, TOTAL_COINS  # noqa: E402
+from test_live_stream_relay_feeds import FakeUpstream, _bound_port, _tx, AMM, OTHER, TOTAL_COINS  # noqa: E402
 
 
 @contextlib.asynccontextmanager
 async def _relay():
-    up_port, ws_port = _free_port(), _free_port()
-    up = FakeUpstream(up_port)
+    # Bind port 0 and read back; no reserve-then-rebind window.
+    up = FakeUpstream()
     await up.start()
+    up_port = up.port
     state = R.RelayState()
     state.refs["pool_accounts"] = {AMM}
     up_task = asyncio.create_task(R.upstream_loop(state, f"ws://127.0.0.1:{up_port}"))
-    srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", ws_port,
+    srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", 0,
                                  ping_interval=25, max_size=4096)
+    ws_port = _bound_port(srv)
     for _ in range(100):
         if state.last_ledger is not None and state.refs.get("total_coins") is not None:
             break

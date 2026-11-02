@@ -12,7 +12,6 @@ import asyncio
 import contextlib
 import json
 import os
-import socket
 import sys
 import time
 from urllib.request import urlopen
@@ -28,15 +27,35 @@ sys.path.insert(0, ROOT)
 import live_stream_relay as R  # noqa: E402
 
 
-def _free_port() -> int:
-    s = socket.socket()
-    s.bind(("127.0.0.1", 0))
-    p = s.getsockname()[1]
-    s.close()
-    return p
+def _bound_port(server) -> int:
+    """Read the port a server ACTUALLY bound.
+
+    Replaces the old _free_port() helper, which bound port 0, read the number
+    back, CLOSED the socket, and then let the real server re-bind that same
+    number later. Between the close and the re-bind the port belonged to
+    nobody, so the kernel was free to hand it to someone else -- and _boot()
+    widened that window by reserving THREE ports up front before binding any
+    of them.
+
+    On the Linux CI runner that race lost: test_rate_limit_kicks_in died with
+    OSError(98) "address already in use" on 127.0.0.1, which aborted the
+    whole job at step 7 and skipped the remaining 71 steps. On macOS the
+    window practically never lost, which is exactly why the suite was green
+    locally and red only on GitHub -- the bug was always there, the platform
+    just hid it.
+
+    Binding port 0 on the REAL server and reading it back removes the window
+    instead of shrinking it: the socket is never closed between assignment
+    and use, so there is no interval in which the port can be taken. Retrying
+    on EADDRINUSE would only have made the flake rarer.
+
+    Works for both websockets servers and asyncio servers -- both expose
+    `.sockets`.
+    """
+    return server.sockets[0].getsockname()[1]
 
 
-async def _fake_upstream(port: int, tx_count_start: int = 0):
+async def _fake_upstream(port: int = 0, tx_count_start: int = 0):
     """Fake rippled: subscribe response then ledgerClosed events every 200ms."""
     async def handler(ws):
         try:
@@ -77,15 +96,17 @@ async def _fake_upstream(port: int, tx_count_start: int = 0):
 
 @contextlib.asynccontextmanager
 async def _boot(*, healthz: bool = True):
-    up_port = _free_port()
-    ws_port = _free_port()
-    hz_port = _free_port()
-    upstream = await _fake_upstream(up_port)
+    # Every server binds port 0 and is then asked what it got. Nothing is
+    # reserved ahead of time, so nothing can be stolen in between.
+    upstream = await _fake_upstream()
+    up_port = _bound_port(upstream)
     state = R.RelayState()
     up_task = asyncio.create_task(R.upstream_loop(state, f"ws://127.0.0.1:{up_port}"))
-    ws_srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", ws_port,
+    ws_srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", 0,
                                     ping_interval=25, max_size=4096)
-    hz_srv = await R.healthz_server(state, "127.0.0.1", hz_port) if healthz else None
+    ws_port = _bound_port(ws_srv)
+    hz_srv = await R.healthz_server(state, "127.0.0.1", 0) if healthz else None
+    hz_port = _bound_port(hz_srv) if hz_srv else None
     # Wait for upstream to connect + cache last_ledger
     for _ in range(50):
         if state.last_ledger is not None:
