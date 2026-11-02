@@ -39,6 +39,178 @@ import sys
 
 LAUNCHD_STATE_DIR = "/Users/charliebruce/xrpl_test/launchd_state"
 
+# ── per-tree source-vs-mirror freshness (added 2026-11-02) ──────────────────
+# ABSOLUTE AGE IS THE WRONG TEST for an rclone mirror. rclone only copies
+# CHANGED files, so a tree that genuinely has not changed looks ancient while
+# being perfectly backed up. ~/.ssh is the standing example: its newest file
+# is 2026-08-08 in BOTH source and mirror, which is correct, not cold. An
+# absolute-age rule would have paged on it every single day, forever, and
+# taught everyone to ignore this canary.
+#
+# The honest test is RELATIVE: the SOURCE's newest file must not be newer than
+# the MIRROR's newest file by more than one mirror cycle. If the mirror kept
+# up, that gap is bounded by the cadence no matter how old the content is.
+#
+# Compares NEWEST FILE mtime, never DIRECTORY mtime. rclone updates files
+# inside a directory without touching the directory's own mtime, so a dir
+# mtime reads as a week stale while the contents are current -- that exact
+# misreading sent this investigation down a wrong path on 2026-11-02.
+MIRROR_ROOT = "/Volumes/DockVault/xrpl_mirror"
+MIRROR_CYCLE_SECONDS = 25 * 3600  # 24h cadence + 1h slack
+
+# (source_path, mirror_subdir) — must track SOURCES in run_dockvault_mirror.sh
+MIRROR_TREES: list[tuple[str, str]] = [
+    ("/Users/charliebruce/xrpl_test", "xrpl_test"),
+    ("/Users/charliebruce/.ssh", "dot_ssh"),
+    ("/Users/charliebruce/xrpl_test_private_infra", "xrpl_test_private_infra"),
+]
+
+# Bare `git clone --mirror` targets. Proof of arrival here is the HEAD COMMIT
+# ID, not an mtime: a commit ID is the only honest evidence that HISTORY
+# crossed, rather than just the working files beside it.
+GIT_MIRRORS: list[tuple[str, str]] = [
+    ("/Users/charliebruce/xrpl_test_private_infra",
+     "xrpl_test_private_infra.git"),
+]
+
+
+# Anything rclone will not copy must not be counted on the SOURCE side, or the
+# source looks permanently "ahead" of a mirror that is in fact complete. Kept
+# in sync with b2_backup.excludes BY HAND and deliberately NOT read from it:
+# that file is shared with run_b2_backup.sh and must not gain a
+# canary-specific dependency.
+#
+# Two false positives this closes, both found on 2026-11-02:
+#   * ~/.ssh holds a live ssh-agent SOCKET (s.*.agent.*). rclone skips it
+#     correctly (12 entries in source, 11 in mirror), but os.walk lists it, so
+#     dot_ssh read as 1010h behind forever. Sockets are not regular files --
+#     hence the S_ISREG test below, which `find -type f` was doing implicitly
+#     and os.walk was not.
+#   * xrpl_test carries __pycache__/*.pyc and venv/, rewritten constantly and
+#     excluded from the mirror. Counting them would make that tree flap.
+_EXCLUDE_DIRS = {".git", "__pycache__", "venv", ".venv", "node_modules"}
+_EXCLUDE_NAMES = {".DS_Store"}
+_EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".swp")
+
+
+def _newest_file_mtime(root: str) -> int | None:
+    """Newest REGULAR-file mtime under `root`, honouring the mirror's
+    exclusions, or None if there is nothing comparable.
+
+    Walks files explicitly rather than stat'ing `root` -- see the module note
+    above on why directory mtime is useless here.
+
+    Only regular files count. Sockets, fifos and devices are skipped because
+    rclone does not copy them, so including them guarantees a false positive
+    that no amount of backing up can clear.
+    """
+    import stat as _stat
+    newest = None
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        for fn in filenames:
+            if fn in _EXCLUDE_NAMES or fn.endswith(_EXCLUDE_SUFFIXES):
+                continue
+            try:
+                st = os.stat(os.path.join(dirpath, fn))
+            except OSError:
+                continue
+            if not _stat.S_ISREG(st.st_mode):
+                continue
+            m = int(st.st_mtime)
+            if newest is None or m > newest:
+                newest = m
+    return newest
+
+
+def check_tree(src: str, sub: str) -> dict:
+    """Compare one source tree against its mirror. Same dict shape as
+    check_one so the existing print + walker_health plumbing is unchanged."""
+    label = f"mirror:{sub}"
+    dst = os.path.join(MIRROR_ROOT, sub)
+    base = {"label": label, "ceiling_seconds": MIRROR_CYCLE_SECONDS,
+            "age_seconds": None}
+    if not os.path.isdir(src):
+        return {**base, "ok": False, "reason": "source_missing"}
+    if not os.path.isdir(dst):
+        return {**base, "ok": False, "reason": "mirror_missing"}
+    s = _newest_file_mtime(src)
+    m = _newest_file_mtime(dst)
+    if s is None:
+        # Nothing to back up is not a failure.
+        return {**base, "ok": True, "age_seconds": 0, "reason": "source_empty"}
+    if m is None:
+        return {**base, "ok": False, "reason": "mirror_empty_but_source_has_files"}
+    lag = s - m
+    if lag > MIRROR_CYCLE_SECONDS:
+        return {**base, "ok": False, "age_seconds": lag,
+                "reason": f"source_ahead_{lag}s_gt_cycle_{MIRROR_CYCLE_SECONDS}s"}
+    # lag <= 0 means the mirror is at or ahead of the source: fully caught up.
+    return {**base, "ok": True, "age_seconds": max(lag, 0),
+            "reason": "caught_up" if lag <= 0 else "within_one_cycle"}
+
+
+def _git_head(git_dir: str) -> str | None:
+    import subprocess
+    try:
+        out = subprocess.run(["git", "--git-dir", git_dir, "rev-parse", "HEAD"],
+                             capture_output=True, text=True, timeout=30)
+        return out.stdout.strip() or None if out.returncode == 0 else None
+    except Exception:  # noqa: BLE001 -- a canary must not crash on git
+        return None
+
+
+def _git_commit_ts(git_dir: str, rev: str) -> int | None:
+    import subprocess
+    try:
+        out = subprocess.run(["git", "--git-dir", git_dir, "show", "-s",
+                              "--format=%ct", rev],
+                             capture_output=True, text=True, timeout=30)
+        return int(out.stdout.strip()) if out.returncode == 0 else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def check_git_mirror(src: str, sub: str) -> dict:
+    """Compare source HEAD against the bare mirror's HEAD by COMMIT ID.
+
+    Matching IDs is the pass. A MISMATCH is only acceptable while the newer
+    source commit is still inside one mirror cycle -- i.e. the nightly run
+    has not had its turn yet. Beyond that the history genuinely is not backed
+    up. Without the cycle allowance this would page on every daytime commit;
+    without the ID check an mtime would call a working-tree copy 'history'.
+    """
+    label = f"gitmirror:{sub}"
+    base = {"label": label, "ceiling_seconds": MIRROR_CYCLE_SECONDS,
+            "age_seconds": None}
+    src_git = os.path.join(src, ".git")
+    dst_git = os.path.join(MIRROR_ROOT, sub)
+    if not os.path.isdir(src_git):
+        return {**base, "ok": False, "reason": "source_not_a_git_repo"}
+    if not os.path.isdir(dst_git):
+        return {**base, "ok": False, "reason": "git_mirror_missing"}
+    s_head = _git_head(src_git)
+    m_head = _git_head(dst_git)
+    if s_head is None:
+        return {**base, "ok": False, "reason": "source_head_unreadable"}
+    if m_head is None:
+        return {**base, "ok": False, "reason": "mirror_head_unreadable"}
+    if s_head == m_head:
+        return {**base, "ok": True, "age_seconds": 0,
+                "reason": f"head_match_{s_head[:8]}"}
+    ts = _git_commit_ts(src_git, s_head)
+    if ts is None:
+        return {**base, "ok": False,
+                "reason": f"head_mismatch_src_{s_head[:8]}_mirror_{m_head[:8]}"}
+    lag = int(dt.datetime.now(dt.timezone.utc).timestamp()) - ts
+    if lag > MIRROR_CYCLE_SECONDS:
+        return {**base, "ok": False, "age_seconds": lag,
+                "reason": (f"head_mismatch_src_{s_head[:8]}_mirror_"
+                           f"{m_head[:8]}_commit_{lag}s_old")}
+    return {**base, "ok": True, "age_seconds": lag,
+            "reason": (f"head_mismatch_pending_next_run_src_{s_head[:8]}_"
+                       f"mirror_{m_head[:8]}")}
+
 # label → (ceiling_seconds, description for the finding)
 JOBS: list[tuple[str, int, str]] = [
     ("dockvault_mirror", 26 * 3600,
@@ -277,6 +449,24 @@ def main() -> int:
     ok_count = 0
     for label, ceiling, _desc in JOBS:
         r = check_one(label, ceiling)
+        results.append(r)
+        if r["ok"]:
+            ok_count += 1
+        else:
+            failures.append(r)
+
+    # Per-tree source-vs-mirror checks. These catch the case last_ok cannot:
+    # the job ran and exited clean, but a given tree did not actually arrive.
+    for src, sub in MIRROR_TREES:
+        r = check_tree(src, sub)
+        results.append(r)
+        if r["ok"]:
+            ok_count += 1
+        else:
+            failures.append(r)
+
+    for src, sub in GIT_MIRRORS:
+        r = check_git_mirror(src, sub)
         results.append(r)
         if r["ok"]:
             ok_count += 1
