@@ -10245,6 +10245,20 @@ def cold_storage():
     except Exception:
         escrows = None
 
+    # Observed monthly release history (escrow_unlock_events, written by
+    # scripts/escrow_unlock_walker.py from our own node). Best-effort and
+    # deliberately NOT folded into page_sourcing: it is an append-only log of
+    # observed transactions, not a live total, so an old row is still a true
+    # fact about the month it belongs to and must not flip the whole page to
+    # stale-cache. A failure here renders the section's empty state; it never
+    # takes down the locked/liquid hero.
+    try:
+        from escrow_unlock_history import fetch_unlock_history_from_db
+        unlocks = fetch_unlock_history_from_db()
+    except Exception:
+        app.logger.exception("escrow unlock history read failed")
+        unlocks = None
+
     # Aggregate sourcing across the two cache-backed fetches. Any single
     # stale-cache taints the whole page per the disclosure symmetry rule
     # (banner + footer key off page_sourcing).
@@ -10258,9 +10272,44 @@ def cold_storage():
         data=data,
         locked=locked,
         escrows=escrows,
+        unlocks=unlocks,
         page_sourcing=page_sourcing,
         cache_ttl_seconds=cold_storage_module.CACHE_TTL,
     )
+
+
+@app.route("/cold-storage/unlocks.json")
+@limiter.limit(agent_tier_limit_rate)
+def cold_storage_unlocks_json():
+    """Machine twin of the /cold-storage monthly release history section.
+
+    Same rows, same month buckets, same net arithmetic the page renders —
+    both call escrow_unlock_history.build_history(), so the HTML and the JSON
+    cannot disagree about what was released in a month.
+
+    Signed with the same v0.9 receipt envelope as /check.json and the other
+    .json twins. freshness_contract is 25h: the owning walker runs daily, so
+    one hour of slack past a full day is the honest promise. Any tighter
+    number would be a claim the cadence does not support.
+
+    The payload reports `months_observed` and never pads the window to 12
+    with zero-valued months. A month we have not observed is absent, which is
+    not the same claim as a month with no releases.
+    """
+    try:
+        from escrow_unlock_history import fetch_unlock_history_from_db
+        history = fetch_unlock_history_from_db()
+    except Exception:
+        app.logger.exception("/cold-storage/unlocks.json read failed")
+        history = {"months": [], "months_observed": 0, "tx_count": 0,
+                   "has_data": False, "newest_month": None,
+                   "oldest_month": None}
+    env = _machine_envelope(
+        {"escrow_unlock_history": history},
+        source_slug="cold-storage-unlocks",
+        freshness_contract="≤ 25h",
+    )
+    return _json_response(env)
 
 
 @app.route("/price-data")

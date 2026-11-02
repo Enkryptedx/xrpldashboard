@@ -177,6 +177,50 @@
     .cal-month .m-sub { font-size: var(--fs-2xs); color: var(--dim);
       margin-top: 0.2em; }
 
+/* Monthly release history (observed EscrowFinish/EscrowCreate) */
+    .unlock-month { border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75em 0.95em; margin-top: 0.7em;
+      background: rgba(0,0,0,0.2); }
+    .unlock-month-head { display: flex; justify-content: space-between;
+      align-items: baseline; gap: 0.8em; flex-wrap: wrap; }
+    .unlock-month-head .um-label { font-size: var(--fs-sm);
+      color: var(--text); font-weight: 600; letter-spacing: 0.02em; }
+    .unlock-month-head .um-net { font-size: var(--fs-xs);
+      color: var(--muted); }
+    .unlock-month-head .um-net strong { font-family: var(--mono);
+      color: var(--green); font-size: var(--fs-sm); }
+    .um-breakdown { margin-top: 0.3em; font-size: var(--fs-2xs);
+      color: var(--dim); font-family: var(--mono); }
+    .um-breakdown .um-sep { margin: 0 0.4em; color: var(--border-strong); }
+    .um-nonxrp { margin-top: 0.35em; font-size: var(--fs-2xs);
+      color: var(--amber); }
+    .um-txs { margin-top: 0.55em; display: flex; flex-direction: column;
+      gap: 0.3em; }
+    .um-tx { display: grid;
+      grid-template-columns: 5.5em 8.5em 1fr auto;
+      gap: 0.6em; align-items: baseline;
+      font-size: var(--fs-2xs); padding-top: 0.3em;
+      border-top: 1px solid var(--border); }
+    .um-tx-type { text-transform: uppercase; letter-spacing: 0.06em;
+      font-weight: 600; }
+    .um-tx-type.rel { color: var(--green); }
+    .um-tx-type.re  { color: var(--amber); }
+    .um-tx-amt { font-family: var(--mono); color: var(--text);
+      text-align: right; }
+    .um-tx-amt .denom { color: var(--muted); }
+    .um-tx-when { color: var(--dim); font-family: var(--mono); }
+    .um-tx-when .um-tx-et { color: var(--muted); }
+    .um-badge { display: inline-block; margin-left: 0.4em;
+      padding: 0.05em 0.45em; border-radius: 999px;
+      border: 1px solid var(--amber); color: var(--amber);
+      font-family: var(--sys); font-size: 0.64rem;
+      letter-spacing: 0.03em; white-space: nowrap; cursor: help; }
+    .um-tx-link { font-size: var(--fs-2xs); }
+    @media (max-width: 640px) {
+      .um-tx { grid-template-columns: 1fr auto; }
+      .um-tx-when { grid-column: 1 / -1; }
+    }
+
     .token-escrow-note { margin-top: 0.9em; padding: 0.7em 1em;
       background: rgba(59,130,246,0.05); border-left: 2px solid var(--blue);
       border-radius: 0 6px 6px 0; font-size: var(--fs-xs); color: var(--muted);
@@ -421,6 +465,93 @@
           </div>
         </div>
       {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Monthly release history — observed EscrowFinish/EscrowCreate facts from
+     escrow_unlock_events, written by scripts/escrow_unlock_walker.py. This
+     is the REALIZED counterpart to the forward-looking calendar above. The
+     locked/liquid hero is untouched and still reads escrows_snapshot.
+     Months are bucketed by UTC deliberately: a monthly unlock lands at
+     00:00:10 UTC, which is the previous evening in ET. #}
+  {% if unlocks and unlocks.has_data %}
+  <div class="card">
+    <div class="section-head" style="margin-bottom: 0.4em;">
+      <h2>{{ _('Monthly release history') }}</h2>
+      <span class="meta">
+        {{ unlocks.months_observed }} {{ _('month') if unlocks.months_observed == 1 else _('months') }} ·
+        {{ unlocks.tx_count }} {{ _('transaction') if unlocks.tx_count == 1 else _('transactions') }}
+      </span>
+    </div>
+    <div class="scope-note">
+      {{ _('What the cohort actually released, as opposed to what was scheduled above. Each month totals the escrows that finished (released into circulation) against the escrows the same accounts created that month (re-escrowed), and reports the difference as the net release. Every figure is a sum of individual ledger transactions, each linked below.') }}
+    </div>
+
+    {% for m in unlocks.months %}
+      <div class="unlock-month">
+        <div class="unlock-month-head">
+          <span class="um-label">{{ m.month_display }}</span>
+          <span class="um-net">
+            {% if m.is_net_re_escrow %}
+              {{ _('net re-escrowed') }}
+              <strong>{{ "{:,.0f}".format(-m.net_released_xrp) }}</strong> XRP
+            {% else %}
+              {{ _('net released') }}
+              <strong>{{ "{:,.0f}".format(m.net_released_xrp) }}</strong> XRP
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="um-breakdown">
+          <span class="um-rel">{{ _('released') }}
+            {{ "{:,.0f}".format(m.released_xrp) }} XRP</span>
+          <span class="um-sep">−</span>
+          <span class="um-re">{{ _('re-escrowed') }}
+            {{ "{:,.0f}".format(m.re_escrowed_xrp) }} XRP</span>
+        </div>
+
+        {% if m.non_xrp_count %}
+          <div class="um-nonxrp">
+            {{ m.non_xrp_count }}
+            {{ _('IOU or MPT escrow transaction is excluded from the XRP totals above.') if m.non_xrp_count == 1 else _('IOU or MPT escrow transactions are excluded from the XRP totals above.') }}
+          </div>
+        {% endif %}
+
+        <div class="um-txs">
+          {% for t in m.transactions %}
+            <div class="um-tx">
+              <span class="um-tx-type {{ 'rel' if t.is_released else 're' }}">
+                {{ _('released') if t.is_released else _('re-escrowed') }}
+              </span>
+              <span class="um-tx-amt">
+                {% if t.amount_xrp is not none %}
+                  {{ "{:,.0f}".format(t.amount_xrp) }} XRP
+                {% else %}
+                  <span class="denom">{{ t.denom }}</span>
+                {% endif %}
+              </span>
+              <span class="um-tx-when">
+                {{ t.utc_display }}
+                <span class="um-tx-et">({{ t.et_display }})</span>
+                {% if t.date_differs %}
+                  <span class="um-badge"
+                        title="{{ _('This transaction falls on a different calendar date in UTC than in US Eastern time. The monthly unlock executes just after midnight UTC, which is the previous evening in ET. It is grouped under its UTC month.') }}">
+                    {{ _('different date in ET') }}
+                  </span>
+                {% endif %}
+              </span>
+              <a class="um-tx-link mono"
+                 href="https://livenet.xrpl.org/transactions/{{ t.tx_hash }}"
+                 rel="noopener" target="_blank">{{ t.tx_hash[:8] }}…</a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="token-escrow-note">
+      {{ _('Observed from transaction metadata, not from a published schedule. A month is listed once at least one escrow transaction by a tracked account has been seen in it; a month absent from this list is one we have not observed, which is not the same as a month with no releases.') }}
     </div>
   </div>
   {% endif %}

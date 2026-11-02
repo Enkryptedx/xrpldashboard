@@ -12,10 +12,29 @@ cache over the Postgres table). It never touches the XRPL node
 directly for the browser/calendar sections.
 
 v1 = replace-on-write (~102 rows per pass; simple, always current).
-If a "realized releases per month" chart is ever wanted, the upgrade
-path is a sibling escrows_history append table keyed by
-(owner, sequence, observed_ledger_index) — the current schema and
-walker stay as the "live state" view. Door marked, not built.
+This table stays the "live state" view and is deliberately lossy: last
+pass wins, no history.
+
+The "realized releases per month" door marked here on 2026-10-14 was
+WALKED THROUGH on 2026-11-01, but NOT as the escrows_history table this
+note originally proposed. What shipped:
+
+  * table  escrow_unlock_events  (migrations/2026_11_01_escrow_unlock_events.sql)
+  * walker scripts/escrow_unlock_walker.py  (daily, 3-day lookback)
+  * page   the monthly release history section on /cold-storage
+
+Two things changed from the original sketch, both deliberate:
+  * the PK is tx_hash, not (owner, sequence, observed_ledger_index) —
+    Escrow ledger objects carry no top-level Sequence field, so that key
+    cost an extra account_tx round trip per row to reconstruct;
+  * it records TRANSACTIONS (EscrowFinish/EscrowCreate from account_tx),
+    not successive states of an Escrow object, because "what was released
+    in month M" is a question about transactions.
+
+So do NOT add an escrows_history sibling to this walker. If you need
+realized release history, read escrow_unlock_events. This walker and that
+one share only _classify_amount (imported there, so the two surfaces
+cannot disagree about how an Amount was read) and the cohort filter.
 
 TokenEscrow: each row's Amount shape is inspected. Any IOU/MPT
 denomination trips denom != 'XRP' and the read layer exposes

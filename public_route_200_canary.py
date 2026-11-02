@@ -123,6 +123,14 @@ ROUTES: list[tuple] = [
     ("/whales.json",                      500,    "check_v09_signature"),
     ("/pools.json",                       500,    "check_v09_signature"),
     ("/amendments.json",                  500,    "check_v09_signature"),
+    # Machine twin of the /cold-storage monthly release history (2026-11-01).
+    # Threshold is low on purpose: the envelope + an empty
+    # escrow_unlock_history block is ~700b, and the section is legitimately
+    # empty until the 12-month backfill has run. Guarding on a byte count
+    # that assumed populated months would have failed red for a reason that
+    # is not a fault. The content check is what earns its keep here — it
+    # catches an envelope drop, which is the failure that would matter.
+    ("/cold-storage/unlocks.json",        400,    "check_v09_signature"),
     # /thisweek.xml is a valid empty-feed shell (~387b) until Sunday
     # ships the first edition. Threshold lowered so the empty-state
     # feed passes; content check kept — "rss" is in the RSS wrapper
