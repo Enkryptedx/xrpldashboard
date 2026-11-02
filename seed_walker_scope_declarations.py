@@ -738,19 +738,42 @@ SCOPES = [
         "Declared RETIRED; row and history preserved.",
         True,
     ),
-    # ── PAUSED (owner ruling 2026-11-02) ───────────────────────────────
+    # ── RETIRED, corrected 2026-11-02 ──────────────────────────────────
+    # This row first shipped (same day) as PAUSED pointing at
+    # paused_walkers.py. That was WRONG and the correction matters, because
+    # two near-identical names exist and they are TWO DIFFERENT WALKERS:
+    #
+    #   escrow_supply_walker  (this row, escrow_supply_walker.py)
+    #       cohort EscrowCreate total for /cold-storage's "locked" figure.
+    #       RETIRED 2026-09-25 — its own walker_health message says so:
+    #       "RETIRED 2026-09-25: plist archived (private_infra 5101578)".
+    #       Last run 2026-09-24 21:21Z, ok=True. No plist exists.
+    #
+    #   supply_escrow_walker  (supply_escrow_walker.py, NOT this row)
+    #       full ledger-wide ledger_data(type=escrow) census on our own
+    #       node. Genuinely PAUSED 2026-10-15, owner-gated at escrow
+    #       stage 4, and it IS the name listed in paused_walkers.py.
+    #
+    # Different files, different jobs (cohort total vs full-ledger census),
+    # last runs three weeks apart, different states. The earlier row
+    # attributed one walker's state to the other.
     (
         "escrow_supply_walker",
-        "PAUSED — see paused_walkers.py; intentionally not scheduled",
-        "Intentionally paused since 2026-10-15, pending the stage-4 "
-        "incremental escrow redesign which is owner-gated. The authoritative "
-        "pause declaration lives in paused_walkers.py (PAUSED_WALKERS); "
-        "this row exists so the walker renders PAUSED rather than "
-        "UNDECLARED, and so the cadence=None UNSCHEDULED class added "
-        "2026-11-02 skips it via paused_walkers.is_paused(). Its coverage is "
-        "carried in the meantime by escrow_seed_walk's recorded output and "
-        "by escrow_walker's cohort snapshot. Do NOT revive without the "
-        "stage-4 ruling.",
+        "RETIRED 2026-09-25 — superseded by xrp_supply_block's "
+        "escrow_ripple_* columns",
+        "Retired, not paused: the plist was archived 2026-09-25 "
+        "(private_infra 5101578) and no launchd unit exists, so "
+        "cadence_seconds is NULL and the last run is 2026-09-24 21:21Z. "
+        "Superseded because the /cold-storage escrow side is now read from "
+        "xrp_supply_block's escrow_ripple_* columns via "
+        "db._read_escrow_side_from_supply_block(), which shapes them like a "
+        "legacy escrow_supply_snapshot row — so this walker's output had no "
+        "remaining consumer. Declared RETIRED so it stops rendering "
+        "UNDECLARED; the walker_health row and all history are preserved, "
+        "and escrow_supply_walker.py is left in the tree for reference. "
+        "Do NOT confuse with supply_escrow_walker, which is a different "
+        "walker, is paused rather than retired, and is the name "
+        "paused_walkers.py actually lists.",
         True,
     ),
     (
