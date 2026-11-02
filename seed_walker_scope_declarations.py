@@ -210,6 +210,549 @@ SCOPES = [
         "126 statement-timeout aborts.",
         True,
     ),
+    # ── Batch 2026-11-02: the 46 walker_health rows that had no declaration ──
+    # Each scope below was read from that walker's own source, not inferred
+    # from its name. Two names needed resolving first: plist_drift_canary
+    # lives in ~/xrpl_test_private_infra (the in-repo wrapper execs it), and
+    # `new_accounts` is written by new_accounts_walker.py -- a name/file
+    # mismatch. RETIRED/PAUSED rows exist to stop the UNDECLARED alarm
+    # without deleting any walker_health row or history.
+    (
+        "ai_crawler_daily_rollup",
+        "ai_crawler_hits aggregated by (ua_class, page_family, day), "
+        "self-probes excluded",
+        "Rolls ai_crawler_hits into ai_crawler_daily_rollup for the public "
+        "/observatory page, which serves ONE-WEEK-DELAYED weekly views. "
+        "page_family is a small CLOSED vocabulary, so a new URL shape lands "
+        "in the catch-all bucket until the classifier is extended -- that "
+        "traffic is counted but not distinguishable. Self-probes are "
+        "excluded by design, so our own canary hits never inflate the feed.",
+        True,
+    ),
+    (
+        "amendment_tally_reconstruct",
+        "past dates NOT covered by our signed leaves, answered by the "
+        "Validator History Service",
+        "Backfills per-amendment vote tallies for dates our signed daily "
+        "leaves never covered, by asking VHS what it can answer NOW about "
+        "that date. Rows are stored source='vhs_reconstructed' and are "
+        "NEVER signed -- a reconstruction is a third-party recollection, not "
+        "a first-party observation, and the two must stay distinguishable. "
+        "Invisible: anything VHS itself cannot answer for that date.",
+        True,
+    ),
+    (
+        "auto_pull_mac",
+        "ff-only git pull of ~/xrpl_test on the Mac, daily 05:20 local",
+        "Not an XRPL reader: it keeps the Mac checkout level with origin/main "
+        "so the launchd fleet stops running stale code. For the Mac the pull "
+        "IS the deploy, because launchd reads the tree each tick. ff-only on "
+        "purpose -- it refuses rather than merging or discarding when the "
+        "tree has diverged, which means a dirty working tree (token_names "
+        ".json is chronically dirty here) leaves the host behind until a "
+        "human intervenes. The Lenovo has NO equivalent job.",
+        True,
+    ),
+    (
+        "changes_walker",
+        "diff of today's signed snapshot vs yesterday's, after the 01:00 UTC "
+        "cycles land",
+        "Computes the /changes envelope and writes changes/YYYY-MM-DD.json. "
+        "Deliberately scheduled AFTER the 01:00 UTC signed_snapshot and "
+        "registry-snapshot cycles so today's row is already in Postgres when "
+        "the diff runs. If either upstream cycle is late, this walker diffs "
+        "against whatever is present and the day's entry is thin rather than "
+        "absent -- the feed never blocks on an upstream miss.",
+        True,
+    ),
+    (
+        "claim_verify_sampler_walker",
+        "SAMPLE of 10 public claims per weekly run, not the full claim set",
+        "Weekly re-check of 10 public claims against their primary sources: "
+        "3 warnings from the visitor-facing feed, 3 tier=verified rows with "
+        "source='two_way_toml', and the remainder spread across other "
+        "surfaces. This is a SAMPLER: the site makes far more than 10 "
+        "claims, so a false claim outside the week's draw stays unchecked "
+        "until it is sampled. Coverage is probabilistic by design, and the "
+        "honest reading is 'spot-checked weekly', never 'all claims "
+        "verified'.",
+        True,
+    ),
+    (
+        "cold_storage_walker",
+        "category='ripple' in named_accounts.json, account_info balances",
+        "Snapshots liquid balances for the tracked cohort via "
+        "account_info(ledger_index=validated) through xrpl_client.get_client "
+        "(Mac LOCAL_NODE = LAN Lenovo rippled), upserting cold_storage_"
+        "snapshot every 15 min. /cold-storage reads the table, never the "
+        "node. Same cohort-only blind spot as escrow_walker: exchange cold "
+        "wallets and foundation reserves are NOT tracked, and the page says "
+        "so. Note this one does NOT exclude the RLUSD issuer, unlike "
+        "escrow_supply/escrow_walker -- it reports balances, not escrows.",
+        True,
+    ),
+    (
+        "daemon_log_capper",
+        "launchd_logs/*.err.log and *.out.log, truncated IN PLACE",
+        "Not an XRPL reader: size-caps the launchd logs that must NOT be "
+        "rename-rotated, by truncating in place so the inode survives and "
+        "the writing process keeps its file handle. newsyslog's rename+gzip "
+        "would leave long-lived walkers writing into an unlinked inode, "
+        "silently losing every subsequent line. Scope is the log tree only; "
+        "it makes no claim about log CONTENT.",
+        True,
+    ),
+    (
+        "dockvault_mirror_freshness_canary",
+        "last_ok state files of the two DockVault mirror jobs",
+        "Reads the last_ok timestamp files for both mirror jobs and raises "
+        "findings_count>0 when either is stale. It checks FRESHNESS, not "
+        "correctness: a mirror that runs on schedule while copying the wrong "
+        "tree, or copying a damaged source faithfully, passes this canary. "
+        "Built after two days of silent mirror failure on the only backup of "
+        "the memory + deployment files.",
+        True,
+    ),
+    (
+        "geoip_db_refresh",
+        "one weekly MaxMind GeoLite2-City download into geoip_db_blob",
+        "The ONE place that talks to MaxMind on a schedule. Downloads "
+        "GeoLite2-City weekly, gzips it, and upserts it into Postgres "
+        "geoip_db_blob; every Render container and Mac walker then boots from "
+        "our store, so a deploy costs zero MaxMind downloads. Built after the "
+        "'Daily GeoIP Database Download Limit Reached' incident. Invisible: "
+        "geo accuracy itself -- it guarantees we HAVE a database, not that "
+        "MaxMind's answers are right.",
+        True,
+    ),
+    (
+        "geoip_health_canary",
+        "/healthz geoip.available plus region_code liveness, 15-min",
+        "Checks that state-level geo lookup is actually live: GET /healthz "
+        "and require geoip.available true. Exists because MaxMind's download "
+        "limit left /healthz.geoip disabled and page_views.region_code NULL "
+        "for every visit from 13:00Z while every walker stayed green -- "
+        "nothing measured 'is region live'. Measures availability, not "
+        "correctness of any specific lookup.",
+        True,
+    ),
+    (
+        "homepage_summary_walker",
+        "precomputed homepage aggregates, all 10 locales, 5-min",
+        "Pre-renders the PG + XRPL summaries the homepage used to aggregate "
+        "at request time (~4.8s cold). Writes one summary row per locale so "
+        "the route reads instead of computes. Scope is the homepage's own "
+        "aggregates only; a locale that fails to render leaves the previous "
+        "row in place, so the page can serve slightly stale copy rather than "
+        "blocking -- the message reports rendered=N/10 so a partial pass is "
+        "visible.",
+        True,
+    ),
+    (
+        "jj_ro_canary",
+        "the jj_ro read-only Postgres role's connect+select path",
+        "Exercises the jj_ro read-only DB path end to end. Built after that "
+        "path broke with 'SASL authentication failed' some time after 06:10 "
+        "ET 2026-10-30 and silently recovered by 06:06 ET 2026-10-31 -- "
+        "nobody could say when it broke or returned, because nothing probed "
+        "it. Covers the read-only role only; it says nothing about the "
+        "writer path the walkers use.",
+        True,
+    ),
+    (
+        "mac_tunnel_health_canary",
+        "Mac cloudflared connector for tunnel xrpld-mac (sig.xrpldashboard "
+        ".com -> 127.0.0.1:8842)",
+        "Watches the Mac-side cloudflared connector that carries "
+        "sig.xrpldashboard.com to the local sig-service. A Mac-side outage "
+        "silently drops sig-receipt signing, which is why this mirrors the "
+        "drift-guard coverage the Lenovo MCP connector already had. Scope is "
+        "this ONE tunnel; other connectors on either host are out of scope.",
+        True,
+    ),
+    (
+        "mcp_connect_redirect",
+        "clicks on the nine allowlisted MCP directory redirect slugs",
+        "Stamps a walker_health row with ref=<slug> BEFORE issuing the 302, "
+        "so a click that never completes the MCP handshake (agent fetched "
+        "the URL then closed) is still counted at the directory layer. This "
+        "counts ARRIVALS AT THE DOOR; mcp_session_start counts sessions that "
+        "actually call a tool, and the two numbers are expected to differ. "
+        "The slug allowlist is a CLOSED set of nine directories, so traffic "
+        "from anywhere else is invisible here. 30-day cadence means a long "
+        "quiet gap is normal, not a fault.",
+        True,
+    ),
+    (
+        "mcp_session_start",
+        "one stamp per MCP session, bound to the ?ref=<slug> that opened it",
+        "Each MCP session is stamped ONCE with the referring directory slug, "
+        "so revenue reads can count distinct sessions per directory. "
+        "Idempotent per session_key: the first call captures the ref and "
+        "writes exactly one row. The binding map lives IN-PROCESS, so a "
+        "restart wipes counters and starts a fresh count -- same operational "
+        "model as the rate-limit ceiling. Sessions that arrive without a ref "
+        "are not attributed.",
+        True,
+    ),
+    (
+        "mcp_ua_matrix_canary",
+        "a fixed 16-client-class User-Agent matrix against the MCP endpoint",
+        "Replays the same 16 UA classes used in the 2026-08-26 four-AI audit "
+        "that proved the Cloudflare 1010 discrimination, and alarms if a UA "
+        "that should be allowed comes back with the 'browser signature "
+        "banned' body. The matrix is FIXED: a client class outside those 16 "
+        "could be blocked without this canary noticing.",
+        True,
+    ),
+    (
+        "memory_index_size_guard",
+        "byte and line size of MEMORY.md against the auto-memory read window",
+        "Hourly check that the auto-memory root index stays inside the "
+        "loader's limits: a hard byte cap (~25000 bytes) and a soft line "
+        "guideline (~200 lines). Past either, content is silently dropped "
+        "from the window -- the file still exists, it just stops being read. "
+        "Guards SIZE only; it makes no claim about whether the content is "
+        "current or correct.",
+        True,
+    ),
+    (
+        "nav_dropdown_screenshot_canary",
+        "pixel checksum of the Live-group nav dropdown REGION on 3 pages, "
+        "weekly",
+        "Loads 3 pages headless, opens the Live-group nav dropdown, and "
+        "compares the dropdown region's pixel checksum against last week's. "
+        "Built after the /observatory transparent-dropdown bug, which no "
+        "HTML-level test could see. Scope is that one region on those 3 "
+        "pages: a visual regression anywhere else on the site is invisible, "
+        "and an intentional redesign trips it by design.",
+        True,
+    ),
+    (
+        "new_accounts",
+        "validated transactions whose metadata CREATES an AccountRoot, "
+        "forward-only",
+        "Forward-only ingest of XRPL account creations, detected from "
+        "metadata that creates an AccountRoot node. Written by "
+        "new_accounts_walker.py -- the walker_health name and the filename "
+        "differ. v1 records COUNT only; the funder is stored in the row for "
+        "a future concentration view but is NOT surfaced. Forward-only means "
+        "history before the cursor's start is permanently absent unless "
+        "backfilled.",
+        True,
+    ),
+    (
+        "nft_activity_summary",
+        "nft_activity_walker --mode summary: /nfts funnel, active/quiet, "
+        "churn badge",
+        "One of five modes of nft_activity_walker, dispatched via --mode. "
+        "Precomputes the /nfts funnel, the active/quiet split and the churn "
+        "badge into summary rows so the route reads instead of aggregating. "
+        "Reads what --mode activity has already ingested, so its numbers are "
+        "only as complete as that forward-only cursor -- a lagging ingest "
+        "shows as a lagging summary, not as an error.",
+        True,
+    ),
+    (
+        "pip_audit_walker",
+        "requirements.txt AND the installed set of every venv that runs our "
+        "code, weekly",
+        "Weekly Python dependency vulnerability scan: pip-audit against "
+        "requirements.txt AND against `pip freeze` for each venv (main, "
+        "py311, lenovo). Auditing only requirements.txt was the lesson filed "
+        "2026-10-27 -- a pinned file says nothing about what is actually "
+        "INSTALLED. Findings surface through walker_health so the L1 pager "
+        "sees them; WALKER_MESSAGE_MUTES in tools/l1_pager.py is the "
+        "acknowledged-CVE escape valve. Weekly cadence means a fresh "
+        "advisory can sit up to 7 days before being seen.",
+        True,
+    ),
+    (
+        "plist_drift_canary",
+        "~/Library/LaunchAgents/com.charliebruce.xrpldashboard.*.plist vs "
+        "private_infra/launchd",
+        "Compares the LIVE plist tree (what launchd actually loads) against "
+        "the TRACKED copies in ~/xrpl_test_private_infra/launchd, plus the "
+        "wrappers those plists exec and the Lenovo deploy units. private_"
+        "infra is their ONLY version control, because xrpldashboard's "
+        ".gitignore:139 ignores launchd/ wholesale. Source lives in "
+        "private_infra, not this repo -- the in-repo wrapper execs it. "
+        "Detects drift and untracked units; it does not validate that a "
+        "plist's schedule is sensible.",
+        True,
+    ),
+    (
+        "public_route_200_canary",
+        "the fixed ROUTES list in public_route_200_canary.py, every 15 min",
+        "GETs every public surface and requires 200 with a sane body size. "
+        "Built after /methodology served 500 undetected for ~7 days because "
+        "nothing GET'd the route after deploys. The ROUTES list is "
+        "MANUALLY kept in sync with PUBLIC_ROUTES in app.py, so a new route "
+        "that nobody adds here is never probed -- that hand-sync is the "
+        "standing weakness. Byte thresholds catch an empty-shell 200 but "
+        "not wrong CONTENT.",
+        True,
+    ),
+    (
+        "refresh_ofac_sdn",
+        "the digital-currency-address subset of the OFAC SDN list",
+        "Downloads the OFAC SDN list and extracts only the digital-currency-"
+        "address entries into a local JSON snapshot that check_data.py's "
+        "_signal_ofac_sdn_match consumes. Sanctioned parties with no listed "
+        "crypto address are therefore NOT in our snapshot, and a match here "
+        "means 'this address is on the list', never 'this counterparty is "
+        "clean'. Commits the refreshed JSON straight to main from the Mac, "
+        "so it moves origin/main without a PR.",
+        True,
+    ),
+    (
+        "rippled_cfg_drift_guard",
+        "three port stanzas in Lenovo's /etc/rippled/rippled.cfg",
+        "Verifies the ip/admin lines of [port_rpc_admin_local] "
+        "(127.0.0.1/127.0.0.1), [port_rpc_public_lan] (192.168.40.95, NO "
+        "admin key) and the third stanza stay sovereign-safe. Any deviation "
+        "raises findings_count. Scope is those stanzas: other rippled.cfg "
+        "sections, and the running process's actual bound ports, are not "
+        "checked -- it reads the FILE.",
+        True,
+    ),
+    (
+        "roll_call_recorder",
+        "UNL validator amendment yes-votes on VOTING ledgers "
+        "(index % 256 == 255)",
+        "Long-running Lenovo unit subscribed to the validations + ledger "
+        "streams on our OWN rippled's loopback WebSocket (no new LAN port). "
+        "Collects the amendment yes-votes UNL validators attach to their "
+        "validations of each VOTING ledger. Only voting ledgers carry these "
+        "votes, so the record is inherently once-per-256-ledgers, and a "
+        "validator outside our UNL is not counted.",
+        True,
+    ),
+    (
+        "route_5xx_rate_walker",
+        "rolling 1h 5xx percentage per route, from page_views",
+        "Queries page_views every 15 min for each route's rolling 1-hour "
+        "5xx rate and pages when any route exceeds 5%. Built after the "
+        "/registry/taxonomy incident to give a proactive signal on ANY "
+        "route rather than only the ones a canary names. Derived from our "
+        "own request log, so a failure that never reaches the app (edge "
+        "error, DNS, Render 502 before the worker) is invisible here.",
+        True,
+    ),
+    (
+        "rwa_supply_nav_walker",
+        "verified rwa_family rows with a NAV source in rwa_nav_sources.yaml",
+        "Daily on-ledger RWA supply multiplied by the cited NAV for each "
+        "verified family that has an entry in rwa_nav_sources.yaml naming "
+        "its NAV source URL, publish cadence and XRPL issuer. A family "
+        "without a yaml entry contributes NOTHING -- the figure is an honest "
+        "floor, not a market total, and NAV freshness is bounded by each "
+        "issuer's own publish cadence.",
+        True,
+    ),
+    (
+        "signed_verified_tokens",
+        "every (ticker, currency_hex, canonical_issuer) with a verified "
+        "provenance claim",
+        "Hourly Ed25519-signed manifest of tickers whose canonical issuer we "
+        "have verified, served at /.well-known/verified-tokens.json "
+        "(PG-first, disk fallback). Signed with the receipt key, NOT the "
+        "snapshot key. Absence from the manifest means 'we have not verified "
+        "it', never 'it is fraudulent' -- the manifest is an allowlist of "
+        "confirmed provenance, not a denylist.",
+        True,
+    ),
+    (
+        "site_totals_walker",
+        "all-time aggregates over page_views -> site_totals (id=1)",
+        "Daily single source of truth for 'how many countries' style "
+        "questions: reads page_views, upserts one row into site_totals, and "
+        "mirrors the payload to docs/SITE_TOTALS.json for grep-friendly "
+        "use. Idempotent. Bounded by page_views retention and by the bot "
+        "classification applied there -- totals are human-traffic totals "
+        "under whatever filters page_views carries, not raw hit counts.",
+        True,
+    ),
+    (
+        "supply_fast_walker",
+        "ONE ledger(validated) request every 60s -> xrp_supply_block "
+        "total_* columns",
+        "Half of a deliberate pair: this one makes a single ledger request "
+        "each minute and upserts only the total_* columns of the "
+        "xrp_supply_block singleton. burned_since_genesis is derived at "
+        "render time from total_xrp, so it is never stored. The other half "
+        "of the row (the slower escrow/reserve side) is owned by a different "
+        "walker -- this one must not be read as the whole supply picture.",
+        True,
+    ),
+    (
+        "tier_reverify_walker",
+        "token_category_current rows with source='two_way_toml', daily",
+        "Re-runs the two-way TOML check on every row claiming "
+        "source='two_way_toml', with a TWO-WEEK grace period before any "
+        "downgrade, so a transient TOML fetch failure cannot strip a token's "
+        "verified tier. Scope is two_way_toml rows only: tiers set by other "
+        "provenance routes are not re-checked here, and the grace window "
+        "means a genuinely revoked claim stays verified for up to 14 days.",
+        True,
+    ),
+    (
+        "token_icon_walker",
+        "icon URLs in [[TOKENS]] of verified / self-described issuer TOMLs",
+        "Hourly emblem fetcher: reads the icon URL from each verified or "
+        "self-described issuer's TOML [[TOKENS]] entry, fetches with a "
+        "256 KB cap and short timeout, and rasterizes. Only issuers that "
+        "publish an icon in their TOML are covered, so a missing emblem "
+        "usually means the issuer never declared one -- not that we failed "
+        "to fetch it.",
+        True,
+    ),
+    (
+        "token_issuer_flags_walker",
+        "DISTINCT issuers in token_volume, AccountInfo(signer_lists=True)",
+        "Every 30 min, enumerates distinct issuers from token_volume and "
+        "fetches AccountInfo with signer lists to back the 'Ledger-level "
+        "capabilities' panel on /token/<currency>/<issuer>. Scope follows "
+        "token_volume: an issuer with no recorded volume has no flags row, "
+        "so a brand-new or dormant issuer's panel is empty rather than "
+        "wrong.",
+        True,
+    ),
+    (
+        "tokens_summary_walker",
+        "precomputed /tokens inputs (aggregates 24h/7d/all, 50-row ranked "
+        "lists)",
+        "Every 300s, computes /tokens' heavy inputs into a single row using "
+        "the SAME app.py functions the route used to call live, so the "
+        "precomputed answer cannot drift from the on-demand one. Ranked "
+        "lists are capped at 50 rows each: anything below the cut is absent "
+        "from the summary, and the route falls back to live compute only if "
+        "the row is missing.",
+        True,
+    ),
+    (
+        "wallet_summary_walker",
+        "pre-rendered top-20 wallets, 5-min",
+        "Pre-renders the top-20 wallet views, whose cold render was ~8s "
+        "because the adaptive-cap fetch pulls up to 20,000 tx envelopes from "
+        "the LAN node -- past the 4s label-agreement canary timeout. Scope "
+        "is the top-20 only: any other wallet still cold-renders live, so "
+        "this walker's health says nothing about those.",
+        True,
+    ),
+    (
+        "whales_summary_walker",
+        "pre-rendered /whales tier + type combinations, 5-min",
+        "Pre-renders the /whales tier and type combinations (?tier=1m, "
+        "?tier=50k, ?type=trustset) that cost 5-19s cold. An in-process SWR "
+        "ceiling was not enough across Render instances, which is why this "
+        "is a walker. Only the precomputed combinations are covered; an "
+        "unusual query-string combination is computed live.",
+        True,
+    ),
+    (
+        "wss_relay_canary",
+        "wss://wss.xrpldashboard.com reachability + ledgerClosed cadence "
+        "from the public internet",
+        "Verifies the own-node WSS relay is reachable from OUTSIDE and is "
+        "actually pushing ledgerClosed events on cadence. After the live-feed "
+        "sovereignty flip this relay is the primary feed for /tokens, "
+        "/whales, /pools and /wallet, so silent death there degrades four "
+        "pages at once. Probes the public path specifically -- a relay "
+        "healthy on loopback but unreachable through the tunnel still fails, "
+        "which is the point.",
+        True,
+    ),
+    (
+        "xrpl_env_drift_guard",
+        "the 5 XRPL_ vars in ~/.config/xrpldashboard/env must point at :5006",
+        "Hourly check that all five XRPL_ env vars in the env FILE point at "
+        "the Lenovo LAN non-admin RPC port 5006 established in Wave-0. Reads "
+        "the file directly, NOT the runtime environment, because the drift "
+        "we care about is in the file that every wrapper sources. A process "
+        "already running with a stale value in memory is therefore not "
+        "detected here.",
+        True,
+    ),
+    (
+        "xrpl_stream_restart_rate",
+        "xrpl_stream restart counts on Lenovo, rolling 24h and 7d",
+        "Hourly count of xrpl_stream restarts over rolling 24h and 7d "
+        "windows, written to walker_health so the rate is visible in "
+        "Postgres instead of buried in xrpl_stream.log -- log analysis found "
+        "1,218 watchdog-triggered restarts across 23 days. Counts restarts; "
+        "it does not diagnose WHY, and a restart loop fast enough to stay "
+        "inside one hour still reports as a single hour's total.",
+        True,
+    ),
+    # ── RETIRED (owner ruling 2026-11-02) ──────────────────────────────
+    # Registered, not deleted. UNDECLARED is a LEFT JOIN on this table, so a
+    # row stops the alarm while every walker_health row and all history stay
+    # intact. All five have cadence_seconds NULL and no loaded plist.
+    (
+        "escrow_seed_walk",
+        "RETIRED 2026-11-02 — superseded, no plist, no schedule",
+        "Retired: no launchd plist, cadence_seconds NULL, last run "
+        "2026-10-16. The escrow seed walk was a staged one-shot; its "
+        "stage-2 machinery remains in scripts/escrow_seed_walk.py for "
+        "reference. Declared RETIRED so it stops rendering UNDECLARED "
+        "without deleting its walker_health row or history. Revive by "
+        "restoring a plist and giving it a cadence.",
+        True,
+    ),
+    (
+        "supply_block_walker",
+        "RETIRED 2026-11-02 — superseded by supply_fast_walker, no plist",
+        "Retired: no plist, cadence NULL, last run 2026-09-26. The "
+        "xrp_supply_block singleton is now maintained by supply_fast_walker "
+        "(60s, total_* columns) and its slower counterpart. Declared "
+        "RETIRED to stop the alarm; row and history preserved.",
+        True,
+    ),
+    (
+        "openclaw_cli_backend_drift",
+        "RETIRED 2026-11-02 — no plist, no schedule",
+        "Retired: no plist, cadence NULL, last run 2026-09-26. Declared "
+        "RETIRED to stop the UNDECLARED alarm; walker_health row and "
+        "history preserved for the record.",
+        True,
+    ),
+    (
+        "rwa_nav_transparency_walker",
+        "RETIRED 2026-11-02 — no plist, never completed a scheduled run",
+        "Retired: no plist, cadence NULL, last run 2026-09-25. RWA NAV "
+        "coverage now runs through rwa_supply_nav_walker (daily, "
+        "rwa_nav_sources.yaml). Declared RETIRED; row and history "
+        "preserved.",
+        True,
+    ),
+    (
+        "nft_activity_reconcile-type-rollup",
+        "RETIRED 2026-11-02 — composite pseudo-name, not a real unit",
+        "Retired: no plist, no source file, cadence NULL, last run "
+        "2026-09-26. The hyphenated name is a COMPOSITE of two "
+        "nft_activity_walker modes (--mode reconcile and the type rollup), "
+        "not a schedulable unit -- the same pseudo-name class this seeder's "
+        "2026-07-07 docstring records getting wrong. The real work runs "
+        "under nft_activity_summary and nft_activity_walker's other modes. "
+        "Declared RETIRED; row and history preserved.",
+        True,
+    ),
+    # ── PAUSED (owner ruling 2026-11-02) ───────────────────────────────
+    (
+        "escrow_supply_walker",
+        "PAUSED — see paused_walkers.py; intentionally not scheduled",
+        "Intentionally paused since 2026-10-15, pending the stage-4 "
+        "incremental escrow redesign which is owner-gated. The authoritative "
+        "pause declaration lives in paused_walkers.py (PAUSED_WALKERS); "
+        "this row exists so the walker renders PAUSED rather than "
+        "UNDECLARED, and so the cadence=None UNSCHEDULED class added "
+        "2026-11-02 skips it via paused_walkers.is_paused(). Its coverage is "
+        "carried in the meantime by escrow_seed_walk's recorded output and "
+        "by escrow_walker's cohort snapshot. Do NOT revive without the "
+        "stage-4 ruling.",
+        True,
+    ),
     (
         "escrow_unlock_walker",
         "category='ripple' in named_accounts.json minus RLUSD issuer, "

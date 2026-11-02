@@ -3171,7 +3171,8 @@ _STALE_MULTIPLE = 3
 _STALE_FLOOR_SECONDS = 1800
 
 
-def compute_walker_staleness(cadence_seconds, last_success_ts, now_ts):
+def compute_walker_staleness(cadence_seconds, last_success_ts, now_ts,
+                             walker_name=None):
     """Read-time derived STALE state for a walker_health row.
 
     Pure arithmetic — no I/O, no writers, no new tables. Called on every
@@ -3187,18 +3188,47 @@ def compute_walker_staleness(cadence_seconds, last_success_ts, now_ts):
     (ledger_definitions, macOS 26 LNP block) and Patient B (rank_amms,
     --reset hardcoded) at their observed stale ages.
     """
+    # UNSCHEDULED class (owner ruling 2026-11-02). `cadence_seconds IS NULL`
+    # returning is_stale=False is deliberate for event-triggered and manual
+    # jobs -- but it also meant a walker with no schedule could rot forever
+    # while this function reported it healthy. That is exactly the state the
+    # five retired names sat in (last runs Sept/Oct, nothing loaded, never
+    # once flagged). is_stale stays False, because "stale" needs a schedule
+    # to be late against and inventing a threshold for unscheduled work
+    # would be a fabricated claim. Instead the condition is now NAMED, so
+    # /coverage can render UNSCHEDULED as its own class instead of green.
+    #
+    # Paused walkers are exempt by owner requirement: paused_walkers.py is
+    # the authoritative pause declaration and escrow_supply_walker must not
+    # start alarming. Import is local + best-effort so this stays a pure
+    # read-time helper that cannot be broken by an import cycle.
+    paused = False
+    if walker_name:
+        try:
+            import paused_walkers
+            paused = paused_walkers.is_paused(walker_name)
+        except Exception:  # noqa: BLE001 -- never let the guard break the read
+            paused = False
+
     if not cadence_seconds:
         return {"is_stale": False, "stale_seconds": None,
-                "stale_threshold": None}
+                "stale_threshold": None,
+                "no_cadence": True,
+                "unscheduled": not paused,
+                "paused": paused}
     threshold = max(_STALE_MULTIPLE * int(cadence_seconds),
                     _STALE_FLOOR_SECONDS)
     if last_success_ts is None:
-        return {"is_stale": True, "stale_seconds": None,
-                "stale_threshold": threshold}
+        return {"is_stale": not paused, "stale_seconds": None,
+                "stale_threshold": threshold,
+                "no_cadence": False, "unscheduled": False,
+                "paused": paused}
     stale_seconds = now_ts - last_success_ts
-    return {"is_stale": stale_seconds > threshold,
+    return {"is_stale": (stale_seconds > threshold) and not paused,
             "stale_seconds": stale_seconds,
-            "stale_threshold": threshold}
+            "stale_threshold": threshold,
+            "no_cadence": False, "unscheduled": False,
+            "paused": paused}
 
 
 def read_coverage_register_state():
@@ -3316,10 +3346,15 @@ def read_coverage_register_state():
             last_success_ts = (
                 int(last_success.timestamp()) if last_success else None
             )
+            # walker_name is passed so the paused exemption can fire; the
+            # returned no_cadence / unscheduled / paused keys land in the row
+            # below via **staleness, so /coverage gets the UNSCHEDULED class
+            # without any further plumbing.
             staleness = compute_walker_staleness(
                 cadence_seconds=int(cadence) if cadence else None,
                 last_success_ts=last_success_ts,
                 now_ts=now,
+                walker_name=wname,
             )
             wh[wname] = {
                 "walker_name": wname,
