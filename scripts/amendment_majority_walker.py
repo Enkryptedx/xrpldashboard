@@ -65,6 +65,16 @@ import httpx  # noqa: E402
 import db  # noqa: E402
 import xrpl_client as xc  # noqa: E402
 
+# walker_health identity (2026-11-02). Until now this walker wrote NO
+# walker_health row at all, so its only health signal was out.log and
+# l1_pager could not see it: 126 QueryCanceled aborts accumulated over weeks
+# without a single page. It is the first-party record of amendment
+# activation transitions, which makes silence the worst possible failure
+# mode -- and fixCleanup3_4_0 activates 2026-11-04 14:46 UTC.
+# Name must match the walker_scope_declarations row exactly.
+WALKER_NAME = "amendment_majority_walker"
+WALKER_CADENCE_SECONDS = 900  # StartInterval=900 in the plist
+
 XRPL_EPOCH_OFFSET = 946684800
 AMENDMENTS_LEDGER_INDEX = (
     "7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"
@@ -250,6 +260,7 @@ def run(ledger_index="validated", dry_run=False):
     removed = 0
     enabled = 0
     backfilled = 0
+    ddl_deferred = False
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
             # 0) additive schema step so this walker never fails on a DB
@@ -299,6 +310,7 @@ def run(ledger_index="validated", dry_run=False):
                     # so a deferred migration must not cost the tick. That
                     # exact conflation is what the 126 aborts bought us.
                     conn.rollback()
+                    ddl_deferred = True
                     print(f"[majority_walker] enabled_tx_hash DDL deferred "
                           f"({type(e).__name__}); continuing with upserts")
             # 1) upsert present majorities
@@ -435,7 +447,7 @@ def run(ledger_index="validated", dry_run=False):
           f"removed_stamped={removed}")
     return {"ledger": lidx, "present": len(majorities),
             "wrote": wrote, "enabled": enabled, "removed": removed,
-            "backfilled": backfilled}
+            "backfilled": backfilled, "ddl_deferred": ddl_deferred}
 
 
 def main():
@@ -449,7 +461,39 @@ def main():
     ledger = args.ledger
     if ledger != "validated":
         ledger = int(ledger)
-    run(ledger_index=ledger, dry_run=args.dry_run)
+
+    # --dry-run deliberately does NOT stamp walker_health. It is a read-only
+    # inspection mode a human runs by hand; stamping it would let a manual
+    # invocation mask a dead scheduled tick, which is the exact illusion
+    # this change exists to remove.
+    if args.dry_run:
+        run(ledger_index=ledger, dry_run=True)
+        return 0
+
+    db.write_walker_health_start(WALKER_NAME,
+                                 cadence_seconds=WALKER_CADENCE_SECONDS)
+    t0 = time.time()
+    try:
+        out = run(ledger_index=ledger, dry_run=False)
+    except Exception as e:  # noqa: BLE001 -- must record the failure, then re-raise
+        # Record BEFORE re-raising. A walker that dies silently is what let
+        # the statement-timeout aborts run for weeks unpaged; the traceback
+        # still goes to err.log for the operator.
+        db.write_walker_health_end(
+            WALKER_NAME, ok=False, message=f"{type(e).__name__}: {e}")
+        raise
+
+    # findings_count is a distinct signal from ok: a deferred schema step is
+    # a clean run that still needs a human eye, so it reports ok=True with
+    # findings=1 rather than a false failure.
+    findings = 1 if out.get("ddl_deferred") else 0
+    msg = (f"ledger={out.get('ledger')} present={out.get('present')} "
+           f"wrote={out.get('wrote')} enabled={out.get('enabled')} "
+           f"corrected={out.get('backfilled')} removed={out.get('removed')} "
+           f"ddl_deferred={bool(out.get('ddl_deferred'))} "
+           f"elapsed={time.time() - t0:.1f}s")
+    db.write_walker_health_end(WALKER_NAME, ok=True, message=msg,
+                               findings_count=findings)
     return 0
 
 
