@@ -166,9 +166,54 @@ def test_page_renders_true_enable_point_with_tx_link(monkeypatch):
     assert "recorded enabled by our node at ledger" in html2 and "livenet.xrpl.org/transactions" not in html2
 
 
-def test_run_applies_additive_column_first(monkeypatch):
+def test_run_checks_the_catalog_before_any_ddl(monkeypatch):
+    """Step 0 must OPEN with a catalog read, not a DDL statement.
+
+    Supersedes test_run_applies_additive_column_first (owner ruling
+    2026-11-02). That test pinned the opposite contract -- ALTER first -- and
+    the ALTER was the bug: ADD COLUMN takes ACCESS EXCLUSIVE even when the
+    column already exists, because Postgres must lock the relation to decide
+    there is nothing to do. At StartInterval=900 a tick lands inside the
+    22:00 ET pg_backup window most nights, pg_dump holds ACCESS SHARE on
+    every table for its whole run, and the lock queue is FIFO -- so the ALTER
+    parked /amendments readers behind itself, burned the 25s
+    statement_timeout, and died with QueryCanceled, losing the tick's real
+    work. 126 aborts in launchd_logs/amendment_majority_walker.err.log.
+
+    information_schema.columns takes no lock on the table, so the steady
+    state cannot enter a lock queue at all.
+    """
     _rpc(monkeypatch, enabled=set(), majorities=[])
     cur = _db(monkeypatch, open_rows=[])
     W.run()
     first_sql = cur.executed[0][0]
-    assert first_sql.startswith("ALTER TABLE amendment_majority_history ADD COLUMN IF NOT EXISTS enabled_tx_hash")
+    assert first_sql.startswith("SELECT 1 FROM information_schema.columns"), first_sql
+    assert "amendment_majority_history" in first_sql
+    assert "enabled_tx_hash" in first_sql
+
+
+def test_run_skips_the_alter_entirely_when_the_column_exists(monkeypatch):
+    """Production steady state: the column is present, so no ADD COLUMN is
+    issued at all and there is nothing that could take ACCESS EXCLUSIVE."""
+    _rpc(monkeypatch, enabled=set(), majorities=[])
+    cur = _db(monkeypatch, open_rows=[])
+    cur.fetchone = lambda: (1,)          # catalog: column present
+    W.run()
+    alters = [s for s, _ in cur.executed if s.startswith("ALTER TABLE")]
+    assert alters == [], f"expected no DDL in steady state, got {alters}"
+
+
+def test_alter_is_preceded_by_lock_timeout_when_column_missing(monkeypatch):
+    """On a DB that genuinely lacks the column the DDL still runs -- but it
+    must never be able to queue an ACCESS EXCLUSIVE lock in front of
+    /amendments readers, so lock_timeout is set immediately before it."""
+    _rpc(monkeypatch, enabled=set(), majorities=[])
+    cur = _db(monkeypatch, open_rows=[])
+    cur.fetchone = lambda: None          # catalog: column missing
+    W.run()
+    sqls = [s for s, _ in cur.executed]
+    alter_idx = [i for i, s in enumerate(sqls) if s.startswith("ALTER TABLE")]
+    assert alter_idx, "expected the ALTER to run when the column is absent"
+    preceding = sqls[alter_idx[0] - 1]
+    assert "lock_timeout" in preceding and "2s" in preceding, preceding
+    assert "SET LOCAL" in preceding, preceding
