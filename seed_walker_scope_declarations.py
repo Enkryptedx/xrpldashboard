@@ -190,6 +190,31 @@ SCOPES = [
         True,
     ),
     (
+        "escrow_unlock_walker",
+        "category='ripple' in named_accounts.json minus RLUSD issuer, "
+        "scoped by escrow OWNER, 3-day lookback",
+        "account_tx for the same 20-account Ripple monthly-release cohort "
+        "escrow_walker uses, over a 3-day lookback, recording every "
+        "EscrowFinish/EscrowCreate into escrow_unlock_events (PK tx_hash). "
+        "Backs the monthly release history section on /cold-storage and "
+        "/cold-storage/unlocks.json. Scope is by escrow OWNER, not "
+        "submitter: EscrowFinish may be submitted by any account, and the "
+        "third-party submitter on the Sept 2026 cohort releases finished "
+        "364 unrelated escrows that same month — scoping by submitter "
+        "would have put all 364 on the page. What is therefore INVISIBLE "
+        "here: escrow releases by any owner outside this cohort, and any "
+        "cohort release older than the 3-day lookback that the one-time "
+        "12-month backfill did not already record. Rows are tagged "
+        "source='own-node' where our ~54k-ledger window reaches and "
+        "'witness:<host>' otherwise; the UPSERT upgrades witness to "
+        "own-node and never downgrades. A month inside the 12-month "
+        "display window with zero observed rows is reported as a finding, "
+        "never rendered as a month with no releases. NOT bound by the "
+        "stage-2 incremental policy: nothing here derives or serves a "
+        "running supply total.",
+        True,
+    ),
+    (
         "supply_escrow_walker",
         "PAUSED (intentional) — full escrow object enumeration on own "
         "node, pending incremental stream-tracking redesign",

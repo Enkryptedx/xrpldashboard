@@ -79,8 +79,19 @@ BACKFILL_DAYS = 372
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--commit", action="store_true",
-                    help="actually write rows (default is a dry run)")
+    # --dry-run is accepted EXPLICITLY even though it is the default
+    # (2026-11-02). The docstring above has always told the operator to run
+    # `--dry-run` first, but only `--commit` existed, so the documented
+    # command died with "unrecognized arguments: --dry-run". Dying on the
+    # safe invocation is the worst possible place to be strict: it trains
+    # whoever hit it to reach for the flag that DOES parse, which is
+    # --commit. Mutually exclusive so "--dry-run --commit" can never be read
+    # as a dry run while it writes.
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--commit", action="store_true",
+                      help="actually write rows")
+    mode.add_argument("--dry-run", action="store_true",
+                      help="explicitly request the default: read and report, write nothing")
     ap.add_argument("--days", type=int, default=BACKFILL_DAYS,
                     help=f"lookback in days (default {BACKFILL_DAYS})")
     args = ap.parse_args()

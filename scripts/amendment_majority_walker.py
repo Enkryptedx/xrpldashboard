@@ -252,12 +252,55 @@ def run(ledger_index="validated", dry_run=False):
     backfilled = 0
     with db.pg_connect() as conn:
         with conn.cursor() as cur:
-            # 0) additive, idempotent schema step so this walker never fails
-            #    on a DB that has not had migrations/2026_10_08_* applied.
+            # 0) additive schema step so this walker never fails on a DB
+            #    that has not had migrations/2026_10_08_* applied.
+            #
+            #    CHECK THE CATALOG FIRST (owner ruling 2026-11-02). Until now
+            #    this fired a bare ADD COLUMN IF NOT EXISTS on EVERY tick.
+            #    That is idempotent in EFFECT but not free: ADD COLUMN takes
+            #    ACCESS EXCLUSIVE even when the column already exists, because
+            #    Postgres must lock the relation to decide there is nothing to
+            #    do. At StartInterval=900 this walker fires 96x/day, so a tick
+            #    lands inside the 22:00 ET pg_backup window most nights.
+            #    pg_dump holds ACCESS SHARE on every table for the whole run
+            #    (~19 min on 2026-11-01) and Postgres's lock queue is FIFO —
+            #    so the ALTER did not merely wait, every reader arriving after
+            #    it queued BEHIND it, /amendments included. It then burned the
+            #    full 25s statement_timeout set in db.pg_connect() and died
+            #    with QueryCanceled, taking the tick's real work (the majority
+            #    upserts below) down with it. 126 such aborts are recorded in
+            #    launchd_logs/amendment_majority_walker.err.log; the 22:05 one
+            #    on 2026-11-01 is the one that surfaced this.
+            #
+            #    information_schema.columns is a cheap catalog read that takes
+            #    no lock on the table, so the steady state (column present,
+            #    which is production today) now costs one SELECT and cannot
+            #    enter a lock queue at all.
             cur.execute(
-                "ALTER TABLE amendment_majority_history "
-                "ADD COLUMN IF NOT EXISTS enabled_tx_hash TEXT"
+                "SELECT 1 FROM information_schema.columns "
+                " WHERE table_name = 'amendment_majority_history' "
+                "   AND column_name = 'enabled_tx_hash'"
             )
+            if cur.fetchone() is None:
+                # Genuinely missing, so the DDL has to run — but it must never
+                # be able to park an ACCESS EXCLUSIVE lock in front of
+                # /amendments readers. lock_timeout=2s turns a collision into
+                # "deferred, retries in 15 minutes" instead of a 25s stall
+                # plus a lost tick. SET LOCAL keeps it scoped to this
+                # transaction rather than leaking onto a pooled session.
+                try:
+                    cur.execute("SET LOCAL lock_timeout = '2s'")
+                    cur.execute(
+                        "ALTER TABLE amendment_majority_history "
+                        "ADD COLUMN IF NOT EXISTS enabled_tx_hash TEXT"
+                    )
+                except Exception as e:  # noqa: BLE001 — deferred, not broken
+                    # The upserts below do not read or write enabled_tx_hash,
+                    # so a deferred migration must not cost the tick. That
+                    # exact conflation is what the 126 aborts bought us.
+                    conn.rollback()
+                    print(f"[majority_walker] enabled_tx_hash DDL deferred "
+                          f"({type(e).__name__}); continuing with upserts")
             # 1) upsert present majorities
             for h, name, close_time, act_close in upserts:
                 vc, thr = _vote_at(cur, h)
