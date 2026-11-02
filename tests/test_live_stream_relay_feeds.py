@@ -10,7 +10,6 @@ import asyncio
 import contextlib
 import json
 import os
-import socket
 import sys
 from urllib.request import urlopen
 
@@ -29,19 +28,28 @@ OTHER = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"    # genesis account (valid)
 TOTAL_COINS = "99987000000000000"
 
 
-def _free_port() -> int:
-    s = socket.socket()
-    s.bind(("127.0.0.1", 0))
-    p = s.getsockname()[1]
-    s.close()
-    return p
+def _bound_port(server) -> int:
+    """Read the port a server ACTUALLY bound.
+
+    Full rationale lives on tests/test_live_stream_relay.py::_bound_port --
+    same fix. This second copy exists because tests/test_wss_relay_canary_
+    feeds.py imports the helper from THIS module, and the predecessor
+    (_free_port) was duplicated here the same way.
+
+    Short version: _free_port reserved a port, closed it, and let the real
+    server re-bind that number later. The Linux CI runner won that race often
+    enough to abort the job with OSError(98) address-already-in-use, while
+    macOS almost never did.
+    """
+    return server.sockets[0].getsockname()[1]
 
 
 class FakeUpstream:
     """rippled stand-in: subscribe response, ledgerClosed ticks, answers the
     `ledger` command with total_coins, and forwards injected transactions."""
 
-    def __init__(self, port: int):
+    def __init__(self, port: int = 0):
+        # 0 means "let the kernel choose"; start() reads back the real port.
         self.port = port
         self.server = None
         self.ws = None
@@ -52,6 +60,9 @@ class FakeUpstream:
 
     async def start(self):
         self.server = await websockets.serve(self._handler, "127.0.0.1", self.port)
+        # Read back what the kernel actually assigned, so callers dial the
+        # right port when self.port was 0.
+        self.port = _bound_port(self.server)
 
     async def stop(self):
         self.server.close()
@@ -122,17 +133,20 @@ async def _boot(mode="log_only", **overrides):
     for k, v in overrides.items():
         setattr(R, k, v)
     R.RELAY_MODE = mode
-    up_port, ws_port, hz_port = _free_port(), _free_port(), _free_port()
-    up = FakeUpstream(up_port)
+    # Each server binds port 0 and reports back; no port is reserved early.
+    up = FakeUpstream()
     await up.start()
+    up_port = up.port
     state = R.RelayState()
     state.refs["pool_accounts"] = {AMM}
     state.refs["top100"] = {(RLUSD_CUR, RLUSD_ISSUER)}
     state.refs["whale_tier_drops"] = 100_000 * 1_000_000
     up_task = asyncio.create_task(R.upstream_loop(state, f"ws://127.0.0.1:{up_port}"))
-    ws_srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", ws_port,
+    ws_srv = await websockets.serve(R._make_ws_handler(state), "127.0.0.1", 0,
                                     ping_interval=25, max_size=4096)
-    hz_srv = await R.healthz_server(state, "127.0.0.1", hz_port)
+    ws_port = _bound_port(ws_srv)
+    hz_srv = await R.healthz_server(state, "127.0.0.1", 0)
+    hz_port = _bound_port(hz_srv)
     for _ in range(100):
         if state.last_ledger is not None and state.refs.get("total_coins") is not None:
             break
