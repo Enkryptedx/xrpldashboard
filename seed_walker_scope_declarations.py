@@ -190,6 +190,27 @@ SCOPES = [
         True,
     ),
     (
+        "amendment_majority_walker",
+        "Amendments ledger object (Majorities) on our own node, per flag "
+        "ledger",
+        "Reads the Amendments ledger object from our own node every 15 min "
+        "and records gained/lost/regained majority transitions into "
+        "amendment_majority_history, keyed by (amendment_hash, "
+        "Majority.CloseTime). Built 2026-09-25 after five outlets printed "
+        "an Oct-5 activation for PermissionDelegationV1_1 that reset to "
+        "Oct-8 with no first-party record. Scope is the Majorities array "
+        "ONLY: an amendment that never takes a majority, or one enabled "
+        "inside a single flag interval, is invisible here. Enable points "
+        "are resolved by walking back flag ledgers for the EnableAmendment "
+        "pseudo-tx, so a tx older than MAX_FLAG_LEDGERS_BACK falls back to "
+        "the first ledger we OBSERVED the hash in, which is later than the "
+        "true enable time and is labelled as observed on /amendments. "
+        "Declared 2026-11-02 alongside the walker_health wiring: it "
+        "previously wrote no walker_health row, so l1_pager could not see "
+        "126 statement-timeout aborts.",
+        True,
+    ),
+    (
         "escrow_unlock_walker",
         "category='ripple' in named_accounts.json minus RLUSD issuer, "
         "scoped by escrow OWNER, 3-day lookback",

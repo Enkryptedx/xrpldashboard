@@ -217,8 +217,14 @@ def test_c_two_amendments_enable_on_different_flag_ledgers(monkeypatch):
                  majorities=[(BATCH, BATCH_CT)], enabled=[PD, FIXB])
     cur1, _ = _install_db(monkeypatch, open_rows=[(FIXB, FIXB_CT), (BATCH, BATCH_CT)])
     r1 = W.run()
+    # ddl_deferred added 2026-11-02: run() now reports whether the step-0
+    # schema check had to defer, so main() can raise it as findings_count
+    # without faking a failure. Kept in the exact-equality assertion on
+    # purpose -- the return dict is a contract, and a silently growing
+    # contract is how callers start guessing.
     assert r1 == {"ledger": 107_539_200, "present": 1, "wrote": 1,
-                  "enabled": 1, "removed": 0, "backfilled": 0}
+                  "enabled": 1, "removed": 0, "backfilled": 0,
+                  "ddl_deferred": False}
     en1 = _updates(cur1, "enabled_seen_ledger")
     # 2026-10-08: params gained enabled_tx_hash at index 3; hash/ct moved to 5/6.
     # The fake RPC serves no transactions, so the walker falls back to the
@@ -234,7 +240,8 @@ def test_c_two_amendments_enable_on_different_flag_ledgers(monkeypatch):
     cur2, _ = _install_db(monkeypatch, open_rows=[(BATCH, BATCH_CT)])
     r2 = W.run()
     assert r2 == {"ledger": 107_539_712, "present": 0, "wrote": 0,
-                  "enabled": 1, "removed": 0, "backfilled": 0}
+                  "enabled": 1, "removed": 0, "backfilled": 0,
+                  "ddl_deferred": False}
     en2 = _updates(cur2, "enabled_seen_ledger")
     assert [(p[5], p[6], p[0], p[1]) for p in en2] == \
         [(BATCH, BATCH_CT, 107_539_712, 844_872_240)]
