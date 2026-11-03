@@ -386,6 +386,25 @@ def _fmt_instant(unix_ts: Any) -> Optional[str]:
             f"({utc.strftime('%H:%M')} UTC {utc.strftime('%b')} {utc.day})")
 
 
+def _fmt_as_of_et_first(iso_utc: Optional[str]) -> Optional[str]:
+    """"8:23 PM ET (01:23 UTC)" — Eastern first, UTC in parentheses.
+
+    Fix 3 (Charlie ruling 2026-11-03). The strip previously printed only
+    "· 01:23 UTC", which reads as the middle of the night to a US reader
+    when it is in fact the previous evening. ET is derived from the zone,
+    never month arithmetic, so it stays correct across both DST switches.
+    """
+    if not iso_utc:
+        return None
+    try:
+        utc = dt.datetime.strptime(iso_utc, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=dt.timezone.utc)
+    except (ValueError, TypeError):
+        return None
+    et = utc.astimezone(_ET)
+    return f"{et.strftime('%-I:%M %p')} ET ({utc.strftime('%H:%M')} UTC)"
+
+
 def _detail_line(before: float, after: float, metric_type: str,
                  before_taken: Any = None, after_taken: Any = None,
                  metric_name: Optional[str] = None) -> str:
@@ -775,6 +794,51 @@ def _amendment_enabled_deltas(rows: list[dict], before_taken: Any,
     return items
 
 
+# The three producers build_changes_for_date diffs. Each entry is
+# (label, table, date_column, written_column). A producer whose row for
+# `date` does not exist yet -- or was written AFTER this build started --
+# cannot have been compared, so emitting "no change" for it would be a
+# false statement rather than a quiet day.
+# NOTE on the registry entry: changes_walker's plist comment calls this
+# producer "registry_state", but there is NO registry_state table -- that is
+# the name of the dict METRIC inside the signed envelope
+# (_registry_state_deltas diffs it). The actual producer row lives in
+# signed_registry_snapshots, and its date column is snapshot_date_utc, not
+# snapshot_date. Verified against information_schema before wiring this up;
+# guessing "registry_state" would have made the assertion fail-safe on every
+# single build and permanently replaced the strip with "comparison
+# unavailable".
+_PRODUCER_INPUTS = (
+    ("signed_snapshot", "signed_snapshots", "snapshot_date"),
+    ("unl_snapshot", "unl_snapshots", "snapshot_date"),
+    ("signed_registry_snapshot", "signed_registry_snapshots",
+     "snapshot_date_utc"),
+)
+
+
+def _assert_producer_inputs(cur, date: dt.date) -> list[str]:
+    """Return the labels of producers with no row for `date`.
+
+    Empty list means every input was present and a zero result is a real
+    observation. A non-empty list means the build raced its producers and
+    any "no change" conclusion is unsupported.
+
+    Deliberately fails SAFE: a table that cannot be queried at all counts as
+    missing, because an unreadable input is also an uncompared one.
+    """
+    missing: list[str] = []
+    for label, table, date_col in _PRODUCER_INPUTS:
+        try:
+            cur.execute(
+                f"SELECT 1 FROM {table} WHERE {date_col} = %s LIMIT 1", (date,)
+            )
+            if cur.fetchone() is None:
+                missing.append(label)
+        except Exception:  # noqa: BLE001 -- unreadable == uncompared
+            missing.append(label)
+    return missing
+
+
 def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     """Build a /changes envelope for `date` by diffing today's snapshot
     against yesterday's. Fails soft when yesterday's snapshot is missing —
@@ -890,9 +954,32 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     # RWA: no change today" on a day AMM TVL had actually moved). Mark as
     # SUSPECT rather than confidently publishing "no change" — a reader
     # should see "diff suspect" and know we didn't confirm zero motion.
+    # 2026-11-03 ROOT-CAUSE GUARD (Charlie ruling): assert the three
+    # producers were actually WRITTEN BEFORE this build ran. The 11-02/11-03
+    # zero-change outage was not a diff bug -- the diff was fine. A
+    # UTC-drifting consumer (changes_walker, StartInterval 86400, landing
+    # 01:23 UTC) overtook its ET-pinned producers when DST ended on Nov 1:
+    # signed_snapshot fires 21:00 ET, which moved from 01:00 UTC to 02:00
+    # UTC, so the leaf landed 37 min AFTER the diff. The builder read a day
+    # whose inputs did not exist yet and confidently published
+    # "no change today" across AMM/MPT/RWA for two days.
+    #
+    # Scheduling alone cannot fix this: unl_snapshot is StartInterval 86400
+    # and drifts, so no fixed slot can be guaranteed to sit after it, and
+    # the March switch would re-break any ET ordering. This assertion is the
+    # durable guard -- it makes "we could not compare" a FIRST-CLASS state
+    # that is never rendered as "no change".
+    inputs_missing = _assert_producer_inputs(cur, date)
+
     scalar_change_count = sum(1 for c in changes if c.get("metric_type") in ("usd", "count"))
     suspect_reason = None
-    if scalar_change_count == 0:
+    if inputs_missing:
+        suspect_reason = (
+            "inputs not yet written when this build ran: "
+            + ", ".join(inputs_missing)
+            + " — cannot distinguish 'no change' from 'nothing to compare'."
+        )
+    if scalar_change_count == 0 and not suspect_reason:
         if prev_date is None and skipped_dup_dates:
             suspect_reason = (
                 f"walked back {len(skipped_dup_dates)} day(s) "
@@ -916,10 +1003,15 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         "date": date.isoformat(),
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "changes": changes,
-        "categories_no_change": categories_no_change,
+        # When inputs are missing we must NOT claim per-category silence.
+        "categories_no_change": [] if inputs_missing else categories_no_change,
         "prev_snapshot_date": prev_date.isoformat() if prev_date else None,
         "prev_skipped_duplicate_dates": skipped_dup_dates,
         "diff_suspect_reason": suspect_reason,
+        # Auditability (fix 1): record the BASIS, not just the output, so a
+        # zero can be checked after the fact instead of taken on trust.
+        "inputs_missing": inputs_missing,
+        "comparable": not inputs_missing,
         "disclosure": DISCLOSURE,
     }
 
@@ -1148,6 +1240,21 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
             })
             seen_cats.add(cat)
 
+    # Fix 2 (Charlie ruling 2026-11-03): "nothing to compare" is its own
+    # state and must never render as "no change today". When the envelope
+    # reports missing inputs, replace the quiet-day fill entirely -- a
+    # reader seeing three "no change" lines on a day we never compared is
+    # being told something false.
+    if envelope.get("inputs_missing"):
+        slots = [{
+            "category": "status",
+            "line": "Comparison unavailable: we have no prior-day snapshot "
+                    "to compare against.",
+            "prove_url": "/changes",
+            "source": None,
+            "kind": "comparison_unavailable",
+        }]
+
     return {
         "header": {
             "date": envelope.get("date"),
@@ -1156,9 +1263,18 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
         },
         # Charlie ruling 2026-09-08: one-line explainer under the header
         # for first-time visitors. Verbatim from the ruling.
-        "explainer": ("The biggest things that moved on the XRP Ledger "
-                      "in the last 24 hours, measured from our own node. "
-                      "Every line links to its proof."),
+        #
+        # Fix 4 (2026-11-03): "the biggest things that moved" must not sit
+        # above a box that reports nothing moving, or nothing comparable.
+        "explainer": (
+            None if envelope.get("inputs_missing")
+            else "No changes detected in this window." if not changes
+            else ("The biggest things that moved on the XRP Ledger "
+                  "in the last 24 hours, measured from our own node. "
+                  "Every line links to its proof.")),
+        # Fix 3 support: hand the template an ET-first stamp.
+        "as_of_display": _fmt_as_of_et_first(envelope.get("generated_at_utc")),
+        "comparable": not envelope.get("inputs_missing"),
         "slots": slots[:k],
         "total_changes": len(changes),
         "changes_url": f"/changes/{envelope.get('date')}" if envelope.get("date") else "/changes",

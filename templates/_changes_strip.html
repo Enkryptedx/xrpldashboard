@@ -85,8 +85,8 @@
       {% if changes_strip.header.validated_ledger_index %}
         · {{ _('as of ledger') }} {{ '{:,}'.format(changes_strip.header.validated_ledger_index) }}
       {% endif %}
-      {% if changes_strip.header.as_of_utc %}
-        · {{ changes_strip.header.as_of_utc[11:16] }} UTC
+      {% if changes_strip.as_of_display %}
+        · {{ changes_strip.as_of_display }}
       {% endif %}
     </span>
   </div>
