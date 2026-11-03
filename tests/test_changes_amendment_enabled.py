@@ -59,7 +59,15 @@ class _Cur:
 
     def execute(self, sql, params=None):
         self._one = self._all = None
-        if "signed_snapshots" in sql:
+        # 2026-11-03: _assert_producer_inputs() probes each producer with
+        # "SELECT 1 FROM <table> WHERE <col> = %s LIMIT 1". These tests
+        # exercise the DIFFER, not the race guard, so they must answer the
+        # probe as "all inputs present" -- otherwise the guard fails SAFE,
+        # suppresses categories_no_change, and every assertion here breaks
+        # for a reason that has nothing to do with amendments.
+        if "SELECT 1 FROM" in sql and "LIMIT 1" in sql:
+            self._one = (1,)
+        elif "signed_snapshots" in sql:
             v = self.leaves.get(params[0]); self._one = (v,) if v is not None else None
         elif "amendment_majority_history" in sql:
             assert "enabled_iso IS NOT NULL" in sql
