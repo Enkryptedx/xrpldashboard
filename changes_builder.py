@@ -808,6 +808,8 @@ def _amendment_enabled_deltas(rows: list[dict], before_taken: Any,
 # guessing "registry_state" would have made the assertion fail-safe on every
 # single build and permanently replaced the strip with "comparison
 # unavailable".
+_PROBE_SAVEPOINT = "changes_input_probe"
+
 _PRODUCER_INPUTS = (
     ("signed_snapshot", "signed_snapshots", "snapshot_date"),
     ("unl_snapshot", "unl_snapshots", "snapshot_date"),
@@ -828,14 +830,32 @@ def _assert_producer_inputs(cur, date: dt.date) -> list[str]:
     """
     missing: list[str] = []
     for label, table, date_col in _PRODUCER_INPUTS:
+        # Each probe gets its OWN SAVEPOINT so that a failure here cannot
+        # poison the caller's transaction, and -- just as important -- so a
+        # transaction already broken by an EARLIER unrelated query cannot
+        # make every probe report "missing" and manufacture a false
+        # "Comparison unavailable". Rolling back to the savepoint restores a
+        # usable transaction either way.
+        try:
+            cur.execute(f"SAVEPOINT {_PROBE_SAVEPOINT}")
+        except Exception:  # noqa: BLE001 -- no savepoint support/txn broken
+            pass
         try:
             cur.execute(
                 f"SELECT 1 FROM {table} WHERE {date_col} = %s LIMIT 1", (date,)
             )
             if cur.fetchone() is None:
                 missing.append(label)
+            try:
+                cur.execute(f"RELEASE SAVEPOINT {_PROBE_SAVEPOINT}")
+            except Exception:  # noqa: BLE001
+                pass
         except Exception:  # noqa: BLE001 -- unreadable == uncompared
             missing.append(label)
+            try:
+                cur.execute(f"ROLLBACK TO SAVEPOINT {_PROBE_SAVEPOINT}")
+            except Exception:  # noqa: BLE001
+                pass
     return missing
 
 
@@ -849,6 +869,22 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
 
     with pg_connect() as conn:
         with conn.cursor() as cur:
+            # 2026-11-03 FIX: run the producer probe FIRST, inside this
+            # cursor's scope, and carry the result forward.
+            #
+            # The original placement was next to the suspect_reason block
+            # further down -- which is at function-body indentation, OUTSIDE
+            # both `with` blocks. By then `cur` and `conn` are CLOSED, so
+            # every probe query raised, the fail-safe marked all three
+            # producers missing, and a day with 7 real changes rendered as
+            # "Comparison unavailable". A fail-safe that fires on a closed
+            # handle is worse than no guard: it hides real data.
+            #
+            # It was NOT an aborted transaction. That was the first theory
+            # and it is disproved: _load_enabled_amendments() returns 3 rows
+            # cleanly and `SELECT 1` still works after it. The bug was scope,
+            # not transaction state.
+            inputs_missing = _assert_producer_inputs(cur, date)
             today = _load_envelope_for_date(cur, date)
             # 2026-09-11 fix: walk back to previous DISTINCT snapshot so
             # duplicate-metric days (two signed_snapshot fires with no
@@ -969,8 +1005,6 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
     # the March switch would re-break any ET ordering. This assertion is the
     # durable guard -- it makes "we could not compare" a FIRST-CLASS state
     # that is never rendered as "no change".
-    inputs_missing = _assert_producer_inputs(cur, date)
-
     scalar_change_count = sum(1 for c in changes if c.get("metric_type") in ("usd", "count"))
     suspect_reason = None
     if inputs_missing:

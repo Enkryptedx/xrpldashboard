@@ -156,3 +156,82 @@ class TestEtFirstStamp:
     def test_missing_or_malformed_timestamp_is_not_fatal(self):
         assert cb._fmt_as_of_et_first(None) is None
         assert cb._fmt_as_of_et_first("not-a-timestamp") is None
+
+
+class TestProbeSurvivesBrokenTransaction:
+    """Charlie ruling 2026-11-03: an earlier failing query must not make the
+    probe report "missing" and manufacture a false "Comparison unavailable".
+
+    Each probe runs inside its own SAVEPOINT, so a transaction already
+    poisoned upstream is rolled back to a usable state rather than turning
+    every producer into a false negative.
+    """
+
+    def test_earlier_failure_still_reports_found(self):
+        class PoisonedThenOk:
+            """First statement raises (as a broken txn would); after the
+            SAVEPOINT/ROLLBACK dance the probes succeed."""
+            def __init__(self):
+                self.poisoned = True
+                self._one = None
+
+            def execute(self, sql, params=None):
+                if sql.startswith(("SAVEPOINT", "ROLLBACK TO", "RELEASE")):
+                    self.poisoned = False
+                    return
+                if self.poisoned:
+                    raise RuntimeError("current transaction is aborted")
+                self._one = (1,)
+
+            def fetchone(self):
+                return self._one
+
+        assert cb._assert_producer_inputs(PoisonedThenOk(), DATE) == []
+
+    def test_savepoint_is_issued_per_probe(self):
+        class Rec:
+            def __init__(self): self.sqls = []
+            def execute(self, sql, params=None): self.sqls.append(sql)
+            def fetchone(self): return (1,)
+        r = Rec()
+        cb._assert_producer_inputs(r, DATE)
+        assert sum(1 for s in r.sqls if s.startswith("SAVEPOINT")) == len(
+            cb._PRODUCER_INPUTS)
+
+    def test_cursor_with_no_savepoint_support_still_works(self):
+        """Savepoint issuing is best-effort; a cursor that rejects it must
+        still produce a correct answer, not a false 'missing'."""
+        class NoSavepoint:
+            def execute(self, sql, params=None):
+                if sql.startswith(("SAVEPOINT", "ROLLBACK TO", "RELEASE")):
+                    raise RuntimeError("savepoints unsupported")
+            def fetchone(self): return (1,)
+        assert cb._assert_producer_inputs(NoSavepoint(), DATE) == []
+
+
+class TestProbeRunsInsideCursorScope:
+    """The shipped regression: the probe was placed at function-body
+    indentation, OUTSIDE build_changes_for_date's `with conn.cursor()`
+    blocks. By then cur/conn are CLOSED, every probe query raised, and a day
+    with 7 real changes rendered as "Comparison unavailable". A fail-safe
+    that fires on a closed handle hides real data, which is worse than no
+    guard at all.
+    """
+
+    def test_probe_precedes_the_envelope_load(self):
+        import inspect
+        src = inspect.getsource(cb.build_changes_for_date)
+        probe = src.index("_assert_producer_inputs(cur, date)")
+        load = src.index("_load_envelope_for_date(cur, date)")
+        assert probe < load, "probe must be the FIRST cursor use"
+
+    def test_probe_is_indented_inside_the_with_block(self):
+        import inspect, re
+        for line in inspect.getsource(cb.build_changes_for_date).splitlines():
+            if "_assert_producer_inputs(cur, date)" in line:
+                indent = len(line) - len(line.lstrip())
+                assert indent >= 12, (
+                    f"probe at indent {indent} is outside the cursor scope; "
+                    "it must sit inside `with conn.cursor() as cur:`")
+                return
+        raise AssertionError("probe call not found")
