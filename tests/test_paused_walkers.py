@@ -149,7 +149,6 @@ def test_describe_names_the_tracking_and_coverage():
     assert "no current coverage" in s
     assert "covered by" not in s, s
     assert "escrow_seed_walk" not in s, s
-    assert "escrow_seed_walk" in s
 
 
 # ── register hygiene ─────────────────────────────────────────────────────
