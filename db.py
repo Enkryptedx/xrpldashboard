@@ -7306,6 +7306,55 @@ GROWTH_PATH_PATTERNS = (
 GROWTH_PATH_DISTINCT_THRESHOLD = 5
 GROWTH_PATH_LOOKBACK_DAYS = 30
 
+# ── v6 rule 3: /contact form-spam scanner (approved 2026-11-04) ──────────
+# A visitor whose ENTIRE recorded history is a single no-referrer pageview
+# of /contact is a form-spam scanner, not a reader. Sized against ALL-TIME
+# before approval, as the analytics skill requires:
+#
+#   1,714 visitors match the shape across /contact + /check
+#     = 4.2% of 40,717 all-time human visitors
+#     = 1.6% of 104,726 all-time human pageviews
+#   split: /contact 1,359 · /check 355
+#   top countries: SG 598 · US 417 · DE 80 · BR 78 · FR 41
+#   UA families: Mac OS X 718 · Windows NT 10.0 647 · iPhone 13_2 253
+#
+# SCOPED TO /contact ONLY (owner ruling). /check was deliberately LEFT OUT:
+# a single no-referrer hit on /check is exactly what a person verifying one
+# signed receipt looks like, so tagging those 355 would hide real
+# verifications. Those 355 stay human.
+#
+# Note the UA families are all plausible browsers -- this is a
+# spoofed-browser fetcher, so no UA fragment could express it. That is why
+# it lives here as a per-visitor behavioural rule rather than in
+# public_analytics_filters, which only carries UA fragments.
+#
+# The same shape also enumerates /.well-known/registry/ (observed
+# 2026-11-03: SG+Mac and iPhone-13_2 fetching a 6-week-old dated snapshot),
+# so 1.6% is a FLOOR on this actor's footprint, not its full extent. Not
+# widened here -- /contact only, as scoped.
+#
+# Threshold is exact (=1), not >=: a visitor with any second pageview, any
+# second path, or any referrer is excluded. An open tab is never a bot
+# (standing rule 2026-10-14), and this rule cannot reach one because a
+# polling tab accumulates pageviews.
+CONTACT_SCANNER_PATH = "/contact"
+CONTACT_SCANNER_LOOKBACK_DAYS = 400
+
+# ── v6 rule 4: aocr.org spoofed-referrer /claims/* fetchers (2026-11-04) ──
+# 18 DISTINCT visitors each fetched exactly ONE different /claims/<id> path,
+# all carrying an aocr.org referrer, over Oct 27 - Nov 2. One real person
+# auditing the claim register is ONE visitor hitting MANY claims; eighteen
+# visitors hitting one claim each is a fleet spreading itself across the
+# register. visitors == hits == distinct paths is the fetcher signature.
+#
+# Matching on referrer host + /claims/ prefix rather than UA, because the
+# UAs are ordinary browser strings. The referrer is the tell: a genuine
+# reader arriving from aocr.org would land on /verify (which 5 did, and
+# those are NOT caught by this rule -- it is scoped to /claims/ only).
+CLAIMS_REFERRER_HOSTS = ("aocr.org", "www.aocr.org")
+CLAIMS_SCANNER_PATH_PREFIX = "/claims/"
+CLAIMS_SCANNER_LOOKBACK_DAYS = 400
+
 
 BOT_UA_PATTERNS = (
     "%AhrefsBot%",
@@ -8226,6 +8275,45 @@ def refresh_bot_hash_tables():
                     "  HAVING COUNT(DISTINCT path) >= %s) g "
                     "ON CONFLICT DO NOTHING",
                     [growth_ts] + list(GROWTH_PATH_PATTERNS) + [GROWTH_PATH_DISTINCT_THRESHOLD],
+                )
+                # v6 rule 3 -- /contact form-spam scanner (approved
+                # 2026-11-04). A visitor whose ENTIRE history is one
+                # no-referrer pageview of /contact. See the sizing block at
+                # CONTACT_SCANNER_PATH. HAVING uses exact equality so any
+                # second pageview, second path, or referrer excludes the
+                # visitor -- an open tab can never be caught.
+                contact_ts = int(time.time()) - CONTACT_SCANNER_LOOKBACK_DAYS * 86400
+                cur.execute(
+                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
+                    "SELECT visitor_hash FROM page_views "
+                    " WHERE visitor_hash IS NOT NULL AND ts > %s "
+                    " GROUP BY visitor_hash "
+                    "HAVING COUNT(*) = 1 "
+                    "   AND COUNT(DISTINCT path) = 1 "
+                    "   AND MIN(path) = %s "
+                    "   AND COUNT(*) FILTER ("
+                    "         WHERE referrer IS NOT NULL AND referrer <> ''"
+                    "       ) = 0 "
+                    "ON CONFLICT DO NOTHING",
+                    [contact_ts, CONTACT_SCANNER_PATH],
+                )
+                # v6 rule 4 -- aocr.org spoofed-referrer /claims/* fetchers.
+                # Scoped to /claims/ only: the 5 visitors who arrived from
+                # aocr.org and landed on /verify are left human.
+                claims_ts = int(time.time()) - CLAIMS_SCANNER_LOOKBACK_DAYS * 86400
+                claims_host_clause = " OR ".join(
+                    "SUBSTRING(referrer FROM 'https?://([^/]+)') = %s"
+                    for _ in CLAIMS_REFERRER_HOSTS
+                )
+                cur.execute(
+                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
+                    "SELECT DISTINCT visitor_hash FROM page_views "
+                    " WHERE visitor_hash IS NOT NULL AND ts > %s "
+                    "   AND path LIKE %s "
+                    f"   AND ({claims_host_clause}) "
+                    "ON CONFLICT DO NOTHING",
+                    [claims_ts, CLAIMS_SCANNER_PATH_PREFIX + "%"]
+                    + list(CLAIMS_REFERRER_HOSTS),
                 )
                 cur.execute(
                     "INSERT INTO _desired_bot_hashes (hash_type, hash) "
