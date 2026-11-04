@@ -22,6 +22,50 @@ import db
 
 HUMAN_WHERE = "(is_bot IS NULL OR is_bot = FALSE)"
 
+# ── news referrer hosts (2026-11-04) ─────────────────────────────────
+# Replaces `referrer ~* 'news|hackernews|linkedin'`, a substring test that
+# was wrong in both directions:
+#
+#   FALSE POSITIVE  it fired on any URL containing "news" anywhere,
+#                   including a PATH segment. The 2026-11-02 report counted
+#                   news=1 off cryptowatchdesk.com, which is not a match any
+#                   reader would expect.
+#   FALSE NEGATIVE  it missed every outlet without those letters.
+#                   coinpaper.com and agentictribune.com -- the only two
+#                   real crypto-media referrers in the Oct 27 - Nov 2 week --
+#                   were both invisible to it.
+#
+# Matching is exact host or dot-suffix (never substring), the same rule the
+# analytics skill mandates for every other referrer bucket, so
+# "notcoinpaper.com" cannot match "coinpaper.com".
+NEWS_REFERRER_HOSTS = (
+    "coinpaper.com",
+    "agentictribune.com",
+    "cryptowatchdesk.com",
+    "cointelegraph.com",
+    "coindesk.com",
+    "theblock.co",
+    "decrypt.co",
+    "bloomberg.com",
+    "reuters.com",
+    "news.ycombinator.com",
+    "linkedin.com",
+)
+
+
+def _news_host_sql(column: str = "referrer") -> str:
+    """SQL predicate: referrer host is an exact or dot-suffix match.
+
+    Host is extracted first, so a path containing "news" can never match --
+    which is the specific defect this replaces.
+    """
+    host = f"SUBSTRING({column} FROM 'https?://([^/]+)')"
+    parts = []
+    for h in NEWS_REFERRER_HOSTS:
+        parts.append(f"{host} = '{h}'")
+        parts.append(f"{host} LIKE '%.{h}'")
+    return "(" + " OR ".join(parts) + ")"
+
 
 def _yesterday_utc_window() -> tuple[int, int, str]:
     """Return (start_ts, end_ts, human_date) for yesterday's full UTC day."""
@@ -43,7 +87,7 @@ def line_referrers(cur, ts_s, ts_e) -> str:
           -- the site groups referrers.
           SUM(CASE WHEN referrer ~* 't\\.co|twitter|x\\.com' THEN 1 ELSE 0 END) x,
           SUM(CASE WHEN referrer ~* 'reddit' THEN 1 ELSE 0 END) reddit,
-          SUM(CASE WHEN referrer ~* 'news|hackernews|linkedin' THEN 1 ELSE 0 END) news,
+          SUM(CASE WHEN {_news_host_sql()} THEN 1 ELSE 0 END) news,
           SUM(CASE WHEN referrer IS NULL OR referrer = '' THEN 1 ELSE 0 END) direct,
           SUM(CASE WHEN referrer ~* 'google|bing|duckduckgo|yandex|baidu' THEN 1 ELSE 0 END) search
         FROM page_views WHERE ts >= %s AND ts < %s AND {HUMAN_WHERE}
