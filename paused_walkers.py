@@ -60,7 +60,22 @@ PAUSED_WALKERS: dict[str, dict[str, str | None]] = {
             "(~78,279 pages at ~27 pages/s)"
         ),
         "tracking": "escrow stage 4 (owner-gated)",
-        "replacement": "escrow_seed_walk",
+        # 2026-11-04: this said replacement="escrow_seed_walk", which the
+        # standing-orders report rendered as "covered by escrow_seed_walk".
+        # That became false when escrow_seed_walk was RETIRED on 2026-11-02,
+        # and it was always generous: escrow_seed_walk was the stage-2
+        # one-shot, not a standing census. escrow_supply_walker was retired
+        # 2026-09-25. The live escrow surfaces are escrow_walker (cohort
+        # snapshot, 30 min) and escrow_unlock_walker (release history,
+        # daily) -- neither performs the ledger-wide ledger_data(type=escrow)
+        # enumeration this walker was paused from. So the honest statement
+        # is an absence of coverage, not a reassurance. `coverage` is a free
+        # string rather than a walker name precisely so it cannot be
+        # mistaken for a working substitute.
+        "coverage": (
+            "no current coverage; full-ledger escrow census is unmeasured "
+            "pending stage 4"
+        ),
     },
 }
 
@@ -114,7 +129,12 @@ def describe(walker_name: str) -> str:
     bits = [f"paused since {d.get('paused_since')}"]
     if d.get("tracking"):
         bits.append(f"tracking: {d['tracking']}")
-    if d.get("replacement"):
+    # `coverage` is rendered VERBATIM. `replacement` (legacy) still reads as
+    # "covered by <walker>" -- only use it when a named walker genuinely does
+    # the paused walker's job, which for supply_escrow_walker nothing does.
+    if d.get("coverage"):
+        bits.append(d["coverage"])
+    elif d.get("replacement"):
         bits.append(f"covered by {d['replacement']}")
     return f"{walker_name} ({'; '.join(bits)})"
 
