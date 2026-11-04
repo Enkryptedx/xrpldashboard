@@ -744,6 +744,75 @@ def _iso_to_unix(iso: Any) -> Optional[int]:
         return None
 
 
+def _load_escrow_month_totals(cur, date: dt.date) -> Optional[dict]:
+    """Totals for the UTC month `date` falls in, from escrow_unlock_events.
+
+    MUST be called inside build_changes_for_date's `with conn.cursor()`
+    block. The delta assembly further down sits at function-body
+    indentation -- outside that scope -- and calling a cursor there is
+    exactly the bug that made 2026-11-03 render "Comparison unavailable" on
+    a day with 7 real changes. So this loads, and _escrow_release_deltas()
+    stays pure.
+
+    Deliberately NOT added to _PRODUCER_INPUTS: a monthly release exists on
+    one day a month, so requiring it would make every other day report
+    inputs_missing and suppress the whole strip. This is enrichment, not an
+    input the diff depends on.
+    """
+    try:
+        cur.execute(
+            "SELECT "
+            "  COALESCE(SUM(amount_drops) FILTER (WHERE tx_type='EscrowFinish'),0), "
+            "  COALESCE(SUM(amount_drops) FILTER (WHERE tx_type='EscrowCreate'),0), "
+            "  COUNT(*) "
+            "  FROM escrow_unlock_events "
+            " WHERE unlock_month = date_trunc('month', %s::date)",
+            (date,),
+        )
+        row = cur.fetchone()
+    except Exception:  # noqa: BLE001 -- enrichment must never break the build
+        return None
+    if not row or not row[2]:
+        return None
+    return {"released_drops": int(row[0]), "re_escrowed_drops": int(row[1]),
+            "tx_count": int(row[2])}
+
+
+def _escrow_release_deltas(totals: Optional[dict], date: dt.date) -> list[dict]:
+    """Pure. One line on the 1st of a UTC month reporting that month's
+    realized escrow release, linking to the /cold-storage history.
+
+    Fires only on day 1 because the cohort unlock executes at 00:00:1x UTC
+    on the 1st; on any other day there is no release to announce and the
+    category reports no change. Net is released minus re-escrowed and is
+    NOT clamped: a month where the cohort re-locked more than it released
+    is a real outcome and is labelled as such.
+    """
+    if date.day != 1 or not totals:
+        return []
+    rel = totals["released_drops"] / 1_000_000
+    re_esc = totals["re_escrowed_drops"] / 1_000_000
+    net = rel - re_esc
+    if rel <= 0 and re_esc <= 0:
+        return []
+    if net >= 0:
+        line = (f"Escrow: {rel:,.0f} XRP released, {re_esc:,.0f} re-escrowed "
+                f"— net {net:,.0f} XRP into circulation.")
+    else:
+        line = (f"Escrow: {rel:,.0f} XRP released, {re_esc:,.0f} re-escrowed "
+                f"— net {abs(net):,.0f} XRP re-locked.")
+    return [{
+        "category": "escrow",
+        "line": line,
+        "detail": (f"Observed from {totals['tx_count']} escrow transactions "
+                   f"by the tracked Ripple accounts this month."),
+        "prove_url": "/cold-storage#monthly-release-history",
+        "source": "escrow_unlock_events",
+        "metric_name": "escrow_month_net_released_xrp",
+        "metric_type": "count",
+    }]
+
+
 def _amendment_enabled_deltas(rows: list[dict], before_taken: Any,
                               after_taken: Any) -> list[dict]:
     """Pure. One item per amendment whose enabled instant satisfies
@@ -899,6 +968,8 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
             # window. Read here, inside the same connection; filtered in
             # Python by _amendment_enabled_deltas below.
             enabled_rows = _load_enabled_amendments(cur) if today else []
+            # Loaded HERE, inside the cursor scope; differed purely below.
+            escrow_month = _load_escrow_month_totals(cur, date)
 
     changes: list[dict] = []
     categories_no_change: list[str] = []
@@ -970,6 +1041,15 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         (today or {}).get("snapshot_taken_unix")))
     if not any(c["category"] == "amendments" for c in changes):
         categories_no_change.append("amendments")
+
+    # Monthly escrow release (2026-11-04). Only the 1st of a UTC month can
+    # carry one; every other day reports no change.
+    changes.extend(_escrow_release_deltas(escrow_month, date))
+    # Deliberately NOT appended to categories_no_change (owner ruling
+    # 2026-11-04). A monthly release exists on one day in thirty, so "Escrow:
+    # no change today" would be true-but-useless noise on the other 29 and
+    # would occupy a homepage slot that a real change should have. On a
+    # non-release day the category simply does not render.
 
     # v2 slots — explicitly flag what we don't cover yet
     for missing in ("whales", "curator_decisions"):
@@ -1259,6 +1339,9 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
         _CAT_LABEL = {
             "amm": "AMM", "mpt": "MPT", "rwa": "RWA", "rlusd": "RLUSD",
             "network": "Network", "registry": "Registry", "unl": "UNL",
+            # Label kept for the real release line; "escrow" is absent from
+            # the quiet-day tuple below on purpose, so it never fills a slot.
+            "escrow": "Escrow",
         }
         for cat in ("amm", "mpt", "rwa", "rlusd", "network", "registry", "unl"):
             if len(slots) >= k:

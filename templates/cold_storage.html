@@ -347,6 +347,13 @@
         {% else %}
           {{ _('fetching from XRPL') }}…
         {% endif %}
+        {# Discoverability (2026-11-04): the history section shipped 11-02 and
+           took 23 pageviews in its first week because nothing linked to it. #}
+        {% if unlocks and unlocks.has_data %}
+          <div class="hero-meta" style="margin-top: 0.6em;">
+            <a href="#monthly-release-history">{{ _('See what was actually released each month →') }}</a>
+          </div>
+        {% endif %}
       </div>
     </div>
     <div class="kpi">
@@ -476,7 +483,9 @@
      Months are bucketed by UTC deliberately: a monthly unlock lands at
      00:00:10 UTC, which is the previous evening in ET. #}
   {% if unlocks and unlocks.has_data %}
-  <div class="card">
+  {# id is the deep-link target for the hero link above, the /whales card and
+     the homepage What's new strip's escrow line. Keep it stable. #}
+  <div class="card" id="monthly-release-history">
     <div class="section-head" style="margin-bottom: 0.4em;">
       <h2>{{ _('Monthly release history') }}</h2>
       <span class="meta">

@@ -39,7 +39,16 @@ def test_supply_escrow_walker_is_declared():
     d = pw.declaration("supply_escrow_walker")
     assert d["paused_since"] == "2026-10-15"
     assert "stage 4" in d["tracking"]
-    assert d["replacement"] == "escrow_seed_walk"
+    # 2026-11-04: was replacement == "escrow_seed_walk". That claim died when
+    # escrow_seed_walk was RETIRED on 11-02, and it was always generous --
+    # escrow_seed_walk was the stage-2 one-shot, not a standing census.
+    # Nothing performs the ledger-wide ledger_data(type=escrow) enumeration
+    # this walker was paused from, so the declaration now states an absence.
+    assert "replacement" not in d, (
+        "a named replacement asserts a working substitute; none exists")
+    assert d["coverage"] == (
+        "no current coverage; full-ledger escrow census is unmeasured "
+        "pending stage 4")
 
 
 # ── a pause must never mask a real failure ───────────────────────────────
@@ -132,11 +141,14 @@ def test_paused_rows_are_never_silently_dropped():
     assert "stage 4" in out[pw.PAUSED][0]
 
 
-def test_describe_names_the_tracking_and_replacement():
+def test_describe_names_the_tracking_and_coverage():
     s = pw.describe("supply_escrow_walker")
     assert "paused since 2026-10-15" in s
     assert "stage 4" in s
-    assert "escrow_seed_walk" in s
+    # The report must not imply a substitute is running.
+    assert "no current coverage" in s
+    assert "covered by" not in s, s
+    assert "escrow_seed_walk" not in s, s
 
 
 # ── register hygiene ─────────────────────────────────────────────────────
@@ -146,9 +158,16 @@ def test_every_declaration_carries_the_required_fields():
         assert d.get("paused_since"), f"{name} missing paused_since"
         assert d.get("reason"), f"{name} missing reason"
         assert d.get("tracking"), f"{name} missing tracking"
+        # `coverage` is free text rendered verbatim; `replacement` is a
+        # walker NAME rendered as "covered by <x>" and is only legitimate
+        # when that walker genuinely does the paused walker's job. They are
+        # mutually exclusive so a declaration cannot both name a substitute
+        # and disclaim one.
         assert set(d) <= {
-            "paused_since", "reason", "tracking", "replacement"
+            "paused_since", "reason", "tracking", "replacement", "coverage"
         }, f"{name} has unexpected keys"
+        assert not (d.get("replacement") and d.get("coverage")), (
+            f"{name} declares both replacement and coverage")
 
 
 def test_declaration_returns_a_copy():
