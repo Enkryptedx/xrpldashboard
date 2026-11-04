@@ -8285,7 +8285,7 @@ def refresh_bot_hash_tables():
                 contact_ts = int(time.time()) - CONTACT_SCANNER_LOOKBACK_DAYS * 86400
                 cur.execute(
                     "INSERT INTO _desired_bot_hashes (hash_type, hash) "
-                    "SELECT visitor_hash FROM page_views "
+                    "SELECT 'visitor', visitor_hash FROM page_views "
                     " WHERE visitor_hash IS NOT NULL AND ts > %s "
                     " GROUP BY visitor_hash "
                     "HAVING COUNT(*) = 1 "
@@ -8306,8 +8306,16 @@ def refresh_bot_hash_tables():
                     for _ in CLAIMS_REFERRER_HOSTS
                 )
                 cur.execute(
+                    # NB: 'visitor' literal first, matching every other arm.
+                    # _desired_bot_hashes is (hash_type, hash), so a bare
+                    # SELECT visitor_hash would insert one value into two
+                    # columns. It also keeps the egress guard in
+                    # tests/test_bot_hashes_upsert.py satisfied: this is an
+                    # INSERT..SELECT executed server-side, so no hash crosses
+                    # the wire, but that guard is a string test and the bare
+                    # form reads identical to the 2026-10-24 egress bug.
                     "INSERT INTO _desired_bot_hashes (hash_type, hash) "
-                    "SELECT DISTINCT visitor_hash FROM page_views "
+                    "SELECT DISTINCT 'visitor', visitor_hash FROM page_views "
                     " WHERE visitor_hash IS NOT NULL AND ts > %s "
                     "   AND path LIKE %s "
                     f"   AND ({claims_host_clause}) "
