@@ -63,7 +63,13 @@ def _news_host_sql(column: str = "referrer") -> str:
     parts = []
     for h in NEWS_REFERRER_HOSTS:
         parts.append(f"{host} = '{h}'")
-        parts.append(f"{host} LIKE '%.{h}'")
+        # %% not % -- this SQL is handed to a PARAMETERIZED cur.execute(),
+        # so psycopg scans it for placeholders and a bare '%.' raises
+        # "only '%s', '%b', '%t' are allowed as placeholders, got '%.'".
+        # That crashed line_referrers in the 2026-11-05 08:00 report, taking
+        # the whole daily report down. Every other LIKE in this file already
+        # used %% (US-%%, /thisweek%%, curl/%%); #131 broke the convention.
+        parts.append(f"{host} LIKE '%%.{h}'")
     return "(" + " OR ".join(parts) + ")"
 
 
