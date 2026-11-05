@@ -2336,7 +2336,21 @@
         var usdInTxt  = fmtUsdShort(node.usdIn);
         var usdOutTxt = fmtUsdShort(node.usdOut);
         var statText;
-        var noun = (txCount === 1) ? ' payment' : ' payments';
+        // "transaction(s)", NOT "payment(s)" (fixed 2026-11-05). txCount is
+        // wallet_data._aggregate's rec["tx_count"], which does `+= 1` for
+        // every counterparty tx _tx_counterparty recognises -- and that is
+        // three different kinds, not one:
+        //     Payment                                 -> payment_in/out
+        //     AMMDeposit/Withdraw/Vote/Bid            -> amm_op
+        //     TrustSet                                -> trustset
+        // So "received 11 payments from this wallet" could be eleven
+        // trustsets and no payment at all. There is no payment-only count in
+        // the node payload (wallet_data.py only exposes "txCount":
+        // c["tx_count"]), so the noun cannot be made conditional -- it has to
+        // be the honest generic. The no-direction branch below already said
+        // "interaction(s)"; this just stops the two directional branches
+        // claiming more than the data supports.
+        var noun = (txCount === 1) ? ' transaction' : ' transactions';
         // DIRECTION IS FROM THE COUNTERPARTY'S POINT OF VIEW, because this
         // label renders on the counterparty's own node, not on the wallet
         // being viewed. `direction === 'in'` means value flowed INTO the
