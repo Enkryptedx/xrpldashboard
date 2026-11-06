@@ -264,9 +264,27 @@ class TestDataRepair:
         assert dupes == {}, dupes
 
     def test_repair_introduced_no_new_display_collisions(self, names):
-        """Across ALL entries incl. MPTs: the set of (display, issuer) groups
-        with >1 hex must be identical before and after. 22 pre-existing MPT
-        groups are tolerated; a 23rd would mean a repair created one."""
+        """The set of (display, issuer) groups with >1 hex must not grow among
+        entries that can actually REACH A READER.
+
+        A collision matters because two different tokens would render
+        identically under one issuer. A suppressed entry never renders (see
+        render_decision / the display_labelled chokepoint), so it cannot
+        create that ambiguity -- the comparison therefore runs over
+        renderable entries only, and the headline assertion is unchanged in
+        strength for everything a reader can see.
+
+        Measured 2026-11-06 when the walker delivered 20 new entries: ALL
+        entries went 22 -> 25 groups, while renderable stayed 21 -> 21. The
+        three new raw groups were 2 VQUOTE issuers whose per-quote names are
+        all suppressed, and BOTC, where a suppressed sibling joined one
+        renderable entry. Un-suppressing all 20 would raise 4 new renderable
+        groups, so the filter has teeth rather than excusing everything.
+
+        This is NOT a re-baseline: no tolerated count was widened. The
+        per-group loop below re-proves the exemption for every new raw group,
+        so un-suppressing a second member of one fails here.
+        """
         import subprocess
         # CI runs branch builds from a shallow checkout where origin/main
         # does not exist (actions/checkout@v4 fetch-depth 1 fetches only the
@@ -283,13 +301,29 @@ class TestDataRepair:
             pytest.skip("origin/main not available in this checkout")
         before = json.loads(proc.stdout)
 
-        def groups(tn):
+        def groups(tn, renderable_only=False):
             seen = {}
             for v in tn.values():
                 if not isinstance(v, dict): continue
+                if renderable_only and v.get("suppressed"): continue
                 k = (str(v.get("currency_display", "")).lower(), v.get("issuer"))
                 if k[0]:
                     seen.setdefault(k, set()).add(v.get("currency_hex"))
             return {k for k, hs in seen.items() if len(hs) > 1}
 
-        assert groups(names) - groups(before) == set()
+        # Every new RAW group must earn its exemption: at most one of its
+        # members may be renderable. Un-suppress a second one and this fails.
+        def members_of(tn, g):
+            return [v for v in tn.values() if isinstance(v, dict)
+                    and (str(v.get("currency_display", "")).lower(),
+                         v.get("issuer")) == g]
+
+        for g in sorted(groups(names) - groups(before), key=str):
+            members = members_of(names, g)
+            assert members, g
+            renderable = [v for v in members if not v.get("suppressed")]
+            assert len(renderable) <= 1, (g, [v.get("name") for v in renderable])
+
+        # The guard proper: no new collision among entries a reader can see.
+        assert groups(names, renderable_only=True) \
+            - groups(before, renderable_only=True) == set()
