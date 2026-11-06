@@ -89,15 +89,42 @@ def test_both_session_arms_select_distinct(built):
 def test_distinct_appears_exactly_twice(built):
     """Only the two session arms get the hint. The scanner arm reads a small
     confirmed ledger and the cohort arm a pkey index scan — neither needs it,
-    and a stray DISTINCT elsewhere would mean the edit slipped."""
+    and a stray DISTINCT elsewhere would mean the edit slipped.
+
+    2026-11-05: counts `SELECT DISTINCT ` (the planner-hint form) rather than
+    bare "DISTINCT". The re-derived rule-3 arm added by the behavioural-rule
+    fix contains `COUNT(DISTINCT path)`, which is an AGGREGATE and has
+    nothing to do with the 2026-10-09 session-arm hint. The invariant this
+    test protects is "only the two session subqueries dedupe", and that is
+    what the narrower string measures. rule 4's arm deliberately omits
+    DISTINCT for the same reason."""
     frag, _ = built
-    assert frag.count("DISTINCT") == 2
+    assert frag.count("SELECT DISTINCT ") == 2
+    assert frag.count("COUNT(DISTINCT path)") == 1
 
 
 # ── 2. semantics proof: identical to pre-fix SQL minus the hint ──────────
 def test_fragment_matches_pre_fix_sql_once_distinct_removed(built, legacy):
+    """The four legacy arms must stay byte-identical to the pre-fix SQL.
+
+    2026-11-05: was whole-string equality. The behavioural-rule fix appends
+    two further arms inside the same `AND NOT (...)` wrapper, so equality
+    now fails for a legitimate extension. Containment of the legacy INNER
+    body still proves the original four arms were not edited — which is the
+    invariant — while allowing arms to be added after them.
+    """
     frag, _ = built
-    assert frag.replace("SELECT DISTINCT ", "SELECT ") == legacy["fragment"]
+    deduped = frag.replace("SELECT DISTINCT ", "SELECT ")
+    prefix, suffix = "AND NOT (", ")"
+    assert legacy["fragment"].startswith(prefix)
+    assert legacy["fragment"].endswith(suffix)
+    legacy_inner = legacy["fragment"][len(prefix):-len(suffix)]
+    assert legacy_inner in deduped, (
+        "the four legacy arms are no longer byte-identical to the pre-fix "
+        "SQL; an extension must append, never edit them"
+    )
+    # And the extension really is an append, not an interleave.
+    assert deduped.startswith(prefix + legacy_inner)
 
 
 def test_pre_fix_fixture_really_is_undeduped(legacy):
@@ -108,17 +135,45 @@ def test_pre_fix_fixture_really_is_undeduped(legacy):
 
 # ── 3. parameters unchanged ──────────────────────────────────────────────
 def test_params_identical_to_pre_fix(built, legacy):
+    """2026-11-05: prefix equality, not whole-list. The behavioural-rule fix
+    appends 5 params (two timestamps, the /contact path, the /claims/ LIKE
+    pattern and the referrer-host array). The legacy params must be
+    unchanged and still bound FIRST, because positional order is what pairs
+    them with the legacy arms."""
     _, params = built
-    assert params == legacy["params"]
+    n = len(legacy["params"])
+    assert params[:n] == legacy["params"]
+    assert len(params) == n + 5, (
+        f"expected exactly 5 appended behavioural-rule params, got "
+        f"{len(params) - n}"
+    )
 
 
 def test_params_are_three_rounds_of_row_pred_patterns(built):
     """row_pred is bound three times: outer, session-visitor, session-ip_day.
     Pins the count against the pattern tuples so adding a bot pattern can
-    never desynchronise the arms without this failing."""
+    never desynchronise the arms without this failing.
+
+    2026-11-05: asserts the three rounds are the LEADING params rather than
+    the whole list, since the behavioural-rule arms append their own after
+    them."""
     _, params = built
     one_round = list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)
-    assert params == one_round * 3
+    assert params[:len(one_round) * 3] == one_round * 3
+
+
+def test_behavioural_rule_params_are_appended_last(built):
+    """The five appended params, in the order their arms appear in the SQL.
+    Pins position so a future arm cannot be inserted between the legacy
+    rounds and these without failing here."""
+    _, params = built
+    one_round = list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)
+    tail = params[len(one_round) * 3:]
+    assert len(tail) == 5, tail
+    assert tail[1] == db.CONTACT_SCANNER_PATH
+    assert tail[3] == db.CLAIMS_SCANNER_PATH_PREFIX + "%"
+    assert tail[4] == list(db.CLAIMS_REFERRER_HOSTS)
+    assert isinstance(tail[0], int) and isinstance(tail[2], int)
 
 
 # ── 4. all four classifier arms survive ──────────────────────────────────
