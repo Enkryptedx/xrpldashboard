@@ -141,6 +141,22 @@ def test_empty_source_and_missing_mirror_keep_their_verdicts(trees):
     assert r2["ok"] is False and r2["reason"] == "mirror_missing"
 
 
+def test_default_now_ts_runs_without_injection(trees):
+    """Call check_tree the way the canary itself does: no now_ts.
+
+    Every other test here injects now_ts, so the `int(_time.time())` default
+    branch never executed and a missing `import time` shipped green -- the
+    canary then crashed with NameError on its first real run. A test suite
+    that only ever exercises the injected path cannot see that, so this test
+    deliberately takes the default.
+    """
+    src, dst = trees
+    _write(src, "a.txt", OLD)
+    _write(dst, "a.txt", OLD)
+    r = cv.check_tree(src, "sub")
+    assert r["ok"] is True, r
+
+
 def test_result_shape_is_unchanged_for_the_walker_health_plumbing(trees):
     src, dst = trees
     _write(src, "a.txt", OLD)
