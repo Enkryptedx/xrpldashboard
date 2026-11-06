@@ -1115,3 +1115,11 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_nft_top_issuers_index_migration.py -q
+      # Backup-coverage guard. The mirror canary compares each source file
+      # against its own copy rather than the two trees' newest mtimes, which
+      # misreported in both directions. A red here means that per-file
+      # comparison regressed, so a missing backup could pass as caught up.
+      - name: dockvault mirror per-file comparison (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_dockvault_mirror_per_file.py -q

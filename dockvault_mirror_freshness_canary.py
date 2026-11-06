@@ -47,11 +47,23 @@ LAUNCHD_STATE_DIR = "/Users/charliebruce/xrpl_test/launchd_state"
 # absolute-age rule would have paged on it every single day, forever, and
 # taught everyone to ignore this canary.
 #
-# The honest test is RELATIVE: the SOURCE's newest file must not be newer than
-# the MIRROR's newest file by more than one mirror cycle. If the mirror kept
-# up, that gap is bounded by the cadence no matter how old the content is.
+# The honest test is PER FILE: every source file that has had time to be
+# copied must exist in the mirror and must not be older there than at the
+# source. A file changed within the last cycle is exempt, because no mirror
+# run has been due yet.
 #
-# Compares NEWEST FILE mtime, never DIRECTORY mtime. rclone updates files
+# Comparing the two trees' NEWEST files instead conflates two different
+# things and misreports in both directions. A quiet tree that suddenly gains
+# one much-newer file reads as catastrophically behind: on 2026-11-06
+# xrpl_test_private_infra reported source_ahead_299581s (3.5 days) when the
+# mirror was in fact complete as of its last run -- the source's newest file
+# was minutes old, the mirror's newest was 3 days old because nothing had
+# changed in between, and subtracting the two measured the quiet period, not
+# the lag. In the other direction it hides real loss: a mirror missing a
+# hundred files still passes as long as ONE recently-copied file is new
+# enough, since a single newest mtime says nothing about coverage.
+#
+# Compares FILE mtimes, never DIRECTORY mtime. rclone updates files
 # inside a directory without touching the directory's own mtime, so a dir
 # mtime reads as a week stale while the contents are current -- that exact
 # misreading sent this investigation down a wrong path on 2026-11-02.
@@ -93,9 +105,15 @@ _EXCLUDE_NAMES = {".DS_Store"}
 _EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".swp")
 
 
-def _newest_file_mtime(root: str) -> int | None:
-    """Newest REGULAR-file mtime under `root`, honouring the mirror's
-    exclusions, or None if there is nothing comparable.
+# Filesystems disagree about sub-second mtime, and rclone rounds, so a copy
+# can land a hair "older" than its source while being a faithful copy. Only a
+# gap wider than this counts as the mirror being behind.
+MIRROR_MTIME_SLACK_SECONDS = 2
+
+
+def _iter_files(root: str) -> dict[str, int]:
+    """Map relative path -> mtime for every REGULAR file under `root`,
+    honouring the mirror's exclusions.
 
     Walks files explicitly rather than stat'ing `root` -- see the module note
     above on why directory mtime is useless here.
@@ -105,27 +123,31 @@ def _newest_file_mtime(root: str) -> int | None:
     that no amount of backing up can clear.
     """
     import stat as _stat
-    newest = None
+    out: dict[str, int] = {}
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
         for fn in filenames:
             if fn in _EXCLUDE_NAMES or fn.endswith(_EXCLUDE_SUFFIXES):
                 continue
+            full = os.path.join(dirpath, fn)
             try:
-                st = os.stat(os.path.join(dirpath, fn))
+                st = os.stat(full)
             except OSError:
                 continue
             if not _stat.S_ISREG(st.st_mode):
                 continue
-            m = int(st.st_mtime)
-            if newest is None or m > newest:
-                newest = m
-    return newest
+            out[os.path.relpath(full, root)] = int(st.st_mtime)
+    return out
 
 
-def check_tree(src: str, sub: str) -> dict:
-    """Compare one source tree against its mirror. Same dict shape as
-    check_one so the existing print + walker_health plumbing is unchanged."""
+def check_tree(src: str, sub: str, now_ts: int | None = None) -> dict:
+    """Compare one source tree against its mirror, FILE BY FILE. Same dict
+    shape as check_one so the existing print + walker_health plumbing is
+    unchanged.
+
+    `now_ts` is injectable so tests can place files either side of the cycle
+    boundary without sleeping or touching the clock.
+    """
     label = f"mirror:{sub}"
     dst = os.path.join(MIRROR_ROOT, sub)
     base = {"label": label, "ceiling_seconds": MIRROR_CYCLE_SECONDS,
@@ -134,20 +156,39 @@ def check_tree(src: str, sub: str) -> dict:
         return {**base, "ok": False, "reason": "source_missing"}
     if not os.path.isdir(dst):
         return {**base, "ok": False, "reason": "mirror_missing"}
-    s = _newest_file_mtime(src)
-    m = _newest_file_mtime(dst)
-    if s is None:
+    src_files = _iter_files(src)
+    dst_files = _iter_files(dst)
+    if not src_files:
         # Nothing to back up is not a failure.
         return {**base, "ok": True, "age_seconds": 0, "reason": "source_empty"}
-    if m is None:
+    if not dst_files:
         return {**base, "ok": False, "reason": "mirror_empty_but_source_has_files"}
-    lag = s - m
-    if lag > MIRROR_CYCLE_SECONDS:
-        return {**base, "ok": False, "age_seconds": lag,
-                "reason": f"source_ahead_{lag}s_gt_cycle_{MIRROR_CYCLE_SECONDS}s"}
-    # lag <= 0 means the mirror is at or ahead of the source: fully caught up.
-    return {**base, "ok": True, "age_seconds": max(lag, 0),
-            "reason": "caught_up" if lag <= 0 else "within_one_cycle"}
+
+    now = int(_time.time()) if now_ts is None else int(now_ts)
+    missing: list[str] = []
+    older: list[str] = []
+    worst = 0
+    for rel, s_mt in src_files.items():
+        # Too fresh to expect: no mirror run has been due since it changed.
+        if now - s_mt <= MIRROR_CYCLE_SECONDS:
+            continue
+        d_mt = dst_files.get(rel)
+        if d_mt is None:
+            missing.append(rel)
+            worst = max(worst, now - s_mt)
+        elif s_mt - d_mt > MIRROR_MTIME_SLACK_SECONDS:
+            older.append(rel)
+            worst = max(worst, s_mt - d_mt)
+
+    if missing or older:
+        # Name one concrete file: "3 missing" sends you looking, a path tells
+        # you immediately whether it is real loss or an exclusion gap.
+        example = sorted(missing or older)[0]
+        return {**base, "ok": False, "age_seconds": worst,
+                "reason": (f"stale_files_missing_{len(missing)}"
+                           f"_older_{len(older)}_worst_{worst}s_eg_{example}")}
+    return {**base, "ok": True, "age_seconds": 0,
+            "reason": f"all_{len(src_files)}_files_mirrored"}
 
 
 def _git_head(git_dir: str) -> str | None:
