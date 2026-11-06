@@ -115,14 +115,70 @@ def _legacy_bot_pred():
         " AND (country, path, date_trunc('day', to_timestamp(ts))::DATE)"
         "     IN (SELECT country, path, burst_day FROM burst_cohort_days))"
     )
+    # ── v6 behavioural rules 3 & 4, RE-DERIVED (added 2026-11-05) ──────────
+    # db.refresh_bot_hash_tables() rules 3 and 4 tag per-VISITOR SHAPES that
+    # no path or UA fragment can express. Before this arm existed the column
+    # counted them bot while this predicate still counted them human, so the
+    # gap grew with every tagging run: on 2026-11-05 it reached
+    # delta=-341 (3.79%) over the trailing 7d and paged BetterStack at 16:41
+    # UTC. That page was a false alarm about an IMPROVEMENT -- rule 3 alone
+    # accounted for 1,154 correctly-stamped rows.
+    #
+    # RE-DERIVED FROM page_views. Deliberately NOT a join against
+    # page_view_bot_hashes, which was the first proposal: that table is the
+    # writer's OUTPUT, so reading it would make both arms agree by
+    # construction and the canary could no longer detect a writer that
+    # stamps the WRONG rows -- the single thing it exists to catch. The
+    # docstring on _count_human_predicate forbids exactly that. Contrast
+    # scanner_pred above, which reads page_view_scanner_combos_confirmed: a
+    # shared EVIDENCE table, permitted for the same reason this is not.
+    #
+    # Rule DEFINITION comes from db constants so the two implementations
+    # cannot drift on what the rule means; the COMPUTATION is independent,
+    # from raw rows. Both patterns are parameterised, so no literal % enters
+    # the SQL (see PR #132: a bare '%.' crashed the daily report).
+    contact_ts = int(time.time()) - db.CONTACT_SCANNER_LOOKBACK_DAYS * 86400
+    claims_ts = int(time.time()) - db.CLAIMS_SCANNER_LOOKBACK_DAYS * 86400
+    contact_pred = (
+        "(visitor_hash IS NOT NULL AND visitor_hash IN ("
+        "  SELECT visitor_hash FROM page_views"
+        "  WHERE visitor_hash IS NOT NULL AND ts > %s"
+        "  GROUP BY visitor_hash"
+        "  HAVING COUNT(*) = 1 AND COUNT(DISTINCT path) = 1"
+        "     AND MIN(path) = %s"
+        "     AND COUNT(*) FILTER ("
+        "           WHERE referrer IS NOT NULL AND referrer <> ''"
+        "         ) = 0"
+        "))"
+    )
+    # No DISTINCT here, deliberately. `IN (subquery)` is membership, so it is
+    # semantics-free either way -- and unlike the session arms it is not
+    # needed as a planner hint, because this set is tiny (13 visitors at
+    # 2026-11-05) rather than the ~150k the session arms dedupe. Adding it
+    # would also inflate the `SELECT DISTINCT` count that
+    # test_distinct_appears_exactly_twice uses to prove only the two session
+    # arms carry the 2026-10-09 hint.
+    claims_pred = (
+        "(visitor_hash IS NOT NULL AND visitor_hash IN ("
+        "  SELECT visitor_hash FROM page_views"
+        "  WHERE visitor_hash IS NOT NULL AND ts > %s"
+        "    AND path LIKE %s"
+        "    AND SUBSTRING(referrer FROM 'https?://([^/]+)') = ANY(%s)"
+        "))"
+    )
     full_pred = (
-        f"({row_pred} OR {session_pred} OR {scanner_pred} OR {cohort_pred})"
+        f"({row_pred} OR {session_pred} OR {scanner_pred} OR {cohort_pred}"
+        f" OR {contact_pred} OR {claims_pred})"
     )
     params = []
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # outer row_pred
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # session visitor
     params += list(db.BOT_PATH_PATTERNS) + list(db.BOT_UA_PATTERNS)  # session ip_day
     # scanner_pred no longer parameterised — reads from confirmed ledger.
+    # cohort_pred is not parameterised either.
+    params += [contact_ts, db.CONTACT_SCANNER_PATH]
+    params += [claims_ts, db.CLAIMS_SCANNER_PATH_PREFIX + "%",
+               list(db.CLAIMS_REFERRER_HOSTS)]
     return f"AND NOT {full_pred}", params
 
 
