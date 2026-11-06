@@ -34,6 +34,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import re
 import sys
 import time as _time
 
@@ -88,12 +89,38 @@ GIT_MIRRORS: list[tuple[str, str]] = [
 
 
 # Anything rclone will not copy must not be counted on the SOURCE side, or the
-# source looks permanently "ahead" of a mirror that is in fact complete. Kept
-# in sync with b2_backup.excludes BY HAND and deliberately NOT read from it:
-# that file is shared with run_b2_backup.sh and must not gain a
-# canary-specific dependency.
+# source looks permanently "ahead" of a mirror that is in fact complete.
 #
-# Two false positives this closes, both found on 2026-11-02:
+# This list is now READ FROM the same file rclone is given,
+# launchd/b2_backup.excludes, rather than hand-copied. The hand-copied set
+# held 5 directory names, 1 filename and 3 suffixes; the real file holds 40+
+# patterns including *.log, launchd_logs/**, .env.*, *.prev, *.tmp and
+# .openclaw/**. Every pattern missing from the copy became a phantom "missing
+# from mirror" finding: on 2026-11-06 the per-file check reported 1429 stale
+# files for xrpl_test, headed by .env.example, which `.env.*` excludes.
+# Sharing the file is the point -- the canary must measure the same tree
+# rclone was actually asked to copy, and a hand-synced duplicate of a
+# security-relevant exclude list drifts silently in the dangerous direction.
+# Nothing is written back to that file; the dependency is read-only.
+#
+# NOTE: launchd/ is gitignored (.gitignore "launchd/", public-repo boundary,
+# 2026-09-07), so b2_backup.excludes exists on this Mac and in NO clone, CI
+# runner or deploy. That is acceptable because the canary and the mirror are
+# both Mac-local, but it means the file can be absent, so an unreadable
+# exclude file is reported as a FAILED check rather than treated as "exclude
+# nothing" -- the permissive reading would bury a real gap under thousands of
+# phantom findings. Tests must point EXCLUDES_FILE at their own fixture and
+# never at the real path, which does not exist where they run.
+#
+# SYMLINKS ARE SKIPPED. rclone is invoked with neither --links nor
+# --copy-links, so it silently skips them. os.stat FOLLOWS a link, so a
+# symlink to a regular file passes S_ISREG and reads as a real file the
+# mirror is missing -- that is exactly how
+# launchd/...permissioned_domains_walker.plist (a link into ~/xrpl_test)
+# reported as 46 days absent from the private_infra mirror while nothing was
+# wrong. Use lstat semantics, not stat.
+#
+# Two false positives closed earlier, both found on 2026-11-02:
 #   * ~/.ssh holds a live ssh-agent SOCKET (s.*.agent.*). rclone skips it
 #     correctly (12 entries in source, 11 in mirror), but os.walk lists it, so
 #     dot_ssh read as 1010h behind forever. Sockets are not regular files --
@@ -101,9 +128,80 @@ GIT_MIRRORS: list[tuple[str, str]] = [
 #     and os.walk was not.
 #   * xrpl_test carries __pycache__/*.pyc and venv/, rewritten constantly and
 #     excluded from the mirror. Counting them would make that tree flap.
-_EXCLUDE_DIRS = {".git", "__pycache__", "venv", ".venv", "node_modules"}
-_EXCLUDE_NAMES = {".DS_Store"}
-_EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".swp")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+EXCLUDES_FILE = os.path.join(_HERE, "launchd", "b2_backup.excludes")
+
+
+def _rclone_glob_to_regex(pattern: str) -> str:
+    """Translate one rclone --exclude-from glob into a full-match regex.
+
+    rclone semantics implemented here: `**` spans directory separators, `*`
+    and `?` do not, and a pattern NOT starting with `/` may match at any
+    directory depth (so `.git/**` excludes `a/b/.git/config`, not just a
+    top-level `.git`).
+    """
+    anchored = pattern.startswith("/")
+    pat = pattern[1:] if anchored else pattern
+    out: list[str] = []
+    i = 0
+    while i < len(pat):
+        ch = pat[i]
+        if ch == "*":
+            if pat.startswith("**", i):
+                out.append(".*")
+                i += 2
+                continue
+            out.append("[^/]*")
+        elif ch == "?":
+            out.append("[^/]")
+        else:
+            out.append(re.escape(ch))
+        i += 1
+    body = "".join(out)
+    prefix = "" if anchored else r"(?:.*/)?"
+    return f"^{prefix}{body}$"
+
+
+def load_exclude_matchers(path: str | None = None):
+    """Compile every pattern in the rclone exclude file.
+
+    `path` resolves at CALL time, not as a default argument: a default is
+    bound once at import, so a caller (or a test) reassigning EXCLUDES_FILE
+    would be silently ignored and the canary would keep reading the old path.
+
+    Returns (matchers, prune_dirs, error). A read failure returns an EXPLICIT
+    error rather than an empty list: an unreadable exclude file must not
+    quietly turn into "exclude nothing", which would bury a real gap under
+    thousands of phantom findings.
+    """
+    path = EXCLUDES_FILE if path is None else path
+    try:
+        with open(path) as fh:
+            lines = fh.read().splitlines()
+    except OSError as exc:
+        return [], set(), f"excludes_unreadable_{type(exc).__name__}"
+    patterns = []
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.append(line)
+    if not patterns:
+        return [], set(), "excludes_file_had_no_patterns"
+    matchers = [re.compile(_rclone_glob_to_regex(p)) for p in patterns]
+    return matchers, _prune_dirs(patterns), None
+
+
+def _prune_dirs(patterns: list[str]) -> set[str]:
+    """Directory names safe to skip wholesale, derived from `<name>/**`
+    patterns. Pure speed: their contents are excluded by the regexes anyway,
+    but descending into venv/ or .git/ to discard every file is wasteful."""
+    names = set()
+    for p in patterns:
+        p = p.strip()
+        if p.endswith("/**") and "/" not in p[:-3] and "*" not in p[:-3]:
+            names.add(p[:-3])
+    return names
 
 
 # Filesystems disagree about sub-second mtime, and rclone rounds, so a copy
@@ -112,32 +210,43 @@ _EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".swp")
 MIRROR_MTIME_SLACK_SECONDS = 2
 
 
-def _iter_files(root: str) -> dict[str, int]:
-    """Map relative path -> mtime for every REGULAR file under `root`,
-    honouring the mirror's exclusions.
+def _iter_files(root: str, matchers=None, prune=None) -> dict[str, int]:
+    """Map relative path -> mtime for every file under `root` that rclone
+    would actually copy.
 
     Walks files explicitly rather than stat'ing `root` -- see the module note
     above on why directory mtime is useless here.
 
-    Only regular files count. Sockets, fifos and devices are skipped because
-    rclone does not copy them, so including them guarantees a false positive
-    that no amount of backing up can clear.
+    Three kinds of entry are skipped, each because rclone skips it too, so
+    counting them guarantees a finding no amount of backing up can clear:
+    anything matching the exclude file, symlinks (no --links/--copy-links on
+    the rclone call), and non-regular files such as sockets and fifos.
     """
     import stat as _stat
+    if matchers is None:
+        matchers, prune_from_file, _err = load_exclude_matchers()
+        if prune is None:
+            prune = prune_from_file
+    prune = set() if prune is None else prune
     out: dict[str, int] = {}
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        dirnames[:] = [d for d in dirnames if d not in prune]
         for fn in filenames:
-            if fn in _EXCLUDE_NAMES or fn.endswith(_EXCLUDE_SUFFIXES):
-                continue
             full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, root)
+            if any(m.match(rel) for m in matchers):
+                continue
             try:
-                st = os.stat(full)
+                lst = os.lstat(full)
             except OSError:
                 continue
-            if not _stat.S_ISREG(st.st_mode):
+            # lstat, not stat: stat follows the link and reports the TARGET's
+            # type, so a link to a regular file would pass S_ISREG below.
+            if _stat.S_ISLNK(lst.st_mode):
                 continue
-            out[os.path.relpath(full, root)] = int(st.st_mtime)
+            if not _stat.S_ISREG(lst.st_mode):
+                continue
+            out[rel] = int(lst.st_mtime)
     return out
 
 
@@ -157,8 +266,15 @@ def check_tree(src: str, sub: str, now_ts: int | None = None) -> dict:
         return {**base, "ok": False, "reason": "source_missing"}
     if not os.path.isdir(dst):
         return {**base, "ok": False, "reason": "mirror_missing"}
-    src_files = _iter_files(src)
-    dst_files = _iter_files(dst)
+    # Load once and share: measuring the two sides with different exclude
+    # sets would invent differences that rclone never saw.
+    matchers, prune, exc_err = load_exclude_matchers()
+    if exc_err:
+        # Fail loud. Carrying on with no excludes would report thousands of
+        # files rclone was never asked to copy and bury any real gap.
+        return {**base, "ok": False, "reason": exc_err}
+    src_files = _iter_files(src, matchers, prune)
+    dst_files = _iter_files(dst, matchers, prune)
     if not src_files:
         # Nothing to back up is not a failure.
         return {**base, "ok": True, "age_seconds": 0, "reason": "source_empty"}
