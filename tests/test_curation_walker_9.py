@@ -124,7 +124,14 @@ class TestScpoCluster:
         decision, not a re-baseline.
         """
         got = entries(raw, issuer=SCPO_ISSUER)
-        assert len(got) == 10, [v.get("name") for v in got]
+        # 10 -> 14 on 2026-11-06: the guard fired as designed. Four new
+        # siblings arrived from the walker ("Bikes", "Blue Bikes", "First RFQ
+        # Agent to PO test", "$1M - Car Parts - Working Capital") and were
+        # each given a curation decision before this count moved -- one on
+        # the name predicate, three on issuer-cluster evidence. NOT a
+        # re-baseline: the per-entry suppression loop below is unchanged and
+        # still proves every one of the 14 is suppressed.
+        assert len(got) == 14, [v.get("name") for v in got]
         for v in got:
             assert v.get("suppressed"), v.get("name")
             assert tl.render_decision(v) == (False, None)
@@ -211,15 +218,24 @@ class TestXaga:
 # ── file-level invariants ───────────────────────────────────────────
 class TestFileInvariants:
     def test_suppressed_total(self, raw):
-        """5 from the earlier curation pass + 10 SCPO.
+        """5 from the earlier curation pass + 14 SCPO + 16 from 2026-11-06.
 
         Was 12 (5 + 7) until 2026-10-30, when "Refresh Timing 2", "Oil
         Sample" and "Nails" were suppressed on issuer-cluster evidence --
         see this module's header for the evidence the owner approved.
+
+        15 -> 35 on 2026-11-06 (anchor #14 gate-5 carve-out): 20 pending
+        entries were decided -- 10 VQUOTE (per-quote identifiers), 2
+        self-declared tests, 4 issuer-cluster (3 SCPO siblings + YBB, which
+        shares its issuer with a self-declared test fund and has zero
+        OutstandingAmount), 1 nXRP (XRP-adjacent name whose issuer returns
+        actNotFound), and 3 'pending_review' holds (SCPO "12222", BOTC,
+        DATEC) which are reversible and rest on no evidence against them.
+        This is the one authoritative home for the census count.
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 15
+        assert n == 35
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
