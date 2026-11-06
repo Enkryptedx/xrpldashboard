@@ -36,13 +36,35 @@ def _write(root: str, rel: str, mtime: int) -> None:
     os.utime(path, (mtime, mtime))
 
 
+# A stand-in for launchd/b2_backup.excludes carrying one pattern of each
+# shape the real file uses. The real file is gitignored (public-repo
+# boundary) and exists on no CI runner, so tests must never read it.
+FIXTURE_EXCLUDES = """\
+# comment line, ignored
+.git/**
+__pycache__/**
+*.pyc
+venv/**
+.DS_Store
+*.swp
+*.log
+launchd_logs/**
+.env
+.env.*
+*.prev
+"""
+
+
 @pytest.fixture()
 def trees(tmp_path, monkeypatch):
     src = tmp_path / "src"
     mirror_root = tmp_path / "mirror"
     (src).mkdir()
     (mirror_root / "sub").mkdir(parents=True)
+    excl = tmp_path / "b2_backup.excludes"
+    excl.write_text(FIXTURE_EXCLUDES)
     monkeypatch.setattr(cv, "MIRROR_ROOT", str(mirror_root))
+    monkeypatch.setattr(cv, "EXCLUDES_FILE", str(excl))
     return str(src), str(mirror_root / "sub")
 
 
@@ -128,6 +150,87 @@ def test_excluded_names_are_not_required_in_the_mirror(trees):
     _write(src, "mod.pyc", OLD)
     _write(src, "__pycache__/x.txt", OLD)
     assert cv.check_tree(src, "sub", now_ts=NOW)["ok"] is True
+
+
+def test_patterns_come_from_the_exclude_file_not_a_hardcoded_list(trees):
+    """The 2026-11-06 false positive: 1429 'missing' files on xrpl_test,
+    headed by .env.example, which the real file excludes via `.env.*` while
+    the hand-copied list knew only .git/__pycache__/venv/node_modules."""
+    src, dst = trees
+    _write(src, "a.txt", OLD)
+    _write(dst, "a.txt", OLD)
+    for rel in (".env.example", ".env", "worker.log", "launchd_logs/x.txt",
+                "snapshot.prev", "deep/nested/other.log"):
+        _write(src, rel, OLD)
+    r = cv.check_tree(src, "sub", now_ts=NOW)
+    assert r["ok"] is True, r
+
+
+def test_a_real_missing_file_is_still_caught_alongside_excluded_ones(trees):
+    """Guard the guard: broad excludes must not swallow genuine findings."""
+    src, dst = trees
+    _write(src, "keep.txt", OLD)
+    _write(dst, "keep.txt", OLD)
+    _write(src, "ignored.log", OLD)        # excluded
+    _write(src, "really_missing.txt", OLD)  # not excluded
+    r = cv.check_tree(src, "sub", now_ts=NOW)
+    assert r["ok"] is False, r
+    assert "missing_1" in r["reason"]
+    assert "really_missing.txt" in r["reason"]
+    assert "ignored.log" not in r["reason"]
+
+
+def test_symlinks_are_skipped_because_rclone_does_not_copy_them(trees):
+    """The 46-day 'missing' permissioned_domains_walker.plist.
+
+    It is a symlink into ~/xrpl_test. rclone runs with neither --links nor
+    --copy-links, so it never copies it; os.stat FOLLOWS the link and reports
+    the target's mode, so S_ISREG passed and it read as a real missing file.
+    """
+    src, dst = trees
+    _write(src, "real.txt", OLD)
+    _write(dst, "real.txt", OLD)
+    target = os.path.join(src, "real.txt")
+    link = os.path.join(src, "link_to_real.plist")
+    os.symlink(target, link)
+    assert os.path.isfile(link), "precondition: stat() sees a regular file"
+    matchers, prune, err = cv.load_exclude_matchers(cv.EXCLUDES_FILE)
+    assert err is None
+    assert "link_to_real.plist" not in cv._iter_files(src, matchers, prune)
+    r = cv.check_tree(src, "sub", now_ts=NOW)
+    assert r["ok"] is True, r
+
+
+def test_unreadable_exclude_file_fails_loud_instead_of_excluding_nothing(
+        trees, monkeypatch):
+    """launchd/ is gitignored, so the real file is absent outside this Mac.
+    Treating that as 'exclude nothing' would report thousands of phantom
+    files and bury a real gap, so it must be a FAILED check."""
+    src, dst = trees
+    _write(src, "a.txt", OLD)
+    _write(dst, "a.txt", OLD)
+    monkeypatch.setattr(cv, "EXCLUDES_FILE", "/nonexistent/b2_backup.excludes")
+    r = cv.check_tree(src, "sub", now_ts=NOW)
+    assert r["ok"] is False
+    assert r["reason"].startswith("excludes_unreadable")
+
+
+@pytest.mark.parametrize("pattern,path,expected", [
+    (".git/**", ".git/config", True),
+    (".git/**", "a/b/.git/config", True),      # unanchored: any depth
+    ("/.git/**", "a/.git/config", False),      # anchored: root only
+    ("*.log", "deep/nested/x.log", True),
+    ("*.log", "x.logger", False),
+    (".env.*", ".env.example", True),
+    (".env.*", ".environment", False),
+    ("*.pyc", "pkg/mod.pyc", True),
+    ("launchd_logs/**", "launchd_logs/a/b.txt", True),
+    ("*.log", "token_names.json", False),
+])
+def test_rclone_glob_translation(pattern, path, expected):
+    import re as _re
+    rx = _re.compile(cv._rclone_glob_to_regex(pattern))
+    assert bool(rx.match(path)) is expected, (pattern, path)
 
 
 def test_empty_source_and_missing_mirror_keep_their_verdicts(trees):
