@@ -1123,3 +1123,11 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_dockvault_mirror_per_file.py -q
+      # False-green guard. A canary probe that RAISES must fail the run, not
+      # read as pass or "not checked". Both canaries already behave this way;
+      # nothing pinned it, so a refactor could silently turn a probe error
+      # into a green verdict.
+      - name: canary probe failure is a failure (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_canary_probe_failure_is_a_failure.py -q
