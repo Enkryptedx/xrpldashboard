@@ -13,14 +13,12 @@ with the exception type visible.
 """
 from __future__ import annotations
 
-import asyncio
 import importlib.util
 import os
 import sys
 import urllib.request
 
 import pytest
-import websockets
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if HERE not in sys.path:
@@ -79,18 +77,19 @@ def test_raising_homepage_probe_reports_error_not_ok(monkeypatch):
     assert age is None
 
 
-def test_raising_tx_sub_probe_is_reported_as_probe_error(monkeypatch):
-    """_probe_tx_sub is `async def`, so it must be driven with asyncio.run --
-    calling it bare returns a coroutine that compares unequal to everything
-    and would make this test pass or fail for the wrong reason."""
-    def _raise(*a, **k):
-        raise Boom("socket gone")
+def test_tx_sub_probe_stays_retired(monkeypatch):
+    """_probe_tx_sub was retired 2026-11-07 and must not come back silently.
 
-    # websockets is a function-local import inside the probe too, so patch
-    # the real module rather than a module attribute that does not exist.
-    monkeypatch.setattr(websockets, "connect", _raise, raising=True)
-    assert asyncio.run(
-        relay._probe_tx_sub("wss://example.invalid", 1.0)) == "probe_error_Boom"
+    It subscribed to a raw streams:['transactions'] stream that our own
+    subscribe-only relay answers with close 1008, so it logged close_1008
+    4,128 times and 'ok' zero times. Nothing public advertises that
+    capability -- only the named feeds, which the probes below cover. If a
+    future change reintroduces it, that should be a deliberate decision with
+    this test updated, not a quietly restored constant field.
+    """
+    assert not hasattr(relay, "_probe_tx_sub")
+    src = open(relay.__file__).read()
+    assert "TX_SUB_STATUS={" not in src, "the status field must not be re-added"
 
 
 # ── ops/coverage_check ──────────────────────────────────────────────────────

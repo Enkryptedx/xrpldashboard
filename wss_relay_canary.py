@@ -161,71 +161,18 @@ def _probe_homepage_url() -> str:
     return _probe_homepage()[0]
 
 
-async def _probe_tx_sub(url: str, timeout_s: float) -> str:
-    """LOG-ONLY probe (Charlie ruling 2026-09-23 19:17 ET, per Option B
-    prep). Opens a FRESH socket, sends a transactions-stream subscribe,
-    and records the outcome as a short token.
-
-    Returns one of:
-      'ok'         — subscribe response with status=success within timeout
-      'close_1008' — relay closed with 1008 subscribe_only (expected today)
-      'close_other'— relay closed with a different code/reason
-      'timeout'    — no response + no close within timeout_s
-
-    NEVER FAILS THE CANARY on its own — this is the log-only phase per
-    the standing rule (feedback: request_path_filter_log_only_first).
-    Result string is appended to walker_health.message as
-    `TX_SUB_STATUS=<token>`. After 24h of `TX_SUB_STATUS=ok`, a follow-
-    up commit will flip the canary to fail if this returns anything
-    other than 'ok'."""
-    import websockets
-    from websockets.exceptions import ConnectionClosed
-    ctx = ssl.create_default_context(cafile=certifi.where())
-    TX_SUB_MSG = {"id": "canary-tx", "command": "subscribe",
-                  "streams": ["transactions"]}
-    try:
-        async with websockets.connect(url, ssl=ctx, open_timeout=timeout_s) as ws:
-            await ws.send(json.dumps(TX_SUB_MSG))
-            deadline = time.time() + timeout_s
-            while time.time() < deadline:
-                remaining = max(0.01, deadline - time.time())
-                try:
-                    raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
-                except asyncio.TimeoutError:
-                    return "timeout"
-                except ConnectionClosed as e:
-                    if e.code == 1008 and str(e.reason) == "subscribe_only":
-                        return "close_1008"
-                    return f"close_other_code={e.code}_reason={str(e.reason)[:32]}"
-                try:
-                    d = json.loads(raw)
-                except (json.JSONDecodeError, TypeError):
-                    continue
-                if (d.get("type") == "response"
-                        and d.get("id") == "canary-tx"
-                        and d.get("status") == "success"):
-                    return "ok"
-            return "timeout"
-    except Exception as e:
-        return f"probe_error_{type(e).__name__}"
-
-
-# ── Milestone 2: named-feed probes (docs/OPTION_B_MILESTONE2_RELAY_DIFF.md §2) ──
-#
-# Enabled by --all-feeds or WSS_RELAY_CANARY_ALL_FEEDS=1 (so the Mac plist can
-# flip it by env once the relay is deployed). Sequential, each on a FRESH
-# socket. Budget: ≤10s ledger + ≤30s ×4 event-waits + one handshake ≈ 2.5 min,
-# well under the 900s cadence.
-#
-# Per-feed verdicts:
-#   OK          handshake success + expected event arrived in time
-#   OK_SILENT   handshake success, no event in the window — acceptable for the
-#               amm/token/whale feeds (traffic-dependent; silence is not a fault)
-#   FAIL_*      handshake rejected / closed / timed out, or a REQUIRED event
-#               (wallet_transactions on the RLUSD issuer, supply_updates) missing
-#
-# Wallet probe target (§11.3): the RLUSD issuer, ~240 tx/min. No synthetic
-# account, no self-generated tx — passive observation of real traffic.
+# RETIRED 2026-11-07: _probe_tx_sub subscribed to a raw
+# `streams:['transactions']` stream on our own relay. The relay is
+# deliberately subscribe-only and answers that with close 1008
+# subscribe_only, so the probe logged close_1008 on 4,128 runs and `ok`
+# exactly 0 times -- never once since 2026-09-23. It was log-only pending a
+# flip to enforcing "after 24h of TX_SUB_STATUS=ok", which could not happen
+# without the relay gaining a capability nothing asks for: every public
+# surface advertises only the NAMED feeds (whale_transactions,
+# token_top100_transactions, amm_transactions, wallet_transactions), and the
+# raw-stream subscribe appears solely on the public-cluster fallback path in
+# the page templates. The named-feed probes below are the real relay
+# coverage and are unchanged.
 RLUSD_ISSUER = "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
 FEED_WAIT_SECONDS = 30.0
 FEED_PROBES = (
@@ -365,16 +312,6 @@ def main() -> int:
                        f"total_elapsed_s={result['elapsed_s']}")
             _stamp_last_ok()
 
-        # LOG-ONLY tx-sub probe (Charlie 2026-09-23 19:17 ET, Option B
-        # prep). Runs regardless of ledger-sub outcome so we get a
-        # baseline reading even during transient ledger issues. Result
-        # appended to walker_health.message as TX_SUB_STATUS=<token>.
-        # Does NOT modify ok/failure — pure observation for 24h until
-        # the enforce flip.
-        try:
-            tx_status = asyncio.run(_probe_tx_sub(RELAY_URL, 5.0))
-        except Exception as e:
-            tx_status = f"probe_error_{type(e).__name__}"
         # HOMEPAGE_URL_STATUS: does the served homepage body contain the
         # relay URL? Charlie 2026-09-23 19:44 ET — catches the pre-render
         # env-gap regression at the served-body layer (walker env guard
@@ -402,7 +339,7 @@ def main() -> int:
                 "severity": "high", "reason": f"homepage_{homepage_fresh}",
                 "baked_age_s": homepage_age,
                 "budget_s": HOMEPAGE_SERVED_MAX_BAKED_AGE_S})
-        message = (f"{message} TX_SUB_STATUS={tx_status} "
+        message = (f"{message} "
                    f"HOMEPAGE_URL_STATUS={homepage_status} "
                    f"HOMEPAGE_FRESH={homepage_fresh} "
                    f"HOMEPAGE_BAKED_AGE_S={homepage_age}")
