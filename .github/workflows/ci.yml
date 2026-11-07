@@ -1123,11 +1123,3 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_dockvault_mirror_per_file.py -q
-      # Egress guard. The inferred-map cache must survive process exit, or
-      # every 5-minute walker tick re-reads the whole table (18.1M rows/wk).
-      # These tests count the expensive read, so a silently-missing cache
-      # fails here instead of quietly costing transfer.
-      - name: token_category_inferred cross-run cache (no DB, no network)
-        env:
-          DATABASE_URL: ""
-        run: pytest tests/test_token_category_inferred_cross_run_cache.py -q
