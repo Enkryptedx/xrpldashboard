@@ -139,7 +139,7 @@
       "sdn_uid": "48432"
     },
     "0x19aa5fe80d33a56d56c78e82ea5e50e5d80b4dff": {
-      "chain": "ETH",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -223,7 +223,7 @@
       "sdn_uid": "57978"
     },
     "0x2f389ce8bd8ff92de3402ffce4691d17fc4f6535": {
-      "chain": "ETH",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -353,7 +353,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "BSC",
+      "chain": "ETH",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -1990,7 +1990,7 @@
       "sdn_uid": "39593"
     },
     "1CF46Rfbp97absrs7zb7dFfZS6qBXUm9EP": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2155,7 +2155,7 @@
       "sdn_uid": "39585"
     },
     "1Df883c96LVauVsx9FEgnsourD8DELwCUQ": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2672,7 +2672,7 @@
       "sdn_uid": "30520"
     },
     "1KUUJPkyDhamZXgpsyXqNGc3x1QPXtdhgz": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2817,7 +2817,7 @@
       "sdn_uid": "39593"
     },
     "1LrxsRd7zNuxPJcL5rttnoeJFy1y4AffYY": {
-      "chain": "XBT",
+      "chain": "USDT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -5587,6 +5587,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "18647"
     },
+    "TCreRMzGspdHNEkqkasejS6xTzqXNkYJJZ": {
+      "chain": "TRX",
+      "entity_name": "CCC INC",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59093"
+    },
     "TCu5onCzXuqxjvVzdB2tR4FLuF66d4yRqf": {
       "chain": "TRX",
       "entity_name": "Rolan SOKOLOVSKI",
@@ -6329,6 +6338,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "22985"
     },
+    "THauYJJEaFGLpEknoKnYmXmT5TCeQGKjDE": {
+      "chain": "TRX",
+      "entity_name": "1380079 BC LTD",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59096"
+    },
     "THfLaNMBAMz7xXnHoz5BkRMmrwuHKqfAfR": {
       "chain": "TRX",
       "entity_name": "ISIL KHORASAN",
@@ -6442,6 +6460,24 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "18647"
+    },
+    "TJHZswisiMgjioAVpmpMSWXCeQGCPjcTMK": {
+      "chain": "TRX",
+      "entity_name": "DIVERSE TRADE INC",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59091"
+    },
+    "TJT3JZKJWVHVkKRKSmWmg5UYHhAqBM7mfP": {
+      "chain": "TRX",
+      "entity_name": "1380079 BC LTD",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59096"
     },
     "TJdgB1k6ot3f2nLuZug6D8eD3HavTmzmSK": {
       "chain": "TRX",
@@ -6637,6 +6673,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "56865"
+    },
+    "TLyRLCNwBhaXkYak1bTFUYTj72crbgN5Vy": {
+      "chain": "TRX",
+      "entity_name": "1380079 BC LTD",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59096"
     },
     "TM6Kix9wH8cYQ4rLpFifsQ4ddH3rPX3f8p": {
       "chain": "USDT",
@@ -7893,6 +7938,15 @@
       ],
       "sdn_type": "Entity",
       "sdn_uid": "22985"
+    },
+    "TW5NEaaoPHXC1rt5PaYgG474gQ49oiZ2F5": {
+      "chain": "TRX",
+      "entity_name": "2397639 ONTARIO LTD",
+      "programs": [
+        "IRAN-EO13902"
+      ],
+      "sdn_type": "Entity",
+      "sdn_uid": "59095"
     },
     "TW5tokvhEfrb77z98Rc8HqbkzQJ6sxYtGX": {
       "chain": "TRX",
@@ -9861,8 +9915,8 @@
       "sdn_uid": "29585"
     }
   },
-  "count": 1058,
-  "fetched_at_utc": "2026-11-06 01:39 UTC",
-  "publication_date": "2026-11-05",
+  "count": 1064,
+  "fetched_at_utc": "2026-11-07 01:39 UTC",
+  "publication_date": "2026-11-06",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
