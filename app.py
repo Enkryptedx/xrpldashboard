@@ -263,94 +263,6 @@ def _cached_token_prices_map():
 _token_category_inferred_cache = {"watermark": None, "result": None, "checked_mono": 0.0}
 _TOKEN_CATEGORY_INFERRED_PROBE_INTERVAL_S = 60
 
-# Cross-run cache for the inferred map (2026-11-07 egress audit).
-#
-# The in-process watermark gate above only helps a LONG-LIVED process. Every
-# tokens_summary_walker tick is a fresh interpreter, so its cache was always
-# cold and it paid the full table read once per run: 1,963 calls x ~9,243
-# rows = 18.1M rows/week, about 5% of all rows leaving Neon, to re-read data
-# that changes only when token_issuer_flags_walker upserts it.
-#
-# So persist {watermark, rows} next to the repo and re-pull ONLY when
-# MAX(fetched_at) moves. The watermark probe stays a one-row query, which is
-# the whole point: cheap enough to run every time, decisive enough to skip
-# the expensive read. Every failure path falls back to the live read --
-# a cache that can break a render is not worth 5% of egress.
-_TOKEN_CATEGORY_INFERRED_CACHE_PATH = os.environ.get(
-    "TOKEN_CATEGORY_INFERRED_CACHE_PATH",
-    os.path.join(HERE, "tmp", "token_category_inferred_map.json"))
-
-
-def _tci_cache_serialise(inferred_map):
-    """Map -> JSON-safe records. Stored as a LIST of [cur, iss, payload], not
-    a 'cur|iss' dict key: the key is a composite and a delimiter in either
-    half would silently corrupt the pair on read back."""
-    recs = []
-    for (cur, iss), inf in inferred_map.items():
-        payload = dict(inf)
-        fa = payload.get("fetched_at")
-        if hasattr(fa, "isoformat"):
-            payload["fetched_at"] = {"__dt__": fa.isoformat()}
-        recs.append([cur, iss, payload])
-    return recs
-
-
-def _tci_cache_deserialise(recs):
-    """Records -> map, restoring fetched_at as a datetime so the shape is
-    byte-for-byte what db.read_token_category_inferred_map() returns. No
-    consumer reads fetched_at today, but a cache that quietly changes a
-    value's TYPE is a trap for the next one that does."""
-    # Imported locally and deliberately: this runs inside the callers'
-    # catch-all, so a NameError here degrades into a permanent silent cache
-    # miss rather than an error. It did exactly that during development.
-    import datetime as _dtmod
-    out = {}
-    for rec in recs:
-        cur, iss, payload = rec[0], rec[1], dict(rec[2])
-        fa = payload.get("fetched_at")
-        if isinstance(fa, dict) and "__dt__" in fa:
-            payload["fetched_at"] = _dtmod.datetime.fromisoformat(fa["__dt__"])
-        out[(cur, iss)] = payload
-    return out
-
-
-def _tci_disk_load(watermark):
-    """Return the cached map when the file's watermark matches, else None.
-    A missing/corrupt/mismatched file is simply a miss."""
-    if watermark is None:
-        return None
-    try:
-        with open(_TOKEN_CATEGORY_INFERRED_CACHE_PATH) as fh:
-            blob = json.load(fh)
-        if blob.get("watermark") != watermark:
-            return None
-        return _tci_cache_deserialise(blob.get("rows") or [])
-    except Exception:
-        return None
-
-
-def _tci_disk_store(watermark, inferred_map):
-    """Write the cache atomically. Best effort: the web tier may run on a
-    read-only or ephemeral filesystem, and failing to cache must never fail
-    a request."""
-    if watermark is None:
-        return
-    path = _TOKEN_CATEGORY_INFERRED_CACHE_PATH
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = f"{path}.{os.getpid()}.tmp"
-        with open(tmp, "w") as fh:
-            json.dump({"watermark": watermark,
-                       "rows": _tci_cache_serialise(inferred_map)}, fh)
-        # os.replace is atomic, so a concurrent reader sees either the old
-        # file or the new one, never a half-written one.
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except Exception:
-            pass
-
 
 def _cached_token_category_inferred_map():
     """db.read_token_category_inferred_map(), snapshot-gated.
@@ -378,15 +290,8 @@ def _cached_token_category_inferred_map():
         watermark = None
     if watermark is not None and watermark == c["watermark"] and c["result"] is not None:
         return c["result"]
-    # Cross-run hit: a fresh process (every walker tick) gets the map without
-    # touching the table, as long as nothing has upserted since it was written.
-    cached = _tci_disk_load(watermark)
-    if cached is not None:
-        c["watermark"], c["result"] = watermark, cached
-        return cached
     result = db.read_token_category_inferred_map()
     c["watermark"], c["result"] = watermark, result
-    _tci_disk_store(watermark, result)
     return result
 
 
