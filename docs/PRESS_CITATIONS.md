@@ -409,10 +409,14 @@ node's rolling window does not reach September.
 ## 2026-11-06 · Coinpaper · Marcus Hale
 
 - **URL**: https://coinpaper.com/38426/xrpl-lending-protocol-reaches-60-validator-support-still-below-80-activation-threshold
-- **Headline (from the fetched page)**: "XRPL Lending Protocol Hits 60%
-  Validator Support" — note this differs from the URL slug
-  ("...reaches-60-validator-support-still-below-80-activation-threshold");
-  the slug is not the headline.
+- **Headline**: "XRPL Lending Protocol Reaches 60% Validator Support, Still
+  Below 80% Activation Threshold" — the article's `<h1>`, and identical to
+  its `og:title`. The URL slug matches this too.
+- **Note on `<title>`**: the HTML `<title>` tag is a shorter, different
+  string — "XRPL Lending Protocol Hits 60% Validator Support" — which omits
+  the "still below 80%" qualifier. Quote the `<h1>`/`og:title` as the
+  headline; the `<title>` tag is not it. Both are preserved in the archived
+  `page.html`.
 - **What was cited**: LendingProtocol at **21/35 validators (60%)** with
   **29 needed**, and SingleAssetVault at **23 (65.7%)**.
 - **Cited landing page**: /amendments/2026-11-06 (our dated permalink)
