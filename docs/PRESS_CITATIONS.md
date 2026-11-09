@@ -406,6 +406,56 @@ node's rolling window does not reach September.
 
 ---
 
+## 2026-11-06 · Coinpaper · Marcus Hale
+
+- **URL**: https://coinpaper.com/38426/xrpl-lending-protocol-reaches-60-validator-support-still-below-80-activation-threshold
+- **Headline**: "XRPL Lending Protocol Reaches 60% Validator Support, Still
+  Below 80% Activation Threshold" — the article's `<h1>`, and identical to
+  its `og:title`. The URL slug matches this too.
+- **Note on `<title>`**: the HTML `<title>` tag is a shorter, different
+  string — "XRPL Lending Protocol Hits 60% Validator Support" — which omits
+  the "still below 80%" qualifier. Quote the `<h1>`/`og:title` as the
+  headline; the `<title>` tag is not it. Both are preserved in the archived
+  `page.html`.
+- **What was cited**: LendingProtocol at **21/35 validators (60%)** with
+  **29 needed**, and SingleAssetVault at **23 (65.7%)**.
+- **Cited landing page**: /amendments/2026-11-06 (our dated permalink)
+- **Fetch date claimed**: article dated 2026-11-06
+- **Found via**: the single news-host referrer in the 2026-11-08 UTC traffic
+  window (1 visitor, SG, not a bot, 14:03:44 UTC). Referrer header carried
+  the full article path, not just the host.
+- **Classification**: bylined crypto outlet. Sourced attribution — names our
+  dated amendments permalink as the source of the vote figures.
+- **Verified**: **partial** — two of three figures match our signed data
+  exactly; the "29 needed" threshold does not.
+
+### Verification (2026-11-09)
+
+Read from `signed_snapshots/2026-11-06.json`, the signed leaf for the cited
+date: metric `amendments_block`, `as_of_iso 2026-11-06T02:00:08Z`,
+`unl_source vl.ripple.com`, `responding_node_source own_node`. So the cited
+figures are attested by the signed chain, not just reconstructed.
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| LendingProtocol 21/35 validators | **confirmed** | `per_amendment.LendingProtocol.network_votes` = `count 21`, `validations 35`, `enabled false`, amendment hash `565B90CA1AB2B9D42208ED10884188C64F9E19083DECB9634AAF06EB03299509`. |
+| LendingProtocol at 60% | **confirmed** | 21/35 = 60.0% exactly. |
+| SingleAssetVault 23 (65.7%) | **confirmed** | `per_amendment.SingleAssetVault.network_votes` = `count 23`, `validations 35`; 23/35 = 65.714%, which rounds to the cited 65.7%. Amendment hash `81BD2619B6B3C8625AC5D0BC01DE17F06C3F0AB95C7C87C93715B87A4FD240D8`. |
+| "29 needed" for activation | **n — our page published 28** | Our leaf carries `threshold 28` on both amendments and `threshold_display "28/35"`. 80% of 35 validators is 28.0 exactly, and the vote source (`data.xrpl.org/v1/network/amendments/vote/main`) reports 28. The article's 29 is one higher than the figure our permalink served, consistent with treating 80% as strictly-greater rather than at-least. Everything else they took from us is right; this number is not ours. |
+
+### Archive
+- Private copy: `press_archive/2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60/`
+  — `page.html` (318,199 B) + `readable.txt` (5,512 B) + `meta.json`, HTTP
+  **200**, fetched 2026-11-09T15:28:52-0500. Row appended to `_index.json`
+  (32 rows); folder mirrored to DockVault. **Private record only — never
+  republished; the outlet was not contacted.**
+- Wayback: Save Page Now returned HTTP **429** during the archive run — the
+  documented rate-limit — and `_wayback_retry.sh` was launched to resolve the
+  snapshot afterwards. **PENDING** at time of writing.
+- Note on the archiver: `_archive_article.py` writes the folder but does not
+  touch `_index.json`; the index row is a separate step. A folder without an
+  index row is invisible to `_wayback_retry.sh`, which iterates the index.
+
 ## Archive index (private local copies + Wayback)
 
 Started 2026-09-27 (Charlie). Every article referenced above has a private
@@ -449,6 +499,7 @@ re-resolves and updates `_index.json`). Regenerate with
 | 2026-10-26 | Blockvoz | `2026-10-26_blockvoz-xrp-ledger-delegacion-permisos-bancos-s` | 200 (via curl recovery) | web/20261009234139 |
 | 2026-10-26 | Cryptomaan (batch-upgrade-2) | `2026-10-26_cryptomaan-batch-upgrade-2-nieuws-xrp-ledger-bat` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
 | 2026-10-26 | New Economy (JP) #616034 | `2026-10-26_new-economy-jp-616034-posts-616034` | 200 (via curl recovery) | web/20261013082332 |
+| 2026-11-06 | Coinpaper · Marcus Hale | `2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60` | 200 | PENDING (save 429 — retry pass launched) |
 
 Machine-readable index: `press_archive/_index.json`. Archiver:
 `press_archive/_archive_article.py` (stdlib-only fetch → HTML + readable text
