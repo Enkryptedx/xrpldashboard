@@ -148,6 +148,22 @@ def _stabilize(page) -> None:
     page.wait_for_timeout(300)
 
 
+def crop_to_panel(png: bytes, panel: tuple[int, int, int, int]) -> bytes:
+    """Return `png` cropped to `panel` = (left, top, right, bottom).
+
+    Pure and browser-free so the panel rule is testable. This is the same
+    operation the capture clip now performs in the page: everything outside
+    the dropdown surface is discarded BEFORE comparison, which is what stops
+    live page data behind the panel from registering as a divergence.
+    """
+    import io
+    from PIL import Image
+    img = Image.open(io.BytesIO(png)).convert("RGB").crop(panel)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _diff_pct(png_a: bytes, png_b: bytes) -> float | None:
     """Share (percent) of pixels whose max channel delta exceeds 24/255.
     None when sizes differ (that IS a divergence) or Pillow is missing."""
@@ -218,13 +234,25 @@ def _capture_one(page, path: str, selector: str, is_mobile: bool = False) -> tup
           const s = d.querySelector('summary');
           const m = d.querySelector('.menu');
           if (!s || !m) return null;
-          const sr = s.getBoundingClientRect();
+          // PANEL ONLY (2026-11-10). This used to span summary+menu with
+          // pad=6. Because it is a VIEWPORT clip and not an element shot,
+          // every pixel outside the menu surface -- the pad ring, and the
+          // gap beside the narrower summary -- showed the live page
+          // underneath, so the hash drifted whenever the DATA changed with
+          // no CSS or template change at all. On 2026-11-10 rwa_desktop
+          // diverged 1.19% while the dropdown itself was pixel identical
+          // (same 11 items, order and colours); 88% of the changed pixels
+          // sat in the left/right 25px strips where a digit behind the
+          // panel had gone 7 -> 8.
+          //
+          // Clipping to the menu rect alone leaves only the dropdown
+          // surface in the comparison: a real CSS/markup regression still
+          // lands in the image, live data cannot.
           const mr = m.getBoundingClientRect();
-          const pad = 6;
-          const x = Math.max(0, Math.floor(Math.min(sr.left, mr.left) - pad));
-          const y = Math.max(0, Math.floor(Math.min(sr.top, mr.top) - pad));
-          const right = Math.ceil(Math.max(sr.right, mr.right) + pad);
-          const bottom = Math.ceil(Math.max(sr.bottom, mr.bottom) + pad);
+          const x = Math.max(0, Math.floor(mr.left));
+          const y = Math.max(0, Math.floor(mr.top));
+          const right = Math.ceil(mr.right);
+          const bottom = Math.ceil(mr.bottom);
           return { x, y, width: right - x, height: bottom - y };
         }
         """,

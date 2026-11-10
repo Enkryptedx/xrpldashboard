@@ -1131,3 +1131,10 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_canary_probe_failure_is_a_failure.py -q
+      # Screenshot-canary scope guard. The nav canary must compare the
+      # dropdown panel only; if the clip widens to include the live page
+      # again, data changes read as CSS regressions (2026-11-10, 1.19%).
+      - name: nav canary compares the panel only (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_nav_canary_panel_crop.py -q
