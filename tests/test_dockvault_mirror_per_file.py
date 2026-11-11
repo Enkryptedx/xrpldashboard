@@ -385,6 +385,78 @@ def test_a_stale_mirror_copy_is_still_judged_on_mtime(trees, tmp_path):
     assert r["ok"] is False and "older_1" in r["reason"], r
 
 
+def test_a_file_rewritten_inside_the_cycle_is_not_flagged_as_older(trees, tmp_path):
+    """The daily flap, pinned.
+
+    A hot file (a launchd_state/*_last_ok stamp, a .lock, a snapshot JSON)
+    is rewritten by a walker hours after the nightly mirror ran. The mirror
+    copy is correct for the run that happened; no run has been due since.
+    The gap is real but it is not a finding.
+
+    Observed 2026-11-11: this check passed at 10:25 UTC with 9907 files
+    mirrored and failed at 11:25 UTC with 29 'older' files, purely because
+    the morning walkers wrote. rclone had copied all 29 at 23:15, fails=0.
+    """
+    src, dst = trees
+    state = str(tmp_path / "fs.json")
+    _write(src, "launchd_state/supply_fast_walker_last_ok", NOW - 600)
+    _write(dst, "launchd_state/supply_fast_walker_last_ok", NOW - 9 * 3600)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is True, r
+    assert "older" not in r["reason"], r
+
+
+def test_source_untouched_past_the_cycle_with_a_behind_copy_still_alarms(
+        trees, tmp_path):
+    """The grace must not swallow a real miss: nothing has written this file
+    in days, yet the mirror copy is still older. rclone had every chance."""
+    src, dst = trees
+    state = str(tmp_path / "fs.json")
+    _write(src, "settled.json", NOW - 3 * 86400)
+    _write(dst, "settled.json", NOW - 9 * 86400)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is False, r
+    assert "older_1" in r["reason"], r
+    assert "settled.json" in r["reason"], "name the file"
+    assert r["age_seconds"] == 6 * 86400
+
+
+@pytest.mark.parametrize("src_age,expect_ok", [
+    (CYCLE - 60, True),    # inside the cycle: no run has been due
+    (CYCLE + 60, False),   # past it: a run was due and did not deliver
+])
+def test_older_grace_boundary_is_one_mirror_cycle(trees, tmp_path, src_age,
+                                                  expect_ok):
+    src, dst = trees
+    state = str(tmp_path / "fs.json")
+    _write(src, "edge.txt", NOW - src_age)
+    _write(dst, "edge.txt", NOW - src_age - 50_000)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is expect_ok, r
+
+
+def test_hot_files_do_not_mask_a_genuinely_stale_neighbour(trees, tmp_path):
+    """Shaped like the real tree: many churning files the grace exempts, one
+    settled file the mirror really did miss. The miss must still be named,
+    and the count must be 1 -- not 30."""
+    src, dst = trees
+    state = str(tmp_path / "fs.json")
+    for i in range(29):
+        rel = f"launchd_state/w{i}_last_ok"
+        _write(src, rel, NOW - 600)
+        _write(dst, rel, NOW - 9 * 3600)
+    _write(src, "real_miss.json", NOW - 4 * 86400)
+    _write(dst, "real_miss.json", NOW - 11 * 86400)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is False, r
+    assert "older_1" in r["reason"], r
+    assert "real_miss.json" in r["reason"], r
+
+
 def test_result_shape_is_unchanged_for_the_walker_health_plumbing(trees):
     src, dst = trees
     _write(src, "a.txt", OLD)
