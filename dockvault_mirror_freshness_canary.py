@@ -250,7 +250,39 @@ def _iter_files(root: str, matchers=None, prune=None) -> dict[str, int]:
     return out
 
 
-def check_tree(src: str, sub: str, now_ts: int | None = None) -> dict:
+FIRST_SEEN_PATH = os.path.join(LAUNCHD_STATE_DIR,
+                               "dockvault_mirror_first_seen.json")
+
+
+def _load_first_seen(path: str) -> dict:
+    """{sub: {relpath: first_seen_epoch}}. Missing or corrupt reads as empty,
+    which seeds silently rather than alarming on every path."""
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except Exception:  # noqa: BLE001 -- a canary must not die on its own state
+        return {}
+
+
+def _save_first_seen(path: str, data: dict) -> None:
+    """Atomic write. Best effort: failing to persist means paths get re-seeded
+    next run (a missed alarm window), never a false alarm."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = f"{path}.{os.getpid()}.tmp"
+        with open(tmp, "w") as fh:
+            json.dump(data, fh)
+        os.replace(tmp, path)
+    except Exception:  # noqa: BLE001
+        try:
+            os.unlink(tmp)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def check_tree(src: str, sub: str, now_ts: int | None = None,
+               state_path: str | None = None) -> dict:
     """Compare one source tree against its mirror, FILE BY FILE. Same dict
     shape as check_one so the existing print + walker_health plumbing is
     unchanged.
@@ -282,20 +314,59 @@ def check_tree(src: str, sub: str, now_ts: int | None = None) -> dict:
         return {**base, "ok": False, "reason": "mirror_empty_but_source_has_files"}
 
     now = int(_time.time()) if now_ts is None else int(now_ts)
+
+    # ARRIVAL TIME, not mtime. mtime answers "when was this content last
+    # written", which is not the question. The question is "how long has this
+    # path existed HERE without reaching the mirror". Those differ whenever a
+    # file arrives with an old timestamp: `mv` of a directory leaves the
+    # files' mtime AND ctime untouched (only the directory's ctime moves),
+    # and `cp -p` deliberately restores the source mtime. Both happened on
+    # 2026-11-10 and produced 71 phantom "missing" findings for files that
+    # were minutes old in their new home.
+    #
+    # Ancestor directory ctime was considered and rejected: log directories
+    # change ctime constantly, so a genuinely missing file in launchd_logs
+    # would be permanently exempt -- it would silence the alarm exactly
+    # where loss is most likely to go unnoticed.
+    #
+    # So remember when we first SAW each path and judge against that. A path
+    # absent from the mirror is only overdue once it has been seen here for
+    # longer than one mirror cycle.
+    seen_path = FIRST_SEEN_PATH if state_path is None else state_path
+    all_state = _load_first_seen(seen_path)
+    seen = dict(all_state.get(sub) or {})
+
     missing: list[str] = []
     older: list[str] = []
     worst = 0
     for rel, s_mt in src_files.items():
-        # Too fresh to expect: no mirror run has been due since it changed.
-        if now - s_mt <= MIRROR_CYCLE_SECONDS:
+        first_seen = seen.get(rel)
+        if first_seen is None:
+            # First sighting: record it and do NOT alarm. This also makes the
+            # very first run (no state file at all) a silent seeding pass,
+            # rather than one alarm per file in the tree.
+            seen[rel] = now
             continue
         d_mt = dst_files.get(rel)
         if d_mt is None:
+            age_here = now - int(first_seen)
+            if age_here <= MIRROR_CYCLE_SECONDS:
+                # Seen, but no mirror run has been due since it appeared.
+                continue
             missing.append(rel)
-            worst = max(worst, now - s_mt)
+            worst = max(worst, age_here)
         elif s_mt - d_mt > MIRROR_MTIME_SLACK_SECONDS:
+            # Content axis, still mtime: the copy is genuinely behind the
+            # source. Arrival time is irrelevant here -- both sides exist.
             older.append(rel)
             worst = max(worst, s_mt - d_mt)
+
+    # Drop paths that are gone from the source so the file cannot grow
+    # without bound, then persist. Written even on a clean run: the seeding
+    # of new paths is the whole point.
+    seen = {r: t for r, t in seen.items() if r in src_files}
+    all_state[sub] = seen
+    _save_first_seen(seen_path, all_state)
 
     if missing or older:
         # Name one concrete file: "3 missing" sends you looking, a path tells

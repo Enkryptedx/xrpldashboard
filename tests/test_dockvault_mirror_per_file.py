@@ -94,28 +94,49 @@ def test_quiet_tree_with_one_new_file_is_not_flagged(trees):
     assert "mirrored" in r["reason"]
 
 
-def test_missing_file_past_the_cycle_is_flagged(trees):
+def _seed_all(state_path, root, when):
+    """Record every file under `root` as first seen at `when`.
+
+    Needed since 2026-11-11: absence is judged on ARRIVAL time, so a path the
+    canary has never seen before is seeded silently instead of flagged. Tests
+    about genuinely overdue files therefore have to say the file has already
+    been sitting there, which is what this does.
+    """
+    import json as _json
+    import os as _os
+    seen = {}
+    for dp, _dn, fns in _os.walk(root):
+        for fn in fns:
+            seen[_os.path.relpath(_os.path.join(dp, fn), root)] = when
+    _json.dump({"sub": seen}, open(state_path, "w"))
+
+
+def test_missing_file_past_the_cycle_is_flagged(trees, tmp_path):
     src, dst = trees
+    state = str(tmp_path / "fs.json")
     _write(src, "present.txt", OLD)
     _write(dst, "present.txt", OLD)
     _write(src, "lost.txt", OLD)             # never arrived
-    r = cv.check_tree(src, "sub", now_ts=NOW)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
     assert r["ok"] is False, r
     assert "missing_1" in r["reason"]
     assert "lost.txt" in r["reason"], "name the file, not just a count"
 
 
-def test_mirror_copy_older_than_source_is_flagged(trees):
+def test_mirror_copy_older_than_source_is_flagged(trees, tmp_path):
     src, dst = trees
+    state = str(tmp_path / "fs.json")
     _write(src, "edited.txt", OLD + 5000)
     _write(dst, "edited.txt", OLD)           # stale copy
-    r = cv.check_tree(src, "sub", now_ts=NOW)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
     assert r["ok"] is False, r
     assert "older_1" in r["reason"]
     assert r["age_seconds"] == 5000
 
 
-def test_coverage_hole_is_not_hidden_by_one_fresh_copy(trees):
+def test_coverage_hole_is_not_hidden_by_one_fresh_copy(trees, tmp_path):
     """The false negative the old metric allowed.
 
     One file copied seconds ago makes the mirror's newest mtime current, so
@@ -130,7 +151,9 @@ def test_coverage_hole_is_not_hidden_by_one_fresh_copy(trees):
         v for k, v in cv._iter_files(src).items() if k != "recent.txt"), (
         "precondition: mirror newest beats source newest, so the OLD metric "
         "would have passed this tree")
-    r = cv.check_tree(src, "sub", now_ts=NOW)
+    state = str(tmp_path / "fs.json")
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
     assert r["ok"] is False, r
     assert "missing_20" in r["reason"]
 
@@ -166,14 +189,16 @@ def test_patterns_come_from_the_exclude_file_not_a_hardcoded_list(trees):
     assert r["ok"] is True, r
 
 
-def test_a_real_missing_file_is_still_caught_alongside_excluded_ones(trees):
+def test_a_real_missing_file_is_still_caught_alongside_excluded_ones(trees, tmp_path):
     """Guard the guard: broad excludes must not swallow genuine findings."""
     src, dst = trees
+    state = str(tmp_path / "fs.json")
     _write(src, "keep.txt", OLD)
     _write(dst, "keep.txt", OLD)
     _write(src, "ignored.log", OLD)        # excluded
     _write(src, "really_missing.txt", OLD)  # not excluded
-    r = cv.check_tree(src, "sub", now_ts=NOW)
+    _seed_all(state, src, NOW - 10 * CYCLE)
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
     assert r["ok"] is False, r
     assert "missing_1" in r["reason"]
     assert "really_missing.txt" in r["reason"]
@@ -258,6 +283,106 @@ def test_default_now_ts_runs_without_injection(trees):
     _write(dst, "a.txt", OLD)
     r = cv.check_tree(src, "sub")
     assert r["ok"] is True, r
+
+
+# ── arrival time, not mtime (2026-11-11) ───────────────────────────────────
+#
+# mtime answers "when was this content last written". The canary needs "how
+# long has this path existed HERE unmirrored". They diverge whenever a file
+# arrives with an old timestamp: `mv` of a directory leaves the files' mtime
+# AND ctime untouched, and `cp -p` restores the source mtime. On 2026-11-10
+# that produced 71 phantom findings for files minutes old in their new home.
+#
+# Ancestor-directory ctime was rejected: log dirs churn constantly, so a
+# genuinely missing file in launchd_logs would be permanently exempt. These
+# tests pin both halves -- the moved file goes quiet, the busy folder does not.
+
+def test_moved_old_file_is_not_flagged_until_a_cycle_passes(trees, tmp_path):
+    src, dst = trees
+    state = str(tmp_path / "first_seen.json")
+    _write(src, "keep.txt", OLD)
+    _write(dst, "keep.txt", OLD)
+    # Arrives with an ancient mtime and no mirror copy, exactly like a file
+    # inside a directory that was just `mv`d, or one placed with `cp -p`.
+    _write(src, "archive/old_moved.png", OLD)
+
+    first = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert first["ok"] is True, f"a just-seen path must not alarm: {first}"
+
+    # Still inside one cycle: silent.
+    mid = cv.check_tree(src, "sub", now_ts=NOW + CYCLE - 10, state_path=state)
+    assert mid["ok"] is True, mid
+
+    # Past one cycle with the mirror still lacking it: now it is real.
+    late = cv.check_tree(src, "sub", now_ts=NOW + CYCLE + 60, state_path=state)
+    assert late["ok"] is False, late
+    assert "old_moved.png" in late["reason"], late["reason"]
+
+
+def test_missing_file_in_a_busy_folder_still_alarms(trees, tmp_path):
+    """The case ancestor-dir-ctime would have silenced forever."""
+    import json as _json
+    import os as _os
+    src, dst = trees
+    state = str(tmp_path / "first_seen.json")
+    _write(src, "keep.txt", OLD)
+    _write(dst, "keep.txt", OLD)
+    # NOT launchd_logs/: the fixture exclude file drops that path entirely,
+    # so a test using it would pass for the wrong reason. Any churning,
+    # non-excluded directory makes the point.
+    _write(src, "busy_dir/worker.txt", OLD)
+
+    # Seen well over a cycle ago, so it is genuinely overdue.
+    _json.dump({"sub": {"keep.txt": NOW - 10 * CYCLE,
+                        "busy_dir/worker.txt": NOW - 10 * CYCLE}},
+               open(state, "w"))
+    # Churn the parent directory's ctime, the way an active log dir does.
+    _os.utime(_os.path.join(src, "busy_dir"), (NOW, NOW))
+    _write(src, "busy_dir/another.txt", OLD)
+
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is False, "a long-unmirrored file must alarm even in a busy dir"
+    assert "worker.txt" in r["reason"], r["reason"]
+
+
+def test_first_run_seeds_silently_and_writes_state(trees, tmp_path):
+    import json as _json
+    src, dst = trees
+    state = str(tmp_path / "first_seen.json")
+    _write(src, "a.txt", OLD)
+    _write(dst, "a.txt", OLD)
+    for i in range(5):
+        _write(src, f"unmirrored_{i}.txt", OLD)
+
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is True, "seeding must not alarm once per file"
+    saved = _json.load(open(state))["sub"]
+    assert saved["unmirrored_0.txt"] == NOW
+    assert len(saved) == 6
+
+
+def test_state_drops_paths_that_left_the_source(trees, tmp_path):
+    import json as _json
+    src, dst = trees
+    state = str(tmp_path / "first_seen.json")
+    _json.dump({"sub": {"ghost.txt": NOW - CYCLE}}, open(state, "w"))
+    _write(src, "a.txt", OLD)
+    _write(dst, "a.txt", OLD)
+    cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert "ghost.txt" not in _json.load(open(state))["sub"]
+
+
+def test_a_stale_mirror_copy_is_still_judged_on_mtime(trees, tmp_path):
+    """Arrival time governs ABSENCE only. When both sides exist, a copy that
+    is behind the source is still a finding regardless of when it arrived."""
+    import json as _json
+    src, dst = trees
+    state = str(tmp_path / "first_seen.json")
+    _write(src, "edited.txt", OLD + 5000)
+    _write(dst, "edited.txt", OLD)
+    _json.dump({"sub": {"edited.txt": NOW}}, open(state, "w"))
+    r = cv.check_tree(src, "sub", now_ts=NOW, state_path=state)
+    assert r["ok"] is False and "older_1" in r["reason"], r
 
 
 def test_result_shape_is_unchanged_for_the_walker_health_plumbing(trees):
