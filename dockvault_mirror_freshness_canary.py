@@ -356,8 +356,34 @@ def check_tree(src: str, sub: str, now_ts: int | None = None,
             missing.append(rel)
             worst = max(worst, age_here)
         elif s_mt - d_mt > MIRROR_MTIME_SLACK_SECONDS:
-            # Content axis, still mtime: the copy is genuinely behind the
-            # source. Arrival time is irrelevant here -- both sides exist.
+            # Content axis, still mtime: both sides exist, so arrival time is
+            # irrelevant and the question is whether the copy is behind.
+            #
+            # But "behind" only becomes a FINDING once a mirror run has been
+            # due SINCE the source last changed -- the same cycle grace the
+            # absence axis above already gets, and the same rule the module
+            # docstring has stated all along ("A file changed within the last
+            # cycle is exempt, because no mirror run has been due yet"). It
+            # was simply never implemented on this branch.
+            #
+            # Without it the check does not report, it FLAPS on a daily
+            # cycle: green in the quiet hours after the 23:15 run, red from
+            # the first morning walker write. Observed 2026-11-11 --
+            # all_9907_files_mirrored at 10:25 UTC, then
+            # stale_files_missing_0_older_29 at 11:25 UTC. Nothing had
+            # broken in between. The 29 were launchd_state/*_last_ok stamps,
+            # amm_rank.lock and snapshot JSON that the morning walkers
+            # rewrite; rclone had copied every one of them correctly at
+            # 23:15 and logged fails=0. The mirror held exactly the content
+            # the run that actually happened was supposed to leave.
+            #
+            # Judge the SOURCE's age, not the size of the gap. A 9h gap on a
+            # file written 9h ago is a 24h-cadence mirror doing its job; a
+            # gap on a file untouched for two days is a real miss. Measuring
+            # the gap alone guarantees a finding that no amount of backing
+            # up can clear, which is how a canary gets ignored.
+            if now - s_mt <= MIRROR_CYCLE_SECONDS:
+                continue
             older.append(rel)
             worst = max(worst, s_mt - d_mt)
 
