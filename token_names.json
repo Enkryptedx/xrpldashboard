@@ -8110,7 +8110,8 @@
     "category": "other",
     "name": "BOTC",
     "desc": "CiteFleet utility token for platform-funded customer operations. Total supply: 40 billion BOTC; 2 billion operating allocation and 38 billion escrow reserve. Customers receive 2,000 BOTC for normal operations; each customer button event returns 0.005 BOTC to the issuer for burning; refill to 2,000 BOTC when confirmed balance reaches 500 or less. Advanced services are paid separately in XRP. No ownership, revenue share, investment return, or monetary value.",
-    "issuer_name": "XRPTokenizer"
+    "issuer_name": "XRPTokenizer",
+    "suppressed": "display_collision_superseded: second \"BOTC\" from the same issuer as the published 060B0AE9, byte-identical metadata, OutstandingAmount 0, and absent from the operator's own TOML"
   },
   "5553444200000000000000000000000000000000:rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc": {
     "currency_hex": "5553444200000000000000000000000000000000",
@@ -8551,7 +8552,8 @@
     "name": "BOTC",
     "desc": "CiteFleet utility token for platform-funded customer operations. Total supply: 40 billion BOTC; 2 billion operating allocation and 38 billion escrow reserve. Customers receive 2,000 BOTC for normal operations; each customer button event returns 0.005 BOTC to the issuer for burning; refill to 2,000 BOTC when confirmed balance reaches 500 or less. Advanced services are paid separately in XRP. No ownership, revenue share, investment return, or monetary value.",
     "issuer_name": "XRPTokenizer",
-    "suppressed": "pending_review: not yet assessed; no evidence against it"
+    "tier": "domain_fallback",
+    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
   },
   "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7:rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV": {
     "currency_hex": "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7",
@@ -8561,7 +8563,8 @@
     "category": "other",
     "name": "DateC",
     "issuer_name": "XRPTokenizer",
-    "suppressed": "pending_review: not yet assessed; no evidence against it"
+    "tier": "domain_fallback",
+    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
   },
   "0668EA15E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
     "currency_hex": "0668EA15E0A0BE28F262B70B642B433C5241834FC60D9269",
@@ -8682,7 +8685,7 @@
     "category": "rwa",
     "name": "12222",
     "issuer_name": "SC.PO",
-    "suppressed": "pending_review: not yet assessed; no evidence against it"
+    "suppressed": "issuer_cluster_test: 7th SC.PO issuer address; MaximumAmount 1 with OutstandingAmount 0 (never reached a holder), placeholder example.com icon, buyer field equals the issuer, 0 Days term"
   },
   "066CADEBE324A4EE4564969B526B357779E32DF741F516EB:rM5pHdjg4NMRoSfWHQDNzfjXfQAtVjo4C8": {
     "currency_hex": "066CADEBE324A4EE4564969B526B357779E32DF741F516EB",
