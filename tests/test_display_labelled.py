@@ -207,7 +207,13 @@ class TestSuppression:
         # approved for publication. A new entry appearing here without an
         # approval should fail the build, so each curation pass updates this
         # dict deliberately. CERT added 2026-10-17; BOTC + DATEC added
-        # 2026-11-12 (owner-approved domain_fallback, issuer level only).
+        # 2026-11-12 at issuer level, then re-worded the same day when the
+        # owner caught that "issuer verified via" overstated a ONE-WAY
+        # claim: their AccountRoot carries no Domain field, so the ledger
+        # never confirms the TOML's assertion. They moved to the new
+        # `domain_listed` tier. HVI3ESC keeps "issuer verified via" because
+        # its issuer's on-ledger Domain really does read "hvi3.com" -- both
+        # legs present, only the currency level missing.
         assert got == {
             "nsRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "nrRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
@@ -219,6 +225,6 @@ class TestSuppression:
             "X40AM": "self-described (unverified)",
             "HVI3ESC": "issuer verified via hvi3.com",
             "CERT": "self-described (unverified)",
-            "BOTC": "issuer verified via www.xrptokenizer.app",
-            "DATEC": "issuer verified via www.xrptokenizer.app",
+            "BOTC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
+            "DATEC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
         }, got

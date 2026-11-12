@@ -8552,7 +8552,7 @@
     "name": "BOTC",
     "desc": "CiteFleet utility token for platform-funded customer operations. Total supply: 40 billion BOTC; 2 billion operating allocation and 38 billion escrow reserve. Customers receive 2,000 BOTC for normal operations; each customer button event returns 0.005 BOTC to the issuer for burning; refill to 2,000 BOTC when confirmed balance reaches 500 or less. Advanced services are paid separately in XRP. No ownership, revenue share, investment return, or monetary value.",
     "issuer_name": "XRPTokenizer",
-    "tier": "domain_fallback",
+    "tier": "domain_listed",
     "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
   },
   "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7:rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV": {
@@ -8563,7 +8563,7 @@
     "category": "other",
     "name": "DateC",
     "issuer_name": "XRPTokenizer",
-    "tier": "domain_fallback",
+    "tier": "domain_listed",
     "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
   },
   "0668EA15E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {

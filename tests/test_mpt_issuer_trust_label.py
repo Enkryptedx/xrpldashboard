@@ -20,14 +20,34 @@ what the chokepoint emits, so this suite checks three things and not one:
 
 Drop any one and the feature can look finished while rendering nothing.
 
-WHY A CAVEAT AND NOT A BADGE. `domain_fallback` means the TOML named the
-issuer ADDRESS, never that the ticker is right -- a [[CURRENCIES]] block
-cannot describe an MPT, so this is the ceiling for one. The wording is
-shared with /tokens via token_label.label_for() so there is exactly one
-string to maintain, and the span is deliberately muted with no tick, no
-colour and no border. An MPT surface showing a green check would vouch
-for a self-declared name on the surface where impersonation risk is
-highest.
+WHY A CAVEAT AND NOT A BADGE. Neither tier here means the ticker was
+checked -- a [[CURRENCIES]] block cannot describe an MPT, so issuer level
+is the ceiling for one. The wording is shared with /tokens via
+token_label.label_for() so there is exactly one string to maintain, and
+the span is deliberately muted with no tick, no colour and no border. An
+MPT surface showing a green check would vouch for a self-declared name on
+the surface where impersonation risk is highest.
+
+TWO TIERS, TWO SENTENCES (split 2026-11-12, owner-approved). The first cut
+of this PR rendered "issuer verified via <host>" for BOTC and DATEC, and
+the owner stopped it before merge: that wording overstates a ONE-WAY
+claim. Reading both AccountRoots from our own node settled it, and split
+his premise in half:
+
+  tier             evidence                                   renders
+  ---------------  ----------------------------------------  --------------
+  domain_fallback  TOML names the address AND the issuer's    "issuer
+                   on-ledger Domain points back at that host  verified via
+                   (HVI3ESC: Domain = "hvi3.com")             <host>"
+  domain_listed    TOML names the address and the AccountRoot "listed by
+                   has NO Domain field at all, so the ledger  <host> ... not
+                   never confirms it (BOTC, DATEC)            confirmed
+                                                              on-ledger"
+
+So the remedy was to SPLIT the tier, not re-word it -- a blanket relabel
+would have understated HVI3ESC, whose reverse leg is genuinely present.
+Both cases are asserted below on this surface, because "the label renders"
+is not the same claim as "the two tiers are distinguishable".
 
 WHY THE ROW'S OWN NAME. The sentence uses the row's on-chain XLS-89 name
 ("DateC"), not token_names' `currency_display` ("DATEC"). Rewriting it
@@ -99,17 +119,40 @@ DATEC_PUBLISHED = "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7"
 BOTC_SUPPRESSED = "060B0AE49FE7F2B50E46A1E9127A580EB575FA6850C683F7"
 X40AM_UNTAGGED = "060B0AE59FE7F2B50E46A1E9127A580EB575FA6850C683F7"
 
-CAVEAT = "issuer verified via www.xrptokenizer.app"
+# ONE-WAY: the TOML names the address, the AccountRoot has no Domain field.
+CAVEAT = "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger"
 CITE = "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
+
+# TWO-WAY contrast case: hvi3.com's issuer really does carry
+# Domain = "hvi3.com" on-ledger (read from our own node 2026-11-12), so it
+# keeps the stronger word. Present here so this surface is proven to
+# render the two tiers DIFFERENTLY, not just to render one of them.
+HVI3_ISSUER = "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN"
+HVI3_HEX = "06083C9758" + "0" * 38
+HVI3_CITE = "https://hvi3.com/.well-known/xrp-ledger.toml"
+HVI3_CAVEAT = "issuer verified via hvi3.com"
 
 
 def _published(hexid, display):
+    """A one-way entry: cited by its publisher, unconfirmed on-ledger."""
     return {
         "currency_hex": hexid,
         "currency_display": display,
         "issuer": ISSUER,
-        "tier": tl.DOMAIN_FALLBACK,
+        "tier": tl.DOMAIN_LISTED,
         "verified_via": CITE,
+    }
+
+
+def _two_way(hexid, display):
+    """A two-way entry: publisher names the address AND the AccountRoot's
+    Domain field points back at that host."""
+    return {
+        "currency_hex": hexid,
+        "currency_display": display,
+        "issuer": HVI3_ISSUER,
+        "tier": tl.DOMAIN_FALLBACK,
+        "verified_via": HVI3_CITE,
     }
 
 
@@ -123,6 +166,9 @@ def tokens_by_key():
         e = _published(hexid, display)
         e["_trust_label"] = tl.label_for(e)
         out[(hexid, ISSUER)] = e
+    hv = _two_way(HVI3_HEX, "HVI3ESC")
+    hv["_trust_label"] = tl.label_for(hv)
+    out[(HVI3_HEX, HVI3_ISSUER)] = hv
     # X40AM: present on the ledger and in no curated entry at all.
     # 060B0AE4: suppressed, so the builder never emitted it. Neither key
     # appears here, and that absence IS the test fixture.
@@ -132,12 +178,38 @@ def tokens_by_key():
 class TestTheRenderedSentence:
     """The exact string a reader sees in the name cell."""
 
-    def test_published_name_carries_the_caveat_verbatim(self, tokens_by_key):
+    def test_one_way_name_carries_the_unconfirmed_caveat(self, tokens_by_key):
+        """ONE-WAY case. The publisher's TOML names the address; the
+        AccountRoot carries no Domain field, so nothing on the ledger
+        confirms it. The sentence must say which half is missing and must
+        not contain the word "verified"."""
         html = open(TEMPLATE, encoding="utf-8").read()
         label = tl.label_for_issuance(BOTC_PUBLISHED, ISSUER, tokens_by_key)
         assert _rendered_sentence("BOTC", label, html) == (
-            "BOTC \u00b7 issuer verified via www.xrptokenizer.app"
+            "BOTC \u00b7 listed by www.xrptokenizer.app "
+            "\u00b7 not confirmed on-ledger"
         )
+        assert "verified" not in label
+
+    def test_two_way_name_keeps_the_verified_wording(self, tokens_by_key):
+        """TWO-WAY case. hvi3.com names the address and that issuer's
+        on-ledger Domain reads "hvi3.com", so both legs are present and
+        only the currency level is missing. This one keeps "verified"."""
+        html = open(TEMPLATE, encoding="utf-8").read()
+        label = tl.label_for_issuance(HVI3_HEX, HVI3_ISSUER, tokens_by_key)
+        assert _rendered_sentence("HVI3ESC", label, html) == (
+            "HVI3ESC \u00b7 issuer verified via hvi3.com"
+        )
+        assert label == HVI3_CAVEAT
+
+    def test_the_two_tiers_never_render_the_same_sentence(self, tokens_by_key):
+        """The point of the split, asserted on THIS surface: a one-way and
+        a two-way entry must be distinguishable by a reader."""
+        one = tl.label_for_issuance(BOTC_PUBLISHED, ISSUER, tokens_by_key)
+        two = tl.label_for_issuance(HVI3_HEX, HVI3_ISSUER, tokens_by_key)
+        assert one != two
+        assert "not confirmed on-ledger" in one
+        assert "not confirmed on-ledger" not in two
 
     def test_datec_keeps_its_own_ledger_name(self, tokens_by_key):
         """"DateC" on-chain, "DATEC" in the registry. The surface showing
@@ -145,7 +217,8 @@ class TestTheRenderedSentence:
         html = open(TEMPLATE, encoding="utf-8").read()
         label = tl.label_for_issuance(DATEC_PUBLISHED, ISSUER, tokens_by_key)
         assert _rendered_sentence("DateC", label, html) == (
-            "DateC \u00b7 issuer verified via www.xrptokenizer.app"
+            "DateC \u00b7 listed by www.xrptokenizer.app "
+            "\u00b7 not confirmed on-ledger"
         )
 
     def test_wording_is_identical_to_the_tokens_surface(self, tokens_by_key):
