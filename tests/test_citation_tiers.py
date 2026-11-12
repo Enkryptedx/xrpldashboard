@@ -203,21 +203,59 @@ class TestOndoSentinelUntouched:
 # ── blast radius ────────────────────────────────────────────────────
 def test_tier_census_is_exact(names):
     """Guards against a bulk retag: 4 currency-level (XAGa + the three
-    upgraded), 3 issuer-level (HVI3ESC + BOTC + DATEC).
+    upgraded), 1 two-way issuer-level (HVI3ESC), 2 one-way (BOTC, DATEC).
 
-    domain_fallback 1 -> 3 on 2026-11-12: BOTC (060B0AE9) and DATEC
-    (060B0AEA) were published at issuer level, citing the operator's own
-    www.xrptokenizer.app TOML, which names the issuer address AND both
-    exact mpt_issuance_ids. An MPT can never reach `toml` -- a
-    [[CURRENCIES]] block cannot describe one -- so issuer level is the
-    ceiling for them, not a hold. Per-entry evidence and the scope of
-    that pass live in test_curate_botc_datec_scpo.py."""
+    domain_fallback 1 -> 3 -> 1 on 2026-11-12. BOTC (060B0AE9) and DATEC
+    (060B0AEA) were published at issuer level citing the operator's own
+    www.xrptokenizer.app TOML, then SPLIT OUT the same day into the new
+    `domain_listed` tier, because `domain_fallback` had been conflating
+    two opposite evidence states under one word:
+
+      HVI3ESC   TOML names the address AND the issuer's on-ledger Domain
+                reads "hvi3.com" -- both legs present, only the currency
+                level missing. Keeps "issuer verified via <host>".
+      BOTC      TOML names the address and the AccountRoot carries NO
+      DATEC     Domain field at all -- the ledger never confirms it.
+                Moves to "listed by <host> ... not confirmed on-ledger".
+
+    Both reads taken from our own node 2026-11-12. The owner caught the
+    overstatement before merging the render PR: a one-way claim was
+    borrowing the word "verified" from a two-way one.
+
+    An MPT still can never reach `toml` -- a [[CURRENCIES]] block cannot
+    describe one -- so issuer level remains the ceiling for both tiers.
+    Per-entry evidence lives in test_curate_botc_datec_scpo.py."""
     toml_tier = {k for k, v in names.items()
                  if isinstance(v, dict) and v.get("tier") == TOML_TIER}
     df = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK}
+    dl = {k for k, v in names.items()
+          if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED}
     assert len(toml_tier) == 4, f"toml tier drifted: {sorted(toml_tier)}"
-    assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
+    assert len(df) == 1, f"domain_fallback drifted: {sorted(df)}"
+    assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
+
+
+def test_two_way_and_one_way_say_different_things(names):
+    """The whole point of the split: the two tiers must never render the
+    same sentence, and only the two-way one may say "verified"."""
+    two_way = [v for v in names.values()
+               if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK]
+    one_way = [v for v in names.values()
+               if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED]
+    assert two_way and one_way, "both tiers must have a live example"
+
+    for v in two_way:
+        label = tl.label_for(v)
+        assert label == f"issuer verified via {tl.cited_domain(v)}"
+
+    for v in one_way:
+        label = tl.label_for(v)
+        assert label == (f"listed by {tl.cited_domain(v)} "
+                         f"\u00b7 not confirmed on-ledger")
+        # A one-way claim must not borrow the stronger tier's word.
+        assert "verified" not in label
+        assert "not confirmed on-ledger" in label
 
 
 def test_self_described_entries_all_keep_their_caveat(names):
@@ -232,10 +270,12 @@ def test_self_described_entries_all_keep_their_caveat(names):
 
 
 def test_no_verification_caveat_renders_without_a_host(names):
-    """domain_fallback interpolates cited_domain(); a missing host must fall
-    back to the self-described string, never 'issuer verified via None'."""
+    """Both host-interpolating tiers must fall back to the self-described
+    string when cited_domain() is empty -- never 'issuer verified via
+    None' and never 'listed by None'."""
     for v in names.values():
-        if not isinstance(v, dict) or v.get("tier") != tl.DOMAIN_FALLBACK:
+        if not isinstance(v, dict) or v.get("tier") not in (
+                tl.DOMAIN_FALLBACK, tl.DOMAIN_LISTED):
             continue
         label = tl.label_for(v)
         assert "None" not in label

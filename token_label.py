@@ -42,6 +42,30 @@ CURATED_ASSETS: dict[str, dict] = {
 SELF_DESCRIBED = "self_described"
 DOMAIN_FALLBACK = "domain_fallback"
 
+# One-way citation (2026-11-12). Split out of DOMAIN_FALLBACK because that
+# tier was conflating two genuinely different evidence states, and the
+# weaker one was borrowing the stronger one's word:
+#
+#   DOMAIN_FALLBACK  TOML names the issuer address AND the issuer's
+#                    on-ledger Domain field points back at that host.
+#                    BOTH legs present; only the CURRENCY level is
+#                    missing (an MPT has no [[CURRENCIES]] block to
+#                    match). "verified" is honest here.
+#   DOMAIN_LISTED    TOML names the issuer address and nothing else.
+#                    The AccountRoot carries no Domain field at all, so
+#                    the ledger never confirms the claim. One party --
+#                    the website -- asserts the link unilaterally.
+#
+# Verified 2026-11-12 from our own node: hvi3.com's issuer
+# r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN has Domain = "hvi3.com" (two-way),
+# while rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV (BOTC, DATEC) has no Domain
+# field (one-way). Same tier, opposite evidence.
+#
+# The reverse leg is an RPC read, so it CANNOT be computed at render time
+# (web requests never stall on a node call). The tier therefore records
+# the verdict reached at curation time, and label_for() stays pure.
+DOMAIN_LISTED = "domain_listed"
+
 LABEL_SELF_DESCRIBED = "self-described (unverified)"
 
 # An MPT's currency_hex is the 48-char MPTokenIssuanceID (4-byte sequence +
@@ -182,8 +206,20 @@ def label_for(entry: dict) -> str | None:
         host = cited_domain(entry)
         # Issuer-level only: a TOML [[CURRENCIES]] block cannot describe an
         # MPT (the spec predates MPTs), so this proves WHO issued it, never
-        # that the ticker is right.
+        # that the ticker is right. "verified" is earned because BOTH legs
+        # are present -- the TOML names the address and the AccountRoot's
+        # Domain field points back at this host.
         return f"issuer verified via {host}" if host else LABEL_SELF_DESCRIBED
+
+    if tier == DOMAIN_LISTED:
+        host = cited_domain(entry)
+        # ONE-WAY. The site claims the address; the ledger says nothing.
+        # Deliberately avoids the word "verified": only the publisher
+        # asserts this, and anyone can publish an xrp-ledger.toml naming
+        # any address. "not confirmed on-ledger" states exactly which
+        # half is missing rather than implying the claim is false.
+        return (f"listed by {host} \u00b7 not confirmed on-ledger"
+                if host else LABEL_SELF_DESCRIBED)
 
     # AUTOMATIC lookalike warning, checked BEFORE the tier gate so a
     # newly-walked MPT is caught with no hand-tagging. lookalike_asset()
@@ -221,3 +257,32 @@ def render_decision(entry: dict) -> tuple[bool, str | None]:
     if is_suppressed(entry):
         return False, None
     return True, label_for(entry)
+
+def label_for_issuance(issuance_id: str, issuer: str,
+                       tokens_by_key: dict | None) -> str | None:
+    """The caveat for ONE MPT issuance row on /mpt/issuer/<addr>, or None.
+
+    `tokens_by_key` is {(currency_hex, issuer): entry} exactly as
+    app._load_token_names_dict() builds it. That builder already drops
+    suppressed entries via render_decision(), so a suppressed issuance
+    gets no label here BY CONSTRUCTION rather than by a second check --
+    which is what keeps a superseded duplicate (060B0AE4 "BOTC") from
+    picking up its published sibling's caveat.
+
+    An MPT issuance_id IS the 48-hex currency_hex of its token_names
+    entry, so the join needs no normalisation.
+
+    Returns the same string /tokens appends, so one wording is maintained
+    in one place: `label_for()`. Untagged issuances return None and the
+    row renders exactly as it does today.
+    """
+    if not issuance_id or not issuer or not tokens_by_key:
+        return None
+    entry = tokens_by_key.get((issuance_id, issuer))
+    if not isinstance(entry, dict):
+        return None
+    # Prefer the label the chokepoint already computed; fall back to
+    # recomputing so this helper is usable on a plain token_names entry.
+    if "_trust_label" in entry:
+        return entry["_trust_label"]
+    return label_for(entry)

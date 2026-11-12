@@ -16,10 +16,20 @@ here -- absent evidence is recorded as absent, never inferred):
   DATEC   060B0AEA  rE2WJ..  100bn         2.00bn      +CanLock+CanTrade
   SCPO    066E0A9F  rJgBH..  1             0           CanEscrow+CanClawback
 
-BOTC + DATEC -> PUBLISHED at `domain_fallback`.
+BOTC + DATEC -> PUBLISHED at `domain_listed` (one-way).
 `https://www.xrptokenizer.app/.well-known/xrp-ledger.toml` returns 200 and
 names the issuer address in [[ISSUERS]] *and* both exact `mpt_issuance_id`s
-in [[TOKENS]]. That is first-party evidence the address is theirs.
+in [[TOKENS]]. That is first-party evidence the address is theirs -- but it
+is the only leg. Neither AccountRoot carries a Domain field, so the ledger
+never points back and ONLY the publisher asserts the link.
+
+They shipped as `domain_fallback` and were re-tiered the same day, before
+the render PR merged, when the owner read the proposed label and said it
+overstated a one-way claim. He was right, and only half-right: HVI3ESC,
+the other entry on that tier, turned out to have an on-ledger Domain of
+"hvi3.com" matching its cited host -- genuinely two-way. So the fix was to
+SPLIT the tier rather than re-word it, and `domain_fallback` now means
+"both legs, currency level missing" while `domain_listed` means "one leg".
 
 ISSUER LEVEL IS THE CEILING, NOT A HOLD. An MPT can never reach the `toml`
 tier: a [[CURRENCIES]] block cannot describe one (the spec predates MPTs),
@@ -117,8 +127,16 @@ class TestPublishedPair:
         assert not tl.is_suppressed(raw[key])
 
     @pytest.mark.parametrize("key", PUBLISHED)
-    def test_tier_is_domain_fallback(self, raw, key):
-        assert raw[key].get("tier") == tl.DOMAIN_FALLBACK
+    def test_tier_is_domain_listed_one_way(self, raw, key):
+        """ONE-WAY, and the tier has to say so. Published 2026-11-12 as
+        `domain_fallback`; the owner caught before merge that this borrowed
+        the word "verified" from a two-way claim. Neither AccountRoot here
+        carries a Domain field (read from our own node), so the ledger
+        never confirms the TOML -- only the publisher asserts the link.
+        `domain_fallback` is now reserved for entries whose on-ledger
+        Domain points back, like HVI3ESC."""
+        assert raw[key].get("tier") == tl.DOMAIN_LISTED
+        assert raw[key].get("tier") != tl.DOMAIN_FALLBACK
 
     @pytest.mark.parametrize("key", PUBLISHED)
     def test_citation_is_the_reciprocating_host(self, raw, key):
@@ -127,11 +145,14 @@ class TestPublishedPair:
         assert tl.cited_domain(raw[key]) == CITED_HOST
 
     @pytest.mark.parametrize("key", PUBLISHED)
-    def test_label_is_the_issuer_level_caveat_verbatim(self, raw, key):
-        """Owner-approved wording. A caveat, not a credential."""
-        assert tl.label_for(raw[key]) == (
-            "issuer verified via www.xrptokenizer.app"
+    def test_label_is_the_one_way_caveat_verbatim(self, raw, key):
+        """Owner-approved wording. Names which half is missing rather than
+        implying the claim is false -- and never says "verified"."""
+        label = tl.label_for(raw[key])
+        assert label == (
+            "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger"
         )
+        assert "verified" not in label
 
     @pytest.mark.parametrize("key", PUBLISHED)
     def test_never_reaches_the_toml_tier(self, raw, key):
@@ -181,7 +202,8 @@ class TestScpoHeld:
 
     def test_not_published_by_accident(self, raw):
         """Suppressed entries carry no tier-driven caveat into the render."""
-        assert raw[SCPO_HELD].get("tier") != tl.DOMAIN_FALLBACK
+        assert raw[SCPO_HELD].get("tier") not in (
+            tl.DOMAIN_FALLBACK, tl.DOMAIN_LISTED)
         assert not raw[SCPO_HELD].get("verified_via")
 
 
