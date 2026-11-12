@@ -782,6 +782,33 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_citation_tiers.py tests/test_curation_walker_9.py -q
 
+      # 2026-11-12 curation pass. The three entries held `pending_review` on
+      # 2026-11-06 were assessed and decided by the owner:
+      #   BOTC  060B0AE9 -> published, domain_fallback
+      #   DATEC 060B0AEA -> published, domain_fallback
+      #   SCPO  066E0A9F -> stays suppressed, reason issuer_cluster_test
+      #
+      # BOTC/DATEC cite www.xrptokenizer.app's TOML, which names the issuer
+      # address AND both exact mpt_issuance_ids. Issuer level is the CEILING
+      # for an MPT, not a hold: a [[CURRENCIES]] block cannot describe one,
+      # so `toml` (which renders BARE) must never be reached -- the caveat
+      # "issuer verified via www.xrptokenizer.app" is the point, and there
+      # is no green check. Owner: "issuer-level, no checkmark".
+      #
+      # SCPO's reason is issuer_cluster_test and NOT self_declared_test
+      # because the entry's own fields never say "test" -- the predicate
+      # does not fire, and borrowing it would hide the judgement call.
+      #
+      # The sibling 060B0AE4 (a second "BOTC", zero outstanding, absent from
+      # the TOML) is deliberately UNTOUCHED pending an owner decision; the
+      # suite pins that so a later pass cannot inherit it silently.
+      #
+      # Hermetic: reads committed token_names.json, no network, no DB.
+      - name: BOTC/DATEC published + SCPO held (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_curate_botc_datec_scpo.py -q
+
       # enrich_token_names.py: read every key a TOML uses for a code, in
       # every form. One root cause, three symptoms, verified against 5 real
       # TOMLs (44 blocks):

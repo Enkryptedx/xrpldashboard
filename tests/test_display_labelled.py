@@ -206,7 +206,8 @@ class TestSuppression:
         # EQUALITY on purpose: this set is the record of what the owner has
         # approved for publication. A new entry appearing here without an
         # approval should fail the build, so each curation pass updates this
-        # dict deliberately. CERT added 2026-10-17.
+        # dict deliberately. CERT added 2026-10-17; BOTC + DATEC added
+        # 2026-11-12 (owner-approved domain_fallback, issuer level only).
         assert got == {
             "nsRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "nrRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
@@ -218,4 +219,6 @@ class TestSuppression:
             "X40AM": "self-described (unverified)",
             "HVI3ESC": "issuer verified via hvi3.com",
             "CERT": "self-described (unverified)",
+            "BOTC": "issuer verified via www.xrptokenizer.app",
+            "DATEC": "issuer verified via www.xrptokenizer.app",
         }, got

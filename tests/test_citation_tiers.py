@@ -203,13 +203,21 @@ class TestOndoSentinelUntouched:
 # ── blast radius ────────────────────────────────────────────────────
 def test_tier_census_is_exact(names):
     """Guards against a bulk retag: 4 currency-level (XAGa + the three
-    upgraded), 1 issuer-level (HVI3ESC)."""
+    upgraded), 3 issuer-level (HVI3ESC + BOTC + DATEC).
+
+    domain_fallback 1 -> 3 on 2026-11-12: BOTC (060B0AE9) and DATEC
+    (060B0AEA) were published at issuer level, citing the operator's own
+    www.xrptokenizer.app TOML, which names the issuer address AND both
+    exact mpt_issuance_ids. An MPT can never reach `toml` -- a
+    [[CURRENCIES]] block cannot describe one -- so issuer level is the
+    ceiling for them, not a hold. Per-entry evidence and the scope of
+    that pass live in test_curate_botc_datec_scpo.py."""
     toml_tier = {k for k, v in names.items()
                  if isinstance(v, dict) and v.get("tier") == TOML_TIER}
     df = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK}
     assert len(toml_tier) == 4, f"toml tier drifted: {sorted(toml_tier)}"
-    assert len(df) == 1, f"domain_fallback drifted: {sorted(df)}"
+    assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
 
 
 def test_self_described_entries_all_keep_their_caveat(names):

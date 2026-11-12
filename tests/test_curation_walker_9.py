@@ -231,11 +231,22 @@ class TestFileInvariants:
         OutstandingAmount), 1 nXRP (XRP-adjacent name whose issuer returns
         actNotFound), and 3 'pending_review' holds (SCPO "12222", BOTC,
         DATEC) which are reversible and rest on no evidence against them.
+        35 -> 33 on 2026-11-12: of those 3 'pending_review' holds, BOTC
+        and DATEC were PUBLISHED (owner decision; first-party TOML names
+        both issuance ids) and so leave the suppressed set, while SCPO
+        "12222" stays suppressed with its reason restated as
+        issuer_cluster_test. Net -2.
+
+        33 -> 34 the same day: the sibling 060B0AE4 (a second renderable
+        "BOTC" from the same issuer) was suppressed display_collision_
+        superseded, the owner's verdict on the collision that publishing
+        060B0AE9 exposed. See test_curate_botc_datec_scpo.py.
+
         This is the one authoritative home for the census count.
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 35
+        assert n == 34
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
