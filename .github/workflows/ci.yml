@@ -809,6 +809,32 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_curate_botc_datec_scpo.py -q
 
+      # The caveat published on 2026-11-12 rendered NOWHERE. /tokens gates
+      # on a token_category_current row and neither xrptokenizer issuer has
+      # one; the only surface that lists them, /mpt/issuer/<addr>, built its
+      # rows from the MPT ledger snapshot, which carries no tier. So a
+      # fully-examined issuance and an unexamined one were pixel-identical.
+      #
+      # Fix: join each row to its token_names entry at the _enrich_mpt_rows
+      # chokepoint (the one function /mpts, /mpt/<id> and /mpt/issuer/<addr>
+      # share) and print the SAME string /tokens uses, from the same
+      # token_label.label_for(). Rendered sentence:
+      #   BOTC · issuer verified via www.xrptokenizer.app
+      #
+      # Suppression is by construction: _load_token_names_dict() already
+      # drops suppressed entries, so the superseded duplicate 060B0AE4
+      # cannot inherit its sibling's caveat.
+      #
+      # The suite checks composition AND wiring AND a non-zero template
+      # grep -- a label with no print site is the failure this closes, so
+      # unit tests alone would not prove it.
+      #
+      # Hermetic: pure helpers + text reads. No DB, no network, no snapshot.
+      - name: MPT issuer trust caveat is wired and printed (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mpt_issuer_trust_label.py -q
+
       # enrich_token_names.py: read every key a TOML uses for a code, in
       # every form. One root cause, three symptoms, verified against 5 real
       # TOMLs (44 blocks):

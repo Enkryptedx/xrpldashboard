@@ -10447,6 +10447,15 @@ def _enrich_mpt_rows(data):
         return data
     rows = list(data.get("issuances") or [])
     labels = db.read_account_labels({r.get("issuer") for r in rows if r.get("issuer")})
+    # Trust caveat for published MPT names (2026-11-12). The MPT registry
+    # builds its rows from the ledger snapshot, which carries no tier, so
+    # before this a published `domain_fallback` entry rendered identically
+    # to an unexamined one on /mpt/*. Join each row to its token_names
+    # entry here -- the one chokepoint /mpts, /mpt/<id> and
+    # /mpt/issuer/<addr> all pass through -- so no MPT surface can forget
+    # it. _load_token_names_dict() already excludes suppressed entries, so
+    # a superseded duplicate stays bare.
+    _tn_by_key = _load_token_names_dict()
 
     status_count = {"live": 0, "prepared": 0, "test": 0}
     enriched = []
@@ -10476,6 +10485,8 @@ def _enrich_mpt_rows(data):
             if fixed != copy["issuer_name"]:
                 copy["issuer_name_as_issued"] = copy["issuer_name"]
                 copy["issuer_name"] = fixed or None
+        copy["trust_label"] = token_label.label_for_issuance(
+            copy.get("issuance_id"), copy.get("issuer"), _tn_by_key)
         status_count[copy["status"]] += 1
         enriched.append(copy)
 

@@ -87,6 +87,12 @@
     .pill.stablecoin { color: var(--cyan); background: rgba(34,211,238,0.12); }
     .pill.utility { color: var(--purple); background: rgba(168,85,247,0.12); }
     .pill.other { color: var(--muted); background: rgba(128,144,176,0.10); }
+    /* Trust caveat beside a published MPT name (2026-11-12). Deliberately
+       muted and unstyled-as-a-badge: `domain_fallback`-class wording is a
+       CAVEAT ("the address is theirs, not necessarily this ticker"), so it
+       must never read as a credential. No colour, no tick, no border. */
+    .trust-label { color: var(--muted); font-size: 0.72rem; font-style: italic;
+                   margin-left: 0.35em; white-space: nowrap; }
     .pill.live { color: var(--green); background: rgba(34,197,94,0.12); }
     .pill.prepared { color: var(--amber); background: rgba(245,158,11,0.12); }
     .pill.test { color: var(--dim); background: rgba(128,144,176,0.10); }
@@ -250,6 +256,12 @@
             {% else %}
               {{ r.name or _('(unnamed)') }}
             {% endif %}
+            {# Trust caveat for a PUBLISHED name, same wording as /tokens
+               (token_label.label_for). Attached at the _enrich_mpt_rows
+               chokepoint, so suppressed/untagged issuances print nothing
+               and the row renders exactly as it did before. The link stays
+               on the name alone — the caveat is not part of the target. #}
+            {% if r.trust_label %}<span class="trust-label">· {{ r.trust_label }}</span>{% endif %}
             {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
           </td>
           <td><span class="pill {{ r.status }}" style="font-size: 0.65rem;">{{ _(r.status) }}</span></td>

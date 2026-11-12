@@ -221,3 +221,32 @@ def render_decision(entry: dict) -> tuple[bool, str | None]:
     if is_suppressed(entry):
         return False, None
     return True, label_for(entry)
+
+def label_for_issuance(issuance_id: str, issuer: str,
+                       tokens_by_key: dict | None) -> str | None:
+    """The caveat for ONE MPT issuance row on /mpt/issuer/<addr>, or None.
+
+    `tokens_by_key` is {(currency_hex, issuer): entry} exactly as
+    app._load_token_names_dict() builds it. That builder already drops
+    suppressed entries via render_decision(), so a suppressed issuance
+    gets no label here BY CONSTRUCTION rather than by a second check --
+    which is what keeps a superseded duplicate (060B0AE4 "BOTC") from
+    picking up its published sibling's caveat.
+
+    An MPT issuance_id IS the 48-hex currency_hex of its token_names
+    entry, so the join needs no normalisation.
+
+    Returns the same string /tokens appends, so one wording is maintained
+    in one place: `label_for()`. Untagged issuances return None and the
+    row renders exactly as it does today.
+    """
+    if not issuance_id or not issuer or not tokens_by_key:
+        return None
+    entry = tokens_by_key.get((issuance_id, issuer))
+    if not isinstance(entry, dict):
+        return None
+    # Prefer the label the chokepoint already computed; fall back to
+    # recomputing so this helper is usable on a plain token_names entry.
+    if "_trust_label" in entry:
+        return entry["_trust_label"]
+    return label_for(entry)
