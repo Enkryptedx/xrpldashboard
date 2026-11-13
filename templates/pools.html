@@ -539,14 +539,6 @@
         <div class="l">{{ _('pools ranked') }}</div>
       </div>
       <div class="stat vibes-spot">
-        <div class="n" data-countup="{{ exact_count_all }}" data-countup-decimals="0">{{ "{:,}".format(exact_count_all) }}</div>
-        <div class="l">{{ _('stablecoin-anchored') }}{{ explainer(
-          "tvl-exact",
-          _("Why stablecoin-anchored vs estimated"),
-          _("This is a count of pools — not a dollar amount. Stablecoin-anchored pools have a USD-pegged token on one side, so the dollar value comes direct from that side. Estimated pools are XRP-paired without a fiat anchor — dollar value is the XRP side × 2, which is deterministic because AMM pools balance 50/50, just without an external dollar peg."),
-        ) }}</div>
-      </div>
-      <div class="stat vibes-spot">
         <div class="n" data-countup="{{ estimated_count_all }}" data-countup-decimals="0">{{ "{:,}".format(estimated_count_all) }}</div>
         <div class="l">{{ _('estimated · 2× XRP') }}</div>
       </div>

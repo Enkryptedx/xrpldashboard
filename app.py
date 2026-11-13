@@ -1220,7 +1220,7 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
                     "(ISO timestamp). Full envelope shape (top-level "
                     "`proof` object like MCP tools use) is a build item "
                     "in progress — today's response provides per-field "
-                    "provenance instead. Anonymous rate limit 60/hour/IP; "
+                    "provenance instead. "
                     "identified verified-bot rate limit 300/hour."
                 ),
                 "responses": _json_ok(),
@@ -11431,11 +11431,11 @@ def security_txt():
 # agents"). Bump the constant, all three refresh.
 _LLMS_TXT = f"""# xrpldashboard
 
-> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own xrpld node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/escrow-supply`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own xrpld node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). Browser-side live streams on `/tokens`, `/whales`, `/pools`, and `/wallet` connect to our own-node WSS relay at `wss://wss.xrpldashboard.com` (Lenovo → cloudflared tunnel → `ws://127.0.0.1:6011` → local rippled ledger stream). Live-feed sovereignty flipped 2026-09-22. `wss://xrplcluster.com` remains as a fallback only; any browser-side fallback event pings `/api/walker-node-fallback` and logs into the same `walker_node_fallback` table the server-side walkers use. (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
+> Public read-only data for the XRP Ledger. Sourcing varies per surface, disclosed per page: (a) own-node — walkers on our infrastructure query our own xrpld node (LAN) and write DB rows the site reads (e.g. `/pools`, `/cold-storage`, `/whales` stream, the anchored metrics in the daily signed snapshot). (b) sovereign-tunnel — Render web app queries our own xrpld node via the CF-Access-authenticated tunnel `rpc.xrpldashboard.com` (currently wired for `/check`, `/lending`, `/mpts` cache lookups). (c) public-RPC — Render web app queries public XRPL infrastructure (`s1.ripple.com`, `s2.ripple.com`, `xrplcluster.com`) for the surfaces where the tunnel is not yet wired (`/amendments`, `/wallet` blurb, `/rlusd` XRPL side, `/api/xrp-price`, nav liveness chip). Browser-side live streams on `/tokens`, `/whales`, `/pools`, and `/wallet` connect to our own-node WSS relay at `wss://wss.xrpldashboard.com` (Lenovo → cloudflared tunnel → `ws://127.0.0.1:6011` → local rippled ledger stream). Live-feed sovereignty flipped 2026-09-22. `wss://xrplcluster.com` remains as a fallback only; any browser-side fallback event pings `/api/walker-node-fallback` and logs into the same `walker_node_fallback` table the server-side walkers use. (d) public-Ethereum — Alchemy or 1rpc.io for `/rlusd` Ethereum-side supply (we do not run our own Ethereum node). Every page carries a disclosure line naming which of (a)-(d) it uses; the anchored metrics in the daily signed snapshot are strictly (a). No third-party analytics APIs feed any metric — price, volume, TVL, balances are all computed from on-chain state. Free for humans and identified crawlers.
 
 Independent project — not affiliated with Ripple, the XRP Ledger Foundation, any exchange, or with xrpdashboard.com (note: missing 'L' — that's a separate XRP portfolio product).
 
-Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Each claim carries a permanent URI at [/claims/xrpl.<domain>.<series>]({SITE_URL}/claims) with a traffic-light sovereignty tier (green = own infrastructure / signable, yellow = public XRPL RPC or unverified, red = third-party derived). Machine-readable index: [{SITE_URL}/claims/index.json]({SITE_URL}/claims/index.json). Signed integrity snapshots are published daily.
+Catalogued claims are listed in [CLAIMS.yaml](https://github.com/Enkryptedx/xrpldashboard/blob/main/CLAIMS.yaml) (Layer 4 of the four-layer truth audit — see [/methodology]({SITE_URL}/methodology) and [docs/TRUTH_AUDIT_DESIGN.md](https://github.com/Enkryptedx/xrpldashboard/blob/main/docs/TRUTH_AUDIT_DESIGN.md)). Each claim carries a permanent URI at [/claims/xrpl.<domain>.<series>]({SITE_URL}/claims) with a traffic-light sovereignty tier (green = own infrastructure / signable, yellow = public XRPL RPC or unverified, red = third-party derived). Machine-readable index: [{SITE_URL}/claims/index.json]({SITE_URL}/claims/index.json). Signed integrity snapshots are published daily.
 
 ## Data pages
 - [/rlusd]({SITE_URL}/rlusd): RLUSD supply history — cross-chain supply, mint/burn events (XRPL + Ethereum), computed live from both ledgers.
@@ -11472,7 +11472,7 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - Verified-tokens manifest: [{SITE_URL}/.well-known/verified-tokens.json]({SITE_URL}/.well-known/verified-tokens.json) — hourly Ed25519-signed list of every (ticker, currency_hex, canonical_issuer) pair with a curator-confirmed provenance claim on XRPL. Signed with the SEPARATE receipt key at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03), domain-separator `xrpldashboard/receipt/v1`, envelope schema `xrpldashboard/verified-tokens/v1`. Each row carries `tier` (verified / self-described / labeled / bare / unknown / meme_name / informational / umbrella) resolved live from the site registry — matches what the site displays. Verify recipe: canonical_hash = sha256(canonical_json(envelope minus `signature` and `canonical_hash_hex`)); check Ed25519(signature.signature_ed25519_hex, DOMAIN_SEP + 0x00 + bytes.fromhex(canonical_hash)).
 - Machine-readable anchor index: [{SITE_URL}/.well-known/anchors.json]({SITE_URL}/.well-known/anchors.json) — every anchor tx with tx hash, ledger index, close time, chain_root, memo, explorer URLs, and a chain.json cross-check (`roots_match: true|false`). Added 2026-09-05.
 - On-ledger anchor of the snapshot chain (since 2026-08-07): each daily `chain_root` is additionally committed inside an XRPL Payment memo from anchor account `rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ` to ops account `rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd`. First anchor tx: `01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8` at ledger 106140698 (2026-08-07 21:49:32 UTC). Cadence is weekly, manual today; language upgrades when automation lands. Memo format v1 (namespace-in-MemoData) and verifier rules (including the `.strip()` rule for wallet-appended newlines) documented at [{SITE_URL}/methodology#signed-snapshots-xrpl-anchor]({SITE_URL}/methodology#signed-snapshots-xrpl-anchor).
-- Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — every claim on the site has a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
+- Public claims manifest: [{SITE_URL}/claims]({SITE_URL}/claims) — catalogued claims have a permanent URI + traffic-light sovereignty tier; content-negotiated JSON via `Accept: application/json` or `.json` suffix on the URI.
 - Copy-pasteable client snippets (curl, Python, JavaScript for fetching a claim envelope + a Python end-to-end verifier for the daily signed snapshots): [{SITE_URL}/claims#use-this-data]({SITE_URL}/claims#use-this-data). Every snippet on that page was executed against live prod before shipping.
 - Security contact: [{SITE_URL}/.well-known/security.txt]({SITE_URL}/.well-known/security.txt).
 - Source code: [github.com/Enkryptedx/xrpldashboard](https://github.com/Enkryptedx/xrpldashboard) (MIT-licensed Flask app).
@@ -11484,8 +11484,8 @@ Every public claim is catalogued in [CLAIMS.yaml](https://github.com/Enkryptedx/
 - MCP server (public beta, no end date set): `https://mcp.xrpldashboard.com/mcp` — streamable-http transport, MCP protocol version 2025-06-18, no auth. Backed by our own xrpld node on the Lenovo box; source at `mcp_server.py` + `mcp_tools_*.py` in the repo. Tool inventory is machine-readable at `info.x-mcp-tools` in the OpenAPI spec above. Session rate limit: 600 tool calls/hour/session, enforced live (see `mcp_session_rate_limit.py`; 429 with Retry-After on breach). No payment rails; free for identified agents at reasonable volume.
 - Connect an MCP client in 60 seconds — copy-paste config for Claude Desktop or the mcp-remote bridge, plus three sample prompts (primitive / aggregation / verify-signed-snapshot): [{SITE_URL}/connect#connect-in-60-seconds]({SITE_URL}/connect#connect-in-60-seconds). Dogfooded against the public URL on 2026-08-05 before publishing.
 - Every response from the MCP server is wrapped in a proof-annotation envelope. Shape: `{{data, proof:{{source, as_of, freshness_contract, methodology_url, claims_ref?, cross_check_status, honest_partial, scope_note?}}, server:{{name, version, public_key_fingerprint, docs}}}}` — verify locally against the signed snapshot chain rather than trusting the score. Full JSON schema at `#/components/schemas/ProofAnnotationEnvelope` in the OpenAPI spec.
-- Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages; anonymous rate limit 60/hour/IP). Accepts GET with `?q=<subject>` for one-shot triage and POST with `Content-Type: application/json` `{{"q": "<subject or full pasted message>"}}` for longer messages that extract multiple subjects. Signature envelope: v0.9 per-verdict Ed25519 signing is LIVE as of 2026-09-22 — every response carries `proof.check_v09_signature` with `sig_status`, `canonical_hash_sha256`, `sig_ed25519`, `domain_separator = "xrpldashboard/receipt/v1"`, `signed_at_utc`, and `signer` fingerprint. Verify recipe matches the verified-tokens manifest: canonical_hash over sorted-keys-no-whitespace JSON of the `data` object; Ed25519 over `domain_separator + 0x00 + bytes.fromhex(canonical_hash)` against the receipt pubkey at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03). Per-capability `source_label` + `checked_at_utc` fields are still present for field-level provenance.
-- Read-only HTTP API — API breadth (2026-09-23): [{SITE_URL}/tokens.json]({SITE_URL}/tokens.json), [{SITE_URL}/whales.json]({SITE_URL}/whales.json), [{SITE_URL}/pools.json]({SITE_URL}/pools.json), [{SITE_URL}/amendments.json]({SITE_URL}/amendments.json). Each carries the same v0.9 signed envelope as `/check.json` — `data` payload plus `proof.check_v09_signature` (Ed25519 sig, canonical_hash, domain_separator `xrpldashboard/receipt/v1`, signer fingerprint `A4:0F:B1:0A:9D:33:64:03`, signed_at_utc). Verify recipe identical to `/check.json` and the verified-tokens manifest. Rate-tiered via the agent-tier callable (60/hour anonymous, 300/hour rDNS-verified). Route canary `/public_route_200_canary` covers all four. Priced in `pricing_catalog` at planned:true, currently `mode=off` (nothing charges).
+- Read-only HTTP API — live surface today: [{SITE_URL}/check.json]({SITE_URL}/check.json) (typed triage for XRPL addresses, tokens, URLs, and pasted messages). Accepts GET with `?q=<subject>` for one-shot triage and POST with `Content-Type: application/json` `{{"q": "<subject or full pasted message>"}}` for longer messages that extract multiple subjects. Signature envelope: v0.9 per-verdict Ed25519 signing is LIVE as of 2026-09-22 — every response carries `proof.check_v09_signature` with `sig_status`, `canonical_hash_sha256`, `sig_ed25519`, `domain_separator = "xrpldashboard/receipt/v1"`, `signed_at_utc`, and `signer` fingerprint. Verify recipe matches the verified-tokens manifest: canonical_hash over sorted-keys-no-whitespace JSON of the `data` object; Ed25519 over `domain_separator + 0x00 + bytes.fromhex(canonical_hash)` against the receipt pubkey at [{SITE_URL}/.well-known/snapshots/receipt_pubkey.pem]({SITE_URL}/.well-known/snapshots/receipt_pubkey.pem) (fingerprint A4:0F:B1:0A:9D:33:64:03). Per-capability `source_label` + `checked_at_utc` fields are still present for field-level provenance.
+- Read-only HTTP API — API breadth (2026-09-23): [{SITE_URL}/tokens.json]({SITE_URL}/tokens.json), [{SITE_URL}/whales.json]({SITE_URL}/whales.json), [{SITE_URL}/pools.json]({SITE_URL}/pools.json), [{SITE_URL}/amendments.json]({SITE_URL}/amendments.json). Each carries the same v0.9 signed envelope as `/check.json` — `data` payload plus `proof.check_v09_signature` (Ed25519 sig, canonical_hash, domain_separator `xrpldashboard/receipt/v1`, signer fingerprint `A4:0F:B1:0A:9D:33:64:03`, signed_at_utc). Verify recipe identical to `/check.json` and the verified-tokens manifest. Rate-tiered via the agent-tier callable. Priced in `pricing_catalog` at planned:true, currently `mode=off` (nothing charges).
 - Directory listings for this MCP server (same endpoint + tool inventory as above; the directories are discovery aids, not different endpoints):
   - Anthropic MCP Registry: [registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard](https://registry.modelcontextprotocol.io/v0/servers?search=xrpldashboard) — server id `com.xrpldashboard/xrpldashboard-mcp`, DNS-verified namespace, listed 2026-08-05.
   - Smithery: [smithery.ai/servers/xrpldashboard/xrpldashboard](https://smithery.ai/servers/xrpldashboard/xrpldashboard) — Smithery gateway URL `https://xrpldashboard--xrpldashboard.run.tools`, listed 2026-08-05.
@@ -11539,7 +11539,7 @@ _AGENTS_JSON = {
             "own-node": (
                 "walkers on our infrastructure read our own xrpld node over "
                 "LAN and write the rows the site serves (anchored signed-snapshot "
-                "metrics, /pools, /cold-storage, /escrow-supply, /credentials, "
+                "metrics, /pools, /cold-storage, /credentials, "
                 "/sidechain, /nfts live path, /whales stream)"
             ),
             "sovereign-tunnel": (
@@ -11595,7 +11595,7 @@ _AGENTS_JSON = {
         # separate (route-level, applies to HTML surfaces browsers hit).
         # Change ordering here and tests/test_agent_tier_rate_limit.py
         # will fail — see the ordering-assertion test.
-        "anonymous": "60 requests/hour/IP (agent tier — un-cookied API-shaped clients that don't claim a tracked crawler UA)",
+        "anonymous": "agent tier — un-cookied API-shaped clients that don't claim a tracked crawler UA",
         "identified_ai_crawler": (
             "300 requests/hour by verified UA + rDNS (GPTBot, ChatGPT-User, "
             "OAI-SearchBot, ClaudeBot, Claude-User, PerplexityBot, Googlebot, "
@@ -11604,7 +11604,7 @@ _AGENTS_JSON = {
             "crawler_identity_check._UA_RDNS_POLICY)"
         ),
         "mcp_session": "600 tool calls/hour/session, enforced live at https://mcp.xrpldashboard.com/mcp (see mcp_session_rate_limit.py; 429 with Retry-After on breach, walker_health surfaces block frequency)",
-        "human_html_pages": "60 requests/minute/IP (browser-page tier — HTML routes browsers fetch with assets; separate flask-limiter decorator, not the agent tier callable; covers /, /whales, /pools, /tokens, /rwa, etc.)",
+        "human_html_pages": "browser-page tier — HTML routes browsers fetch with assets; separate flask-limiter decorator, not the agent tier callable; covers /, /whales, /pools, /tokens, /rwa, etc.",
         "signed_snapshot_verify": "unlimited (stateless, cryptographic-only)",
     },
     "trust_surfaces": {
@@ -11640,7 +11640,7 @@ _AGENTS_JSON = {
             "memo_format_v1": "xrpldashboard/anchor/v1|<ISO date>|<chain_root_hex>",
             "cadence": "weekly, manual (2026-08 through automation cutover)",
             "spec_url": f"{SITE_URL}/methodology#signed-snapshots-xrpl-anchor",
-            "note": "Each daily chain_root is additionally committed inside an XRPL Payment memo from anchor→ops. Verifiers must .strip() MemoData before splitting/comparing (wallet UIs may append trailing newlines).",
+            "note": "A chain_root is committed inside an XRPL Payment memo from anchor→ops. Verifiers must .strip() MemoData before splitting/comparing (wallet UIs may append trailing newlines).",
         },
         "security_contact": f"{SITE_URL}/.well-known/security.txt",
         "llms_txt": f"{SITE_URL}/llms.txt",
@@ -11685,7 +11685,6 @@ _AGENTS_JSON = {
                 "proof": "object — full v0.9 proof envelope with check_v09_signature (Ed25519 sig, canonical_hash, domain_separator, signer fingerprint, signed_at_utc), source, freshness_contract, methodology_url. Verify against receipt pubkey at /.well-known/snapshots/receipt_pubkey.pem (fingerprint A4:0F:B1:0A:9D:33:64:03).",
                 "server": "object — server identity block (name, version, public_key_fingerprint, docs)",
             },
-            "rate_limit_anonymous": "60 requests/hour/IP",
             "rate_limit_identified_bot": "300 requests/hour by verified UA",
             "auth": "none at v1",
             "kind_dispatch": "address → wallet triage; token_id → token triage; URL → domain-age + SSL; text → subject extraction + per-subject triage",
@@ -11775,7 +11774,6 @@ _AGENTS_JSON = {
                 ],
                 "billed_when": "sourcing=sovereign",
                 "billed_currently": False,
-                "billed_currently_reason": "endpoint_not_yet_live",
             },
             {
                 "resource": f"{SITE_URL}/whales.json",
@@ -11789,7 +11787,6 @@ _AGENTS_JSON = {
                 ],
                 "billed_when": "sourcing=sovereign",
                 "billed_currently": False,
-                "billed_currently_reason": "endpoint_not_yet_live",
             },
             {
                 "resource": f"{SITE_URL}/pools.json",
@@ -11803,7 +11800,6 @@ _AGENTS_JSON = {
                 ],
                 "billed_when": "sourcing=sovereign",
                 "billed_currently": False,
-                "billed_currently_reason": "endpoint_not_yet_live",
             },
             {
                 "resource": f"{SITE_URL}/amendments.json",
@@ -11817,7 +11813,6 @@ _AGENTS_JSON = {
                 ],
                 "billed_when": "sourcing=sovereign",
                 "billed_currently": False,
-                "billed_currently_reason": "endpoint_not_yet_live",
             },
         ],
         "free_by_design": [
@@ -11978,7 +11973,7 @@ _AGENTS_JSON = {
     "openapi": f"{SITE_URL}/openapi.json",
     "flows": [],
     "status": {
-        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta, no end date set, running against our own xrpld node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Since 2026-08-07, each daily chain_root is additionally anchored on the XRP Ledger from account rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ (first anchor tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8, ledger 106140698); cadence is weekly, manual today. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
+        "phase": f"Agent Tier live: discovery + OpenAPI + public MCP endpoint at mcp.xrpldashboard.com (public beta, no end date set, running against our own xrpld node on the Lenovo box). Signed snapshots + CLAIMS + envelope contract on every response. Since 2026-08-07, a chain_root is anchored on the XRP Ledger from account rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ (first anchor tx 01D0BB9D230955F43DB35703E2EB7F5DFA43CEB69CCBBF57FBC8F17407E50DF8, ledger 106140698); cadence is weekly, manual today. Public-daemonization freshness: {LAST_VERIFIED_AGENT_TIER_METHODOLOGY}.",
         "discovery_layer_ready": True,
         "mcp_ready": True,
         "mcp_stability": "public_beta_through_2026-09",
@@ -12063,7 +12058,7 @@ _X402_CATALOG = {
                         "methodology_url, cross_check_status, and (when the "
                         "/check hot signing key is configured) an Ed25519 "
                         "signature block for third-party verification. Anon "
-                        "IP rate limit 60 requests/hour."
+                        "IP rate limited."
                     ),
                     "example": {
                         "url": f"{SITE_URL}/check.json?q=rEXAMPLE...",
@@ -12131,7 +12126,6 @@ _X402_CATALOG = {
     },
     "policies": {
         "cost": "free at v0.9 (no accounts, no API keys, no payment rails wired)",
-        "rate_limit_anonymous": "60 requests/hour/IP for /check.json v0.9",
         "auth": "none",
         "retention": "no query retention — POST bodies and query params are NOT stored",
     },
@@ -12149,11 +12143,9 @@ _X402_CATALOG = {
             "(middleware shipped in commit b406233, 2026-08-30, not "
             "settling payments). Fence-#8 sovereignty items (see "
             "docs/SOVEREIGNTY_COVENANT_VIOLATIONS_2026-08-30.md) must "
-            "close before mode=live flip; target 2026-09-25."
+            "close before mode=live flip."
         ),
-        "x402_rails_ready": False,
         "free_tier_ready": True,
-        "signing_key_wired": False,
         # Charlie ruling 2026-09-23 Wed 13:32 ET: paid-tier catalog is
         # published mode=off. Full pricing packet in
         # /.well-known/agents.json under `pricing_catalog`.

@@ -1805,7 +1805,7 @@ pages:
     claims:
 
       - id: signed_snapshot_xrpl_anchor
-        label: "Each daily chain_root is additionally anchored on the XRP Ledger via Payment memo from anchor rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ → ops rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd. Weekly, manual cadence."
+        label: "A chain_root is anchored on the XRP Ledger via Payment memo from anchor rL2yMECEyUT94pLDrAcetMNMG1H4xqpNWQ → ops rwrcJL3Exd1ZUYz11Wug6wvWC448CiTXfd. Weekly, manual cadence."
         data_paths:
           - "docs/ONLEDGER_ANCHOR_SPEC.md (spec, v1 LOCKED with 3 pre-lock amendments 2026-08-07)"
           - "templates/signed_snapshots_index.html: on-ledger anchor card (#xrpl-anchor)"

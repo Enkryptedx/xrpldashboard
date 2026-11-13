@@ -62,13 +62,12 @@
   <main class="wrap">
     <h1>Signed integrity snapshots</h1>
     <p class="lede">
-      Every day at 00:05 UTC we capture a small set of canonical metrics
+      We capture a small set of canonical metrics
       (XRPL ledger index, total AMM pools, total TVL, MPT count, named-accounts
       count), hash them into a Merkle leaf, extend the global chain, and sign
       the result with our Ed25519 key. Any visitor can fetch a past snapshot,
       verify the signature against our public key, and prove the number was
-      attested on the recorded date. <strong>No other XRPL dashboard publishes
-      cryptographically verifiable historical data.</strong>
+      attested on the recorded date.
     </p>
 
     {% if chain_meta %}
