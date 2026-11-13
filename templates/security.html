@@ -87,7 +87,7 @@
   <h2>{{ _('Admin surface') }}</h2>
   <ul>
     <li><strong>{{ _('HMAC-signed admin tokens.') }}</strong> {{ _('Admin routes accept only requests signed with a server-side secret. There is no public admin login form, no password-reset endpoint, and no session cookie that can be replayed.') }}</li>
-    <li><strong>{{ _('Per-IP rate limits.') }}</strong> {{ _('Every public endpoint that returns data has an explicit rate limit, keyed by Cloudflare\'s authoritative client IP. No global default — limits are written per-route so health checks and HTML pages stay unthrottled.') }}</li>
+    <li><strong>{{ _('Per-IP rate limits.') }}</strong> {{ _('Rate limits are keyed by Cloudflare\'s authoritative client IP and written per-route, so health checks and HTML pages stay unthrottled.') }}</li>
     <li><strong>{{ _('No write surface from the public web.') }}</strong> {{ _('The Flask app reads from Postgres; only the workers running on the operator\'s Mac (or the standby Render worker) can write. A leaked DB credential on the Flask side cannot mutate state.') }}</li>
   </ul>
 
