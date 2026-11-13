@@ -782,6 +782,30 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_citation_tiers.py tests/test_curation_walker_9.py -q
 
+      # Per-category comparability for the /changes envelope + homepage
+      # strip. `comparable` was `not inputs_missing`, so ANY missing
+      # producer voided the whole envelope and build_strip replaced every
+      # slot with "Comparison unavailable". On 2026-11-11 and 11-12 that
+      # fired on a late unl_snapshot while the SAME envelope carried 7
+      # derived changes and named its prev_snapshot_date -- the homepage
+      # contradicted /changes. Now only the comparison BASIS
+      # (signed_snapshot) can set comparable=False; unl_snapshot and
+      # signed_registry_snapshot mark just their own category unavailable.
+      #
+      # The basis is declared with a sentinel, not None: dict.get() returns
+      # None for an unknown key too, so an unmapped producer would have
+      # read as the basis and reintroduced the all-or-nothing bug.
+      #
+      # Also covers changes_strip_agreement_canary, the detector for this
+      # class: it flags strip-says-unavailable-while-changes-exist, count
+      # mismatches, and comparable/basis disagreement.
+      #
+      # Hermetic: pure functions over hand-built envelopes. No DB, no net.
+      - name: changes per-category comparability + strip canary (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_changes_per_category_comparability.py -q
+
       # 2026-11-12 curation pass. The three entries held `pending_review` on
       # 2026-11-06 were assessed and decided by the owner:
       #   BOTC  060B0AE9 -> published, domain_fallback

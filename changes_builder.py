@@ -886,6 +886,69 @@ _PRODUCER_INPUTS = (
      "snapshot_date_utc"),
 )
 
+# Which categories each producer actually feeds (2026-11-13).
+#
+# WHY THIS EXISTS. `comparable` used to be `not inputs_missing` -- any one
+# missing producer voided the WHOLE envelope, and build_strip then replaced
+# every slot with "Comparison unavailable: we have no prior-day snapshot".
+# On 2026-11-11 and 2026-11-12 that fired because `unl_snapshot` had not
+# written yet (it was a drifting StartInterval job landing ~4h after its
+# consumer), and the homepage told readers there was nothing to compare
+# while the SAME envelope carried 7 correctly-derived changes and named its
+# prev_snapshot_date. /changes listed all 7; the strip said none. The box
+# contradicted the page it linked to.
+#
+# A missing UNL row cannot invalidate an AMM TVL delta. Only the leaf that
+# the diff is computed FROM can do that.
+class _Basis:
+    """Sentinel: this producer IS the comparison basis.
+
+    A plain `None` cannot be used here. `dict.get()` returns None for an
+    UNKNOWN key too, so a producer added to _PRODUCER_INPUTS without a
+    category entry would read as the basis and silently void every
+    envelope -- reintroducing the exact all-or-nothing failure this map
+    exists to remove. Caught by test_unknown_producer_is_not_treated_as_basis.
+    """
+    def __repr__(self):  # pragma: no cover - debugging aid
+        return "<comparison basis>"
+
+
+_BASIS = _Basis()
+
+_PRODUCER_CATEGORIES = {
+    # signed_snapshot is the comparison BASIS, not one category among
+    # several: every scalar metric is diffed out of this leaf. Missing it
+    # means nothing can be compared, so it alone sets comparable=False.
+    "signed_snapshot": _BASIS,
+    "unl_snapshot": ("unl",),
+    "signed_registry_snapshot": ("registry",),
+}
+
+
+def _categories_unavailable(inputs_missing: list[str]) -> list[str]:
+    """Categories we cannot speak to, given which producers are missing.
+
+    Returns [] when the only missing producer is the basis -- in that case
+    nothing is comparable at all and `comparable` carries the message, so
+    listing categories would imply the rest were fine.
+    """
+    out: list[str] = []
+    for label in inputs_missing:
+        cats = _PRODUCER_CATEGORIES.get(label)
+        # basis -> comparable carries it; unknown -> claim nothing, but the
+        # label still shows in inputs_missing and diff_suspect_reason.
+        if cats is _BASIS or not cats:
+            continue
+        for c in cats:
+            if c not in out:
+                out.append(c)
+    return out
+
+
+def _basis_missing(inputs_missing: list[str]) -> bool:
+    """True when the leaf the diff is computed from is absent."""
+    return any(_PRODUCER_CATEGORIES.get(l) is _BASIS for l in inputs_missing)
+
 
 def _assert_producer_inputs(cur, date: dt.date) -> list[str]:
     """Return the labels of producers with no row for `date`.
@@ -1091,7 +1154,11 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         suspect_reason = (
             "inputs not yet written when this build ran: "
             + ", ".join(inputs_missing)
-            + " — cannot distinguish 'no change' from 'nothing to compare'."
+            + (" — cannot distinguish 'no change' from 'nothing to compare'."
+               if _basis_missing(inputs_missing)
+               else " — affects only: "
+                    + ", ".join(_categories_unavailable(inputs_missing))
+                    + "; other categories compared normally.")
         )
     if scalar_change_count == 0 and not suspect_reason:
         if prev_date is None and skipped_dup_dates:
@@ -1117,15 +1184,27 @@ def build_changes_for_date(date: dt.date, *, pg_connect=None) -> dict:
         "date": date.isoformat(),
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "changes": changes,
-        # When inputs are missing we must NOT claim per-category silence.
-        "categories_no_change": [] if inputs_missing else categories_no_change,
+        # When inputs are missing we must NOT claim per-category silence --
+        # but only for the categories those producers actually feed. A
+        # missing UNL row says nothing about AMM TVL.
+        "categories_no_change": (
+            [] if _basis_missing(inputs_missing)
+            else [c for c in categories_no_change
+                  if c not in _categories_unavailable(inputs_missing)]
+        ),
+        # Categories we cannot speak to this build. Empty when the basis
+        # itself is missing, because then `comparable` carries the message.
+        "categories_unavailable": _categories_unavailable(inputs_missing),
         "prev_snapshot_date": prev_date.isoformat() if prev_date else None,
         "prev_skipped_duplicate_dates": skipped_dup_dates,
         "diff_suspect_reason": suspect_reason,
         # Auditability (fix 1): record the BASIS, not just the output, so a
         # zero can be checked after the fact instead of taken on trust.
         "inputs_missing": inputs_missing,
-        "comparable": not inputs_missing,
+        # Comparable means "we had a leaf to diff FROM", not "every
+        # producer wrote". A missing side-category producer leaves the
+        # comparison intact and is reported via categories_unavailable.
+        "comparable": not _basis_missing(inputs_missing),
         "disclosure": DISCLOSURE,
     }
 
@@ -1362,7 +1441,20 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
     # reports missing inputs, replace the quiet-day fill entirely -- a
     # reader seeing three "no change" lines on a day we never compared is
     # being told something false.
-    if envelope.get("inputs_missing"):
+    # Read the basis verdict the builder recorded. Fall back to
+    # recomputing it for envelopes stored before 2026-11-13, which carry
+    # inputs_missing but no categories_unavailable.
+    _missing = envelope.get("inputs_missing") or []
+    _comparable = envelope.get("comparable")
+    if _comparable is None:
+        _comparable = not _basis_missing(_missing)
+    _unavailable = envelope.get("categories_unavailable")
+    if _unavailable is None:
+        _unavailable = _categories_unavailable(_missing)
+
+    if not _comparable:
+        # The leaf we diff FROM is absent: nothing can be compared, so the
+        # whole strip is replaced. This is the only case that earns it.
         slots = [{
             "category": "status",
             "line": "Comparison unavailable: we have no prior-day snapshot "
@@ -1371,6 +1463,11 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
             "source": None,
             "kind": "comparison_unavailable",
         }]
+    elif _unavailable:
+        # A side-category producer is missing. Drop ONLY its slots and let
+        # the rest render -- suppressing everything here is what made the
+        # homepage contradict /changes on 2026-11-11 and 11-12.
+        slots = [sl for sl in slots if sl.get("category") not in _unavailable]
 
     return {
         "header": {
@@ -1384,14 +1481,15 @@ def build_strip(envelope: dict, k: int = 3) -> dict:
         # Fix 4 (2026-11-03): "the biggest things that moved" must not sit
         # above a box that reports nothing moving, or nothing comparable.
         "explainer": (
-            None if envelope.get("inputs_missing")
+            None if not _comparable
             else "No changes detected in this window." if not changes
             else ("The biggest things that moved on the XRP Ledger "
                   "in the last 24 hours, measured from our own node. "
                   "Every line links to its proof.")),
         # Fix 3 support: hand the template an ET-first stamp.
         "as_of_display": _fmt_as_of_et_first(envelope.get("generated_at_utc")),
-        "comparable": not envelope.get("inputs_missing"),
+        "comparable": _comparable,
+        "categories_unavailable": _unavailable,
         "slots": slots[:k],
         "total_changes": len(changes),
         "changes_url": f"/changes/{envelope.get('date')}" if envelope.get("date") else "/changes",
