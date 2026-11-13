@@ -90,9 +90,16 @@ def _classify_amount(amt):
 
 def _scan_account(client, address):
     """Paginate account_objects(type=escrow) for one account. Returns
-    list of raw escrow objects, or None on RPC error (caller decides
-    whether to hard-fail the walker or soft-skip the account)."""
-    out, marker = [], None
+    (list of raw escrow objects, ledger_index) or (None, None) on RPC
+    error (caller decides whether to hard-fail or soft-skip).
+
+    The ledger index matters: every row written from this pass is a
+    snapshot OF a specific validated ledger, and without it the stored
+    rows can only be stamped with a wall-clock fetch time. We request
+    ledger_index="validated", and the response echoes which ledger that
+    resolved to -- so capture it rather than discarding it.
+    """
+    out, marker, led = [], None, None
     while True:
         req = AccountObjects(
             account=address,
@@ -112,10 +119,12 @@ def _scan_account(client, address):
                            address, result.get("error"))
             return None
         out.extend(result.get("account_objects") or [])
+        if led is None:
+            led = result.get("ledger_index")
         marker = result.get("marker")
         if not marker:
             break
-    return out
+    return out, led
 
 
 def collect_snapshot():
@@ -128,11 +137,17 @@ def collect_snapshot():
     ok = err = 0
     snap_ledger = None
     for addr, meta in cohort:
-        objs = _scan_account(client, addr)
+        objs, acct_led = _scan_account(client, addr)
         if objs is None:
             err += 1
             continue
         ok += 1
+        # First responding account fixes the snapshot's ledger. Later
+        # accounts may resolve a ledger or two later; we record the
+        # first rather than the last so the stamp never claims a ledger
+        # newer than some of the rows it covers.
+        if snap_ledger is None and acct_led:
+            snap_ledger = acct_led
         for obj in objs:
             denom, drops, amt_json = _classify_amount(obj.get("Amount"))
             ledger_hash = obj.get("index")
@@ -155,9 +170,6 @@ def collect_snapshot():
                 "previous_txn_id": obj.get("PreviousTxnID"),
                 "previous_txn_lgr_seq": obj.get("PreviousTxnLgrSeq"),
             })
-        # snap_ledger is best-effort; account_objects doesn't return
-        # ledger_index the same way ledger_data does, but if the client
-        # response attaches it we surface it. Otherwise None.
     return rows, snap_ledger, {"ok": ok, "err": err, "cohort_size": len(cohort)}
 
 

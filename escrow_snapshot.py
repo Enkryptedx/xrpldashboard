@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timezone
 
 import db
+from escrow_headline import build_escrow_headline
 
 RIPPLE_EPOCH = 946684800  # 2000-01-01 UTC — XRPL "ripple time" offset
 
@@ -74,6 +75,23 @@ def _month_bucket(ripple_seconds):
         return None
 
 
+def _escrow_cohort_size():
+    """How many accounts the escrow walk COVERS (20), as opposed to how many
+    currently own an escrow object (8) or how many liquid balances we track
+    (21, which includes the RLUSD issuer). Read through cold_storage's loader
+    so the cohort rule has exactly one definition."""
+    try:
+        from cold_storage import _load_named
+        named = _load_named()
+    except Exception:
+        return None
+    return sum(
+        1 for meta in named.values()
+        if isinstance(meta, dict) and meta.get("category") == "ripple"
+        and "RLUSD" not in (meta.get("name") or "")
+    ) or None
+
+
 def _build_page_data():
     snap = db.read_escrows_snapshot()
     rows = [_decorate_row(r) for r in snap.get("rows") or []]
@@ -111,6 +129,13 @@ def _build_page_data():
         "snapshot_ledger_index": snap.get("snapshot_ledger_index"),
         "row_count": len(rows),
         "tracked_owner_count": len({r["owner"] for r in rows}),
+        # 2026-11-13: the live headline both /cold-storage and the homepage
+        # publish. Composed here, once, from the same rows the browser below
+        # renders — so the hero figure and the per-escrow table can never
+        # disagree, and neither can the two pages.
+        "headline": build_escrow_headline(
+            snap, escrow_cohort_size=_escrow_cohort_size()
+        ),
     }
 
 
