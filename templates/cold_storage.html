@@ -316,7 +316,26 @@
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-eyebrow">{{ _('Cold storage tracker') }}</div>
-      {% if locked and locked.total_xrp %}
+      {# 2026-11-13: the hero reads escrows_snapshot (escrow_walker, 30 min,
+         own node) via escrows.headline. It previously read the xrp_supply_block
+         escrow side, frozen since supply_escrow_walker was paused 2026-10-14.
+         `locked` stays as the fallback for an empty snapshot table. #}
+      {% set live = escrows.headline if escrows else None %}
+      {% if live %}
+        <div class="hero-name"><h1>{{ "{:,.0f}".format(live.total_xrp) }} {{ _('XRP locked') }}</h1></div>
+        <div class="hero-meta">
+          {{ _('Across') }} {{ live.object_count }} {{ _('active escrow objects held by') }}
+          {{ live.owner_count }} {{ _('of the') }} {{ live.escrow_cohort_size or data.escrow_account_count }}
+          {{ _('accounts in the Ripple monthly-release escrow cohort.') }}
+          {{ _('Liquid balance on these accounts:') }} <strong style="color: var(--text);">{{ "{:,.0f}".format(data.total_xrp) }} XRP</strong>
+          ({{ _('unlocked but not yet swept') }}).
+          <br>
+          <span class="mono">{{ live.as_of }}</span>
+          {% if not live.has_ledger %}
+            · {{ _('ledger index recorded from the next walker cycle onward') }}
+          {% endif %}
+        </div>
+      {% elif locked and locked.total_xrp %}
         <div class="hero-name"><h1>{{ "{:,.0f}".format(locked.total_xrp) }} {{ _('XRP locked') }}</h1></div>
         <div class="hero-meta">
           {{ _('Across') }} {{ locked.object_count }} {{ _('active escrow objects on') }} {{ data.escrow_account_count }} {{ _('Ripple monthly-release accounts.') }}
@@ -339,10 +358,12 @@
     <div class="kpi">
       <div class="l">{{ _('Locked in escrows') }}</div>
       <div class="v">
-        {% if locked and locked.total_xrp %}{{ "{:,.0f}".format(locked.total_xrp) }}{% else %}—{% endif %}
+        {% if live %}{{ "{:,.0f}".format(live.total_xrp) }}{% elif locked and locked.total_xrp %}{{ "{:,.0f}".format(locked.total_xrp) }}{% else %}—{% endif %}
       </div>
       <div class="sub">
-        {% if locked and locked.object_count %}
+        {% if live %}
+          {{ _('XRP across') }} {{ live.object_count }} {{ _('escrow objects') }} · {{ live.as_of }}
+        {% elif locked and locked.object_count %}
           {{ _('XRP across') }} {{ locked.object_count }} {{ _('escrow objects') }}
         {% else %}
           {{ _('fetching from XRPL') }}…
@@ -361,10 +382,22 @@
       <div class="v">{{ "{:,.0f}".format(data.total_xrp) }}</div>
       <div class="sub">{{ _('largest:') }} {{ data.largest_name }}</div>
     </div>
+    {# Two cohorts, two chips (2026-11-13). They are different populations and
+       showing one unlabelled number invited the reader to treat 21 as the
+       escrow cohort: the balance cohort includes the RLUSD issuer, which owns
+       no XRP escrow. Neither count changed — only their labels. #}
     <div class="kpi">
-      <div class="l">{{ _('Tracked accounts') }}</div>
+      <div class="l">{{ _('Balance cohort accounts') }}</div>
       <div class="v">{{ data.tracked_count }}</div>
-      <div class="sub">{{ data.fetched_ok }} {{ _('responding') }}</div>
+      <div class="sub">{{ _('liquid balances tracked, incl. the RLUSD issuer ·') }} {{ data.fetched_ok }} {{ _('responding') }}</div>
+    </div>
+    <div class="kpi">
+      <div class="l">{{ _('Escrow cohort accounts') }}</div>
+      <div class="v">{{ live.escrow_cohort_size or data.escrow_account_count if live else data.escrow_account_count }}</div>
+      <div class="sub">
+        {{ _('scanned for escrow objects') }}
+        {% if live %}· {{ live.owner_count }} {{ _('currently hold one') }}{% endif %}
+      </div>
     </div>
     <div class="kpi">
       <div class="l">{{ _('Source') }}</div>
@@ -640,8 +673,11 @@
   {% endif %}
 
   <footer>
-    {{ _('Data: live') }} <code style="color: var(--cyan);">account_objects(type=escrow)</code> {{ _('for locked totals and') }} <code style="color: var(--cyan);">account_info</code> {{ _('for liquid balances, against') }} {{ data.tracked_count }}
-    {{ _('Ripple-declared escrow accounts.') }}
+    {{ _('Data: own-node') }} <code style="color: var(--cyan);">account_objects(type=escrow)</code> {{ _('across the') }}
+    {{ live.escrow_cohort_size or data.escrow_account_count if live else data.escrow_account_count }}
+    {{ _('Ripple-declared escrow accounts for locked totals, and') }} <code style="color: var(--cyan);">account_info</code>
+    {{ _('across the') }} {{ data.tracked_count }} {{ _('balance-cohort accounts for liquid balances.') }}
+    {% if live %}{{ _('Locked total') }} {{ live.as_of }}.{% endif %}
     <br><br>
     <strong>{{ _('Not financial advice.') }}</strong> {{ _('Information shown is for educational purposes only and does not constitute financial, investment, or tax advice. Do your own research before making decisions about XRP or other digital assets.') }}
     <br><br>

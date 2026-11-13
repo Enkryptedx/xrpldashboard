@@ -2926,6 +2926,19 @@ def _build_xrp_distribution(ranked_full, amm_xrp_total=None):
     escrow_ripple_object_count = (int(sb_ripple["object_count"])
                                    if sb_ripple else None)
 
+    # 2026-11-13: the homepage escrow PILL now publishes the live Ripple
+    # monthly-release cohort from escrows_snapshot (escrow_walker, 30 min,
+    # own node) instead of xrp_supply_block's escrow side, which has been
+    # frozen since supply_escrow_walker was paused on 2026-10-14. Only the
+    # headline moves: `escrowed_xrp` below still carries the LEDGER-WIDE
+    # escrow_all_* figure that the constellation and the distribution
+    # percentages are computed from, and the pill labels the two separately.
+    try:
+        from escrow_snapshot import fetch_escrow_snapshot_cached as _fes
+        escrow_live = (_fes() or {}).get("headline")
+    except Exception:
+        escrow_live = None
+
     amm_xrp = 0.0
     amm_snap_ts = None
     try:
@@ -3018,6 +3031,7 @@ def _build_xrp_distribution(ranked_full, amm_xrp_total=None):
         "escrow_account_count": escrow_account_count,
         "escrow_ripple_xrp": escrow_ripple_xrp,
         "escrow_ripple_object_count": escrow_ripple_object_count,
+        "escrow_live": escrow_live,
         "escrow_age_seconds": escrow_age,
         "escrow_ledger_index": escrow_ledger_index,
         "amm_age_seconds": amm_age,

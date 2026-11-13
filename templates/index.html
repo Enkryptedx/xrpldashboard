@@ -915,8 +915,14 @@
           <a href="/cold-storage" aria-label="{{ _('XRP locked in escrow') }}">
             <circle class="sat-disc" cx="120" cy="80" r="{{ esc_r }}" fill="url(#grad-escrow)"/>
             <text class="sat-label" x="120" y="30" text-anchor="middle">{{ _('IN ESCROW') }}</text>
-            <text class="sat-val"   x="120" y="46" text-anchor="middle">{% if xd.escrowed_xrp >= 1000000000 %}{{ "%.1f"|format(xd.escrowed_xrp/1000000000) }}B{% else %}{{ "%.0f"|format(xd.escrowed_xrp/1000000) }}M{% endif %} XRP</text>
-            <text class="sat-pct"   x="120" y="60" text-anchor="middle">{{ "%.1f"|format(xd.escrowed_pct) }}%</text>
+            {# 2026-11-13: the escrow basin's figure is escrow_all_* from
+               xrp_supply_block, which stopped moving when supply_escrow_walker
+               was paused on 2026-10-14. While that is true we withhold the
+               number rather than print a month-old one. `escrow_stale` is the
+               existing age gate (>60 min), so this restores itself on the
+               walker's first fresh write -- no flag to remember to flip. #}
+            <text class="sat-val"   x="120" y="46" text-anchor="middle">{% if xd.escrow_stale %}{{ _('paused') }}{% elif xd.escrowed_xrp >= 1000000000 %}{{ "%.1f"|format(xd.escrowed_xrp/1000000000) }}B XRP{% else %}{{ "%.0f"|format(xd.escrowed_xrp/1000000) }}M XRP{% endif %}</text>
+            <text class="sat-pct"   x="120" y="60" text-anchor="middle">{% if not xd.escrow_stale %}{{ "%.1f"|format(xd.escrowed_pct) }}%{% endif %}</text>
           </a>
 
           {# top-right: AMM → /pools #}
@@ -930,8 +936,12 @@
           {# bottom: held by wallets (free-float — retail wallets, exchanges, treasuries) #}
           <circle class="sat-disc" cx="260" cy="255" r="{{ wal_r }}" fill="url(#grad-circ)"/>
           <text class="sat-label" x="260" y="305" text-anchor="middle">{{ _('HELD BY WALLETS') }}</text>
-          <text class="sat-val"   x="260" y="251" text-anchor="middle" fill="rgba(255,255,255,0.95)" style="font-family: var(--mono); font-size: 13px; font-weight: 700">~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP</text>
-          <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{{ "%.1f"|format(xd.wallets_pct) }}%</text>
+          {# Derived as total - escrow - AMM, so it inherits the frozen escrow
+             input: app.py already dates this basin by the STALER of its two
+             sources. Publishing it while escrow is paused would republish the
+             Oct 14 figure by subtraction, so it is withheld on the same gate. #}
+          <text class="sat-val"   x="260" y="251" text-anchor="middle" fill="rgba(255,255,255,0.95)" style="font-family: var(--mono); font-size: 13px; font-weight: 700">{% if xd.wallets_stale %}{{ _('paused') }}{% else %}~{{ "%.0f"|format(xd.wallets_xrp/1000000000) }}B XRP{% endif %}</text>
+          <text class="sat-pct"   x="260" y="266" text-anchor="middle" fill="rgba(255,255,255,0.75)" style="font-family: var(--mono); font-size: 10px">{% if not xd.wallets_stale %}{{ "%.1f"|format(xd.wallets_pct) }}%{% endif %}</text>
         </svg>
       </div>
       <div class="xrp-constell-freshness" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 2px; letter-spacing: 0.02em; line-height: 1.5;">
@@ -966,19 +976,24 @@
              silently becomes "73h ago" and then just a number ticking up. The
              relative age is kept as the fallback for when no absolute stamp
              is available. #}
-          {% if xd.escrow_ledger_index and xd.escrow_age_seconds is not none %}
-          <span style="color: {% if xd.escrow_stale %}rgba(255,193,7,0.92){% else %}rgba(255,255,255,0.55){% endif %};">
-            {% if xd.escrow_stale %}⚠ {% endif %}{{ _('escrow') }}:
+          {% if xd.escrow_stale %}
+          <span style="color: rgba(255,193,7,0.92);">⚠ {{ _('escrow and wallet figures withheld: refresh paused since') }}
+            {{ xd.escrow_as_of_utc }} · <a href="/cold-storage" style="color: inherit;">{{ _('live Ripple escrow cohort on /cold-storage') }}</a></span>
+          {% elif xd.escrow_ledger_index and xd.escrow_age_seconds is not none %}
+          <span style="color: rgba(255,255,255,0.55);">
+            {{ _('escrow') }}:
             {{ _('ledger') }} #{{ "{:,}".format(xd.escrow_ledger_index) }} ·
             {% if xd.escrow_as_of_utc %}{{ _('as of') }} {{ xd.escrow_as_of_utc }}{% else %}
             {% if xd.escrow_age_seconds < 120 %}{{ xd.escrow_age_seconds|int }}s
             {% elif xd.escrow_age_seconds < 3600 %}{{ (xd.escrow_age_seconds // 60)|int }}m
-            {% else %}{{ (xd.escrow_age_seconds // 3600)|int }}h{% endif %} {{ _('ago') }}{% endif %}
-            {% if xd.escrow_stale %} · {{ _('refresh paused') }}{% endif %}</span>
+            {% else %}{{ (xd.escrow_age_seconds // 3600)|int }}h{% endif %} {{ _('ago') }}{% endif %}</span>
           {% endif %}
         {% endif %}
       </div>
-      {% if xd.escrow_ripple_xrp is not none and xd.escrowed_xrp > 0 %}
+      {# Same frozen writer (supply_escrow_walker), so this sub-line is
+         withheld on the same gate. The live Ripple cohort figure is published
+         on /cold-storage and in the escrow pill below, from escrows_snapshot. #}
+      {% if xd.escrow_ripple_xrp is not none and xd.escrowed_xrp > 0 and not xd.escrow_stale %}
       <div class="xrp-constell-ripple-sub" style="text-align:center; font-family: var(--mono); font-size: 10.5px; margin-top: 4px; color: rgba(255,255,255,0.5); letter-spacing: 0.02em;">
         {{ _('of which') }} <strong style="color: rgba(255,255,255,0.75);">{{ "%.2f"|format(xd.escrow_ripple_xrp/1000000000) }}B</strong>
         {{ _("Ripple's scheduled monthly-release escrows") }} ({{ xd.escrow_ripple_object_count }} {{ _('objects') }})
@@ -993,7 +1008,7 @@
         <a class="xrp-chip" href="/cold-storage">
           <span class="dot escrow"></span>
           <span>{{ _('Locked in escrow ledger objects') }}</span>
-          <span class="v">{{ "%.1f"|format(xd.escrowed_pct) }}%</span>
+          <span class="v">{% if xd.escrow_stale %}—{% else %}{{ "%.1f"|format(xd.escrowed_pct) }}%{% endif %}</span>
         </a>
         <a class="xrp-chip" href="/pools">
           <span class="dot amm"></span>
@@ -1003,7 +1018,7 @@
         <span class="xrp-chip" style="cursor:default">
           <span class="dot circ"></span>
           <span>{{ _('Wallets, exchanges, treasuries') }}</span>
-          <span class="v">{{ "%.1f"|format(xd.wallets_pct) }}%</span>
+          <span class="v">{% if xd.wallets_stale %}—{% else %}{{ "%.1f"|format(xd.wallets_pct) }}%{% endif %}</span>
         </span>
       </div>
     </section>
@@ -1050,10 +1065,37 @@
        hero figure on /cold-storage and the constellation chart above. The
        earlier liquid-balance sum was a categorical mislabel (liquid ≠ locked). #}
     <section class="row-stats">
-      {% if xrp_distribution and xrp_distribution.escrowed_xrp %}
+      {# 2026-11-13: the pill's HEADLINE is the live Ripple monthly-release
+         cohort from escrows_snapshot (own node, 30-min walker).
+
+         The ledger-wide escrow_all_* figure is a different population (~1,887
+         accounts) and briefly had its own line here. Charlie pulled it the
+         same day: it reads xrp_supply_block's escrow side, frozen since
+         supply_escrow_walker was paused on 2026-10-14, and a month-old figure
+         sitting beside a 30-minute-old one reads as though both are current.
+         Restore the line when that walker resumes -- not before. The
+         constellation above still computes its percentages from escrow_all_*;
+         that value was not moved. #}
+      {% if xrp_distribution and xrp_distribution.escrow_live %}
+      {% set el = xrp_distribution.escrow_live %}
       <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
         <div>
-          <div class="stat-l">{{ _('XRP locked in escrows') }}</div>
+          <div class="stat-l">{{ _('XRP locked in Ripple escrows') }}</div>
+          <div class="stat-sub">{{ "{:,}".format(el.object_count) }} {{ _('escrow objects') }} · {{ el.owner_count }} {{ _('owning accounts of') }} {{ el.escrow_cohort_size or '' }} · {{ el.as_of }}</div>
+        </div>
+        {% if el.total_xrp >= 1000000000 %}
+        <div class="stat-v" data-countup="{{ el.total_xrp / 1000000000 }}" data-countup-decimals="1" data-countup-suffix="B XRP">{{ "%.1f"|format(el.total_xrp / 1000000000) }}B XRP</div>
+        {% else %}
+        <div class="stat-v" data-countup="{{ el.total_xrp / 1000000 }}" data-countup-decimals="0" data-countup-suffix="M XRP">{{ "{:,.0f}".format(el.total_xrp / 1000000) }}M XRP</div>
+        {% endif %}
+      </a>
+      {# Fallback for an empty escrows_snapshot. Gated on the same staleness
+         check: with the live cohort unavailable AND escrow_all_* frozen, the
+         honest render is the plain "view" link below, not a month-old total. #}
+      {% elif xrp_distribution and xrp_distribution.escrowed_xrp and not xrp_distribution.escrow_stale %}
+      <a href="/cold-storage" class="stat-pill" data-live="cold-storage">
+        <div>
+          <div class="stat-l">{{ _('Ledger-wide XRP locked in escrows') }}</div>
           <div class="stat-sub">{{ "{:,}".format(xrp_distribution.escrow_object_count) }} {{ _('escrow objects') }}{% if xrp_distribution.escrow_account_count %} · {{ "{:,}".format(xrp_distribution.escrow_account_count) }} {{ _('holder accounts') }}{% endif %}</div>
         </div>
         {% if xrp_distribution.escrowed_xrp >= 1000000000 %}

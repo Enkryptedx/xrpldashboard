@@ -1239,3 +1239,14 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_nav_canary_panel_crop.py -q
+      # Frozen-headline guard. supply_escrow_walker was paused 2026-10-14, so
+      # xrp_supply_block's escrow side stopped moving while BOTH the
+      # /cold-storage hero and the homepage escrow pill still read it -- a
+      # month-old 31.4B/98 published as current. The headline now reads
+      # escrows_snapshot and carries its ledger stamp; this pins the stamp's
+      # NULL-ledger fallback, the XRP-only sum, and that both surfaces read it.
+      # Hermetic: pure helper + template/source text. No DB, no network.
+      - name: escrow headline reads escrows_snapshot (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_live_headline.py -q
