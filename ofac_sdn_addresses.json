@@ -139,7 +139,7 @@
       "sdn_uid": "48432"
     },
     "0x19aa5fe80d33a56d56c78e82ea5e50e5d80b4dff": {
-      "chain": "USDT",
+      "chain": "ETH",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -223,7 +223,7 @@
       "sdn_uid": "57978"
     },
     "0x2f389ce8bd8ff92de3402ffce4691d17fc4f6535": {
-      "chain": "USDT",
+      "chain": "ETH",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -738,7 +738,7 @@
       "sdn_uid": "43377"
     },
     "0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2": {
-      "chain": "ETH",
+      "chain": "USDC",
       "entity_name": "VALERIAN LABS, INC.",
       "programs": [
         "ILLICIT-DRUGS-EO14059"
@@ -1990,7 +1990,7 @@
       "sdn_uid": "39593"
     },
     "1CF46Rfbp97absrs7zb7dFfZS6qBXUm9EP": {
-      "chain": "USDT",
+      "chain": "XBT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2155,7 +2155,7 @@
       "sdn_uid": "39585"
     },
     "1Df883c96LVauVsx9FEgnsourD8DELwCUQ": {
-      "chain": "USDT",
+      "chain": "XBT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2672,7 +2672,7 @@
       "sdn_uid": "30520"
     },
     "1KUUJPkyDhamZXgpsyXqNGc3x1QPXtdhgz": {
-      "chain": "USDT",
+      "chain": "XBT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -2817,7 +2817,7 @@
       "sdn_uid": "39593"
     },
     "1LrxsRd7zNuxPJcL5rttnoeJFy1y4AffYY": {
-      "chain": "USDT",
+      "chain": "XBT",
       "entity_name": "SUEX OTC, S.R.O.",
       "programs": [
         "CYBER2"
@@ -9916,7 +9916,7 @@
     }
   },
   "count": 1064,
-  "fetched_at_utc": "2026-11-12 21:01 UTC",
-  "publication_date": "2026-11-09",
+  "fetched_at_utc": "2026-11-13 21:01 UTC",
+  "publication_date": "2026-11-13",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
