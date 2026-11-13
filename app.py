@@ -1240,6 +1240,44 @@ def _register_agent_tier_openapi_paths(app_ref, spec):
         }],
     )
 
+    # ---- Live JSON read-API surfaces (2026-11-13) --------------------
+    # All seven return 200 and carry the same v0.9 signed envelope as
+    # /check.json, but NONE were documented: the live spec listed 12
+    # paths and not one of these. llms.txt calls openapi.json "an index
+    # of the LIVE free surface", so an agent reading the spec concluded
+    # they do not exist. Registering truth, not adding a claim.
+    _read_api_note = (
+        "Returns the v0.9 proof-annotation envelope: a `data` payload plus "
+        "`proof.check_v09_signature` (Ed25519 signature, canonical_hash, "
+        "domain separator, signer fingerprint, signed_at_utc). Verify "
+        "locally against the published receipt key rather than trusting "
+        "the response."
+    )
+    for _p, _summary in (
+        ("/tokens.json",
+         "Categorized XRPL tokens ranked by on-ledger trade count"),
+        ("/whales.json", "Large-transfer feed statistics"),
+        ("/pools.json", "AMM pools ranked by total value locked"),
+        ("/amendments.json",
+         "XRPL amendment status, counts and thresholds"),
+        ("/cold-storage/unlocks.json", "Scheduled escrow release data"),
+        ("/claims/index.json", "Public claims manifest index"),
+        ("/.well-known/verified-tokens.json",
+         "Signed verified-token manifest"),
+    ):
+        _register(
+            _p,
+            {
+                "get": {
+                    "tags": ["read-api"],
+                    "summary": _summary,
+                    "description": _read_api_note,
+                    "responses": _json_ok(),
+                },
+            },
+        )
+
+
 
 # NOTE: the actual _register_agent_tier_openapi_paths(app, api.spec)
 # call happens at the BOTTOM of this module — after all @app.route
@@ -2802,6 +2840,38 @@ def _ranked_amm_snapshot():
         "snapshot_ts": snap_ts,
         "source": "file",
     }
+
+
+def _amm_snapshot_age_seconds(meta: dict | None) -> int | None:
+    """Seconds since the AMM ranking FINISHED, or None if unknown.
+
+    `finished_at` is an ISO-8601 stamp written by rank_amms when the pass
+    completes. `snapshot_ts` is a unix touch time (postgres MAX, or the
+    artifact's mtime on the file path) and moves whenever the row or file
+    is rewritten, which is why it reported a 20h-old ranking as an hour
+    old on /pools. Prefer the finish; degrade to the touch time rather
+    than showing nothing.
+    """
+    if not isinstance(meta, dict):
+        return None
+    fin = meta.get("finished_at")
+    if fin:
+        try:
+            txt = str(fin).replace("Z", "+00:00")
+            dt_fin = datetime.fromisoformat(txt)
+            if dt_fin.tzinfo is None:
+                dt_fin = dt_fin.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            return max(0, int((now - dt_fin).total_seconds()))
+        except Exception:  # noqa: BLE001 -- malformed stamp, try the fallback
+            pass
+    snap_ts = meta.get("snapshot_ts")
+    if snap_ts:
+        try:
+            return max(0, int(time.time()) - int(snap_ts))
+        except Exception:  # noqa: BLE001
+            return None
+    return None
 
 
 _XRP_ESCROW_STALE_AFTER = 3600  # 60 min
@@ -9451,9 +9521,16 @@ def pools():
 
     snapshot_age_label = None
     try:
-        snap_ts = meta.get("snapshot_ts")
-        if snap_ts:
-            age = max(0, int(time.time()) - int(snap_ts))
+        # Age the chip from when rank_amms actually FINISHED, not from
+        # snapshot_ts. snapshot_ts is the row/file touch time -- in the
+        # file path it is literally os.path.getmtime(AMM_RANKED_PATH) --
+        # so a re-read or re-write makes a 20h-old ranking read as fresh.
+        # Measured 2026-11-12: chip said "1h ago" while finished_at was
+        # 2026-11-12T04:50Z, about 20h earlier. The values were right; the
+        # age label was not. Fall back to snapshot_ts only when the walker
+        # never recorded a finish.
+        age = _amm_snapshot_age_seconds(meta)
+        if age is not None:
             if age < 60:
                 snapshot_age_label = f"{age}s ago"
             elif age < 3600:
@@ -9721,6 +9798,28 @@ def _check_strip_top_null_keys(payload: dict) -> dict:
     return {k: v for k, v in payload.items() if v is not None}
 
 
+RECEIPT_PUBKEY_FP_PATH = os.path.join(HERE, "receipt_pubkey_fingerprint.txt")
+
+
+def _receipt_pubkey_fingerprint() -> str | None:
+    """Fingerprint of the key that actually signs /check.json verdicts.
+
+    /check.json is signed with the RECEIPT key (A4:0F:...), recorded in
+    `proof.check_v09_signature.signer`. Its server block, however, came
+    from mcp_server.wrap_envelope, whose _server_block() stamps the
+    SNAPSHOT key (7F:D4:...) read from snapshot_pubkey_fingerprint.txt.
+    So the envelope advertised one key and signed with another, and a
+    client pinning the key our own docs tell it to pin would reject a
+    perfectly valid response -- or accept one against the wrong key.
+    Read from the file rather than hardcoding a second copy.
+    """
+    try:
+        with open(RECEIPT_PUBKEY_FP_PATH) as f:
+            return f.read().strip() or None
+    except Exception:  # noqa: BLE001 -- missing file must not 500 /check.json
+        return None
+
+
 def _check_json_response(result: dict, *, status: int = 200) -> Response:
     """Wrap a /check result in the proof-annotation envelope."""
     from mcp_server import wrap_envelope
@@ -9751,6 +9850,17 @@ def _check_json_response(result: dict, *, status: int = 200) -> Response:
         honest_partial=honest_partial,
         scope_note=scope_note,
     )
+    # Correct the server block BEFORE signing. The canonical hash in
+    # _check_v09_sign covers the WHOLE envelope minus
+    # proof.check_v09_signature -- `server` included -- so mutating the
+    # fingerprint afterwards would ship a payload whose hash no longer
+    # matches its signature, breaking every verifier. Order is the fix.
+    _fp = _receipt_pubkey_fingerprint()
+    if isinstance(envelope.get("server"), dict):
+        if _fp:
+            envelope["server"]["public_key_fingerprint"] = _fp
+        # Not an MCP endpoint; the block is reused from wrap_envelope.
+        envelope["server"]["name"] = "xrpldashboard"
     envelope = _check_v09_sign(envelope)
     response = jsonify(envelope)
     response.status_code = status

@@ -806,6 +806,30 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_changes_per_category_comparability.py -q
 
+      # Three truth fixes from the 2026-11-12 read-only site audit.
+      #
+      # /pools aged its "TVL snapshot" chip from snapshot_ts, a TOUCH
+      # time (file path: os.path.getmtime(AMM_RANKED_PATH)), so a re-read
+      # made an old ranking look fresh -- chip read "1h ago" while
+      # finished_at was ~20h earlier. Values were right; the label lied.
+      #
+      # /check.json advertised the SNAPSHOT key (7F:D4:...) in its server
+      # block while signing with the RECEIPT key (A4:0F:...). A client
+      # pinning the key our own docs name would reject a valid response.
+      # Now read from receipt_pubkey_fingerprint.txt, applied AFTER
+      # signing so it corrects what wrap_envelope stamped.
+      #
+      # openapi.json documented 12 paths and none of the seven live JSON
+      # read-API surfaces, while llms.txt calls it an index of the LIVE
+      # free surface. Each registered path is asserted to have a real
+      # @app.route, so this cannot become /escrow-supply in reverse.
+      #
+      # Hermetic: pure helpers + text reads of app.py. No DB, no network.
+      - name: pools stamp + check.json key + openapi read-api (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_small_fixes_2026_11_13.py -q
+
       # 2026-11-12 curation pass. The three entries held `pending_review` on
       # 2026-11-06 were assessed and decided by the owner:
       #   BOTC  060B0AE9 -> published, domain_fallback

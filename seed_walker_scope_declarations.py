@@ -218,6 +218,25 @@ SCOPES = [
     # mismatch. RETIRED/PAUSED rows exist to stop the UNDECLARED alarm
     # without deleting any walker_health row or history.
     (
+        "changes_strip_agreement_canary",
+        "the newest 3 changes_envelopes rows, rebuilt into a strip and "
+        "compared against the envelope they came from",
+        "Detector for the 2026-11-11/11-12 defect class: the homepage "
+        "\"What's new\" strip and /changes are two renders of ONE envelope "
+        "and must not disagree. The strip said \"Comparison unavailable\" "
+        "while /changes listed 7 derived changes, and nothing noticed until "
+        "a human read the box. Rebuilds the strip from the STORED envelope "
+        "rather than fetching HTTP, so a cached homepage body can neither "
+        "fool it nor be blamed for it -- it tests the data both surfaces "
+        "render. Three findings: contradiction (strip not-comparable while "
+        "changes exist), count_mismatch, and basis_claim (comparable "
+        "disagreeing with whether the basis producer is missing). "
+        "Invisible: anything older than the 3-row lookback, and any "
+        "divergence introduced in the TEMPLATE rather than the envelope -- "
+        "this canary cannot see rendering bugs, only data ones.",
+        True,
+    ),
+    (
         "ai_crawler_daily_rollup",
         "ai_crawler_hits aggregated by (ua_class, page_family, day), "
         "self-probes excluded",
