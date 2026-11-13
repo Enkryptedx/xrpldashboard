@@ -8746,5 +8746,824 @@
     "name": "Q-20261025-68BEED62",
     "issuer_name": "SC.PO",
     "suppressed": "per_quote_noise: name is a per-quote identifier (Q-<date>-<hex>), not a tradeable asset name"
+  },
+  "06723E541E14A4E4C566937C421F059939174CBD30352FC5:rskhr3jwLHNT3PW6Y9DKo6jkmVz4zoWveo": {
+    "currency_hex": "06723E541E14A4E4C566937C421F059939174CBD30352FC5",
+    "currency_display": "YBB",
+    "issuer": "rskhr3jwLHNT3PW6Y9DKo6jkmVz4zoWveo",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "YBB",
+    "issuer_name": "VS1 LLC",
+    "suppressed": "display_collision_unreviewed: renders as \"YBB\", identical to a suppressed entry from a different issuer; no on-ledger Domain, issuer ~6 days old"
+  },
+  "05FA6F0E561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6F0E561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NCKP09",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NCKP09",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAB056561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAB056561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB06",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB06",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FABBD5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FABBD5561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FNYX01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FNYX01",
+    "issuer_name": "Fenynx Digital",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA91F3561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA91F3561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN05",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN05",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6AB8561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6AB8561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "RELX01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "RELX01",
+    "issuer_name": "3DS MA Real Es",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA98F0561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA98F0561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB03",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB03",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA741E561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA741E561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT01",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA8855561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA8855561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN02",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN02",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAAE95561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAAE95561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GYM01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GYM01",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAB110561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAB110561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB07",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB07",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAB907561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAB907561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB27",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB27",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA8CC0561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA8CC0561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB24",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB24",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA93C4561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA93C4561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB26",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB26",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA85C5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA85C5561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB23",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB23",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA8D0D561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA8D0D561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB25",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB25",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6254561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6254561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "AERO03",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "AERO03",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA7BCF561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA7BCF561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB04",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB04",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA790F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA790F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT17",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT17",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA9011561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA9011561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN03",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN03",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA90F9561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA90F9561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN04",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN04",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAA0DF561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN06",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN06",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6C5E561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6C5E561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT16",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT16",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5FCA561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5FCA561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT11",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT11",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6BDC561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6BDC561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "HOLD02",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "HOLD02",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA72DD561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA72DD561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "BFO03",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "BFO03",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6A03561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6A03561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "BFO02",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "BFO02",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5FD5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5FD5561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB22",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB22",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA86BE561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA86BE561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB02",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB02",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA8508561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA8508561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB01",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA8290561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA8290561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB05",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB05",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAAA9D561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAAA9D561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "MPI01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "MPI01",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6699561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6699561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT14",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT14",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6725561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6725561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT15",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT15",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA828F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA828F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "HOLD05",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "HOLD05",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5D56561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5D56561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "BFD01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "BFD01",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA67F3561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA67F3561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "ZVA143",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "ZVA143",
+    "issuer_name": "Zuvia Digital ",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA68E0561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA68E0561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "ZVA144",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "ZVA144",
+    "issuer_name": "Zuvia Digital ",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "066E982D23169A6F9973B68DE5734D038FBBA39BBA6A4BA8:rhUXjDZDyhnhM2mWHqM47E9BDK2Dgz1Uqs": {
+    "currency_hex": "066E982D23169A6F9973B68DE5734D038FBBA39BBA6A4BA8",
+    "currency_display": "YBB",
+    "issuer": "rhUXjDZDyhnhM2mWHqM47E9BDK2Dgz1Uqs",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "YBB",
+    "issuer_name": "VS1 LLC",
+    "suppressed": "issuer_cluster_test: sibling of an already-suppressed cluster on this issuer (prior entries suppressed self_declared_test and issuer_cluster_test); no on-ledger Domain"
+  },
+  "05FAAE77561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAAE77561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "MPI03",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "MPI03",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5F3B561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5F3B561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW151",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW151",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5F8F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5F8F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "LYNV19",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "LYNV19",
+    "issuer_name": "Lynv",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5E0C561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5E0C561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOS07",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOS07",
+    "issuer_name": "Zuvia Digital ",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA63A5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA63A5561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS128",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS128",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA884C561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA884C561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRN01",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRN01",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAAAAA561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAAAAA561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "MPI02",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "MPI02",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6AB9561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6AB9561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS129",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS129",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6CEC561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6CEC561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS130",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS130",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA7378561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA7378561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS131",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS131",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6D38561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6D38561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "ZVA145",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "ZVA145",
+    "issuer_name": "Zuvia Digital ",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA69DB561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA69DB561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "ZSEC24",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "ZSEC24",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5DCF561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5DCF561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT21",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT21",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA7878561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA7878561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "GRA05",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "GRA05",
+    "issuer_name": "BFO Securitiza",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5EFF561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5EFF561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "LYNV18",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "LYNV18",
+    "issuer_name": "Lynv",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6694561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6694561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT12",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT12",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5E6A561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5E6A561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT19",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT19",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA679F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA679F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT20",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT20",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA69E3561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA69E3561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW154",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW154",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6778561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6778561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW153",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW153",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5F6F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5F6F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW152",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW152",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6E34561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6E34561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW155",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW155",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5CEB561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5CEB561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW156",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW156",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA6705561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA6705561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT22",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT22",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5F99561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5F99561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT23",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT23",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5CDE561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5CDE561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW158",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW158",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B592588AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B592588AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Maiz, FWD-2026-022",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain)"
+  },
+  "05FA5D4A561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5D4A561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT24",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT24",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5E3F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5E3F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS11",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS11",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FA5CD3561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5CD3561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FLW157",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FLW157",
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "0671EE5D86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
+    "currency_hex": "0671EE5D86013FD29FD46A77684ADB46A7B53E71F44A3006",
+    "currency_display": "TEST12",
+    "issuer": "rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "test123",
+    "desc": "desc",
+    "issuer_name": "wb",
+    "suppressed": "self_declared_test: the entry's own name field says so (testing/testing1/test123/temp); issuer account ~3 days old, no on-ledger Domain"
+  },
+  "06715B138193FEE2597B39E2507F760355A878EC9F3AF361:rUF9TCVU7x8e2Z6vGAiLwwyZpjykzZGaiR": {
+    "currency_hex": "06715B138193FEE2597B39E2507F760355A878EC9F3AF361",
+    "currency_display": "TVV",
+    "issuer": "rUF9TCVU7x8e2Z6vGAiLwwyZpjykzZGaiR",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "TVV",
+    "issuer_name": "Network",
+    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain); issuer shares a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours"
+  },
+  "06719B7F21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B7F21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRSTV",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Short Term Vault receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. First mortgages, loans under 8 months.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+  },
+  "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049:rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1": {
+    "currency_hex": "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049",
+    "currency_display": "BESTV",
+    "issuer": "rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "BESTV",
+    "issuer_name": "Network",
+    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain); issuer shares a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours"
+  },
+  "06714EFD9F147959A8ABEA77A3787FD6656F1FD81972BCFB:rEW3yhYqGP6BSpMCAFgsNjG7V6VQiuBSHf": {
+    "currency_hex": "06714EFD9F147959A8ABEA77A3787FD6656F1FD81972BCFB",
+    "currency_display": "PUBXRP",
+    "issuer": "rEW3yhYqGP6BSpMCAFgsNjG7V6VQiuBSHf",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "PUBXRP",
+    "issuer_name": "Network",
+    "suppressed": "impersonation_risk_pending_review: XRP-adjacent self-declared name; issuer has no on-ledger Domain, account ~4 days old, nothing minted; issuer shares a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours"
+  },
+  "06719B8021DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B8021DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRCFV",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Construction Finance Vault receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Construction loans, includes second mortgages.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+  },
+  "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "MBPET1",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "MBPET1",
+    "issuer_name": "My Box Pet",
+    "suppressed": "bulk_serial_mint_unreviewed: 67 machine-numbered names (FIT/TOSB/GRN/FLW/NTS/ZVA/MPI series) minted by one issuer in a single week; name equals ticker on every row, issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "06719B7E21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B7E21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRSIV",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Senior Income Vault receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. First-mortgage loans, diversified.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+  },
+  "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
+    "currency_hex": "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006",
+    "currency_display": "TESTIN",
+    "issuer": "rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "testing1",
+    "desc": "temp123",
+    "issuer_name": "wb",
+    "suppressed": "self_declared_test: the entry's own name field says so (testing/testing1/test123/temp); issuer account ~3 days old, no on-ledger Domain"
+  },
+  "0671EE5B86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
+    "currency_hex": "0671EE5B86013FD29FD46A77684ADB46A7B53E71F44A3006",
+    "currency_display": "TESTIN",
+    "issuer": "rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "testing",
+    "desc": "temp124",
+    "issuer_name": "wb",
+    "suppressed": "self_declared_test: the entry's own name field says so (testing/testing1/test123/temp); issuer account ~3 days old, no on-ledger Domain"
+  },
+  "0649B40ACA10011D695BFE3939CB59EDEB4E1EE73FC9F0B3:rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72": {
+    "currency_hex": "0649B40ACA10011D695BFE3939CB59EDEB4E1EE73FC9F0B3",
+    "currency_display": "DZD",
+    "issuer": "rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "DozDog",
+    "desc": "My Beloved Bubba.",
+    "issuer_name": "vthayer",
+    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain)"
+  },
+  "0671EE6186013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
+    "currency_hex": "0671EE6186013FD29FD46A77684ADB46A7B53E71F44A3006",
+    "currency_display": "TEMP",
+    "issuer": "rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "temp",
+    "desc": "JBJFY",
+    "issuer_name": "WB",
+    "suppressed": "self_declared_test: the entry's own name field says so (testing/testing1/test123/temp); issuer account ~3 days old, no on-ledger Domain"
   }
 }

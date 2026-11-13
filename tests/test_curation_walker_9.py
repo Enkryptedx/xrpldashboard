@@ -242,11 +242,21 @@ class TestFileInvariants:
         superseded, the owner's verdict on the collision that publishing
         060B0AE9 exposed. See test_curate_botc_datec_scpo.py.
 
+        34 -> 115 on 2026-11-13: the anchor #15 gate-5 carve-out decided 81
+        new walker-discovered entries, all suppressed. 67
+        bulk_serial_mint_unreviewed (one undomained issuer minting a
+        machine-numbered series), 7 pending_review, 4 self_declared_test,
+        1 issuer_cluster_test, 1 display_collision_unreviewed and
+        1 impersonation_risk_pending_review. Nothing was published: the
+        count rose because decisions were ADDED, not because a guard was
+        relaxed -- the per-entry suppression assertion below is unchanged
+        and still passes on every one of them.
+
         This is the one authoritative home for the census count.
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 34
+        assert n == 115
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
