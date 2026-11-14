@@ -1250,3 +1250,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_live_headline.py -q
+      # is_bot_writer timeout guard. The pattern arms (152 path LIKE + 55 UA
+      # ILIKE) had no ts bound and rescanned all of page_views every 5 min --
+      # a Parallel Seq Scan over 1.02M rows that tripped statement_timeout 3x
+      # consecutively on 2026-11-14. They now run on a watermark keyed to a
+      # signature of the pattern list. This pins the incremental catch, the
+      # forced full rescan on a pattern change, that the window can never
+      # un-tag a pattern-owned hash, and the canary's independence.
+      # Hermetic: fake cursor models the table. No DB, no network.
+      - name: bot hash pattern arms run on a watermark (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_bot_hash_incremental_window.py tests/test_bot_hashes_upsert.py -q
