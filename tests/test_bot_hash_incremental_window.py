@@ -94,11 +94,24 @@ class FakeCursor:
             assert "page_view_bot_hashes" in flat, flat
             self._result = [(c,) for c in self.columns_present]
             return
-        if flat.startswith("SET LOCAL statement_timeout"):
-            self.timeout_set.append(params[0])
-            return
-        if flat.startswith("SET LOCAL lock_timeout"):
-            self.lock_timeout_set.append(flat)
+        if flat.startswith("SET "):
+            # Postgres parses SET before the extended-protocol bind, so a
+            # bound parameter in a SET is a syntax error ($1). The first cut
+            # of this harness read params[0] here and happily accepted
+            # "SET LOCAL statement_timeout = %s" -- which is exactly how that
+            # statement reached production in a41d445 and took is_bot_writer
+            # down on EVERY tick (the rescan branch runs until a watermark is
+            # stored, so it could not self-recover). A fake that is more
+            # permissive than the real server is how a green suite ships a
+            # syntax error.
+            assert not params, (
+                "SET takes no bound parameters -- interpolate a literal", flat)
+            assert "%s" not in flat, (
+                "a %s placeholder in a SET is the same bug", flat)
+            if "statement_timeout" in flat:
+                self.timeout_set.append(int(flat.rsplit("=", 1)[1].strip()))
+            elif "lock_timeout" in flat:
+                self.lock_timeout_set.append(flat)
             return
         if "FROM page_view_classification_meta" in flat and flat.startswith("SELECT"):
             self._result = [(k, v) for k, v in self.meta.items() if k in params]
@@ -454,6 +467,42 @@ def test_a_locked_out_ddl_defers_instead_of_corrupting_the_tick(monkeypatch):
     assert cur.meta_writes == [], "the watermark must not advance on a deferral"
     assert db._bot_hash_table_ready is False, (
         "readers must fall back to the legacy predicate meanwhile")
+
+
+def test_no_set_statement_binds_a_parameter():
+    """Regression for a41d445, caught only by the live kickstart.
+
+    `SET LOCAL statement_timeout = %s` passed the whole chain because the
+    fake cursor above accepted a param there, then failed in production with
+    `syntax error at or near "$1"`. SET is parsed before the bind, so its
+    value must be a literal. Scanned over the module source so a future
+    config SET anywhere in db.py cannot reintroduce it.
+
+    Anchored on `execute(` deliberately. A bare /"SET [^"]*"/ scan also
+    matches the continuation line of a multi-line UPDATE --
+    `"SET email_alerted = TRUE WHERE id = %s"` at db.py:9573 and :9632 --
+    where %s is a perfectly correct bound parameter. Those are SQL UPDATE SET
+    clauses, not Postgres configuration commands. The first cut of this guard
+    flagged both and failed on code that was never broken.
+    """
+    import re
+    src = open(os.path.join(_REPO, "db.py"), encoding="utf-8").read()
+    config_sets = [m.group(0) for m in
+                   re.finditer(r'execute\(\s*"SET [^"]*"', src)]
+    assert config_sets, "found no config SET at all -- the regex has rotted"
+    offenders = [s for s in config_sets if "%s" in s]
+    assert offenders == [], offenders
+
+
+def test_full_rescan_sets_the_timeout_as_a_literal_integer(monkeypatch):
+    """The raised ceiling must still actually be applied -- proving the fix
+    did not simply drop the statement."""
+    cur = _run(monkeypatch, rows=[_pv(10, vh="ancient")], meta={})
+    sets = [s for s, _ in cur.statements if s.startswith("SET LOCAL statement_timeout")]
+    assert len(sets) == 1, sets
+    assert sets[0] == (
+        f"SET LOCAL statement_timeout = {db.BOT_HASH_FULL_RESCAN_TIMEOUT_MS}")
+    assert cur.timeout_set == [db.BOT_HASH_FULL_RESCAN_TIMEOUT_MS]
 
 
 # ── 5. the canary stays independent ──────────────────────────────────────

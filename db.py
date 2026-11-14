@@ -8400,9 +8400,18 @@ def refresh_bot_hash_tables():
                     # SET LOCAL dies with this transaction, so the raised
                     # ceiling covers THIS run only and can never silently
                     # become the 5-minute norm.
+                    # SET takes no bound parameters -- Postgres parses it
+                    # before the extended-protocol bind, so "= %s" fails with
+                    # `syntax error at or near "$1"`. Shipped that way in
+                    # a41d445 and it took is_bot_writer down on every tick
+                    # (the rescan branch runs until a watermark is stored, so
+                    # there was no self-recovery). The value is a module-level
+                    # int constant, so interpolating it is injection-free --
+                    # int() is belt-and-braces to keep it that way if the
+                    # constant is ever edited into a string.
                     cur.execute(
-                        "SET LOCAL statement_timeout = %s",
-                        (BOT_HASH_FULL_RESCAN_TIMEOUT_MS,),
+                        "SET LOCAL statement_timeout = "
+                        f"{int(BOT_HASH_FULL_RESCAN_TIMEOUT_MS)}"
                     )
                     pattern_window_sql = ""
                     pattern_window_params = []
