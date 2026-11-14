@@ -35,6 +35,7 @@ import datetime
 import os
 import sys
 import tempfile
+import hashlib
 import json
 import re
 import threading
@@ -8179,6 +8180,41 @@ def _sync_key_table(cur, table, cols, desired):
     return len(to_add), len(to_del)
 
 
+# ── Incremental pattern arms: watermark keys + full-rescan budget ─────────
+# (2026-11-14) The watermark is only ever valid for the pattern list that
+# produced it, so it is stored next to a signature of that list.
+BOT_HASH_PATTERN_SIG_KEY = "bot_hash_pattern_sig"
+BOT_HASH_PATTERN_WATERMARK_KEY = "bot_hash_pattern_watermark_ts"
+
+# Ceiling for the ONE full rescan a pattern change forces. Applied with
+# SET LOCAL so it dies with that transaction -- it raises the limit for that
+# run only and can never become the 5-minute norm. The normal cap (~25 s) is
+# what the unbounded scan was tripping; a full rescan of 1.02M rows measured
+# ~25-26 s, so 10 min is generous headroom as page_views grows.
+BOT_HASH_FULL_RESCAN_TIMEOUT_MS = 600_000
+
+
+def bot_pattern_signature():
+    """Stable short hash of the exact pattern lists the pattern arms scan with.
+
+    Why the watermark is keyed to this: a ts window only ever looks FORWARD,
+    but adding a pattern changes the verdict on rows already behind the
+    watermark, which an incremental run would never revisit. Keying the
+    watermark to the pattern list makes that self-correcting -- a changed list
+    no longer matches the stored signature, which invalidates the watermark
+    and forces one full rescan before incremental resumes.
+
+    Sorted, so reordering a list (cosmetic) does not force a rescan, while
+    adding, removing or editing a pattern (semantic) does.
+    """
+    h = hashlib.sha256()
+    for pat in sorted(BOT_PATH_PATTERNS):
+        h.update(b"path\x00" + pat.encode("utf-8") + b"\x00")
+    for pat in sorted(BOT_UA_PATTERNS):
+        h.update(b"ua\x00" + pat.encode("utf-8") + b"\x00")
+    return h.hexdigest()[:16]
+
+
 def refresh_bot_hash_tables():
     """Materialise bot classification data into two small Postgres tables so
     every analytics() render can filter against an indexed join instead of
@@ -8244,23 +8280,178 @@ def refresh_bot_hash_tables():
                 # the only bytes that leave Neon are two rowcounts. Same
                 # predicates, same growth-path rule, same diff semantics (add
                 # what's missing, delete what's gone), same single transaction.
+                # ── Provenance + incremental pattern arms (2026-11-14) ──────
+                # The two PATTERN arms (row_pred over path/UA) used to rescan
+                # ALL of page_views every 5 minutes: a Parallel Seq Scan over
+                # 1.02M rows / 626 MB with 207 OR'd LIKE/ILIKE predicates and
+                # no ts bound whatsoever. It crossed the statement_timeout as
+                # a one-off on 2026-11-10 and then 3 times consecutively on
+                # 2026-11-14 (~25-26 s against a ~25 s cap), flapping as the
+                # table grew past the limit.
+                #
+                # row_pred is MONOTONIC: it is a per-row predicate, and
+                # page_views rows are never updated or deleted, so once a hash
+                # has one matching row it matches forever. That is what makes
+                # a ts window EXACT here rather than approximate -- nothing
+                # already derived can stop being true, so a forward-only scan
+                # misses nothing.
+                #
+                # The WINDOWED arms (growth 30 d, contact 400 d, claims 400 d)
+                # are NOT monotonic: their HAVING clauses use exact equality,
+                # so a visitor who gains a second pageview must be un-flagged.
+                # They keep their full recompute + diff.
+                #
+                # Provenance is what lets the two share one table: the DELETE
+                # may only remove a row the windowed arms own and the pattern
+                # arms do not. Both columns are constant-default FALSE, which
+                # is metadata-only in PG11+ (no table rewrite, no index
+                # build), so the migration is cheap -- and until the first run
+                # marks rows, the DELETE owns nothing and removes nothing.
+                # CHECK THE CATALOG FIRST (owner ruling 2026-11-02, applied
+                # here 2026-11-14). The first cut of this change fired two
+                # bare ADD COLUMN IF NOT EXISTS on EVERY tick -- the exact
+                # defect amendment_majority_walker was fixed for. ADD COLUMN
+                # takes ACCESS EXCLUSIVE even when the column already exists,
+                # because Postgres must lock the relation to decide there is
+                # nothing to do. This writer runs every 5 min (288x/day), so
+                # ticks land inside the 22:00 ET pg_backup window most nights;
+                # pg_dump holds ACCESS SHARE on every table for its whole run
+                # (~19 min on 2026-11-01) and the lock queue is FIFO, so the
+                # ALTER would not merely wait -- every reader arriving after
+                # it queues BEHIND it. That cost the majority walker 126
+                # aborted ticks before the catalog pre-check went in.
+                #
+                # information_schema.columns takes no lock on the table, so
+                # the steady state (both columns present, which is production
+                # from the first run onward) costs one catalog read and cannot
+                # enter a lock queue at all.
+                cur.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    " WHERE table_schema = 'public' "
+                    "   AND table_name = 'page_view_bot_hashes' "
+                    "   AND column_name IN ('pattern_owned', 'window_owned')"
+                )
+                _present = {r[0] for r in cur.fetchall()}
+                _missing = [c for c in ("pattern_owned", "window_owned")
+                            if c not in _present]
+                if _missing:
+                    # Genuinely missing, so the DDL has to run -- but it must
+                    # never park an ACCESS EXCLUSIVE lock in front of the
+                    # analytics readers. lock_timeout turns a collision into
+                    # "deferred, retries in 5 minutes". SET LOCAL keeps it
+                    # scoped to this transaction instead of leaking onto a
+                    # pooled session.
+                    try:
+                        cur.execute("SET LOCAL lock_timeout = '2s'")
+                        for _col in _missing:
+                            cur.execute(
+                                "ALTER TABLE page_view_bot_hashes "
+                                f"ADD COLUMN IF NOT EXISTS {_col} "
+                                "BOOLEAN NOT NULL DEFAULT FALSE"
+                            )
+                    except Exception as e:  # noqa: BLE001 -- deferred, not broken
+                        # Unlike the majority walker, this tick's real work
+                        # READS these columns, so it cannot carry on without
+                        # them. Abort the refresh cleanly and let the next
+                        # tick retry: returning (not raising) keeps the
+                        # walker's forward pass alive, and leaving
+                        # _bot_hash_table_ready False makes _bot_filter_sql
+                        # fall back to the legacy predicate meanwhile.
+                        conn.rollback()
+                        _bot_hash_table_ready = False
+                        if _is_lock_timeout(e):
+                            _log_err("bot_hash_provenance_ddl_lock_timeout", e)
+                        else:
+                            _log_err("bot_hash_provenance_ddl_failed", e)
+                        print(
+                            "[db] bot_hash_provenance_ddl deferred "
+                            f"missing={','.join(_missing)} -- retrying next tick",
+                            file=sys.stderr,
+                        )
+                        return
+
+                pattern_sig = bot_pattern_signature()
+                cur.execute(
+                    "SELECT key, value FROM page_view_classification_meta "
+                    " WHERE key IN (%s, %s)",
+                    (BOT_HASH_PATTERN_SIG_KEY, BOT_HASH_PATTERN_WATERMARK_KEY),
+                )
+                _meta = dict(cur.fetchall())
+                try:
+                    watermark = int(_meta[BOT_HASH_PATTERN_WATERMARK_KEY])
+                except (KeyError, TypeError, ValueError):
+                    watermark = None
+                # A changed pattern list invalidates the watermark: the new
+                # pattern's verdict on older rows was never computed.
+                full_rescan = (
+                    _meta.get(BOT_HASH_PATTERN_SIG_KEY) != pattern_sig
+                    or watermark is None
+                )
+
+                # Ceiling comes off page_views_ts_idx (ts DESC) -- an
+                # index-only read, not a scan. Bounding the arms by it and
+                # storing exactly it means a row ingested mid-transaction is
+                # picked up next run, instead of being skipped by a watermark
+                # that claimed to cover it.
+                cur.execute("SELECT COALESCE(MAX(ts), 0) FROM page_views")
+                scan_ceiling = int(cur.fetchone()[0] or 0)
+
+                if full_rescan:
+                    # SET LOCAL dies with this transaction, so the raised
+                    # ceiling covers THIS run only and can never silently
+                    # become the 5-minute norm.
+                    cur.execute(
+                        "SET LOCAL statement_timeout = %s",
+                        (BOT_HASH_FULL_RESCAN_TIMEOUT_MS,),
+                    )
+                    pattern_window_sql = ""
+                    pattern_window_params = []
+                else:
+                    pattern_window_sql = " AND ts > %s AND ts <= %s "
+                    pattern_window_params = [watermark, scan_ceiling]
+                print(
+                    "[db] bot_hashes_pattern_arms mode=%s sig=%s watermark=%s "
+                    "ceiling=%s" % (
+                        "full-rescan" if full_rescan else "incremental",
+                        pattern_sig, watermark, scan_ceiling),
+                    file=sys.stderr,
+                )
+
+                # Pattern arms write straight to the real table: monotonic and
+                # insert-only, so they never join the diff. DO UPDATE fires
+                # only for a row no pattern arm has claimed yet, so a steady
+                # state writes no new row versions.
+                for _hash_type, _column in (
+                    ("visitor", "visitor_hash"), ("ip_day", "ip_day_hash"),
+                ):
+                    cur.execute(
+                        "INSERT INTO page_view_bot_hashes "
+                        "            (hash_type, hash, pattern_owned) "
+                        f"SELECT DISTINCT %s, {_column}, TRUE FROM page_views "
+                        f" WHERE {_column} IS NOT NULL AND {row_pred} "
+                        f"       {pattern_window_sql} "
+                        "ON CONFLICT (hash_type, hash) DO UPDATE "
+                        "   SET pattern_owned = TRUE "
+                        " WHERE page_view_bot_hashes.pattern_owned IS NOT TRUE",
+                        [_hash_type] + row_params + pattern_window_params,
+                    )
+                    print(
+                        f"[db] bot_hashes_pattern_arm {_hash_type} "
+                        f"touched={cur.rowcount}", file=sys.stderr,
+                    )
+
                 growth_ts = int(time.time()) - GROWTH_PATH_LOOKBACK_DAYS * 86400
                 growth_path_likes = " OR ".join(
                     "path LIKE %s" for _ in GROWTH_PATH_PATTERNS
                 )
+                # _desired_bot_hashes now carries the WINDOWED arms only --
+                # it is the diff set, and the pattern arms are not in it.
                 cur.execute(
                     "CREATE TEMP TABLE IF NOT EXISTS _desired_bot_hashes ("
                     "  hash_type TEXT NOT NULL, hash TEXT NOT NULL,"
                     "  PRIMARY KEY (hash_type, hash)) ON COMMIT DROP"
                 )
                 cur.execute("DELETE FROM _desired_bot_hashes")
-                cur.execute(
-                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
-                    f"SELECT DISTINCT 'visitor', visitor_hash FROM page_views "
-                    f"WHERE visitor_hash IS NOT NULL AND {row_pred} "
-                    "ON CONFLICT DO NOTHING",
-                    row_params,
-                )
                 # v6 rule 2 -- growth-path-cluster (approved 2026-09-06). Any
                 # visitor_hash that hit >=5 DISTINCT growth paths in a single
                 # UTC day in the last 30 days is a scanner; folded into the
@@ -8323,30 +8514,52 @@ def refresh_bot_hash_tables():
                     [claims_ts, CLAIMS_SCANNER_PATH_PREFIX + "%"]
                     + list(CLAIMS_REFERRER_HOSTS),
                 )
+                # Diff the WINDOWED arms only. No TRUNCATE (would take
+                # AccessExclusive against the analytics readers).
                 cur.execute(
-                    "INSERT INTO _desired_bot_hashes (hash_type, hash) "
-                    f"SELECT DISTINCT 'ip_day', ip_day_hash FROM page_views "
-                    f"WHERE ip_day_hash IS NOT NULL AND {row_pred} "
-                    "ON CONFLICT DO NOTHING",
-                    row_params,
-                )
-                # Diff in place: additions, then removals. No TRUNCATE (would
-                # take AccessExclusive against the analytics readers).
-                cur.execute(
-                    "INSERT INTO page_view_bot_hashes (hash_type, hash) "
-                    "SELECT d.hash_type, d.hash FROM _desired_bot_hashes d "
-                    "WHERE NOT EXISTS (SELECT 1 FROM page_view_bot_hashes p "
-                    "                  WHERE p.hash_type = d.hash_type AND p.hash = d.hash) "
-                    "ON CONFLICT DO NOTHING"
+                    "INSERT INTO page_view_bot_hashes "
+                    "            (hash_type, hash, window_owned) "
+                    "SELECT d.hash_type, d.hash, TRUE FROM _desired_bot_hashes d "
+                    "ON CONFLICT (hash_type, hash) DO UPDATE "
+                    "   SET window_owned = TRUE "
+                    " WHERE page_view_bot_hashes.window_owned IS NOT TRUE"
                 )
                 bot_hashes_added = cur.rowcount
+                # Leaving the window clears the marker but KEEPS the row when a
+                # pattern arm also owns it, so the marker stays truthful and
+                # the row stays classified.
+                cur.execute(
+                    "UPDATE page_view_bot_hashes p SET window_owned = FALSE "
+                    " WHERE p.window_owned AND p.pattern_owned "
+                    "   AND NOT EXISTS (SELECT 1 FROM _desired_bot_hashes d "
+                    "                   WHERE d.hash_type = p.hash_type "
+                    "                     AND d.hash = p.hash)"
+                )
+                # Removal is scoped by provenance: a pattern-owned row is
+                # never deleted here. This is what stops the forward-only
+                # window from un-tagging anything already derived.
                 cur.execute(
                     "DELETE FROM page_view_bot_hashes p "
-                    "WHERE NOT EXISTS (SELECT 1 FROM _desired_bot_hashes d "
-                    "                  WHERE d.hash_type = p.hash_type AND d.hash = p.hash)"
+                    " WHERE p.window_owned AND NOT p.pattern_owned "
+                    "   AND NOT EXISTS (SELECT 1 FROM _desired_bot_hashes d "
+                    "                   WHERE d.hash_type = p.hash_type "
+                    "                     AND d.hash = p.hash)"
                 )
                 bot_hashes_removed = cur.rowcount
                 print(f"[db] bot_hashes_sync added={bot_hashes_added} removed={bot_hashes_removed}", file=sys.stderr)
+
+                # Advance the watermark only after every arm succeeded, and
+                # only to the ceiling the arms actually scanned. A failure
+                # anywhere above rolls this back with the transaction, so the
+                # next run re-covers the same span rather than skipping it.
+                cur.execute(
+                    "INSERT INTO page_view_classification_meta (key, value) "
+                    "VALUES (%s, %s), (%s, %s) "
+                    "ON CONFLICT (key) DO UPDATE "
+                    "  SET value = EXCLUDED.value, updated_at = NOW()",
+                    (BOT_HASH_PATTERN_SIG_KEY, pattern_sig,
+                     BOT_HASH_PATTERN_WATERMARK_KEY, str(scan_ceiling)),
+                )
 
                 # Scanner (path, ua) combos -- capture hits + distinct_visitors
                 # so we can auto-ratchet into page_view_scanner_combos_confirmed

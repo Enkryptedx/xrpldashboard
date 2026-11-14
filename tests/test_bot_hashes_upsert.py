@@ -270,10 +270,25 @@ def test_refresh_calls_sync_for_both_tables():
     assert "SELECT DISTINCT visitor_hash FROM page_views" not in src.replace(
         "SELECT DISTINCT 'visitor', visitor_hash FROM page_views", "")  # no client-side pull
     assert "SELECT hash_type, hash FROM page_view_bot_hashes" not in src
-    # the only DELETE on bot_hashes is the anti-join (never a wholesale wipe)
+    # The only DELETE on bot_hashes is the anti-join (never a wholesale wipe).
+    #
+    # 2026-11-14: the anti-join now also carries a PROVENANCE guard, so the
+    # clause reads "WHERE p.window_owned AND NOT p.pattern_owned AND NOT
+    # EXISTS (...)" rather than opening with a bare "WHERE NOT EXISTS". The
+    # intent of this assertion is unchanged -- prove the DELETE is an
+    # anti-join and not a wipe -- so it is tightened to check for the
+    # anti-join AND the provenance guard, instead of the old exact phrasing.
+    # Dropping it would have lost the no-wipe guarantee; re-baselining it to
+    # the new string alone would have lost the reason the string changed.
     import re
     dels = re.findall(r"DELETE FROM page_view_bot_hashes[^\n]*", src)
-    assert dels and all("WHERE NOT EXISTS" in src[src.index(d):src.index(d)+200] for d in dels), dels
+    assert dels, "the anti-join DELETE vanished"
+    for d in dels:
+        clause = src[src.index(d):src.index(d) + 400]
+        assert "NOT EXISTS" in clause, d
+        assert "window_owned AND NOT p.pattern_owned" in clause, (
+            "the DELETE must only ever remove rows the windowed arms own and "
+            "the pattern arms do not", d)
     assert "DELETE FROM page_view_scanner_combos" not in src
     assert "idx_pvbh_lookup" not in src.replace(
         "# table gets. idx_pvbh_lookup duplicated that key exactly,", ""
