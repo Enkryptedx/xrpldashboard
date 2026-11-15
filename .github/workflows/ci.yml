@@ -1262,3 +1262,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_bot_hash_incremental_window.py tests/test_bot_hashes_upsert.py -q
+      # Amendment activation bar. rippled records an 80% LINE and requires
+      # strictly MORE than it, so 28/35 does not pass -- 29 does. The page was
+      # corrected 2026-09-25 but the leaf builder was not, so all 54 leaves
+      # dated 2026-09-22..2026-11-15 published the line as the bar and the
+      # pre-sign gate could not see it (amendments_block is non-scalar, so the
+      # gate only checked the metric NAME). Pins the guarded derivation
+      # (including the 1-validator `>=` case a bare +1 breaks), the templated
+      # note, and the new field-level gate check. No DB, no network.
+      - name: amendment needed-count is the bar not the 80% line (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendment_needed_count.py -q

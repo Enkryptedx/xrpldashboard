@@ -110,8 +110,23 @@ def amendments_block_from_envelope(envelope: dict) -> dict | None:
 
 
 def signed_rows(block: dict | None) -> list[dict]:
-    """Flatten per_amendment into display rows, name-sorted. Every field
-    here is inside the signed payload."""
+    """Flatten per_amendment into display rows, name-sorted.
+
+    Every field here is inside the signed payload EXCEPT `votes_needed` and
+    `threshold_note`, which are derived at display time (2026-11-15) and
+    labelled as such.
+
+    Why derive rather than re-sign: rippled records an 80% LINE and requires
+    strictly more than it, so the signed `threshold` (28 of 35) is not the
+    activation bar (29). The 54 leaves dated 2026-09-22..2026-11-15 recorded
+    only the line. They are anchored, so they are never rewritten -- they
+    keep verifying byte-for-byte while these surfaces render the bar and say
+    where it came from. A leaf signed under schema 6 carries `votes_needed`
+    itself; for older leaves we compute the identical value here, so both
+    render the same number.
+    """
+    from amendment_threshold import correction_note, votes_needed
+
     if not block:
         return []
     rows = []
@@ -124,7 +139,25 @@ def signed_rows(block: dict | None) -> list[dict]:
             "supported_by_responding_node": (a or {}).get("supported_by_responding_node"),
             "votes_count": (nv or {}).get("count") if nv else None,
             "votes_validations": (nv or {}).get("validations") if nv else None,
+            # Raw 80% line, straight from the signed leaf. Unchanged.
             "votes_threshold": (nv or {}).get("threshold") if nv else None,
+            # The activation bar. Prefer the signed value when the leaf is
+            # schema 6+; otherwise derive it, guarded for a 1-validator UNL.
+            "votes_needed": (
+                (nv or {}).get("votes_needed")
+                if nv and (nv or {}).get("votes_needed") is not None
+                else (votes_needed((nv or {}).get("threshold"),
+                                   (nv or {}).get("validations"))
+                      if nv else None)
+            ),
+            # Set only when the leaf itself lacked votes_needed, i.e. the
+            # pre-schema-6 leaves whose recorded number was the line. Drives
+            # the dated note, templated from this row's own values.
+            "threshold_note": (
+                correction_note((nv or {}).get("threshold"),
+                                (nv or {}).get("validations"))
+                if nv and (nv or {}).get("votes_needed") is None else None
+            ),
             "votes_as_of_iso": (nv or {}).get("as_of_iso") if nv else None,
             "votes_source_url": (nv or {}).get("source_url") if nv else None,
             # activation-day fields (2026-09-29): present only on an entry the
