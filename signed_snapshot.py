@@ -153,7 +153,14 @@ NAMED_ACCOUNTS_PATH = os.path.join(HERE, "named_accounts.json")
 CLAIMS_YAML_PATH = os.path.join(HERE, "CLAIMS.yaml")
 APP_PY_PATH = os.path.join(HERE, "app.py")
 
-SCHEMA_VERSION = 5
+# SCHEMA_VERSION bumps to 6 as the machine-readable marker for "each
+# amendments_block per_amendment.network_votes may carry a derived
+# `votes_needed`, and `threshold_display` states the ACTIVATION bar rather
+# than the 80% line" -- same role the 5 bump played for amendments_block
+# itself. The leaf_payload structure is unchanged, so every older reader can
+# still verify v6 leaves, and the 54 v5 leaves dated 2026-09-22..2026-11-15
+# remain valid byte-for-byte: they are never rewritten, only re-rendered.
+SCHEMA_VERSION = 6
 
 # Pre-sign gate — Charlie ruling 2026-09-23:
 # schema metrics are code, never env toggles. The full 14-key set is
@@ -1343,6 +1350,8 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
     # in_flight entry carries its own `network_vote` dict — but we keep
     # amendments_network_votes.fetch_network_vote_tallies_cached()
     # around as the fail-loud freshness gate above.
+    from amendment_threshold import needed_display, votes_needed
+
     threshold_display = None
     in_flight = state.get("in_flight") or []
     superseded = state.get("superseded") or []
@@ -1357,14 +1366,22 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
             thr = v.get("threshold")
             val = v.get("validations")
             if thr is not None and val is not None:
-                threshold_display = f"{thr}/{val}"
+                # The ACTIVATION bar, not the 80% line. rippled requires
+                # strictly more than its threshold, so publishing the raw
+                # line here read as "28 of 35 passes" -- it does not.
+                threshold_display = needed_display(thr, val)
         per_amendment[name] = {
             "hash": h,
             "enabled": False,
             "network_votes": {
                 "count": v.get("count"),
                 "validations": v.get("validations"),
+                # Raw 80% line, exactly as rippled reported it. Kept so the
+                # leaf records the observed protocol value, not our maths.
                 "threshold": v.get("threshold"),
+                # Derived from it, guarded for the 1-validator `>=` case.
+                "votes_needed": votes_needed(
+                    v.get("threshold"), v.get("validations")),
                 "as_of_iso": v.get("as_of_iso"),
                 "source_url": v.get("source_url"),
             } if v else None,
@@ -1494,7 +1511,10 @@ def _assemble_amendments_block(now_utc: dt.datetime, max_stale_seconds: int = 60
         "as_of_unix": now_ts,
         "responding_node_source": responding_source,
         "unl_source": "vl.ripple.com",
-        "threshold_display": threshold_display or "28/35",
+        # No hardcoded fallback. The old `or "28/35"` default silently
+        # asserted both a stale validator count AND the wrong bar on any
+        # block whose votes were unavailable; None lets readers say so.
+        "threshold_display": threshold_display,
         "per_amendment": per_amendment,
     }
     if block_warnings:
@@ -1761,6 +1781,44 @@ def _pre_sign_gate(snap: dict) -> list[str]:
             continue
         if fv == 0.0:
             reasons.append(f"zero_scalar:{name}")
+
+    # ── Field-level check INSIDE amendments_block (Charlie, 2026-11-15) ──
+    # amendments_block is in PRE_SIGN_NON_SCALAR_SCHEMA_5, so every check
+    # above proves only that the metric NAME is present -- none of them look
+    # inside the block. That is exactly how 54 leaves (2026-09-22..11-15)
+    # shipped `threshold_display` = "28/35", the 80% LINE rather than the
+    # activation bar, with a green gate every single night. Checking the
+    # expected key set could never have caught it; the bar lives in a field.
+    from amendment_threshold import votes_needed as _needed
+
+    for m in metrics:
+        if not isinstance(m, dict) or m.get("name") != "amendments_block":
+            continue
+        block = m.get("value") or {}
+        per = block.get("per_amendment") or {}
+        for aname, entry in sorted(per.items()):
+            nv = (entry or {}).get("network_votes")
+            if not nv:
+                # enabled / superseded rows carry no vote dict by design.
+                continue
+            thr = nv.get("threshold")
+            val = nv.get("validations")
+            if thr is None or val is None:
+                reasons.append(f"amendments_block_vote_fields_missing:{aname}")
+                continue
+            need = nv.get("votes_needed")
+            if need is None:
+                reasons.append(
+                    f"amendments_block_votes_needed_missing:{aname}")
+                continue
+            expected = _needed(thr, val)
+            if need != expected:
+                # Wrong bar is worse than no bar: it reads as authoritative.
+                reasons.append(
+                    f"amendments_block_votes_needed_wrong:{aname}:"
+                    f"{need}!={expected}")
+        if per and not block.get("threshold_display"):
+            reasons.append("amendments_block_threshold_display_missing")
 
     return reasons
 
