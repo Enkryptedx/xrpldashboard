@@ -10175,25 +10175,121 @@ def pools_json():
     return _json_response(env)
 
 
+# Hard wall-clock bound for the live fallback. The assembler makes two
+# upstream calls (own-node RPC + data.xrpl.org vote fetch); on a cold Render
+# instance that measured 42.68s on 2026-11-18, which trips the public-route
+# canary's ReadTimeout. 5s is comfortably above the warmed ~1-1.9s steady
+# state and far below anything a machine client should wait.
+_AMENDMENTS_LIVE_TIMEOUT_S = 5.0
+
+
+def _amendments_block_live_bounded(timeout: float = _AMENDMENTS_LIVE_TIMEOUT_S) -> dict:
+    """Assemble the amendments block live, but never block the request past
+    `timeout` seconds.
+
+    A worker thread cannot be cancelled, so the upstream call may still be
+    running when we give up -- the thread is a daemon and its result is
+    simply discarded. What this bounds is how long the REQUEST waits, which
+    is the thing that was producing 40s+ public responses. Returning {} lets
+    the caller report `served_from="unavailable"` rather than hang.
+    """
+    out: dict = {}
+
+    def _run():
+        try:
+            from signed_snapshot import _assemble_amendments_block
+            r = _assemble_amendments_block(datetime.now(timezone.utc))
+            if isinstance(r, dict):
+                out.update(r)
+        except Exception:  # noqa: BLE001 -- fallback path, never 500 here
+            pass
+
+    t = threading.Thread(target=_run, name="amendments-live", daemon=True)
+    t.start()
+    t.join(timeout)
+    return dict(out) if out else {}
+
+
 @app.route("/amendments.json")
 @limiter.limit(agent_tier_limit_rate)
 def amendments_json():
     """XRPL amendments with per-amendment vote tallies, machine-readable
     + signed. Sourced from the same amendments_block signal the daily
-    signed_snapshot metric uses."""
-    amendments_block = {}
+    signed_snapshot metric uses.
+
+    LEAF FIRST, bounded live fallback (2026-11-18). This route used to call
+    _assemble_amendments_block() live on EVERY request. That assembler makes
+    two upstream calls -- own-node RPC and the data.xrpl.org vote fetch --
+    with no cache, so the public latency was whatever upstream happened to
+    be. Measured on a cold Render instance right after a deploy: 9.41s,
+    42.68s, 5.78s. Warmed it settles to ~1-1.9s, but every deploy reopens
+    the cold window, and Render redeploys on every push to main including
+    the nightly one-file OFAC data commit (autoDeploy: true, no
+    buildFilter). A 42s response on a machine-readable route trips the
+    public-route canary's ReadTimeout.
+
+    The signed leaf already contains this exact block, written by the daily
+    signer, and reading it is a local read with no upstream hop. So: serve
+    the leaf, and only assemble live when there is no usable leaf -- under a
+    hard wall-clock bound so a slow upstream can never again produce a
+    40s+ public response.
+
+    `served_from` is additive, so existing consumers are unaffected while
+    an operator can see which path answered.
+    """
+    import amendments_permalink as ap  # module-local, as elsewhere in app.py
+
+    amendments_block, served_from = {}, None
+
+    # 1) Signed leaf -- local, no upstream hop.
     try:
-        from signed_snapshot import _assemble_amendments_block
-        result = _assemble_amendments_block(datetime.now(timezone.utc))
-        if isinstance(result, dict):
-            amendments_block = result
-    except Exception:
+        _dates = [d for d in _list_signed_snapshots()
+                  if d >= ap.AMENDMENTS_BLOCK_SINCE]
+        if _dates:
+            _newest = max(_dates)
+            _blk = ap.amendments_block_from_envelope(
+                _read_signed_envelope(_newest) or {})
+            if isinstance(_blk, dict) and _blk.get("per_amendment"):
+                amendments_block = _blk
+                served_from = f"signed_leaf:{_newest}"
+    except Exception:  # noqa: BLE001 -- leaf unreadable, fall through to live
         amendments_block = {}
+
+    # 2) Bounded live assembly, only if the leaf gave us nothing.
+    if not amendments_block:
+        amendments_block = _amendments_block_live_bounded()
+        served_from = "live" if amendments_block else "unavailable"
+
+    # The freshness contract must follow the SOURCE. Before this change the
+    # route always assembled live, so "<= 1h" was true. A signed leaf is
+    # written once a day, so serving one under a 1h contract would be a
+    # false promise to every machine reader -- the contract is the thing
+    # they trust. State the real bound per source, and let `served_from`
+    # carry the exact leaf date so staleness is checkable, not inferred.
+    if served_from and served_from.startswith("signed_leaf"):
+        _freshness = "≤ 24h (daily signed leaf; see served_from for its date)"
+    elif served_from == "live":
+        _freshness = "≤ 1h (assembled live)"
+    else:
+        _freshness = "unavailable"
+
     env = _machine_envelope(
-        {"amendments_block": amendments_block},
+        {"amendments_block": amendments_block, "served_from": served_from},
         source_slug="amendments-endpoint",
-        freshness_contract="≤ 1h",
+        freshness_contract=_freshness,
     )
+
+    # Charlie ruling 2026-11-18: a 200 with an empty block is a FALSE
+    # ANSWER. A machine reader cannot tell "there are no amendments in
+    # flight" from "we could not find out", and the second is an error.
+    # 503 + Retry-After says exactly that, and no-store keeps a failure out
+    # of every cache between us and the reader -- a cached empty block
+    # would outlive the outage that produced it.
+    if served_from == "unavailable":
+        resp = _json_response(env, status=503)
+        resp.headers["Retry-After"] = "60"
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
     return _json_response(env)
 
 
