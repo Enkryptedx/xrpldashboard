@@ -33,6 +33,14 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
+# Give this process a CA bundle before any TLS call. Import for the side
+# effect; see cert_env.py for the 30-day failure tally this fixes.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+try:
+    import cert_env  # noqa: F401
+except ImportError:
+    pass
+
 PG_BIN = "/opt/homebrew/opt/postgresql@17/bin"
 RCLONE = "/opt/homebrew/bin/rclone"
 
@@ -186,17 +194,57 @@ def psql_scalar(sql: str) -> str:
 
 
 def restore_dump(dump_path: Path) -> None:
+    """Restore the dump, stripping Neon-only `pg_attver` attoptions.
+
+    Why this is not a plain pg_restore any more (2026-11-17): Neon stamps
+    `pg_attver` into attoptions for columns added through its metadata-only
+    ADD COLUMN fast path, pg_dump emits `ALTER ... SET (pg_attver=...)`, and
+    ANY vanilla Postgres rejects it with `unrecognized parameter "pg_attver"`.
+    So we pipe pg_restore's SQL through the filter and apply it with psql
+    under ON_ERROR_STOP=1, which keeps the old `--exit-on-error` guarantee:
+    every OTHER error still aborts the restore.
+    """
+    from neon_dump_filter import filter_stream
+
     run([f"{PG_BIN}/createdb",
          "-h", "127.0.0.1", "-p", str(PORT),
          "-U", PG_USER, DB_NAME],
         capture=True)
-    run([f"{PG_BIN}/pg_restore",
-         "-h", "127.0.0.1", "-p", str(PORT),
-         "-U", PG_USER, "-d", DB_NAME,
-         "--no-owner", "--no-acl",
-         "--exit-on-error",
+
+    pr = subprocess.Popen(
+        [f"{PG_BIN}/pg_restore", "--no-owner", "--no-acl", "-f", "-",
          str(dump_path)],
-        capture=True)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    ps = subprocess.Popen(
+        [f"{PG_BIN}/psql", "-h", "127.0.0.1", "-p", str(PORT),
+         "-U", PG_USER, "-d", DB_NAME,
+         "-v", "ON_ERROR_STOP=1", "-q", "-f", "-"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True)
+
+    dropped: list[str] = []
+    try:
+        for line in filter_stream(pr.stdout, dropped):
+            ps.stdin.write(line)
+    finally:
+        ps.stdin.close()
+
+    pr_err = pr.stderr.read()
+    pr.wait()
+    ps_out, ps_err = ps.communicate()
+
+    print(f"[restore_test] pg_attver statements filtered: {len(dropped)}")
+    for d in dropped:
+        print(f"[restore_test]   dropped: {d[:140]}")
+
+    if pr.returncode != 0:
+        raise subprocess.CalledProcessError(
+            pr.returncode, "pg_restore -f -", output="", stderr=pr_err)
+    if ps.returncode != 0:
+        # ON_ERROR_STOP=1 -- anything other than pg_attver still fails here.
+        raise subprocess.CalledProcessError(
+            ps.returncode, "psql (filtered restore)",
+            output=ps_out, stderr=ps_err)
 
 
 def run_smoke_queries() -> list[tuple[str, str, bool, str]]:
@@ -327,16 +375,39 @@ def _ping_betterstack_success() -> None:
     Silent skip when the env var is unset, so the script keeps working
     without the monitor. Network failure logs but does not fail the
     restore test — the walker_health row is still authoritative."""
-    import urllib.request
+    _betterstack("", "ping ok", still="restore_test still PASS")
+
+
+def _betterstack(suffix: str, label: str, still: str) -> None:
+    """Hit the BetterStack heartbeat URL with curl.
+
+    curl, not urllib: urllib under this venv had no CA bundle, so every ping
+    since at least October died with CERTIFICATE_VERIFY_FAILED and was
+    swallowed -- the dead-man's switch signalled nothing in either direction
+    (2026-11-18). cert_env sets SSL_CERT_FILE for in-process TLS, and curl
+    uses the system trust store, so this path no longer depends on either
+    being right.
+    """
     url = os.environ.get("BETTERSTACK_PG_RESTORE_TEST_URL", "").strip()
     if not url:
         return
     try:
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"[restore_test] betterstack ping ok ({resp.status})")
+        run(["curl", "-fsS", "-m", "10", "-X", "POST", url + suffix],
+            capture=True)
+        print(f"[restore_test] betterstack {label}")
     except Exception as e:
-        print(f"[restore_test] betterstack ping failed: {e} (restore_test still PASS)")
+        print(f"[restore_test] betterstack {label} failed: {e} ({still})")
+
+
+def _page_betterstack_failure(rc: int) -> None:
+    """ACTIVE page on FAIL (Charlie, 2026-11-18).
+
+    Previously a failure only withheld the heartbeat, so it waited out a
+    1-day grace window and surfaced in an evening summary. POSTing to the
+    heartbeat's /fail endpoint opens the incident immediately.
+    """
+    _betterstack("/fail", f"FAIL page sent (rc={rc})",
+                 still="restore_test still FAIL")
 
 
 def main() -> int:
@@ -348,6 +419,8 @@ def main() -> int:
             WALKER_NAME, ok=(rc == 0),
             message="PASS" if rc == 0 else f"FAIL rc={rc}",
         )
+    if rc != 0:
+        _page_betterstack_failure(rc)
     if rc == 0:
         _ping_betterstack_success()
         # 2026-09-09: stamp for dockvault_mirror_freshness_canary meta-watch.
