@@ -456,6 +456,69 @@ figures are attested by the signed chain, not just reconstructed.
   touch `_index.json`; the index row is a separate step. A folder without an
   index row is invisible to `_wayback_retry.sh`, which iterates the index.
 
+## 2026-11-11 · CoinGape · (byline not captured)
+
+- **URL**: https://coingape.com/xrp-news-ripples-xrp-ledger-lending-system-nears-approval-with-seven-more-validator-votes-needed/
+- **What was cited**: "XRP Ledger's LendingProtocol has secured 22 validator
+  votes, leaving seven more needed for network approval." "SingleAssetVault
+  has received 23 validator votes, while the related LendingProtocolV1_1
+  amendment currently holds 22 votes." "XRP Ledger lending amendments
+  require 29 validator votes maintained for 14 consecutive days."
+- **Cited landing page**: /amendments/2026-11-11
+- **Fetch date claimed**: 2026-11-11
+
+### Verification (2026-11-18)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| LendingProtocol 22 votes | **y** | Our signed leaf 2026-11-11: `LendingProtocol count=22 validations=35 threshold=28`. |
+| SingleAssetVault 23 votes | **y** | Same leaf: `SingleAssetVault count=23 validations=35`. |
+| LendingProtocolV1_1 22 votes | **y** | Same leaf: `LendingProtocolV1_1 count=22 validations=35`. |
+| "seven more needed" / 29 required for 14 days | **y** | 22 + 7 = 29, which is the activation bar: rippled's threshold is `max(1, trusted*80/100)` = 28 for 35 validators and `AmendmentSet::passes()` requires **strictly greater**, so 29 is needed and 28 loses. This matches what /amendments has displayed since its 2026-09-25 correction. |
+
+Note on our own record: the leaf for this date carried
+`threshold_display "28/35"` — rippled's raw 80% line, not the activation bar.
+The **page** has said "needs 29 of 35" since 2026-09-25; only the signed
+leaves were wrong. That leaf defect was fixed on 2026-11-15 and the first
+corrected (v6) leaf is dated 2026-11-16. CoinGape's 29 is consistent with
+the page they cited.
+
+## 2026-10-18 · Coindoo · (byline not captured)
+
+- **URL**: https://coindoo.com/xrpls-cleanup-votes-spare-lending-short/
+- **What was cited**: "The XRPL Dashboard's October 18 snapshot showed 29 of
+  35 monitored validators backing fixCleanup3_4_0." "The line sits at 29
+  because the rule needs strictly more than 80% of trusted validators, so 28
+  of 35 isn't enough, the dashboard notes."
+- **Cited landing page**: /amendments/2026-10-18
+- **Fetch date claimed**: 2026-10-18
+
+### Verification (2026-11-18)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| fixCleanup3_4_0 at 29 of 35 on Oct 18 | **y** | Our signed leaf 2026-10-18: `fixCleanup3_4_0 count=29 validations=35 threshold=28`. |
+| "needs strictly more than 80%, so 28 of 35 isn't enough" | **y** | Correct reading of rippled's rule, and of what /amendments displays since 2026-09-25. |
+
+## 2026-10-24 · AD-DOGE · (byline not captured)
+
+- **URL**: https://ad-doge.com/blog/xrp-ledger-fix-upgrade-faces-november-4-earliest-activation-after-vote-reset
+- **What was cited**: "At the XRPL Dashboard's October 24, 07:09 UTC
+  snapshot, 32 of 35 trusted validators supported the amendment, or 91[%]."
+- **Cited landing page**: /amendments
+- **Fetch date claimed**: 2026-10-24 07:09 UTC
+
+### Verification (2026-11-18)
+
+| Claim | Verdict | Basis |
+|---|---|---|
+| 32 of 35 trusted validators (91%) | **y** | Our signed leaf 2026-10-24: `fixCleanup3_4_0 count=32 validations=35`. 32/35 = 91.4%. |
+| The "07:09 UTC" snapshot time | **unverifiable** | We sign **one leaf per day**; the 2026-10-24 leaf is stamped `as_of_unix=1792803607` = **01:00:07 UTC**. No intraday state is archived, so whether the page read 32/35 specifically at 07:09 UTC cannot be reconstructed from our records. The count is confirmed for that date; the hour is not. |
+
+**Overall: partial** — the figure is confirmed against the correct day's
+leaf, the quoted timestamp is not verifiable from anything we keep.
+
+
 ## Archive index (private local copies + Wayback)
 
 Started 2026-09-27 (Charlie). Every article referenced above has a private
@@ -500,6 +563,9 @@ re-resolves and updates `_index.json`). Regenerate with
 | 2026-10-26 | Cryptomaan (batch-upgrade-2) | `2026-10-26_cryptomaan-batch-upgrade-2-nieuws-xrp-ledger-bat` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
 | 2026-10-26 | New Economy (JP) #616034 | `2026-10-26_new-economy-jp-616034-posts-616034` | 200 (via curl recovery) | web/20261013082332 |
 | 2026-11-06 | Coinpaper · Marcus Hale | `2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60` | 200 | PENDING (save 429 — retry pass launched) |
+| 2026-11-11 | CoinGape (lending nears approval) | `2026-11-18_coingape-lending-nears-approval-seven-more-votes` | 200 | web/20261118213901 |
+| 2026-10-18 | Coindoo (cleanup votes, lending short) | `2026-11-18_coindoo-xrpl-cleanup-votes-spare-lending-short` | 200 | web/20261118214023 |
+| 2026-10-24 | AD-DOGE (fix upgrade, Nov 4 earliest) | `2026-11-18_ad-doge-fix-upgrade-nov-4-earliest-after-vote-reset` | 200 | web/20261118214150 |
 
 Machine-readable index: `press_archive/_index.json`. Archiver:
 `press_archive/_archive_article.py` (stdlib-only fetch → HTML + readable text
