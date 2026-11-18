@@ -558,9 +558,9 @@ re-resolves and updates `_index.json`). Regenerate with
 | 2026-10-20 | New Economy (JP) · #18 | `2026-10-13_new-economy-jp-posts-616034` | 200 | PENDING (save 429 — retry pass queued) |
 | 2026-09-27 | WordUp News (upgrade delayed 10 days) | `2026-09-27_wordup-news-cryptocurrency-ripple-news-xrp-ledge` | 200 | PENDING |
 | 2026-09-25 | U.Today (Batch reset, quoting @Vet_X0) — source for /amendments/how-it-works | `2026-09-25_u-today-batch-reset-quoting-vet-x0-xrp-batch-upg` | 200 | web/20260927093235 |
-| 2026-10-26 | TronWeekly | `2026-10-26_tronweekly-xrp-ledger-releases-version-3-4-0-wit` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
+| 2026-10-26 | TronWeekly | `2026-10-26_tronweekly-xrp-ledger-releases-version-3-4-0-wit` | 200 (via curl recovery) | web/20261101222953 |
 | 2026-10-26 | Blockvoz | `2026-10-26_blockvoz-xrp-ledger-delegacion-permisos-bancos-s` | 200 (via curl recovery) | web/20261009234139 |
-| 2026-10-26 | Cryptomaan (batch-upgrade-2) | `2026-10-26_cryptomaan-batch-upgrade-2-nieuws-xrp-ledger-bat` | 200 (via curl recovery) | PENDING (venv TLS gotcha — save not attempted via curl) |
+|
 | 2026-10-26 | New Economy (JP) #616034 | `2026-10-26_new-economy-jp-616034-posts-616034` | 200 (via curl recovery) | web/20261013082332 |
 | 2026-11-06 | Coinpaper · Marcus Hale | `2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60` | 200 | PENDING (save 429 — retry pass launched) |
 | 2026-11-11 | CoinGape (lending nears approval) | `2026-11-18_coingape-lending-nears-approval-seven-more-votes` | 200 | web/20261118213901 |
