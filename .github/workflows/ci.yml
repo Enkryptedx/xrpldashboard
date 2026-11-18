@@ -1302,3 +1302,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_chain_guard_writer_only.py -q
+      # /amendments.json served a LIVE two-upstream assembly on every
+      # request, uncached and unbounded. Cold on Render right after a deploy
+      # that measured 9.41s / 42.68s / 5.78s (warmed: ~1-1.9s), and Render
+      # redeploys on every push to main -- including the nightly one-file
+      # OFAC data commit, since autoDeploy is true with no buildFilter. A 42s
+      # response on a machine-readable route trips the canary's ReadTimeout.
+      # Now: signed leaf first (local read), live only as a fallback under a
+      # hard wall-clock bound. No DB, no network (assembler stubbed).
+      - name: amendments.json serves the leaf and bounds live (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_amendments_json_leaf_first.py -q
