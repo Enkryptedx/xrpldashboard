@@ -1217,13 +1217,81 @@ def _derive_rwa_supply_nav_source(per_family: list[dict]) -> str:
 # Chain management
 # ---------------------------------------------------------------------------
 
+# Env name mirrors --init-chain; launchd runs this script with no shell
+# wrapper, so the env form is what a deliberate first-run would use there.
+INIT_CHAIN_ENV = "SIGNED_SNAPSHOT_INIT_CHAIN"
+
+
+class ChainMissingError(Exception):
+    """chain.json is absent where an append-only chain was REQUIRED.
+
+    Deliberately an Exception, not SystemExit. The first attempt at this
+    guard (PR #162, reverted) raised a SystemExit subclass, and SystemExit
+    derives from BaseException -- so `except Exception` could not catch it.
+    /amendments.json guards its assembler with exactly that clause, the
+    error escaped as a bare SystemExit, and it killed the worker mid-request:
+    three 40s `code=000` timeouts instead of a 500, for about an hour on
+    2026-11-18. An Exception is containable by every normal caller; the
+    non-zero exit now comes from main(), which is the only place that should
+    be deciding process exit codes.
+    """
+
+
 def load_chain() -> dict:
     """Read the append-only chain file. Returns the default empty chain
-    if absent."""
+    if absent.
+
+    INTENTIONALLY PERMISSIVE, and not the place for the fail-closed guard.
+    Read paths reach this function too -- _load_previous_leaf_enabled_entries
+    (and through it _assemble_amendments_block, which serves
+    /amendments.json and the MCP get_amendments tool). Those run on hosts
+    that legitimately have no chain at all: signed_snapshots/ is gitignored,
+    so the deployed Render tree never has one. Raising here breaks readers
+    for a condition that is normal for them. The guard belongs on the WRITE
+    path only -- see require_existing_chain().
+    """
     if not os.path.exists(CHAIN_PATH):
         return {"schema_version": SCHEMA_VERSION, "leaves": [], "current_root": None}
     with open(CHAIN_PATH) as f:
         return json.load(f)
+
+
+def require_existing_chain(allow_init: bool = False) -> None:
+    """Writer-path guard: refuse to append to a chain that is not there.
+
+    Called only from the signing path. A missing chain.json conflates two
+    situations the code cannot tell apart:
+
+      * a legitimate first-ever run, where an empty chain is correct;
+      * the signer running from a tree with no chain data -- a git worktree,
+        a fresh clone, a renamed SNAPSHOTS_DIR, a restored machine whose
+        volume is not mounted yet.
+
+    In the second case, appending silently starts a NEW chain: leaf_index 0,
+    previous_root None, a fresh root published as authoritative, and the
+    existing leaves plus their on-ledger anchors orphaned with nothing in the
+    output saying so. CHAIN_PATH follows __file__, so merely running the
+    module from a worktree already points it at an empty directory.
+
+    Raises ChainMissingError unless init is explicitly authorised. Readers
+    never call this.
+    """
+    if os.path.exists(CHAIN_PATH):
+        return
+    if allow_init or os.environ.get(INIT_CHAIN_ENV) == "1":
+        print(
+            f"[signed_snapshot] INITIALISING a new chain at {CHAIN_PATH} "
+            f"(explicitly authorised)", file=sys.stderr,
+        )
+        return
+    raise ChainMissingError(
+        f"refusing to append to a chain that does not exist: {CHAIN_PATH}. "
+        f"If this tree should already have one, you are running from the "
+        f"wrong directory (CHAIN_PATH follows __file__, so a worktree or "
+        f"fresh clone has none) or the volume is not mounted -- signing here "
+        f"would orphan every existing leaf and anchor. To genuinely start the "
+        f"first chain, pass --init-chain or set {INIT_CHAIN_ENV}=1."
+    )
 
 
 def write_chain(chain: dict):
@@ -1854,6 +1922,9 @@ def sign_snapshot(snap: dict, dry_run: bool = False) -> dict:
     leaf_bytes = _canonical_json(leaf_payload)
     leaf_hash = _hash_leaf(leaf_bytes)
 
+    # Write path: refuse to append to an absent chain (see
+    # require_existing_chain). Readers calling load_chain() are unaffected.
+    require_existing_chain()
     chain = load_chain()
     leaf_index, all_leaves, replaced = append_or_replace_leaf(
         chain,
@@ -2154,6 +2225,11 @@ def main():
     parser.add_argument("--generate-keys", action="store_true", help="One-time Ed25519 keygen.")
     parser.add_argument("--print-pubkey", action="store_true", help="Show pubkey + fingerprint + DNS TXT draft.")
     parser.add_argument("--dry-run", action="store_true", help="Build + sign + verify, but write nothing.")
+    parser.add_argument(
+        "--init-chain", action="store_true",
+        help=("Authorise starting a NEW chain when chain.json is absent. "
+              "Without it, signing into an empty tree is a hard error. Only "
+              "correct for a genuine first-ever run."))
     parser.add_argument("--verify", metavar="YYYY-MM-DD", help="Verify a stored snapshot file.")
     parser.add_argument("--date", metavar="YYYY-MM-DD", help="Override snapshot date (default: today UTC).")
     parser.add_argument(
@@ -2164,6 +2240,11 @@ def main():
              "anchors (see ONLEDGER_ANCHOR_SPEC.md Type B).",
     )
     args = parser.parse_args()
+
+    # Route the flag through the env var so both entry forms land on the one
+    # check inside require_existing_chain().
+    if getattr(args, "init_chain", False):
+        os.environ[INIT_CHAIN_ENV] = "1"
 
     if args.generate_keys:
         return generate_keys()
@@ -2229,7 +2310,15 @@ def main():
                   file=sys.stderr, flush=True)
             raise PreSignGateBlocked(gate_reasons)
 
-        signed = sign_snapshot(snap, dry_run=args.dry_run)
+        try:
+            signed = sign_snapshot(snap, dry_run=args.dry_run)
+        except ChainMissingError as e:
+            # Non-zero exit decided HERE, not by the exception's type. The
+            # reverted PR #162 encoded it as a SystemExit subclass, which
+            # escaped a caller's `except Exception` and killed a web worker.
+            print(f"[signed_snapshot] REFUSING to sign: {e}",
+                  file=sys.stderr, flush=True)
+            return 4
         print(summarize(signed))
 
         if args.dry_run:

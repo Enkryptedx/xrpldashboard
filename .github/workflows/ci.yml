@@ -1287,3 +1287,18 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_cert_env_rollout.py -q
+      # Chain guard: WRITER-only, and readers must survive a missing chain.
+      # PR #162 (reverted as #163) put this guard inside load_chain() and
+      # raised a SystemExit subclass. load_chain() is on read paths too
+      # (_load_previous_leaf_enabled_entries -> _assemble_amendments_block ->
+      # /amendments.json and MCP get_amendments), and those run on hosts with
+      # no chain at all because signed_snapshots/ is gitignored. SystemExit
+      # also dodges `except Exception`, so it killed the worker mid-request:
+      # ~1h of 40s code=000 timeouts on 2026-11-18. The 12 original tests all
+      # passed because every one called load_chain() directly, never through a
+      # route. This step covers the route, with only the two network fetches
+      # stubbed so the assembler's real hop into load_chain still executes.
+      - name: chain guard is writer-only and readers survive (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_chain_guard_writer_only.py -q
