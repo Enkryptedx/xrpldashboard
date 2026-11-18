@@ -1287,3 +1287,15 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_cert_env_rollout.py -q
+      # Chain fail-closed guard. load_chain() used to return a fresh empty
+      # chain whenever chain.json was absent, which is indistinguishable from
+      # "signer run from a tree with no chain data" -- a worktree, fresh
+      # clone, unmounted volume. That silently starts a NEW chain at
+      # leaf_index 0 and orphans every existing leaf and on-ledger anchor.
+      # CHAIN_PATH follows __file__, so a worktree already triggers it. Pins
+      # refusal by default, init only when explicitly authorised, and that
+      # verification still degrades rather than refusing. No DB, no network.
+      - name: load_chain refuses a missing chain unless init is authorised (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_chain_fail_closed.py -q
