@@ -532,37 +532,37 @@ re-resolves and updates `_index.json`). Regenerate with
 
 | Date | Outlet | Archive dir (under press_archive/) | HTTP | Wayback |
 |---|---|---|---|---|
-| 2026-08-28 | AllAboutXRP | `2026-08-28_allaboutxrp-news-xrpl-fixcleanup3-3-0-majority-a` | 200 | PENDING |
+| 2026-08-28 | AllAboutXRP | `2026-08-28_allaboutxrp-news-xrpl-fixcleanup3-3-0-majority-a` | 200 | web/20261118221310 |
 | 2026-09-01 | Agentic Tribune (AI-generated) | `2026-09-01_agentic-tribune-article-20260901-500-million-xrp` | 200 | web/20261101222122 |
 | 2026-09-18 | CryptoSlate | `2026-09-18_cryptoslate-xrpls-new-lending-tool-could-lock-up` | 200 | web/20260920071642 |
-| 2026-09-18 | amznusa.com (aggregator) | `2026-09-18_amznusa-com-aggregator-xrpls-new-lending-tool-co` | 200 | PENDING |
-| 2026-09-19 | CoinDesk (Sep19) | `2026-09-19_coindesk-sep19-tech-2026-09-19-ripple-says-asset` | 200 | PENDING |
-| 2026-09-19 | Coinwelt (DE) | `2026-09-19_coinwelt-de-news-xrp-ledger-batch-v11-atomare-za` | 200 | PENDING |
-| 2026-09-20 | Blockonomi | `2026-09-20_blockonomi-xrp-ledger-batch-v1-1-nears-activatio` | 200 | PENDING |
-| 2026-09-20 | WordUp News (Oct5 delegation) | `2026-09-20_wordup-news-oct5-delegation-cryptocurrency-xrp-l` | 200 | PENDING |
-| 2026-09-20 | WordUp News (Revolut off-topic) | `2026-09-20_wordup-news-revolut-off-topic-cryptocurrency-rev` | 200 | PENDING |
-| 2026-09-21 | Coin Insider | `2026-09-21_coin-insider-news-ripple-says-asset-managers-are` | 200 | PENDING |
-| 2026-09-21 | UseTheBitcoin | `2026-09-21_usethebitcoin-news-xrp-ledger-batch-v1-1-gains-i` | 200 | PENDING |
-| 2026-09-22 | Crinance | `2026-09-22_crinance-xrpl-fixes-critical-pre-mainnet-flaw-bu` | 200 | PENDING |
-| 2026-09-23 | Blockto | `2026-09-23_blockto-news-xrp-ledger-sets-new-date-for-featur` | 200 | PENDING |
-| 2026-09-23 | CoinDesk (Sep23) | `2026-09-23_coindesk-sep23-tech-2026-09-23-xrp-ledger-retrie` | 200 | PENDING |
-| 2026-09-23 | Cryptomaan (NL) | `2026-09-23_cryptomaan-nl-nieuws-xrp-ledger-permission-deleg` | 200 | PENDING |
-| 2026-09-24 | TheStreet | `2026-09-24_thestreet-crypto-markets-xrp-ledger-eyes-an-octo` | 403 | PENDING (headline-only; body via Yahoo syndication) |
-| 2026-09-24 | Yahoo Finance (TheStreet syndication) | `2026-09-24_yahoo-finance-thestreet-syndication-markets-cryp` | 200 | PENDING |
-| 2026-09-25 | New Economy (JP) | `2026-09-25_new-economy-jp-posts-610604` | 200 | PENDING |
-| 2026-10-24 | crypto.news · #21 | `2026-10-19_crypto-news-xrp-ledger-bug-fix-lending-validator` | 200 | PENDING (save accepted 302; URL on next lookup) |
+| 2026-09-18 | amznusa.com (aggregator) | `2026-09-18_amznusa-com-aggregator-xrpls-new-lending-tool-co` | 200 | web/20261101222322 |
+| 2026-09-19 | CoinDesk (Sep19) | `2026-09-19_coindesk-sep19-tech-2026-09-19-ripple-says-asset` | 200 | PENDING (URL recovered from page_views referrers; save not attempted — endpoint rate-limited) |
+| 2026-09-19 | Coinwelt (DE) | `2026-09-19_coinwelt-de-news-xrp-ledger-batch-v11-atomare-za` | 200 | web/20261118221537 |
+| 2026-09-20 | Blockonomi | `2026-09-20_blockonomi-xrp-ledger-batch-v1-1-nears-activatio` | 200 | web/20261101222511 |
+| 2026-09-20 | WordUp News (Oct5 delegation) | `2026-09-20_wordup-news-oct5-delegation-cryptocurrency-xrp-l` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-09-20 | WordUp News (Revolut off-topic) | `2026-09-20_wordup-news-revolut-off-topic-cryptocurrency-rev` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-09-21 | Coin Insider | `2026-09-21_coin-insider-news-ripple-says-asset-managers-are` | 200 | web/20261118221924 |
+| 2026-09-21 | UseTheBitcoin | `2026-09-21_usethebitcoin-news-xrp-ledger-batch-v1-1-gains-i` | 200 | web/20261118222028 |
+| 2026-09-22 | Crinance | `2026-09-22_crinance-xrpl-fixes-critical-pre-mainnet-flaw-bu` | 200 | web/20261118222110 |
+| 2026-09-23 | Blockto | `2026-09-23_blockto-news-xrp-ledger-sets-new-date-for-featur` | 200 | web/20261118222230 |
+| 2026-09-23 | CoinDesk (Sep23) | `2026-09-23_coindesk-sep23-tech-2026-09-23-xrp-ledger-retrie` | 200 | PENDING (URL recovered from page_views referrers; save not attempted — endpoint rate-limited) |
+| 2026-09-23 | Cryptomaan (NL) | `2026-09-23_cryptomaan-nl-nieuws-xrp-ledger-permission-deleg` | 200 | web/20261118222338 |
+| 2026-09-24 | TheStreet | `2026-09-24_thestreet-crypto-markets-xrp-ledger-eyes-an-octo` | 403 | PENDING (URL recovered from page_views referrers; save not attempted — endpoint rate-limited) |
+| 2026-09-24 | Yahoo Finance (TheStreet syndication) | `2026-09-24_yahoo-finance-thestreet-syndication-markets-cryp` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-09-25 | New Economy (JP) | `2026-09-25_new-economy-jp-posts-610604` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-10-24 | crypto.news · #21 | `2026-10-19_crypto-news-xrp-ledger-bug-fix-lending-validator` | 200 | PENDING (no recoverable URL: no canonical/og:url in archive, no crypto.news article referrer) |
 | 2026-10-24 | Analytics Insight · #20 | `2026-10-09_analytics-insight-news-xrp-ledger-activates-perm` | 200 | web/20261009133217 |
-| 2026-10-24 | Analytics Insight · #19 | `2026-09-25_analytics-insight-news-xrp-ledger-stablecoin-mar` | 200 | PENDING (save returned no status — retry) |
-| 2026-10-20 | New Economy (JP) · #14 re-archive | `2026-09-24_new-economy-jp-posts-610604` | 200 | PENDING (save 429 — retry pass queued) |
-| 2026-10-20 | New Economy (JP) · #17 | `2026-09-28_new-economy-jp-posts-611538` | 200 | PENDING (save 429 — retry pass queued) |
-| 2026-10-20 | New Economy (JP) · #18 | `2026-10-13_new-economy-jp-posts-616034` | 200 | PENDING (save 429 — retry pass queued) |
-| 2026-09-27 | WordUp News (upgrade delayed 10 days) | `2026-09-27_wordup-news-cryptocurrency-ripple-news-xrp-ledge` | 200 | PENDING |
+| 2026-10-24 | Analytics Insight · #19 | `2026-09-25_analytics-insight-news-xrp-ledger-stablecoin-mar` | 200 | PENDING (URL recovered from page_views referrers; save not attempted — endpoint rate-limited) |
+| 2026-10-20 | New Economy (JP) · #14 re-archive | `2026-09-24_new-economy-jp-posts-610604` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-10-20 | New Economy (JP) · #17 | `2026-09-28_new-economy-jp-posts-611538` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-10-20 | New Economy (JP) · #18 | `2026-10-13_new-economy-jp-posts-616034` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
+| 2026-09-27 | WordUp News (upgrade delayed 10 days) | `2026-09-27_wordup-news-cryptocurrency-ripple-news-xrp-ledge` | 200 | PENDING (save endpoint returned 520/429 — rate-limited, retry needed; not evidence of no archive) |
 | 2026-09-25 | U.Today (Batch reset, quoting @Vet_X0) — source for /amendments/how-it-works | `2026-09-25_u-today-batch-reset-quoting-vet-x0-xrp-batch-upg` | 200 | web/20260927093235 |
 | 2026-10-26 | TronWeekly | `2026-10-26_tronweekly-xrp-ledger-releases-version-3-4-0-wit` | 200 (via curl recovery) | web/20261101222953 |
 | 2026-10-26 | Blockvoz | `2026-10-26_blockvoz-xrp-ledger-delegacion-permisos-bancos-s` | 200 (via curl recovery) | web/20261009234139 |
 |
 | 2026-10-26 | New Economy (JP) #616034 | `2026-10-26_new-economy-jp-616034-posts-616034` | 200 (via curl recovery) | web/20261013082332 |
-| 2026-11-06 | Coinpaper · Marcus Hale | `2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60` | 200 | PENDING (save 429 — retry pass launched) |
+| 2026-11-06 | Coinpaper · Marcus Hale | `2026-11-06_coinpaper-38426-xrpl-lending-protocol-reaches-60` | 200 | web/20261109202828 |
 | 2026-11-11 | CoinGape (lending nears approval) | `2026-11-18_coingape-lending-nears-approval-seven-more-votes` | 200 | web/20261118213901 |
 | 2026-10-18 | Coindoo (cleanup votes, lending short) | `2026-11-18_coindoo-xrpl-cleanup-votes-spare-lending-short` | 200 | web/20261118214023 |
 | 2026-10-24 | AD-DOGE (fix upgrade, Nov 4 earliest) | `2026-11-18_ad-doge-fix-upgrade-nov-4-earliest-after-vote-reset` | 200 | web/20261118214150 |
