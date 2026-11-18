@@ -353,7 +353,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "ETH",
+      "chain": "BSC",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -9916,7 +9916,7 @@
     }
   },
   "count": 1064,
-  "fetched_at_utc": "2026-11-17 21:03 UTC",
-  "publication_date": "2026-11-13",
+  "fetched_at_utc": "2026-11-18 21:03 UTC",
+  "publication_date": "2026-11-18",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
