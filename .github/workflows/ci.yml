@@ -1274,3 +1274,16 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendment_needed_count.py -q
+      # CA-bundle rollout. The repo venv has no system trust store, so every
+      # in-process TLS call verified against an empty one -- 38 logged
+      # CERTIFICATE_VERIFY_FAILED hits across five jobs in 30 days, including
+      # REAL fetches (unl_snapshot's vl.ripple.com pull, the MaxMind
+      # download), not just heartbeats. PR #160 added cert_env but only
+      # restore_test imported it. This pins the import on every fetcher AND
+      # that none of them ever disables verification -- a third-party TOML
+      # cert error must stay a recorded per-domain finding, never bypassed,
+      # because verify_toml is a trust surface. No DB, no network.
+      - name: every fetcher has a CA bundle and none bypass (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_cert_env_rollout.py -q

@@ -51,6 +51,20 @@ import certifi
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountInfo
 
+# Give this process a CA bundle before any TLS call (2026-11-18).
+# The repo venv has no system trust store, so urllib verified against
+# an empty one and real fetches died with CERTIFICATE_VERIFY_FAILED --
+# 38 logged hits across five jobs in 30 days, including this one's.
+# cert_env fixes only OUR missing bundle: a 'Hostname mismatch' or a
+# broken third-party cert stays a real, recorded finding.
+import os as _os_cert
+import sys as _sys_cert
+_sys_cert.path.insert(0, _os_cert.path.dirname(_os_cert.path.abspath(__file__)))
+try:
+    import cert_env  # noqa: F401  (imported for its side effect)
+except ImportError:
+    pass
+
 _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 

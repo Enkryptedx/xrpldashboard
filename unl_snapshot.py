@@ -29,6 +29,20 @@ from xrpl.core import binarycodec
 import db
 from network_state import RIPPLE_EPOCH, UNL_SOURCES, _fetch_unl
 
+# Give this process a CA bundle before any TLS call (2026-11-18).
+# The repo venv has no system trust store, so urllib verified against
+# an empty one and real fetches died with CERTIFICATE_VERIFY_FAILED --
+# 38 logged hits across five jobs in 30 days, including this one's.
+# cert_env fixes only OUR missing bundle: a 'Hostname mismatch' or a
+# broken third-party cert stays a real, recorded finding.
+import os as _os_cert
+import sys as _sys_cert
+_sys_cert.path.insert(0, _os_cert.path.dirname(_os_cert.path.abspath(__file__)))
+try:
+    import cert_env  # noqa: F401  (imported for its side effect)
+except ImportError:
+    pass
+
 # Mirrors launchd/com.charliebruce.xrpldashboard.unl_snapshot.plist
 # StartCalendarInterval (02:23 daily). No per-second StartInterval, so we
 # express the calendar cadence as 86400s for /walker_health's staleness
