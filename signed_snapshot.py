@@ -1217,65 +1217,10 @@ def _derive_rwa_supply_nav_source(per_family: list[dict]) -> str:
 # Chain management
 # ---------------------------------------------------------------------------
 
-# Env name mirrors the --init-chain flag; launchd has no shell wrapper for
-# this script, so the env form is what a deliberate re-init would use there.
-INIT_CHAIN_ENV = "SIGNED_SNAPSHOT_INIT_CHAIN"
-
-
-class ChainMissingError(SystemExit):
-    """chain.json is absent and no explicit init was authorised.
-
-    SystemExit so an unguarded signer run dies non-zero with the reason on
-    stderr, rather than quietly succeeding on a brand-new chain.
-    """
-
-
-def load_chain(allow_init: bool = False) -> dict:
-    """Read the append-only chain file. FAIL-CLOSED on a missing file.
-
-    Until 2026-11-18 a missing chain.json returned a fresh empty chain. That
-    conflates two situations that look identical to the code and could not be
-    more different:
-
-      * a legitimate first-ever run, where an empty chain is correct;
-      * the signer running from a tree that simply has no chain data -- a
-        git worktree, a fresh clone, a renamed SNAPSHOTS_DIR, a restored
-        machine where the volume is not mounted yet.
-
-    In the second case the old behaviour silently started a NEW chain:
-    leaf_index 0, previous_root None, a fresh root published as authoritative,
-    and 182 existing leaves plus 15 on-ledger anchors orphaned with nothing
-    in the output saying so. The anchored history would still verify on its
-    own, but the live chain would no longer descend from it.
-
-    This is not hypothetical. `CHAIN_PATH` is derived from `__file__`, so
-    running this module out of a worktree already points it at a directory
-    with no snapshots -- which is exactly how a chain_link verification
-    failure got mistaken for a code regression earlier the same day.
-
-    So an absent chain now refuses unless init is explicitly authorised, by
-    `--init-chain` or SIGNED_SNAPSHOT_INIT_CHAIN=1. Verification is
-    deliberately unaffected: the verify path reads CHAIN_PATH directly behind
-    its own existence check and degrades to an honest "could not verify the
-    chain link", which is the correct answer for a verifier with no chain.
-    """
+def load_chain() -> dict:
+    """Read the append-only chain file. Returns the default empty chain
+    if absent."""
     if not os.path.exists(CHAIN_PATH):
-        if not (allow_init or os.environ.get(INIT_CHAIN_ENV) == "1"):
-            raise ChainMissingError(
-                f"[signed_snapshot] REFUSING to start a fresh chain: "
-                f"{CHAIN_PATH} does not exist.\n"
-                f"  If this tree should already have a chain, you are running "
-                f"from the wrong directory (CHAIN_PATH follows __file__, so a "
-                f"worktree or fresh clone has none) or the volume is not "
-                f"mounted. Signing here would orphan every existing leaf and "
-                f"anchor.\n"
-                f"  To genuinely start the first chain, pass --init-chain or "
-                f"set {INIT_CHAIN_ENV}=1."
-            )
-        print(
-            f"[signed_snapshot] INITIALISING a new chain at {CHAIN_PATH} "
-            f"(explicitly authorised)", file=sys.stderr,
-        )
         return {"schema_version": SCHEMA_VERSION, "leaves": [], "current_root": None}
     with open(CHAIN_PATH) as f:
         return json.load(f)
@@ -2209,11 +2154,6 @@ def main():
     parser.add_argument("--generate-keys", action="store_true", help="One-time Ed25519 keygen.")
     parser.add_argument("--print-pubkey", action="store_true", help="Show pubkey + fingerprint + DNS TXT draft.")
     parser.add_argument("--dry-run", action="store_true", help="Build + sign + verify, but write nothing.")
-    parser.add_argument(
-        "--init-chain", action="store_true",
-        help=("Authorise starting a NEW chain when chain.json is absent. "
-              "Without this, a missing chain is a hard error -- see "
-              "load_chain(). Only correct for a genuine first-ever run."))
     parser.add_argument("--verify", metavar="YYYY-MM-DD", help="Verify a stored snapshot file.")
     parser.add_argument("--date", metavar="YYYY-MM-DD", help="Override snapshot date (default: today UTC).")
     parser.add_argument(
@@ -2224,13 +2164,6 @@ def main():
              "anchors (see ONLEDGER_ANCHOR_SPEC.md Type B).",
     )
     args = parser.parse_args()
-
-    # Route the flag through the env var so both entry forms land on one
-    # check inside load_chain(), rather than threading allow_init through
-    # every caller. launchd runs this script with no shell wrapper, so the
-    # env form is what a deliberate re-init would use there.
-    if getattr(args, "init_chain", False):
-        os.environ[INIT_CHAIN_ENV] = "1"
 
     if args.generate_keys:
         return generate_keys()
