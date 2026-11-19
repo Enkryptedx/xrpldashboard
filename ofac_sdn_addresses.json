@@ -353,7 +353,7 @@
       "sdn_uid": "57107"
     },
     "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c": {
-      "chain": "BSC",
+      "chain": "ETH",
       "entity_name": "Hyon Sop SIM",
       "programs": [
         "NPWMD"
@@ -738,7 +738,7 @@
       "sdn_uid": "43377"
     },
     "0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2": {
-      "chain": "USDC",
+      "chain": "ETH",
       "entity_name": "VALERIAN LABS, INC.",
       "programs": [
         "ILLICIT-DRUGS-EO14059"
@@ -7921,6 +7921,15 @@
       "sdn_type": "Entity",
       "sdn_uid": "22985"
     },
+    "TVwLtgUXyDhmcSoQ9x2z9QSua41f8mDFvU": {
+      "chain": "TRX",
+      "entity_name": "Alexandre VARELA VILLAR",
+      "programs": [
+        "ILLICIT-DRUGS-EO14059"
+      ],
+      "sdn_type": "Individual",
+      "sdn_uid": "58806"
+    },
     "TVyiDQ25H6Rx6PcNV1WyjGasGSa8ehj1Uv": {
       "chain": "USDT",
       "entity_name": "CHEIL CREDIT BANK",
@@ -9915,8 +9924,8 @@
       "sdn_uid": "29585"
     }
   },
-  "count": 1064,
-  "fetched_at_utc": "2026-11-18 21:03 UTC",
-  "publication_date": "2026-11-18",
+  "count": 1065,
+  "fetched_at_utc": "2026-11-19 21:04 UTC",
+  "publication_date": "2026-11-19",
   "source_url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
 }
