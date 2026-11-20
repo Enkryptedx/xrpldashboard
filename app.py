@@ -8517,7 +8517,18 @@ def well_known_anchors_json():
             memo_raw = _grab(r"\|\s*MemoData \(decoded\)\s*\|\s*`([^`]+)`")
             entry["memo_data_decoded"] = memo_raw.replace(r"\|", "|") if memo_raw else None
             if entry["memo_data_decoded"]:
-                parts = entry["memo_data_decoded"].split("|")
+                # Strip EACH field, not just the whole string. _grab()
+                # already .strip()s the captured row, which removes the
+                # variable trailing padding a signing client appends to
+                # MemoData (anchor #15 carried one line feed, #16 three),
+                # but interior spacing around a pipe survives that and
+                # would be published inside chain_root -- a 65-character
+                # root that silently fails every comparison a consumer
+                # makes. memo_data_decoded itself is left exactly as
+                # recorded, since it documents the row; chain_root is a
+                # compared value and must be clean.
+                parts = [p.strip()
+                         for p in entry["memo_data_decoded"].split("|")]
                 if len(parts) == 3 and parts[0] == "xrpldashboard/anchor/v1":
                     entry["chain_root"] = parts[2]
             entry["result"] = "tesSUCCESS" if "tesSUCCESS" in section else None

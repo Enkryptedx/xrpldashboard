@@ -198,8 +198,16 @@ def _parse_memo(memo_text: str) -> Optional[dict]:
 
     Handles both xrpldashboard/anchor/v1 (3 fields, publisher_id="self")
     and xrpldashboard/notary/v1 (4 fields, publisher_id explicit).
-    Returns None on unparseable input."""
-    parts = memo_text.split("|")
+    Returns None on unparseable input.
+
+    Strips trailing whitespace itself rather than trusting the caller.
+    _fetch_tx_memo already .strip()s, but a signing client appends a
+    variable amount of padding to MemoData -- anchor #15 carried one
+    trailing line feed, #16 carried three -- so an unstripped caller
+    would hand back a digest with the padding still attached and no
+    error raised, which compares unequal against a clean root. The
+    padding is never significant; the digest always is."""
+    parts = memo_text.rstrip().split("|")
     if parts[0] == _MEMO_V1_ANCHOR and len(parts) == 3:
         return {
             "protocol": _MEMO_V1_ANCHOR,
