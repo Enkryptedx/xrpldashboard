@@ -214,6 +214,17 @@ class TestSuppression:
         # `domain_listed` tier. HVI3ESC keeps "issuer verified via" because
         # its issuer's on-ledger Domain really does read "hvi3.com" -- both
         # legs present, only the currency level missing.
+        #
+        # LOOM + HVI3 added 2026-11-20 (anchor #16 carve-out), owner
+        # approved at ISSUER level: both AccountRoots carry on-ledger
+        # Domain "hvi3.com" and both addresses appear in that TOML's
+        # [[ACCOUNTS]], so they earn HVI3ESC's exact two-way wording. The
+        # TOML serves no [[CURRENCIES]] blocks and one cannot describe an
+        # MPT, so neither may say more than this.
+        #
+        # YELLOW was published in the same pass and is deliberately NOT
+        # here: it is a `toml`-tier classic currency, and the top tier
+        # renders BARE (label_for -> None). More evidence, fewer words.
         assert got == {
             "nsRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "nrRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
@@ -224,6 +235,8 @@ class TestSuppression:
             "DDG": "self-described (unverified)",
             "X40AM": "self-described (unverified)",
             "HVI3ESC": "issuer verified via hvi3.com",
+            "LOOM": "issuer verified via hvi3.com",
+            "HVI3": "issuer verified via hvi3.com",
             "CERT": "self-described (unverified)",
             "BOTC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
             "DATEC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
