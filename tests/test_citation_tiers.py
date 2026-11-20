@@ -224,15 +224,31 @@ def test_tier_census_is_exact(names):
 
     An MPT still can never reach `toml` -- a [[CURRENCIES]] block cannot
     describe one -- so issuer level remains the ceiling for both tiers.
-    Per-entry evidence lives in test_curate_botc_datec_scpo.py."""
+    Per-entry evidence lives in test_curate_botc_datec_scpo.py.
+
+    2026-11-20 (anchor #16 carve-out), toml 4 -> 5 and domain_fallback
+    1 -> 3:
+
+      YELLOW   classic 40-char currency 59454C4C4F5700...; yellow.org's
+               TOML names the issuer in [[ACCOUNTS]] AND pairs that exact
+               code with that exact issuer in [[CURRENCIES]], and the
+               issuer's on-ledger Domain reads "yellow.org" -- both legs,
+               currency level, so `toml`.
+      LOOM     MPTs on r9avT7NURuqC.../r3kP6sdZcTjt..., both carrying
+      HVI3     on-ledger Domain "hvi3.com", both named in that TOML's
+               [[ACCOUNTS]] (5 blocks). It serves ZERO [[CURRENCIES]]
+               blocks and one could not describe an MPT anyway, so they
+               join HVI3ESC at `domain_fallback` -- issuer level only.
+
+    domain_listed stays 2: nothing in this pass was a one-way claim."""
     toml_tier = {k for k, v in names.items()
                  if isinstance(v, dict) and v.get("tier") == TOML_TIER}
     df = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK}
     dl = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED}
-    assert len(toml_tier) == 4, f"toml tier drifted: {sorted(toml_tier)}"
-    assert len(df) == 1, f"domain_fallback drifted: {sorted(df)}"
+    assert len(toml_tier) == 5, f"toml tier drifted: {sorted(toml_tier)}"
+    assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
     assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
 
 

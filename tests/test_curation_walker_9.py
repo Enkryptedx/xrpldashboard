@@ -252,11 +252,30 @@ class TestFileInvariants:
         relaxed -- the per-entry suppression assertion below is unchanged
         and still passes on every one of them.
 
+        115 -> 140 on 2026-11-20: the anchor #16 gate-5 carve-out decided
+        the 28 walker-discovered entries undecided since anchor #15. 25 of
+        the 28 join the suppressed set -- 12 display_collision_unreviewed
+        (one issuer minting 12 issuances that all render the identical
+        "WFWD"), 4 self_declared_test (the HVI*/CGG* Test family on
+        rKVVothwXXUQ..., absent from the hvi3.com TOML whose reciprocated
+        HVI3 names they shadow), 3 bulk_serial_mint_unreviewed (the same
+        undomained serial minter already suppressed 67x at anchor #15),
+        1 self_declared_test (TEMP01, whose own fields read temp0123 /
+        faskdjfakdfha / johndoe), and 5 pending_review (CRRVN1/CRXVN2/
+        CRXVN3 vault receipt notes and SWT01/SWR01 RWA lease notes, both
+        issuers undomained, recheck 2026-11-27).
+
+        +25 not +20: a `pending_review` hold is RECORDED IN THE SAME
+        `suppressed` FIELD, so the five holds count here exactly as the
+        seven anchor #15 holds already did. The other 3 of the 28 were
+        PUBLISHED (YELLOW at currency level, LOOM and HVI3 at issuer
+        level) and so never enter this set.
+
         This is the one authoritative home for the census count.
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 115
+        assert n == 140
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""

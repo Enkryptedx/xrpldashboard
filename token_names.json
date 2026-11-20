@@ -9468,7 +9468,7 @@
     "name": "Short Term Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. First mortgages, loans under 8 months.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
   },
   "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049:rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1": {
     "currency_hex": "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049",
@@ -9499,7 +9499,7 @@
     "name": "Construction Finance Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Construction loans, includes second mortgages.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
   },
   "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -9520,7 +9520,7 @@
     "name": "Senior Income Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. First-mortgage loans, diversified.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-20"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
   },
   "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
     "currency_hex": "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006",
@@ -9565,5 +9565,309 @@
     "desc": "JBJFY",
     "issuer_name": "WB",
     "suppressed": "self_declared_test: the entry's own name field says so (testing/testing1/test123/temp); issuer account ~3 days old, no on-ledger Domain"
+  },
+  "06719B8921DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B8921DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRXVN2",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "XRP Vault No.2 - Beta receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Short-term XRP loan guaranteed by Credelit.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+  },
+  "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRXVN3",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "XRP Vault No.3 - Beta receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Higher-yield XRP loan guaranteed by Credelit.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+  },
+  "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB28",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TOSB28",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: same undomained bulk serial minter (r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi) already suppressed 67x at anchor #15; machine-numbered name equals ticker and the issuer has no on-ledger Domain or first-party attestation"
+  },
+  "062B599588AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B599588AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Maiz, FWD-2026-024",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "05FAC9F5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FAC9F5561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "NTS14",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "NTS14",
+    "issuer_name": "Natan Securiti",
+    "suppressed": "bulk_serial_mint_unreviewed: same undomained bulk serial minter (r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi) already suppressed 67x at anchor #15; machine-numbered name equals ticker and the issuer has no on-ledger Domain or first-party attestation"
+  },
+  "05FACA03561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACA03561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "LYNV20",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "LYNV20",
+    "issuer_name": "Lynv",
+    "suppressed": "bulk_serial_mint_unreviewed: same undomained bulk serial minter (r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi) already suppressed 67x at anchor #15; machine-numbered name equals ticker and the issuer has no on-ledger Domain or first-party attestation"
+  },
+  "06719B8821DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
+    "currency_hex": "06719B8821DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
+    "currency_display": "CRRVN1",
+    "issuer": "rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "RLUSD Vault No.1 - Beta receipt note",
+    "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. Short-term loan guaranteed by Credelit.",
+    "issuer_name": "Credelit",
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+  },
+  "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-019",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A5A88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A5A88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-018",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A3288AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A3288AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-014",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A1188AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A1188AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-012",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A1E88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A1E88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-013",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B59B288AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B59B288AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Hierbas Aromáticas, FWD-2026-020",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B59F188AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B59F188AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-010",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A4D88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A4D88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-017",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B59D488AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B59D488AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-008",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B5A4088AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B5A4088AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-015",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "062B59E388AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
+    "currency_hex": "062B59E388AF241E0720C1D54DD12798D8B0A05E7B147EE0",
+    "currency_display": "WFWD",
+    "issuer": "rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Weia Forward Contract",
+    "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-009",
+    "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+  },
+  "0671EE6586013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
+    "currency_hex": "0671EE6586013FD29FD46A77684ADB46A7B53E71F44A3006",
+    "currency_display": "TEMP01",
+    "issuer": "rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "temp0123",
+    "desc": "faskdjfakdfha",
+    "issuer_name": "johndoe",
+    "suppressed": "self_declared_test: the entry's own fields read temp0123 / faskdjfakdfha / johndoe; issuer has no on-ledger Domain"
+  },
+  "06735CC1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
+    "currency_hex": "06735CC1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
+    "currency_display": "HVIT",
+    "issuer": "rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "HVI Ledger Art Test",
+    "desc": "Proof: the picture lives in the token.",
+    "issuer_name": "HVI",
+    "suppressed": "self_declared_test: the entry's own metadata names it a Test (HVI Ledger Art Test / HVI3 Test / HVI Video Test / Chicken Gang Gang Test); issuer has no on-ledger Domain and is absent from the hvi3.com TOML whose reciprocated HVI3 family these names shadow"
+  },
+  "06283CEC54FDB536BB92031E161E0892B4B4D55C7B83C956:r3kP6sdZcTjtfMvkvDTmNDdKpHwAEPTzFo": {
+    "currency_hex": "06283CEC54FDB536BB92031E161E0892B4B4D55C7B83C956",
+    "currency_display": "HVI3",
+    "issuer": "r3kP6sdZcTjtfMvkvDTmNDdKpHwAEPTzFo",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "HVI3.COM DOMAIN",
+    "desc": "OFFICIAL NFT/CERTIFICATION/CREDENTIAL FOR HVI3 DOMAINS",
+    "issuer_name": "HVI",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+  },
+  "06083DBA58DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
+    "currency_hex": "06083DBA58DFB58EBE866100FEDB2013D123744243658B7D",
+    "currency_display": "LOOM",
+    "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "the digital loom live stream",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+  },
+  "06740249EBCC79C30A893B4C657A80EC2570CC6381A7CCFE:r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7": {
+    "currency_hex": "06740249EBCC79C30A893B4C657A80EC2570CC6381A7CCFE",
+    "currency_display": "SWR01",
+    "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Recebível do lease BRM-01",
+    "desc": "208 parcelas semanais de US$ 699 compradas em true sale com recurso total; garantia da Brummel Trucking LLC.",
+    "issuer_name": "Strada Way LLC",
+    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
+  },
+  "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
+    "currency_hex": "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
+    "currency_display": "CGGT",
+    "issuer": "rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Chicken Gang Gang Test",
+    "desc": "The Chicken Gang Gang credential medal, written on the XRP Ledger by HVI.",
+    "issuer_name": "HVI",
+    "suppressed": "self_declared_test: the entry's own metadata names it a Test (HVI Ledger Art Test / HVI3 Test / HVI Video Test / Chicken Gang Gang Test); issuer has no on-ledger Domain and is absent from the hvi3.com TOML whose reciprocated HVI3 family these names shadow"
+  },
+  "06735CF3CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
+    "currency_hex": "06735CF3CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
+    "currency_display": "HVIV",
+    "issuer": "rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "HVI Video Test",
+    "desc": "A video written on the XRP Ledger by HVI.",
+    "issuer_name": "HVI",
+    "suppressed": "self_declared_test: the entry's own metadata names it a Test (HVI Ledger Art Test / HVI3 Test / HVI Video Test / Chicken Gang Gang Test); issuer has no on-ledger Domain and is absent from the hvi3.com TOML whose reciprocated HVI3 family these names shadow"
+  },
+  "06735CCFCAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
+    "currency_hex": "06735CCFCAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
+    "currency_display": "HVI3T",
+    "issuer": "rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "HVI3 Test",
+    "desc": "Art, certificate and credential written on the XRP Ledger by HVI.",
+    "issuer_name": "HVI",
+    "suppressed": "self_declared_test: the entry's own metadata names it a Test (HVI Ledger Art Test / HVI3 Test / HVI Video Test / Chicken Gang Gang Test); issuer has no on-ledger Domain and is absent from the hvi3.com TOML whose reciprocated HVI3 family these names shadow"
+  },
+  "06740248EBCC79C30A893B4C657A80EC2570CC6381A7CCFE:r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7": {
+    "currency_hex": "06740248EBCC79C30A893B4C657A80EC2570CC6381A7CCFE",
+    "currency_display": "SWT01",
+    "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Caminhão do lease BRM-01",
+    "desc": "Caminhão em lease to own da Strada Way LLC, Eos Loan como lienholder, rastreado pela API da Brummel.",
+    "issuer_name": "Strada Way LLC",
+    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
+  },
+  "59454C4C4F570000000000000000000000000000:r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf": {
+    "currency_hex": "59454C4C4F570000000000000000000000000000",
+    "currency_display": "YELLOW",
+    "issuer": "r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf",
+    "source": "toml",
+    "verified_via": "https://yellow.org/.well-known/xrp-ledger.toml",
+    "name": "Yellow",
+    "desc": "YELLOW on the XRP Ledger, issued 1:1 against YELLOW locked on Ethereum in contract 0xeDE263567477d6656595d4A6B2ff4DdE0A9cDf1b. Ethereum token contract: 0x236eB848C95b231299B4AA9f56c73D6893462720",
+    "tier": "toml"
   }
 }
