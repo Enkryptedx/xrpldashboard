@@ -1124,7 +1124,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-1-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A591E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1134,7 +1135,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-2-Principal Protected-1m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A594E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1144,7 +1146,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-1-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A595E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1154,7 +1157,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-7-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A596E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1164,7 +1168,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-4-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A597E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1174,7 +1179,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-13-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A598E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1184,7 +1190,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-12-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A599E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1194,7 +1201,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-18-Principal Protected-3m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A59AE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1204,7 +1212,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-21-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A59BE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1214,7 +1223,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-20-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1224,7 +1234,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-32-Principal Protected-1m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1234,7 +1245,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-33-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1244,7 +1256,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-34-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1254,7 +1267,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-35-Principal Protected-1m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1264,7 +1278,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-8-Principal Protected-2m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1274,7 +1289,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-37-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5A9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1284,7 +1300,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-36-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5AAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1294,7 +1311,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-39-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5ABE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1304,7 +1322,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-40-Principal Protected-2m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5ACE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1314,7 +1333,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-42-Principal Protected-1m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5AEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1324,7 +1344,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-44-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5AFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1334,7 +1355,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-45-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1344,7 +1366,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-46-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1354,7 +1377,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-49-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1364,7 +1388,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-51-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1374,7 +1399,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-52-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1384,7 +1410,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-56-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1394,7 +1421,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-62-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5B8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1404,7 +1432,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-66-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1414,7 +1443,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-67-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1424,7 +1454,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-68-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1434,7 +1465,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-69-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1444,7 +1476,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-70-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1454,7 +1487,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-71-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5BFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1464,7 +1498,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-72-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1474,7 +1509,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-73-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1484,7 +1520,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-74-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1494,7 +1531,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-75-Principal Protected-3m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1504,7 +1542,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-76-Non-Principal Protected-3w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1514,7 +1553,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-78-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1524,7 +1564,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-80-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1534,7 +1575,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-82-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1544,7 +1586,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-83-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1554,7 +1597,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-84-Non-Principal Protected-3w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5C9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1564,7 +1608,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-87-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1574,7 +1619,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-88-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1584,7 +1630,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-89-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1594,7 +1641,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-91-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1604,7 +1652,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-92-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1614,7 +1663,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-99-Principal Protected-2m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5CFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1624,7 +1674,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-100-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1634,7 +1685,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-101-Principal Protected-1m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1644,7 +1696,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-102-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1654,7 +1707,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-105-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1664,7 +1718,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-106-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1674,7 +1729,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-107-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1684,7 +1740,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-108-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1694,7 +1751,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-112-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1704,7 +1762,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-113-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1714,7 +1773,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-114-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5D9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1724,7 +1784,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-115-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1734,7 +1795,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-116-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1744,7 +1806,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-117-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DCE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1754,7 +1817,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-118-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DDE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1764,7 +1828,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-119-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DEE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1774,7 +1839,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-120-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5DFE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1784,7 +1850,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-121-Principal Protected-2m",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E0E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1794,7 +1861,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-122-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E1E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1804,7 +1872,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-123-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E2E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1814,7 +1883,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-124-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E3E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1824,7 +1894,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-125-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E4E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1834,7 +1905,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-126-Non-Principal Protected-2w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E5E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1844,7 +1916,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-127-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E6E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1854,7 +1927,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-128-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E7E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1864,7 +1938,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-129-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E8E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1874,7 +1949,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-130-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5E9E082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1884,7 +1960,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-131-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5EAE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1894,7 +1971,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-132-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5EBE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1904,7 +1982,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-133-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0601A5ECE082DA1CE432D2435B0D719CD87FF7EB9B77FDE7:rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t": {
     "category": "unlabeled",
@@ -1914,7 +1993,8 @@
     "issuer": "rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t",
     "issuer_name": "MPT Platform",
     "name": "SIV-134-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "06044300BB5C43251E82F2F17A2F6223B39257CDD681E491:rJnCt4Mm826qSA6jc4WqwmrpwPxBBgLfwp": {
     "category": "rwa",
@@ -2106,7 +2186,8 @@
     "issuer": "rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6",
     "issuer_name": "SIVAX.io",
     "name": "SIVAX-VAULT-V1",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0627B6869931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
     "category": "unlabeled",
@@ -2116,7 +2197,8 @@
     "issuer": "rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6",
     "issuer_name": "MPT Platform",
     "name": "SIV-135-Non-Principal Protected-1w",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "0627B6E29931344A3871ED63805BBF07DECBF03F9C2698BD:rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6": {
     "category": "unlabeled",
@@ -2126,7 +2208,8 @@
     "issuer": "rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6",
     "issuer_name": "SIVAX.io",
     "name": "SIVAX-RLUSD-VAULT-V1",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "self-published serial series: one publisher's own TOML names 83 serials, and both issuers carry zero holders and zero outstanding obligations (own node, 2026-11-22). SIV1 is duplicated at rM7ffj9, which trips the (currency_display, issuer) collision guard. MPT keys, so toml is unreachable and issuer level is the ceiling."
   },
   "062A13EF9969F110E3B4FE23619B389B949052231E4196F8:rNzBJJkaDVhh17wUyzpLjnL6QEohY4bdX5": {
     "category": "unlabeled",
