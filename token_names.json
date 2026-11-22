@@ -872,7 +872,19 @@
     "desc": "Rewards token distributed by Xspence",
     "issuer": "rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL",
     "name": "Xspence",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "tier": "domain_fallback",
+    "verified_via": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: xrpdev.net TOML names this issuer address, and the issuer's on-ledger Domain resolves to xrpdev.net (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "0476D647478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
     "category": "unlabeled",
@@ -882,7 +894,19 @@
     "issuer": "rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL",
     "issuer_name": "Xspence",
     "name": "XPN (Xspence)",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "tier": "domain_fallback",
+    "verified_via": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: xrpdev.net TOML names this issuer address, and the issuer's on-ledger Domain resolves to xrpdev.net (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "056762A93087A14B122055FA030F9EE6F74F87116559C83D:rnRbuxseqEHbxXgaBZJu7PAMQKmVAqp9RM": {
     "category": "unlabeled",
@@ -2031,7 +2055,19 @@
     "desc": "Xaman opt-in spike 2026-08-17 — not a real ticket",
     "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
     "name": "HVI Spike Test Pass",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: hvi3.com TOML names this issuer address, and the issuer's on-ledger Domain resolves to hvi3.com (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://hvi3.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "060837F258DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
     "category": "unlabeled",
@@ -2040,7 +2076,19 @@
     "desc": "A 30-day pass to the Y. Non-transferable. HVI3 PRODUCTIONS - hvi3.com",
     "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
     "name": "THE Y PASS",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: hvi3.com TOML names this issuer address, and the issuer's on-ledger Domain resolves to hvi3.com (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://hvi3.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "060CA3E09B41B8EB574622BE0CDA7BB12D05EB50B60C8EF5:rE9v7U5cQQAuvtYKgyFPpqc719a1MH4SNP": {
     "category": "rwa",
@@ -3143,7 +3191,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7"
+    ]
   },
   "41524D5900000000000000000000000000000000:r319FqohpKLwjtcV2mosyC5sy125fDk4uH": {
     "category": "memecoin",
@@ -3233,7 +3285,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy"
+    ]
   },
   "434F524500000000000000000000000000000000:rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D": {
     "category": "native_utility_chain",
@@ -3292,7 +3348,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL"
+    ]
   },
   "4752494D00000000000000000000000000000000:rHLRdLwXiBZSD53ZQz8ogGJz25LzNCCjSz": {
     "category": "memecoin",
@@ -3321,7 +3381,9 @@
     "currency_hex": "4D49444153000000000000000000000000000000",
     "issuer": "",
     "notes": "MIDAS currency code has no canonical XRPL issuer. Midas's authentic XRPL representation is mTBILL via Axelar Bridge, not MIDAS. Any wallet issuing MIDAS on XRPL is a spoof.",
-    "verified_via": "xrpscan@brand-protected"
+    "verified_via": "xrpscan@brand-protected",
+    "brand_protected": true,
+    "brand_allowlist": []
   },
   "4D5442494C4C0000000000000000000000000000:": {
     "category": "unlabeled",
@@ -3329,7 +3391,9 @@
     "currency_hex": "4D5442494C4C0000000000000000000000000000",
     "issuer": "",
     "notes": "MTBILL (uppercase) is not Midas's canonical mTBILL. Different bytes, different brand. Any wallet issuing MTBILL is a spoof of the case-changed lookalike.",
-    "verified_via": "xrpscan@brand-protected"
+    "verified_via": "xrpscan@brand-protected",
+    "brand_protected": true,
+    "brand_allowlist": []
   },
   "4F4E444F00000000000000000000000000000000:": {
     "category": "unlabeled",
@@ -3337,7 +3401,9 @@
     "currency_hex": "4F4E444F00000000000000000000000000000000",
     "issuer": "",
     "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand.",
-    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
+    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": []
   },
   "4F55534700000000000000000000000000000000:rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
     "category": "unlabeled",
@@ -3358,14 +3424,29 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "XLS-26"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p"
+    ]
   },
   "4F70756C656E6365000000000000000000000000:rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd": {
     "category": "dex_utility",
     "currency_display": "Opulence",
     "currency_hex": "4F70756C656E6365000000000000000000000000",
     "issuer": "rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd",
-    "verified_via": "https://opulencex.io"
+    "verified_via": "https://opulencex.io/.well-known/xrp-ledger.toml",
+    "tier": "domain_fallback",
+    "tier_reason": "issuer-level: opulencex.io TOML names this issuer address, and the issuer's on-ledger Domain resolves to opulencex.io (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://opulencex.io/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "50484E4958000000000000000000000000000000:rDFXbW2ZZCG5WgPtqwNiA2xZokLMm9ivmN": {
     "category": "memecoin",
@@ -3403,7 +3484,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rQ3JsJVg3m1mw4sKXtCbifgjremnPGSLBn"
+    ]
   },
   "524950504C454449434B00000000000000000000:rGxkZKJHTDd9MMxXujDs63YHRYbcTJeUgS": {
     "category": "memecoin",
@@ -3430,7 +3515,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "XLS-26"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+    ]
   },
   "5348524F4F4D4945530000000000000000000000:r4M4TzSypz2gRdS86hTM7oFcSs6yRmEPKZ": {
     "category": "memecoin",
@@ -3452,7 +3541,12 @@
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "",
     "notes": "SOIL canonical issuer is Axelar bridge (rfmS3z...). Any other issuer is a spoof.",
-    "verified_via": "xrpscan@brand-protected"
+    "verified_via": "xrpscan@brand-protected",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ],
+    "brand_note": "canonical issuer is the Axelar bridge; any OTHER issuer of this code is a spoof. Distinct from a genuinely empty allowlist such as ONDO, whose canonical issuance is off-XRPL entirely."
   },
   "534F494C00000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "category": "wrapped_bridge",
@@ -3460,7 +3554,7 @@
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet — not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
-    "verified_via": null,
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
     "tier": "toml",
     "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
     "tier_evidence": {
@@ -3493,7 +3587,7 @@
     "currency_display": "USDC",
     "currency_hex": "5553444300000000000000000000000000000000",
     "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
-    "verified_via": "https://circle.com",
+    "verified_via": "https://circle.com/.well-known/xrp-ledger.toml",
     "tier": "toml",
     "tier_reason": "currency-level: circle.com TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to circle.com (two-way verified 2026-11-22, Domain-first sweep)",
     "tier_evidence": {
@@ -3524,7 +3618,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "5553445600000000000000000000000000000000:rfffsukWALJB1PXYk7H8xkR6UJUDT8nMJE": {
     "category": "unlabeled",
@@ -3562,7 +3660,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "57414E475A595200000000000000000000000000:rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr": {
     "category": "unlabeled",
@@ -3585,7 +3687,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr"
+    ]
   },
   "5742544300000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3605,7 +3711,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "5745544800000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3625,7 +3735,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "5852504341540000000000000000000000000000:rah9u8VtsvFbRjoKtFD3QttMdtHqZjses4": {
     "category": "memecoin",
@@ -3661,7 +3775,11 @@
     "currency_hex": "6169787270000000000000000000000000000000",
     "issuer": "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu",
     "source": "toml",
-    "verified_via": "https://aigent.run/.well-known/xrp-ledger.toml"
+    "verified_via": "https://aigent.run/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rDvVS42ZgKvFNuacNvJZyQe83JQbTEDVRu"
+    ]
   },
   "62756C6C00000000000000000000000000000000:rwxrCZTjrxXmtYA6v6krDKjjFaRuUiAhvJ": {
     "category": "memecoin",
@@ -3695,7 +3813,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "6D5442494C4C0000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3715,7 +3837,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "6D58525000000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3735,7 +3861,11 @@
       "reverse_leg": true,
       "node": "own rippled (full)",
       "checked": "2026-11-22"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"
+    ]
   },
   "7363726170000000000000000000000000000000:rGHtYnnigyuaHehWGfAdoEhkoirkGNdZzo": {
     "_note": "lowercase intentional",
@@ -3767,7 +3897,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rsscn6GdUxqkCbtmcA7uTbYyXWfxxY6Dqo"
+    ]
   },
   "77414D4154000000000000000000000000000000:rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie": {
     "category": "unlabeled",
@@ -3791,7 +3925,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie"
+    ]
   },
   "77414D4400000000000000000000000000000000:r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6": {
     "category": "unlabeled",
@@ -3815,7 +3953,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6"
+    ]
   },
   "77414D5A4E000000000000000000000000000000:rLpy3QeZohPjLodLsppK4P6REFVV6rCN61": {
     "category": "unlabeled",
@@ -3839,7 +3981,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rLpy3QeZohPjLodLsppK4P6REFVV6rCN61"
+    ]
   },
   "7741524D00000000000000000000000000000000:rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf": {
     "category": "unlabeled",
@@ -3863,7 +4009,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf"
+    ]
   },
   "7741534D4C000000000000000000000000000000:rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt": {
     "category": "unlabeled",
@@ -3887,7 +4037,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt"
+    ]
   },
   "7741564156000000000000000000000000000000:rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z": {
     "category": "unlabeled",
@@ -3911,7 +4065,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z"
+    ]
   },
   "774156474F000000000000000000000000000000:rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD": {
     "category": "unlabeled",
@@ -3935,7 +4093,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD"
+    ]
   },
   "7742414241000000000000000000000000000000:rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK": {
     "category": "unlabeled",
@@ -3959,7 +4121,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK"
+    ]
   },
   "77434F494E000000000000000000000000000000:rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT": {
     "category": "unlabeled",
@@ -3983,7 +4149,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT"
+    ]
   },
   "7747465300000000000000000000000000000000:r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV": {
     "category": "unlabeled",
@@ -4007,7 +4177,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV"
+    ]
   },
   "77474F4F47000000000000000000000000000000:r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg": {
     "category": "unlabeled",
@@ -4031,7 +4205,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg"
+    ]
   },
   "77494E5443000000000000000000000000000000:r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV": {
     "category": "unlabeled",
@@ -4055,7 +4233,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV"
+    ]
   },
   "774A504D00000000000000000000000000000000:rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9": {
     "category": "unlabeled",
@@ -4079,7 +4261,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9"
+    ]
   },
   "774B544F53000000000000000000000000000000:rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx": {
     "category": "unlabeled",
@@ -4103,7 +4289,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx"
+    ]
   },
   "774C485800000000000000000000000000000000:rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq": {
     "category": "unlabeled",
@@ -4127,7 +4317,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq"
+    ]
   },
   "774C4C5900000000000000000000000000000000:rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv": {
     "category": "unlabeled",
@@ -4151,7 +4345,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv"
+    ]
   },
   "774C4D5400000000000000000000000000000000:ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio": {
     "category": "unlabeled",
@@ -4175,7 +4373,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio"
+    ]
   },
   "774C524358000000000000000000000000000000:rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T": {
     "category": "unlabeled",
@@ -4199,7 +4401,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T"
+    ]
   },
   "774D455441000000000000000000000000000000:r39KivuiizHEKe76spEk1vNALmhuTFMXhG": {
     "category": "unlabeled",
@@ -4223,7 +4429,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r39KivuiizHEKe76spEk1vNALmhuTFMXhG"
+    ]
   },
   "774D52564C000000000000000000000000000000:rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP": {
     "category": "unlabeled",
@@ -4247,7 +4457,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP"
+    ]
   },
   "774D534654000000000000000000000000000000:rPpEtXCzThYmWyzARbD3snF53JuasuJgSk": {
     "category": "unlabeled",
@@ -4271,7 +4485,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rPpEtXCzThYmWyzARbD3snF53JuasuJgSk"
+    ]
   },
   "774E464C58000000000000000000000000000000:ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH": {
     "category": "unlabeled",
@@ -4295,7 +4513,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH"
+    ]
   },
   "774E4F4300000000000000000000000000000000:rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT": {
     "category": "unlabeled",
@@ -4319,7 +4541,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT"
+    ]
   },
   "774E4F564F000000000000000000000000000000:rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ": {
     "category": "unlabeled",
@@ -4343,7 +4569,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ"
+    ]
   },
   "774E564441000000000000000000000000000000:raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g": {
     "category": "unlabeled",
@@ -4367,7 +4597,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g"
+    ]
   },
   "77504C5452000000000000000000000000000000:rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS": {
     "category": "unlabeled",
@@ -4391,7 +4625,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS"
+    ]
   },
   "7751434F4D000000000000000000000000000000:r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF": {
     "category": "unlabeled",
@@ -4415,7 +4653,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF"
+    ]
   },
   "7752545800000000000000000000000000000000:rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK": {
     "category": "unlabeled",
@@ -4439,7 +4681,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK"
+    ]
   },
   "7753504358000000000000000000000000000000:rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ": {
     "category": "unlabeled",
@@ -4463,7 +4709,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ"
+    ]
   },
   "7754534C41000000000000000000000000000000:rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
     "category": "unlabeled",
@@ -4487,7 +4737,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc"
+    ]
   },
   "7754534D43000000000000000000000000000000:rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH": {
     "category": "unlabeled",
@@ -4511,7 +4765,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH"
+    ]
   },
   "7756495341000000000000000000000000000000:rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7": {
     "category": "unlabeled",
@@ -4535,7 +4793,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7"
+    ]
   },
   "ARK:rf5Jzzy6oAFBJjLhokha1v8pXVgYYjee3b": {
     "category": "unlabeled",
@@ -4550,7 +4812,11 @@
     "currency_display": "ASC",
     "currency_hex": "ASC",
     "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
-    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
+    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R"
+    ]
   },
   "ATM:raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ": {
     "category": "unlabeled",
@@ -4607,7 +4873,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi"
+    ]
   },
   "CSC:rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr": {
     "category": "native_utility_chain",
@@ -4638,7 +4908,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rNByev6jxJAy9TqLQxg7bwn4i4VJwWq3nx"
+    ]
   },
   "ELS:rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg": {
     "category": "native_utility_chain",
@@ -4687,7 +4961,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj"
+    ]
   },
   "LHT:rHashLabsu2H6hXDSunL8AcVDmTyE17Z35": {
     "category": "defi_yield",
@@ -4763,7 +5041,11 @@
     "currency_display": "RPR",
     "currency_hex": "RPR",
     "issuer": "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R",
-    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml"
+    "verified_via": "https://www.reaper.financial/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3qWgpz2ry3BhcRJ8JE6rxM8esrfhuKp4R"
+    ]
   },
   "STX:rSTAYKxF2K77ZLZ8GoAwTqPGaphAqMyXV": {
     "category": "dex_utility",
@@ -4793,7 +5075,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "XLS-26"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg"
+    ]
   },
   "URL:rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp": {
     "category": "unlabeled",
@@ -4831,7 +5117,11 @@
     "issuer": "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST",
     "source": "toml",
     "tier": "toml",
-    "verified_via": "https://pay.aiic.nz/.well-known/xrp-ledger.toml"
+    "verified_via": "https://pay.aiic.nz/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rBoZPmku6RKZPvZs1wBAWQgUGFALzw9WST"
+    ]
   },
   "XAH:rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv": {
     "category": "native_utility_chain",
@@ -4861,7 +5151,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "XLS-26"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur"
+    ]
   },
   "XPM:rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa": {
     "category": "native_utility_chain",
@@ -4897,7 +5191,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw"
+    ]
   },
   "XRT:rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR": {
     "category": "unlabeled",
@@ -4909,7 +5207,11 @@
     "name": "XRPTurbo Token",
     "source": "toml",
     "tier": "toml",
-    "verified_via": "https://xrpturbo.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://xrpturbo.com/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR"
+    ]
   },
   "ZRP:rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe": {
     "category": "gaming",
@@ -4951,7 +5253,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3"
+    ]
   },
   "0476D692478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
     "currency_hex": "0476D692478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
@@ -4961,7 +5267,19 @@
     "category": "other",
     "name": "XRPDEV.net",
     "desc": "A testing rewards token bridging verified Devnet testing with Mainnet through the Xspence Devnet portal.",
-    "issuer_name": "Xspence"
+    "issuer_name": "Xspence",
+    "tier": "domain_fallback",
+    "verified_via": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: xrpdev.net TOML names this issuer address, and the issuer's on-ledger Domain resolves to xrpdev.net (two-way verified 2026-11-22, Domain-first sweep). Issuer level is the ceiling here, so the ticker itself is never proven.",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://xrpdev.net/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "064D94E3607A616746E4BF525F17A63A3D266090F95EA90A:r9o37ZXw3VQyvZzYk4p6wEgGZhH14mHmr2": {
     "currency_hex": "064D94E3607A616746E4BF525F17A63A3D266090F95EA90A",
@@ -8812,7 +9130,11 @@
     "tier": "toml",
     "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
     "name": "EVE Token",
-    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever."
+    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever.",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3UBRqUVhUdhHSDQ8PysAJo78SyGhR4oVd"
+    ]
   },
   "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0:rQDCL2vZNVndsyCpdP6ChhsAsqsGoShDEP": {
     "currency_hex": "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0",
@@ -8990,7 +9312,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc"
+    ]
   },
   "4242524C00000000000000000000000000000000:rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt": {
     "currency_hex": "4242524C00000000000000000000000000000000",
@@ -9010,7 +9336,11 @@
       "node": "own rippled (full)",
       "checked": "2026-11-22",
       "standard": "xrp-ledger.toml core spec"
-    }
+    },
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt"
+    ]
   },
   "033CD374C77160C0239D3945A465915B84793008:rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ": {
     "currency_hex": "033CD374C77160C0239D3945A465915B84793008",
@@ -9202,7 +9532,11 @@
     "category": "other",
     "name": "Humanity vs Insanity",
     "tier": "domain_fallback",
-    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN"
+    ]
   },
   "06683EDA524400191C587DE4ACE48E9632A90BAB74246A54:r3Vy17FUKj5hi1P3w1C5qJdZ3SHcmPqF1E": {
     "currency_hex": "06683EDA524400191C587DE4ACE48E9632A90BAB74246A54",
@@ -9352,7 +9686,11 @@
     "name": "Assetiko Silver",
     "desc": "XAGa is Assetiko Silver, a tokenized silver product issued on the XRP Ledger. 1 XAGa represents one troy ounce of silver. It is designed to provide tokenized exposure to silver through physical silver reserves and a published 102.3% reserve coverage framework. XAGa may be digitally redeemable by eligible holders in supported settlement assets and physical delivery may be available on request for eligible redemptions in supported jurisdictions.",
     "issuer_name": "Assetiko",
-    "tier": "toml"
+    "tier": "toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rQJ1EbtepKKzx4sBCUtPjvSk8CfiAx2H8e"
+    ]
   },
   "0661B4328955F03F243B4C36867E3E5EF42DC92CEFC42D8F:rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W": {
     "currency_hex": "0661B4328955F03F243B4C36867E3E5EF42DC92CEFC42D8F",
@@ -9438,7 +9776,11 @@
     "desc": "CiteFleet utility token for platform-funded customer operations. Total supply: 40 billion BOTC; 2 billion operating allocation and 38 billion escrow reserve. Customers receive 2,000 BOTC for normal operations; each customer button event returns 0.005 BOTC to the issuer for burning; refill to 2,000 BOTC when confirmed balance reaches 500 or less. Advanced services are paid separately in XRP. No ownership, revenue share, investment return, or monetary value.",
     "issuer_name": "XRPTokenizer",
     "tier": "domain_listed",
-    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
+    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV"
+    ]
   },
   "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7:rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV": {
     "currency_hex": "060B0AEA9FE7F2B50E46A1E9127A580EB575FA6850C683F7",
@@ -9449,7 +9791,11 @@
     "name": "DateC",
     "issuer_name": "XRPTokenizer",
     "tier": "domain_listed",
-    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml"
+    "verified_via": "https://www.xrptokenizer.app/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "rE2WJYnYCbBf75ZA2U8QtnGug6tWrfKLcV"
+    ]
   },
   "0668EA15E0A0BE28F262B70B642B433C5241834FC60D9269:rM75v2Ssm6W7ZP3iKi8FCaMbSsUaiQhYKC": {
     "currency_hex": "0668EA15E0A0BE28F262B70B642B433C5241834FC60D9269",
@@ -10678,7 +11024,11 @@
     "desc": "OFFICIAL NFT/CERTIFICATION/CREDENTIAL FOR HVI3 DOMAINS",
     "issuer_name": "HVI",
     "tier": "domain_fallback",
-    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r3kP6sdZcTjtfMvkvDTmNDdKpHwAEPTzFo"
+    ]
   },
   "06083DBA58DFB58EBE866100FEDB2013D123744243658B7D:r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN": {
     "currency_hex": "06083DBA58DFB58EBE866100FEDB2013D123744243658B7D",
@@ -10688,7 +11038,11 @@
     "category": "other",
     "name": "the digital loom live stream",
     "tier": "domain_fallback",
-    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN"
+    ]
   },
   "06740249EBCC79C30A893B4C657A80EC2570CC6381A7CCFE:r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7": {
     "currency_hex": "06740249EBCC79C30A893B4C657A80EC2570CC6381A7CCFE",
@@ -10753,6 +11107,10 @@
     "verified_via": "https://yellow.org/.well-known/xrp-ledger.toml",
     "name": "Yellow",
     "desc": "YELLOW on the XRP Ledger, issued 1:1 against YELLOW locked on Ethereum in contract 0xeDE263567477d6656595d4A6B2ff4DdE0A9cDf1b. Ethereum token contract: 0x236eB848C95b231299B4AA9f56c73D6893462720",
-    "tier": "toml"
+    "tier": "toml",
+    "brand_protected": true,
+    "brand_allowlist": [
+      "r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf"
+    ]
   }
 }

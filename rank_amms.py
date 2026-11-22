@@ -162,20 +162,28 @@ def load_verified_brands():
     for key, entry in raw.items():
         if not isinstance(entry, dict):
             continue
-        ver = entry.get("verified_via") or ""
-        if not any(tier in ver for tier in ("xrp-ledger.toml", "xrpscan@")):
+        # EXPLICIT ENROLMENT (2026-11-22). This used to be a substring test
+        # on verified_via -- `any(t in ver for t in ("xrp-ledger.toml",
+        # "xrpscan@"))` -- which meant writing a citation onto an entry
+        # SILENTLY enrolled its currency_hex as a protected brand. 70 of the
+        # 73 families were enrolled that way as a side effect of describing
+        # provenance, not of deciding to protect a brand, and tiering six
+        # issuer-level passes moved the census 73 -> 79 purely because their
+        # labels needed a citation to render. Brand protection is now a
+        # declaration: `brand_protected: true` plus `brand_allowlist`.
+        if not entry.get("brand_protected"):
             continue
-        try:
-            cur_hex, iss = key.split(":", 1)
-        except ValueError:
-            continue
-        cur_hex = cur_hex.strip()
-        iss = iss.strip()
+        cur_hex = (entry.get("currency_hex") or key.partition(":")[0]).strip()
         if not cur_hex:
             continue
         brands.setdefault(cur_hex, set())
-        if iss:
-            brands[cur_hex].add(iss)
+        allow = entry.get("brand_allowlist")
+        if allow is None:
+            iss = key.partition(":")[2].strip()
+            if iss:
+                brands[cur_hex].add(iss)
+        else:
+            brands[cur_hex].update(a for a in allow if a)
     return brands
 
 

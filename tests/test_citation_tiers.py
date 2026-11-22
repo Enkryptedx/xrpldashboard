@@ -270,7 +270,16 @@ def test_tier_census_is_exact(names):
     dl = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED}
     assert len(toml_tier) == 69, f"toml tier drifted: {sorted(toml_tier)}"
-    assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
+    # 2026-11-22 (brands made explicit): domain_fallback 3 -> 9. The six
+    # issuer-level passes held that morning (Opulence, DEV, XPN, Xspence,
+    # HVI Spike Te, THE Y PASS) are now tiered. They were held because
+    # labelling them needed a verified_via citation, and the OLD
+    # load_verified_brands() enrolled a protected brand on that substring
+    # alone -- so the label dragged six new families with it (73 -> 79).
+    # Enrolment is now declared (brand_protected / brand_allowlist), so a
+    # citation carries no brand meaning and these land as a pure labelling
+    # change. Families stay at 73.
+    assert len(df) == 9, f"domain_fallback drifted: {sorted(df)}"
     assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
 
 
