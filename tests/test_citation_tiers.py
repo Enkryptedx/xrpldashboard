@@ -240,14 +240,36 @@ def test_tier_census_is_exact(names):
                blocks and one could not describe an MPT anyway, so they
                join HVI3ESC at `domain_fallback` -- issuer level only.
 
-    domain_listed stays 2: nothing in this pass was a one-way claim."""
+    domain_listed stays 2: nothing in this pass was a one-way claim.
+
+    2026-11-22 (XLS-26 pass), toml 5 -> 54. The 49 added are the
+    toml-cited entries that the repo's OWN two_way_toml_verifier scored
+    currency-level AND reverse-leg-passing, run over all 53 against our own
+    node. Evidence for every one is committed as
+    tests/fixtures/two_way_verifier_53_2026-11-22.json, and each entry
+    carries its own `tier_reason` + `tier_evidence`.
+
+    45 of the 49 matched through the core spec's [[CURRENCIES]]; 4 matched
+    through XLS-26's [[TOKENS]] (RLUSD @ ripple.com and OUSG @ ondo.finance
+    among them), which is why the owner's XLS-26 ruling was needed before
+    this retag could happen at all.
+
+    domain_fallback deliberately stays 3 and domain_listed 2: NONE of the 49
+    landed at issuer level. An earlier hand-rolled reader said 7 of them did,
+    but it read a `currency` field that token_names.json does not have, so
+    3-char codes produced no candidate to pair. The repo verifier was right.
+
+    Four of the 53 are untouched on purpose: 3 could not be confirmed
+    (aigent.run HTTP 404, www.reaper.financial x2 DNS failure) and 1 is the
+    ONDO null-canonical brand-protection sentinel, which has an empty issuer
+    and so fails a two-way check by design."""
     toml_tier = {k for k, v in names.items()
                  if isinstance(v, dict) and v.get("tier") == TOML_TIER}
     df = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK}
     dl = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED}
-    assert len(toml_tier) == 5, f"toml tier drifted: {sorted(toml_tier)}"
+    assert len(toml_tier) == 54, f"toml tier drifted: {sorted(toml_tier)}"
     assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
     assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
 

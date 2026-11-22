@@ -23,6 +23,8 @@ Each entry is keyed `currency_hex:issuer` and has these fields:
 | `category`         | `stablecoin` / `fiat` / `wrapped_major` / `native_utility` / `memecoin` / `other` |
 | `verified_via`     | URL to a first-party source. See policy below.           |
 | `_note` (optional) | Curator note (e.g. "lowercase intentional")              |
+| `tier_reason` (optional)   | Prose reason a `tier` was assigned, naming the evidence class actually satisfied |
+| `tier_evidence` (optional) | Machine-readable record of the check: verifier function, `match_level`, `matched_table`, `toml_url`, `onledger_domain`, `reverse_leg`, `node`, `checked` date, and which `standard` the matched table comes from |
 
 ## `verified_via` policy
 
