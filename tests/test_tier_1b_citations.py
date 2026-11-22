@@ -121,28 +121,33 @@ def test_brand_protection_family_census_is_exact():
     assert len(rank_amms.load_verified_brands()) == 73
 
 
-def test_held_citations_are_deliberate(names):
-    """SOIL and USDC are tiered `toml` but their citations are NOT rewritten.
+def test_held_citations_were_released_once_enrolment_became_explicit(names):
+    """SUPERSEDED by the explicit-brands change (2026-11-22).
 
-    Writing a TOML citation onto either one changes brand protection:
-      SOIL  hex 534F494C... is already a family with an EMPTY allowlist
-            (its sentinel says every SOIL issuer is a spoof). Citing the
-            real Axelar issuer would move that allowlist [] -> {rfmS3z...}.
-      USDC  hex 5553444300... is NOT a family at all; citing it would
-            CREATE one (73 -> 74) allowlisting rGm7WCVp...
-
-    Both may be desirable, but they are brand decisions, not labelling
-    ones. Left for an explicit enrolment mechanism.
+    This previously asserted SOIL carried NO citation and USDC still cited
+    the bare host `https://circle.com`, because under the old loader a TOML
+    citation WAS a brand decision:
+      SOIL  534F494C... was already a family with an EMPTY allowlist, so
+            citing the real Axelar issuer moved [] -> {rfmS3z...}
+      USDC  5553444300... was not a family at all; citing it created one
+    Enrolment is now declared, so a citation enrols nothing and both can
+    carry the host that actually reciprocated. The assertion is moved, not
+    deleted: the hold is over and the reason it existed is recorded here.
     """
-    assert (_entry(names, "SOIL").get("verified_via") or "") == ""
-    assert _entry(names, "USDC").get("verified_via") == "https://circle.com"
+    assert _entry(names, "SOIL").get("verified_via") == \
+        "https://axelar.foundation/.well-known/xrp-ledger.toml"
+    assert _entry(names, "USDC").get("verified_via") == \
+        "https://circle.com/.well-known/xrp-ledger.toml"
 
 
-def test_the_six_issuer_level_passes_stay_untiered(names):
-    """Untiered is not 'unverified' -- it means nobody has published a
-    verdict. These six passed the two-way check; they are held only because
-    labelling them would enrol six new brand families as a side effect."""
-    for display in ("Opulence", "DEV", "XPN", "Xspence",
-                    "HVI Spike Te", "THE Y PASS"):
+def test_the_six_issuer_level_passes_are_now_tiered(names):
+    """Also superseded. These six passed the morning two-way sweep and were
+    held ONLY because their label needed a citation and that citation
+    silently enrolled six brand families. Issuer level is the ceiling: the
+    TOML names the address, never the ticker."""
+    for display, host in (("Opulence", "opulencex.io"), ("DEV", "xrpdev.net"),
+                          ("XPN", "xrpdev.net"), ("Xspence", "xrpdev.net"),
+                          ("HVI Spike Te", "hvi3.com"), ("THE Y PASS", "hvi3.com")):
         e = _entry(names, display)
-        assert e.get("tier") is None, (display, e.get("tier"))
+        assert e.get("tier") == "domain_fallback", (display, e.get("tier"))
+        assert TL.label_for(e) == f"issuer verified via {host}", display

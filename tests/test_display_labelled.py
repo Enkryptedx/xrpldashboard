@@ -240,4 +240,22 @@ class TestSuppression:
             "CERT": "self-described (unverified)",
             "BOTC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
             "DATEC": "listed by www.xrptokenizer.app \u00b7 not confirmed on-ledger",
+            # Added 2026-11-22 (brands made explicit), owner approved at
+            # ISSUER level. These five MPTs passed the Domain-first sweep:
+            # xrpdev.net / hvi3.com name each address in their TOML AND each
+            # issuer's on-ledger Domain points back at that host, so they
+            # earn HVI3ESC's exact two-way wording. They were held back on
+            # the morning of 2026-11-22 only because writing the citation
+            # their label needs ALSO enrolled six protected brand families
+            # under the old substring loader (73 -> 79). Enrolment is now a
+            # declaration, so the label is only a label.
+            #
+            # Opulence shipped in the same pass and is deliberately NOT
+            # here: it is a 40-char classic currency, not an MPT, so it
+            # never enters this MPT-only census.
+            "Xspence": "issuer verified via xrpdev.net",
+            "XPN": "issuer verified via xrpdev.net",
+            "DEV": "issuer verified via xrpdev.net",
+            "HVI Spike Te": "issuer verified via hvi3.com",
+            "THE Y PASS": "issuer verified via hvi3.com",
         }, got
