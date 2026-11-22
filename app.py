@@ -3846,7 +3846,15 @@ def _load_token_names_dict():
         # The ONE string every surface renders. currency_display stays
         # pristine: _resolve_display_label_to_hex matches on it to resolve
         # shareable /token/<ticker>/<issuer> URLs.
-        entry["display_labelled"] = token_label.display_labelled(entry)
+        # SHORT TAGS IN EVERY LIST/ROW CONTEXT (2026-11-22). All nine consumers
+        # of this field are lists or rows -- /tokens rows, the 30d hero, trades,
+        # whale/trustline event rows, the inferred-label lookup, labels.json and
+        # the wallet issuance list -- and three emit it as a JSON "display"/
+        # "label" field. A provenance SENTENCE there both overflows (wallet and
+        # event rows measured 40 chars against a ~38-char phone row) and changes
+        # a machine-readable field. The full sentence belongs only on a token's
+        # own page and in a key, neither of which reads this field.
+        entry["display_labelled"] = token_label.display_labelled(entry, short=True)
         out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
     return out
 

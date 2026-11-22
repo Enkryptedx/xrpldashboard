@@ -240,7 +240,80 @@ def label_for(entry: dict) -> str | None:
     return None                  # untagged, not a lookalike: renders bare
 
 
-def display_labelled(entry: dict, collision_note: str | None = None) -> str:
+# ── source labels for UNTIERED entries (2026-11-22) ──────────────────
+# An untiered name renders BARE -- which is EXACTLY how the top `toml` tier
+# renders, since evidence means fewer words. So a bare name is ambiguous:
+# it may be reviewed or merely unexamined. These labels say where the name
+# CAME FROM without claiming a verdict on it.
+#
+# Two variants because the surfaces differ: token.html, wallet and
+# /mpt/issuer have room for a sentence; a /tokens row is ~38 chars on a
+# phone, so it takes the tag.
+#
+# Measured 2026-11-22 over 467 labelled names: mpt_metadata 187,
+# lp_derived 240, other-url 27, curator_inferred 10, toml-cited 3. The
+# `xrpscan` and `none` buckets are deliberately absent -- today's tiering
+# emptied both, so wording for them would ship as dead copy.
+SOURCE_LABELS = {
+    "mpt_metadata":     ("name set by issuer \u00b7 not verified", "unverified"),
+    "lp_derived":       ("name from pool data",                    "pool data"),
+    "other-url":        ("informal source \u00b7 not verified",    "informal source"),
+    "curator_inferred": ("name inferred from activity",            "inferred"),
+    "toml-cited":       ("source cited \u00b7 could not confirm",  "unconfirmed"),
+}
+
+
+def source_bucket(entry: dict) -> str | None:
+    """Which source label an entry earns, or None.
+
+    Returns None for a TIERED entry: its tier already speaks for it (or
+    deliberately says nothing, as `toml` does), and stacking a source label
+    on top would double-label the row. That single rule is the guard --
+    precedence lives in display_labelled, not in each template.
+
+    Also None for a suppressed entry (never rendered) and for a sentinel
+    with an empty issuer (cannot form a row at all).
+    """
+    if not isinstance(entry, dict):
+        return None
+    if entry.get("tier"):
+        return None
+    if is_suppressed(entry):
+        return None
+    # REVIEW-MARKED entries render BARE, exactly as they do for the
+    # lookalike check. Caught by TestReviewMarker: a source label is still
+    # a published claim about provenance, and an entry parked for review
+    # has not earned one. Same exclusion is_suppressed() gets.
+    if entry.get(REVIEW_MARKER):
+        return None
+    if not (entry.get("issuer") or ""):
+        return None
+    src = entry.get("source")
+    via = entry.get("verified_via") or ""
+    if src == "lp_derived":
+        return "lp_derived"
+    if "xrp-ledger.toml" in via:
+        return "toml-cited"
+    if via.startswith("http"):
+        return "other-url"
+    if src == "mpt_metadata":
+        return "mpt_metadata"
+    if via:
+        return "curator_inferred"
+    return None
+
+
+def source_label(entry: dict, short: bool = False) -> str | None:
+    """The full sentence, or the short row tag when short=True."""
+    bucket = source_bucket(entry)
+    if not bucket:
+        return None
+    full, tag = SOURCE_LABELS[bucket]
+    return tag if short else full
+
+
+def display_labelled(entry: dict, collision_note: str | None = None,
+                     short: bool = False) -> str:
     """The ONE string every surface renders. Never a bare self-described name.
 
     This is the chokepoint. `currency_display` stays pristine because
@@ -248,7 +321,10 @@ def display_labelled(entry: dict, collision_note: str | None = None) -> str:
     /token/<ticker>/<issuer> URLs — mutating it would break those.
     """
     name = entry.get("currency_display") or ""
-    qualifier = merge_qualifiers(label_for(entry), collision_note)
+    # Tier wording WINS. A source label only ever fills the gap where a
+    # tier says nothing, so the two can never stack on one row.
+    trust = label_for(entry) or source_label(entry, short=short)
+    qualifier = merge_qualifiers(trust, collision_note)
     return f"{name} \u00b7 {qualifier}" if qualifier else name
 
 
@@ -283,6 +359,11 @@ def label_for_issuance(issuance_id: str, issuer: str,
         return None
     # Prefer the label the chokepoint already computed; fall back to
     # recomputing so this helper is usable on a plain token_names entry.
-    if "_trust_label" in entry:
-        return entry["_trust_label"]
-    return label_for(entry)
+    label = (entry["_trust_label"] if "_trust_label" in entry
+             else label_for(entry))
+    # An UNTIERED issuance used to return None here, so the 187
+    # mpt_metadata names rendered bare on /mpt/* -- identical to a
+    # reviewed one. Fall back to the source label, SHORT because these are
+    # list rows. `or` keeps the precedence: a tier's own wording always
+    # wins, so the two can never stack on one row.
+    return label or source_label(entry, short=True)
