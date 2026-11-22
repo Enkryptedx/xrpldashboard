@@ -271,11 +271,25 @@ class TestFileInvariants:
         PUBLISHED (YELLOW at currency level, LOOM and HVI3 at issuer
         level) and so never enter this set.
 
+        140 -> 223 on 2026-11-22: the 83 SIVAX serials. One publisher
+        (www.sivax.io) self-attests 83 MPT serials across two issuers,
+        rM7ffj9GZV41K8fWUhtpfZSZvYoZB2yA4t (80) and rNyrL3hjvM3mDYtTDhHLWMiGtbnV2wdBv6
+        (1). Their citation is REAL -- they reached issuer level in the
+        Domain-first sweep, 83 of its 90 issuer-level passes -- but our own
+        node reads zero holders and zero outstanding obligations for all 83
+        (rM7ffj9 has a single trustline and it is RLUSD, not any SIV), they
+        are MPT keys so `toml` is unreachable, and SIV1 is duplicated at
+        rM7ffj9 (0601A58E.../0601A594...) which trips the
+        (currency_display, issuer) collision guard. Suppression is not a
+        finding against the publisher: it keeps 83 holderless serials from
+        one operator out of a shared namespace. Count rose because
+        decisions were ADDED. See tests/test_sivax_suppression.py.
+
         This is the one authoritative home for the census count.
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 140
+        assert n == 223
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
