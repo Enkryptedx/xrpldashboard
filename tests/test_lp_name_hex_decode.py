@@ -120,19 +120,95 @@ def test_non_lp_displays_carry_no_raw_hex(names):
     assert offenders == [], offenders
 
 
-# ── the routes ──────────────────────────────────────────────────────
-@pytest.fixture(scope="module")
-def client():
+# ── the surfaces ────────────────────────────────────────────────────
+# THE TESTS THIS REPLACES WERE VACUOUS, in two independent ways.
+#
+#   @pytest.mark.parametrize("path", ["/tokens", "/pools"])
+#   bad = [m for m in HEX40.finditer(body)
+#          if "LP:" in body[m.start()-60:m.start()]]
+#   assert bad == []
+#
+# 1. WRONG SURFACES. Measured live at x-commit a68021978dc3, neither
+#    /tokens nor /pools renders an lp_derived display at all: /tokens
+#    contains the substring "LP:" exactly ONCE in the whole document and
+#    /pools, /pools.json and /tokens/labels.json contain it zero times.
+#    The two surfaces that DO render it are token detail and wallet:
+#
+#      /token/033CD374C77160C0239D3945A465915B84793008/rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ
+#        <title>LP: BBRL/RLUSD · token · xrpldashboard</title>
+#      /wallet/rB3bK9PnHueTTabMVHedKuBzG5RSFYAUEH
+#        <span class="issuance-symbol">LP: USD.Bitstamp/RLUSD</span>
+#
+# 2. ABSENCE PREDICATE. Even on the right surface the assertion could
+#    never fail: it only looked at hex runs that had "LP:" within the
+#    preceding 60 chars. With the name absent there is nothing to find, so
+#    an empty result reads as a pass. The 40-char hex runs that DO appear
+#    on /tokens are 64-char SHA-256 emblem filenames under /static/ and
+#    the `token_icon_lookup` JSON keys -- icon-cache keys, not displays.
+#
+# So the assertions below are POSITIVE: the decoded name must be PRESENT.
+# A presence assertion fails when rendering is absent; an absence one
+# passes. Proven to fail on pre-fix fbf041a, where the stored display is
+# still the raw hex.
+
+LP_DECODED_SAMPLES = (
+    "LP: BBRL/RLUSD",
+    "LP: BBRL/BITx",
+    "LP: XRP/aixrp",
+    "LP: BITx/aixrp",
+    "LP: XRP/USDB",
+    "LP: USD.Bitstamp/RLUSD",
+)
+
+
+def test_decoded_lp_names_are_present_in_the_data(names):
+    """Deterministic presence check on the string every surface renders.
+
+    This is the one that fails on the pre-fix commit: before the decode,
+    these entries held e.g.
+    'LP: 4242524C00000000000000000000000000000000/RLUSD'.
+    """
+    displays = {v.get("currency_display") for v in names.values()
+                if isinstance(v, dict) and v.get("source") == "lp_derived"}
+    missing = [s for s in LP_DECODED_SAMPLES if s not in displays]
+    assert missing == [], f"decoded LP names absent from the data: {missing}"
+
+
+def test_rendered_string_for_each_sample_is_the_decoded_name(names):
+    """display_labelled() is the chokepoint both surfaces render through,
+    so assert on its output rather than on a page body."""
+    import token_label as TL
+    by_display = {v.get("currency_display"): v for v in names.values()
+                  if isinstance(v, dict) and v.get("source") == "lp_derived"}
+    for sample in LP_DECODED_SAMPLES:
+        entry = by_display.get(sample)
+        assert entry is not None, sample
+        rendered = TL.display_labelled(entry)
+        assert sample in rendered, (sample, rendered)
+        assert not HEX40.search(rendered), (sample, rendered)
+
+
+@pytest.mark.skipif(os.environ.get("LP_LIVE_ROUTE_TEST") != "1",
+                    reason="opt-in: token detail renders live amm_info, so "
+                           "it reaches a public cluster when XRPL_NODE is "
+                           "unset. Run with LP_LIVE_ROUTE_TEST=1.")
+def test_token_detail_route_renders_the_decoded_name():
+    """Route-level presence on the surface that actually renders it.
+
+    Deliberately opt-in rather than silently skipped-by-default elsewhere:
+    a test that no-ops in CI is how the previous version stayed green while
+    asserting nothing. The wallet surface is NOT covered here -- it renders
+    0 occurrences under the local test client because its issuance list
+    needs data the local process does not have, so a local presence
+    assertion there would fail for environmental reasons. Wallet coverage
+    belongs in the live canary, not this file.
+    """
     import app as app_module
     app_module.app.config["TESTING"] = True
-    return app_module.app.test_client()
-
-
-@pytest.mark.parametrize("path", ["/tokens", "/pools"])
-def test_route_serves_no_raw_hex_lp_name(client, path):
-    resp = client.get(path)
-    assert resp.status_code == 200, f"{path} -> {resp.status_code}"
+    client = app_module.app.test_client()
+    cur, iss = ("033CD374C77160C0239D3945A465915B84793008",
+                "rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ")
+    resp = client.get(f"/token/{cur}/{iss}")
+    assert resp.status_code == 200, resp.status_code
     body = resp.get_data(as_text=True)
-    bad = [m.group(0) for m in HEX40.finditer(body)
-           if "LP:" in body[max(0, m.start() - 60):m.start()]]
-    assert bad == [], f"{path} renders raw hex in an LP name: {bad[:3]}"
+    assert "LP: BBRL/RLUSD" in body, "token detail did not render the decoded name"
