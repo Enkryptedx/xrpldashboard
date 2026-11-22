@@ -470,6 +470,16 @@ def derive_lp_currency(asset1: dict, asset2: dict) -> str:
     return ("03" + h[:19].hex()).upper()
 
 
+def _is_raw_hex40(s: str) -> bool:
+    """True when `s` is an undecoded 40-char hex currency code.
+
+    A component entry whose own `currency_display` still holds the raw hex
+    puts that hex straight into any LP name built from it. This predicate is
+    deliberately narrow: exactly 40 chars, all hex. A 3-char code, a decoded
+    ticker and a dotted form like 'USD.Bitstamp' all return False."""
+    return len(s) == 40 and all(c in "0123456789abcdefABCDEF" for c in s)
+
+
 def _decode_currency_label(cur: str) -> str:
     """Render an XRPL currency code as a short human-presentable label.
 
@@ -507,7 +517,21 @@ def _shippable_side(asset: dict, names: dict) -> tuple[bool, str]:
     if existing.get("verified_via") == "TODO_curation_pass":
         return False, ""
     disp = (existing.get("currency_display") or "").strip()
-    return (bool(disp), disp or _decode_currency_label(cur))
+    # A component whose own currency_display is still a raw 40-char hex would
+    # put that hex straight into the LP name, e.g.
+    #   "LP: 4242524C00000000000000000000000000000000/RLUSD"
+    # which is 50 chars of unreadable code on a ~38-char phone row. Decode it
+    # for the LP LABEL ONLY: the component's own currency_display is never
+    # written to, so /token/<ticker>/<issuer> resolution is unaffected.
+    #
+    # The shippability gate is UNCHANGED and still keyed on `disp`: a
+    # component with no display of its own remains un-shippable, so this
+    # cannot widen which pools get labelled. (The old `disp or
+    # _decode_currency_label(cur)` tail was dead code -- when `disp` was
+    # empty the tuple's first element was False, so the caller discarded the
+    # decoded value and skipped the pool.)
+    label = _decode_currency_label(cur) if _is_raw_hex40(disp) else disp
+    return (bool(disp), label)
 
 
 def enrich_lp_tokens(names: dict, dry_run: bool) -> int:
