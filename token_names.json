@@ -1948,7 +1948,7 @@
     "category": "unlabeled",
     "currency_display": "HVI Spike Te",
     "currency_hex": "060837B658DFB58EBE866100FEDB2013D123744243658B7D",
-    "desc": "Xaman opt-in spike 2026-08-17 — not a real ticket",
+    "desc": "Xaman opt-in spike 2026-08-17 \u2014 not a real ticket",
     "issuer": "r9avT7NURuqC7jbVxUjcrMkHAr5aqmHkSN",
     "name": "HVI Spike Test Pass",
     "source": "mpt_metadata"
@@ -2275,7 +2275,7 @@
     "category": "native_utility_chain",
     "currency_display": "KEY",
     "currency_hex": "0634B7C2EBFACC0EA89CF0CE02F96E385FB6BAE6405AD8AB",
-    "desc": "The native utility and governance token of the Keystone Protocol — a decentralized lending and asset management platform built on XRPL.",
+    "desc": "The native utility and governance token of the Keystone Protocol \u2014 a decentralized lending and asset management platform built on XRPL.",
     "issuer": "r4WkNmYkB1M5hcZF3vYLfiLseJfKvgkFyA",
     "issuer_name": "Keystone Foundation",
     "name": "Keystone Protocol Token",
@@ -2305,7 +2305,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "06380D74A1C05DF0A17817E6BAC66283CDE86FAF894651ED",
-    "desc": "Token de captação para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
     "issuer": "rEkGNmAo4R7KfA6wZre62LJXDUvmtgg66i",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 39abf54e",
@@ -2315,7 +2315,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "063AD99539A5242C0717E89F8EED25396B44673133938738",
-    "desc": "Token de captação para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
     "issuer": "raEoM9iz5B61iqwDW7yvP7dj4DpbK5Nwy7",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 29d6f09d",
@@ -2325,7 +2325,7 @@
     "category": "rwa",
     "currency_display": "BRL",
     "currency_hex": "063AD9F575D20B5318CEE1E1ED7891C54A983F23C47481C1",
-    "desc": "Token de captação para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
     "issuer": "rBjyg2GWvXnGaxfWKLoyaTFqpFABD4MkTd",
     "issuer_name": "Axia Digital Solutions",
     "name": "Axia Crowdfunding 802f8aab",
@@ -2335,7 +2335,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B4E3FD4CDD965C736890406D541BC0B3C24132710BB",
-    "desc": "Token de captação para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 29d6f09d-b7e8-44af-9a15-1e35ac1a3f02",
     "issuer": "raFWVyTwpks1hd2rEbi85AtPPnJ3DuwrA9",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -2345,7 +2345,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B532C28B1B9B5305AB5316904C14A5BB2DA09B430FE",
-    "desc": "Token de captação para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 802f8aab-4f0f-4e7b-9960-0005fe26c5cb",
     "issuer": "rnpV7v65kpk4RExbx9TMSGP1trhu9GXkLH",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -2355,7 +2355,7 @@
     "category": "rwa",
     "currency_display": "tBRL",
     "currency_hex": "063F0B585069F82556F862DD9D3248783323D1B7F841BEFD",
-    "desc": "Token de captação para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
+    "desc": "Token de capta\u00e7\u00e3o para projeto 39abf54e-518c-47d7-a0c3-a613d1213e33",
     "issuer": "r3LUrDzpt7eaoVZi5arepjqhMycTxjkTQi",
     "issuer_name": "Tokeniza",
     "name": "Tokeniza",
@@ -3047,7 +3047,20 @@
     "issuer": "rGXjYgKrqTUZTPF9pMEKPTJEpcHE41wCE7",
     "name": "AeroNeura",
     "source": "toml",
-    "verified_via": "https://aero.alterspv.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://aero.alterspv.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: aero.alterspv.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates aero.alterspv.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://aero.alterspv.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "aero.alterspv.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "41524D5900000000000000000000000000000000:r319FqohpKLwjtcV2mosyC5sy125fDk4uH": {
     "category": "memecoin",
@@ -3113,7 +3126,20 @@
     "issuer": "rLQNxUZT1PraKVzpvBMXUTLk8PiQS18qqy",
     "name": "Chola Mining",
     "source": "toml",
-    "verified_via": "https://chola.zaoyuren.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://chola.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: chola.zaoyuren.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates chola.zaoyuren.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://chola.zaoyuren.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "chola.zaoyuren.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "434F524500000000000000000000000000000000:rcoreNywaoz2ZCQ8Lg2EbSLnGuRBmun6D": {
     "category": "native_utility_chain",
@@ -3159,7 +3185,20 @@
     "issuer": "rBhZ4Gd5zLGEhyK1EngrtSRrRf49xYqdUL",
     "name": "WaferGrid",
     "source": "toml",
-    "verified_via": "https://grid.alterspv.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://grid.alterspv.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: grid.alterspv.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates grid.alterspv.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://grid.alterspv.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "grid.alterspv.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "4752494D00000000000000000000000000000000:rHLRdLwXiBZSD53ZQz8ogGJz25LzNCCjSz": {
     "category": "memecoin",
@@ -3203,7 +3242,7 @@
     "currency_display": "ONDO",
     "currency_hex": "4F4E444F00000000000000000000000000000000",
     "issuer": "",
-    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL — any wallet doing so is impersonating the brand.",
+    "notes": "Ondo governance token is Ethereum-only. No canonical XRPL issuer exists. Per Ondo's published TOML, no ONDO-issuing wallet should appear on XRPL \u2014 any wallet doing so is impersonating the brand.",
     "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
   },
   "4F55534700000000000000000000000000000000:rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p": {
@@ -3212,7 +3251,20 @@
     "currency_hex": "4F55534700000000000000000000000000000000",
     "issuer": "rHuiXXjHLpMP8ZE9sSQU5aADQVWDwv6h5p",
     "notes": "Ondo Short-Term US Government Treasury Fund. Canonical issuer attested via two-way TOML chain.",
-    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml"
+    "verified_via": "https://ondo.finance/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: ondo.finance TOML pairs this code with this issuer in [[TOKENS]], and the issuer's on-ledger Domain reciprocates ondo.finance (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "TOKENS",
+      "toml_url": "https://ondo.finance/.well-known/xrp-ledger.toml",
+      "onledger_domain": "ondo.finance",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "XLS-26"
+    }
   },
   "4F70756C656E6365000000000000000000000000:rs5wxrBTSErywDDfPs5NY4Zorrca5QMGVd": {
     "category": "dex_utility",
@@ -3244,7 +3296,20 @@
     "issuer_name": "RAVN Robotics",
     "name": "RAVN Robotics",
     "source": "toml",
-    "verified_via": "https://ravnrobotics.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://ravnrobotics.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: ravnrobotics.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates ravnrobotics.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://ravnrobotics.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "ravnrobotics.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "524950504C454449434B00000000000000000000:rGxkZKJHTDd9MMxXujDs63YHRYbcTJeUgS": {
     "category": "memecoin",
@@ -3258,7 +3323,20 @@
     "currency_display": "RLUSD",
     "currency_hex": "524C555344000000000000000000000000000000",
     "issuer": "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
-    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://ripple.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: ripple.com TOML pairs this code with this issuer in [[TOKENS]], and the issuer's on-ledger Domain reciprocates ripple.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "TOKENS",
+      "toml_url": "https://ripple.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "https://ripple.com/",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "XLS-26"
+    }
   },
   "5348524F4F4D4945530000000000000000000000:r4M4TzSypz2gRdS86hTM7oFcSs6yRmEPKZ": {
     "category": "memecoin",
@@ -3287,7 +3365,7 @@
     "currency_display": "SOIL",
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
-    "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet — not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
+    "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet \u2014 not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
     "verified_via": null
   },
   "534F4C4F00000000000000000000000000000000:rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
@@ -3345,7 +3423,20 @@
     "issuer": "rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr",
     "name": "WANGZYR",
     "source": "toml",
-    "verified_via": "https://wang.zaoyuren.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://wang.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: wang.zaoyuren.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates wang.zaoyuren.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://wang.zaoyuren.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "wang.zaoyuren.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "5742544300000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3459,7 +3550,20 @@
     "issuer_name": "WeildX",
     "name": "wAAPL",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77414D4154000000000000000000000000000000:rfum9QyCumjhTJhoWwJzRsQwRAm9YP55ie": {
     "category": "unlabeled",
@@ -3470,7 +3574,20 @@
     "issuer_name": "WeildX",
     "name": "wAMAT",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77414D4400000000000000000000000000000000:r4KtT32MABH3o21EupjGJrp8pZE2xsH7N6": {
     "category": "unlabeled",
@@ -3481,7 +3598,20 @@
     "issuer_name": "WeildX",
     "name": "wAMD",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77414D5A4E000000000000000000000000000000:rLpy3QeZohPjLodLsppK4P6REFVV6rCN61": {
     "category": "unlabeled",
@@ -3492,7 +3622,20 @@
     "issuer_name": "WeildX",
     "name": "wAMZN",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7741524D00000000000000000000000000000000:rh4d6diHyjJuJpuaoDN8GomLfKXrMUEYJf": {
     "category": "unlabeled",
@@ -3503,7 +3646,20 @@
     "issuer_name": "WeildX",
     "name": "wARM",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7741534D4C000000000000000000000000000000:rhSUG3EPw4XUdX2GLmVLHaAjBM1CpnWjmt": {
     "category": "unlabeled",
@@ -3514,7 +3670,20 @@
     "issuer_name": "WeildX",
     "name": "wASML",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7741564156000000000000000000000000000000:rPCX9LELh1kPfcvcXGoUCnxxqDfbX3Y33Z": {
     "category": "unlabeled",
@@ -3525,7 +3694,20 @@
     "issuer_name": "WeildX",
     "name": "wAVAV",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774156474F000000000000000000000000000000:rLQQaZ5vLyyujot5XoLaWxqnZNnr4YRvoD": {
     "category": "unlabeled",
@@ -3536,7 +3718,20 @@
     "issuer_name": "WeildX",
     "name": "wAVGO",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7742414241000000000000000000000000000000:rfjzcxc7MtrkPYo1yhT7Qhco5DsVKwDGTK": {
     "category": "unlabeled",
@@ -3547,7 +3742,20 @@
     "issuer_name": "WeildX",
     "name": "wBABA",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77434F494E000000000000000000000000000000:rh8xp5Wmrz9cLprGoFX4q5f9FtZcEnnJpT": {
     "category": "unlabeled",
@@ -3558,7 +3766,20 @@
     "issuer_name": "WeildX",
     "name": "wCOIN",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7747465300000000000000000000000000000000:r9mf2jHSF9xGZgPxK8ziVYmcepoWYje4qV": {
     "category": "unlabeled",
@@ -3569,7 +3790,20 @@
     "issuer_name": "WeildX",
     "name": "wGFS",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77474F4F47000000000000000000000000000000:r3tFYQ2buduH9KToPUedzDqz4UNtoiJWRg": {
     "category": "unlabeled",
@@ -3580,7 +3814,20 @@
     "issuer_name": "WeildX",
     "name": "wGOOG",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77494E5443000000000000000000000000000000:r9B4YcEvg25LBBiDP235H9HBPWsCapQEdV": {
     "category": "unlabeled",
@@ -3591,7 +3838,20 @@
     "issuer_name": "WeildX",
     "name": "wINTC",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774A504D00000000000000000000000000000000:rHV3HL8G175rdLYAyV8KhBcBzAnLT2tYX9": {
     "category": "unlabeled",
@@ -3602,7 +3862,20 @@
     "issuer_name": "WeildX",
     "name": "wJPM",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774B544F53000000000000000000000000000000:rpZAYSg43HfEiYa3C4KHM8nrpPxKZExuwx": {
     "category": "unlabeled",
@@ -3613,7 +3886,20 @@
     "issuer_name": "WeildX",
     "name": "wKTOS",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774C485800000000000000000000000000000000:rDKqcRy1ACiP5ebFCZo5tJYkAePwX31bbq": {
     "category": "unlabeled",
@@ -3624,7 +3910,20 @@
     "issuer_name": "WeildX",
     "name": "wLHX",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774C4C5900000000000000000000000000000000:rwhCoTx1dyJCUA92RM1JBJeizYZk99PnDv": {
     "category": "unlabeled",
@@ -3635,7 +3934,20 @@
     "issuer_name": "WeildX",
     "name": "wLLY",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774C4D5400000000000000000000000000000000:ra1fvPJqn3ATvbRCRNsUcjyWoCA5Yjxeio": {
     "category": "unlabeled",
@@ -3646,7 +3958,20 @@
     "issuer_name": "WeildX",
     "name": "wLMT",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774C524358000000000000000000000000000000:rM6x9BdkGWrtHziLWkSMJXP3xnHTPY8P3T": {
     "category": "unlabeled",
@@ -3657,7 +3982,20 @@
     "issuer_name": "WeildX",
     "name": "wLRCX",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774D455441000000000000000000000000000000:r39KivuiizHEKe76spEk1vNALmhuTFMXhG": {
     "category": "unlabeled",
@@ -3668,7 +4006,20 @@
     "issuer_name": "WeildX",
     "name": "wMETA",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774D52564C000000000000000000000000000000:rMyee4T4Bm8LBpXFtuNYe2j9V1ShUhiPTP": {
     "category": "unlabeled",
@@ -3679,7 +4030,20 @@
     "issuer_name": "WeildX",
     "name": "wMRVL",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774D534654000000000000000000000000000000:rPpEtXCzThYmWyzARbD3snF53JuasuJgSk": {
     "category": "unlabeled",
@@ -3690,7 +4054,20 @@
     "issuer_name": "WeildX",
     "name": "wMSFT",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774E464C58000000000000000000000000000000:ra8xVof96N45GpcMRLyoGZuP1PsxaM7hwH": {
     "category": "unlabeled",
@@ -3701,7 +4078,20 @@
     "issuer_name": "WeildX",
     "name": "wNFLX",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774E4F4300000000000000000000000000000000:rHsoHfvALr92eK14yyNSNRmGomSDuJd3DT": {
     "category": "unlabeled",
@@ -3712,7 +4102,20 @@
     "issuer_name": "WeildX",
     "name": "wNOC",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774E4F564F000000000000000000000000000000:rhwpaVs7p3U4MBKScb86FbtU8dyMPYcdaZ": {
     "category": "unlabeled",
@@ -3723,7 +4126,20 @@
     "issuer_name": "WeildX",
     "name": "wNOVO",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "774E564441000000000000000000000000000000:raHPcuxgHwtkM3vYvdqTTmr5SYmQxvQ39g": {
     "category": "unlabeled",
@@ -3734,7 +4150,20 @@
     "issuer_name": "WeildX",
     "name": "wNVDA",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "77504C5452000000000000000000000000000000:rNtVgXbMsBqD4Y4j6jxZxwzM6CvY9kbBHS": {
     "category": "unlabeled",
@@ -3745,7 +4174,20 @@
     "issuer_name": "WeildX",
     "name": "wPLTR",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7751434F4D000000000000000000000000000000:r3tpqsJ7EfqxERpchjf4B61mA9uJPv8LWF": {
     "category": "unlabeled",
@@ -3756,7 +4198,20 @@
     "issuer_name": "WeildX",
     "name": "wQCOM",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7752545800000000000000000000000000000000:rpFQpD3KAwbaGgjZLyC5UayNJo913FSBTK": {
     "category": "unlabeled",
@@ -3767,7 +4222,20 @@
     "issuer_name": "WeildX",
     "name": "wRTX",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7753504358000000000000000000000000000000:rBQyKvkHqakncqgJyYgdQ4zNDqMJym8feZ": {
     "category": "unlabeled",
@@ -3778,7 +4246,20 @@
     "issuer_name": "WeildX",
     "name": "wSPCX",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7754534C41000000000000000000000000000000:rh3x5EtSoVbJU5dCYQtCWqKZNqfRqXgZgc": {
     "category": "unlabeled",
@@ -3789,7 +4270,20 @@
     "issuer_name": "WeildX",
     "name": "wTSLA",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7754534D43000000000000000000000000000000:rKFxRFL5c2E5jN3HHyph2enLjiGK97LNH": {
     "category": "unlabeled",
@@ -3800,7 +4294,20 @@
     "issuer_name": "WeildX",
     "name": "wTSMC",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "7756495341000000000000000000000000000000:rfkcFWbnsL4GHTLcvS5f4UtCLinUG477y7": {
     "category": "unlabeled",
@@ -3811,7 +4318,20 @@
     "issuer_name": "WeildX",
     "name": "wVISA",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "ARK:rf5Jzzy6oAFBJjLhokha1v8pXVgYYjee3b": {
     "category": "unlabeled",
@@ -3870,7 +4390,20 @@
     "currency_hex": "CCR",
     "issuer": "rPAKJxHcHEkjPtpsSTGGMWLvpibZiuRJHi",
     "source": "toml",
-    "verified_via": "https://cocorodzuke.jp/.well-known/xrp-ledger.toml"
+    "verified_via": "https://cocorodzuke.jp/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: cocorodzuke.jp TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates cocorodzuke.jp (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://cocorodzuke.jp/.well-known/xrp-ledger.toml",
+      "onledger_domain": "cocorodzuke.jp",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "CSC:rCSCManTZ8ME9EoLrSHHYKW8PPwWMgkwr": {
     "category": "native_utility_chain",
@@ -3888,7 +4421,20 @@
     "issuer_name": "ZYR CryoVektor SPV",
     "name": "Cryovektor",
     "source": "toml",
-    "verified_via": "https://cvk.zaoyuren.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://cvk.zaoyuren.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: cvk.zaoyuren.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates cvk.zaoyuren.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://cvk.zaoyuren.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "cvk.zaoyuren.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "ELS:rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg": {
     "category": "native_utility_chain",
@@ -3924,7 +4470,20 @@
     "currency_hex": "FSE",
     "issuer": "rs1MKY54miDtMFEGyNuPd3BLsXauFZUSrj",
     "source": "toml",
-    "verified_via": "https://strategyengine.one/.well-known/xrp-ledger.toml"
+    "verified_via": "https://strategyengine.one/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: strategyengine.one TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates strategyengine.one (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://strategyengine.one/.well-known/xrp-ledger.toml",
+      "onledger_domain": "strategyengine.one",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "LHT:rHashLabsu2H6hXDSunL8AcVDmTyE17Z35": {
     "category": "defi_yield",
@@ -3984,7 +4543,20 @@
     "issuer": "rTExTnvBr4Y315ZQDUdmeTitu7iPVqYPg",
     "issuer_name": "TextRP",
     "source": "domain_fallback",
-    "verified_via": "https://token.textrp.io/.well-known/xrp-ledger.toml"
+    "verified_via": "https://token.textrp.io/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: token.textrp.io TOML pairs this code with this issuer in [[TOKENS]], and the issuer's on-ledger Domain reciprocates token.textrp.io (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "TOKENS",
+      "toml_url": "https://token.textrp.io/.well-known/xrp-ledger.toml",
+      "onledger_domain": "token.textrp.io",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "XLS-26"
+    }
   },
   "URL:rnmVJ7uh2zzJHMaNnMsT3Av5Uu7b6DeHvp": {
     "category": "unlabeled",
@@ -4039,7 +4611,20 @@
     "issuer": "r9rCp6XCn3WiHWjMUs7c1GBZ85VsCFX4Ur",
     "issuer_name": "Xhero",
     "source": "domain_fallback",
-    "verified_via": "https://xheronft.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://xheronft.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: xheronft.com TOML pairs this code with this issuer in [[TOKENS]], and the issuer's on-ledger Domain reciprocates xheronft.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "TOKENS",
+      "toml_url": "https://xheronft.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "xheronft.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "XLS-26"
+    }
   },
   "XPM:rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa": {
     "category": "native_utility_chain",
@@ -4062,7 +4647,20 @@
     "issuer": "r9xu7pdBEx4DdiatMqAUFodgxaPkfFU1Zw",
     "name": "XRH",
     "source": "toml",
-    "verified_via": "https://xrhrabbithole.github.io/.well-known/xrp-ledger.toml"
+    "verified_via": "https://xrhrabbithole.github.io/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: xrhrabbithole.github.io TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates xrhrabbithole.github.io (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://xrhrabbithole.github.io/.well-known/xrp-ledger.toml",
+      "onledger_domain": "xrhrabbithole.github.io",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "XRT:rPvuCxw1m8u2SWTqtRN6ZEcb1xPbU4cPFR": {
     "category": "unlabeled",
@@ -4092,7 +4690,20 @@
     "issuer_name": "WeildX",
     "name": "wMU",
     "source": "toml",
-    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml"
+    "verified_via": "https://weildx.com/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: weildx.com TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates weildx.com (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://weildx.com/.well-known/xrp-ledger.toml",
+      "onledger_domain": "weildx.com",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "0476D692478E9F0F8D7F66813EEA2785F3638FFD74F7ED73:rfXMq3BMX2dTzJtG4pnhr49u6sHkVQXpWL": {
     "currency_hex": "0476D692478E9F0F8D7F66813EEA2785F3638FFD74F7ED73",
@@ -7768,7 +8379,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 6",
-    "desc": "Token de captação Liquidez OTC tBRL 6",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 6",
     "issuer_name": "Tokeniza"
   },
   "06361CB39DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7778,7 +8389,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 5",
-    "desc": "Token de captação Liquidez OTC tBRL 5",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 5",
     "issuer_name": "Tokeniza"
   },
   "06361CB19DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7788,7 +8399,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Liquidez OTC tBRL 4",
-    "desc": "Token de captação Liquidez OTC tBRL 4",
+    "desc": "Token de capta\u00e7\u00e3o Liquidez OTC tBRL 4",
     "issuer_name": "Tokeniza"
   },
   "06361CB29DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7798,7 +8409,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "b.U Tech - EUA",
-    "desc": "Token de captação b.U Tech - EUA ",
+    "desc": "Token de capta\u00e7\u00e3o b.U Tech - EUA ",
     "issuer_name": "Tokeniza"
   },
   "0641C7E8F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7826,7 +8437,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Mira Mar Vile",
-    "desc": "Token de captação Mira Mar Vile",
+    "desc": "Token de capta\u00e7\u00e3o Mira Mar Vile",
     "issuer_name": "Tokeniza"
   },
   "06361CB79DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7835,8 +8446,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Click Antecipa - Debêntures 05",
-    "desc": "Token de captação Click Antecipa - Debêntures 05",
+    "name": "Click Antecipa - Deb\u00eantures 05",
+    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 05",
     "issuer_name": "Tokeniza"
   },
   "0660BFC902C2B79CFFA4C9C93930F5E1FCCEB28818F73E1F:rEbc2LnrFB2gehFhFbxHMzE366BJcFNDT": {
@@ -7865,7 +8476,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "On House",
-    "desc": "Token de captação On House ",
+    "desc": "Token de capta\u00e7\u00e3o On House ",
     "issuer_name": "Tokeniza"
   },
   "0641C7E6F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7883,8 +8494,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Click Antecipa - Debêntures 06",
-    "desc": "Token de captação Click Antecipa - Debêntures 06",
+    "name": "Click Antecipa - Deb\u00eantures 06",
+    "desc": "Token de capta\u00e7\u00e3o Click Antecipa - Deb\u00eantures 06",
     "issuer_name": "Tokeniza"
   },
   "0641C7E1F9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7902,8 +8513,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Recebível Tokenizado 9 - b.U Tech",
-    "desc": "Token de captação Oferta de Recebível Tokenizado 9 - b.U Tech",
+    "name": "Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 9 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CBB9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7912,8 +8523,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Recebível Tokenizado 10 - b.U Tech",
-    "desc": "Token de captação Oferta de Recebível Tokenizado 10 - b.U Tech",
+    "name": "Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 10 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CBA9DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7922,8 +8533,8 @@
     "issuer": "rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Oferta de Recebível Tokenizado 11 - b.U Tech",
-    "desc": "Token de captação Oferta de Recebível Tokenizado 11 - b.U Tech",
+    "name": "Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
+    "desc": "Token de capta\u00e7\u00e3o Oferta de Receb\u00edvel Tokenizado 11 - b.U Tech",
     "issuer_name": "Tokeniza"
   },
   "06361CB49DBAF9976AB0CFB549A54DC608D1C0DF0AD59EC7:rEPrn4DbXvHNBDJghQWUf92NzLU3MURFC3": {
@@ -7933,7 +8544,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "On House",
-    "desc": "Token de captação On House ",
+    "desc": "Token de capta\u00e7\u00e3o On House ",
     "issuer_name": "Tokeniza"
   },
   "0641C7EAF9C6BB3B75EA31B353A54E2EFAC423498EF25045:rPm6K1fr4MNcv5W8pD4RCawVHjsK1ziCKp": {
@@ -7953,7 +8564,7 @@
     "tier": "toml",
     "verified_via": "https://evecoin.org/.well-known/xrp-ledger.toml",
     "name": "EVE Token",
-    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain — every hour, forever."
+    "desc": "The first token created and managed by an actual AI on the XRP Ledger. EVE writes her thoughts permanently onto the blockchain \u2014 every hour, forever."
   },
   "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0:rQDCL2vZNVndsyCpdP6ChhsAsqsGoShDEP": {
     "currency_hex": "03E88F3692232390CAB53AE9C2A2E4FFB4A85BE0",
@@ -8045,7 +8656,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "FNPL forward contract: 1000kg maíz, FWD-2026-006",
+    "desc": "FNPL forward contract: 1000kg ma\u00edz, FWD-2026-006",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)"
   },
   "0659A9A8C191FF213D318195FDA5F4C99102CFF469EBC10E:rJeWKscBVsDQJEEV6EGuNkM9mZG2D7YPr8": {
@@ -8118,14 +8729,40 @@
     "currency_display": "USDB",
     "issuer": "rB3y9EPnq1ZrZP3aXgfyfdXQThzdXMrLMc",
     "source": "toml",
-    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
+    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: tokens.brazacripto.com.br TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates tokens.brazacripto.com.br (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml",
+      "onledger_domain": "tokens.brazacripto.com.br",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "4242524C00000000000000000000000000000000:rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt": {
     "currency_hex": "4242524C00000000000000000000000000000000",
     "currency_display": "BBRL",
     "issuer": "rH5CJsqvNqZGxrMyGaqLEoMWRYcVTAPZMt",
     "source": "toml",
-    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml"
+    "verified_via": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: tokens.brazacripto.com.br TOML pairs this code with this issuer in [[CURRENCIES]], and the issuer's on-ledger Domain reciprocates tokens.brazacripto.com.br (two-way verified 2026-11-22)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "matched_table": "CURRENCIES",
+      "toml_url": "https://tokens.brazacripto.com.br/.well-known/xrp-ledger.toml",
+      "onledger_domain": "tokens.brazacripto.com.br",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22",
+      "standard": "xrp-ledger.toml core spec"
+    }
   },
   "033CD374C77160C0239D3945A465915B84793008:rpSVcd53bQUWy7vUneK4dZrEAjxBkxjiBZ": {
     "currency_hex": "033CD374C77160C0239D3945A465915B84793008",
@@ -8471,11 +9108,11 @@
   },
   "0661B4328955F03F243B4C36867E3E5EF42DC92CEFC42D8F:rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W": {
     "currency_hex": "0661B4328955F03F243B4C36867E3E5EF42DC92CEFC42D8F",
-    "currency_display": "한국전력",
+    "currency_display": "\ud55c\uad6d\uc804\ub825",
     "issuer": "rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W",
     "source": "mpt_metadata",
     "category": "other",
-    "name": "한국전력"
+    "name": "\ud55c\uad6d\uc804\ub825"
   },
   "066C7BC918BD9A4C8DDD1FC2E2D0A67121308F46DDCB9D61:rsEFMSaHj9ZQsbMu4UHhkt9ZskKZn27XHP": {
     "currency_hex": "066C7BC918BD9A4C8DDD1FC2E2D0A67121308F46DDCB9D61",
@@ -9647,7 +10284,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-019",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-019",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9658,7 +10295,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-018",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-018",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9669,7 +10306,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-014",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-014",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9691,7 +10328,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-013",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-013",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9702,7 +10339,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Hierbas Aromáticas, FWD-2026-020",
+    "desc": "1 contrato FNPL, valor facturado: Hierbas Arom\u00e1ticas, FWD-2026-020",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9724,7 +10361,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-017",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-017",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9746,7 +10383,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Weia Forward Contract",
-    "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-015",
+    "desc": "1 contrato FNPL, valor facturado: Champi\u00f1ones, FWD-2026-015",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
     "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
@@ -9811,7 +10448,7 @@
     "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Recebível do lease BRM-01",
+    "name": "Receb\u00edvel do lease BRM-01",
     "desc": "208 parcelas semanais de US$ 699 compradas em true sale com recurso total; garantia da Brummel Trucking LLC.",
     "issuer_name": "Strada Way LLC",
     "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
@@ -9855,8 +10492,8 @@
     "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
     "source": "mpt_metadata",
     "category": "rwa",
-    "name": "Caminhão do lease BRM-01",
-    "desc": "Caminhão em lease to own da Strada Way LLC, Eos Loan como lienholder, rastreado pela API da Brummel.",
+    "name": "Caminh\u00e3o do lease BRM-01",
+    "desc": "Caminh\u00e3o em lease to own da Strada Way LLC, Eos Loan como lienholder, rastreado pela API da Brummel.",
     "issuer_name": "Strada Way LLC",
     "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
   },
