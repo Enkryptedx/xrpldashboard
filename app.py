@@ -4807,7 +4807,7 @@ def _decode_pair_keys(d):
     return out
 
 
-def _build_inferred_label_lookup(inferred_map, tier_lookup):
+def _build_inferred_label_lookup(inferred_map, tier_lookup, names_by_key=None):
     """PURE. The live-grid label entries for every toml-inferred category
     pair. Lifted verbatim from the /tokens route on 2026-10-19 so the walker
     and the /tokens/labels.json endpoint share one implementation.
@@ -4817,8 +4817,19 @@ def _build_inferred_label_lookup(inferred_map, tier_lookup):
     for (cur, iss), inf in inferred_map.items():
         key = f"{cur}|{iss}"
         _tier_raw = tier_lookup.get(key)
+        # SHORT TAG (2026-11-22). `inferred_map` holds CATEGORY-inferred
+        # dicts, not token_names entries, so inf.get("display_labelled")
+        # was ALWAYS absent and this silently fell through to the bare
+        # name -- /tokens/labels.json served "ARMY" while /tokens served
+        # "ARMY · informal source". Join to token_names here so the one
+        # chokepoint is consulted. labels.json is a lookup for the
+        # live-trade canvas (a list context) and a machine-readable
+        # field, so the TAG, never the sentence.
+        _entry = (names_by_key or {}).get((cur, iss))
+        _labelled = (token_label.display_labelled(_entry, short=True)
+                     if isinstance(_entry, dict) else None)
         out[key] = {
-            "display": (inf.get("display_labelled")
+            "display": (_labelled or inf.get("display_labelled")
                         or inf.get("currency_display") or cur),
             "category": inf.get("category") or "other",
             "category_source": inf.get("source") or "toml",
@@ -4842,7 +4853,8 @@ def tokens_labels_json():
         # warming: build live from the same pure function the walker uses
         tier_lookup, _ = _cached_tier_lookup_map()
         body = json.dumps(_build_inferred_label_lookup(
-            _cached_token_category_inferred_map(), tier_lookup), separators=(",", ":"))
+            _cached_token_category_inferred_map(), tier_lookup,
+            _load_token_names_dict()), separators=(",", ":"))
     import hashlib
     etag = '"' + hashlib.sha256(body.encode("utf-8")).hexdigest()[:20] + '"'
     if request.headers.get("If-None-Match") == etag:

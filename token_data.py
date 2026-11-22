@@ -9,6 +9,7 @@ Cached per (currency, issuer) with a short TTL. Thread-safe.
 """
 
 import json
+import token_label
 import os
 import sqlite3
 import threading
@@ -359,7 +360,12 @@ def _amm_pools_holding(currency, issuer):
         other_iss = other.get("issuer")
         other_meta = _TOKEN_BY_KEY.get((other_cur, other_iss)) if other_iss else None
         if other_meta:
-            other_display = other_meta.get("currency_display") or other_cur
+            # SHORT TAG (2026-11-22): this is the PAIR label on a pool row --
+            # a list context. The token's OWN page heading (see
+            # fetch_token_data) stays bare here and gets the full SENTENCE as
+            # a separate element in PR 2.
+            other_display = (token_label.display_labelled(other_meta, short=True)
+                             or other_cur)
         elif other_cur == "XRP":
             other_display = "XRP"
         else:

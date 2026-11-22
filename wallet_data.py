@@ -40,6 +40,7 @@ public node. Thread-safe — gunicorn runs multi-worker / multi-thread.
 """
 
 import json
+import token_label
 import os
 import threading
 import time
@@ -323,7 +324,11 @@ def _short_currency(currency, issuer=None):
     meta = _TOKEN_BY_KEY.get((currency, issuer)) if issuer else None
     r = resolve_display(currency, issuer)
     if meta and meta.get("currency_display") and not r["collision"]:
-        return meta["currency_display"]
+        # SHORT TAG (2026-11-22). This built its own display and never
+        # consulted the chokepoint, so a wallet row rendered an untiered
+        # name BARE -- indistinguishable from a reviewed one. Wallet is a
+        # list context, so the tag, not the sentence.
+        return token_label.display_labelled(meta, short=True)
     return r["display"]
 
 
@@ -781,7 +786,9 @@ def _build_holdings(lines):
                 display = "LP token"
             category = category or "lp"
         elif labeled:
-            display = meta.get("currency_display") or currency
+            # SHORT TAG (2026-11-22): same bare-render gap as above.
+            display = (token_label.display_labelled(meta, short=True)
+                       or currency)
         else:
             display = _decode_currency_hex(currency) or currency[:8] + "…"
 
@@ -1714,7 +1721,9 @@ def _fetch_token_issuance(address):
         verified_via = entry.get("verified_via")
         issued.append({
             "currency_hex": currency_hex,
-            "currency_display": entry.get("currency_display") or currency_hex[:6],
+            # SHORT TAG (2026-11-22): the issuance list is a list context.
+            "currency_display": (token_label.display_labelled(entry, short=True)
+                                 or currency_hex[:6]),
             "category": entry.get("category") or "other",
             "verified_via": verified_via,
             "verification_tier": _token_verification_tier(verified_via),

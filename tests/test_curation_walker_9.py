@@ -289,7 +289,16 @@ class TestFileInvariants:
         """
         n = sum(1 for v in raw.values()
                 if isinstance(v, dict) and v.get("suppressed"))
-        assert n == 223
+        # 223 -> 226 on 2026-11-22: XRP NFT, XRP+ and XRP3D, suppressed
+        # impersonation_risk_pending_review on the PUBXRP precedent of
+        # 2026-11-13. All three imitate XRP itself and had been parked on an
+        # explicit owner decision since 2026-10-16 (lookalike_review =
+        # pending_owner_decision_2026-10-16), rendering BARE in the meantime.
+        # Displaying a name that imitates XRP amplifies the imitation, which
+        # is a different question from provenance -- so the bare-is-honest
+        # argument that applies to an unexamined SOURCE does not apply here.
+        # See tests/test_bare_display_sites.py.
+        assert n == 226
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""

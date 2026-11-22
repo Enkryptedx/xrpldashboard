@@ -160,6 +160,50 @@ class TestDriftGuard:
             "a render site reads currency_display without display_labelled "
             "first - a self-described name would render unlabelled")
 
+    # WIDENED 2026-11-22. This guard existed precisely to stop a render site
+    # reading currency_display without the chokepoint -- and it read app.py
+    # ONLY, so wallet_data.py, token_data.py and amm_scan_pools.py drifted
+    # with ZERO display_labelled references between them. wallet and
+    # /tokens/labels.json shipped bare names as a result.
+    WIDENED_FILES = ("app.py", "wallet_data.py", "token_data.py",
+                     "amm_scan_pools.py")
+
+    # Each exemption names WHY, so a later pass cannot quietly add one.
+    EXEMPT = {
+        # The token's OWN page heading. PR 2 puts the full SENTENCE there as
+        # a separate element; a tag in the heading would duplicate it.
+        ("token_data.py", 'display = meta.get("currency_display") or currency'),
+        # Worker input list, not a rendered surface: _load_known_tokens()
+        # feeds pool scanning, and tests/test_amm_ranking_sourcing.py asserts
+        # app code may not import this module at all.
+        ("amm_scan_pools.py", 'display = entry.get("currency_display")'),
+    }
+
+    def test_no_new_bare_display_site_appears(self):
+        """Every module that builds a token display consults the chokepoint,
+        or carries a named exemption."""
+        import re as _re
+        offenders = []
+        for fn in self.WIDENED_FILES:
+            lines = open(os.path.join(REPO_ROOT, fn),
+                         encoding="utf-8").read().splitlines()
+            for i, line in enumerate(lines):
+                if "currency_display" not in line:
+                    continue
+                if not _re.search(r"(display|label|symbol|ticker)\s*[=:]|return ",
+                                  line, _re.I):
+                    continue
+                if "display_labelled" in "\n".join(lines[max(0, i - 2):i + 3]):
+                    continue
+                stripped = line.strip()
+                if any(fn == f and ex in stripped for f, ex in self.EXEMPT):
+                    continue
+                # a local PARAMETER named currency_display is not a dict read
+                if not any(t in line for t in ("meta", "entry", "inf")):
+                    continue
+                offenders.append(f"{fn}:{i + 1}: {stripped}")
+        assert offenders == [], offenders
+
     def test_chokepoint_attaches_the_field(self, app_src):
         """ASSERTION MOVED 2026-11-22, not weakened.
 
