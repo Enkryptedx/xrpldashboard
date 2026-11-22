@@ -10725,6 +10725,9 @@ def _enrich_mpt_rows(data):
     # it. _load_token_names_dict() already excludes suppressed entries, so
     # a superseded duplicate stays bare.
     _tn_by_key = _load_token_names_dict()
+    # Hoisted: this reads and parses token_names.json, so calling it per row
+    # would re-parse the file for every issuance on the page.
+    _sup_idx = _suppressed_token_index()
 
     status_count = {"live": 0, "prepared": 0, "test": 0}
     enriched = []
@@ -10754,21 +10757,23 @@ def _enrich_mpt_rows(data):
             if fixed != copy["issuer_name"]:
                 copy["issuer_name_as_issued"] = copy["issuer_name"]
                 copy["issuer_name"] = fixed or None
-        copy["trust_label"] = token_label.label_for_issuance(
-            copy.get("issuance_id"), copy.get("issuer"), _tn_by_key)
+        # ONE attachment site for trust_label, pinned by
+        # test_chokepoint_attaches_the_label: compute, then assign once.
         # _tn_by_key EXCLUDES suppressed entries, so this surface could not
         # see suppression at all and published 298 bare names. Rows here are
-        # built from the LEDGER snapshot, so the name slot itself must be
-        # overridden -- a trailing tag would still show the name.
-        _sup = _suppressed_token_index().get(
-            (copy.get("issuance_id"), copy.get("issuer")))
+        # built from the LEDGER snapshot, so for a withheld entry the NAME
+        # SLOT itself must be overridden -- a trailing tag still shows it.
+        _label = token_label.label_for_issuance(
+            copy.get("issuance_id"), copy.get("issuer"), _tn_by_key)
+        _sup = _sup_idx.get((copy.get("issuance_id"), copy.get("issuer")))
         if _sup is not None and token_label.is_withheld(_sup):
             copy["name"] = token_label.WITHHELD_LABEL
             copy["ticker"] = None
-            copy["trust_label"] = None
-        elif not copy.get("trust_label"):
+            _label = None
+        elif not _label:
             # Rule: no ledger-sourced name renders bare on this page.
-            copy["trust_label"] = token_label.LABEL_UNVERIFIED
+            _label = token_label.LABEL_UNVERIFIED
+        copy["trust_label"] = _label
         status_count[copy["status"]] += 1
         enriched.append(copy)
 
