@@ -99,7 +99,9 @@ def compute_summary(app_mod, db_mod):
 
     inferred = app_mod._cached_token_category_inferred_map()
     values["label_lookup_json"] = json.dumps(
-        app_mod._build_inferred_label_lookup(inferred, tier_lookup), separators=(",", ":"))
+        app_mod._build_inferred_label_lookup(
+            inferred, tier_lookup, app_mod._load_token_names_dict()),
+        separators=(",", ":"))
     mark("labels")
 
     values["warnings_recent"] = _jsonable(app_mod._cached_token_warnings_recent(hours_back=3, limit=15))

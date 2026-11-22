@@ -36,7 +36,8 @@
     "issuer": "rhSTwqSK13zdRmzHMZZP8i7DnuG27pwX76",
     "name": "XRP NFT",
     "source": "mpt_metadata",
-    "lookalike_review": "pending_owner_decision_2026-10-16"
+    "lookalike_review": "pending_owner_decision_2026-10-16",
+    "suppressed": "impersonation_risk_pending_review: name imitates XRP itself. Parked on an explicit owner decision 2026-10-16 and suppressed 2026-11-22 on the PUBXRP precedent of 2026-11-13 -- displaying a name that imitates XRP amplifies the imitation, which is a different question from provenance."
   },
   "030031C4FE98AE3726134F68E3D2F5515804EB4E:rB3bK9PnHueTTabMVHedKuBzG5RSFYAUEH": {
     "asset_pair": [
@@ -2118,7 +2119,8 @@
     "issuer_name": "Contro",
     "name": "Contro XRP+",
     "source": "mpt_metadata",
-    "lookalike_review": "pending_owner_decision_2026-10-16"
+    "lookalike_review": "pending_owner_decision_2026-10-16",
+    "suppressed": "impersonation_risk_pending_review: name imitates XRP itself. Parked on an explicit owner decision 2026-10-16 and suppressed 2026-11-22 on the PUBXRP precedent of 2026-11-13 -- displaying a name that imitates XRP amplifies the imitation, which is a different question from provenance."
   },
   "06173960B6E0385191788D1B78AF88456A24965D1DF5BB91:rHCx2zWMN1r9yB78mtNX9bUUHCL5eMYHUR": {
     "category": "unlabeled",
@@ -2138,7 +2140,8 @@
     "issuer_name": "rL57AG6GH9osvmKGo82Y23QWsHGaiNoLAG",
     "name": "XRP Symbol",
     "source": "mpt_metadata",
-    "lookalike_review": "pending_owner_decision_2026-10-16"
+    "lookalike_review": "pending_owner_decision_2026-10-16",
+    "suppressed": "impersonation_risk_pending_review: name imitates XRP itself. Parked on an explicit owner decision 2026-10-16 and suppressed 2026-11-22 on the PUBXRP precedent of 2026-11-13 -- displaying a name that imitates XRP amplifies the imitation, which is a different question from provenance."
   },
   "061B3FA2C51CC6B8BEF8E672C70638FCB4D474427155A753:rJyNbUbcvP19KYwMq2bPnvYQNwUY2ZQrWZ": {
     "category": "native_utility_chain",
