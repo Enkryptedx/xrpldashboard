@@ -10689,6 +10689,24 @@ def _normalize_holders(holders):
     }
 
 
+def _suppressed_token_index():
+    """{(currency_hex, issuer): entry} for SUPPRESSED entries only.
+
+    _load_token_names_dict() drops them by design, which is correct for
+    /tokens and labels.json but left wallet and /mpt/issuer unable to tell
+    a suppressed name from an unexamined one."""
+    out = {}
+    try:
+        with open(TOKEN_NAMES_PATH, encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    for entry in raw.values():
+        if isinstance(entry, dict) and entry.get("suppressed"):
+            out[(entry.get("currency_hex"), entry.get("issuer"))] = entry
+    return out
+
+
 def _enrich_mpt_rows(data):
     """Take a raw snapshot dict and add per-row {status, normalized_outstanding,
     issuer_label, holders (normalized)} fields, then re-sort: live first (by
@@ -10738,6 +10756,19 @@ def _enrich_mpt_rows(data):
                 copy["issuer_name"] = fixed or None
         copy["trust_label"] = token_label.label_for_issuance(
             copy.get("issuance_id"), copy.get("issuer"), _tn_by_key)
+        # _tn_by_key EXCLUDES suppressed entries, so this surface could not
+        # see suppression at all and published 298 bare names. Rows here are
+        # built from the LEDGER snapshot, so the name slot itself must be
+        # overridden -- a trailing tag would still show the name.
+        _sup = _suppressed_token_index().get(
+            (copy.get("issuance_id"), copy.get("issuer")))
+        if _sup is not None and token_label.is_withheld(_sup):
+            copy["name"] = token_label.WITHHELD_LABEL
+            copy["ticker"] = None
+            copy["trust_label"] = None
+        elif not copy.get("trust_label"):
+            # Rule: no ledger-sourced name renders bare on this page.
+            copy["trust_label"] = token_label.LABEL_UNVERIFIED
         status_count[copy["status"]] += 1
         enriched.append(copy)
 

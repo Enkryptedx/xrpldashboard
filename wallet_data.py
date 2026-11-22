@@ -1722,8 +1722,15 @@ def _fetch_token_issuance(address):
         issued.append({
             "currency_hex": currency_hex,
             # SHORT TAG (2026-11-22): the issuance list is a list context.
-            "currency_display": (token_label.display_labelled(entry, short=True)
-                                 or currency_hex[:6]),
+            # A SUPPRESSED entry is still in this lookup -- _TOKEN_BY_KEY is
+            # built from the RAW file with no suppression filter -- so it
+            # rendered the name BARE with every caveat stripped. Withheld
+            # for impersonation risk; otherwise the name plus "unverified".
+            "currency_display": (
+                token_label.suppressed_display(entry)
+                if entry.get("suppressed")
+                else (token_label.display_labelled(entry, short=True)
+                      or currency_hex[:6])),
             "category": entry.get("category") or "other",
             "verified_via": verified_via,
             "verification_tier": _token_verification_tier(verified_via),
