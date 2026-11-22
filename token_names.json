@@ -3102,7 +3102,18 @@
     "currency_display": "BITx",
     "currency_hex": "4249547800000000000000000000000000000000",
     "issuer": "rBitcoiNXev8VoVxV7pwoQx1sSfonVP9i3",
-    "verified_via": "https://bitx.fyi"
+    "verified_via": "https://bitx.fyi",
+    "tier": "toml",
+    "tier_reason": "currency-level: bitx.fyi TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to bitx.fyi (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://bitx.fyi/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "4339425200000000000000000000000000000000:rBCf85rmfGBTAQrqyiNv5fxTvJ5A4EQXWg": {
     "category": "unlabeled",
@@ -3366,7 +3377,18 @@
     "currency_hex": "534F494C00000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "SOIL token issued via Axelar bridge relay (rfmS3z... Domain=axelar.foundation). Axelar controls this issuer wallet — not Soil (ORQO Group). Bridge-wrapped representation, not a first-party XRPL issuance.",
-    "verified_via": null
+    "verified_via": null,
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "534F4C4F00000000000000000000000000000000:rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz": {
     "_note": "Sologenic's official airdrop distribution report names this address as the SOLO issuer (TrustLine instructions).",
@@ -3388,7 +3410,18 @@
     "currency_display": "USDC",
     "currency_hex": "5553444300000000000000000000000000000000",
     "issuer": "rGm7WCVp9gb4jZHWTEtGUr4dd74z2XuWhE",
-    "verified_via": "https://circle.com"
+    "verified_via": "https://circle.com",
+    "tier": "toml",
+    "tier_reason": "currency-level: circle.com TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to circle.com (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://circle.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "555344432E61786C000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3397,14 +3430,36 @@
     "currency_hex": "555344432E61786C000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Axelar-wrapped USDC on XRPL (USDC.axl). Bridge-wrapped representation, canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "5553445600000000000000000000000000000000:rfffsukWALJB1PXYk7H8xkR6UJUDT8nMJE": {
     "category": "unlabeled",
     "currency_display": "USDV",
     "currency_hex": "5553445600000000000000000000000000000000",
     "issuer": "rfffsukWALJB1PXYk7H8xkR6UJUDT8nMJE",
-    "verified_via": "https://valtorum.com"
+    "verified_via": "https://valtorum.com",
+    "tier": "toml",
+    "tier_reason": "currency-level: valtorum.com TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to valtorum.com (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://valtorum.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "5553446600000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3413,7 +3468,18 @@
     "currency_hex": "5553446600000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "USDf bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "57414E475A595200000000000000000000000000:rTT1oLa8cYZLWSjKXCbinMiGAmrBqaoDr": {
     "category": "unlabeled",
@@ -3445,7 +3511,18 @@
     "currency_hex": "5742544300000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Wrapped BTC bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "5745544800000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3454,7 +3531,18 @@
     "currency_hex": "5745544800000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Wrapped ETH bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "5852504341540000000000000000000000000000:rah9u8VtsvFbRjoKtFD3QttMdtHqZjses4": {
     "category": "memecoin",
@@ -3513,7 +3601,18 @@
     "currency_hex": "6D42544300000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Metabase mBTC bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "6D5442494C4C0000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3522,7 +3621,18 @@
     "currency_hex": "6D5442494C4C0000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Midas mTBILL bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "6D58525000000000000000000000000000000000:rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw": {
     "attestation_url": "https://xrpscan.com/account/rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
@@ -3531,7 +3641,18 @@
     "currency_hex": "6D58525000000000000000000000000000000000",
     "issuer": "rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw",
     "notes": "Metabase mXRP bridged to XRPL via Axelar. Canonical XRPL issuer is the Axelar Bridge wallet, xrpscan-labeled.",
-    "verified_via": "xrpscan@axelar-bridge"
+    "verified_via": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+    "tier": "toml",
+    "tier_reason": "currency-level: axelar.foundation TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to axelar.foundation (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://axelar.foundation/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "7363726170000000000000000000000000000000:rGHtYnnigyuaHehWGfAdoEhkoirkGNdZzo": {
     "_note": "lowercase intentional",
@@ -4490,14 +4611,36 @@
     "currency_display": "LHT",
     "currency_hex": "LHT",
     "issuer": "rHashLabsu2H6hXDSunL8AcVDmTyE17Z35",
-    "verified_via": "https://lhtoken.io"
+    "verified_via": "https://lhtoken.io",
+    "tier": "toml",
+    "tier_reason": "currency-level: lhtoken.io TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to lhtoken.io (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://lhtoken.io/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "MAG:rXmagwMmnFtVet3uL26Q2iwk287SRvVMJ": {
     "category": "dex_utility",
     "currency_display": "MAG",
     "currency_hex": "MAG",
     "issuer": "rXmagwMmnFtVet3uL26Q2iwk287SRvVMJ",
-    "verified_via": "https://xmagnetic.org"
+    "verified_via": "https://xmagnetic.org",
+    "tier": "toml",
+    "tier_reason": "currency-level: xmagnetic.org TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to xmagnetic.org (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://xmagnetic.org/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "NPS:rMGGhcxk1cH8tRCF5cLbXCTFmUwSNYYM2G": {
     "category": "unlabeled",
@@ -4511,7 +4654,18 @@
     "currency_display": "PLR",
     "currency_hex": "PLR",
     "issuer": "rNSYhWLhuHvmURwWbJPBKZMSPsyG5Qek17",
-    "verified_via": "https://xrpillars.com/"
+    "verified_via": "https://xrpillars.com/",
+    "tier": "toml",
+    "tier_reason": "currency-level: xrpillars.com TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to xrpillars.com (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://xrpillars.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "PLX:rGLEgQdktoN4Be5thhk6seg1HifGPBxY5Q": {
     "category": "unlabeled",
@@ -4679,7 +4833,18 @@
     "currency_display": "ZRP",
     "currency_hex": "ZRP",
     "issuer": "rZapJ1PZ297QAEXRGu3SZkAiwXbA7BNoe",
-    "verified_via": "https://zerpmon.world"
+    "verified_via": "https://zerpmon.world",
+    "tier": "toml",
+    "tier_reason": "currency-level: zerpmon.world TOML pairs this code with this issuer, and the issuer's on-ledger Domain resolves to zerpmon.world (two-way verified 2026-11-22, Domain-first sweep)",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "currency",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://zerpmon.world/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-22"
+    }
   },
   "wMU:rJRJt3GpsGTDtJCDUQMNU8iBTXE1BvtLZ3": {
     "category": "unlabeled",

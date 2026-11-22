@@ -269,7 +269,7 @@ def test_tier_census_is_exact(names):
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_FALLBACK}
     dl = {k for k, v in names.items()
           if isinstance(v, dict) and v.get("tier") == tl.DOMAIN_LISTED}
-    assert len(toml_tier) == 54, f"toml tier drifted: {sorted(toml_tier)}"
+    assert len(toml_tier) == 69, f"toml tier drifted: {sorted(toml_tier)}"
     assert len(df) == 3, f"domain_fallback drifted: {sorted(df)}"
     assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
 
