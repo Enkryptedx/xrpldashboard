@@ -263,6 +263,38 @@ SOURCE_LABELS = {
 }
 
 
+IMPERSONATION_REASON = "impersonation_risk_pending_review"
+WITHHELD_LABEL = "name withheld \u00b7 under review"
+LABEL_UNVERIFIED = "unverified"
+
+
+def is_withheld(entry: dict) -> bool:
+    """True when an entry is suppressed for IMPERSONATION RISK.
+
+    These keep their row and its link but must never publish the name:
+    the name itself is the harm. Distinct from every other suppression
+    reason, which only means "not reviewed" and takes `unverified`.
+    """
+    if not isinstance(entry, dict):
+        return False
+    return IMPERSONATION_REASON in str(entry.get("suppressed") or "")
+
+
+def suppressed_display(entry: dict, name: str | None = None) -> str:
+    """The name slot for a SUPPRESSED entry, on wallet and /mpt/issuer.
+
+    Suppression removes an entry from _load_token_names_dict(), which is
+    what /tokens and labels.json read -- but wallet builds its own lookup
+    from the RAW file and /mpt/issuer builds rows from the ledger
+    snapshot, so 182 of 226 suppressed names were still rendering BARE
+    across 384 rows on 2026-11-22: name published, every caveat stripped.
+    """
+    if is_withheld(entry):
+        return WITHHELD_LABEL
+    base = name or (entry.get("currency_display") if isinstance(entry, dict) else None) or ""
+    return f"{base} \u00b7 {LABEL_UNVERIFIED}" if base else LABEL_UNVERIFIED
+
+
 def source_bucket(entry: dict) -> str | None:
     """Which source label an entry earns, or None.
 
