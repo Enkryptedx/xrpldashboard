@@ -161,8 +161,23 @@ class TestDriftGuard:
             "first - a self-described name would render unlabelled")
 
     def test_chokepoint_attaches_the_field(self, app_src):
-        assert 'entry["display_labelled"] = token_label.display_labelled(entry)' \
-            in app_src
+        """ASSERTION MOVED 2026-11-22, not weakened.
+
+        The pinned call gained `short=True`. Every consumer of this field
+        is a list or row -- /tokens rows, the 30d hero, trades, whale and
+        trustline event rows, the inferred-label lookup, labels.json and
+        the wallet issuance list -- and three of them emit it as a JSON
+        "display"/"label" field. A provenance SENTENCE there overflowed a
+        phone row (wallet and event rows measured 40 chars against ~38)
+        and changed a machine-readable field, so list contexts take the
+        short tag. The full sentence is for a token's own page and for a
+        key, neither of which reads this field.
+
+        Still pinned as one exact substring: if the chokepoint ever stops
+        passing short=True, every list row silently grows a sentence.
+        """
+        assert 'entry["display_labelled"] = token_label.display_labelled(' \
+            'entry, short=True)' in app_src
 
     def test_all_nine_sites_read_display_labelled(self, app_src):
         assert app_src.count('display_labelled') >= 9, app_src.count('display_labelled')
