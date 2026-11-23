@@ -9626,8 +9626,22 @@ def _is_xrpl_address(s):
     return all(c in _XRPL_ADDR_CHARS for c in s)
 
 
+# A wallet render is the most expensive page on the site: the live path
+# fans out across five cascading branches (main/lp/escrow/offer/mpt), each
+# able to retry to a fallback node, and measured 1.15-5.68s against
+# Render's 5s health-check timeout. 2026-11-23: one scraper at ~14 req/min
+# from a single IP put three workers into that tail at once and /healthz
+# missed its probe twice (Sun 20:50, Mon 08:13). 60/min was sized for a
+# cheap page. NOTE the limiter is storage_uri="memory://", so this budget
+# is PER WORKER -- with 3 workers the real per-IP ceiling is ~12/min, which
+# on its own would NOT have stopped that scraper. The concurrency cap
+# below, not this number, is what protects /healthz.
+_WALLET_RENDER_SEM = threading.BoundedSemaphore(2)
+WALLET_BUSY_RETRY_AFTER_SECONDS = 5
+
+
 @app.route("/wallet/<address>")
-@limiter.limit("60 per minute")
+@limiter.limit("4 per minute")
 def wallet(address):
     """Live wallet detail view: balance, reserve, network graph of
     counterparties, 30d activity pulse. Reads directly from XRPL.
@@ -9659,6 +9673,38 @@ def wallet(address):
     except Exception:
         pass
 
+    # BOUNDED CONCURRENCY (2026-11-23). Everything above this point is the
+    # pre-rendered PG fast path: sub-ms, zero RPC, so it stays uncapped --
+    # capping it would 503 cheap hits for no benefit. Everything below is
+    # the live fan-out. Non-blocking acquire: queueing here is what starved
+    # /healthz, so a full slot set must fail fast rather than wait.
+    # BoundedSemaphore(2) is PER WORKER; across 3 workers that allows 6
+    # concurrent live renders and leaves 6 of each worker's 8 threads free
+    # to answer /healthz.
+    if not _WALLET_RENDER_SEM.acquire(blocking=False):
+        # Inline body on purpose: no template lookup, no Jinja render. We
+        # are shedding load because the worker is saturated, so the reject
+        # path must not itself do work. (There is no wallet_busy.html, and
+        # adding one would mean a template render on every rejection.)
+        resp = Response(
+            "<!doctype html><title>Busy</title>"
+            "<h1>Wallet view is busy</h1>"
+            "<p>Too many wallet pages are rendering right now. "
+            "Retry in a few seconds.</p>",
+            status=503,
+            mimetype="text/html",
+        )
+        resp.headers["Retry-After"] = str(WALLET_BUSY_RETRY_AFTER_SECONDS)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    try:
+        return _wallet_live_render(address)
+    finally:
+        _WALLET_RENDER_SEM.release()
+
+
+def _wallet_live_render(address):
+    """The expensive half of the wallet view, held under _WALLET_RENDER_SEM."""
     data = fetch_wallet_data_cached(address)
     # Surface the live USD anchor on every wallet render so the user can
     # see where the dollar figures come from. Cheap (cached ~60s in oracle).
