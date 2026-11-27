@@ -334,7 +334,27 @@ class TestFileInvariants:
         # rendering, regardless of age. A sibling OLDER than the suppressed
         # member is invisible to every age-based check we run, so the sweep
         # is the guard, not the diff.
-        assert n == 241
+        #
+        # 241 -> 242 on 2026-11-27, +1, measured as the suppressed-key delta
+        # against origin/main (added: LKT; removed: nothing). LKT is a
+        # REVERSAL, not a new arrival: it was published untiered earlier the
+        # same day, and the sweep that followed read its own on-ledger
+        # metadata -- name "Licuido Komainu Test Issuance", desc "Testing
+        # along with partners for sanity". The self-declared-test predicate
+        # fires on that, and skill §5 rejects such a token rather than
+        # holding it pending, so the publish_decision was withdrawn and
+        # replaced with self_declared_test.
+        #
+        # The lesson the reversal records: the first decision rested only on
+        # "no citation is reachable", which was true but not the whole
+        # question. Absent provenance and a self-declared test are different
+        # findings, and the second one decides the entry on its own.
+        #
+        # LMI, its sibling at the same issuer, moved the OTHER way in the
+        # same commit and is correctly absent from this count: it carries a
+        # publish_decision, not a suppression. Sharing an issuer with a
+        # suppressed entry is not evidence against a token.
+        assert n == 242
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""

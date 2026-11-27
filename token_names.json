@@ -3056,7 +3056,8 @@
     "issuer": "rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU",
     "issuer_name": "Licuido Platform Issuance",
     "name": "Licuido MPT Issuance",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "publish_decision": "decided_publish: reviewed and published UNTIERED. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable, no citation is reachable and no tier can be earned; outstanding 28 of max 100000. Nothing in this entry’s own metadata declares it a test or imitates a curated ticker — name \"Licuido MPT Issuance\", desc \"Licuido's first MPT Issuance on XRPL Livenet\", asset_class rwa/treasury. Sharing an issuer with suppressed entries is NOT evidence against this token: a suppression reason is a judgement about the specific name it was written for. Rendering effect MEASURED, not assumed: untiered means token_label.label_for() returns None, so it renders BARE with no caveat — it does NOT carry the \"unverified\" tag, which requires tier=self_described. owner decision at anchor #17, 2026-11-27"
   },
   "0648C24C09A744CBA7145B2DFC4C4411F87E61D7DA0688EA:rtsTmBYcMGoNuPV6TBGU9gMhzn5vsVNsa": {
     "category": "rwa",
@@ -11239,7 +11240,7 @@
     "name": "Licuido Komainu Test Issuance",
     "desc": "Testing along with partners for sanity",
     "issuer_name": "Licuido Platform Issuance",
-    "publish_decision": "decided_publish: reviewed and published UNTIERED, so it renders with the 'unverified' source tag (source=mpt_metadata). Issuer rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU has no on-ledger Domain, so no citation is possible and no tier can be earned; outstanding 0. Recorded so the anchor pre-flight counts this as DECIDED rather than an undecided publish candidate. owner decision at anchor #17, 2026-11-27"
+    "suppressed": "self_declared_test: the issuance declares itself a test in its own on-ledger MPT metadata — name \"Licuido Komainu Test Issuance\", desc \"Testing along with partners for sanity\"; outstanding 0, so nothing is held. Skill §5: a self-declared test token is REJECTED, not pending, because it will never acquire a verified_via. This REVERSES the decided_publish recorded earlier on 2026-11-27, which rested only on no reachable citation (the issuer has no on-ledger Domain) and did not weigh the self-declared test wording. owner decision at anchor #17, 2026-11-27"
   },
   "0676F8A235751C19C05C8CF45F126678B7EC0043A18B7937:rn1Cfabnm75yc9vnE9DQZWBK4waEdrmhaq": {
     "currency_hex": "0676F8A235751C19C05C8CF45F126678B7EC0043A18B7937",
