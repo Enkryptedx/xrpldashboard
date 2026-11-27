@@ -268,16 +268,41 @@ WITHHELD_LABEL = "name withheld \u00b7 under review"
 LABEL_UNVERIFIED = "unverified"
 
 
-def is_withheld(entry: dict) -> bool:
-    """True when an entry is suppressed for IMPERSONATION RISK.
+def reason_class(entry: dict) -> str:
+    """The reason CLASS of a suppressed entry: the token before the colon.
 
-    These keep their row and its link but must never publish the name:
-    the name itself is the harm. Distinct from every other suppression
-    reason, which only means "not reviewed" and takes `unverified`.
+    A `suppressed` value is written as `<class>: <evidence prose>`, so the
+    class is a single leading token and everything after the first colon is
+    free text written for a human. Reading the class this way is what keeps
+    the prose out of the control flow.
     """
     if not isinstance(entry, dict):
-        return False
-    return IMPERSONATION_REASON in str(entry.get("suppressed") or "")
+        return ""
+    return str(entry.get("suppressed") or "").split(":", 1)[0].strip()
+
+
+def is_withheld(entry: dict) -> bool:
+    """True when an entry's reason CLASS is exactly impersonation risk.
+
+    These keep their row and its link but must never publish the name:
+    the name itself is the harm. Every other suppression reason only means
+    "not reviewed", keeps publishing its name, and takes `unverified`.
+
+    Matched on the leading reason class, NEVER as a substring of the whole
+    value. The substring form made explanatory prose into control flow:
+    LRC is suppressed `placeholder_unfinished_issuance`, but its evidence
+    note contains the sentence "This REPLACES
+    impersonation_risk_pending_review recorded earlier...", so the old
+    check matched that sentence and withheld the name. The outcome looked
+    right and rested on nothing -- deleting one explanatory clause would
+    have silently started publishing the name, and a future note that
+    merely cites this class by name would withhold an unrelated entry.
+
+    Scope of this fix is the MECHANISM only. 225 suppressed entries across
+    ten other classes publish their names today with a caveat tag, and
+    that behaviour is deliberate and unchanged here.
+    """
+    return reason_class(entry) == IMPERSONATION_REASON
 
 
 def suppressed_display(entry: dict, name: str | None = None) -> str:
