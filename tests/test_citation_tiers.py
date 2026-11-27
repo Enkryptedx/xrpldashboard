@@ -279,7 +279,19 @@ def test_tier_census_is_exact(names):
     # Enrolment is now declared (brand_protected / brand_allowlist), so a
     # citation carries no brand meaning and these land as a pure labelling
     # change. Families stay at 73.
-    assert len(df) == 9, f"domain_fallback drifted: {sorted(df)}"
+    #
+    # 2026-11-27 (anchor #17 carve-out): domain_fallback 9 -> 10. WRENCH
+    # (05A02A1D...:rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2) joins LOOM/HVI3/
+    # HVI3ESC at issuer level on the same host: hvi3.com's TOML names that
+    # issuer address AND the issuer's on-ledger Domain resolves back to
+    # hvi3.com, both legs read from our own node, recorded in the entry's
+    # own tier_reason + tier_evidence (match_level=issuer,
+    # reverse_leg=True, verifier=two_way_toml_verifier_walker.
+    # _find_toml_match). hvi3.com serves ZERO [[CURRENCIES]] blocks and one
+    # could not describe an MPT anyway, so `toml` is unreachable and issuer
+    # level is the ceiling -- which is why toml stays 69 and domain_listed
+    # stays 2 (nothing in this pass was a one-way claim).
+    assert len(df) == 10, f"domain_fallback drifted: {sorted(df)}"
     assert len(dl) == 2, f"domain_listed drifted: {sorted(dl)}"
 
 

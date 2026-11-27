@@ -289,7 +289,13 @@ class TestSuppression:
             "nrRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "niRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
             "ntRLUSD": "\u26a0 not Ripple's RLUSD \u00b7 self-described",
-            "NXRP": "\u26a0 not XRP \u00b7 self-described",
+            # NXRP removed 2026-11-27 (anchor #17 carve-out): BOTH NXRP
+            # records are now `suppressed` with
+            # impersonation_risk_pending_review on the PUBXRP precedent, so
+            # neither reaches this census at all. The lookalike wording is
+            # still unit-tested on a synthetic entry
+            # (tl.lookalike_asset(mpt("NXRP")) == "XRP"); what changed is the
+            # DATA, not the rule.
             "HASH": "self-described (unverified)",
             "DDG": "self-described (unverified)",
             "X40AM": "self-described (unverified)",
@@ -317,4 +323,14 @@ class TestSuppression:
             "DEV": "issuer verified via xrpdev.net",
             "HVI Spike Te": "issuer verified via hvi3.com",
             "THE Y PASS": "issuer verified via hvi3.com",
+            # WRENCH added 2026-11-27 (anchor #17 carve-out) at ISSUER
+            # level, earning HVI3ESC's exact two-way wording: hvi3.com's
+            # TOML names issuer rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2 AND that
+            # issuer's on-ledger Domain resolves back to hvi3.com, both legs
+            # read from our own node (tier=domain_fallback, tier_evidence
+            # match_level=issuer, reverse_leg=True). hvi3.com publishes no
+            # [[CURRENCIES]] blocks and one could not describe an MPT
+            # anyway, so currency level is unreachable and this label may
+            # say no more than it does.
+            "WRENCH": "issuer verified via hvi3.com",
         }, got

@@ -298,7 +298,27 @@ class TestFileInvariants:
         # is a different question from provenance -- so the bare-is-honest
         # argument that applies to an unexamined SOURCE does not apply here.
         # See tests/test_bare_display_sites.py.
-        assert n == 226
+        #
+        # 226 -> 240 on 2026-11-27 (anchor #17 carve-out), +14, measured as
+        # the suppressed-key delta against origin/main, with NOTHING
+        # un-suppressed:
+        #   impersonation_risk_pending_review (5) -- two NXRP records
+        #   ("Native XRP Yield Shares", "Native XRP Yield") and NRLUSD
+        #   imitate XRP and Ripple's RLUSD; LRC and the Korean-script name
+        #   imitate a consumer brand. Same PUBXRP precedent as above.
+        #   bulk_serial_mint_unreviewed (5) -- FIT25/FIT26/FIT27/TOSB29/
+        #   LYNV21, machine-numbered serial mints from one issuer.
+        #   issuer-cluster (2) -- TSWT01/TSWR01, siblings of the already
+        #   suppressed SWT01/SWR01 under the SAME issuer
+        #   r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7. The cluster reason is stored
+        #   per entry with no rule in code to re-apply it, which is why each
+        #   new sibling arrives unsuppressed and must be caught here.
+        #   owner_suppressed_unreviewed (2) -- BESTV, MPTOK1.
+        # LKT (publish_decision) and WRENCH (tier=domain_fallback) were
+        # decided the OTHER way in the same pass and are correctly not
+        # counted here -- see tests/test_display_labelled.py for WRENCH's
+        # label.
+        assert n == 240
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
