@@ -215,6 +215,72 @@ class TestXaga:
         assert label is None, "a toml-tier token needs no qualifier"
 
 
+# ── the Licuido issuer ──────────────────────────────────────────────
+LICUIDO_ISSUER = "rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU"
+LRC_REASON_CLASS = "placeholder_unfinished_issuance"
+
+
+class TestLicuidoLrcReasonClass:
+    """LRC is suppressed as a PLACEHOLDER, not as an imitation.
+
+    It was first suppressed impersonation_risk_pending_review on 2026-11-27
+    and re-classed the same day. The impersonation reading did not fit: the
+    display "LRC" is an initialism of the issuance's own name, "Licuido RC
+    Issuance", in the same series as its siblings at this issuer (LMI =
+    Licuido MPT Issuance, LKT = Licuido Komainu Test Issuance). The clash
+    with an established ticker is coincidental rather than borrowed, and
+    tl.lookalike_asset() never fired on it because that ticker is not in
+    tl.CURATED_ASSETS -- so nothing in code ever supported the first call.
+
+    The outcome is unchanged: still suppressed, still not rendering. Only
+    the evidence class moved, which is skill section 5 -- never borrow a
+    predicate the entry fails.
+    """
+
+    def _lrc(self, raw):
+        got = [v for v in raw.values() if isinstance(v, dict)
+               and v.get("issuer") == LICUIDO_ISSUER
+               and v.get("currency_display") == "LRC"]
+        assert len(got) == 1, got
+        return got[0]
+
+    def test_suppressed_under_the_placeholder_class(self, raw):
+        v = self._lrc(raw)
+        assert v.get("suppressed", "").startswith(LRC_REASON_CLASS), \
+            v.get("suppressed")
+        assert tl.render_decision(v) == (False, None)
+
+    def test_the_placeholder_evidence_is_still_true(self, raw):
+        """The reason cites desc == "TEXT". If a walk ever fills in a real
+        description, this fails and the class gets re-chosen rather than
+        silently becoming a claim the data no longer supports."""
+        assert self._lrc(raw).get("desc") == "TEXT"
+
+    def test_it_does_not_borrow_a_predicate_it_fails(self, raw):
+        """LRC's own fields never say "test", so it may not wear
+        self_declared_test -- that belongs to its sibling LKT, whose
+        metadata does say it. Nor may it wear the SCPO cluster reason,
+        whose use is pinned at 4 elsewhere in this module."""
+        v = self._lrc(raw)
+        blob = " ".join(str(v.get(f, "")) for f in
+                        ("name", "desc", "issuer_name")).lower()
+        assert "test" not in blob, (
+            "if LRC now says 'test', use self_declared_test instead")
+        assert not v.get("suppressed", "").startswith("self_declared_test")
+        assert v.get("suppressed") != CLUSTER_REASON
+
+    def test_the_test_sibling_is_the_one_that_says_test(self, raw):
+        """The issuer-cluster half of LRC's evidence: LKT at the same issuer
+        self-declares a test, which is why a cluster reading is available
+        here at all."""
+        got = [v for v in raw.values() if isinstance(v, dict)
+               and v.get("issuer") == LICUIDO_ISSUER
+               and v.get("currency_display") == "LKT"]
+        assert len(got) == 1, got
+        assert "test" in str(got[0].get("name", "")).lower()
+        assert got[0].get("suppressed", "").startswith("self_declared_test")
+
+
 # ── file-level invariants ───────────────────────────────────────────
 class TestFileInvariants:
     def test_suppressed_total(self, raw):

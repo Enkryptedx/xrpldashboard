@@ -11271,7 +11271,7 @@
     "name": "Licuido RC Issuance",
     "desc": "TEXT",
     "issuer_name": "Licuido Platform Issuance",
-    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
+    "suppressed": "placeholder_unfinished_issuance: an unfinished placeholder, not an imitation. Its own description field is the literal placeholder \"TEXT\", outstanding is 0 against a maximum of 1000000000000, and its icon reuses the same base image as its self-declared-test sibling \"Licuido Komainu Test Issuance\" at this issuer, minted one sequence earlier (105300733 against 105300734) — issuer-cluster evidence with that test sibling. This REPLACES impersonation_risk_pending_review recorded earlier on 2026-11-27, which did not fit: the display \"LRC\" is an initialism of this issuance’s own name \"Licuido RC Issuance\", matching the issuer’s naming series (LMI = Licuido MPT Issuance, LKT = Licuido Komainu Test Issuance), so the collision with an established ticker is coincidental rather than borrowed, and token_label.lookalike_asset() never fired on it because that ticker is not in CURATED_ASSETS. Still suppressed and still not rendering; only the evidence class changed. owner decision at anchor #17, 2026-11-27"
   },
   "0676F744F3D56B1B35DF9DE297379C38CD0735548B83B30D:rPNG1BgDTcmCidcZDWxLS8mnVkHoJKNZG2": {
     "currency_hex": "0676F744F3D56B1B35DF9DE297379C38CD0735548B83B30D",
