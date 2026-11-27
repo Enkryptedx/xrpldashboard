@@ -9702,7 +9702,8 @@
     "issuer": "rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W",
     "source": "mpt_metadata",
     "category": "other",
-    "name": "한국전력"
+    "name": "한국전력",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13; sibling at the same issuer, found by the whole-issuer impersonation sweep of 2026-11-27"
   },
   "066C7BC918BD9A4C8DDD1FC2E2D0A67121308F46DDCB9D61:rsEFMSaHj9ZQsbMu4UHhkt9ZskKZn27XHP": {
     "currency_hex": "066C7BC918BD9A4C8DDD1FC2E2D0A67121308F46DDCB9D61",

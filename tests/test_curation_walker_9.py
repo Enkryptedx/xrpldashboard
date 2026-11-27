@@ -318,7 +318,23 @@ class TestFileInvariants:
         # decided the OTHER way in the same pass and are correctly not
         # counted here -- see tests/test_display_labelled.py for WRENCH's
         # label.
-        assert n == 240
+        #
+        # 240 -> 241 on 2026-11-27, +1, measured as the suppressed-key
+        # delta against origin/main (added: the Korean-script utility name
+        # at rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W; removed: nothing). It takes
+        # impersonation_risk_pending_review on the same evidence as its
+        # sibling at that issuer, decided in the #17 carve-out.
+        #
+        # It was NOT found by the new-entry check, and that is the point
+        # worth recording: the entry predates the carve-out's base, so
+        # `set(new) - set(old)` could never see it and the anchor gate-5
+        # new-entry scan structurally could not raise it. It surfaced only
+        # from a whole-issuer sweep -- for every issuer holding at least one
+        # impersonation suppression, every OTHER entry at that issuer still
+        # rendering, regardless of age. A sibling OLDER than the suppressed
+        # member is invisible to every age-based check we run, so the sweep
+        # is the guard, not the diff.
+        assert n == 241
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
