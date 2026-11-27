@@ -134,6 +134,13 @@
       margin-left: 0.5em; padding: 0.1em 0.4em;
       border-radius: 4px; background: rgba(255,255,255,0.04);
     }
+    /* Same shape as mpt_issuer.html's .trust-label: a caveat, never a
+       badge. No tick, border or background -- an MPT cannot reach the
+       `toml` tier, so issuer level is its ceiling and a tick here would
+       vouch for a self-declared name on the surface where impersonation
+       risk is highest. */
+    .mpt-table .trust-label { color: var(--muted); font-size: 0.72rem; font-style: italic;
+                              margin-left: 0.45em; }
     .mpt-table .addr {
       font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
     }
@@ -400,6 +407,12 @@
                 {% else %}
                   <span class="name">{{ name }}</span>
                 {% endif %}
+                {# _enrich_mpt_rows guarantees a trust_label on every row:
+                   tier wording, else the source tag, else LABEL_UNVERIFIED.
+                   It was computed and assigned there since 2026-11-22 but no
+                   template read it, so this list published 169 untiered names
+                   with no caveat at all while /mpt/issuer showed the tag. #}
+                {% if r.trust_label %}<span class="trust-label">· {{ r.trust_label }}</span>{% endif %}
                 {% if r.ticker %}<span class="ticker">{{ r.ticker }}</span>{% endif %}
                 {% if r.name_as_issued %}<span class="dim" style="font-size: 0.78rem;" title="{{ _('On-chain metadata name:') }} {{ r.name_as_issued }}">{{ _('name trimmed') }}</span>{% endif %}
               </td>
