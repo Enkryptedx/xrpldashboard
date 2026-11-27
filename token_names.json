@@ -11290,7 +11290,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Token Bora Antecipar",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument from this issuer that no pass has assessed. The issuer carries no on-ledger Domain, so no xrp-ledger.toml is discoverable, no citation is reachable and no tier can be earned; it is held unreviewed rather than rejected, and nothing in its own metadata declares it a test. owner decision 2026-11-27"
   },
   "05FACFDF561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FACFDF561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -11299,7 +11300,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "FLW159",
-    "issuer_name": "FlowInvest"
+    "issuer_name": "FlowInvest",
+    "suppressed": "bulk_serial_mint_unreviewed: a machine-numbered issuance from the same undomained bulk serial minter already suppressed on this class 75 times at this issuer; its name equals its ticker and carries no description. Issuer has no on-ledger Domain, so no citation is reachable. owner decision 2026-11-27"
   },
   "067838DA9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838DA9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11308,7 +11310,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "ANTECIEPE 001-Receivable",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument from this issuer that no pass has assessed. The issuer carries no on-ledger Domain, so no xrp-ledger.toml is discoverable, no citation is reachable and no tier can be earned; it is held unreviewed rather than rejected, and nothing in its own metadata declares it a test. owner decision 2026-11-27"
   },
   "0678390D9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "0678390D9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11317,7 +11320,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838E69EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838E69EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11326,7 +11330,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839139EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839139EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11335,7 +11340,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838F29EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838F29EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11344,7 +11350,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838EC9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838EC9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11353,7 +11360,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838F59EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838F59EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11362,7 +11370,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839199EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839199EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11371,7 +11380,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839019EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839019EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11380,7 +11390,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838E39EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838E39EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11389,7 +11400,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838FB9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838FB9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11398,7 +11410,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839169EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839169EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11407,7 +11420,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839079EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839079EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11416,7 +11430,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839259EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839259EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11425,7 +11440,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838E09EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838E09EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11434,7 +11450,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839109EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839109EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11443,7 +11460,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838FE9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838FE9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11452,7 +11470,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838E99EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838E99EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11461,7 +11480,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "0678390A9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "0678390A9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11470,7 +11490,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838F89EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838F89EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11479,7 +11500,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839229EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839229EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11488,7 +11510,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067839049EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067839049EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11497,7 +11520,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "067838EF9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838EF9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11506,7 +11530,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "0678391F9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "0678391F9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11515,7 +11540,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "0678391C9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "0678391C9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11524,7 +11550,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "Receivable principal",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "display_collision_unreviewed: 24 issuances from one issuer all share the identical rendered name \"Receivable principal\"; the MPT list prints the ledger `name`, so a reader sees one string 24 times with only a machine-generated ticker (R0D25E, R1092A, …) to tell them apart. Distinct `currency_display` per record, one `name` across all 24 — the collision is in the field the page prints, not in the record key. Issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. owner decision 2026-11-27"
   },
   "0678E55EEA8B6F54CE316A65B480346734D7C11DE7C28AD0:r4Pw9zC4WYy5MqRJrrRQMwGHqR6tyvMkhE": {
     "currency_hex": "0678E55EEA8B6F54CE316A65B480346734D7C11DE7C28AD0",
@@ -11566,7 +11593,8 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "ANTECIEPE 001 1",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument from this issuer that no pass has assessed. The issuer carries no on-ledger Domain, so no xrp-ledger.toml is discoverable, no citation is reachable and no tier can be earned; it is held unreviewed rather than rejected, and nothing in its own metadata declares it a test. owner decision 2026-11-27"
   },
   "067838DF9EA7F149C078EE7FF23316D97E28ECFB4710E295:rETtxwLwyBkKhVKJFLi4Z7h8YLN9kk63kQ": {
     "currency_hex": "067838DF9EA7F149C078EE7FF23316D97E28ECFB4710E295",
@@ -11575,6 +11603,7 @@
     "source": "mpt_metadata",
     "category": "rwa",
     "name": "FIDC 1 - SERIE#1",
-    "issuer_name": "Bora Antecipar"
+    "issuer_name": "Bora Antecipar",
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument from this issuer that no pass has assessed. The issuer carries no on-ledger Domain, so no xrp-ledger.toml is discoverable, no citation is reachable and no tier can be earned; it is held unreviewed rather than rejected, and nothing in its own metadata declares it a test. owner decision 2026-11-27"
   }
 }
