@@ -420,7 +420,28 @@ class TestFileInvariants:
         # same commit and is correctly absent from this count: it carries a
         # publish_decision, not a suppression. Sharing an issuer with a
         # suppressed entry is not evidence against a token.
-        assert n == 242
+        #
+        # 242 -> 245 on 2026-11-27, +3, measured as the suppressed-key delta
+        # against origin/main (added: TST1, TST2, LTP; removed: nothing).
+        # All three self-declare a test in their own on-ledger metadata, so
+        # skill section 5 rejects them rather than holding them pending.
+        #
+        # They arrived via a class this file had never been able to see. The
+        # walker's Part A inserts a token_names entry for every NAMED MPT
+        # issuance, but 121 of 533 issuances in mpt_snapshot had no entry at
+        # all, because Part A had not run since they appeared. The MPT
+        # surfaces build their rows from the LEDGER snapshot, not from this
+        # file, so those names were already published while carrying no
+        # suppression, no tier and no publish_decision -- invisible to every
+        # curation check, including the whole-issuer sweep, which reads this
+        # file. Running the walker created 32 stub entries for the named
+        # ones; the other 89 publish no name and need nothing.
+        #
+        # 29 of those 32 stubs are deliberately left UNDECIDED. They are now
+        # visible to the anchor gate-5 new-entry check, which is the point:
+        # the next pre-flight halts on them until they are judged, instead of
+        # them publishing unseen.
+        assert n == 245
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
