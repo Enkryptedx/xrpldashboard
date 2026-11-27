@@ -70,7 +70,13 @@ def _row(v):
 @pytest.fixture
 def surfaces(monkeypatch):
     rows = _decided()
-    assert len(rows) == 29, f"expected the 29 decided stubs, found {len(rows)}"
+    # 29 -> 30 on 2026-11-27: ZUVMP joined, suppressed
+    # bulk_serial_mint_unreviewed at the same minter with this same stamp.
+    # The stamp filter is SHARED, so any later decision reusing it at these
+    # two issuers lands here and must move this count with its own evidence.
+    # That is the third time today a stamp-or-substring filter widened under
+    # me; the group assertions below are the real pins.
+    assert len(rows) == 30, f"expected the decided stubs, found {len(rows)}"
     snap = {
         "ok": True, "node": "fixture", "written_at": 1764000000,
         "issuances": [_row(v) for _, v in rows],
@@ -99,7 +105,7 @@ def _body(path):
     return re.sub(r"<script\b.*?</script>", "", html, flags=re.S | re.I)
 
 
-class TestAllTwentyNineStillPublish:
+class TestEveryDecidedStubStillPublishes:
     def test_every_one_prints_its_name_on_the_list(self, surfaces):
         html = _body("/mpts")
         missing = [v.get("currency_display") for _, v in surfaces
@@ -115,7 +121,7 @@ class TestAllTwentyNineStillPublish:
         html = _body("/mpts")
         rows = [tr for tr in re.findall(r"<tr\b.*?</tr>", html, flags=re.S)
                 if "name-link" in tr]
-        assert len(rows) == 29, len(rows)
+        assert len(rows) == 30, len(rows)
         bare, wrong = [], []
         for tr in rows:
             m = TRUST_SPAN.search(tr)
@@ -170,4 +176,7 @@ class TestTheDecisionShape:
                 v.get("currency_display"))
         assert sorted(got["owner_suppressed_unreviewed"]) == [
             "M3D467", "M77354", "MC4896", "SE5FAB"]
-        assert got["bulk_serial_mint_unreviewed"] == ["FLW159"]
+        # FLW159 from the stub batch, plus ZUVMP, the pre-existing undecided
+        # entry at the same minter that the whole-issuer sweep surfaced.
+        assert sorted(got["bulk_serial_mint_unreviewed"]) == ["FLW159",
+                                                              "ZUVMP"]
