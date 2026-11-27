@@ -441,7 +441,31 @@ class TestFileInvariants:
         # visible to the anchor gate-5 new-entry check, which is the point:
         # the next pre-flight halts on them until they are judged, instead of
         # them publishing unseen.
-        assert n == 245
+        #
+        # 245 -> 274 on 2026-11-27, +29, measured as the suppressed-key delta
+        # against origin/main. These are the 29 walker-written stubs for
+        # named ledger-only issuances, left undecided when they were created
+        # and now decided in three groups:
+        #   display_collision_unreviewed (24) -- every one of the 24 shares
+        #     the identical rendered ledger name "Receivable principal" at
+        #     one issuer. The count is MEASURED from the data, not carried
+        #     over from a hand-written list: a first pass described this
+        #     group as 14 while naming 15 members.
+        #   owner_suppressed_unreviewed (4) -- M3D467, M77354, MC4896,
+        #     SE5FAB, distinctly named instruments at the same issuer that
+        #     no pass has assessed.
+        #   bulk_serial_mint_unreviewed (1) -- FLW159, from the undomained
+        #     bulk serial minter already suppressed on this class 75 times.
+        #
+        # Both issuers were read from our own node at ledger_index
+        # validated and carry NO Domain field, so no xrp-ledger.toml is
+        # discoverable for either and no citation is reachable.
+        #
+        # Suppression here does NOT hide these names: only the impersonation
+        # class withholds a name. All 29 keep publishing on the MPT surfaces
+        # with the `unverified` caveat, which is confirmed from rendered HTML
+        # in tests/test_decided_stubs_still_publish.py rather than inferred.
+        assert n == 274
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""
