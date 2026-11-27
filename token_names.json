@@ -9559,7 +9559,8 @@
     "category": "rwa",
     "name": "Native XRP Yield Shares",
     "issuer_name": "Network",
-    "tier": "self_described"
+    "tier": "self_described",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
   },
   "06683CC28DBBCDE5ACE272B5830E19DBB7E454AACB8C9977:rDvREvHG6oPs4xHiaKK73SdQFS7p8RyyCP": {
     "currency_hex": "06683CC28DBBCDE5ACE272B5830E19DBB7E454AACB8C9977",
@@ -10702,7 +10703,7 @@
     "name": "Short Term Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. First mortgages, loans under 8 months.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049:rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1": {
     "currency_hex": "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049",
@@ -10733,7 +10734,7 @@
     "name": "Construction Finance Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Construction loans, includes second mortgages.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10754,7 +10755,7 @@
     "name": "Senior Income Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. First-mortgage loans, diversified.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-11-27 (extended at anchor #16; still no first-party evidence)"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
     "currency_hex": "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006",
@@ -10809,7 +10810,7 @@
     "name": "XRP Vault No.2 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Short-term XRP loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
     "currency_hex": "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
@@ -10820,7 +10821,7 @@
     "name": "XRP Vault No.3 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Higher-yield XRP loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10872,7 +10873,7 @@
     "name": "RLUSD Vault No.1 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. Short-term loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-11-27"
+    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -11056,7 +11057,7 @@
     "name": "Recebível do lease BRM-01",
     "desc": "208 parcelas semanais de US$ 699 compradas em true sale com recurso total; garantia da Brummel Trucking LLC.",
     "issuer_name": "Strada Way LLC",
-    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
+    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
     "currency_hex": "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
@@ -11100,7 +11101,7 @@
     "name": "Caminhão do lease BRM-01",
     "desc": "Caminhão em lease to own da Strada Way LLC, Eos Loan como lienholder, rastreado pela API da Brummel.",
     "issuer_name": "Strada Way LLC",
-    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-11-27"
+    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
   },
   "59454C4C4F570000000000000000000000000000:r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf": {
     "currency_hex": "59454C4C4F570000000000000000000000000000",
@@ -11115,5 +11116,169 @@
     "brand_allowlist": [
       "r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf"
     ]
+  },
+  "05FACD53561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACD53561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "LYNV21",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "LYNV21",
+    "issuer_name": "Lynv",
+    "suppressed": "bulk_serial_mint_unreviewed: machine-numbered serial series from a single issuer with no first-party evidence of any kind; owner decision at anchor #17, 2026-11-27"
+  },
+  "05FACC56561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACC56561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "TOSB29",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "TERRE06",
+    "issuer_name": "Blue Ventures",
+    "suppressed": "bulk_serial_mint_unreviewed: machine-numbered serial series from a single issuer with no first-party evidence of any kind; owner decision at anchor #17, 2026-11-27"
+  },
+  "05FACDCB561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACDCB561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT25",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT25",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: machine-numbered serial series from a single issuer with no first-party evidence of any kind; owner decision at anchor #17, 2026-11-27"
+  },
+  "05FACD9F561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACD9F561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT26",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT26",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: machine-numbered serial series from a single issuer with no first-party evidence of any kind; owner decision at anchor #17, 2026-11-27"
+  },
+  "067824CB4E1D08B940A6B113A4BF0DE64E0C440E0798B310:r33pVH2QsmUj5KK2m823EMgnMTUuWymiHV": {
+    "currency_hex": "067824CB4E1D08B940A6B113A4BF0DE64E0C440E0798B310",
+    "currency_display": "MPTOK1",
+    "issuer": "r33pVH2QsmUj5KK2m823EMgnMTUuWymiHV",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "MPToken 1",
+    "suppressed": "owner_suppressed_unreviewed: no first-party evidence at review and no on-ledger Domain; owner decision at anchor #17, 2026-11-27"
+  },
+  "05FACC54561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
+    "currency_hex": "05FACC54561E39FA605779B829BB5974E82B40AF173D6AF3",
+    "currency_display": "FIT27",
+    "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "FIT27",
+    "issuer_name": "Pulse Health &",
+    "suppressed": "bulk_serial_mint_unreviewed: machine-numbered serial series from a single issuer with no first-party evidence of any kind; owner decision at anchor #17, 2026-11-27"
+  },
+  "0674024AEBCC79C30A893B4C657A80EC2570CC6381A7CCFE:r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7": {
+    "currency_hex": "0674024AEBCC79C30A893B4C657A80EC2570CC6381A7CCFE",
+    "currency_display": "TSWR01",
+    "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "[TEST] - Recebível do lease BRM-01",
+    "desc": "[TEST]- 208 parcelas semanais de US$ 699.",
+    "issuer_name": "TEST] - Strada Way LLC",
+    "suppressed": "issuer-cluster: sibling of the SWT01/SWR01 cluster at the same issuer, which is itself pending_review; no independent first-party evidence; owner decision at anchor #17, 2026-11-27"
+  },
+  "0674024BEBCC79C30A893B4C657A80EC2570CC6381A7CCFE:r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7": {
+    "currency_hex": "0674024BEBCC79C30A893B4C657A80EC2570CC6381A7CCFE",
+    "currency_display": "TSWT01",
+    "issuer": "r4V8kJBEzjBNXbTc5nuRLFwzWFo8ZsiYu7",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "[TEST]-Caminhão do lease BRM-01",
+    "desc": "[TEST]-Caminhão em lease to own da Strada Way, rastreado pela Brummel.",
+    "issuer_name": "TEST] - Strada Way LLC",
+    "suppressed": "issuer-cluster: sibling of the SWT01/SWR01 cluster at the same issuer, which is itself pending_review; no independent first-party evidence; owner decision at anchor #17, 2026-11-27"
+  },
+  "0661B4368955F03F243B4C36867E3E5EF42DC92CEFC42D8F:rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W": {
+    "currency_hex": "0661B4368955F03F243B4C36867E3E5EF42DC92CEFC42D8F",
+    "currency_display": "카카오",
+    "issuer": "rDXwXPcbfupmFRtSye7E5pe1xdpGeNPB3W",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "카카오",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
+  },
+  "05A02A1D9DDC0ADC909E1E3F6D4EBCF72B175AC9F300CEDC:rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2": {
+    "currency_hex": "05A02A1D9DDC0ADC909E1E3F6D4EBCF72B175AC9F300CEDC",
+    "currency_display": "WRENCH",
+    "issuer": "rEPggA3ebaVf82Jj3NFnDXntYZGBaFWYp2",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "Wrench",
+    "desc": "A symbol of perseverance, innovation, and the work behind the technology.  Representing the connection between XRP and HVI, the XRPL Wrench commemorates a first-of-its-kind eNFT concept on the XRPL.",
+    "issuer_name": "HVI",
+    "tier": "domain_fallback",
+    "verified_via": "https://hvi3.com/.well-known/xrp-ledger.toml",
+    "tier_reason": "issuer-level: hvi3.com's TOML names this issuer address and the issuer's on-ledger Domain resolves to hvi3.com (two-way verified 2026-11-27). hvi3.com publishes no [[CURRENCIES]], so currency level is unreachable there and issuer level is the ceiling: the ticker itself is never proven. owner decision at anchor #17, 2026-11-27",
+    "tier_evidence": {
+      "verifier": "two_way_toml_verifier_walker._find_toml_match",
+      "match_level": "issuer",
+      "host_source": "issuer on-ledger Domain",
+      "toml_url": "https://hvi3.com/.well-known/xrp-ledger.toml",
+      "reverse_leg": true,
+      "node": "own rippled (full)",
+      "checked": "2026-11-27"
+    }
+  },
+  "0646C2FED070B520AC6C9275BFDE7814561544CC173BDF20:rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU": {
+    "currency_hex": "0646C2FED070B520AC6C9275BFDE7814561544CC173BDF20",
+    "currency_display": "LKT",
+    "issuer": "rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Licuido Komainu Test Issuance",
+    "desc": "Testing along with partners for sanity",
+    "issuer_name": "Licuido Platform Issuance",
+    "publish_decision": "decided_publish: reviewed and published UNTIERED, so it renders with the 'unverified' source tag (source=mpt_metadata). Issuer rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU has no on-ledger Domain, so no citation is possible and no tier can be earned; outstanding 0. Recorded so the anchor pre-flight counts this as DECIDED rather than an undecided publish candidate. owner decision at anchor #17, 2026-11-27"
+  },
+  "0676F8A235751C19C05C8CF45F126678B7EC0043A18B7937:rn1Cfabnm75yc9vnE9DQZWBK4waEdrmhaq": {
+    "currency_hex": "0676F8A235751C19C05C8CF45F126678B7EC0043A18B7937",
+    "currency_display": "NRLUSD",
+    "issuer": "rn1Cfabnm75yc9vnE9DQZWBK4waEdrmhaq",
+    "source": "mpt_metadata",
+    "category": "stablecoin",
+    "name": "Trade Finance",
+    "issuer_name": "Network Broker",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
+  },
+  "06769CF04A6B44E236874D2090C140461471EE78A0986B0E:rf8VWP3bnNEe8WE7rRu6EuMbEhuCXYowz5": {
+    "currency_hex": "06769CF04A6B44E236874D2090C140461471EE78A0986B0E",
+    "currency_display": "BESTV",
+    "issuer": "rf8VWP3bnNEe8WE7rRu6EuMbEhuCXYowz5",
+    "source": "mpt_metadata",
+    "category": "other",
+    "name": "BESTV",
+    "issuer_name": "BESTV",
+    "suppressed": "owner_suppressed_unreviewed: no first-party evidence at review and no on-ledger Domain; owner decision at anchor #17, 2026-11-27"
+  },
+  "0646C2FDD070B520AC6C9275BFDE7814561544CC173BDF20:rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU": {
+    "currency_hex": "0646C2FDD070B520AC6C9275BFDE7814561544CC173BDF20",
+    "currency_display": "LRC",
+    "issuer": "rLr3ZxWy7owtSwaCH2n7tCauQENrt9MVgU",
+    "source": "mpt_metadata",
+    "category": "rwa",
+    "name": "Licuido RC Issuance",
+    "desc": "TEXT",
+    "issuer_name": "Licuido Platform Issuance",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
+  },
+  "0676F744F3D56B1B35DF9DE297379C38CD0735548B83B30D:rPNG1BgDTcmCidcZDWxLS8mnVkHoJKNZG2": {
+    "currency_hex": "0676F744F3D56B1B35DF9DE297379C38CD0735548B83B30D",
+    "currency_display": "NXRP",
+    "issuer": "rPNG1BgDTcmCidcZDWxLS8mnVkHoJKNZG2",
+    "source": "mpt_metadata",
+    "category": "native_utility",
+    "name": "Native XRP Yield",
+    "issuer_name": "Network Broker",
+    "suppressed": "impersonation_risk_pending_review: the name imitates an established asset or brand. Displaying it amplifies the imitation, which is a different question from provenance; owner decision at anchor #17, 2026-11-27, on the PUBXRP precedent of 2026-11-13"
   }
 }
