@@ -9992,7 +9992,7 @@
     "category": "rwa",
     "name": "YBB",
     "issuer_name": "VS1 LLC",
-    "suppressed": "display_collision_unreviewed: renders as \"YBB\", identical to a suppressed entry from a different issuer; no on-ledger Domain, issuer ~6 days old"
+    "suppressed": "display_collision_unreviewed: shares the identical display \"YBB\" with a suppressed entry from a different issuer; no on-ledger Domain, issuer ~6 days old"
   },
   "05FA6F0E561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FA6F0E561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10844,7 +10844,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Maiz, FWD-2026-024",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "05FAC9F5561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FAC9F5561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10886,7 +10886,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-019",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A5A88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A5A88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10897,7 +10897,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-018",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A3288AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A3288AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10908,7 +10908,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-014",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A1188AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A1188AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10919,7 +10919,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-012",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A1E88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A1E88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10930,7 +10930,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-013",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B59B288AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B59B288AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10941,7 +10941,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Hierbas Aromáticas, FWD-2026-020",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B59F188AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B59F188AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10952,7 +10952,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-010",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A4D88AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A4D88AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10963,7 +10963,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-017",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B59D488AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B59D488AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10974,7 +10974,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-008",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B5A4088AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A4088AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10985,7 +10985,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Champiñones, FWD-2026-015",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "062B59E388AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B59E388AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -10996,7 +10996,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Tomates, FWD-2026-009",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all rendering the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
+    "suppressed": "display_collision_unreviewed: 12 issuances from one issuer all sharing the identical display \"WFWD\" (Weia Forward Contract); issuer has no on-ledger Domain and no first-party attestation"
   },
   "0671EE6586013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
     "currency_hex": "0671EE6586013FD29FD46A77684ADB46A7B53E71F44A3006",
