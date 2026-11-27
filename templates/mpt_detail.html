@@ -67,6 +67,10 @@
                background-clip: text; color: transparent; }
     .hero-ticker { font-family: var(--mono); color: var(--muted);
                    font-size: 0.95rem; margin-left: 0.4em; vertical-align: middle; }
+    /* Caveat, not a badge -- same shape as mpt_issuer.html and mpts.html.
+       No tick, border or background: an MPT cannot reach the `toml` tier. */
+    .hero-trust { color: var(--muted); font-size: 0.8rem; font-style: italic;
+                  margin-left: 0.5em; vertical-align: middle; }
     .badges { margin-top: 0.6em; display: flex; flex-wrap: wrap; gap: 0.5em; }
 
     .pill { display: inline-block; padding: 0.18em 0.7em; border-radius: 999px;
@@ -141,7 +145,12 @@
 
   <div class="hero">
     <div class="hero-inner">
-      <h1>{{ display_name }}{% if display_ticker %}<span class="hero-ticker">({{ display_ticker }})</span>{% endif %}</h1>
+      {# `mpt` is a row from _enrich_mpt_rows, so trust_label is already
+         attached: tier wording, else the source tag, else LABEL_UNVERIFIED.
+         Until 2026-11-27 no template on this page read it, so the detail
+         heading published a ledger-sourced name with no caveat while
+         /mpt/issuer showed one for the same issuance. #}
+      <h1>{{ display_name }}{% if display_ticker %}<span class="hero-ticker">({{ display_ticker }})</span>{% endif %}{% if mpt.trust_label %}<span class="hero-trust">· {{ mpt.trust_label }}</span>{% endif %}</h1>
       <div class="badges">
         <span class="pill {{ mpt.status }}">{{ _(mpt.status) }}</span>
         <span class="pill {{ mpt.classification }}">{{ mpt.classification }}</span>
