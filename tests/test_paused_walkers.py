@@ -24,19 +24,72 @@ import paused_walkers as pw  # noqa: E402
 
 # ── the regression that caused this ──────────────────────────────────────
 
-def test_the_exact_incident_row_classifies_as_paused():
-    """supply_escrow_walker's real row: ok=False, 3 consecutive failures.
+DECL = {
+    "paused_since": "2026-10-15",
+    "reason": "a stated reason",
+    "tracking": "escrow stage 4 (owner-gated)",
+    "coverage": "no current coverage; full-ledger escrow census is unmeasured "
+                "pending stage 4",
+}
 
-    This is the row the evening summary mis-reported for 15 nights.
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture
+def paused(monkeypatch):
+    """An injected paused walker.
+
+    PAUSED_WALKERS is EMPTY as of 2026-11-28 -- supply_escrow_walker resumed
+    on a daily schedule. The mechanism must still be guarded: if a future
+    pause stopped classifying as PAUSED, the next one reports as a failure
+    every night, which is exactly the 15-night alert-fatigue incident this
+    file exists to prevent. So these tests exercise the behaviour with an
+    injected declaration rather than asserting a pause that is over.
     """
+    monkeypatch.setitem(pw.PAUSED_WALKERS, "a_paused_walker", dict(DECL))
+    return "a_paused_walker"
+
+
+def test_the_exact_incident_row_classifies_as_paused(paused):
+    """The incident row shape: ok=False, 3 consecutive failures -- what the
+    evening summary mis-reported for 15 nights."""
     assert pw.classify(
-        "supply_escrow_walker", last_run_ok=False, consecutive_failures=3
+        paused, last_run_ok=False, consecutive_failures=3
     ) == pw.PAUSED
 
 
-def test_supply_escrow_walker_is_declared():
-    assert pw.is_paused("supply_escrow_walker")
-    d = pw.declaration("supply_escrow_walker")
+def test_nothing_is_paused_any_more():
+    assert pw.PAUSED_WALKERS == {}
+    assert not pw.is_paused("supply_escrow_walker")
+
+
+def test_supply_escrow_walker_is_recorded_as_resumed():
+    r = pw.RESUMED["supply_escrow_walker"]
+    assert r["paused_since"] == "2026-10-15"
+    assert r["resumed_on"] == "2026-11-28"
+
+
+def test_stage_4_is_redefined_as_a_schedule_not_a_rewrite():
+    """It was referenced for six weeks with no spec anywhere in the repo.
+    Measurement replaced it: the walk never needed to be incremental."""
+    s = pw.RESUMED["supply_escrow_walker"]["stage_4"]
+    assert "REDEFINED 2026-11-28" in s
+    assert "once a day" in s
+    assert "71.2 pages/s" in s
+
+
+def test_the_resume_records_its_slot_and_cap():
+    r = pw.RESUMED["supply_escrow_walker"]
+    assert "Hour=6" in r["resumed_as"] and "Minute=30" in r["resumed_as"]
+    assert "CADENCE_SECONDS=86400" in r["resumed_as"]
+    assert "ENUM_HARD_CAP_SECONDS=3600" in r["resumed_as"]
+    assert "RunAtLoad" in r["resumed_as"]
+    assert "pg_backup" in r["slot_rationale"]
+
+
+def test_the_old_declaration_fields_still_work_for_a_pause(paused):
+    d = pw.declaration(paused)
     assert d["paused_since"] == "2026-10-15"
     assert "stage 4" in d["tracking"]
     # 2026-11-04: was replacement == "escrow_seed_walk". That claim died when
@@ -104,9 +157,9 @@ def test_failing_outranks_stale():
 
 # ── report bucketing ─────────────────────────────────────────────────────
 
-def test_summarise_buckets_dict_rows():
+def test_summarise_buckets_dict_rows(paused):
     rows = [
-        {"walker_name": "supply_escrow_walker", "last_run_ok": False,
+        {"walker_name": "a_paused_walker", "last_run_ok": False,
          "consecutive_failures": 3},
         {"walker_name": "token_issuer_flags_walker", "last_run_ok": False,
          "consecutive_failures": 1},
@@ -115,7 +168,7 @@ def test_summarise_buckets_dict_rows():
     ]
     out = pw.summarise(rows)
     assert len(out[pw.PAUSED]) == 1
-    assert out[pw.PAUSED][0].startswith("supply_escrow_walker")
+    assert out[pw.PAUSED][0].startswith("a_paused_walker")
     assert len(out[pw.FAILING]) == 1
     assert out[pw.FAILING][0].startswith("token_issuer_flags_walker")
     assert out[pw.STALE] == []
@@ -123,26 +176,26 @@ def test_summarise_buckets_dict_rows():
     assert not any("escrow_walker (" in s for s in out[pw.FAILING])
 
 
-def test_summarise_accepts_sequence_rows():
-    out = pw.summarise([("supply_escrow_walker", False, 3, False)])
+def test_summarise_accepts_sequence_rows(paused):
+    out = pw.summarise([("a_paused_walker", False, 3, False)])
     assert len(out[pw.PAUSED]) == 1
 
 
-def test_paused_rows_are_never_silently_dropped():
+def test_paused_rows_are_never_silently_dropped(paused):
     """A pause must stay VISIBLE -- reporting it as nothing is how a
     paused walker becomes a permanent blind spot (tools/l1_pager.py
     records supply_escrow_walker wedged 17.5h with nothing watching it).
     """
     out = pw.summarise([
-        {"walker_name": "supply_escrow_walker", "last_run_ok": False,
+        {"walker_name": "a_paused_walker", "last_run_ok": False,
          "consecutive_failures": 3},
     ])
     assert out[pw.PAUSED], "paused walker vanished from the summary"
     assert "stage 4" in out[pw.PAUSED][0]
 
 
-def test_describe_names_the_tracking_and_coverage():
-    s = pw.describe("supply_escrow_walker")
+def test_describe_names_the_tracking_and_coverage(paused):
+    s = pw.describe(paused)
     assert "paused since 2026-10-15" in s
     assert "stage 4" in s
     # The report must not imply a substitute is running.
@@ -170,11 +223,11 @@ def test_every_declaration_carries_the_required_fields():
             f"{name} declares both replacement and coverage")
 
 
-def test_declaration_returns_a_copy():
+def test_declaration_returns_a_copy(paused):
     """Callers must not be able to mutate the register."""
-    d = pw.declaration("supply_escrow_walker")
+    d = pw.declaration(paused)
     d["tracking"] = "mutated"
-    assert pw.PAUSED_WALKERS["supply_escrow_walker"]["tracking"] != "mutated"
+    assert pw.PAUSED_WALKERS[paused]["tracking"] != "mutated"
 
 
 def test_unknown_walker_has_no_declaration():

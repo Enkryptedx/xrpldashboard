@@ -229,8 +229,17 @@ def test_on_demand_records_that_its_last_audit_passed():
     assert "MATCH" in r
 
 
-def test_paused_holds_only_the_job_charlie_confirmed():
-    assert set(c.PAUSED) == {"supply_escrow_walker"}
+def test_paused_is_empty_now_that_nothing_is_paused():
+    """supply_escrow_walker resumed 2026-11-28 on a daily schedule, so it is
+    no longer exempt -- it is judged by its declared cadence like anything
+    else. The map stays in place: an empty register is a true statement,
+    and no register would make the next pause undeclarable."""
+    assert c.PAUSED == {}
+
+
+def test_the_resumed_walker_is_not_exempt_anywhere():
+    for _kind, table in c.EXEMPTION_TABLES:
+        assert "supply_escrow_walker" not in table
 
 
 def test_all_five_categories_are_guarded():
@@ -295,10 +304,37 @@ def test_an_undeclared_mode_still_declares_nothing():
     assert naw.MODE_CADENCE_SECONDS.get("reconcile-type-rollup") is None
 
 
-def test_paused_job_is_exempt():
-    rows = [row("supply_escrow_walker", cadence=None, age=4_000_000)]
+def test_the_paused_mechanism_still_works_for_a_future_pause(monkeypatch):
+    """The register is empty, but the EXEMPTION must still function -- or the
+    next pause silently reports as a failure, which is the 15-night
+    alert-fatigue incident this whole mechanism exists to prevent."""
+    monkeypatch.setitem(c.PAUSED, "some_future_walker", "paused for a reason " * 3)
+    rows = [row("some_future_walker", cadence=None, age=4_000_000)]
     assert findings(rows) == []
-    assert reasons_for(rows, "supply_escrow_walker") == ["exempt:paused"]
+    assert reasons_for(rows, "some_future_walker") == ["exempt:paused"]
+
+
+def test_the_cadence_override_corrects_a_wrong_declared_value():
+    """supply_escrow_walker's row still declares 3600 from the 2026-11-28
+    catch-up run while the code now says 86400. Judged at 2x3600 it would
+    report STALE tonight for a walker working exactly as designed."""
+    rows = [row("supply_escrow_walker", cadence=3600, age=40_000)]
+    assert findings(rows) == []
+    assert reasons_for(rows, "supply_escrow_walker") == ["fresh"]
+
+
+def test_the_override_matches_the_walkers_own_constant():
+    """Two copies of one number; a test is what stops them drifting."""
+    import supply_escrow_walker as W
+    assert c.CADENCE_OVERRIDE["supply_escrow_walker"] == W.CADENCE_SECONDS
+
+
+def test_the_override_is_still_subject_to_staleness():
+    """A bridge, not a blanket exemption: a census that really stops must
+    still be caught, at 2 x 86400."""
+    rows = [row("supply_escrow_walker", cadence=3600, age=200_000)]
+    r = reasons_for(rows, "supply_escrow_walker")
+    assert r and r[0].startswith("STALE ")
 
 
 # ── guard-the-guard: the exemption maps cannot rot ───────────────────

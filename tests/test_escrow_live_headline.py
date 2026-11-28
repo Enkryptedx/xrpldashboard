@@ -67,10 +67,38 @@ def test_stamp_names_the_ledger_and_both_clocks():
 
 def test_stamp_degrades_to_fetch_time_while_ledger_is_null():
     """The fallback the task names: rows written before the walker captured
-    the validated ledger index still get an honest, coarser stamp."""
-    s = H.format_as_of_stamp(None, FETCHED_AT)
+    the validated ledger index still get an honest, coarser stamp.
+
+    `now` is pinned a few minutes after the fetch. Before the 2026-11-28
+    date rule this test passed the real clock, so as FETCHED_AT receded into
+    the past the assertion silently became a test of "is today more than 6h
+    after 2026-11-13" rather than of the stamp format.
+    """
+    s = H.format_as_of_stamp(None, FETCHED_AT, now=FETCHED_AT + 300)
     assert "ledger" not in s
     assert s == "as of 4:12 PM ET (21:12 UTC)", s
+
+
+def test_a_stamp_older_than_a_few_hours_gains_the_date():
+    """Charlie ruling 2026-11-28. A bare clock time on a figure that could
+    be a day old tells the reader the wrong thing with total confidence:
+    "4:12 PM ET" read on a Sunday morning looks like today. This source is
+    a 30-minute walker, so it normally shows no date -- but if it stalls,
+    the date appears rather than quietly implying today.
+    """
+    fresh = H.format_as_of_stamp(None, FETCHED_AT, now=FETCHED_AT + 300)
+    stalled = H.format_as_of_stamp(None, FETCHED_AT, now=FETCHED_AT + 20 * 3600)
+    assert fresh == "as of 4:12 PM ET (21:12 UTC)"
+    assert stalled == "as of Nov 13, 4:12 PM ET (21:12 UTC)"
+
+
+def test_a_daily_source_always_carries_the_date():
+    """always_date is for sources whose normal cadence is daily or slower --
+    the escrow census. The date is shown even when freshly written, because
+    tomorrow morning the same string will be 20 hours old."""
+    s = H.format_as_of_stamp(108632950, FETCHED_AT,
+                             always_date=True, now=FETCHED_AT + 60)
+    assert s == "as of ledger 108,632,950 \u00b7 Nov 13, 4:12 PM ET (21:12 UTC)", s
 
 
 def test_stamp_is_none_when_there_is_nothing_to_stamp():

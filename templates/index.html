@@ -1082,6 +1082,18 @@
         <div>
           <div class="stat-l">{{ _('XRP locked in Ripple escrows') }}</div>
           <div class="stat-sub">{{ "{:,}".format(el.object_count) }} {{ _('escrow objects') }} · {{ el.owner_count }} {{ _('owning accounts of') }} {{ el.escrow_cohort_size or '' }} · {{ el.as_of }}</div>
+          {# 2026-11-28: the ledger-wide census line is RESTORED here, beside
+             the live cohort, now that supply_escrow_walker runs daily again.
+             It was pulled on 2026-11-13 because a month-old figure sitting
+             next to a 30-minute-old one reads as though both are current.
+             What makes it safe to show again is the STAMP: both lines now
+             carry an as-of, the census one always with its DATE, so a reader
+             can see which is minutes old and which is hours and judge for
+             themselves. Still gated on escrow_stale, so if the daily walk
+             stops the line disappears rather than going quietly stale. #}
+          {% if xrp_distribution.escrowed_xrp and not xrp_distribution.escrow_stale %}
+          <div class="stat-sub">{{ _('Ledger-wide') }}: {{ "%.2f"|format(xrp_distribution.escrowed_xrp / 1000000000) }}B XRP · {{ "{:,}".format(xrp_distribution.escrow_object_count) }} {{ _('escrow objects') }} · {{ "{:,}".format(xrp_distribution.escrow_account_count) }} {{ _('holder accounts') }} · {{ xrp_distribution.escrow_census_as_of }}</div>
+          {% endif %}
         </div>
         {% if el.total_xrp >= 1000000000 %}
         <div class="stat-v" data-countup="{{ el.total_xrp / 1000000000 }}" data-countup-decimals="1" data-countup-suffix="B XRP">{{ "%.1f"|format(el.total_xrp / 1000000000) }}B XRP</div>

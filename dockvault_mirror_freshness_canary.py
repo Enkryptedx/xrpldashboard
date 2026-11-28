@@ -724,12 +724,38 @@ DEMAND_DRIVEN: dict[str, str] = {
 }
 
 # Paused on an owner decision, expected to resume -- so NOT retired.
-PAUSED: dict[str, str] = {
-    "supply_escrow_walker": (
-        "paused 2026-10-15 for the escrow incremental redesign; resumes at "
-        "stage 4, which is owner-gated. Its own walker_health message says "
-        "the same, and Charlie reconfirmed the pause on 2026-11-28."
-    ),
+# EMPTY as of 2026-11-28: supply_escrow_walker is RESUMED on a daily
+# schedule, so it is no longer exempt -- it is now judged by its declared
+# cadence like any other walker. See CADENCE_OVERRIDE below for the bridge
+# that makes that safe, and paused_walkers.RESUMED for what "stage 4" turned
+# out to mean.
+PAUSED: dict[str, str] = {}
+
+# ── Cadence the row declares WRONGLY, corrected until it re-stamps ──────
+#
+# Distinct from CADENCE_FALLBACK, which fills in a MISSING cadence. This one
+# OVERRIDES a present-but-wrong one, and it exists because of a sequencing
+# hazard that would otherwise have paged tonight.
+#
+# supply_escrow_walker's row currently declares cadence_seconds=3600, written
+# by the one-off catch-up run on 2026-11-28 while the code still said hourly.
+# The code now says 86400, but a walker_health row only gains the new value
+# when the job NEXT RUNS -- 06:30 ET tomorrow. Removing the PAUSED exemption
+# without this override would have judged it at 2 x 3600 = 2h against a last
+# success of 18:34 UTC, so the generic rule would have reported STALE from
+# about 20:34 UTC tonight for a walker that is working exactly as designed.
+#
+# Fixing the data instead of the code was the alternative, i.e. UPDATE the
+# row's cadence by hand. That was rejected: hand-editing walker_health to
+# satisfy a checker teaches the checker to trust a value nobody wrote, and
+# the next person cannot tell a real declaration from a patched one.
+#
+# A test asserts this equals supply_escrow_walker.CADENCE_SECONDS, so the two
+# copies cannot drift. Remove the entry once the row has re-stamped 86400 --
+# it is a bridge, and leaving it would mean the canary permanently preferred
+# its own opinion to the walker's.
+CADENCE_OVERRIDE: dict[str, int] = {
+    "supply_escrow_walker": 86400,
 }
 
 # Decommissioned for good. Kept here so a dead row stops paging WITHOUT
@@ -928,7 +954,11 @@ def evaluate_walker_declarations(rows: list[dict]) -> list[dict]:
                 row.get("last_success_age_seconds")))
             continue
 
-        cadence = row.get("cadence_seconds") or CADENCE_FALLBACK.get(name)
+        # Precedence: a known-wrong declared value is corrected first, then
+        # the row's own declaration, then a fallback for a missing one.
+        cadence = (CADENCE_OVERRIDE.get(name)
+                   or row.get("cadence_seconds")
+                   or CADENCE_FALLBACK.get(name))
         age = row.get("last_success_age_seconds")
 
         if not cadence:

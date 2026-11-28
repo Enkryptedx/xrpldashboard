@@ -47,8 +47,22 @@ import sys
 WALKER_NAME = "escrow_census_freshness_canary"
 WALKER_CADENCE_SECONDS = 3600  # hourly; keep equal to the plist StartInterval
 
-MAX_AGE_SECONDS = int(
-    float(os.environ.get("ESCROW_CENSUS_MAX_AGE_H", "26")) * 3600
+# THE shared threshold, not a local copy. Charlie ruling 2026-11-28: the page
+# gate, the API redaction gate and this ceiling must be one number, or the
+# page withholds a figure the API still serves and the canary disagrees with
+# both. See supply_block.ESCROW_CENSUS_STALE_AFTER_SECONDS; a test asserts
+# all three consumers read this exact value.
+#
+# Imported WITHOUT a hardcoded sys.path insert. A first draft did
+# `sys.path.insert(0, "/Users/charliebruce/xrpl_test")` here at module level,
+# which works when deployed but silently redirects any LATER import in the
+# same process to the main checkout -- it made a verification script read
+# app.py from main instead of the worktree and report the two constants as
+# disagreeing when they did not. A module that rewrites global import state
+# as a side effect of being imported is a trap for every other importer.
+# supply_block sits in this same directory, so a plain import resolves it.
+from supply_block import (  # noqa: E402
+    ESCROW_CENSUS_STALE_AFTER_SECONDS as MAX_AGE_SECONDS,
 )
 
 

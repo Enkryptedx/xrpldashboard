@@ -63,8 +63,33 @@ WALKER_NAME = "supply_escrow_walker"
 # idle even in the worst case. If the node returns to ~91 pages/s the walk is
 # back to ~860s and the extra ceiling simply goes unused.
 # Both remain env-overridable; keep plist StartInterval == CADENCE_SECONDS.
-CADENCE_SECONDS = int(os.environ.get("SUPPLY_ESCROW_CADENCE_SECONDS", "3600"))
-ENUM_HARD_CAP_SECONDS = int(os.environ.get("SUPPLY_ESCROW_HARD_CAP_SECONDS", "2700"))
+# 2026-11-28 (Charlie): RESUMED on a DAILY cadence. 3600 -> 86400, cap
+# 2700 -> 3600, changed together, and the plist moves from StartInterval to
+# StartCalendarInterval Hour=6 Minute=30 local ET with NO RunAtLoad.
+#
+# Why this unblocks the pause rather than working around it. The walker was
+# paused 2026-10-15 because the full ledger_data(type=escrow) enumeration
+# "stopped finishing inside its 2700s hard cap". That cap existed to fit an
+# HOURLY cadence -- the cap must stay below the cadence or a capped run
+# overruns its own interval and launchd relaunches it instantly (the
+# 2026-10-12/13 incident: 44 consecutive capped failures, zero idle,
+# continuously hammering our own node). At a daily cadence that constraint
+# almost vanishes: 3600 is 4% of 86400, so the worst case leaves 23 hours
+# idle. The walk never needed to be incremental; it needed room.
+#
+# Why 3600 and not tighter. Measured one-off run 2026-11-28: 79,427 pages in
+# 1,120s at 71.2 pages/s sustained. Observed rates across this walker's life
+# span 90.9 / 71.2 / ~37 / ~27 pages/s. A 3600s cap tolerates 22.1 pages/s,
+# below EVERY rate ever recorded including the ~27 that caused the pause. A
+# 1800s cap would abort at 27 pages/s. Under a daily cadence there is no
+# reason to be tight, and an abort costs a whole day of freshness.
+#
+# NO RunAtLoad on the plist, deliberately: this is a ~19-minute walk against
+# our own node, and RunAtLoad would fire it at install time and on every
+# boot or login -- outside the quiet 06:30 slot that was chosen precisely to
+# avoid the backup chain. The daily slot is the only trigger.
+CADENCE_SECONDS = int(os.environ.get("SUPPLY_ESCROW_CADENCE_SECONDS", "86400"))
+ENUM_HARD_CAP_SECONDS = int(os.environ.get("SUPPLY_ESCROW_HARD_CAP_SECONDS", "3600"))
 LEDGER_DATA_PAGE_LIMIT = 400
 
 # 2026-10-14 (Charlie): emit a progress line every N pages so a run IN FLIGHT
