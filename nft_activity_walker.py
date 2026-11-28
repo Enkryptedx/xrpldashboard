@@ -734,7 +734,37 @@ MODE_DISPATCH = {
 # Modes that run on a fixed StartInterval cadence and should declare it to
 # walker_health for staleness thresholds. Both fire every 300s on their
 # own plists.
-CADENCE_MODES = frozenset({"activity", "summary"})
+# Cadence PER MODE, each value read from that mode's own plist StartInterval
+# on 2026-11-28 -- not from WALKER_CADENCE_SECONDS, which is the activity
+# interval and was being declared for every cadenced mode.
+#
+#   activity  com.charliebruce.xrpldashboard.nft_activity_walker.plist    300
+#   summary   com.charliebruce.xrpldashboard.nft_activity_summary.plist   600
+#   backfill  com.charliebruce.xrpldashboard.nft_activity_backfill.plist  900
+#
+# Two bugs this fixes, both found by the 2026-11-28 silence audit:
+#
+#  1. `summary` declared 300 while its plist runs it every 600s. An
+#     UNDERSTATED cadence silently halves every staleness window derived
+#     from it, so a summary run that was merely one cycle late looked two
+#     cycles overdue.
+#  2. `backfill` declared NOTHING, because it is not in the old
+#     CADENCE_MODES set -- yet it is genuinely scheduled every 900s and
+#     launchctl shows it loaded. A job running fine every 15 minutes was
+#     recorded as having no cadence at all, which makes it permanently
+#     unwatchable by any staleness rule.
+#
+# Modes absent from this map (e.g. reconcile-type-rollup) declare None ON
+# PURPOSE: they are on-demand audits with no schedule, so "overdue" is not a
+# defined idea for them.
+MODE_CADENCE_SECONDS: dict[str, int] = {
+    "activity": 300,
+    "summary": 600,
+    "backfill": 900,
+}
+
+# Retained for callers/tests that still ask which modes carry a cadence.
+CADENCE_MODES = frozenset(MODE_CADENCE_SECONDS)
 
 
 def main():
@@ -769,7 +799,7 @@ def main():
     walker_health_name = f"{WALKER_NAME}_{args.mode}"
     db.write_walker_health_start(
         walker_health_name,
-        cadence_seconds=WALKER_CADENCE_SECONDS if args.mode in CADENCE_MODES else None,
+        cadence_seconds=MODE_CADENCE_SECONDS.get(args.mode),
     )
 
     ok = False

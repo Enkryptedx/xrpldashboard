@@ -712,20 +712,117 @@ PAUSED: dict[str, str] = {
 # deleting the walker_health row, because deleting it would destroy the
 # history that proves when the job last worked.
 #
-# DELIBERATELY EMPTY. openclaw_cli_backend_drift is the obvious candidate --
-# its plist and wrapper sit on disk renamed .retired-2026-09-25 and its last
-# success matches that date -- but Charlie's 2026-11-28 instruction was that
-# the silent jobs must SHOW as findings until each one is decided.
-# Pre-exempting it here would be me deciding on his behalf, so it is left to
-# surface. Add it once he rules.
-RETIRED: dict[str, str] = {}
+# Each reason below is the job's OWN recorded words where it left any --
+# quoted from its last walker_health message or from paused_walkers.py --
+# rather than my summary of them. Decided by Charlie 2026-11-28 after the
+# read-only investigation; every one of these had last_run_ok=true and
+# last_failure_at=NULL, i.e. none of them ever failed. They stopped RUNNING
+# because they were switched off on purpose.
+RETIRED: dict[str, str] = {
+    "escrow_supply_walker": (
+        "its own last message: 'RETIRED 2026-09-25: plist archived "
+        "(private_infra 5101578); supply block confirmed, drift canary 0 "
+        "findings - walker redundant. cadence NULL so l1_pager walker_stale "
+        "excludes it; last_success_at kept as the honest last run.' Plist and "
+        "wrapper on disk as .retired-2026-09-25, LaunchAgents copy as "
+        ".retired-2026-09-24, not loaded. NOTE it is a DIFFERENT job from "
+        "supply_escrow_walker (paused) and from supply_block_walker "
+        "(retired) - three similar names, three separate jobs."
+    ),
+    "supply_block_walker": (
+        "its own last message: 'RETIRED 2026-09-25: superseded 2026-09-24 by "
+        "supply_fast_walker + supply_escrow_walker writing the "
+        "xrp_supply_block singleton; no launchd job exists for this name'. "
+        "Only run_supply_block_walker.sh.retired-2026-09-25 remains; no plist "
+        "anywhere, not loaded."
+    ),
+    "escrow_seed_walk": (
+        "retired 2026-11-02, recorded in paused_walkers.py: it 'was the "
+        "stage-2 one-shot, not a standing census'. Last run 2026-10-16 "
+        "succeeded (seeded 14614 escrow objects at pinned ledger 107687537). "
+        "No plist. The full-ledger escrow census it fed is deliberately "
+        "UNCOVERED pending escrow stage 4 - see the `coverage` string in "
+        "paused_walkers.py, which is a free-text absence precisely so it "
+        "cannot be mistaken for a working substitute."
+    ),
+    "openclaw_cli_backend_drift": (
+        "retired 2026-09-25: plist and wrapper on disk renamed "
+        ".retired-2026-09-25, not loaded, and its last success (2026-09-26) "
+        "matches that date. Superseded when the CLI backend drift check "
+        "stopped being a separate concern."
+    ),
+}
+
+# Real work, deliberately NOT on a schedule: a human or a curator runs it
+# when there is something to run it for. Distinct from DEMAND_DRIVEN, which
+# is a request handler stamping a counter -- these are walkers someone
+# invokes by hand.
+RESEARCH_ONLY: dict[str, str] = {
+    "rwa_nav_transparency_walker": (
+        "its own last message: 'research-only, no launchd job (Charlie "
+        "2026-09-22 ruling); cadence NULL 2026-09-25 so walker_stale never "
+        "pages an unscheduled walker'. It has never had a plist. BLOCKED on "
+        "curator input, not on code: the last real pass (2026-09-22 23:00Z) "
+        "recorded ondo_finance=not_a_pdf openeden=not_a_pdf because both "
+        "source URLs are docs HTML pages with no stable PDF URL. Its output "
+        "is curator-gated and feeds no auto-updating live field, so there is "
+        "nothing on the site going stale behind it."
+    ),
+}
+
+# Not a scheduled job at all: an on-demand MODE of another walker, which
+# writes its own walker_health row under a composite name. Asking whether it
+# is overdue is a category error -- it runs when someone audits.
+ON_DEMAND: dict[str, str] = {
+    "nft_activity_reconcile-type-rollup": (
+        "not a job: the `--mode reconcile-type-rollup` audit mode of "
+        "nft_activity_walker (registered at nft_activity_walker.py MODE_DISPATCH), "
+        "which writes walker_health under f'{WALKER_NAME}_{mode}'. No plist "
+        "exists or should. Its last run PASSED - 'through_id=7866979 "
+        "rollup_total=7776300 full_total=7776300 types=5 MATCH' - and the "
+        "table it audits, nft_activity_type_rollup, is maintained by the "
+        "scheduled activity/summary modes and was fresh to the minute when "
+        "checked on 2026-11-28."
+    ),
+}
+
+# ── Cadence the WRITER declares at runtime, mirrored here ───────────────
+#
+# nft_activity_backfill is genuinely scheduled -- its own plist runs it every
+# 900s and launchctl shows it loaded -- but nft_activity_walker passed
+# cadence_seconds=None for it, because WALKER_CADENCE_SECONDS (300) is the
+# ACTIVITY-mode interval and would have been wrong for backfill. So the row
+# said "undeclared" while the job was running fine every 15 minutes.
+#
+# The real fix is in the writer (nft_activity_walker now declares a cadence
+# per mode). This map is the BRIDGE: a walker_health row only gains the new
+# value when the job next stamps, so without it the rule would report a
+# finding for a job that is already fixed. Used ONLY when the row itself
+# declares nothing.
+#
+# The duplication is deliberate but guarded: a test asserts this value
+# equals the writer's declaration for that mode AND the plist's
+# StartInterval, so the two copies cannot drift silently. Verified from the
+# plist on 2026-11-28, not from a comment -- two separate cadence claims in
+# this file had already been wrong by believing prose.
+CADENCE_FALLBACK: dict[str, int] = {
+    "nft_activity_backfill": 900,
+}
+
+
+# Every exemption table, in one place so the guards below cannot miss one.
+EXEMPTION_TABLES: tuple[tuple[str, dict[str, str]], ...] = (
+    ("demand-driven", DEMAND_DRIVEN),
+    ("paused", PAUSED),
+    ("retired", RETIRED),
+    ("research-only", RESEARCH_ONLY),
+    ("on-demand", ON_DEMAND),
+)
 
 
 def _exempt_reason(name: str) -> tuple[str, str] | None:
     """(kind, reason) if `name` is exempt, else None."""
-    for kind, table in (("demand-driven", DEMAND_DRIVEN),
-                        ("paused", PAUSED),
-                        ("retired", RETIRED)):
+    for kind, table in EXEMPTION_TABLES:
         if name in table:
             return kind, table[name]
     return None
@@ -754,14 +851,15 @@ def evaluate_walker_declarations(rows: list[dict]) -> list[dict]:
     """
     results: list[dict] = []
     present = {r.get("walker_name") for r in rows if isinstance(r, dict)}
-    all_exempt = sorted(set(DEMAND_DRIVEN) | set(PAUSED) | set(RETIRED))
+    all_exempt = sorted({n for _kind, t in EXEMPTION_TABLES for n in t})
 
     # Guard-the-guard 1: contradictory declarations. A name claiming to be
     # both paused and demand-driven means nobody knows what it is.
+    # Iterates EXEMPTION_TABLES so adding a sixth category cannot silently
+    # escape this guard -- the earlier version listed three tables by hand
+    # and would have ignored RESEARCH_ONLY and ON_DEMAND entirely.
     for name in all_exempt:
-        hits = [k for k, t in (("DEMAND_DRIVEN", DEMAND_DRIVEN),
-                               ("PAUSED", PAUSED), ("RETIRED", RETIRED))
-                if name in t]
+        hits = [k for k, t in EXEMPTION_TABLES if name in t]
         if len(hits) > 1:
             results.append(_declaration_result(
                 f"declare:{name}", False,
@@ -784,8 +882,7 @@ def evaluate_walker_declarations(rows: list[dict]) -> list[dict]:
 
     # Guard-the-guard 3: an exemption with no stated reason is not a
     # decision, it is a silence with extra steps.
-    for kind, table in (("DEMAND_DRIVEN", DEMAND_DRIVEN),
-                        ("PAUSED", PAUSED), ("RETIRED", RETIRED)):
+    for kind, table in EXEMPTION_TABLES:
         for name, reason in sorted(table.items()):
             if not (reason or "").strip():
                 results.append(_declaration_result(
@@ -807,7 +904,7 @@ def evaluate_walker_declarations(rows: list[dict]) -> list[dict]:
                 row.get("last_success_age_seconds")))
             continue
 
-        cadence = row.get("cadence_seconds")
+        cadence = row.get("cadence_seconds") or CADENCE_FALLBACK.get(name)
         age = row.get("last_success_age_seconds")
 
         if not cadence:

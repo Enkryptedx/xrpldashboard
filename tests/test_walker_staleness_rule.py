@@ -42,18 +42,17 @@ def row(name, cadence=HOUR, age=0.0, **kw):
 
 
 def base():
-    """Rows for every really-exempt walker.
+    """One row for every exempt walker, derived from EXEMPTION_TABLES.
 
-    Guard-the-guard 2 reports an exemption naming a walker that is absent
-    from walker_health, which is correct in production but means any test
-    passing a small subset of rows would otherwise trip it. Including the
-    real exempt names keeps each test measuring the thing it names.
+    Guard-the-guard 2 reports an exemption naming a walker absent from
+    walker_health, which is right in production but means any test passing
+    a small subset of rows would otherwise trip it. Deriving this from the
+    tables rather than hardcoding names means adding a sixth category does
+    not silently break every test in this file -- which is exactly what
+    happened when RETIRED, RESEARCH_ONLY and ON_DEMAND were populated.
     """
-    return [
-        row("mcp_connect_redirect", cadence=2592000, age=100.0),
-        row("mcp_session_start", cadence=86400, age=100.0),
-        row("supply_escrow_walker", cadence=None, age=100.0),
-    ]
+    return [row(name, cadence=None, age=100.0)
+            for _kind, table in c.EXEMPTION_TABLES for name in table]
 
 
 def evaluate(rows):
@@ -167,37 +166,133 @@ def test_a_demand_driven_counter_is_still_exempt_with_no_cadence():
 
 # ── Charlie ruling: do NOT pre-exempt the five silent jobs ───────────
 
-FIVE_SILENT = [
-    "escrow_supply_walker",
-    "rwa_nav_transparency_walker",
-    "supply_block_walker",
-    "nft_activity_reconcile-type-rollup",
-    "escrow_seed_walk",
-]
+# Charlie's 2026-11-28 resolution of the seven findings, after the
+# read-only investigation established that NONE of them had ever failed --
+# every one had last_run_ok=true and last_failure_at=NULL. They stopped
+# RUNNING because they were switched off on purpose.
+RESOLVED = {
+    "escrow_supply_walker": "retired",
+    "supply_block_walker": "retired",
+    "escrow_seed_walk": "retired",
+    "openclaw_cli_backend_drift": "retired",
+    "rwa_nav_transparency_walker": "research-only",
+    "nft_activity_reconcile-type-rollup": "on-demand",
+}
 
 
-@pytest.mark.parametrize("name", FIVE_SILENT)
-def test_the_five_silent_jobs_are_not_exempt(name):
-    """Charlie 2026-11-28: they must SHOW as findings until each is decided.
-
-    Guards against a future 'tidy up the noise' commit quietly exempting
-    them, which would recreate the exact invisibility being fixed.
+@pytest.mark.parametrize("name,kind", sorted(RESOLVED.items()))
+def test_each_resolved_job_is_exempt_in_its_decided_category(name, kind):
+    """The categories are not interchangeable: 'retired' asserts the job is
+    gone for good, 'research-only' that a human runs it when there is
+    something to run it for, 'on-demand' that it is not a job at all but an
+    audit mode of another walker. Filing one under the wrong heading would
+    make a future reader draw the wrong conclusion about whether to revive
+    it.
     """
-    assert name not in c.DEMAND_DRIVEN
-    assert name not in c.PAUSED
-    assert name not in c.RETIRED
     assert reasons_for([row(name, cadence=None, age=1_500_000)], name) == \
-        ["UNDECLARED-CADENCE"]
+        [f"exempt:{kind}"]
 
 
-def test_retired_is_deliberately_empty():
-    """openclaw_cli_backend_drift looks retired (.retired-2026-09-25 files)
-    but pre-exempting it would be deciding on Charlie's behalf."""
-    assert c.RETIRED == {}
+def test_retired_holds_exactly_the_four_decided_jobs():
+    assert set(c.RETIRED) == {
+        "escrow_supply_walker", "supply_block_walker",
+        "escrow_seed_walk", "openclaw_cli_backend_drift",
+    }
+
+
+def test_each_retired_reason_quotes_the_jobs_own_record():
+    """The reasons are the jobs' OWN recorded words, not my summary of
+    them, so a future reader can audit the decision against the source."""
+    assert "RETIRED 2026-09-25" in c.RETIRED["escrow_supply_walker"]
+    assert "private_infra 5101578" in c.RETIRED["escrow_supply_walker"]
+    assert "superseded 2026-09-24" in c.RETIRED["supply_block_walker"]
+    assert "paused_walkers.py" in c.RETIRED["escrow_seed_walk"]
+    assert ".retired-2026-09-25" in c.RETIRED["openclaw_cli_backend_drift"]
+
+
+def test_the_retired_escrow_reason_disambiguates_the_three_similar_names():
+    """escrow_supply_walker / supply_escrow_walker / supply_block_walker are
+    three DIFFERENT jobs. The retirement note has to say so, or someone
+    reviving one will revive the wrong one."""
+    r = c.RETIRED["escrow_supply_walker"]
+    assert "supply_escrow_walker" in r and "supply_block_walker" in r
+
+
+def test_research_only_records_that_it_is_blocked_on_curator_input():
+    r = c.RESEARCH_ONLY["rwa_nav_transparency_walker"]
+    assert "curator" in r
+    assert "no auto-updating live field" in r or "auto-updating" in r
+
+
+def test_on_demand_records_that_its_last_audit_passed():
+    r = c.ON_DEMAND["nft_activity_reconcile-type-rollup"]
+    assert "MATCH" in r
 
 
 def test_paused_holds_only_the_job_charlie_confirmed():
     assert set(c.PAUSED) == {"supply_escrow_walker"}
+
+
+def test_all_five_categories_are_guarded():
+    """EXEMPTION_TABLES is what every guard iterates; a category missing
+    from it would be exempt but unguarded."""
+    kinds = {k for k, _t in c.EXEMPTION_TABLES}
+    assert kinds == {"demand-driven", "paused", "retired",
+                     "research-only", "on-demand"}
+
+
+# ── nft_activity_backfill: a declared cadence, not an exemption ──────
+
+def test_backfill_is_not_exempted_it_is_given_a_cadence():
+    """It is genuinely scheduled every 900s and loaded, so exempting it
+    would be wrong -- it SHOULD be watched. The fix is a declaration."""
+    for _kind, table in c.EXEMPTION_TABLES:
+        assert "nft_activity_backfill" not in table
+    assert c.CADENCE_FALLBACK["nft_activity_backfill"] == 900
+
+
+def test_the_fallback_clears_the_undeclared_finding():
+    """The row still says NULL until the job next stamps; the fallback is
+    the bridge so a job that is already fixed does not report a finding."""
+    assert reasons_for([row("nft_activity_backfill", cadence=None, age=60)],
+                       "nft_activity_backfill") == ["fresh"]
+
+
+def test_the_fallback_is_still_subject_to_staleness():
+    """A bridge must not become a blanket exemption: a backfill that really
+    stopped must still be caught, at 2 x 900s."""
+    r = reasons_for([row("nft_activity_backfill", cadence=None, age=2000)],
+                    "nft_activity_backfill")
+    assert r and r[0].startswith("STALE ")
+
+
+def test_a_row_that_declares_its_own_cadence_wins_over_the_fallback():
+    """Once the job stamps the real value, the row is authoritative."""
+    assert reasons_for([row("nft_activity_backfill", cadence=7200, age=3600)],
+                       "nft_activity_backfill") == ["fresh"]
+
+
+def test_the_fallback_matches_what_the_writer_now_declares():
+    """The duplication is deliberate but must not drift: this is the whole
+    reason the fallback is safe to have. Both numbers come from the mode's
+    own plist StartInterval, read on 2026-11-28."""
+    import nft_activity_walker as naw
+    assert naw.MODE_CADENCE_SECONDS["backfill"] == \
+        c.CADENCE_FALLBACK["nft_activity_backfill"]
+
+
+def test_the_writer_declares_a_cadence_per_mode_from_its_own_plist():
+    """summary declared 300 while its plist runs it every 600 -- an
+    understated cadence halves every staleness window derived from it."""
+    import nft_activity_walker as naw
+    assert naw.MODE_CADENCE_SECONDS == {
+        "activity": 300, "summary": 600, "backfill": 900}
+
+
+def test_an_undeclared_mode_still_declares_nothing():
+    """reconcile-type-rollup has no schedule, so None is correct there."""
+    import nft_activity_walker as naw
+    assert naw.MODE_CADENCE_SECONDS.get("reconcile-type-rollup") is None
 
 
 def test_paused_job_is_exempt():
@@ -224,9 +319,14 @@ def test_a_name_in_two_maps_is_a_finding(monkeypatch):
 def test_an_exemption_for_an_unknown_walker_is_a_finding(monkeypatch):
     """A RENAMED job would otherwise keep its old name exempt forever while
     the new name went unnoticed -- the escrow_supply/supply_escrow hazard."""
-    monkeypatch.setitem(c.PAUSED, "ghost_walker_that_does_not_exist", "x" * 40)
-    f = findings([row("w")])
-    assert any(r["label"] == "declare:ghost_walker_that_does_not_exist"
+    ghost = "ghost_walker_that_does_not_exist"
+    monkeypatch.setitem(c.PAUSED, ghost, "x" * 40)
+    # Rows must contain every exempt name EXCEPT the ghost -- base() is
+    # derived from EXEMPTION_TABLES, so calling it after the monkeypatch
+    # would hand the ghost a row and make it known by construction.
+    rows = [r for r in base() if r["walker_name"] != ghost] + [row("w")]
+    f = [r for r in c.evaluate_walker_declarations(rows) if not r["ok"]]
+    assert any(r["label"] == f"declare:{ghost}"
                and r["reason"] == "exemption_for_unknown_walker" for r in f)
 
 
