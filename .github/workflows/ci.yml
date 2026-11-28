@@ -1329,3 +1329,17 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_mpt_withheld_metadata.py -q
+      # The MPT holders walk was dead for 88 days and nothing paged. Every
+      # existing signal asked the WALKER how its run went, and the run went
+      # fine: mpt_holders_refresh exited 0 on ~2000 consecutive runs while
+      # printing history_rows=0, so walker_health's ok axis never moved, and
+      # its own counters called an RPC error a pagination outcome. This
+      # canary asks the one question a walker doing nothing cannot answer
+      # falsely -- did mpt_supply_history actually grow. 13h ceiling = two
+      # missed 6h writer cycles + slack. Pins that an unreadable DB and an
+      # empty table are FINDINGS, never silence, and that findings_count
+      # (not ok) stays the alert axis. No DB, no network (db monkeypatched).
+      - name: mpt_supply_history freshness canary (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mpt_supply_history_canary.py -q
