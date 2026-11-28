@@ -554,11 +554,32 @@ JOBS: list[tuple[str, int, str]] = [
     # it went stale for ~35h during 09-09/09-10 with no meta-watch
     # (last stamp before the kick was 09-09 13:51 UTC — 35h > 25h
     # freshness threshold, canary reported FAIL but nothing paged on
-    # the canary's own silence). Hourly canary; 26h ceiling matches the
-    # daily-cadence jobs above. Wrapper (run_pg_backup_canary.sh) stamps
+    # the canary's own silence). Wrapper (run_pg_backup_canary.sh) stamps
     # _last_ok on success only — same discipline as siblings.
+    #
+    # CADENCE IS DAILY, NOT HOURLY (corrected 2026-11-28). The plist uses
+    # StartCalendarInterval Hour=1 Minute=0 LOCAL (ET) — one run a day at
+    # 01:00 ET — with RunAtLoad TRUE as the boot/login catch-up path. That
+    # is deliberate per the 2026-09-09 ruling and explicitly supersedes the
+    # 2026-09-08 conversion to StartInterval 86400, so the absence of a
+    # StartInterval key in that plist is intentional and not drift. The
+    # wrapper declares cadence_seconds=86400 to walker_health, and the
+    # plist's own Comment has always said "Daily freshness check".
+    #
+    # So the 26h ceiling here is this job's OWN daily cadence plus ~1h of
+    # grace — not an hourly job measured against a daily artifact.
+    #
+    # Why the wording mattered: on 2026-11-28 this description string was
+    # read as authoritative and the canary was reported to Charlie as "last
+    # succeeded 7.4h ago despite being hourly" — a false alarm. It had run
+    # exactly on time at 01:00 ET (rc=0, dump age=3h) and was sitting at
+    # 0.31x of its real cadence. A second reader then repeated "hourly" in
+    # the mpt_supply_history_canary entry below, so the wrong word had
+    # already reproduced once before anyone checked the plist. A description
+    # that contradicts the schedule is not a cosmetic defect: it is read as
+    # the schedule.
     ("pg_backup_canary", 26 * 3600,
-     "hourly freshness check for pg_backup B2 dump (age <= 25h threshold; stamps last_ok on success)"),
+     "daily 01:00-ET freshness check for pg_backup B2 dump (age <= 25h threshold; stamps last_ok on success)"),
     # Charlie ruling 2026-09-10 evening: added token_elevation_walker
     # (Part C item 5). Hourly scan of labeled + self-described rows with
     # https .toml citations; runs two-way TOML verification via
@@ -594,10 +615,13 @@ JOBS: list[tuple[str, int, str]] = [
     # up.
     #
     # Ceiling 3h against an hourly cadence = two missed ticks of grace.
-    # Tighter than pg_backup_canary's 26h, which is hourly but sized to the
-    # DAILY artifact it watches; here the canary is the ONLY watcher of
-    # mpt_supply_history, so its own silence should surface in hours, not a
-    # day. Looser than a 2x ratio because launchd StartInterval ticks are
+    # Tighter than pg_backup_canary's 26h, which is sized to ITS OWN daily
+    # cadence (01:00 ET once a day) plus about an hour of grace. An earlier
+    # version of this comment said that job was "hourly but sized to the
+    # DAILY artifact it watches"; that was inherited from a stale
+    # description string and is corrected above. Here the canary is the ONLY
+    # watcher of mpt_supply_history, so its own silence should surface in
+    # hours, not a day. Looser than a 2x ratio because launchd StartInterval ticks are
     # skipped across sleep rather than queued, and this is a liveness probe,
     # not the staleness alert — the staleness finding has its own axis.
     #
