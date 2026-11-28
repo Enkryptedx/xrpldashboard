@@ -883,6 +883,78 @@ jobs:
           DATABASE_URL: ""
         run: pytest tests/test_mpt_issuer_trust_label.py -q
 
+      # ── Four same-day suites that CI was never running (2026-11-27) ──
+      #
+      # These four shipped on 2026-11-27 in PRs #190, #193/#195, #194 and
+      # #196. Every one of them passed locally before its merge and none of
+      # them was added to this file, so from the moment they landed the
+      # repo's own gate did not execute them. An unregistered test file is
+      # strictly worse than no test file: it reads as covered in review and
+      # in the tree, it goes green in a local run nobody repeats, and it can
+      # never fail the deploy gate it was written to hold.
+      #
+      # Found by diffing the test files added today against the file names
+      # appearing in this workflow, which is now the check to run at the end
+      # of any day that ships more than one suite. Registering them is NOT a
+      # no-op: each one guards a behaviour that shipped the same day.
+      #
+      # All four are hermetic (pure helpers, the Flask test client, and a
+      # monkeypatched snapshot) and need no DB and no network.
+
+      # #190. The trust label was COMPOSED for MPT rows and printed nowhere:
+      # _enrich_mpt_rows attached trust_label, and neither templates/mpts.html
+      # nor templates/mpt_detail.html had a print site for it, so an examined
+      # issuance and an unexamined one were pixel-identical on both surfaces.
+      # This asserts on the RENDERED HTML through the Flask test client rather
+      # than on the composed string -- a label with no print site is exactly
+      # the failure it closes, so a unit test on label_for() would have passed
+      # throughout the bug.
+      - name: MPT trust label actually renders on /mpts and /mpt/<id> (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mpt_trust_label_rendered.py -q
+
+      # #194. Withholding is decided by the reason CLASS, never by prose.
+      # is_withheld() used to ask whether the whole `suppressed` value
+      # CONTAINED the impersonation class name, which turned human evidence
+      # text into control flow: LRC is suppressed placeholder_unfinished_
+      # issuance, yet its name was withheld on all three MPT surfaces purely
+      # because its note contains the sentence "This REPLACES
+      # impersonation_risk_pending_review recorded earlier...". The outcome
+      # looked right and rested on nothing -- deleting one explanatory clause
+      # would have silently started publishing the name. Pins the leading-
+      # token read so prose can never withhold or un-withhold anything.
+      - name: withholding reads the reason class, not the prose (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_is_withheld_exact_class.py -q
+
+      # #193/#195. Suppression is not withholding, and 29 decided stubs rely
+      # on the difference. Only the impersonation class replaces a name; the
+      # other classes mean "not reviewed", keep publishing the name, and take
+      # the `unverified` caveat. These stubs were created for named ledger-only
+      # issuances that the MPT surfaces were ALREADY publishing from the ledger
+      # snapshot while carrying no suppression and no tier, so this suite
+      # confirms from rendered HTML that deciding them added a caveat and did
+      # not silently delete 29 names from the site.
+      - name: decided stubs still publish their names with a caveat (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_decided_stubs_still_publish.py -q
+
+      # #196. mpt_holders is a Clio method; a plain rippled answers unknownCmd.
+      # The holders walk had been pointed at our own rippled since the Wave-0
+      # endpoint re-point of 2026-08-31 and failed on EVERY call for 88 days,
+      # storing the `pending` sentinel for 527 of 533 issuances while the job
+      # counted them under a pagination label (holders_incomplete) and exited
+      # 0. Pins the sourcing: the walk reads the declared Clio endpoint, the
+      # public-Clio dependency stays disclosed to readers, and an RPC error is
+      # a loud failure rather than a silent sentinel that looks like a page cap.
+      - name: MPT holders walk is sourced from Clio and fails loudly (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mpt_holders_clio_sourcing.py -q
+
       # enrich_token_names.py: read every key a TOML uses for a code, in
       # every form. One root cause, three symptoms, verified against 5 real
       # TOMLs (44 blocks):
