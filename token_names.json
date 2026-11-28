@@ -10705,7 +10705,7 @@
     "name": "Short Term Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. First mortgages, loans under 8 months.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "single_holder_concentration_unreviewed: 100% of outstanding supply (4,000,000) is held by a single non-issuer account, rB9ZxfhhuYUF56VV1zVvEGCyHSng1EBQpi, which holds ALL FIVE supplied issuances at this issuer (verified from its account_objects: five MPToken objects matching the five amounts one-for-one). That account was activated by a 10 XRP Payment from rBgnUKAEiFhCRLPoYNPPe3JUWayRjP6Ayg at ledger 108143586 — NOT by the issuer — read from a public Clio full-history server, since our own node's retention does not reach that ledger. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Holder walk now completes (reason=complete), so the recheck that blocked this decision is cleared rather than extended again. owner decision 2026-11-27, recheck cleared"
   },
   "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049:rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1": {
     "currency_hex": "06716565907DEA79B217A14C5DF06FAEE136D96B8287A049",
@@ -10736,7 +10736,7 @@
     "name": "Construction Finance Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Construction loans, includes second mortgages.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "single_holder_concentration_unreviewed: 100% of outstanding supply (3,000,000) is held by a single non-issuer account, rB9ZxfhhuYUF56VV1zVvEGCyHSng1EBQpi, which holds ALL FIVE supplied issuances at this issuer (verified from its account_objects: five MPToken objects matching the five amounts one-for-one). That account was activated by a 10 XRP Payment from rBgnUKAEiFhCRLPoYNPPe3JUWayRjP6Ayg at ledger 108143586 — NOT by the issuer — read from a public Clio full-history server, since our own node's retention does not reach that ledger. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Holder walk now completes (reason=complete), so the recheck that blocked this decision is cleared rather than extended again. owner decision 2026-11-27, recheck cleared"
   },
   "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FA5DCD561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10757,7 +10757,7 @@
     "name": "Senior Income Vault receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. First-mortgage loans, diversified.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~5 days old; recheck 2026-12-04 (extended at anchor #16; still no first-party evidence) (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument no pass has assessed. Outstanding supply is 0 and the holder walk returns reason=no_holders, so nothing is distributed and there is no concentration to judge. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Nothing in its own metadata declares a test. Holder walk now completes, so the recheck that blocked this decision is cleared. owner decision 2026-11-27, recheck cleared"
   },
   "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
     "currency_hex": "0671EE5C86013FD29FD46A77684ADB46A7B53E71F44A3006",
@@ -10812,7 +10812,7 @@
     "name": "XRP Vault No.2 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Short-term XRP loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "single_holder_concentration_unreviewed: 100% of outstanding supply (100,000,000) is held by a single non-issuer account, rB9ZxfhhuYUF56VV1zVvEGCyHSng1EBQpi, which holds ALL FIVE supplied issuances at this issuer (verified from its account_objects: five MPToken objects matching the five amounts one-for-one). That account was activated by a 10 XRP Payment from rBgnUKAEiFhCRLPoYNPPe3JUWayRjP6Ayg at ledger 108143586 — NOT by the issuer — read from a public Clio full-history server, since our own node's retention does not reach that ledger. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Holder walk now completes (reason=complete), so the recheck that blocked this decision is cleared rather than extended again. owner decision 2026-11-27, recheck cleared"
   },
   "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
     "currency_hex": "06719B8A21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
@@ -10823,7 +10823,7 @@
     "name": "XRP Vault No.3 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 XRP of principal subscribed, held by Credelit for the holder. Higher-yield XRP loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "single_holder_concentration_unreviewed: 100% of outstanding supply (50,000,000) is held by a single non-issuer account, rB9ZxfhhuYUF56VV1zVvEGCyHSng1EBQpi, which holds ALL FIVE supplied issuances at this issuer (verified from its account_objects: five MPToken objects matching the five amounts one-for-one). That account was activated by a 10 XRP Payment from rBgnUKAEiFhCRLPoYNPPe3JUWayRjP6Ayg at ledger 108143586 — NOT by the issuer — read from a public Clio full-history server, since our own node's retention does not reach that ledger. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Holder walk now completes (reason=complete), so the recheck that blocked this decision is cleared rather than extended again. owner decision 2026-11-27, recheck cleared"
   },
   "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FAC88D561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10875,7 +10875,7 @@
     "name": "RLUSD Vault No.1 - Beta receipt note",
     "desc": "Non-transferable receipt: 1 note = 1 RLUSD of principal subscribed, held by Credelit for the holder. Short-term loan guaranteed by Credelit.",
     "issuer_name": "Credelit",
-    "suppressed": "pending_review: vault receipt note, descriptive name but no first-party evidence - issuer has no on-ledger Domain and the account is ~15 days old (inception ledger 108108690); recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "single_holder_concentration_unreviewed: 100% of outstanding supply (5,000,000) is held by a single non-issuer account, rB9ZxfhhuYUF56VV1zVvEGCyHSng1EBQpi, which holds ALL FIVE supplied issuances at this issuer (verified from its account_objects: five MPToken objects matching the five amounts one-for-one). That account was activated by a 10 XRP Payment from rBgnUKAEiFhCRLPoYNPPe3JUWayRjP6Ayg at ledger 108143586 — NOT by the issuer — read from a public Clio full-history server, since our own node's retention does not reach that ledger. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Holder walk now completes (reason=complete), so the recheck that blocked this decision is cleared rather than extended again. owner decision 2026-11-27, recheck cleared"
   },
   "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0:rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1": {
     "currency_hex": "062B5A6788AF241E0720C1D54DD12798D8B0A05E7B147EE0",
@@ -11059,7 +11059,7 @@
     "name": "Recebível do lease BRM-01",
     "desc": "208 parcelas semanais de US$ 699 compradas em true sale com recurso total; garantia da Brummel Trucking LLC.",
     "issuer_name": "Strada Way LLC",
-    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument no pass has assessed. Outstanding supply is 0 and the holder walk returns reason=no_holders, so nothing is distributed and there is no concentration to judge. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Nothing in its own metadata declares a test. Holder walk now completes, so the recheck that blocked this decision is cleared. owner decision 2026-11-27, recheck cleared"
   },
   "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9:rKVVothwXXUQbUdLcz7UJ5HmnREcGJT3TZ": {
     "currency_hex": "06735CE1CAD5F57FABBD42CB73C1FE95BA3E2CAE9C4503A9",
@@ -11103,7 +11103,7 @@
     "name": "Caminhão do lease BRM-01",
     "desc": "Caminhão em lease to own da Strada Way LLC, Eos Loan como lienholder, rastreado pela API da Brummel.",
     "issuer_name": "Strada Way LLC",
-    "suppressed": "pending_review: descriptive RWA lease metadata, but the issuer has no on-ledger Domain and no first-party source of any kind; account ~8 days old; recheck 2026-12-04 (extended at anchor #17; holder walk still incomplete, walked_complete=false)"
+    "suppressed": "owner_suppressed_unreviewed: a distinctly named instrument no pass has assessed. Outstanding supply is 0 and the holder walk returns reason=no_holders, so nothing is distributed and there is no concentration to judge. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no tier is reachable. Nothing in its own metadata declares a test. Holder walk now completes, so the recheck that blocked this decision is cleared. owner decision 2026-11-27, recheck cleared"
   },
   "59454C4C4F570000000000000000000000000000:r4ZosXJjnRikUaRyTTAjTx84Si6NJhaazf": {
     "currency_hex": "59454C4C4F570000000000000000000000000000",
