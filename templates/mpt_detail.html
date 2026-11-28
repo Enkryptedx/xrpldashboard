@@ -201,10 +201,24 @@
             {{ _('walk hit page cap — partial result not shown') }}
           {% elif reason == 'skipped_test' %}
             {{ _('test-shaped issuance — not walked') }}
+          {% elif reason == 'rpc_unsupported' %}
+            {{ _('holders RPC not available on the configured endpoint — not walked') }}
+          {% elif reason == 'rpc_error' %}
+            {{ _('holders RPC failed on the last cycle — will retry') }}
           {% else %}
             {{ _('not yet walked') }}
           {% endif %}
         </div>
+        {# Sovereignty disclosure. `mpt_holders` is Clio-only — our own rippled
+           node answers unknownCmd — so a holder count is NEVER a sovereign
+           read. Say so wherever the number appears, rather than letting it
+           sit in a column beside own-node figures with nothing to tell them
+           apart. h.sovereign is False on every holders row by construction. #}
+        {% if h and h.source and reason in ('complete', 'no_holders') %}
+        <div style="color: var(--dim); font-size: 0.72rem; margin-top: 0.35em; font-style: italic;">
+          {{ _('holder figures come from public Clio servers, not our own node') }} (<code>{{ h.source|replace('https://','') }}</code>) — {{ _('our rippled node does not offer this lookup') }}
+        </div>
+        {% endif %}
         {% if concentration %}
         <div style="margin-top: 0.7em; padding-top: 0.6em; border-top: 1px solid var(--border); display: flex; gap: 1.8em; flex-wrap: wrap;">
           <div>
@@ -419,7 +433,7 @@
       </tbody>
     </table>
     <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.7em;">
-      {{ _('Excludes issuer\'s own treasury balance, matching CMC circulating-supply convention. Walked hourly via') }} <code>mpt_holders</code>.
+      {{ _('Excludes issuer\'s own treasury balance, matching CMC circulating-supply convention. Walked every 6 hours via') }} <code>mpt_holders</code>{% if h and h.source %} ({{ _('served by') }} <code>{{ h.source|replace('https://','') }}</code>){% endif %}. {{ _('holder figures come from public Clio servers, not our own node — our rippled node does not offer this lookup.') }}
     </div>
   </div>
   {% endif %}

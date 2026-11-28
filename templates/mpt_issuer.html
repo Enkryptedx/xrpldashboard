@@ -205,6 +205,13 @@
           {{ _('no holders walks completed cleanly for this issuer yet') }}
         {% endif %}
       </div>
+      {# Sovereignty disclosure: `mpt_holders` is Clio-only, so this total is
+         never an own-node figure. Shown whenever a number is shown. #}
+      {% if walks_clean > 0 %}
+      <div class="stat-sub" style="font-style: italic; opacity: 0.85;">
+        {{ _('holder figures come from public Clio servers, not our own node — our rippled node does not offer this lookup') }}
+      </div>
+      {% endif %}
     </div>
     <div class="stat-card">
       <div class="stat-label">{{ _('Combined outstanding') }}</div>

@@ -38,6 +38,7 @@ from mpt_data import (
     fetch_one_issuance,
 )
 from mpt_snapshot import (
+    HOLDER_ISSUANCE_PAUSE,
     ISSUANCE_LIST_PATH,
     _atomic_write,
     _holders_pending,
@@ -47,7 +48,21 @@ from mpt_snapshot import (
 
 # Mirrors launchd/com.charliebruce.xrpldashboard.mpt_holders_refresh.plist
 # StartInterval. Read by /walker_health for per-row staleness thresholds.
-WALKER_CADENCE_SECONDS = 3600
+#
+# 3600 -> 21600 (6h) on 2026-11-27. The holders walk now reads public Clio
+# endpoints rather than our own node, because `mpt_holders` is Clio-only.
+# Hourly polling of infrastructure we do not own, for data that moves slowly,
+# is impolite; four cycles a day is plenty.
+WALKER_CADENCE_SECONDS = 21600
+
+# When this share of WALKED issuances comes back `rpc_unsupported`, the run is
+# a CONFIGURATION failure rather than a data gap: every endpoint in the list
+# rejected the method. The job then exits non-zero and says so, instead of
+# reporting green while producing nothing -- which is exactly how 527 of 533
+# issuances sat unwalked for weeks.
+RPC_UNSUPPORTED_ALERT_SHARE = float(
+    os.environ.get("MPT_HOLDERS_UNSUPPORTED_ALERT_SHARE", "0.5")
+)
 
 
 def _load_issuance_list(path):
@@ -82,9 +97,17 @@ def _refresh_one(entry):
     """Resolve one issuance to a fresh row dict suitable for
     db.write_mpt_supply_history + snapshot replacement.
 
-    Returns (row, status) where status ∈ {ok, ledger_entry_failed,
-    skipped_test, holders_incomplete}. Only "ok" rows make it into
-    history."""
+    Returns (row, status). `status` is "ok", "ledger_entry_failed",
+    "skipped_test", or THE STORED REASON WORD from the holders block, one of
+    rpc_unsupported / rpc_error / incomplete / pending. Only "ok" rows make
+    it into history.
+
+    This used to collapse every non-clean walk into "holders_incomplete", a
+    PAGINATION word. The data said `pending` (RPC error) while the counter
+    said incomplete (page cap), so the job's own reporting disagreed with the
+    rows it had just written and hid a total RPC failure behind a plausible
+    label. Reusing the stored word means a counter can no longer drift from
+    the sentinel it counts."""
     if entry.get("is_test"):
         return None, "skipped_test"
 
@@ -96,9 +119,10 @@ def _refresh_one(entry):
     fresh["holders"] = _walk_holders(iid, fresh.get("issuer"))
     reason = (fresh.get("holders") or {}).get("reason")
     if reason not in ("complete", "no_holders"):
-        # Still return the row so the snapshot reflects the pending state,
-        # but signal the caller not to write a supply-history row.
-        return fresh, "holders_incomplete"
+        # Still return the row so the snapshot reflects the state, but signal
+        # the caller not to write a supply-history row. The status IS the
+        # stored reason, so no translation can go stale.
+        return fresh, reason or "pending"
     return fresh, "ok"
 
 
@@ -116,7 +140,25 @@ def _merge_into_snapshot(snapshot, refreshed_by_id):
     snapshot["issuances"] = rows
 
 
-def run_once(list_path=None, snapshot_path=None):
+def unsupported_share(counts):
+    """Share of WALKED issuances that came back `rpc_unsupported`.
+
+    Denominator is walks only: skipped_test and ledger_entry_failed never
+    reached `mpt_holders`, so counting them would dilute the signal and let a
+    fully broken endpoint list hide behind a pile of skips.
+    """
+    walked = sum(counts.get(k, 0) for k in
+                 ("ok", "incomplete", "rpc_unsupported", "rpc_error",
+                  "pending"))
+    if walked <= 0:
+        return 0.0
+    return counts.get("rpc_unsupported", 0) / walked
+
+
+def run_once(list_path=None, snapshot_path=None, dry_run=False):
+    """One refresh cycle. `dry_run` performs every READ and the full holders
+    walk but writes nothing -- no Postgres rows, no snapshot rewrite -- so a
+    cycle can be measured before it is scheduled."""
     list_path = list_path or ISSUANCE_LIST_PATH
     snapshot_path = snapshot_path or SNAPSHOT_PATH
 
@@ -138,32 +180,63 @@ def run_once(list_path=None, snapshot_path=None):
         }
 
     refreshed = {}
-    counts = {"ok": 0, "ledger_entry_failed": 0,
-              "skipped_test": 0, "holders_incomplete": 0}
+    # Keys are the STORED reason words plus the two non-walk outcomes, so a
+    # counter name always matches the sentinel on the rows it counted.
+    counts = {"ok": 0, "ledger_entry_failed": 0, "skipped_test": 0,
+              "incomplete": 0, "rpc_unsupported": 0, "rpc_error": 0,
+              "pending": 0}
 
     for entry in entries:
         row, status = _refresh_one(entry)
         counts[status] = counts.get(status, 0) + 1
         if row is not None:
             refreshed[row.get("issuance_id") or entry.get("issuance_id")] = row
+        # Courtesy gap between issuances: this is someone else's Clio.
+        if not entry.get("is_test"):
+            time.sleep(HOLDER_ISSUANCE_PAUSE)
 
     written_at = int(time.time())
+    eligible = [r for r in refreshed.values()
+                if (r.get("holders") or {}).get("reason")
+                in ("complete", "no_holders")]
 
-    history_rows = db.write_mpt_supply_history(
-        [r for r in refreshed.values()
-         if (r.get("holders") or {}).get("reason") in ("complete", "no_holders")],
-        ts=written_at,
-    )
+    share = unsupported_share(counts)
+    # A dominant rpc_unsupported bucket is a CONFIGURATION failure: every
+    # endpoint rejected the method, so the run produced nothing and must not
+    # report green. Returning ok=False here rather than in __main__ keeps it
+    # testable without touching the database.
+    if share >= RPC_UNSUPPORTED_ALERT_SHARE:
+        return {
+            "ok": False,
+            "reason": "rpc_unsupported_dominant",
+            "alert": (
+                f"mpt_holders rejected as unknownCmd by every configured "
+                f"endpoint for {counts.get('rpc_unsupported', 0)} of "
+                f"{len(entries)} issuances "
+                f"({share:.0%} of walks). `mpt_holders` is Clio-only; check "
+                f"MPT_HOLDERS_NODES points at Clio, not rippled."
+            ),
+            "counts": counts,
+            "unsupported_share": round(share, 4),
+            "elapsed_seconds": round(time.time() - t_start, 1),
+            "total_in_list": len(entries),
+            "history_rows": 0,
+            "dry_run": dry_run,
+        }
 
-    _merge_into_snapshot(snapshot, refreshed)
-    snapshot["written_at"] = written_at
-    snapshot["last_holders_refresh_at"] = written_at
-    snapshot["last_holders_refresh_seconds"] = round(time.time() - t_start, 1)
-    snapshot["last_holders_refresh_counts"] = counts
-    _atomic_write(snapshot_path, snapshot)
-    # Mirror the refreshed snapshot to PG so Render sees the new holders +
-    # outstanding amounts. (PG mpt_snapshot row is a single UPSERT; cheap.)
-    db.write_mpt_snapshot(snapshot)
+    if dry_run:
+        history_rows = 0
+    else:
+        history_rows = db.write_mpt_supply_history(eligible, ts=written_at)
+        _merge_into_snapshot(snapshot, refreshed)
+        snapshot["written_at"] = written_at
+        snapshot["last_holders_refresh_at"] = written_at
+        snapshot["last_holders_refresh_seconds"] = round(time.time() - t_start, 1)
+        snapshot["last_holders_refresh_counts"] = counts
+        _atomic_write(snapshot_path, snapshot)
+        # Mirror the refreshed snapshot to PG so Render sees the new holders +
+        # outstanding amounts. (PG mpt_snapshot row is a single UPSERT; cheap.)
+        db.write_mpt_snapshot(snapshot)
 
     return {
         "ok": True,
@@ -171,6 +244,10 @@ def run_once(list_path=None, snapshot_path=None):
         "counts": counts,
         "history_rows": history_rows,
         "total_in_list": len(entries),
+        "unsupported_share": round(share, 4),
+        "eligible_rows": len(eligible),
+        "refreshed": refreshed if dry_run else None,
+        "dry_run": dry_run,
     }
 
 
@@ -190,10 +267,16 @@ if __name__ == "__main__":
                 f"ok_count={counts.get('ok')} "
                 f"ledger_failed={counts.get('ledger_entry_failed')} "
                 f"skipped_test={counts.get('skipped_test')} "
-                f"holders_incomplete={counts.get('holders_incomplete')}"
+                f"incomplete={counts.get('incomplete')} "
+                f"rpc_unsupported={counts.get('rpc_unsupported')} "
+                f"rpc_error={counts.get('rpc_error')} "
+                f"pending={counts.get('pending')}"
             )
         else:
             message = f"reason={r.get('reason')}"
+            if r.get("alert"):
+                message += f" alert={r['alert']}"
+                print(f"ALERT: {r['alert']}", file=sys.stderr)
         print(f"mpt_holders_refresh: ok={ok}")
         if not ok:
             print(f"  reason={r.get('reason')}")
