@@ -622,6 +622,237 @@ JOBS: list[tuple[str, int, str]] = [
 ]
 
 
+# ══ Generic staleness rule over walker_health (Charlie ruling 2026-11-28) ══
+#
+# Everything above is a HAND-WRITTEN list of labels checked by their
+# launchd_state stamp. That list is the problem it cannot see: a job absent
+# from it is unwatched forever, and nothing notices the absence.
+#
+# The 2026-11-28 silence audit measured the hole. Of 81 walkers in
+# walker_health (supply_escrow_walker excluded as paused), SEVEN declare no
+# cadence at all, and six of those had not succeeded in 43-65 days:
+#
+#   escrow_supply_walker                 last success 2026-09-24
+#   rwa_nav_transparency_walker          last success 2026-09-25
+#   openclaw_cli_backend_drift           last success 2026-09-26
+#   supply_block_walker                  last success 2026-09-26
+#   nft_activity_reconcile-type-rollup   last success 2026-09-26
+#   escrow_seed_walk                     last success 2026-10-16
+#   nft_activity_backfill                healthy, but still undeclared
+#
+# Not one is in JOBS, and because they declare no cadence, no staleness rule
+# could fire on them however long they stayed silent. They were invisible to
+# the exact check meant to catch this class -- the same shape as the MPT
+# holders walk sitting dead for 88 days while the signal everyone trusted
+# measured something else.
+#
+# So this rule reads walker_health DIRECTLY and judges every row by its own
+# declaration, instead of by membership of a list someone must remember to
+# update. A new walker is covered the first time it stamps.
+#
+# TWO FINDINGS, both on the existing findings_count axis:
+#
+#   <name>=UNDECLARED-CADENCE   the row declares no cadence_seconds. A
+#       finding in its OWN right, not merely a missing input: a job that
+#       declares no cadence is permanently unwatchable, so the omission IS
+#       the defect. Reported by key name only -- there is no declared
+#       cadence to compare against, so there is nothing else to say.
+#
+#   <name>=STALE <age>h vs <limit>h   last success older than
+#       STALENESS_MULTIPLE x its own declared cadence.
+#
+# "Noticed within two cycles" is the brief, so the multiple is 2 and the
+# limit derives from each job's own declaration rather than a per-job
+# constant someone has to tune.
+STALENESS_MULTIPLE = 2
+
+# ── Exemptions ─────────────────────────────────────────────────
+#
+# Every exemption carries a REASON, so an exemption is an assertion rather
+# than an absence -- same discipline as the RETIRED map in
+# xrpl_env_drift_guard. The maps are themselves guarded below: a name in two
+# maps is a finding, an exemption naming a walker absent from walker_health
+# is a finding, and a blank reason is a finding. Without those, an exemption
+# map just becomes the new place jobs go to die quietly.
+
+# Charlie ruling 2026-11-28: demand-driven counters are exempt from the
+# staleness test but MUST still declare themselves as demand-driven. Being
+# in this map IS that declaration. These are not schedules -- they are
+# stamped by a request handler when a person or an agent does something, so
+# "overdue" is not a defined idea for them and 2x-cadence asks the wrong
+# question. mcp_connect_redirect currently sits at 2.05x its nominal 30-day
+# cadence and would otherwise be a standing false finding.
+DEMAND_DRIVEN: dict[str, str] = {
+    "mcp_connect_redirect": (
+        "request-time stamp in app.py:_stamp_connect_redirect, fired by a "
+        "click on /connect/<slug>; counts arrivals at the door. It is the "
+        "belt-and-suspenders path: directories hand out ?ref= URLs directly "
+        "and mcp-remote preserves query strings, so the primary path works "
+        "and this one can be quiet for months. Its own scope declaration "
+        "says a long quiet gap is normal, not a fault. Verified 2026-11-28: "
+        "/connect/<slug> returns 302 to the ref-tagged endpoint and "
+        "mcp_session_start was stamping the same day."
+    ),
+    "mcp_session_start": (
+        "one stamp per MCP session, bound to the ?ref= that opened it. "
+        "Driven by agent traffic, not by a schedule."
+    ),
+}
+
+# Paused on an owner decision, expected to resume -- so NOT retired.
+PAUSED: dict[str, str] = {
+    "supply_escrow_walker": (
+        "paused 2026-10-15 for the escrow incremental redesign; resumes at "
+        "stage 4, which is owner-gated. Its own walker_health message says "
+        "the same, and Charlie reconfirmed the pause on 2026-11-28."
+    ),
+}
+
+# Decommissioned for good. Kept here so a dead row stops paging WITHOUT
+# deleting the walker_health row, because deleting it would destroy the
+# history that proves when the job last worked.
+#
+# DELIBERATELY EMPTY. openclaw_cli_backend_drift is the obvious candidate --
+# its plist and wrapper sit on disk renamed .retired-2026-09-25 and its last
+# success matches that date -- but Charlie's 2026-11-28 instruction was that
+# the silent jobs must SHOW as findings until each one is decided.
+# Pre-exempting it here would be me deciding on his behalf, so it is left to
+# surface. Add it once he rules.
+RETIRED: dict[str, str] = {}
+
+
+def _exempt_reason(name: str) -> tuple[str, str] | None:
+    """(kind, reason) if `name` is exempt, else None."""
+    for kind, table in (("demand-driven", DEMAND_DRIVEN),
+                        ("paused", PAUSED),
+                        ("retired", RETIRED)):
+        if name in table:
+            return kind, table[name]
+    return None
+
+
+def _declaration_result(label: str, ok: bool, reason: str,
+                        age_seconds=None, ceiling_seconds=None) -> dict:
+    """Shape a result exactly like check_one does, so main() prints it and
+    _write_walker_health counts it with no special-casing."""
+    return {
+        "label": label,
+        "ok": ok,
+        "reason": reason,
+        "path": "walker_health",
+        "age_seconds": int(age_seconds) if age_seconds is not None else None,
+        "ceiling_seconds": int(ceiling_seconds) if ceiling_seconds is not None else 0,
+    }
+
+
+def evaluate_walker_declarations(rows: list[dict]) -> list[dict]:
+    """Judge every walker_health row by its own declaration. Pure.
+
+    Takes `rows` as an argument so the whole rule is testable with no
+    database -- the findings logic must not be provable only in production.
+    Returns one result dict per row, plus one per map-integrity problem.
+    """
+    results: list[dict] = []
+    present = {r.get("walker_name") for r in rows if isinstance(r, dict)}
+    all_exempt = sorted(set(DEMAND_DRIVEN) | set(PAUSED) | set(RETIRED))
+
+    # Guard-the-guard 1: contradictory declarations. A name claiming to be
+    # both paused and demand-driven means nobody knows what it is.
+    for name in all_exempt:
+        hits = [k for k, t in (("DEMAND_DRIVEN", DEMAND_DRIVEN),
+                               ("PAUSED", PAUSED), ("RETIRED", RETIRED))
+                if name in t]
+        if len(hits) > 1:
+            results.append(_declaration_result(
+                f"declare:{name}", False,
+                f"exempt_in_multiple_maps:{'+'.join(hits)}"))
+
+    # Guard-the-guard 2: an exemption that matches no walker. Without this a
+    # RENAMED job keeps its old name exempt forever while the new name is
+    # never noticed -- which is how escrow_supply_walker and
+    # supply_escrow_walker could both hide behind one entry.
+    #
+    # Only meaningful when we actually HAVE a population to compare against.
+    # On an empty or unavailable walker_health every exemption would look
+    # unknown, which is a different fault (already reported as
+    # pg_unavailable / read_failed) dressed up as several bogus ones.
+    if present:
+        for name in all_exempt:
+            if name not in present:
+                results.append(_declaration_result(
+                    f"declare:{name}", False, "exemption_for_unknown_walker"))
+
+    # Guard-the-guard 3: an exemption with no stated reason is not a
+    # decision, it is a silence with extra steps.
+    for kind, table in (("DEMAND_DRIVEN", DEMAND_DRIVEN),
+                        ("PAUSED", PAUSED), ("RETIRED", RETIRED)):
+        for name, reason in sorted(table.items()):
+            if not (reason or "").strip():
+                results.append(_declaration_result(
+                    f"declare:{name}", False,
+                    f"exemption_without_reason:{kind}"))
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = row.get("walker_name")
+        if not name:
+            continue
+
+        exempt = _exempt_reason(name)
+        if exempt is not None:
+            kind, _reason = exempt
+            results.append(_declaration_result(
+                f"declare:{name}", True, f"exempt:{kind}",
+                row.get("last_success_age_seconds")))
+            continue
+
+        cadence = row.get("cadence_seconds")
+        age = row.get("last_success_age_seconds")
+
+        if not cadence:
+            results.append(_declaration_result(
+                f"declare:{name}", False, "UNDECLARED-CADENCE", age))
+            continue
+
+        limit = STALENESS_MULTIPLE * cadence
+        if age is None:
+            # Declared a cadence and has never recorded a success. Not
+            # silence: a job that has never worked is the loudest case.
+            results.append(_declaration_result(
+                f"declare:{name}", False, "STALE never_succeeded", None, limit))
+        elif age > limit:
+            results.append(_declaration_result(
+                f"declare:{name}", False,
+                f"STALE {age / 3600:.1f}h vs {limit / 3600:.1f}h", age, limit))
+        else:
+            results.append(_declaration_result(
+                f"declare:{name}", True, "fresh", age, limit))
+
+    return results
+
+
+def check_walker_declarations() -> list[dict]:
+    """Read walker_health and evaluate it. Never raises.
+
+    An unreadable walker_health is itself a FINDING, never silence: the
+    entire point of this rule is that a check which cannot see must not
+    report health. Same discipline as the mpt_supply_history canary, where
+    an unreadable DB and an empty table are findings rather than a pass.
+    """
+    try:
+        sys.path.insert(0, "/Users/charliebruce/xrpl_test")
+        import db
+        if not db.pg_available():
+            return [_declaration_result(
+                "declare:_walker_health", False, "pg_unavailable")]
+        rows = db.read_walker_health_all() or []
+    except Exception as e:  # noqa: BLE001
+        return [_declaration_result(
+            "declare:_walker_health", False, f"read_failed:{type(e).__name__}")]
+    return evaluate_walker_declarations(rows)
+
+
 def check_one(label: str, ceiling_seconds: int) -> dict:
     """Read one job's last_ok file, compute age, return a result dict."""
     path = os.path.join(LAUNCHD_STATE_DIR, f"{label}_last_ok")
@@ -762,6 +993,17 @@ def main() -> int:
 
     for src, sub in GIT_MIRRORS:
         r = check_git_mirror(src, sub)
+        results.append(r)
+        if r["ok"]:
+            ok_count += 1
+        else:
+            failures.append(r)
+
+    # Generic declaration + staleness rule over EVERY walker_health row.
+    # The three loops above check a hand-written list; this one checks
+    # everything that exists, so a job nobody remembered to register still
+    # gets noticed within two of its own cycles.
+    for r in check_walker_declarations():
         results.append(r)
         if r["ok"]:
             ok_count += 1
