@@ -579,6 +579,46 @@ JOBS: list[tuple[str, int, str]] = [
     # cadence), same shape as the 15-min canaries above.
     ("wss_relay_canary", 3600,
      "every-15min WSS handshake to wss://wss.xrpldashboard.com + subscribe:ledger — waits ≤10s for one ledgerClosed; stamps last_ok on success"),
+    # 2026-11-27: mpt_supply_history_canary joins the meta-watch, the day
+    # after it was written. It exists because the MPT holders walk sat dead
+    # for 88 days and NOTHING paged: mpt_holders_refresh exited 0 on ~2000
+    # consecutive runs while writing history_rows=0, so walker_health's ok
+    # axis never moved and its own counters filed an RPC error under a
+    # pagination label. Every signal we had asked the WALKER how its run
+    # went, and the run went fine. The canary asks the one question a walker
+    # doing nothing cannot answer falsely — did the TABLE grow.
+    #
+    # So this entry is the watcher-of-the-watcher for exactly the class of
+    # fault that motivated it. A silent canary is indistinguishable from a
+    # healthy series, and that is the whole 88-day failure repeated one level
+    # up.
+    #
+    # Ceiling 3h against an hourly cadence = two missed ticks of grace.
+    # Tighter than pg_backup_canary's 26h, which is hourly but sized to the
+    # DAILY artifact it watches; here the canary is the ONLY watcher of
+    # mpt_supply_history, so its own silence should surface in hours, not a
+    # day. Looser than a 2x ratio because launchd StartInterval ticks are
+    # skipped across sleep rather than queued, and this is a liveness probe,
+    # not the staleness alert — the staleness finding has its own axis.
+    #
+    # NOTE the deliberate asymmetry with its siblings: this wrapper stamps
+    # last_ok on rc 0 (fresh) OR rc 1 (stale finding), because both mean the
+    # check completed. The two signals answer different questions —
+    # findings_count asks "is the series stale" (the page), last_ok asks "is
+    # this canary alive" (this entry). Stamping only on rc 0 would withhold
+    # the heartbeat for exactly as long as a real staleness incident lasted,
+    # reporting one fault as two and making this ceiling mean something it
+    # does not say. Any other rc (crash, 120s wrapper timeout, missing env)
+    # leaves last_ok stale on purpose and surfaces here.
+    #
+    # Added only AFTER the canary's first successful post-merge run stamped
+    # launchd_state/mpt_supply_history_canary_last_ok (2026-11-27 20:55 ET,
+    # "clean: newest row 4282s old, 527 rows inside the 46800s window").
+    # Adding it while the code was still unmerged would have meant a
+    # missing_last_ok_file finding — a guaranteed false page in the gap
+    # between registering the watch and the thing being watchable.
+    ("mpt_supply_history_canary", 3 * 3600,
+     "hourly freshness check that mpt_supply_history still gains rows (13h staleness ceiling); stamps last_ok on rc 0 OR rc 1 — both mean the check completed"),
 ]
 
 
