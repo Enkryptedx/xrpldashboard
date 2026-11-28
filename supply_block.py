@@ -20,6 +20,35 @@ import sys
 import db
 
 
+# ── The ONE escrow-census staleness threshold ────────────────────────
+#
+# Charlie ruling 2026-11-28: one constant, three consumers.
+#
+#   app.py            the page gate (escrow_stale -> constellation prints
+#                     "paused" instead of the number)
+#   app.py            the API redaction gate (/api/xrp-distribution nulls
+#                     every escrow-dependent figure)
+#   escrow_census_...  the freshness canary ceiling
+#     freshness_canary
+#
+# They MUST agree. If they drift, the page withholds a number the API is
+# still serving, or the canary reports clean while both surfaces hide the
+# figure -- three different answers to one question, and no way for a reader
+# or an operator to tell which is right. A test asserts all three read this
+# value.
+#
+# 26h = a 24h cadence plus ~2h grace. The old value was 3600 (60 minutes),
+# sized for the hourly walker this job used to be; under a daily cadence
+# that would mark the census stale for 23 of every 24 hours and the API
+# would redact almost permanently.
+#
+# Env override is deliberate and shared, so raising it for a planned long
+# pause moves all three gates together rather than one of them.
+ESCROW_CENSUS_STALE_AFTER_SECONDS = int(
+    float(os.environ.get("ESCROW_CENSUS_STALE_AFTER_H", "26")) * 3600
+)
+
+
 TABLE_DDL = """
 CREATE TABLE IF NOT EXISTS xrp_supply_block (
   singleton_key CHAR(1) PRIMARY KEY DEFAULT '1' CHECK (singleton_key='1'),

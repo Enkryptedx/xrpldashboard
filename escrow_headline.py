@@ -63,10 +63,31 @@ DROPS_PER_XRP = 1_000_000
 _ET_FMT = "%-I:%M %p"
 _UTC_FMT = "%H:%M UTC"
 
+# ── The date rule (Charlie ruling 2026-11-28) ────────────────────────
+#
+# "4:12 PM ET" alone is only unambiguous for a figure that is minutes old.
+# The moment a number can be more than a few hours old, a bare clock time is
+# actively misleading: a reader seeing "1:16 PM ET" at 9am Sunday has no way
+# to know it means YESTERDAY. The escrow census moves to a daily cadence, so
+# its stamp can legitimately be up to 26h old and MUST carry the date.
+#
+# Applied two ways so the date appears exactly when it earns its space:
+#   always_date=True   for sources whose normal cadence is daily or slower
+#                      (the census). The date is always shown.
+#   automatically      for ANY stamp once the value is older than
+#                      _DATE_AFTER_SECONDS, which covers a 30-minute source
+#                      that has stalled -- the live cohort normally reads
+#                      "1:16 PM ET" with no date, but if escrow_walker dies
+#                      the same stamp starts showing the date rather than
+#                      quietly implying today.
+_ET_DATE_FMT = "%b %-d"          # "Nov 28"
+_DATE_AFTER_SECONDS = 6 * 3600   # a "few hours"
+
 _SEP = " \u00b7 "  # middot, matching the stamp separator used across the site
 
 
-def format_as_of_stamp(snapshot_ledger_index, fetched_at):
+def format_as_of_stamp(snapshot_ledger_index, fetched_at,
+                       always_date=False, now=None):
     """Compose the reader-visible as-of stamp for an escrows_snapshot read.
 
     With a ledger index:
@@ -77,7 +98,17 @@ def format_as_of_stamp(snapshot_ledger_index, fetched_at):
         None -- the caller renders its own "no data yet" state rather than
         stamping a figure it does not have.
 
+    THE DATE. Included when `always_date` is set (daily-or-slower sources,
+    i.e. the escrow census) or when the value is already older than
+    _DATE_AFTER_SECONDS:
+        "as of ledger 108,632,950 - Nov 28, 1:16 PM ET (18:16 UTC)"
+    A bare clock time on a figure that can be a day old tells a reader the
+    wrong thing with total confidence, which is worse than telling them
+    nothing.
+
     `fetched_at` is epoch seconds (the column is written as an int).
+    `now` is injectable epoch seconds, so the age-based branch is testable
+    without freezing the system clock.
     """
     ledger_part = None
     if snapshot_ledger_index:
@@ -94,8 +125,17 @@ def format_as_of_stamp(snapshot_ledger_index, fetched_at):
             utc_dt = None
         if utc_dt is not None:
             et_dt = utc_dt.astimezone(ET_ZONE)
+            ref = float(now) if now is not None else time.time()
+            try:
+                age = ref - float(fetched_at)
+            except (TypeError, ValueError):
+                age = 0.0
+            show_date = bool(always_date) or age > _DATE_AFTER_SECONDS
+            clock = et_dt.strftime(_ET_FMT)
+            if show_date:
+                clock = f"{et_dt.strftime(_ET_DATE_FMT)}, {clock}"
             time_part = (
-                f"{et_dt.strftime(_ET_FMT)} ET "
+                f"{clock} ET "
                 f"({utc_dt.strftime(_UTC_FMT)})"
             )
 

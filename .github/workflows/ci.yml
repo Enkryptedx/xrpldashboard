@@ -1388,6 +1388,22 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_stale_api_redaction.py -q
+
+      # ONE escrow staleness threshold, three consumers, no local copies.
+      # The page gate, the API redaction gate and the freshness canary all
+      # answer the same question; if they drift, the page withholds a number
+      # the API is still serving, or the canary reports clean while both
+      # surfaces hide the figure. Each import runs in its OWN subprocess,
+      # because escrow_census_freshness_canary puts the main checkout on
+      # sys.path inside its functions and importing the modules together let
+      # that leak redirect a later import to a different checkout -- which is
+      # exactly how a first verification of this change reported a false
+      # mismatch. Also pins that the threshold exceeds the walker cadence,
+      # or the census would be stale before its next scheduled run.
+      - name: escrow stale threshold is shared, not copied (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_stale_threshold_shared.py -q
       # is_bot_writer timeout guard. The pattern arms (152 path LIKE + 55 UA
       # ILIKE) had no ts bound and rescanned all of page_views every 5 min --
       # a Parallel Seq Scan over 1.02M rows that tripped statement_timeout 3x

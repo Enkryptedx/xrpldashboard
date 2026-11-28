@@ -2842,6 +2842,25 @@ def _ranked_amm_snapshot():
     }
 
 
+# Imported here, ABOVE the age-helper below, with the gate constant left as
+# a plain assignment further down.
+#
+# tests/test_small_fixes_2026_11_13.py execs a SLICE of this file's source,
+# bounded by locating the age-helper's definition line and the gate
+# constant's assignment line by string search. Two things therefore matter
+# and neither is obvious:
+#   1. the gate constant must be ASSIGNED on its own line, not aliased at the
+#      end of an import -- an alias puts the searched name at the end of a
+#      statement, so the slice cuts that statement in half (SyntaxError).
+#   2. no comment ABOVE the helper may quote either boundary marker
+#      verbatim, or the search matches the prose instead of the code and the
+#      slice starts mid-sentence.
+# Both of those were live failures in this file on 2026-11-28, the second
+# caused by an earlier version of this very comment. Hence the deliberately
+# indirect wording here.
+from supply_block import ESCROW_CENSUS_STALE_AFTER_SECONDS  # noqa: E402
+
+
 def _amm_snapshot_age_seconds(meta: dict | None) -> int | None:
     """Seconds since the AMM ranking FINISHED, or None if unknown.
 
@@ -2874,7 +2893,13 @@ def _amm_snapshot_age_seconds(meta: dict | None) -> int | None:
     return None
 
 
-_XRP_ESCROW_STALE_AFTER = 3600  # 60 min
+# 2026-11-28: was a local 3600 (60 min), sized for the hourly walker this
+# job used to be. Now THE shared constant from supply_block, so the page
+# gate, the API redaction gate and the freshness canary cannot disagree --
+# see supply_block.ESCROW_CENSUS_STALE_AFTER_SECONDS for why that matters.
+# 26h = daily cadence + ~2h grace; at 60 min a daily census would read as
+# stale for 23 of every 24 hours and the API would redact almost always.
+_XRP_ESCROW_STALE_AFTER = ESCROW_CENSUS_STALE_AFTER_SECONDS
 _XRP_AMM_STALE_AFTER = 7200     # 2 h (rank_amms cadence is 1h; stay 2× in lockstep with the plist)
 
 
@@ -3019,6 +3044,23 @@ def _build_xrp_distribution(ranked_full, amm_xrp_total=None):
         else None
     )
 
+    # Reader-visible census stamp, always carrying the DATE (Charlie ruling
+    # 2026-11-28). The census refreshes once a day at 06:30 ET, so by the
+    # following morning this string is ~24h old: "1:16 PM ET" alone would
+    # read as today and be wrong with total confidence. always_date=True
+    # rather than the age-based rule, because a daily figure is never
+    # unambiguous without its date even when freshly written.
+    escrow_census_as_of = None
+    if escrow_age is not None:
+        try:
+            from escrow_headline import format_as_of_stamp as _fmt_as_of
+            escrow_census_as_of = _fmt_as_of(
+                escrow_ledger_index, time.time() - escrow_age,
+                always_date=True,
+            )
+        except Exception:
+            escrow_census_as_of = None
+
     return {
         "total_xrp": total_xrp,
         "escrowed_xrp": escrowed_xrp,
@@ -3042,6 +3084,7 @@ def _build_xrp_distribution(ranked_full, amm_xrp_total=None):
         "burned_since_genesis_xrp": burned_since_genesis_xrp,
         "escrow_stale": escrow_stale,
         "escrow_as_of_utc": escrow_as_of_utc,
+        "escrow_census_as_of": escrow_census_as_of,
         "amm_stale": amm_stale,
         "wallets_stale": wallets_stale,
         "server_time": int(time.time()),
