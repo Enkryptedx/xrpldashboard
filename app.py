@@ -10815,6 +10815,15 @@ def _enrich_mpt_rows(data):
         if _sup is not None and token_label.is_withheld(_sup):
             copy["name"] = token_label.WITHHELD_LABEL
             copy["ticker"] = None
+            # Withholding the NAME while still printing the issuer's own
+            # description, issuer_name, icon and website withholds nothing:
+            # same author, same surface, same reader. Scrub them at the SAME
+            # chokepoint that overrides the name, so the guarantee holds for
+            # /mpts, /mpt/<id> and /mpt/issuer/<addr> by construction and a
+            # future template cannot reintroduce the leak by reading a field
+            # it finds populated.
+            copy["_withheld_metadata_cleared"] = \
+                token_label.scrub_withheld_metadata(copy)
             _label = None
         elif not _label:
             # Rule: no ledger-sourced name renders bare on this page.

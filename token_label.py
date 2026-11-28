@@ -305,6 +305,60 @@ def is_withheld(entry: dict) -> bool:
     return reason_class(entry) == IMPERSONATION_REASON
 
 
+# ── issuer-authored metadata on a WITHHELD entry (2026-11-27) ─────────
+# Withholding the NAME of an impersonating issuance and then printing the
+# issuer's own description beside it does not withhold anything: the free
+# text is written by the same party, on the same surface, to the same
+# reader. `is_withheld()` replaced the name slot with WITHHELD_LABEL and
+# stopped there, so NXRP ("Native XRP Yield") rendered
+# `name withheld - under review` while its issuer_name ("Network Broker")
+# and icon were still published from the ledger snapshot.
+#
+# These are the four issuer-authored fields an MPT row carries. `uris` is
+# the XLS-89 website array -- there is no `website` key; a site URL arrives
+# as a uris element whose category/`c` is "website".
+WITHHELD_METADATA_FIELDS = ("desc", "issuer_name", "icon", "uris")
+
+# The name ECHOES. _enrich_mpt_rows sets `<field>_as_issued` whenever it
+# trims a JS `undefined` artifact, and templates/mpts.html prints
+# name_as_issued inside a title= attribute. For a withheld row that
+# attribute would republish the exact name the WITHHELD_LABEL just
+# removed -- the withholding undone by a tooltip. Cleared with the rest.
+WITHHELD_NAME_ECHO_FIELDS = (
+    "name_as_issued", "ticker_as_issued", "issuer_name_as_issued",
+)
+
+# Printed directly ABOVE the description paragraph, never after it, so the
+# caveat is read before the claim it qualifies.
+DESC_CAVEAT_LABEL = "issuer's own description, unverified"
+
+
+def scrub_withheld_metadata(row: dict) -> list[str]:
+    """Clear every issuer-authored field on a WITHHELD row, in place.
+
+    Returns the names of the fields actually cleared, so a caller or a test
+    can assert on what happened rather than re-deriving it.
+
+    Set to None rather than deleted: every MPT template guards with
+    `{% if mpt.desc %}`, so None is already the "print nothing" path, while
+    a missing KEY would make `mpt.issuer_name` an Undefined and change
+    behaviour on any surface that does arithmetic or string ops on it.
+
+    Deliberately NOT scrubbed: `additional_info`. It is issuer-authored and
+    belongs in this set on the merits, but no MPT template reads it today,
+    so adding it here would ship an untested claim about a field nothing
+    prints. Named in the report instead of silently widened.
+    """
+    if not isinstance(row, dict):
+        return []
+    cleared = []
+    for field in WITHHELD_METADATA_FIELDS + WITHHELD_NAME_ECHO_FIELDS:
+        if row.get(field) not in (None, "", [], {}):
+            row[field] = None
+            cleared.append(field)
+    return cleared
+
+
 def suppressed_display(entry: dict, name: str | None = None) -> str:
     """The name slot for a SUPPRESSED entry, on wallet and /mpt/issuer.
 

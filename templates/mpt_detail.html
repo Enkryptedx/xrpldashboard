@@ -71,6 +71,14 @@
        No tick, border or background: an MPT cannot reach the `toml` tier. */
     .hero-trust { color: var(--muted); font-size: 0.8rem; font-style: italic;
                   margin-left: 0.5em; vertical-align: middle; }
+    /* Issuer-authored prose. The caveat sits DIRECTLY above the paragraph so
+       the reader meets the label before the claim -- a disclaimer printed
+       underneath is read after the sentence it was meant to qualify.
+       Muted italic, same shape as .hero-trust: a caveat, never a badge, so
+       no border, background or tick. */
+    .desc-caveat { color: var(--muted); font-size: 0.78rem; font-style: italic;
+                   margin: 0.9em 0 0.15em; }
+    .desc-body { color: var(--muted); margin: 0; max-width: 720px; }
     .badges { margin-top: 0.6em; display: flex; flex-wrap: wrap; gap: 0.5em; }
 
     .pill { display: inline-block; padding: 0.18em 0.7em; border-radius: 999px;
@@ -156,8 +164,13 @@
         <span class="pill {{ mpt.classification }}">{{ mpt.classification }}</span>
         {% if mpt.asset_subclass %}<span class="pill other">{{ mpt.asset_subclass }}</span>{% endif %}
       </div>
+      {# A withheld (impersonation) row reaches this template with desc,
+         issuer_name, icon and uris already cleared by _enrich_mpt_rows, so
+         this block simply does not fire for one. The caveat therefore only
+         ever labels a description we are actually willing to publish. #}
       {% if mpt.desc %}
-      <p style="color: var(--muted); margin: 0.9em 0 0; max-width: 720px;">{{ mpt.desc }}</p>
+      <div class="desc-caveat">{{ _("issuer's own description, unverified") }}</div>
+      <p class="desc-body">{{ mpt.desc }}</p>
       {% endif %}
     </div>
   </div>

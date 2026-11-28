@@ -1314,3 +1314,18 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_amendments_json_leaf_first.py -q
+      # Withholding a name is not withholding. is_withheld() replaced the
+      # NAME slot for the three anchor-#17 impersonation entries and stopped
+      # there, but MPT rows are built from the LEDGER snapshot, which carries
+      # the issuer's own desc / issuer_name / icon / uris. So NXRP rendered
+      # "name withheld - under review" while still publishing its
+      # issuer_name and icon on the same row -- same author, same surface,
+      # same reader. These tests fetch the markup for all three MPT surfaces
+      # and assert a withheld row leaks none of it, including through the
+      # name_as_issued title= attribute, while a publishable description
+      # prints under its caveat directly above the paragraph.
+      # No DB, no network (snapshot monkeypatched).
+      - name: withheld MPTs publish no issuer metadata (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_mpt_withheld_metadata.py -q
