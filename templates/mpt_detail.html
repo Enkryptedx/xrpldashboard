@@ -216,7 +216,7 @@
            apart. h.sovereign is False on every holders row by construction. #}
         {% if h and h.source and reason in ('complete', 'no_holders') %}
         <div style="color: var(--dim); font-size: 0.72rem; margin-top: 0.35em; font-style: italic;">
-          {{ _('Source: public Clio') }} (<code>{{ h.source|replace('https://','') }}</code>) — {{ _('not our own node, which does not implement this call') }}
+          {{ _('holder figures come from public Clio servers, not our own node') }} (<code>{{ h.source|replace('https://','') }}</code>) — {{ _('our rippled node does not offer this lookup') }}
         </div>
         {% endif %}
         {% if concentration %}
@@ -433,7 +433,7 @@
       </tbody>
     </table>
     <div style="color: var(--dim); font-size: 0.78rem; margin-top: 0.7em;">
-      {{ _('Excludes issuer\'s own treasury balance, matching CMC circulating-supply convention. Walked every 6 hours via') }} <code>mpt_holders</code>{% if h and h.source %} {{ _('against public Clio') }} (<code>{{ h.source|replace('https://','') }}</code>){% endif %}. {{ _('This call is not implemented by our own rippled node, so holder figures are a disclosed third-party read.') }}
+      {{ _('Excludes issuer\'s own treasury balance, matching CMC circulating-supply convention. Walked every 6 hours via') }} <code>mpt_holders</code>{% if h and h.source %} ({{ _('served by') }} <code>{{ h.source|replace('https://','') }}</code>){% endif %}. {{ _('holder figures come from public Clio servers, not our own node — our rippled node does not offer this lookup.') }}
     </div>
   </div>
   {% endif %}

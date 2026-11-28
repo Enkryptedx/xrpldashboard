@@ -114,20 +114,34 @@ class TestDisclosureIsPrinted:
     def test_a_clean_walk_discloses_the_public_source(self, monkeypatch):
         html = _render(monkeypatch, _holders("complete"))
         assert "2" in html
-        assert "Source: public Clio" in html, (
+        assert "holder figures come from public Clio servers" in html, (
             "a holder count rendered with no source disclosure")
         assert "s2-clio.ripple.com:51234" in html, "endpoint not named"
         assert "not our own node" in html
+        assert "our rippled node does not offer this lookup" in html
 
     def test_no_holders_also_discloses(self, monkeypatch):
         html = _render(monkeypatch, _holders("no_holders", with_balance=0))
-        assert "Source: public Clio" in html
+        assert "holder figures come from public Clio servers" in html
 
     def test_the_footnote_names_the_cadence_and_the_third_party_read(
             self, monkeypatch):
         html = _render(monkeypatch, _holders("complete"))
         assert "every 6 hours" in html, "footnote still claims hourly"
-        assert "disclosed third-party read" in html
+        assert "our rippled node does not offer this lookup" in html
+
+    def test_the_disclosure_carries_no_version_number(self, monkeypatch):
+        """Owner instruction 2026-11-27: the reader-visible wording names no
+        build version. A version in copy goes stale the moment rippled is
+        upgraded, and the finding is recorded in code comments instead."""
+        html = _render(monkeypatch, _holders("complete"))
+        assert "3.4.1" not in html
+        assert "unknownCmd" not in html
+
+    def test_no_shouting_in_the_disclosure(self, monkeypatch):
+        html = _render(monkeypatch, _holders("complete"))
+        for shouted in ("DISCLOSED THIRD-PARTY", "NOT OUR OWN NODE"):
+            assert shouted not in html, shouted
 
     @pytest.mark.parametrize("reason,expected", [
         ("rpc_unsupported", "holders RPC not available on the configured"),
@@ -146,7 +160,7 @@ class TestDisclosureIsPrinted:
         """Nothing was read, so nothing may be attributed to an endpoint."""
         html = _render(monkeypatch, _holders("rpc_unsupported", source=None,
                                              with_balance=None))
-        assert "Source: public Clio" not in html
+        assert "holder figures come from public Clio servers (" not in html
 
 
 class TestRowsCarryProvenance:
