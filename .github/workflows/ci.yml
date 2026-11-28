@@ -1343,3 +1343,26 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_mpt_supply_history_canary.py -q
+
+      # The last four entries held as `pending_review` were not awaiting a
+      # review at all -- all four issuances no longer exist on-ledger, so the
+      # holder walk they were waiting on could never cover them. Re-classed
+      # by whether the ISSUER also went: two destroyed-then-issuer-deleted
+      # (account_info -> actNotFound), two destroyed-with-issuer-alive (one
+      # of which still has 14 other live issuances).
+      #
+      # Registered in the same commit as the file it guards. Four suites that
+      # shipped earlier today went unregistered precisely because the CI entry
+      # was left for later, so the gate never ran them.
+      #
+      # Pins: the measured class per entry, the 2/2 partition, an EMPTY
+      # pending_review queue, census unchanged at 275 with all four still
+      # suppressed, and that none of them became withheld -- a destroyed
+      # object is a ledger fact, not a judgement about a name. Also pins that
+      # each reason cites its OWN issuer address and does not credit our own
+      # node with transaction history it does not retain (it holds ~98k
+      # ledgers, not full history).
+      - name: the four held entries are destroyed issuances (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_destroyed_issuance_class.py -q
