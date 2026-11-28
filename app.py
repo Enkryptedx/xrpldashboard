@@ -11335,6 +11335,69 @@ def api_heartbeat_age():
              "threshold_seconds": STALE_SECONDS}, 200, headers)
 
 
+# Fields that are ONLY as good as the escrow census behind them. When the
+# escrow half of xrp_supply_block is stale these are withheld from the JSON
+# rather than served with a flag beside them.
+#
+# Charlie ruling 2026-11-28. The pages already withhold: the homepage
+# constellation prints the word "paused" instead of the number, gated on the
+# same escrow_stale check, and the ledger-wide pill line was pulled on
+# 2026-11-13 because "a month-old figure sitting beside a 30-minute-old one
+# reads as though both are current". /api/xrp-distribution was the one
+# surface still publishing it: on 2026-11-28 it served escrowed_xrp from a
+# row 45.3 days old, with escrow_stale:true beside it. Disclosure is not the
+# same as not asserting it -- a consumer that reads the number and ignores
+# the flag gets a month-and-a-half-old figure presented as current.
+_ESCROW_DEPENDENT_FIELDS = (
+    "escrowed_xrp",
+    "escrowed_pct",
+    "escrow_object_count",
+    "escrow_account_count",
+    # Superseded by escrow_live since 2026-11-13: these are the OLD Ripple
+    # cohort headline, still carried in the payload from the same frozen row.
+    "escrow_ripple_xrp",
+    "escrow_ripple_object_count",
+    # NOT in Charlie's list, added because the redaction is otherwise
+    # cosmetic: wallets_xrp = max(0, total_xrp - (escrowed_xrp + amm_xrp)),
+    # so publishing total, amm and wallets lets any consumer reconstruct the
+    # withheld escrow figure exactly as total - amm - wallets. The wallets
+    # number is ALSO wrong by however far the census has drifted in 45 days,
+    # so serving it is a second assertion we cannot support. Revert these two
+    # lines alone if the arithmetic leak is acceptable.
+    "wallets_xrp",
+    "wallets_pct",
+)
+
+# Kept even when stale, because they describe the staleness rather than
+# assert a supply figure: the flag, the age, the as-of stamp, and the ledger
+# the frozen read came from. A consumer needs these to understand WHY the
+# numbers above are null.
+_ESCROW_PROVENANCE_FIELDS = (
+    "escrow_stale", "escrow_age_seconds", "escrow_as_of_utc",
+    "escrow_ledger_index",
+)
+
+
+def _redact_stale_escrow(payload: dict) -> dict:
+    """Null every escrow-dependent figure when the census is stale.
+
+    Returns a NEW dict; never mutates the caller's payload, because the
+    homepage builds its own view from the same function and must keep the
+    values its template gates on.
+
+    `escrow_live` is deliberately untouched: it comes from escrows_snapshot
+    (escrow_walker, 30 min, our own node) and is the one escrow figure that
+    is not stale. Nulling it would hide the good number along with the bad.
+    """
+    if not isinstance(payload, dict) or not payload.get("escrow_stale"):
+        return payload
+    out = dict(payload)
+    for key in _ESCROW_DEPENDENT_FIELDS:
+        if key in out:
+            out[key] = None
+    return out
+
+
 @app.route("/api/xrp-distribution")
 @limiter.limit("60 per minute")
 def api_xrp_distribution():
@@ -11352,7 +11415,7 @@ def api_xrp_distribution():
         ranked_full, _meta = _ranked_amm_snapshot()
     except Exception:
         ranked_full = []
-    payload = _build_xrp_distribution(ranked_full)
+    payload = _redact_stale_escrow(_build_xrp_distribution(ranked_full))
     return (payload, 200, {"Cache-Control": "no-store"})
 
 

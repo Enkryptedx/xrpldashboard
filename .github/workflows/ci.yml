@@ -1359,6 +1359,35 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_escrow_live_headline.py -q
+
+      # A stale escrow census is WITHHELD from the API, not served with a
+      # flag beside it (Charlie ruling 2026-11-28).
+      #
+      # Measured on production that day: /api/xrp-distribution served
+      # escrowed_xrp from a row 45.3 days old (escrow_fetched_at_utc
+      # 2026-10-14 07:41 UTC) with escrow_stale:true next to it. The pages
+      # had already stopped publishing it -- the homepage constellation
+      # prints "paused" on the same gate, and the ledger-wide pill line was
+      # pulled on 2026-11-13 -- so the JSON was the last surface asserting
+      # it. Disclosure is not the same as not asserting it.
+      #
+      # Includes the arithmetic leak: wallets_xrp = total - (escrow + amm),
+      # so nulling escrowed_xrp while serving total, amm and wallets lets a
+      # consumer reconstruct the withheld figure exactly. Both wallets
+      # fields are redacted too, and a test asserts the reconstruction is
+      # closed rather than just checking the field list.
+      #
+      # Second half: a freshness canary on the escrow HALF of the singleton.
+      # No walker signal can catch that fault -- supply_escrow_walker is
+      # legitimately PAUSED, so walker_health is right to stay quiet and the
+      # generic staleness rule is right to exempt it, while
+      # supply_fast_walker keeps the total half current so the row looks
+      # healthy. Only a check reading the timestamp on the DATA sees it.
+      # Hermetic: pure functions, injected clock. No DB, no network.
+      - name: stale escrow census is withheld from the API (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_escrow_stale_api_redaction.py -q
       # is_bot_writer timeout guard. The pattern arms (152 path LIKE + 55 UA
       # ILIKE) had no ts bound and rescanned all of page_views every 5 min --
       # a Parallel Seq Scan over 1.02M rows that tripped statement_timeout 3x
