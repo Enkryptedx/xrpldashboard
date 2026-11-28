@@ -433,6 +433,43 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_walker_scope_declarations_paused.py -q
+
+      # Generic staleness rule over walker_health (Charlie ruling 2026-11-28).
+      #
+      # The meta-watch JOBS list is HAND-WRITTEN, so it cannot see the
+      # problem it has: a walker absent from the list is unwatched forever
+      # and nothing notices the absence. The 2026-11-28 silence audit
+      # measured it -- seven walkers declare NO cadence, and six of those
+      # had not succeeded in 43-65 days, none of them in JOBS. Because they
+      # declared no cadence, no staleness rule could fire on them however
+      # long they stayed quiet. Same shape as the MPT holders walk sitting
+      # dead for 88 days while the trusted signal measured something else.
+      #
+      # So the rule reads walker_health directly and judges each row by its
+      # OWN declaration: UNDECLARED-CADENCE is a finding in its own right
+      # (it makes a job permanently unwatchable), and STALE fires beyond 2x
+      # the job's declared cadence -- "noticed within two cycles" derived
+      # per job rather than tuned per job.
+      #
+      # Pins both of Charlie's rulings. Demand-driven counters are exempt
+      # from staleness but must still DECLARE themselves (membership of
+      # DEMAND_DRIVEN is the declaration); and the five silent jobs are NOT
+      # pre-exempted, so they surface until each is decided -- there is a
+      # parametrised test per job guarding that against a future "tidy up
+      # the noise" commit.
+      #
+      # Also guards the exemption maps against rotting: a name in two maps,
+      # an exemption naming a walker absent from walker_health (the rename
+      # hazard that let escrow_supply_walker and supply_escrow_walker both
+      # hide), and a blank reason are each findings. And an unreadable
+      # walker_health is a finding, never silence.
+      #
+      # Hermetic: evaluate_walker_declarations() takes rows as an argument.
+      # No DB, no network.
+      - name: a stalled walker is noticed within two cycles (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_walker_staleness_rule.py -q
       # Daemon log capper (new 2026-10-14). newsyslog rotates launchd_logs by
       # RENAME, which is right for the ~163 periodic walkers (launchd reopens
       # the path each spawn) and WRONG for a continuously-running job, whose
