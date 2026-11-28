@@ -39,3 +39,49 @@ def full_history_nodes(*legacy_env_names: str) -> list[str]:
         if raw:
             return [u.strip() for u in raw.split(",") if u.strip()]
     return list(DEFAULT_FULL_HISTORY_NODES)
+
+
+# ─── MPT holders: Clio-only, so it needs its own list ────────────────────────
+#
+# `mpt_holders` is NOT implemented by rippled 3.4.1. Measured 2026-11-27:
+# our own node and xrplcluster.com (both rippled 3.4.1) each return
+# {"error": "unknownCmd", "error_code": 32, "error_message": "Unknown
+# method."}, while Clio 2.8.0 answers it. Two independent rippled servers of
+# the same version rejecting it is what makes this a per-BUILD finding rather
+# than a host problem -- re-check after a rippled upgrade so the note cannot
+# harden into a permanent refusal.
+#
+# This is therefore a DISCLOSED THIRD-PARTY read, not a sovereign one. Our own
+# node cannot answer it at all, so holder rows carry source + sovereign=False
+# and every surface that renders a holder count says so. Callers must not
+# prepend our own node here: it would burn a request per issuance to receive
+# unknownCmd, and a cascade that silently lands on public infra is exactly the
+# undisclosed read the sovereignty covenant forbids.
+#
+# Endpoints tried on 2026-11-27 (server_info identifies Clio vs rippled):
+#   https://s2-clio.ripple.com:51234   Clio 2.8.0     OK
+#   https://s1.ripple.com:51234        Clio 2.8.0     OK   <- fallback
+#   https://s2.ripple.com:51234        Clio 2.8.0     OK
+#   https://xrplcluster.com            rippled 3.4.1  unknownCmd
+#   https://s1-clio.ripple.com:51234   unreachable    URLError
+#   https://clio.xrplcluster.com       unreachable    URLError
+#   https://clio.ripple.com:51234      unreachable    URLError
+#   https://xrpl.ws                    unreachable    HTTPError
+DEFAULT_MPT_HOLDERS_NODES: tuple[str, ...] = (
+    "https://s2-clio.ripple.com:51234",   # Clio 2.8.0, genesis-to-tip
+    "https://s1.ripple.com:51234",        # Clio 2.8.0, independent fallback
+)
+
+MPT_HOLDERS_ENV_NAME = "MPT_HOLDERS_NODES"
+
+
+def mpt_holders_nodes() -> list[str]:
+    """Clio endpoints for the `mpt_holders` walk, in try order.
+
+    Env MPT_HOLDERS_NODES (comma-separated) overrides the default, so a
+    deployment can repoint the walk without a code change.
+    """
+    raw = os.environ.get(MPT_HOLDERS_ENV_NAME, "").strip()
+    if raw:
+        return [u.strip() for u in raw.split(",") if u.strip()]
+    return list(DEFAULT_MPT_HOLDERS_NODES)

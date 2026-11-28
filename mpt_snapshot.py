@@ -63,7 +63,27 @@ ISSUANCE_LIST_PATH = os.environ.get(
 HOLDER_PAGE_CAP = int(os.environ.get("MPT_HOLDER_PAGE_CAP", "50"))
 HOLDER_PAGE_LIMIT = int(os.environ.get("MPT_HOLDER_PAGE_LIMIT", "400"))
 HOLDER_TOP_N = int(os.environ.get("MPT_HOLDER_TOP_N", "20"))
-HOLDER_RPC_PAUSE = float(os.environ.get("MPT_HOLDER_RPC_PAUSE", "0.05"))
+# Between PAGES of one issuance. Raised 0.05 -> 0.25 on 2026-11-27: the walk
+# now runs against a public Clio endpoint we do not own, so it paces politely
+# rather than at local-node speed.
+HOLDER_RPC_PAUSE = float(os.environ.get("MPT_HOLDER_RPC_PAUSE", "0.25"))
+# Between ISSUANCES. Measured 2026-11-27: 0.34s per issuance against Clio with
+# 19 of 20 sampled needing a single page, so 533 issuances cost ~3 min of
+# request time; a 0.2s courtesy gap puts a full cycle near 5 min, which is far
+# inside the 6-hour schedule and keeps us a well-behaved client of someone
+# else's infrastructure.
+HOLDER_ISSUANCE_PAUSE = float(os.environ.get("MPT_HOLDER_ISSUANCE_PAUSE", "0.2"))
+
+# `mpt_holders` is Clio-only (rippled 3.4.1 -> unknownCmd), so the walk reads
+# public Clio endpoints. One shared list, one env override: see
+# tools/anchor_nodes.py.
+sys.path.insert(0, os.path.join(HERE, "tools"))
+from anchor_nodes import mpt_holders_nodes  # noqa: E402
+
+# Endpoints that answered `unknownCmd` this run. A rippled server cannot be
+# talked into implementing the method, so it is asked once and then skipped
+# for the rest of the cycle instead of 533 more times.
+_HOLDERS_DEAD: set[str] = set()
 
 # Same heuristic as app.py:_classify_mpt_status — duplicated here to keep
 # the worker independent of Flask import paths. If a third caller needs it,
@@ -92,7 +112,58 @@ def _rpc(method, params):
         return None
 
 
-def _holders_pending(reason="pending"):
+# `mpt_holders` is Clio-only: rippled 3.4.1 answers `unknownCmd`. Our own node
+# therefore CANNOT serve this call, so the holders walk is a disclosed
+# third-party read against Clio and never a sovereign one. See
+# tools/anchor_nodes.mpt_holders_nodes() for the endpoint list, the env
+# override and the measurement that established it.
+UNSUPPORTED_ERRORS = {"unknownCmd", "unknownCommand", "notImpl"}
+
+
+def _holders_rpc(params):
+    """Call `mpt_holders` on each Clio endpoint until one answers.
+
+    Returns (result, endpoint, failure) where exactly one of result/failure
+    is set. `failure` is the stored reason word, so the caller never has to
+    translate an error into a sentinel:
+
+      "rpc_unsupported" - every endpoint said unknownCmd. PERMANENT: the
+          endpoint list is pointing at rippled, not Clio. Not retried, and
+          the hourly job alerts on it, because this is a misconfiguration
+          and not a gap in the data.
+      "rpc_error"       - transport failure, timeout or any other error.
+          Transient; the next cycle retries.
+
+    A node that answers unknownCmd is tried ONCE and then abandoned for the
+    rest of the run: asking a rippled server 533 more times cannot change
+    its answer.
+    """
+    endpoints = [u for u in mpt_holders_nodes() if u not in _HOLDERS_DEAD]
+    if not endpoints:
+        return None, None, "rpc_unsupported"
+    transient = False
+    for url in endpoints:
+        try:
+            resp = httpx.post(
+                url, json={"method": "mpt_holders", "params": [params]},
+                timeout=20.0,
+            )
+            result = (resp.json() or {}).get("result") or {}
+        except Exception:
+            transient = True
+            continue
+        err = result.get("error")
+        if err in UNSUPPORTED_ERRORS:
+            _HOLDERS_DEAD.add(url)
+            continue
+        if err:
+            transient = True
+            continue
+        return result, url, None
+    return None, None, ("rpc_error" if transient else "rpc_unsupported")
+
+
+def _holders_pending(reason="pending", source=None):
     return {
         "with_balance": None,
         "authorized": None,
@@ -100,6 +171,12 @@ def _holders_pending(reason="pending"):
         "walked_complete": False,
         "walked_at": None,
         "reason": reason,
+        # Provenance travels with the row. `source` is None when no endpoint
+        # was reached (nothing was read, so nothing can be attributed), and
+        # `sovereign` is False unconditionally: our own node cannot answer
+        # this call at any endpoint, so a holders figure is never sovereign.
+        "source": source,
+        "sovereign": False,
     }
 
 
@@ -108,10 +185,20 @@ def _walk_holders(issuance_id, issuer):
     from counts and top-N. Returns the v3 holders dict.
 
     `reason` enum (exhaustive, non-null):
-      "pending"     — never walked (cold-start) or RPC error
-      "incomplete"  — page cap fired before exhausting the marker chain
-      "no_holders"  — walked clean, zero non-issuer holders
-      "complete"    — walked clean, with at least one non-issuer holder
+      "pending"         — never walked (cold-start). NOT an error.
+      "rpc_unsupported" — every endpoint rejected the method (unknownCmd).
+                          Permanent until the endpoint list is fixed.
+      "rpc_error"       — transport/timeout/other error. Transient.
+      "incomplete"      — page cap fired before exhausting the marker chain
+      "no_holders"      — walked clean, zero non-issuer holders
+      "complete"        — walked clean, with at least one non-issuer holder
+
+    Until 2026-11-27 an RPC failure of ANY kind was stored as "pending",
+    which reads as "never walked". 527 of 533 issuances sat in that state
+    because `mpt_holders` is not implemented by rippled 3.4.1, and the
+    hourly job counted them under `holders_incomplete` — a pagination word
+    for an RPC failure. Three different names for one cause is why it
+    survived unnoticed; the enum now separates them.
     """
     if not issuance_id:
         return _holders_pending("pending")
@@ -119,15 +206,17 @@ def _walk_holders(issuance_id, issuer):
     rows = []
     marker = None
     pages = 0
+    source = None
     walked_at = int(time.time())
 
     while pages < HOLDER_PAGE_CAP:
         params = {"mpt_issuance_id": issuance_id, "limit": HOLDER_PAGE_LIMIT}
         if marker is not None:
             params["marker"] = marker
-        result = _rpc("mpt_holders", params)
-        if result is None or "error" in (result or {}):
-            return _holders_pending("pending")
+        result, endpoint, failure = _holders_rpc(params)
+        if failure is not None:
+            return _holders_pending(failure)
+        source = endpoint
         rows.extend(result.get("mptokens") or [])
         pages += 1
         marker = result.get("marker")
@@ -144,6 +233,8 @@ def _walk_holders(issuance_id, issuer):
             "walked_complete": False,
             "walked_at": walked_at,
             "reason": "incomplete",
+            "source": source,
+            "sovereign": False,
         }
 
     non_issuer = [h for h in rows if h.get("account") != issuer]
@@ -174,6 +265,11 @@ def _walk_holders(issuance_id, issuer):
         "walked_complete": True,
         "walked_at": walked_at,
         "reason": "complete" if authorized > 0 else "no_holders",
+        # Which Clio endpoint produced this figure, and the standing fact
+        # that it is not our own node. Every surface rendering the number
+        # discloses both.
+        "source": source,
+        "sovereign": False,
     }
 
 
