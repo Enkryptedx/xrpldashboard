@@ -2842,6 +2842,25 @@ def _ranked_amm_snapshot():
     }
 
 
+# Imported here, ABOVE the age-helper below, with the gate constant left as
+# a plain assignment further down.
+#
+# tests/test_small_fixes_2026_11_13.py execs a SLICE of this file's source,
+# bounded by locating the age-helper's definition line and the gate
+# constant's assignment line by string search. Two things therefore matter
+# and neither is obvious:
+#   1. the gate constant must be ASSIGNED on its own line, not aliased at the
+#      end of an import -- an alias puts the searched name at the end of a
+#      statement, so the slice cuts that statement in half (SyntaxError).
+#   2. no comment ABOVE the helper may quote either boundary marker
+#      verbatim, or the search matches the prose instead of the code and the
+#      slice starts mid-sentence.
+# Both of those were live failures in this file on 2026-11-28, the second
+# caused by an earlier version of this very comment. Hence the deliberately
+# indirect wording here.
+from supply_block import ESCROW_CENSUS_STALE_AFTER_SECONDS  # noqa: E402
+
+
 def _amm_snapshot_age_seconds(meta: dict | None) -> int | None:
     """Seconds since the AMM ranking FINISHED, or None if unknown.
 
@@ -2880,7 +2899,7 @@ def _amm_snapshot_age_seconds(meta: dict | None) -> int | None:
 # see supply_block.ESCROW_CENSUS_STALE_AFTER_SECONDS for why that matters.
 # 26h = daily cadence + ~2h grace; at 60 min a daily census would read as
 # stale for 23 of every 24 hours and the API would redact almost always.
-from supply_block import ESCROW_CENSUS_STALE_AFTER_SECONDS as _XRP_ESCROW_STALE_AFTER  # noqa: E402
+_XRP_ESCROW_STALE_AFTER = ESCROW_CENSUS_STALE_AFTER_SECONDS
 _XRP_AMM_STALE_AFTER = 7200     # 2 h (rank_amms cadence is 1h; stay 2× in lockstep with the plist)
 
 

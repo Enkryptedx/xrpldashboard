@@ -1091,7 +1091,18 @@
              can see which is minutes old and which is hours and judge for
              themselves. Still gated on escrow_stale, so if the daily walk
              stops the line disappears rather than going quietly stale. #}
-          {% if xrp_distribution.escrowed_xrp and not xrp_distribution.escrow_stale %}
+          {# Guarded on EVERY field this line formats, not just escrowed_xrp.
+             A presence-only guard over a proxy field is a render-killer in
+             this codebase: the counts and the stamp are independent columns
+             and any of them can be None while escrowed_xrp is set, and
+             "{:,}".format(None) raises TypeError, which in Jinja is a 500 on
+             the homepage. Checked with `is not none` rather than truthiness
+             so a legitimate ZERO count still renders. #}
+          {% if xrp_distribution.escrowed_xrp
+                and not xrp_distribution.escrow_stale
+                and xrp_distribution.escrow_object_count is not none
+                and xrp_distribution.escrow_account_count is not none
+                and xrp_distribution.escrow_census_as_of %}
           <div class="stat-sub">{{ _('Ledger-wide') }}: {{ "%.2f"|format(xrp_distribution.escrowed_xrp / 1000000000) }}B XRP · {{ "{:,}".format(xrp_distribution.escrow_object_count) }} {{ _('escrow objects') }} · {{ "{:,}".format(xrp_distribution.escrow_account_count) }} {{ _('holder accounts') }} · {{ xrp_distribution.escrow_census_as_of }}</div>
           {% endif %}
         </div>
