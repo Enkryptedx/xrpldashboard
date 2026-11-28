@@ -465,7 +465,21 @@ class TestFileInvariants:
         # class withholds a name. All 29 keep publishing on the MPT surfaces
         # with the `unverified` caveat, which is confirmed from rendered HTML
         # in tests/test_decided_stubs_still_publish.py rather than inferred.
-        assert n == 274
+        #
+        # 274 -> 275 on 2026-11-27, +1, measured as the suppressed-key delta
+        # against origin/main (added: ZUVMP; removed: nothing).
+        # bulk_serial_mint_unreviewed at the undomained minter
+        # r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi, which already carried that
+        # class 76 times. Its name equals its ticker, it has no
+        # description, and the issuer has no on-ledger Domain.
+        #
+        # Recorded because of HOW it was found: the whole-issuer sweep, not
+        # the new-entry check. ZUVMP predates the anchor #17 base, so
+        # `set(new) - set(old)` could never see it and the gate-5 scan could
+        # not raise it -- the same blind spot that hid the Korean-script
+        # sibling earlier the same day. It was rendering with supply
+        # 154,785 the whole time.
+        assert n == 275
 
     def test_review_markers_still_three(self, raw):
         """This PR must not disturb the XRP NFT / XRP+ / XRP3D hold."""

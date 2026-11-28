@@ -1110,7 +1110,8 @@
     "issuer": "r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi",
     "issuer_name": "Zuvia Digital Assets",
     "name": "ZUVMP",
-    "source": "mpt_metadata"
+    "source": "mpt_metadata",
+    "suppressed": "bulk_serial_mint_unreviewed: a machine-numbered issuance from the same undomained bulk serial minter already suppressed on this class 76 times at this issuer; its name equals its ticker and it carries no description. The issuer has no on-ledger Domain, so no xrp-ledger.toml is discoverable and no citation is reachable. Pre-existing undecided entry surfaced by the whole-issuer sweep, not by the new-entry check — it predates the anchor #17 base, so the gate-5 scan could not see it. owner decision 2026-11-27"
   },
   "05FB9C8D4A9467EE3C58CB2C35702407A8862A4C6EFDF836:rfoL8dwvV7Vhgkmn31kyWT7mMx5vDf38Qx": {
     "category": "unlabeled",
