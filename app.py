@@ -10099,6 +10099,75 @@ def check_json_page():
     return check_page()
 
 
+@app.route("/ezr", methods=["GET", "POST"])
+@limiter.limit("60 per minute")
+def ezr_page():
+    """EZR — consumer scam-checker, FIRST SKELETON (2026-11-28).
+
+    One box: paste an XRPL address, a website domain, or a token
+    (SYMBOL.rIssuer). One answer: a red / amber / green traffic light.
+
+    This route is intentionally thin. It reuses the EXISTING /check engine
+    (check_data.py) without modification; all of the parsing, dispatch and
+    light logic lives in testable modules:
+
+        ezr_web.check_input()   parse -> engine dispatch -> light
+        ezr_redflags.collect()  structured known-bad hits (RED)
+        ezr_verdict.verdict()   the light itself
+
+    EZR-NOTE: /check is deliberately facts-not-verdicts, and a traffic
+    light IS a verdict. ezr_verdict therefore makes GREEN hard to reach
+    and always pairs it with a caveat saying "verified" does not mean
+    "safe to send money to". The existing /check and /check.json routes
+    are untouched by this feature.
+
+    EZR-NOTE: the form submits by POST so the pasted value never lands in
+    a URL, a referrer, or a page_view row (_log_page_view skips POST, the
+    same privacy property /check relies on for message triage). GET ?q=
+    is also accepted, because an address / domain / token is exactly what
+    /check already permalinks that way, so this adds no new exposure.
+    """
+    if request.method == "POST":
+        q = (request.form.get("q") or "").strip()
+    else:
+        q = (request.args.get("q") or "").strip()
+
+    import ezr_web
+
+    verdict = None
+    if q:
+        try:
+            verdict = ezr_web.check_input(q)
+        except Exception:
+            # EZR-NOTE: a crash must degrade to AMBER ("couldn't check"),
+            # never to GREEN. The visitor pasted this precisely to be
+            # warned, so silence or false reassurance is the worst
+            # available outcome. Exception detail stays in the log.
+            app.logger.exception("ezr_page: check failed")
+            verdict = {
+                "light": "amber",
+                "light_label": "Be careful",
+                "headline": babel_gettext("Couldn’t check this"),
+                "reasons": [babel_gettext(
+                    "Something went wrong checking that. "
+                    "Try again in a moment."
+                )],
+                "red_flags": [],
+                "caveat": None,
+                "result": None,
+                "input_error": "internal error",
+                "query": q,
+                "kind": "unknown",
+            }
+
+    return render_template(
+        "ezr.html",
+        query=q,
+        verdict=verdict,
+        input_help=ezr_web.INPUT_HELP,
+    )
+
+
 # ── Charlie ruling 2026-09-23 Wed 13:32 ET — API breadth (build item #2).
 # Four new machine endpoints — /tokens.json /whales.json /pools.json
 # /amendments.json — each carrying the same signed receipt envelope as

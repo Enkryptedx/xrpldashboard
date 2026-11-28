@@ -1438,3 +1438,57 @@ jobs:
         env:
           DATABASE_URL: ""
         run: pytest tests/test_destroyed_issuance_class.py -q
+
+      # ── EZR consumer scam-checker, first skeleton (2026-11-28) ──────
+      #
+      # EZR reuses the EXISTING /check engine (check_data.py) and adds one
+      # thing on top: a red/amber/green traffic light. check_data is
+      # deliberately FACTS-NOT-VERDICTS -- its docstring says the status
+      # pill describes "WHAT IDENTITY CLAIM EXISTS ON THE LEDGER, not
+      # whether the account is safe to interact with" -- so the light is
+      # doing precisely the thing the engine refuses to do. That is the
+      # whole risk surface of this feature, and it is why these suites
+      # exist: they pin that GREEN is hard to reach and that every
+      # ambiguous or absent value degrades to AMBER rather than reassuring.
+      #
+      # Registered in the SAME commit as the code. Four suites shipped
+      # earlier on 2026-11-27 and went unregistered precisely because the
+      # CI entry was left for later, so the repo's gate never ran them.
+      #
+      # All three are hermetic: pure functions, monkeypatched check_data
+      # helpers, and the Flask test client. No DB, no network.
+
+      # The light itself. Hardest test in here is that one structured
+      # known-bad hit beats a fully verified result -- the additive
+      # reasoning a scam victim does ("it had a website AND a name AND a
+      # verified badge") must not dilute a sanctions match. Also pins that
+      # a non-dict or empty engine return is AMBER and not a 500: the
+      # first draft raised AttributeError on a plain string, which would
+      # have been a crash on the one page a worried user came to for help.
+      - name: EZR traffic light is cautious by construction (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_ezr_verdict.py -q
+
+      # RED detection reads STRUCTURED data, never signal prose. The
+      # engine's signals carry no severity field, and its OFAC signal
+      # returns a populated dict BOTH for a sanctioned and a clean address
+      # ("not present" is itself a signal), so a hit can only be told from
+      # a miss by reading the snapshot. Same class of hazard as the
+      # is_withheld() substring bug fixed on 2026-11-27, where evidence
+      # prose became control flow.
+      - name: EZR red flags come from structured data (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_ezr_redflags.py -q
+
+      # Input dispatch + the route. Pins that EZR and /check AGREE about
+      # what a paste means (the precedence is copied from check_page, not
+      # invented), that the _domain_is_safe() gate is kept on BOTH domain
+      # paths so a public paste box is not an SSRF probe, that a crashed
+      # lookup renders AMBER and never GREEN, and that /check still
+      # returns 200 -- EZR must leave the existing site working.
+      - name: EZR input dispatch and route (no DB, no network)
+        env:
+          DATABASE_URL: ""
+        run: pytest tests/test_ezr_web.py -q

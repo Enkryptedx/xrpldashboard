@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="{{ current_locale }}"{% if is_rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- EZR-NOTE: same no-referrer policy as /check. EZR is submitted by POST
+       so the pasted value never reaches a URL at all, but outbound clicks
+       from a result page must still not leak the subject to the next site.
+       Do not remove without re-reading /privacy §2b. -->
+  <meta name="referrer" content="no-referrer">
+  <!-- EZR-NOTE: noindex while this is an unreleased skeleton. It is reachable
+       on a branch deploy only, and an indexed half-built scam-checker would
+       be worse than no scam-checker. Remove when the page actually ships. -->
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ _('EZR — check before you send') }} · xrpldashboard</title>
+  {% set meta_title = "EZR — check before you send · xrpldashboard" %}
+  {% set meta_description = "Paste an XRPL address, a website, or a token. EZR reuses the xrpldashboard /check engine and shows one clear result." %}
+  {% include "_head_meta.html" %}
+
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --card: #141832;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --muted: #8090b0;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --cyan: #22d3ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 24px 16px 64px;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+    form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+    input[type=text] {
+      width: 100%; padding: 14px 16px; font-size: 1rem;
+      background: var(--card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px;
+    }
+    input[type=text]:focus { outline: 2px solid var(--cyan); border-color: var(--cyan); }
+    button {
+      padding: 14px 20px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      background: var(--cyan); color: #04121a;
+      border: 0; border-radius: 10px;
+    }
+    .help { color: var(--muted); font-size: 0.85rem; margin: 0 0 28px; }
+
+    .verdict { border-radius: 14px; padding: 20px; margin: 24px 0;
+               border: 1px solid var(--border); background: var(--card); }
+    .verdict.red   { border-left: 6px solid var(--red); }
+    .verdict.amber { border-left: 6px solid var(--amber); }
+    .verdict.green { border-left: 6px solid var(--green); }
+
+    .lights { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .dot { width: 18px; height: 18px; border-radius: 50%; background: #2a3150; }
+    .dot.on.red { background: var(--red); }
+    .dot.on.amber { background: var(--amber); }
+    .dot.on.green { background: var(--green); }
+    .headline { font-size: 1.25rem; font-weight: 700; }
+    .headline.red { color: var(--red); }
+    .headline.amber { color: var(--amber); }
+    .headline.green { color: var(--green); }
+
+    .subject { color: var(--muted); font-size: 0.85rem; word-break: break-all;
+               margin-bottom: 14px; }
+    ul.reasons { margin: 0 0 14px; padding-left: 20px; }
+    ul.reasons li { margin-bottom: 8px; }
+    .caveat { font-size: 0.88rem; color: var(--muted); border-top: 1px solid var(--border);
+              padding-top: 12px; margin-top: 4px; }
+
+    .signals { margin-top: 28px; }
+    .signals h2 { font-size: 1rem; margin: 0 0 10px; color: var(--muted);
+                  text-transform: uppercase; letter-spacing: 0.04em; }
+    .sig { border: 1px solid var(--border); border-radius: 10px;
+           padding: 12px 14px; margin-bottom: 10px; background: var(--card); }
+    .sig .l { font-weight: 600; font-size: 0.92rem; }
+    .sig .v { font-size: 0.92rem; margin: 4px 0; }
+    .sig .s { font-size: 0.78rem; color: var(--muted); }
+    .unchecked .sig { border-style: dashed; }
+    .foot { margin-top: 36px; font-size: 0.82rem; color: var(--muted); }
+    .foot a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>{{ _('Check before you send') }}</h1>
+  <p class="sub">{{ _('Paste one thing. Get one answer.') }}</p>
+
+  <form method="post" action="/ezr">
+    <input type="text" name="q" value="{{ query or '' }}"
+           placeholder="{{ _('r… address, website, or SYMBOL.rIssuer') }}"
+           autocomplete="off" autocapitalize="off" spellcheck="false"
+           aria-label="{{ _('Thing to check') }}">
+    <button type="submit">{{ _('Check it') }}</button>
+  </form>
+  <p class="help">{{ input_help }}</p>
+
+  {% if verdict %}
+    {% set light = verdict.light %}
+    <div class="verdict {{ light }}">
+
+      <div class="lights" role="img"
+           aria-label="{{ _('Result') }}: {{ verdict.light_label }}">
+        <span class="dot {% if light == 'red' %}on red{% endif %}"></span>
+        <span class="dot {% if light == 'amber' %}on amber{% endif %}"></span>
+        <span class="dot {% if light == 'green' %}on green{% endif %}"></span>
+        <span class="headline {{ light }}">{{ verdict.headline }}</span>
+      </div>
+
+      {% if verdict.query %}
+        <div class="subject">{{ _('You checked') }}: {{ verdict.query }}</div>
+      {% endif %}
+
+      {% if verdict.reasons %}
+        <ul class="reasons">
+          {% for r in verdict.reasons %}<li>{{ r }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      {# EZR-NOTE: the caveat is NOT decoration. On green it is the sentence
+         that stops "verified" being read as "safe to send money to", which
+         is the exact inference the underlying engine was built to refuse to
+         support. Do not hide it behind a toggle or drop it on small screens. #}
+      {% if verdict.caveat %}
+        <div class="caveat">{{ verdict.caveat }}</div>
+      {% endif %}
+    </div>
+
+    {# The engine's own facts, with sources and timestamps. The light
+       summarises these; it does not replace them. #}
+    {% set res = verdict.result %}
+    {% if res and res.signals %}
+      <div class="signals">
+        <h2>{{ _('What we found') }}</h2>
+        {% for s in res.signals %}
+          <div class="sig">
+            <div class="l">{{ s.label }}</div>
+            <div class="v">{{ s.value }}</div>
+            <div class="s">{{ s.source_label }}{% if s.checked_at_utc %} · {{ s.checked_at_utc }}{% endif %}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if res and res.couldnt_check %}
+      <div class="signals unchecked">
+        <h2>{{ _("What we couldn't check") }}</h2>
+        {% for c in res.couldnt_check %}
+          <div class="sig">
+            <div class="l">{{ c.label }}</div>
+            <div class="v">{{ c.reason }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <p class="foot">
+    {{ _('EZR reuses the xrpldashboard') }} <a href="/check">/check</a>
+    {{ _('engine. For the full sourced detail, use that page.') }}
+  </p>
+
+</div>
+</body>
+</html>
