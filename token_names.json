@@ -10644,7 +10644,7 @@
     "name": "Weia Forward Contract",
     "desc": "1 contrato FNPL, valor facturado: Maiz, FWD-2026-022",
     "issuer_name": "Weia (FOODMENT S.A.S. BIC)",
-    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain)"
+    "suppressed": "issuance_destroyed_on_ledger: the issuance no longer exists on-ledger; the issuer account is still alive and still issuing. Measured from our own node at ledger_index validated on 2026-11-27: ledger_entry(mpt_issuance) returns entryNotFound, while account_info on rDT55fnKurcFPZTjZkmUf9CBo19SBAh2Q1 answers (Sequence 103504502, OwnerCount 14) and account_objects(type=mpt_issuance) returns 14 live issuances, this one NOT among them. The issuer's other instruments are therefore unaffected; what is gone is contract FWD-2026-022, named in this entry's own description. The issuer publishes no on-ledger Domain, so no first-party attestation is reachable. This replaces a holding state that said the entry was not yet assessed and was waiting on a holder walk. No holder walk can ever cover a destroyed issuance, so that hold could not resolve."
   },
   "05FA5D4A561E39FA605779B829BB5974E82B40AF173D6AF3:r3iMKCiKqu522oRGQcAdyvwoRUaTn7s8fi": {
     "currency_hex": "05FA5D4A561E39FA605779B829BB5974E82B40AF173D6AF3",
@@ -10695,7 +10695,7 @@
     "category": "other",
     "name": "TVV",
     "issuer_name": "Network",
-    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain); issuer shares a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours"
+    "suppressed": "issuance_destroyed_then_issuer_deleted: the issuance no longer exists on-ledger and its issuer account is gone. Measured from our own node at ledger_index validated on 2026-11-27: ledger_entry(mpt_issuance) returns entryNotFound, and account_info on rUF9TCVU7x8e2Z6vGAiLwwyZpjykzZGaiR returns actNotFound. A full-history read the same day placed an MPTokenIssuanceDestroy followed by an AccountDelete on 2026-11-19 at approximately 17:00Z. Our own node retains only ledgers 108520005-108617992, so what it proves is the present absence, not those transactions. This replaces a holding state that said the entry was not yet assessed and was waiting on a holder walk. No holder walk can ever cover a destroyed issuance, so that hold could not resolve. Retained from that assessment: the issuer published no on-ledger Domain, and it shared a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours. Suppression here records that the object is gone; it is not a judgement about the name."
   },
   "06719B7F21DD2BD4CC5A4D43EB62F664AE7B806B2F177390:rhahE2QG6F3kGJxZVxd8hYZG74Zxf6DCY9": {
     "currency_hex": "06719B7F21DD2BD4CC5A4D43EB62F664AE7B806B2F177390",
@@ -10716,7 +10716,7 @@
     "category": "other",
     "name": "BESTV",
     "issuer_name": "Network",
-    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain); issuer shares a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours"
+    "suppressed": "issuance_destroyed_then_issuer_deleted: the issuance no longer exists on-ledger and its issuer account is gone. Measured from our own node at ledger_index validated on 2026-11-27: ledger_entry(mpt_issuance) returns entryNotFound, and account_info on rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1 returns actNotFound. A full-history read the same day placed an MPTokenIssuanceDestroy followed by an AccountDelete on 2026-11-19 at approximately 17:00Z. Our own node retains only ledgers 108520005-108617992, so what it proves is the present absence, not those transactions. This replaces a holding state that said the entry was not yet assessed and was waiting on a holder walk. No holder walk can ever cover a destroyed issuance, so that hold could not resolve. Retained from that assessment: the issuer published no on-ledger Domain, and it shared a funding parent (rLMcdvrDhznoK3KbHCmECU7mXH3JcKGnEX) with two other new-token issuers all created 2026-11-03 within ~6 hours. This is the BESTV entry at rNBr9RnUnZrJnAZrwJZtAX6jJ1wbHwx5N1; a second, separate BESTV entry at rf8VWP3bnNEe8WE7 is a different issuance and is untouched by this decision. Suppression here records that the object is gone; it is not a judgement about the name."
   },
   "06714EFD9F147959A8ABEA77A3787FD6656F1FD81972BCFB:rEW3yhYqGP6BSpMCAFgsNjG7V6VQiuBSHf": {
     "currency_hex": "06714EFD9F147959A8ABEA77A3787FD6656F1FD81972BCFB",
@@ -10791,7 +10791,7 @@
     "name": "DozDog",
     "desc": "My Beloved Bubba.",
     "issuer_name": "vthayer",
-    "suppressed": "pending_review: not yet assessed; issuer has no first-party attestation we can verify (no on-ledger Domain)"
+    "suppressed": "issuance_destroyed_on_ledger: the issuance no longer exists on-ledger; the issuer account is still alive. Measured from our own node at ledger_index validated on 2026-11-27: ledger_entry(mpt_issuance) returns entryNotFound, while account_info on rKRQCkc9XWuCgYSY2nF5Hxhz6kTknZFz72 answers (Sequence 105493574, OwnerCount 33) and account_objects(type=mpt_issuance) returns ZERO live issuances. A full-history read the same day showed four create and four destroy cycles at this issuer. Its on-ledger Domain is bithomp.com, an explorer that does not reciprocate the claim - the same unreciprocated-explorer-domain pattern already recorded for DDG - so no first-party attestation is reachable from it. This replaces a holding state that said the entry was not yet assessed and was waiting on a holder walk. No holder walk can ever cover a destroyed issuance, so that hold could not resolve."
   },
   "0671EE6186013FD29FD46A77684ADB46A7B53E71F44A3006:rDDZsWWNqPvz7Dsqxu3hysnAz5iJdao4nV": {
     "currency_hex": "0671EE6186013FD29FD46A77684ADB46A7B53E71F44A3006",
